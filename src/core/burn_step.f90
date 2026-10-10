@@ -7,39 +7,18 @@
 ! (net_lib's nuclear_reaction_rates), the energy generation
 ! (nuclear_energy_lib), the network and its implicit and equilibrium
 ! burns (network_lib), and the light elements (light_element_lib).
-! Here: compute_zone_energy, the adapter that stores nuclear_energy's results;
-! store_li_be_rates, which stores the Li/Be rates per shell; burn_li_be/burn_li_be_midpoint,
+! Here: compute_zone_energy, which fills in the two energy inputs that
+! depend on the shell's place in the model; store_li_be_rates, which
+! stores the Li/Be rates per shell; burn_li_be/burn_li_be_midpoint,
 ! the Li/Be depletion over a step, with the convection-zone base
 ! location (overshoot included) and the CZ averaging they need.
 module burn_step
       use net_lib
+! nuclear_energy_result (net/nuclear_energy.f90) is re-exported: it is
+! what compute_zone_energy returns.
+      use nuclear_energy_lib, only: nuclear_energy, nuclear_energy_result
       implicit none
       private :: locate_cz_base, average_li_be_over_cz, store_li_be_rates
-
-! zone_energy_result (2026 W3): the per-zone energy-generation record filled
-! by compute_zone_energy -- formerly its first eight positional dummies. The
-! neutrino outputs stay on star% (star%neutrino_loss_rate,
-! star%neutrino_flux(:), star%alpha_capture_energy, ...), where the
-! output writers read them. Components default to zero so that a
-! caller's fresh local starts as the old -finit-local-zero scalars
-! did; compute_zone_energy takes the record intent(inout) and, exactly as before,
-! leaves the energy components and the total untouched on its
-! low-temperature early return (only deps_dlnrho/deps_dlnt are
-! zeroed there).
-! zone_energy_result (formerly burn_result)
-      type, public :: zone_energy_result
-! energy generation by chain, erg/g/s (EPP1, EPP2, EPP3, ECN, E3AL)
-           double precision :: pp_chain_energy_gen = 0.0d0
-           double precision :: he3he4_be7_electron_energy_gen = 0.0d0
-           double precision :: he3he4_be7_proton_energy_gen = 0.0d0
-           double precision :: cno_cycle_energy_gen = 0.0d0
-           double precision :: triple_alpha_energy_gen = 0.0d0
-! absolute d eps/d ln rho and d eps/d ln T, erg/g/s (PEP, PET)
-           double precision :: deps_dlnrho = 0.0d0
-           double precision :: deps_dlnt = 0.0d0
-! total energy generation incl. neutrino losses, erg/g/s (SUM1)
-           double precision :: total_energy_gen_rate = 0.0d0
-      end type zone_energy_result
 
 contains
 
@@ -57,207 +36,35 @@ contains
 !----------------------------------------------------------------------
 ! compute_zone_energy
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original engeb.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! 3/92 DBG Added new neutrino loss calculation routines
-! NOVEMBER 6, 1990 (JNB)
-! THE FOLLOWING SUBROUTINE CALCULATES THE NUCLEAR REACTION RATES WITH
-!   SPECIAL ATTENTION TO DETAIL REQUIRED FOR CALCULATING SOLAR NEUTRINO
-!   FLUXES. THE NEUTRINO FLUXES ARE EVALUATED ALSO IN THIS SUBROUTINE.
-! ALL PHYSICAL QUANTITIES ARE CGS. THE REACTION RATES ARE IN
-!  GM^{-1}S^{-1}.
-!  MHP 10/97
-!
-!   On 10/13/97, JNB converted the nuclear masses from neutral nuclear
-!   masses to bare nuclear masses by subtracting Z(I)*(m_e)*c^2 from
-!   the neutral nuclear masses. This caused changes in a number of
-!   places: in ANUC(I), in Q1(I)-Q7(I), in the calculation of the Be7electron
-!   Be7proton rates, and in the calculation of the N15p branching ratio.
-!
-!   JNB made some purely cosmetic changes on 1/20/96. Revised all of the
-!   input Q's on 9/23-25/97 to agree with submitted version of Solar
-!   Fusion Workshop paper. The SStandard are fixed to agree with
-!   the Workshop paper. JNB recalculated all of the EG(I) to determine
-!   the best values for the energy generation for all the reactions,
-!   taking account of my improved calculations of neutrino energy loss.
-!   The calculations are documented in Vol. 19, 132-141, 1997 of my notes.
-!   The neutral atom mass differences are taken from Table of Isotopes,
-!   8th Ed, 1996 and the neutrino energy losses from Bahcall, Gallium
-!   solar neutrino experiments, Phys Rev C, in press, 1997.
-!
-!  All numbers in this subroutine have been calculated by John Bahcall
-!  so that they agree with the modern numbers in Neutrino
-!  Astrophysics (1989) or much more recent results, as indicated in
-!  comments lines.
-!
-!  PREVIOUS VERSIONS OF THE YALE CODE
-!  USED THE NUCLEAR REACTION RATES PRIMARILY FROM FOWLER, CAUGHLAN, AND
-!  ZIMMERMAN IN ANN. REV. ASTR. AND ASTROPHYS. (1975) OR, FOR THE BE7 AND
-!  B8 RATES, THE VALUES FROM BAHCALL AND SEARS (1972), ALSO. ANN. REV. ASTR.
-!  AND ASTROPHYS. SOME VALUES WERE FROM HARRIS ET AL (1983, ANN. REV. ASTR.
-!  IN A FEW CASES, NUMERICAL ERRORS (NOT DUE TO REVISIONS IN THE NUCLEAR DATA)
-!  HAVE BEEN CORRECTED.  IN A SMALL NUMBER OF OTHER PLACES, THE PREVIOUS
-!  PROGRAM CONTAINED PHYSICALLY INCORRECT STATEMENTS, WHICH HAVE BEEN CORRECTED
-!  IN THE PRESENT VERSION. IN THE COURSE OF THE CHECKING AND REVISIONS, I
-!  HAVE ADDED MANY COMMENT STATEMENTS IN ORDER TO MAKE THE PROGRAM MORE
-!  TRANSPARENT AND SIMPLER TO REVISE.  SOME STATEMENTS HAVE BEEN ADDED
-!  TO SIMPLIFY THE PROCESS OF REVISING THE SUBROUTINE AS IMPROVED DATA
-!  BECOME AVAILABLE.  FOR EXAMPLE, I HAVE INSERTED EXPLICITLY
-!  THE STANDARD CROSS SECTION FACTORS IN A WAY THAT IS EASY TO REVISE;
-!  SSTANDARD(I) = 1.0 WHEN THE ITH CROSS SECTION HAS THE STANDARD VALUE
-!  MEASUREMENTS USED IN NEUTRINO ASTROPHYSICS.
-!  MHP 10/97
-!
-!  The PREVIOUS standard values of SStandard(I) used were those that
-!   were given in Table 1 of Bahcall and Pinsonneault (1992).  This work
-!   was  published in the Reviews of Modern Physics, 64,885, 1992. The
-!   current version of SStandard(I) refers to Bahcall and
-!   Pinsonneault(1995) , Rev. Mod. Phys. 67, 781 (1995), Table 1, if
-!   changes have occured.  Otherwise, they are the same as in the
-!   Bahcall-Pinsonnealt (1992) Rev. Mod. Phys. article.
-!
-!  Weakscreening is a parameter set in this subroutine. To obtain
-!  the Graboske et al. and Salpeter standard results, use:
-!  weakscreening = 0.03.  To investigate the effect of always using
-!  weak screening, use a value for weakscreening greater than unity,
-!  e. g., 30. The transition region between weak and strong screening
-!  is defined by Graboske et al. as $\Lambda_{12} = 0.1$, see page
-!  ApJ 181, 465 (1973) [5/15/97].
-!
-!  The value of SStandard(17) for hep is taken from Carlson et al (1991)
-!  Phys. Rev. C 44, 619. It corresponds to an S sub 0 =
-!  1.3 E-20 keV-barns, a factor of 0.1625  smaller than indicated by the
-!  older measurements and calculations used in Neutrino Astrophysics.
-!
-! THE NUCLEAR ENERGY RELEASE TO THE STAR FROM EACH REACTION
-!  IS TAKEN FROM BAHCALL AND ULRICH, RMP 60, 297 (1988) AND TAKES ACCOUNT
-!  ACCURATELY OF NEUTRINO ENERGY LOSS.
-!
-! I HAVE ADDED A NEW SECTION AT THE END OF THE SUBROUTINE THAT
-!  CALCULATES THE SOLAR NEUTRINO FLUXES AT THE EARTH.  THESE FLUXES
-!  ARE IN THE UNITS OF CM^-2 SEC^-2 PER GM. TO GET THE FLUX
-!  FROM A SHELL, MULTIPLY BY THE MASS OF THE SHELL IN UNITS OF
-!  GRAMS.  THE FLUXES ARE STORED IN star%neutrino_flux.  I ALSO CALCULATE
-!  THE FICTIONAL NEUTRINO FLUXES ASSOCIATED WITH THE HE3 + HE3 AND WITH
-!  THE HE3 + HE4 RECTIONS; THESE FICTIONAL FLUXES ARE USEFUL DIAGNOSTICS
-!  OF THE SOLAR MODEL.
-!
-! *****************************************
-! CHANGING NUCLEAR REACTION CROSS SECTIONS.
-! *****************************************
-! NUCLEAR CROSS SECTIONS CAN BE CHANGED SIMPLY BY INSERTING NEW NUMBERS
-!  FOR THE DATA VALUES OF SSTANDARD(I), WHICH ARE THE RATIOS OF THE
-!  DESIRED CROSS SECTION FACTORS TO THE VALUES GIVEN IN TABLES 3.2 AND
-!  3.4 OF NEUTRINO ASTROPHYSICS (1989). IF THE VALUE GIVEN IN NEUTRINO
-!  ASTROPHYSICS IS USED, THEN SSTANDARD(I) = 1.0 .  TO INCREASE THE CROSS
-!  SECTION FOR REACTION K BY A FACTOR OF TWO COMPARED TO THE STANDARD
-!  VALUE, SET SSTANDARD(K) = 2.0 .  TO DETERMINE WHICH VALUE OF I GOES
-!  WITH WHICH REACTION, SEE THE SECTION JUST BELOW.
-!  THE ENERGY DERIVATIVES ENTER IN A FORM IN WHICH THEY ARE DIVIDED BY
-!  THE ABSOLUTE VALUES OF THE CROSS SECTIONS AT ZERO ENERGY.  THUS IF
-!  THE SHAPE OF THE CROSS SECTION EXTRAPOLATION IS UNCHANGED AND ONLY
-!  THE INTERCEPT OF S(E) AT ZERO ENERGY IS CHANGED, THEN NO CORRECTION
-!  NEED BE MADE FOR THE DERIVATIVES.  THEY ARE AUTOMATICALLY SCALED
-!  CORRECTLY.  THE EXACT WAY THAT THE DERIVATIVES ENTER THE
-!  CALCULATIONS IS DESCRIBED IN THE SECTION LABELED ``DEFINING THE
-!  Q(I)'' THAT IS PRESENTED BELOW.
-! ************************************
-! IDENTIFYING THE REACTIONS.
-! ************************************
-!  THE VALUE OF J DENOTES WHICH OF THE REACTIONS THE COEFFICIENTS
-!  REFER TO:
-!  J = 1, PP; J = 2, HE3+HE3; J = 3, HE3+ HE4; J =4, P + C12;  J = 5, P+C13;
-!  J = 6. P + N14; J = 7, P + O16.
-!  REACTIONS J = 8, 13 ARE NOT RELEVANT FOR THE SOLAR INTERIOR; THEY ARE
-!   HOLDOVERS FROM THE EARLIER YALE CODE.
-!  REACTION 14 IS PEP; REACTION 15 IS BE7 ELECTRON CAPTURE; REACTION 16 IS
-!   BE7 PROTON CAPTURE; REACTION 17 IS THE HEP REACTION.
-!  do not change sstandard(14) unless you want to change the ratio of
-!  pep to pp.
-!   REACTIONS 14-17 WERE NOT EXPLICITLY INCLUDED IN THE YALE
-!    PREVIOUS VERSION OF THE CODE, BUT THEY ARE IMPORTANT FOR
-!    SOLAR NEUTRINO CALCULATIONS.
-!   THE BRANCHING OF THE N15 + P REACTIONS IS TREATED IN A SERIES OF
-!    SEPARATE STATEMENTS FOLLOWING THE CALCULATION OF THE BE7 + P
-!    REACTION. SEE THE DEFINITIONS OF F3 AND F4.  IF THE CROSS-SECTION
-!    FACTORS OF THE N15 + P REACTIONS ARE REVISED, THEN THE NUMERICAL
-!    COEFFICIENTS MUST BE CHANGED IN THE DEFINITION OF C12ALPHA AND
-!    O16GAMMA.
-! FOR Q1(I), ...,Q(5(I), I = 8 CORRESPONDS TO THE BE7 +  P REACTION.
-!  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
-!  FOR OTHER ARRAYS IN THE PROGRAM.
-!  IU IS THE SHELL NUMBER.
-!
-! Dummy-argument renaming used throughout this modernized version:
-!   EPP1 -> pp_chain_energy_gen        EPP2 -> he3he4_be7_electron_energy_gen
-!   EPP3 -> he3he4_be7_proton_energy_gen   ECN -> cno_cycle_energy_gen
-!   E3AL -> triple_alpha_energy_gen    PEP -> deps_dlnrho
-!   PET -> deps_dlnt                   SUM1 -> total_energy_gen_rate
-!   DL -> log_density                  TL -> log_temperature
-!   X -> hydrogen_fraction             Y -> helium_fraction
-!   XHE3 -> he3_fraction               XC12/XC13 -> c12_fraction/c13_fraction
-!   XN14 -> n14_fraction               XO16/XO18 -> o16_fraction/o18_fraction
-!   XH2 -> deuterium_fraction          IU -> shell_index
-!   HR1..HR13 -> reaction_rate(1..13,:) (per 10^9 yr per amu, for kemcom)
-!   HF1 -> n15_alpha_branch_fraction   HF2 -> be7_electron_capture_fraction
-! 2026 de-tramp (ROADMAP item 3): 35 arguments -> 20. The 15 trailing
-! per-zone reaction-rate arrays (HR1..HR13/HF1/HF2, a vestigial
-! COMMON relay) are gone: compute_zone_energy writes star%reaction_rate(:,shell_index) /
-! star%n15_alpha_branch_fraction / star%be7_electron_capture_fraction
-! at shell_index directly. Of the old callers, one already passed
-! exactly those star% arrays (neutrino_flux_table) and the other two
-! passed write-only scratch nothing ever read.
-! 2026 W3: the eight energy outputs are the components of res
-! (type zone_energy_result above): 20 arguments -> 13.
 ! compute_zone_energy (formerly engeb)
-subroutine compute_zone_energy(res, log_density, &
-     log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
-     c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-     o18_fraction, deuterium_fraction, shell_index)
+! The energy generation of one shell: nuclear_energy, with the two
+! inputs that depend on where the shell sits in the model filled in --
+! whether it lies in the surface convection zone (shell_index >=
+! star%jcz) and the convective turnover time, which together cap
+! deuterium burning there. Everything comes back in e; nothing is
+! stored. (2026-10: it used to return the neutrino loss, alpha-capture
+! and He3 energies, the solar neutrino fluxes and the Be7 abundance
+! through star% scalars, and to store per-shell reaction rates and
+! branchings that nothing read.)
+!   star reads: jcz, convective_turnover_timescale
+!   star writes: none
+subroutine compute_zone_energy(log_density, log_temperature, &
+     hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
+     c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
+     deuterium_fraction, shell_index, e)
       use star_info_lib, only: star
-      use nuclear_energy_lib, only: nuclear_energy, nuclear_energy_result
       implicit none
-! res is intent(inout), not intent(out): at or below
-! nuclear_logT_cutoffs(1) only its two derivatives are zeroed and the
-! energies keep the caller's values -- the F77 behaviour, preserved.
-      type(zone_energy_result), intent(inout) :: res
       double precision, intent(in) :: log_density, log_temperature, &
            hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
            deuterium_fraction
       integer, intent(in) :: shell_index
-      type(nuclear_energy_result) :: e
+      type(nuclear_energy_result), intent(out) :: e
 
       call nuclear_energy(log_density, log_temperature, hydrogen_fraction, &
            helium_fraction, he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction, deuterium_fraction, &
            shell_index.ge.star%jcz, star%convective_turnover_timescale, e)
-      star%neutrino_loss_rate = e%eps_neutrino_loss
-      star%alpha_capture_energy = e%eps_alpha_capture
-      if (.not. e%burning) then
-         res%deps_dlnrho = 0.d0
-         res%deps_dlnt = 0.d0
-         return
-      end if
-      res%total_energy_gen_rate = e%total_energy_gen_rate
-      res%deps_dlnrho = e%deps_dlnrho
-      res%deps_dlnt = e%deps_dlnt
-      res%pp_chain_energy_gen = e%pp_chain_energy_gen
-      res%he3he4_be7_electron_energy_gen = e%he3he4_be7_electron_energy_gen
-      res%he3he4_be7_proton_energy_gen = e%he3he4_be7_proton_energy_gen
-      res%cno_cycle_energy_gen = e%cno_cycle_energy_gen
-      res%triple_alpha_energy_gen = e%triple_alpha_energy_gen
-      star%he3_he3_energy_rate = e%eps_he3_he3
-      star%he3_burning_energy_rate = e%eps_he3_burning
-      star%reaction_rate(:,shell_index) = e%reaction_rate
-      star%n15_alpha_branch_fraction(shell_index) = e%frac_n15_pa
-      star%be7_electron_capture_fraction(shell_index) = e%frac_be7_ecap
-      if (e%fluxes_set) star%neutrino_flux(1:10) = e%neutrino_flux
-      if (e%be7_set) star%be7_mass_fraction = e%be7_mass_fraction
 end subroutine compute_zone_energy
 
 !----------------------------------------------------------------------

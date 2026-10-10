@@ -63,12 +63,6 @@ module star_info_lib
            ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
            ix_ne = 11, ix_he = 12, n_mix_species = 12
 
-! reaction_rate(n_reactions,json): per-zone rates of the 13-reaction
-! network, in net_lib's r_* slot order (r_pp = 1 .. r_c12c12_unused
-! = 13). Same value as net_lib's num_reactions; a copy because
-! net_lib itself uses star_info_lib (no reverse dependency).
-      integer, parameter, public :: n_reactions = 13
-
 ! Monte-Carlo sample capacity of the job%s11_rate .. job%age_target
 ! arrays.
       integer, parameter, public :: max_mc_runs = 1000
@@ -99,13 +93,12 @@ module star_info_lib
            i_lum_cno = 4, i_lum_3alpha = 5, i_lum_neu = 6, &
            i_lum_grav = 7, i_lum_he_c = 8, n_lum_channels = 8
 
-! neutrino_flux / neutrino_flux_total(n_nu_fluxes) and
-! neutrino_flux_zone(n_nu_fluxes,json): solar-neutrino source per
+! neutrino_flux_total(n_nu_fluxes) and neutrino_flux_zone(n_nu_fluxes,json),
+! and nuclear_energy_result%neutrino_flux: solar-neutrino source per
 ! slot (the SNU tables). Slots 1-8 are the real neutrino sources;
 ! slots 9-10 hold the He3+He3 and He3+He4 reaction rates in the same
 ! flux units, as if each reaction emitted one neutrino ("fictional"
-! fluxes stored by compute_zone_energy's compute_neutrino_emission; tabulated with
-! the others by neutrino_flux_table).
+! fluxes, tabulated with the others by neutrino_flux_table).
       integer, parameter, public :: &
            i_nu_pp = 1, i_nu_pep = 2, i_nu_hep = 3, i_nu_be7 = 4, &
            i_nu_b8 = 5, i_nu_n13 = 6, i_nu_o15 = 7, i_nu_f17 = 8, &
@@ -217,12 +210,6 @@ module star_info_lib
 ! nuclear / neutrino diagnostics, per zone
             double precision :: be7_mass_fraction_zone(json), &
                  neutrino_flux_zone(n_nu_fluxes,json)
-! reaction_rate(r,i): rate of reaction r (net_lib r_* slot) in zone i,
-! per 10^9 yr per amu (former HR1..HR13 / reaction_rate_1..13),
-! stored by compute_zone_energy's compute_neutrino_emission.
-            double precision :: reaction_rate(n_reactions,json), &
-                 n15_alpha_branch_fraction(json), &
-                 be7_electron_capture_fraction(json)
 ! model-level scalars (2026, phase four follow-on): absorbed after the
 ! per-call-site audit the star_info header called for -- every
 ! converted routine receives exactly main's storage for these at every
@@ -406,20 +393,12 @@ module star_info_lib
 ! named accreted_mass_fraction until 2026-10 despite being a mass)
             double precision :: accreted_mass
             integer :: jcz
-! -- former engeb_diagnostics_state (compute_zone_energy) --
-! former common/neweps/
-            double precision :: alpha_capture_energy, neutrino_loss_rate
-! former common/be7/
-            double precision :: be7_mass_fraction
-! former common/grab/: He3+He3/He3+He4 luminosity and per-shell rate
-! diagnostics (JVS 10/11).
-            double precision :: he3_he3_energy_rate, &
-                 he3_burning_energy_rate
+! He3+He3 and He3+He3 + He3+He4 luminosity per shell (JVS 10/11;
+! former common/grab/)
             double precision :: he3_he3_luminosity_zone(json), &
                  he3_burning_luminosity_zone(json)
 ! -- former neutrino_flux_state (flux) --
-            double precision :: neutrino_flux(n_nu_fluxes), &
-                 neutrino_flux_total(n_nu_fluxes)
+            double precision :: neutrino_flux_total(n_nu_fluxes)
             double precision :: cl37_snu_rate, ga71_snu_rate
 ! -- former envelope_composition_state (env_comp) --
             double precision :: envelope_hydrogen_fraction, &

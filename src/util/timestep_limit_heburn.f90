@@ -31,13 +31,13 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       double precision, intent(out) :: helium_dt
       integer, intent(in) :: h_shell_zone_begin
       double precision :: max_temp, local_log_density, local_log_temperature
-      integer :: max_temp_zone, zone_idx, engeb_zone, shell_zone
+      integer :: max_temp_zone, zone_idx, shell_zone
       double precision :: hydrogen_fraction, helium_fraction, &
            he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction, h2_fraction
 ! only the helium-burning term (burn%triple_alpha_energy_gen) of the
-! compute_zone_energy record is used here; the other components are discarded.
-      type(zone_energy_result) :: burn
+! shell's energy record is used here.
+      type(nuclear_energy_result) :: burn
       double precision :: helium_energy_gen
       double precision :: core_helium_fraction
 ! energy released per gram of helium burned (erg/g)
@@ -71,12 +71,11 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
        if(star%job%use_extended_composition) then
           h2_fraction = composition(12,max_temp_zone)
        endif
-       engeb_zone = max_temp_zone
-         call compute_zone_energy(burn, &
+         call compute_zone_energy( &
               local_log_density,local_log_temperature,hydrogen_fraction, &
               helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
               n14_fraction,o16_fraction,o18_fraction,h2_fraction, &
-              engeb_zone)
+              max_temp_zone, burn)
          helium_energy_gen = burn%triple_alpha_energy_gen
        if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
        helium_dt=1.0d15/helium_energy_gen

@@ -86,10 +86,10 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! the qp/qt/qt_dl slots live in pt_scr (pulse scratch) and are
 ! mirrored into cur just before the elimination.
       type(henyey_shell_terms) :: prev, cur
-! burn: compute_zone_energy's energy record (2026 W3); its components are unpacked
-! right after the call into energy_gen_rate/energy_gen_component and
-! zone_deps_dlnrho/dlnt, which the rest of the routine reads.
-      type(zone_energy_result) :: burn
+! burn: the shell's energy record from compute_zone_energy; its components
+! are unpacked right after the call into energy_gen_rate,
+! energy_gen_component and zone_deps_dlnrho/dlnt.
+      type(nuclear_energy_result) :: burn
       double precision :: zone_deps_dlnrho, zone_deps_dlnt
       double precision :: energy_gen_rate, alpha_capture_energy_zone
       double precision :: zone_dt, entropy_term1, entropy_term2, &
@@ -212,11 +212,11 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        cur%ql_dp = 0.0d0
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
-            call compute_zone_energy(burn, zone_log10_density, &
+            call compute_zone_energy(zone_log10_density, &
                  zone_log_temperature, hydrogen_fraction, helium_fraction, &
                  he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
                  o16_fraction, o18_fraction, deuterium_fraction, &
-                 shell_index)
+                 shell_index, burn)
             zone_deps_dlnrho = burn%deps_dlnrho
             zone_deps_dlnt = burn%deps_dlnt
             energy_gen_rate = burn%total_energy_gen_rate
@@ -225,15 +225,15 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             energy_gen_component(3) = burn%he3he4_be7_proton_energy_gen
             energy_gen_component(4) = burn%cno_cycle_energy_gen
             energy_gen_component(5) = burn%triple_alpha_energy_gen
-            energy_gen_component(6) = star%neutrino_loss_rate
-            alpha_capture_energy_zone = star%alpha_capture_energy
+            energy_gen_component(6) = burn%eps_neutrino_loss
+            alpha_capture_energy_zone = burn%eps_alpha_capture
 ! 7/91 MHP
 ! CONVERT NEUTRINO FLUX RATES (UNITS 10**10 ERGS PER GM)
 ! TO UNITS OF 10**10 ERGS BY MULTIPLYING BY THE MASS.
             if (star%ctrl%calc_neutrinos) then
                do j = 1,n_nu_fluxes
                   star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
-                       star%neutrino_flux(j)*star%dm(im)
+                       burn%neutrino_flux(j)*star%dm(im)
                end do
             end if
             do j = 1,6
@@ -246,9 +246,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             end do
 ! JVS 10/11 Calculate the He3+He3 and sum of He3+He3 and He3+He4 luminosity
             star%he3_he3_luminosity_zone(im) = (star%dm(im)/ &
-                 star%solar_luminosity_cgs)*star%he3_he3_energy_rate
+                 star%solar_luminosity_cgs)*burn%eps_he3_he3
             star%he3_burning_luminosity_zone(im) = (star%dm(im)/ &
-                 star%solar_luminosity_cgs)*star%he3_burning_energy_rate
+                 star%solar_luminosity_cgs)*burn%eps_he3_burning
 ! JVS end
             star%luminosity_breakdown(i_lum_he_c)=star%luminosity_breakdown(i_lum_he_c)+(star%dm(im)/ &
                  star%solar_luminosity_cgs)*alpha_capture_energy_zone

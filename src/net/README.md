@@ -34,7 +34,7 @@ It also holds the index families and data the network uses:
 
 | Routine | What it does |
 |---|---|
-| `nuclear_energy` | Energy generation of one zone, returned as a `nuclear_energy_result`. It contains ε (erg/g/s) and its **absolute** derivatives dε/dln ρ and dε/dln T for the Henyey Jacobian, plus the shares of the pp chain, Be7 branches, CNO and triple-α. It also holds the α-capture and thermal-neutrino terms, the He3 rates, the reaction rates per Gyr per amu, the branchings, and (when `ctrl%calc_neutrinos`) the solar neutrino fluxes and Be7 abundance. Internal steps: `fill_mass_fractions` → `nuclear_reaction_rates` → the deuterium term → `sum_energy_generation` → `reaction_rates_and_chain_shares` → `solar_neutrino_fluxes` → `thermal_neutrino_loss`. |
+| `nuclear_energy` | Energy generation of one zone, returned as a `nuclear_energy_result`. It contains ε (erg/g/s) and its **absolute** derivatives dε/dln ρ and dε/dln T for the Henyey Jacobian, plus the shares of the pp chain, Be7 branches, CNO and triple-α. It also holds the α-capture and thermal-neutrino terms, the He3 energy rates, and (when `ctrl%calc_neutrinos`) the solar neutrino fluxes and Be7 abundance. Internal steps: `fill_mass_fractions` → `nuclear_reaction_rates` → the deuterium term → `sum_energy_generation` → `chain_energy_shares` → `solar_neutrino_fluxes` → `thermal_neutrino_loss`. |
 
 ### `net/network_lib.f90` (module `network_lib`)
 
@@ -78,7 +78,7 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | `burn_network_region` | `burn_network`, `mixing/rotmix` | Model bookkeeping around `implicit_burn_step`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
 | `burn_equilibrium` | `mix`, at level 1 | `equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
 | `burn_deuterium` | `mix` | `burn_deuterium_region` per shell or region. |
-| `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | Adapter: calls `nuclear_energy` and stores the diagnostics in `star`: neutrino and α-capture terms, per-shell reaction rates, branchings, fluxes, Be7. Below the nuclear cutoff it zeroes only the derivatives. |
+| `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
 | `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
 | `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step: radiative shells, then the surface convection zone with its base (overshoot included) located at the start and end of the step. |

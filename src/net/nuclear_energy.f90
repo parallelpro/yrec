@@ -9,10 +9,10 @@
 ! absolute derivatives d eps/dln rho, d eps/dln T for the Henyey
 ! Jacobian; the chain shares (pp, Be7 electron/proton branches, CNO,
 ! triple alpha); the alpha-capture energy, thermal neutrino losses and
-! He3 energy rates; the reaction rates per Gyr per amu (floored at
-! 1e-5) and the branching fractions; and, when ctrl%calc_neutrinos, the
-! solar neutrino fluxes and the Be7 abundance. It reads only
-! configuration from star (ctrl, the cross-section scales).
+! He3 energy rates; and, when ctrl%calc_neutrinos, the solar neutrino
+! fluxes and the Be7 abundance. Everything it computes comes back in
+! the record. It reads only configuration from star (ctrl, the
+! cross-section scales).
 module nuclear_energy_lib
       use net_lib
       implicit none
@@ -32,9 +32,6 @@ module nuclear_energy_lib
          double precision :: eps_alpha_capture = 0.0d0
          double precision :: eps_neutrino_loss = 0.0d0
          double precision :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
-! per Gyr per amu (abundance factors omitted), r_* slots
-         double precision :: reaction_rate(num_reactions) = 0.0d0
-         double precision :: frac_n15_pa = 0.0d0, frac_be7_ecap = 0.0d0
 ! set only when ctrl%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
          double precision :: neutrino_flux(10) = 0.0d0
@@ -45,6 +42,149 @@ module nuclear_energy_lib
 
 contains
 
+!----------------------------------------------------------------------
+! nuclear_energy -- history and sources (the header of engeb.f, kept
+! with the physics it describes)
+!----------------------------------------------------------------------
+! 3/92 DBG Added new neutrino loss calculation routines
+! NOVEMBER 6, 1990 (JNB)
+! THE FOLLOWING SUBROUTINE CALCULATES THE NUCLEAR REACTION RATES WITH
+!   SPECIAL ATTENTION TO DETAIL REQUIRED FOR CALCULATING SOLAR NEUTRINO
+!   FLUXES. THE NEUTRINO FLUXES ARE EVALUATED ALSO IN THIS SUBROUTINE.
+! ALL PHYSICAL QUANTITIES ARE CGS. THE REACTION RATES ARE IN
+!  GM^{-1}S^{-1}.
+!  MHP 10/97
+!
+!   On 10/13/97, JNB converted the nuclear masses from neutral nuclear
+!   masses to bare nuclear masses by subtracting Z(I)*(m_e)*c^2 from
+!   the neutral nuclear masses. This caused changes in a number of
+!   places: in ANUC(I), in Q1(I)-Q7(I), in the calculation of the Be7electron
+!   Be7proton rates, and in the calculation of the N15p branching ratio.
+!
+!   JNB made some purely cosmetic changes on 1/20/96. Revised all of the
+!   input Q's on 9/23-25/97 to agree with submitted version of Solar
+!   Fusion Workshop paper. The SStandard are fixed to agree with
+!   the Workshop paper. JNB recalculated all of the EG(I) to determine
+!   the best values for the energy generation for all the reactions,
+!   taking account of my improved calculations of neutrino energy loss.
+!   The calculations are documented in Vol. 19, 132-141, 1997 of my notes.
+!   The neutral atom mass differences are taken from Table of Isotopes,
+!   8th Ed, 1996 and the neutrino energy losses from Bahcall, Gallium
+!   solar neutrino experiments, Phys Rev C, in press, 1997.
+!
+!  All numbers in this subroutine have been calculated by John Bahcall
+!  so that they agree with the modern numbers in Neutrino
+!  Astrophysics (1989) or much more recent results, as indicated in
+!  comments lines.
+!
+!  PREVIOUS VERSIONS OF THE YALE CODE
+!  USED THE NUCLEAR REACTION RATES PRIMARILY FROM FOWLER, CAUGHLAN, AND
+!  ZIMMERMAN IN ANN. REV. ASTR. AND ASTROPHYS. (1975) OR, FOR THE BE7 AND
+!  B8 RATES, THE VALUES FROM BAHCALL AND SEARS (1972), ALSO. ANN. REV. ASTR.
+!  AND ASTROPHYS. SOME VALUES WERE FROM HARRIS ET AL (1983, ANN. REV. ASTR.
+!  IN A FEW CASES, NUMERICAL ERRORS (NOT DUE TO REVISIONS IN THE NUCLEAR DATA)
+!  HAVE BEEN CORRECTED.  IN A SMALL NUMBER OF OTHER PLACES, THE PREVIOUS
+!  PROGRAM CONTAINED PHYSICALLY INCORRECT STATEMENTS, WHICH HAVE BEEN CORRECTED
+!  IN THE PRESENT VERSION. IN THE COURSE OF THE CHECKING AND REVISIONS, I
+!  HAVE ADDED MANY COMMENT STATEMENTS IN ORDER TO MAKE THE PROGRAM MORE
+!  TRANSPARENT AND SIMPLER TO REVISE.  SOME STATEMENTS HAVE BEEN ADDED
+!  TO SIMPLIFY THE PROCESS OF REVISING THE SUBROUTINE AS IMPROVED DATA
+!  BECOME AVAILABLE.  FOR EXAMPLE, I HAVE INSERTED EXPLICITLY
+!  THE STANDARD CROSS SECTION FACTORS IN A WAY THAT IS EASY TO REVISE;
+!  SSTANDARD(I) = 1.0 WHEN THE ITH CROSS SECTION HAS THE STANDARD VALUE
+!  MEASUREMENTS USED IN NEUTRINO ASTROPHYSICS.
+!  MHP 10/97
+!
+!  The PREVIOUS standard values of SStandard(I) used were those that
+!   were given in Table 1 of Bahcall and Pinsonneault (1992).  This work
+!   was  published in the Reviews of Modern Physics, 64,885, 1992. The
+!   current version of SStandard(I) refers to Bahcall and
+!   Pinsonneault(1995) , Rev. Mod. Phys. 67, 781 (1995), Table 1, if
+!   changes have occured.  Otherwise, they are the same as in the
+!   Bahcall-Pinsonnealt (1992) Rev. Mod. Phys. article.
+!
+!  Weakscreening is a parameter set in this subroutine. To obtain
+!  the Graboske et al. and Salpeter standard results, use:
+!  weakscreening = 0.03.  To investigate the effect of always using
+!  weak screening, use a value for weakscreening greater than unity,
+!  e. g., 30. The transition region between weak and strong screening
+!  is defined by Graboske et al. as $\Lambda_{12} = 0.1$, see page
+!  ApJ 181, 465 (1973) [5/15/97].
+!
+!  The value of SStandard(17) for hep is taken from Carlson et al (1991)
+!  Phys. Rev. C 44, 619. It corresponds to an S sub 0 =
+!  1.3 E-20 keV-barns, a factor of 0.1625  smaller than indicated by the
+!  older measurements and calculations used in Neutrino Astrophysics.
+!
+! THE NUCLEAR ENERGY RELEASE TO THE STAR FROM EACH REACTION
+!  IS TAKEN FROM BAHCALL AND ULRICH, RMP 60, 297 (1988) AND TAKES ACCOUNT
+!  ACCURATELY OF NEUTRINO ENERGY LOSS.
+!
+! I HAVE ADDED A NEW SECTION AT THE END OF THE SUBROUTINE THAT
+!  CALCULATES THE SOLAR NEUTRINO FLUXES AT THE EARTH.  THESE FLUXES
+!  ARE IN THE UNITS OF CM^-2 SEC^-2 PER GM. TO GET THE FLUX
+!  FROM A SHELL, MULTIPLY BY THE MASS OF THE SHELL IN UNITS OF
+!  GRAMS.  THE FLUXES ARE STORED IN star%neutrino_flux.  I ALSO CALCULATE
+!  THE FICTIONAL NEUTRINO FLUXES ASSOCIATED WITH THE HE3 + HE3 AND WITH
+!  THE HE3 + HE4 RECTIONS; THESE FICTIONAL FLUXES ARE USEFUL DIAGNOSTICS
+!  OF THE SOLAR MODEL.
+!
+! *****************************************
+! CHANGING NUCLEAR REACTION CROSS SECTIONS.
+! *****************************************
+! NUCLEAR CROSS SECTIONS CAN BE CHANGED SIMPLY BY INSERTING NEW NUMBERS
+!  FOR THE DATA VALUES OF SSTANDARD(I), WHICH ARE THE RATIOS OF THE
+!  DESIRED CROSS SECTION FACTORS TO THE VALUES GIVEN IN TABLES 3.2 AND
+!  3.4 OF NEUTRINO ASTROPHYSICS (1989). IF THE VALUE GIVEN IN NEUTRINO
+!  ASTROPHYSICS IS USED, THEN SSTANDARD(I) = 1.0 .  TO INCREASE THE CROSS
+!  SECTION FOR REACTION K BY A FACTOR OF TWO COMPARED TO THE STANDARD
+!  VALUE, SET SSTANDARD(K) = 2.0 .  TO DETERMINE WHICH VALUE OF I GOES
+!  WITH WHICH REACTION, SEE THE SECTION JUST BELOW.
+!  THE ENERGY DERIVATIVES ENTER IN A FORM IN WHICH THEY ARE DIVIDED BY
+!  THE ABSOLUTE VALUES OF THE CROSS SECTIONS AT ZERO ENERGY.  THUS IF
+!  THE SHAPE OF THE CROSS SECTION EXTRAPOLATION IS UNCHANGED AND ONLY
+!  THE INTERCEPT OF S(E) AT ZERO ENERGY IS CHANGED, THEN NO CORRECTION
+!  NEED BE MADE FOR THE DERIVATIVES.  THEY ARE AUTOMATICALLY SCALED
+!  CORRECTLY.  THE EXACT WAY THAT THE DERIVATIVES ENTER THE
+!  CALCULATIONS IS DESCRIBED IN THE SECTION LABELED ``DEFINING THE
+!  Q(I)'' THAT IS PRESENTED BELOW.
+! ************************************
+! IDENTIFYING THE REACTIONS.
+! ************************************
+!  THE VALUE OF J DENOTES WHICH OF THE REACTIONS THE COEFFICIENTS
+!  REFER TO:
+!  J = 1, PP; J = 2, HE3+HE3; J = 3, HE3+ HE4; J =4, P + C12;  J = 5, P+C13;
+!  J = 6. P + N14; J = 7, P + O16.
+!  REACTIONS J = 8, 13 ARE NOT RELEVANT FOR THE SOLAR INTERIOR; THEY ARE
+!   HOLDOVERS FROM THE EARLIER YALE CODE.
+!  REACTION 14 IS PEP; REACTION 15 IS BE7 ELECTRON CAPTURE; REACTION 16 IS
+!   BE7 PROTON CAPTURE; REACTION 17 IS THE HEP REACTION.
+!  do not change sstandard(14) unless you want to change the ratio of
+!  pep to pp.
+!   REACTIONS 14-17 WERE NOT EXPLICITLY INCLUDED IN THE YALE
+!    PREVIOUS VERSION OF THE CODE, BUT THEY ARE IMPORTANT FOR
+!    SOLAR NEUTRINO CALCULATIONS.
+!   THE BRANCHING OF THE N15 + P REACTIONS IS TREATED IN A SERIES OF
+!    SEPARATE STATEMENTS FOLLOWING THE CALCULATION OF THE BE7 + P
+!    REACTION. SEE THE DEFINITIONS OF F3 AND F4.  IF THE CROSS-SECTION
+!    FACTORS OF THE N15 + P REACTIONS ARE REVISED, THEN THE NUMERICAL
+!    COEFFICIENTS MUST BE CHANGED IN THE DEFINITION OF C12ALPHA AND
+!    O16GAMMA.
+! FOR Q1(I), ...,Q(5(I), I = 8 CORRESPONDS TO THE BE7 +  P REACTION.
+!  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
+!  FOR OTHER ARRAYS IN THE PROGRAM.
+!  IU IS THE SHELL NUMBER.
+!
+! Legacy names (engeb.f) of the result components and arguments:
+!   EPP1 -> pp_chain_energy_gen        EPP2 -> he3he4_be7_electron_energy_gen
+!   EPP3 -> he3he4_be7_proton_energy_gen   ECN -> cno_cycle_energy_gen
+!   E3AL -> triple_alpha_energy_gen    PEP -> deps_dlnrho
+!   PET -> deps_dlnt                   SUM1 -> total_energy_gen_rate
+!   DL -> log_density                  TL -> log_temperature
+!   X -> hydrogen_fraction             Y -> helium_fraction
+!   XHE3 -> he3_fraction               XC12/XC13 -> c12_fraction/c13_fraction
+!   XN14 -> n14_fraction               XO16/XO18 -> o16_fraction/o18_fraction
+!   XH2 -> deuterium_fraction
 subroutine nuclear_energy(log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
@@ -67,9 +207,9 @@ subroutine nuclear_energy(log_density, &
       type(nuclear_energy_result), intent(out) :: e
 
 ! neutrino_dsnu_dt/neutrino_dsnu_drho are the absolute derivatives
-! d snu/dT, d snu/d rho returned by neutrino() (the Itoh 1996 path,
-! selected by star%ctrl%use_itoh_neutrino_loss); they are set and
-! consumed only inside compute_neutrino_emission below.
+! d snu/dT, d snu/d rho returned by thermal_neutrino_losses (the Itoh
+! 1996 path, selected by star%ctrl%use_itoh_neutrino_loss); they are set
+! and consumed only inside thermal_neutrino_loss below.
       double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
 
 ! nr: this zone's reaction rates, derivatives and branchings, from
@@ -200,7 +340,7 @@ subroutine nuclear_energy(log_density, &
 ! ******************************************************************
 ! ****************************************
       call sum_energy_generation
-      call reaction_rates_and_chain_shares
+      call chain_energy_shares
       call solar_neutrino_fluxes
       call thermal_neutrino_loss
       return
@@ -360,52 +500,15 @@ subroutine sum_energy_generation
 ! *****************************************************
 ! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
 ! *****************************************************
-! Rates below 1e-5 are zeroed only now, after the energy sums above
-! have used them, so the stored per-zone rates (compute_neutrino_emission)
-! and the energy generation see slightly different rate floors.
-      do i=1,num_reactions
-         if (reaction_rate(i).le.1.d-5) reaction_rate(i) = 0.0d0
-      end do
-! ******************************************************
 end subroutine sum_energy_generation
 
 ! ---------------------------------------------------------------
-! Rates per 1e9 yr per amu (hrk), the pp/CNO energy split, and --
-! above nuclear_logT_cutoffs(5) -- the eight solar neutrino fluxes (pp, pep, hep,
-! Be7, B8, N13, O15, F17) with hep screening. The nuclear_logT_cutoffs(5) early
-! RETURN is equivalent in or out of the section: nothing follows
-! this call in compute_zone_energy.
-subroutine reaction_rates_and_chain_shares
-      use math_lib
-! the reaction rates per Gyr per amu, the branchings, the chain shares
-! of eps and the alpha-capture energy
-! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
-! ******************************************************
-! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
-!  THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
-!  MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
-!  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
-! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
-!  (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
-!  CONVERTING TO SECONDS.
-      e%reaction_rate(r_pp)=reaction_rate(r_pp)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_he3he3)=reaction_rate(r_he3he3)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_he3he4)=reaction_rate(r_he3he4)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_pc12)=reaction_rate(r_pc12)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_pc13)=reaction_rate(r_pc13)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_pn14)=reaction_rate(r_pn14)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_po16)=reaction_rate(r_po16)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_ac13)=reaction_rate(r_ac13)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_ao16_unused)=reaction_rate(r_ao16_unused)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_ac12)=reaction_rate(r_ac12)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_an14)=reaction_rate(r_an14)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_3alpha)=reaction_rate(r_3alpha)*gyr_amu_per_sec_gram
-      e%reaction_rate(r_c12c12_unused)=reaction_rate(r_c12c12_unused)*gyr_amu_per_sec_gram
-      e%frac_n15_pa=frac_n15_pa
-      e%frac_be7_ecap=frac_be7_ecap
-! ****************************************
-! END OF COMPUTATION OF HRK(IU).
-! ****************************************
+! The energy of each chain (pp, the two Be7 branches, CNO, triple
+! alpha) and of the alpha captures, from the per-reaction energies
+! summed in sum_energy_generation. (2026-10: the per-Gyr-per-amu rate
+! copies and branchings this routine also produced, once relayed to
+! kemcom and later stored per shell, had no reader and are gone.)
+subroutine chain_energy_shares
 ! ****************************************
 ! CALCULATING THE TOTAL ENERGY GENERATION.
 ! ****************************************
@@ -440,7 +543,7 @@ subroutine reaction_rates_and_chain_shares
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
       e%eps_alpha_capture=reaction_energy_gen(r_ac13)+reaction_energy_gen(r_ac12)+ &
            reaction_energy_gen(r_an14)
-end subroutine reaction_rates_and_chain_shares
+end subroutine chain_energy_shares
 
 subroutine solar_neutrino_fluxes
       use math_lib

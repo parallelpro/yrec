@@ -41,9 +41,9 @@ subroutine neutrino_flux_table
            hydrogen_fraction, helium_fraction, he3_fraction, &
            c12_fraction, c13_fraction, n14_fraction, &
            o16_fraction, o18_fraction
-! burn: compute_zone_energy's energy record; only the star% neutrino outputs of
-! compute_zone_energy are used here, the record itself is discarded.
-      type(zone_energy_result) :: burn
+! burn: the shell's energy record; only its solar neutrino fluxes and
+! Be7 abundance are used here.
+      type(nuclear_energy_result) :: burn
       double precision :: t6_million_k, log_electron_density, &
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
@@ -66,11 +66,8 @@ subroutine neutrino_flux_table
       do i = 1,star%nz
          shell_log_density = star%logRho(i)
          shell_log_temperature = star%logT(i)
-! SKIP CALCULATIONS FOR LOW TEMPERATURES -- also at or below the
-! nuclear cutoff, where compute_zone_energy returns early and would leave the previous
-! shell's fluxes in star%neutrino_flux (2026-10: only the literal 6.0
-! stood here, so a cutoff above 6.0 added stale fluxes for the shells
-! in between; the shipped decks use 5.5 and are unaffected)
+! SKIP CALCULATIONS FOR LOW TEMPERATURES -- below log T = 6, and at or
+! below the nuclear cutoff, where nothing burns.
          if (shell_log_temperature.lt.6.0d0 .or. &
               shell_log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) exit
          hydrogen_fraction = star%xa(i_h1,i)
@@ -81,16 +78,17 @@ subroutine neutrino_flux_table
          n14_fraction = star%xa(i_n14,i)
          o16_fraction = star%xa(i_o16,i)
          o18_fraction = star%xa(i_o18,i)
-         call compute_zone_energy(burn,shell_log_density, &
+         call compute_zone_energy(shell_log_density, &
               shell_log_temperature,hydrogen_fraction,helium_fraction, &
               he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-              o16_fraction,o18_fraction,star%xa(i_h2,i),i)
-! BE7 MASS FRACTION.
-         star%be7_mass_fraction_zone(i) = star%be7_mass_fraction
+              o16_fraction,o18_fraction,star%xa(i_h2,i),i,burn)
+! BE7 MASS FRACTION (2026-10: zero where X <= 1e-6, where none is
+! computed; this used to repeat the last shell's value that had one)
+         star%be7_mass_fraction_zone(i) = burn%be7_mass_fraction
 ! CONVERT FROM ERG/GM/S TO ERG/S FOR EACH SHELL BY MULTIPLYING
 ! BY THE MASS OF EACH SHELL IN GM.
          do j = 1,n_nu_fluxes
-            star%neutrino_flux_zone(j,i) = star%neutrino_flux(j)*shell_mass(i)
+            star%neutrino_flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
             star%neutrino_flux_total(j) = star%neutrino_flux_total(j) &
                  + star%neutrino_flux_zone(j,i)
          end do
