@@ -945,8 +945,21 @@ but on lovstm in evolve_angular_momentum.
   at 4.568 Gyr: |dlog L| <= 1.4e-4, |dX_c| <= 3.8e-4, |dlog Teff|
   <= 6e-5, |dlog R| <= 2e-5; 16 solar-age pins reseeded, 19 short
   pre-MS/config pins byte-identical.
-- Open, next: the Jacobian dlnrate/dlnT of reactions 1-7 lacks the
-  same scales (derivative fix + a finite-difference test in test_net);
-  deuterium in the composition path's screening composition; the
-  LNEWNUC = .false. default that leaves cross_section_scale unset
-  (NaN rates); neutrino_flux_table's literal logT 6.0 threshold.
+- **Exact T-derivative of reactions 1-7 -- DONE (92b5f044).** The
+  Jacobian term now carries the S'/S'' scales; test_net checks every
+  slot's analytic dln(rate)/dlnT and dln(rate)/dln rho against centred
+  differences (pinned). N14+p was off by 5.4e-4, O16+p by 7.7e-3.
+- **rates takes the composition vector -- DONE (ea910124).**
+- **Deuterium in the composition path's screening -- DONE (a3c94ac1).**
+- **LNEWNUC = .false. restored -- DONE (b32533b4).** A 2026 regression
+  (rename campaign dropped the SSTANDARD copy): the flag left every
+  pp/CNO rate zero. New test_physics::test_legacy_cross_sections.
+- **neutrino_flux_table cutoff guard -- DONE (6c343a9c).**
+- Deliberately left as special operators (documented in network_lib):
+  deuterium (exponential sub-stepping with the overturn cap), Li/Be
+  (liburn), eqburn's equilibrium mode, the Be7/N15 branchings. Making
+  D an explicit network species changes the pp-chain model itself
+  (p+p -> d no longer instantaneous), a physics decision, not a
+  restructuring. The species count from the table (the literal 15 in
+  ~45 declarations) moves to Phase 5 (state), where the arrays become
+  allocatable.

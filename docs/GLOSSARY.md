@@ -570,3 +570,12 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 - `rot_scr%quadrupole_moment` and `local_gravity` (`QUAD`, `GG`).
 
 **Discrepancy:** the value and comment of `dlum_dalpha` differ by a factor of 10 (`core/check_solar_calibration.f90:51`: value 0.0139, comment "+0.139").
+
+### Network (2026-10)
+
+| Symbol | Units | Current name | Legacy name | Owning file | Definition |
+|---|---|---|---|---|---|
+| R_j | per Gyr per amu | `reaction_rate(j, ...)` in network_lib | — | net/network_lib.f90 | Rate of table reaction j: b_j g_j prod X(law_j). |
+| g_j | per Gyr per amu per (X_i X_k) | `rate_vec(rr_*)`, `rate_by_zone(rr_*, k)` | `HR1..HR13` | net/net_lib.f90 (`rates`) | Composition rate rows; abundance factors omitted. |
+| λ, dlnλ/dlnT, dlnλ/dlnρ | g⁻¹ s⁻¹ per (X_i X_k); — | `nuclear_rates%rate`, `%dlnrate_dlnt`, `%dlnrate_dlnrho` | `RATE`, `PET`-terms | net/net_lib.f90 (`nuclear_reaction_rates`) | The one per-zone rate evaluation (screened, scaled), with logarithmic derivatives. |
+| f(N15→C12), f(Be7 e-capture) | — | `nuclear_rates%frac_n15_pa`, `%frac_be7_ecap` | `F3`, `F1` | net/net_lib.f90 | Branching fractions. |
