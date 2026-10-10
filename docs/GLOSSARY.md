@@ -228,8 +228,8 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%gravitational_luminosity(k)` | `SEG(7)`, `HHC` | core/henyey_coefficients.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `gravitational_luminosity` is a specific rate, not a luminosity (trap 7). |
 | ε | erg g⁻¹ s⁻¹ | `burn%total_energy_gen_rate` (local `energy_gen_rate`) | `SUM1` (`engeb`), `E` (`coefft`) | core/burn_lib.f90 (`engeb`) | Total nuclear rate including deuterium burning and (negative) ν losses; the ε in q_L. |
 | ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%pp_chain_energy_gen`, `he3he4_be7_electron_energy_gen`, `he3he4_be7_proton_energy_gen`, `cno_cycle_energy_gen`, `triple_alpha_energy_gen` | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | core/burn_lib.f90:1857-1871 | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
-| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_dlnepsilon_dlnrho`, `star%pulse_dlneps_dlnrho`, `rot_scr%dlnepsilon_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | core/burn_lib.f90:1793 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The `dln` copies are misnamed (trap 1). |
-| dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_dlnepsilon_dlnt`, `star%pulse_dlneps_dlnt`, `rot_scr%dlnepsilon_dlnt` | `PET`; `QET`, `PQET`, `SQET` | core/burn_lib.f90:1794 | **Absolute** dε/dlnT (trap 1). |
+| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho`, `rot_scr%deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | core/burn_lib.f90:1793 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
+| dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_deps_dlnt`, `star%pulse_deps_dlnt`, `rot_scr%deps_dlnt` | `PET`; `QET`, `PQET`, `SQET` | core/burn_lib.f90:1794 | **Absolute** dε/dlnT (trap 1). |
 | ε_αcap | erg g⁻¹ s⁻¹ | `star%alpha_capture_energy` | `EALPCA` (`/NEWEPS/`) | core/burn_lib.f90:1875 | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
 | L_channel | L☉ | `star%luminosity_breakdown(8)` (`i_lum_pp1`, `i_lum_pp2`, `i_lum_pp3`, `i_lum_cno`, `i_lum_3alpha`, `i_lum_neu`, `i_lum_grav`, `i_lum_he_c`) | `TLUMX` | core/henyey_coefficients.f90; renormalized in core/henyey_iterate.f90:173-182 | Integrated luminosity per channel. Rescaled each iteration so the sum equals L(nz) (trap 15). |
 | ε_rot | erg g⁻¹ s⁻¹ | `rot_scr%rotational_energy_term` | `DEROT` (`/ROTEN/`) | core/henyey_coefficients.f90:302 | (E_rot − E_rot,old)/(Δt Δm), subtracted from ε in q_L. |
@@ -378,8 +378,8 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 |---|---|---|---|---|---|
 | (∂lnρ/∂lnP) at fixed T | — | `star%pulse_dlnrho_dlnp` | `PQDP` (`/PULSE1/`) | core/henyey_coefficients.f90 | Logarithmic (correct). |
 | (∂lnρ/∂lnT) at fixed P | — | `star%pulse_dlnrho_dlnt` | `PQDT` | core/henyey_coefficients.f90 | Logarithmic (correct); δ = −this. |
-| dε/dlnρ | erg g⁻¹ s⁻¹ | `star%pulse_dlneps_dlnrho` | `PQED` | core/henyey_coefficients.f90:403 | **Absolute**, despite the name (trap 1). |
-| dε/dlnT | erg g⁻¹ s⁻¹ | `star%pulse_dlneps_dlnt` | `PQET` | core/henyey_coefficients.f90:404 | **Absolute**, despite the name (trap 1). |
+| dε/dlnρ | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnrho` | `PQED` | core/henyey_coefficients.f90 | **Absolute**; written to `eps_eps_rho` as is (trap 1). |
+| dε/dlnT | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnt` | `PQET` | core/henyey_coefficients.f90 | **Absolute**; written to `eps_eps_T` as is (trap 1). |
 | κ_ρ, κ_T | — | `star%pulse_dlnkap_dlnrho`, `pulse_dlnkap_dlnt` | `PQOD`, `PQOT` | core/henyey_coefficients.f90 | Logarithmic (correct). |
 | c_P | erg g⁻¹ K⁻¹ | `star%pulse_specific_heat` | `PQCP` | core/henyey_coefficients.f90 | Specific heat. |
 | μ | — | `star%pulse_mean_molecular_weight` | `PRMU` | core/henyey_coefficients.f90:412 | R/(R/μ) from the EOS; the legacy slot held R/μ. |
@@ -459,14 +459,11 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 
 Every item was confirmed by reading the code. Lines are for the 2026-10-10 working tree.
 
-1. **`dln` names that hold ABSOLUTE ε derivatives.**
-   - `engeb` returns `burn%deps_dlnrho` and `burn%deps_dlnt` as absolute dε/d ln ρ and dε/d ln T in erg g⁻¹ s⁻¹ (`core/burn_lib.f90:41-43`, `:1786-1794`).
-   - Three copies of these values carry logarithmic-looking names:
-     - `zone_dlnepsilon_dlnrho/dlnt` (`core/henyey_coefficients.f90:93`, `:220-221`);
-     - `star%pulse_dlneps_dlnrho/dlnt` (`:403-404`);
-     - `rot_scr%dlnepsilon_dlnrho/dlnt` (`:387-388`).
-   - The Jacobian uses them correctly (`:259-261`). So does the rotation code (`setup/rotation_stability_setup.f90:237-241`), where they add to terms in `epsilm`.
-   - The pulse writers multiply them by ε again: `core/stitched_model.f90:579-580` and `io/write_gyre_pulse.f90:112-113` (`TARGET_ARCHITECTURE.md` Appendix B #1).
+1. **`dln` names that held ABSOLUTE ε derivatives (renamed 2026-10).**
+   - `engeb` returns `burn%deps_dlnrho` and `burn%deps_dlnt` as absolute dε/d ln ρ and dε/d ln T in erg g⁻¹ s⁻¹ (`core/burn_lib.f90`, `burn_result`).
+   - Three copies carried logarithmic-looking names until 2026-10: `zone_dlnepsilon_*` (now `zone_deps_*`, `core/henyey_coefficients.f90`), `star%pulse_dlneps_*` (now `star%pulse_deps_*`), `rot_scr%dlnepsilon_*` (now `rot_scr%deps_*`).
+   - The Jacobian always used them correctly, and so does the rotation code (`setup/rotation_stability_setup.f90`): there f·dε/dlnT is added to ε·(1 − f − χ_T), which is consistent only for the absolute derivative.
+   - Misled by the old names, commit 2ed398ca (2026-08-30) multiplied them by ε a second time in both pulse writers. The `eps_eps_T`/`eps_eps_rho` columns were wrong by a factor of ε until the 2026-10 fix (`TARGET_ARCHITECTURE.md` Appendix B #1).
    - Note that the `engeb` comment says "the callers divide by eps themselves". None does.
 2. **`pt_scr%qp`, `qt`, `qtl` mean different things depending on who wrote them last.**
    - In `henyey_coefficients` they are Henyey terms: q_P, q_T = ∇ q_P, and q_T/(L ln10) (`core/henyey_coefficients.f90:189-205`).

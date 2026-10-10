@@ -491,9 +491,12 @@ module star_info_lib
                  max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, trial_sign_flag
 ! -- the extended-model pulse physics arrays (former pulse%) --
+! pulse_dlnrho_*/pulse_dlnkap_* are logarithmic derivatives;
+! pulse_deps_dlnrho/dlnt are ABSOLUTE d eps/dln rho, d eps/dlnT in
+! erg/g/s (engeb's burn%deps_*; named pulse_dlneps_* until 2026-10).
             double precision :: pulse_dlnrho_dlnp(json), &
-                 pulse_dlneps_dlnrho(json)
-            double precision :: pulse_dlneps_dlnt(json), &
+                 pulse_deps_dlnrho(json)
+            double precision :: pulse_deps_dlnt(json), &
                  pulse_dlnkap_dlnrho(json)
             double precision :: pulse_dlnkap_dlnt(json), &
                  pulse_specific_heat(json)

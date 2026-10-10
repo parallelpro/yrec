@@ -88,9 +88,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       type(henyey_shell_terms) :: prev, cur
 ! burn: engeb's energy record (2026 W3); its components are unpacked
 ! right after the call into energy_gen_rate/energy_gen_component and
-! zone_dlnepsilon_dlnrho/dlnt, which the rest of the routine reads.
+! zone_deps_dlnrho/dlnt, which the rest of the routine reads.
       type(burn_result) :: burn
-      double precision :: zone_dlnepsilon_dlnrho, zone_dlnepsilon_dlnt
+      double precision :: zone_deps_dlnrho, zone_deps_dlnt
       double precision :: energy_gen_rate, alpha_capture_energy_zone
       double precision :: zone_dt, entropy_term1, entropy_term2, &
            entropy_term, entropy_term3, egrav
@@ -217,8 +217,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
                  o16_fraction, o18_fraction, deuterium_fraction, &
                  shell_index)
-            zone_dlnepsilon_dlnrho = burn%deps_dlnrho
-            zone_dlnepsilon_dlnt = burn%deps_dlnt
+            zone_deps_dlnrho = burn%deps_dlnrho
+            zone_deps_dlnt = burn%deps_dlnt
             energy_gen_rate = burn%total_energy_gen_rate
             energy_gen_component(1) = burn%pp_chain_energy_gen
             energy_gen_component(2) = burn%he3he4_be7_electron_energy_gen
@@ -256,9 +256,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  (star%dm(im)/star%solar_luminosity_cgs)* &
                  alpha_capture_energy_zone
             cur%ql = energy_gen_rate
-            cur%ql_dt = cur%ql_dt + zone_dlnepsilon_dlnt + &
-                 zone_dlnepsilon_dlnrho*dlnrho_dlnt
-            cur%ql_dp = cur%ql_dp + zone_dlnepsilon_dlnrho*dlnrho_dlnp
+            cur%ql_dt = cur%ql_dt + zone_deps_dlnt + &
+                 zone_deps_dlnrho*dlnrho_dlnt
+            cur%ql_dp = cur%ql_dp + zone_deps_dlnrho*dlnrho_dlnp
          end if
          if (compute_entropy_term) then
 ! SET UP ENTROPY TERMS
@@ -384,8 +384,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             else
                rot_scr%neutrino_loss_fraction(im) = 0.0d0
             end if
-            rot_scr%dlnepsilon_dlnrho(im) = zone_dlnepsilon_dlnrho
-            rot_scr%dlnepsilon_dlnt(im) = zone_dlnepsilon_dlnt
+            rot_scr%deps_dlnrho(im) = zone_deps_dlnrho
+            rot_scr%deps_dlnt(im) = zone_deps_dlnt
          end if
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
@@ -394,14 +394,14 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! triggered independently (by model-number interval, checked in
 ! write_legacy_output.f90) and needs these populated for every converged model, not
 ! just ones flagged by the older mechanism. All source locals here
-! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_dlnepsilon_dlnrho/dlnt, etc.)
+! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_deps_dlnrho/dlnt, etc.)
 ! are already computed unconditionally above, so this is just always
 ! copying them into the pulse1/mixing-length output arrays -- no
 ! change to any existing output (.short/.track/.store/.pmod/.penv/
 ! .patm) values, since none of those read from these arrays.
          star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-         star%pulse_dlneps_dlnrho(im) = zone_dlnepsilon_dlnrho
-         star%pulse_dlneps_dlnt(im) = zone_dlnepsilon_dlnt
+         star%pulse_deps_dlnrho(im) = zone_deps_dlnrho
+         star%pulse_deps_dlnt(im) = zone_deps_dlnt
          star%pulse_dlnkap_dlnrho(im) = kap_res(i_dlnkap_dlnrho)
          star%pulse_dlnkap_dlnt(im) = kap_res(i_dlnkap_dlnt)
          star%pulse_specific_heat(im) = eos_res(i_cp)

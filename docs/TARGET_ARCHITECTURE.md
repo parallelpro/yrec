@@ -534,6 +534,8 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - Both pulse writers then multiply it by ε again (`stitched_model.f90:579–580`, `write_gyre_pulse.f90:112–113`).
    - `ROADMAP.md` closed this as "not a bug" on the premise that the field holds a log derivative.
    - Affects non-adiabatic GYRE runs only.
+   - Origin: not F77. Commit 2ed398ca (2026-08-30) multiplied the field by ε, misled by its name.
+   - Fixed (2026-10): the writers copy the field, and the field and its two copies are renamed `*deps_*`.
 2. **Two d(p,g) rates.**
    - `deutrate` divides by A = 2 (`3.0115d23`, `burn_lib.f90:703`).
    - `engeb` divides by the deuteron mass 2.013553 (`burn_lib.f90:1221`).

@@ -722,11 +722,14 @@ the envelope omega seed; final calibrated models within 2e-5 in log
 Teff, surface X within 0.2%); reseeded. Example GS_rot case and all
 non-rotating pins byte-identical.
 
-**sec-10 item 9 adjudicated -- NOT a bug.** GYRE's mesa_file_m reads
-eps_eps_T and divides by eps to get eps_T = dln eps/dln T, and MESA
-writes d_epsnuc_dlnT (= eps * dln eps/dln T) into that column. YREC's
-eps_total*pulse_dlneps_dlnt is that same absolute derivative
-(pulse_dlneps_dlnt is the log-log derivative used in ql_dt). Leave.
+**sec-10 item 9 adjudicated -- NOT a bug. REVERSED 2026-10-10: it
+was a bug (section 13).** GYRE's mesa_file_m reads eps_eps_T and
+divides by eps to get eps_T = dln eps/dln T, and MESA writes
+d_epsnuc_dlnT (= eps * dln eps/dln T) into that column. The premise
+"pulse_dlneps_dlnt is the log-log derivative used in ql_dt" was
+wrong: ql = cccql*eps, so ql_dt takes the ABSOLUTE d eps/dlnT, which
+is what engeb returns and what the field held. eps_total*field was
+eps times the right value.
 
 **TAHB NaN -- 2026-09-02, ROOT CAUSE = heburn dt=0 (2be7c30).**
 Reproduced on the post-batch-0 build: Solar_m1p0feh+0p0_GN93_MESA_TAHB
@@ -777,7 +780,8 @@ expected_test_net.out (deutrate x5400, sneut pair/photo/brems tens
 of %) and expected_test_eos.out (rho(P,T) at the 1e-7 level)
 reseeded; test_kap and test_atm unchanged. Left open: reaction 11's
 N14(a,g) polynomial coefficients (0.177/3.94 vs CF88), whether
-rotation_stability_setup:482 wants a logarithmic dlneps/dlnT,
+rotation_stability_setup:482 wants a logarithmic dlneps/dlnT (resolved
+2026-10-10: no -- it needs the absolute one, see section 13),
 compute_quadrupole's 1/R^4 header vs 1/R^3 code, radsub06's 0/0 on
 the priming call.
 
@@ -858,14 +862,22 @@ rate update / new isotope, a new angular-momentum transport process)
 were traced end to end; the findings and the proposed target
 organization are docs/TARGET_ARCHITECTURE.md (Appendix B lists the
 bugs). docs/GLOSSARY.md is the naming authority; docs/HOW_YREC_WORKS.md
-now uses current names. Bugs found, all inherited from the F77 code:
+now uses current names. Bugs found (origin noted per item):
 
 - **ldifad dead path -- DONE.** The advective transport option reads
   equal-grid coefficients nothing computes (nor did F77); it is inert
   except in rotating runs with instability transport, where
   secular_transport now stops with ierr = 1 (test_error_exit.py
   test_advective_transport_rejected). No pinned output changes.
-- **Pulse eps_eps_T / eps_eps_rho wrong by a factor eps** -- open.
+- **Pulse eps_eps_T / eps_eps_rho wrong by a factor eps -- DONE.** Not
+  inherited: 2ed398ca (2026-08-30) multiplied engeb's absolute
+  d eps/dln derivative by eps a second time, misled by the field names
+  pulse_dlneps_* (section 11's sec-10 item 9 ruling, now reversed).
+  The writers now copy the field; zone_dlnepsilon_*, pulse_dlneps_*
+  and rot_scr%dlnepsilon_* are renamed *deps_*. The rotation use
+  (rotation_stability_setup) was always right: there f*deps/dlnT is
+  added to epsilm*(1-f-chi_T), consistent only for the absolute
+  derivative -- this closes the open question in Batch 2's notes.
 - **star%am_transport_convective_flag never assigned** -- open.
 - **Two d(p,g) rate copies differ by 0.68%** -- open.
 

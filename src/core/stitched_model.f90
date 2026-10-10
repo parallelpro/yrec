@@ -570,14 +570,18 @@ subroutine build_pulse_points(pts)
             pts(ipul_kap,j) = star%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
 ! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
-! likewise eps_eps_T = eps*dlneps/dlnT. Bare log-derivatives were
-! written here originally -- wrong by factors kap and eps (only
-! nonadiabatic GYRE runs read these columns).
+! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
+! GYRE runs read these columns. pulse_dlnkap_* are true log-derivatives,
+! so they are multiplied by kap here. pulse_deps_* already hold the
+! absolute deps/dln (engeb's burn%deps_*), so they are written as they
+! are: multiplying them by eps as well (2ed398ca, misled by their former
+! pulse_dlneps_* names) made these columns wrong by a factor eps until
+! the 2026-10 audit.
             pts(ipul_kap_kap_T,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
             pts(ipul_kap_kap_rho,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
             pts(ipul_eps,j) = star%eps_total(i)
-            pts(ipul_eps_eps_T,j) = star%eps_total(i)*star%pulse_dlneps_dlnt(i)
-            pts(ipul_eps_eps_rho,j) = star%eps_total(i)*star%pulse_dlneps_dlnrho(i)
+            pts(ipul_eps_eps_T,j) = star%pulse_deps_dlnt(i)
+            pts(ipul_eps_eps_rho,j) = star%pulse_deps_dlnrho(i)
             pts(ipul_omega,j) = star%omega(i)
             pts(ipul_cp,j) = star%pulse_specific_heat(i)
 ! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG

@@ -45,7 +45,7 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
            eta_factor, ff_factor, specific_luminosity, cpigi_const
       double precision :: local_flux_factor
       double precision :: ht_temp_scale_prev, ht_temp_scale
-      double precision :: mean_dlneps_dlnt, mean_neutrino_fraction
+      double precision :: mean_deps_dlnt, mean_neutrino_fraction
       double precision :: c1_factor, qchit, f1_local
 
 !  FIND UNLOGGED RADII OF THE MODEL POINTS.
@@ -234,10 +234,10 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          ht_temp_scale = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)-log_density(zone_idx)))/ &
               mass_unlogged(zone_idx)/grav_const/mix_scr%delm(zone_idx)
          rot_scr%third_deriv_geom_factor(zone_idx) = ht_temp_scale
-         mean_dlneps_dlnt = 0.5d0*(rot_scr%dlnepsilon_dlnt(zone_idx)+rot_scr%dlnepsilon_dlnt(zone_idx-1))
+         mean_deps_dlnt = 0.5d0*(rot_scr%deps_dlnt(zone_idx)+rot_scr%deps_dlnt(zone_idx-1))
          mean_neutrino_fraction = 0.5d0*(rot_scr%neutrino_loss_fraction(zone_idx)+rot_scr%neutrino_loss_fraction(zone_idx-1))
          rot_scr%difad_shear_coeff1(zone_idx)= &
-         - f1_local*c1_factor*(mean_neutrino_fraction*mean_dlneps_dlnt + &
+         - f1_local*c1_factor*(mean_neutrino_fraction*mean_deps_dlnt + &
               rot_scr%epsilm(zone_idx)*(1.0d0 - mean_neutrino_fraction - qchit))
          rot_scr%velocity_coeff2b(zone_idx) = rot_scr%velocity_coeff2b(zone_idx)+rot_scr%difad_shear_coeff1(zone_idx)/f1_local
          rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0

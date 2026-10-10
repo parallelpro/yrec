@@ -188,9 +188,12 @@ module rotation_scratch_lib
 ! former common/prevmid/
            logical :: convective_flag_prev(json)
 ! former common/rotder/
+! dlnkappa_* are logarithmic; deps_dlnrho/deps_dlnt are the ABSOLUTE
+! d eps/dln rho, d eps/dlnT (erg/g/s) from engeb, filled by
+! henyey_coefficients (named dlnepsilon_* until 2026-10).
            double precision :: dlnkappa_dlnrho(json), &
-                dlnkappa_dlnt(json), dlnepsilon_dlnrho(json), &
-                dlnepsilon_dlnt(json), neutrino_loss_fraction(json)
+                dlnkappa_dlnt(json), deps_dlnrho(json), &
+                deps_dlnt(json), neutrino_loss_fraction(json)
 ! former common/roten/
            double precision :: rotational_energy_term(json)
 ! former common/masschg2/: massloss.f90 declared delta_log_pressure/

@@ -101,7 +101,9 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
          delta = -star%pulse_dlnrho_dlnt(i)
 ! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
 ! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
-! eps*dlneps/dlnT, not the bare log-derivatives.
+! eps*dlneps/dlnT = deps/dlnT, not the bare log-derivatives.
+! pulse_deps_* already hold deps/dln (see core/stitched_model.f90's
+! build_pulse_points), so they are not multiplied by eps.
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
               pressure_cgs,temperature_k,density_cgs,star%gradT(i), &
               brunt_n2(i),star%adiabatic_index_gamma1(i),star%grada(i),delta, &
@@ -109,8 +111,8 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
               star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i), &
               star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i), &
               star%eps_total(i), &
-              star%eps_total(i)*star%pulse_dlneps_dlnt(i), &
-              star%eps_total(i)*star%pulse_dlneps_dlnrho(i),omega(i)
+              star%pulse_deps_dlnt(i), &
+              star%pulse_deps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do
 
