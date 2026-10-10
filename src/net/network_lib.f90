@@ -50,7 +50,10 @@ module network_lib
 ! One reaction. law lists the species whose mass fractions multiply the
 ! rate (repeat a species for a square or cube; 0 = unused). change lists
 ! (species, nu) pairs: the change in per-amu abundance per reaction
-! (0 = unused).
+! (0 = unused). emitted_mass is the mass number carried off by particles
+! the network does not track (the neutron of C13(a,n)O16), so that every
+! row conserves baryon number exactly: sum_i A_i nu_i + emitted_mass = 0
+! (checked by network_table_errors, pinned by net/test/test_net).
       integer, parameter :: max_law = 3, max_change = 5
       type :: reaction_t
          character(len=24) :: name
@@ -58,6 +61,7 @@ module network_lib
          integer :: branch
          integer :: law(max_law)
          integer :: change(2*max_change)
+         integer :: emitted_mass = 0
       end type reaction_t
 
       integer, parameter :: n_reactions = 12
@@ -82,15 +86,55 @@ module network_lib
            reaction_t('C12(a,g)O16',         rr_c12_alpha,    unbranched, [s_he4, s_c12, 0],        &
                       [s_he4, -1, s_c12, -1, s_o16, 1, 0, 0, 0, 0]), &
            reaction_t('C13(a,n)O16',         rr_c13_alpha,    unbranched, [s_he4, s_c13, 0],        &
-                      [s_he4, -1, s_c13, -1, s_o16, 1, 0, 0, 0, 0]), &
+                      [s_he4, -1, s_c13, -1, s_o16, 1, 0, 0, 0, 0], emitted_mass=1), &
            reaction_t('N14(a,g) to O18',     rr_n14_alpha,    unbranched, [s_he4, s_n14, 0],        &
                       [s_he4, -1, s_n14, -1, s_o18, 1, 0, 0, 0, 0]), &
            reaction_t('triple alpha',        rr_triple_alpha, unbranched, [s_he4, s_he4, s_he4],    &
                       [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0]) ]
 
-      public :: implicit_burn_step
+      public :: implicit_burn_step, network_table_errors, write_network_table
 
 contains
+
+! ---------------------------------------------------------------
+! Self-check of the table: the number of rows that do not conserve
+! baryon number, or whose rate law names a species outside the
+! implicit solve (an explicit product cannot feed back).
+integer function network_table_errors()
+      integer :: j
+
+      network_table_errors = 0
+      do j = 1, n_reactions
+         if (baryon_imbalance(j) /= 0 .or. &
+              any(reactions(j)%law > n_solved)) &
+              network_table_errors = network_table_errors + 1
+      end do
+end function network_table_errors
+
+integer function baryon_imbalance(j)
+      integer, intent(in) :: j
+      integer :: c
+
+      baryon_imbalance = reactions(j)%emitted_mass
+      do c = 1, 2*max_change - 1, 2
+         if (reactions(j)%change(c) /= 0) baryon_imbalance = baryon_imbalance + &
+              nint(mass_number(reactions(j)%change(c)))*reactions(j)%change(c+1)
+      end do
+end function baryon_imbalance
+
+! ---------------------------------------------------------------
+! The table, one row per reaction, for tests and documentation.
+subroutine write_network_table(unit)
+      integer, intent(in) :: unit
+      integer :: j
+
+      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance'
+      do j = 1, n_reactions
+         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16)') reactions(j)%name, &
+              reactions(j)%rate_row, reactions(j)%branch, baryon_imbalance(j)
+      end do
+      write(unit, '(a, i0)') '# table errors: ', network_table_errors()
+end subroutine write_network_table
 
 ! ---------------------------------------------------------------
 ! Rate of reaction j at abundances x: R_j = b_j g_j prod X(law).

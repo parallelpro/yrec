@@ -259,7 +259,7 @@ mixing/solve_composition.o: luout_lib.mod net_lib.mod network_lib.mod star_info_
 mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 net/net_lib.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 net/network_lib.o: numerics_lib.mod rotation_scratch_lib.mod
-net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod rotation_scratch_lib.mod scv_eos_lib.mod star_info_lib.mod
+net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod network_lib.mod rotation_scratch_lib.mod scv_eos_lib.mod star_info_lib.mod
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod

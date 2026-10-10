@@ -29,4 +29,19 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
   1.295896328294E+00  1.101511879050E+00  7.000000000000E-01  7.000000000000E-02  1.666666666667E-03
 # test_net: deutrate
   8.455040642987E+08
+# test_net: network table
+# reaction                 rate row  branch  baryon imbalance
+pp chain to He3                  1       0                 0
+He3(He3,2p)He4                   2       0                 0
+He3(He4,g) pp II/III             3       0                 0
+C12(p,g) to C13                  4       0                 0
+C13(p,g)N14                      5       0                 0
+N14(p,g) N15(p,a)C12             6       1                 0
+N14(p,g) N15(p,g)O16             6       2                 0
+O16(p,g) O17(p,a)N14             7       0                 0
+C12(a,g)O16                     10       0                 0
+C13(a,n)O16                      8       0                 0
+N14(a,g) to O18                 11       0                 0
+triple alpha                    12       0                 0
+# table errors: 0
 test_net: done

@@ -26,6 +26,7 @@ program test_net
            rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_be7_electron
       use scv_eos_lib, only: use_scv_eos
       use burn_lib
+      use network_lib, only: write_network_table
       implicit none
 
       character(len=256) :: yrec_input
@@ -180,6 +181,10 @@ program test_net
       star%xa(i_h2,1) = 2.0d-5
       call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
       write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
+
+! the burning network's reaction table and its baryon-balance check
+      write(*,'(a)') "# test_net: network table"
+      call write_network_table(6)
 
       close(run_log_unit)
       write(*,'(a)') "test_net: done"
