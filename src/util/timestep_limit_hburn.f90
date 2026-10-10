@@ -23,7 +23,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
            itime_dx_shell, itime_dx_total
       use phys_const_lib
       use net_lib
-      use burn_lib
+      use burn_step
       use network_lib, only: eqburn
       implicit none
 

@@ -36,7 +36,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, json
       use net_lib
       use phys_const_lib
-      use burn_lib
+      use burn_step
       use light_element_lib, only: dburnm
       use math_lib
       implicit none

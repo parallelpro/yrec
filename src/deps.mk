@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_lib.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/check_controls.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network_lib.f90 net/nuclear_energy.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid_lib.f90 rotation/seculr/secular_transport.f90 rotation/species_table_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_step.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/check_controls.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network_lib.f90 net/nuclear_energy.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid_lib.f90 rotation/seculr/secular_transport.f90 rotation/species_table_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -16,7 +16,7 @@ atmstruct_lib.mod: atm/atmstruct_lib.o
 	@true
 bahcall_loeb_units_lib.mod: rotation/microdiff/bahcall_loeb_units.o
 	@true
-burn_lib.mod: core/burn_lib.o
+burn_step.mod: core/burn_step.o
 	@true
 conductive_table_lib.mod: kap/conductive_table_lib.o
 	@true
@@ -131,20 +131,20 @@ atm/tables/surfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 atm/ttau_lib.o: math_lib.mod phys_const_lib.mod
 core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod ttau_lib.mod
-core/burn_lib.o: light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod nuclear_energy_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+core/burn_step.o: light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod nuclear_energy_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 core/check_solar_calibration.o: luout_lib.mod math_lib.mod star_info_lib.mod
 core/check_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/envelope_refit_lib.o: envstruct_lib.mod star_info_lib.mod
 core/envint_kernel.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod point_scratch_lib.mod run_log_lib.mod ttau_lib.mod
 core/envint_lib.o: envint_kernel.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/evolve_step.o: burn_lib.mod luout_lib.mod math_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
-core/henyey_coefficients.o: burn_lib.mod eos_lib.mod henyey_eliminate_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
+core/evolve_step.o: burn_step.mod luout_lib.mod math_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
+core/henyey_coefficients.o: burn_step.mod eos_lib.mod henyey_eliminate_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/henyey_eliminate.o: phys_const_lib.mod star_info_lib.mod
 core/henyey_iterate.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod yale_eos_lib.mod
 core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/neutrino_flux_table.o: burn_lib.mod luout_lib.mod math_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod
+core/neutrino_flux_table.o: burn_step.mod luout_lib.mod math_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod
 core/observables_lib.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
 core/read_starting_model.o: controls_lib.mod envelope_refit_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
 core/rebuild_envelope.o: controls_lib.mod envelope_refit_lib.mod envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
@@ -251,11 +251,11 @@ kap/setupopac.o: eos_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/surfopac.o: star_info_lib.mod
 kap/test/test_kap.o: kap_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-mixing/burn_settle_mix.o: burn_lib.mod net_lib.mod star_info_lib.mod
+mixing/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 mixing/compute_scale_height.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 mixing/find_convection_zones.o: luout_lib.mod star_info_lib.mod
 mixing/homogenize_convection_zones.o: star_info_lib.mod
-mixing/mix.o: burn_lib.mod light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+mixing/mix.o: burn_step.mod light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 mixing/overshoot_boundaries.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 mixing/rotmix.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod temperature_gradients_lib.mod
@@ -265,12 +265,12 @@ net/light_elements.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.
 net/net_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 net/network_lib.o: net_lib.mod numerics_lib.mod star_info_lib.mod
 net/nuclear_energy.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
-net/test/test_net.o: burn_lib.mod controls_lib.mod light_element_lib.mod luout_lib.mod net_lib.mod network_lib.mod scv_eos_lib.mod star_info_lib.mod
+net/test/test_net.o: burn_step.mod controls_lib.mod light_element_lib.mod luout_lib.mod net_lib.mod network_lib.mod scv_eos_lib.mod star_info_lib.mod
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/evolve_angular_momentum.o: burn_lib.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
+rotation/evolve_angular_momentum.o: burn_step.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
 rotation/microdiff/bahcall_loeb_units.o: phys_const_lib.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling_setup.o: bahcall_loeb_units_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod species_table_lib.mod star_info_lib.mod
@@ -284,7 +284,7 @@ rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_setup.o: bahcall_loeb_units_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
 rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
-rotation/mid_timestep_model.o: burn_lib.mod light_element_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/mid_timestep_model.o: burn_step.mod light_element_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/omega_from_j.o: star_info_lib.mod
 rotation/rotation_scratch_lib.o: star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
@@ -322,8 +322,8 @@ setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys
 setup/setups.o: atm_lib.mod atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod ttau_lib.mod yale_eos_lib.mod
 state/controls_sync_lib.o: controls_lib.mod star_info_lib.mod
 util/compute_timestep.o: controls_lib.mod phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_hburn.o: burn_lib.mod controls_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_heburn.o: burn_lib.mod controls_lib.mod net_lib.mod star_info_lib.mod
+util/timestep_limit_hburn.o: burn_step.mod controls_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod star_info_lib.mod
+util/timestep_limit_heburn.o: burn_step.mod controls_lib.mod net_lib.mod star_info_lib.mod
 util/timestep_limit_hr.o: controls_lib.mod math_lib.mod star_info_lib.mod
 util/timestep_limit_omega.o: controls_lib.mod star_info_lib.mod
 util/timestep_limit_structure.o: controls_lib.mod star_info_lib.mod

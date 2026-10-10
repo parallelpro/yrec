@@ -80,9 +80,9 @@ PUBLIC = {
     # implicit_burn_step is network_lib's one entry: the table-driven
     # implicit burning step (2026-10, replaced kemcom's equations).
     # nuclear_reaction_rates is the one rate evaluation behind rates and
-    # burn_lib's engeb (2026-10, replaced their two copies).
+    # burn_step's engeb (2026-10, replaced their two copies).
     # nuclear_energy is the side-effect-free energy generation behind
-    # burn_lib's engeb adapter; dpg_rate the shared d(p,g) rate (2026-10).
+    # burn_step's engeb adapter; dpg_rate the shared d(p,g) rate (2026-10).
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "implicit_burn_step", "nuclear_reaction_rates",
                 "nuclear_energy", "dpg_rate", "deuterium_rate", "li_be_rates",

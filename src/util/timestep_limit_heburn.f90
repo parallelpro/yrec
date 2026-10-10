@@ -19,7 +19,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       use star_info_lib, only: star, json
       use controls_lib, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
-      use burn_lib
+      use burn_step
       implicit none
 
       double precision, intent(in) :: composition(15,json)

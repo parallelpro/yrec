@@ -26,7 +26,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
            n_species_basic, n_species_extended
       use luout_lib
       use phys_const_lib
-      use burn_lib
+      use burn_step
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
       use stitched_model_lib, only: build_stitched_model

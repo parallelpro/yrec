@@ -1,22 +1,17 @@
 !----------------------------------------------------------------------
-! burn_lib
+! burn_step (formerly burn_lib)
 !----------------------------------------------------------------------
-! Added 2026 (physics-purity pass -- ROADMAP.md "Decoupling the
-! physics domains from the model"). The BURN DRIVERS, split out of
-! net_lib: the routines that advance the model's composition and
-! diagnostics over a timestep -- engeb (the per-zone energy-generation
-! driver, with its eqburn equilibrium helper), the deuterium drivers
-! dburn/dburnm and rate bookkeeping deutrate, and the light-element
-! drivers liburn/liburn2 with lirate88. All of them read/write
-! star_info (the previous model, the light-burn rate store, the flux
-! and energy diagnostics), which is exactly why they are STAR-LAYER
-! code: in MESA terms these are struct_burn_mix, not net. net_lib
-! keeps the pure kernels (rates, sneut, nulosses, neutrino, azbar,
-! safedivexp, the Fermi inverses), which are functions of
-! (logRho, logT, composition, controls) only -- the surface
-! test_nuclear pins. Procedure bodies are unchanged; only the module
-! boundary moved.
-module burn_lib
+! The star-layer side of nuclear burning (2026-10 reorganization): the
+! code that reads the model, calls the net/ physics, and stores the
+! results in star. The physics itself lives in net/: the rates
+! (net_lib's nuclear_reaction_rates), the energy generation
+! (nuclear_energy_lib), the network and its implicit and equilibrium
+! burns (network_lib), and the light elements (light_element_lib).
+! Here: engeb, the adapter that stores nuclear_energy's results;
+! lirate88, which stores the Li/Be rates per shell; liburn/liburn2,
+! the Li/Be depletion over a step, with the convection-zone base
+! location (overshoot included) and the CZ averaging they need.
+module burn_step
       use net_lib
       implicit none
       private :: locate_cz_base, average_cz_abundances
@@ -1171,4 +1166,4 @@ subroutine lirate88(composition, log_density, log_temperature, num_zones, &
 end subroutine lirate88
 
 
-end module burn_lib
+end module burn_step

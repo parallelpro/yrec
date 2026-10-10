@@ -37,7 +37,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use net_lib
-      use burn_lib
+      use burn_step
       use network_lib, only: eqburn
       use light_element_lib, only: deuterium_rate, dburn
 

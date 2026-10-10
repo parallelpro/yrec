@@ -22,7 +22,7 @@ program test_net
       use star_info_lib, only: star, i_h2
       use net_lib
       use scv_eos_lib, only: use_scv_eos
-      use burn_lib
+      use burn_step
       use network_lib, only: write_network_table
       use light_element_lib, only: deuterium_rate
       implicit none

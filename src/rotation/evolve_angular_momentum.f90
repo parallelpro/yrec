@@ -33,7 +33,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use star_info_lib, only: star, json
       use net_lib
       use phys_const_lib
-      use burn_lib
+      use burn_step
       use math_lib
       implicit none
 

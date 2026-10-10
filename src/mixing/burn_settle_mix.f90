@@ -27,7 +27,7 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
      num_radiative_zones, num_zones_mixed, ierr)
       use net_lib
       use star_info_lib, only: star, json
-      use burn_lib
+      use burn_step
       implicit none
 
 ! INPUT VARIABLES

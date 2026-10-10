@@ -31,7 +31,7 @@ subroutine neutrino_flux_table
            i_nu_o15, i_nu_f17, n_nu_fluxes
       use luout_lib
       use phys_const_lib
-      use burn_lib
+      use burn_step
       use math_lib
       use observables_lib, only: shell_masses_from_log_mass
       implicit none

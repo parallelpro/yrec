@@ -44,7 +44,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       use phys_const_lib
       use eos_lib
       use kap_lib
-      use burn_lib
+      use burn_step
       use math_lib
       implicit none
 
