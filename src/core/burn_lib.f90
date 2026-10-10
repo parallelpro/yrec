@@ -19,7 +19,7 @@
 module burn_lib
       use net_lib
       implicit none
-      private :: locate_cz_base, average_cz_abundances
+      private :: locate_cz_base, average_cz_abundances, dpg_rate
 
 ! burn_result (2026 W3): the per-zone energy-generation record filled
 ! by engeb -- formerly its first eight positional dummies. The
@@ -58,7 +58,36 @@ module burn_lib
 ! gyr_per_year: dburnm's seconds -> Gyr timestep conversion factor,
 ! applied as timestep*gyr_per_year/seconds_per_year.
       double precision, parameter, private :: gyr_per_year = 1.0d-9
+! d(p,g)3He (2026-10): Avogadro's number over the deuteron mass in amu
+! turns CF88's N_A<sigma v> into the per-gram rate that deutrate (the
+! deuterium depletion rate) and engeb (its energy release) both use,
+! and sets both convective-overturn caps. The two copies used to
+! differ by 0.68%: deutrate had 3.0115d23 = 6.023d23/2 (A = 2), engeb
+! 6.023d23/2.013553 (the deuteron mass, as in engeb's isotope table).
+      double precision, parameter, private :: avogadro_dpg = 6.023d23
+      double precision, parameter, private :: deuteron_mass_amu = 2.013553d0
 contains
+
+!----------------------------------------------------------------------
+! dpg_rate
+!----------------------------------------------------------------------
+! The d(p,g)3He rate excluding the abundance factors, rho * N_A<sigma v>
+! / m_d (Caughlan & Fowler 1988, the T9**(-2/3) form), for deutrate and
+! engeb alike -- previously coded once in each. The arithmetic is
+! engeb's, token for token, so engeb's value is unchanged. Screening is
+! excluded, as before: the burning temperatures are low.
+double precision function dpg_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
+      use math_lib
+      implicit none
+      double precision, intent(in) :: density, t9, t9_p13, t9_p23, &
+           t9_m13, t9_m23
+      double precision :: zz, tfacdeut
+
+      zz = -3.72d0*t9_m13
+      tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
+      dpg_rate = density*2.240d3*t9_m23*exp(zz)*tfacdeut*avogadro_dpg/ &
+           deuteron_mass_amu
+end function dpg_rate
 
 
 
@@ -679,7 +708,7 @@ subroutine deutrate(log_density, log_temperature, hydrogen_fraction, &
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
 !  CGS UNITS.
       double precision :: rho, t9, t9p13, t9p23, t9m13, t9m23, t9m1
-      double precision :: z, tfacdeut, rdeut, rdeutmax, rdeut2
+      double precision :: rdeut, rdeutmax, rdeut2
 
       rho=exp(ln10*log_density)
       t9 = exp(ln10*(log_temperature - 9.0d0))
@@ -694,17 +723,15 @@ subroutine deutrate(log_density, log_temperature, hydrogen_fraction, &
 ! ABUNDANCES) AND QRTDEUT IS THE DERIVATIVE W/R/T T.
 ! NOTE THAT SCREENING IS EXCLUDED - REASONABLE GIVEN
 ! THE LOW TEMPERATURES INVOLVED.
-      z = -3.72d0*t9m13
-      tfacdeut = 1.0d0+0.112d0*t9p13+3.38d0*t9p23+2.65d0*t9
-! FACTOR OF 3.0115D23 REFLECTS AVAGADROS NUMBER DIVIDED BY THE
-! MASS OF THE DEUTERON IN AMU
-! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
-! in engeb's own derivative of this rate; was T9**(+2/3) (deutrate.f).
-      rdeut = rho*2.240d3*t9m23*exp(z)*tfacdeut*3.0115d23
+! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit;
+! was T9**(+2/3) (deutrate.f). 2026-10: the rate is dpg_rate, shared
+! with engeb; this copy used to divide N_A by A = 2 (3.0115D23) where
+! engeb divides by the deuteron mass, 0.68% apart.
+      rdeut = dpg_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
       if(zone_idx.ge.star%jcz .and. star%convective_turnover_timescale.gt.1.0d0)then
-         rdeutmax = 3.0115d23/star%convective_turnover_timescale
+         rdeutmax = avogadro_dpg/deuteron_mass_amu/star%convective_turnover_timescale
          rdeut2 = rdeut*hydrogen_fraction
          if(rdeut2.gt.rdeutmax)then
             if(hydrogen_fraction.gt.1.0d-6)then
@@ -1213,19 +1240,18 @@ subroutine engeb(res, log_density, &
         qdeut = 5.494d0
         zz = -3.72d0*t9_m13
         tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
-! FACTOR OF 6.023D23/ REFLECTS AVAGADROS NUMBER DIVIDED BY THE
-! MASS OF THE DEUTERON IN AMU
 ! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
 ! in qrtdeut below (which already differentiates the -2/3 form); was
-! T9**(+2/3) (engeb.f).
-        rdeut = density*2.240d3*t9_m23*exp(zz)*tfacdeut*6.023d23/ &
-             atomic_mass_amu(iso_h2)
+! T9**(+2/3) (engeb.f). 2026-10: the rate itself is dpg_rate, shared
+! with deutrate (same arithmetic as the expression that stood here);
+! zz and tfacdeut stay for qrtdeut.
+        rdeut = dpg_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
         tfacdeut2 = 0.112d0*t9_p13+6.76d0*t9_p23+7.95d0*t9
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
         if (shell_index.ge.star%jcz .and. star%convective_turnover_timescale.gt.1.0d0) then
-           rdeutmax = 6.023d23/atomic_mass_amu(iso_h2)/star%convective_turnover_timescale
+           rdeutmax = avogadro_dpg/deuteron_mass_amu/star%convective_turnover_timescale
            rdeut2 = rdeut*hydrogen_fraction
            if (rdeut2.gt.rdeutmax) then
 ! JVS 0712 Commented out write command

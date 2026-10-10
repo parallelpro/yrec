@@ -893,7 +893,23 @@ now uses current names. Bugs found (origin noted per item):
   |dX_c| <= 7e-5, log Teff unchanged to 6 digits; along the tracks
   (mostly the fully convective pre-MS) |dlog L| <= 0.0019,
   |dlog R| <= 9e-4. Reseeded.
-- **Two d(p,g) rate copies differ by 0.68%** -- open.
+- **Two d(p,g) rate copies differ by 0.68% -- DONE.** Inherited
+  (deutrate.f vs engeb.f): deutrate turned CF88's N_A<sigma v> into a
+  per-gram rate with 3.0115d23 = N_A/2, engeb with N_A/2.013553 (the
+  deuteron mass, as in its isotope table) -- in the rate and in the
+  convective-overturn cap. Now one burn_lib function, dpg_rate, plus
+  the constants avogadro_dpg / deuteron_mass_amu, used by both; its
+  arithmetic is engeb's token for token (bitwise-equal to the old
+  expression at 16,441 (T, rho) points, rate and cap), so only the
+  deuterium depletion rate moves (x 0.99327). Drift (32 of 35 legacy
+  logs + both MESA baselines; byte-identical: cm_basic_composition and
+  the m0030 seed->start and dbl->ZAMS runs): every run ends on the same
+  stop; calibrated solar models at 4.568 Gyr |dlog L| <= 4.4e-5,
+  |dlog R| <= 1.5e-5, |dlog Teff| <= 1e-5, |dX_c| <= 1.2e-4, models to
+  solar age +-4; pre-MS config-matrix cases at model 12 (D burning)
+  dlog L = +3.8e-4, dlog R = +2.0e-4; m0030 start->D_bl |dlog L| 1e-5.
+  expected_test_net.out (deutrate line, x 0.99327) and all those pins
+  reseeded; the GS_rot MESA case now writes 8 profiles instead of 9.
 
 Not yet checked (reported by the audit agents): beta14 defined
 differently on the Yale and OPAL/MHD paths; the opacity ramp's

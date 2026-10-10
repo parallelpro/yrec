@@ -414,7 +414,7 @@ Each phase leaves the code working and producing science. Every phase also does 
 
 - **Work:**
   - species table and reaction table;
-  - `rates` returns derivatives, and `engeb` consumes it (the first, deliberate reseed: the d(p,g) copies unify);
+  - `rates` returns derivatives, and `engeb` consumes it, one deliberate reseed (the d(p,g) pair was already merged in Phase 0);
   - generic backward-Euler solver;
   - species count taken from the table.
 - **Exit criteria:** network unit tests pass; drift on the configuration matrix recorded; one copy of every rate.
@@ -540,6 +540,7 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - `deutrate` divides by A = 2 (`3.0115d23`, `burn_lib.f90:703`).
    - `engeb` divides by the deuteron mass 2.013553 (`burn_lib.f90:1221`).
    - The two differ by 0.68%.
+   - Fixed (2026-10): one shared `dpg_rate` in `burn_lib`, using the deuteron mass. Its arithmetic is `engeb`'s, bit for bit (checked at 16,441 (T, ρ) points), so only deuterium depletion moves: at the solar age |Δ log L| ≤ 4.4×10⁻⁵ and |ΔX_c| ≤ 1.2×10⁻⁴; during pre-main-sequence deuterium burning |Δ log L| ≈ 4×10⁻⁴.
 3. **`star%am_transport_convective_flag` is never assigned.**
    - It is read at `henyey_iterate.f90:311` by `omega_from_j`, so with rotation on, every zone is treated as radiative in the Ω(j) inversion during Newton iterations.
    - Every assignment in the code goes to a local array of the same name.
