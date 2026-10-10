@@ -28,6 +28,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use phys_const_lib
       use burn_step
       use composition_step_lib, only: composition_step
+      use henyey_iterate_lib, only: refresh_surface_bc, henyey_iterate
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
       use stitched_model_lib, only: build_stitched_model
@@ -511,24 +512,66 @@ end subroutine burn_light_elements
 
 
 ! ---------------------------------------------------------------
-! One level of the corrector ladder: same henyey_iterate call for every
-! level; only the level number, its iteration budget, and whether
-! the surface boundary condition is re-verified differ. All other
-! arguments are the host's locals / star%evo state, via host
-! association. ierr and the divergence flag are checked by the
-! caller after each level.
+! One level of the corrector ladder. Every level runs the same three
+! stages; only the level number, its iteration budget, and whether the
+! surface boundary condition is re-verified differ:
+!   1. refresh_surface_bc -- the surface boundary condition (before the
+!      composition step: it reads the surface composition);
+!   2. levels >= 3 (when the model is aged): the composition step again,
+!      from the start-of-step composition, with the updated structure;
+!   3. henyey_iterate -- the Newton correction loop.
+! All other arguments are the host's locals / star%evo state, via host
+! association. ierr and the divergence flag are checked by the caller
+! after each level.
 subroutine solve_level(level, level_max_iterations, check_surface_bc)
+      use star_info_lib, only: max_convective_zones
       integer, intent(in) :: level, level_max_iterations
       logical, intent(in) :: check_surface_bc
+      integer :: saha_state, envelope_zone_index, num_species, i, j
+      logical :: envelope_recomputed_flag
+! the zone outputs of the re-run composition step: only the envelope
+! edge is used (by the Newton loop, below); the others are discarded,
+! so star's copies keep the level-1 values
+      integer :: core_cz_edge_rerun
+      integer :: mixed_zone_bounds_rerun(max_convective_zones,2)
 
+      ierr = 0
       iteration_level = level
       max_iterations = level_max_iterations
       recompute_surface_bc = check_surface_bc
-      call henyey_iterate(star%dt, max_iterations, converged, &
-           star%model_diverged_flag, star%recompute_envelope_triangle, &
+      if (max_iterations.le.0) return
+
+      call refresh_surface_bc(iteration_level, star%recompute_envelope_triangle, &
            star%reset_triangle, recompute_surface_bc, star%trial_sign_flag, &
-           star%istore_flag, star%dlnrho_dlnt, star%dlnrho_dlnp, &
-           iterations_done, iteration_level, ierr)
+           star%istore_flag, saha_state, envelope_recomputed_flag, ierr)
+      if (ierr /= 0) return
+
+! envelope_zone_index gates the accretion term of the entropy equation
+! (henyey_coefficients). It is the composition step's envelope edge at
+! levels >= 3 and 0 -- every zone -- at levels 1-2, as it has always
+! been (it was an unset local, zeroed by -finit-local-zero, there);
+! see ROADMAP section 13.
+      envelope_zone_index = 0
+      core_cz_edge_rerun = 0
+      mixed_zone_bounds_rerun = 0
+      if (iteration_level.gt.2 .and. star%dt.gt.0.0d0) then
+         num_species = n_species_basic
+         if (star%job%use_extended_composition) num_species = n_species_extended
+         do i = 1,star%nz
+            do j = 1,num_species
+               star%xa(j,i) = star%xa_start(j,i)
+            end do
+         end do
+         call composition_step(star%dt, iteration_level, &
+              core_cz_edge_rerun, envelope_zone_index, &
+              mixed_zone_bounds_rerun, ierr)
+         if (ierr /= 0) return
+      end if
+
+      call henyey_iterate(star%dt, max_iterations, converged, &
+           star%model_diverged_flag, recompute_surface_bc, &
+           envelope_recomputed_flag, saha_state, envelope_zone_index, &
+           star%dlnrho_dlnt, star%dlnrho_dlnp, iterations_done, ierr)
 end subroutine solve_level
 
 ! ---------------------------------------------------------------

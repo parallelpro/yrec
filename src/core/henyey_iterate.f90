@@ -1,88 +1,77 @@
 !----------------------------------------------------------------------
-! henyey_iterate (formerly crrect)
+! henyey_iterate_lib (formerly crrect)
 !----------------------------------------------------------------------
 ! YREC's Newton-Raphson relaxation driver: the Henyey structure solve
-! for one time step. Before the correction loop it refreshes the
-! surface boundary condition (surfbc; only when recompute_surface_bc
-! asks for it) and, on the iteration levels that need it, mixes the
-! convection zones (mix). Each correction iteration then calls
-! henyey_coefficients to linearize the structure equations at every
-! mesh point, builds the outer boundary-condition row from the
-! envelope-fit coefficients (star%envelope_fit_coeffs, from surfbc),
-! calls henyey_solve to back-solve the block-tridiagonal system for
-! the P/T/R/L corrections, checks those corrections against the
-! convergence/divergence tolerances (ctrl%*), applies them, and (if
-! rotation is active) updates the rotation curve and the rotational
-! P/T factors via omega_from_j/rotation_shape_factors.
+! for one iteration level, in two calls that evolve_step's solve_level
+! makes in order, with the composition step between them at levels >= 3:
+!
+!   refresh_surface_bc   the surface boundary condition (surfbc), when
+!                        recompute_surface_bc asks for it. It runs
+!                        before the composition step because it reads
+!                        the surface composition.
+!   henyey_iterate       the correction loop. Each iteration calls
+!                        henyey_coefficients to linearize the structure
+!                        equations at every mesh point, builds the outer
+!                        boundary-condition row from the envelope-fit
+!                        coefficients (star%envelope_fit_coeffs, from
+!                        surfbc), calls henyey_solve to back-solve the
+!                        block-tridiagonal system for the P/T/R/L
+!                        corrections, checks them against the
+!                        convergence/divergence tolerances (ctrl%*),
+!                        applies them, and (if rotation is active)
+!                        updates the rotation curve and the rotational
+!                        P/T factors via omega_from_j/rotation_shape_factors.
+!
+! The two share the Saha-state counter of the EOS calls (saha_state)
+! and whether surfbc recomputed the envelope (envelope_recomputed_flag).
+! (2026-10: one routine, crrect/henyey_iterate, used to do both and run
+! the composition step itself in between.)
 !
 ! Non-zero ierr propagates a callee failure to evolve_step.
-!
-! INPUTS ASSUMES GIVEN LOG(TE) AS star%log_Teff
-!        ASSUMES GIVEN LOG(L/LSUN) AS star%log_L
-!        delta_time = TIME STEP IN SECONDS
-!        max_iterations = ITERATION NUMBER
-! OUTPUTS  converged = .T. IF MODEL HAS CONVERGED
-!          corrections_too_large = .T. IF CORRECTIONS ARE TOO LARGE
-subroutine henyey_iterate(delta_time, max_iterations, converged, &
-     corrections_too_large, start_new_triangle, reset_triangle, &
-     recompute_surface_bc, tri_orientation, stored_vertex_index, &
-     dlnrho_dlnt, dlnrho_dlnp, iterations_done, iteration_level, ierr)
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, &
-           n_species_basic, n_species_extended, n_lum_channels, max_convective_zones
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
-      use yale_eos_lib
-      use composition_step_lib, only: composition_step
+! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
+module henyey_iterate_lib
+      implicit none
+      private
+      public :: refresh_surface_bc, henyey_iterate
 
-      use math_lib
+contains
+
+!----------------------------------------------------------------------
+! refresh_surface_bc: start an iteration level -- log L, the envelope
+! mass, and (when recompute_surface_bc, forced on for a new or reset
+! triangle) the surface boundary condition from surfbc.
+!----------------------------------------------------------------------
+subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
+     reset_triangle, recompute_surface_bc, tri_orientation, &
+     stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
+      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, &
+           i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use yale_eos_lib
       implicit none
 
-      double precision, intent(in) :: delta_time
-      integer, intent(in) :: max_iterations
-      logical, intent(inout) :: converged
-      logical, intent(out) :: corrections_too_large
+      integer, intent(in) :: iteration_level
       logical, intent(inout) :: start_new_triangle, reset_triangle
       logical, intent(inout) :: recompute_surface_bc
       double precision, intent(inout) :: tri_orientation
       integer, intent(inout) :: stored_vertex_index
-      double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
-      integer, intent(inout) :: iterations_done
-      integer, intent(in) :: iteration_level
+      integer, intent(out) :: saha_state
+      logical, intent(out) :: envelope_recomputed_flag
+      integer, intent(out) :: ierr
 
-! --- locals ---
-      integer :: ksaha
-      integer :: num_species, i, j, iter, max_correction_pos
-      integer :: core_cz_edge, envelope_zone_index
-      integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
       double precision :: hydrogen_fraction, metal_fraction, &
            log10_pressure_limit
       double precision :: surface_pressure_rotation_factor, &
            surface_temperature_rotation_factor
-      logical :: envelope_recomputed_flag
-! sign of the fcorr0 control: > 0 means the under-relaxation factor
-! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is
-! ramped up by fcorri each iteration; <= 0 holds it fixed
-      logical :: underrelax_ramp_active
-      double precision :: temp, test, total_luminosity_terms, &
-           luminosity_correction_max, correction_factor
-      double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
-      double precision :: shell_angular_momentum
-      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
-      ! this driver-side call site preserves the historical stop.
       integer :: jerr
 
-      integer, intent(out) :: ierr
-
       ierr = 0
-
-      if (max_iterations.le.0) return
-      underrelax_ramp_active = star%ctrl%fcorr0.gt.0.0d0
+! .false. unless surfbc runs and says otherwise
+      envelope_recomputed_flag = .false.
       star%log_L = log10(star%luminosity_lsun(star%nz))
 ! RESET THE SAHA-STATE COUNTER (2026 W2: the envelope/atmosphere
 ! integrand call counters kenv/katm that used to be zeroed here were
 ! never read; removed)
-      ksaha = 0
+      saha_state = 0
       star%senv = star%log_mass(star%nz) - star%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
@@ -113,7 +102,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &
-            start_new_triangle,reset_triangle,ksaha, &
+            start_new_triangle,reset_triangle,saha_state, &
             star%log_total_mass,star%log_L, &
             star%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
@@ -127,24 +116,54 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
           return
        end if
       endif
-! 7/91 ADD CALL TO MIX
-      if (iteration_level.gt.2 .and. delta_time.gt.0.0d0) then
-         num_species = n_species_basic
-         if (star%job%use_extended_composition) num_species = n_species_extended
-         do i = 1,star%nz
-            do j = 1,num_species
-               star%xa(j,i) = star%xa_start(j,i)
-            end do
-         end do
-         call composition_step(delta_time, iteration_level, &
-              core_cz_edge, envelope_zone_index, &
-              mixed_zone_bounds_no_overshoot, jerr)
-         if (jerr /= 0) then
-         ! 2026 (phase five, step B): propagate instead of stopping
-            ierr = jerr
-            return
-         end if
-      endif
+end subroutine refresh_surface_bc
+
+!----------------------------------------------------------------------
+! henyey_iterate: the Newton correction loop of one iteration level.
+! envelope_zone_index gates the accretion term of the entropy equation
+! in henyey_coefficients (zones at or above it get the accreted-layer
+! T and P changes); see solve_level for its value.
+! INPUTS  delta_time = TIME STEP IN SECONDS
+!         max_iterations = ITERATION NUMBER
+! OUTPUTS converged = .T. IF MODEL HAS CONVERGED
+!         corrections_too_large = .T. IF CORRECTIONS ARE TOO LARGE
+!----------------------------------------------------------------------
+subroutine henyey_iterate(delta_time, max_iterations, converged, &
+     corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
+     saha_state, envelope_zone_index, dlnrho_dlnt, dlnrho_dlnp, &
+     iterations_done, ierr)
+      use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, &
+           i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
+      use luout_lib
+      use run_log_lib, only: solver_diagnostics
+      use phys_const_lib
+      use math_lib
+      implicit none
+
+      double precision, intent(in) :: delta_time
+      integer, intent(in) :: max_iterations
+      logical, intent(inout) :: converged
+      logical, intent(out) :: corrections_too_large
+      logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
+      integer, intent(inout) :: saha_state
+      integer, intent(in) :: envelope_zone_index
+      double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
+      integer, intent(inout) :: iterations_done
+      integer, intent(out) :: ierr
+
+      integer :: i, j, iter, max_correction_pos
+! sign of the fcorr0 control: > 0 means the under-relaxation factor
+! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is
+! ramped up by fcorri each iteration; <= 0 holds it fixed
+      logical :: underrelax_ramp_active
+      double precision :: temp, test, total_luminosity_terms, &
+           luminosity_correction_max, correction_factor
+      double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
+      double precision :: shell_angular_momentum
+      integer :: jerr
+
+      ierr = 0
+      underrelax_ramp_active = star%ctrl%fcorr0.gt.0.0d0
 !  IF MODEL CONVERGED ON THE PREVIOUS LEVEL OF ITERATION AND
 !  THE TRIANGLE WAS CHECKED AND NOT FLIPPED,SKIP CORRECTION ROUTINE.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
@@ -158,7 +177,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%max_residual(4) = 0.0d0
 ! (2026 de-tramp: the star%-shaped slots are read/written by
 ! henyey_coefficients directly; only the per-call locals remain.)
-       call henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,ksaha, &
+       call henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! 2026 (phase five, step B): propagate instead of stopping
@@ -326,3 +345,5 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
 
       return
 end subroutine henyey_iterate
+
+end module henyey_iterate_lib

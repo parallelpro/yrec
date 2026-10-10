@@ -997,3 +997,28 @@ left for a decision (physics changes):
   star%rate_*). Structure unchanged; surface Li7 at 4.568 Gyr -0.088 dex
   (noGS_norot) and -0.113 dex (GS_rot rotating), Be9 < 0.001 dex. A
   calibration that tunes mixing to the solar Li abundance shifts.
+
+### Information flow (yrec-next) -- results through arguments, stages in order
+
+- **compute_zone_energy returns everything -- DONE (053b178e).** The
+  neutrino loss, alpha-capture and He3 energies, fluxes and Be7 came
+  back through star% scalars; per-shell reaction rates and branchings
+  were stored and never read (removed).
+- **mix -> core/composition_step.f90 -- DONE (e6d60e7e).**
+- **The composition step is called by evolve_step, not by the
+  structure solver -- DONE.** henyey_iterate (crrect) refreshed the
+  surface boundary condition, re-ran the composition step at levels
+  >= 3, then iterated. It is now two calls, refresh_surface_bc and
+  henyey_iterate, and solve_level runs the three stages in that order
+  (surfbc reads the surface composition, so it must stay first).
+- **Open: the accretion term of the entropy equation covers every zone
+  at levels 1-2.** henyey_coefficients adds the accreted layer's T and P
+  changes (rot_scr%delta_log_*) to zones at or above
+  envelope_zone_index. That index is the composition step's envelope
+  edge at levels >= 3, but at levels 1-2 it was an unset local of
+  crrect, 0 through -finit-local-zero, so every zone gets the term
+  there. Preserved explicitly in solve_level. Only runs with
+  use_mass_accretion and mass_accretion_rate > 0; levels 1-2 are
+  predictors, so the converged model is affected only through the
+  starting point of levels 3-4. Likely unintended; fixing it changes
+  accretion runs.
