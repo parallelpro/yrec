@@ -168,7 +168,7 @@ program test_net
       test_xa(9) = 8.0d-3
       test_xa(11) = 2.0d-5
       do ipt = 1, npts
-         call rates(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
+         call network_rate_vector(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
          write(*,'(a,i2)') "rates ", ipt
          write(*,'(4(1pe20.12))') rate_vec(rr_pp), rate_vec(rr_he3_he3), &
               rate_vec(rr_he3_he4), rate_vec(rr_c12_p)

@@ -11,7 +11,7 @@
 ! integrate them). They read configuration from star%job/star%ctrl and
 ! nothing else from star.
 module light_element_lib
-      use net_lib, only: dpg_rate, avogadro_dpg, deuteron_mass_amu
+      use net_lib, only: deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu
       implicit none
       private
       public :: deuterium_rate, burn_deuterium_region, li_be_rates, &
@@ -73,10 +73,10 @@ double precision function deuterium_rate(log_density, log_temperature, &
 ! NOTE THAT SCREENING IS EXCLUDED - REASONABLE GIVEN
 ! THE LOW TEMPERATURES INVOLVED.
 ! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit;
-! was T9**(+2/3) (deutrate.f). 2026-10: the rate is dpg_rate, shared
+! was T9**(+2/3) (deutrate.f). 2026-10: the rate is deuterium_proton_capture_rate, shared
 ! with compute_zone_energy; this copy used to divide N_A by A = 2 (3.0115D23) where
 ! compute_zone_energy divides by the deuteron mass, 0.68% apart.
-      rdeut = dpg_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
+      rdeut = deuterium_proton_capture_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
 ! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
       if(in_surface_cz .and. turnover_timescale.gt.1.0d0)then

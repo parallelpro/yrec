@@ -82,12 +82,12 @@ PUBLIC = {
     # nuclear_reaction_rates is the one rate evaluation behind rates and
     # burn_step's compute_zone_energy (2026-10, replaced their two copies).
     # nuclear_energy is the side-effect-free energy generation behind
-    # burn_step's compute_zone_energy adapter; dpg_rate the shared d(p,g) rate (2026-10).
-    "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
+    # burn_step's compute_zone_energy adapter; deuterium_proton_capture_rate the shared d(p,g) rate (2026-10).
+    "net": {"thermal_neutrino_losses", "neutrino_losses_for_mixture", "azbar", "sneut",
+                "network_rate_vector",
                 "implicit_burn_step", "nuclear_reaction_rates",
-                "nuclear_energy", "dpg_rate", "deuterium_rate", "li_be_rates",
+                "nuclear_energy", "deuterium_proton_capture_rate", "deuterium_rate", "li_be_rates",
                 "equilibrium_burn_rates", "burn_deuterium_region",
-                "safedivexp",
                 "ifermi12", "zfermim12"},
     # mixing has no facade module (phase-two finding: mix.f90 is
     # already the orchestrator); these are its de-facto public surface.

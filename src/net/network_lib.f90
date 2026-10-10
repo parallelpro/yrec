@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The hydrogen- and helium-burning network as data, and the one implicit
 ! integrator that reads it (2026-10; replaces the hand-written
-! 7-species equations and Jacobian of kemcom, mixing/solve_composition).
+! 7-species equations and Jacobian of kemcom, mixing/burn_network_region).
 !
 ! Species. The implicit solve carries H, He3, He4, C12, C13, N14 and
 ! O16 (in that order -- the order of the old system, which fixes the
@@ -328,7 +328,7 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
       implicit none
 
 ! rate_by_zone(rr_*, zone): the per-zone rate vectors written by
-! net_lib's rates (2026 W3 -- formerly 9 separate rate_*(json)
+! net_lib's network_rate_vector (2026 W3 -- formerly 9 separate rate_*(json)
 ! arguments); rows are the rr_* indices of net_lib. Only
 ! the nine rows named in the use statement are read here.
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)

@@ -14,7 +14,7 @@
 module burn_step
       use net_lib
       implicit none
-      private :: locate_cz_base, average_cz_abundances, store_li_be_rates
+      private :: locate_cz_base, average_li_be_over_cz, store_li_be_rates
 
 ! zone_energy_result (2026 W3): the per-zone energy-generation record filled
 ! by compute_zone_energy -- formerly its first eight positional dummies. The
@@ -357,7 +357,7 @@ subroutine locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
 end subroutine locate_cz_base
 
 !----------------------------------------------------------------------
-! average_cz_abundances: shared by burn_li_be and burn_li_be_midpoint (2026 readability
+! average_li_be_over_cz: shared by burn_li_be and burn_li_be_midpoint (2026 readability
 ! R3; the block was byte-identical in both). Mass-averages the Li6,
 ! Li7, Be9 abundances and the log of the mass-averaged burning rates
 ! over the surface convection zone at the start of the step (from
@@ -366,7 +366,7 @@ end subroutine locate_cz_base
 ! whole CZ; shell_mass is restored before return, star%rate_li6/li7/be9
 ! at cz_base_zone keep the adjustment). Start-of-step log rates come
 ! from star%log_rate_*_prev when a previous step stored them.
-subroutine average_cz_abundances(composition, mass_coordinate, shell_mass, &
+subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
      cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
      li6_cz_start, li7_cz_start, be9_cz_start, &
      log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
@@ -469,7 +469,7 @@ subroutine average_cz_abundances(composition, mass_coordinate, shell_mass, &
 ! RESTORE ORIGINAL MASS TO BASE OF C.Z.
       shell_mass(cz_base_zone) = shell_mass_save
       return
-end subroutine average_cz_abundances
+end subroutine average_li_be_over_cz
 
 
 
@@ -677,7 +677,7 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
       if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
-      call average_cz_abundances(composition, mass_coordinate, shell_mass, &
+      call average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
            cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
            li6_cz_start, li7_cz_start, be9_cz_start, &
            log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
@@ -861,12 +861,12 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
          be9_depletion = timestep*exp(radiative_frac*log(star%rate_be9(zone_idx))+ &
               (1.0d0-radiative_frac)*log_rate_be9_cz_start)
 ! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION: Li6 and Li7 go
-! through safedivexp (overflow-safe divide by exp); Be9 here, and all
+! through safe_divide_by_exp (overflow-safe divide by exp); Be9 here, and all
 ! three species in burn_li_be_midpoint's twin of this loop, still use the plain
 ! division. Kept as is (changing it could change numbers).
-         call safedivexp(composition(i_li6,zone_idx),li6_depletion)
+         call safe_divide_by_exp(composition(i_li6,zone_idx),li6_depletion)
          if(composition(i_li6,zone_idx).lt.1.0d-24)composition(i_li6,zone_idx)=0.0d0
-         call safedivexp(composition(i_li7,zone_idx),li7_depletion)
+         call safe_divide_by_exp(composition(i_li7,zone_idx),li7_depletion)
          if(composition(i_li7,zone_idx).lt.1.0d-24)composition(i_li7,zone_idx)=0.0d0
          composition(i_be9,zone_idx) = composition(i_be9,zone_idx)/exp(be9_depletion)
          if(composition(i_be9,zone_idx).lt.1.0d-24)composition(i_be9,zone_idx)=0.0d0
@@ -1011,7 +1011,7 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
       if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
-      call average_cz_abundances(composition, mass_coordinate, shell_mass, &
+      call average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
            cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
            li6_cz_start, li7_cz_start, be9_cz_start, &
            log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
@@ -1203,7 +1203,7 @@ end subroutine store_end_li_be_rates
 
 
 !----------------------------------------------------------------------
-! solve_composition (formerly kemcom; in core/burn_step since 2026-10)
+! burn_network_region (formerly kemcom; in core/burn_step since 2026-10)
 !----------------------------------------------------------------------
 ! New abundances at the end of the timestep for one radiative shell
 ! (zone_begin = zone_end) or one convection zone (zone_begin < zone_end,
@@ -1224,7 +1224,7 @@ end subroutine store_end_li_be_rates
 ! The start-of-step abundances are star%xa_start. Z changes only once
 ! hydrogen is exhausted (X < 5e-7 at the top of the region), as
 ! 1 - X - Y - He3.
-subroutine solve_composition(log_temperature, zone_begin, zone_end, &
+subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep_years, ierr)
 
       use star_info_lib, only: star, json, i_h1, i_he3, i_he4, i_metals, &
@@ -1303,7 +1303,7 @@ subroutine solve_composition(log_temperature, zone_begin, zone_end, &
          composition(xa_slot,k) = x
          composition(i_metals,k) = metals
       end do
-end subroutine solve_composition
+end subroutine burn_network_region
 
 ! =================================================================
 ! The burning steps of mix (2026-10: moved here from mixing/mix.f90,
@@ -1311,15 +1311,15 @@ end subroutine solve_composition
 ! =================================================================
 
 !----------------------------------------------------------------------
-! burn_zone_rates
+! compute_burn_rates
 !----------------------------------------------------------------------
 ! The composition rate vector of every shell above the nuclear cutoff
-! (net_lib's rates; zero above it) and its deuterium burning rate
+! (net_lib's network_rate_vector; zero above it) and its deuterium burning rate
 ! (light_element_lib's deuterium_rate, stored in
 ! star%deuterium_burning_rate and, at iteration level 1, _start). The
 ! rates are also kept in rot_scr%reaction_rate_by_zone for rotmix and
 ! rezone.
-subroutine burn_zone_rates(iteration_level, rate_by_zone)
+subroutine compute_burn_rates(iteration_level, rate_by_zone)
       use star_info_lib, only: star, json, i_h1, i_h2
       use rotation_scratch_lib
       use light_element_lib, only: deuterium_rate
@@ -1339,7 +1339,7 @@ subroutine burn_zone_rates(iteration_level, rate_by_zone)
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
 ! SETUP NUCLEAR ENERGY TERMS
-         call rates(star%logRho(zone_idx), star%logT(zone_idx), &
+         call network_rate_vector(star%logRho(zone_idx), star%logT(zone_idx), &
               star%xa(:,zone_idx), rate_by_zone(:, zone_idx))
 ! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
          if (deuterium_test.gt.1.0d-11) then
@@ -1363,12 +1363,12 @@ subroutine burn_zone_rates(iteration_level, rate_by_zone)
       do zone_idx = 1, star%nz
          rot_scr%reaction_rate_by_zone(:,zone_idx) = rate_by_zone(:,zone_idx)
       end do
-end subroutine burn_zone_rates
+end subroutine compute_burn_rates
 
 !----------------------------------------------------------------------
 ! burn_network
 !----------------------------------------------------------------------
-! The implicit network burn over the step (solve_composition, i.e.
+! The implicit network burn over the step (burn_network_region, i.e.
 ! network_lib's implicit_burn_step): shell by shell in the radiative
 ! regions above the nuclear cutoff, and once per mixed region, which it
 ! also homogenizes.
@@ -1398,7 +1398,7 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
             if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
-            call solve_composition(star%logT, zone_begin, zone_end, &
+            call burn_network_region(star%logT, zone_begin, zone_end, &
                  rate_by_zone, star%dm, star%xa, timestep_years, ierr)
             if (ierr /= 0) return
          end do
@@ -1410,7 +1410,7 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
       do mixed_zone_idx = 1, num_mixed_zones
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-         call solve_composition(star%logT, zone_begin, zone_end, &
+         call burn_network_region(star%logT, zone_begin, zone_end, &
               rate_by_zone, star%dm, star%xa, timestep_years, ierr)
          if (ierr /= 0) return
       end do

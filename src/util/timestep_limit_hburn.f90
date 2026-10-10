@@ -79,7 +79,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
          local_log_density = log_density(zone_end)
          local_log_temperature = log_temperature(zone_end)
 !  setup nuclear energy terms
-      call rates(local_log_density,local_log_temperature,composition(:,zone_end), &
+      call network_rate_vector(local_log_density,local_log_temperature,composition(:,zone_end), &
            rate_by_zone(:,zone_end))
       call equilibrium_burn_rates(rate_by_zone,star%xa_start,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &

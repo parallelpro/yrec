@@ -44,7 +44,7 @@ module math_lib
       implicit none
       private
 
-      public :: pow, exp10
+      public :: pow, exp10, safe_divide_by_exp
 
 ! pow is generic over real and integer exponents: pow(x, iy) with
 ! integer iy exists so ** conversions never need to know the
@@ -183,5 +183,22 @@ elemental function exp10(x) result(exp10_x)
 end function exp10
 
 #endif
+
+! safe_divide_by_exp (formerly safedivexp, net_lib; KC 2025-05-31)
+! Overflow-safe numerator/exp(exponent): returns 0 when exp(exponent)
+! would overflow (709.78 is ln(huge(1.0d0))).
+subroutine safe_divide_by_exp(numerator, exponent)
+      implicit none
+      double precision, intent(inout) :: numerator
+      double precision, intent(in) :: exponent
+
+      if (exponent .lt. 709.7827d0) then
+         numerator = numerator/exp(exponent)
+      else
+         numerator = 0.0d0
+      endif
+
+      return
+end subroutine safe_divide_by_exp
 
 end module math_lib

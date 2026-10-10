@@ -100,7 +100,7 @@ subroutine nuclear_energy(log_density, &
            polx32, qedn, qetn, qetnx, qednx
       integer :: i, k
 
-      call setup_abundances_and_composition
+      call fill_mass_fractions
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
       if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! MHP 5/02 DEUTERIUM BURNING
@@ -141,9 +141,9 @@ subroutine nuclear_energy(log_density, &
         tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
 ! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
 ! in qrtdeut below (which already differentiates the -2/3 form); was
-! T9**(+2/3) (engeb.f). 2026-10: the rate itself is dpg_rate, shared
+! T9**(+2/3) (engeb.f). 2026-10: the rate itself is deuterium_proton_capture_rate, shared
 ! with deutrate; zz and tfacdeut stay for qrtdeut.
-        rdeut = dpg_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
+        rdeut = deuterium_proton_capture_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
         tfacdeut2 = 0.112d0*t9_p13+6.76d0*t9_p23+7.95d0*t9
         qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
 ! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
@@ -199,7 +199,7 @@ subroutine nuclear_energy(log_density, &
 !     EG(13)=RATE(13)*XC12*XC12
 ! ******************************************************************
 ! ****************************************
-      call compute_energy_generation
+      call sum_energy_generation
       call compute_neutrino_emission
       return
 
@@ -210,7 +210,7 @@ contains
 ! Zero the neutrino/alpha-capture yields, form the fractional
 ! abundances of the burning species, the ion and electron mean
 ! molecular weights, and the screening precursors (xtr, zet).
-subroutine setup_abundances_and_composition
+subroutine fill_mass_fractions
       use math_lib
 ! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
 ! REACTIONS (EALPCA).
@@ -255,14 +255,14 @@ subroutine setup_abundances_and_composition
 ! MU = SUM OVER I OF [X(I)/A(I)].
 ! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
       dd = log_density
-end subroutine setup_abundances_and_composition
+end subroutine fill_mass_fractions
 
 ! ---------------------------------------------------------------
 ! Energy release per reaction (MeV -> erg), reactions 9 and 13
 ! zeroed as in the original Yale code, the total energy generation
 ! with d ln eps / d ln rho and d ln eps / d ln T, and the global
 ! outputs returned to the caller.
-subroutine compute_energy_generation
+subroutine sum_energy_generation
 ! ENERGY GENERATION.
 ! ****************************************
 ! CALCULATE ENERGY GENERATION BY MULTIPLYING RATES PER GRAM PER SEC BY
@@ -364,7 +364,7 @@ subroutine compute_energy_generation
          if (reaction_rate(i).le.1.d-5) reaction_rate(i) = 0.0d0
       end do
 ! ******************************************************
-end subroutine compute_energy_generation
+end subroutine sum_energy_generation
 
 ! ---------------------------------------------------------------
 ! Rates per 1e9 yr per amu (hrk), the pp/CNO energy split, and --
@@ -525,8 +525,8 @@ subroutine compute_neutrino_emission
 
 
       if (star%ctrl%use_itoh_neutrino_loss) then
-! ITOH ET AL. (1996) LOSSES (neutrino/nulosses/sneut IN net_lib).
-          call neutrino(neutrino_temp,neutrino_density,hydrogen_fraction, &
+! ITOH ET AL. (1996) LOSSES (neutrino/neutrino_losses_for_mixture/sneut IN net_lib).
+          call thermal_neutrino_losses(neutrino_temp,neutrino_density,hydrogen_fraction, &
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
                neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
           e%eps_neutrino_loss = -neutrino_loss_snu

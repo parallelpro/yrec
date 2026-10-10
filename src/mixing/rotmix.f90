@@ -14,7 +14,7 @@
 ! composition to guard against small negative/overflowing abundances.
 ! The reaction rates are taken from rot_scr%reaction_rate_by_zone, filled
 ! by mix.f90 earlier in the timestep (columns 1..num_zones) and passed
-! to solve_composition as is (2026 W3 -- it used to be unpacked into
+! to burn_network_region as is (2026 W3 -- it used to be unpacked into
 ! twelve per-row local arrays first).
 subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
      num_zones, radiative_zone_bounds, convective_zone_bounds, &
@@ -28,7 +28,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use math_lib
-      use burn_step, only: solve_composition
+      use burn_step, only: burn_network_region
       implicit none
 
       double precision, intent(in) :: timestep
@@ -81,7 +81,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
-            call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
+            call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
                  rot_scr%reaction_rate_by_zone,shell_mass,composition, &
                  timestep_years, ierr)
             if (ierr /= 0) return
@@ -94,7 +94,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       do region_idx = 1,num_convective_zones
          burn_zone_start = convective_zone_bounds(region_idx,1)
          burn_zone_end = convective_zone_bounds(region_idx,2)
-         call solve_composition(log_temperature,burn_zone_start,burn_zone_end, &
+         call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
               rot_scr%reaction_rate_by_zone,shell_mass,composition, &
               timestep_years, ierr)
          if (ierr /= 0) return

@@ -33,7 +33,7 @@ module numerics_lib
 ! McAllister-Roulier quadratic-spline helpers, slopes/safedivide,
 ! simeqc) moved in as module procedures, giving them explicit
 ! interfaces (compile-time argument checking). Only simeqc has a
-! caller outside this module (mixing/solve_composition); the rest
+! caller outside this module (mixing/burn_network_region); the rest
 ! are private. splinnr was deleted outright: zero callers tree-wide.
       private :: cases, choose, search, spline, meval, slopes, safedivide
 contains

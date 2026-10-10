@@ -50,7 +50,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
 
 ! rate_by_zone(rr_*, zone): per-zone reaction rates/branching
 ! fractions (originally HR1-HR13,HF1,HF2), one column per zone as
-! written by net_lib's rates (2026 W3 -- formerly 15 separate
+! written by net_lib's network_rate_vector (2026 W3 -- formerly 15 separate
 ! rate_*(json)/frac_*(json) arrays). Rows are the rr_* indices of
 ! rotation_scratch_lib; copied to rot_scr%reaction_rate_by_zone below.
       double precision :: rate_by_zone(num_rate_rows, json)
@@ -118,7 +118,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       if (ierr /= 0) return
 
 ! THE BURNING RATES OF EVERY SHELL (core/burn_step, 2026-10)
-      call burn_zone_rates(iteration_level, rate_by_zone)
+      call compute_burn_rates(iteration_level, rate_by_zone)
 ! IMPLICIT NETWORK BURN, SHELL BY SHELL IN RADIATIVE REGIONS AND AS ONE
 ! HOMOGENIZED UNIT PER CONVECTION ZONE
       call burn_network(radiative_zone_bounds, num_radiative_zones, &
