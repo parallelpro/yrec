@@ -42,6 +42,8 @@ program test_net
 
 ! rate_vec: the one-zone rate vector of rates (rows rr_*)
       double precision :: rate_vec(num_rate_rows)
+! the composition of the rates check, star%xa layout
+      double precision :: test_xa(15)
 ! derivative check: analytic vs centred differences of the rates
       type(nuclear_rates) :: nr0, nr_tp, nr_tm, nr_dp, nr_dm
       double precision :: fd_mass(num_isotopes), fd_err_t(num_reactions), &
@@ -158,9 +160,17 @@ program test_net
 ! reaction rates over a (logT, logRho) grid at a solar-ish mixture
       write(*,'(a)') "# test_net: rates, X=0.70 Y3=3e-5 C12=3.5e-3 " // &
            "C13=4e-5 N14=1e-3 O16=8e-3 O18=2e-5"
+      test_xa = 0.0d0
+      test_xa(1) = 0.70d0
+      test_xa(2) = 0.28d0
+      test_xa(4) = 3.0d-5
+      test_xa(5) = 3.5d-3
+      test_xa(6) = 4.0d-5
+      test_xa(7) = 1.0d-3
+      test_xa(9) = 8.0d-3
+      test_xa(11) = 2.0d-5
       do ipt = 1, npts
-         call rates(grid_logd(ipt), grid_logt(ipt), 0.70d0, 0.28d0, &
-              3.0d-5, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5, rate_vec)
+         call rates(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
          write(*,'(a,i2)') "rates ", ipt
          write(*,'(4(1pe20.12))') rate_vec(rr_pp), rate_vec(rr_he3_he3), &
               rate_vec(rr_he3_he4), rate_vec(rr_c12_p)

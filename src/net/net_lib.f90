@@ -2285,9 +2285,9 @@ end subroutine nuclear_reaction_rates
 ! pass the column rate_by_zone(:, k) of their (num_rate_rows, json)
 ! array. Rows rr_zero9 and rr_zero13 are zero-filled placeholders
 ! (reactions 9 and 13 are never computed).
-subroutine rates(log_density,log_temperature,hydrogen_fraction, &
-     helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-     o16_fraction,o18_fraction,rate_vec)
+subroutine rates(log_density, log_temperature, xa, rate_vec)
+      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, &
+           i_o16, i_o18
       use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
            rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, rr_zero9, &
            rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_zero13, &
@@ -2295,9 +2295,8 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       use phys_const_lib
       implicit none
 
-      double precision, intent(in) :: log_density, log_temperature, &
-           hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
-           c13_fraction, n14_fraction, o16_fraction, o18_fraction
+! xa: the zone's composition in the star%xa layout (i_* slots)
+      double precision, intent(in) :: log_density, log_temperature, xa(:)
       double precision, intent(out) :: rate_vec(num_rate_rows)
 
       double precision :: mass_frac(num_isotopes)
@@ -2307,14 +2306,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
 ! The composition path leaves deuterium out of the screening
 ! composition (engeb includes it): a ~1e-5 effect, pre-main sequence.
       mass_frac = 0.0d0
-      mass_frac(iso_h1) = hydrogen_fraction
-      mass_frac(iso_he3) = he3_fraction
-      mass_frac(iso_he4) = helium_fraction
-      mass_frac(iso_c12) = c12_fraction
-      mass_frac(iso_c13) = c13_fraction
-      mass_frac(iso_n14) = n14_fraction
-      mass_frac(iso_o16) = o16_fraction
-      mass_frac(iso_o18) = o18_fraction
+      mass_frac(iso_h1) = xa(i_h1)
+      mass_frac(iso_he3) = xa(i_he3)
+      mass_frac(iso_he4) = xa(i_he4)
+      mass_frac(iso_c12) = xa(i_c12)
+      mass_frac(iso_c13) = xa(i_c13)
+      mass_frac(iso_n14) = xa(i_n14)
+      mass_frac(iso_o16) = xa(i_o16)
+      mass_frac(iso_o18) = xa(i_o18)
       call nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       do i=1,num_reactions
          if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0

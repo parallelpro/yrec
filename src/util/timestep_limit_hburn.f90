@@ -49,9 +49,9 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
 ! local_log_density/local_log_temperature: log10(rho)/log10(T) at the
 ! shell midpoint, fed to rates().
       double precision :: local_log_density, local_log_temperature
-      double precision :: hydrogen_fraction, helium_fraction, &
-           metal_fraction, he3_fraction, c12_fraction, c13_fraction, &
-           n14_fraction, o16_fraction, o18_fraction
+! region abundances returned by eqburn (not read)
+      double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
+           o16_fraction
       integer :: zone_begin, zone_end
 ! energy released per gram of hydrogen burned (erg/g)
       double precision, parameter :: h_burn_energy_per_gram = 6.00d18
@@ -77,19 +77,9 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       zone_end=h_shell_midpoint_zone
          local_log_density = log_density(zone_end)
          local_log_temperature = log_temperature(zone_end)
-         hydrogen_fraction = composition(1,zone_end)
-         helium_fraction = composition(2,zone_end)
-         metal_fraction = composition(3,zone_end)
-         he3_fraction = composition(4,zone_end)
-         c12_fraction = composition(5,zone_end)
-         c13_fraction = composition(6,zone_end)
-         n14_fraction = composition(7,zone_end)
-         o16_fraction = composition(9,zone_end)
-         o18_fraction = composition(11,zone_end)
 !  setup nuclear energy terms
-      call rates(local_log_density,local_log_temperature,hydrogen_fraction, &
-           helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-           o16_fraction,o18_fraction,rate_by_zone(:,zone_end))
+      call rates(local_log_density,local_log_temperature,composition(:,zone_end), &
+           rate_by_zone(:,zone_end))
       call eqburn(rate_by_zone,shell_mass, &
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)

@@ -63,10 +63,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       integer :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
       double precision :: deuterium_test
-      double precision :: log_density_zone, log_temperature_zone, &
-           hydrogen_fraction, helium_fraction, metal_fraction, &
-           he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
-           o16_fraction, o18_fraction
+! region abundances returned by eqburn
+      double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
+           o16_fraction
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx
       integer :: zone_begin, zone_end
       double precision :: dt_gyr, dc_dt, do_dt, dx_dt, dy_dt
@@ -134,30 +133,13 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       do zone_idx = 1, star%nz
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-! SCALAR VARIABLES ARE USED IN THE CALLS TO THE ENERGY GENERATION ROUTINES.
-! SET SCALARS EQUAL TO THE GLOBAL ARRAYS FOR THE VARIABLES OF INTEREST.
-! DL-LOG(DENSITY),TL-LOG TEMPERATURE,X***-MASS FRACTION OF SPECIES ***,
-! WITH HYDROGEN,HELIUM,AND METALS DENOTED AS USUAL BY X,Y,Z.
-         log_density_zone = star%logRho(zone_idx)
-         log_temperature_zone = star%logT(zone_idx)
-         hydrogen_fraction = star%xa(i_h1,zone_idx)
-         helium_fraction = star%xa(i_he4,zone_idx)
-         metal_fraction = star%xa(i_metals,zone_idx)
-         he3_fraction = star%xa(i_he3,zone_idx)
-         c12_fraction = star%xa(i_c12,zone_idx)
-         c13_fraction = star%xa(i_c13,zone_idx)
-         n14_fraction = star%xa(i_n14,zone_idx)
-         o16_fraction = star%xa(i_o16,zone_idx)
-         o18_fraction = star%xa(i_o18,zone_idx)
 ! SETUP NUCLEAR ENERGY TERMS
-         call rates(log_density_zone, log_temperature_zone, &
-              hydrogen_fraction, helium_fraction, he3_fraction, &
-              c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-              o18_fraction, rate_by_zone(:, zone_idx))
+         call rates(star%logRho(zone_idx), star%logT(zone_idx), &
+              star%xa(:,zone_idx), rate_by_zone(:, zone_idx))
 ! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
          if (deuterium_test.gt.1.0d-11) then
-            call deutrate(log_density_zone, log_temperature_zone, &
-                 hydrogen_fraction, zone_idx, iteration_level)
+            call deutrate(star%logRho(zone_idx), star%logT(zone_idx), &
+                 star%xa(i_h1,zone_idx), zone_idx, iteration_level)
          else
             star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
