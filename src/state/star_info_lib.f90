@@ -204,6 +204,15 @@ module star_info_lib
                  j_rot(json), kinetic_energy_rot(json), &
                  kinetic_energy_rot_old(json), mean_radius(json), &
                  eta_squared(json), qiw(json), mean_gravity(json)
+! am_transport_convective_flag (legacy LCZ): T where a zone is
+! convective for angular-momentum purposes (overshoot included), from
+! am_convective_regions on the current grid. Written by
+! read_starting_model and rezone, i.e. before every structure solve;
+! read by henyey_iterate's omega_from_j, which enforces solid-body
+! rotation over those zones during the Newton iterations. Never
+! assigned before 2026-10 (inherited from F77: main.f's LCZ was a
+! local passed only to CRRECT/GETROT), so the iterations treated every
+! zone as radiative.
             logical :: am_transport_convective_flag(json)
 ! nuclear / neutrino diagnostics, per zone
             double precision :: be7_mass_fraction_zone(json), &
@@ -340,7 +349,7 @@ module star_info_lib
 ! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
 ! a rezoning scratch, misnamed since the COMMON era.
             double precision :: old_shell_mass(json)
-            logical :: convective_flag_start(json), cz_flag_start(json)
+            logical :: convective_flag_start(json)
             double precision :: log_Teff_start
             integer :: nz_start
 ! -- former shell_diagnostics_state (per-zone diagnostics), member

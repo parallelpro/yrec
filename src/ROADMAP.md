@@ -878,7 +878,21 @@ now uses current names. Bugs found (origin noted per item):
   (rotation_stability_setup) was always right: there f*deps/dlnT is
   added to epsilm*(1-f-chi_T), consistent only for the absolute
   derivative -- this closes the open question in Batch 2's notes.
-- **star%am_transport_convective_flag never assigned** -- open.
+- **star%am_transport_convective_flag never assigned -- DONE.**
+  Inherited: F77 main.f's LCZ(JSON) was a local passed only to
+  CRRECT -> GETROT and never set, so the Omega(j) inversion that
+  henyey_iterate runs on every Newton iteration (rotating runs) treated
+  every zone as radiative instead of enforcing solid-body rotation over
+  the AM-convective zones, as getw does. rezone computed the right
+  flags but stored them in the write-only cz_flag_start;
+  read_starting_model computed and discarded them. Both now write
+  star%am_transport_convective_flag; cz_flag_start removed. Drift, all
+  rotating cases only (byte-level: 9 legacy logs + the GS_rot MESA
+  baseline; 26 non-rotating logs byte-identical): calibrated solar
+  models at 4.568 Gyr |dlog L| <= 3e-5, |dlog R| <= 1.2e-5,
+  |dX_c| <= 7e-5, log Teff unchanged to 6 digits; along the tracks
+  (mostly the fully convective pre-MS) |dlog L| <= 0.0019,
+  |dlog R| <= 9e-4. Reseeded.
 - **Two d(p,g) rate copies differ by 0.68%** -- open.
 
 Not yet checked (reported by the audit agents): beta14 defined

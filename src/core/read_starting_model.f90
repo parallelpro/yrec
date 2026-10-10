@@ -130,7 +130,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       double precision :: mixture_weight_sum, mixture_scale_factor
       integer :: radiative_zone_bounds(max_radiative_zones,2), &
            convective_zone_bounds(max_convective_zones,2)
-      logical :: am_transport_convective_flag(json)
       integer :: num_radiative_zones, num_convective_zones
       integer :: core_cz_top_index0, envelope_cz_bottom_index0
       logical :: rotation_active0
@@ -196,7 +195,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       end if
       call am_convective_regions(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
                  star%logT,star%convective_flag,star%nz, &
-                 am_transport_convective_flag,radiative_zone_bounds, &
+                 star%am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
                  num_convective_zones, ierr)
       if (ierr /= 0) return

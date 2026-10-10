@@ -138,7 +138,7 @@ The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`
 | log₁₀(m_fit/M) | dex | `star%senv` | `SENV` | core/henyey_iterate.f90:86 | `log_mass(nz) − log_total_mass`: mass fraction inside the fitting point. |
 | log₁₀ P etc. at step start | as above | `star%logP_start`, `logT_start`, `logR_start`, `logRho_start`, `luminosity_lsun_start` | `HPO`, `HTO`, `HRO`, `HDO`, `HLO` (`/OLDMOD/`) → `old_pressure` ... | setup/rezone.f90, core/evolve_step.f90 | Previous converged model on the current grid (section 1.6). |
 | log₁₀ T_eff, N at step start | dex, — | `star%log_Teff_start`, `star%nz_start` | `TEFFLO`, `MO` | setup/rezone.f90, core/evolve_step.f90 | Used by the HR-track timestep limiter (`util/timestep_limit_hr.f90`). |
-| — | logical | `star%convective_flag_start`, `star%cz_flag_start` | `LCO`, `LCZO` | setup/rezone.f90:795-796 | Previous model's `convective_flag` and `am_transport_convective_flag`. |
+| — | logical | `star%convective_flag_start` | `LCO` | setup/rezone.f90 | Previous model's `convective_flag`. (`cz_flag_start`, legacy `LCZO`, was write-only and was removed in 2026-10.) |
 | — | — | `star%old_shell_mass` | `HSS` | none | **Unused.** Historically held log-mass coordinates, not shell masses (trap 6). |
 
 ### 2.2 Henyey solver: equation terms and work arrays
@@ -278,7 +278,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | ⟨g⟩ | cm s⁻² | `star%mean_gravity`; also `hg` | `HG` | rotation/shape/rotation_shape_factors.f90:111 | Effective gravity averaged over the isobar. |
 | f_P | — | `star%fp_rot` | `FP` → `pressure_rotation_factor` | rotation/shape/rotation_shape_factors.f90 | Rotational correction in hydrostatic equilibrium (Endal & Sofia). |
 | f_T | — | `star%ft_rot` | `FT` → `temperature_rotation_factor` | rotation/shape/rotation_shape_factors.f90 | Rotational correction in radiative transfer. |
-| — | logical | `star%am_transport_convective_flag` | `LCZ` | none | Convective flag for AM transport. Never assigned on `star`, though `henyey_iterate.f90:311` reads it (Appendix B #3). |
+| — | logical | `star%am_transport_convective_flag` | `LCZ` | setup/rezone.f90, core/read_starting_model.f90 (`am_convective_regions`) | T where a zone is convective for AM purposes (overshoot included). Read by `henyey_iterate`'s Ω(j) inversion. Never assigned before 2026-10 (inherited from F77; Appendix B #3). |
 | Ω_old etc. | as base | `star%old_omega`, `old_specific_angular_momentum`, `old_moment_of_inertia`, `old_hg`, `old_mean_radius`, `old_eta_squared` | `WOLD`, `HJX`, `HIO`, `HGO`, `R0X`, `ETA2X` (`/OLDROT/`) | setup/rezone.f90:789-797 | Previous model's rotation state on the new grid. |
 | j at step start | cm² s⁻¹ | `star%orig_specific_angular_momentum` | `HJM0` (`/ORIGSTART/`) | core/evolve_step.f90:418 | Restored on structure⇄rotation passes after the first. |
 | J | g cm² s⁻¹ | `star%total_angular_momentum` | `SJTOT` | setup/rezone.f90, core/read_starting_model.f90 | Total angular momentum. |
@@ -547,7 +547,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - With instability transport on and a value > 1, it is read as Ω_sat·τ_cz(☉), and Ω_sat = value/τ_cz.
     - Otherwise it is Ω_sat in rad s⁻¹ (`wind/kawaler_wind.f90:51-62`).
 26. **The structure `_start` arrays are written by `rezone`, not at a single "start of step" point.**
-    - `setup/rezone.f90` stores `logP_start`, `luminosity_lsun_start`, `log_Teff_start` and `nz_start` while regridding (`:345-355`), and `convective_flag_start` and `cz_flag_start` at `:795-796`.
+    - `setup/rezone.f90` stores `logP_start`, `luminosity_lsun_start`, `log_Teff_start` and `nz_start` while regridding (`:345-355`), and `convective_flag_start` after regridding.
     - `xa_start` is stored later, after mass loss.
     - What all of these have in common is "previous converged model, remapped to the current grid".
 

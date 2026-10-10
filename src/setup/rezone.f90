@@ -46,7 +46,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer, parameter :: max_flag_points = 100
       integer :: flag_point(max_flag_points)
       logical :: flag_overflow_warned
-      logical :: am_transport_convective_flag(json)
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
 ! reaction_rate_by_zone rows carried across the rezone. The rows are
@@ -742,7 +741,7 @@ subroutine interpolate_onto_new_grid
 !   CALCULATE OVERSHOOT
        call am_convective_regions(star%xa,star%logRho,star%logP,star%logR, &
             star%log_mass,star%logT,star%convective_flag,star%nz, &
-            am_transport_convective_flag,radiative_zone_bounds, &
+            star%am_transport_convective_flag,radiative_zone_bounds, &
             convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
        if (ierr /= 0) return
 ! JNT 2025/09/03 duplicating 2015/04/06 recompute moment of interia
@@ -756,7 +755,7 @@ subroutine interpolate_onto_new_grid
 !   FIND THE ANGULAR VELOCITY OMEGA THAT CORRESPONDS TO THE GIVEN
 !   SPECIFIC ANGULAR MOMENTUM HJM.
        call omega_from_j(star%logRho,star%j_rot,star%logR, &
-            star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
+            star%log_mass,star%dm,star%am_transport_convective_flag,star%nz, &
             star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
 !  CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
@@ -793,7 +792,6 @@ subroutine interpolate_onto_new_grid
           star%old_eta_squared(i) = star%eta_squared(i)
           star%old_mean_radius(i) = star%mean_radius(i)
           star%convective_flag_start(i) = star%convective_flag(i)
-          star%cz_flag_start(i) = am_transport_convective_flag(i)
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
             star%old_specific_angular_momentum(i) = star%j_rot(i)
        end do

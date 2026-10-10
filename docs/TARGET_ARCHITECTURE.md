@@ -543,7 +543,8 @@ The first four were confirmed by reading the code; none has been run or fixed ye
 3. **`star%am_transport_convective_flag` is never assigned.**
    - It is read at `henyey_iterate.f90:311` by `omega_from_j`, so with rotation on, every zone is treated as radiative in the Ω(j) inversion during Newton iterations.
    - Every assignment in the code goes to a local array of the same name.
-   - Not yet known: whether this is inherited or came from the COMMON removal, and how large the effect is.
+   - Origin: inherited. In the F77 code, `main.f`'s `LCZ(JSON)` was a local passed only to `CRRECT` → `GETROT` and never set. `rezone` computed the right flags but stored them in the write-only `star%cz_flag_start`; `read_starting_model` computed them and discarded them.
+   - Fixed (2026-10): both now write `star%am_transport_convective_flag`, and `cz_flag_start` is removed. Only rotating runs change: at the solar age |Δ log L| ≤ 3×10⁻⁵, |Δ log R| ≤ 1.2×10⁻⁵, |ΔX_c| ≤ 7×10⁻⁵; along the pre-main-sequence tracks |Δ log L| ≤ 0.002.
 4. **`ldifad` cannot work.**
    - The advective path in `am_advection_diffusion_coeffs` reads 11 `rot_scr` arrays that nothing writes (`geometric_factor`, `dchi_dr_edge`, `am_2nd/3rd_deriv_coeff`, `eq_velocity_coeff*`, `mixing_geometric_factor`, `equatorial_radius`, ...), so it divides by a zero geometric factor.
    - It is inherited: in the original F77 only `dadcoeft.f` referenced `/DIFAD4/`, `/EGRIDCHI/`, `FGEOM`, `ECOD5/6` and the `EV*` arrays.
