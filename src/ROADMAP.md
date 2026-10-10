@@ -916,3 +916,37 @@ differently on the Yale and OPAL/MHD paths; the opacity ramp's
 derivative blending; max_delta_j_by_iter(16) overflow; the envelope
 overshoot distance gated on envelope_overshoot_active in evolve_step
 but on lovstm in evolve_angular_momentum.
+
+### Phase 1 (network) on yrec-next -- see docs/TARGET_ARCHITECTURE.md
+
+- **Table-driven implicit burning -- DONE (d06fb3b4).** net/network_lib.f90:
+  the network as species + reaction rows (rate row, rate law, change
+  list); one implicit_burn_step builds the equations and Jacobian from
+  the table. kemcom's hand-coded 7-species system is gone
+  (solve_composition 423 -> 104 lines). Agrees with kemcom to 3e-14 on
+  20,000 random cases.
+- **Table self-check -- DONE (8de43084).** emitted_mass per row; every
+  row conserves baryon number; the table is printed and pinned in
+  test_net.
+- **One rate evaluation -- DONE (f133505c).** net_lib's
+  nuclear_reaction_rates feeds both rates (composition) and engeb
+  (energy, derivatives, fluxes); the duplicated block is gone.
+  Bit-identical to both former copies on a 6,150-point grid.
+- **S-factor derivative scales normalised per reaction -- DONE.**
+  Inherited from F77 remap.f: the S'/S and S''/S scales of reactions
+  2-7 were divided by pp's Solar Fusion I S0 (4e-22 keV b), making
+  them ~1e-22 and deleting the q2..q5 terms of He3+He3, He3+He4,
+  C12+p, C13+p, N14+p and O16+p (the deck S' values were ignored).
+  Each now uses its own S0 (5.4e3, 0.53, 1.34, 7.6, 3.5, 9.4 keV b,
+  from the F77 data line). With the deck defaults the scales become
+  1.24, 1.14, 1.00, 1.004, 0.54, 2.0. Rate changes near the solar
+  centre (log T 7.1): He3+He3 -1.9%, He3+He4 -1.3%, C12+p +5.9%,
+  C13+p +0.1%, N14+p -4.9%, O16+p -14% (pp unchanged). Solar models
+  at 4.568 Gyr: |dlog L| <= 1.4e-4, |dX_c| <= 3.8e-4, |dlog Teff|
+  <= 6e-5, |dlog R| <= 2e-5; 16 solar-age pins reseeded, 19 short
+  pre-MS/config pins byte-identical.
+- Open, next: the Jacobian dlnrate/dlnT of reactions 1-7 lacks the
+  same scales (derivative fix + a finite-difference test in test_net);
+  deuterium in the composition path's screening composition; the
+  LNEWNUC = .false. default that leaves cross_section_scale unset
+  (NaN rates); neutrino_flux_table's literal logT 6.0 threshold.

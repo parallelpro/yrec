@@ -40,8 +40,17 @@ subroutine map_user_inputs
 ! UNITS ARE KeV b
 !       DATA S0_1_1_A98,S0_3_3_A98,S0_3_4_A98,S0_1_12_A98,S0_1_13_A98/
 !      *     4.00D-22,5.4D3,5.3D-1,1.34D0,7.6D0/  ! KC 2025-05-31
-      double precision :: s0_pp_a98
-      data s0_pp_a98/4.00D-22/
+! 2026-10: each reaction's own Solar Fusion I S0 normalizes its S'/S
+! and S''/S scales below. The F77 remap.f divided reactions 2-7 by pp's
+! S0 instead (S0_1_1_A98, 4e-22 keV b), which made those scales ~1e-22
+! and silently deleted the q2..q5 terms of He3+He3, He3+He4, C12+p,
+! C13+p, N14+p and O16+p; the per-reaction values were left unused
+! (and their DATA line commented out, KC 2025-05-31).
+      double precision :: s0_pp_a98, s0_he3he3_a98, s0_he3he4_a98, &
+           s0_p_c12_a98, s0_p_c13_a98, s0_p_n14_a98, s0_p_o16_a98
+      data s0_pp_a98,s0_he3he3_a98,s0_he3he4_a98,s0_p_c12_a98,s0_p_c13_a98/ &
+           4.00D-22,5.4D3,5.3D-1,1.34D0,7.6D0/
+      data s0_p_n14_a98,s0_p_o16_a98/3.5D0,9.4D0/
 !       DATA S0_1_14_A98,S0_1_16_A98,S0_PEP_A98,S0_1_BE7E_A98/
 !      *     3.5D0,9.4D0,3.5734D-6,1.77088D-10/
 !       DATA S0_1_BE7P_A98,S0_HEP_A98,S0_1_15_C12ALP_A98,S0_1_15_O16_A98/
@@ -127,32 +136,32 @@ subroutine map_user_inputs
             star%qs0e_scale(r_pp) = 0.0d0
          end if
          if (s0_he3he3.gt.0.0d0) then
-            star%qs0e_scale(r_he3he3) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_pp_a98)
+            star%qs0e_scale(r_he3he3) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_he3he3_a98)
          else
             star%qs0e_scale(r_he3he3) = 0.0d0
          end if
          if (s0_he3he4.gt.0.0d0) then
-            star%qs0e_scale(r_he3he4) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_pp_a98)
+            star%qs0e_scale(r_he3he4) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_he3he4_a98)
          else
             star%qs0e_scale(r_he3he4) = 0.0d0
          end if
          if (s0_p_c12.gt.0.0d0) then
-            star%qs0e_scale(r_pc12) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_pp_a98)
+            star%qs0e_scale(r_pc12) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_p_c12_a98)
          else
             star%qs0e_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            star%qs0e_scale(r_pc13) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_pp_a98)
+            star%qs0e_scale(r_pc13) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_p_c13_a98)
          else
             star%qs0e_scale(r_pc13) = 0.0d0
          end if
          if (s0_p_n14.gt.0.0d0) then
-            star%qs0e_scale(r_pn14) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_pp_a98)
+            star%qs0e_scale(r_pn14) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_p_n14_a98)
          else
             star%qs0e_scale(r_pn14) = 0.0d0
          end if
          if (s0_p_o16.gt.0.0d0) then
-            star%qs0e_scale(r_po16) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_pp_a98)
+            star%qs0e_scale(r_po16) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_p_o16_a98)
          else
             star%qs0e_scale(r_po16) = 0.0d0
          end if
@@ -169,20 +178,20 @@ subroutine map_user_inputs
 !         QQS0EE(3) = (S0PP_3_4/S0_3_4)/(QQS0EE_3_4_A98/S0_3_4_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_c12.gt.0.0d0) then
             star%qqs0ee_scale(r_pc12) = (s0pp_p_c12/s0_p_c12)/ &
-                 (qqs0ee_p_c12_a98/s0_pp_a98)
+                 (qqs0ee_p_c12_a98/s0_p_c12_a98)
          else
             star%qqs0ee_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
             star%qqs0ee_scale(r_pc13) = (s0pp_p_c13/s0_p_c13)/ &
-                 (qqs0ee_p_c13_a98/s0_pp_a98)
+                 (qqs0ee_p_c13_a98/s0_p_c13_a98)
          else
             star%qqs0ee_scale(r_pc13) = 0.0d0
          end if
 !         QQS0EE(6) = (S0PP_1_14/S0_1_14)/(QQS0EE_1_14_A98/S0_1_14_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_o16.gt.0.0d0) then
             star%qqs0ee_scale(r_po16) = (s0pp_p_o16/s0_p_o16)/ &
-                 (qqs0ee_p_o16_a98/s0_pp_a98)
+                 (qqs0ee_p_o16_a98/s0_p_o16_a98)
          else
             star%qqs0ee_scale(r_po16) = 0.0d0
          end if
