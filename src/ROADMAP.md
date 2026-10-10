@@ -963,3 +963,24 @@ but on lovstm in evolve_angular_momentum.
   restructuring. The species count from the table (the literal 15 in
   ~45 declarations) moves to Phase 5 (state), where the arrays become
   allocatable.
+
+### Network reorganization (yrec-next) -- burning code into net/
+
+Rate rows into net_lib (211f503d); nuclear energy generation as the
+side-effect-free net routine nuclear_energy with engeb as its adapter
+(aebcfff6); eqburn into network_lib (a31d716a); deuterium (deutrate ->
+deuterium_rate, dburn, dburnm) into net/light_elements.f90 with the
+model state as arguments. All byte-identical. Bugs seen on the way,
+left for a decision (physics changes):
+- **dburnm adds grams to a dimensionless 1.** star%accreted_mass_fraction
+  is the mass accreted this step in g (wind/mdot.f90); dburn mixes it
+  mass-weighted (X*M + X_acc*M_acc)/(M + M_acc), dburnm as
+  (X + X_acc*f*M_acc)/(1 + f*M_acc). Active only in rotating runs with
+  mass accretion.
+- **dburn's single-shell accretion branch uses total_shell_mass unset**
+  (zero only through -finit-local-zero), so a lone radiative surface
+  shell under accretion takes the accreted deuterium and ignores its
+  own.
+- dburn and dburnm are otherwise one algorithm (units, rate source and
+  the 1e-11 / 1e-14 thresholds differ): merge once the two points above
+  are settled.

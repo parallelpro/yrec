@@ -39,6 +39,7 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use net_lib
       use burn_lib
       use network_lib, only: eqburn
+      use light_element_lib, only: deuterium_rate, dburn
 
       use math_lib
       implicit none
@@ -139,8 +140,11 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               star%xa(:,zone_idx), rate_by_zone(:, zone_idx))
 ! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
          if (deuterium_test.gt.1.0d-11) then
-            call deutrate(star%logRho(zone_idx), star%logT(zone_idx), &
-                 star%xa(i_h1,zone_idx), zone_idx, iteration_level)
+            star%deuterium_burning_rate(zone_idx) = deuterium_rate( &
+                 star%logRho(zone_idx), star%logT(zone_idx), star%xa(i_h1,zone_idx), &
+                 zone_idx.ge.star%jcz, star%convective_turnover_timescale)
+            if (iteration_level.eq.1) star%deuterium_burning_rate_start(zone_idx) = &
+                 star%deuterium_burning_rate(zone_idx)
          else
             star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
@@ -431,7 +435,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call dburn(zone_begin, zone_end, star%nz, star%dm, &
-                    star%xa, dt_gyr)
+                    star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
+                    star%deuterium_burning_rate, star%accreted_mass_fraction)
             end do
          end do
 !
@@ -442,7 +447,8 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             call dburn(zone_begin, zone_end, star%nz, star%dm, &
-                 star%xa, dt_gyr)
+                 star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
+                 star%deuterium_burning_rate, star%accreted_mass_fraction)
          end do
       end if
       return

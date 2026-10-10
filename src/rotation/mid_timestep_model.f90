@@ -37,6 +37,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use net_lib
       use phys_const_lib
       use burn_lib
+      use light_element_lib, only: dburnm
       use math_lib
       implicit none
 
@@ -180,7 +181,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
                burn_zone_end = j
                call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
                     star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
-                    rot_scr%deuterium_rate_mid_start,step_fraction_ratio)
+                    rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
+                    star%xa_start,star%accreted_mass_fraction)
             end do
          end do
 !
@@ -192,7 +194,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
             burn_zone_end = convective_zone_bounds(k,2)
             call dburnm(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
                  star%xa,sub_timestep,rot_scr%deuterium_rate_mid, &
-                 rot_scr%deuterium_rate_mid_start,step_fraction_ratio)
+                 rot_scr%deuterium_rate_mid_start,step_fraction_ratio, &
+                 star%xa_start,star%accreted_mass_fraction)
          end do
       endif
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.

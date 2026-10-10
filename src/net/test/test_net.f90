@@ -24,6 +24,7 @@ program test_net
       use scv_eos_lib, only: use_scv_eos
       use burn_lib
       use network_lib, only: write_network_table
+      use light_element_lib, only: deuterium_rate
       implicit none
 
       character(len=256) :: yrec_input
@@ -196,8 +197,8 @@ program test_net
 ! deuterium burning rate (result lands in star%light_burn)
       write(*,'(a)') "# test_net: deutrate"
       star%xa(i_h2,1) = 2.0d-5
-      call deutrate(1.5d0, 6.2d0, 0.70d0, 1, 1)
-      write(*,'(1pe20.12)') star%deuterium_burning_rate(1)
+      write(*,'(1pe20.12)') deuterium_rate(1.5d0, 6.2d0, 0.70d0, &
+           1.ge.star%jcz, star%convective_turnover_timescale)
 
 ! analytic dln(rate)/dlnT and dln(rate)/dln(rho) of nuclear_reaction_rates
 ! against centred differences (step 1e-4 dex), worst relative error per
