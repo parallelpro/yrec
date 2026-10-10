@@ -81,8 +81,11 @@ PUBLIC = {
     # implicit burning step (2026-10, replaced kemcom's equations).
     # nuclear_reaction_rates is the one rate evaluation behind rates and
     # burn_lib's engeb (2026-10, replaced their two copies).
+    # nuclear_energy is the side-effect-free energy generation behind
+    # burn_lib's engeb adapter; dpg_rate the shared d(p,g) rate (2026-10).
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
                 "implicit_burn_step", "nuclear_reaction_rates",
+                "nuclear_energy", "dpg_rate",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",
                 "liburn", "liburn2", "lirate88", "safedivexp",
                 "ifermi12", "zfermim12"},

@@ -91,6 +91,14 @@ module net_lib
 ! literals 64 and 67500 (both exact when promoted to double).
       integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
+! d(p,g)3He (2026-10): Avogadro's number over the deuteron mass in amu
+! turns CF88's N_A<sigma v> into the per-gram rate that deutrate (the
+! deuterium depletion rate) and engeb (its energy release) both use,
+! and sets both convective-overturn caps. The two copies used to
+! differ by 0.68%: deutrate had 3.0115d23 = 6.023d23/2 (A = 2), engeb
+! 6.023d23/2.013553 (the deuteron mass, as in engeb's isotope table).
+      double precision, parameter, public :: avogadro_dpg = 6.023d23
+      double precision, parameter, public :: deuteron_mass_amu = 2.013553d0
 ! ---- the rate data shared by every consumer (2026-10: rates and
 ! burn_lib's engeb each carried an identical copy; see
 ! nuclear_reaction_rates). Coefficient names and comments: rates' header.
@@ -1652,6 +1660,27 @@ dsnudz =  splasdz + spairdz + sphotdz + sbremdz + srecodz
 
 return
 end subroutine sneut
+
+!----------------------------------------------------------------------
+! dpg_rate
+!----------------------------------------------------------------------
+! The d(p,g)3He rate excluding the abundance factors, rho * N_A<sigma v>
+! / m_d (Caughlan & Fowler 1988, the T9**(-2/3) form), for burn_lib's
+! deutrate and nuclear_energy alike -- previously coded once in each. The arithmetic is
+! engeb's, token for token, so engeb's value is unchanged. Screening is
+! excluded, as before: the burning temperatures are low.
+double precision function dpg_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
+      use math_lib
+      implicit none
+      double precision, intent(in) :: density, t9, t9_p13, t9_p23, &
+           t9_m13, t9_m23
+      double precision :: zz, tfacdeut
+
+      zz = -3.72d0*t9_m13
+      tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
+      dpg_rate = density*2.240d3*t9_m23*exp(zz)*tfacdeut*avogadro_dpg/ &
+           deuteron_mass_amu
+end function dpg_rate
 
 !----------------------------------------------------------------------
 ! nuclear_reaction_rates
