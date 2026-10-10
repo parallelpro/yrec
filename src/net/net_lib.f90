@@ -79,6 +79,58 @@ module net_lib
 ! literals 64 and 67500 (both exact when promoted to double).
       integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
+! ---- the rate data shared by every consumer (2026-10: rates and
+! burn_lib's engeb each carried an identical copy; see
+! nuclear_reaction_rates). Coefficient names and comments: rates' header.
+! S-factor fits of reactions 1-7 and of Be7(p,g) (q1..q5 slot iq_be7p),
+! FCZ67 eq. 53 / Neutrino Astrophysics eq. 3.14 times T9^(-2/3); q6 the
+! tau coefficient, q7 the log prefactor, q8 the Harris et al. T9^2 term.
+      double precision, parameter, private :: &
+           fit_q1(iq_be7p) = [0.12317d0, .03392d0, .0325d0, .0304d0, .03035d0, .0273d0, .02494d0, .040572d0], &
+           fit_q2(iq_be7p) = [1.08749d0, -.273d0, -.2085d0, .7630d0, -0.4044d0, -1.60d0, -1.224d0, -0.2095d0], &
+           fit_q3(iq_be7p) = [.93833d0, -.0648d0, -.0474d0, .1626d0, -.08598d0, -.3064d0, -.2139d0, -0.0595d0], &
+           fit_q4(iq_be7p) = [0.d0, 0.d0, 0.d0, 4.79d0, 7.456d0, 0.0d0, .69703d0, 0.16762d0], &
+           fit_q5(iq_be7p) = [0.d0, 0.d0, 0.d0, 2.595d0, 4.032d0, 0.0d0, 0.3097d0, 0.12114d0], &
+           fit_q6(r_po16) = [-3.3804d0, -12.2757d0, -12.826d0, -13.6899d0, -13.7173d0, -15.2281d0, -16.6925d0], &
+           fit_q7(r_po16) = [20.8964d0, 76.6003d0, 67.8036d0, 69.130d0, 70.3809d0, 69.8517d0, 70.8012d0], &
+           fit_q8(r_po16) = [0.d0, 0.d0, 0.d0, 0.0d0, 0.0d0, 0.0d0, 0.d0]
+! screening: charge products and the Graboske et al. (1973) table-4
+! factors of each reaction slot
+      double precision, parameter, private :: &
+           screen_zprod(num_reactions) = [1.d0, 4.d0, 4.d0, 6.d0, 6.d0, 7.d0, 8.d0, 12.d0, 16.d0, 12.d0, 14.d0, 12.d0, 36.d0], &
+           screen_z53(num_reactions) = [1.175d0, 3.73d0, 3.73d0, 4.804d0, 4.804d0, 5.385d0, 5.941d0, 9.014d0, 11.24d0, &
+                9.014d0, 10.15d0, 9.104d0, 23.28d0], &
+           screen_z43(num_reactions) = [0.52d0, 1.31d0, 1.31d0, 1.488d0, 1.488d0, 1.61d0, 1.721d0, 2.577d0, 3.025d0, &
+                2.577d0, 2.81d0, 2.577d0, 5.668d0], &
+           screen_z23(num_reactions) = [-0.413d0, -0.655d0, -0.655d0, -0.643d0, -0.643d0, -0.659d0, -0.673d0, -0.889d0, &
+                -0.946d0, -0.889d0, -0.92d0, -0.889d0, -1.36d0], &
+           screen_z86(num_reactions) = [1.630d0, 5.917d0, 5.917d0, 8.302d0, 8.302d0, 9.520d0, 10.716d0, 16.192d0, &
+                20.978d0, 16.192d0, 18.606d0, 16.192d0, 45.6635d0]
+! bare nuclear masses (amu) and charges of the iso_* isotopes
+      double precision, parameter, public :: &
+           isotope_mass(num_isotopes) = [1.008665d0, 1.007276d0, 2.013553d0, 3.015501d0, 3.014933d0, 4.001506d0, &
+                11.996709d0, 13.000064d0, 13.999233d0, 15.990526d0, 17.994772d0, 19.986954d0, 23.978458d0], &
+           isotope_charge(num_isotopes) = [0.d0, 1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 6.d0, 6.d0, 7.d0, 8.d0, 8.d0, 10.d0, 12.d0]
+
+! The rates of one zone, from nuclear_reaction_rates: rate(r_*) per gram
+! per second with the abundance factors omitted (screened, scaled), and
+! its logarithmic derivatives; the Be7 and N15 branchings; the two Be7
+! channel rates and the screened hep factor (flux diagnostics); and the
+! zone values the energy and flux consumers reuse. All zero below
+! ctrl%nuclear_logT_cutoffs(1).
+      type, public :: nuclear_rates
+         double precision :: rate(num_reactions) = 0.0d0
+         double precision :: dlnrate_dlnt(num_reactions) = 0.0d0
+         double precision :: dlnrate_dlnrho(num_reactions) = 0.0d0
+         double precision :: frac_be7_ecap = 0.0d0, frac_be7_pcap = 0.0d0
+         double precision :: frac_n15_pa = 0.0d0, frac_n15_pg = 0.0d0
+         double precision :: be7_electron = 0.0d0, be7_proton = 0.0d0
+         double precision :: hep = 0.0d0
+         double precision :: density = 0.0d0, t9 = 0.0d0, t9_p13 = 0.0d0, &
+              t9_p23 = 0.0d0, t9_m13 = 0.0d0, t9_m23 = 0.0d0, t9_m12 = 0.0d0
+         double precision :: electron_density_na = 0.0d0
+      end type nuclear_rates
+
 contains
 
 !----------------------------------------------------------------------
@@ -1590,6 +1642,560 @@ return
 end subroutine sneut
 
 !----------------------------------------------------------------------
+! nuclear_reaction_rates
+!----------------------------------------------------------------------
+! The H/He reaction rates of one zone and their logarithmic derivatives
+! with respect to T and rho (2026-10): the one evaluation behind both
+! the composition rate vector (rates, below) and the energy generation
+! (burn_lib's engeb), which used to carry identical copies of this
+! block. mass_frac(iso_*) is the composition the screening sees. The
+! arithmetic is engeb's, token for token; the formulas, references and
+! coefficient history are documented in rates' header below.
+!
+! Each consumer applies its own floor afterwards (rates zeroes rates
+! <= 1e-5, engeb zeroes reactions 1-7 below 1e-30 before summing eps).
+! No hydrogen: reactions 1-7 and the branchings are zero. Below
+! nuclear_logT_cutoffs(1) everything is zero; the alpha captures need
+! nuclear_logT_cutoffs(4).
+!
+! Provenance of the formulas and coefficients (moved verbatim from the
+! body of rates, 2026-10, when this routine became the one copy):
+! ANUC ARE ATOMIC MASS UNITS.
+! On 10/13/97, JNB converted ANUC(I) from neutral atomic masses to
+! bare nuclear masses.
+! The scale is the mass of C12 divided by 12 or 931.49432 MeV,
+! which is 1.6605402 times 10^{-24} gm. The values are obtained
+! by dividing the mass excess (expressed in MeV) by 931.49432 MeV and
+! adding to this the atomic mass number, A.  The value for Be7, which
+! is used implicitly in this subroutine was, 7.016930, until 13/13/97.
+! We now use the bare nuclear mass of 7.014735 .
+! THE ISOTOPES ARE NEUTRON, H1, D, H3, HE3, HE4, C12, C13, N14, O16, O18,
+! NE20, MG24, RESPECTIVELY. ALL OF THESE NUMBERS WERE CHECKED.
+! THE QUANTITIES Q1(J), Q2(J), ...,Q5(J) ARE THE TERMS IN EQUATION 3.14 OF
+! NEUTRINO ASTROPHYSICS AND IN EQUATION 53 OF FOWLER, CAUGHLAN, AND
+! ZIMMERMAN (1967) EQ. 53, IN BOTH CASES MULTIPLIED BY T SUB 9 ^(-2/3).
+! THE REACTIONS CORRESPONDING TO EACH J ARE LISTED ABOVE, UNDER:
+! IDENTIFYING THE RECTIONS.
+! FOR THIS SET OF PARAMETERS, AND ONLY FOR THIS SET OF PARAMETERS,
+! J = 8 CORRESPONDS TO THE BE7 + P REACTION.
+! GENERAL EXPRESSION FOR Q'S:
+! T_9^(-2/3)[S_EFF/S(0)] =
+! [T_9^(-2/3) + Q1(I)T_9^(-1/3) + Q2(I) + Q3(I)T_9^(1/3) +
+! Q4(I)T_9^(2/3) + Q(5)T_9 ]
+! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
+! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
+! EQUATIONS 3.10 AND 3.11 .
+! ALL OF THE VALUES OF THE Q1, ...., Q5 HAVE BEEN RECALCULATED, USING
+! WHERE NEEDED NUCLEAR CROSS SECTIONS GIVEN IN TABLES 3.2 AND 3.4 OF NEUTRINO
+! ASTROPHYSICS.
+! Q6 IS THE COEFFICIENT OF THE TEMPERATURE TERM IN THE DEFINITION OF
+! TAU, EQUATION 3.10 OF NEUTRINO ASTROPHYSICS.
+! TAU = Q6*(T SUB 9 TO THE (-1/3) POWER ).
+! SLIGHT CHANGES HAVE BEEN MADE IN THE PREVIOUS VALUES OF Q6 TO MAKE
+! THE DATA MORE ACCURATE.
+! NOTE Q6 IS NEGATIVE.
+! Q7 IS THE CONSTANT IN FRONT OF THE REACTION RATE. THE LOGARITHMS ARE
+! RELATED TO S FACTORS BY A LOGARITHM AND VARIOUS NUMERICAL FACTORS.
+! THE GENERAL RELATION IS:
+! Q7 = 70.62860 + ((LN(Z0*Z1/A))/3) -LN(A0*A1) - LN(S SUB 0)
+! -LN(1 + DELTA_01)
+! HERE S SUB 0 IS THE CROSS SECTION FACTOR IN UNITS OF KEV-BARNS.
+! THE NUMERICAL VALUES USED HERE ARE TAKEN FROM TABLES 3.4 AND 3.2
+! OF NUCLEAR ASTROPHYSICS.
+! THE QUANTITY DELTA_01 IS NON-ZERO (EQUAL TO UNITY) ONLY WHEN THE
+! TWO REACTING NUCLEI, 0 AND 1, ARE IDENTICAL.
+! Q8 REFLECTS A TERM IN THE EXPONENTIAL THAT OCCURS IN THE RATES, THE
+! TERM BEING PROPORTIONAL TO E^( CONSTANT*T_9^2). SEE HARRIS, ET AL.
+! 1983, ANNUAL REV. ASTRON. ASTROPHYS.21, 165 (1983) FOR THE MEANING
+! OF THIS OBSCURE TERM.
+! THE VALUES OF Q1(I),...Q7(I) GIVEN BELOW WERE OBTAINED USING THE DATA
+! IN NEUTRINO ASTROPHYSICS WITH THE AID OF AUXILARY COMPUTER CODES
+! THAT GENERATED ACCURATE EVALUATIONS. THE NUMBERS GIVEN HERE ARE
+! IN MANY CASES COMPLETELY DIFFERENT FROM THE VALUES IN THE ORIGINAL
+! YALE CODE.
+! DBG 8/94 APPLIED MHP UPDATE TO NUCLEAR REACTIONS
+! 10/13/97. Changed Q(I) so that are now calculated for the bare nuclear
+! masses. The calculates were made cues.f . Last date on the calculations
+! in my notes is 10/10/97.  Note Q6 is -tau(T_9 = 1); in cues.f, I calculate
+! tau(T_6 = 1). The connection is:  Q6 = 0.1*tau(cues.f).
+! BP00 values
+! DATA Q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/,
+! 1 Q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224, -0.2095/,
+! 2 Q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,-0.0595/,
+! 3 Q4/0.,0.,0.,4.79,7.456,0.0,.69703,.16762/,
+! 4 Q5/0.,0.,0.,2.595,4.032,0.0,0.3097,.12114/,
+! 5 Q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,
+! 5    -16.6925/,
+! 6 Q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/,
+! 7 Q8/0.,0.,0.,0.0,0.0,0.0,0.0/,
+! 8NRXNS/13/
+! Revised values 7/21/03
+! DATA Q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/,
+! 1Q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224, 0.0/,
+! 2Q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,0.0/,
+! 3Q4/0.,0.,0.,4.79,7.456,0.0,.69703,0.0/,
+! 4Q5/0.,0.,0.,2.595,4.032,0.0,0.3097,0.0/,
+! 5Q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,-16.6925/,
+! 6Q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/,
+! 7Q8/0.,0.,0.,0.0,0.0,0.0,0./,
+! 8NRXNS/13/
+! MHP 9/14 RESTORED BE7+P DERIVATIVES THAT WERE ZEROED OUT
+! For different values of SSTANDARD, check the comments in ENGEB
+! THE VALUES OF SSTANDARD(I) ARE TO BE CHANGED FROM UNITY IF THE CROSS
+! SECTION FACTORS ARE NOT THE ONES GIVEN IN NEUTRINO ASTROPHYSICS,
+! TABLE 3.2 AND TABLE 3.4 .
+! THE CURRENT VALUES ARE CHANGED TO BE THE PREFERRED VALUES LISTED IN
+! THE LAST COLUMN OF TABLE 1 OF BAHCALL AND PINSONNEAULT (1991),
+! 6/14/91.
+! THE VALUE OF SSTANDARD(17) FOR HEP IS TAKEN FROM WOLFS ET AL. , PHYS.
+! REV. LETTERS, 63, 2721 (1989).  IT CORRESPONDS TO AN S SUB 0 =
+! 15.3E-20 KEV-BARNS, A FACTOR OF 1.913 LARGER THAN FOR THE OLDER
+! MEASUREMENTS USED IN NEUTRINO ASTROPHYSICS.
+! ZPRD IS USED IN SCREENING CALCULATIONS. IT IS THE PRODUCT OF THE
+! CHARGES OF THE INTERACTING IONS. ZPRD WAS CHECKED. Z86 IS USED
+! IN CALCULATING INTERMEDIATE SCREENING AND IS DEFINED BY GRABOSKE ET
+! AL, AP. J. 181, PAGE 465 (1973), IN TABLE 4.  Z86 WAS CHECKED AND
+! SOME NUMERICAL VALUES WERE MADE SLIGHTLY MORE ACCURATE.  Z53, Z43,
+! AND Z23 ARE ALSO DEFINED IN TABLE 4 (SEE ABOVE).  SINCE THEY ARE
+! ONLY USED IN STRONG SCREENING, THE VALUES OF Z53, Z43, AND Z23
+! WERE NOT CHECKED.
+! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
+! ISOTOPES.
+! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
+! THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
+! RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
+! BEGIN CALCULATION OF SCREENING CORRECTION.
+! THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
+! VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
+! PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
+! REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
+! AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
+! ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
+! USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
+! COMPUTING INTERMEDIATE SCREENING.
+! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
+! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
+! EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
+! IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
+! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
+! OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
+! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
+! MU = SUM OVER I OF [X(I)/A(I)].
+! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
+! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
+! THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
+! GM PER CM^3 .
+! DD = LOG RHO TO THE BASE 10.
+! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
+! CONVERT DENSITY TO UNLOGGED FORM.
+! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
+! AVOGADRO'S NUMBER.
+! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
+! THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
+! MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
+! CORRECTION.
+! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
+! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
+! POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
+! OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
+! CGS UNITS.
+! F PRIME/F
+! THE NEXT PIECE OF CODE COMPUTES FIRST THE FERMI ENERGY DIVIDED BY KT, WHERE
+! PFMC2 IS THE FERMI MOMENTUM DIVIDED BY MASS OF ELECTRON TIMES C, ALL
+! SQUARED AND EFMKT IS THE FERMI ENERGY DIVIDED BY KT.  THE QUANTITY
+! FPRF IS THE RATIO OF F PRIME TO F IN SALPETER'S SCREENING CORRECTION.
+! THE VALUE OF FPRF IS DETERMINED IN THE INTERMEDIATE CASE BY AN
+! INTERPOLATION FORMULA DEPENDING UPON THE DEGREE OF DEGENERACY, AS
+! MEASURED BY DEGD = LOG10(E_F/KT). THE NUMERICAL VALUES FOR THE FIT
+! WERE TAKEN FROM SALPETER'S ORIGINAL PAPER, FIGURE 1. THE ONLY CHANGES
+! IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
+! THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
+! IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
+! END OF CALCULATION OF FERMI ENERGY DIVIDED BY KT AND THE INTERPOLATION
+! FORMULA FOR (F PRIME/F), WHICH APPEARS IN SALPETER'S SCREENING
+! FORMULA.
+! NOW WE GET TO THE COMPUTATION OF WEAK SCREENING (SEE ALSO PAGE 61 OF
+! NEUTRINO ASTROPHYSICS, WHICH GIVES ONLY A SIMPLIFIED FORMULA) AND
+! ALSO THE MORE COMPLICATED INTERMEDIATE AND STRONG SCREENING CASES
+! (SEE REFERENCES TO AP. J. 181 ABOVE FOR INTERMEDIATE
+! AND STRONG SCREENING), ESPECIALLY PAGE 465.
+! XXL IS USED IN ALL THE SCREENING FORMULAE.  THIS QUANTITY IS THE
+! IS THE FUNCTION CALLED LAMBDA SUB ZERO BY GRABOSKE ET AL. THE
+! QUANTITY XXL**0.86 = XXL8 IS USED IN CALCULATING INTERMEDIATE
+! SCREENING.
+! ZCURL IS THE QUANTITY DEFINED BY EQUATION (4) OF DEWITT ET AL; IT
+! IS THEIR Z WITH A CURLY SYMBOL ON ITS TOP. ZCURL IS USED IN WEAK
+! AND IN INTERMEDIATE SCREENING AND WAS FIRST DEFINED BY SALPETER.
+! ZCURL IS THE SAME AS SALPETER'S ZETA EXCEPT FOR THE FACTOR OF 1/AMU.
+! (Z SUB 1 TIMES Z SUB 2)*XXL*ZCURL GIVES THE WEAK SCREENING FACTOR,
+! THE SAME AS SALPETER OR AS EQUATION (19) OF GRABOSKE ET AL.
+! Z BAR IS THE SAME AS Z BAR OF DE WITT ET AL AND IS THE AVERAGE CHARGE
+! OF THE IONS.  IT IS EQUAL TO EMU/AMU.  THE QUANTITY (Z BAR)**0.28 =
+! Z28 OCCURS IN THE COMPUTATION OF INTERMEDIATE SCREENING.
+! XXL6 IS USED FOR COMPUTING STRONG STRONG SCREENING.
+! THE NOTATION USED HERE IS EXPLAINED IN LARGE PART BY
+! EQUATION (4) OF DEWITT ET AL., AP. J. 181, PAGE 439.
+! THE FINAL EXPRESSION FOR WEAK SCREENING IS EXACTLY EQUAL TO SALPETER'S
+! FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
+! EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
+! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
+! star%ctrl%weak_screening_threshold (WEAKSCREENING) IS A NUMERICAL
+! PARAMETER READ FROM THE INPUT. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
+! USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
+! VALUE THAT SHOULD BE ADOPTED. TO INVESTIGATE THE EFFECT OF ALWAYS USING
+! WEAK SCREENING, USE A LARGE VALUE FOR WEAKSCREENING, E. G., 30.  AS
+! LONG AS WEAKSCREENING IS ASSUMED TO BE BIGGER THAN ONE, THE PROGRAM
+! WILL ALWAYS CALCULATE FOR THE SUN WITH THE WEAK SCREENING
+! APPROXIMATION.
+! UTOT IS THE FINAL SCREENING CORRECTION WHICH APPEARS IN THE
+! RATE EXPRESSION AS: EXP(UTOT) .
+! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
+! ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
+! NOT RELEVANT FOR THE SUN.
+! Reactions first_zeroed_rxn..num_reactions are zeroed after this block:
+! only the alpha captures when hydrogen burns, all 13 when it is gone.
+! CALCULATE REACTION RATES FOR THE THREE PRINCIPAL REACTIONS OF
+! THE PP CHAIN: PP, HE3+HE3, HE3 +HE4, AND THE FOUR PROTON
+! BURNING REACTIONS ON C12: C13, N14, AND O16.
+! R1 IS (T SUB 9)^(-3/2) TIMES (S SUB EFF)/(S SUB 0). THE CORRECT
+! EXPRESSION FOR (S SUB EFF)/(S SUB 0) IS GIVEN IN EQUATION 3.14 OF
+! NEUTRINO ASTROPHYSICS.  THE NUMERICAL FORM THAT IS USED IS EQUATION
+! 52 OF FOWLER, CAUHLAN, AND ZIMMERMAN, VOL. 5, 1967.
+! RATE(I) IS THE RATE OF THE DIFFERENT REACTIONS PER SECOND PER GRAM,
+! EXCEPT THAT THE MASS FRACTIONS ARE OMITTED.
+! THE PREVIOUS YALE VERSION HAD THE RATE FOR THE O16 + P REACTION
+! MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
+! REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
+! RATE(7).
+! R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
+! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
+! RATE DERIVATIVES
+! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
+! BE7 BURNING
+! CALCULATE THE BURNING OF BE7 BY PROTONS (WHICH PRODUCES THE MOST
+! EXPERIMENTALLY ACCESSIBLE SOLAR NEUTRINOS) AND THE BURNING OF BE7
+! BY ELECTRON CAPTURE (THE DOMINANT PROCESS). THE PREVIOUSLY USED
+! EXPRESSION CONTAINED A TERM THAT WAS PHYSICALLY INCORRECT
+! AND ALSO USED CROSS SECTION FACTORS THAT WERE OUT OF DATE.
+! THE ELECTRON CAPTURE RATE IN SEC^(-1) IS GIVEN BY EQUATION (3.18) OF
+! NEUTRINO ASTROPHYSICS.  CAN OMIT THE FACTOR OF RHO (IN CGS UNITS)
+! WHICH ALSO APPEARS IN THE BE7PROTON RATE. THE BE7 PROTON CAPTURE
+! RATE IS GIVEN BY TABLE 3.2 AND EQUATION (3.12).  NOTE THAT 1 OVER MU
+! SUB E IS EQUAL TO EMU.
+! HERE WE USE THE NOTATION BE7 + PROTON = BE7PROTON AND
+! BE7 + E = BE7ELECTRON.
+! F1 IS THE FRACTION OF THE BE7 THAT IS BURNED BY ELECTRON CAPTURE.
+! 1-F1 IS THE FRACTION OF THE BE7 THAT IS BURNED BY PROTON CAPTURE.
+! F3 IS THE FRACTION OF THE N14 THAT IS BURNED BY P, ALPHA REACTION.
+! 1-F3 IS THE FRACTION OF THE N15 THAT IS BURNED BY P, GAMMA REACTION.
+! SEE TABLE 21 OF BAHCALL AND ULRICH (1988), REV. MOD. PHYS. 60.
+! 10/13/97. I changed Temp3 (i.e., tau) by 5/10^5 as a result of
+! using bare nuclear masses. Previously coefficient was -10.26202.
+! I did not change Be7electron for the slightly different S0 for
+! electron capture, since that is done in SStandard. Previous coefficient
+! in Be7electron expression was (3.126571E+5). 10/14/97.
+! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
+! Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
+! CORRECTIONS ARE DEFINED EARLIER IN THIS SUBROUTINE.
+! QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
+! $          + Q4(8)*T9P23 + Q5(8)*T9
+! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
+! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
+! INTERMEDIATE SCREENING FORMULAE.
+! END OF CALCULATION OF SCREENING CORRECTION FOR BE7 + P REACTION.
+! MULTIPLY RATES BY FACTOR OF RHO/[(ATOMIC MASS UNIT)*A(BE7)] TO GET
+! IN UNITS OF GM^{-1}.  CALL FACTOR CAMUBE7. Corrected for Be7 bare
+! mass number. Previously used 8.582295E+22 in the expression below.
+! These corrections were made on 10/14/97.
+! END OF MULTIPLICATION INSERTED NOVEMBER 6, 1990.
+! END OF CALCULATION OF CRUCIAL BE7 ELECTRON CAPTURE AND PROTON CAPTURE
+! RATES AND THEIR RATIO.
+! N15 + P BRANCHING.
+! THE FOLLOWING STATEMENTS COMPUTE THE BRANCHING OF N15(P,ALPHA)C12
+! AND N15(P,GAMMA)O16. THESE STATEMENTS REPLACE OUTDATED STATEMENTS
+! IN THE YALE CODE. THE CNO CROSS-SECTION FACTORS ARE FROM TABLE 3.4
+! OF NEUTRINO ASTROPHYSICS.  THE RATIO OF THE REACTIONS DEPENDS ONLY
+! UPON THE EFFECTIVE ZERO ENERGY S-FACTOR, WHICH IS S0(ZERO ENERGY)
+! TIMES THE COMBINATION OF TEMPERATURE AND S-FACTOR DERIVATIVES/S0
+! THAT WAS USED PREVIOUSLY AS R1 IN THE RATE CALCULATIONS. THE
+! NUMERICAL COEFFICIENTS THAT APPEAR IN THE RATE WERE REPRESENTED
+! BY THE Q1(J),...Q5(J) FOR THE OTHER REACTIONS.
+! THE QVALUES FOR THE N15 REACTIONS HAVE BEEN COMPUTED SEPARATELY.
+! DBG 8/94 APPLIED MHP UPDATE TO NUCLEAR REACTIONS
+! To agree with Solar Fusion Workshop paper, the value of S0 in keV-b
+! has been changed from 78000. to 675000. on 9/25/97. On 10/14/97,
+! JNB changed cues.f so as to compute the Q-coefficients for the N15 + p
+! reactions.  Also, checked that the coefficients are the same as the
+! ones given earlier in energy.f when we use the older CNO data.
+! MULTIPLY BY THE VALUE OF S0 IN KEV-B.
+! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
+! FOR N15+P -> C12+ALPHA AND O16+GAMMA
+! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
+! ***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
+! RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
+! THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
+! NOTES ON THE REACTION RATES.
+! RATE(8)  HE4+C13
+! RATE(10) HE4+C12=>O16
+! RATE(11) HE4+N14=>O18
+! RATE(12) TRIPLE ALPHA
+! C13(ALPHA,N) O16
+! C12(ALPHA,GAMMA)O16
+! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
+! 2026 (bugsweep Batch 3): the linear coefficient of the CF88
+! N14(a,g)F18 polynomial is 0.117 (1 + 0.012 T9^1/3 + 1.45 T9^2/3
+! + 0.117 T9 + 1.97 T9^4/3 + 0.406 T9^5/3); both copies of the rate
+! carried 0.177 -- a digit transposition inherited from the F77
+! source (~0.5% of the rate at T9 = 0.15).
+! TRIPLE ALPHA
+! END OF XEROING OUT OF REACTIONS 9 AND 13.
+! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
+! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
+! THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
+! MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
+! THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
+! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
+! (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
+! CONVERTING TO SECONDS.
+! rows rr_zero9/rr_zero13: zero-filled placeholders (rate(9), rate(13)
+! are always 0 -- see the XEROING block above).
+! END OF COMPUTATION OF HRK(IU).
+subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
+      use star_info_lib, only: star
+      use phys_const_lib
+      use math_lib
+      implicit none
+      double precision, intent(in) :: log_density, log_temperature, &
+           mass_frac(num_isotopes)
+      type(nuclear_rates), intent(out) :: nr
+
+      double precision :: screening_factor(num_reactions), &
+           dscreen_dlnrho(num_reactions), dscreen_dlnt(num_reactions)
+      double precision :: term, ion_mean_weight_inverse, &
+           electron_mean_weight_inverse, xtr, zeta_sum, hydrogen_fraction
+      double precision :: density, t9, t9_p13, t9_p23, t9_m13, t9_m23, &
+           t9_m1, t9_m2, t9_m12, t9_m32
+      double precision :: pfmc2, efmkt, fprf, degd
+      double precision :: xxl, xxl6, xxl8, zcurl, zbar, z58, z28, z33, tm1
+      double precision :: uwk, uint, ustr
+      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1, s_sum
+      double precision :: temp3, qrbe7, camube7, o16gamma, c12alpha
+      integer :: i, first_zeroed_rxn
+
+! composition moments for the screening
+      hydrogen_fraction = mass_frac(iso_h1)
+      ion_mean_weight_inverse = 0.d0
+      electron_mean_weight_inverse = 0.d0
+      xtr = 0.d0
+      zeta_sum = 0.d0
+      do i = 1,num_isotopes
+         term = mass_frac(i)/isotope_mass(i)
+         ion_mean_weight_inverse = ion_mean_weight_inverse+term
+         electron_mean_weight_inverse = electron_mean_weight_inverse+ &
+              term*isotope_charge(i)
+         xtr = xtr+term*pow(isotope_charge(i), 1.58d0)
+         zeta_sum = zeta_sum+term*isotope_charge(i)**2
+      end do
+      nr%electron_density_na = ( exp(ln10*log_density) )* &
+           electron_mean_weight_inverse
+      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) return
+
+      density=exp(ln10*log_density)
+      t9 = exp(ln10*(log_temperature - 9.0d0))
+      t9_p13 = pow(t9, cc13)
+      t9_p23 = t9_p13**2
+      t9_m13=1.d0/t9_p13
+      t9_m23=t9_m13**2
+      t9_m1=1.d0/t9
+      t9_m2=t9_m1**2
+      t9_m12=1.d0/dsqrt(t9)
+      t9_m32=t9_m1*t9_m12
+      nr%density = density
+      nr%t9 = t9
+      nr%t9_p13 = t9_p13
+      nr%t9_p23 = t9_p23
+      nr%t9_m13 = t9_m13
+      nr%t9_m23 = t9_m23
+      nr%t9_m12 = t9_m12
+
+! screening (Salpeter weak; Graboske et al. intermediate and strong),
+! with its logarithmic derivatives
+      pfmc2=1.017677d-4*pow(nr%electron_density_na, (2.0d0/3.0d0))
+      efmkt=5.92986d0*t9_m1*(dsqrt(1.d0+pfmc2)-1.d0)
+      if (efmkt.le.1.d-2) then
+         fprf=1.0d0
+      else
+         degd=log10(efmkt)
+         if (degd.ge.1.5d0) then
+            fprf=0.0d0
+         else
+            fprf=0.75793d0-0.54621d0*degd-0.30964d0*degd**2+0.12535d0*degd**3+ &
+            0.1203d0*degd**4-0.012857d0*degd**5-0.014768d0*degd**6
+         end if
+      end if
+      xxl=5.9426d-6*t9_m32*dsqrt(density*ion_mean_weight_inverse)
+      xxl6=pow(xxl, (2.0d0/3.0d0))
+      xxl8=pow(xxl, 0.86d0)
+      zcurl=dsqrt((zeta_sum+fprf*electron_mean_weight_inverse)/ &
+           ion_mean_weight_inverse)
+      zbar=electron_mean_weight_inverse/ion_mean_weight_inverse
+      z58=pow(zcurl, 0.58d0)
+      z28=pow(zbar, 0.28d0)
+      z33=pow(zbar, cc13)
+      tm1=xxl*zcurl
+      do i=1,num_reactions
+         uwk=tm1*screen_zprod(i)
+         if (uwk.le.star%ctrl%weak_screening_threshold) then
+            screening_factor(i)=uwk
+            dscreen_dlnrho(i)=0.5d0*uwk
+            dscreen_dlnt(i)=-1.5d0*uwk
+         else
+            uint=0.38d0*xxl8*xtr*screen_z86(i)/(ion_mean_weight_inverse*z58*z28)
+            if (uwk.le.2.d0) then
+               screening_factor(i)=uint
+               dscreen_dlnrho(i)=0.43d0*uint
+               dscreen_dlnt(i)=-1.29d0*uint
+            else
+               ustr=0.624d0*z33*xxl6*(screen_z53(i)+0.316d0*z33*screen_z43(i)+0.737d0* &
+               screen_z23(i)/(zbar*xxl6))
+               if (ustr.lt.uint.or.uwk.ge.5.d0) then
+                  screening_factor(i)=ustr
+                  dscreen_dlnrho(i)=0.208d0*z33*(screen_z53(i)+0.316d0*z33*screen_z43(i))*xxl6
+                  dscreen_dlnt(i)=-3.d0*dscreen_dlnrho(i)
+               else
+                  screening_factor(i)=uint
+                  dscreen_dlnrho(i)=0.43d0*uint
+                  dscreen_dlnt(i)=-1.29d0*uint
+               end if
+            end if
+         end if
+      end do
+
+! reactions 1-7 (S-factor form) and the two branchings, with hydrogen
+      first_zeroed_rxn = r_pp
+      if (hydrogen_fraction.ne.0.0d0) then
+         first_zeroed_rxn = r_ac13
+         do i=r_pp,r_po16
+            r1=t9_m23+fit_q1(i)*t9_m13+star%qs0e_scale(i)*(fit_q2(i)+fit_q3(i)*t9_p13)+ &
+                 star%qqs0ee_scale(i)*(fit_q4(i)*t9_p23+fit_q5(i)*t9)
+            nr%rate(i)=density*r1*exp(fit_q6(i)*t9_m13+fit_q7(i)+(fit_q8(i)*t9)**2+ &
+                 screening_factor(i))
+            nr%rate(i) = nr%rate(i)*star%cross_section_scale(i)
+            nr%dlnrate_dlnrho(i)=1.d0+dscreen_dlnrho(i)
+            nr%dlnrate_dlnt(i)=dscreen_dlnt(i)-(fit_q6(i)*t9_m13+(2.d0*t9_m23+ &
+            fit_q1(i)*t9_m13-fit_q3(i)*t9_p13-2.d0*fit_q4(i)*t9_p23-3.d0*fit_q5(i)*t9)/r1)/3.d0+ &
+            2.d0*(fit_q8(i)*t9)**2
+         end do
+! Be7: electron capture vs proton capture
+         nr%be7_electron = (1.752d-10)*t9_m12*(1.0d0 + 0.004d0*(1000.d0*t9 - 16.d0))
+         nr%be7_electron = nr%be7_electron*electron_mean_weight_inverse*star%cross_section_scale(s_be7e)
+         temp3 = (-10.2625d0*t9_m13)
+         nr%be7_proton = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(s_be7p)*exp(temp3)
+         qrbe7 = t9_m23 + fit_q1(iq_be7p)*t9_m13 + star%qs0e_scale(iq_be7p)*(fit_q2(iq_be7p)+ fit_q3(iq_be7p)*t9_p13) &
+              + star%qqs0ee_scale(iq_be7p)*(fit_q4(iq_be7p)*t9_p23 + fit_q5(iq_be7p)*t9)
+         nr%be7_proton = nr%be7_proton*qrbe7
+         nr%be7_proton = nr%be7_proton*exp(weak_intermediate_u(4.0d0, 5.7790d0))
+         camube7 = density*8.584981d+22
+         nr%be7_proton = camube7*nr%be7_proton
+         nr%be7_electron = camube7*nr%be7_electron
+         nr%frac_be7_ecap = nr%be7_electron/(nr%be7_electron + nr%be7_proton)
+         nr%frac_be7_pcap = nr%be7_proton/(nr%be7_electron + nr%be7_proton)
+! N15: (p,alpha)C12 vs (p,gamma)O16
+         o16gamma = t9_m23 + 0.0273016d0*t9_m13 + 0.14374d0 + 0.027490d0*t9_p13 &
+                   + 6.14685d0*t9_p23 + 2.98940d0*t9
+         o16gamma = o16gamma*s0_n15pg_kevb*star%o16_gamma_scale
+         c12alpha = t9_m23 + 0.0273016d0*t9_m13 + 2.01186d0 + 0.384763d0*t9_p13 &
+                   + 17.0579d0*t9_p23 + 8.29580d0*t9
+         c12alpha = c12alpha*s0_n15pa_kevb*star%c12_alpha_scale
+         nr%frac_n15_pa = c12alpha/(c12alpha + o16gamma)
+         nr%frac_n15_pg = 1.0d0 - nr%frac_n15_pa
+      end if
+      do i=first_zeroed_rxn,num_reactions
+         nr%rate(i)=0.d0
+         nr%dlnrate_dlnrho(i)=0.d0
+         nr%dlnrate_dlnt(i)=0.d0
+      end do
+
+! alpha captures (Caughlan & Fowler 1988) and triple alpha
+      if (log_temperature.ge.star%ctrl%nuclear_logT_cutoffs(4)) then
+! C13(alpha,n)O16
+      r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
+      a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
+      a2 = 3.82d5*exp(-9.373d0*t9_m1)
+      a3 = 1.41d6*exp(-11.873d0*t9_m1)
+      a4 = 2.00d9*exp(-20.409d0*t9_m1)
+      a5 = 2.92d9*exp(-29.283d0*t9_m1)
+      s_sum = a1*r1+t9_m32*(a2+a3+a4+a5)
+      nr%rate(r_ac13) = 1.157126d22*density*exp(screening_factor(r_ac13))*s_sum
+      nr%dlnrate_dlnrho(r_ac13)=1.0d0+dscreen_dlnrho(r_ac13)
+      dr1 = cc13*(-2.0d0*t9_m23-0.0129d0*t9_m13+0.184d0*t9_p13)
+      da1 = a1*(cc13*32.329d0*t9_m13 - 2.0d0*(t9/1.284d0)**2)
+      nr%dlnrate_dlnt(r_ac13) = dscreen_dlnt(r_ac13)+(dr1*a1 + r1*da1 + &
+           t9_m32*(a2*(9.373d0*t9_m1-1.5d0)+a3*(11.873d0*t9_m1-1.5d0)+ &
+           a4*(20.409d0*t9_m1-1.5d0)+a5*(29.283d0*t9_m1-1.5d0)))/s_sum
+! C12(alpha,gamma)O16
+      r1 = 1.0d0/(1.0d0+0.0489d0*t9_m23)
+      r2 = 1.0d0/(1.0d0+0.2654d0*t9_m23)
+      a1 = t9_m2*exp(-32.120d0*t9_m13)
+      a2 = 1.04d8*r1**2*exp(-(t9/3.496d0)**2)
+      a3 = 1.76d8*r2**2
+      a4 = 1.25d3*t9_m32*exp(-27.499d0*t9_m1)
+      a5 = 1.43d-2*t9**5*exp(-15.541d0*t9_m1)
+      s_sum = a1*(a2+a3)+a4+a5
+      nr%rate(r_ac12) = 1.25388d22*density*exp(screening_factor(r_ac12))*s_sum
+      nr%dlnrate_dlnrho(r_ac12) = 1.0d0+dscreen_dlnrho(r_ac12)
+      nr%dlnrate_dlnt(r_ac12) = dscreen_dlnt(r_ac12)+ &
+           (a1*((cc13*32.120d0*t9_m13-2.0d0)*(a2+a3)+ &
+           a2*(cc13*0.1956d0*t9_m23*r1-2.0d0*(t9/3.496d0)**2)+ &
+           a3*(cc13*1.0616d0*t9_m23*r2))+ &
+           a4*(27.499d0*t9_m1-1.5d0)+a5*(5.0d0+15.541d0*t9_m1))/s_sum
+! N14(alpha,gamma)F18(e+ nu)O18; linear coefficient 0.117 (bugsweep
+! Batch 3: both former copies carried 0.177)
+      r1 = t9_m23+0.012d0*t9_m13+1.45d0+0.117d0*t9_p13+1.97d0*t9_p23 &
+           +0.406d0*t9
+      a1 = 7.78d9*exp(-36.031d0*t9_m13-(t9/0.881d0)**2)
+      a2 = t9_m32*2.36d-10*exp(-2.798d0*t9_m1)
+      a3 = t9_m32*2.03d0*exp(-5.054d0*t9_m1)
+      a4 = t9_m23*1.15d4*exp(-12.310d0*t9_m1)
+      s_sum = a1*r1+a2+a3+a4
+      nr%rate(r_an14)= 1.07452d22*density*exp(screening_factor(r_an14))*s_sum
+      nr%dlnrate_dlnrho(r_an14)=1.d0+dscreen_dlnrho(r_an14)
+      dr1 = cc13*(-2.0d0*t9_m23-0.012d0*t9_m13+0.117d0*t9_p13+ &
+            3.94d0*t9_p23)+0.406d0*t9
+      da1 = a1*(cc13*36.031d0*t9_m13-2.0d0*(t9/0.881d0)**2)
+      nr%dlnrate_dlnt(r_an14) = dscreen_dlnt(r_an14)+(dr1*a1+r1*da1+ &
+              a2*(2.798d0*t9_m1-1.5d0)+a3*(5.054d0*t9_m1-1.5d0)+ &
+              a4*(12.310d0*t9_m1-cc23))/s_sum
+! triple alpha
+      nr%rate(r_3alpha) = 1.565315d21*density**2*t9_m1*t9_m2*2.79d-8* &
+                 exp(-4.4027d0*t9_m1+screening_factor(r_3alpha))
+      nr%dlnrate_dlnrho(r_3alpha) = 2.0d0+dscreen_dlnrho(r_3alpha)
+      nr%dlnrate_dlnt(r_3alpha) = -3.0d0+dscreen_dlnt(r_3alpha)+4.4027d0*t9_m1
+      end if
+
+! hep, He3(p,e+ nu)He4: flux only (screened, scaled; times X*X(He3) by
+! the consumer)
+      nr%hep = (1.71724d+11)*density*t9_m23*exp(-6.1399d0*t9_m13)
+      nr%hep = (1.0d0 + 0.067862d0*t9_p13)*star%cross_section_scale(s_hep)*nr%hep
+      nr%hep = nr%hep*exp(weak_intermediate_u(2.0d0, 3.08687d0))
+
+contains
+
+! weak screening, or intermediate above the weak threshold (the Be7+p
+! and hep treatment): charge product zprod, Graboske z86
+double precision function weak_intermediate_u(zprod, z86)
+      double precision, intent(in) :: zprod, z86
+      uwk = tm1*zprod
+      if (uwk.le.star%ctrl%weak_screening_threshold) then
+         weak_intermediate_u = uwk
+      else
+         weak_intermediate_u = 0.38d0*xxl8*xtr*z86/(ion_mean_weight_inverse*z58*z28)
+      end if
+end function weak_intermediate_u
+
+end subroutine nuclear_reaction_rates
+
+!----------------------------------------------------------------------
 ! rates
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -1678,13 +2284,11 @@ end subroutine sneut
 subroutine rates(log_density,log_temperature,hydrogen_fraction, &
      helium_fraction,he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
      o16_fraction,o18_fraction,rate_vec)
-      use star_info_lib, only: star
       use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
            rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, rr_zero9, &
            rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_zero13, &
            rr_frac_c12_alpha, rr_frac_be7_electron
       use phys_const_lib
-      use math_lib
       implicit none
 
       double precision, intent(in) :: log_density, log_temperature, &
@@ -1692,176 +2296,14 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
            c13_fraction, n14_fraction, o16_fraction, o18_fraction
       double precision, intent(out) :: rate_vec(num_rate_rows)
 
-      double precision :: mass_frac(num_isotopes), rate(num_reactions), &
-           screening_factor(num_reactions), charge_product(num_reactions), &
-           z53(num_reactions), z43(num_reactions), z23(num_reactions), &
-           z86(num_reactions)
-      double precision :: q1(iq_be7p), q2(iq_be7p), q3(iq_be7p), q4(iq_be7p), &
-           q5(iq_be7p), q6(r_po16), q7(r_po16), q8(r_po16)
-      double precision :: atomic_mass(num_isotopes), atomic_charge(num_isotopes)
+      double precision :: mass_frac(num_isotopes)
+      type(nuclear_rates) :: nr
+      integer :: i
 
-! ***************************
-! ANUC ARE ATOMIC MASS UNITS.
-! ***************************
-! On 10/13/97, JNB converted ANUC(I) from neutral atomic masses to
-! bare nuclear masses.
-!
-! The scale is the mass of C12 divided by 12 or 931.49432 MeV,
-! which is 1.6605402 times 10^{-24} gm. The values are obtained
-! by dividing the mass excess (expressed in MeV) by 931.49432 MeV and
-! adding to this the atomic mass number, A.  The value for Be7, which
-! is used implicitly in this subroutine was, 7.016930, until 13/13/97.
-! We now use the bare nuclear mass of 7.014735 .
-!
-      data atomic_mass/1.008665d0,1.007276d0,2.013553d0,3.015501d0,3.014933d0,4.001506d0, &
-           11.996709d0,13.000064d0,13.999233d0,15.990526d0,17.994772d0,19.986954d0, &
-           23.978458d0/,atomic_charge/0.d0,1.d0,1.d0,1.d0,2.d0,2.d0,6.d0,6.d0,7.d0,8.d0,8.d0,10.d0,12.d0/
-! THE ISOTOPES ARE NEUTRON, H1, D, H3, HE3, HE4, C12, C13, N14, O16, O18,
-!  NE20, MG24, RESPECTIVELY. ALL OF THESE NUMBERS WERE CHECKED.
-! **************************************************************************
-! THE QUANTITIES Q1(J), Q2(J), ...,Q5(J) ARE THE TERMS IN EQUATION 3.14 OF
-!  NEUTRINO ASTROPHYSICS AND IN EQUATION 53 OF FOWLER, CAUGHLAN, AND
-!  ZIMMERMAN (1967) EQ. 53, IN BOTH CASES MULTIPLIED BY T SUB 9 ^(-2/3).
-!  THE REACTIONS CORRESPONDING TO EACH J ARE LISTED ABOVE, UNDER:
-!   IDENTIFYING THE RECTIONS.
-!  FOR THIS SET OF PARAMETERS, AND ONLY FOR THIS SET OF PARAMETERS,
-!  J = 8 CORRESPONDS TO THE BE7 + P REACTION.
-! **************************************************************************
-! GENERAL EXPRESSION FOR Q'S:
-! T_9^(-2/3)[S_EFF/S(0)] =
-!   [T_9^(-2/3) + Q1(I)T_9^(-1/3) + Q2(I) + Q3(I)T_9^(1/3) +
-!    Q4(I)T_9^(2/3) + Q(5)T_9 ]
-!
-! BY COMPARISON WITH EQUATION 3.14 OF NEUTRINO ASTROPHYSICS, WE SEE THAT
-!
-!
-! EACH OF THE Q'S IS INDEPENDENT OF TEMPERATURE (T), AS CAN BE SEEN FROM
-!  EQUATIONS 3.10 AND 3.11 .
-!
-! ALL OF THE VALUES OF THE Q1, ...., Q5 HAVE BEEN RECALCULATED, USING
-!  WHERE NEEDED NUCLEAR CROSS SECTIONS GIVEN IN TABLES 3.2 AND 3.4 OF NEUTRINO
-!  ASTROPHYSICS.
-! ******************************************************************
-! Q6 IS THE COEFFICIENT OF THE TEMPERATURE TERM IN THE DEFINITION OF
-!  TAU, EQUATION 3.10 OF NEUTRINO ASTROPHYSICS.
-!  TAU = Q6*(T SUB 9 TO THE (-1/3) POWER ).
-! ******************************************************************
-! SLIGHT CHANGES HAVE BEEN MADE IN THE PREVIOUS VALUES OF Q6 TO MAKE
-!  THE DATA MORE ACCURATE.
-! NOTE Q6 IS NEGATIVE.
-! ********************************************************************
-! Q7 IS THE CONSTANT IN FRONT OF THE REACTION RATE. THE LOGARITHMS ARE
-!  RELATED TO S FACTORS BY A LOGARITHM AND VARIOUS NUMERICAL FACTORS.
-! ********************************************************************
-! THE GENERAL RELATION IS:
-!  Q7 = 70.62860 + ((LN(Z0*Z1/A))/3) -LN(A0*A1) - LN(S SUB 0)
-!       -LN(1 + DELTA_01)
-!  HERE S SUB 0 IS THE CROSS SECTION FACTOR IN UNITS OF KEV-BARNS.
-!  THE NUMERICAL VALUES USED HERE ARE TAKEN FROM TABLES 3.4 AND 3.2
-!   OF NUCLEAR ASTROPHYSICS.
-!  THE QUANTITY DELTA_01 IS NON-ZERO (EQUAL TO UNITY) ONLY WHEN THE
-!   TWO REACTING NUCLEI, 0 AND 1, ARE IDENTICAL.
-! Q8 REFLECTS A TERM IN THE EXPONENTIAL THAT OCCURS IN THE RATES, THE
-!  TERM BEING PROPORTIONAL TO E^( CONSTANT*T_9^2). SEE HARRIS, ET AL.
-!  1983, ANNUAL REV. ASTRON. ASTROPHYS.21, 165 (1983) FOR THE MEANING
-!  OF THIS OBSCURE TERM.
-! THE VALUES OF Q1(I),...Q7(I) GIVEN BELOW WERE OBTAINED USING THE DATA
-!  IN NEUTRINO ASTROPHYSICS WITH THE AID OF AUXILARY COMPUTER CODES
-!  THAT GENERATED ACCURATE EVALUATIONS. THE NUMBERS GIVEN HERE ARE
-!  IN MANY CASES COMPLETELY DIFFERENT FROM THE VALUES IN THE ORIGINAL
-!  YALE CODE.
-! DBG 8/94 APPLIED MHP UPDATE TO NUCLEAR REACTIONS
-! 10/13/97. Changed Q(I) so that are now calculated for the bare nuclear
-! masses. The calculates were made cues.f . Last date on the calculations
-! in my notes is 10/10/97.  Note Q6 is -tau(T_9 = 1); in cues.f, I calculate
-! tau(T_6 = 1). The connection is:  Q6 = 0.1*tau(cues.f).
-!
-!
-! BP00 values
-!      DATA Q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/,
-!     1 Q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224, -0.2095/,
-!     2 Q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,-0.0595/,
-!     3 Q4/0.,0.,0.,4.79,7.456,0.0,.69703,.16762/,
-!     4 Q5/0.,0.,0.,2.595,4.032,0.0,0.3097,.12114/,
-!     5 Q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,
-!     5    -16.6925/,
-!     6 Q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/,
-!     7 Q8/0.,0.,0.,0.0,0.0,0.0,0.0/,
-!     8NRXNS/13/
-! Revised values 7/21/03
-!      DATA Q1/0.12317,.03392,.0325,.0304,.03035,.0273,.02494,.040572/,
-!     1Q2/1.08749,-.273,-.2085,.7630,-0.4044,-1.60,-1.224, 0.0/,
-!     2Q3/.93833,-.0648,-.0474,.1626,-.08598,-.3064,-.2139,0.0/,
-!     3Q4/0.,0.,0.,4.79,7.456,0.0,.69703,0.0/,
-!     4Q5/0.,0.,0.,2.595,4.032,0.0,0.3097,0.0/,
-!     5Q6/-3.3804,-12.2757,-12.826,-13.6899,-13.7173,-15.2281,-16.6925/,
-!     6Q7/20.8964,76.6003,67.8036,69.130,70.3809,69.8517,70.8012/,
-!     7Q8/0.,0.,0.,0.0,0.0,0.0,0./,
-!     8NRXNS/13/
-! MHP 9/14 RESTORED BE7+P DERIVATIVES THAT WERE ZEROED OUT
-      data q1/0.12317d0,.03392d0,.0325d0,.0304d0,.03035d0,.0273d0,.02494d0,.040572d0/, &
-      q2/1.08749d0,-.273d0,-.2085d0,.7630d0,-0.4044d0,-1.60d0,-1.224d0,-0.2095d0/, &
-      q3/.93833d0,-.0648d0,-.0474d0,.1626d0,-.08598d0,-.3064d0,-.2139d0,-0.0595d0/, &
-      q4/0.d0,0.d0,0.d0,4.79d0,7.456d0,0.0d0,.69703d0,0.16762d0/, &
-      q5/0.d0,0.d0,0.d0,2.595d0,4.032d0,0.0d0,0.3097d0,0.12114d0/, &
-      q6/-3.3804d0,-12.2757d0,-12.826d0,-13.6899d0,-13.7173d0,-15.2281d0,-16.6925d0/, &
-      q7/20.8964d0,76.6003d0,67.8036d0,69.130d0,70.3809d0,69.8517d0,70.8012d0/, &
-      q8/0.d0,0.d0,0.d0,0.0d0,0.0d0,0.0d0,0.d0/
-! For different values of SSTANDARD, check the comments in ENGEB
-! *********************************************************************
-! THE VALUES OF SSTANDARD(I) ARE TO BE CHANGED FROM UNITY IF THE CROSS
-!  SECTION FACTORS ARE NOT THE ONES GIVEN IN NEUTRINO ASTROPHYSICS,
-!  TABLE 3.2 AND TABLE 3.4 .
-! THE CURRENT VALUES ARE CHANGED TO BE THE PREFERRED VALUES LISTED IN
-!  THE LAST COLUMN OF TABLE 1 OF BAHCALL AND PINSONNEAULT (1991),
-!   6/14/91.
-!  THE VALUE OF SSTANDARD(17) FOR HEP IS TAKEN FROM WOLFS ET AL. , PHYS.
-!   REV. LETTERS, 63, 2721 (1989).  IT CORRESPONDS TO AN S SUB 0 =
-!   15.3E-20 KEV-BARNS, A FACTOR OF 1.913 LARGER THAN FOR THE OLDER
-!   MEASUREMENTS USED IN NEUTRINO ASTROPHYSICS.
-! *********************************************************************
-! ZPRD IS USED IN SCREENING CALCULATIONS. IT IS THE PRODUCT OF THE
-!  CHARGES OF THE INTERACTING IONS. ZPRD WAS CHECKED. Z86 IS USED
-!  IN CALCULATING INTERMEDIATE SCREENING AND IS DEFINED BY GRABOSKE ET
-!  AL, AP. J. 181, PAGE 465 (1973), IN TABLE 4.  Z86 WAS CHECKED AND
-!  SOME NUMERICAL VALUES WERE MADE SLIGHTLY MORE ACCURATE.  Z53, Z43,
-!  AND Z23 ARE ALSO DEFINED IN TABLE 4 (SEE ABOVE).  SINCE THEY ARE
-!  ONLY USED IN STRONG SCREENING, THE VALUES OF Z53, Z43, AND Z23
-!  WERE NOT CHECKED.
-      data charge_product/1.d0,4.d0,4.d0,6.d0,6.d0,7.d0,8.d0,12.d0,16.d0,12.d0,14.d0,12.d0,36.d0/,z53/ &
-         1.175d0,3.73d0,3.73d0,4.804d0,4.804d0,5.385d0,5.941d0,9.014d0,11.24d0,9.014d0, &
-         10.15d0,9.104d0,23.28d0/,z43/0.52d0,1.31d0,1.31d0,1.488d0,1.488d0,1.61d0,1.721d0, &
-         2.577d0,3.025d0,2.577d0,2.81d0,2.577d0,5.668d0/,z23/-0.413d0,-0.655d0,-0.655d0, &
-         -0.643d0,-0.643d0,-0.659d0,-0.673d0,-0.889d0,-0.946d0,-0.889d0,-0.92d0,-0.889d0, &
-         -1.36d0/,z86/1.630d0,5.917d0,5.917d0,8.302d0,8.302d0,9.520d0,10.716d0,16.192d0, &
-         20.978d0,16.192d0,18.606d0,16.192d0,45.6635d0/
-! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
-!  ISOTOPES.
-! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
-!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
-!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
-
-      integer :: i, first_zeroed_rxn
-      double precision :: mu_ion_inv, mu_e_inv, xtr, zeta0, trm
-      double precision :: rho_over_mu_e, log_rho_local, density, t9, t9p13, &
-           t9p23, t9m13, t9m23, t9m1, t9m2, t9m12, t9m32
-      double precision :: fermi_mom_sq, fermi_energy_over_kt, f_prime_over_f, &
-           log_degeneracy
-      double precision :: lambda0, lambda0_23, lambda0_86, z_curl, z_bar, &
-           z_curl_58, z_bar_28, z_bar_13, lambda0_zcurl
-      double precision :: weak_screening_u, intermediate_screening_u, &
-           strong_screening_u
-      double precision :: r1, r2, a1, a2, a3, a4, a5
-      double precision :: be7_electron_rate, be7_proton_rate, be7_temp_factor, &
-           be7_q_factor, be7p_charge_product, be7p_z86, be7p_screening_u, &
-           be7_mass_factor
-      double precision :: be7_electron_frac, c12_alpha_frac
-      double precision :: o16_gamma_rate, c12_alpha_n15p_rate
-
-      mass_frac(iso_n) = 0.0d0
+! The composition path leaves deuterium out of the screening
+! composition (engeb includes it): a ~1e-5 effect, pre-main sequence.
+      mass_frac = 0.0d0
       mass_frac(iso_h1) = hydrogen_fraction
-      mass_frac(iso_h2) = 0.0d0
-      mass_frac(iso_h3) = 0.0d0
       mass_frac(iso_he3) = he3_fraction
       mass_frac(iso_he4) = helium_fraction
       mass_frac(iso_c12) = c12_fraction
@@ -1869,391 +2311,26 @@ subroutine rates(log_density,log_temperature,hydrogen_fraction, &
       mass_frac(iso_n14) = n14_fraction
       mass_frac(iso_o16) = o16_fraction
       mass_frac(iso_o18) = o18_fraction
-      mass_frac(iso_ne20) = 0.0d0
-      mass_frac(iso_mg24) = 0.0d0
-! *******************************************************************
-! BEGIN CALCULATION OF SCREENING CORRECTION.
-! *******************************************************************
-!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
-!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
-!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
-!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
-!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
-!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
-!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
-!  COMPUTING INTERMEDIATE SCREENING.
-! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
-! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
-!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
-!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
-! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
-!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
-! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
-! MU = SUM OVER I OF [X(I)/A(I)].
-! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      mu_ion_inv = 0.d0
-      mu_e_inv = 0.d0
-      xtr = 0.d0
-      zeta0 = 0.d0
-      do i = 1,num_isotopes
-         trm = mass_frac(i)/atomic_mass(i)
-         mu_ion_inv = mu_ion_inv+trm
-         mu_e_inv = mu_e_inv+trm*atomic_charge(i)
-         xtr = xtr+trm*pow(atomic_charge(i), 1.58d0)
-         zeta0 = zeta0+trm*atomic_charge(i)**2
-      end do
-! DL AND DT ARE THE THE LOG10 OF THE DENSITY AND TEMPERATURE.
-!  THE UNIT OF TEMPERATURE IS 10^9 K AND THE UNIT OF DENSITY IS
-!  GM PER CM^3 .
-! DD = LOG RHO TO THE BASE 10.
-! CLN = LN10.  CLN IS CONVERSION BETWEEN LOG10 AND LN.
-! CONVERT DENSITY TO UNLOGGED FORM.
-! RWE = RHO/(MU SUB E), I. E., THE NUMBER OF ELECTRONS DIVIDED BY
-!  AVOGADRO'S NUMBER.
-      rho_over_mu_e = ( exp(ln10*log_density) )*mu_e_inv
-! THE EXPRESSION FOR RWE WAS INCORRECT IN THE ORIGINAL YALE SUBROUTINE.
-!  THE ORIGINAL VERSION HAD ( EXP(CLN*DL) ) DIVIDED BY EMU INSTEAD OF
-!  MULTIPLIED BY EMU.  RWE IS USED LATER IN COMPUTING THE SCREENING
-!  CORRECTION.
-      log_rho_local = log_density
-! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if(log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
-         do i = 1,num_reactions
-            rate(i) = 0.d0
-         end do
-      else
-! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
-!  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
-!  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
-!  CGS UNITS.
-      density=exp(ln10*log_rho_local)
-      t9 = exp(ln10*(log_temperature - 9.0d0))
-      t9p13 = pow(t9, cc13)
-      t9p23 = t9p13**2
-      t9m13=1.d0/t9p13
-      t9m23=t9m13**2
-      t9m1=1.d0/t9
-      t9m2=t9m1**2
-      t9m12=1.d0/dsqrt(t9)
-      t9m32=t9m1*t9m12
-! ***********************************
-! F PRIME/F
-! ***********************************
-! THE NEXT PIECE OF CODE COMPUTES FIRST THE FERMI ENERGY DIVIDED BY KT, WHERE
-!  PFMC2 IS THE FERMI MOMENTUM DIVIDED BY MASS OF ELECTRON TIMES C, ALL
-!  SQUARED AND EFMKT IS THE FERMI ENERGY DIVIDED BY KT.  THE QUANTITY
-!  FPRF IS THE RATIO OF F PRIME TO F IN SALPETER'S SCREENING CORRECTION.
-!  THE VALUE OF FPRF IS DETERMINED IN THE INTERMEDIATE CASE BY AN
-!  INTERPOLATION FORMULA DEPENDING UPON THE DEGREE OF DEGENERACY, AS
-!  MEASURED BY DEGD = LOG10(E_F/KT). THE NUMERICAL VALUES FOR THE FIT
-!  WERE TAKEN FROM SALPETER'S ORIGINAL PAPER, FIGURE 1. THE ONLY CHANGES
-!  IN THIS PART OF THE SUBROUTINE WERE THE CORRECTION OF THE ERROR IN
-!  THE DEFINITION OF RWE (SEE ABOVE) AND REFINEMENTS OF THE COEFFICIENTS
-!  IN THE EXPRESSIONS FOR PFMC2 AND EFMKT.
-      fermi_mom_sq=1.017677d-4*pow(rho_over_mu_e, (2.0d0/3.0d0))
-      fermi_energy_over_kt=5.92986d0*t9m1*(dsqrt(1.d0+fermi_mom_sq)-1.d0)
-      if(fermi_energy_over_kt.le.1.d-2) then
-         f_prime_over_f=1.0d0
-      else
-         log_degeneracy=log10(fermi_energy_over_kt)
-         if(log_degeneracy.ge.1.5d0) then
-            f_prime_over_f=0.0d0
-         else
-            f_prime_over_f=0.75793d0-0.54621d0*log_degeneracy-0.30964d0*log_degeneracy**2+0.12535d0*log_degeneracy**3+ &
-            0.1203d0*log_degeneracy**4-0.012857d0*log_degeneracy**5-0.014768d0*log_degeneracy**6
-         endif
-      endif
-! END OF CALCULATION OF FERMI ENERGY DIVIDED BY KT AND THE INTERPOLATION
-!  FORMULA FOR (F PRIME/F), WHICH APPEARS IN SALPETER'S SCREENING
-!  FORMULA.
-! NOW WE GET TO THE COMPUTATION OF WEAK SCREENING (SEE ALSO PAGE 61 OF
-!  NEUTRINO ASTROPHYSICS, WHICH GIVES ONLY A SIMPLIFIED FORMULA) AND
-!  ALSO THE MORE COMPLICATED INTERMEDIATE AND STRONG SCREENING CASES
-!  (SEE REFERENCES TO AP. J. 181 ABOVE FOR INTERMEDIATE
-!  AND STRONG SCREENING), ESPECIALLY PAGE 465.
-! XXL IS USED IN ALL THE SCREENING FORMULAE.  THIS QUANTITY IS THE
-!  IS THE FUNCTION CALLED LAMBDA SUB ZERO BY GRABOSKE ET AL. THE
-!  QUANTITY XXL**0.86 = XXL8 IS USED IN CALCULATING INTERMEDIATE
-!  SCREENING.
-! ZCURL IS THE QUANTITY DEFINED BY EQUATION (4) OF DEWITT ET AL; IT
-!  IS THEIR Z WITH A CURLY SYMBOL ON ITS TOP. ZCURL IS USED IN WEAK
-!  AND IN INTERMEDIATE SCREENING AND WAS FIRST DEFINED BY SALPETER.
-!  ZCURL IS THE SAME AS SALPETER'S ZETA EXCEPT FOR THE FACTOR OF 1/AMU.
-! (Z SUB 1 TIMES Z SUB 2)*XXL*ZCURL GIVES THE WEAK SCREENING FACTOR,
-!  THE SAME AS SALPETER OR AS EQUATION (19) OF GRABOSKE ET AL.
-! Z BAR IS THE SAME AS Z BAR OF DE WITT ET AL AND IS THE AVERAGE CHARGE
-!  OF THE IONS.  IT IS EQUAL TO EMU/AMU.  THE QUANTITY (Z BAR)**0.28 =
-!  Z28 OCCURS IN THE COMPUTATION OF INTERMEDIATE SCREENING.
-! XXL6 IS USED FOR COMPUTING STRONG STRONG SCREENING.
-! THE NOTATION USED HERE IS EXPLAINED IN LARGE PART BY
-!  EQUATION (4) OF DEWITT ET AL., AP. J. 181, PAGE 439.
-! THE FINAL EXPRESSION FOR WEAK SCREENING IS EXACTLY EQUAL TO SALPETER'S
-!  FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
-!  EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
-      lambda0=5.9426d-6*t9m32*dsqrt(density*mu_ion_inv)
-      lambda0_23=pow(lambda0, (2.0d0/3.0d0))
-      lambda0_86=pow(lambda0, 0.86d0)
-      z_curl=dsqrt((zeta0+f_prime_over_f*mu_e_inv)/mu_ion_inv)
-      z_bar=mu_e_inv/mu_ion_inv
-      z_curl_58=pow(z_curl, 0.58d0)
-      z_bar_28=pow(z_bar, 0.28d0)
-      z_bar_13=pow(z_bar, cc13)
-      lambda0_zcurl=lambda0*z_curl
-! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
+      call nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       do i=1,num_reactions
-         weak_screening_u=lambda0_zcurl*charge_product(i)
-         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
-! star%ctrl%weak_screening_threshold (WEAKSCREENING) IS A NUMERICAL
-!  PARAMETER READ FROM THE INPUT. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
-!  USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
-!  VALUE THAT SHOULD BE ADOPTED. TO INVESTIGATE THE EFFECT OF ALWAYS USING
-!  WEAK SCREENING, USE A LARGE VALUE FOR WEAKSCREENING, E. G., 30.  AS
-!  LONG AS WEAKSCREENING IS ASSUMED TO BE BIGGER THAN ONE, THE PROGRAM
-!  WILL ALWAYS CALCULATE FOR THE SUN WITH THE WEAK SCREENING
-!  APPROXIMATION.
-! UTOT IS THE FINAL SCREENING CORRECTION WHICH APPEARS IN THE
-!  RATE EXPRESSION AS: EXP(UTOT) .
-            screening_factor(i)=weak_screening_u
-         else
-            intermediate_screening_u=0.38d0*lambda0_86*xtr*z86(i)/(mu_ion_inv*z_curl_58*z_bar_28)
-            if(weak_screening_u.le.2.d0) then
-               screening_factor(i)=intermediate_screening_u
-            else
-               strong_screening_u=0.624d0*z_bar_13*lambda0_23*(z53(i)+0.316d0*z_bar_13*z43(i)+0.737d0* &
-               z23(i)/(z_bar*lambda0_23))
-               if(strong_screening_u.lt.intermediate_screening_u.or.weak_screening_u.ge.5.d0) then
-                  screening_factor(i)=strong_screening_u
-               else
-                  screening_factor(i)=intermediate_screening_u
-               endif
-            endif
-         endif
+         if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0
       end do
-! ****************************************************************
-! END OF SCREENING CALCULATION. WEAK AND INTERMEDIATE SCREENING FORMS
-!  ARE GIVEN CORRECTLY.  STRONG SCREENING WAS NOT CHECKED BECAUSE IT IS
-!  NOT RELEVANT FOR THE SUN.
-! ****************************************************************
-! Reactions first_zeroed_rxn..num_reactions are zeroed after this block:
-! only the alpha captures when hydrogen burns, all 13 when it is gone.
-      first_zeroed_rxn = r_pp
-      if(hydrogen_fraction.eq.0.0d0) then
-         be7_electron_frac=0.d0
-         c12_alpha_frac=0.d0
-      else
-      first_zeroed_rxn = r_ac13
-! **************************************************************
-!  CALCULATE REACTION RATES FOR THE THREE PRINCIPAL REACTIONS OF
-!   THE PP CHAIN: PP, HE3+HE3, HE3 +HE4, AND THE FOUR PROTON
-!   BURNING REACTIONS ON C12: C13, N14, AND O16.
-! **************************************************************
-! R1 IS (T SUB 9)^(-3/2) TIMES (S SUB EFF)/(S SUB 0). THE CORRECT
-!  EXPRESSION FOR (S SUB EFF)/(S SUB 0) IS GIVEN IN EQUATION 3.14 OF
-!  NEUTRINO ASTROPHYSICS.  THE NUMERICAL FORM THAT IS USED IS EQUATION
-!  52 OF FOWLER, CAUHLAN, AND ZIMMERMAN, VOL. 5, 1967.
-! RATE(I) IS THE RATE OF THE DIFFERENT REACTIONS PER SECOND PER GRAM,
-!  EXCEPT THAT THE MASS FRACTIONS ARE OMITTED.
-! THE PREVIOUS YALE VERSION HAD THE RATE FOR THE O16 + P REACTION
-!  MULTIPLIED BY T9**(-1/7). THIS FACTOR IS INCORRECT AND HAS BEEN
-!  REMOVED; IT APPEARED BEFORE AS AN IF STATEMENT REFERRING ONLY TO
-!  RATE(7).
-      do i=r_pp,r_po16
-!         R1=T9M23+Q1(I)*T9M13+Q2(I)+Q3(I)*T9P13+Q4(I)*T9P23+Q5(I)*T9
-! MHP 8/14 RATES CORRECTED TO PERMIT USER MODIFICATION OF REACTION
-! RATE DERIVATIVES
-         r1=t9m23+q1(i)*t9m13+star%qs0e_scale(i)*(q2(i)+q3(i)*t9p13)+ &
-            star%qqs0ee_scale(i)*(q4(i)*t9p23+q5(i)*t9)
-         rate(i)=density*r1*exp(q6(i)*t9m13+q7(i)+(q8(i)*t9)**2+screening_factor(i))
-         rate(i) = rate(i)*star%cross_section_scale(i)
-      end do
-! ***************************************************************
-! END OF CALCULATION OF REACTION RATES FOR FIRST 7 REACTIONS.
-! ***************************************************************
-! ***********************************************
-! BE7 BURNING
-! ***********************************************
-! CALCULATE THE BURNING OF BE7 BY PROTONS (WHICH PRODUCES THE MOST
-!  EXPERIMENTALLY ACCESSIBLE SOLAR NEUTRINOS) AND THE BURNING OF BE7
-!  BY ELECTRON CAPTURE (THE DOMINANT PROCESS). THE PREVIOUSLY USED
-!  EXPRESSION CONTAINED A TERM THAT WAS PHYSICALLY INCORRECT
-!  AND ALSO USED CROSS SECTION FACTORS THAT WERE OUT OF DATE.
-! THE ELECTRON CAPTURE RATE IN SEC^(-1) IS GIVEN BY EQUATION (3.18) OF
-!  NEUTRINO ASTROPHYSICS.  CAN OMIT THE FACTOR OF RHO (IN CGS UNITS)
-!  WHICH ALSO APPEARS IN THE BE7PROTON RATE. THE BE7 PROTON CAPTURE
-!  RATE IS GIVEN BY TABLE 3.2 AND EQUATION (3.12).  NOTE THAT 1 OVER MU
-!  SUB E IS EQUAL TO EMU.
-! HERE WE USE THE NOTATION BE7 + PROTON = BE7PROTON AND
-!  BE7 + E = BE7ELECTRON.
-! F1 IS THE FRACTION OF THE BE7 THAT IS BURNED BY ELECTRON CAPTURE.
-! 1-F1 IS THE FRACTION OF THE BE7 THAT IS BURNED BY PROTON CAPTURE.
-! F3 IS THE FRACTION OF THE N14 THAT IS BURNED BY P, ALPHA REACTION.
-! 1-F3 IS THE FRACTION OF THE N15 THAT IS BURNED BY P, GAMMA REACTION.
-! SEE TABLE 21 OF BAHCALL AND ULRICH (1988), REV. MOD. PHYS. 60.
-! 10/13/97. I changed Temp3 (i.e., tau) by 5/10^5 as a result of
-! using bare nuclear masses. Previously coefficient was -10.26202.
-! I did not change Be7electron for the slightly different S0 for
-! electron capture, since that is done in SStandard. Previous coefficient
-! in Be7electron expression was (3.126571E+5). 10/14/97.
-!
-         be7_electron_rate = (1.752d-10)*t9m12*(1.0d0 + 0.004d0*(1000.d0*t9-16.d0))
-         be7_electron_rate = be7_electron_rate*mu_e_inv*star%cross_section_scale(s_be7e)
-         be7_temp_factor = (-10.2625d0*t9m13)
-         be7_proton_rate = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(s_be7p)*exp(be7_temp_factor)
-
-! INCLUDE FOR BE7PROTON THE T9M23 FACTOR AND ALL CORRECTIONS PROPORTIONAL TO
-!  Q1,...,Q5 FROM EQUATION 3.14 OF NEUTRINO ASTROPHYSICS. THESE
-!  CORRECTIONS ARE DEFINED EARLIER IN THIS SUBROUTINE.
-!         QRBE7 = T9M23 + Q1(8)*T9M13 + Q2(8)+ Q3(8)*T9P13
-!     $          + Q4(8)*T9P23 + Q5(8)*T9
-! MHP 9/14 ADDED THE ABILITY TO ALTER DERIVATIVES INDEPENDENTLY
-         be7_q_factor = t9m23 + q1(iq_be7p)*t9m13 + star%qs0e_scale(iq_be7p)*(q2(iq_be7p)+ q3(iq_be7p)*t9p13) &
-                + star%qqs0ee_scale(iq_be7p)*(q4(iq_be7p)*t9p23 + q5(iq_be7p)*t9)
-         be7_proton_rate = be7_proton_rate*be7_q_factor
-! CALCULATE THE SCREENING CORRECTION FOR BE7 + P REACTION.  USE WEAK AND
-!  INTERMEDIATE SCREENING FORMULAE.
-         be7p_charge_product = 4.0d0
-         be7p_z86 = 5.7790d0
-         weak_screening_u = lambda0_zcurl*be7p_charge_product
-         if(weak_screening_u.le.star%ctrl%weak_screening_threshold) then
-            be7p_screening_u = weak_screening_u
-         else
-            intermediate_screening_u = 0.38d0*lambda0_86*xtr*be7p_z86/(mu_ion_inv*z_curl_58*z_bar_28)
-            be7p_screening_u = intermediate_screening_u
-          endif
-         be7_proton_rate = be7_proton_rate*exp(be7p_screening_u)
-! END OF CALCULATION OF SCREENING CORRECTION FOR BE7 + P REACTION.
-! MULTIPLY RATES BY FACTOR OF RHO/[(ATOMIC MASS UNIT)*A(BE7)] TO GET
-!  IN UNITS OF GM^{-1}.  CALL FACTOR CAMUBE7. Corrected for Be7 bare
-! mass number. Previously used 8.582295E+22 in the expression below.
-! These corrections were made on 10/14/97.
-!
-         be7_mass_factor = density*8.584981d+22
-         be7_proton_rate = be7_mass_factor*be7_proton_rate
-         be7_electron_rate = be7_mass_factor*be7_electron_rate
-! END OF MULTIPLICATION INSERTED NOVEMBER 6, 1990.
-         be7_electron_frac = be7_electron_rate/(be7_electron_rate + be7_proton_rate)
-! *********************************************************************
-! END OF CALCULATION OF CRUCIAL BE7 ELECTRON CAPTURE AND PROTON CAPTURE
-!  RATES AND THEIR RATIO.
-! *********************************************************************
-! ***************************
-! N15 + P BRANCHING.
-! ***************************
-! THE FOLLOWING STATEMENTS COMPUTE THE BRANCHING OF N15(P,ALPHA)C12
-!  AND N15(P,GAMMA)O16. THESE STATEMENTS REPLACE OUTDATED STATEMENTS
-!  IN THE YALE CODE. THE CNO CROSS-SECTION FACTORS ARE FROM TABLE 3.4
-!  OF NEUTRINO ASTROPHYSICS.  THE RATIO OF THE REACTIONS DEPENDS ONLY
-!  UPON THE EFFECTIVE ZERO ENERGY S-FACTOR, WHICH IS S0(ZERO ENERGY)
-!  TIMES THE COMBINATION OF TEMPERATURE AND S-FACTOR DERIVATIVES/S0
-!  THAT WAS USED PREVIOUSLY AS R1 IN THE RATE CALCULATIONS. THE
-!  NUMERICAL COEFFICIENTS THAT APPEAR IN THE RATE WERE REPRESENTED
-!  BY THE Q1(J),...Q5(J) FOR THE OTHER REACTIONS.
-!  THE QVALUES FOR THE N15 REACTIONS HAVE BEEN COMPUTED SEPARATELY.
-! DBG 8/94 APPLIED MHP UPDATE TO NUCLEAR REACTIONS
-! To agree with Solar Fusion Workshop paper, the value of S0 in keV-b
-! has been changed from 78000. to 675000. on 9/25/97. On 10/14/97,
-! JNB changed cues.f so as to compute the Q-coefficients for the N15 + p
-! reactions.  Also, checked that the coefficients are the same as the
-! ones given earlier in energy.f when we use the older CNO data.
-!
-      o16_gamma_rate = t9m23 + 0.0273016d0*t9m13 + 0.14374d0 + 0.027490d0*t9p13 &
-                + 6.14685d0*t9p23 + 2.98940d0*t9
-! MULTIPLY BY THE VALUE OF S0 IN KEV-B.
-! MHP 9/14 ADDED THE OPTION TO MODIFY THE RELATIVE CROSS SECTIONS
-! FOR N15+P -> C12+ALPHA AND O16+GAMMA
-      o16_gamma_rate = o16_gamma_rate*s0_n15pg_kevb*star%o16_gamma_scale
-!
-      c12_alpha_n15p_rate = t9m23 + 0.0273016d0*t9m13 + 2.01186d0 + 0.384763d0*t9p13 &
-                + 17.0579d0*t9p23 + 8.29580d0*t9
-      c12_alpha_n15p_rate = c12_alpha_n15p_rate*s0_n15pa_kevb*star%c12_alpha_scale
-      c12_alpha_frac = c12_alpha_n15p_rate/(c12_alpha_n15p_rate + o16_gamma_rate)
-! END OF NEW ROUTINE FOR THE BRANCHING OF N15 + P .
-      endif
-      do i=first_zeroed_rxn,num_reactions
-         rate(i)=0.d0
-      end do
-!***MHP 3/91 ALPHA CAPTURE REACTIONS UPDATED TO CAUGHLAN AND FOWLER(1988)
-!   RATES.  THE RATES ARE EXPRESSED IN THE SAME TERMS USED BY CZ, WITH
-!   THE CONVERSION FACTOR IN THE FRONT OBTAINED FROM VANDENBERG'S
-!   NOTES ON THE REACTION RATES.
-!  RATE(8)  HE4+C13
-!  RATE(10) HE4+C12=>O16
-!  RATE(11) HE4+N14=>O18
-!  RATE(12) TRIPLE ALPHA
-      if (log_temperature.ge.star%ctrl%nuclear_logT_cutoffs(4)) then
-! C13(ALPHA,N) O16
-      r1=t9m23+0.0129d0*t9m13+2.04d0+0.184d0*t9p13
-      a1 = 6.77d15*exp(-32.329d0*t9m13-(t9/1.284d0)**2)
-      a2 = 3.82d5*exp(-9.373d0*t9m1)
-      a3 = 1.41d6*exp(-11.873d0*t9m1)
-      a4 = 2.00d9*exp(-20.409d0*t9m1)
-      a5 = 2.92d9*exp(-29.283d0*t9m1)
-      rate(r_ac13) = 1.157126d22*density*exp(screening_factor(r_ac13))*(a1*r1+t9m32* &
-           (a2+a3+a4+a5))
-! C12(ALPHA,GAMMA)O16
-      r1 = 1.0d0/(1.0d0+0.0489d0*t9m23)
-      r2 = 1.0d0/(1.0d0+0.2654d0*t9m23)
-      a1 = t9m2*exp(-32.120d0*t9m13)
-      a2 = 1.04d8*r1**2*exp(-(t9/3.496d0)**2)
-      a3 = 1.76d8*r2**2
-      a4 = 1.25d3*t9m32*exp(-27.499d0*t9m1)
-      a5 = 1.43d-2*t9**5*exp(-15.541d0*t9m1)
-      rate(r_ac12) = 1.25388d22*density*exp(screening_factor(r_ac12))*(a1*(a2+a3)+a4+a5)
-! N14(ALPHA,GAMMA)F18 + F18=>O18+EPLUS+NU
-! 2026 (bugsweep Batch 3): the linear coefficient of the CF88
-! N14(a,g)F18 polynomial is 0.117 (1 + 0.012 T9^1/3 + 1.45 T9^2/3
-! + 0.117 T9 + 1.97 T9^4/3 + 0.406 T9^5/3); both copies of the rate
-! carried 0.177 -- a digit transposition inherited from the F77
-! source (~0.5% of the rate at T9 = 0.15).
-      r1 = t9m23+0.012d0*t9m13+1.45d0+0.117d0*t9p13+1.97d0*t9p23 &
-           +0.406d0*t9
-      a1 = 7.78d9*exp(-36.031d0*t9m13-(t9/0.881d0)**2)
-      a2 = t9m32*2.36d-10*exp(-2.798d0*t9m1)
-      a3 = t9m32*2.03d0*exp(-5.054d0*t9m1)
-      a4 = t9m23*1.15d4*exp(-12.310d0*t9m1)
-      rate(r_an14)= 1.07452d22*density*exp(screening_factor(r_an14))*(a1*r1+a2+a3+a4)
-! TRIPLE ALPHA
-      rate(r_3alpha) = 1.565315d21*density**2*t9m1*t9m2*2.79d-8* &
-                 exp(-4.4027d0*t9m1+screening_factor(r_3alpha))
-      end if
-      rate(r_ao16_unused) = 0.0d0
-      rate(r_c12c12_unused) = 0.0d0
-! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      do i=1,num_reactions
-         if(rate(i).le.1.d-5) rate(i) = 0.0d0
-      end do
-! ******************************************************
-! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
-! ******************************************************
-! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
-!  THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
-!  MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
-!  THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
-! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
-!  (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
-!  CONVERTING TO SECONDS.
-      endif
-      rate_vec(rr_pp)=rate(r_pp)*gyr_amu_per_sec_gram
-      rate_vec(rr_he3_he3)=rate(r_he3he3)*gyr_amu_per_sec_gram
-      rate_vec(rr_he3_he4)=rate(r_he3he4)*gyr_amu_per_sec_gram
-      rate_vec(rr_c12_p)=rate(r_pc12)*gyr_amu_per_sec_gram
-      rate_vec(rr_c13_p)=rate(r_pc13)*gyr_amu_per_sec_gram
-      rate_vec(rr_n14_p)=rate(r_pn14)*gyr_amu_per_sec_gram
-      rate_vec(rr_o16_p)=rate(r_po16)*gyr_amu_per_sec_gram
-      rate_vec(rr_c13_alpha)=rate(r_ac13)*gyr_amu_per_sec_gram
-! rows rr_zero9/rr_zero13: zero-filled placeholders (rate(9), rate(13)
-! are always 0 -- see the XEROING block above).
-      rate_vec(rr_zero9)=rate(r_ao16_unused)*gyr_amu_per_sec_gram
-      rate_vec(rr_c12_alpha)=rate(r_ac12)*gyr_amu_per_sec_gram
-      rate_vec(rr_n14_alpha)=rate(r_an14)*gyr_amu_per_sec_gram
-      rate_vec(rr_triple_alpha)=rate(r_3alpha)*gyr_amu_per_sec_gram
-      rate_vec(rr_zero13)=rate(r_c12c12_unused)*gyr_amu_per_sec_gram
-      rate_vec(rr_frac_c12_alpha)=c12_alpha_frac
-      rate_vec(rr_frac_be7_electron)=be7_electron_frac
-! ****************************************
-! END OF COMPUTATION OF HRK(IU).
-! ****************************************
-      return
+! per 10^9 yr per amu (gyr_amu_per_sec_gram, sidereal year)
+      rate_vec(rr_pp)=nr%rate(r_pp)*gyr_amu_per_sec_gram
+      rate_vec(rr_he3_he3)=nr%rate(r_he3he3)*gyr_amu_per_sec_gram
+      rate_vec(rr_he3_he4)=nr%rate(r_he3he4)*gyr_amu_per_sec_gram
+      rate_vec(rr_c12_p)=nr%rate(r_pc12)*gyr_amu_per_sec_gram
+      rate_vec(rr_c13_p)=nr%rate(r_pc13)*gyr_amu_per_sec_gram
+      rate_vec(rr_n14_p)=nr%rate(r_pn14)*gyr_amu_per_sec_gram
+      rate_vec(rr_o16_p)=nr%rate(r_po16)*gyr_amu_per_sec_gram
+      rate_vec(rr_c13_alpha)=nr%rate(r_ac13)*gyr_amu_per_sec_gram
+      rate_vec(rr_zero9)=nr%rate(r_ao16_unused)*gyr_amu_per_sec_gram
+      rate_vec(rr_c12_alpha)=nr%rate(r_ac12)*gyr_amu_per_sec_gram
+      rate_vec(rr_n14_alpha)=nr%rate(r_an14)*gyr_amu_per_sec_gram
+      rate_vec(rr_triple_alpha)=nr%rate(r_3alpha)*gyr_amu_per_sec_gram
+      rate_vec(rr_zero13)=nr%rate(r_c12c12_unused)*gyr_amu_per_sec_gram
+      rate_vec(rr_frac_c12_alpha)=nr%frac_n15_pa
+      rate_vec(rr_frac_be7_electron)=nr%frac_be7_ecap
 end subroutine rates
 
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$

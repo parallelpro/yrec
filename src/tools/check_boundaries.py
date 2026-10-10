@@ -79,8 +79,10 @@ PUBLIC = {
     # Every net_lib module procedure is public by construction.
     # implicit_burn_step is network_lib's one entry: the table-driven
     # implicit burning step (2026-10, replaced kemcom's equations).
+    # nuclear_reaction_rates is the one rate evaluation behind rates and
+    # burn_lib's engeb (2026-10, replaced their two copies).
     "net": {"neutrino", "nulosses", "azbar", "sneut", "rates",
-                "implicit_burn_step",
+                "implicit_burn_step", "nuclear_reaction_rates",
                 "eqburn", "dburn", "dburnm", "deutrate", "engeb",
                 "liburn", "liburn2", "lirate88", "safedivexp",
                 "ifermi12", "zfermim12"},
