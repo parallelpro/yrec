@@ -15,6 +15,12 @@
 ! elsewhere for output (star%eps_*, star%pulse_*, star%gradr/gradT/
 ! grada, star%adiabatic_index_gamma1, rotation scratch, ...).
 !
+! The units, log bases and derivative conventions every cur%q* term
+! must follow are stated once, in the header of henyey_eliminate.f90.
+! In short: q* = d(variable)/dlog10(m); partials are with respect to
+! lnP, lnT, lnR (natural log) and to L divided by ln10; the luminosity
+! term takes the ABSOLUTE d eps/dlnT and d eps/dln rho.
+!
 ! Three of the shell terms (pt_scr%qt, pt_scr%qp, pt_scr%qtl -- the
 ! historical COMMON/PULSE2/ slots, now point_scratch_lib) are
 ! simultaneously pulse-output scratch: this file computes them as the

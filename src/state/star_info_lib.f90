@@ -17,8 +17,13 @@
 ! What is deliberately NOT here:
 !  * run control (timesteps, iteration counters, convergence
 !    tolerances): driver policy, stays in arguments by design.
-!  * physics-domain state: eos/kap/atm/nuclear never see star_info
-!    (MESA's own boundary); their facades keep plain arguments.
+!  * physics-domain state: eos/kap/atm/nuclear keep their table state
+!    in their own modules and take per-point inputs as plain
+!    arguments. They still READ their configuration from star (about
+!    60 star%ctrl/star%job members plus the rate scales, envelope X/Z
+!    and use_two_z_tables) -- no per-zone model state. Passing each
+!    domain its own controls instead is planned
+!    (docs/TARGET_ARCHITECTURE.md section 4.6).
 ! (The model-level scalars and the former-COMMON state/ modules that
 ! earlier revisions of this note listed as pending have since been
 ! absorbed -- see the "model-level scalars" block below and the

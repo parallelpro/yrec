@@ -91,9 +91,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! star%model_diverged_flag (host cycles the retry loop).
       call update_output_flags_for_step
 
-! read_starting_model is re-run inside the loop for timestep cutting
-! (the retry_step loop replaces the historical backward goto 15;
-! divergence bailouts cycle it.)
+! The retry_step loop replaces the historical backward goto 15;
+! divergence bailouts cycle it. It never retries a step: nothing cuts
+! the timestep on divergence, and reload_model_if_diverged passes the
+! divergence flag to read_starting_model, which stops the run ("MODEL
+! FAILED TO CONVERGE", ierr = 1) -- the historical behaviour (2026-10
+! audit; the earlier comment here promised a timestep cut).
       retry_step: do
          call reload_model_if_diverged
          if (ierr /= 0) return
@@ -194,10 +197,10 @@ subroutine update_output_flags_for_step
 end subroutine update_output_flags_for_step
 
 ! ---------------------------------------------------------------
-! If the previous attempt diverged, re-read the starting model with
-! the cut timestep (starin) and re-check the rotation configuration.
-! Sets ierr on failure. Always marks the punch (model-in-memory)
-! flag on the way out.
+! If the previous attempt diverged, call read_starting_model (starin)
+! with the divergence flag set, which ends the run with ierr = 1 (no
+! timestep is cut; see the retry_step note above). Otherwise a no-op.
+! Always marks the punch (model-in-memory) flag on the way out.
 subroutine reload_model_if_diverged
             if (star%model_diverged_flag) then
              call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, &

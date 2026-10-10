@@ -27,10 +27,34 @@
 ! index I for use by the next shell). See Kippenhahn & Weigert-style
 ! Henyey solvers for the general method; the four rows correspond to
 ! the pressure, temperature, radius, and luminosity structure
-! equations in that order, and the interpretation of the individual
-! q*/q*_d* terms below (equation value and its partials at the lower/
-! upper mesh point) is inferred from their use, not from surviving
-! documentation.
+! equations in that order. No original documentation of the q*/q*_d*
+! terms survives; the conventions below were reconstructed from the
+! arithmetic here and in henyey_coefficients (2026-10 audit) and are
+! the contract every term must follow.
+!
+! Conventions (the contract for every henyey_shell_terms record):
+!  - Dependent variables: logP, logT, logR (log10, cgs) and
+!    luminosity_lsun (LINEAR, in Lsun). Independent coordinate: log_mass
+!    (log10 of the enclosed mass in g).
+!  - q* is the derivative of its variable with respect to log_mass:
+!    qp = dlogP/dlogm, qt = dlogT/dlogm, qr = dlogR/dlogm,
+!    ql = dL/dlogm = (ln10 m / Lsun) * eps, with eps the total specific
+!    energy rate in erg/g/s (henyey_coefficients' cccql factor).
+!  - The residual for equation k across shell I is the trapezoid rule
+!      elim_rhs(k,I) = 0.5*dlogm*(q_k(I-1) + q_k(I)) - (y_k(I) - y_k(I-1)).
+!  - Partials q*_dp, q*_dt, q*_dr are NATURAL-log derivatives,
+!    dq/dlnP, dq/dlnT, dq/dlnR at fixed values of the other three
+!    variables. This routine multiplies 0.5*dlogm by ln10 once, which
+!    turns them into derivatives with respect to the log10 unknowns.
+!  - The luminosity partial q*_dl is dq/dL DIVIDED BY ln10, so that the
+!    same ln10 factor leaves it as dq/dL (qt_dl = qt/(L ln10) for a
+!    radiative gradient, henyey_coefficients).
+!  - Hence ql_dp and ql_dt carry ABSOLUTE derivatives of eps, d eps/dlnP
+!    and d eps/dlnT (times cccql), not logarithmic ones -- which is what
+!    burn_lib's engeb returns in burn%deps_dlnrho/deps_dlnt.
+!  - Only the partials listed in henyey_shell_terms exist; there is no
+!    ql_dr or ql_dl, so an energy term that depends on R or L cannot be
+!    linearized without extending the type and the pivots below.
 module henyey_eliminate_lib
       implicit none
 

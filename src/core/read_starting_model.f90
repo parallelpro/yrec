@@ -2,7 +2,8 @@
 ! read_starting_model (formerly starin)
 !----------------------------------------------------------------------
 ! YREC's initial-model setup/read driver, called at the start of every
-! kind card (and again after a diverged step, with the cut timestep).
+! kind card. After a diverged step it is called with model_failed_flag
+! set and only stops the run (ierr = 1); no timestep is cut.
 ! If a fresh starting model is requested (first_call_flag(run_index)
 ! true), it reads the model file (.mod, YREC7 or MODEL2 layout,
 ! detected from the file's keyword) via read_mod_model / read_yrec7 /
