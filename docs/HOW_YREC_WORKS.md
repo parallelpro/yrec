@@ -45,7 +45,7 @@ the coordinate; all cgs):
 | 1 | Mass conservation | dr/dm = 1/(4πr²ρ) — residual `cur%qr = exp(ln10·(log m − log ρ − log 4πr³))` |
 | 2 | Hydrostatic equilibrium | dP/dm = −Gm/(4πr⁴) · **f_P** — residual `qp = −exp(ln10·(log G + 2 log m − log P − log 4πr³ − log r))·f_P` (held in `pt_scr%qp`, mirrored into `cur%qp`) |
 | 3 | Energy transport | dlnT/dm = ∇ · dlnP/dm — residual `qt = ∇ · qp`, with ∇ = ∇_rad (radiative) or ∇_conv (MLT) |
-| 4 | Energy conservation | dL/dm = ε_nuc − ε_ν + ε_grav — assembled from `engeb` (burning + neutrinos) plus the entropy ("gravothermal") term −T ∂S/∂t, evaluated from the change in (log T, log P) since the start of the step divided by Δt |
+| 4 | Energy conservation | dL/dm = ε_nuc − ε_ν + ε_grav — assembled from `compute_zone_energy` → `nuclear_energy` (burning + neutrinos) plus the entropy ("gravothermal") term −T ∂S/∂t, evaluated from the change in (log T, log P) since the start of the step divided by Δt |
 
 **Rotation enters the structure equations** through the Kippenhahn &
 Thomas (1970) / Endal & Sofia (1976) form factors `f_P` (`star%fp_rot`) and
@@ -76,20 +76,22 @@ Composition evolves by:
 
 - **nuclear burning** — an implicit (backward-Euler) network solve per
   region, Newton iteration on the coupled H/He3/CNO abundances
-  (`solve_composition` (`kemcom`), `mixing/solve_composition.f90`: up to
-  50 Newton iterations on a 7-species implicit system with an analytic
-  Jacobian, solved by `simeqc` in `numerics/numerics_lib.f90`), plus
-  explicit updates in `core/burn_lib.f90`: equilibrium-He3/CN hydrogen and
-  helium burning rates on the first iteration level (`eqburn`) and
-  sub-stepped deuterium burning (`dburn`/`dburnm`);
+  (`implicit_burn_step`, `net/network_lib.f90`, driven per region by
+  `burn_network_region` in `core/burn_step.f90`: the equations and
+  Jacobian come from a reaction table, solved by `simeqc` in
+  `numerics/numerics_lib.f90`), plus explicit updates: equilibrium-He3/CN
+  hydrogen and helium burning rates on the first iteration level
+  (`equilibrium_burn_rates`) and sub-stepped deuterium burning
+  (`burn_deuterium_region`, `net/light_elements.f90`). `src/net/README.md`
+  walks through these routines and their call order;
 - **instantaneous convective mixing** — convective zones (plus overshoot
   extensions) are homogenized every step (inside `mix`,
   `mixing/mix.f90`, and again after the structure converges by
   `homogenize_convection_zones` (`mixcz`));
 - **light elements** (Li6, Li7, Be9, H2) — burned with sub-stepped
   Bulirsch–Stoer-extrapolated updates that account for the time-dependent
-  depth of the surface convection zone (`burn_lib: liburn/liburn2`,
-  `deutrate`; the CZ-depth history enters via the pressure-scale-height
+  depth of the surface convection zone (`burn_li_be` in
+  `core/burn_step.f90`, rates from `li_be_rates`; the CZ-depth history enters via the pressure-scale-height
   bounds `star%pressure_scale_height_start`/`_end` and the previous CZ-base
   radius `star%cz_base_radius_prev`);
 - **microscopic diffusion** (optional) — gravitational settling and
@@ -152,7 +154,7 @@ At each interior shell `henyey_coefficients` (`coefft`,
 their analytic partial derivatives with respect to the corrections
 (δlogP, δlogT, δlogR, δL) at the shell and its neighbor — the EOS
 (`eos_get`), opacity (`kap_get`), gradient (`temperature_gradients`
-(`tpgrad`)), and energy generation (`engeb`) derivatives feed the chain
+(`tpgrad`)), and energy generation (`compute_zone_energy`) derivatives feed the chain
 rule, e.g. the radiative
 branch of equation 3 carries
 ∂qt/∂logT = qt·(−4 + ∂lnκ/∂lnT + ∂lnκ/∂lnρ·∂lnρ/∂lnT).
@@ -282,15 +284,18 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
       COMPOSITION HALF-STEP                          mix
         locate CZs (Schwarzschild), overshoot        find_convection_zones (convec)
                                                        -> overshoot_boundaries (oversh)
-        rates; implicit burn per radiative shell     rates, solve_composition (kemcom);
-          and per mixed zone (homogenized as unit)     eqburn explicit rates at level 1
-        deuterium burning                            deutrate, dburn
-        semiconvection (optional)                    semiconvection (sconvec)
+        rates of every shell                         compute_burn_rates
+        implicit burn per radiative shell            burn_network -> burn_network_region
+          and per mixed zone (homogenized as unit)     -> implicit_burn_step (kemcom)
+        explicit equilibrium burn, level 1 only      burn_equilibrium (eqburn)
+        semiconvection (optional, levels > 1)        semiconvection (sconvec)
         microscopic diffusion, sub-stepped           microdiff or gravitational_settling
                                                        (grsett)
-        renormalize abundances; advance the age
+        renormalize abundances
+        deuterium burning                            burn_deuterium (dburn)
+      advance the age
  2. rezone_or_snapshot: REZONING [not in He flash]   rezone (hpoint)
-      start-of-step Li/Be rates                      lirate88
+      start-of-step Li/Be rates                      store_start_li_be_rates (lirate88)
  3. solve_structure: STRUCTURE SOLVE, levels 1-3     henyey_iterate (crrect) ->
                                                        henyey_coefficients (coefft),
                                                        henyey_eliminate (reduce),
@@ -307,10 +312,11 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
                                                        solid_body_omega (solid)
         instability diffusion + rotational mixing    secular_transport (seculr) and the
                                                        rotation/seculr/ solvers (see 4.6)
-        Li/Be burning (with rotational mixing)       lirate88, liburn/liburn2
+        Li/Be burning (with rotational mixing)       store_end_li_be_rates, burn_li_be
       new fp/ft from new ω                           rotation_shape_factors (fpft)
  5. Locate H shell and CZ boundaries                 locate_shell_boundaries (findsh)
- 6. Light-element burning (non-rotating path)        burn_light_elements: lirate88, liburn
+ 6. Light-element burning (non-rotating path)        burn_light_elements: store_end_li_be_rates,
+                                                       burn_li_be (liburn)
  7. After a mass change: move the fitting point      rebuild_envelope (getnewenv),
                                                        rotation_shape_factors
  8. Next Δt                                          compute_timestep (htimer)
@@ -403,11 +409,16 @@ overshoot region (`star%ctrl%ladov`, inlist name
 rate-limited "semiconvective" overshoot variant with a propagation-speed
 cap.
 
-### 4.4 Nuclear network (`net/net_lib.f90` kernels + `core/burn_lib.f90` drivers)
+### 4.4 Nuclear network (`net/` physics + `core/burn_step.f90` drivers)
 
-- 13 principal reactions: pp, He3+He3, He3+He4, p-captures on C12, C13,
-  N14, O16, Be7(e⁻,ν), Be7(p,γ), plus He-burning (3α, C12+α, C13+α,
-  N14+α) — rates in the Caughlan & Fowler (1988) / Bahcall parameterized
+The routines, their call order and how to extend them are described in
+`src/net/README.md`. In brief:
+
+- 13 reaction slots: pp, He3+He3, He3+He4, p-captures on C12, C13,
+  N14 and O16, plus He burning (3α and α-captures on C12, C13 and N14);
+  two slots (O16+α, C12+C12) are reserved and never computed, and the
+  Be7(e⁻,ν) and Be7(p,γ) branches of He3+He4 enter as a branching
+  fraction — rates in the Caughlan & Fowler (1988) / Bahcall parameterized
   forms with the N15 branching computed explicitly; an optional
   newer-rate set with **Solar Fusion II** S-factors and per-reaction
   namelist scale factors (`s0_*` controls, turned into
@@ -417,12 +428,14 @@ cap.
   threshold; the code's own comment notes strong screening is untested;
 - **neutrino energy losses** from each pp/CNO chain branch, plus
   plasma/photo/pair/bremsstrahlung losses from **Itoh et al. (1996)**
-  (`sneut`, `net/net_lib.f90`) for advanced stages; the solar-neutrino
+  (`sneut`, `net/thermal_neutrinos.f90`) for advanced stages; the solar-neutrino
   diagnostic computes Cl37 and Ga71 SNU rates from the flux spectrum;
-- energy generation `engeb` assembles ε per shell and its T, ρ
-  derivatives for the Henyey Jacobian, and stores per-reaction rate
-  arrays (`star%reaction_rate`) as diagnostics; the composition solve
-  takes its rates from `net_lib`'s `rates` instead (called in `mix`).
+- one rate evaluation, `nuclear_reaction_rates`, feeds both consumers:
+  `nuclear_energy` (`net/nuclear_energy.f90`) assembles ε per shell and
+  its T, ρ derivatives for the Henyey Jacobian, and `compute_zone_energy`
+  stores per-reaction rate arrays (`star%reaction_rate`) as diagnostics;
+  the composition solve takes the same rates repacked per Gyr per amu by
+  `network_rate_vector` (called from `compute_burn_rates` in `mix`).
 
 ### 4.5 Atmospheres (`atm/`)
 
@@ -472,7 +485,7 @@ interpolated in both directions with edge-validity bookkeeping
 |---|---|---|
 | `bsstep`/`mmid`/`ratext` | Bulirsch–Stoer with modified midpoint + rational extrapolation | atmosphere & envelope integration, Li/Be burning extrapolation |
 | `henyey_solve` (`hsolve`; in `core/henyey_solve.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
-| `simeqc` | Gauss-Jordan with pivoting | `solve_composition`'s (`kemcom`) Newton systems |
+| `simeqc` | Gauss-Jordan with pivoting | `implicit_burn_step`'s Newton systems |
 | `tridia`/`ctridi` | tridiagonal (Thomas) solvers | AM diffusion (`tridia`), rotational composition diffusion (`ctridi`) |
 | `kspline`/`ksplint`, `splinc`/`splintd2`, `spline`(osculatory), `osplin`→`meval`/`choose`/`cases` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
 | `lir` | 4-point Lagrange / linear table interpolation with index memory (`lir1` was removed as dead code) | MHD EOS table lookups |
@@ -522,7 +535,7 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
      star layer (owns type(star_info) star): read_starting_model (starin),
        henyey_iterate (crrect), henyey_coefficients (coefft),
        henyey_eliminate (reduce), henyey_solve (hsolve), envint_lib,
-       surfbc, burn_lib, mix, rezone (hpoint), evolve_angular_momentum
+       surfbc, burn_step, mix, rezone (hpoint), evolve_angular_momentum
        (getw), wind
                                                     │
      physics services: eos_get, kap_get, net_lib kernels, atm tables,
@@ -545,7 +558,7 @@ scratch lives in `rotation/rotation_scratch_lib.f90` and
 (the re-entrancy contract), which is what makes the Python embedding sound.
 
 **The physics boundary today.** Per-point evaluation takes explicit
-inputs: `eos_get`, `kap_get` and `net_lib`'s `rates` receive T, P or ρ and
+inputs: `eos_get`, `kap_get` and `net_lib`'s `nuclear_reaction_rates` receive T, P or ρ and
 the composition as arguments, and the envelope kernel
 `core/envint_kernel.f90` is star-blind (enforced by
 `tools/check_boundaries.py`). Configuration is still read from `star`: 26

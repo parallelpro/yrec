@@ -61,7 +61,7 @@ The authoritative statement is the header of `core/henyey_eliminate.f90`. In sum
 - **Residual for equation *k* across shell *i*:** `elim_rhs(k,i) = ½ Δlog₁₀m · (q_k(i−1) + q_k(i)) − (y_k(i) − y_k(i−1))`.
 - **Partials:** `q*_dp`, `q*_dt`, `q*_dr` are **natural-log** derivatives ∂q/∂ln P, ∂q/∂ln T, ∂q/∂ln R. The eliminator multiplies ½Δlog₁₀m by ln 10 once, which turns them into derivatives with respect to the log₁₀ unknowns.
 - **Luminosity partial:** `q*_dl` is ∂q/∂L **divided by ln 10**, for example `qt_dl = qt/(L ln10)`, so that the same factor leaves it as ∂q/∂L.
-- **Luminosity term:** `ql = (ln10 · m / L☉) · ε`, with ε in erg g⁻¹ s⁻¹ (`cccql = ln10_over_lsun · m`). Therefore `ql_dt` and `ql_dp` take the **absolute** derivatives dε/d ln T and dε/d ln ρ, which is what `burn_lib`'s `engeb` returns (`burn%deps_dlnt`, `burn%deps_dlnrho`).
+- **Luminosity term:** `ql = (ln10 · m / L☉) · ε`, with ε in erg g⁻¹ s⁻¹ (`cccql = ln10_over_lsun · m`). Therefore `ql_dt` and `ql_dp` take the **absolute** derivatives dε/d ln T and dε/d ln ρ, which is what `nuclear_energy` returns and `compute_zone_energy` passes on (`burn%deps_dlnt`, `burn%deps_dlnrho`).
 - **Missing partials:** `henyey_shell_terms` has no `ql_dr` or `ql_dl`. An energy term that depends on R or L cannot be linearized without extending the type and the pivots.
 - **Boundaries:** the centre condition is set at zone 1 in `henyey_coefficients`. The surface condition comes from the envelope fit (`surface_bc`, built from `envelope_fit_coeffs` in `henyey_iterate`).
 
@@ -123,7 +123,7 @@ erg/s, `luminosity_lsun` L☉; `age` s, `age_gyr` Gyr; `rate` per s,
 `rate_per_gyr` per Gyr. `log_x` is log₁₀ of x in the unit its name
 implies. Output columns keep their MESA names. Many current names
 predate the rule (the solar-unit masses and luminosity channels, `dage`,
-the per-Gyr rate arrays, `accreted_mass_fraction` in g); the tables
+the per-Gyr rate arrays); the tables
 below record their real units, and renames follow as code is touched.
 
 ## 2. Quantities by domain
@@ -215,7 +215,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| X_i | mass fraction | `star%xa(i,k)` | `HCOMP` → `composition` | mixing/mix.f90, rotation/*, core/burn_lib.f90 | Abundance of species slot *i* (section 1.5) in zone *k*. |
+| X_i | mass fraction | `star%xa(i,k)` | `HCOMP` → `composition` | mixing/mix.f90, rotation/*, core/burn_step.f90 | Abundance of species slot *i* (section 1.5) in zone *k*. |
 | — | — | `n_species_basic` (11), `n_species_extended` (15) | `NSPEC` (local) | state/star_info_lib.f90:54-55 | Species counts of the two layouts. |
 | X_i at step start | mass fraction | `star%xa_start` | `HCOMPP` (`/OLDMOD/`) | core/evolve_step.f90:245 | Start-of-step composition. Burning and mixing start from it, and Newton levels > 2 reset `xa` to it (`henyey_iterate.f90:136`). Also a rotation sub-step checkpoint (trap 9). |
 | X_i at step start (kept) | mass fraction | `star%orig_composition` | `HCOMPP0` (`/ORIGSTART/`) | core/evolve_step.f90:420 | Restores `xa_start` on structure⇄rotation passes after the first. |
@@ -236,26 +236,27 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 |---|---|---|---|---|---|
 | ε_nuc | erg g⁻¹ s⁻¹ | `star%eps_total` | `SESUM` | core/henyey_coefficients.f90:342 | Sum of the five chain rates (pp I incl. d(p,γ), pp II, pp III, CNO, 3α). Excludes ν losses and α captures. |
 | ε_chain/ε_nuc | fraction | `star%eps_channels(1:5,k)` (`i_eps_pp1`, `i_eps_pp2`, `i_eps_pp3`, `i_eps_cno`, `i_eps_he3`) | `SEG(1:5)` | core/henyey_coefficients.f90:346-354 | **Fractions** of `eps_total`, not erg g⁻¹ s⁻¹ (trap 4). Slot 5 holds the 3α share despite its `he3` name (trap 5). |
-| ε_ν | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_neu,k)`; `star%neutrino_loss_rate` (last `engeb` call) | `SEG(6)`; `ENU` (`/NEWEPS/`) | core/henyey_coefficients.f90:345; core/burn_lib.f90:1987, 2027 | Thermal neutrino loss rate (stored negative). |
+| ε_ν | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_neu,k)`; `star%neutrino_loss_rate` (last `compute_zone_energy` call) | `SEG(6)`; `ENU` (`/NEWEPS/`) | core/henyey_coefficients.f90:345; net/nuclear_energy.f90:547, 587 (`thermal_neutrino_loss`) | Thermal neutrino loss rate (stored negative). |
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%gravitational_luminosity(k)` | `SEG(7)`, `HHC` | core/henyey_coefficients.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `gravitational_luminosity` is a specific rate, not a luminosity (trap 7). |
-| ε | erg g⁻¹ s⁻¹ | `burn%total_energy_gen_rate` (local `energy_gen_rate`) | `SUM1` (`engeb`), `E` (`coefft`) | core/burn_lib.f90 (`engeb`) | Total nuclear rate including deuterium burning and (negative) ν losses; the ε in q_L. |
-| ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%pp_chain_energy_gen`, `he3he4_be7_electron_energy_gen`, `he3he4_be7_proton_energy_gen`, `cno_cycle_energy_gen`, `triple_alpha_energy_gen` | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | core/burn_lib.f90:1857-1871 | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
-| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho`, `rot_scr%deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | core/burn_lib.f90:1793 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
-| dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_deps_dlnt`, `star%pulse_deps_dlnt`, `rot_scr%deps_dlnt` | `PET`; `QET`, `PQET`, `SQET` | core/burn_lib.f90:1794 | **Absolute** dε/dlnT (trap 1). |
-| ε_αcap | erg g⁻¹ s⁻¹ | `star%alpha_capture_energy` | `EALPCA` (`/NEWEPS/`) | core/burn_lib.f90:1875 | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
+| ε | erg g⁻¹ s⁻¹ | `burn%total_energy_gen_rate` (local `energy_gen_rate`) | `SUM1` (`engeb`), `E` (`coefft`) | net/nuclear_energy.f90 (`sum_energy_generation`) | Total nuclear rate including deuterium burning and (negative) ν losses; the ε in q_L. |
+| ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%pp_chain_energy_gen`, `he3he4_be7_electron_energy_gen`, `he3he4_be7_proton_energy_gen`, `cno_cycle_energy_gen`, `triple_alpha_energy_gen` | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | net/nuclear_energy.f90:423-437 | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
+| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho`, `rot_scr%deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | net/nuclear_energy.f90:356 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
+| dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_deps_dlnt`, `star%pulse_deps_dlnt`, `rot_scr%deps_dlnt` | `PET`; `QET`, `PQET`, `SQET` | net/nuclear_energy.f90:357 | **Absolute** dε/dlnT (trap 1). |
+| ε_αcap | erg g⁻¹ s⁻¹ | `star%alpha_capture_energy` | `EALPCA` (`/NEWEPS/`) | net/nuclear_energy.f90:440; stored by core/burn_step.f90:240 | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
 | L_channel | L☉ | `star%luminosity_breakdown(8)` (`i_lum_pp1`, `i_lum_pp2`, `i_lum_pp3`, `i_lum_cno`, `i_lum_3alpha`, `i_lum_neu`, `i_lum_grav`, `i_lum_he_c`) | `TLUMX` | core/henyey_coefficients.f90; renormalized in core/henyey_iterate.f90:173-182 | Integrated luminosity per channel. Rescaled each iteration so the sum equals L(nz) (trap 15). |
 | ε_rot | erg g⁻¹ s⁻¹ | `rot_scr%rotational_energy_term` | `DEROT` (`/ROTEN/`) | core/henyey_coefficients.f90:302 | (E_rot − E_rot,old)/(Δt Δm), subtracted from ε in q_L. |
 | E_rot | erg (per point) | `star%kinetic_energy_rot` | `HKEROT` | core/henyey_iterate.f90:320, rotation/* | ½ Ω j Δm of the point. |
 | E_rot at step start | erg | `star%kinetic_energy_rot_old` | `HKEROTO` | core/evolve_step.f90:297 | Start-of-step copy (an `_old`, not `_start`, name). |
-| r_j | per Gyr per amu | `star%reaction_rate(13,k)` | `HR1`..`HR13` → `reaction_rate_1..13` | core/burn_lib.f90 (`compute_neutrino_emission`) | Per-zone rate of reaction *j* in `net_lib`'s `r_*` slot order. |
-| — | fraction | `star%n15_alpha_branch_fraction`, `star%be7_electron_capture_fraction` | `HF1`, `HF2` | core/burn_lib.f90 | ¹⁵N(p,α) branching and ⁷Be electron-capture fraction. |
-| r_j (mixing) | as above | `rot_scr%reaction_rate_by_zone(15,k)` (rows `rr_*`) | `HCOMPM` (`/BURN/`) | mixing/mix.f90 | Rates and branchings packed for `solve_composition`. Rows 9 and 13 are zero placeholders. |
+| r_j | per Gyr per amu | `star%reaction_rate(13,k)` | `HR1`..`HR13` → `reaction_rate_1..13` | net/nuclear_energy.f90 (`reaction_rates_and_chain_shares`); stored by core/burn_step.f90:256 (`compute_zone_energy`) | Per-zone rate of reaction *j* in `net_lib`'s `r_*` slot order. |
+| — | fraction | `star%n15_alpha_branch_fraction`, `star%be7_electron_capture_fraction` | `HF1`, `HF2` | core/burn_step.f90:257-258 | ¹⁵N(p,α) branching and ⁷Be electron-capture fraction. |
+| r_j (mixing) | as above | `rot_scr%reaction_rate_by_zone(15,k)` (rows `rr_*`) | `HCOMPM` (`/BURN/`) | core/burn_step.f90 (`compute_burn_rates`, from `network_rate_vector`) | Rates and branchings packed for the network burn. Rows 9 and 13 are zero placeholders. |
 | — | Gyr⁻¹ amu⁻¹ | `gyr_amu_per_sec_gram` (parameter) | `C21` | state/phys_const_lib.f90 | Converts a rate per s per g into the units of `reaction_rate`. |
-| Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `star%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total(10)`; `neutrino_flux_zone(10,k)` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | core/burn_lib.f90; totals in core/henyey_coefficients.f90 | Solar-neutrino source rates: last `engeb` zone, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
+| Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `star%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total(10)`; `neutrino_flux_zone(10,k)` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`solar_neutrino_fluxes`), stored by core/burn_step.f90:259; totals in core/henyey_coefficients.f90 | Solar-neutrino source rates: last `compute_zone_energy` zone, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/observables_lib.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
-| X(⁷Be) | mass fraction | `star%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | core/burn_lib.f90 | Equilibrium ⁷Be abundance (scalar from the last call, and per zone). |
-| r_D | per Gyr per amu | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/burn_lib.f90:715 | Deuterium burning rate, end and start of step. |
-| r_Li6, r_Li7, r_Be9 | unconfirmed (N_A⟨σv⟩·ρX) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/burn_lib.f90 (`lirate88`) | Light-element burning rates at end and start of step. |
+| X(⁷Be) | mass fraction | `star%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | core/burn_step.f90:260; per zone core/neutrino_flux_table.f90:89 | Equilibrium ⁷Be abundance (scalar from the last call, and per zone). |
+| r_D | per Gyr per amu | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
+| ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | wind/mdot.f90:272; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
+| r_Li6, r_Li7, r_Be9 | s⁻¹ (N_A⟨σv⟩·ρX_H, taking A_H = 1) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/burn_step.f90 (`store_li_be_rates`) | Light-element burning rates at end and start of step; `burn_li_be` multiplies them by the step in seconds. |
 | — | — | `star%cross_section_scale(17)`; `qs0e_scale(8)`, `qqs0ee_scale(8)`, `o16_gamma_scale`, `c12_alpha_scale` | `SSTANDARD`; `QS0E`, `QQS0EE`, `FO16`, `FC12` (`/CROSS/`) | setup/map_user_inputs.f90, core/monte_carlo.f90 (`apply_monte_carlo_parameters`) | Multipliers on the S-factors (Monte-Carlo runs overwrite 1–3 and 16), their first- and second-derivative scales, and the ¹⁶O(α,γ)/¹²C(α,γ) multipliers. |
 
 ### 2.6 Envelope, atmosphere and surface fit
@@ -338,8 +339,8 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | — | zone index | `star%envelope_cz_bottom_index` | `JENV` | setup/rezone.f90:567, mixing/mix.f90 | Bottom zone of the surface convection zone (`nz` if none). |
 | — | zone index | `star%iov1`, `star%iov2`, `star%iovim` | `IOV1`, `IOV2`, `IOVIM` (`/DPMIX/`) | mixing/overshoot_boundaries.f90 | Overshoot zone range, and the zone index passed to `temperature_gradients` for the adiabatic-overshoot test. |
 | α_ov H_P | cm | `star%pressure_scale_height_start`, `pressure_scale_height_end` | `PSCAL0`, `PSCAL1` (`/LIOV/`) | core/evolve_step.f90:537-545, rotation/evolve_angular_momentum.f90:343-348 | Envelope **overshoot distance** below the CZ base, not H_P itself (trap 13). |
-| r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/burn_lib.f90:2111, 2129 | CZ-base radius at the end of the previous step, for light-element burning. |
-| — | zone index | `star%envelope_cz_base_zone_prev`, `star%jcz` | `JENVOS`, `JCZ` | core/burn_lib.f90, core/evolve_step.f90 | CZ-base zone of the previous step; CZ-base zone used by deuterium burning. |
+| r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/burn_step.f90:318, 336 | CZ-base radius at the end of the previous step, for light-element burning. |
+| — | zone index | `star%envelope_cz_base_zone_prev`, `star%jcz` | `JENVOS`, `JCZ` | core/burn_step.f90:355, core/evolve_step.f90:280 | CZ-base zone of the previous step; CZ-base zone used by deuterium burning. |
 | τ_cz | s | `star%convective_turnover_timescale`, `..._old` | `TAUCZ`, `TAUCZ0` (`/OVRTRN/`) | core/turnover_timescale.f90 | Convective turnover time, H_P/v_conv (or CZ width/v_conv) at the CZ base. |
 | — | — | `star%alfmlt`, `phmlt`, `cmxmlt`; `valfmlt`, `vphmlt`, `vcmxmlt` | `ALFMLT`, `PHMLT`, `CMXMLT`, `VALFMLT`, ... (`/PUALPHA/`) | mixing/temperature_gradients.f90 | MLT pulse-output scalars and vectors; currently always zero (henyey_coefficients.f90 comment). |
 
@@ -452,7 +453,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 | — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code `ctrl%use_opal95_eos`, ... `ctrl%use_mhd_eos`; `use_scv_eos` lives in `eos/scv_eos_lib` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | ctrl | EOS table selection on top of the Yale/Saha base. |
 | — | logical | `use_opal95_tables` (sj), `use_alex06_tables` (sj), `use_conductive_opacity`; code `ctrl%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | ctrl | Opacity table selection. |
 | — | logical | `use_extended_composition`; code `job%use_extended_composition` | `LEXCOM` | job | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
-| log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `engeb` in `henyey_coefficients`. |
+| log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `henyey_coefficients`. |
 | — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `fcorr`. |
 | — | — | `timestep_factors`; code `ctrl%atime(14)` (slots `itime_*` in `io/controls_lib.f90:113-126`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
 | — | logical | `improved_first_guess_flag`; code `ctrl%improved_first_guess_flag` | `LNEWS` | ctrl | Extrapolate the next first guess from `*_entropy_term` rates. |
@@ -472,11 +473,11 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 Every item was confirmed by reading the code. Lines are for the 2026-10-10 working tree.
 
 1. **`dln` names that held ABSOLUTE ε derivatives (renamed 2026-10).**
-   - `engeb` returns `burn%deps_dlnrho` and `burn%deps_dlnt` as absolute dε/d ln ρ and dε/d ln T in erg g⁻¹ s⁻¹ (`core/burn_lib.f90`, `burn_result`).
+   - `compute_zone_energy` (formerly `engeb`) returns `burn%deps_dlnrho` and `burn%deps_dlnt` as absolute dε/d ln ρ and dε/d ln T in erg g⁻¹ s⁻¹ (`core/burn_step.f90`, `zone_energy_result`; computed in `net/nuclear_energy.f90`).
    - Three copies carried logarithmic-looking names until 2026-10: `zone_dlnepsilon_*` (now `zone_deps_*`, `core/henyey_coefficients.f90`), `star%pulse_dlneps_*` (now `star%pulse_deps_*`), `rot_scr%dlnepsilon_*` (now `rot_scr%deps_*`).
    - The Jacobian always used them correctly, and so does the rotation code (`setup/rotation_stability_setup.f90`): there f·dε/dlnT is added to ε·(1 − f − χ_T), which is consistent only for the absolute derivative.
    - Misled by the old names, commit 2ed398ca (2026-08-30) multiplied them by ε a second time in both pulse writers. The `eps_eps_T`/`eps_eps_rho` columns were wrong by a factor of ε until the 2026-10 fix (`TARGET_ARCHITECTURE.md` Appendix B #1).
-   - Note that the `engeb` comment says "the callers divide by eps themselves". None does.
+   - The `engeb` comment used to say "the callers divide by eps themselves". None does; the comment was corrected in 2026-10.
 2. **`pt_scr%qp`, `qt`, `qtl` mean different things depending on who wrote them last.**
    - In `henyey_coefficients` they are Henyey terms: q_P, q_T = ∇ q_P, and q_T/(L ln10) (`core/henyey_coefficients.f90:189-205`).
    - In the envelope and atmosphere integrands they are P (dyn cm⁻²), T (K) and log₁₀ T (`core/envelope_derivs.f90:127-130`, `core/atmosphere_derivs.f90:84-87`).
@@ -571,11 +572,9 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 
 - the slot order of `fxion_zone(3,:)` and `eos_res(i_fxion:i_fxion+2)`;
 - the physical units of `neutrino_flux`, `neutrino_flux_total` and `neutrino_flux_zone` (the code comments say "10¹⁰ ergs per gm");
-- the units of the light-element rates `rate_li6/li7/be9`.
 
 **Left out of the tables** because their meaning or units could not be settled from the code:
 
-- `star%accreted_mass_fraction` (`FMASSACC`);
 - `star%fracstep` (`FRACSTEP`, initialized to 0.5);
 - the scalar `star%convective_velocity` (`VEL`);
 - `star%log_rate_li6/li7/be9_prev` (`BLI6OLD`, ...; log base unknown);
@@ -588,6 +587,6 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 | Symbol | Units | Current name | Legacy name | Owning file | Definition |
 |---|---|---|---|---|---|
 | R_j | per Gyr per amu | `reaction_rate(j, ...)` in network_lib | — | net/network_lib.f90 | Rate of table reaction j: b_j g_j prod X(law_j). |
-| g_j | per Gyr per amu per (X_i X_k) | `rate_vec(rr_*)`, `rate_by_zone(rr_*, k)` | `HR1..HR13` | net/net_lib.f90 (`rates`) | Composition rate rows; abundance factors omitted. |
+| g_j | per Gyr per amu per (X_i X_k) | `rate_vec(rr_*)`, `rate_by_zone(rr_*, k)` | `HR1..HR13` | net/net_lib.f90 (`network_rate_vector`) | Composition rate rows; abundance factors omitted. |
 | λ, dlnλ/dlnT, dlnλ/dlnρ | g⁻¹ s⁻¹ per (X_i X_k); — | `nuclear_rates%rate`, `%dlnrate_dlnt`, `%dlnrate_dlnrho` | `RATE`, `PET`-terms | net/net_lib.f90 (`nuclear_reaction_rates`) | The one per-zone rate evaluation (screened, scaled), with logarithmic derivatives. |
 | f(N15→C12), f(Be7 e-capture) | — | `nuclear_rates%frac_n15_pa`, `%frac_be7_ecap` | `F3`, `F1` | net/net_lib.f90 | Branching fractions. |
