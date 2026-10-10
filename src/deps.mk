@@ -131,7 +131,7 @@ atm/tables/surfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 atm/ttau_lib.o: math_lib.mod phys_const_lib.mod
 core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod ttau_lib.mod
-core/burn_step.o: light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod nuclear_energy_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+core/burn_step.o: light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod network_lib.mod nuclear_energy_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 core/check_solar_calibration.o: luout_lib.mod math_lib.mod star_info_lib.mod
 core/check_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
@@ -255,11 +255,10 @@ mixing/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 mixing/compute_scale_height.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 mixing/find_convection_zones.o: luout_lib.mod star_info_lib.mod
 mixing/homogenize_convection_zones.o: star_info_lib.mod
-mixing/mix.o: burn_step.mod light_element_lib.mod luout_lib.mod math_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+mixing/mix.o: burn_step.mod luout_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 mixing/overshoot_boundaries.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-mixing/rotmix.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+mixing/rotmix.o: burn_step.mod luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod temperature_gradients_lib.mod
-mixing/solve_composition.o: luout_lib.mod net_lib.mod network_lib.mod star_info_lib.mod
 mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 net/light_elements.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
 net/net_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod

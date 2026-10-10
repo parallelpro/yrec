@@ -38,8 +38,6 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       use phys_const_lib
       use net_lib
       use burn_step
-      use network_lib, only: eqburn
-      use light_element_lib, only: deuterium_rate, dburn
 
       use math_lib
       implicit none
@@ -61,16 +59,10 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
       logical :: deep_mix_flag(json)
       integer :: num_species
       double precision :: max_mixed_mass
-      integer :: zone_idx, copy_idx, clear_idx
+      integer :: zone_idx, copy_idx
       integer :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
-      double precision :: deuterium_test
-! region abundances returned by eqburn
-      double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
-           o16_fraction
-      integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx
-      integer :: zone_begin, zone_end
-      double precision :: dt_gyr, dc_dt, do_dt, dx_dt, dy_dt
+      integer :: inner_zone_idx, mixed_zone_idx
       integer :: mix_start, mix_end, shell_idx, species_idx
       double precision :: weight_sum
       double precision :: total_mass_unlogged, dlnp_dr(json)
@@ -125,148 +117,16 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
            num_mixed_zones_no_overshoot, ierr)
       if (ierr /= 0) return
 
-! FIND BURNING RATES (HR1- HR13,HF1,HF2).
-      if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
-         deuterium_test = max(star%xa(i_h2,star%nz), &
-              star%ctrl%accreted_composition(12))
-      else
-         deuterium_test = star%xa(i_h2,star%nz)
-      end if
-      do zone_idx = 1, star%nz
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-         if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-! SETUP NUCLEAR ENERGY TERMS
-         call rates(star%logRho(zone_idx), star%logT(zone_idx), &
-              star%xa(:,zone_idx), rate_by_zone(:, zone_idx))
-! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
-         if (deuterium_test.gt.1.0d-11) then
-            star%deuterium_burning_rate(zone_idx) = deuterium_rate( &
-                 star%logRho(zone_idx), star%logT(zone_idx), star%xa(i_h1,zone_idx), &
-                 zone_idx.ge.star%jcz, star%convective_turnover_timescale)
-            if (iteration_level.eq.1) star%deuterium_burning_rate_start(zone_idx) = &
-                 star%deuterium_burning_rate(zone_idx)
-         else
-            star%deuterium_burning_rate(zone_idx) = 0.0d0
-         end if
-      end do
-! ZERO THE RATES BELOW THE CUTOFF (zone_idx = nz+1 IF NO SHELL WAS COLD).
-      do clear_idx = zone_idx, star%nz
-         rate_by_zone(:, clear_idx) = 0.0d0
-! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
-         star%deuterium_burning_rate(clear_idx) = 0.0d0
-      end do
-!
-!  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
-!  TIMESTEP.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
-!  AND FOR EACH CONVECTION ZONE AS A UNIT.
-!
-! RADIATIVE ZONES.
-!
-      do radiative_region_idx = 1, num_radiative_zones
-         do inner_zone_idx = radiative_zone_bounds(radiative_region_idx,1), &
-              radiative_zone_bounds(radiative_region_idx,2)
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-            zone_begin = inner_zone_idx
-            zone_end = inner_zone_idx
-            call solve_composition(star%logT, zone_begin, zone_end, &
-                 rate_by_zone, star%dm, star%xa, timestep_years, ierr)
-            if (ierr /= 0) return
-         end do
-      end do
-!
-! CONVECTION ZONES.
-! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
-!
-      do mixed_zone_idx = 1, num_mixed_zones
-         zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
-         zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-         call solve_composition(star%logT, zone_begin, zone_end, &
-              rate_by_zone, star%dm, star%xa, timestep_years, ierr)
-         if (ierr /= 0) return
-      end do
-! keep the rates for rotmix/rezone (columns 1..nz; the rows are the
-! same rr_* layout, so each column is copied whole).
-      do zone_idx = 1, star%nz
-         rot_scr%reaction_rate_by_zone(:,zone_idx) = rate_by_zone(:,zone_idx)
-      end do
-!
-! IF ITLVL=1 THEN THE RATES OF HYDROGEN AND HELIUM BURNING ARE
-!   COMPUTED EXPLICITLY ASSUMING EQUILIBRIUM HE3 AND CN.
-!   IF THIS IS THE CASE, CALL OLD ENERGY GENERATION ROUTINE AND
-!   OVERWRITE THE HYDROGEN ABUNDANCES (H BURNING) AND Z,C12,O16
-!   ABUNDANCES (HE BURNING).
-      if (iteration_level.eq.1) then
-!
-!  EXPLICITLY SOLVE FOR THE NEW HYDROGEN AND HELIUM BURNING RATES
-!  AT THE BEGINNING OF THE TIMESTEP, ASSUMING EQUILIBRIUM HE3 AND CN
-!  CYCLE ABUNDANCES.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
-!  AND FOR EACH CONVECTION ZONE AS A UNIT.
-!
-! RADIATIVE ZONES.
-!
-         dt_gyr = timestep_years*1.0d-9
-         do radiative_region_idx = 1, num_radiative_zones
-            do inner_zone_idx = &
-                 radiative_zone_bounds(radiative_region_idx,1), &
-                 radiative_zone_bounds(radiative_region_idx,2)
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-               zone_begin = inner_zone_idx
-               zone_end = inner_zone_idx
-               call eqburn(rate_by_zone, star%xa_start, star%dm, &
-                    star%logT, zone_begin, zone_end, dc_dt, do_dt, &
-                    dx_dt, dy_dt, c12_fraction, o16_fraction, &
-                    hydrogen_fraction, metal_fraction)
-!  USE THE EXPLICIT HYDROGEN BURNING RATE.
-               if (dx_dt.ne.0.0d0) then
-                  star%xa(i_h1,inner_zone_idx) = hydrogen_fraction + &
-                       dx_dt*dt_gyr
-               end if
-!  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
-!  BURNING RATE
-               if (dy_dt.ne.0.0d0) then
-                  star%xa(i_metals,inner_zone_idx) = metal_fraction - &
-                       dy_dt*dt_gyr
-                  star%xa(i_c12,inner_zone_idx) = c12_fraction + &
-                       dc_dt*dt_gyr
-                  star%xa(i_o16,inner_zone_idx) = o16_fraction + &
-                       do_dt*dt_gyr
-               end if
-            end do
-         end do
-!
-! CONVECTION ZONES.
-! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
-!
-         do mixed_zone_idx = 1, num_mixed_zones
-            zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
-            zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call eqburn(rate_by_zone, star%xa_start, star%dm, star%logT, &
-                 zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
-                 c12_fraction, o16_fraction, hydrogen_fraction, &
-                 metal_fraction)
-!  USE THE EXPLICIT HYDROGEN BURNING RATE.
-            if (dx_dt.ne.0.0d0) then
-               hydrogen_fraction = hydrogen_fraction + dx_dt*dt_gyr
-               do zone_idx = zone_begin, zone_end
-                  star%xa(i_h1,zone_idx) = hydrogen_fraction
-               end do
-            end if
-!  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
-!  BURNING RATE
-            if (dy_dt.ne.0.0d0) then
-               metal_fraction = metal_fraction - dy_dt*dt_gyr
-               c12_fraction = c12_fraction + dc_dt*dt_gyr
-               o16_fraction = o16_fraction + do_dt*dt_gyr
-               do zone_idx = zone_begin, zone_end
-                  star%xa(i_metals,zone_idx) = metal_fraction
-                  star%xa(i_c12,zone_idx) = c12_fraction
-                  star%xa(i_o16,zone_idx) = o16_fraction
-               end do
-            end if
-         end do
-      end if
+! THE BURNING RATES OF EVERY SHELL (core/burn_step, 2026-10)
+      call burn_zone_rates(iteration_level, rate_by_zone)
+! IMPLICIT NETWORK BURN, SHELL BY SHELL IN RADIATIVE REGIONS AND AS ONE
+! HOMOGENIZED UNIT PER CONVECTION ZONE
+      call burn_network(radiative_zone_bounds, num_radiative_zones, &
+           num_mixed_zones, rate_by_zone, timestep_years, ierr)
+      if (ierr /= 0) return
+! AT ITERATION LEVEL 1, THE EXPLICIT BURN WITH EQUILIBRIUM HE3 AND CN
+      if (iteration_level.eq.1) call burn_equilibrium(radiative_zone_bounds, &
+           num_radiative_zones, num_mixed_zones, rate_by_zone, timestep_years)
 !
 ! DETERMINE EXTENT OF SEMI-CONVECTION IF APPLICABLE.
 !
@@ -421,35 +281,9 @@ subroutine mix(timestep, iteration_level, timestep_years, core_cz_edge, &
               num_mixed_zones_no_overshoot, ierr)
          if (ierr /= 0) return
       end if
-! MHP 5/02 ADDED DEUTERIUM BURNING
-      if (star%job%use_extended_composition) then
-! RADIATIVE ZONES.
-!
-         dt_gyr = timestep_years*1.0d-9
-         do radiative_region_idx = 1, num_radiative_zones
-            do inner_zone_idx = &
-                 radiative_zone_bounds(radiative_region_idx,1), &
-                 radiative_zone_bounds(radiative_region_idx,2)
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-               zone_begin = inner_zone_idx
-               zone_end = inner_zone_idx
-               call dburn(zone_begin, zone_end, star%nz, star%dm, &
-                    star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                    star%deuterium_burning_rate, star%accreted_mass_fraction)
-            end do
-         end do
-!
-! CONVECTION ZONES.
-! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
-!
-         do mixed_zone_idx = 1, num_mixed_zones
-            zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
-            zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call dburn(zone_begin, zone_end, star%nz, star%dm, &
-                 star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                 star%deuterium_burning_rate, star%accreted_mass_fraction)
-         end do
-      end if
+! DEUTERIUM BURNING OVER THE STEP
+      if (star%job%use_extended_composition) call burn_deuterium( &
+           radiative_zone_bounds, num_radiative_zones, num_mixed_zones, &
+           timestep_years)
       return
 end subroutine mix

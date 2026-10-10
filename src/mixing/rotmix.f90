@@ -28,6 +28,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use run_log_lib, only: solver_diagnostics
       use phys_const_lib
       use math_lib
+      use burn_step, only: solve_composition
       implicit none
 
       double precision, intent(in) :: timestep
