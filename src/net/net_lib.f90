@@ -55,6 +55,18 @@ module net_lib
 ! parameters of rotation_scratch_lib, and num_rate_rows must equal the
 ! leading extent of rot_scr%reaction_rate_by_zone(15,json).
       integer, parameter, public :: num_rate_rows = 15
+! rows of the composition rate vector filled by rates (rate_vec,
+! rate_by_zone(:,k), rot_scr%reaction_rate_by_zone): the rates of the
+! table reactions per Gyr per amu (originally HR1-HR13) and the two
+! branching fractions (HF1, HF2). Rows rr_zero9 and rr_zero13 are
+! zero placeholders (reactions 9 and 13 are never computed). (2026-10:
+! moved here from rotation_scratch_lib -- they are the network's.)
+      integer, parameter, public :: rr_pp = 1, rr_he3_he3 = 2, &
+           rr_he3_he4 = 3, rr_c12_p = 4, rr_c13_p = 5, rr_n14_p = 6, &
+           rr_o16_p = 7, rr_c13_alpha = 8, rr_zero9 = 9, &
+           rr_c12_alpha = 10, rr_n14_alpha = 11, rr_triple_alpha = 12, &
+           rr_zero13 = 13, rr_frac_c12_alpha = 14, &
+           rr_frac_be7_electron = 15
 ! star%cross_section_scale(14:17) (SSTANDARD) carries four more
 ! cross-section factors that are not rate-array slots.
       integer, parameter, public :: &
@@ -2288,10 +2300,6 @@ end subroutine nuclear_reaction_rates
 subroutine rates(log_density, log_temperature, xa, rate_vec)
       use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
            i_n14, i_o16, i_o18
-      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
-           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, rr_zero9, &
-           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_zero13, &
-           rr_frac_c12_alpha, rr_frac_be7_electron
       use phys_const_lib
       implicit none
 

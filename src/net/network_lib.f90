@@ -29,7 +29,7 @@
 ! adding a row to the table; adding a species means adding it to the
 ! species list and to the rows that touch it.
 module network_lib
-      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
+      use net_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
            rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, &
            rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_c12_alpha
       implicit none

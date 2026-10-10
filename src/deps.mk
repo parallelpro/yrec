@@ -257,9 +257,9 @@ mixing/rotmix.o: luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_
 mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 mixing/solve_composition.o: luout_lib.mod net_lib.mod network_lib.mod star_info_lib.mod
 mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-net/net_lib.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-net/network_lib.o: numerics_lib.mod rotation_scratch_lib.mod
-net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod network_lib.mod rotation_scratch_lib.mod scv_eos_lib.mod star_info_lib.mod
+net/net_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
+net/network_lib.o: net_lib.mod numerics_lib.mod
+net/test/test_net.o: burn_lib.mod controls_lib.mod luout_lib.mod net_lib.mod network_lib.mod scv_eos_lib.mod star_info_lib.mod
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
@@ -309,7 +309,7 @@ rotation/viscos.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 setup/locate_shell_boundaries.o: controls_lib.mod star_info_lib.mod
 setup/map_user_inputs.o: controls_lib.mod net_lib.mod star_info_lib.mod
 setup/rescale_model.o: eos_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod net_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 setup/rotation_stability_setup.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 setup/setup_solar_calibration.o: controls_lib.mod star_info_lib.mod
 setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod

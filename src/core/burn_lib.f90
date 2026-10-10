@@ -113,9 +113,6 @@ subroutine eqburn(rate_by_zone, shell_mass, shell_temperature, zone_begin, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16
-      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
-           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c12_alpha, &
-           rr_triple_alpha
       implicit none
 
 ! rate_by_zone(rr_*, zone): the per-zone rate vectors written by

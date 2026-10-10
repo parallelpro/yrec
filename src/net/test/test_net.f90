@@ -21,9 +21,6 @@ program test_net
       use luout_lib
       use star_info_lib, only: star, i_h2
       use net_lib
-      use rotation_scratch_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
-           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, &
-           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_be7_electron
       use scv_eos_lib, only: use_scv_eos
       use burn_lib
       use network_lib, only: write_network_table

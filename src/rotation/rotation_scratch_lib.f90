@@ -28,20 +28,8 @@ module rotation_scratch_lib
 ! against this capacity -- historical value, see the R2 report).
       integer, parameter, public :: band_nmax = 8000
 
-! Row indices of rot_scr%reaction_rate_by_zone(15,json). The rows are
-! the per-zone reaction rates / branching fractions returned by
-! net_lib's rates (originally HR1-HR13, HF1, HF2) as one vector
-! rate_vec(rr_*) (2026 W3; net_lib's num_rate_rows = 15 is the row
-! count). Columns are filled by mixing/mix.f90 and read back by
-! mixing/rotmix.f90 (via solve_composition) and setup/rezone.f90.
-! Rows rr_zero9 and rr_zero13 are zero-filled placeholders (reactions
-! 9 and 13 are never computed by rates).
-      integer, parameter, public :: rr_pp = 1, rr_he3_he3 = 2, &
-           rr_he3_he4 = 3, rr_c12_p = 4, rr_c13_p = 5, rr_n14_p = 6, &
-           rr_o16_p = 7, rr_c13_alpha = 8, rr_zero9 = 9, &
-           rr_c12_alpha = 10, rr_n14_alpha = 11, rr_triple_alpha = 12, &
-           rr_zero13 = 13, rr_frac_c12_alpha = 14, &
-           rr_frac_be7_electron = 15
+! rot_scr%reaction_rate_by_zone(15,json) rows: the rr_* indices of
+! net_lib (2026-10: moved there from here).
 
 ! ---- from state/rotdiff_lib.f90 ----
       type, public :: rotation_diffusion_state
