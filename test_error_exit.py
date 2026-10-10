@@ -103,3 +103,35 @@ def test_bad_opacity_table_exits_nonzero(tmp_path):
     assert any("OPAL95" in b for b in blobs), (
         "expected the table-reader diagnostic in the run output"
     )
+
+
+def test_advective_transport_rejected(tmp_path):
+    """LDIFAD (use_diffusion_advection_transport) has never worked: its
+    equal-grid advective coefficients are never computed. Where it would
+    take effect -- a rotating run with instability transport -- the run
+    must stop with a clean nonzero exit instead of dividing by zero."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    rot = "Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10"
+    for ext in (".nml1", ".nml2"):
+        shutil.copy(CASE_DIR / (rot + ext), tmp_path / (rot + ext))
+    nml2 = tmp_path / (rot + ".nml2")
+    text, n = re.subn(r"LDIFAD\s*=\s*\.FALSE\.", "LDIFAD = .TRUE.",
+                      nml2.read_text())
+    assert n == 1, "expected one LDIFAD = .FALSE. in the rotating deck"
+    nml2.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ)
+    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_START"] = str(REPO / "startmodels")
+    result = subprocess.run(
+        [str(YREC), rot + ".nml1", rot + ".nml2"], cwd=tmp_path,
+        env=env, capture_output=True, text=True, timeout=600,
+    )
+    assert result.returncode == 1, (
+        "LDIFAD in a rotating run must exit 1 "
+        f"(got {result.returncode}); stdout tail: {result.stdout[-300:]}"
+    )
+    assert "use_diffusion_advection_transport" in result.stdout, (
+        "expected the secular_transport diagnostic on the terminal"
+    )

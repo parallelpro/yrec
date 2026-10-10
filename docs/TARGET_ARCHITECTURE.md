@@ -542,7 +542,11 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - It is read at `henyey_iterate.f90:311` by `omega_from_j`, so with rotation on, every zone is treated as radiative in the Ω(j) inversion during Newton iterations.
    - Every assignment in the code goes to a local array of the same name.
    - Not yet known: whether this is inherited or came from the COMMON removal, and how large the effect is.
-4. **`ldifad` cannot work.** Its coefficient arrays in `rot_scr` are never written (`geometric_factor`, `dchi_dr_edge`, `am_2nd_deriv_coeff`, `am_3rd_deriv_coeff`). No shipped input enables it.
+4. **`ldifad` cannot work.**
+   - The advective path in `am_advection_diffusion_coeffs` reads 11 `rot_scr` arrays that nothing writes (`geometric_factor`, `dchi_dr_edge`, `am_2nd/3rd_deriv_coeff`, `eq_velocity_coeff*`, `mixing_geometric_factor`, `equatorial_radius`, ...), so it divides by a zero geometric factor.
+   - It is inherited: in the original F77 only `dadcoeft.f` referenced `/DIFAD4/`, `/EGRIDCHI/`, `FGEOM`, `ECOD5/6` and the `EV*` arrays.
+   - The flag takes effect only in rotating runs with instability transport. 16 legacy decks and 316 inlists set it, but none of them rotate, so for them it is inert.
+   - Fixed (2026-10): `secular_transport` now stops with an error when the flag would take effect.
 5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`eqstat.f90:478` vs `:706`).
 6. **Opacity ramp derivatives are inconsistent** (*reported, not yet checked*). The ramp blends κ linearly but averages the dln κ derivatives without weighting them and drops the dw/dln T term (`kap_lib.f90:312–317`).
 7. **`max_delta_j_by_iter(16)` can overflow** (*reported, not yet checked*). It overflows when `max_diffusion_iters > 16` (`check_angular_momentum.f90:91`).

@@ -122,6 +122,25 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 
       ierr = 0
 
+! 2026-10 audit: the advective transport option (LDIFAD,
+! use_diffusion_advection_transport) has never been functional. The
+! equal-grid coefficients am_advection_diffusion_coeffs reads
+! (eq_velocity_coeff*, geometric_factor, am_2nd/3rd_deriv_coeff,
+! dchi_dr_edge, mixing_geometric_factor, equatorial_radius) are written
+! nowhere, and neither were their F77 originals (EV*, FGEOM, ECOD5/6,
+! /DIFAD4/, /EGRIDCHI/ -- only dadcoeft.f referenced them), so the path
+! divides by a zero geometric factor. The flag is inert unless rotation
+! and instability transport are on, which is why the many non-rotating
+! decks that set it run fine; here, where it would take effect, the run
+! stops instead.
+      if (star%ctrl%use_diffusion_advection_transport) then
+         write(*,'(a)') 'secular_transport: use_diffusion_advection_transport' &
+              //' (LDIFAD) is not functional -- its advective transport' &
+              //' coefficients are never computed. Set it .false.'
+         ierr = 1
+         return
+      end if
+
 ! MHP 9/94
 ! DISK LOCKING CHECKED
       disk_lock_active = .false.

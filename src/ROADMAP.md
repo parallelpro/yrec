@@ -849,3 +849,28 @@ author decisions for R6, and the agents' corrections to the audit
 is audit/readability-sweep-2026-09-03/EXECUTION.md; the seventeen
 agent reports and their briefs are under its reports/. R6 is not
 started.
+
+
+## 13. Architecture audit -- 2026-10-10
+
+Four newcomer tasks (an extra energy term, a new opacity/EOS option, a
+rate update / new isotope, a new angular-momentum transport process)
+were traced end to end; the findings and the proposed target
+organization are docs/TARGET_ARCHITECTURE.md (Appendix B lists the
+bugs). docs/GLOSSARY.md is the naming authority; docs/HOW_YREC_WORKS.md
+now uses current names. Bugs found, all inherited from the F77 code:
+
+- **ldifad dead path -- DONE.** The advective transport option reads
+  equal-grid coefficients nothing computes (nor did F77); it is inert
+  except in rotating runs with instability transport, where
+  secular_transport now stops with ierr = 1 (test_error_exit.py
+  test_advective_transport_rejected). No pinned output changes.
+- **Pulse eps_eps_T / eps_eps_rho wrong by a factor eps** -- open.
+- **star%am_transport_convective_flag never assigned** -- open.
+- **Two d(p,g) rate copies differ by 0.68%** -- open.
+
+Not yet checked (reported by the audit agents): beta14 defined
+differently on the Yale and OPAL/MHD paths; the opacity ramp's
+derivative blending; max_delta_j_by_iter(16) overflow; the envelope
+overshoot distance gated on envelope_overshoot_active in evolve_step
+but on lovstm in evolve_angular_momentum.
