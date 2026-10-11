@@ -35,6 +35,7 @@ subroutine run_yrec(ierr)
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
       use convection_lib, only: set_convection_settings
+      use controls_reader, only: read_controls
       use microphysics_settings, only: convection_settings_from_star
       implicit none
       integer :: step_status
