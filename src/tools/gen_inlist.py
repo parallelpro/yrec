@@ -70,7 +70,10 @@ def main():
         rows.append(dict(group=parts[0], legacy=parts[1], typ=parts[2],
                          default=parts[3], new=parts[4], status=parts[5],
                          mesa=parts[6], doc=parts[7] if len(parts) > 7 else ""))
-    parmin = (SRC / "io" / "read_controls.f90").read_text()
+    # the controls reader: its declarations and its post-read copies
+    parmin = "".join((SRC / "io" / f).read_text() for f in (
+        "read_controls.f90", "legacy_controls.f90", "run_files.f90",
+        "derived_controls.f90", "run_cards.f90"))
     decls = joined_decl_lines(parmin)
     for extra in ("io/controls_buffer.f90", "state/physical_constants.f90",
                   "state/integration_parameters.f90",

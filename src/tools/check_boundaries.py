@@ -38,6 +38,10 @@ DOMAINS = ["eos", "kap", "atm", "net", "convection",
 # regression, not an allowlist entry.
 CONTROLS_BUFFER_IMPORTERS = {
     "io/read_controls.f90",
+    "io/legacy_controls.f90",
+    "io/run_files.f90",
+    "io/derived_controls.f90",
+    "io/run_cards.f90",
     "state/controls_sync.f90",
     "setup/map_user_inputs.f90",
     "net/test/test_net.f90",
@@ -278,6 +282,10 @@ def main():
             continue
         code_lines = strip_comments(path.read_text()).splitlines()
         for i, line in enumerate(code_lines):
+# legacy_controls re-exports the buffer (its namelists bind to it)
+            if re.match(r"(?i)^\s*use\s+legacy_controls\b", line):
+                buffer_violations.append(rel)
+                break
             if line.strip().lower().startswith("use controls_buffer"):
                 stmt = line
                 while stmt.rstrip().endswith("&") and i + 1 < len(code_lines):
