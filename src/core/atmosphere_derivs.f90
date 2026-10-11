@@ -27,8 +27,10 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       use math_lib
       implicit none
 
-      double precision, intent(inout) :: log10_optical_depth
-      double precision, intent(inout) :: y(3), dydx(3)
+! one equation: log P in log tau
+      double precision, intent(in) :: log10_optical_depth
+      double precision, intent(in) :: y(1)
+      double precision, intent(out) :: dydx(1)
       double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives, &

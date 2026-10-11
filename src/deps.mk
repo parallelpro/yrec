@@ -277,10 +277,10 @@ net/nuclear_energy.o: composition_layout.mod math_lib.mod network.mod neutrino_f
 net/reaction_rates.o: composition_layout.mod math_lib.mod physical_constants.mod
 net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod net_lib.mod network.mod reaction_rates.mod star_info_lib.mod thermal_neutrinos.mod
 net/thermal_neutrinos.o: math_lib.mod
-numerics/bulirsch_stoer.o: integration_parameters.mod math_lib.mod
+numerics/bulirsch_stoer.o: math_lib.mod
 numerics/cubic_spline.o: io_units.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod quadratic_spline.mod table_interpolation.mod
-numerics/test/test_numerics.o: integration_parameters.mod io_units.mod numerics_lib.mod star_info_lib.mod
+numerics/test/test_numerics.o: io_units.mod numerics_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod

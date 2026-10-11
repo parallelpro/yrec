@@ -17,6 +17,7 @@
 ! consequences (pphot, the Allard gray-atmosphere fallback switching
 ! atm_choice/use_ttau_relation) return as outputs the driver applies.
 module envelope_integration_kernel
+      use numerics_lib, only: ode_system
       implicit none
 
       type, public :: envint_config
@@ -34,7 +35,47 @@ module envelope_integration_kernel
 ! envelope integration entirely when senv is above it.
       double precision, parameter, public :: senv_thin_envelope = -1.0d-12
 
+! The atmosphere (atmosphere_derivs: log P in log tau) or the envelope
+! (envelope_derivs: log M, log T, log R in log P) as bsstep's
+! ode_system: the values the integrands read, and the three they
+! update (log10_radius, log10_teff, saha_state).
+      type, extends(ode_system) :: envelope_equations
+            logical :: atmosphere = .true.
+            double precision :: luminosity_linear = 0.0d0, &
+                 pressure_rotation_factor = 0.0d0, &
+                 temperature_rotation_factor = 0.0d0, log10_gravity = 0.0d0
+            logical :: in_atmosphere = .false., want_derivatives = .false., &
+                 conductive_opacity_flag = .false.
+            double precision :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
+                 hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
+            integer :: saha_state = 0
+      contains
+            procedure :: derivatives => equation_derivatives
+      end type envelope_equations
+
 contains
+
+! The integrand of the atmosphere or the envelope at (x, y).
+subroutine equation_derivatives(self, x, y, dydx, ierr)
+      class(envelope_equations), intent(inout) :: self
+      double precision, intent(in) :: x, y(:)
+      double precision, intent(out) :: dydx(:)
+      integer, intent(out) :: ierr
+      external atmosphere_derivs, envelope_derivs
+      if (self%atmosphere) then
+         call atmosphere_derivs(x, y, dydx, self%luminosity_linear, &
+              self%pressure_rotation_factor, self%temperature_rotation_factor, &
+              self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
+              self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
+              self%hydrogen_fraction, self%metal_fraction, self%saha_state, ierr)
+      else
+         call envelope_derivs(x, y, dydx, self%luminosity_linear, &
+              self%pressure_rotation_factor, self%temperature_rotation_factor, &
+              self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
+              self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
+              self%hydrogen_fraction, self%metal_fraction, self%saha_state, ierr)
+      end if
+end subroutine equation_derivatives
 
 subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      log10_photo_pressure, &
@@ -60,23 +101,10 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use run_log, only: solver_diagnostics
       implicit none
 
-! luminosity_linear/pressure_rotation_factor/temperature_rotation_factor/
-! log10_gravity/hydrogen_fraction/metal_fraction are
-! intent(inout), not intent(in): they're relayed unchanged through
-! this file's own calls to bsstep (numerics_lib) down to mmid and then
-! to the deriv callback (qatm/qenv/etc, whose actual identity varies
-! per call site) -- both bsstep and mmid declare their corresponding
-! dummy arguments intent(inout), since the callback may modify them.
-! Declaring them intent(in) here was a pre-existing bug (silently
-! tolerated under the old implicit-interface calling convention,
-! surfaced once bsstep moved into numerics_lib and gained an explicit
-! interface -- see docs/GUIDELINES.md); every call site already passes real
-! variables for these positions, so widening the intent here changes
-! nothing about how any of them are called.
       type(envint_config), intent(inout) :: cfg
       logical, intent(out) :: switched_to_gray
       double precision, intent(out) :: log10_photo_pressure
-      double precision, intent(inout) :: luminosity_linear, &
+      double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
@@ -90,7 +118,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius
       double precision, intent(inout) :: log10_teff
-      double precision, intent(inout) :: hydrogen_fraction, metal_fraction
+      double precision, intent(in) :: hydrogen_fraction, metal_fraction
       double precision, intent(inout) :: stored_envelope_state(4)
       integer, intent(inout) :: stored_vertex_index
       integer, intent(inout) :: saha_state
@@ -128,6 +156,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       type(eos_result) :: eos_res
       double precision :: kap_res(num_kap_results)
       double precision :: indep_var
+! the equations bsstep integrates (load_equations/unload_equations)
+      type(envelope_equations) :: equations
       double precision :: chi_rho, chi_t, specific_heat_cv, gamma1
       double precision :: prev_tau, prev_opacity, &
            prev_density, delta_tau_step, &
@@ -361,12 +391,10 @@ subroutine integrate_atmosphere
 ! INTEGRATE THE ATMOSPHERE FROM TAU TO TAU + H
 ! H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 ! PREDICTED NEXT STEP.
-       call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-            h_next,atmosphere_derivs, luminosity_linear,pressure_rotation_factor, &
-            temperature_rotation_factor,log10_gravity,in_atmosphere, &
-            want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction, &
-            saha_state,step_err,ierr=jerr)
+       call load_equations(.true.)
+       call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
+            h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
+       call unload_equations()
 ! 2026 numerics-gate opt-in: a bsstep failure (the historical
 ! "solution diverged" stop, its diagnostic already printed by the
 ! gate) becomes the graceful numerics-termination code when the
@@ -592,11 +620,10 @@ subroutine integrate_envelope
 !  INTEGRATE THE EQUATIONS FROM X0 TO X0 + H
 !  H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 !  PREDICTED NEXT STEP.
-       call bsstep(y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did,h_next,envelope_derivs, &
-              luminosity_linear,pressure_rotation_factor,temperature_rotation_factor, &
-              log10_gravity,in_atmosphere,want_derivatives,conductive_opacity_flag, &
-              log10_radius,log10_teff,hydrogen_fraction,metal_fraction, &
-              saha_state,step_err,ierr=jerr)
+       call load_equations(.false.)
+       call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
+              h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
+       call unload_equations()
 ! 2026 numerics-gate opt-in: same contract as the atmosphere-side
 ! bsstep call above.
        if (jerr /= 0) then
@@ -736,6 +763,32 @@ subroutine integrate_envelope
 
 end subroutine integrate_envelope
 
+
+
+! bsstep's equations from the integration's current values, and back the
+! three the integrands update (nothing else reads them during a step)
+subroutine load_equations(atmosphere)
+      logical, intent(in) :: atmosphere
+      equations%atmosphere = atmosphere
+      equations%luminosity_linear = luminosity_linear
+      equations%pressure_rotation_factor = pressure_rotation_factor
+      equations%temperature_rotation_factor = temperature_rotation_factor
+      equations%log10_gravity = log10_gravity
+      equations%in_atmosphere = in_atmosphere
+      equations%want_derivatives = want_derivatives
+      equations%conductive_opacity_flag = conductive_opacity_flag
+      equations%log10_radius = log10_radius
+      equations%log10_teff = log10_teff
+      equations%hydrogen_fraction = hydrogen_fraction
+      equations%metal_fraction = metal_fraction
+      equations%saha_state = saha_state
+end subroutine load_equations
+
+subroutine unload_equations()
+      log10_radius = equations%log10_radius
+      log10_teff = equations%log10_teff
+      saha_state = equations%saha_state
+end subroutine unload_equations
 
 end subroutine integrate_envelope_atmosphere
 

@@ -9,7 +9,7 @@
 !   table_interpolation  inter3, interp, intrp2, lagrange4, quint,
 !                        polint, lir, findex, locate
 !   linear_solvers       ludcmp, lubksb, simeqc, solve_tridiagonal
-!   bulirsch_stoer       bsstep
+!   bulirsch_stoer       bsstep, for an ode_system
 ! None of them reads the star or keeps state between calls. They report
 ! failure through ierr; numerics_termination is the status a driver
 ! gives a failed envelope integration (the historical "solution
@@ -21,13 +21,13 @@ module numerics_lib
       use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
            polint, lir, findex, locate
       use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal
-      use bulirsch_stoer, only: bsstep
+      use bulirsch_stoer, only: ode_system, bsstep
       implicit none
       private
       public :: cspline, natural_spline, splint, ysplin, intpol
       public :: osplin
       public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
-      public :: bsstep
+      public :: ode_system, bsstep
       integer, parameter, public :: numerics_termination = -2
 end module numerics_lib

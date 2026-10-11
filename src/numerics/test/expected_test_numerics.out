@@ -223,4 +223,7 @@ large step, h_try 4.00 ierr  0
 bsstep, integrand failure: ierr  3
  ERROR IN BSSTEP
 bsstep, step underflow: ierr  1 deriv calls   20221
+ ERROR IN BSSTEP
+bsstep, one equation, NaN: ierr  1
+bsstep, NaN in component 3 of 3: ierr  0 y(1:2), y(3) is NaN   4.719827050515231E-07   9.999999970700355E-01 T
 test_numerics: done

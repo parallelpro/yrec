@@ -39,7 +39,8 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       implicit none
 
       double precision, intent(in) :: log10_pressure_indep
-      double precision, intent(inout) :: y(3), dydx(3)
+      double precision, intent(in) :: y(3)
+      double precision, intent(out) :: dydx(3)
       double precision, intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives, &

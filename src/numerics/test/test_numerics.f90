@@ -14,46 +14,50 @@
 !                     lir (cubic, linear, on a node, extrapolated)
 !   search            findex, locate
 !   linear algebra    ludcmp/lubksb, simeqc, solve_tridiagonal
-!   ODE               bsstep (with mmid and ratext), its integrand
-!                     failure and its step underflow
+!   ODE               bsstep (with mmid and ratext) on a harmonic
+!                     ode_system, its integrand failure and its step
+!                     underflow
 module test_numerics_callbacks
+      use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+      use numerics_lib, only: ode_system
       implicit none
+
+! dy1/dx = y2, dy2/dx = -y1, dy3/dx = -decay*y3: a rotation and a decay.
+! Counts its calls; fails past x = 0.75 when fail is set; returns a NaN
+! derivative for component nan_component (0: none).
+      type, extends(ode_system) :: harmonic_system
+         double precision :: decay = 0.3d0
+         integer :: calls = 0
+         logical :: fail = .false.
+         integer :: nan_component = 0
+      contains
+         procedure :: derivatives => harmonic_derivatives
+      end type harmonic_system
+
 contains
 
-! dy1/dx = y2, dy2/dx = -y1, dy3/dx = -L y3: a rotation and a decay.
-! Counts its calls in saha_state; fails past x = fail_x when
-! conductive_opacity_flag is set.
-subroutine harmonic_deriv(x, y, dydx, luminosity_linear, &
-     pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, &
-     log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, ierr)
-      double precision, intent(inout) :: x, y(3), dydx(3)
-      double precision, intent(inout) :: luminosity_linear, &
-           pressure_rotation_factor, temperature_rotation_factor, log10_gravity
-      logical, intent(inout) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag
-      double precision, intent(inout) :: log10_radius, log10_teff, &
-           hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: saha_state
+subroutine harmonic_derivatives(self, x, y, dydx, ierr)
+      class(harmonic_system), intent(inout) :: self
+      double precision, intent(in) :: x, y(:)
+      double precision, intent(out) :: dydx(:)
       integer, intent(out) :: ierr
       double precision, parameter :: fail_x = 0.75d0
       ierr = 0
-      saha_state = saha_state + 1
-      if (conductive_opacity_flag .and. x > fail_x) then
+      self%calls = self%calls + 1
+      if (self%fail .and. x > fail_x) then
          ierr = 3
          return
       end if
       dydx(1) = y(2)
       dydx(2) = -y(1)
-      dydx(3) = -luminosity_linear*y(3)
-end subroutine harmonic_deriv
+      dydx(3) = -self%decay*y(3)
+      if (self%nan_component > 0) dydx(self%nan_component) = ieee_value(1.0d0, ieee_quiet_nan)
+end subroutine harmonic_derivatives
 
 end module test_numerics_callbacks
 
 program test_numerics
       use numerics_lib
-      use integration_parameters, only: max_stage_index, extrap_order
       use io_units, only: run_log_unit, terminal_unit
       use star_info_lib, only: json
       use test_numerics_callbacks
@@ -345,37 +349,22 @@ end subroutine tridiagonal_check
 ! bsstep: four accepted steps of the harmonic system from x = 0; large
 ! trial steps accepted at the sixth stage (h grows), the seventh (h
 ! shrinks) and after a retry; then an integrand failure and a step
-! that underflows
+! that underflows (against 0.7, as the envelope's hydrogen fraction)
 subroutine bsstep_check()
+      double precision, parameter :: underflow_reference = 0.7d0
+      type(harmonic_system) :: sys
       double precision :: y(3), dydx(3), yscale(3), err(3), x, h, h_did, h_next
-      double precision :: lum, fp, ft, gl, rl, teffl, xh, z
-      logical :: latmo, lderiv, locond
-      integer :: ksaha, step
+      integer :: step
       write(*,'(a)') "# bsstep (mmid, ratext)"
-      max_stage_index = 11
-      extrap_order = 7
-      lum = 0.3d0
-      fp = 1.0d0
-      ft = 1.0d0
-      gl = 4.4d0
-      rl = 10.0d0
-      teffl = 3.76d0
-      xh = 0.7d0
-      z = 0.02d0
-      latmo = .false.
-      lderiv = .false.
-      locond = .false.
-      ksaha = 0
       y = [0.0d0, 1.0d0, 1.0d0]
       x = 0.0d0
       h = 0.5d0
       yscale = 1.0d0
       do step = 1, 4
-         call harmonic_deriv(x, y, dydx, lum, fp, ft, gl, latmo, lderiv, locond, &
-              rl, teffl, xh, z, ksaha, ierr)
-         call bsstep(y, dydx, 3, x, h, 1.0d-10, yscale, h_did, h_next, harmonic_deriv, &
-              lum, fp, ft, gl, latmo, lderiv, locond, rl, teffl, xh, z, ksaha, err, ierr)
-         write(*,'(a,i2,a,i3,a,i6)') "step", step, " ierr", ierr, " deriv calls", ksaha
+         call sys%derivatives(x, y, dydx, ierr)
+         call bsstep(sys, y, dydx, 3, x, h, 1.0d-10, yscale, h_did, h_next, err, &
+              11, 7, underflow_reference, ierr)
+         write(*,'(a,i2,a,i3,a,i6)') "step", step, " ierr", ierr, " deriv calls", sys%calls
          call show("  y, x, h_did, h_next", [y, x, h_did, h_next])
          call show("  step_err", err)
          h = h_next
@@ -383,21 +372,37 @@ subroutine bsstep_check()
       pts(1:6) = [1.0d0, 1.5d0, 2.0d0, 2.5d0, 3.0d0, 4.0d0]
       do step = 1, 6
          h = pts(step)
-         call bsstep(y, dydx, 3, x, h, 1.0d-13, yscale, h_did, h_next, harmonic_deriv, &
-              lum, fp, ft, gl, latmo, lderiv, locond, rl, teffl, xh, z, ksaha, err, ierr)
+         call bsstep(sys, y, dydx, 3, x, h, 1.0d-13, yscale, h_did, h_next, err, &
+              11, 7, underflow_reference, ierr)
          write(*,'(a,f5.2,a,i3)') "large step, h_try", h, " ierr", ierr
          call show("  y, x, h_did, h_next", [y, x, h_did, h_next])
       end do
-      locond = .true.
-      call bsstep(y, dydx, 3, x, h, 1.0d-10, yscale, h_did, h_next, harmonic_deriv, &
-           lum, fp, ft, gl, latmo, lderiv, locond, rl, teffl, xh, z, ksaha, err, ierr)
+      sys%fail = .true.
+      call bsstep(sys, y, dydx, 3, x, h, 1.0d-10, yscale, h_did, h_next, err, &
+           11, 7, underflow_reference, ierr)
       write(*,'(a,i3)') "bsstep, integrand failure: ierr", ierr
-      locond = .false.
+      sys%fail = .false.
 ! zero tolerance: no step is accepted, so h shrinks until it vanishes
-! against the hydrogen fraction (the inherited underflow test)
-      call bsstep(y, dydx, 3, x, 0.5d0, 0.0d0, yscale, h_did, h_next, harmonic_deriv, &
-           lum, fp, ft, gl, latmo, lderiv, locond, rl, teffl, xh, z, ksaha, err, ierr)
-      write(*,'(a,i3,a,i8)') "bsstep, step underflow: ierr", ierr, " deriv calls", ksaha
+! against the underflow reference
+      call bsstep(sys, y, dydx, 3, x, 0.5d0, 0.0d0, yscale, h_did, h_next, err, &
+           11, 7, underflow_reference, ierr)
+      write(*,'(a,i3,a,i8)') "bsstep, step underflow: ierr", ierr, " deriv calls", sys%calls
+! NaN errors: with every component NaN (one equation) no stage is
+! accepted and the step ends on underflow; a NaN in one of three
+! components is passed over
+      sys%nan_component = 1
+      y = [0.0d0, 1.0d0, 1.0d0]
+      x = 0.0d0
+      call bsstep(sys, y, dydx, 1, x, 0.5d0, 1.0d-10, yscale, h_did, h_next, err, &
+           11, 7, underflow_reference, ierr)
+      write(*,'(a,i3)') "bsstep, one equation, NaN: ierr", ierr
+      sys%nan_component = 3
+      y = [0.0d0, 1.0d0, 1.0d0]
+      x = 0.0d0
+      call bsstep(sys, y, dydx, 3, x, 0.5d0, 1.0d-10, yscale, h_did, h_next, err, &
+           11, 7, underflow_reference, ierr)
+      write(*,'(a,i3,a,2(1pe24.15),l2)') "bsstep, NaN in component 3 of 3: ierr", ierr, &
+           " y(1:2), y(3) is NaN", y(1:2), y(3) /= y(3)
 end subroutine bsstep_check
 
 end program test_numerics
