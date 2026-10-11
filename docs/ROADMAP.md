@@ -1496,3 +1496,54 @@ Debye-Hueckel decks, and the full battery).
     not mix. To be addressed in the rotation series.
   - Semiconvection has no standalone test (it needs the opacity
     tables); cm_semiconvection pins it.
+
+### io/ revamp: the controls reader, the model files, the pulsation writers (yrec-next, 2026-10-11)
+
+io/ held a 2,477-line controls reader (one routine, parmin's descendant)
+and eight external procedures called through implicit interfaces. All
+bitwise identical: test_controls compares every deck's star%ctrl and
+star%job, and the quick check, test_reentry, test_inlist_convert,
+test_mesa_output and the full battery compare the runs.
+- **DONE: test_controls** (89b04418): reads all 313 decks in examples/
+  and testsuite/ through read_controls and dumps every element of
+  star%ctrl and star%job (generated dump code) against
+  io/test/expected_controls/.
+- **DONE: the generators run and are checked** (2b32c077, 384b3d73):
+  gen_inlist had broken on a moved file; all five generators take
+  --check, and test_generated_files runs them. sstandard is documented
+  as a legacy-only control in the registry instead of by hand.
+- **DONE: the reader split by job** (fe347c28, b10d37ff): controls_reader
+  (read_controls, read_input), legacy_controls (the namelist variables),
+  run_files, derived_controls and run_cards. The settling grid mapping
+  moved to rotation/microdiff (4ce14a01).
+- **DONE: the defaults in one routine** (a56aab9f): every legacy variable
+  was zeroed and then defaulted on each read; set_legacy_defaults now
+  assigns each once. The three binary-model units, never read, are gone.
+- **DONE: derivations on the canonical names** (9364934f): the derived
+  controls were computed on the legacy names after they had been copied,
+  then copied again in three re-sync blocks (21 controls). They now work
+  on the canonical names, and read_input reads as its sequence of steps.
+- **DONE: model_files and pulsation_output modules** (f7d50b4c): the .mod
+  writer and reader, the YREC7 and MODEL2 readers (26 arguments each),
+  and the FGONG, GSM and two GYRE writers now have explicit interfaces.
+- **DONE: controls.defaults documents the real defaults** (c3f40675): 188
+  documented defaults were wrong (mostly "0.0 (implicit)"); gen_inlist
+  now takes them from the code, and 69 registry descriptions that were
+  migration notes describe their controls.
+- **DONE: io/README.md and comments** (7ebca0e3, 064ca119): the COMMON-block
+  history in controls_buffer and legacy_controls (about 900 lines) gave
+  way to short headings.
+- **Open:**
+  - A control's default still lives in set_legacy_defaults when it has
+    a legacy spelling, else in controls_buffer, and the registry's
+    default column is now only a fallback that can drift. Generating
+    set_legacy_defaults and adopt_canonical_names from the registry
+    would leave one place per default; it needs a decision on the
+    registry's format.
+  - read_yrec7 and read_model2 return 26 header values, most of which the
+    caller discards; a header record would shorten both.
+  - monte_carlo_file1_path and monte_carlo_file2_path are NUL-filled when
+    a deck leaves them unset (pinned by test_controls).
+  - Ten decks stop inside read_controls by design or by setup: six class
+    exercises name a relative startmodels/ directory, and four testsuite
+    decks start from another run's output. test_controls records that.

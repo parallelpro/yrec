@@ -529,7 +529,9 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `tridiag_gs`, `ctridi` | `numerics/linear_solvers.f90` (`solve_tridiagonal`) |
 | `kspline`, `splinc`; `ksplint`, `splintd2` | `numerics/cubic_spline.f90` (`natural_spline`; `splint`) |
 | `bsstep`, `mmid`, `ratext` | `numerics/bulirsch_stoer.f90` (`bsstep` integrates an `ode_system`) |
-| `parmin` | `io/read_controls.f90` |
+| `parmin` | `io/read_controls.f90` (`read_controls`), with its steps in `io/legacy_controls.f90`, `run_files.f90`, `derived_controls.f90` and `run_cards.f90` |
+| `getyrec7`, `getmodel2`, `wrtlst` | `io/model_files.f90` (`read_yrec7`, `read_model2`; the `.mod` format's `write_mod_model` and `read_mod_model` replaced `wrtlst`) |
+| `wrthead` | `io/yrec_output.f90` (`output_run_header`) |
 | `wrtout` | retired; replaced by `io/yrec_output.f90` |
 
 ## Appendix B: issues found in the October 2026 audit
