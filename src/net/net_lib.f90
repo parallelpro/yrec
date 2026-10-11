@@ -28,13 +28,12 @@ module net_lib
 ! settings record; the slots of the cross-section scales the run may
 ! set (r_pp ... r_po16 for the S-factor reactions, xs_* for the
 ! neutrino-producing branches, iq_be7p for the Be7(p,g) Q-value)
-      use reaction_rates, only: num_rate_rows, compute_network_rates, &
-           net_settings_t, set_net_settings, &
+      use reaction_rates, only: num_rate_rows, net_settings_t, set_net_settings, &
            r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
 ! the implicit burn (with the network species a caller maps its
 ! abundances onto) and the equilibrium burn
-      use network, only: burn_implicitly, n_solved, n_network, &
+      use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4, &
            compute_equilibrium_burn_rates
 ! the energy generation

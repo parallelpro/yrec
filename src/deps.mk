@@ -278,7 +278,7 @@ mixing/semiconvection.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physi
 mixing/temperature_gradients.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
 net/light_elements.o: composition_layout.mod math_lib.mod physical_constants.mod reaction_rates.mod
 net/net_lib.o: light_elements.mod network.mod nuclear_energy.mod reaction_rates.mod
-net/network.o: composition_layout.mod numerics_lib.mod reaction_rates.mod
+net/network.o: composition_layout.mod numerics_lib.mod physical_constants.mod reaction_rates.mod
 net/nuclear_energy.o: composition_layout.mod math_lib.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_rates.mod thermal_neutrinos.mod
 net/reaction_rates.o: composition_layout.mod math_lib.mod physical_constants.mod
 net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod net_lib.mod network.mod reaction_rates.mod scv_eos_tables.mod star_info_lib.mod thermal_neutrinos.mod

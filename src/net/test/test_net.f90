@@ -41,10 +41,10 @@ program test_net
            burn_deuterium_region, surface_accretion, compute_li_be_rates
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
-           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, compute_reaction_rates, &
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, &
            nuclear_rates, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
            rv_frac_be7_ecap, net_settings
-      use network, only: s_c12, s_o16, write_network_table
+      use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates
       use thermal_neutrinos, only: sneut, azbar
       use scv_eos_tables, only: use_scv_eos
       use burn_step, only: configure_network

@@ -18,14 +18,15 @@
 module nuclear_energy
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use neutrino_flux_layout, only: n_nu_fluxes
-      use reaction_rates, only: nuclear_rates, compute_reaction_rates, &
+      use reaction_rates, only: nuclear_rates, &
            net_settings, screening_mass_fractions, &
            deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu, &
            num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
            r_po16, r_ac13, r_ao16_unused, r_ac12, r_an14, r_3alpha, &
            r_c12c12_unused, xs_pep
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
-      use network, only: compute_reaction_energies, n_chains, n_network, &
+      use network, only: compute_reaction_rates, reaction_counts, &
+           compute_reaction_energies, n_chains, n_network, &
            network_species_slot, chain_pp1, chain_pp2, chain_pp3, chain_cno, chain_alpha_capture, &
            chain_triple_alpha
       implicit none
@@ -94,7 +95,7 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       call energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       call compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
            deuterium_energy, deuterium_dlneps_dlnt)
-      reactions_per_gram = rates_times_reactants(rate, xa)
+      reactions_per_gram = reaction_counts(rate, network_mass_fractions(xa))
       call compute_reaction_energies(rate, network_mass_fractions(xa), &
            nr%frac_n15_pa, nr%frac_be7_ecap, energy_by_slot, energy_by_chain)
       e%eps_he3_he3 = energy_by_slot(r_he3he3)
@@ -164,28 +165,6 @@ pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timesc
       energy = rate*xa(i_h1)*xa(i_h2)*q_deuterium_mev*erg_per_mev
 end subroutine compute_deuterium_burning
 
-!----------------------------------------------------------------------
-! Each slot's rate times its reactants' mass fractions (reactions per
-! gram per second, the EG(I) of engeb); slots 9 and 13 stay zero.
-pure function rates_times_reactants(rate, xa) result(eg)
-      use composition_layout, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, &
-           i_o16
-      real(dp), intent(in) :: rate(num_reactions), xa(:)
-      real(dp) :: eg(num_reactions)
-
-      eg = 0.0d0
-      eg(r_pp) = rate(r_pp)*xa(i_h1)*xa(i_h1)
-      eg(r_he3he3) = rate(r_he3he3)*xa(i_he3)*xa(i_he3)
-      eg(r_he3he4) = rate(r_he3he4)*xa(i_he3)*xa(i_he4)
-      eg(r_pc12) = rate(r_pc12)*xa(i_h1)*xa(i_c12)
-      eg(r_pc13) = rate(r_pc13)*xa(i_h1)*xa(i_c13)
-      eg(r_pn14) = rate(r_pn14)*xa(i_h1)*xa(i_n14)
-      eg(r_po16) = rate(r_po16)*xa(i_h1)*xa(i_o16)
-      eg(r_ac13) = rate(r_ac13)*xa(i_he4)*xa(i_c13)
-      eg(r_ac12) = rate(r_ac12)*xa(i_he4)*xa(i_c12)
-      eg(r_an14) = rate(r_an14)*xa(i_he4)*xa(i_n14)
-      eg(r_3alpha) = rate(r_3alpha)*xa(i_he4)**3
-end function rates_times_reactants
 
 !----------------------------------------------------------------------
 ! The network species' mass fractions (network's s_* order) from a
