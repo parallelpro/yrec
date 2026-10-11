@@ -1184,9 +1184,23 @@ All bitwise identical (test_net pins, gate1, config matrix, full run).
   Z, C12, O16 in helium burning) with an explicit equilibrium-He3/CN
   estimate; both passes now burn the same way and the second copy of
   the burning equations is gone. The hydrogen-shell timestep limiter
-  reads dX/dt from the table (compute_abundance_rates). Drift: solar
-  track |dlog L| 1e-6, |dX_c| 2e-6; config matrix byte-identical.
+  reads dX/dt from the table (compute_abundance_rates).
   logT_cutoffs(2) and (3) are now read and unused.
+  Drift, full pin set: pre-MS, ZAMS and config-matrix cases
+  byte-identical; the 16 solar-age cases move, most by 1e-6 to 2e-5 in
+  log L at the solar age, but up to |dlog L| 3.8e-3 on the early main
+  sequence (Test_solarGS98_dif) and |dX_c| 1.1e-3 at the solar age
+  (Test_solar_GS_norot_gray). Root cause: time discretization. The
+  composition step runs once per Newton level, on a structure the
+  predictor influenced, so the result carries an operator-splitting
+  error of the timestep. With Test_solarGS98_dif at a 4x finer timestep
+  the two predictors agree to 8.5e-5 in log L (2.5e-7 at the solar age),
+  while both standard-timestep runs sit 3.6-3.7e-3 from that solution,
+  equally far: the predictor moves the answer inside the standard
+  timestep's own error. (A 2% change in the convergence tolerance moves
+  it by 1e-6, so this is not solver noise.) Reseeded: the 16 legacy logs
+  and the two MESA baselines (same file sets); backup in the session's
+  backup_pre_series4.
 - **DONE, measured: N14(a,g) deposits 5.646 MeV** (664c2fbc; was 5.815,
   which implied the mean positron energy as the neutrino loss). No
   pinned case reaches helium burning; a horizontal-branch run moves by
