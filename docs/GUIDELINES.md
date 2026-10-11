@@ -182,7 +182,7 @@ which replaces them).
    domain uses only that module; it re-exports what the rest of the code
    may see, so reading it shows the domain's whole interface.
    `tools/check_boundaries.py` enforces this for the domains listed in
-   `FACADE_ONLY_DOMAINS`.
+   `FACADE_ONLY_DOMAINS` (net and kap so far).
 3. **Every other module has no suffix and is named as a noun for what it
    holds**: `network`, `nuclear_energy`, `light_elements`,
    `convection_geometry`, `composition_step`.
@@ -216,8 +216,8 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
-   `STAR_FREE_DIRS` (`net/` so far); add a domain there once it is
-   clean.
+   `STAR_FREE_DIRS` (`net/` and `kap/` so far); add a domain there once
+   it is clean.
 2. **Nothing returns results through `star`.** A routine returns what
    it computes in its arguments or a result record; the caller decides
    what to store. (The old `compute_zone_energy` handed the neutrino loss

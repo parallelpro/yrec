@@ -1206,3 +1206,29 @@ All bitwise identical (test_net pins, gate1, config matrix, full run).
   pinned case reaches helium burning; a horizontal-branch run moves by
   |dlog L| <= 4.2e-8 (its seed has already burned its N14).
 
+
+### Phase 3: kap/ (yrec-next, 2026-10-11)
+
+All bitwise identical (test_kap, gate1, test_net, config matrix).
+- **DONE: kap is reached only through kap_lib** (ce886f00): the outside
+  uses of opacity_tables were dead, as was the llaol switch.
+- **DONE: test_kap pins every family** (a19e49a0): the production
+  combination, OPAL92 and LAOL89 with two Z tables, Kurucz 1990 and
+  Alexander 1994/95 (no deck uses the legacy families).
+- **DONE: kap reads no star** (6e979f91): kap_settings_t, filled by the
+  star layer's opacity_settings (setup/microphysics_settings.f90) and
+  installed by kap_init; the readers open their files with newunit;
+  the conductive table is read at kap_init from
+  star%job%conductive_table_path (read_controls no longer opens it);
+  the surface-mixture slots move to composition_layout.
+- **DONE: one module per family** (fe63ec5c): 35 files, 32 of them bare
+  routines, become 9 modules; routines named as verbs (legacy names in
+  TARGET_ARCHITECTURE appendix A); the Kurucz lookup's alternate return
+  becomes a logical in_table.
+- **DONE: hygiene and comments** (f7107efd, f3b505c6): real(dp), private
+  by default, explicit imports, one comparison style, comments in
+  current terms; kap/README.md.
+- **Open:** the readers still branch on end= labels; util's xrng4 is a
+  bare routine kap calls without an interface; the unit-number controls
+  (opal95_table_unit, icondopacp, ...) are still set by read_controls
+  but read by nothing.
