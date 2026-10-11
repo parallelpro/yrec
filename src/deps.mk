@@ -258,6 +258,7 @@ io/read_mod_model.o: io_units.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
 io/read_yrec7.o: io_units.mod math_lib.mod star_info_lib.mod
 io/run_log.o: io_units.mod star_info_lib.mod
+io/test/test_controls.o: integration_parameters.mod io_units.mod star_info_lib.mod
 io/write_fgong_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 io/write_gsm_pulse.o: io_units.mod stitched_model.mod
 io/write_gyre_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod
@@ -357,4 +358,5 @@ util/version.o: physical_constants.mod
 # real prerequisites: include files
 io/output_columns.o: io/default_columns.inc
 io/read_controls.o: io/inlist_new_decl.inc io/inlist_new_read.inc
+io/test/test_controls.o: io/test/controls_dump.inc
 state/star_info_lib.o: state/controls_state_def.inc state/job_controls_def.inc
