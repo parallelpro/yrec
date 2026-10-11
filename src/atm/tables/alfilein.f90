@@ -32,7 +32,6 @@
 ! identifies the entry as "invalid." In addition, key auxililiary arrays, as
 ! described below, are created.
 subroutine alfilein(allard_table_path, ierr)
-      use star_info_lib, only: star
 !
 ! Parameters NTA and NGA are respectively the maximum expected numbers
 ! of Teff's and GL's we expect to encounter, even in future tables
@@ -67,7 +66,7 @@ subroutine alfilein(allard_table_path, ierr)
       logical :: latmtptau100
 
       integer, intent(out) :: ierr
-      integer :: ios
+      integer :: ios, allard_unit
       logical :: found_first
 
 ! Control flow restructured 2026 (goto campaign): the label-899/900
@@ -91,21 +90,20 @@ subroutine alfilein(allard_table_path, ierr)
          enddo
       enddo
 !     the input file name is in FALLARD and its unit number is IOATMA
-      open(star%ctrl%allard_table_unit,file=allard_table_path,status='OLD',iostat=ios)
+      open(newunit=allard_unit,file=allard_table_path,status='OLD',iostat=ios)
       if (ios .ne. 0) then
        write(*,*)
        write(*,*) 'ALFILEIN: Allard File OPEN Failure'
-       write(*,*) '     Unit-Number, FIle-Name are: ', &
-           star%ctrl%allard_table_unit,allard_table_path
+       write(*,*) '     File name: ', trim(allard_table_path)
        call fail_9999
        ierr = 1
        return
       end if
 
 !     Decide what kind of input file
-      read(star%ctrl%allard_table_unit,901) first_record
+      read(allard_unit,901) first_record
   901  format(a)
-      rewind(star%ctrl%allard_table_unit)
+      rewind(allard_unit)
       if (first_record(4:7) .eq. '3.50') then
 
 !     Process old-stype nextgen input file.
@@ -129,31 +127,31 @@ subroutine alfilein(allard_table_path, ierr)
 !     READ RANGE OF GRAVITIES
       atm_table%allard_num_teff = 54
       atm_table%allard_num_gl = 5
-      read(star%ctrl%allard_table_unit,905) (atm_table%allard_gl_grid(i),i=1,atm_table%allard_num_gl)
+      read(allard_unit,905) (atm_table%allard_gl_grid(i),i=1,atm_table%allard_num_gl)
   905  format(5f7.2/)
 !       read(ioatma,*)
 
 !     READ RANGE OF TEMPERATURES
-      read(star%ctrl%allard_table_unit,907) (atm_table%allard_teffl_grid(i),i=1,atm_table%allard_num_teff)
+      read(allard_unit,907) (atm_table%allard_teffl_grid(i),i=1,atm_table%allard_num_teff)
   907  format(10(1p5e16.8,/),1p4e16.8,/)
 !       read(ioatma,*)
-      read(star%ctrl%allard_table_unit,909) ((atm_table%allard_log10_pressure(j,i),i=1,atm_table%allard_num_gl),j=1,atm_table%allard_num_teff)
+      read(allard_unit,909) ((atm_table%allard_log10_pressure(j,i),i=1,atm_table%allard_num_gl),j=1,atm_table%allard_num_teff)
   909  format(1p5e16.8)
-      close(star%ctrl%allard_table_unit)
+      close(allard_unit)
 !     Old Nextgen input file has been read an put into the proper arrays
 
       else if (first_record(4:9) .eq. 'ALLARD') then
 
 !     Process new-style Allard Atmosphere file
        atm_table%allard_is_old_nextgen = .false.
-      read(star%ctrl%allard_table_unit,911) nhdr, header_line  ! nhdr is number of header recoreds to skip over
+      read(allard_unit,911) nhdr, header_line  ! nhdr is number of header recoreds to skip over
   911      format(i2,x,a)
        write(run_log_unit,912) 'ALFilein: New Allard Atm: File Description: ',header_line(1:47)
   912  format(2a)
 !     Skip over rest of header, if any
       if (nhdr .gt. 1) then
         do i = 2, nhdr
-          read(star%ctrl%allard_table_unit,*)
+          read(allard_unit,*)
         enddo
       endif
       atm_table%allard_num_gl = 0
@@ -166,7 +164,7 @@ subroutine alfilein(allard_table_path, ierr)
 
       found_first = .false.
       do
-      read(star%ctrl%allard_table_unit,915,iostat=ios) teff_value,gl_value,feh_value,alpha_value
+      read(allard_unit,915,iostat=ios) teff_value,gl_value,feh_value,alpha_value
   915      format(f6.0,3f6.2)
       if (ios .gt. 0) then
 !     File Read error exit
@@ -181,8 +179,8 @@ subroutine alfilein(allard_table_path, ierr)
       irecno=irecno+1
 
 !     If the record does not have the correct FeH and Alpha, we skip it
-      if ((dabs(feh_value-star%ctrl%allard_target_feh).gt.1d-5) .or. &
-             (dabs(alpha_value-star%ctrl%allard_target_alpha).gt.0d0)) then
+      if ((dabs(feh_value-atm_settings%allard_target_feh).gt.1d-5) .or. &
+             (dabs(alpha_value-atm_settings%allard_target_alpha).gt.0d0)) then
          cycle  ! On to next record. Stay in this part until we get an acceptable record
       endif
       if (.not. found_first) then
@@ -248,15 +246,15 @@ subroutine alfilein(allard_table_path, ierr)
       call sort_shell(atm_table%allard_num_alpha,atm_table%allard_alpha_grid)
 
 !     Now we can rewind the input file and start over for real
-      rewind(star%ctrl%allard_table_unit)  ! go back to the beginning of the file
+      rewind(allard_unit)  ! go back to the beginning of the file
 
 !      Skip over header
       do i = 1,nhdr
-         read(star%ctrl%allard_table_unit,*)
+         read(allard_unit,*)
       enddo
 
       do
-      read(star%ctrl%allard_table_unit,920,iostat=ios) teff_value,gl_value,feh_value,alpha_value, &
+      read(allard_unit,920,iostat=ios) teff_value,gl_value,feh_value,alpha_value, &
               pressure_value,pressure_tau100_value,temp_tau100_value
   920      format(f6.0,3f6.2,1p4d16.8)
       if (ios .gt. 0) then
@@ -270,8 +268,8 @@ subroutine alfilein(allard_table_path, ierr)
       if (ios .lt. 0) exit  ! We heve finished with the input file and entered all inputs
 
 !     If the record does not have the correct FeH and Alpha, we skip it
-      if ((dabs(feh_value-star%ctrl%allard_target_feh).gt.1d-5) .or. &
-             (dabs(alpha_value-star%ctrl%allard_target_alpha).gt.0d0)) then
+      if ((dabs(feh_value-atm_settings%allard_target_feh).gt.1d-5) .or. &
+             (dabs(alpha_value-atm_settings%allard_target_alpha).gt.0d0)) then
          cycle  ! On to next record
       endif
 
@@ -305,8 +303,8 @@ subroutine alfilein(allard_table_path, ierr)
 
 !     we now verify that we have the correct FeH and Alpha
 
-      if (dabs(feh_value -star%ctrl%allard_target_feh) .lt. 1d-6) then
-      if (dabs(alpha_value -star%ctrl%allard_target_alpha) .lt. 1d-6) then
+      if (dabs(feh_value -atm_settings%allard_target_feh) .lt. 1d-6) then
+      if (dabs(alpha_value -atm_settings%allard_target_alpha) .lt. 1d-6) then
 
 
 !     We now have the correct indices for our tables, i1 for the Teff-direction
@@ -321,7 +319,7 @@ subroutine alfilein(allard_table_path, ierr)
       end if
       end if
       end do   ! Back to process the next record
-      close(star%ctrl%allard_table_unit)
+      close(allard_unit)
 
       else
 !     If we get here, the input file is invalid

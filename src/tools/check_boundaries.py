@@ -67,16 +67,13 @@ PUBLIC = {
     # kap_get is the named-index result-array query (the former
     # kap_get_r); the long-form engine kap_eval is domain-internal.
     "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
-    # atm_lib's three entries, plus surfbc (the solver's boundary-
-    # condition wrapper, sole caller core/crrect.f90) and the turnover/
-    # diagnostics consumed by core/io/rotation (calcad, gettau).
-    "atm": {"atm_get_surface_pt", "atm_init",
-            "ttau_log10_temperature", "ttau_start_log10_temperature",
-            "ttau_photosphere_x_limit", "hsra_t_tau_offset",
-            # pure surface-pressure lookups, called by the star
-            # layer's envelope integrator (core/envelope_integration) since the
-            # atm split -- clean physics services
-            "surfp", "kcsurfp", "alsurfp"},
+    # atm_lib's entries: the table loads, the tabulated surface lookup,
+    # the Allard Teff range, and the analytic T-tau relations the star
+    # layer's envelope integrator uses.
+    "atm": {"atm_init", "atm_get_surface_pt", "atm_allard_teff_max",
+            "set_atm_settings", "ttau_log10_temperature",
+            "ttau_start_log10_temperature", "ttau_photosphere_x_limit",
+            "hsra_t_tau_offset"},
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
     # Timmes' sneut/azbar/ifermi12/zfermim12 keep theirs).
     "net": {"compute_network_rates", "set_net_settings",
@@ -169,7 +166,7 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net", "kap", "eos"]
+STAR_FREE_DIRS = ["net", "kap", "eos", "atm"]
 
 def check_star_free(src_root):
     problems = []
@@ -191,7 +188,7 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net", "kap", "eos"]
+FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm"]
 
 def check_facade_imports(src_root):
     problems = []

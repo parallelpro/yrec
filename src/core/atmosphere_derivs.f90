@@ -19,8 +19,8 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 
       use eos_lib
       use kap_lib
-      use atm_tables
-      use t_tau_relations
+      use atmosphere_structure, only: atm_point
+      use atm_lib, only: ttau_log10_temperature
       use star_info_lib, only: star, json
       use point_scratch_lib
       use physical_constants
@@ -49,8 +49,8 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
       ierr = 0
       effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
-      atm_table%atm_tau = log10_optical_depth
-      optical_depth = exp(ln10*atm_table%atm_tau)
+      atm_point%log10_tau = log10_optical_depth
+      optical_depth = exp(ln10*atm_point%log10_tau)
 ! T(tau) from the ONE home of the analytic relations (2026: the
 ! former statement-function dispatch lives in core/t_tau_relations.f90)
       log10_temperature = ttau_log10_temperature(optical_depth, &
@@ -67,8 +67,8 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       if (ierr /= 0) return
       dydx(1) = effective_gravity*optical_depth/ &
            (eos_res(i_pressure)*kap_res(i_kap))
-      atm_table%atm_log10_pressure = log10_pressure
-      atm_table%atm_log10_temperature = log10_temperature
+      atm_point%log10_pressure = log10_pressure
+      atm_point%log10_temperature = log10_temperature
 ! 2026 (.store convergence): these saves were gated on the print
 ! flag (or the retired pulse-derivative mode), which meant the
 ! atmosphere structure the stitched model materializes carried
@@ -76,11 +76,11 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! for printing. They are output-only scratch (no physics reads
 ! them), so save unconditionally: every integration leaves a fully
 ! populated atm_table behind.
-      atm_table%atm_log10_density = eos_res(i_log10_density)
-      atm_table%atm_opacity = kap_res(i_kap)
-      atm_table%atm_ion_fraction(1) = eos_res(i_fxion)
-      atm_table%atm_ion_fraction(2) = eos_res(i_fxion+1)
-      atm_table%atm_ion_fraction(3) = eos_res(i_fxion+2)
+      atm_point%log10_density = eos_res(i_log10_density)
+      atm_point%opacity = kap_res(i_kap)
+      atm_point%ion_fraction(1) = eos_res(i_fxion)
+      atm_point%ion_fraction(2) = eos_res(i_fxion+1)
+      atm_point%ion_fraction(3) = eos_res(i_fxion+2)
       pt_scr%qtl = log10_temperature
       pt_scr%qt = exp(ln10*log10_temperature)
       pt_scr%qpl = log10_pressure

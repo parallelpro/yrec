@@ -39,10 +39,10 @@
 ! RESULTS (stored in atm_table, atm_tables.f90)
 !
 ! atm_log10_pressure    - Log(Pressure) for the input TeffL and GL. If
-!              star%ctrl%allard_use_tau100 is .FALSE. it is PL at TEFFL,GL;
+!              atm_settings%allard_use_tau100 is .FALSE. it is PL at TEFFL,GL;
 !              if .TRUE. it is PL at TAU=100 for the starting TEFFL,GL.
 ! atm_log10_temperature - Log(Temperature): TEFFL itself, or TL at TAU=100 when
-!              star%ctrl%allard_use_tau100 is .TRUE.
+!              atm_settings%allard_use_tau100 is .TRUE.
 !
 ! Internal Arrays
 ! TEFFLs      1-D Array of T=TeffL table elements - one for each TeffL. (Columns)
@@ -89,7 +89,6 @@
 !
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
-      use star_info_lib, only: star
 
       use atm_tables
       use io_units
@@ -245,7 +244,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
          if (ierr /= 0) return
       enddo
 !     Now do final 4-point Lagrange inerpolations in TEFFL
-      if (.not. star%ctrl%allard_use_tau100) then
+      if (.not. atm_settings%allard_use_tau100) then
 !        Current standard alternative. PL for TEFFL,GL, TL=TEFFL
          call polint(atm_table%allard_teffl_grid(teffl_index),pressure_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy, ierr)
          if (ierr /= 0) return
@@ -261,7 +260,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 !     If requested, WRITE OUT INFORMATION TO THE MODEL FILE.
       if (print_to_files) then
-         if (star%ctrl%allard_use_tau100) then
+         if (atm_settings%allard_use_tau100) then
             write(run_log_unit,70)
    70       format('********PL,TL at Tau=100 INTERPOLATED' &
                  , ' FROM ALLARD TABULATED VALUES********')
@@ -277,7 +276,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
 !     If not requested via LPRT, WRITE OUT INFORMATION TO THE SHORT FILE.
       if (.not. print_to_files) then
-        if (star%ctrl%allard_use_tau100) then
+        if (atm_settings%allard_use_tau100) then
            write(run_log_unit,73)
    73      format('ALSURFP:  PL,TL at Tau=100 INTERPOLATED' &
                 , ' FROM ALLARD TABULATED VALUES:')

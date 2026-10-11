@@ -10,7 +10,19 @@
 ! module. None of these touch core/read_input.f90. Every declaring file
 ! for a given block used byte-identical member names/order.
 module atm_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
+! The settings record of atm/: which tables atm_init loads (atm_choice
+! 3 and 4 the Kurucz table, 4 also the Allard tables, 5 the
+! Castelli/Kurucz table), whether the Allard lookups return P and T at
+! tau = 100, and the [Fe/H] and [alpha/Fe] of the Allard table to read.
+      type, public :: atm_settings_t
+         integer :: atm_choice = 0
+         logical :: allard_use_tau100 = .false.
+         real(dp) :: allard_target_feh = 0.0d0, allard_target_alpha = 0.0d0
+      end type atm_settings_t
+      type(atm_settings_t), public, protected :: atm_settings
+      public :: set_atm_settings
 ! Kurucz (nt) and Kurucz-Castelli (ntc) atmosphere tables: rows in
 ! log Teff, atm_table_ng columns in log g.
       integer, parameter :: atm_table_nt = 57, atm_table_ntc = 76
@@ -49,10 +61,9 @@ module atm_tables
 ! rows) surface-pressure tables, each with its former common/fac/
 ! log-g edge indices. See surface_p_table.
            type(surface_p_table) :: kurucz_surface_p, castelli_surface_p
-! former common/atmprt/: current T-tau atmosphere integration point.
-           double precision :: atm_tau, atm_log10_pressure, &
-                atm_log10_temperature, atm_log10_density, atm_opacity
-           double precision :: atm_ion_fraction(3)
+! the result of the last surface-table lookup: log P, and log T (log
+! Teff, or T at tau = 100 from the Allard tables)
+           double precision :: atm_log10_pressure, atm_log10_temperature
 ! (former common/eeos06/ -- the OPAL 2006 EOS interpolator result,
 ! esact + eos_output(10) -- lived here through phase one purely as an
 ! accident of the original COMMON grouping; relocated to
@@ -93,8 +104,12 @@ module atm_tables
 ! use-associated directly. The tables themselves (former
 ! common/atmos2/ atmpl/atmtl/atmgl and common/atmos2c/ atmplc/atmtlc/
 ! atmglc) are atm_table%kurucz_surface_p / castelli_surface_p above.
-      double precision :: kurucz_table_z
-      integer :: atm_table_file_unit
 
+contains
+
+subroutine set_atm_settings(settings)
+      type(atm_settings_t), intent(in) :: settings
+      atm_settings = settings
+end subroutine set_atm_settings
 
 end module atm_tables

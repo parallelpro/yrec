@@ -32,8 +32,8 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
      total_mass_msun, log_teff, old_log_envelope_mass_fraction, &
      new_atmosphere_fit_needed, ierr)
       use rotation_scratch_lib
-      use atm_lib
-      use atm_tables
+      use atm_lib, only: atm_get_surface_pt
+      use atmosphere_structure, only: atm_point
       use star_info_lib, only: star, json
       use physical_constants
       use eos_lib
@@ -208,11 +208,13 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
          log10_gravity = cgl+log_total_mass-2.0d0*log10_radius
 ! This is experimental code and valid for Allard atmospheres only.
 !   llp  06/15/2009
-         call atm_get_surface_pt(log_teff,log10_gravity,print_flag, &
+! (when the lookup fails, atm_point keeps the last atmosphere point)
+         call atm_get_surface_pt(4, log_teff, log10_gravity, &
+              atm_point%log10_pressure, atm_point%log10_temperature, &
               allard_surface_failed, ierr)
          if (ierr /= 0) return
-         log10_temperature_local = atm_table%atm_log10_temperature
-         log10_pressure_local = atm_table%atm_log10_pressure
+         log10_temperature_local = atm_point%log10_temperature
+         log10_pressure_local = atm_point%log10_pressure
          hydrogen_fraction_local = composition(1,num_zones)
          metal_fraction_local = composition(3,num_zones)
          eos_deriv_flag = .false.

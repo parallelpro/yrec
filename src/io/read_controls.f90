@@ -82,7 +82,6 @@ subroutine read_input(ierr)
       use io_units
       use integration_parameters
       use yrec_output, only: output_init_mesa
-      use atm_tables
       use eos_lib, only: eos_set_mixture
       implicit none
 
@@ -1277,7 +1276,6 @@ subroutine read_input(ierr)
 ! OUPUT: ISOCHRONE INFORMATION
       isochrone_file_unit = 37
 ! INPUT: KURUCZ ATMOSPHER TABLE
-      atm_table_file_unit = 38
 ! YCK INPUT: Alex LOW T OPACITIES
       alex94_table_unit = 39
 ! INPUT: MHD EQU. OF STATE TABLES (2026 wave 2: these eight stay
@@ -2431,7 +2429,6 @@ end subroutine read_input
 ! that environment variable is not set).
 subroutine expand_value(path_value)
 
-      use atm_tables
       implicit none
 
       integer, parameter :: n_env_vars = 3  ! Number of possible env. vars.

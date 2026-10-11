@@ -39,4 +39,16 @@ module atmosphere_structure
 
       type(atmosphere_structure_state), public :: atmo_struct
 
+! The current point of the atmosphere integration: log10 tau, log P,
+! log T, log rho, the opacity and the ionization fractions. The surface
+! table lookup fills log P and log T; atmosphere_derivs fills the rest at
+! each step; the integration and the envelope start read it.
+      type, public :: atmosphere_point_state
+            double precision :: log10_tau, log10_pressure, log10_temperature, &
+                 log10_density, opacity
+            double precision :: ion_fraction(3)
+      end type atmosphere_point_state
+
+      type(atmosphere_point_state), public :: atm_point
+
 end module atmosphere_structure

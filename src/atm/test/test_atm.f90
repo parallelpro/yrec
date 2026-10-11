@@ -1,200 +1,110 @@
 !----------------------------------------------------------------------
 ! test_atm
 !----------------------------------------------------------------------
-! Standalone atm-domain test program (2026, phase three -- docs/ROADMAP.md
-! stage 2), companion to eos/test/test_eos.f90 (see there for the
-! initialization conventions). Exercises the surface-boundary-
-! condition table machinery for all three tabulated atmosphere
-! options the YREC paper names, loading each through atm_init:
-!   atm_choice=3 -- Kurucz (1993) solar table, looked up via surfp;
-!   atm_choice=5 -- Castelli & Kurucz (2003) solar table, via kcsurfp
-!     (kcsurfp reads the choice-5 table loaded by atm_init);
-!   atm_choice=4 -- Allard NextGen solar table (loaded together with
-!     the Kurucz table, as in production), looked up through the
-!     public facade entry atm_get_surface_pt: NextGen 2, NextGen 2 at
-!     tau = 100, the old NextGen 1 format, and a lookup outside the
+! Standalone test of atm/, through atm_lib. Loads each tabulated
+! atmosphere with atm_init and looks the surface boundary condition
+! up with atm_get_surface_pt:
+!   atm_choice=3 -- the Kurucz (1993) solar table;
+!   atm_choice=5 -- the Castelli & Kurucz (2003) solar table;
+!   atm_choice=4 -- the Allard NextGen solar tables (loaded together
+!     with the Kurucz table, as in production): NextGen 2, NextGen 2
+!     at tau = 100, the old NextGen 1 format, and a lookup outside the
 !     tables;
 !   atm_choice=0/1/2 -- the analytic T-tau relations (Eddington,
-!     Krishna-Swamy, HSRA) on a grid of optical depths.
-! surfp/kcsurfp are atm-internal, called directly here because this
-! test lives inside the atm domain -- the same intra-domain access
-! the domain's own code has. The full envelope integration
-! (core/envelope_integration.f90) is
-! NOT exercised here: it needs the entire eos+kap+solver state booted
-! (a full-model concern, covered by Stage-0); noted in docs/ROADMAP.md.
-! Results print for byte-comparison against expected_test_atm.out.
+!     Krishna-Swamy, HSRA) on a grid of optical depths;
+! and the error paths. The envelope integration that uses these lives
+! in core and is covered by the full-model tests. Results print for
+! byte-comparison against expected_test_atm.out.
 program test_atm
-      use star_info_lib, only: star
-      use io_units
-      use atm_tables
+      use io_units, only: run_log_unit, terminal_unit
       use atm_lib
-      use t_tau_relations
       implicit none
       integer :: gerr
-
       character(len=256) :: yrec_input
-      character(len=256) :: fermi_path, kurucz_atm_path, castelli_path, &
-           allard_path, allard_old_path, dummy_path
-      character(len=256) :: dummy_paths7(7)
-      double precision :: laol_work(12)
-
-      integer :: setups_ierr, ipt, atm_ierr
-      double precision :: teffl, gl, hras, tau
+      character(len=256) :: kurucz_atm_path, castelli_path, allard_path, &
+           allard_old_path
+      integer :: ipt, atm_ierr
+      double precision :: teffl, gl, hras, tau, log10_p, log10_t
       integer :: choice, itau
       double precision, parameter :: grid_tau(6) = [1.0d-4, 1.0d-2, 0.312d0, &
            2.0d0/3.0d0, 1.0d0, 10.0d0]
       logical :: failed
+      type(atm_settings_t) :: settings
 
       integer, parameter :: npts = 4
-      double precision :: grid_teffl(npts), grid_gl(npts)
-      data grid_teffl /3.60d0, 3.70d0, 3.762d0, 3.90d0/
-      data grid_gl    /4.9d0,  4.6d0,  4.438d0, 4.2d0/
+      double precision, parameter :: grid_teffl(npts) = [3.60d0, 3.70d0, 3.762d0, 3.90d0]
+      double precision, parameter :: grid_gl(npts) = [4.9d0, 4.6d0, 4.438d0, 4.2d0]
 
       call get_environment_variable("YREC_INPUT", yrec_input)
       if (len_trim(yrec_input) == 0) then
          write(*,'(a)') "test_atm: FAIL (YREC_INPUT not set)"
          stop 1
       end if
-      fermi_path      = trim(yrec_input)//"/eos/yale/FERMI.TAB"
       kurucz_atm_path = trim(yrec_input)//"/atmos/kurucz/atmk1990p00.tab"
       castelli_path   = trim(yrec_input)//"/atmos/CastelliKurucz/atmk2004p00.tab"
       allard_path     = trim(yrec_input)//"/atmos/allard/Nextgen2.all"
       allard_old_path = trim(yrec_input)//"/atmos/allard/Nextgen.p00"
-      dummy_path = ""
-      dummy_paths7 = ""
-      laol_work = 0.0d0
 
-! unit numbers, per core/read_input.f90
-      run_log_unit = 20
-      star%ctrl%fermi_unit = 15
-      atm_table_file_unit = 38
-      star%ctrl%allard_table_unit = 66
-      open(run_log_unit, file="test_atm.short", status="replace")
-! surfp/kcsurfp write their out-of-table diagnostic to terminal_unit (the main
-! output unit in production, per parmin) as well as run_log_unit;
-! point both at the scratch .short file so the byte-compared stdout
-! stays deterministic when the error paths below fire.
+! The diagnostics (the table readers' notes, the out-of-table messages)
+! go to the run log and terminal_unit; both point at a scratch file so
+! that stdout stays deterministic.
+      open(newunit=run_log_unit, file="test_atm.short", status="replace")
       terminal_unit = run_log_unit
 
-! everything else gated off (setups calls eos_init/kap_init/atm_init
-! unconditionally; only the Fermi table is a hard requirement)
-      star%ctrl%use_mhd_eos = .false.
-      star%ctrl%use_scv_eos = .false.
-      star%ctrl%use_opal95_eos = .false.
-      star%ctrl%use_opal2001_eos = .false.
-      star%ctrl%use_opal2006_eos = .false.
-      star%ctrl%use_opal95_tables = .false.
-      star%ctrl%use_opal92_tables = .false.
-      star%ctrl%use_laol89_tables = .false.
-      star%ctrl%use_alex06_tables = .false.
-      star%ctrl%use_alex95_tables = .false.
-      star%ctrl%use_kurucz90_tables = .false.
-      star%use_two_z_tables = .false.
-      star%ctrl%use_pure_z_table = .false.
-      star%ctrl%use_conductive_opacity = .false.
-
-! constants (real setups; its atm_init call is a no-op at
-! atm_choice=0 -- the per-option loads happen explicitly below)
-      star%job%atm_choice = 0
-      star%job%mixture_weights = laol_work
-      star%job%alex06_table_path = dummy_path
-      star%job%allard_table_path = dummy_path
-      star%job%atm_table_path = dummy_path
-      star%job%fermi_table_path = fermi_path
-      star%job%kurucz_table_path = dummy_path
-      star%job%kurucz_table2_path = dummy_path
-      star%job%laol_table_path = dummy_path
-      star%job%laol_table2_path = dummy_path
-      star%job%opal95_table_path = dummy_path
-      star%job%opal92_table_path = dummy_path
-      star%job%zams_a_table_path = dummy_path
-      star%job%zams_b_table_path = dummy_path
-      star%job%zams_c_table_path = dummy_path
-      star%job%centre1_table_path = dummy_path
-      star%job%centre2_table_path = dummy_path
-      star%job%centre3_table_path = dummy_path
-      star%job%centre4_table_path = dummy_path
-      star%job%centre5_table_path = dummy_path
-      star%job%opal92_table2_path = dummy_path
-      star%job%pure_z_table_path = dummy_path
-      star%job%scv_h_table_path = dummy_path
-      star%job%scv_he_table_path = dummy_path
-      star%job%scv_z_table_path = dummy_path
-      star%job%alex95_table_paths = dummy_paths7
-      call setups(setups_ierr)
-      if (setups_ierr /= 0) then
-         write(*,'(a)') "test_atm: FAIL (setups error)"
-         stop 1
-      end if
-
-! --- Kurucz (1993), atm_choice=3, looked up via surfp ---
-      star%job%atm_choice = 3
-      call atm_init(kurucz_atm_path, dummy_path, gerr)
+! --- Kurucz (1993), atm_choice=3 ---
+      settings%atm_choice = 3
+      call atm_init(settings, kurucz_atm_path, "", gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Kurucz (choice 3), surfp lookups"
       do ipt = 1, npts
-         teffl = grid_teffl(ipt)
-         gl = grid_gl(ipt)
-         call surfp(teffl, gl, .false., atm_ierr)
-         write(*,'(a,i2,2(1pe24.15))') "krz ", ipt, &
-              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+         call lookup(3, grid_teffl(ipt), grid_gl(ipt))
+         write(*,'(a,i2,2(1pe24.15))') "krz ", ipt, log10_p, log10_t
       end do
 
-! --- Castelli & Kurucz (2003), atm_choice=5, via kcsurfp ---
-      star%job%atm_choice = 5
-      call atm_init(castelli_path, dummy_path, gerr)
+! --- Castelli & Kurucz (2003), atm_choice=5 ---
+      settings%atm_choice = 5
+      call atm_init(settings, castelli_path, "", gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Castelli/Kurucz (choice 5), " // &
            "kcsurfp lookups"
       do ipt = 1, npts
-         teffl = grid_teffl(ipt)
-         gl = grid_gl(ipt)
-         call kcsurfp(teffl, gl, .false., atm_ierr)
-         write(*,'(a,i2,2(1pe24.15))') "ck  ", ipt, &
-              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+         call lookup(5, grid_teffl(ipt), grid_gl(ipt))
+         write(*,'(a,i2,2(1pe24.15))') "ck  ", ipt, log10_p, log10_t
       end do
 
-! --- Allard NextGen, atm_choice=4, through the facade entry ---
-      star%job%atm_choice = 4
-      call atm_init(kurucz_atm_path, allard_path, gerr)
+! --- Allard NextGen 2, atm_choice=4 ---
+      settings%atm_choice = 4
+      call atm_init(settings, kurucz_atm_path, allard_path, gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard (choice 4), " // &
            "atm_get_surface_pt lookups"
       do ipt = 1, npts
-         teffl = grid_teffl(ipt)
-         gl = grid_gl(ipt)
-         call atm_get_surface_pt(teffl, gl, .false., failed, gerr)
-         if (gerr /= 0) stop 1
-         write(*,'(a,i2,l2,2(1pe24.15))') "al  ", ipt, failed, &
-              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+         call lookup(4, grid_teffl(ipt), grid_gl(ipt))
+         write(*,'(a,i2,l2,2(1pe24.15))') "al  ", ipt, failed, log10_p, log10_t
       end do
 
 ! --- Allard NextGen 2 with P and T at tau = 100 (allard_use_tau100) ---
-      star%ctrl%allard_use_tau100 = .true.
-      call atm_init(kurucz_atm_path, allard_path, gerr)
+      settings%allard_use_tau100 = .true.
+      call atm_init(settings, kurucz_atm_path, allard_path, gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard at tau = 100, atm_get_surface_pt lookups"
       do ipt = 1, npts
-         call atm_get_surface_pt(grid_teffl(ipt), grid_gl(ipt), .false., failed, gerr)
-         if (gerr /= 0) stop 1
-         write(*,'(a,i2,l2,2(1pe24.15))') "a100", ipt, failed, &
-              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+         call lookup(4, grid_teffl(ipt), grid_gl(ipt))
+         write(*,'(a,i2,l2,2(1pe24.15))') "a100", ipt, failed, log10_p, log10_t
       end do
-      star%ctrl%allard_use_tau100 = .false.
+      settings%allard_use_tau100 = .false.
 
 ! --- Allard NextGen 1, the old table format ---
-      call atm_init(kurucz_atm_path, allard_old_path, gerr)
+      call atm_init(settings, kurucz_atm_path, allard_old_path, gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard NextGen 1 (old format), atm_get_surface_pt lookups"
       do ipt = 1, npts
-         call atm_get_surface_pt(grid_teffl(ipt), grid_gl(ipt), .false., failed, gerr)
-         if (gerr /= 0) stop 1
-         write(*,'(a,i2,l2,2(1pe24.15))') "al1 ", ipt, failed, &
-              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+         call lookup(4, grid_teffl(ipt), grid_gl(ipt))
+         write(*,'(a,i2,l2,2(1pe24.15))') "al1 ", ipt, failed, log10_p, log10_t
       end do
 ! a hot star is outside the Allard tables: the lookup fails (the caller
 ! falls back to a gray atmosphere)
-      call atm_get_surface_pt(4.5d0, 4.0d0, .false., failed, gerr)
+      call atm_get_surface_pt(4, 4.5d0, 4.0d0, log10_p, log10_t, failed, gerr)
       write(*,'(a,l2,i4)') "al1 out of range: failed, ierr =", failed, gerr
 
 ! --- the analytic T-tau relations (atm_choice 0 Eddington, 1
@@ -214,22 +124,31 @@ program test_atm
          end do
       end do
 
-! Error paths (2026, docs/ROADMAP.md stage 3): surfp's out-of-table check
-! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
-! required ierr it returns 1 -- diagnostics go to terminal_unit/run_log_unit
-! as always (both pointed at the scratch .short file here). The
-! facade check asserts the ierr success path threads ierr = 0 end
-! to end (atm_get_surface_pt -> alsurfp).
+! --- error paths: a Kurucz lookup outside the table (log Teff < 3.5 or
+! log g < -0.5) returns ierr = 1 with its diagnostic in the run log; a
+! lookup inside it returns 0
       write(*,'(a)') "# test_atm: error paths via ierr"
+      settings%atm_choice = 3
+      call atm_init(settings, kurucz_atm_path, "", gerr)
+      if (gerr /= 0) stop 1
       teffl = 3.40d0
       gl = 4.5d0
-      call surfp(teffl, gl, .false., atm_ierr)
+      call atm_get_surface_pt(3, teffl, gl, log10_p, log10_t, failed, atm_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", atm_ierr
-      teffl = grid_teffl(1)
-      gl = grid_gl(1)
-      call atm_get_surface_pt(teffl, gl, .false., failed, ierr=atm_ierr)
+      call atm_get_surface_pt(3, grid_teffl(1), grid_gl(1), log10_p, log10_t, &
+           failed, atm_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", atm_ierr
 
       close(run_log_unit)
       write(*,'(a)') "test_atm: done"
+contains
+
+subroutine lookup(atm_choice, log_teff, log_g)
+      integer, intent(in) :: atm_choice
+      double precision, intent(in) :: log_teff, log_g
+      call atm_get_surface_pt(atm_choice, log_teff, log_g, log10_p, log10_t, &
+           failed, gerr)
+      if (gerr /= 0) stop 1
+end subroutine lookup
+
 end program test_atm

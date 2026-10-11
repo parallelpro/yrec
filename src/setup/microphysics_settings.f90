@@ -6,12 +6,14 @@
 ! installs its record at init and reads no other configuration:
 !     opacity_settings   kap (kap_init)
 !     equation_of_state_settings       eos (eos_init)
+!     atmosphere_settings   atm (atm_init)
 module microphysics_settings
       use kap_lib, only: kap_settings_t
       use eos_lib, only: eos_settings_t
+      use atm_lib, only: atm_settings_t
       implicit none
       private
-      public :: opacity_settings, equation_of_state_settings
+      public :: opacity_settings, equation_of_state_settings, atmosphere_settings
 
 contains
 
@@ -79,5 +81,20 @@ function equation_of_state_settings() result(s)
       s%debye_huckel_eta_max = star%ctrl%debye_huckel_eta_max
       s%saha_log10t_cutoff = star%ctrl%saha_log10t_cutoff
 end function equation_of_state_settings
+
+!----------------------------------------------------------------------
+! atmosphere_settings: atm's settings from the controls.
+!   star reads: ctrl%allard_target_alpha, ctrl%allard_target_feh,
+!     ctrl%allard_use_tau100, job%atm_choice
+!   star writes: none
+function atmosphere_settings() result(s)
+      use star_info_lib, only: star
+      type(atm_settings_t) :: s
+
+      s%atm_choice = star%job%atm_choice
+      s%allard_use_tau100 = star%ctrl%allard_use_tau100
+      s%allard_target_feh = star%ctrl%allard_target_feh
+      s%allard_target_alpha = star%ctrl%allard_target_alpha
+end function atmosphere_settings
 
 end module microphysics_settings

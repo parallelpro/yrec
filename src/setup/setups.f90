@@ -20,13 +20,11 @@
 subroutine setups(ierr)
       use eos_lib
       use kap_lib
-      use microphysics_settings, only: opacity_settings, equation_of_state_settings
-      use atm_lib
-      use atm_tables
+      use microphysics_settings, only: opacity_settings, equation_of_state_settings, atmosphere_settings
+      use atm_lib, only: atm_init, hsra_t_tau_offset
       use star_info_lib, only: star
       use physical_constants
       use math_lib
-      use t_tau_relations, only: hsra_t_tau_offset
       implicit none
       integer, intent(out) :: ierr
 
@@ -127,7 +125,8 @@ subroutine setups(ierr)
 ! 2026 (docs/ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
 ! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
 ! loads that lived inline here moved into atm_lib's atm_init.
-      call atm_init(star%job%atm_table_path,star%job%allard_table_path, ierr)
+      call atm_init(atmosphere_settings(), star%job%atm_table_path, &
+           star%job%allard_table_path, ierr)
       if (ierr /= 0) return
 
 ! (The SCV equation-of-state table reads that lived here moved into

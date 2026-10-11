@@ -43,7 +43,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
       use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
-      use atm_tables
+      use atm_lib, only: atm_allard_teff_max
       use star_info_lib
       use io_units
       use run_log, only: solver_diagnostics
@@ -95,9 +95,9 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
          endif
       endif
       if (star%job%atm_choice.eq.4) then
-         if (log10_teff.ge.atm_table%allard_al_teffl_max) then
+         if (log10_teff.ge.atm_allard_teff_max()) then
             write(*,*)
-            write(*,7) log10_teff, atm_table%allard_al_teffl_max
+            write(*,7) log10_teff, atm_allard_teff_max()
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
@@ -114,10 +114,10 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_table%allard_al_teffl_max) then
+         else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
             star%job%atm_choice = star%atm_choice_initial
             star%use_ttau_relation = .false.
-            write(*,11) log10_teff, atm_table%allard_al_teffl_max
+            write(*,11) log10_teff, atm_allard_teff_max()
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
          endif

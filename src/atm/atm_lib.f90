@@ -12,7 +12,16 @@
 ! the table interpolators are in atm/tables/ (surfp, kcsurfp,
 ! alsurfp) and the T-tau relations in t_tau_relations.f90.
 module atm_lib
+      use atm_tables, only: atm_settings_t, atm_settings, set_atm_settings, &
+           atm_table, atm_table_nt, atm_table_ntc, atm_table_ng, surface_p_table
+      use t_tau_relations, only: ttau_log10_temperature, &
+           ttau_start_log10_temperature, ttau_photosphere_x_limit, hsra_t_tau_offset
       implicit none
+      private
+      public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
+      public :: atm_settings_t, set_atm_settings
+      public :: ttau_log10_temperature, ttau_start_log10_temperature, &
+           ttau_photosphere_x_limit, hsra_t_tau_offset
 contains
 
 !----------------------------------------------------------------------
@@ -38,13 +47,10 @@ contains
 ! statements are unchanged apart from the names; the identical
 ! G Somers 5/15 edge scans became the internal find_gravity_edges,
 ! its working scalars host-associated.
-subroutine atm_init(atm_table_path, allard_table_path, ierr)
-      use star_info_lib, only: star
-
-      use atm_tables
-      implicit none
-      character(len=256), intent(in) :: atm_table_path
-      character(len=256), intent(in) :: allard_table_path
+subroutine atm_init(settings, atm_table_path, allard_table_path, ierr)
+      type(atm_settings_t), intent(in) :: settings
+      character(len=*), intent(in) :: atm_table_path
+      character(len=*), intent(in) :: allard_table_path
 ! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop; table-load failures print
 ! their diagnostic at the point of failure and come back as ierr /= 0.
       integer, intent(out) :: ierr
@@ -52,33 +58,43 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       integer :: jerr
       integer :: teff_idx, logg_idx
       logical :: found_valid_pressure
+! the table file's unit, and the metal fraction its header carries
+! (read past; nothing uses it)
+      integer :: table_unit
+      double precision :: kurucz_table_z
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
       jerr = 0
+      call set_atm_settings(settings)
 
-      if ((star%job%atm_choice .eq. 3) .or. (star%job%atm_choice .eq. 4)) then
+      if ((settings%atm_choice .eq. 3) .or. (settings%atm_choice .eq. 4)) then
         call allocate_surface_p(atm_table%kurucz_surface_p, atm_table_nt)
 ! OPEN SURFACE PRESSURE TABLE
-        open(atm_table_file_unit,file=atm_table_path, status='OLD')
+        open(newunit=table_unit, file=atm_table_path, status='OLD', iostat=jerr)
+        if (jerr /= 0) then
+           write(*,*) 'atm_init: cannot open the atmosphere table ', trim(atm_table_path)
+           ierr = 1
+           return
+        end if
 ! GET ABUNDANCE:
-        read(atm_table_file_unit,200) kurucz_table_z
+        read(table_unit,200) kurucz_table_z
   200   format(1x,10x,1pe16.8,/)
 ! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,201) (atm_table%kurucz_surface_p%teff(teff_idx),teff_idx=1,atm_table_nt)
+        read(table_unit,201) (atm_table%kurucz_surface_p%teff(teff_idx),teff_idx=1,atm_table_nt)
   201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
 ! GET VALUES OF LOG G:
-        read(atm_table_file_unit,202) (atm_table%kurucz_surface_p%logg(logg_idx),logg_idx=1,atm_table_ng)
+        read(table_unit,202) (atm_table%kurucz_surface_p%logg(logg_idx),logg_idx=1,atm_table_ng)
   202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
 ! GET GRID OF LOG PRESSURE VALUES:
         do teff_idx=1,atm_table_nt
-          read(atm_table_file_unit,203) (atm_table%kurucz_surface_p%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
+          read(table_unit,203) (atm_table%kurucz_surface_p%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
   203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
         end do
-        rewind atm_table_file_unit
-        close(atm_table_file_unit)
+        rewind table_unit
+        close(table_unit)
 !       G Somers 5/15; added a catch that allows the code to work
 !                      if the highest gravity P value for a specific
 !                      temperature is -999 (find_gravity_edges).
@@ -86,7 +102,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 !        G Somers 5/15 END
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES; USED INSTEAD OF
 ! KURUCZ FOR TEFF < 10,000 K.
-         if(star%job%atm_choice .eq. 4)then
+         if(settings%atm_choice .eq. 4)then
 !            ATMZA = 0.02D0
           call alfilein(allard_table_path, jerr)      ! Get Allard Atmospheres files and
           if (jerr /= 0) then
@@ -97,24 +113,29 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
 
 
 ! JNT 6/14 ADD OPTION FOR NEW KURUCZ/CASTELLI ATMOSHPERES
-      else if (star%job%atm_choice .eq. 5) then
+      else if (settings%atm_choice .eq. 5) then
         call allocate_surface_p(atm_table%castelli_surface_p, atm_table_ntc)
 ! OPEN SURFACE PRESSURE TABLE
-        open(atm_table_file_unit,file=atm_table_path, status='OLD')
+        open(newunit=table_unit, file=atm_table_path, status='OLD', iostat=jerr)
+        if (jerr /= 0) then
+           write(*,*) 'atm_init: cannot open the atmosphere table ', trim(atm_table_path)
+           ierr = 1
+           return
+        end if
 ! GET ABUNDANCE:
-        read(atm_table_file_unit,200) kurucz_table_z
+        read(table_unit,200) kurucz_table_z
 ! GET VALUES OF LOG Teff:
-        read(atm_table_file_unit,206) (atm_table%castelli_surface_p%teff(teff_idx),teff_idx=1,atm_table_ntc)
+        read(table_unit,206) (atm_table%castelli_surface_p%teff(teff_idx),teff_idx=1,atm_table_ntc)
   206   format(1p4e16.8,18(/1p4e16.8),/)
 ! GET VALUES OF LOG G:
-        read(atm_table_file_unit,208) (atm_table%castelli_surface_p%logg(logg_idx),logg_idx=1,atm_table_ng)
+        read(table_unit,208) (atm_table%castelli_surface_p%logg(logg_idx),logg_idx=1,atm_table_ng)
   208   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
 ! GET GRID OF LOG PRESSURE VALUES:
         do teff_idx=1,atm_table_ntc
-          read(atm_table_file_unit,203) (atm_table%castelli_surface_p%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
+          read(table_unit,203) (atm_table%castelli_surface_p%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
         end do
-        rewind atm_table_file_unit
-        close(atm_table_file_unit)
+        rewind table_unit
+        close(table_unit)
 !       G Somers 5/15; added a catch that allows the code to work
 !                      if the highest gravity P value for a specific
 !                      temperature is -999 (find_gravity_edges).
@@ -183,36 +204,44 @@ end subroutine atm_init
 !----------------------------------------------------------------------
 ! atm_get_surface_pt
 !----------------------------------------------------------------------
-! Added 2026 (phase three, docs/ROADMAP.md stage 1): public accessor for
-! the Allard-atmosphere surface lookup, created so wind/massloss.f90
-! (previously the last file calling tables/alsurfp.f90 directly) can
-! go through the facade. Given log10(Teff) and log10(g), performs the
-! Allard table interpolation; results land in atm_table state
-! (atm_table%atm_log10_pressure/atm_log10_temperature), exactly as
-! alsurfp has always delivered them. lookup_failed is set when the
-! requested point falls outside the Allard tables (the caller then
-! falls back per its own policy -- see alsurfp.f90's header).
-subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
-     lookup_failed, ierr)
-
-      implicit none
-
+! The tabulated surface boundary condition at (log Teff, log g) for
+! atm_choice 3 (Kurucz), 4 (Allard) or 5 (Castelli/Kurucz): log P, and
+! log T (log Teff, or T at tau = 100 from the Allard tables with
+! allard_use_tau100). Both are set only when the lookup succeeds.
+! lookup_failed: the point is outside the Allard tables (the caller
+! falls back to a gray atmosphere). ierr /= 0: a table interpolation
+! failed. atm_choice is the caller's current choice, which the star
+! layer switches between tabulated and gray as Teff changes.
+subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
+     log10_temperature, lookup_failed, ierr)
+      integer, intent(in) :: atm_choice
       double precision, intent(in) :: log_teff, log_g
-      logical, intent(in) :: print_to_files
+      double precision, intent(inout) :: log10_pressure, log10_temperature
       logical, intent(out) :: lookup_failed
-! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop. alsurfp's own ierr is
-! deliberately not propagated here (it has always been ignored on
-! this path); ierr is returned as 0 and lookup_failed carries the
-! table-range result.
       integer, intent(out) :: ierr
 
-      integer :: jerr
-
       ierr = 0
-      jerr = 0
-
-      call alsurfp(log_teff, log_g, print_to_files, lookup_failed, jerr)
-      return
+      lookup_failed = .false.
+      if (atm_choice == 3) then
+         call surfp(log_teff, log_g, .false., ierr)
+      else if (atm_choice == 5) then
+         call kcsurfp(log_teff, log_g, .false., ierr)
+      else if (atm_choice == 4) then
+         call alsurfp(log_teff, log_g, .false., lookup_failed, ierr)
+      end if
+      if (ierr /= 0 .or. lookup_failed) return
+      log10_pressure = atm_table%atm_log10_pressure
+      log10_temperature = atm_table%atm_log10_temperature
 end subroutine atm_get_surface_pt
+
+!----------------------------------------------------------------------
+! atm_allard_teff_max
+!----------------------------------------------------------------------
+! The highest log Teff of the Allard tables read (the star layer
+! switches to a gray atmosphere above it).
+function atm_allard_teff_max() result(log_teff_max)
+      double precision :: log_teff_max
+      log_teff_max = atm_table%allard_al_teffl_max
+end function atm_allard_teff_max
 
 end module atm_lib

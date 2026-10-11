@@ -48,11 +48,11 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 
       use eos_lib
       use kap_lib
-      use atm_tables
       use point_scratch_lib
       use atmosphere_structure
       use envelope_structure
-      use t_tau_relations
+      use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
+           ttau_photosphere_x_limit
       use io_units
       use physical_constants
       use integration_parameters
@@ -160,7 +160,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! DEPENDENT VARIABLES.  INTEGRATE FROM TAU = 2/3 TO THE LAST
 ! MASS POINT IN THE MODEL.
 ! IF INTERESTED ONLY IN PPHOT, STOP HERE.
-      log10_photo_pressure = atm_table%atm_log10_pressure
+      log10_photo_pressure = atm_point%log10_pressure
       if (.not.cfg%calc_envelope) return
 
       call integrate_envelope
@@ -195,33 +195,15 @@ subroutine prepare_surface_boundary
 
 ! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPL.
       tabulated_bc = .false.
-      if (cfg%atm_choice .eq. 3) then
-! KURUCZ ATMOSPHERES
-         call surfp(log10_teff,log10_gravity,.false.,jerr)
+      if (cfg%atm_choice == 3 .or. cfg%atm_choice == 4 .or. cfg%atm_choice == 5) then
+! the Kurucz, Allard or Castelli/Kurucz table
+         call atm_get_surface_pt(cfg%atm_choice, log10_teff, log10_gravity, &
+              atm_point%log10_pressure, atm_point%log10_temperature, &
+              allard_lookup_failed, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
-         tabulated_bc = .true.
-! JNT 06/14
-! GET PRESSURE AT T=Teff BY INTERPOLATION IN TABLE ATMPLC.
-      else if (cfg%atm_choice .eq. 5) then
-! KURUCZ ATMOSPHERES
-         call kcsurfp(log10_teff,log10_gravity,.false.,jerr)
-         if (jerr /= 0) then
-            ierr = jerr
-            return
-         end if
-         tabulated_bc = .true.
-! We have Kurucz atmosphere boundary conditions
-      else if (cfg%atm_choice .eq. 4) then
-! ALLARD & HAUSCHILDT ATMOSPHERES
-         call alsurfp(log10_teff,log10_gravity,.false.,allard_lookup_failed,jerr)
-         if (jerr /= 0) then
-            ierr = jerr
-            return
-         end if
-! Changed to Allard atmosphere code
          if(allard_lookup_failed) then
             cfg%atm_choice=0
             switched_to_gray = .true.
@@ -234,7 +216,6 @@ subroutine prepare_surface_boundary
          else
             tabulated_bc = .true.
          endif
-! We have Allard atmosphere boundary conditions
       endif
 end subroutine prepare_surface_boundary
 
@@ -411,22 +392,22 @@ subroutine integrate_atmosphere
 ! full atmo_struct, so the stitched model (and any writer reading
 ! it) always sees the atmosphere. Values are identical to what the
 ! print-on path stored.
-       beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_table%atm_log10_temperature-atm_table%atm_log10_pressure))
+       beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_point%log10_temperature-atm_point%log10_pressure))
        chi_rho = 1.0d0/pt_scr%qqdp
        chi_t = -chi_rho*pt_scr%qqdt
-       specific_heat_cv = pt_scr%qqcp - exp(ln10*(atm_table%atm_log10_pressure-atm_table%atm_log10_density-atm_table%atm_log10_temperature))*chi_t**2/chi_rho
+       specific_heat_cv = pt_scr%qqcp - exp(ln10*(atm_point%log10_pressure-atm_point%log10_density-atm_point%log10_temperature))*chi_t**2/chi_rho
        gamma1 = chi_rho*pt_scr%qqcp/specific_heat_cv
 ! JvS: SAVE STRUCTURE TO COMMON BLOCK
-       atmo_struct%atmo_log10_pressure(step_index) = atm_table%atm_log10_pressure
-       atmo_struct%atmo_log10_temperature(step_index) = atm_table%atm_log10_temperature
-       atmo_struct%atmo_log10_density(step_index) = atm_table%atm_log10_density
+       atmo_struct%atmo_log10_pressure(step_index) = atm_point%log10_pressure
+       atmo_struct%atmo_log10_temperature(step_index) = atm_point%log10_temperature
+       atmo_struct%atmo_log10_density(step_index) = atm_point%log10_density
        atmo_struct%atmo_beta(step_index) = beta
        atmo_struct%atmo_gamma1(step_index) = gamma1
        atmo_struct%atmo_dlnrho_dlnt(step_index) = pt_scr%qqdt
-       atmo_struct%atmo_ion_fraction(1,step_index) = atm_table%atm_ion_fraction(1)
-       atmo_struct%atmo_ion_fraction(2,step_index) = atm_table%atm_ion_fraction(2)
-       atmo_struct%atmo_ion_fraction(3,step_index) = atm_table%atm_ion_fraction(3)
-       atmo_struct%atmo_opacity(step_index) = atm_table%atm_opacity
+       atmo_struct%atmo_ion_fraction(1,step_index) = atm_point%ion_fraction(1)
+       atmo_struct%atmo_ion_fraction(2,step_index) = atm_point%ion_fraction(2)
+       atmo_struct%atmo_ion_fraction(3,step_index) = atm_point%ion_fraction(3)
+       atmo_struct%atmo_opacity(step_index) = atm_point%opacity
        atmo_struct%atmo_dlnkap_dlnrho(step_index) = pt_scr%qqod
        atmo_struct%atmo_dlnkap_dlnt(step_index) = pt_scr%qqot
        atmo_struct%atmo_specific_heat_cp(step_index) = pt_scr%qqcp
@@ -443,7 +424,7 @@ subroutine integrate_atmosphere
 ! atmosphere point's depth).
        opacity_now = pt_scr%qo
        density_now = exp(ln10*pt_scr%qdl)
-       tau_now = exp(ln10*atm_table%atm_tau)
+       tau_now = exp(ln10*atm_point%log10_tau)
        delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
        prev_opacity = opacity_now
 !FROM FIRST LINES OF TPGRAD
@@ -501,9 +482,9 @@ subroutine integrate_envelope
 !  IF ENVELOPE MASS(SENV) SMALL ENOUGH,SKIP ENVELOPE INTEGRATION.
       if(cfg%senv.gt.senv_thin_envelope) then
        if(save_boundary_flag) then
-          vtx_logp(vertex_index) = atm_table%atm_log10_pressure
+          vtx_logp(vertex_index) = atm_point%log10_pressure
           vtx_logr(vertex_index) = log10_radius
-          vtx_logt(vertex_index) = atm_table%atm_log10_temperature
+          vtx_logt(vertex_index) = atm_point%log10_temperature
        endif
  230     format(4X,3F16.12,8X,F16.12)
       else
@@ -514,10 +495,10 @@ subroutine integrate_envelope
       end do
       num_ok = 0
       num_bad = 0
-      indep_var = atm_table%atm_log10_pressure
+      indep_var = atm_point%log10_pressure
       initial_mass_coord = 0.0d0
       y(1) = initial_mass_coord
-      y(2) = atm_table%atm_log10_temperature
+      y(2) = atm_point%log10_temperature
       y(3) = log10_radius
       num_eqs = 3
       tolerance = cfg%env_error_tol
