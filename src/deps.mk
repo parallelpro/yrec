@@ -260,14 +260,10 @@ kap/laol89/laol_opacity.o: composition_layout.mod io_units.mod math_lib.mod nume
 kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/opal95/opal95_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod star_info_lib.mod
-mixing/burn_li_be_midpoint.o: burn_step.mod convection_geometry.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
-mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-mixing/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 mixing/compute_scale_height.o: eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
 mixing/find_convection_zones.o: io_units.mod star_info_lib.mod
 mixing/homogenize_convection_zones.o: star_info_lib.mod
 mixing/overshoot_boundaries.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
-mixing/rotmix.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod temperature_gradients.mod
 mixing/temperature_gradients.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
 mixing/test/test_convection.o: eos_lib.mod io_units.mod kap_lib.mod star_info_lib.mod temperature_gradients.mod
@@ -283,6 +279,9 @@ numerics/cubic_spline.o: io_units.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod quadratic_spline.mod table_interpolation.mod
 numerics/test/test_numerics.o: io_units.mod numerics_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
+rotation/burn_li_be_midpoint.o: burn_step.mod convection_geometry.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod magnetic_braking.mod math_lib.mod mid_timestep_model.mod physical_constants.mod rotation_scratch_lib.mod secular_transport.mod star_info_lib.mod
@@ -303,6 +302,7 @@ rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
 rotation/mid_timestep_model.o: burn_step.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/omega_from_j.o: star_info_lib.mod
 rotation/rotation_scratch_lib.o: star_info_lib.mod
+rotation/rotmix.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_diffusion_coeffs.o: rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_transport_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
