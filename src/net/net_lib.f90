@@ -53,28 +53,20 @@ module net_lib
            r_ac12 = 10, r_an14 = 11, r_3alpha = 12, r_c12c12_unused = 13, &
            num_reactions = 13
 ! num_rate_rows: length of the one-zone rate vector written by rates
-! (rows 1..13 are the reactions above in r_* order, times amu_cgs, per s
-! per amu; rows 14 and 15 are the C12+alpha and Be7
-! electron-capture branching fractions). The row indices are the rr_*
-! parameters of rotation_scratch_lib, and num_rate_rows must equal the
-! leading extent of rot_scr%reaction_rate_by_zone(15,json).
+! (rows 1..13 are the reactions above, at their r_* slots, times amu_cgs:
+! per s per amu; rows 14 and 15 are the N15(p,alpha) and Be7
+! electron-capture branching fractions, slots rv_frac_n15_pa and
+! rv_frac_be7_ecap). Slots r_ao16_unused and r_c12c12_unused are zero
+! placeholders (reactions 9 and 13 are never computed). (2026-10: the
+! rows had a second set of names, rr_*, for the same indices.)
       integer, parameter, public :: num_rate_rows = 15
-! rows of the composition rate vector filled by rates (rate_vec,
-! rate_by_zone(:,k), rot_scr%reaction_rate_by_zone): the rates of the
-! table reactions per s per amu (originally HR1-HR13) and the two
-! branching fractions (HF1, HF2). Rows rr_zero9 and rr_zero13 are
-! zero placeholders (reactions 9 and 13 are never computed). (2026-10:
-! moved here from rotation_scratch_lib -- they are the network's.)
-      integer, parameter, public :: rr_pp = 1, rr_he3_he3 = 2, &
-           rr_he3_he4 = 3, rr_c12_p = 4, rr_c13_p = 5, rr_n14_p = 6, &
-           rr_o16_p = 7, rr_c13_alpha = 8, rr_zero9 = 9, &
-           rr_c12_alpha = 10, rr_n14_alpha = 11, rr_triple_alpha = 12, &
-           rr_zero13 = 13, rr_frac_c12_alpha = 14, &
-           rr_frac_be7_electron = 15
+      integer, parameter, public :: rv_frac_n15_pa = 14, rv_frac_be7_ecap = 15
 ! net_settings%cross_section_scale(14:17) (SSTANDARD) carries four more
-! cross-section factors that are not rate-array slots.
+! cross-section factors that are not rate-array slots: pep, the Be7
+! electron and proton captures, hep. (2026-10: named xs_pep..xs_hep before,
+! the prefix of the network's species.)
       integer, parameter, public :: &
-           s_pep = 14, s_be7e = 15, s_be7p = 16, s_hep = 17
+           xs_pep = 14, xs_be7e = 15, xs_be7p = 16, xs_hep = 17
 ! q1..q5(8), net_settings%qs0e_scale(8), net_settings%qqs0ee_scale(8): slot 8 holds the
 ! Be7 + p coefficients (only for these arrays; rate slot 8 is He4+C13).
       integer, parameter, public :: iq_be7p = 8
@@ -159,7 +151,7 @@ module net_lib
 ! star layer fills it at the start of every run, after the controls are
 ! read and the Monte Carlo rate factors applied (configure_network,
 ! core/burn_step.f90), by calling net_setup; nothing else writes it.
-      integer, parameter, public :: num_cross_section_scales = s_hep
+      integer, parameter, public :: num_cross_section_scales = xs_hep
       type, public :: net_settings_t
 ! log10 T at or below which: (1) nothing burns; (2), (3) parts of the
 ! equilibrium burn are off; (4) helium burning is off; (5) the solar
@@ -167,7 +159,7 @@ module net_lib
          double precision :: logT_cutoffs(5) = 0.0d0
 ! the screening parameter below which screening is weak
          double precision :: weak_screening_threshold = 0.0d0
-! multipliers on the S-factors (r_* slots 1-13, then s_pep..s_hep), on
+! multipliers on the S-factors (r_* slots 1-13, then xs_pep..xs_hep), on
 ! their first and second energy derivatives (slots 1-7 and iq_be7p),
 ! and on the two N15 + p branches
          double precision :: cross_section_scale(num_cross_section_scales) = 1.0d0
@@ -528,7 +520,7 @@ end function deuterium_proton_capture_rate
 ! THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
 ! MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
 ! THE ABUNDANCES ARE UPDATED BY THE NETWORK BURN USING THESE.
-! rows rr_zero9/rr_zero13: zero-filled placeholders (rate(9), rate(13)
+! rows r_ao16_unused/r_c12c12_unused: zero-filled placeholders (rate(9), rate(13)
 ! are always 0 -- see the XEROING block above).
 ! END OF COMPUTATION OF HRK(IU).
 subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
@@ -662,9 +654,9 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
          end do
 ! Be7: electron capture vs proton capture
          nr%be7_electron = (1.752d-10)*t9_m12*(1.0d0 + 0.004d0*(1000.d0*t9 - 16.d0))
-         nr%be7_electron = nr%be7_electron*electron_mean_weight_inverse*net_settings%cross_section_scale(s_be7e)
+         nr%be7_electron = nr%be7_electron*electron_mean_weight_inverse*net_settings%cross_section_scale(xs_be7e)
          temp3 = (-10.2625d0*t9_m13)
-         nr%be7_proton = (3.128813d+5)*hydrogen_fraction*net_settings%cross_section_scale(s_be7p)*exp(temp3)
+         nr%be7_proton = (3.128813d+5)*hydrogen_fraction*net_settings%cross_section_scale(xs_be7p)*exp(temp3)
          qrbe7 = t9_m23 + fit_q1(iq_be7p)*t9_m13 + net_settings%qs0e_scale(iq_be7p)*(fit_q2(iq_be7p)+ fit_q3(iq_be7p)*t9_p13) &
               + net_settings%qqs0ee_scale(iq_be7p)*(fit_q4(iq_be7p)*t9_p23 + fit_q5(iq_be7p)*t9)
          nr%be7_proton = nr%be7_proton*qrbe7
@@ -750,7 +742,7 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
 ! hep, He3(p,e+ nu)He4: flux only (screened, scaled; times X*X(He3) by
 ! the consumer)
       nr%hep = (1.71724d+11)*density*t9_m23*exp(-6.1399d0*t9_m13)
-      nr%hep = (1.0d0 + 0.067862d0*t9_p13)*net_settings%cross_section_scale(s_hep)*nr%hep
+      nr%hep = (1.0d0 + 0.067862d0*t9_p13)*net_settings%cross_section_scale(xs_hep)*nr%hep
       nr%hep = nr%hep*exp(weak_intermediate_screening(2.0d0, 3.08687d0))
 
 contains
@@ -849,11 +841,11 @@ end subroutine nuclear_reaction_rates
 ! FOR Q1(I), ...,Q(5(I), I = 8 CORRESPONDS TO THE BE7 +  P REACTION.
 !  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
 !  FOR OTHER ARRAYS IN THE PROGRAM.
-! rate_vec (2026 W3): the one-zone output vector, rows rr_* of
+! rate_vec (2026 W3): the one-zone output vector, slots r_* and rv_* of
 ! rotation_scratch_lib -- formerly the 15 separate per-zone arrays
 ! HR1..HR13, HF1, HF2 written at element IU (the shell number). Callers
 ! pass the column rate_by_zone(:, k) of their (num_rate_rows, json)
-! array. Rows rr_zero9 and rr_zero13 are zero-filled placeholders
+! array. Rows r_ao16_unused and r_c12c12_unused are zero-filled placeholders
 ! (reactions 9 and 13 are never computed).
 subroutine network_rate_vector(log_density, log_temperature, xa, rate_vec)
       use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
@@ -887,21 +879,21 @@ subroutine network_rate_vector(log_density, log_temperature, xa, rate_vec)
          if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0
       end do
 ! per s per amu (amu_cgs)
-      rate_vec(rr_pp)=nr%rate(r_pp)*amu_cgs
-      rate_vec(rr_he3_he3)=nr%rate(r_he3he3)*amu_cgs
-      rate_vec(rr_he3_he4)=nr%rate(r_he3he4)*amu_cgs
-      rate_vec(rr_c12_p)=nr%rate(r_pc12)*amu_cgs
-      rate_vec(rr_c13_p)=nr%rate(r_pc13)*amu_cgs
-      rate_vec(rr_n14_p)=nr%rate(r_pn14)*amu_cgs
-      rate_vec(rr_o16_p)=nr%rate(r_po16)*amu_cgs
-      rate_vec(rr_c13_alpha)=nr%rate(r_ac13)*amu_cgs
-      rate_vec(rr_zero9)=nr%rate(r_ao16_unused)*amu_cgs
-      rate_vec(rr_c12_alpha)=nr%rate(r_ac12)*amu_cgs
-      rate_vec(rr_n14_alpha)=nr%rate(r_an14)*amu_cgs
-      rate_vec(rr_triple_alpha)=nr%rate(r_3alpha)*amu_cgs
-      rate_vec(rr_zero13)=nr%rate(r_c12c12_unused)*amu_cgs
-      rate_vec(rr_frac_c12_alpha)=nr%frac_n15_pa
-      rate_vec(rr_frac_be7_electron)=nr%frac_be7_ecap
+      rate_vec(r_pp)=nr%rate(r_pp)*amu_cgs
+      rate_vec(r_he3he3)=nr%rate(r_he3he3)*amu_cgs
+      rate_vec(r_he3he4)=nr%rate(r_he3he4)*amu_cgs
+      rate_vec(r_pc12)=nr%rate(r_pc12)*amu_cgs
+      rate_vec(r_pc13)=nr%rate(r_pc13)*amu_cgs
+      rate_vec(r_pn14)=nr%rate(r_pn14)*amu_cgs
+      rate_vec(r_po16)=nr%rate(r_po16)*amu_cgs
+      rate_vec(r_ac13)=nr%rate(r_ac13)*amu_cgs
+      rate_vec(r_ao16_unused)=nr%rate(r_ao16_unused)*amu_cgs
+      rate_vec(r_ac12)=nr%rate(r_ac12)*amu_cgs
+      rate_vec(r_an14)=nr%rate(r_an14)*amu_cgs
+      rate_vec(r_3alpha)=nr%rate(r_3alpha)*amu_cgs
+      rate_vec(r_c12c12_unused)=nr%rate(r_c12c12_unused)*amu_cgs
+      rate_vec(rv_frac_n15_pa)=nr%frac_n15_pa
+      rate_vec(rv_frac_be7_ecap)=nr%frac_be7_ecap
 end subroutine network_rate_vector
 
 

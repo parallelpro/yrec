@@ -20,15 +20,15 @@ The domain's public entry point. It also re-exports `thermal_neutrino_lib`.
 | Routine | What it does |
 |---|---|
 | `nuclear_reaction_rates` | **The one rate evaluation.** For one zone (log ρ, log T, composition), it returns a `nuclear_rates` record: the rate of each reaction slot `r_*`, per gram per second with the abundance factors omitted (screened and scaled); dln rate/dlnT and dln rate/dln ρ; the Be7 and N15 branchings; the two Be7 channel rates and the screened hep factor. Covers screening (Salpeter weak, Graboske et al. intermediate and strong), the S-factor fits of reactions 1–7, the Caughlan & Fowler α captures and triple-α. |
-| `network_rate_vector` | Calls `nuclear_reaction_rates`, zeroes any rate at or below 10⁻⁵, and repacks the result as the **composition rate vector** `rate_vec(rr_*)`, per s per amu. This is what the composition solve uses. |
+| `network_rate_vector` | Calls `nuclear_reaction_rates`, zeroes any rate at or below 10⁻⁵, and repacks the result as the **composition rate vector** `rate_vec`, per s per amu: the reactions at their `r_*` slots, then the two branching fractions at `rv_frac_n15_pa` and `rv_frac_be7_ecap`. This is what the composition solve uses. |
 | `deuterium_proton_capture_rate` | The d(p,γ)³He fit, shared by the energy and deuterium code. |
 | `net_setup` | Installs the run's settings (`net_settings_t`: temperature cutoffs, screening threshold, cross-section and S-factor scales, Li/Be rate scales, neutrino switches). Called once per run by `configure_network`. |
 
 It also holds the index families and data the network uses:
-- `r_*`: reaction slots 1–13;
-- `rr_*`: rows of the composition rate vector;
+- `r_*`: reaction slots 1–13, used by the rate record, the composition rate vector and the cross-section scales alike;
+- `rv_frac_n15_pa`, `rv_frac_be7_ecap`: the two branching fractions that follow the reactions in the composition rate vector;
+- `xs_pep`, `xs_be7e`, `xs_be7p`, `xs_hep`: the four cross-section scale slots after the reactions;
 - `iso_*`: isotopes in the rate and screening composition;
-- `s_*`: extra cross-section scale slots;
 - the fit coefficients, screening factors, isotope masses and charges.
 
 ### `net/nuclear_energy.f90` (module `nuclear_energy_lib`)
@@ -46,7 +46,7 @@ It also holds the index families and data the network uses:
 | `network_table_errors`, `write_network_table` | The table's self-check (every row conserves baryon number) and a printout. Both are pinned by `test_net`. |
 
 The **reaction table** (`reactions(:)`) has one row per reaction. Each row gives:
-- the rate row it reads (`rr_*`);
+- the rate slot it reads (`r_*`);
 - a branching factor (none, f, or 1 − f for the two N15 outcomes);
 - the rate law (the mass fractions that multiply the rate);
 - the change list of (species, ν) pairs;
@@ -161,7 +161,7 @@ A deliberate change to its output means regenerating `net/test/expected_test_net
 **Change a rate fit or coefficient.** Edit it in `nuclear_reaction_rates` (`net_lib.f90`), the only copy. If the functional form changes, update the matching `dlnrate_dlnt` expression next to it; `test_net`'s derivative check will tell you if they disagree. For the S-factor reactions 1–7, the fit coefficients are the `fit_q*` constants at the top of `net_lib`.
 
 **Add a reaction to the implicit network.** Today this touches three places:
-1. **The rate.** In `net_lib`, add a slot `r_*` (and raise `num_reactions`) and its formula in `nuclear_reaction_rates`, with its derivative. Add a row `rr_*` (and raise `num_rate_rows`), filled in `network_rate_vector`.
+1. **The rate.** In `net_lib`, add a slot `r_*` (and raise `num_reactions`) and its formula in `nuclear_reaction_rates`, with its derivative, and copy it into the rate vector in `network_rate_vector` (raise `num_rate_rows` and move the two `rv_*` fraction slots up).
 2. **The energy.** In `sum_energy_generation` (`nuclear_energy.f90`), add `eg(r_new)` and its Q-value term.
 3. **The composition.** In `network_lib`'s `reactions(:)`, add a row with its rate row, rate law and change list, plus `emitted_mass` for any untracked particle. `network_table_errors` must stay 0.
 

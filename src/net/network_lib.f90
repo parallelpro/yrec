@@ -15,10 +15,10 @@
 ! Reactions. Reaction j proceeds at
 !     R_j = b_j * g_j * prod_m X(law_j(m))          [per s per amu]
 ! where g_j is row rate_row of the rate vector filled by net_lib's
-! rates (rows rr_*: N_A<sigma v>, density, screening and the 1/A
+! rates (slots r_*, rv_*: N_A<sigma v>, density, screening and the 1/A
 ! factors are already in it), X are mass fractions, and b_j is 1, or
 ! the N15(p,alpha) branching fraction f (or 1-f) carried in row
-! rr_frac_c12_alpha, for the two outcomes of the N14(p,g) chain. Each
+! rv_frac_n15_pa, for the two outcomes of the N14(p,g) chain. Each
 ! reaction changes the per-amu abundance of species i by nu_ij, so
 !     dX_i/dt = A_i * sum_j nu_ij R_j
 ! with A_i the integer mass number, the convention the rate rows use.
@@ -29,9 +29,9 @@
 ! adding a row to the table; adding a species means adding it to the
 ! species list and to the rows that touch it.
 module network_lib
-      use net_lib, only: rr_pp, rr_he3_he3, rr_he3_he4, &
-           rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, rr_c13_alpha, &
-           rr_c12_alpha, rr_n14_alpha, rr_triple_alpha, rr_frac_c12_alpha
+      use net_lib, only: r_pp, r_he3he3, r_he3he4, &
+           r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
+           r_ac12, r_an14, r_3alpha, rv_frac_n15_pa
       implicit none
       private
 
@@ -67,29 +67,29 @@ module network_lib
       integer, parameter :: n_reactions = 12
       type(reaction_t), parameter :: reactions(n_reactions) = [ &
 !                     name                  rate row         branch      rate law                  changes (species, nu)
-           reaction_t('pp chain to He3',     rr_pp,           unbranched, [s_h1, s_h1, 0],          &
+           reaction_t('pp chain to He3',     r_pp,           unbranched, [s_h1, s_h1, 0],          &
                       [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0]), &
-           reaction_t('He3(He3,2p)He4',      rr_he3_he3,      unbranched, [s_he3, s_he3, 0],        &
+           reaction_t('He3(He3,2p)He4',      r_he3he3,      unbranched, [s_he3, s_he3, 0],        &
                       [s_h1, 2, s_he3, -2, s_he4, 1, 0, 0, 0, 0]), &
-           reaction_t('He3(He4,g) pp II/III', rr_he3_he4,     unbranched, [s_he3, s_he4, 0],        &
+           reaction_t('He3(He4,g) pp II/III', r_he3he4,     unbranched, [s_he3, s_he4, 0],        &
                       [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0]), &
-           reaction_t('C12(p,g) to C13',     rr_c12_p,        unbranched, [s_h1, s_c12, 0],         &
+           reaction_t('C12(p,g) to C13',     r_pc12,        unbranched, [s_h1, s_c12, 0],         &
                       [s_h1, -1, s_c12, -1, s_c13, 1, 0, 0, 0, 0]), &
-           reaction_t('C13(p,g)N14',         rr_c13_p,        unbranched, [s_h1, s_c13, 0],         &
+           reaction_t('C13(p,g)N14',         r_pc13,        unbranched, [s_h1, s_c13, 0],         &
                       [s_h1, -1, s_c13, -1, s_n14, 1, 0, 0, 0, 0]), &
-           reaction_t('N14(p,g) N15(p,a)C12', rr_n14_p,       n15_to_c12, [s_h1, s_n14, 0],         &
+           reaction_t('N14(p,g) N15(p,a)C12', r_pn14,       n15_to_c12, [s_h1, s_n14, 0],         &
                       [s_h1, -2, s_n14, -1, s_c12, 1, s_he4, 1, 0, 0]), &
-           reaction_t('N14(p,g) N15(p,g)O16', rr_n14_p,       n15_to_o16, [s_h1, s_n14, 0],         &
+           reaction_t('N14(p,g) N15(p,g)O16', r_pn14,       n15_to_o16, [s_h1, s_n14, 0],         &
                       [s_h1, -2, s_n14, -1, s_o16, 1, 0, 0, 0, 0]), &
-           reaction_t('O16(p,g) O17(p,a)N14', rr_o16_p,       unbranched, [s_h1, s_o16, 0],         &
+           reaction_t('O16(p,g) O17(p,a)N14', r_po16,       unbranched, [s_h1, s_o16, 0],         &
                       [s_h1, -2, s_o16, -1, s_n14, 1, s_he4, 1, 0, 0]), &
-           reaction_t('C12(a,g)O16',         rr_c12_alpha,    unbranched, [s_he4, s_c12, 0],        &
+           reaction_t('C12(a,g)O16',         r_ac12,    unbranched, [s_he4, s_c12, 0],        &
                       [s_he4, -1, s_c12, -1, s_o16, 1, 0, 0, 0, 0]), &
-           reaction_t('C13(a,n)O16',         rr_c13_alpha,    unbranched, [s_he4, s_c13, 0],        &
+           reaction_t('C13(a,n)O16',         r_ac13,    unbranched, [s_he4, s_c13, 0],        &
                       [s_he4, -1, s_c13, -1, s_o16, 1, 0, 0, 0, 0], emitted_mass=1), &
-           reaction_t('N14(a,g) to O18',     rr_n14_alpha,    unbranched, [s_he4, s_n14, 0],        &
+           reaction_t('N14(a,g) to O18',     r_an14,    unbranched, [s_he4, s_n14, 0],        &
                       [s_he4, -1, s_n14, -1, s_o18, 1, 0, 0, 0, 0]), &
-           reaction_t('triple alpha',        rr_triple_alpha, unbranched, [s_he4, s_he4, s_he4],    &
+           reaction_t('triple alpha',        r_3alpha, unbranched, [s_he4, s_he4, s_he4],    &
                       [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0]) ]
 
       public :: implicit_burn_step, network_table_errors, write_network_table, &
@@ -177,9 +177,9 @@ double precision function branch_factor(j, rate_vec)
 
       select case (reactions(j)%branch)
       case (n15_to_c12)
-         branch_factor = rate_vec(rr_frac_c12_alpha)
+         branch_factor = rate_vec(rv_frac_n15_pa)
       case (n15_to_o16)
-         branch_factor = 1.0d0 - rate_vec(rr_frac_c12_alpha)
+         branch_factor = 1.0d0 - rate_vec(rv_frac_n15_pa)
       case default
          branch_factor = 1.0d0
       end select
@@ -207,7 +207,7 @@ end subroutine abundance_rates
 ! ---------------------------------------------------------------
 ! One implicit (backward-Euler) burning step of length dt (s).
 !   x_start   abundances at the start of the step (all network species)
-!   rate_vec  the rate vector (rows rr_*) for this zone or zone average
+!   rate_vec  the rate vector (slots r_*, rv_*) for this zone or zone average
 !   x         in: the first guess for the solved species; out: the
 !             solution, with the explicit products (O18) updated
 ! Newton converges when every |correction| < absolute_tolerance and every
@@ -327,9 +327,9 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
       use net_lib, only: num_rate_rows, net_settings
       implicit none
 
-! rate_by_zone(rr_*, zone): the per-zone rate vectors written by
+! rate_by_zone(r_*/rv_*, zone): the per-zone rate vectors written by
 ! net_lib's network_rate_vector (2026 W3 -- formerly 9 separate rate_*(json)
-! arguments); rows are the rr_* indices of net_lib. Only
+! arguments); rows are the r_*/rv_* slots of net_lib. Only
 ! the nine rows named in the use statement are read here.
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
 ! xa_start: the start-of-step composition (star%xa_start at every caller;
@@ -397,30 +397,30 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
       end if
       if (zone_begin.eq.zone_end) then
 !        PP
-         pp_rate = rate_by_zone(rr_pp, zone_begin)
+         pp_rate = rate_by_zone(r_pp, zone_begin)
 !        HE3,HE3
-         he3_he3_rate = rate_by_zone(rr_he3_he3, zone_begin)
+         he3_he3_rate = rate_by_zone(r_he3he3, zone_begin)
 !        HE3,HE4
-         he3_he4_rate = rate_by_zone(rr_he3_he4, zone_begin)
+         he3_he4_rate = rate_by_zone(r_he3he4, zone_begin)
 !        C12,P
-         c12_p_rate = rate_by_zone(rr_c12_p, zone_begin)
+         c12_p_rate = rate_by_zone(r_pc12, zone_begin)
 !        C13,P
-         c13_p_rate = rate_by_zone(rr_c13_p, zone_begin)
+         c13_p_rate = rate_by_zone(r_pc13, zone_begin)
 !        N14,P + N15,P
-         n14_p_rate = rate_by_zone(rr_n14_p, zone_begin)
+         n14_p_rate = rate_by_zone(r_pn14, zone_begin)
 !        O16,P + O17,P.
-         o16_p_rate = rate_by_zone(rr_o16_p, zone_begin)
-!        C13,ALPHA -- not used (row rr_c13_alpha not read here)
+         o16_p_rate = rate_by_zone(r_po16, zone_begin)
+!        C13,ALPHA -- not used (row r_ac13 not read here)
 !        O16,ALPHA (NOT USED)
 !        C12,ALPHA
-         c12_alpha_rate = rate_by_zone(rr_c12_alpha, zone_begin)
-!        N14,ALPHA -- not used (row rr_n14_alpha not read here)
+         c12_alpha_rate = rate_by_zone(r_ac12, zone_begin)
+!        N14,ALPHA -- not used (row r_an14 not read here)
 !        TRIPLE ALPHA
-         triple_alpha_rate = rate_by_zone(rr_triple_alpha, zone_begin)
+         triple_alpha_rate = rate_by_zone(r_3alpha, zone_begin)
 !        C12,C12 (NOT USED)
 !        BRANCHING RATIO FOR N15,P :
 !        f = FRACTION GOING TO C12+ALPHA, 1-f = FRACTION GOING TO O16
-!        -- not used (row rr_frac_c12_alpha not read here)
+!        -- not used (row rv_frac_n15_pa not read here)
       else
 !        USE THE MASS-WEIGHTED AVERAGE RATES FOR THE CZ
          pp_rate = 0.0d0
@@ -433,19 +433,19 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
          c12_alpha_rate = 0.0d0
          triple_alpha_rate = 0.0d0
          do zone_idx = zone_begin, zone_end
-            pp_rate = pp_rate + shell_mass(zone_idx)*rate_by_zone(rr_pp, zone_idx)
+            pp_rate = pp_rate + shell_mass(zone_idx)*rate_by_zone(r_pp, zone_idx)
             he3_he3_rate = he3_he3_rate + &
-                 shell_mass(zone_idx)*rate_by_zone(rr_he3_he3, zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(r_he3he3, zone_idx)
             he3_he4_rate = he3_he4_rate + &
-                 shell_mass(zone_idx)*rate_by_zone(rr_he3_he4, zone_idx)
-            c12_p_rate = c12_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_c12_p, zone_idx)
-            c13_p_rate = c13_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_c13_p, zone_idx)
-            n14_p_rate = n14_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_n14_p, zone_idx)
-            o16_p_rate = o16_p_rate + shell_mass(zone_idx)*rate_by_zone(rr_o16_p, zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(r_he3he4, zone_idx)
+            c12_p_rate = c12_p_rate + shell_mass(zone_idx)*rate_by_zone(r_pc12, zone_idx)
+            c13_p_rate = c13_p_rate + shell_mass(zone_idx)*rate_by_zone(r_pc13, zone_idx)
+            n14_p_rate = n14_p_rate + shell_mass(zone_idx)*rate_by_zone(r_pn14, zone_idx)
+            o16_p_rate = o16_p_rate + shell_mass(zone_idx)*rate_by_zone(r_po16, zone_idx)
             c12_alpha_rate = c12_alpha_rate + &
-                 shell_mass(zone_idx)*rate_by_zone(rr_c12_alpha, zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(r_ac12, zone_idx)
             triple_alpha_rate = triple_alpha_rate + &
-                 shell_mass(zone_idx)*rate_by_zone(rr_triple_alpha, zone_idx)
+                 shell_mass(zone_idx)*rate_by_zone(r_3alpha, zone_idx)
          end do
          pp_rate = pp_rate/total_shell_mass
          he3_he3_rate = he3_he3_rate/total_shell_mass

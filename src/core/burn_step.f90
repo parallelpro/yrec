@@ -700,7 +700,7 @@ end subroutine store_end_li_be_rates
 !
 !  log_temperature     run of log10 T; shells below
 !                      ctrl%nuclear_logT_cutoffs(1) are only mixed
-!  rate_by_zone(rr_*,k) net_lib's rate vectors, per s per amu
+!  rate_by_zone(r_*/rv_*,k) net_lib's rate vectors, per s per amu
 !  shell_mass          the mass weights for a convection zone
 !  composition         out: the new abundances (star%xa layout); the
 !                      solved shell's previous neighbour is the first

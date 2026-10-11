@@ -88,7 +88,7 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
       integer, intent(inout) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
       integer, intent(out) :: ierr
 
-! rate_by_zone(rr_*, zone): the composition rate vector of every shell,
+! rate_by_zone(r_*/rv_*, zone): the composition rate vector of every shell,
 ! from compute_burn_rates
       double precision :: rate_by_zone(num_rate_rows, json)
       integer :: radiative_zone_bounds(max_radiative_zones,2)

@@ -574,7 +574,7 @@ subroutine solar_neutrino_fluxes
 !  rate.
          e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*t9_m12* &
               (1.0d0 + 20.d0*t9)*eg(r_pp)
-         e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(s_pep)/fourpiau2
+         e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(xs_pep)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
 ! hep: the screened rate factor from nuclear_reaction_rates
          e%neutrino_flux(i_nu_hep) = nr%hep

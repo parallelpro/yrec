@@ -14,7 +14,7 @@ subroutine map_user_inputs
       use star_info_lib, only: star
       use controls_lib
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
-           s_pep, s_be7e, s_be7p, s_hep, iq_be7p
+           xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
       implicit none
 
       integer :: i
@@ -118,10 +118,10 @@ subroutine map_user_inputs
 !      SSTANDARD(11) = S0_4_14/S0_4_14_REF resonant; not fit by simple S0
 !      SSTANDARD(12) = S0_3A/S0_3A_REF resonant; not fit by simple S0
 !      SSTANDARD(13) = S0_12_12/S0_12_12_REF not used
-         star%cross_section_scale(s_pep) = s0_pep/s0_pep_ref
-         star%cross_section_scale(s_be7e) = s0_be7_electron/s0_be7_electron_ref
-         star%cross_section_scale(s_be7p) = s0_be7_p/s0_be7_p_ref
-         star%cross_section_scale(s_hep) = s0_hep/s0_hep_ref
+         star%cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
+         star%cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
+         star%cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
+         star%cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
 ! ABILITY TO CHANGE THE HARD-CODED BRANCHING RATIOS FOR THE OUTCOME OF N15+P
          star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
          star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref

@@ -38,7 +38,7 @@ program test_net
       data grid_logt /6.90d0, 7.10d0, 7.30d0, 7.60d0/
       data grid_logd /1.0d0,  1.8d0,  2.2d0,  3.0d0/
 
-! rate_vec: the one-zone rate vector of rates (rows rr_*)
+! rate_vec: the one-zone rate vector of rates (slots r_*, rv_*)
       double precision :: rate_vec(num_rate_rows)
 ! the composition of the rates check, star%xa layout
       double precision :: test_xa(15)
@@ -171,12 +171,12 @@ program test_net
       do ipt = 1, npts
          call network_rate_vector(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
          write(*,'(a,i2)') "rates ", ipt
-         write(*,'(4(1pe20.12))') rate_vec(rr_pp), rate_vec(rr_he3_he3), &
-              rate_vec(rr_he3_he4), rate_vec(rr_c12_p)
-         write(*,'(4(1pe20.12))') rate_vec(rr_c13_p), rate_vec(rr_n14_p), &
-              rate_vec(rr_o16_p), rate_vec(rr_c13_alpha)
-         write(*,'(4(1pe20.12))') rate_vec(rr_c12_alpha), rate_vec(rr_n14_alpha), &
-              rate_vec(rr_triple_alpha), rate_vec(rr_frac_be7_electron)
+         write(*,'(4(1pe20.12))') rate_vec(r_pp), rate_vec(r_he3he3), &
+              rate_vec(r_he3he4), rate_vec(r_pc12)
+         write(*,'(4(1pe20.12))') rate_vec(r_pc13), rate_vec(r_pn14), &
+              rate_vec(r_po16), rate_vec(r_ac13)
+         write(*,'(4(1pe20.12))') rate_vec(r_ac12), rate_vec(r_an14), &
+              rate_vec(r_3alpha), rate_vec(rv_frac_be7_ecap)
       end do
 
 ! Itoh neutrino losses (pure; first call initializes its own tables)

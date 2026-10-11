@@ -37,7 +37,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       integer, intent(in) :: convective_core_edge_zone, &
            h_shell_midpoint_zone, num_points
       double precision, intent(out) :: hydrogen_dt
-! rate_by_zone(rr_*, zone) is the rates()->equilibrium_burn_rates() relay scratch --
+! rate_by_zone(r_*/rv_*, zone) is the rates()->equilibrium_burn_rates() relay scratch --
 ! only the column at the single shell-midpoint zone is written; a local
 ! since the 2026 de-tramp (it used to be trampled up through
 ! compute_timestep), one array since W3 (formerly 15 rate_*(json)).
