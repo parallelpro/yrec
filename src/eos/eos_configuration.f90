@@ -1,10 +1,10 @@
 !----------------------------------------------------------------------
 ! eos_configuration
 !----------------------------------------------------------------------
-! The settings record of eos/ (2026-10): everything the equation of
-! state needs from the run's configuration, installed by eos_init (from
-! the star layer's eos_settings, setup/microphysics_settings.f90) or
-! set_eos_settings; nothing else writes it.
+! The settings record of eos/: everything the equation of state needs
+! from the run's configuration, installed by eos_init (from the star
+! layer's equation_of_state_settings, setup/microphysics_settings.f90)
+! or set_eos_settings; nothing else writes it.
 module eos_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none

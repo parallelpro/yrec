@@ -1,89 +1,56 @@
 !----------------------------------------------------------------------
 ! eos_lib
 !----------------------------------------------------------------------
-! Added 2026 as part of the YREC readability refactor's phase two
-! (disentangling the solver from the physics domains -- see
-! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
+! The public interface of eos/, the equation of state: everything code
+! outside eos/ may use, here and only here (check_boundaries enforces
+! it).
+!     eos_init        install the settings (eos_settings_t, built by the
+!                     star layer's equation_of_state_settings) and load
+!                     the tables they select
+!     eos_get         density, the thermodynamic quantities and their
+!                     derivatives at (log T, log P, X, Z), in a result
+!                     array (i_log10_density, i_cp, i_grada, ...)
+!     eos_eval        the same with separate outputs (for test_eos)
+!     eos_set_mixture, eos_set_debye_huckel_z   the envelope mixture and
+!                     the metal mixture of the Debye-Hueckel correction
+!     eos_set_debye_huckel_composition   the zone composition the
+!                     Debye-Hueckel correction uses
+!     eos_update_envelope_tables   rebuild the SCV envelope table when
+!                     the envelope composition changes
+!     eos_get_gamma1  gamma1 and the adiabatic gradient at (T, rho)
+!                     (for test_eos)
+!     set_eos_settings   install settings without reloading tables
+! eos_eval takes the MHD EOS (mhd_eos) when use_mhd_eos is set, else
+! the blended EOS (blended_eos): the Yale EOS, with the SCV table at
+! low temperature and an OPAL table blended in where it covers the
+! point. Each EOS family is one module; eos reads no star.
 !
-! eos_eval is the first facade of this phase: a single explicit-
-! interface entry point that replaces the `if (use_mhd_eos) call compute_mhd_eos
-! else call compute_blended_eos` dispatch that used to be duplicated at every call
-! site, and additionally centralizes the Debye-Huckel composition
-! setup (debye_huckel_x/y/z_total/z(3), read only by compute_fully_ionized_eos
-! on the non-MHD path) that 6 of those call sites also used to
-! duplicate verbatim. compute_blended_eos (which also hosts blend_eos, its
-! co-located pair), compute_fully_ionized_eos, and compute_mhd_eos are all
-! unchanged; this is a pure dispatch/setup wrapper.
-!
-! composition_at_zone is OPTIONAL: callers that carry full per-species
-! composition (misc/henyey_coefficients.f90, io/write_legacy_output.f90, core/read_starting_model.f90,
-! misc/shell_physics.f90, mixing/compute_scale_height.f90, mixing/semiconvection.f90) pass
-! composition(:,idx) and get the same Debye-Huckel setup they used to
-! compute themselves. Callers that only ever carried bulk
-! hydrogen_fraction/metal_fraction (atm/atm_lib.f90, atm/atmosphere_derivs.f90,
-! atm/envelope_derivs.f90, wind/massloss.f90) omit it -- exactly matching their
-! prior behavior, since none of them set these fields before either.
-!
-! core/read_starting_model.f90 previously had a bug here (confirmed against the
-! original F77 source via git history): a missing ELSE meant it called
-! *both* compute_mhd_eos and compute_blended_eos when MHD was on, and *neither* when MHD was
-! off. eos_eval's if/else has the structurally-correct form, so
-! migrating that call site fixes the bug by construction.
-!
-! mixing/compute_scale_height.f90, mixing/semiconvection.f90, and wind/massloss.f90
-! previously called compute_blended_eos unconditionally, with no LMHD check at all
-! -- confirmed authentic original YREC behavior (unchanged since the
-! very first commit, not a modernization artifact). Migrating them to
-! eos_eval extends real MHD support to these three secondary/diagnostic
-! calculations for the first time, per explicit user sign-off; this is
-! an acknowledged numerics change for use_mhd_eos=.true. runs, which
-! the Stage-0 regression suite cannot verify (no test case sets LMHD).
-!
-! eos_get_gamma1 below was created for the acoustic-depth diagnostic
-! (calcad), which has since been retired (commit 55c372b); its only
-! remaining caller is eos/test/test_eos.f90.
+! res(i_*) holds eos_eval's 24 outputs (MESA's eosDT_get shape). It is
+! intent(inout): the slots eos_eval updates in place (i_log10_density,
+! i_beta, the ionization fractions, i_mu_ion_inv, i_dlnrho_dlnt/p,
+! i_cp, i_grada) carry the caller's previous values in.
 module eos_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_configuration, only: eos_settings, eos_settings_t, &
+           set_eos_settings
+      use blended_eos, only: compute_blended_eos, blend_eos
+      use mhd_eos, only: compute_mhd_eos, read_mhd_tables
+      use opal2006_eos, only: esac06
+      use scv_eos, only: build_scv_envelope_table, read_scv_tables
+      use yale_eos, only: read_fermi_table
+      use eos_mixture, only: eos_mix
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
            open_opal_eos_table
       use yale_eos_tables, only: debye_huckel_x, debye_huckel_y, debye_huckel_z, &
            debye_huckel_z_total
       use physical_constants, only: ln10
-      use eos_mixture, only: eos_mix
-      use eos_configuration, only: eos_settings, eos_settings_t, &
-           set_eos_settings
       use math_lib
-! 2026 named-index result array (ROADMAP "Named-index result arrays"):
-! eos_get packs eos_eval's 24 thermodynamic outputs into one
-! res(num_eos_results) array indexed by the constants below (MESA's
-! eosDT_get shape). The independent variables (log10 T, log10 P),
-! composition, mode flags, and the saha state stay explicit
-! arguments. res is intent(inout): the historically-inout slots
-! (i_log10_density, i_beta, the ionization fractions, i_mu_ion_inv,
-! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
-! exactly as the old per-caller locals did; eos_eval itself is called
-! unchanged, so results are byte-identical.
-      use blended_eos, only: compute_blended_eos, blend_eos
-      use mhd_eos, only: compute_mhd_eos, read_mhd_tables
-      use yale_eos, only: read_fermi_table
-      use opal2006_eos, only: esac06
-      use scv_eos, only: build_scv_envelope_table, read_scv_tables
       implicit none
-! Everything is private unless exported below (2026: eos_get is the
-! single public query -- the named-index result-array form; the
-! long-argument engine underneath it, eos_eval, is exported ONLY for
-! the domain's own standalone test and stays outside the
-! check_boundaries.py cross-domain allowlist). The i_*/num_eos_results
-! index parameters carry their own public attributes.
-! eos_get_gamma1 is exported for eos/test/test_eos.f90 only (no
-! production caller; see the header note above).
       private
-      public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture, eos_set_debye_huckel_z
-      public :: eos_eval
-! the settings record (eos_configuration) and its setter; the per-zone
-! Debye-Hueckel composition; the envelope-mixture SCV table
-      public :: eos_settings_t, set_eos_settings, eos_set_debye_huckel_composition, &
-           eos_update_envelope_tables
+      public :: eos_init, eos_get, eos_eval, eos_get_gamma1
+      public :: eos_set_mixture, eos_set_debye_huckel_z, &
+           eos_set_debye_huckel_composition, eos_update_envelope_tables
+      public :: eos_settings_t, set_eos_settings
 ! result-array slots for eos_get
       integer, parameter, public :: &
            i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
@@ -98,8 +65,10 @@ module eos_lib
 
 contains
 
-! ---------------------------------------------------------------
-! Named-index result-array form of eos_eval (see module header).
+!----------------------------------------------------------------------
+! eos_get
+!----------------------------------------------------------------------
+! eos_eval, with its 24 outputs in res(i_*) (see the module header).
 subroutine eos_get(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, res, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
@@ -131,7 +100,17 @@ subroutine eos_get(log10_temperature, log10_pressure, &
       res(i_fxion:i_fxion+2) = fxion_local
 end subroutine eos_get
 
-
+!----------------------------------------------------------------------
+! eos_eval
+!----------------------------------------------------------------------
+! The EOS at (log T, log P, X, Z): density, beta, the ionization
+! fractions, the mean weights and the degeneracy, d ln rho/d ln T and
+! d ln rho/d ln P, cp and the adiabatic gradient, and with
+! want_derivatives their T and P derivatives. in_atmosphere skips the
+! derivatives of the fully ionized gas; saha_state carries the Saha
+! solver's state between calls. composition_at_zone (a zone's
+! composition, star%xa layout) sets the Debye-Hueckel composition;
+! callers with only X and Z omit it.
 subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
@@ -164,11 +143,8 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
       real(dp), intent(in), optional :: composition_at_zone(:)
-! 2026 (docs/ROADMAP.md stage 3): ierr follows MESA's ierr-not-stop
-! discipline (same shape as kap_lib's kap_get): any error condition
-! that used to stop deep inside the eos internals is returned here
-! instead, ierr /= 0, with the diagnostic already printed at the point
-! of failure.
+! ierr /= 0 reports a corrupt table or a bad configuration; the
+! diagnostic is already in the run log.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -214,27 +190,10 @@ end subroutine eos_eval
 !----------------------------------------------------------------------
 ! eos_init
 !----------------------------------------------------------------------
-! Added 2026 (phase three, docs/ROADMAP.md stage 1): the eos domain's
-! startup-time table-load lifecycle entry, following MESA's
-! <mod>_init convention. Covers the eos tables loaded from named
-! files at startup: the MHD EOS tables (gated on use_mhd_eos, moved
-! inside from the call site so the caller needs no knowledge of
-! which eos configuration requires which tables -- a no-op when MHD
-! is off, exactly as the gated call was) and the Yale EOS's
-! Fermi-Dirac degenerate-electron table (read unconditionally, into
-! yale_eos_tables; this block previously lived inline in
-! setup/setups.f90, writing into atm_tables -- moved here
-! verbatim, including its bin-construction loop, its glitch check,
-! and that check's `stop`, which docs/ROADMAP.md stage 3 will convert to
-! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
-! they are lazily read on first use inside esac/esac01/esac06 via
-! their table_loaded_flag guards. The SCV (Saumon-Chabrier-Van Horn)
-! EOS tables are also read here (gated on use_scv_eos, into
-! scv_eos_tables's state consumed by eos/scv/compute_scv_envelope_eos+compute_scv_eos and the io
-! writers) -- another inline setups.f90 block moved in verbatim; its
-! read is provably independent of the atm tables read later in
-! startup (separate file units, disjoint state), so absorbing it here
-! is order-safe.
+! Installs the settings and loads the tables they select: opens the
+! OPAL table (its vintage's reader reads it on first use) and reads the
+! MHD tables, the Fermi-Dirac table (always) and the SCV tables. Each
+! file is opened on a new unit; a missing one returns ierr = 1.
 subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
      scv_he_table_path, scv_z_table_path, zams_a_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
@@ -252,7 +211,6 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
 ! select (opened here, read lazily by its vintage's reader)
       type(eos_settings_t), intent(in) :: settings
       character(len=*), intent(in) :: opal_eos_table_path
-! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -278,19 +236,12 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! eos_get_gamma1
 !----------------------------------------------------------------------
-! Added 2026 (phase three, docs/ROADMAP.md stage 1): a component-accessor
-! entry in the spirit of MESA's eosDT_get_component, created for the
-! acoustic-depth diagnostic (calcad). That diagnostic was retired in
-! commit 55c372b, so this entry now has NO production caller: it is
-! exercised only by eos/test/test_eos.f90 and is kept as a pinned
-! test surface. Given composition and an (unlogged) T/rho/P point,
-! returns gamma1 and the adiabatic gradient, dispatching on
-! use_opal2006_eos exactly as calcad historically did: the OPAL 2006
-! table (via esac06, density-basis, radiation correction on, 9
-! variables; a failed table lookup falls through with whatever the
-! previous point left behind, as calcad did) when enabled, otherwise the
-! Yale/SCV path (via blend_eos, pressure-basis) with gamma1 built from
-! chi_rho/chi_T/cv per Cox & Giuli ch. 9.
+! gamma1 and the adiabatic gradient at (T6, rho, P) and (X, Z): from
+! the OPAL 2006 table (esac06, with the radiation correction) when
+! use_opal2006_eos is set, else from blend_eos, with gamma1 built from
+! chi_rho, chi_T and cv (Cox & Giuli ch. 9). Outside the OPAL table it
+! returns what esac06 left from the previous point. test_eos is its
+! only caller.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
@@ -299,16 +250,13 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       real(dp), intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
-! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
-! Note an out-of-table esac06 lookup (in_table false) is NOT an
-! error here: it falls through with the previous point's results, preserved
-! verbatim from calcad's original handling.
+! ierr as for eos_eval; an out-of-table esac06 lookup is not an error.
       integer, intent(out) :: ierr
 
       integer :: jerr
 
-! --- locals (per-call copies: esac06/blend_eos write into several of
-!     the positions the inputs occupy) ---
+! per-call copies: esac06 and blend_eos write into several of their
+! input arguments
       integer :: eos_interp_order, eos_rad_flag
       real(dp) :: x_local, t6_local, d_local
       real(dp) :: temperature_local, log10_temperature, &
@@ -376,15 +324,11 @@ end subroutine eos_get_gamma1
 !----------------------------------------------------------------------
 ! eos_set_mixture
 !----------------------------------------------------------------------
-! Added 2026 (physics-purity pass): the star layer pushes the envelope
-! mixture here whenever it recomputes the envelope composition
-! (starin's mixture blocks, rscale's rescale); the eos internals read
-! only eos_mixture's eos_mix. This removed the eos domain's last
-! reads of star_info.
+! The envelope mixture the Saha and SCV paths read through eos_mix: X,
+! Z, the mean atomic mass and the species fractions. The star layer
+! sets it whenever it recomputes the envelope composition.
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
-
-
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction, mean_atomic_mass
       real(dp), intent(in) :: species_fractions(:)
@@ -393,35 +337,30 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
       eos_mix%amuenv = mean_atomic_mass
       eos_mix%fxenv = species_fractions
-
 end subroutine eos_set_mixture
 
 !----------------------------------------------------------------------
 ! eos_set_debye_huckel_z
 !----------------------------------------------------------------------
-! Added 2026 (wave 2): the LAOL89 opacity table header carries the
-! 18-element metal mixture (C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,
-! Mn,Fe,Ni, scaled to sum to ZHIT) that the Debye-Huckel correction
-! weights with debye_huckel_nu; kap/kap_lib.f90 pushes it here
-! right after read_laol_tables reads it (formerly read_laol_tables wrote yale_eos_tables's
-! debye_huckel_z directly). Elements 1-3 are recomputed per shell by
-! the star layer (core/henyey_iteration.f90 etc.); 4-18 come only from
-! here.
+! The 18-element metal mixture (C, N, O, Ne, Na, Mg, Al, Si, P, S, Cl,
+! Ar, Ca, Ti, Cr, Mn, Fe, Ni, summing to Z) that the Debye-Hueckel
+! correction weights with debye_huckel_nu. kap_lib passes the LAOL89
+! table's mixture after reading it; eos_set_debye_huckel_composition
+! then resets elements 1-3 for each zone.
 subroutine eos_set_debye_huckel_z(metal_mixture)
       real(dp), intent(in) :: metal_mixture(:)
 
       debye_huckel_z = metal_mixture
-
 end subroutine eos_set_debye_huckel_z
 
 !----------------------------------------------------------------------
 ! eos_set_debye_huckel_composition
 !----------------------------------------------------------------------
-! The composition the Debye-Hueckel correction uses on calls that pass
-! none (composition_at_zone absent), from a zone's composition (star%xa
-! layout): the star layer sets the surface zone's before the envelope
-! integration. Does nothing when the correction is off. (2026-10: the
-! three callers wrote yale_eos_tables' variables themselves.)
+! The composition the Debye-Hueckel correction uses, from a zone's
+! composition (star%xa layout). eos_eval sets it from
+! composition_at_zone; the star layer sets the surface zone's before
+! the envelope integration, whose calls pass none. Does nothing when
+! the correction is off.
 subroutine eos_set_debye_huckel_composition(composition)
       real(dp), intent(in) :: composition(:)
 

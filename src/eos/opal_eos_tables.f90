@@ -1,45 +1,33 @@
 !----------------------------------------------------------------------
 ! opal_eos_tables
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Bundles the OPAL 1995/2001/2006 equation-of-
-! state interpolation tables -- former common/a/, aa/, b/, bb/, e/,
-! ee/, eee/, rmpopeos/ (1995), aeos/, aaeos/, beos/, bbeos/, eeos/,
-! eeeos/, eeeeos/, rmpopeos01/ (2001), aeos06/, aaeos06/, beos06/,
-! bbeos06/, eeeos06/, eeeeos06/ (2006), and the single common/lreadco/
-! flag shared by name across all three years' readers -- into
-! per-vintage derived-type instances.
+! The OPAL EOS tables and interpolation state, one instance per
+! vintage (opal95, opal01, opal06), plus opal_eos for what the vintages
+! share: the table unit, the loaded flags and each table's Z. The
+! interpolation routines take the instance as their first argument,
+! "v". Also here: each vintage's read-only grids (x_grid,
+! eos_var_order, t6_index_lo, density_index_edge), the slots of
+! eos_output (i_opal_*, i_opal01_*), and the helpers the vintages share:
+!     open_opal_eos_table      open the selected table (at eos_init)
+!     interpolate_opal_t6_rho  the T6-rho interpolation of the 2001 and
+!                              2006 tables
+!     find_opal_ramp           table coverage and edge-blend weight for
+!                              the 1995 and 2001 tables
+!     quad, gmass01            OPAL's quadratic interpolation and mass
+!                              per particle
 !
-! Readability W3 (2026): each vintage's mutable state is one instance
-! (opal95 / opal01 / opal06) whose members carry no year suffix; the
-! interpolation routines receive the instance as their first argument
-! ("v"). The read-only tables that used to sit inside the state as
-! declaration-time initializers (x_grid, eos_var_order, t6_index_lo,
-! density_index_edge*) are named constants below, one per vintage,
-! transcribed verbatim from eos/blkdta000.f90 (1995 -- since deleted),
-! esac01 + readcoeos01 (2001),
-! esac06 (2006), and readco (1995's rmpopeos
-! ramp table); every repeat-count list's element count was
-! independently verified against its table's nr/nt dimension. The
-! 2001/2006 x_grid constants are intentionally written WITHOUT a d0
-! suffix (0.0, 0.2, 0.4, 0.6, 0.8), exactly matching the original
-! esac01.f/esac06.f DATA statements: those literals are parsed as
-! single precision and then widened to double, which is NOT
-! bit-identical to the correctly-rounded double value -- preserved
-! verbatim rather than "fixed", per this project's policy on
-! pre-existing behavior.
+! Two state types: the 2001 and 2006 interpolators clamp every stencil
+! to the table, so they share opal_eos_vintage, dimensioned by the
+! larger 2006 table. The 1995 interpolator (esac) does not: when T6 is
+! in the lowest table interval (5000 K <= T < 5500 K) its stencils run
+! to t6_index_1+3 = nt+1 and x_index_lo+3 = 6 > n_eos_mx, and it reads
+! t6_grid(nt+1), the member after t6_grid. opal_eos_vintage95 keeps the
+! 1995 dimensions and member order, so those reads stay as they are.
 !
-! Two state types, not one: the 2001 and 2006 interpolators
-! (esac01/esac06) clamp every stencil to the table (t6_order_hi /
-! density_order_hi), so they share opal_eos_vintage, dimensioned by the
-! larger 2006 table. The 1995 interpolator (esac) does not: its
-! boundary-sum stencils run to t6_index_1+3 = nt+1 and to x_index_lo+3
-! = 6 (> n_eos_mx) whenever T6 lies in the lowest table interval
-! (5000 K <= T < 5500 K, reachable in any 1995-EOS run), and the
-! interpolation that follows reads t6_grid(nt+1), i.e. the member that
-! happens to follow t6_grid. Re-dimensioning the 1995 arrays would
-! therefore change 1995 results, so opal_eos_vintage95 keeps the 1995
-! dimensions and member order exactly as they were laid out before.
+! The 2001 and 2006 x_grid constants are written without the d0 suffix
+! (0.0, 0.2, ...), as in OPAL's DATA statements: single-precision
+! literals widened to double, which differ from the correctly rounded
+! doubles in the last bits.
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: run_log_unit
@@ -111,22 +99,16 @@ module opal_eos_tables
       integer, private :: i
 
 ! ==================== read-only per-vintage tables ====================
-! Hydrogen-fraction grid of each vintage's table set (former common/a/
-! x_grid, common/aeos/ x_grid_01, common/aeos06/ x_grid_06).
+! Hydrogen-fraction grid of each vintage's table set.
       real(dp), parameter :: opal95_x_grid(n_eos_mx) = &
            [0.0d0,0.2d0,0.4d0,0.6d0,0.8d0]
-! NOTE: no D-suffix, as in the original (esac01.f/esac06.f) -- preserved
-! verbatim: parsed as single-precision constants and widened to double
-! precision (0.2/0.4/0.6/0.8 are not exactly representable in binary
-! floating point, so these are NOT bit-identical to the correctly-
-! rounded double values).
+! Single-precision literals, as in OPAL (see the module header).
       real(dp), parameter :: opal01_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
       real(dp), parameter :: opal06_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
 ! Table-column -> eos_output-slot permutation (the identity for all
-! three vintages; former common/b/ eos_var_order and its _01/_06 twins).
+! three vintages).
       integer, parameter :: opal_eos_var_order(n_eos_mv) = [1,2,3,4,5,6,7,8,9,10]
-! Row of the lowest tabulated T6 at each density column (former
-! common/b/ t6_index_lo and its _01/_06 twins).
+! Row of the lowest tabulated T6 at each density column.
       integer, parameter :: opal95_t6_index_lo(n_eos95_nr) = &
            [(56,i=1,37),(54,i=1,7), &
             39,37,36,34,33,31,31,30,29,28,27,26,26,25,24,23,22,21,21,20, &
@@ -141,9 +123,7 @@ module opal_eos_tables
             (149,i=1,2),133,125,123,122,120,115,113,107,102,(80,i=1,2), &
             72,68,66,64,62,56,54,52,51,(50,i=1,2),49,47,(45,i=1,2),43,42, &
             (40,i=1,28),39,37,36,35,34,32,31,30,29,27,26]
-! Column of the highest tabulated density at each T6 row (former
-! common/rmpopeos/ density_index_edge_at_t, common/rmpopeos01/
-! density_index_edge_at_t_01, common/beos06/ density_index_edge_06).
+! Column of the highest tabulated density at each T6 row.
       integer, parameter :: opal95_density_index_edge(n_eos95_nt) = &
            [(77,i=1,7),(76,i=1,2),(74,i=1,2),(72,i=1,2),(70,i=1,2), &
             68,67,66,65,64,63,61,60,59,58,57,55,54,53,52,51, &
@@ -166,8 +146,7 @@ module opal_eos_tables
 
 ! ==================== mutable state ====================
 ! quad's per-slot Lagrange-coefficient cache (recomputed when
-! recompute_flag==0, read on every other call) -- promoted from SAVEd
-! function locals in the save-migration campaign; one per vintage.
+! recompute_flag == 0, read on every other call); one per vintage.
       type :: opal_quad_cache
             real(dp) :: x12_inv(30), x13_inv(30), x23_inv(30), &
                  x1_squared(30), x1_plus_x2(30)
@@ -179,37 +158,30 @@ module opal_eos_tables
 ! rows/columns.
       type :: opal_eos_vintage
             type(opal_quad_cache) :: quad
-! former common/aeos/ and aeos06/
+! the tables, their grids and inverse spacings, the X-interpolated slices
            real(dp) :: eos_table(n_eos_mx,n_eos_mv,n_eos_nt_max,n_eos_nr_max), &
                 t6_list(n_eos_nr_max,n_eos_nt_max), density_grid(n_eos_nr_max), &
                 t6_grid(n_eos_nt_max), x_interp_result(n_eos_nt_max,n_eos_nr_max), &
                 x_interp_result_alt(n_eos_nt_max,n_eos_nr_max), &
                 x_grid_spacing_inv(n_eos_mx), t6_grid_spacing_inv(n_eos_nt_max), &
                 density_grid_spacing_inv(n_eos_nr_max)
-! x_loop_index is a plain local (not a module field): it is used as a
-! DO-loop control variable in esac*.f90/readco*.f90, which the Fortran
-! standard requires to be a named scalar variable, not a derived-type
-! component.
            integer :: x_index_lo
-! former common/aaeos/ and aaeos06/ (xxh is not referenced anywhere)
+! density-interpolation weights (xxh is unused)
            real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
-! former common/beos/ and beos06/
+! each table's Z, and the eos_output slot of each table variable
            real(dp) :: z_table(n_eos_mx)
            integer :: eos_index_inverse(10)
-! former common/bbeos/ and bbeos06/
+! the interpolation stencil and orders
            integer :: density_index_1, density_index_2, density_index_3, &
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
                 t6_index_4, t6_interp_order, density_interp_order
-! former common/eeos/ and eeos06/ -- the latter relocated here from
-! atm_tables in 2026 (docs/ROADMAP.md stage 1); its former non-eos reader
-! (a direct eos_output(8)/(9) read in the turnover-timescale code,
-! since removed) was replaced by eos_lib's eos_get_gamma1.
+! the last interpolated value (esact) and the results (eos_output)
            real(dp) :: esact, eos_output(n_eos_mv)
-! former common/eeeos/ and eeeos06/
+! the X-interpolation workspace
            real(dp) :: x_interp_workspace(n_eos_mx,n_eos_nt_max,n_eos_nr_max), &
                 x_grid_copy(n_eos_mx)
-! former common/eeeeos/ and eeeeos06/ (amu_grid and log10_ne_grid are
-! read from the 2006 tables only)
+! the table headers (amu_grid and log10_ne_grid only in the 2006
+! tables)
            real(dp) :: moles_per_gram_table(n_eos_mx), &
                 hydrogen_fraction_header(n_eos_mx), &
                 mean_molecular_weight_header(n_eos_mx), &
@@ -219,8 +191,8 @@ module opal_eos_tables
                 species_fraction_header(n_eos_mx,6), &
                 log10_r_value(n_eos_nr_max,n_eos_nt_max)
            integer :: temperature_count_used(n_eos_mx,n_eos_nr_max)
-! former common/rmpopeos01/ (2001 only: find_opal2006_ramp works from the
-! density_index_edge table directly)
+! the table edge at each T6 row and the cached row (find_opal_ramp;
+! find_opal2006_ramp works from density_index_edge directly)
            real(dp) :: density_edge_at_t(n_eos_nt_max)
            integer :: t_row_index
       end type opal_eos_vintage
@@ -231,7 +203,7 @@ module opal_eos_tables
 ! on (header note).
       type :: opal_eos_vintage95
             type(opal_quad_cache) :: quad
-! former common/a/
+! the tables, their grids and inverse spacings, the X-interpolated slices
            real(dp) :: eos_table(n_eos_mx,n_eos_mv,n_eos95_nt,n_eos95_nr), &
                 t6_list(n_eos95_nr,n_eos95_nt), density_grid(n_eos95_nr), &
                 t6_grid(n_eos95_nt), x_interp_result(n_eos95_nt,n_eos95_nr), &
@@ -239,21 +211,21 @@ module opal_eos_tables
                 x_grid_spacing_inv(n_eos_mx), t6_grid_spacing_inv(n_eos95_nt), &
                 density_grid_spacing_inv(n_eos95_nr)
            integer :: x_index_lo
-! former common/aa/ (xxh is not referenced anywhere)
+! density-interpolation weights (xxh is unused)
            real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
-! former common/b/
+! each table's Z, and the eos_output slot of each table variable
            real(dp) :: z_table(n_eos_mx)
            integer :: eos_index_inverse(10)
-! former common/bb/
+! the interpolation stencil and orders
            integer :: density_index_1, density_index_2, density_index_3, &
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
                 t6_index_4, t6_interp_order, density_interp_order
-! former common/e/
+! the last interpolated value (esact) and the results (eos_output)
            real(dp) :: esact, eos_output(n_eos_mv)
-! former common/ee/
+! the X-interpolation workspace
            real(dp) :: x_interp_workspace(n_eos_mx,n_eos95_nt,n_eos95_nr), &
                 x_grid_copy(n_eos_mx)
-! former common/eee/
+! the table headers
            real(dp) :: moles_per_gram_table(n_eos_mx), &
                 hydrogen_fraction_header(n_eos_mx), &
                 mean_molecular_weight_header(n_eos_mx), &
@@ -261,7 +233,7 @@ module opal_eos_tables
                 species_fraction_header(n_eos_mx,6), &
                 log10_r_value(n_eos95_nr,n_eos95_nt)
            integer :: temperature_count_used(n_eos_mx,n_eos95_nr)
-! former common/rmpopeos/
+! the table edge at each T6 row and the cached row (find_opal_ramp)
            real(dp) :: density_edge_at_t(n_eos95_nt)
            integer :: t_row_index
       end type opal_eos_vintage95
@@ -271,15 +243,11 @@ module opal_eos_tables
 ! zero-filled at load rather than becoming initialized data.
       type :: opal_eos_state
 ! whether each vintage's table is loaded, indexed by iv_opal95/01/06
-! (2026-10: one flag shared by all three, from the original common
-! /lreadco/, so loading one vintage kept the next from reading its own
-! table in the same process)
            integer :: table_loaded_flag(n_opal_vintages) = 0
-! the unit eos_init opened the run's OPAL table on (2026-10:
-! read_controls opened it on ctrl%iopale)
+! the unit open_opal_eos_table opened the run's OPAL table on
            integer :: table_unit = 0
-! save-migration campaign (2026): lazy-load guards and first-load
-! table-Z memory, promoted from SAVEd locals; indexed by iv_opal95/01/06.
+! the readers' first-call guards and each loaded table's Z, indexed
+! by iv_opal95/01/06
             integer :: readco_init_flag(n_opal_vintages) = 0
             real(dp) :: table_metal_fraction(n_opal_vintages) = 0.0d0
       end type opal_eos_state
@@ -294,13 +262,10 @@ contains
 !----------------------------------------------------------------------
 ! interpolate_opal_t6_rho (formerly t6rint_core)
 !----------------------------------------------------------------------
-! Readability W3 (2026): the T6/density interpolation shared by the
-! OPAL 2001 and 2006 EOS (t6rinteos01 / t6rinteos06). Those two
-! routines were identical statement for statement apart from the state
-! instance they addressed, the RECURSIVE attribute of the 2006 copy,
-! and the text of the out-of-range message; the arithmetic lives here
-! once, and each vintage's wrapper keeps its own message. Not used by
-! the 1995 EOS (t6rinterp orders its esactq2 block differently).
+! The T6/density interpolation of the OPAL 2001 and 2006 EOS (their
+! wrappers t6rinteos01 and t6rinteos06 add each vintage's out-of-range
+! message). The 1995 EOS has its own, t6rinterp, which orders its
+! esactq2 block differently.
 !
 ! Interpolates the already X-interpolated table slice
 ! (v%x_interp_result) in density (slr) and T6 (slt) with the stencil
@@ -388,13 +353,10 @@ end subroutine interpolate_opal_t6_rho
 !----------------------------------------------------------------------
 ! find_opal_ramp (formerly eqbound_core)
 !----------------------------------------------------------------------
-! Readability W3 (2026): the table-edge search and ramp-factor
-! calculation shared by find_opal95_ramp (OPAL 1995) and find_opal2001_ramp (OPAL
-! 2001). Those two routines were identical statement for statement
-! from the T6 row search onward, differing only in the table they
-! address and its row count nt; each wrapper keeps its own density
-! pre-check (5.0 for 1995, 7.0 for 2001) and then calls this. Not used
-! by find_opal2006_ramp, whose edge search is a different algorithm.
+! The table-edge search and ramp factor of the OPAL 1995 and 2001
+! tables, called by find_opal95_ramp and find_opal2001_ramp after
+! their own density checks. find_opal2006_ramp searches the 2006
+! table's ragged edge differently.
 !
 ! Arguments: the vintage's row/column counts nt/nr, t6_grid (nt
 ! descending T6 rows), the caller's cached row index t_row_index
@@ -438,8 +400,6 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
 !        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, t_row_index
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
          end if
@@ -454,8 +414,6 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
          t6_top_of_table = t6_grid(1)
 !        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, t_row_index
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
          end if
@@ -511,12 +469,8 @@ end subroutine find_opal_ramp
 ! in question -- this is a straight transliteration of the original
 ! caching scheme, not a redesign of it).
 !
-! Readability W3 (2026): the former quadeos01.f90 and quadeos06.f90
-! clones were identical to this routine apart from the cache they
-! addressed (opal_eos%quad01_* / quad06_*; now the cache argument) and
-! a redundant pair of parentheses around the single variable
-! x1_plus_x2(cache_slot) in the 2006 copy; all three vintages now call
-! this one function with their own opalXX%quad cache.
+! Each vintage passes its own cache (opal95%quad, opal01%quad,
+! opal06%quad).
 real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
      y1, y2, y3, x1, x2, x3)
 
@@ -553,12 +507,10 @@ end function quad
 ! gmass01
 !----------------------------------------------------------------------
 ! OPAL 2001 EOS analogue of gmass (see there for the general
-! description); called from esac01 and, since the 2026 W3
-! readability pass removed the identical gmass06.f90 copy, from
-! esac06 as well. Note the difference from
-! gmass: here the function accumulator starts at 0, so the
-! electron-mass term (electron_mole_excess*atomic_weight(1) in gmass)
-! is not included. Preserved verbatim rather than "fixed".
+! description), called from esac01 and esac06. Unlike gmass, the sum
+! starts at 0, so the electron-mass term
+! (electron_mole_excess*atomic_weight(1) in gmass) is not included, as
+! in OPAL's 2001 code.
 real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
      total_moles, ground_state_energy, metal_mole_fraction, &
      species_number_fraction)
@@ -663,5 +615,12 @@ subroutine open_opal_eos_table(opal_eos_table_path, ierr)
          ierr = 1
       end if
 end subroutine open_opal_eos_table
+
+!======================================================================
+! Sources: the OPAL EOS interpolation codes of Rogers, Swenson &
+! Iglesias (1996) and Rogers & Nayfonov (2002). This state was the
+! COMMON blocks a, aa, b, bb, e, ee, eee and rmpopeos (1995); aeos,
+! aaeos, beos, bbeos, eeos, eeeos, eeeeos and rmpopeos01 (2001); aeos06,
+! aaeos06, beos06, bbeos06, eeeos06 and eeeeos06 (2006); and lreadco.
 
 end module opal_eos_tables

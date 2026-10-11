@@ -154,8 +154,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       helium_mass_fraction = saha_mass_fractions(ix_he)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction
       temperature_inverse = 1.0d0/temperature
-! BEGIN SAHA ROUTINE
-! COMPUTE SAHA K'S
+! Begin Saha routine
+! compute Saha K's
       stemp = 2.50d0*log10_temperature - log10_pressure + cmkh
       nz1 = 1
       do i=1,nz
@@ -199,7 +199,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       helium_ion_fraction_1 = 0.0d0
       helium_ion_fraction_2 = 0.0d0
       end if
-! BEGIN ITERATIONS FOR SOLUTION OF E
+! Begin iterations for solution of e
       do isaha=1,max_saha_iterations
          saha_state = saha_state + 1
          ep1 = 1.0d0/(1.0d0 + mean_electrons_per_ion)
@@ -238,7 +238,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          c31 = 2.0d0*helium_mass_fraction
          r1 = helium_ion_fraction_1*helium_saha_ratio_2 - &
               helium_ion_fraction_2*eep1
-! REDUCTION OF SAHA MATRIX TO DIAGONAL FORM
+! Reduction of Saha matrix to diagonal form
          cr12 = - c21/c11
          cr13 = - c31/c11
          c22 = c22 + cr12*c12
@@ -262,12 +262,12 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          end if
          end if
          end if
-! ENTRY FOR NO FULLY IONIZED HELIUM (SAHEX2 = 0.0)
+! Entry for no fully ionized helium (SAHEX2 = 0.0)
          end if
          cr23 = - c32/c22
          c33 = c33 + cr23*c23
          r3 = r3 + cr23*r2
-! ENTRY FOR NEUTRAL HELIUM
+! Entry for neutral helium
          end if
          delta_electrons_per_ion = r3/c33
          if (.not. skip_helium_i) then
@@ -275,7 +275,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          helium_ion_fraction_1 = helium_ion_fraction_1 + deltx1
          helium_ion_fraction_1 = max(0.0d0,min(1.0d0,helium_ion_fraction_1))
          if (.not. skip_helium_ii) then
-!CC   STATEMENT RECALCULATED FOR DEC-20 SYSTEM
+! c12*deltx1, floored at 1e-38 in magnitude (written for the DEC-20's
+! single-precision range)
          if (c12 /= 0.d0 .and. deltx1 /= 0.d0) then
          c12l=log10(abs(c12))
          delx1l=log10(abs(deltx1))
@@ -318,7 +319,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
            mean_electrons_per_ion,delta_electrons_per_ion
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
       end if
-! SYSTEM HAS BEEN SOLVED FOR E
+! System has been solved for e
       electron_mean_weight_inverse = mean_electrons_per_ion*ion_mean_weight_inverse
       specific_gas_constant = gas_constant*(electron_mean_weight_inverse + &
            ion_mean_weight_inverse)
@@ -331,7 +332,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       if (in_atmosphere) then
          return
       end if
-! COMPUTE FIRST DERIVATIVES
+! Compute first derivatives
       r3t = 0.0d0
       r3p = 0.0d0
       if (nz0 > 0) then
@@ -365,7 +366,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       sqep = r3p/c33
       dlnrho_dlnt = -1.0d0 - beta14 - ep1*sqet
       dlnrho_dlnp = beta_inverse - ep1*sqep
-! COMPUTE INTERNAL ENERGY TEMPERATURE DERIVATIVE(QUT)
+! Compute internal energy temperature derivative(qut)
       usum = 0.0d0
       if (.not. skip_helium_i) then
       sx1qt = (r2t - c23*sqet)/c22
@@ -393,7 +394,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       ramu = gas_constant*ion_mean_weight_inverse
       qut =ramu*((1d0+mean_electrons_per_ion)*(betaut+3d0*beta_inverse*beta14) &
            +betaut*sqet+usum*temperature_inverse)
-! COMPUTE SPECIFIC HEAT(QCP) AND ADIABATIC GRADIENT(DELA)
+! Compute specific heat(qcp) and adiabatic gradient(dela)
       pdt = pressure/(density*temperature)
       pdtq = pdt*dlnrho_dlnt
       specific_heat_cp = qut - pdtq
@@ -402,7 +403,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       if (.not.want_derivatives) then
          return
       end if
-! COMPUTE DERIVATIVES OF QDT,QCP,DELA
+! Compute derivatives of qdt,qcp,dela
       beta16 = 4.0d0*beta_inverse*beta14
       r3t = 0.0d0
       r3p = 0.0d0
@@ -505,14 +506,14 @@ end subroutine compute_saha_eos
 ! branch (fully ionized gas assumed) and to interpolate against the
 ! compute_saha_eos/compute_scv_envelope_eos result near the ionization cutoff.
 !
-!          QDTT,QDTP = NAT-LOG DERIVATIVES OF QDT=D(LOG D )/D(LOG T )
-!          QAT,QAP = NAT-LOG DERIVATIVES OF THE ADIABATIC DERIVATIVE
-! DBG 7/92 MODIFIED TO INCLUDE DEBYE-HUCKEL CORRECTION.
-!     CORRECTION IS APPLIED TO PRESSURE AND ALL THERMODYNAMIC VARIABLES.
-!     TREATMENT IS ALSO VALID FOR ELECTRON DEGENERACY.  A RAMP FUNCTION
-!     BETWEEN THE NONDEGENERATE AND DEGERNATE ELECTRON GAS CASES OF THE
-!     D.H. CORRECTION IS USED (THIS IS NOT CORRECT BUT, HOPEFULLY IS
-!     CLOSE ENOUGH.  CONSTANT TERM CDH IS CALCULATED IN SETUPS.
+!          Qdtt,qdtp = nat-log derivatives of qdt=d(log d )/d(log T )
+!          qat,qap = nat-log derivatives of the adiabatic derivative
+! DBG 7/92 modified to include Debye-Hueckel correction.
+!     Correction is applied to pressure and all thermodynamic variables.
+!     Treatment is also valid for electron degeneracy.  A ramp function
+!     between the nondegenerate and degernate electron gas cases of the
+!     D-H correction is used (this is not correct but, hopefully is
+!     close enough.)  The constant term is debye_huckel_coefficient.
 subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, beta, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, electron_degeneracy_parameter, &
@@ -554,11 +555,11 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       integer :: jt1, jt2, jt3, nden, id1p, ii, kk, id1, id2, id3, nn, id
       real(dp) :: df1(5,3), df2(5,3), ff(5,3), ffe(5)
 
-!  THE ELECTRON PRESSURE (TABULATED IN FERMI TABLE) FOR A GIVEN (RHO,T)
-!  IS FOUND HERE; THE DENSITY IS ADJUSTED SO THAT THE RESULTING TOTAL
-!  PRESSURE (PE + PA + PR) EQUALS THE INITIAL P.  FOR DETAILS
-!  CONSULT PRATHER'S THESIS.
-!  SUFFIX E=ELECTRON;R=RADIATION;A=NUCLEON;I.E.PA=PRESSURE DUE TO NUCLEI
+!  The electron pressure (tabulated in Fermi table) for a given (rho,T)
+!  is found here; the density is adjusted so that the resulting total
+!  pressure (pe + pa + pr) equals the initial P.  For details
+!  consult Prather's thesis.
+!  Suffix e=electron;R=radiation;a=nucleon;i.e. pa=pressure due to nuclei
       pinv = 1.0d0/pressure
       beta1 = 1.0d0 - beta
       tl8 = log10_temperature
@@ -568,9 +569,9 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       ramut = ramu*temperature
       emul = log10(electron_mean_weight_inverse)
       emul8 = emul
-!  PE IS TABULATED AS A FUNCTION OF X(=LOG D - LOG MUE - 3/2LOG T) AND
-!  Y(= LOG T). FIND INDEX(JT1,JT2,JT3) FOR 3 PT INTERPOLATION IN Y.
-! MHP 10/02 CORRECTED MIXED TYPE
+!  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
+!  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
+! MHP 10/02 corrected mixed type
       jt1 = int(5.0d0*(log10_temperature - 5.0d0))
       jt1 = max0(1,min0(jt1,18))  ! Force jt1 to be in the table
       jt2 = jt1 + 1
@@ -581,7 +582,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       dml = log10_density + emul
       nden = 1
       id1p = -100
-! DBG 7/92 CALCULATE D.H. TERMS: ALPHA-MIXTURE, MASS-FRAC0, MASS-FRAC1
+! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1
       if (eos_settings%use_debye_huckel_correction) then
          almix = 0.0d0
          do ii=1,18
@@ -591,14 +592,14 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
          cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
       end if
       density_iter: do
-! BEGIN ITERATION LOOP FOR CORRECT DENSITY (was label 10)
-!  FIND INDEX (ID1,ID2,ID3) FOR 3-PT INTERPOLATION IN X
+! Begin iteration loop for correct density (was label 10)
+!  find index (ID1,ID2,ID3) for 3-pt interpolation in X
       xx = dml - 1.50d0*tl8
       pr6= 20.0d0*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
       kk = int(pr6)
       kk = min0(261,max0(1,kk))
       id1 = yale%fermi_table_x_lookup(kk)
-!  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
+!  If index unchanged from previous loop,skip this section
       if (id1 /= id1p) then
       id1p = id1
       id2 = id1 + 1
@@ -609,7 +610,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       cden1 = -pr7*pr8
       cden2 = -pr8*pr9
       cden3 = -pr9*pr7
-!  INTERPOLATION IN Y IS NEWTONIAN(EQUAL SPACING IN Y)
+!  Interpolation in Y is Newtonian(equal spacing in Y)
       do nn = 1,3
        id = id1 + nn - 1
        df1(1,nn) = yale%fermi_table_data(1,id,jt2) - yale%fermi_table_data(1,id,jt1)
@@ -621,7 +622,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       dx1 = xx - yale%fermi_table_x_grid(id1)
       dx2 = xx - yale%fermi_table_x_grid(id2)
       dx3 = xx - yale%fermi_table_x_grid(id3)
-!  INTERPOLATION IN X IS LAGRANGIAN(UNEQUAL TABLE SPACING IN X)
+!  Interpolation in X is Lagrangian(unequal table spacing in X)
       cl1 = dx2*dx3*cden1
       cl2 = dx3*dx1*cden2
       cl3 = dx1*dx2*cden3
@@ -642,7 +643,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
             cmfdh = t0+(electron_degeneracy_parameter-eos_settings%debye_huckel_eta_min)*slope
          end if
       end if
-!  NOW FIND PE AND ITS 1ST AND 2ND DERIVS.W/R/T DENSITY
+!  Now find pe and its 1st and 2nd derivatives w.r.t. density
       pel =  cl1*ff(1,1) +  cl2*ff(1,2) +  cl3*ff(1,3)
       dpel1 = dcl1*ff(1,1) + dcl2*ff(1,2) + dcl3*ff(1,3)
       dl8 = dml - emul8
@@ -667,8 +668,8 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       if (eos_settings%use_debye_huckel_correction) then
          pr9 = pr9 + 2.25d0*pdhp/pr7
       end if
-! FACTOR IS THE DIFFERENCE BETWEEN THE P PREDICTED FROM THE GIVEN RHO
-! AND THE TRUE P; IF TOO LARGE INCREMENT RHO AND TRY AGAIN.
+! Factor is the difference between the P predicted from the given rho
+! and the true P; if too large increment rho and try again.
       factor=abs(pr8)
       if(factor < 1d-15) factor = 1d-15
       pr8l=log10(factor)
@@ -702,7 +703,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
        end do
        ffe(kk) = cl1*ff(kk,1) + cl2*ff(kk,2) + cl3*ff(kk,3)
       end do
-! DERIVATIVES OF P
+! Derivatives of P
       peq = exp(ln10*ffe(3))
       qped = ffe(4)
       qqpedd =(dcl1*ff(4,1) + dcl2*ff(4,2) + dcl3*ff(4,3))*clni
@@ -733,14 +734,14 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       if (eos_settings%use_debye_huckel_correction) then
         qqpdd = qqpdd + (-1.5d0*qpd+2.25d0)*pdhp
       end if
-! DERIVATIVES OF DENSITY
+! Derivatives of density
       dlnrho_dlnp = 1.0d0/qpd
       dlnrho_dlnt = -qpt*dlnrho_dlnp
       pr1 = dlnrho_dlnp**2
       qdpp = -qqpdd*dlnrho_dlnp*pr1
       dlnrho_dlnp_dt = -qpt*qdpp - qqpdt*pr1
       dlnrho_dlnt_dt = -qpt*dlnrho_dlnp_dt - dlnrho_dlnp*(qqptt + dlnrho_dlnt*qqpdt)
-! INTERNAL ENERGY TERM(U) AND ITS DERIVATIVES
+! Internal energy term(u) and its derivatives
       ue  = exp(ln10*(ffe(2) + emul))
       ueq = exp(ln10*(ffe(5) + emul))
       pr1 = df1(5,1)+ttdcu*df2(5,1)
@@ -780,7 +781,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       if (eos_settings%use_debye_huckel_correction) then
          qqudt = qqudt + (0.5d0*qudt-0.25d0)*udhu
       end if
-! SPECIFIC HEAT(QCP) AND ITS DERIVATIVES
+! Specific heat(qcp) and its derivatives
       pr1 =-pdt*dlnrho_dlnt
       pr2 = u/temperature
       pr3 = -(1.0d0 + dlnrho_dlnt) +  dlnrho_dlnt_dt/dlnrho_dlnt
@@ -794,7 +795,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       specific_heat_cp_dp = acp*pr4 + dlnrho_dlnp*(pr1*qqpdt + bcp*qudt + pr2*qqudt)
       specific_heat_cp_dt = specific_heat_cp_dt*qcpi
       specific_heat_cp_dp = specific_heat_cp_dp*qcpi
-! ADIABATIC GRADIENT(DELA) AND DERIVATIVES ( ALL DERIVS ARE LN(DELA)/LN(
+! Adiabatic gradient(dela) and derivatives ( all derivs are ln(dela)/ln(
       adiabatic_gradient = pr1*qcpi
       adiabatic_gradient_dt = pr3 - specific_heat_cp_dt
       adiabatic_gradient_dp = pr4 - specific_heat_cp_dp
@@ -834,9 +835,8 @@ subroutine read_fermi_table(fermi_table_path, ierr)
   160 format(2i5,5f12.7)
       bin_start = 1
       do grid_idx=1,41
-! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
+! a non-increasing abscissa is a corrupt table
        if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
-!       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
           write(run_log_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
            ' does not increase')

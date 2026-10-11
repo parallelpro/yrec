@@ -1,27 +1,12 @@
 !----------------------------------------------------------------------
 ! mhd_eos_tables
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Bundles the MHD equation-of-state ZAMS-type
-! (A/B/C composition) and centre-type (1-5) lookup tables
-! -- former common/mhdout/, tttt/, tab1a/, tab2a/, tab1b/, tab2b/,
-! tab1c/, tab2c/, chea/, cheb/, chec/, tabx1/, tabx2/, tabx3/, tabx4/,
-! tabx5/, che1/, che2/, che3/, che4/, che5/ -- into one derived type.
-! These are Category 1 (loaded once at startup, read broadly
-! thereafter), matching const_lib's treatment, but are kept in their
-! own module rather than folded into const_lib to keep the (large)
-! MHD table arrays out of the globally-`use`d const_lib. Only two files
-! address the tables (mhdpx2, mhdst); no DATA
-! statements target any member.
-!
-! Readability W3 (2026): the per-composition members (former
-! zams_lower_a_table/_b_/_c_, zams_a_atomic_weight/_b_/_c_, ...,
-! centre1_table..centre5_table, centre1_atomic_weight..centre5_...)
-! became one array each with a trailing composition index, so mhdst's
-! eight reads and mhdpx2's table dispatch are loops/index arithmetic
-! over imhd_zams_a..c / imhd_centre_1..5 instead of copies. Each
-! composition's slice (:,:,:,ic) has the same shape and element order
-! as the member it replaces.
+! The MHD EOS tables (mhd): three ZAMS-type tables for compositions A,
+! B and C, each in a lower and an upper temperature part, and up to five
+! centre-type tables, each indexed by composition in its last
+! dimension (imhd_zams_a..c, imhd_centre_1..5); their temperature
+! limits; and mhd_output, the result of the last interpolation, whose
+! slots are i_mhd_*. read_mhd_tables (mhd_eos) fills them at eos_init.
 module mhd_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -84,34 +69,32 @@ module mhd_eos_tables
       integer, parameter :: i_mhd_placeholder = 25  ! space-holder (8888844444.d0)
 
       type :: mhd_eos_state
-! former common/mhdout/
+! the result of the last interpolation (slots i_mhd_*)
            real(dp) :: mhd_output(mhd_ivarx)
-! former common/tttt/
+! the log10 T boundaries between the table families, and their range
            real(dp) :: zams_lower_upper_boundary_log10t, &
                 zams_centre_boundary_log10t, table_log10t_min, table_log10t_max
-! former common/tab1a/ (composition A's table plus the lower-T grid
-! shared by all three ZAMS compositions)
+! the lower-T ZAMS tables, one per composition, on one log10 T grid
            real(dp) :: zams_lower_table(mhd_nt1m,mhd_nr1m,mhd_ivarc,mhd_n_zams), &
                 zams_lower_log10t(mhd_nt1m)
            integer :: zams_lower_num_t, zams_lower_num_r
            real(dp) :: zams_lower_drho
-! former common/tab2a/ (likewise for the upper-T ZAMS tables)
+! the upper-T ZAMS tables, likewise
            real(dp) :: zams_upper_table(mhd_nt2m,mhd_nr2m,mhd_ivarc,mhd_n_zams), &
                 zams_upper_log10t(mhd_nt2m)
            integer :: zams_upper_num_t, zams_upper_num_r
            real(dp) :: zams_upper_drho
-! former common/chea/, cheb/, chec/ (per ZAMS composition)
+! the composition of each ZAMS table
            real(dp) :: zams_atomic_weight(mhd_nchem0,mhd_n_zams), &
                 zams_number_abundance(mhd_nchem0,mhd_n_zams), &
                 zams_mass_fraction(mhd_nchem0,mhd_n_zams), &
                 zams_mean_molecular_weight(mhd_n_zams)
-! former common/tabx1/ .. tabx5/ (centre-type tables, one per
-! composition, sharing one log10 T grid)
+! the centre-type tables, one per composition, on one log10 T grid
            real(dp) :: centre_table(mhd_ntxm,mhd_nrxm,mhd_ivarx,mhd_n_centre), &
                 centre_log10t(mhd_ntxm)
            integer :: centre_num_t, centre_num_r
            real(dp) :: centre_drho
-! former common/che1/ .. che5/ (per centre composition)
+! the composition of each centre table
            real(dp) :: centre_atomic_weight(mhd_nchem0,mhd_n_centre), &
                 centre_number_abundance(mhd_nchem0,mhd_n_centre), &
                 centre_mass_fraction(mhd_nchem0,mhd_n_centre), &
@@ -119,5 +102,11 @@ module mhd_eos_tables
       end type mhd_eos_state
 
       type(mhd_eos_state) :: mhd
+
+!======================================================================
+! Sources: the MHD EOS of Hummer & Mihalas (1988), Mihalas, Daeppen &
+! Hummer (1988) and Daeppen et al. (1988); the tables and their
+! interpolation package are Daeppen's. This state was the COMMON blocks
+! mhdout, tttt, tab1a-c, tab2a-c, chea-c, tabx1-5 and che1-5.
 
 end module mhd_eos_tables

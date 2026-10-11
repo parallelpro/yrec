@@ -1,25 +1,11 @@
 !----------------------------------------------------------------------
 ! yale_eos_tables
 !----------------------------------------------------------------------
-! New (2026, phase three -- docs/ROADMAP.md stage 1). Holds the Yale/
-! Prather EOS's tabulated state: the degenerate-electron (Fermi-Dirac)
-! table, former common/ccr/, read once at startup (now by eos_lib's
-! eos_init; historically by an inline block in setup/setups.f90) and
-! consumed only by compute_fully_ionized_eos's fully-ionized-gas solve.
-!
-! These members lived in atm_tables through phases one and two
-! purely as an accident of the original COMMON grouping -- eos-domain
-! state in atm's state module, the same misplacement pattern as the
-! OPAL-2006 common/eeos06/ members relocated to opal_eos_tables earlier
-! in stage 1. Member names are unchanged from their atm_tables
-! spelling (fermi_table_*); only the instance prefix changed
-! (atm_table% -> yale%).
-!
-! fermi_table_x_grid/fermi_table_eta: the 43-point table abscissas.
-! fermi_table_data(5,43,20): the tabulated Fermi-Dirac integral
-! solutions. fermi_table_x_lookup(261): the binned index built at
-! load time mapping a scaled abscissa to its table interval (see
-! eos_init's bin-construction loop).
+! The state of the Yale EOS: the Fermi-Dirac table of the degenerate
+! electron gas (yale: 43 abscissas, 43 degeneracies, the integrals, and
+! the binned interval index fermi_table_x_lookup), read by
+! read_fermi_table at eos_init; and the Debye-Hueckel correction's
+! constants and composition.
 module yale_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cpi
@@ -37,24 +23,9 @@ module yale_eos_tables
       type(yale_eos_state) :: yale
 
 
-! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
-! const_lib, where this table/working data had landed during the
-! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/debhu/: Debye-Huckel EOS correction data. No readable
-! rename had ever been established for this block (every file used
-! the original cryptic COMMON member spelling, unlike most other
-! blocks), so these canonical names are new (2026), not picked up from
-! an existing convention. use_debye_huckel_correction/
-! debye_huckel_eta_min/debye_huckel_eta_max (originally ldh/etadh0/
-! etadh1) are NAMELIST /physics/ values, kept local in
-! core/read_input.f90 and copy-assigned. debye_huckel_coefficient/
-! debye_huckel_nu (originally cdh/dhnue) are not namelist values --
-! setup/setups.f90 computes them once at startup -- so they have no
-! declaration-time default. debye_huckel_x/debye_huckel_y/
-! debye_huckel_z_total/debye_huckel_z (originally xxdh(or xxdy)/yydh/
-! zzdh/zdh) are likewise not namelist values -- mixing/compute_scale_height.f90
-! recomputes them per shell from the local composition -- so they too
-! have no declaration-time default.
+! The Debye-Hueckel composition: X, Y, Z and the 18 metal fractions,
+! set per zone by eos_set_debye_huckel_composition (elements 1-3) and
+! once by eos_set_debye_huckel_z.
       real(dp) :: debye_huckel_z(18)
       real(dp) :: debye_huckel_x, debye_huckel_y, &
            debye_huckel_z_total
@@ -69,5 +40,11 @@ module yale_eos_tables
       real(dp), parameter :: debye_huckel_nu(18) = [6.0d0, 7.0d0, 8.0d0, 10.0d0, &
            11.0d0, 12.0d0, 13.0d0, 14.0d0, 15.0d0, 16.0d0, 17.0d0, 18.0d0, &
            20.0d0, 22.0d0, 24.0d0, 25.0d0, 26.0d0, 28.0d0]
+
+!======================================================================
+! Sources: the Fermi-Dirac table and the Debye-Hueckel correction of
+! the Yale code (Prather 1976; DBG 1992). This state was the COMMON
+! blocks ccr (the table) and debhu (the correction: cdh, dhnue, zdh,
+! xxdh, yydh, zzdh).
 
 end module yale_eos_tables

@@ -68,7 +68,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
            specific_heat_cp, adiabatic_gradient
       logical, intent(out) :: valid_table_point
 
-! REPLACE 4-PT LAGRANGE INTERPOLATE WITH 4-PT NATURAL SPLINE
+! Replace 4-pt Lagrange interpolate with 4-pt natural spline
       real(dp) :: press_interp_weights(4), &
            press_interp_weight_derivs(4), temp_interp_weights(4), &
            temp_interp_weight_derivs(4)
@@ -836,14 +836,14 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       real(dp) :: dqdt_dlnp, dqdt_dlnt, dlncp_dlnt, &
            dqut_dlnt, dqut_dlnp, dlnp_dlnrho, ln_rho_value
 
-!  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
+!  Read in equation of state tables for hydrogen and helium
       do t_idx = 1, nts
          do p_idx = 1, nptsx(t_idx)
-!  COMPUTE DU/DT - NEEDED FOR SPECIFIC HEAT DERIVATIVES
-!  CP = T (DS/DT)|P = S(D LN S/D LN T)|P (EQ 1)
-! AND CP = DU/DT + P*(D LN RHO/D LN T)**2/(RHO*T*D LN RHO/D LN P) (EQ 2)
-! DU/DT CAN BE INFERRED FROM EQ 1 AND THE SECOND TERM IN EQ 2, ALL OF
-! WHICH ARE CONTAINED IN THE TABLES.
+!  Compute du/dt - needed for specific heat derivatives
+!  cp = T (ds/dt)|P = s(d ln s/d ln T)|P (eq 1)
+! and cp = du/dt + P*(d ln rho/d ln T)**2/(rho*T*d ln rho/d ln P) (eq 2)
+! du/dt can be inferred from eq 1 and the second term in eq 2, all of
+! which are contained in the tables.
             tablex(t_idx,p_idx,iscv_du_dt) = &
                  exp(ln10*tablex(t_idx,p_idx,iscv_log10_s))*tablex(t_idx,p_idx,iscv_dlns_dlnt) - &
                  exp(ln10*(tablex(t_idx,p_idx,iscv_log10_p)-tablex(t_idx,p_idx,iscv_log10_rho)- &
@@ -852,8 +852,8 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                  exp(ln10*tabley(t_idx,p_idx,iscv_log10_s))*tabley(t_idx,p_idx,iscv_dlns_dlnt) - &
                  exp(ln10*(tabley(t_idx,p_idx,iscv_log10_p)-tabley(t_idx,p_idx,iscv_log10_rho)- &
                  tlogx(t_idx)))*tabley(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tabley(t_idx,p_idx,iscv_dlnrho_dlnp)
-! COMPUTE THE ENTROPY OF MIXING.
-! NUMBER DENSITY OF HYDROGEN AND HELIUM
+! Compute the entropy of mixing.
+! Number density of hydrogen and helium
             helium_fraction_hhe = 1.0d0-envelope_hydrogen_fraction
             one_minus_y_local = 1.0d0 - helium_fraction_hhe
             density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
@@ -866,7 +866,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
                  helium_atom_mass/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
                  tabley(t_idx,p_idx,iscv_frac_atom_ion1))
-! HYDROGEN AND HELIUM ELECTRON NUMBER DENSITIES
+! Hydrogen and helium electron number densities
             hydrogen_electron_density = 0.5d0*hydrogen_number_density* &
                  (1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1))
             helium_electron_density = cc13*helium_number_density* &
@@ -912,11 +912,11 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             end if
          end do
       end do
-!  NOW COMPUTE EQUATION OF STATE VARIABLES FOR THE SURFACE MIXTURE.
+!  Now compute equation of state variables for the surface mixture.
       do t_idx=1,nts
          log_t_work = tlogx(t_idx)
          temp_value = (exp10(log_t_work))
-! TEMPERATURE INTERPOLATION FACTORS
+! Temperature interpolation factors
         if (t_idx == 1) then
            idtt = 1
         else if (t_idx == nts) then
@@ -936,12 +936,12 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
             pressure_value = (exp10(log_p_work))
-! INCLUDE RADIATION PRESSURE IN THE EQUATION OF STATE.
+! Include radiation pressure in the equation of state.
             radiation_pressure = radiation_constant_over_3*(temp_value**2)**2
             gas_pressure = pressure_value
             pressure_value = (pressure_value + radiation_pressure)
             log_p_work = log10(pressure_value)
-!  DENSITY : ADD INVERSELY : 1/RHO = X/RHO(X) + Y/RHO(Y) + Z/RHO(Z)
+!  Density : Add inversely : 1/rho = X/rho(X) + Y/rho(Y) + Z/rho(Z)
             density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
             density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
             density_z = exp(ln10*tablez(t_idx,p_idx,iscvz_log10_rho))
@@ -949,18 +949,18 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                  helium_fraction_local/density_he + &
                  metal_fraction_local/density_z)
             log_rho_mix = log10(rho_mix)
-! D LN RHO/ D LN P = QDP
-! FOR GAS PRESSURE QDP(TOT) = QDP(X)*X*RHO/RHO(X)+QDP(Y)*Y*RHO/RHO(Y)
-! FOR RADIATION PRESSURE QDP = 0, SO QDP(TOT) = QDP(GAS)*P/PGAS
+! D ln rho/ d ln P = qdp
+! for gas pressure qdp(tot) = qdp(X)*X*rho/rho(X)+qdp(Y)*Y*rho/rho(Y)
+! for radiation pressure qdp = 0, so qdp(tot) = qdp(gas)*P/pgas
             dlnrho_dlnp_gas = tablex(t_idx,p_idx,iscv_dlnrho_dlnp)*hydrogen_fraction_local* &
                  (rho_mix/density_h)+tabley(t_idx,p_idx,iscv_dlnrho_dlnp)* &
                  helium_fraction_local*(rho_mix/density_he) &
                  + tablez(t_idx,p_idx,iscvz_dlnrho_dlnp)*metal_fraction_local* &
                  (rho_mix/density_z)
-! D LN RHO/ D LN T = QDT (NOTE : D LN P/ D LN T = QPT)
-! FOR GAS PRESSURE, CORRECT AS PER QDP
-! FOR RADIATION PRESSURE, USE QDT = QDP*QPT.  CORRECT QPT FOR
-! RADIATION PRESSURE AND USE THE CORRECTED QDP, QPT TO GET QDT.
+! D ln rho/ d ln T = qdt (note : D ln P/ d ln T = qpt)
+! for gas pressure, correct as per qdp
+! for radiation pressure, use qdt = qdp*qpt.  Correct qpt for
+! radiation pressure and use the corrected qdp, qpt to get qdt.
             dlnrho_dlnt_gas = hydrogen_fraction_local*(rho_mix/density_h)* &
                  tablex(t_idx,p_idx,iscv_dlnrho_dlnt)+helium_fraction_local* &
                  (rho_mix/density_he)*tabley(t_idx,p_idx,iscv_dlnrho_dlnt) &
@@ -968,8 +968,8 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                  tablez(t_idx,p_idx,iscvz_dlnrho_dlnt)
             entropy_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_s))
             entropy_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_s))
-! ENTROPY.  OBEYS ADDITIVE VOLUME RULE, BUT ALSO NEED TO INCLUDE THE
-! ENTROPY OF MIXING.
+! Entropy.  Obeys additive volume rule, but also need to include the
+! entropy of mixing.
             entropy_total = hydrogen_fraction_local*entropy_h + &
                  helium_fraction_local*entropy_he + smix(t_idx,p_idx)
             dsmix_dlnt = t_interp_dweight(1)*smix(idtt,p_idx)+ &
@@ -979,18 +979,18 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             dlns_dlnt = (hydrogen_fraction_local*entropy_h* &
                  tablex(t_idx,p_idx,iscv_dlns_dlnt) + helium_fraction_local*entropy_he* &
                  tabley(t_idx,p_idx,iscv_dlns_dlnt) + dsmix_dlnt)/entropy_total
-!  CP = S*(D LN S/ D LN T)|P IS TABULATED. USE
-!  CP = DU/DT + P*(D LN RHO/D LN T)**2/RHO/T/(D LN RHO/ D LN P)
-!  TO INCLUDE THE EFFECTS OF RADIATION PRESSURE.
-! CP (GAS PRESSURE ONLY).
+!  Cp = s*(d ln s/ d ln T)|P is tabulated. Use
+!  cp = du/dt + P*(d ln rho/d ln T)**2/rho/T/(d ln rho/ d ln P)
+!  to include the effects of radiation pressure.
+! Cp (gas pressure only).
             cp_gas = entropy_total*dlns_dlnt + metal_fraction_local* &
                  (exp(ln10*tablez(t_idx,p_idx,iscvz_log10_du_dt)) + &
                  gas_pressure*tablez(t_idx,p_idx,iscvz_dlnrho_dlnt)**2/ &
                  tablez(t_idx,p_idx,iscvz_dlnrho_dlnp)/density_z/temp_value)
-! NOW FIND DU/DT FROM THE ORIGINAL TABLE.
+! Now find du/dt from the original table.
             du_dt = cp_gas - gas_pressure*dlnrho_dlnt_gas**2/ &
                  dlnrho_dlnp_gas/rho_mix/temp_value
-! NOW STORE THE RELEVANT VARIABLES IN A TABLE FOR THE ENVELOPE
+! Now store the relevant variables in a table for the envelope
 ! MIXTURE.
             tablenv(t_idx,p_idx,iscvenv_log10_p) = tablex(t_idx,p_idx,iscv_log10_p)
             tablenv(t_idx,p_idx,iscvenv_log10_rho) = log_rho_mix
@@ -1000,7 +1000,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             tablenv(t_idx,p_idx,iscvenv_du_dt) = du_dt
          end do
       end do
-! NOW FIND THE FOLLOWING DERIVATIVES NUMERICALLY :
+! Now find the following derivatives numerically :
 ! D QDT/ D LN T
 ! D QDT/ D LN P
 ! D LN CP / D LN P
@@ -1008,7 +1008,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 ! D LN DEL(AD) / D LN P
 ! D LN DEL(AD) / D LN T
       do t_idx = 1, nts
-! TEMPERATURE INTERPOLATION FACTORS
+! Temperature interpolation factors
         if (t_idx == 1) then
            idtt = 1
         else if (t_idx == nts) then
@@ -1023,7 +1023,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
         call inter3(interp_x,t_interp_weight,t_interp_dweight,log_t_work)
         temp_value = exp(log_t_work)
         do p_idx = 1, nptsx(t_idx)
-! PRESSURE INTERPOLATION FACTORS
+! Pressure interpolation factors
            if (p_idx == 1) then
               idp = 1
            else if (p_idx == nptsx(t_idx)) then
@@ -1036,7 +1036,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
            end do
            log_p_work = ln10*tablenv(t_idx,p_idx,iscvenv_log10_p)
            call inter3(interp_x,p_interp_weight,p_interp_dweight,log_p_work)
-! DERIVATIVES OF D LN RHO/ D LN T
+! Derivatives of d ln rho/ d ln T
            dqdt_dlnp = tablenv(t_idx,idp,iscvenv_dlnrho_dlnt)*p_interp_dweight(1)+ &
                 tablenv(t_idx,idp+1,iscvenv_dlnrho_dlnt)*p_interp_dweight(2) &
                 +tablenv(t_idx,idp+2,iscvenv_dlnrho_dlnt)*p_interp_dweight(3)
@@ -1052,7 +1052,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
            end do
            dlncp_dlnt = interp_f(1)*t_interp_dweight(1)+ &
                 interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
-! DERIVATIVES OF DU/DT
+! Derivatives of du/dt
            do k_idx = 1,3
               ii = idtt+k_idx-1
             jj = min(nptsx(ii),p_idx)
@@ -1066,7 +1066,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
            end do
            dqut_dlnp = interp_f(1)*p_interp_dweight(1)+ &
                 interp_f(2)*p_interp_dweight(2)+interp_f(3)*p_interp_dweight(3)
-! D/D LN RHO (D LN P/D LN RHO)
+! D/d ln rho (d ln P/d ln rho)
            do k_idx = 1,3
               interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,iscvenv_log10_rho)
            end do
@@ -1109,7 +1109,7 @@ subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path
       if (ierr /= 0) return
       call open_scv_table(scv_z_table_path, scv_z_unit, ierr)
       if (ierr /= 0) return
-!  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
+!  Read in equation of state tables for hydrogen and helium
       do t_idx = 1, scv_nt
          read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
          read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
@@ -1122,8 +1122,8 @@ subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path
             read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
     2          format(f6.2,1p2e13.5,0p,8f9.4)
          end do
-!  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
-! EQUATION OF STATE IN THE OLD YALE CODE.
+!  Read in metal equation of state table; computed using the Prather
+! equation of state in the old Yale code.
          do p_idx = nptsx(t_idx),1,-1
             read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
  3             format(f6.2,12f9.4)

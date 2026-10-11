@@ -132,12 +132,10 @@ end subroutine compute_opal2001_eos
 ! result (see blend_eos.f90's use_opal2001_eos branch, which calls this
 ! immediately after compute_opal2001_eos).
 !
-! Readability W3 (2026): the row search and ramp calculation are
-! find_opal_ramp, shared with find_opal95_ramp; this wrapper keeps the
-! 2001 density pre-check (log10 rho > 7.0d0 is outside the table).
+! The 2001 density check (log10 rho outside -14..7 is outside the
+! table), then find_opal_ramp.
 subroutine find_opal2001_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
-
 
       integer, parameter :: nt = n_eos01_nt, nr = n_eos01_nr
 
@@ -169,10 +167,8 @@ end subroutine find_opal2001_ramp
 ! rhoofp01
 !----------------------------------------------------------------------
 ! OPAL 2001 EOS analogue of rhoofp (see there for the general
-! description). The convergence tolerance below (0.5d-7) matches
-! rhoofp's 1995 version and, since bug-sweep Batch 2 (2026),
-! rhoofp06 again (it was 1.0d-5 there for a while; see its
-! header note).
+! description), with the same convergence tolerance (0.5d-7) as rhoofp
+! and rhoofp06.
 real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
@@ -422,8 +418,6 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       end if
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
          write (run_log_unit,'(A, " Irad must be 0 or 1")') routine_id
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -645,8 +639,6 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
            (v%z_table(x_index_3) /= v%z_table(v%x_index_lo))) then
          write(run_log_unit,'(A,"Z does not match Z in OEOS01 files you are" &
               &," using")') routine_id
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -755,8 +747,6 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       write(run_log_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
            v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
            hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction(iv_opal01)
-      ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
       ierr = 1
 
 end subroutine esac01
@@ -768,11 +758,8 @@ end subroutine esac01
 ! description). Interpolates the already X-interpolated table slice
 ! (v%x_interp_result) in T6 and density to produce v%esact.
 !
-! Readability W3 (2026): the interpolation itself is interpolate_opal_t6_rho,
-! shared with t6rinteos06; this wrapper keeps the 2001 out-of-range
-! message.
+! interpolate_opal_t6_rho, with the 2001 out-of-range message.
 subroutine t6rinteos01(v, slr, slt, ierr)
-
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -786,8 +773,6 @@ subroutine t6rinteos01(v, slr, slt, ierr)
       if (v%esact > 1.0d+15) then
          write(run_log_unit,'("Interpolation indices out of range", &
               &";please report conditions.")')
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -955,8 +940,6 @@ subroutine readcoeos01(v, ierr)
             if (record_number /= density_row) then
                write (run_log_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
                     record_number, density_row
-               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-               ! facades stop when their caller passes no ierr.
                ierr = 1
                return
             end if
@@ -967,8 +950,6 @@ subroutine readcoeos01(v, ierr)
                write (run_log_unit,'("problem with data files: X=",F6.4, &
                     &" density=",E14.4)') v%hydrogen_fraction_header(x_loop_index_01), &
                     v%density_grid_table(x_loop_index_01,density_row)
-               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-               ! facades stop when their caller passes no ierr.
                ierr = 1
                return
             end if
@@ -994,8 +975,6 @@ subroutine readcoeos01(v, ierr)
          if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
             write(run_log_unit,'("READCOEOS01: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-            ! facades stop when their caller passes no ierr.
             ierr = 1
             return
          end if
@@ -1016,8 +995,8 @@ subroutine readcoeos01(v, ierr)
       end do
 
       close (opal_eos%table_unit)
-! MHP 7/2003 ADDED RAMP BETWEEN OPAL AND OTHER EOS
-! NEED EDGE OF TABLE AT HIGH RHO, FIXED T.
+! MHP 7/2003 added ramp between OPAL and other EOS
+! need edge of table at high rho, fixed T.
       v%t_row_index = 1
       do t6_idx = 1, nt
          v%density_edge_at_t(t6_idx) = v%density_grid(opal01_density_index_edge(t6_idx))

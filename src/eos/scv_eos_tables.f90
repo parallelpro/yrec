@@ -1,13 +1,11 @@
 !----------------------------------------------------------------------
 ! scv_eos_tables
 !----------------------------------------------------------------------
-! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The SCV
-! (Saumon-Chabrier-Van Horn) EOS table state, evicted from const_lib
-! where it had landed as former common/scveos/ during the phase-one
-! COMMON conversion. The pure-species tables are loaded by eos_lib's
-! eos_init; the envelope-mixture table tablenv is built from them by
-! build_scv_envelope_table (called from core/read_starting_model);
-! read by eos/scv/compute_scv_envelope_eos and compute_scv_eos.
+! The SCV EOS tables: pure hydrogen (tablex), pure helium (tabley) and
+! pure metals (tablez), read by read_scv_tables at eos_init; the
+! entropy of mixing (smix) and the envelope-mixture table (tablenv),
+! built from them by build_scv_envelope_table; and the named columns
+! of each.
 module scv_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -23,16 +21,6 @@ module scv_eos_tables
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
            tlogx
-! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
-! tablez/tablenv/nptsx/idtt/idp are spelled identically to their
-! canonical names in the majority of files that declare this block
-! (compute_scv_envelope_eos and compute_scv_eos used a distinct,
-! more-descriptive naming scheme -- table_log10_temperature/
-! hydrogen_table/helium_table/entropy_of_mixing_table/metal_table/
-! envelope_table/num_pressure_points/scv_temp_index/scv_pressure_index
-! -- renamed to the majority spelling here). idtt is itself a rename
-! (from idt) to avoid colliding with the unrelated const_lib idt
-!
 ! Table dimensions: scv_nt temperature rows, up to scv_np pressure
 ! points per row (nptsx holds the actual count), scv_nvar variables per
 ! point in the H, He and envelope tables and scv_nvar_z in the Z table.
@@ -44,11 +32,9 @@ module scv_eos_tables
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
            tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
       integer :: nptsx(scv_nt), idtt, idp
-! Readability W3 (2026): named table columns. Only the columns some
-! reader or writer in eos/ addresses are named; their meanings follow
-! from those uses (compute_scv_eos, compute_scv_envelope_eos,
-! build_scv_envelope_table). eos_init reads columns 1..11 of the H and
-! He tables and 1..13 of the Z table from the files verbatim.
+! Named table columns: only the columns some routine addresses are
+! named. read_scv_tables reads columns 1-11 of the H and He tables and
+! 1-13 of the Z table.
 !
 ! H and He tables (tablex, tabley), same layout:
       integer, parameter :: iscv_log10_p = 1        ! log10 gas pressure (row key)
@@ -90,5 +76,10 @@ pure real(dp) function scv_weighted_sum4(w, y)
       real(dp), intent(in) :: w(:), y(:)
       scv_weighted_sum4 = w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
 end function scv_weighted_sum4
+
+!======================================================================
+! Sources: Saumon, Chabrier & Van Horn (1995); the metal table was
+! computed with the Prather EOS of the old Yale code. This state was
+! the COMMON block scveos.
 
 end module scv_eos_tables

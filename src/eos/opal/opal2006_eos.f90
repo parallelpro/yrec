@@ -521,8 +521,6 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       end if
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
          write (run_log_unit,'(A, " Irad must be 0 or 1")') routine_id
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -742,8 +740,6 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
            (v%z_table(x_index_3) /= v%z_table(v%x_index_lo))) then
          write(run_log_unit,'(A,"Z does not match Z in OEOS06 files you are" &
               &," using")') routine_id
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -851,8 +847,6 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       write(run_log_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
            v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
            hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction(iv_opal06)
-      ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-      ! facades stop when their caller passes no ierr.
       ierr = 1
 
 end subroutine esac06
@@ -865,11 +859,8 @@ end subroutine esac06
 ! the original; preserved verbatim even though nothing here actually
 ! recurses.
 !
-! Readability W3 (2026): the interpolation itself is interpolate_opal_t6_rho,
-! shared with t6rinteos01; this wrapper keeps the 2006 out-of-range
-! message.
+! interpolate_opal_t6_rho, with the 2006 out-of-range message.
 recursive subroutine t6rinteos06(v, slr, slt, ierr)
-
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -883,8 +874,6 @@ recursive subroutine t6rinteos06(v, slr, slt, ierr)
       if (v%esact > 1.0d+15) then
          write(run_log_unit,'("T6RINTEOS06: Interpolation indices out", &
               &" of range;please report conditions.")')
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
@@ -1074,8 +1063,6 @@ subroutine readcoeos06(v, ierr)
             if (record_number /= density_row) then
                write (run_log_unit,'(" OEOS06 Data file incorrect: numtot,jcs= " &
                     &,2I5)') record_number, density_row
-               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-               ! facades stop when their caller passes no ierr.
                ierr = 1
                return
             end if
@@ -1086,8 +1073,6 @@ subroutine readcoeos06(v, ierr)
                write (run_log_unit,'("Problem with OEOS96 data files: X=",F6.4, &
                     &" density=",E14.4)') v%hydrogen_fraction_header(x_loop_index_06), &
                     v%density_grid_table(x_loop_index_06,density_row)
-               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-               ! facades stop when their caller passes no ierr.
                ierr = 1
                return
             end if
@@ -1113,8 +1098,6 @@ subroutine readcoeos06(v, ierr)
          if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
             write(run_log_unit,'("READCOEOS06: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
-            ! facades stop when their caller passes no ierr.
             ierr = 1
             return
          end if

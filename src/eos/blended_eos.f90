@@ -375,14 +375,14 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       skip_relativistic_eos = log10_temperature <= &
            (eos_settings%saha_log10t_cutoff - saha_ramp_width)
 
-!     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
+!     MHP 3/94 metal diffusion added.  Assume all metals scale equally.
       if (eos_settings%use_diffusion_z) then
 !        THE VECTOR eos_mix%fxenv IS DEFINED IN STARIN AS
-!        (MASS FRACTION OF SPECIES/ATOMIC WT/AMUENV) FOR THE COMPOSITION
+!        (mass fraction of species/atomic wt/amuenv) for the composition
 !        XENV,ZENV.
-!        AND AMU IS DEFINED AS THE SUM OF THE MASS FRACTIONS DIVIDED BY
-!        THEIR ATOMIC WEIGHTS.  FOR METAL DIFFUSION, ALL THE METALS ARE
-!        ASSUMED TO CHANGE EQUALLY.
+!        And amu is defined as the sum of the mass fractions divided by
+!        their atomic weights.  For metal diffusion, all the metals are
+!        assumed to change equally.
          metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
          amu_correction = (metal_ratio - 1.0d0)*eos_mix%amuenv
          ion_mean_weight_inverse = eos_mix%amuenv
@@ -417,12 +417,12 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
                  eos_mix%amuenv + y_excess)/ion_mean_weight_inverse
          end if
       else
-!        ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL
+!        Ion mean weight from the envelope mixture plus the H/he/metal
 !        EXCESS (SHARED WITH compute_mean_weights), THEN THE SAHA NUMBER FRACTIONS
          call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
               ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
          if (use_envelope_mixture) then
-!           USE ENVELOPE ABUNDANCES
+!           Use envelope abundances
             if (need_saha_solution) then
                do species_idx = 1, num_species
                   saha_mass_fractions(species_idx) = &
@@ -446,7 +446,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
             end if
          end if
       end if
-!     COMPUTE RADIATION PRESSURE
+!     Compute radiation pressure
       temperature = exp(ln10*log10_temperature)
       pressure = exp(ln10*log10_pressure)
       beta14 = radiation_constant_over_3*(temperature**2)**2/pressure
@@ -462,7 +462,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       beta14 = 4.0d0*beta_inverse*min(1.0d0, beta14)
       electron_degeneracy_parameter = 0.0d0
       if (.not.need_saha_solution) then
-!        COMPUTE VALUES FOR FULLY IONIZED GAS AND RETURN
+!        Compute values for fully ionized gas and return
          electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) &
               + (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
          specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
@@ -478,7 +478,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp)
       else
-!     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
+!     Check if Saumon, Chabrier, and Van Horn equation of state needed.
 !     THIS EOS REPLACES THE CALL TO compute_saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
       if (eos_settings%use_scv_eos) then
          call compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
@@ -495,12 +495,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
          if (ierr /= 0) return
 
-! 2026 audit fix: the do_scv_derivatives numerical-derivative branch
-! (unreachable -- its flag was hardcoded .false. -- AND broken: it
-! read specific_heat_cp_2/adiabatic_gradient_2 that its "-dtl" calls
-! never assigned) is deleted. The SCV path keeps compute_saha_eos's
-! analytic derivatives, exactly as every run has always done. See
-! git history for the preserved transliteration.
+! The SCV path takes its derivatives from compute_saha_eos (analytic).
 
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
@@ -530,7 +525,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       end if
 !     Bypass relativistic EOS (compute_fully_ionized_eos) if in low temperature region
       if (.not. skip_relativistic_eos) then
-!     COMPUTE VALUES FOR FULLY IONIZED GAS
+!     Compute values for fully ionized gas
       electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) + &
            (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
       specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
@@ -545,7 +540,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
            specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp)
-!     INTERPOLATE VALUES
+!     Interpolate values
       ramp_weight = saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature)
       ramp_weight_sq = ramp_weight*ramp_weight
       ramp_factor = ramp_weight_sq*ramp_weight* &
@@ -633,7 +628,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 !        2001 EOS table
 
          if (.not.in_opal_table) return
-!        USE OPAL RESULTS IF NOT IN (RHO,T) REGIME WHERE RAMP NEEDED
+!        Use OPAL results if not in (rho,T) regime where ramp needed
          call adopt_or_blend_opal_result()
       end if
       end if
@@ -665,8 +660,8 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
          if (.not.in_opal_table) return
 
-!        USE OPAL 2006 RESULTS ONLY IF NOT IN (RHO,T) REGIME WHERE
-!        RAMPING is NEEDED
+!        Use OPAL 2006 results only if not in (rho,T) regime where
+!        ramping is needed
          call adopt_or_blend_opal_result()
       end if
       end if
