@@ -27,21 +27,21 @@ program test_net
       use io_units
       use star_info_lib, only: star, i_h1, i_h2, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18
-      use net_lib, only: azbar, compute_network_rates, &
-           compute_reaction_rates, deuterium_rate, nuclear_rates, &
-           num_rate_rows, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
-           r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, r_pp, &
-           rv_frac_be7_ecap, sneut, burn_implicitly, n_network, s_h1, &
-           s_he3, s_he4, s_c12, s_o16, surviving_fraction, &
-           accreted_survival, linear_in_time, linear_in_log, &
-           compute_nuclear_energy, nuclear_energy_result, net_settings, &
+      use net_lib, only: compute_network_rates, deuterium_rate, &
+           num_rate_rows, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
+           r_po16, r_pp, burn_implicitly, n_network, s_h1, s_he3, s_he4, &
+           surviving_fraction, accreted_survival, linear_in_time, &
+           linear_in_log, compute_nuclear_energy, nuclear_energy_result, &
            net_settings_t, set_net_settings
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
-           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, compute_reaction_rates, &
+           nuclear_rates, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
+           rv_frac_be7_ecap, net_settings
+      use network, only: s_c12, s_o16, write_network_table
+      use thermal_neutrinos, only: sneut, azbar
       use scv_eos_tables, only: use_scv_eos
       use burn_step, only: configure_network
-      use network, only: write_network_table
       implicit none
 
       character(len=256) :: yrec_input

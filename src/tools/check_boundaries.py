@@ -78,10 +78,7 @@ PUBLIC = {
             "surfp", "kcsurfp", "alsurfp"},
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
     # Timmes' sneut/azbar/ifermi12/zfermim12 keep theirs).
-    "net": {"compute_thermal_neutrino_losses", "compute_mixture_neutrino_losses",
-            "azbar", "sneut", "ifermi12", "zfermim12",
-            "compute_reaction_rates", "compute_network_rates",
-            "deuterium_proton_capture_rate", "set_net_settings",
+    "net": {"compute_network_rates", "set_net_settings",
             "burn_implicitly", "compute_equilibrium_burn_rates",
             "compute_nuclear_energy",
             "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},

@@ -7,7 +7,7 @@ Two layers are involved:
 - **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never touch `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (in `reaction_rates`), which the star layer fills at the start of every run (`configure_network`). `tools/check_boundaries.py` enforces this.
 - **`core/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
 
-Callers elsewhere in the code (the composition step `core/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC may use from the five modules below. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
+Callers elsewhere in the code (the composition step `core/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC uses from the five modules below, and nothing more. The individual reaction rates, the reaction table and the neutrino routines stay internal. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
 
 Names follow the project rules (`docs/GUIDELINES.md`): modules are nouns named for what they hold, procedures are verbs (`compute_…`, `burn_…`), and functions returning a quantity are named for it (`deuterium_rate`).
 
@@ -171,7 +171,7 @@ The checks print `ok` or `FAIL`.
 
 A deliberate change to its output means regenerating `net/test/expected_test_net.out` and committing it.
 
-**Change a rate fit or coefficient.** Edit it in `compute_reaction_rates` (`reaction_rates.f90`), the only copy. If the functional form changes, update the matching `dlnrate_dlnt` expression next to it; `test_net`'s derivative check will tell you if they disagree. For the S-factor reactions 1–7, the fit coefficients are the `fit_q*` constants at the top of `net_lib`.
+**Change a rate fit or coefficient.** Edit it in `compute_reaction_rates` (`reaction_rates.f90`), the only copy. If the functional form changes, update the matching `dlnrate_dlnt` expression next to it; `test_net`'s derivative check will tell you if they disagree. For the S-factor reactions 1–7, the fit coefficients are the `fit_q*` constants at the top of `reaction_rates`.
 
 **Add a reaction to the implicit network.** This touches two places:
 1. **The rate.** In `reaction_rates`, add a slot `r_*` (and raise `num_reactions`) and its formula in `compute_reaction_rates`, with its derivative, and copy it into the rate vector in `compute_network_rates` (raise `num_rate_rows` and move the two `rv_*` fraction slots up).
