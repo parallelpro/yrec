@@ -43,14 +43,18 @@ It also holds the index families and data the network uses:
 |---|---|
 | `implicit_burn_step` | **The implicit network.** One backward-Euler step for one zone or region: solves X_i − X0_i − dt·A_i·Σ_j ν_ij R_j(X) = 0 by Newton iteration, with equations and Jacobian built from the reaction table. |
 | `equilibrium_burn_rates` | The explicit alternative used at iteration level 1 and by the hydrogen-burning timestep limiter: dX/dt, dY/dt, dC/dt and dO/dt with He3 and the CN cycle in equilibrium. |
+| `reaction_energies` | The energy generation of the table's reactions, Σ b_j·rate·ΠX·Q_j, by rate slot and by chain. `nuclear_energy` calls it, so a reaction's composition change and its energy come from the same row. |
 | `network_table_errors`, `write_network_table` | The table's self-check (every row conserves baryon number) and a printout. Both are pinned by `test_net`. |
 
 The **reaction table** (`reactions(:)`) has one row per reaction. Each row gives:
 - the rate slot it reads (`r_*`);
-- a branching factor (none, f, or 1 − f for the two N15 outcomes);
+- a branching factor (none; f or 1 − f for the two N15 outcomes; f_e or 1 − f_e for the two Be7 branches);
 - the rate law (the mass fractions that multiply the rate);
 - the change list of (species, ν) pairs;
-- `emitted_mass` for particles the network does not track (the neutron of C13(α,n)O16).
+- `emitted_mass` for particles the network does not track (the neutron of C13(α,n)O16);
+- `q_mev`, the energy deposited per reaction net of neutrino losses, and the `chain` it counts under (pp I, pp II, pp III, CNO, α captures, triple-α).
+
+He3(He4,γ)Be7 appears twice, once per Be7 branch: the same abundance change, with the two branch fractions and their own Q-values.
 
 The solved species are, in this order, H, He3, He4, C12, C13, N14 and O16. O18 is an explicit product.
 
@@ -160,12 +164,11 @@ A deliberate change to its output means regenerating `net/test/expected_test_net
 
 **Change a rate fit or coefficient.** Edit it in `nuclear_reaction_rates` (`net_lib.f90`), the only copy. If the functional form changes, update the matching `dlnrate_dlnt` expression next to it; `test_net`'s derivative check will tell you if they disagree. For the S-factor reactions 1–7, the fit coefficients are the `fit_q*` constants at the top of `net_lib`.
 
-**Add a reaction to the implicit network.** Today this touches three places:
+**Add a reaction to the implicit network.** This touches two places:
 1. **The rate.** In `net_lib`, add a slot `r_*` (and raise `num_reactions`) and its formula in `nuclear_reaction_rates`, with its derivative, and copy it into the rate vector in `network_rate_vector` (raise `num_rate_rows` and move the two `rv_*` fraction slots up).
-2. **The energy.** In `sum_energy_generation` (`nuclear_energy.f90`), add `eg(r_new)` and its Q-value term.
-3. **The composition.** In `network_lib`'s `reactions(:)`, add a row with its rate row, rate law and change list, plus `emitted_mass` for any untracked particle. `network_table_errors` must stay 0.
+2. **The table row.** In `network_lib`'s `reactions(:)`, add a row with its rate slot, rate law, change list, `emitted_mass` for any untracked particle, Q-value and chain. The composition step and the energy generation both read it. `network_table_errors` must stay 0.
 
-A planned step (`docs/TARGET_ARCHITECTURE.md` §4.5(b)) puts the rate, Q-value and stoichiometry in a single table entry.
+The rate formula itself still lives in `nuclear_reaction_rates`; TARGET_ARCHITECTURE §4.5(b) would also move it into the table entry as a rate function.
 
 **Add a tracked isotope.** Today this needs:
 - a slot in `state/star_info_lib.f90` (the species count is still a literal 15 in many declarations, which Phase 5 removes);

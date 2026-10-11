@@ -1069,4 +1069,14 @@ left for a decision (physics changes):
   regridding of it, which covered 7 of its 15 rows. Measured on
   GS_rot (the only shipped case with rotational mixing): |dlog L| 8.5e-5,
   |dlog Teff| 6e-6, |dX_c| 2.2e-4 (X_c lower), surface Li7 +1e-4 dex.
+- **One name per index; Q-values in the reaction table -- DONE.** The
+  rate vector's rows 1-13 had a second set of names (rr_*) for the r_*
+  slots; the cross-section slots shared the s_ prefix of the network
+  species (now xs_*). Each network-table row now carries its Q-value and
+  chain, He3(He4,g) is split by Be7 branch, and nuclear_energy sums the
+  energy and the chain shares from the table (reaction_energies) instead
+  of a hand-written list of Q-values beside it. Adding a reaction is now
+  its rate formula plus one table row. Byte-identical at print precision
+  in solar noGS and the config matrix (roundoff only: f + (1-f) for the
+  branches, and association order).
 

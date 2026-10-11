@@ -23,6 +23,19 @@
 !     dX_i/dt = A_i * sum_j nu_ij R_j
 ! with A_i the integer mass number, the convention the rate rows use.
 !
+! Energy. Each row also carries the energy it deposits per reaction,
+! q_mev, net of the neutrinos it emits (Bahcall & Ulrich 1988, table 21,
+! as revised by Bahcall 1997), and the chain it belongs to. The nuclear
+! energy generation sums R_j q_j over the table (reaction_energies), so
+! a reaction's composition change and its energy come from one row.
+! (JNB 9/25/97 changed the pp energy release by 0.002 MeV, from a better
+! estimate of the neutrino energy loss; his notes, vol. 19, pp. 139-141,
+! document other keV-sized changes, all but the rare 8B. The C12 + p
+! sequence and C13 + p are broken down separately.)
+! He3(He4,g)Be7 appears twice, once per Be7 branch (electron capture:
+! pp II; proton capture: pp III): the same change in abundances, with
+! the two branch fractions and their own energies.
+!
 ! Implicit step. Over dt the solve finds X with
 !     F_i(X) = X_i - X0_i - dt A_i sum_j nu_ij R_j(X) = 0
 ! by Newton iteration on J_ik = dF_i/dX_k. Adding a reaction means
@@ -31,7 +44,7 @@
 module network_lib
       use net_lib, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
-           r_ac12, r_an14, r_3alpha, rv_frac_n15_pa
+           r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap
       implicit none
       private
 
@@ -44,8 +57,15 @@ module network_lib
       double precision, parameter, public :: mass_number(n_network) = &
            [1.0d0, 3.0d0, 4.0d0, 12.0d0, 13.0d0, 14.0d0, 16.0d0, 18.0d0]
 
-! branch factor b_j
-      integer, parameter :: unbranched = 0, n15_to_c12 = 1, n15_to_o16 = 2
+! branch factor b_j: 1, the N15(p,alpha) fraction f or 1 - f, or the Be7
+! electron-capture fraction f_e or 1 - f_e
+      integer, parameter :: unbranched = 0, n15_to_c12 = 1, n15_to_o16 = 2, &
+           be7_electron_capture = 3, be7_proton_capture = 4
+
+! the chain a reaction's energy is counted under
+      integer, parameter, public :: chain_pp1 = 1, chain_pp2 = 2, &
+           chain_pp3 = 3, chain_cno = 4, chain_alpha_capture = 5, &
+           chain_triple_alpha = 6, n_chains = 6
 
 ! One reaction. law lists the species whose mass fractions multiply the
 ! rate (repeat a species for a square or cube; 0 = unused). change lists
@@ -62,38 +82,58 @@ module network_lib
          integer :: law(max_law)
          integer :: change(2*max_change)
          integer :: emitted_mass = 0
+! energy deposited per reaction, MeV (net of neutrino losses), and the
+! chain it is counted under
+         double precision :: q_mev = 0.0d0
+         integer :: chain = 0
       end type reaction_t
 
-      integer, parameter :: n_reactions = 12
-      type(reaction_t), parameter :: reactions(n_reactions) = [ &
-!                     name                  rate row         branch      rate law                  changes (species, nu)
-           reaction_t('pp chain to He3',     r_pp,           unbranched, [s_h1, s_h1, 0],          &
-                      [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0]), &
-           reaction_t('He3(He3,2p)He4',      r_he3he3,      unbranched, [s_he3, s_he3, 0],        &
-                      [s_h1, 2, s_he3, -2, s_he4, 1, 0, 0, 0, 0]), &
-           reaction_t('He3(He4,g) pp II/III', r_he3he4,     unbranched, [s_he3, s_he4, 0],        &
-                      [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0]), &
-           reaction_t('C12(p,g) to C13',     r_pc12,        unbranched, [s_h1, s_c12, 0],         &
-                      [s_h1, -1, s_c12, -1, s_c13, 1, 0, 0, 0, 0]), &
-           reaction_t('C13(p,g)N14',         r_pc13,        unbranched, [s_h1, s_c13, 0],         &
-                      [s_h1, -1, s_c13, -1, s_n14, 1, 0, 0, 0, 0]), &
-           reaction_t('N14(p,g) N15(p,a)C12', r_pn14,       n15_to_c12, [s_h1, s_n14, 0],         &
-                      [s_h1, -2, s_n14, -1, s_c12, 1, s_he4, 1, 0, 0]), &
-           reaction_t('N14(p,g) N15(p,g)O16', r_pn14,       n15_to_o16, [s_h1, s_n14, 0],         &
-                      [s_h1, -2, s_n14, -1, s_o16, 1, 0, 0, 0, 0]), &
-           reaction_t('O16(p,g) O17(p,a)N14', r_po16,       unbranched, [s_h1, s_o16, 0],         &
-                      [s_h1, -2, s_o16, -1, s_n14, 1, s_he4, 1, 0, 0]), &
-           reaction_t('C12(a,g)O16',         r_ac12,    unbranched, [s_he4, s_c12, 0],        &
-                      [s_he4, -1, s_c12, -1, s_o16, 1, 0, 0, 0, 0]), &
-           reaction_t('C13(a,n)O16',         r_ac13,    unbranched, [s_he4, s_c13, 0],        &
-                      [s_he4, -1, s_c13, -1, s_o16, 1, 0, 0, 0, 0], emitted_mass=1), &
-           reaction_t('N14(a,g) to O18',     r_an14,    unbranched, [s_he4, s_n14, 0],        &
-                      [s_he4, -1, s_n14, -1, s_o18, 1, 0, 0, 0, 0]), &
-           reaction_t('triple alpha',        r_3alpha, unbranched, [s_he4, s_he4, s_he4],    &
-                      [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0]) ]
+! rows of the reaction table
+      integer, parameter :: n_rows = 13
+      type(reaction_t), parameter :: reactions(n_rows) = [ &
+!                     name                  rate slot  branch                rate law                  changes (species, nu)
+           reaction_t('pp chain to He3',     r_pp,      unbranched,           [s_h1, s_h1, 0],          &
+                      [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0], &
+                      q_mev=6.664d0, chain=chain_pp1), &
+           reaction_t('He3(He3,2p)He4',      r_he3he3,  unbranched,           [s_he3, s_he3, 0],        &
+                      [s_h1, 2, s_he3, -2, s_he4, 1, 0, 0, 0, 0], &
+                      q_mev=12.860d0, chain=chain_pp1), &
+           reaction_t('He3(He4,g) Be7(e) ppII', r_he3he4, be7_electron_capture, [s_he3, s_he4, 0],      &
+                      [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0], &
+                      q_mev=1.586d0+17.394d0, chain=chain_pp2), &
+           reaction_t('He3(He4,g) Be7(p) ppIII', r_he3he4, be7_proton_capture, [s_he3, s_he4, 0],      &
+                      [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0], &
+                      q_mev=1.586d0+11.499d0, chain=chain_pp3), &
+           reaction_t('C12(p,g) to C13',     r_pc12,    unbranched,           [s_h1, s_c12, 0],         &
+                      [s_h1, -1, s_c12, -1, s_c13, 1, 0, 0, 0, 0], &
+                      q_mev=3.457372d0, chain=chain_cno), &
+           reaction_t('C13(p,g)N14',         r_pc13,    unbranched,           [s_h1, s_c13, 0],         &
+                      [s_h1, -1, s_c13, -1, s_n14, 1, 0, 0, 0, 0], &
+                      q_mev=7.550628d0, chain=chain_cno), &
+           reaction_t('N14(p,g) N15(p,a)C12', r_pn14,   n15_to_c12,           [s_h1, s_n14, 0],         &
+                      [s_h1, -2, s_n14, -1, s_c12, 1, s_he4, 1, 0, 0], &
+                      q_mev=9.054d0+4.966d0, chain=chain_cno), &
+           reaction_t('N14(p,g) N15(p,g)O16', r_pn14,   n15_to_o16,           [s_h1, s_n14, 0],         &
+                      [s_h1, -2, s_n14, -1, s_o16, 1, 0, 0, 0, 0], &
+                      q_mev=9.054d0+12.128d0, chain=chain_cno), &
+           reaction_t('O16(p,g) O17(p,a)N14', r_po16,   unbranched,           [s_h1, s_o16, 0],         &
+                      [s_h1, -2, s_o16, -1, s_n14, 1, s_he4, 1, 0, 0], &
+                      q_mev=3.553d0, chain=chain_cno), &
+           reaction_t('C12(a,g)O16',         r_ac12,    unbranched,           [s_he4, s_c12, 0],        &
+                      [s_he4, -1, s_c12, -1, s_o16, 1, 0, 0, 0, 0], &
+                      q_mev=7.162d0, chain=chain_alpha_capture), &
+           reaction_t('C13(a,n)O16',         r_ac13,    unbranched,           [s_he4, s_c13, 0],        &
+                      [s_he4, -1, s_c13, -1, s_o16, 1, 0, 0, 0, 0], emitted_mass=1, &
+                      q_mev=2.216d0, chain=chain_alpha_capture), &
+           reaction_t('N14(a,g) to O18',     r_an14,    unbranched,           [s_he4, s_n14, 0],        &
+                      [s_he4, -1, s_n14, -1, s_o18, 1, 0, 0, 0, 0], &
+                      q_mev=5.815d0, chain=chain_alpha_capture), &
+           reaction_t('triple alpha',        r_3alpha,  unbranched,           [s_he4, s_he4, s_he4],    &
+                      [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0], &
+                      q_mev=7.275d0, chain=chain_triple_alpha) ]
 
       public :: implicit_burn_step, network_table_errors, write_network_table, &
-           equilibrium_burn_rates
+           equilibrium_burn_rates, reaction_energies
 
 contains
 
@@ -105,7 +145,7 @@ integer function network_table_errors()
       integer :: j
 
       network_table_errors = 0
-      do j = 1, n_reactions
+      do j = 1, n_rows
          if (baryon_imbalance(j) /= 0 .or. &
               any(reactions(j)%law > n_solved)) &
               network_table_errors = network_table_errors + 1
@@ -129,10 +169,11 @@ subroutine write_network_table(unit)
       integer, intent(in) :: unit
       integer :: j
 
-      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance'
-      do j = 1, n_reactions
-         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16)') reactions(j)%name, &
-              reactions(j)%rate_row, reactions(j)%branch, baryon_imbalance(j)
+      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain'
+      do j = 1, n_rows
+         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, i5)') reactions(j)%name, &
+              reactions(j)%rate_row, reactions(j)%branch, baryon_imbalance(j), &
+              reactions(j)%q_mev, reactions(j)%chain
       end do
       write(unit, '(a, i0)') '# table errors: ', network_table_errors()
 end subroutine write_network_table
@@ -175,15 +216,62 @@ double precision function branch_factor(j, rate_vec)
       integer, intent(in) :: j
       double precision, intent(in) :: rate_vec(:)
 
+      branch_factor = branch_fraction(j, rate_vec(rv_frac_n15_pa), &
+           rate_vec(rv_frac_be7_ecap))
+end function branch_factor
+
+! b_j from the two branching fractions
+double precision function branch_fraction(j, frac_n15_pa, frac_be7_ecap)
+      integer, intent(in) :: j
+      double precision, intent(in) :: frac_n15_pa, frac_be7_ecap
+
       select case (reactions(j)%branch)
       case (n15_to_c12)
-         branch_factor = rate_vec(rv_frac_n15_pa)
+         branch_fraction = frac_n15_pa
       case (n15_to_o16)
-         branch_factor = 1.0d0 - rate_vec(rv_frac_n15_pa)
+         branch_fraction = 1.0d0 - frac_n15_pa
+      case (be7_electron_capture)
+         branch_fraction = frac_be7_ecap
+      case (be7_proton_capture)
+         branch_fraction = 1.0d0 - frac_be7_ecap
       case default
-         branch_factor = 1.0d0
+         branch_fraction = 1.0d0
       end select
-end function branch_factor
+end function branch_fraction
+
+! ---------------------------------------------------------------
+! The energy generation of the table's reactions (erg/g/s), by rate
+! slot (energy_by_slot, r_*) and by chain (energy_by_chain, chain_*):
+! the sum over rows of b_j * rate(slot) * prod X(law_j) * q_j, with
+! rate the per-gram rates of nuclear_reaction_rates (abundance factors
+! omitted) and x the network species' mass fractions.
+subroutine reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
+     energy_by_slot, energy_by_chain)
+      use net_lib, only: num_reactions
+      double precision, intent(in) :: rate(num_reactions), x(n_network), &
+           frac_n15_pa, frac_be7_ecap
+      double precision, intent(out) :: energy_by_slot(num_reactions), &
+           energy_by_chain(n_chains)
+! MeV to erg
+      double precision, parameter :: erg_per_mev = 1.602177d-6
+      double precision :: e
+      integer :: j, m
+
+      energy_by_slot = 0.0d0
+      energy_by_chain = 0.0d0
+      do j = 1, n_rows
+         e = rate(reactions(j)%rate_row)
+         do m = 1, max_law
+            if (reactions(j)%law(m) /= 0) e = e*x(reactions(j)%law(m))
+         end do
+         e = e*branch_fraction(j, frac_n15_pa, frac_be7_ecap)* &
+              reactions(j)%q_mev*erg_per_mev
+         energy_by_slot(reactions(j)%rate_row) = &
+              energy_by_slot(reactions(j)%rate_row) + e
+         energy_by_chain(reactions(j)%chain) = &
+              energy_by_chain(reactions(j)%chain) + e
+      end do
+end subroutine reaction_energies
 
 ! ---------------------------------------------------------------
 ! dX_i/dt / A_i = sum_j nu_ij R_j for every network species.
@@ -194,7 +282,7 @@ subroutine abundance_rates(rate_vec, x, dxdt_per_a)
       double precision :: r
 
       dxdt_per_a = 0.0d0
-      do j = 1, n_reactions
+      do j = 1, n_rows
          r = reaction_rate(j, rate_vec, x)
          do c = 1, 2*max_change - 1, 2
             if (reactions(j)%change(c) == 0) cycle
@@ -244,7 +332,7 @@ subroutine implicit_burn_step(x_start, rate_vec, dt, min_abundance, &
          end do
 ! J_ik = delta_ik - dt A_i sum_j nu_ij dR_j/dX_k
          system(:, 1:n_solved) = 0.0d0
-         do j = 1, n_reactions
+         do j = 1, n_rows
             do c = 1, 2*max_change - 1, 2
                i = reactions(j)%change(c)
                if (i == 0 .or. i > n_solved) cycle

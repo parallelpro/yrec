@@ -44,18 +44,19 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
  12  1.39E-05  1.87E-04
  13  0.00E+00  0.00E+00
 # test_net: network table
-# reaction                 rate row  branch  baryon imbalance
-pp chain to He3                  1       0                 0
-He3(He3,2p)He4                   2       0                 0
-He3(He4,g) pp II/III             3       0                 0
-C12(p,g) to C13                  4       0                 0
-C13(p,g)N14                      5       0                 0
-N14(p,g) N15(p,a)C12             6       1                 0
-N14(p,g) N15(p,g)O16             6       2                 0
-O16(p,g) O17(p,a)N14             7       0                 0
-C12(a,g)O16                     10       0                 0
-C13(a,n)O16                      8       0                 0
-N14(a,g) to O18                 11       0                 0
-triple alpha                    12       0                 0
+# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain
+pp chain to He3                  1       0                 0    6.664000      1
+He3(He3,2p)He4                   2       0                 0   12.860000      1
+He3(He4,g) Be7(e) ppII           3       3                 0   18.980000      2
+He3(He4,g) Be7(p) ppIII          3       4                 0   13.085000      3
+C12(p,g) to C13                  4       0                 0    3.457372      4
+C13(p,g)N14                      5       0                 0    7.550628      4
+N14(p,g) N15(p,a)C12             6       1                 0   14.020000      4
+N14(p,g) N15(p,g)O16             6       2                 0   21.182000      4
+O16(p,g) O17(p,a)N14             7       0                 0    3.553000      4
+C12(a,g)O16                     10       0                 0    7.162000      5
+C13(a,n)O16                      8       0                 0    2.216000      5
+N14(a,g) to O18                 11       0                 0    5.815000      5
+triple alpha                    12       0                 0    7.275000      6
 # table errors: 0
 test_net: done

@@ -272,7 +272,7 @@ mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.m
 net/light_elements.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
 net/net_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod thermal_neutrino_lib.mod
 net/network_lib.o: net_lib.mod numerics_lib.mod star_info_lib.mod
-net/nuclear_energy.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
+net/nuclear_energy.o: math_lib.mod net_lib.mod network_lib.mod phys_const_lib.mod star_info_lib.mod
 net/test/test_net.o: burn_step.mod controls_lib.mod light_element_lib.mod luout_lib.mod net_lib.mod network_lib.mod scv_eos_lib.mod star_info_lib.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
