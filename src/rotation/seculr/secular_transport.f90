@@ -55,6 +55,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
      diffusion_solve_ok, ierr)
       use rotation_scratch_lib
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
+      use convection_lib, only: homogenize_convection_zones
       use star_info_lib, only: star, json
       use physical_constants
       use numerics_lib

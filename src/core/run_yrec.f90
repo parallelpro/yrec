@@ -34,6 +34,8 @@ subroutine run_yrec(ierr)
            check_rotation_initialised
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
+      use convection_lib, only: set_convection_settings
+      use microphysics_settings, only: convection_settings_from_star
       implicit none
       integer :: step_status
 
@@ -271,6 +273,8 @@ subroutine begin_kind_card
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
+! the convection domain's settings for this card (its mixing length)
+         call set_convection_settings(convection_settings_from_star())
        star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
        star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%reset_triangle = .false.

@@ -225,7 +225,7 @@ endif
 # builds all of them; the yrec executable itself still links the flat
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
-DOMAIN_DIRS := eos kap atm net mixing rotation numerics \
+DOMAIN_DIRS := eos kap atm net convection rotation numerics \
 	state setup io core util
 
 define LIB_template
@@ -249,7 +249,7 @@ libs: $(LIBS)
 # order. The default `yrec` binary stays flat-linked (byte-stable
 # object order); CI builds this target as the layout check.
 YREC_LIBS_ORDER := libstate.a libio.a libnumerics.a libeos.a libkap.a \
-	libatm.a libnet.a libmixing.a librotation.a \
+	libatm.a libnet.a libconvection.a librotation.a \
 	libsetup.a libutil.a libcore.a
 yrec_libs: core/main.o $(LIBS)
 	$(FC) $(LDFLAGS) -o $@ core/main.o \
@@ -282,7 +282,7 @@ test_rotation: rotation/test/test_rotation.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_convection: FFLAGS += $(REL_FFLAGS)
-test_convection: mixing/test/test_convection.o $(filter-out core/main.o,$(OBJS))
+test_convection: convection/test/test_convection.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 test_numerics: FFLAGS += $(REL_FFLAGS)

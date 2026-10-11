@@ -260,7 +260,6 @@ module star_info_lib
             double precision :: bl_radius_scale, bl_mass_scale, &
                  bl_temp_scale, bl_time_scale
             double precision :: metal_abundance_change(json)
-            double precision :: alfmlt, phmlt, cmxmlt
             double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
             double precision :: es_circulation_velocity(json), &
                  secular_shear_velocity(json), gsf_circulation_velocity(json)
@@ -270,8 +269,8 @@ module star_info_lib
 ! track columns); the age/log_l/log_r group is chkscal's
 ! star-calibration bookkeeping (star_found_flag arms the final
 ! age-stopped run); compute_acoustic_depth is the calcad toggle the
-! calibration verdict disables; iov1/iov2/iovim are overshoot zone
-! indices written by oversh; use_two_z_tables is derived by
+! calibration verdict disables; iov1/iov2 are the overshoot zone
+! indices find_convection_zones returns; use_two_z_tables is derived by
 ! setupopac from the table configuration; disk_lifetime is the
 ! disk-locking countdown evolve_step advances; pulsation_mass_msun
 ! is stamped per kind card by begin_kind_card.
@@ -290,7 +289,7 @@ module star_info_lib
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.
             double precision :: disk_gate_age_gyr, pulsation_mass_msun
-            integer :: iov1, iov2, iovim
+            integer :: iov1, iov2
 ! mixed/radiative zone bookkeeping
             integer :: mixed_zone_bounds(max_convective_zones,2), &
                  mixed_zone_bounds_no_overshoot(max_convective_zones,2), &

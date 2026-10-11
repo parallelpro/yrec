@@ -31,6 +31,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use mid_timestep_model
       use secular_transport
       use magnetic_braking, only: brake_convection_zone
+      use convection_lib, only: find_convection_zones, homogenize_convection_zones
       use star_info_lib, only: star, json
       use physical_constants
       use burn_step, only: store_end_li_be_rates, burn_li_be
@@ -118,7 +119,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       call am_convective_regions(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
            star%logT,star%convective_flag,star%nz, &
            am_transport_convective_flag,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
 ! MHP 9/94 ADDED DISK LOCKING OPTION.
       disk_lock_engaged = .false.
@@ -341,7 +342,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
               radiative_zone_bounds,convective_zone_bounds, &
               convective_zone_bounds_burn,core_boundary_zone_cur, &
               envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
-              num_convective_zones_burn, ierr)
+              num_convective_zones_burn, star%iov1, star%iov2, ierr)
          if (ierr /= 0) return
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(star%job%lovstm .and. rot_scr%convective_flag_mid(star%nz))then

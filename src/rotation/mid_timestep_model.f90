@@ -140,7 +140,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
       call am_convective_regions(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
            star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
            rot_scr%am_transport_convective_flag_mid,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF

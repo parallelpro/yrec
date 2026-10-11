@@ -14,7 +14,7 @@
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
-      use temperature_gradients
+      use convection_lib, only: compute_temperature_gradients
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
@@ -103,7 +103,8 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
-              log_teff, ierr, zone_index=im)
+              log_teff, &
+              im >= star%iov1 .and. im <= star%iov2, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
          star%gradr(im) = radiative_gradient

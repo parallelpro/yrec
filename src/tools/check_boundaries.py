@@ -25,7 +25,7 @@ import collections
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
-DOMAINS = ["eos", "kap", "atm", "net", "mixing",
+DOMAINS = ["eos", "kap", "atm", "net", "convection",
            "rotation", "numerics"]
 
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
@@ -80,16 +80,11 @@ PUBLIC = {
             "burn_implicitly", "compute_abundance_rates",
             "compute_nuclear_energy",
             "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},
-    # mixing has no facade module; these are its de-facto public
-    # surface. (Its orchestrator, mix, moved to core as
-    # composition_step in 2026-10: it drives burning as well as mixing.)
-    # tpgrad joined when phase four's step 1 moved it here from misc/
-    # (it is MLT convection physics): it is legitimately called from
-    # core (physic/coefft/starin) and atm (qenv) pending the
-    # star-layer consolidation.
-    "mixing": {"homogenize_convection_zones", "find_convection_zones",
-               "compute_scale_height", "overshoot_boundaries", "semiconvection",
-               "compute_temperature_gradients"},
+    # convection_lib's entries (2026-10: mixing/ became convection/; its
+    # burn-settle-mix sub-stepping moved to rotation).
+    "convection": {"compute_temperature_gradients", "find_convection_zones",
+                   "homogenize_convection_zones", "extend_by_semiconvection",
+                   "set_convection_settings", "set_convection_envelope_metals"},
     # rotation deliberately has no facade (multi-primitive surface,
     # user decision during the phase-two sweep). (equipotential_integrand,
     # the former func, left the list in 2026-10: the shape quadrature
@@ -165,7 +160,7 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics"]
+STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics", "convection"]
 
 def check_star_free(src_root):
     problems = []
@@ -187,7 +182,7 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm", "numerics"]
+FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm", "numerics", "convection"]
 
 def check_facade_imports(src_root):
     problems = []

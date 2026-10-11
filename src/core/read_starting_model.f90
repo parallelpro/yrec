@@ -30,7 +30,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
-      use temperature_gradients
+      use convection_lib, only: compute_temperature_gradients, set_convection_envelope_metals
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
@@ -195,7 +195,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
                  star%logT,star%convective_flag,star%nz, &
                  star%am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones, ierr)
+                 num_convective_zones, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
 ! INITIALIZE TAUCZ, PPHOT, AND FRACSTEP (2026: build the stitched
 ! model first -- the turnover walker reads it; this also seeds
@@ -683,16 +683,13 @@ subroutine rescale_and_refit_envelope
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res%ion_fraction, ierr=ierr)
                if (ierr /= 0) return
-! 2026 W3: zone_index=-1 (no overshoot zone) is passed directly; this
-! was the last writer of the star%iovim side channel.
                call compute_temperature_gradients(log10_temperature, log10_pressure, &
                     eos_res, kap_res, log10_radius, log10_mass, &
                     shell_luminosity_lsun, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                     convective_velocity, want_derivatives, is_convective, &
                     point_pressure_rotation_factor, &
-                    point_temperature_rotation_factor, star%log_Teff, jerr, &
-                    zone_index=-1)
+                    point_temperature_rotation_factor, star%log_Teff, .false., jerr)
                if (jerr /= 0) then
                ! 2026 (phase five, step B): propagate instead of stopping
                   ierr = jerr
@@ -887,6 +884,7 @@ subroutine update_surface_mixture
       star%zenvm = star%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
+      call set_convection_envelope_metals(star%zenvm)
       mixture_scale_factor = star%envelope_metal_fraction/mixture_weight_sum
       species_mix_weights(ix_h) = star%envelope_hydrogen_fraction/ &
            mixture_scale_factor

@@ -34,6 +34,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use observables, only: compute_observables
       use stitched_model, only: build_stitched_model
       use mass_change, only: change_mass
+      use convection_lib, only: find_convection_zones, homogenize_convection_zones
       use stop_conditions
       implicit none
 
@@ -497,7 +498,7 @@ subroutine burn_light_elements
             if (.not.star%job%rotation_active .or. .not.star%job%instability_transport_active) then
 ! FIND CONVECTION ZONE DEPTH AT THE END OF THE TIME STEP.
                call find_convection_zones(star%xa,star%logRho,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%radiative_zone_bounds,star%mixed_zone_bounds, &
-                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, ierr)
+                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, star%iov1, star%iov2, ierr)
                if (ierr /= 0) return
 ! CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
                envelope_cz_zone_end = star%envelope_cz_bottom_index

@@ -16,19 +16,24 @@
 subroutine am_convective_regions(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, &
      am_transport_convective_flag, radiative_zone_bounds, &
-     convective_zone_bounds, num_radiative_zones, num_convective_zones, ierr)
+     convective_zone_bounds, num_radiative_zones, num_convective_zones, &
+     overshoot_bottom, overshoot_top, ierr)
       use star_info_lib, only: json
+      use convection_lib, only: find_convection_zones
       implicit none
 
       double precision, intent(in) :: composition(15,json), &
            log_density(json), log_pressure(json), log_radius(json), &
            log_mass(json), log_temperature(json)
-      logical, intent(in) :: convective_flag(json)
+! (find_convection_zones sets convective_flag(num_zones+1) to .false.)
+      logical, intent(inout) :: convective_flag(json)
       integer, intent(in) :: num_zones
       logical, intent(out) :: am_transport_convective_flag(json)
       integer, intent(out) :: radiative_zone_bounds(13,2), &
            convective_zone_bounds(12,2)
       integer, intent(out) :: num_radiative_zones, num_convective_zones
+! the overshoot region below the envelope (find_convection_zones)
+      integer, intent(inout) :: overshoot_bottom, overshoot_top
       integer, intent(out) :: ierr
 
       integer :: convective_zone_bounds_raw(12,2)
@@ -41,7 +46,7 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
            radiative_zone_bounds,convective_zone_bounds, &
            convective_zone_bounds_raw, &
            core_zone_boundary,envelope_zone_boundary,num_radiative_zones, &
-           num_convective_zones,num_convective_zones_raw, ierr)
+           num_convective_zones,num_convective_zones_raw, overshoot_bottom, overshoot_top, ierr)
       if (ierr /= 0) return
       do j = 1,num_radiative_zones
          do i = radiative_zone_bounds(j,1),radiative_zone_bounds(j,2)

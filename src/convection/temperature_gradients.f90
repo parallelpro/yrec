@@ -1,12 +1,6 @@
 !----------------------------------------------------------------------
-! tpgrad
+! temperature_gradients (formerly tpgrad)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original tpgrad.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! COMPUTES RADIATIVE GRADIENT AND COMPARES WITH ADIABATIC GRADIENT
 ! COMPUTES CONVECTIVE GRADIENT VIA MIXING LENGTH THEORY IF APPLICABLE
 ! ASSUMES eos_get AND kap_get HAVE BEEN CALLED (eos_res, kap_res)
@@ -30,15 +24,16 @@
 ! (NEVER absorb star% per-zone reads here: this routine is on the
 ! star-blind envint kernel's integrand path, where the state comes
 ! from the integration point, not from star%'s zone arrays).
-! zone_index (2026 readability W2): the Henyey zone number im of the
-! point being evaluated, or -1 for an envelope/atmosphere point; it
-! gates the adiabatic-overshoot branch (ladov, iov1 <= im <= iov2).
-! Before W2 the callers wrote it to star%iovim just before the call.
-! It is optional only because core/read_starting_model.f90 still
-! passes it through star%iovim = -1 (see the W2 sidechan report,
-! Deferred); when absent, star%iovim is read exactly as before.
+! in_overshoot_region: the point lies in the overshoot region below the
+! envelope (the caller's zone between star%iov1 and star%iov2); with
+! the adiabatic_overshoot setting a radiative point there takes the
+! adiabatic gradient. (Formerly zone_index, compared here with
+! star%iov1/iov2; -1 for envelope and atmosphere points.)
 module temperature_gradients
+      use convection_configuration, only: convection_settings
       implicit none
+      private
+      public :: compute_temperature_gradients
 contains
 
 subroutine compute_temperature_gradients(log_temperature, log_pressure, &
@@ -46,12 +41,11 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
      actual_gradient, radiative_gradient, dgrad_dt_component, &
      dgrad_dp_component, dgrad_dr_component, convective_velocity, &
      want_derivatives, is_convective, pressure_rotation_factor, &
-     temperature_rotation_factor, log_teff, ierr, zone_index)
+     temperature_rotation_factor, log_teff, in_overshoot_region, ierr)
 
       use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
-      use star_info_lib, only: star
       use io_units
       use physical_constants
       use math_lib
@@ -88,18 +82,10 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
            tempop, qddelt, qddelp, temp1, qa1t, qa1p, qa1r, qa3t, qa3p, &
            qa3r, temp2, temp3, qvt, qvp, qvr, deli, ateffl, deepx
 
+      logical, intent(in) :: in_overshoot_region
       integer, intent(out) :: ierr
-      integer, intent(in), optional :: zone_index
-! overshoot_zone_index: zone_index when given, else star%iovim (the
-! pre-W2 side channel, still used by core/read_starting_model).
-      integer :: overshoot_zone_index
 
       ierr = 0
-      if (present(zone_index)) then
-         overshoot_zone_index = zone_index
-      else
-         overshoot_zone_index = star%iovim
-      end if
 
       temperature = eos_res%temperature
       pressure = eos_res%pressure
@@ -118,14 +104,8 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
 
-! star%alfmlt/phmlt/cmxmlt are zeroed here and assigned nowhere else
-! (they reach the valfmlt/vphmlt/vcmxmlt output columns as zeros); see
-! audit/readability-sweep-2026-09-03/SUMMARY.md 1.1 #10 -- author decision.
-      star%alfmlt=0.0d0
-      star%phmlt=0.0d0
-      star%cmxmlt=0.0d0
       radiative_gradient = opacity*luminosity_lsun*exp(ln10*(log_pressure - &
-           log_mass - 4d0*log_temperature + star%log10_solar_luminosity - cgl + &
+           log_mass - 4d0*log_temperature + convection_settings%log10_solar_luminosity - cgl + &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
       deldel = radiative_gradient - adiabatic_gradient
@@ -134,8 +114,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
        is_convective = .false.
        actual_gradient = radiative_gradient
        convective_velocity=0.0d0
-         if (star%ctrl%ladov .and. overshoot_zone_index.ge.star%iov1 .and. &
-             overshoot_zone_index.le.star%iov2 .and. overshoot_zone_index.ne.-1) then
+         if (convection_settings%adiabatic_overshoot .and. in_overshoot_region) then
             actual_gradient = adiabatic_gradient
          end if
        return
@@ -144,7 +123,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       is_convective = .true.
       actual_gradient = adiabatic_gradient
 ! SKIP MIXING LENGTH THEORY FOR CORES
-      if(log_temperature.gt.star%ctrl%tgcut) then
+      if(log_temperature.gt.convection_settings%log10_t_cut) then
          convective_velocity = 1.0d-11
        if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
@@ -173,21 +152,21 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
 ! This flux alters DELR, so recalculate DELDEL with the correction. Only
 ! do this if the spot filling factor is non-zero, and the envelope is
 ! convective.
-      if(star%ctrl%spot_filling_factor .ne. 0.00)then
-         if(star%ctrl%spot_depth_varies)then
-            ateffl = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-                 pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
-            deepx = 1.0 - (1.0 - star%ctrl%spot_temp_contrast)*(exp10(ateffl))/(exp10(log_temperature))
+      if(convection_settings%spot_filling_factor .ne. 0.00)then
+         if(convection_settings%spot_depth_varies)then
+            ateffl = log_teff - 0.25*log10(convection_settings%spot_filling_factor * &
+                 pow(convection_settings%spot_temp_contrast, 4.0) + 1.0 - convection_settings%spot_filling_factor)
+            deepx = 1.0 - (1.0 - convection_settings%spot_temp_contrast)*(exp10(ateffl))/(exp10(log_temperature))
          else
-            deepx = star%ctrl%spot_temp_contrast
+            deepx = convection_settings%spot_temp_contrast
          endif
-         deldel = radiative_gradient/(star%ctrl%spot_filling_factor * pow(deepx, 4.0) + &
-              1.0 - star%ctrl%spot_filling_factor) - adiabatic_gradient
+         deldel = radiative_gradient/(convection_settings%spot_filling_factor * pow(deepx, 4.0) + &
+              1.0 - convection_settings%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
       g = exp(ln10*(cgl + log_mass - log_radius - log_radius))
       presht = pressure/(density*g)
-      phi = star%mixing_length_alpha*density*opacity*presht
+      phi = convection_settings%mixing_length_alpha*density*opacity*presht
       phi2 = phi*phi
       phiphi = 1.0d0/(1.0d0 + cmixl2*phi2)
 ! SOLVE CUBIC A3*V**3 + V**2 + A1*V - 1.0 = 0.0
@@ -244,7 +223,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
 ! CALCULATE CONVECTIVE VELOCITY. THE RADICAND HAS THE SAME SIGN AS THE
 ! ONE ALREADY CHECKED ABOVE (deldel*g*(-dlnrho_dlnt)/presht > 0), SO NO
 ! SEPARATE SIGN TEST IS NEEDED HERE.
-      convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(star%mixing_length_alpha**2)*presht*deldel/8.0d0)
+      convective_velocity = v*dsqrt(g*(-dlnrho_dlnt)*(convection_settings%mixing_length_alpha**2)*presht*deldel/8.0d0)
       if(want_derivatives) then
 ! DERIVATIVES OF CONVECTIVE GRADIENT
        qdelat = adiabatic_gradient_dt*adiabatic_gradient

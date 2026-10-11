@@ -7,13 +7,17 @@
 !     opacity_settings   kap (kap_init)
 !     equation_of_state_settings       eos (eos_init)
 !     atmosphere_settings   atm (atm_init)
+!     convection_settings_from_star   convection (set_convection_settings,
+!                        at the start of every run card)
 module microphysics_settings
       use kap_lib, only: kap_settings_t
       use eos_lib, only: eos_settings_t
       use atm_lib, only: atm_settings_t
+      use convection_lib, only: convection_settings_t
       implicit none
       private
-      public :: opacity_settings, equation_of_state_settings, atmosphere_settings
+      public :: opacity_settings, equation_of_state_settings, atmosphere_settings, &
+           convection_settings_from_star
 
 contains
 
@@ -96,5 +100,43 @@ function atmosphere_settings() result(s)
       s%allard_target_feh = star%ctrl%allard_target_feh
       s%allard_target_alpha = star%ctrl%allard_target_alpha
 end function atmosphere_settings
+
+!----------------------------------------------------------------------
+! convection_settings_from_star: convection's settings from the
+! controls and the run card's mixing length.
+!   star reads: ctrl%alpham, ctrl%betac, ctrl%ladov, ctrl%lovmax,
+!     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope,
+!     ctrl%spot_depth_varies, ctrl%spot_filling_factor,
+!     ctrl%spot_temp_contrast, ctrl%tgcut, job%core_overshoot_active,
+!     job%envelope_overshoot_active, job%instability_transport_active,
+!     job%lovstm, job%rotation_active, job%use_extended_composition,
+!     log10_solar_luminosity, mixing_length_alpha, solar_luminosity_cgs,
+!     zenvm
+!   star writes: none
+function convection_settings_from_star() result(s)
+      use star_info_lib, only: star
+      type(convection_settings_t) :: s
+
+      s%mixing_length_alpha = star%mixing_length_alpha
+      s%log10_t_cut = star%ctrl%tgcut
+      s%adiabatic_overshoot = star%ctrl%ladov
+      s%solar_luminosity_cgs = star%solar_luminosity_cgs
+      s%log10_solar_luminosity = star%log10_solar_luminosity
+      s%spot_filling_factor = star%ctrl%spot_filling_factor
+      s%spot_temp_contrast = star%ctrl%spot_temp_contrast
+      s%spot_depth_varies = star%ctrl%spot_depth_varies
+      s%core_overshoot = star%job%core_overshoot_active
+      s%envelope_overshoot = star%job%envelope_overshoot_active
+      s%intermediate_overshoot = star%job%lovstm
+      s%overshoot_alpha_core = star%ctrl%overshoot_alpha_core
+      s%overshoot_alpha_envelope = star%ctrl%overshoot_alpha_envelope
+      s%overshoot_alpha_intermediate = star%ctrl%alpham
+      s%limit_core_overshoot = star%ctrl%lovmax
+      s%core_overshoot_limit = star%ctrl%betac
+      s%rotation_active = star%job%rotation_active
+      s%instability_transport_active = star%job%instability_transport_active
+      s%use_extended_composition = star%job%use_extended_composition
+      s%envelope_metals_no_cno = star%zenvm
+end function convection_settings_from_star
 
 end module microphysics_settings

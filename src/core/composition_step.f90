@@ -62,8 +62,8 @@ contains
 !     ctrl%use_new_diffusion_routines, dm, gradT,
 !     job%use_extended_composition, job%use_semiconvection, log_mass,
 !     log_Teff, log_total_mass, logP, logR, logT, luminosity_lsun, nz
-!   star writes: convective_flag, job%diffuse_helium_active, logRho, m,
-!     mixed_zone_bounds, xa
+!   star writes: convective_flag, iov1, iov2, job%diffuse_helium_active,
+!     logRho, m, mixed_zone_bounds, xa
 subroutine advance_composition(timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib
@@ -75,6 +75,7 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
       use net_lib, only: num_rate_rows
       use burn_step, only: compute_burn_rates, burn_network, &
            burn_deuterium
+      use convection_lib, only: find_convection_zones, extend_by_semiconvection
       use math_lib
       implicit none
 
@@ -110,7 +111,7 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
            radiative_zone_bounds, star%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
            num_radiative_zones, num_mixed_zones, &
-           num_mixed_zones_no_overshoot, ierr)
+           num_mixed_zones_no_overshoot, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
 
 ! 2-3. BURNING: THE RATES, THEN THE IMPLICIT NETWORK
@@ -122,7 +123,7 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
 ! 4. SEMICONVECTION
       if (star%job%use_semiconvection) then
          if (opts%semiconvection) &
-              call semiconvection(timestep, star%xa, star%logRho, &
+              call extend_by_semiconvection(timestep, star%xa, star%logRho, &
               star%luminosity_lsun, star%logP, star%logR, star%log_mass, &
               star%logT, star%nz, star%mixed_zone_bounds, &
               num_mixed_zones, star%log_Teff, ierr)
@@ -156,7 +157,7 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
               radiative_zone_bounds, star%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
               envelope_cz_edge, num_radiative_zones, num_mixed_zones, &
-              num_mixed_zones_no_overshoot, ierr)
+              num_mixed_zones_no_overshoot, star%iov1, star%iov2, ierr)
          if (ierr /= 0) return
       end if
 

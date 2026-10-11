@@ -1,12 +1,29 @@
 !----------------------------------------------------------------------
-! sconvec
+! semiconvection
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original sconvec.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
+! Semiconvection at the edge of the convective core (Castellani et al.
+! 1971): extend_by_semiconvection (formerly sconvec, semiconvection)
+! widens the mixed region where the radiative gradient, with the
+! abundances of the neighbouring convection zone, exceeds the
+! adiabatic one.
+module semiconvection
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use convection_configuration, only: convection_settings
+      use temperature_gradients, only: compute_temperature_gradients
+      use eos_lib, only: eos_result, eos_get
+      use kap_lib, only: kap_get, num_kap_results
+      use io_units, only: run_log_unit
+      use physical_constants
+      use math_lib
+      implicit none
+      private
+      public :: extend_by_semiconvection
+
+contains
+
+!----------------------------------------------------------------------
+! extend_by_semiconvection (formerly sconvec)
+!----------------------------------------------------------------------
 ! SEMI-CONVECTION IS TESTED FOR ALL CONVECTIVE REGIONS IN THIS SUBROUTINE.
 ! THE REFERENCE FOR THIS SECTION IS :
 ! CASTELLANI ET AL.(1971)ASTROPHYSICS AND SPACE SCIENCE, VOL. 10, PP.340-349.
@@ -34,27 +51,18 @@
 ! OUTPUT VARIABLES :
 !
 ! mixed_zone_bounds, num_zones_mixed can be altered by the subroutine.
-subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
+subroutine extend_by_semiconvection(timestep, composition, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
-      use temperature_gradients
-      use star_info_lib, only: star, json
-
-      use io_units
-      use physical_constants
-      use eos_lib
-      use kap_lib
-      use math_lib
-      implicit none
 
       double precision, intent(in) :: timestep
-      double precision, intent(in) :: composition(15,json)
-      double precision, intent(inout) :: log_density(json)
-      double precision, intent(in) :: luminosity_lsun(json), &
-           log_pressure(json), log_radius(json), log_mass(json), &
-           log_temperature(json)
+      double precision, intent(in) :: composition(:,:)
+      double precision, intent(inout) :: log_density(:)
+      double precision, intent(in) :: luminosity_lsun(:), &
+           log_pressure(:), log_radius(:), log_mass(:), &
+           log_temperature(:)
       integer, intent(in) :: num_zones
-      integer, intent(inout) :: mixed_zone_bounds(12,2)
+      integer, intent(inout) :: mixed_zone_bounds(:,:)
       integer, intent(inout) :: num_zones_mixed
       double precision, intent(in) :: log_teff
 
@@ -165,21 +173,13 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res%ion_fraction, ierr=ierr)
             if (ierr /= 0) return
-! zone_index = -1 (here and at the two calls below). Before 2026 W2
-! this routine never set star%iovim, so temperature_gradients saw
-! whatever the last Henyey/shell_physics pass had left there. The
-! zone index only gates the ladov adiabatic-overshoot rewrite of
-! actual_gradient, and this routine reads none of actual_gradient,
-! is_convective, convective_velocity or dgrad_* -- only
-! radiative_gradient, which the gate cannot touch -- so -1 (no
-! overshoot gating) gives the same result as any stale value did.
             call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                  convective_velocity, want_derivatives, is_convective, &
                  pressure_rotation_factor, temperature_rotation_factor, &
-                 log_teff, ierr, zone_index=-1)
+                 log_teff, .false., ierr)
             if (ierr /= 0) return
 ! SKIP IF ZONE IS STABLE WITH THE CORE COMPOSITION.
             if (radiative_gradient.lt.eos_res%adiabatic_gradient) cycle
@@ -211,7 +211,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                  convective_velocity, want_derivatives, is_convective, &
                  pressure_rotation_factor, temperature_rotation_factor, &
-                 log_teff, ierr, zone_index=-1)
+                 log_teff, .false., ierr)
             if (ierr /= 0) return
             log_density(adjacent_radiative_idx) = log_density_zone
 ! FDEL IS THE RATIO OF THE GRADIENTS WITH THE OLD COMP AND NEW ONE.
@@ -221,7 +221,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
 ! IS THE TIMESTEP(DELTS) MULTIPLIED BY THE VELOCITY OF PROPAGATION OF
 ! THE INSTABILITY (VP IN EQUATION 5PRIME, P. 347).
             max_overshoot_radius = max_overshoot_radius*(luminosity_lsun( &
-                 cz_edge_idx)*star%solar_luminosity_cgs/(10.0d0*c4pi* &
+                 cz_edge_idx)*convection_settings%solar_luminosity_cgs/(10.0d0*c4pi* &
                  exp(ln10*log_pressure(cz_edge_idx))))* &
                  (timestep/exp(ln10*(log_radius(cz_edge_idx)+ &
                  log_radius(cz_edge_idx))))
@@ -282,7 +282,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                     convective_velocity, want_derivatives, is_convective, &
                     pressure_rotation_factor, temperature_rotation_factor, &
-                    log_teff, ierr, zone_index=-1)
+                    log_teff, .false., ierr)
                if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
@@ -342,4 +342,6 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
       end do merge_scan
 
       return
-end subroutine semiconvection
+end subroutine extend_by_semiconvection
+
+end module semiconvection

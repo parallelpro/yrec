@@ -31,7 +31,7 @@
 ! descriptive of their role in this file.
 subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
      saha_state, envelope_zone_index, ierr)
-      use temperature_gradients
+      use convection_lib, only: compute_temperature_gradients
       use rotation_scratch_lib
       use henyey_elimination
 
@@ -178,7 +178,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
-              star%log_Teff, ierr, zone_index=im)
+              star%log_Teff, &
+              im >= star%iov1 .and. im <= star%iov2, ierr)
          if (ierr /= 0) return
        star%logRho(im) = eos_res%log10_density
 ! COMPUTE DERIVATIVES
@@ -416,9 +417,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! star%alfmlt/phmlt/cmxmlt are only ever set to zero (mixing/
 ! temperature_gradients.f90), so these output arrays are always zero;
 ! pending an author decision -- see audit SUMMARY.md 1.1 #10.
-         star%valfmlt(im) = star%alfmlt
-         star%vphmlt(im) = star%phmlt
-         star%vcmxmlt(im) = star%cmxmlt
+         star%valfmlt(im) = 0.0d0
+         star%vphmlt(im) = 0.0d0
+         star%vcmxmlt(im) = 0.0d0
       end do
 
       return
