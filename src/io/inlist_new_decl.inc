@@ -42,9 +42,9 @@
       double precision :: rescale_x(50)
       double precision :: rescale_z(50)
       double precision :: rescale_core_mass(50)
-      double precision :: rescale_core_z(50)
-      double precision :: rescale_z_mix1(50)
-      double precision :: rescale_z_mix2(50)
+      double precision :: rescale_core_z(max_runs)
+      double precision :: rescale_z_mix1(max_runs)
+      double precision :: rescale_z_mix2(max_runs)
       double precision :: opal95_z2
       double precision :: alex_z2
       character(len=256) :: opal01_eos_table_file

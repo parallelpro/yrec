@@ -16,7 +16,9 @@ Entry classes (per row): keep (new == legacy: the legacy variable itself
 joins the new group), direct (new == the canonical internal name read_input
 already copies into post-read: that variable joins the group), newlocal
 (a fresh local is declared). Rows with status 'unused' are dead legacy
-controls: accepted by the legacy path only.
+controls, accepted by the legacy path only and read nowhere; rows with
+status 'legacy' are accepted by the legacy path only but still used
+(documented separately in the .defaults files).
 
 Defaults strategy: the generated code NEVER re-states default values.
 Pre-read it seeds every new-style variable from its legacy twin (which
@@ -69,7 +71,7 @@ def main():
     parmin = (SRC / "io" / "read_controls.f90").read_text()
     decls = joined_decl_lines(parmin)
     for extra in ("io/controls_buffer.f90", "state/physical_constants.f90",
-                  "numerics/integration_parameters.f90",
+                  "state/integration_parameters.f90",
                   "kap/opacity_tables.f90"):
         decls += joined_decl_lines((SRC / extra).read_text())
     # canonical names = simple post-read copies canon = legacy
@@ -79,7 +81,7 @@ def main():
         if m:
             canon.setdefault(m.group(2).lower(), m.group(1).lower())
 
-    live = [r for r in rows if r["status"] != "unused"]
+    live = [r for r in rows if r["status"] not in ("unused", "legacy")]
     for r in live:
         if r["new"] == r["legacy"]:
             r["cls"] = "keep"
@@ -182,6 +184,10 @@ def main():
             out.append("! Unused legacy controls (accepted by the legacy reader only,")
             out.append("! referenced nowhere in the code; dropped from the new format):")
             out.append("!   " + ", ".join(r["legacy"] for r in dead))
+        for r in rows:
+            if r["status"] == "legacy" and r["group"] == grp:
+                out.append(f"! Legacy-reader only, dropped from the new format: {r['legacy']}, the")
+                out.append(f"! {r['doc']}")
         (SRC / "defaults" / f"{gname}.defaults").write_text("\n".join(out) + "\n")
 
     print(f"live: {len(live)} (keep {sum(r['cls']=='keep' for r in live)}, "

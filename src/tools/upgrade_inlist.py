@@ -8,8 +8,8 @@ Produces one new-style file containing &star_job (from &control) and
 &controls (from &physics), with every variable renamed per
 defaults/controls_registry.tsv. Values, array subscripts, comments and
 line layout are preserved verbatim -- only the names change. Unused
-legacy controls (status 'unused' in the registry) are dropped with a
-warning. The converted file must produce byte-identical outputs to the
+legacy controls (status 'unused' in the registry) and legacy-reader-only
+ones (status 'legacy') are dropped with a warning. The converted file must produce byte-identical outputs to the
 legacy pair (test_inlist_convert.py enforces this on the examples).
 """
 import argparse
@@ -27,7 +27,7 @@ def load_registry():
     for l in REG.read_text().splitlines()[1:]:
         parts = l.split("\t")
         grp, legacy, new, status = parts[0], parts[1], parts[4], parts[5]
-        if status == "unused":
+        if status in ("unused", "legacy"):
             dead[grp].add(legacy)
         else:
             ren[grp][legacy] = new
