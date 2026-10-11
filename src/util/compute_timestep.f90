@@ -37,7 +37,7 @@
 ! A negative timestep indicates that a model is being relaxed
 ! and not evolved. Check for negative dt and exit if found.
 subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_density, &
-     luminosity, enclosed_mass, shell_mass, log_temperature, composition, &
+     luminosity, enclosed_mass, log_temperature, composition, &
      convective_core_edge_zone, h_shell_midpoint_zone, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
@@ -53,7 +53,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       double precision, intent(out) :: chosen_dt
       integer, intent(in) :: num_points
       double precision, intent(in) :: log_density(json), luminosity(json), &
-           enclosed_mass(json), shell_mass(json), log_temperature(json)
+           enclosed_mass(json), log_temperature(json)
       double precision, intent(in) :: composition(15,json)
       integer, intent(in) :: convective_core_edge_zone, &
            h_shell_midpoint_zone
@@ -133,7 +133,7 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
            luminosity_components(3) + luminosity_components(4)
 !  skip h-burning timestep criteria for stars without h burning.
       if(hydrogen_luminosity.gt.1.0d-34) then
-       call timestep_limit_hburn(log_density,composition,luminosity,enclosed_mass,shell_mass, &
+       call timestep_limit_hburn(log_density,composition,luminosity,enclosed_mass, &
             log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
             h_shell_midpoint_zone,num_points,hydrogen_dt)
       else

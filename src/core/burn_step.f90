@@ -12,7 +12,7 @@
 !   compute_zone_energy   one shell's energy generation
 !   burn_regions          the regions a burn visits, in order
 !   compute_burn_rates, network_rates_of_model   the rate vectors
-!   burn_network, burn_equilibrium, burn_deuterium, burn_network_region
+!   burn_network, burn_deuterium, burn_network_region
 !                         the composition step's burns
 !   store_start/end_li_be_rates, burn_li_be, average_li_be_over_cz
 !                         Li6, Li7 and Be9 over a step
@@ -26,8 +26,7 @@ module burn_step
       private
       public :: configure_network, surface_accretion_now, &
            compute_zone_energy, burn_regions, network_rates_of_model, &
-           compute_burn_rates, burn_network, burn_equilibrium, &
-           burn_deuterium, burn_network_region, store_start_li_be_rates, &
+           compute_burn_rates, burn_network, burn_deuterium, burn_network_region, store_start_li_be_rates, &
            store_end_li_be_rates, burn_li_be, average_li_be_over_cz
 
 contains
@@ -689,53 +688,6 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
          if (ierr /= 0) return
       end do
 end subroutine burn_network
-
-!----------------------------------------------------------------------
-! burn_equilibrium
-!----------------------------------------------------------------------
-! The explicit burn of Newton level 1: network's
-! compute_equilibrium_burn_rates gives each burn region's start-of-step
-! hydrogen and helium burning rates with He3 and the CN cycle in
-! equilibrium, and the region's X becomes X + dX/dt dt (hydrogen
-! burning) and its Z, C12 and O16 likewise (helium burning), uniform
-! over a mixed region.
-!   star reads: dm, logT, mixed_zone_bounds, xa_start
-!   star writes: xa
-subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
-     num_mixed_zones, rate_by_zone, timestep)
-      use star_info_lib, only: star, json, max_radiative_zones, i_h1, &
-           i_metals, i_c12, i_o16
-      use net_lib, only: compute_equilibrium_burn_rates
-      integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
-           num_radiative_zones, num_mixed_zones
-      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
-! timestep: s
-      double precision, intent(in) :: timestep
-      integer, allocatable :: regions(:,:)
-      integer :: r, first, last
-      double precision :: dc_dt, do_dt, dx_dt, dy_dt
-! the region's start-of-step abundances, from compute_equilibrium_burn_rates
-      double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
-           o16_fraction
-
-      regions = burn_regions(star%logT, radiative_zone_bounds, &
-           num_radiative_zones, star%mixed_zone_bounds, num_mixed_zones)
-      do r = 1, size(regions,2)
-         first = regions(1,r)
-         last = regions(2,r)
-         call compute_equilibrium_burn_rates(rate_by_zone, star%xa_start, &
-              star%dm, star%logT, first, last, dc_dt, do_dt, dx_dt, dy_dt, &
-              c12_fraction, o16_fraction, hydrogen_fraction, metal_fraction)
-         if (dx_dt /= 0.0d0) then
-            star%xa(i_h1,first:last) = hydrogen_fraction + dx_dt*timestep
-         end if
-         if (dy_dt /= 0.0d0) then
-            star%xa(i_metals,first:last) = metal_fraction - dy_dt*timestep
-            star%xa(i_c12,first:last) = c12_fraction + dc_dt*timestep
-            star%xa(i_o16,first:last) = o16_fraction + do_dt*timestep
-         end if
-      end do
-end subroutine burn_equilibrium
 
 !----------------------------------------------------------------------
 ! burn_deuterium

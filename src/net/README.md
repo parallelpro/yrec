@@ -172,7 +172,7 @@ Run `test_net` after any change (`make tests` in `src/`, then `pytest test_net.p
 - `burn_implicitly` against backward Euler's closed form with only pp on, then with only C12(α,γ) on, and its mass conservation with every rate on;
 - `surviving_fraction` and `accreted_survival` against closed forms and an independent quadrature;
 - `compute_nuclear_energy` at the solar centre, a CNO core and a helium core, with a finite-difference check of its derivatives;
-- `compute_equilibrium_burn_rates` on a shell, a mixed region, a helium-burning shell and a shell below the cutoff;
+- `compute_abundance_rates` (the network's dX/dt) on a hydrogen- and a helium-burning zone;
 - `burn_deuterium_region` on a shell, a region, an accreting surface region and a region below the threshold;
 - `compute_li_be_rates`, the deuterium-rate cap in the surface convection zone, and the solar neutrino fluxes.
 

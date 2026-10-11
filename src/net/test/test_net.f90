@@ -20,8 +20,8 @@
 !     against closed forms and an independent quadrature,
 !   * compute_nuclear_energy at three reference points, and its
 !     derivatives against centred differences,
-!   * compute_equilibrium_burn_rates (shell, mixed region, helium
-!     burning, below the cutoff), burn_deuterium_region (shell, region,
+!   * compute_abundance_rates (the network's dX/dt) on a hydrogen- and
+!     a helium-burning zone, burn_deuterium_region (shell, region,
 !     accreting surface region, below the threshold), compute_li_be_rates,
 !     the deuterium-rate cap in the surface convection zone, and the
 !     solar neutrino fluxes.
@@ -37,8 +37,9 @@ program test_net
            r_po16, r_pp, burn_implicitly, n_network, s_h1, s_he3, s_he4, &
            surviving_fraction, accreted_survival, linear_in_time, &
            linear_in_log, compute_nuclear_energy, nuclear_energy_result, &
-           net_settings_t, set_net_settings, compute_equilibrium_burn_rates, &
-           burn_deuterium_region, surface_accretion, compute_li_be_rates
+           net_settings_t, set_net_settings, compute_abundance_rates, &
+           burn_deuterium_region, surface_accretion, compute_li_be_rates, &
+           network_species_slot
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, &
@@ -265,7 +266,7 @@ program test_net
       call check_burn_implicitly()
       call check_trace_integrator()
       call check_nuclear_energy()
-      call check_equilibrium_burn()
+      call check_abundance_rates()
       call check_light_elements()
       call check_solar_neutrino_fluxes()
 
@@ -459,55 +460,24 @@ contains
          call set_net_settings(s)
       end subroutine install_production_settings
 
-! compute_equilibrium_burn_rates on three hydrogen-burning shells
-! (log T 7.30, 7.25, 7.20) one at a time and as one mixed region, on a
-! helium-burning shell, and on a shell below the cutoff (rates only:
-! nothing else is set there). Each prints dX/dt dY/dt dC/dt dO/dt, then
-! the returned C12, O16, X and Z.
-      subroutine check_equilibrium_burn()
-         integer, parameter :: nz = 3
-         double precision :: rates(num_rate_rows, nz), xa(15, nz), &
-              mass(nz), logt(nz), logd(nz)
-         double precision :: dc, do, dx, dy, c12, o16, x, z
-         integer :: k
+! compute_abundance_rates, dX_i/dt / A_i of the network species (s_*
+! order), on a hydrogen-burning zone (log T 7.3, the rates test's
+! mixture) and a helium-burning one (log T 8.1, He4 0.97). The hydrogen
+! shell timestep limiter reads the first entry.
+      subroutine check_abundance_rates()
+         double precision :: rates(num_rate_rows), xa(15), dxdt(n_network)
 
          call install_production_settings()
-         write(*,'(a)') "# test_net: compute_equilibrium_burn_rates"
-         logt = [7.30d0, 7.25d0, 7.20d0]
-         logd = [2.0d0, 1.9d0, 1.8d0]
-         mass = [1.0d30, 2.0d30, 3.0d30]
+         write(*,'(a)') "# test_net: compute_abundance_rates, dX/dt / A: H He3 He4 C12 C13 N14 O16 O18"
+         call compute_network_rates(2.2d0, 7.3d0, test_xa, rates)
+         call compute_abundance_rates(rates, test_xa(network_species_slot), dxdt)
+         write(*,'(4(1pe20.12))') dxdt
          xa = 0.0d0
-         do k = 1, nz
-            xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18], k) = &
-                 [0.70d0 - 0.05d0*k, 0.28d0 + 0.05d0*k, 0.02d0, 3.0d-5*k, &
-                 3.5d-3/k, 4.0d-5*k, 1.0d-3*k, 8.0d-3, 2.0d-5]
-            call compute_network_rates(logd(k), logt(k), xa(:,k), rates(:,k))
-         end do
-         call equilibrium_case("shell 1", rates, xa, mass, logt, 1, 1)
-         call equilibrium_case("region 1-3", rates, xa, mass, logt, 1, 3)
-         xa(:,1) = 0.0d0
-         xa([i_he4, i_metals, i_c12, i_o16], 1) = [0.97d0, 0.03d0, 1.0d-2, 1.0d-2]
-         logt(1) = 8.1d0
-         call compute_network_rates(4.0d0, logt(1), xa(:,1), rates(:,1))
-         call equilibrium_case("helium shell", rates, xa, mass, logt, 1, 1)
-         logt(1) = 6.4d0
-         call compute_equilibrium_burn_rates(rates, xa, mass, logt, 1, 1, &
-              dc, do, dx, dy, c12, o16, x, z)
-         write(*,'(a)') "below cutoff"
-         write(*,'(4(1pe20.12))') dx, dy, dc, do
-      end subroutine check_equilibrium_burn
-
-      subroutine equilibrium_case(label, rates, xa, mass, logt, first, last)
-         character(len=*), intent(in) :: label
-         double precision, intent(in) :: rates(:,:), xa(:,:), mass(:), logt(:)
-         integer, intent(in) :: first, last
-         double precision :: dc, do, dx, dy, c12, o16, x, z
-         call compute_equilibrium_burn_rates(rates, xa, mass, logt, first, last, &
-              dc, do, dx, dy, c12, o16, x, z)
-         write(*,'(a)') label
-         write(*,'(4(1pe20.12))') dx, dy, dc, do
-         write(*,'(4(1pe20.12))') c12, o16, x, z
-      end subroutine equilibrium_case
+         xa([i_he4, i_metals, i_c12, i_n14, i_o16]) = [0.97d0, 0.03d0, 1.0d-2, 1.0d-2, 1.0d-2]
+         call compute_network_rates(4.0d0, 8.1d0, xa, rates)
+         call compute_abundance_rates(rates, xa(network_species_slot), dxdt)
+         write(*,'(4(1pe20.12))') dxdt
+      end subroutine check_abundance_rates
 
 ! The light elements. burn_deuterium_region over 3e11 s on three shells
 ! with rates rising through the step: shell 1 alone, the three as one

@@ -210,7 +210,7 @@ module network
                       screening=screening_t(12.d0, 16.192d0, 9.104d0, 2.577d0, -0.889d0)) ]
 
       public :: burn_implicitly, network_table_errors, write_network_table, &
-           compute_equilibrium_burn_rates, compute_reaction_energies, &
+           compute_abundance_rates, compute_reaction_energies, &
            compute_reaction_rates, compute_network_rates, reaction_counts
 
 contains
@@ -470,7 +470,8 @@ pure subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
 end subroutine compute_reaction_energies
 
 ! ---------------------------------------------------------------
-! dX_i/dt / A_i = sum_j nu_ij R_j for every network species.
+! dX_i/dt / A_i = sum_j nu_ij R_j for every network species, at the
+! abundances x (s_* order) and the composition rate vector rate_vec.
 pure subroutine compute_abundance_rates(rate_vec, x, dxdt_per_a)
       real(dp), intent(in) :: rate_vec(:), x(n_network)
       real(dp), intent(out) :: dxdt_per_a(n_network)
@@ -583,123 +584,5 @@ pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
       end do
 end subroutine burn_implicitly
 
-!----------------------------------------------------------------------
-! compute_equilibrium_burn_rates (formerly eqburn)
-!----------------------------------------------------------------------
-! The explicit hydrogen- and helium-burning rates of one radiative shell
-! (zone_begin = zone_end) or one mixed region, with He3 and the CN cycle
-! in equilibrium: the classic approximation that follows only X, Y, C12
-! and O16. burn_equilibrium (core/burn_step) advances X and, under
-! helium burning, Z, C12 and O16 with them at Newton level 1; the
-! hydrogen-shell timestep limiter reads dX/dt.
-!
-! A mixed region takes the mass-weighted averages of the start-of-step
-! abundances and of the rate vectors. With R the rate-vector rows
-! (per s per amu, the 1/A factors included) and X, Y the abundances:
-!   He3: the root of 2 R33 X3^2 + R34 Y X3 = R11 X^2, or the current X3
-!     if smaller (in outer layers He3 takes longer than a step to reach
-!     equilibrium);
-!   CN: N14 from C12/12 + C13/13 + N14/14 conserved, with
-!     C12 = N14 R14/R12 and C13 = N14 R14/R13;
-!   dX/dt = -3 R11 X^2 + 2 R33 X3^2 - R34 Y X3
-!           - R12 X C12 - R13 X C13 - 2 R14 X N14 - 2 R16 X O16;
-!   dY/dt = -4 (Rag Y C12 + 3 R3a Y^3), dC/dt = 12 (R3a Y^3 - Rag Y C12),
-!   dO/dt = 16 Rag Y C12.
-! The pp chains burn when X > 1e-10 and log T > logT_cutoffs(2), the CN
-! cycle above logT_cutoffs(3), helium when Y > 1e-10 and log T >
-! logT_cutoffs(4); every rate is zero at or below logT_cutoffs(1), and
-! the region's temperature is that of its first zone. Also returned:
-! the region's start-of-step X and Z, its C12 (the CN-equilibrium value
-! when the cycle runs) and its O16.
-pure subroutine compute_equilibrium_burn_rates(rate_by_zone, xa_start, &
-     shell_mass, shell_temperature, zone_begin, zone_end, dc_dt, do_dt, &
-     dx_dt, dy_dt, equilibrium_xc12, equilibrium_xo16, hydrogen_fraction, &
-     metal_fraction)
-      use composition_layout, only: n_species_basic, i_h1, i_he4, i_metals, &
-           i_he3, i_c12, i_c13, i_n14, i_o16
-      use reaction_rates, only: net_settings
-! rate_by_zone(r_*/rv_*, zone) from compute_network_rates; xa_start the
-! start-of-step composition (star%xa layout); shell_temperature log10 T
-      real(dp), intent(in) :: rate_by_zone(:,:), xa_start(:,:), &
-           shell_mass(:), shell_temperature(:)
-      integer, intent(in) :: zone_begin, zone_end
-      real(dp), intent(out) :: dc_dt, do_dt, dx_dt, dy_dt, &
-           equilibrium_xc12, equilibrium_xo16, hydrogen_fraction, &
-           metal_fraction
-
-      real(dp) :: x(n_species_basic), rate(size(rate_by_zone,1)), region_mass
-      real(dp) :: helium_fraction, he3, c13, n14, log_temperature
-      real(dp) :: pp_term, he3he4_term, he3_equilibrium
-      real(dp) :: cno_sum, c12_per_n14, c13_per_n14
-      real(dp) :: triple_alpha_term, c12_alpha_term
-      integer :: k
-
-! the region's start-of-step abundances and rates
-      if (zone_begin == zone_end) then
-         x = xa_start(1:n_species_basic, zone_begin)
-         rate = rate_by_zone(:, zone_begin)
-      else
-         region_mass = 0.0d0
-         x = 0.0d0
-         rate = 0.0d0
-         do k = zone_begin, zone_end
-            region_mass = region_mass + shell_mass(k)
-            x = x + xa_start(1:n_species_basic, k)*shell_mass(k)
-            rate = rate + shell_mass(k)*rate_by_zone(:, k)
-         end do
-         x = x/region_mass
-         rate = rate/region_mass
-      end if
-      hydrogen_fraction = x(i_h1)
-      helium_fraction = x(i_he4)
-      metal_fraction = x(i_metals)
-      he3 = x(i_he3)
-      equilibrium_xc12 = x(i_c12)
-      c13 = x(i_c13)
-      n14 = x(i_n14)
-      equilibrium_xo16 = x(i_o16)
-
-      dx_dt = 0.0d0
-      dy_dt = 0.0d0
-      dc_dt = 0.0d0
-      do_dt = 0.0d0
-      log_temperature = shell_temperature(zone_begin)
-      if (log_temperature < net_settings%logT_cutoffs(1)) return
-
-! hydrogen burning: the pp chains, with He3 in equilibrium
-      if (hydrogen_fraction > 1.0d-10 .and. &
-           log_temperature > net_settings%logT_cutoffs(2)) then
-         pp_term = rate(r_pp)*hydrogen_fraction**2
-         he3he4_term = rate(r_he3he4)*helium_fraction
-         he3_equilibrium = 0.25d0*(sqrt(he3he4_term**2 + &
-              8.0d0*rate(r_he3he3)*pp_term) - he3he4_term)/rate(r_he3he3)
-         he3 = min(he3, he3_equilibrium)
-         dx_dt = -3.0d0*pp_term + 2.0d0*rate(r_he3he3)*he3**2 &
-              - he3he4_term*he3
-! the CN cycle, with C12, C13 and N14 in equilibrium
-         if (log_temperature > net_settings%logT_cutoffs(3)) then
-            cno_sum = equilibrium_xc12/1.2d1 + c13/1.3d1 + n14/1.4d1
-            c12_per_n14 = rate(r_pn14)/rate(r_pc12)
-            c13_per_n14 = rate(r_pn14)/rate(r_pc13)
-            n14 = cno_sum/(c12_per_n14/1.2d1 + c13_per_n14/1.3d1 + 1.0d0/1.4d1)
-            equilibrium_xc12 = n14*c12_per_n14
-            c13 = n14*c13_per_n14
-            dx_dt = dx_dt - rate(r_pc12)*hydrogen_fraction*equilibrium_xc12 - &
-                 rate(r_pc13)*hydrogen_fraction*c13 - &
-                 2.0d0*rate(r_pn14)*hydrogen_fraction*n14 - &
-                 2.0d0*rate(r_po16)*hydrogen_fraction*equilibrium_xo16
-         end if
-      end if
-
-! helium burning: triple alpha and C12(a,g)
-      if (helium_fraction > 1.0d-10 .and. &
-           log_temperature > net_settings%logT_cutoffs(4)) then
-         triple_alpha_term = rate(r_3alpha)*helium_fraction**3
-         c12_alpha_term = rate(r_ac12)*helium_fraction*equilibrium_xc12
-         dy_dt = -4.0d0*(c12_alpha_term + 3.0d0*triple_alpha_term)
-         dc_dt = 1.2d1*(triple_alpha_term - c12_alpha_term)
-         do_dt = 1.6d1*c12_alpha_term
-      end if
-end subroutine compute_equilibrium_burn_rates
 
 end module network

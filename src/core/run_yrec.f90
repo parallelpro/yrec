@@ -338,7 +338,7 @@ subroutine begin_kind_card
 ! determine timestep for model
        disable_structure_dt_limits = .false.
        call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
-            star%m,star%dm,star%logT,star%xa,star%core_cz_top_index, &
+            star%m,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &
             star%log_Teff, disable_structure_dt_limits)

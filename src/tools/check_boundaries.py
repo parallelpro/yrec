@@ -79,7 +79,7 @@ PUBLIC = {
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
     # Timmes' sneut/azbar/ifermi12/zfermim12 keep theirs).
     "net": {"compute_network_rates", "set_net_settings",
-            "burn_implicitly", "compute_equilibrium_burn_rates",
+            "burn_implicitly", "compute_abundance_rates",
             "compute_nuclear_energy",
             "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},
     # mixing has no facade module; these are its de-facto public

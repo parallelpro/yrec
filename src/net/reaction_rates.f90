@@ -148,9 +148,10 @@ module reaction_rates
 ! core/burn_step.f90), by calling set_net_settings; nothing else writes it.
       integer, parameter, public :: num_cross_section_scales = xs_hep
       type, public :: net_settings_t
-! log10 T at or below which: (1) nothing burns; (2), (3) parts of the
-! equilibrium burn are off; (4) helium burning is off; (5) the solar
-! neutrino fluxes and thermal neutrino losses are skipped
+! log10 T at or below which: (1) nothing burns; (4) helium burning is
+! off; (5) the solar neutrino fluxes and thermal neutrino losses are
+! skipped. (2) and (3) gated the level-1 equilibrium burn, removed
+! 2026-10; they are read and unused.
          real(dp) :: logT_cutoffs(5) = 0.0d0
 ! the screening parameter below which screening is weak
          real(dp) :: weak_screening_threshold = 0.0d0

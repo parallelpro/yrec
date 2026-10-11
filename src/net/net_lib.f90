@@ -31,11 +31,10 @@ module net_lib
       use reaction_rates, only: num_rate_rows, net_settings_t, set_net_settings, &
            r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
-! the implicit burn (with the network species a caller maps its
-! abundances onto) and the equilibrium burn
+! the implicit burn, with the network species a caller maps its
+! abundances onto, and the network's dX/dt
       use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &
-           network_species_slot, s_h1, s_he3, s_he4, &
-           compute_equilibrium_burn_rates
+           network_species_slot, s_h1, s_he3, s_he4, compute_abundance_rates
 ! the energy generation
       use nuclear_energy, only: nuclear_energy_result, compute_nuclear_energy
 ! the light elements
