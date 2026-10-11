@@ -269,6 +269,44 @@ rewritten, each conversion a byte-identical commit.
    (saved tables), `burn_implicitly` (it calls `numerics_lib`'s
    `simeqc`) and their callers.
 
+## Code style (2026-10)
+
+net/ follows these six rules, with the five above; other code follows
+them as it is rewritten.
+
+1. **A routine is a short sequence of named steps.** Each step is a
+   procedure with explicit arguments, so the driver reads as the list of
+   steps (`compute_nuclear_energy`: rates, deuterium, reaction energies,
+   sums, fluxes, neutrino loss). A routine with several results returns
+   a typed record (`nuclear_energy_result`), not a long tail of
+   `intent(out)` arguments.
+2. **Each formula exists once, and physics is data where it can be.**
+   One rate evaluation feeds both the composition and the energy paths.
+   The reaction table carries each reaction's changes, Q value and
+   chain, so adding a reaction means adding a row. When two copies of a
+   formula disagree, merging them is a measured commit, not a refactor.
+3. **Constants are compile-time parameters.** A value that never
+   changes is a `parameter`, never a variable assigned during setup, so
+   a physics routine gives the right answer without any setup having
+   run. The compiler rounds such values correctly; check one against
+   the run-time value before converting it in a byte-identical commit.
+4. **Slots and species are named:** `xa(i_h1,k)`, not `xa(1,k)`;
+   `rate_vec(r_pp)`, not `rate_vec(1)`. A magic number becomes a named
+   parameter with its unit and source.
+5. **Comments describe the code as it is now.** A header says what the
+   routine computes, in which units, with the equations where they
+   help, and who calls it. History and provenance (who changed a fit,
+   and why) go in a Sources section at the end of the file; a short
+   note in parentheses is fine where a recent change explains a
+   surprising line. No boilerplate ("Modernized ... logic unchanged"),
+   no ALL-CAPS prose, no commented-out superseded code. Comparisons are
+   written `<`, `<=`, `==`, `/=`.
+6. **Tests pin behaviour before a refactor.** Before restructuring a
+   routine, add a test that prints its outputs on representative cases
+   (`net/test/test_net`), then refactor against it. Checks that can
+   pass or fail print `ok` or `FAIL`. Expected output is regenerated
+   only on purpose, in a commit that says why.
+
 ## Verification tiers (2026): match the gate to the blast radius
 
 Running the full battery on every commit is waste; running too little
@@ -307,6 +345,30 @@ tests + boundaries.
 Never run two batteries (or a battery and a build) concurrently in this
 tree -- concurrent makes and shared example output/ dirs corrupt both
 (learned the hard way, twice).
+
+## Changes that move results (2026-10)
+
+1. **"Concise" means the logic is written concisely, never that
+   features are removed.** Every feature and control stays.
+2. **A refactor is byte-identical.** A change that moves results is
+   its own commit, with the drift measured and explained; it never
+   rides along with a refactor.
+3. **Drift above |dlog L| or |dlog Teff| of 1e-4, or |dX_c| of 1e-3,
+   needs a root cause**, given in the commit message and in
+   docs/ROADMAP.md section 13. Smaller measured drift is accepted.
+4. **Judge drift on final models and at matched ages, not with
+   `test_all.py`.** Its 2% tolerance hides real changes, and after real
+   drift it fails for unrelated reasons: it compares integer zone
+   boundaries exactly, applies a relative tolerance to near-zero values,
+   and crashes when a run gains a model. To see whether anything moved
+   at all, byte-diff `examples/*/output` against `standard/`.
+5. **Back up the reference outputs before reseeding.** The `standard/`
+   trees are gitignored and exist only on the machine that seeded them.
+6. **Develop in a scratch git worktree**, with its gitignored
+   `standard/` trees seeded from the previous commit's outputs. Each
+   commit gets Tier 1 plus the touched domain's test; each series of
+   commits gets the full battery in the main tree. Never run a check in
+   the main tree while a full run is going there.
 
 ## Physics domains still entangled with the solver (eos, kap, nuclear,
 ## atm, wind, mixing, rotation)
