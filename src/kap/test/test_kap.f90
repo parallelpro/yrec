@@ -10,7 +10,11 @@
 ! grid entirely above the molecular ramp (logT >= TMOLMAX=4.1, so no
 ! molecular tables are needed), with the conductive correction off,
 ! and prints the results for byte-comparison against the checked-in
-! expected_test_kap.out.
+! expected_test_kap.out. Then (2026-10) every opacity family, each
+! loaded through kap_init: the production combination (Alexander 2006,
+! OPAL95-format, pure Z, Potekhin conductive), OPAL92 and LAOL89 with
+! two Z tables, and the Kurucz 1990 and Alexander 1994/95 molecular
+! tables (check_families).
 program test_kap
       use io_units
       use star_info_lib, only: star
@@ -149,6 +153,162 @@ program test_kap
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
       star%ctrl%use_opal95_tables = .true.
 
+      call check_families()
+
       close(run_log_unit)
       write(*,'(a)') "test_kap: done"
+
+contains
+
+! Every opacity family, each loaded through kap_init with its own
+! configuration and evaluated on points that cross its regimes:
+!   production   Alexander 2006 molecular + OPAL95-format atomic + pure Z
+!                + Potekhin conductive, the molecular/atomic ramp, the
+!                single-Z surface table (Z = 0.016232) and the 4D
+!                interpolation away from it (Z = 0.020), a helium core
+!                on the pure-Z blend
+!   opal92       two Z tables (0.0188, 0.0200), blended at Z = 0.019
+!   laol89       two Z tables (0.0188, 0.0190), blended at Z = 0.0189
+!   kurucz90     Kurucz molecular tables at [M/H] = 0 and -0.5, blended,
+!                over OPAL95
+!   alex95       the seven Alexander 1994/95 X tables over OPAL95
+! Each point prints kappa, log kappa, dln kappa/dln rho, dln kappa/dln T.
+      subroutine check_families()
+         character(len=256) :: in, mol, atom, paths7(7)
+         integer :: k
+         in = yrec_input
+         atom = trim(in)//"/opacity/atomic/"
+         mol = trim(in)//"/opacity/molecular/"
+
+         call configure("production", opal95=.true., alex06=.true., pure_z=.true., &
+              conductive=.true., z1=0.016232d0, z2=0.0d0, two_z=.false., &
+              opal95_path=trim(atom)//"legacy/opal95/GS98.OP17", &
+              alex06_path=trim(mol)//"alexmol06gs98.tab", &
+              pure_z_path=trim(atom)//"lanl/PURECO.DBGLAOL")
+         call evaluate_points(0.70d0, 0.016232d0)
+         call evaluate_points(0.70d0, 0.020d0)
+         call evaluate_point(0.0d0, 0.60d0, 7.8d0, 4.0d0)
+
+         call configure("opal92", opal92=.true., z1=0.0188d0, z2=0.0200d0, two_z=.true., &
+              opal92_path=trim(atom)//"legacy/opal92/Z0188.OPALN", &
+              opal92_path2=trim(atom)//"legacy/opal92/Z0200.OPALN")
+         call evaluate_points(0.70d0, 0.019d0, interior_only=.true.)
+
+         call configure("laol89", laol89=.true., z1=0.0188d0, z2=0.0190d0, two_z=.true., &
+              laol_path=trim(atom)//"legacy/opal92/Z0188AG89.DBGLAOL", &
+              laol_path2=trim(atom)//"legacy/opal92/Z0190AG91.DBGLAOL")
+         call evaluate_points(0.70d0, 0.0189d0, interior_only=.true.)
+
+         call configure("kurucz90", opal95=.true., kurucz90=.true., z1=0.0188d0, &
+              z2=0.00595d0, two_z=.true., &
+              opal95_path=trim(atom)//"legacy/opal95/GS98.OP17", &
+              kurucz_path=trim(mol)//"legacy/kurmol/kapp00.ross", &
+              kurucz_path2=trim(mol)//"legacy/kurmol/kapm05.ross")
+         call evaluate_points(0.70d0, 0.016232d0)
+
+         paths7 = [character(len=256) :: trim(mol)//"legacy/alex/OPACALEXANDER.X00", &
+              trim(mol)//"legacy/alex/OPACALEXANDER.X01", trim(mol)//"legacy/alex/OPACALEXANDER.X02", &
+              trim(mol)//"legacy/alex/OPACALEXANDER.X035", trim(mol)//"legacy/alex/OPACALEXANDER.X05", &
+              trim(mol)//"legacy/alex/OPACALEXANDER.X07", trim(mol)//"legacy/alex/OPACALEXANDER.X08"]
+         call configure("alex95", opal95=.true., alex95=.true., z1=0.016232d0, z2=0.0d0, &
+              two_z=.false., opal95_path=trim(atom)//"legacy/opal95/GS98.OP17", alex95_paths=paths7)
+         call evaluate_points(0.70d0, 0.016232d0)
+      end subroutine check_families
+
+! Load kap with one family's configuration (the controls a deck would
+! set, then kap_init with the table paths).
+      subroutine configure(label, opal95, opal92, laol89, alex06, alex95, kurucz90, &
+           pure_z, conductive, z1, z2, two_z, opal95_path, opal92_path, &
+           opal92_path2, laol_path, laol_path2, alex06_path, alex95_paths, &
+           kurucz_path, kurucz_path2, pure_z_path)
+         character(len=*), intent(in) :: label
+         logical, intent(in), optional :: opal95, opal92, laol89, alex06, alex95, &
+              kurucz90, pure_z, conductive
+         double precision, intent(in) :: z1, z2
+         logical, intent(in) :: two_z
+         character(len=*), intent(in), optional :: opal95_path, opal92_path, &
+              opal92_path2, laol_path, laol_path2, alex06_path, kurucz_path, &
+              kurucz_path2, pure_z_path
+         character(len=256), intent(in), optional :: alex95_paths(7)
+         character(len=256) :: p(9), p7(7)
+         integer :: ierr
+         logical, save :: conductive_open = .false.
+
+         write(*,'(a,a)') "# test_kap: family ", label
+         star%ctrl%use_opal95_tables = present(opal95)
+         star%ctrl%use_opal92_tables = present(opal92)
+         star%ctrl%use_laol89_tables = present(laol89)
+         star%ctrl%use_alex06_tables = present(alex06)
+         star%ctrl%use_alex95_tables = present(alex95)
+         star%ctrl%use_kurucz90_tables = present(kurucz90)
+         star%ctrl%use_pure_z_table = present(pure_z)
+         star%ctrl%use_conductive_opacity = present(conductive)
+         star%use_two_z_tables = two_z
+         star%ctrl%opal95_single_table_z = z1
+         star%ctrl%opal_table_z1 = z1
+         star%ctrl%opal_table_z2 = z2
+         star%ctrl%laol_table_z1 = z1
+         star%ctrl%laol_table_z2 = z2
+         star%ctrl%kurucz_table_z1 = z1
+         star%ctrl%kurucz_table_z2 = z2
+         star%ctrl%alex_table_z1 = z1
+         star%ctrl%metal_fraction_match_tolerance = 1.0d-8
+         star%ctrl%molecular_opacity_logt_min = 4.0d0
+         star%ctrl%molecular_opacity_logt_max = 4.1d0
+         star%ctrl%opal92_table_unit = 32
+         star%ctrl%kurucz_table_unit = 36
+         star%ctrl%alex94_table_unit = 39
+         star%ctrl%kurucz_table2_unit = 65
+         star%ctrl%alex06_table_unit = 90
+         if (present(conductive) .and. .not. conductive_open) then
+            star%ctrl%icondopacp = 75
+            open(75, file=trim(yrec_input)//"/opacity/conductive/potekhin/condall06.d", &
+                 status='old')
+            conductive_open = .true.
+         end if
+         p = ""
+         p7 = ""
+         if (present(alex06_path)) p(1) = alex06_path
+         if (present(kurucz_path)) p(2) = kurucz_path
+         if (present(kurucz_path2)) p(3) = kurucz_path2
+         if (present(laol_path)) p(4) = laol_path
+         if (present(laol_path2)) p(5) = laol_path2
+         if (present(opal95_path)) p(6) = opal95_path
+         if (present(opal92_path)) p(7) = opal92_path
+         if (present(opal92_path2)) p(8) = opal92_path2
+         if (present(pure_z_path)) p(9) = pure_z_path
+         if (present(alex95_paths)) p7 = alex95_paths
+         laol_work = 0.0d0
+         call kap_init(0.70d0, z1, laol_work, p(1), p(2), p(3), p(4), p(5), &
+              p(6), p(7), p(8), p(9), p7, ierr)
+         if (ierr /= 0) write(*,'(a,i0)') "kap_init ierr = ", ierr
+      end subroutine configure
+
+! kap_eval on points from the molecular regime through the ramp to the
+! deep interior (log R = log rho - 3 log T6 = -3, the middle of the
+! tables), or the interior points only.
+      subroutine evaluate_points(x, z, interior_only)
+         double precision, intent(in) :: x, z
+         logical, intent(in), optional :: interior_only
+         double precision, parameter :: logt_all(9) = [3.40d0, 3.70d0, 4.00d0, &
+              4.05d0, 4.10d0, 4.50d0, 5.50d0, 6.50d0, 7.20d0]
+         integer :: k, first
+         first = 1
+         if (present(interior_only)) first = 6
+         do k = first, size(logt_all)
+            call evaluate_point(x, z, logt_all(k), -3.0d0 + 3.0d0*logt_all(k) - 18.0d0)
+         end do
+      end subroutine evaluate_points
+
+      subroutine evaluate_point(x, z, logt, logd)
+         double precision, intent(in) :: x, z, logt, logd
+         integer :: ierr
+         fxion = 0.0d0
+         call kap_eval(logd, logt, x, z, o, ol, qod, qot, fxion, ierr)
+         if (ierr /= 0) then
+            write(*,'(a,3f8.4,a,i0)') "kap X Z logT", x, z, logt, " ierr ", ierr
+         else
+            write(*,'(a,3f9.5,4(1pe24.15))') "kap", x, z, logt, o, ol, qod, qot
+         end if
+      end subroutine evaluate_point
 end program test_kap
