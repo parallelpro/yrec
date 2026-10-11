@@ -381,8 +381,7 @@ module star_info_lib
                  pressure_scale_height_end
 ! former common/prevcz/: previous end-of-timestep values, used as the
 ! new beginning-of-timestep values.
-            double precision :: cz_base_radius_prev, log_rate_li6_prev, &
-                 log_rate_li7_prev, log_rate_be9_prev
+            double precision :: cz_base_radius_prev
             integer :: envelope_cz_base_zone_prev
 ! former common/deuter/: deuterium burning rate per s (current/start
 ! of timestep; per Gyr until 2026-10), and the convection-zone base

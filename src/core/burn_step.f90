@@ -125,121 +125,77 @@ end subroutine compute_zone_energy
 
 
 !----------------------------------------------------------------------
-! average_li_be_over_cz: shared by burn_li_be and burn_li_be_midpoint (2026 readability
-! R3; the block was byte-identical in both). Mass-averages the Li6,
-! Li7, Be9 abundances and the log of the mass-averaged burning rates
-! over the surface convection zone at the start of the step (from
-! cz_base_zone_old) and at the end (from cz_base_zone, with the base
-! zone's mass and rates adjusted by cz_base_frac so that it covers the
-! whole CZ; shell_mass is restored before return, star%rate_li6/li7/be9
-! at cz_base_zone keep the adjustment). Start-of-step log rates come
-! from star%log_rate_*_prev when a previous step stored them.
-!   star reads: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev,
-!     rate_be9_start, rate_li6_start, rate_li7_start
-!   star writes: rate_be9, rate_li6, rate_li7
+! average_li_be_over_cz: shared by burn_li_be and burn_li_be_midpoint (2026
+! readability R3). The Li6, Li7, Be9 abundances (x_start, x_end) and the
+! log of the burning rates (log_rate_start, log_rate_end), mass-averaged
+! over the surface convection zone:
+!   start of the step: from cz_base_zone_old up, start-of-step rates;
+!   end of the step: from cz_base_zone up, end-of-step rates, with the
+!     base zone covering the whole CZ -- its mass extended by
+!     cz_base_frac of its width and its rate interpolated halfway as far
+!     toward the zone below. cz_mass_end is the CZ's mass then.
+! (2026-10: the base-zone adjustment is local; it used to be written into
+! shell_mass, restored, and into star%rate_*(cz_base_zone), kept -- the
+! rotation sub-steps then carried the adjusted rate into the next
+! sub-step's start rates. The start rates also had a branch that reused
+! the previous step's CZ rate when star%log_rate_li6_prev > 0, which a
+! natural log of a rate per second never is: removed.)
+!   star reads: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
+!     rate_li7, rate_li7_start
+!   star writes: none
 subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
      cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
-     li6_cz_start, li7_cz_start, be9_cz_start, &
-     log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
-     li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
-     log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
+     x_start, log_rate_start, x_end, cz_mass_end, log_rate_end)
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
       use math_lib
       implicit none
-
       double precision, intent(in) :: composition(15,json)
       double precision, intent(in) :: mass_coordinate(json)
-      double precision, intent(inout) :: shell_mass(json)
+      double precision, intent(in) :: shell_mass(json)
       integer, intent(in) :: cz_base_zone, cz_base_zone_old, num_zones
       double precision, intent(in) :: cz_base_frac
-      double precision, intent(out) :: li6_cz_start, li7_cz_start, be9_cz_start
-      double precision, intent(out) :: log_rate_li6_cz_start, &
-           log_rate_li7_cz_start, log_rate_be9_cz_start
-      double precision, intent(out) :: li6_cz_end, li7_cz_end, be9_cz_end, &
-           cz_mass_end
-      double precision, intent(out) :: log_rate_li6_cz_end, &
-           log_rate_li7_cz_end, log_rate_be9_cz_end
+      double precision, intent(out) :: x_start(3), log_rate_start(3), &
+           x_end(3), cz_mass_end, log_rate_end(3)
 
+      integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
+      double precision :: rate_sum(3), rate(3), cz_mass_start, mass
       integer :: zone_idx
-      double precision :: cz_mass_start, shell_mass_save
 
-! FIND RATES AT THE BEGINNING OF THE TIMESTEP (USING THE DEPTH AT THE START).
-      li6_cz_start = 0.0d0
-      li7_cz_start = 0.0d0
-      be9_cz_start = 0.0d0
+! START OF THE STEP, AT THE START-OF-STEP DEPTH.
+      x_start = 0.0d0
+      rate_sum = 0.0d0
       cz_mass_start = 0.0d0
       do zone_idx = cz_base_zone_old,num_zones
-         li6_cz_start = li6_cz_start+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_start = li7_cz_start+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_start = be9_cz_start+composition(i_be9,zone_idx)*shell_mass(zone_idx)
+         x_start = x_start + composition(species,zone_idx)*shell_mass(zone_idx)
+         rate_sum = rate_sum + [star%rate_li6_start(zone_idx), &
+              star%rate_li7_start(zone_idx), star%rate_be9_start(zone_idx)]* &
+              shell_mass(zone_idx)
          cz_mass_start = cz_mass_start + shell_mass(zone_idx)
       end do
-      li6_cz_start = li6_cz_start/cz_mass_start
-      li7_cz_start = li7_cz_start/cz_mass_start
-      be9_cz_start = be9_cz_start/cz_mass_start
-! log_rate_li6_prev <= 0 means no previous step has stored CZ rates.
-      if(star%log_rate_li6_prev.le.0.0d0)then
-! COMPUTE MASS-WEIGHTED AVERAGE RATES AT THE START OF THE STEP.
-         log_rate_li6_cz_start = 0.0d0
-         log_rate_li7_cz_start = 0.0d0
-         log_rate_be9_cz_start = 0.0d0
-         do zone_idx = cz_base_zone_old,num_zones
-            log_rate_li6_cz_start = log_rate_li6_cz_start + star%rate_li6_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_li7_cz_start = log_rate_li7_cz_start + star%rate_li7_start(zone_idx)*shell_mass(zone_idx)
-            log_rate_be9_cz_start = log_rate_be9_cz_start + star%rate_be9_start(zone_idx)*shell_mass(zone_idx)
-         end do
-         log_rate_li6_cz_start = log(log_rate_li6_cz_start/cz_mass_start)
-         log_rate_li7_cz_start = log(log_rate_li7_cz_start/cz_mass_start)
-         log_rate_be9_cz_start = log(log_rate_be9_cz_start/cz_mass_start)
-      else
-! USE THE RATE FROM THE END OF THE PREVIOUS TIMESTEP.
-         log_rate_li6_cz_start = star%log_rate_li6_prev
-         log_rate_li7_cz_start = star%log_rate_li7_prev
-         log_rate_be9_cz_start = star%log_rate_be9_prev
-      endif
-! USE THE LOCATION OF THE TRUE EDGE OF THE CONVECTION ZONE (FX, FOUND AT
-! BEGINNING OF SR) TO ADJUST THE BURNING RATE AND MASS OF THE BOTTOM POINT
-! SUCH THAT IT INCLUDES THE ENTIRE C.Z.
-      shell_mass_save = shell_mass(cz_base_zone)
-      if(cz_base_zone.gt.1.and.cz_base_zone.lt.num_zones)then
-         shell_mass(cz_base_zone) = shell_mass(cz_base_zone)+cz_base_frac* &
-              (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
-         star%rate_li6(cz_base_zone) = star%rate_li6(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li6(cz_base_zone-1)-star%rate_li6(cz_base_zone))
-         star%rate_li7(cz_base_zone) = star%rate_li7(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_li7(cz_base_zone-1)-star%rate_li7(cz_base_zone))
-         star%rate_be9(cz_base_zone) = star%rate_be9(cz_base_zone)+0.5d0*cz_base_frac* &
-              (star%rate_be9(cz_base_zone-1)-star%rate_be9(cz_base_zone))
-      endif
-! FIND RATES AT THE END OF THE TIMESTEP (USING THE DEPTH AT THE END).
-! ALSO STORE INITIAL ABUNDANCES(FLI60,FLI70,FBE90).
-! FM IS THE TOTAL MASS IN THE CZ.
-      li6_cz_end = 0.0d0
-      li7_cz_end = 0.0d0
-      be9_cz_end = 0.0d0
+      x_start = x_start/cz_mass_start
+      log_rate_start = log(rate_sum/cz_mass_start)
+! END OF THE STEP, AT THE END-OF-STEP DEPTH, WITH THE BASE ZONE ADJUSTED
+! TO THE TRUE EDGE OF THE CZ (cz_base_frac, from locate_surface_mixing_base).
+      x_end = 0.0d0
+      rate_sum = 0.0d0
       cz_mass_end = 0.0d0
-      log_rate_li6_cz_end = 0.0d0
-      log_rate_li7_cz_end = 0.0d0
-      log_rate_be9_cz_end = 0.0d0
       do zone_idx = cz_base_zone,num_zones
-         log_rate_li6_cz_end = log_rate_li6_cz_end + star%rate_li6(zone_idx)*shell_mass(zone_idx)
-         log_rate_li7_cz_end = log_rate_li7_cz_end + star%rate_li7(zone_idx)*shell_mass(zone_idx)
-         log_rate_be9_cz_end = log_rate_be9_cz_end + star%rate_be9(zone_idx)*shell_mass(zone_idx)
-         li6_cz_end = li6_cz_end+composition(i_li6,zone_idx)*shell_mass(zone_idx)
-         li7_cz_end = li7_cz_end+composition(i_li7,zone_idx)*shell_mass(zone_idx)
-         be9_cz_end = be9_cz_end+composition(i_be9,zone_idx)*shell_mass(zone_idx)
-         cz_mass_end = cz_mass_end + shell_mass(zone_idx)
+         mass = shell_mass(zone_idx)
+         rate = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
+              star%rate_be9(zone_idx)]
+         if (zone_idx.eq.cz_base_zone .and. cz_base_zone.gt.1 .and. &
+              cz_base_zone.lt.num_zones) then
+            mass = mass + cz_base_frac* &
+                 (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
+            rate = rate + 0.5d0*cz_base_frac*([star%rate_li6(cz_base_zone-1), &
+                 star%rate_li7(cz_base_zone-1), star%rate_be9(cz_base_zone-1)] - rate)
+         end if
+         rate_sum = rate_sum + rate*mass
+         x_end = x_end + composition(species,zone_idx)*mass
+         cz_mass_end = cz_mass_end + mass
       end do
-      li6_cz_end = li6_cz_end/cz_mass_end
-      li7_cz_end = li7_cz_end/cz_mass_end
-      be9_cz_end = be9_cz_end/cz_mass_end
-! MASS-WEIGHTED AVERAGE RATES AT THE END OF THE STEP.
-      log_rate_li6_cz_end = log(log_rate_li6_cz_end/cz_mass_end)
-      log_rate_li7_cz_end = log(log_rate_li7_cz_end/cz_mass_end)
-      log_rate_be9_cz_end = log(log_rate_be9_cz_end/cz_mass_end)
-! RESTORE ORIGINAL MASS TO BASE OF C.Z.
-      shell_mass(cz_base_zone) = shell_mass_save
-      return
+      x_end = x_end/cz_mass_end
+      log_rate_end = log(rate_sum/cz_mass_end)
 end subroutine average_li_be_over_cz
 
 
@@ -247,409 +203,148 @@ end subroutine average_li_be_over_cz
 !----------------------------------------------------------------------
 ! burn_li_be
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original liburn.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Determine lithium-6, lithium-7, and beryllium-9 burning in a
-! non-rotating model (see burn_li_be_midpoint below for the simpler single-pass
-! rotating-model variant). The burning rates depend on the local T and
-! rho, the abundance, and (in convection zones) the mixing.
-!
-! In radiative regions burning is done implicitly, correcting the
-! rates for the change in abundance as a function of time, by
-! repeatedly halving the sub-step size and using a rational-function
-! extrapolation (ratext) to converge on the zero-step-size limit.
-!
-! In the convective region the program iterates between burning and
-! mixing in the same way, to correct the rates for the change in
-! abundance as a function of time.
-!
-! 11/91 HR added to call.
-!
-! shell_mass genuinely needs intent(inout), not intent(in): it's
-! temporarily perturbed for the CZ-base mass adjustment
-! (shell_mass_save = shell_mass(cz_base_zone) ... shell_mass(cz_base_zone)
-! = shell_mass_save) and the perturbed value is read by the
-! immediately-following rate/abundance sums before being restored, so
-! the write is real, not dead code. Externally the net effect on the
-! caller's array is still zero (every path that writes also restores
-! before return), which is why rotation/evolve_angular_momentum.f90 --
-! one of this routine's two callers -- declares its own shell_mass
-! intent(inout) to match this explicit interface.
-! burn_li_be (formerly liburn)
+! Li6, Li7 and Be9 burning over a step (formerly liburn). Each species
+! decays at its proton-capture rate, interpolated in log between the
+! start- and end-of-step rates (store_start_li_be_rates,
+! store_end_li_be_rates), with the closed-form survival of
+! light_element_lib (surviving_fraction; 2026-10 -- it replaced
+! sub-stepping plus rational extrapolation to zero step, which converged
+! on the same integral to 1e-6). In order:
+!   1. the base of the surface mixed region (CZ plus envelope overshoot)
+!      at the start and end of the step (locate_surface_mixing_base);
+!   2. radiative shells below the CZ, each on its own rates (shells
+!      hotter than log T = 7 are cleared);
+!   3. the CZ as one unit, on its mass-averaged rates
+!      (average_li_be_over_cz), starting from the deeper CZ's mixed
+!      abundance when the CZ deepened, and taking in accreted gas
+!      (accreted_survival) when accretion is on;
+!   4. shells the CZ left during the step, on a rate weighted between
+!      their radiative rate and the CZ's by the time spent in each.
+! Abundances below 1e-24 are set to zero.
 ! The model arrays are arguments because the two callers burn different
 ! models: burn_light_elements the converged end-of-step model,
 ! evolve_angular_momentum each rotation sub-step's midpoint (rot_scr).
 !   star reads: accreted_mass, ctrl%accreted_composition,
 !     ctrl%mass_accretion_rate, job%use_mass_accretion, rate_be9,
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
-!   star writes: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev
+!   star writes: none
 subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use rotation_scratch_lib
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
-      use luout_lib
-      use phys_const_lib
-      use numerics_lib
+      use light_element_lib, only: surviving_fraction, accreted_survival, &
+           linear_in_time, linear_in_log
       use math_lib
       implicit none
 
+! timestep: s
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: radius(json)
       double precision, intent(in) :: mass_coordinate(json)
-      double precision, intent(inout) :: shell_mass(json)
+      double precision, intent(in) :: shell_mass(json)
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
 
-      double precision :: li6_substep_depletion, li7_substep_depletion, &
-           be9_substep_depletion
-      double precision :: light_element_save(3,json)
-      integer :: substep_counts(11)
-      double precision :: extrap_tol(3), extrap_y(3), extrap_err(3), &
-           extrap_result(3)
-      data substep_counts/2,4,6,8,12,16,24,32,48,64,96/
-      data extrap_tol/1.0d-6,1.0d-6,1.0d-6/
-      integer :: zone_idx, refine_idx, substep_idx, species_idx
-      integer :: cz_base_zone, cz_base_zone_old, min_zone, max_zone
+      integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
+      integer :: zone_idx, s, cz_base_zone, cz_base_zone_old, min_zone, max_zone
       double precision :: cz_base_frac
-      double precision :: substep_frac, substep_dt
-      logical :: converged
-      double precision :: log_rate_li6, log_rate_li7, log_rate_be9
-      double precision :: extrap_x
-      double precision :: li6_cz_start, li7_cz_start, be9_cz_start
-      double precision :: log_rate_li6_cz_start, log_rate_li7_cz_start, &
-           log_rate_be9_cz_start
-      double precision :: li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end
-      double precision :: log_rate_li6_cz_end, log_rate_li7_cz_end, &
-           log_rate_be9_cz_end
-      logical :: accretion_active
-      double precision :: li6_accreted, li7_accreted, be9_accreted
-      double precision :: cz_log_rate_li6, cz_log_rate_li7, cz_log_rate_be9
-      double precision :: li6_depletion, li7_depletion, be9_depletion
-      double precision :: li6_added, li7_added, be9_added
+      double precision :: rate_start(3), rate_end(3), rate
+      double precision :: x_cz_start(3), x_cz_end(3), log_rate_cz_start(3), &
+           log_rate_cz_end(3), cz_mass_end
+      logical :: accreting
       double precision :: mass_coord_beg, mass_coord_end, delta_mass, &
            radiative_frac
 
-! SAVE ORIGINAL ABUNDANCES.
-      do zone_idx = 1,num_zones
-         light_element_save(1,zone_idx) = composition(i_li6,zone_idx)
-         light_element_save(2,zone_idx) = composition(i_li7,zone_idx)
-         light_element_save(3,zone_idx) = composition(i_be9,zone_idx)
-      end do
-! THE DEGREE OF LITHIUM BURNING IN A SURFACE CZ DEPENDS SENSITIVELY
-! ON THE TEMPERATURE AT ITS BASE - SO ACCURATELY LOCATING IS IMPORTANT.
-! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
-! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
-! IF APPLICABLE.
-      call locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
-           cz_base_zone, cz_base_zone_old, cz_base_frac)
-! RADIATIVE INTERIOR.
+! 1. THE BASE OF THE SURFACE MIXED REGION AT THE START AND END OF THE STEP.
+! THE DEGREE OF LITHIUM BURNING IN A SURFACE CZ DEPENDS SENSITIVELY ON THE
+! TEMPERATURE AT ITS BASE - SO ACCURATELY LOCATING IT IS IMPORTANT.
+      call locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, &
+           num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
+
+! 2. RADIATIVE INTERIOR, UP TO THE SHALLOWER OF THE TWO CZ BASES.
       do zone_idx = 1,min_zone-1
          if(star%rate_be9(zone_idx).le.1.0d-32 .or. star%rate_be9_start(zone_idx).le.1.0d-32)exit
-         if(composition(i_li6,zone_idx).lt.1.0d-24.and.composition(i_li7,zone_idx).lt.1.0d-24 .and.composition(i_be9,zone_idx).lt.1.0d-24)cycle
+         if(all(composition(species,zone_idx).lt.1.0d-24))cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
-            composition(i_li6,zone_idx) = 0.0d0
-            composition(i_li7,zone_idx) = 0.0d0
-            composition(i_be9,zone_idx) = 0.0d0
+            composition(species,zone_idx) = 0.0d0
             cycle
          endif
-         do refine_idx = 1,11
-! PERFORM BURNING IN substep_counts SMALLER TIMESTEPS.
-!  DEFINE FRAC - THE FRACTION OF THE TOTAL TIMESTEP IN EACH SMALL ONE -
-!  AND DELT - THE FRACTIONAL TIMESTEP IN YEARS.
-            substep_frac = 1.0d0/dfloat(substep_counts(refine_idx))
-            substep_dt = substep_frac*timestep
-            converged = .false.
-! RESTORE INITIAL ABUNDANCES.
-            composition(i_li6,zone_idx) = light_element_save(1,zone_idx)
-            composition(i_li7,zone_idx) = light_element_save(2,zone_idx)
-            composition(i_be9,zone_idx) = light_element_save(3,zone_idx)
-! STORE STARTING REACTION RATES.
-            log_rate_li6 = log(star%rate_li6_start(zone_idx))-0.5d0*substep_frac* &
-                   (log(star%rate_li6(zone_idx))-log(star%rate_li6_start(zone_idx)))
-            log_rate_li7 = log(star%rate_li7_start(zone_idx))-0.5d0*substep_frac* &
-                   (log(star%rate_li7(zone_idx))-log(star%rate_li7_start(zone_idx)))
-            log_rate_be9 = log(star%rate_be9_start(zone_idx))-0.5d0*substep_frac* &
-                   (log(star%rate_be9(zone_idx))-log(star%rate_be9_start(zone_idx)))
-            do substep_idx = 1,substep_counts(refine_idx)
-! INCREMENT THE REACTION RATES.
-               log_rate_li6 = log_rate_li6+substep_frac* &
-                    (log(star%rate_li6(zone_idx))-log(star%rate_li6_start(zone_idx)))
-               log_rate_li7 = log_rate_li7+substep_frac* &
-                    (log(star%rate_li7(zone_idx))-log(star%rate_li7_start(zone_idx)))
-               log_rate_be9 = log_rate_be9+substep_frac* &
-                    (log(star%rate_be9(zone_idx))-log(star%rate_be9_start(zone_idx)))
-               li6_substep_depletion = substep_dt*exp(log_rate_li6)
-               li7_substep_depletion = substep_dt*exp(log_rate_li7)
-               be9_substep_depletion = substep_dt*exp(log_rate_be9)
-! THE REACTION RATES ARE OF THE FORM
-!    DLI/DT = F(RHO,T,X)*LI =>DLN LI = DT*F(RHO,T,X)
-! SOLVE FOR D LN (SPECIES)/DT AND ZERO OUT IF THE DEPLETION IS TOO HIGH.
-               if(li6_substep_depletion.lt.3.0d1)then
-                  composition(i_li6,zone_idx) = composition(i_li6,zone_idx)/ &
-                       exp(li6_substep_depletion)
-               else
-                  composition(i_li6,zone_idx) = 0.0d0
-               endif
-               if(li7_substep_depletion.lt.3.0d1)then
-                  composition(i_li7,zone_idx) = composition(i_li7,zone_idx)/ &
-                       exp(li7_substep_depletion)
-               else
-                  composition(i_li7,zone_idx) = 0.0d0
-               endif
-               if(be9_substep_depletion.lt.3.0d1)then
-                  composition(i_be9,zone_idx) = composition(i_be9,zone_idx)/ &
-                       exp(be9_substep_depletion)
-               else
-                  composition(i_be9,zone_idx) = 0.0d0
-               endif
-            end do
-! STORE ABUNDANCES AS A FUNCTION OF TIMESTEP IN VECTOR YEST.
-            extrap_y(1) = composition(i_li6,zone_idx)
-            extrap_y(2) = composition(i_li7,zone_idx)
-            extrap_y(3) = composition(i_be9,zone_idx)
-            extrap_x = substep_frac**2
-! USE A RATIONAL POLYNOMIAL EXTRAPOLATOR TO EXTRAPOLATE TO THE SOLUTION FOR
-! ZERO TIMESTEP.
-            call ratext(refine_idx,extrap_x,extrap_y,extrap_result,extrap_err,3,7)
-! CHECK IF THE SOLUTION HAS CONVERGED.
-            if(refine_idx.gt.1)then
-               converged = .true.
-               do species_idx=1,3
-                  if(extrap_y(species_idx).lt.1.0d-24)cycle
-                  extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
-                  if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
-               end do
-               if(converged)then
-!                 WRITE(ISHORT,912)I,J,(YEXT(K2)K2=1,3)
-!   912             FORMAT(1X,'CONVERGED',I5,' LEVEL ',I2,' LI6 ',1P,
-!      *            E12.5,' LI7 ',E12.5,' BE9 ',E12.5)
-                  exit
-               endif
-            endif
+         rate_start = [star%rate_li6_start(zone_idx), star%rate_li7_start(zone_idx), &
+              star%rate_be9_start(zone_idx)]
+         rate_end = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
+              star%rate_be9(zone_idx)]
+         do s = 1,3
+            composition(species(s),zone_idx) = composition(species(s),zone_idx)* &
+                 surviving_fraction(rate_start(s), rate_end(s), timestep, linear_in_log)
+            if(composition(species(s),zone_idx).lt.1.0d-24) &
+                 composition(species(s),zone_idx) = 0.0d0
          end do
-         if (.not. converged) then
-! THE REFINEMENT LOOP RAN OUT WITHOUT CONVERGING TO WITHIN THE
-! SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-            write(run_log_unit,911)zone_idx,(extrap_err(species_idx),species_idx=1,3)
-  911       format(1x,'***LIBURN CONVERGENCE FAILURE IN SHELL ',i4, &
-            'ERRORS '/1p3e10.3)
-         end if
-! WRITE NEW ABUNDANCES AND EXIT.
-         composition(i_li6,zone_idx)=extrap_result(1)
-         if(composition(i_li6,zone_idx).lt.1.0d-24)composition(i_li6,zone_idx)=0.0d0
-         composition(i_li7,zone_idx)=extrap_result(2)
-         if(composition(i_li7,zone_idx).lt.1.0d-24)composition(i_li7,zone_idx)=0.0d0
-         composition(i_be9,zone_idx)=extrap_result(3)
-         if(composition(i_be9,zone_idx).lt.1.0d-24)composition(i_be9,zone_idx)=0.0d0
       end do
-! CONVECTION ZONE.
-!
-! SKIP IF WHOLE CZ IS BELOW THE BURNING THRESHOLD.
+
+! 3. THE CONVECTION ZONE (SKIPPED IF IT IS BELOW THE BURNING THRESHOLD).
       if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
       call average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
            cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
-           li6_cz_start, li7_cz_start, be9_cz_start, &
-           log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
-           li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
-           log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
-! FOR THE STARTING ABUNDANCE, USE THE MIXED ABUNDANCE FOR THE
-! DEEPER CZ.
-      if(cz_base_zone.lt.cz_base_zone_old)then
-         li6_cz_start = li6_cz_end
-         li7_cz_start = li7_cz_end
-         be9_cz_start = be9_cz_end
-      endif
-      do refine_idx = 1,11
-! PERFORM BURNING IN substep_counts SMALLER TIMESTEPS.
-!  DEFINE FRAC - THE FRACTION OF THE TOTAL TIMESTEP IN EACH SMALL ONE -
-!  AND DELT - THE FRACTIONAL TIMESTEP IN YEARS.
-         substep_frac = 1.0d0/dfloat(substep_counts(refine_idx))
-         substep_dt = substep_frac*timestep
-         converged = .false.
-! INITIALIZE ABUNDANCES.
-         li6_cz_end = li6_cz_start
-         li7_cz_end = li7_cz_start
-         be9_cz_end = be9_cz_start
-! INITIALIZE RATES.
-         cz_log_rate_li6 = log_rate_li6_cz_start-0.5d0*substep_frac* &
-              (log_rate_li6_cz_end-log_rate_li6_cz_start)
-         cz_log_rate_li7 = log_rate_li7_cz_start-0.5d0*substep_frac* &
-              (log_rate_li7_cz_end-log_rate_li7_cz_start)
-         cz_log_rate_be9 = log_rate_be9_cz_start-0.5d0*substep_frac* &
-              (log_rate_be9_cz_end-log_rate_be9_cz_start)
-! BURN IN substep_counts SMALL TIMESTEPS.
-! MHP 05/02 ADDED THE IMPACT OF MASS ACCRETION ON LIGHT
-! ELEMENT ABUNDANCES.  INITIALIZE ARRAYS; SPECIES ARE
-! ASSUMED TO EXPERIENCE BURNING FOR ON AVERAGE 1/2 OF
-! THE STEP WHERE THEY ARE INITIALLY ACCRETED AND ARE
-! THEN FULLY BURNED.
-         if(star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0)then
-            accretion_active = .true.
-            li6_accreted = 0.0d0
-            li7_accreted = 0.0d0
-            be9_accreted = 0.0d0
-         else
-            accretion_active = .false.
-         endif
-         do substep_idx = 1,substep_counts(refine_idx)
-! INCREMENT RATES BY LINEAR INTERPOLATION IN THE LOG.
-            cz_log_rate_li6 = cz_log_rate_li6 + substep_frac* &
-                 (log_rate_li6_cz_end-log_rate_li6_cz_start)
-            cz_log_rate_li7 = cz_log_rate_li7 + substep_frac* &
-                 (log_rate_li7_cz_end-log_rate_li7_cz_start)
-            cz_log_rate_be9 = cz_log_rate_be9 + substep_frac* &
-                 (log_rate_be9_cz_end-log_rate_be9_cz_start)
-            li6_depletion = substep_dt*exp(cz_log_rate_li6)
-            li7_depletion = substep_dt*exp(cz_log_rate_li7)
-            be9_depletion = substep_dt*exp(cz_log_rate_be9)
-            if(li6_depletion.lt.3.0d1 .and. li6_cz_end.gt.1.0d-24)then
-               li6_cz_end = li6_cz_end/exp(li6_depletion)
-            else
-               li6_cz_end = 0.0d0
-            endif
-            if(li6_cz_end.lt.1.0d-24)li6_cz_end = 0.0d0
-            if(li7_depletion.lt.3.0d1 .and. li7_cz_end.gt.1.0d-24)then
-               li7_cz_end = li7_cz_end/exp(li7_depletion)
-            else
-               li7_cz_end = 0.0d0
-            endif
-            if(li7_cz_end.lt.1.0d-24)li7_cz_end = 0.0d0
-            if(be9_depletion.lt.3.0d1 .and. be9_cz_end.gt.1.0d-24)then
-               be9_cz_end = be9_cz_end/exp(be9_depletion)
-            else
-               be9_cz_end = 0.0d0
-            endif
-            if(be9_cz_end.lt.1.0d-24)be9_cz_end = 0.0d0
-! MHP 05/02 MASS ACCRETION.  THE NET LITHIUM ADDED IN
-! A GIVEN STEP IS XXXADD WHILE THE LITHIUM ADDED IN PRIOR
-! STEPS IS XXXA; THE TWO ARE ADDED AFTER BURNING.
-! N.B. SINCE THIS IS A HALF-LIFE PROBLEM IT IS OK TO BURN
-! THE COMPONENTS SEPARATELY.
-            if(accretion_active)then
-               li6_added = star%ctrl%accreted_composition(i_li6)*substep_frac/exp(0.5d0*li6_depletion)
-               li6_accreted = li6_accreted/exp(li6_depletion) + li6_added
-               li7_added = star%ctrl%accreted_composition(i_li7)*substep_frac/exp(0.5d0*li7_depletion)
-               li7_accreted = li7_accreted/exp(li7_depletion) + li7_added
-               be9_added = star%ctrl%accreted_composition(i_be9)*substep_frac/exp(0.5d0*be9_depletion)
-               be9_accreted = be9_accreted/exp(be9_depletion) + be9_added
-            endif
-         end do
-! DO A MASS-WEIGHTED AVERAGE OF THE ORIGINAL LIGHT
-! ELEMENT CONTENT AND THE NET AMOUNT ADDED.
-! FMASSACC = DMDT*DT/ORIGINAL CZ MASS
-! NOTE: THIS FORMULATION ASSUMES THAT ALL ACCRETED MATTER
-! LANDS IN A CZ WITH THE END-OF-TIMESTEP DEPTH.
-! NOT STRICTLY TRUE, BUT NOT A BAD APPROXIMATION EITHER.
-         if(accretion_active)then
-            write(*,913)li6_cz_start,li6_cz_end,li6_accreted,li7_cz_start, &
-                 li7_cz_end,li7_accreted,star%accreted_mass
- 913        format(1p7e12.3)
-            li6_cz_end = (li6_cz_end*cz_mass_end+li6_accreted*star%accreted_mass)/ &
-                 (cz_mass_end+star%accreted_mass)
-            li7_cz_end = (li7_cz_end*cz_mass_end+li7_accreted*star%accreted_mass)/ &
-                 (cz_mass_end+star%accreted_mass)
-            be9_cz_end = (be9_cz_end*cz_mass_end+be9_accreted*star%accreted_mass)/ &
-                 (cz_mass_end+star%accreted_mass)
-         endif
-! STORE THE ABUNDANCE AS A FUNCTION OF THE TIME STEP.
-! STORE ABUNDANCES AS A FUNCTION OF TIMESTEP IN VECTOR YEST.
-         extrap_y(1) = li6_cz_end
-         extrap_y(2) = li7_cz_end
-         extrap_y(3) = be9_cz_end
-         extrap_x = substep_frac**2
-! USE A RATIONAL POLYNOMIAL EXTRAPOLATOR TO EXTRAPOLATE TO THE SOLUTION FOR
-! ZERO TIMESTEP.
-         call ratext(refine_idx,extrap_x,extrap_y,extrap_result,extrap_err,3,7)
-! CHECK IF THE SOLUTION HAS CONVERGED.
-         if(refine_idx.gt.1)then
-            converged = .true.
-            do species_idx=1,3
-               if(extrap_y(species_idx).lt.1.0d-24)cycle
-               extrap_err(species_idx) = abs(extrap_err(species_idx)/extrap_y(species_idx))
-               if(extrap_err(species_idx).gt.extrap_tol(species_idx))converged=.false.
-            end do
-            if(converged)then
-!              WRITE(ISHORT,912)JENV,J,(YEXT(K2),YERR(K2),K2=1,3)
-               exit
-            endif
-         endif
+           x_cz_start, log_rate_cz_start, x_cz_end, cz_mass_end, log_rate_cz_end)
+! FOR THE STARTING ABUNDANCE, USE THE MIXED ABUNDANCE FOR THE DEEPER CZ.
+      if(cz_base_zone.lt.cz_base_zone_old) x_cz_start = x_cz_end
+! MHP 05/02 MASS ACCRETION: THE ACCRETED GAS BURNS FROM ITS ARRIVAL ON
+! (accreted_survival) AND IS MIXED INTO THE CZ BY MASS. THIS ASSUMES THAT
+! ALL ACCRETED MATTER LANDS IN A CZ WITH THE END-OF-TIMESTEP DEPTH -- NOT
+! STRICTLY TRUE, BUT NOT A BAD APPROXIMATION EITHER.
+      accreting = star%job%use_mass_accretion .and. &
+           star%ctrl%mass_accretion_rate.gt.0.0d0
+      do s = 1,3
+         x_cz_end(s) = x_cz_start(s)*surviving_fraction(exp(log_rate_cz_start(s)), &
+              exp(log_rate_cz_end(s)), timestep, linear_in_log)
+         if (accreting) x_cz_end(s) = (x_cz_end(s)*cz_mass_end + &
+              star%ctrl%accreted_composition(species(s))* &
+              accreted_survival(exp(log_rate_cz_start(s)), exp(log_rate_cz_end(s)), &
+              timestep, linear_in_log)*star%accreted_mass)/ &
+              (cz_mass_end + star%accreted_mass)
+         if(x_cz_end(s).lt.1.0d-24) x_cz_end(s) = 0.0d0
       end do
-      if (.not. converged) then
-! THE REFINEMENT LOOP RAN OUT WITHOUT CONVERGING TO WITHIN THE
-! SPECIFIED TOLERANCE IN THE MAXIMUM NUMBER OF ITERATIONS.
-         write(run_log_unit,911)cz_base_zone,(extrap_err(species_idx),species_idx=1,3)
-      end if
-! WRITE NEW ABUNDANCES AND EXIT.
-      li6_cz_end = extrap_result(1)
-      if(li6_cz_end.lt.1.0d-24)li6_cz_end=0.0d0
-      li7_cz_end = extrap_result(2)
-      if(li7_cz_end.lt.1.0d-24)li7_cz_end=0.0d0
-      be9_cz_end = extrap_result(3)
-      if(be9_cz_end.lt.1.0d-24)be9_cz_end=0.0d0
       do zone_idx = max_zone,num_zones
-         composition(i_li6,zone_idx) = li6_cz_end
-         composition(i_li7,zone_idx) = li7_cz_end
-         composition(i_be9,zone_idx) = be9_cz_end
+         composition(species,zone_idx) = x_cz_end
       end do
-! STORE ENDING RATE FOR USE AT THE BEGINNING OF THE NEXT STEP.
-      star%log_rate_li6_prev = log_rate_li6_cz_end
-      star%log_rate_li7_prev = log_rate_li7_cz_end
-      star%log_rate_be9_prev = log_rate_be9_cz_end
-! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
-! ENDED RADIATIVE.
+
+! 4. SHELLS THAT BEGAN CONVECTIVE AND ENDED RADIATIVE (A RETREATING CZ).
       if (cz_base_zone.le.cz_base_zone_old) then
          return
       end if
 ! FIND STARTING AND ENDING LOCATION IN MASS OF THE CZ BASE, AND
 ! ASSUME THAT THE FRACTION OF TIME SPENT IN THE CZ IS PROPORTIONAL TO
 ! THE LOCATION IN MASS (I.E. A POINT 1/3 FROM THE OLD TO THE NEW CZ
-! BASE IN MASS SPENT 1/3 OF THE TIME IN THE CZ AND 2/3 OUT OF IT).
+! BASE IN MASS SPENT 1/3 OF THE TIME IN THE CZ AND 2/3 OUT OF IT):
+! radiative_frac is 1 at the new base and 0 at the old one (2026
+! bugsweep Batch 2 fixed its sign).
       if(cz_base_zone_old.gt.1)then
          mass_coord_beg = 0.5d0*(mass_coordinate(cz_base_zone_old)+mass_coordinate(cz_base_zone_old-1))
       else
          mass_coord_beg = 0.0d0
       endif
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
-! 2026 (bugsweep Batch 2): this block runs only for a retreating CZ
-! (cz_base_zone > cz_base_zone_old), so the original
-! delta_mass = beg - end was negative and FRAD = (m - beg)/delta_mass
-! ran from 0 at the old base to -1 at the new one. Per the comment
-! above FRAD must be 1 at the old base and 0 at the new base:
-! FRAD = (end - m)/(end - beg).
       delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
-! MHP 9/91 CHANGE TO AVOID DIVISION BY ZERO.
 ! SKIP IF SHELL TEMPERATURE DROPS BELOW BURNING THRESHOLD.
          if(star%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
-! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE.
-         li6_depletion = timestep*exp(radiative_frac*log(star%rate_li6(zone_idx))+ &
-              (1.0d0-radiative_frac)*log_rate_li6_cz_start)
-         li7_depletion = timestep*exp(radiative_frac*log(star%rate_li7(zone_idx))+ &
-              (1.0d0-radiative_frac)*log_rate_li7_cz_start)
-         be9_depletion = timestep*exp(radiative_frac*log(star%rate_be9(zone_idx))+ &
-              (1.0d0-radiative_frac)*log_rate_be9_cz_start)
-! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION: Li6 and Li7 go
-! through safe_divide_by_exp (overflow-safe divide by exp); Be9 here, and all
-! three species in burn_li_be_midpoint's twin of this loop, still use the plain
-! division. Kept as is (changing it could change numbers).
-         call safe_divide_by_exp(composition(i_li6,zone_idx),li6_depletion)
-         if(composition(i_li6,zone_idx).lt.1.0d-24)composition(i_li6,zone_idx)=0.0d0
-         call safe_divide_by_exp(composition(i_li7,zone_idx),li7_depletion)
-         if(composition(i_li7,zone_idx).lt.1.0d-24)composition(i_li7,zone_idx)=0.0d0
-         composition(i_be9,zone_idx) = composition(i_be9,zone_idx)/exp(be9_depletion)
-         if(composition(i_be9,zone_idx).lt.1.0d-24)composition(i_be9,zone_idx)=0.0d0
+         rate_end = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
+              star%rate_be9(zone_idx)]
+         do s = 1,3
+! USE FRAD*RADIATIVE RATE AND (1-FRAD)*CONVECTIVE RATE, IN THE LOG.
+            rate = exp(radiative_frac*log(rate_end(s)) + &
+                 (1.0d0-radiative_frac)*log_rate_cz_start(s))
+            composition(species(s),zone_idx) = composition(species(s),zone_idx)* &
+                 surviving_fraction(rate, rate, timestep, linear_in_time)
+            if(composition(species(s),zone_idx).lt.1.0d-24) &
+                 composition(species(s),zone_idx) = 0.0d0
+         end do
       end do
-      return
 end subroutine burn_li_be
 
 
@@ -692,15 +387,10 @@ end subroutine burn_li_be
 !
 ! 11/91 HR added to call.
 !
-! shell_mass genuinely needs intent(inout) -- same reasoning as
-! burn_li_be's identical fix above: the write (a save-then-restore pair
-! around the CZ-base mass adjustment) is read by the following
-! rate/abundance sums before being restored, so it's real, not dead
-! code, even though the net effect on the caller's array is zero.
 ! burn_li_be_midpoint (formerly liburn2)
 !   star reads: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
 !     rate_li7, rate_li7_start
-!   star writes: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev
+!   star writes: none
 subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
@@ -727,6 +417,8 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
       double precision :: log_rate_li6_cz_start, log_rate_li7_cz_start, &
            log_rate_be9_cz_start
       double precision :: li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end
+      double precision :: x_cz_start(3), x_cz_end(3), log_rate_cz_start(3), &
+           log_rate_cz_end(3)
       double precision :: log_rate_li6_cz_end, log_rate_li7_cz_end, &
            log_rate_be9_cz_end
       double precision :: cz_log_rate_li6, cz_log_rate_li7, cz_log_rate_be9
@@ -794,10 +486,19 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
       end if
       call average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
            cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
-           li6_cz_start, li7_cz_start, be9_cz_start, &
-           log_rate_li6_cz_start, log_rate_li7_cz_start, log_rate_be9_cz_start, &
-           li6_cz_end, li7_cz_end, be9_cz_end, cz_mass_end, &
-           log_rate_li6_cz_end, log_rate_li7_cz_end, log_rate_be9_cz_end)
+           x_cz_start, log_rate_cz_start, x_cz_end, cz_mass_end, log_rate_cz_end)
+      li6_cz_start = x_cz_start(1)
+      li7_cz_start = x_cz_start(2)
+      be9_cz_start = x_cz_start(3)
+      log_rate_li6_cz_start = log_rate_cz_start(1)
+      log_rate_li7_cz_start = log_rate_cz_start(2)
+      log_rate_be9_cz_start = log_rate_cz_start(3)
+      li6_cz_end = x_cz_end(1)
+      li7_cz_end = x_cz_end(2)
+      be9_cz_end = x_cz_end(3)
+      log_rate_li6_cz_end = log_rate_cz_end(1)
+      log_rate_li7_cz_end = log_rate_cz_end(2)
+      log_rate_be9_cz_end = log_rate_cz_end(3)
 ! FOR THE STARTING ABUNDANCE, USE THE MIXED ABUNDANCE FOR THE
 ! DEEPER CZ.
       if(cz_base_zone.lt.cz_base_zone_old)then
@@ -839,10 +540,6 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
          composition(i_li7,zone_idx) = li7_cz_end
          composition(i_be9,zone_idx) = be9_cz_end
       end do
-! STORE ENDING RATE FOR USE AT THE BEGINNING OF THE NEXT STEP.
-      star%log_rate_li6_prev = log_rate_li6_cz_end
-      star%log_rate_li7_prev = log_rate_li7_cz_end
-      star%log_rate_be9_prev = log_rate_be9_cz_end
 ! NOW SOLVE FOR ABUNDANCES IN THE REGION WHICH BEGAN CONVECTIVE AND
 ! ENDED RADIATIVE.
       if (cz_base_zone.le.cz_base_zone_old) then

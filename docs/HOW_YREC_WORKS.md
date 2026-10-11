@@ -88,10 +88,12 @@ Composition evolves by:
   extensions) are homogenized every step (inside `composition_step`,
   `core/composition_step.f90`, and again after the structure converges by
   `homogenize_convection_zones` (`mixcz`));
-- **light elements** (Li6, Li7, Be9, H2) — burned with sub-stepped
-  Bulirsch–Stoer-extrapolated updates that account for the time-dependent
-  depth of the surface convection zone (`burn_li_be` in
-  `core/burn_step.f90`, rates from `li_be_rates`; the CZ-depth history enters via the pressure-scale-height
+- **light elements** (Li6, Li7, Be9, H2) — burned in the trace
+  approximation by exponential decay with the rate interpolated over the
+  step (closed form, `surviving_fraction` in `net/light_elements.f90`),
+  accounting for the time-dependent depth of the surface convection zone
+  (`burn_li_be` in `core/burn_step.f90`, rates from `li_be_rates`, the CZ
+  base from `core/convection_geometry.f90`; the CZ-depth history enters via the pressure-scale-height
   bounds `star%pressure_scale_height_start`/`_end` and the previous CZ-base
   radius `star%cz_base_radius_prev`);
 - **microscopic diffusion** (optional) — gravitational settling and
@@ -487,7 +489,7 @@ interpolated in both directions with edge-validity bookkeeping
 
 | Kernel | Method | Used by |
 |---|---|---|
-| `bsstep`/`mmid`/`ratext` | Bulirsch–Stoer with modified midpoint + rational extrapolation | atmosphere & envelope integration, Li/Be burning extrapolation |
+| `bsstep`/`mmid`/`ratext` | Bulirsch–Stoer with modified midpoint + rational extrapolation | atmosphere & envelope integration |
 | `henyey_solve` (`hsolve`; in `core/henyey_solve.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
 | `simeqc` | Gauss-Jordan with pivoting | `implicit_burn_step`'s Newton systems |
 | `tridia`/`ctridi` | tridiagonal (Thomas) solvers | AM diffusion (`tridia`), rotational composition diffusion (`ctridi`) |

@@ -1037,3 +1037,26 @@ left for a decision (physics changes):
   current radii but takes the width of the zone above it from the
   start-of-step radius (logR_start), so cz_base_frac mixes two models.
   Likely meant radius(cz_base_zone); preserved for now.
+- **One trace-element integrator for deuterium and Li/Be -- DONE.**
+  net/light_elements.f90: burn_exposure, surviving_fraction and
+  accreted_survival (a species destroyed at a rate interpolated over the
+  step, linearly in time for D or in log for Li/Be; closed form, plus a
+  Simpson rule for steadily accreted gas). They replace dburn's
+  sub-steps (which summed to the same integral without accretion) and
+  liburn's sub-stepping plus rational extrapolation (which converged on
+  it to 1e-6; checked against a replica of the old algorithm to 4e-8).
+  average_li_be_over_cz no longer writes the adjusted CZ-base rate into
+  star%rate_* (the rotation sub-steps carried it into the next
+  sub-step's start rates) and lost its branch on star%log_rate_*_prev >
+  0, which a natural log of a rate per second never is (the members are
+  gone). A leftover write(*,...) that printed on every refinement under
+  accretion is gone.
+- **Open: surface Li7 has a noise floor of ~0.005 dex.** Found while
+  measuring the integrator change: the deuterium closed form alone
+  (mathematically the old sum, different only in roundoff) moves surface
+  Li7 at 4.57 Gyr by +0.0053 dex in noGS_norot, because a marginal
+  convective zone at the start-of-step CZ base flips in 46 of 348 models
+  and the start-of-step CZ rate average uses that integer zone index (the
+  end-of-step one is interpolated within its zone by cz_base_frac).
+  Interpolating the start depth the same way would remove most of it.
+

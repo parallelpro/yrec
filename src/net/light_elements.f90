@@ -16,6 +16,8 @@ module light_element_lib
       implicit none
       private
       public :: deuterium_rate, burn_deuterium_region, li_be_rates, &
+           burn_exposure, surviving_fraction, accreted_survival, &
+           linear_in_time, linear_in_log, &
            min_deuterium_step, min_deuterium_substep
 
 ! The gas accreted at the surface over a step, as burn_deuterium_region
@@ -42,7 +44,96 @@ module light_element_lib
       double precision, parameter :: min_deuterium_step = 1.0d-11
       double precision, parameter :: min_deuterium_substep = 1.0d-14
 
+! ---- burning a trace species over a step (2026-10) ----
+! A trace species is destroyed at a rate lambda per unit abundance
+! (dX/dt = -lambda X), with lambda interpolated over the step from its
+! start value to its end value, linearly in time (linear_in_time:
+! deuterium) or linearly in log lambda (linear_in_log: Li6, Li7, Be9).
+! The exposure Lambda = integral of lambda dt has a closed form for both,
+! and the species keeps exp(-Lambda) of itself (surviving_fraction).
+! Gas accreted at a steady rate over the step burns from its arrival on;
+! accreted_survival is its mean surviving fraction. (These replace the
+! sub-stepping of the deuterium burn and the sub-stepping plus rational
+! extrapolation to zero step of the Li/Be burn, which approximated the
+! same integrals.)
+      integer, parameter :: linear_in_time = 1, linear_in_log = 2
+
 contains
+
+!----------------------------------------------------------------------
+! burn_exposure: Lambda over the part [0, fraction] of a step of length
+! dt (s), for rates per s. linear_in_log needs both rates positive; with
+! either at or below zero it falls back to linear_in_time.
+double precision function burn_exposure(rate_start, rate_end, dt, &
+     interpolation, fraction)
+      use math_lib
+      double precision, intent(in) :: rate_start, rate_end, dt, fraction
+      integer, intent(in) :: interpolation
+      double precision :: x
+      if (interpolation.eq.linear_in_log .and. rate_start.gt.0.0d0 .and. &
+           rate_end.gt.0.0d0) then
+! lambda(f) = lambda_0 (lambda_1/lambda_0)^f
+         x = fraction*log(rate_end/rate_start)
+         if (abs(x).lt.1.0d-4) then
+            burn_exposure = dt*rate_start*fraction* &
+                 (1.0d0 + x*(0.5d0 + x*(1.0d0/6.0d0 + x/24.0d0)))
+         else
+            burn_exposure = dt*rate_start*fraction*(exp(x) - 1.0d0)/x
+         end if
+      else
+! lambda(f) = lambda_0 + f (lambda_1 - lambda_0)
+         burn_exposure = dt*fraction*(rate_start + 0.5d0*fraction* &
+              (rate_end - rate_start))
+      end if
+end function burn_exposure
+
+!----------------------------------------------------------------------
+! surviving_fraction: exp(-Lambda) over the whole step (0 once Lambda
+! exceeds 700, where exp would underflow).
+double precision function surviving_fraction(rate_start, rate_end, dt, &
+     interpolation)
+      use math_lib
+      double precision, intent(in) :: rate_start, rate_end, dt
+      integer, intent(in) :: interpolation
+      double precision :: exposure
+      exposure = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
+      if (exposure.gt.700.0d0) then
+         surviving_fraction = 0.0d0
+      else
+         surviving_fraction = exp(-exposure)
+      end if
+end function surviving_fraction
+
+!----------------------------------------------------------------------
+! accreted_survival: the mean surviving fraction at the end of the step
+! of gas that arrives uniformly over it, integral over f in [0, 1] of
+! exp(-(Lambda(1) - Lambda(f))) df, by the composite Simpson rule with
+! the step cut finely enough that each interval carries an exposure of
+! at most 0.1 (relative error ~1e-7).
+double precision function accreted_survival(rate_start, rate_end, dt, &
+     interpolation)
+      use math_lib
+      double precision, intent(in) :: rate_start, rate_end, dt
+      integer, intent(in) :: interpolation
+      double precision :: total, f, weight, s
+      integer :: n, i
+      total = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
+      n = 2*(int(min(10.0d0*total, 10000.0d0)) + 1)
+      s = 0.0d0
+      do i = 0, n
+         f = dble(i)/dble(n)
+         if (i.eq.0 .or. i.eq.n) then
+            weight = 1.0d0
+         else if (mod(i, 2).eq.1) then
+            weight = 4.0d0
+         else
+            weight = 2.0d0
+         end if
+         s = s + weight*exp(-min(700.0d0, total - &
+              burn_exposure(rate_start, rate_end, dt, interpolation, f)))
+      end do
+      accreted_survival = s/(3.0d0*dble(n))
+end function accreted_survival
 
 !----------------------------------------------------------------------
 ! deuterium_rate (formerly deutrate)
@@ -115,9 +206,9 @@ end function deuterium_rate
 !----------------------------------------------------------------------
 ! Deuterium burning over a step (s) in one radiative shell
 ! (zone_begin = zone_end) or one convection zone (homogenized), by
-! exponential sub-steps with the rate interpolated linearly between its
-! start- and end-of-step values (rate_start_zone, rate_end_zone, per
-! s, from deuterium_rate). D + p -> He3: X changes by D/2 and He3 by
+! exponential decay with the rate interpolated linearly in time between
+! its start- and end-of-step values (rate_start_zone, rate_end_zone, per
+! s, from deuterium_rate; surviving_fraction). D + p -> He3: X changes by D/2 and He3 by
 ! -3D/2 of the deuterium burned. Under mass accretion the outermost
 ! region blends in the gas accreted over the step (accretion),
 ! mass-weighted. Below min_deuterium (after
@@ -150,13 +241,9 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
-      integer :: zone_idx, substep_idx
+      integer :: zone_idx
       double precision :: deuterium_fraction_test
-      double precision :: burning_rate, num_substeps_real, substep_dt, &
-           rate_accum, rate_increment, deuterium_fraction_burned
-      integer :: num_substeps
-      double precision :: accreted_deuterium_fraction, &
-           accreted_deuterium_burned, newly_accreted_deuterium
+      double precision :: deuterium_fraction_burned, accreted_deuterium_burned
       double precision :: deuterium_change_original, &
            deuterium_change_accreted, deuterium_fraction_new, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
@@ -211,50 +298,23 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
          end do
          return
       end if
-!     BURN DEUTERIUM IN A SERIES OF SMALL STEPS,
-!     INCREMENTING THE BURNING RATE FROM THE STARTING
-!     TO ENDING VALUES.
-!     RESTRICT THE MAXIMUM BURNING TO 0.5 IN THE
-!     NATURAL LOG (<1% ERROR FROM A SIMPLE SUM
-!     OF DISCRETE STEPS OF THIS SIZE).
-!     MHP 10/02 INITIALIZE RATE
-      burning_rate = max(rate_start, rate_end)
-      num_substeps = int(burning_rate*timestep/0.1d0) + 1
-      num_substeps_real = dfloat(num_substeps)
-      substep_dt = timestep/num_substeps_real
-      rate_accum = rate_start
-      rate_increment = (rate_end - rate_start)/num_substeps_real
-      deuterium_fraction_burned = deuterium_fraction
-      do substep_idx = 1, num_substeps
-         burning_rate = rate_accum + 0.5d0*rate_increment
-         deuterium_fraction_burned = deuterium_fraction_burned* &
-              exp(-2.0d0*burning_rate*substep_dt)
-         rate_accum = rate_accum + rate_increment
-      end do
+!     BURN DEUTERIUM OVER THE STEP. D + p -> He3 removes deuterium at
+!     twice the per-amu rate (A_D = 2), with the rate linear in time
+!     between its start and end values. (2026-10: closed form; the
+!     sub-steps of 0.1 in ln that stood here summed to the same integral
+!     without accretion, and approximated accreted_survival with it.)
+      deuterium_fraction_burned = deuterium_fraction* &
+           surviving_fraction(2.0d0*rate_start, 2.0d0*rate_end, timestep, &
+           linear_in_time)
 !     INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
       if (accretion%on .and. zone_end.eq.num_zones) then
-!        ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
-!        AVERAGE. 1/2 OF THE TIMESTEP.  accretion%mass IS
-!        DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
-!        BURN BOTH THE ACCRETED D AND THE ORIGINAL D
-!        SEPARATELY AND FIND THE NEW MASS-WEIGHTED
-!        AVERAGE D.  NOTE THAT ACCRETION OF ELEMENTS
-!        1-11 HAS ALREADY BEEN TREATED.
-         rate_accum = rate_start
-         accreted_deuterium_fraction = accretion%deuterium_fraction
-         accreted_deuterium_burned = 0.0d0
-         do substep_idx = 1, num_substeps
-            burning_rate = rate_accum + 0.5d0*rate_increment
-!           FULLY BURN PRIOR ACCRETED MATTER
-            accreted_deuterium_burned = accreted_deuterium_burned* &
-                 exp(-2.0d0*burning_rate*substep_dt)
-!           EXPOSE NEWLY ACCRETED MATTER TO 1/2 BURNING
-            newly_accreted_deuterium = accreted_deuterium_fraction/ &
-                 num_substeps_real*exp(-burning_rate*substep_dt)
-            accreted_deuterium_burned = accreted_deuterium_burned + &
-                 newly_accreted_deuterium
-            rate_accum = rate_accum + rate_increment
-         end do
+!        THE ACCRETED GAS (accretion%mass GRAMS OVER THE STEP) BURNS
+!        FROM ITS ARRIVAL ON. BURN BOTH THE ACCRETED D AND THE ORIGINAL
+!        D SEPARATELY AND FIND THE NEW MASS-WEIGHTED AVERAGE D.  NOTE
+!        THAT ACCRETION OF ELEMENTS 1-11 HAS ALREADY BEEN TREATED.
+         accreted_deuterium_burned = accretion%deuterium_fraction* &
+              accreted_survival(2.0d0*rate_start, 2.0d0*rate_end, timestep, &
+              linear_in_time)
 !        NOW PERFORM A WEIGHTED SUM OF THE ORIGINAL
 !        AND NEWLY ACCRETED MATTER
          deuterium_change_original = deuterium_fraction_burned - &

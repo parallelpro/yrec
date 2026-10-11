@@ -353,12 +353,6 @@ subroutine begin_kind_card
             star%radius_entropy_term(i) = 0.0D0
          end do
 
-! zero out light element burning rates in the surface CZ.
-         if (star%job%use_extended_composition) then
-            star%log_rate_li6_prev = 0.0D0
-            star%log_rate_li7_prev = 0.0D0
-            star%log_rate_be9_prev = 0.0D0
-         endif
 end subroutine begin_kind_card
 
 ! ---------------------------------------------------------------

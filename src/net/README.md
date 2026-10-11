@@ -61,7 +61,8 @@ Light elements are burned in the trace approximation, separately from the networ
 | Routine | What it does |
 |---|---|
 | `deuterium_rate` | The deuterium burning rate per shell, per s, with the cap that keeps deuterium in the surface convection zone from burning faster than the convective overturn. |
-| `burn_deuterium_region` | Deuterium over a step for one shell or one convection zone: exponential sub-steps with the rate interpolated between its start- and end-of-step values, the D → He3 bookkeeping, and mass-weighted blending of accreted gas. |
+| `burn_deuterium_region` | Deuterium over a step for one shell or one convection zone: exponential decay with the rate linear in time between its start- and end-of-step values (`surviving_fraction`), the D → He3 bookkeeping, and mass-weighted blending of accreted gas (`accreted_survival`). |
+| `burn_exposure`, `surviving_fraction`, `accreted_survival` | **The trace-element integrator** shared by deuterium and Li/Be: a species destroyed at rate λ per unit abundance, with λ interpolated over the step linearly in time (`linear_in_time`) or in log λ (`linear_in_log`). The exposure Λ = ∫λ dt has a closed form for both; the species keeps exp(−Λ) of itself, and gas accreted steadily over the step keeps `accreted_survival` of its own. |
 | `li_be_rates` | The Li6, Li7 and Be9 proton-capture rates at T9 (Caughlan & Fowler 1988), scaled by the controls `li6_rate_scale`, `li7_rate_scale` and `be9_*_rate_scale`. |
 
 ### `net/thermal_neutrinos.f90` (module `thermal_neutrino_lib`)
@@ -84,7 +85,7 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
 | `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
-| `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step: radiative shells, then the surface convection zone with its base (overshoot included) located at the start and end of the step. |
+| `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step, with the trace-element integrator (log interpolation): radiative shells, then the surface convection zone as one unit on its mass-averaged rates (`average_li_be_over_cz`), then the shells a retreating CZ left. The CZ base at the start and end of the step, overshoot included, comes from `locate_surface_mixing_base` in `core/convection_geometry.f90`. |
 | `burn_li_be_midpoint` | (compiled out) | Single-midpoint variant, used only by the Bulirsch–Stoer path; built only with `-DYREC_BULIRSCH_STOER_BURN`. |
 
 ---
@@ -179,5 +180,5 @@ A planned step (`docs/TARGET_ARCHITECTURE.md` §4.5(b)) puts the rate, Q-value a
 
 These are tracked in `ROADMAP.md` §13.
 - **Special-purpose operators.** Deuterium, Li/Be and the equilibrium burn are not entries in the reaction table. Making deuterium a network species would change the pp-chain model (p + p → d would no longer be instantaneous).
-- **Li/Be depletion mixes three jobs.** `burn_li_be` still contains model geometry (locating the convection-zone base with overshoot) and averaging alongside the depletion integration. The integration will move to `light_elements.f90` and the geometry to a shared convection-geometry module.
+- **Surface Li has a numerical noise floor of about 0.005 dex.** The start-of-step CZ rate average uses the integer zone index of the CZ base (only the end of the step is interpolated within the zone), so a roundoff-level change in the structure can move it by one zone and shift surface Li7 by ~1% (ROADMAP §13).
 - **Legacy cross sections.** `LNEWNUC = .false.` takes the cross sections from the legacy `SSTANDARD` ratios. Every shipped deck uses `.true.`.

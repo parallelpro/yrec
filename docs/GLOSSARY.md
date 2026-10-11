@@ -575,7 +575,6 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 
 - `star%fracstep` (`FRACSTEP`, initialized to 0.5);
 - the scalar `star%convective_velocity` (`VEL`);
-- `star%log_rate_li6/li7/be9_prev` (`BLI6OLD`, ...; log base unknown);
 - `rot_scr%quadrupole_moment` and `local_gravity` (`QUAD`, `GG`).
 
 **Discrepancy:** the value and comment of `dlum_dalpha` differ by a factor of 10 (`core/check_solar_calibration.f90:51`: value 0.0139, comment "+0.139").
