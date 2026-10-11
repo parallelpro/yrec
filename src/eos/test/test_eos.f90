@@ -474,7 +474,8 @@ contains
 !   specific_heat_cp_dt, _dp     dln cp/dln T, dln cp/dln P
 ! Table interpolation adds noise to finite differences, so agreement is
 ! expected only where the values are analytic; the numbers are pinned
-! either way.
+! either way. log T = 5.8 lies in the ramp between the Saha and the
+! fully ionized solutions (saha_log10t_cutoff - 0.5 to the cutoff).
       subroutine check_derivatives()
          character(len=256) :: legacy
          legacy = trim(yrec_input)//"/eos/legacy/"
@@ -497,9 +498,9 @@ contains
 
          subroutine derivative_points(label)
             character(len=*), intent(in) :: label
-            integer, parameter :: nd = 5
-            double precision, parameter :: dlogt(nd) = [3.90d0, 4.50d0, 5.50d0, 6.90d0, 7.161d0]
-            double precision, parameter :: dlogp(nd) = [6.0d0, 8.0d0, 11.5d0, 16.0d0, 17.35d0]
+            integer, parameter :: nd = 6
+            double precision, parameter :: dlogt(nd) = [3.90d0, 4.50d0, 5.50d0, 5.80d0, 6.90d0, 7.161d0]
+            double precision, parameter :: dlogp(nd) = [6.0d0, 8.0d0, 11.5d0, 12.6d0, 16.0d0, 17.35d0]
             double precision, parameter :: h = 1.0d-4, ln10 = 2.302585092994045684d0
             double precision :: c(11), tp(11), tm(11), pp(11), pm(11)
             integer :: k
