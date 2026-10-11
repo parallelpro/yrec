@@ -3,28 +3,39 @@
 !----------------------------------------------------------------------
 ! Standalone net-domain test program (2026), companion to
 ! eos/kap/atm's (see eos/test/test_eos.f90 for the initialization
-! conventions). Exercises the composition-in/rates-out core of the
-! domain -- the pieces that are pure functions of (logT, logRho,
-! composition) once the cross-section scales are set:
-!   * setup/map_user_inputs.f90's cross-section scale computation (from the
-!     newcross namelist defaults),
-!   * rates (the 13 reaction rates + branching fractions),
-!   * sneut (Itoh et al. 1996 neutrino losses),
-!   * azbar (abar/zbar bookkeeping),
-!   * deutrate (deuterium burning, results in star%light_burn).
-! compute_zone_energy is deliberately NOT exercised: it is the per-zone energy
-! generation driver coupled to the full model state (star%prev, flux
-! diagnostics, timestep) -- a full-model concern covered by Stage-0.
-! Results print for byte-comparison against expected_test_net.out.
+! conventions). net/ is a function of (log T, log rho, composition)
+! once its settings are installed, so each piece is tested on its own:
+!   * the cross-section scales (setup/map_user_inputs.f90, newcross
+!     defaults) and configure_network,
+!   * compute_network_rates on a (log T, log rho) grid, and
+!     compute_reaction_rates' analytic derivatives against centred
+!     differences,
+!   * sneut (Itoh et al. 1996 neutrino losses) and azbar,
+!   * deuterium_rate,
+!   * the reaction table: baryon balance, and each row's Q against the
+!     atomic mass excesses (the difference is the row's neutrinos),
+!   * burn_implicitly against backward Euler's closed form for one
+!     reaction at a time, and its mass conservation with all of them,
+!   * the trace integrator (surviving_fraction, accreted_survival)
+!     against closed forms and an independent quadrature,
+!   * compute_nuclear_energy at three reference points, and its
+!     derivatives against centred differences.
+! Results print for byte-comparison against expected_test_net.out;
+! the checks print ok or FAIL.
 program test_net
       use controls_buffer
       use io_units
-      use star_info_lib, only: star, i_h2
+      use star_info_lib, only: star, i_h1, i_h2, i_he3, i_he4, i_metals, &
+           i_c12, i_c13, i_n14, i_o16, i_o18
       use net_lib, only: azbar, compute_network_rates, &
            compute_reaction_rates, deuterium_rate, nuclear_rates, &
            num_rate_rows, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
            r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, r_pp, &
-           rv_frac_be7_ecap, sneut
+           rv_frac_be7_ecap, sneut, burn_implicitly, n_network, s_h1, &
+           s_he3, s_he4, s_c12, s_o16, surviving_fraction, &
+           accreted_survival, linear_in_time, linear_in_log, &
+           compute_nuclear_energy, nuclear_energy_result, net_settings, &
+           net_settings_t, set_net_settings
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
@@ -245,6 +256,185 @@ program test_net
       write(*,'(a)') "# test_net: network table"
       call write_network_table(6)
 
+      call check_burn_implicitly()
+      call check_trace_integrator()
+      call check_nuclear_energy()
+
       close(run_log_unit)
       write(*,'(a)') "test_net: done"
+
+contains
+
+      subroutine report(label, passed)
+         character(len=*), intent(in) :: label
+         logical, intent(in) :: passed
+         write(*,'(a,a,a)') label, ': ', trim(merge('ok  ', 'FAIL', passed))
+      end subroutine report
+
+! burn_implicitly. With one reaction on, backward Euler has a closed
+! form; tight tolerances make the comparison test the step's equation
+! rather than its stopping rule. pp alone: dX/dt = -3 g X^2, so
+! X1 = 2 X0/(1 + sqrt(1 + 12 g dt X0)) and He3 gains X0 - X1.
+! C12(a,g) alone: with u = g dt Y1 C1, Y1 = Y0 - 4u, C1 = C0 - 12u,
+! O1 = O0 + 16u, and 48 g dt u^2 - (1 + g dt (12 Y0 + 4 C0)) u
+! + g dt Y0 C0 = 0. Then every rate of a real zone over a long step, at
+! the production tolerances: the burned abundances, and the change in
+! the sum of the mass fractions (no reaction emits mass there).
+      subroutine check_burn_implicitly()
+         double precision, parameter :: dt = 1.0d0, tight_abs = 1.0d-14, &
+              tight_rel = 1.0d-13, min_abund = 1.0d-20
+         double precision :: g(num_rate_rows), x0(n_network), x(n_network)
+         double precision :: exact, a, b, c, u, gdt
+         integer :: ierr
+
+         write(*,'(a)') "# test_net: burn_implicitly"
+         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         g = 0.0d0
+         g(r_pp) = 10.0d0/(12.0d0*x0(s_h1))
+         x = x0
+         call burn_implicitly(x0, g, dt, min_abund, tight_abs, tight_rel, 50, x, ierr)
+         exact = 2.0d0*x0(s_h1)/(1.0d0 + sqrt(1.0d0 + 12.0d0*g(r_pp)*dt*x0(s_h1)))
+         call report("pp alone vs closed form (1e-12)", ierr == 0 .and. &
+              abs(x(s_h1)/exact - 1.0d0) < 1.0d-12 .and. &
+              abs(x(s_he3)/(x0(s_he3) + x0(s_h1) - exact) - 1.0d0) < 1.0d-12 .and. &
+              all(x(s_he4:) == x0(s_he4:)))
+
+         x0 = [0.0d0, 0.0d0, 0.5d0, 0.3d0, 0.0d0, 0.0d0, 0.2d0, 0.0d0]
+         g = 0.0d0
+         g(r_ac12) = 2.0d0
+         gdt = g(r_ac12)*dt
+         x = x0
+         call burn_implicitly(x0, g, dt, min_abund, tight_abs, tight_rel, 50, x, ierr)
+         a = 48.0d0*gdt
+         b = 1.0d0 + gdt*(12.0d0*x0(s_he4) + 4.0d0*x0(s_c12))
+         c = gdt*x0(s_he4)*x0(s_c12)
+         u = 2.0d0*c/(b + sqrt(b*b - 4.0d0*a*c))
+         call report("C12(a,g) alone vs closed form (1e-12)", ierr == 0 .and. &
+              abs(x(s_he4)/(x0(s_he4) - 4.0d0*u) - 1.0d0) < 1.0d-12 .and. &
+              abs(x(s_c12)/(x0(s_c12) - 12.0d0*u) - 1.0d0) < 1.0d-12 .and. &
+              abs(x(s_o16)/(x0(s_o16) + 16.0d0*u) - 1.0d0) < 1.0d-12)
+
+         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         call compute_network_rates(2.2d0, 7.3d0, test_xa, g)
+         x = x0
+         call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 50, x, ierr)
+         write(*,'(a,i0,a)') "all rates, log T 7.3, log rho 2.2, dt 1e17 s (ierr ", ierr, &
+              "): H He3 He4 C12 C13 N14 O16 O18"
+         write(*,'(4(1pe20.12))') x
+         call report("sum X conserved (1e-14)", abs(sum(x) - sum(x0)) < 1.0d-14)
+      end subroutine check_burn_implicitly
+
+! The trace integrator: the surviving fraction of gas burning at a rate
+! linear in time (exposure (r0 + r1) dt/2) or linear in log
+! (exposure (r1 - r0) dt/ln(r1/r0); r0 dt when r1 = r0), and the mean
+! surviving fraction of gas accreted uniformly over the step, against
+! (1 - exp(-r dt))/(r dt) for a constant rate and against a fine
+! Simpson rule (200000 intervals) otherwise.
+      subroutine check_trace_integrator()
+         integer, parameter :: ncase = 4
+         double precision, parameter :: r0(ncase) = [1.0d-9, 5.0d-9, 2.0d-8, 3.0d-9], &
+              r1(ncase) = [3.0d-9, 5.0d-9, 1.0d-10, 3.0d-11], &
+              step(ncase) = [1.0d9, 1.0d9, 5.0d8, 2.0d9]
+         double precision :: exposure, exact, err_survive, err_accreted, ref
+         integer :: k, law
+
+         write(*,'(a)') "# test_net: trace integrator"
+         err_survive = 0.0d0
+         err_accreted = 0.0d0
+         do law = linear_in_time, linear_in_log
+            do k = 1, ncase
+               exposure = lambda(law, r0(k), r1(k), step(k), 1.0d0)
+               exact = exp(-exposure)
+               err_survive = max(err_survive, abs(surviving_fraction(r0(k), r1(k), &
+                    step(k), law)/exact - 1.0d0))
+               if (r0(k) == r1(k)) then
+                  ref = (1.0d0 - exp(-r0(k)*step(k)))/(r0(k)*step(k))
+               else
+                  ref = accreted_reference(law, r0(k), r1(k), step(k))
+               end if
+               err_accreted = max(err_accreted, abs(accreted_survival(r0(k), r1(k), &
+                    step(k), law)/ref - 1.0d0))
+            end do
+         end do
+         call report("surviving_fraction vs closed form (1e-13)", err_survive < 1.0d-13)
+         call report("accreted_survival vs reference (1e-6)", err_accreted < 1.0d-6)
+         write(*,'(a,es8.1)') "accreted_survival max relative error:", err_accreted
+      end subroutine check_trace_integrator
+
+! the exposure from the start of the step to the fraction f of it
+      double precision function lambda(law, r0, r1, dt, f)
+         integer, intent(in) :: law
+         double precision, intent(in) :: r0, r1, dt, f
+         if (law == linear_in_log .and. r0 /= r1) then
+            lambda = dt*r0*(exp(f*log(r1/r0)) - 1.0d0)/log(r1/r0)
+         else
+            lambda = dt*(r0*f + 0.5d0*(r1 - r0)*f*f)
+         end if
+      end function lambda
+
+      double precision function accreted_reference(law, r0, r1, dt)
+         integer, intent(in) :: law
+         double precision, intent(in) :: r0, r1, dt
+         integer, parameter :: n = 200000
+         double precision :: total, w
+         integer :: i
+         total = lambda(law, r0, r1, dt, 1.0d0)
+         accreted_reference = 0.0d0
+         do i = 0, n
+            w = merge(1.0d0, merge(4.0d0, 2.0d0, mod(i,2) == 1), i == 0 .or. i == n)
+            accreted_reference = accreted_reference + &
+                 w*exp(-(total - lambda(law, r0, r1, dt, dble(i)/dble(n))))
+         end do
+         accreted_reference = accreted_reference/(3.0d0*dble(n))
+      end function accreted_reference
+
+! compute_nuclear_energy at the production settings (cutoffs, weak
+! screening threshold; neutrino fluxes and Itoh losses on) at three
+! points: the solar centre, a CNO-burning core, a helium-burning core.
+! Each prints the total, the pp, CNO and triple-alpha parts and the
+! neutrino loss (erg/g/s), then |analytic/numerical - 1| of d eps/d ln T
+! and d eps/d ln rho, against centred differences of 1e-4 dex.
+      subroutine check_nuclear_energy()
+         integer, parameter :: npoint = 3
+         double precision, parameter :: h = 1.0d-4
+         double precision, parameter :: logt(npoint) = [7.196d0, 7.35d0, 8.10d0], &
+              logd(npoint) = [2.176d0, 1.75d0, 4.0d0]
+         type(net_settings_t) :: s
+         type(nuclear_energy_result) :: e, ep, em
+         double precision :: xa(15, npoint), fd
+         double precision :: err_t, err_d
+         integer :: k
+
+         s = net_settings
+         s%logT_cutoffs = [6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0]
+         s%weak_screening_threshold = 0.03d0
+         s%calc_neutrinos = .true.
+         s%use_itoh_neutrino_loss = .true.
+         call set_net_settings(s)
+         xa = 0.0d0
+         xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18], 1) = &
+              [0.34d0, 0.64d0, 0.02d0, 8.0d-6, 2.5d-5, 1.5d-6, 5.5d-3, 8.0d-3, 1.5d-5]
+         xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18], 2) = &
+              [0.70d0, 0.28d0, 0.02d0, 1.0d-5, 3.0d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         xa([i_h1, i_he4, i_metals, i_c12, i_n14, i_o16], 3) = &
+              [0.0d0, 0.97d0, 0.03d0, 1.0d-2, 1.0d-2, 1.0d-2]
+
+         write(*,'(a)') "# test_net: compute_nuclear_energy: eps, pp, CNO, " // &
+              "triple alpha, neutrino loss; derivative errors (dlnT, dlnrho)"
+         do k = 1, npoint
+            call compute_nuclear_energy(logd(k), logt(k), xa(:,k), .false., 0.0d0, e)
+            write(*,'(a,i2,f7.3,f7.3)') "point", k, logt(k), logd(k)
+            write(*,'(5(1pe20.12))') e%total_energy_gen_rate, e%pp_chain_energy_gen, &
+                 e%cno_cycle_energy_gen, e%triple_alpha_energy_gen, e%eps_neutrino_loss
+            call compute_nuclear_energy(logd(k), logt(k)+h, xa(:,k), .false., 0.0d0, ep)
+            call compute_nuclear_energy(logd(k), logt(k)-h, xa(:,k), .false., 0.0d0, em)
+            fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
+            err_t = abs(e%deps_dlnt/fd - 1.0d0)
+            call compute_nuclear_energy(logd(k)+h, logt(k), xa(:,k), .false., 0.0d0, ep)
+            call compute_nuclear_energy(logd(k)-h, logt(k), xa(:,k), .false., 0.0d0, em)
+            fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
+            err_d = abs(e%deps_dlnrho/fd - 1.0d0)
+            write(*,'(2es10.2)') err_t, err_d
+         end do
+      end subroutine check_nuclear_energy
 end program test_net

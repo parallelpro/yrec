@@ -46,7 +46,7 @@ It also holds the index families and data the network uses:
 | `burn_implicitly` | **The implicit network.** One backward-Euler step for one zone or region: solves X_i − X0_i − dt·A_i·Σ_j ν_ij R_j(X) = 0 by Newton iteration, with equations and Jacobian built from the reaction table. |
 | `compute_equilibrium_burn_rates` | The explicit alternative used at iteration level 1 and by the hydrogen-burning timestep limiter: dX/dt, dY/dt, dC/dt and dO/dt with He3 and the CN cycle in equilibrium. |
 | `compute_reaction_energies` | The energy generation of the table's reactions, Σ b_j·rate·ΠX·Q_j, by rate slot and by chain. `nuclear_energy` calls it, so a reaction's composition change and its energy come from the same row. |
-| `network_table_errors`, `write_network_table` | The table's self-check (every row conserves baryon number) and a printout. Both are pinned by `test_net`. |
+| `network_table_errors`, `write_network_table` | The table's self-check and a printout, both pinned by `test_net`. The check: every row conserves baryon number, and no row deposits more than the energy its atomic mass excesses release. The printout shows each row's Q from the masses and the neutrino energy that implies. |
 
 The **reaction table** (`reactions(:)`) has one row per reaction. Each row gives:
 - the rate slot it reads (`r_*`);
@@ -161,7 +161,12 @@ Run `test_net` after any change (`make tests` in `src/`, then `pytest test_net.p
 - `sneut` and `azbar`;
 - the deuterium rate;
 - a finite-difference check of every rate's derivatives;
-- the reaction table with its baryon balance.
+- the reaction table, with its baryon balance and each row's Q against the atomic mass excesses (the difference is the row's mean neutrino energy);
+- `burn_implicitly` against backward Euler's closed form with only pp on, then with only C12(α,γ) on, and its mass conservation with every rate on;
+- `surviving_fraction` and `accreted_survival` against closed forms and an independent quadrature;
+- `compute_nuclear_energy` at the solar centre, a CNO core and a helium core, with a finite-difference check of its derivatives.
+
+The checks print `ok` or `FAIL`.
 
 A deliberate change to its output means regenerating `net/test/expected_test_net.out` and committing it.
 

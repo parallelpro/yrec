@@ -1111,3 +1111,29 @@ left for a decision (physics changes):
   outside net/ only where a module clashed with its routine; the rest
   follow it as code is touched.
 
+### net/ hygiene (yrec-next, 2026-10) -- the evaluation's six items
+
+- **DONE, bitwise identical:** compute_nuclear_energy in explicit steps
+  on one composition array (d1b3549c); compute_reaction_rates in named
+  steps (df742f0b); the compiled-out Li/Be midpoint variant in its own
+  file (150074ac); burn_step's five region loops as one burn_regions
+  list, burn_step private, explicit imports (c7ed8e86).
+- **DONE: test_net covers the solver, trace integrator, energy and
+  table.** Closed forms for burn_implicitly, the integrator against
+  closed forms and quadrature, eps at three reference points with
+  derivative checks, and each table row's Q against AME2020 mass
+  excesses.
+- **Open (found by the table check): N14(a,g) -> O18 deposits too
+  much.** q_mev = 5.815 implies a mean neutrino energy of 0.256 MeV.
+  The F18 beta+ decay (endpoint 0.634 MeV, mean positron energy
+  0.250 MeV) gives about 0.38 MeV, about 0.42 with the 3% electron
+  capture branch. The inherited value looks like the mean positron
+  energy was taken for the neutrino's. The fix is q_mev of about
+  5.65 MeV; it changes helium-burning runs, so it needs a measured
+  commit. Every other beta+ row (N13, O15, F17, Be7, B8) matches the
+  literature to within a few keV.
+- **Open: store_li_be_rates zeroes both rate sets past the first cool
+  shell,** whichever set it is filling. Making each call clear only
+  its own set changes surface Li slightly (measured earlier), so it
+  needs a measured commit.
+

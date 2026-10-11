@@ -56,6 +56,13 @@ module network
       integer, parameter, public :: n_solved = 7, n_network = 8
       double precision, parameter, public :: mass_number(n_network) = &
            [1.0d0, 3.0d0, 4.0d0, 12.0d0, 13.0d0, 14.0d0, 16.0d0, 18.0d0]
+! atomic mass excesses, MeV (AME2020: Wang et al. 2021), of the network
+! species and of the neutron, the one untracked particle a row emits;
+! they check the rows' energies (q_from_masses)
+      double precision, parameter :: mass_excess_mev(n_network) = &
+           [7.288971d0, 14.931219d0, 2.424916d0, 0.0d0, 3.125009d0, &
+           2.863417d0, -4.737001d0, -0.782816d0]
+      double precision, parameter :: neutron_mass_excess_mev = 8.071318d0
 
 ! branch factor b_j: 1, the N15(p,alpha) fraction f or 1 - f, or the Be7
 ! electron-capture fraction f_e or 1 - f_e
@@ -72,8 +79,11 @@ module network
 ! (species, nu) pairs: the change in per-amu abundance per reaction
 ! (0 = unused). emitted_mass is the mass number carried off by particles
 ! the network does not track (the neutron of C13(a,n)O16), so that every
-! row conserves baryon number exactly: sum_i A_i nu_i + emitted_mass = 0
-! (checked by network_table_errors, pinned by net/test/test_net).
+! row conserves baryon number exactly: sum_i A_i nu_i + emitted_mass = 0.
+! q_mev is the energy released (from the atomic masses, so positron
+! annihilation included) less the mean energy of the row's neutrinos:
+! never more than the mass-energy released. network_table_errors checks
+! both; net/test/test_net pins the table.
       integer, parameter :: max_law = 3, max_change = 5
       type :: reaction_t
          character(len=24) :: name
@@ -147,10 +157,33 @@ integer function network_table_errors()
       network_table_errors = 0
       do j = 1, n_rows
          if (baryon_imbalance(j) /= 0 .or. &
-              any(reactions(j)%law > n_solved)) &
+              any(reactions(j)%law > n_solved) .or. &
+              neutrino_energy(j) < -1.0d-3) &
               network_table_errors = network_table_errors + 1
       end do
 end function network_table_errors
+
+! The energy row j releases, MeV, from the atomic mass excesses of what
+! it consumes and makes (neutrinos included; positron annihilation
+! included, through the atomic masses).
+double precision function q_from_masses(j)
+      integer, intent(in) :: j
+      integer :: c
+
+      q_from_masses = -reactions(j)%emitted_mass*neutron_mass_excess_mev
+      do c = 1, 2*max_change - 1, 2
+         if (reactions(j)%change(c) /= 0) q_from_masses = q_from_masses - &
+              reactions(j)%change(c+1)*mass_excess_mev(reactions(j)%change(c))
+      end do
+end function q_from_masses
+
+! The mean neutrino energy per reaction the table implies, MeV: zero,
+! to the 1 keV the table's Q values are rounded to, for a row with no
+! beta+ decay or electron capture.
+double precision function neutrino_energy(j)
+      integer, intent(in) :: j
+      neutrino_energy = q_from_masses(j) - reactions(j)%q_mev
+end function neutrino_energy
 
 integer function baryon_imbalance(j)
       integer, intent(in) :: j
@@ -169,11 +202,13 @@ subroutine write_network_table(unit)
       integer, intent(in) :: unit
       integer :: j
 
-      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain'
+      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain' // &
+           '  Q masses (MeV)  neutrinos (MeV)'
       do j = 1, n_rows
-         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, i5)') reactions(j)%name, &
-              reactions(j)%rate_row, reactions(j)%branch, baryon_imbalance(j), &
-              reactions(j)%q_mev, reactions(j)%chain
+         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, i5, 2x, f14.6, 2x, f15.6)') &
+              reactions(j)%name, reactions(j)%rate_row, reactions(j)%branch, &
+              baryon_imbalance(j), reactions(j)%q_mev, reactions(j)%chain, &
+              q_from_masses(j), neutrino_energy(j)
       end do
       write(unit, '(a, i0)') '# table errors: ', network_table_errors()
 end subroutine write_network_table

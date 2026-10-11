@@ -108,8 +108,9 @@ end function surviving_fraction
 ! accreted_survival: the mean surviving fraction at the end of the step
 ! of gas that arrives uniformly over it, integral over f in [0, 1] of
 ! exp(-(Lambda(1) - Lambda(f))) df, by the composite Simpson rule with
-! the step cut finely enough that each interval carries an exposure of
-! at most 0.1 (relative error ~1e-7).
+! the step cut into intervals that carry a mean exposure of at most 0.1
+! (relative error below 1e-6, 7e-7 for a rate that falls 200-fold over
+! the step; net/test/test_net).
 double precision function accreted_survival(rate_start, rate_end, dt, &
      interpolation)
       use math_lib

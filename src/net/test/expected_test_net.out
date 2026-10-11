@@ -44,19 +44,40 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
  12  1.39E-05  1.87E-04
  13  0.00E+00  0.00E+00
 # test_net: network table
-# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain
-pp chain to He3                  1       0                 0    6.664000      1
-He3(He3,2p)He4                   2       0                 0   12.860000      1
-He3(He4,g) Be7(e) ppII           3       3                 0   18.980000      2
-He3(He4,g) Be7(p) ppIII          3       4                 0   13.085000      3
-C12(p,g) to C13                  4       0                 0    3.457372      4
-C13(p,g)N14                      5       0                 0    7.550628      4
-N14(p,g) N15(p,a)C12             6       1                 0   14.020000      4
-N14(p,g) N15(p,g)O16             6       2                 0   21.182000      4
-O16(p,g) O17(p,a)N14             7       0                 0    3.553000      4
-C12(a,g)O16                     10       0                 0    7.162000      5
-C13(a,n)O16                      8       0                 0    2.216000      5
-N14(a,g) to O18                 11       0                 0    5.815000      5
-triple alpha                    12       0                 0    7.275000      6
+# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain  Q masses (MeV)  neutrinos (MeV)
+pp chain to He3                  1       0                 0    6.664000      1        6.935694         0.271694
+He3(He3,2p)He4                   2       0                 0   12.860000      1       12.859580        -0.000420
+He3(He4,g) Be7(e) ppII           3       3                 0   18.980000      2       19.795274         0.815274
+He3(He4,g) Be7(p) ppIII          3       4                 0   13.085000      3       19.795274         6.710274
+C12(p,g) to C13                  4       0                 0    3.457372      4        4.163962         0.706590
+C13(p,g)N14                      5       0                 0    7.550628      4        7.550563        -0.000065
+N14(p,g) N15(p,a)C12             6       1                 0   14.020000      4       15.016443         0.996443
+N14(p,g) N15(p,g)O16             6       2                 0   21.182000      4       22.178360         0.996360
+O16(p,g) O17(p,a)N14             7       0                 0    3.553000      4        4.552608         0.999608
+C12(a,g)O16                     10       0                 0    7.162000      5        7.161917        -0.000083
+C13(a,n)O16                      8       0                 0    2.216000      5        2.215608        -0.000392
+N14(a,g) to O18                 11       0                 0    5.815000      5        6.071149         0.256149
+triple alpha                    12       0                 0    7.275000      6        7.274748        -0.000252
 # table errors: 0
+# test_net: burn_implicitly
+pp alone vs closed form (1e-12): ok
+C12(a,g) alone vs closed form (1e-12): ok
+all rates, log T 7.3, log rho 2.2, dt 1e17 s (ierr 0): H He3 He4 C12 C13 N14 O16 O18
+  7.776373861128E-02  3.872113392136E-08  9.024996509314E-01  3.602303270192E-05
+  8.185046527234E-06  1.076800415678E-02  1.494359500180E-03  2.000000000000E-05
+sum X conserved (1e-14): ok
+# test_net: trace integrator
+surviving_fraction vs closed form (1e-13): ok
+accreted_survival vs reference (1e-6): ok
+accreted_survival max relative error: 6.7E-07
+# test_net: compute_nuclear_energy: eps, pp, CNO, triple alpha, neutrino loss; derivative errors (dlnT, dlnrho)
+point 1  7.196  2.176
+  1.644748118564E+01  8.770673747677E+00  8.744433592945E-01  0.000000000000E+00  0.000000000000E+00
+  4.73E-04  7.63E-04
+point 2  7.350  1.750
+  9.266981906746E+03  3.707690606968E+02  8.610440462984E+03  0.000000000000E+00  0.000000000000E+00
+  1.57E-03  1.24E-04
+point 3  8.100  4.000
+  1.900888653075E+04  0.000000000000E+00  0.000000000000E+00  1.710896616059E+04 -1.545857932034E+00
+  6.42E-05  7.98E-04
 test_net: done
