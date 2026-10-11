@@ -17,3 +17,13 @@ def test_domain_boundaries():
         [sys.executable, str(script)], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_star_contracts():
+    """The `star reads:` / `star writes:` lists declared in procedure
+    headers match the code (src/tools/check_star_contracts.py)."""
+    script = pathlib.Path(__file__).parent / "src" / "tools" / "check_star_contracts.py"
+    result = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -40,12 +40,12 @@ contains
 ! controls and rate factors, and installs them (net_setup). run_yrec
 ! calls it at the start of every run, after the Monte Carlo rate
 ! factors are applied; net/ reads no other configuration.
-!   star reads: ctrl%nuclear_logT_cutoffs, ctrl%weak_screening_threshold,
-!     ctrl%calc_neutrinos, ctrl%use_itoh_neutrino_loss,
-!     ctrl%li6_rate_scale, ctrl%li7_rate_scale, ctrl%be9_pg_rate_scale,
-!     ctrl%be9_pd_rate_scale, ctrl%be9_palpha_rate_scale,
-!     cross_section_scale, qs0e_scale, qqs0ee_scale, o16_gamma_scale,
-!     c12_alpha_scale
+!   star reads: c12_alpha_scale, cross_section_scale,
+!     ctrl%be9_palpha_rate_scale, ctrl%be9_pd_rate_scale,
+!     ctrl%be9_pg_rate_scale, ctrl%calc_neutrinos, ctrl%li6_rate_scale,
+!     ctrl%li7_rate_scale, ctrl%nuclear_logT_cutoffs,
+!     ctrl%use_itoh_neutrino_loss, ctrl%weak_screening_threshold,
+!     o16_gamma_scale, qqs0ee_scale, qs0e_scale
 !   star writes: none
 subroutine configure_network()
       use star_info_lib, only: star
@@ -73,8 +73,8 @@ end subroutine configure_network
 !----------------------------------------------------------------------
 ! The gas accreted at the surface over a step in which `mass` grams
 ! were accreted, as burn_deuterium_region takes it.
-!   star reads: job%use_mass_accretion, ctrl%mass_accretion_rate,
-!     ctrl%accreted_composition
+!   star reads: ctrl%accreted_composition, ctrl%mass_accretion_rate,
+!     job%use_mass_accretion
 !   star writes: none
 function surface_accretion_now(mass) result(accretion)
       use star_info_lib, only: star, i_h2
@@ -101,7 +101,7 @@ end function surface_accretion_now
 ! and He3 energies, the solar neutrino fluxes and the Be7 abundance
 ! through star% scalars, and to store per-shell reaction rates and
 ! branchings that nothing read.)
-!   star reads: jcz, convective_turnover_timescale
+!   star reads: convective_turnover_timescale, jcz
 !   star writes: none
 subroutine compute_zone_energy(log_density, log_temperature, &
      hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
@@ -134,6 +134,10 @@ end subroutine compute_zone_energy
 ! cz_base_frac is intent(inout): it is assigned only when the CZ base
 ! is an interior zone (1 < env_cz_zone < num_zones), exactly as in the
 ! original inline block, and is never read by the callers otherwise.
+!   star reads: grada, gradr, job%envelope_overshoot_active,
+!     job%instability_transport_active, job%rotation_active, logR_start,
+!     pressure_scale_height_end, pressure_scale_height_start
+!   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
 subroutine locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
      cz_base_zone, cz_base_zone_old, cz_base_frac)
       use rotation_scratch_lib
@@ -228,6 +232,9 @@ end subroutine locate_cz_base
 ! whole CZ; shell_mass is restored before return, star%rate_li6/li7/be9
 ! at cz_base_zone keep the adjustment). Start-of-step log rates come
 ! from star%log_rate_*_prev when a previous step stored them.
+!   star reads: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev,
+!     rate_be9_start, rate_li6_start, rate_li7_start
+!   star writes: rate_be9, rate_li6, rate_li7
 subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
      cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
      li6_cz_start, li7_cz_start, be9_cz_start, &
@@ -371,6 +378,13 @@ end subroutine average_li_be_over_cz
 ! one of this routine's two callers -- declares its own shell_mass
 ! intent(inout) to match this explicit interface.
 ! burn_li_be (formerly liburn)
+! The model arrays are arguments because the two callers burn different
+! models: burn_light_elements the converged end-of-step model,
+! evolve_angular_momentum each rotation sub-step's midpoint (rot_scr).
+!   star reads: accreted_mass, ctrl%accreted_composition,
+!     ctrl%mass_accretion_rate, job%use_mass_accretion, rate_be9,
+!     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
+!   star writes: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev
 subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
@@ -782,6 +796,9 @@ end subroutine burn_li_be
 ! rate/abundance sums before being restored, so it's real, not dead
 ! code, even though the net effect on the caller's array is zero.
 ! burn_li_be_midpoint (formerly liburn2)
+!   star reads: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
+!     rate_li7, rate_li7_start
+!   star writes: log_rate_be9_prev, log_rate_li6_prev, log_rate_li7_prev
 subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
@@ -992,6 +1009,9 @@ end subroutine burn_li_be_midpoint
 ! star%rate_*). 2026-10: the calls had the flags the other way round
 ! (inherited from F77), so both sets came from the start-of-step model.
 ! store_li_be_rates (formerly lirate88)
+!   star reads: logRho_start, logT_start, xa_start
+!   star writes: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
+!     rate_li7, rate_li7_start
 subroutine store_li_be_rates(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json, i_be9
@@ -1050,11 +1070,15 @@ end subroutine store_li_be_rates
 ! into star%rate_*_start. End of step: the rates of the model passed in
 ! (the converged model, or a rotation sub-step's midpoint model) into
 ! star%rate_*.
+!   star reads: logRho, logT, nz, xa
+!   star writes: none
 subroutine store_start_li_be_rates()
       use star_info_lib, only: star
       call store_li_be_rates(star%xa, star%logRho, star%logT, star%nz, 2)
 end subroutine store_start_li_be_rates
 
+!   star reads: none
+!   star writes: none
 subroutine store_end_li_be_rates(composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: json
       double precision, intent(in) :: composition(15,json), log_density(json), &
@@ -1086,6 +1110,13 @@ end subroutine store_end_li_be_rates
 ! The start-of-step abundances are star%xa_start. Z changes only once
 ! hydrogen is exhausted (X < 5e-7 at the top of the region), as
 ! 1 - X - Y - He3.
+! log_temperature, rate_by_zone and composition are arguments because
+! the two callers differ: burn_network passes the model's, rotmix the
+! rotation sub-step's midpoint temperatures (rot_scr).
+!   star reads: ctrl%absolute_tolerance, ctrl%max_burn_iterations,
+!     ctrl%min_abundance, ctrl%nuclear_logT_cutoffs,
+!     ctrl%relative_tolerance, xa_start
+!   star writes: none
 subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep_years, ierr)
 
@@ -1181,6 +1212,11 @@ end subroutine burn_network_region
 ! star%deuterium_burning_rate and, with store_start_rates, _start). The
 ! rates are also kept in rot_scr%reaction_rate_by_zone for rotmix and
 ! rezone.
+!   star reads: convective_turnover_timescale,
+!     ctrl%accreted_composition, ctrl%mass_accretion_rate,
+!     ctrl%nuclear_logT_cutoffs, jcz, job%use_mass_accretion, logRho,
+!     logT, nz, xa
+!   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       use star_info_lib, only: star, json, i_h1, i_h2
       use rotation_scratch_lib
@@ -1237,6 +1273,8 @@ end subroutine compute_burn_rates
 ! network_lib's implicit_burn_step): shell by shell in the radiative
 ! regions above the nuclear cutoff, and once per mixed region, which it
 ! also homogenizes.
+!   star reads: ctrl%nuclear_logT_cutoffs, dm, logT, mixed_zone_bounds
+!   star writes: xa
 subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep_years, ierr)
       use star_info_lib, only: star, json, max_radiative_zones
@@ -1288,6 +1326,9 @@ end subroutine burn_network
 ! the CN cycle in equilibrium): overwrites X, and under helium burning
 ! Z, C12 and O16, shell by shell in radiative regions and per mixed
 ! region.
+!   star reads: ctrl%nuclear_logT_cutoffs, dm, logT, mixed_zone_bounds,
+!     xa_start
+!   star writes: xa
 subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep_years)
       use star_info_lib, only: star, json, max_radiative_zones, i_h1, &
@@ -1386,6 +1427,10 @@ end subroutine burn_equilibrium
 !----------------------------------------------------------------------
 ! Deuterium over the step (light_element_lib's burn_deuterium_region), shell by shell in
 ! radiative regions above the nuclear cutoff and per mixed region.
+!   star reads: accreted_mass, ctrl%nuclear_logT_cutoffs,
+!     deuterium_burning_rate, deuterium_burning_rate_start, dm, logT,
+!     mixed_zone_bounds, nz, xa_start
+!   star writes: xa
 subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, timestep_years)
       use star_info_lib, only: star, max_radiative_zones

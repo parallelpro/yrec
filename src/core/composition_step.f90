@@ -61,6 +61,13 @@ module composition_step_lib
 
 contains
 
+!   star reads: ctrl%dpenv, ctrl%helium_diffusion_min,
+!     ctrl%hydrogen_diffusion_floor, ctrl%settling_timestep_fraction,
+!     ctrl%use_new_diffusion_routines, dm, gradT,
+!     job%use_extended_composition, job%use_semiconvection, log_mass,
+!     log_Teff, log_total_mass, logP, logR, logT, luminosity_lsun, nz
+!   star writes: convective_flag, job%diffuse_helium_active, logRho, m,
+!     mixed_zone_bounds, xa
 subroutine composition_step(timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib

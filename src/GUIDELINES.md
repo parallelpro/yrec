@@ -187,6 +187,54 @@ commits). Output columns keep their MESA names.
   `kap`, etc. -- see below).
 
 
+## The star object: five rules (2026-10)
+
+`star` (`state/star_info_lib.f90`) is global, and nothing in Fortran
+stops any procedure from reading or writing any of its ~260 members.
+What makes a reader unable to follow the code is not the global itself
+but using it without rules: signatures that show a fraction of what a
+routine touches, results handed back through `star`, and names that say
+where data lives but not when it is valid. These rules apply to new code
+and to code being changed; the end state (an explicit `star_t` argument
+split into `now`/`start`/`step`/`diag` parts) is
+docs/TARGET_ARCHITECTURE.md section 4.2.
+
+1. **Physics domains never use `star`.** Their state comes in as
+   arguments and their configuration as one settings record filled by
+   the star layer at the start of a run (`net/`: `net_lib`'s
+   `net_settings`, filled by `configure_network` in
+   `core/burn_step.f90`). Index constants from `star_info_lib` (`i_h1`,
+   `json`, ...) are allowed. `tools/check_boundaries.py` enforces this
+   for the directories in `STAR_FREE_DIRS` (`net/` so far); add a
+   domain there once it is clean.
+2. **Nothing returns results through `star`.** A routine returns what
+   it computes in its arguments or a result record; the caller decides
+   what to store. (The old `compute_zone_energy` handed the neutrino loss
+   back in `star%neutrino_loss_rate`, read by its caller on the next
+   line.)
+3. **When a driver takes model arrays as arguments, its header says
+   why** -- usually because callers pass different models (the
+   end-of-step model, or a rotation sub-step's midpoint). Everything else
+   it reads from `star`. A reader must be able to tell an argument that
+   varies between callers from a habit.
+4. **A driver's header lists the `star` members it reads and writes**,
+   directly above its `subroutine` line:
+
+       !   star reads: jcz, convective_turnover_timescale
+       !   star writes: none
+
+   `tools/check_star_contracts.py` checks every declared list against the
+   code (run by `test_boundaries.py`) and `--fix` rewrites them; write the
+   two lines with `none` and let `--fix` fill them in. The lists cover the
+   procedure's own body; a `star%` field passed to an `intent(inout)`
+   dummy counts as written, so a loose intent in a callee shows up here --
+   tighten it rather than editing the list.
+5. **Diagnostics are written once, after convergence; scratch stays in
+   its module.** Values computed inside the Newton iterations and kept
+   only for output belong in a pass over the converged model, not in
+   `star` members overwritten on every iteration.
+
+
 ## Verification tiers (2026): match the gate to the blast radius
 
 Running the full battery on every commit is waste; running too little
