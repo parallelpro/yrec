@@ -1424,6 +1424,7 @@ subroutine store_table_paths
       star%job%scv_he_table_path = fscvhe
       star%job%scv_z_table_path = fscvz
       star%job%alex95_table_paths = opecalex
+      star%job%conductive_table_path = fcondopacp
 end subroutine store_table_paths
 
 ! ---------------------------------------------------------------
@@ -1907,10 +1908,9 @@ subroutine derive_options_and_open_files
          open(monte_carlo_unit1, file=fmonte1,status='UNKNOWN',form='FORMATTED')
          open(monte_carlo_unit2, file=fmonte2,status='UNKNOWN',form='FORMATTED')
       endif
-!     MHP 8/25 Moved opening of conductive opacity and EoS tables here, to avoid complicated passages of declared variables.
-      if(lcondopacp)then
-         open(icondopacp,file=fcondopacp,status='OLD')
-      endif
+!     MHP 8/25 Moved opening of the EoS tables here, to avoid complicated passages of declared variables.
+!     (2026-10: the conductive opacity table is read by kap_init from
+!     star%job%conductive_table_path.)
       if(liso) then
          open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED')
       endif

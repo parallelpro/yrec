@@ -17,8 +17,6 @@
 ! are kept verbatim under `if (tbl%table_number == 2)`).
 subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
-
-      use star_info_lib, only: star
       use opacity_tables
       use io_units
       use numerics_lib
@@ -50,7 +48,7 @@ subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
 !
 !     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
       ierr = 0
-      log_extrap_tolerance = log(star%ctrl%tollaol)
+      log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
       call locate(tbl%grid_t, tbl%num_t, log10_temperature, t_locate_guess)
       call locate(tbl%grid_x, tbl%num_x, hydrogen_fraction, x_grid_index)
       if (x_grid_index .eq. tbl%num_x) then

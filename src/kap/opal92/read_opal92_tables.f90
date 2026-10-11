@@ -22,8 +22,6 @@
 ! FORMAT and CLOSE statements moved into the helper verbatim, and the
 ! loop's working scalars stay host-associated.
 subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
-      use star_info_lib, only: star
-
       use opacity_tables
       use math_lib
       implicit none
@@ -33,6 +31,8 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
       integer, intent(out) :: ierr
+! the table file's unit
+      integer :: opal92a_unit
 !     local_grid_z IS A READ-LIST TARGET THAT IS NEVER USED AFTERWARDS.
       double precision :: local_grid_z(n_opal92_x)
       integer :: i, k, density_index, num_temps_read
@@ -40,12 +40,12 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 
 !     OPEN TABLE
       ierr = 0
-      open(unit=star%ctrl%opal92_table_unit,file=opal92_table_path)
-      call read_opal92_table(star%ctrl%opal92_table_unit, opacity_table%opal92(1), ierr)
+      open(newunit=opal92a_unit,file=opal92_table_path)
+      call read_opal92_table(opal92a_unit, opacity_table%opal92(1), ierr)
       if (ierr /= 0) return
 
 ! DBG 5/94 Second Opacity Table read here
-      if (star%use_two_z_tables) then
+      if (kap_settings%use_two_z_tables) then
          open(newunit=opal92b_unit,file=opal92_table2_path)
          call read_opal92_table(opal92b_unit, opacity_table%opal92(2), ierr)
          if (ierr /= 0) return

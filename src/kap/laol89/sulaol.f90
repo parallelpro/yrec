@@ -16,8 +16,6 @@
 ! table's T grid stays here because the second table's loop bound
 ! was (and is) the first table's num_t.
 subroutine sulaol
-      use star_info_lib, only: star
-
       use opacity_tables
       use numerics_lib
       use math_lib
@@ -33,7 +31,7 @@ subroutine sulaol
       end do
       call spline_laol_table(opacity_table%laol(1))
 ! DBG 4/94 Do SPLINE on second opacity table if ZRAMP
-      if (star%use_two_z_tables) then
+      if (kap_settings%use_two_z_tables) then
 ! NOTE: the log10 conversion of the second table's T grid runs over
 ! the FIRST table's num_t, as the original did (an R6 decision
 ! whether that is a latent bug when the two tables differ in T

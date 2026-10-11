@@ -21,8 +21,6 @@
 ! set into the second exactly as before). The stdout diagnostics no
 ! longer say "second-Z".
 subroutine opal92_surface_table(hydrogen_fraction, ierr)
-      use star_info_lib, only: star
-
       use opacity_tables
       use numerics_lib
       use math_lib
@@ -41,11 +39,11 @@ subroutine opal92_surface_table(hydrogen_fraction, ierr)
            dlnkap_dlnrho1, dlnkap_dlnt1, x_fraction_within, log10_opacity_final
 
       ierr = 0
-      call build_surface_table(opacity_table%opal92(1), star%ctrl%opal_table_z1, ierr)
+      call build_surface_table(opacity_table%opal92(1), kap_settings%opal_table_z1, ierr)
       if (ierr /= 0) return
 
-      if (star%use_two_z_tables) then
-         call build_surface_table(opacity_table%opal92(2), star%ctrl%opal_table_z2, ierr)
+      if (kap_settings%use_two_z_tables) then
+         call build_surface_table(opacity_table%opal92(2), kap_settings%opal_table_z2, ierr)
       end if
 
       return

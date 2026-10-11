@@ -21,6 +21,7 @@
 ! kurucz2.f90 clone) and kap/opal92/opal92_interp3d.f90 (see
 ! opal92_table_set for the former kipmll2 asymmetry).
 module opacity_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
 ! OPAL92 (Livermore) table dimensions
       integer, parameter :: n_opal92_t = 50, n_opal92_d = 17, &
@@ -141,7 +142,7 @@ module opacity_tables
 
       type, public :: opacity_table_state
 ! OPAL92 (Livermore) tables: (1) at opal_table_z1, (2) at
-! opal_table_z2 (read only when star%use_two_z_tables). See
+! opal_table_z2 (read only when kap_settings%use_two_z_tables). See
 ! opal92_table_set.
            type(opal92_table_set) :: opal92(2)
 ! former common/galot/, alot/, alotall/ (Alexander 1994/95)
@@ -192,10 +193,10 @@ module opacity_tables
            integer :: alex06_index_x = 4, alex06_index_t = 43, alex06_index_r = 10
            double precision :: alex06_full_opacity(n_alex06_xz,n_alex06_t,n_alex06_d)
 ! Kurucz90 tables: (1) at kurucz_table_z1, (2) at kurucz_table_z2
-! (read only when star%use_two_z_tables). See kurucz_table_set.
+! (read only when kap_settings%use_two_z_tables). See kurucz_table_set.
            type(kurucz_table_set) :: kurucz(2)
 ! LAOL89 tables: (1) at laol_table_z1, (2) at laol_table_z2 (read
-! only when star%use_two_z_tables). See laol_table_set.
+! only when kap_settings%use_two_z_tables). See laol_table_set.
            type(laol_table_set) :: laol(2)
 ! former common/zlaol/, zslaol/ (LAOL89 pure-Z table and its
 ! spline-prepared form)
@@ -262,7 +263,48 @@ module opacity_tables
 
       type(opacity_table_state), public :: opacity_table
 
+! ---- the opacity settings (2026-10) ----
+! Everything kap needs from the run's configuration, in one record,
+! installed by kap_init (from the star layer's opacity_settings,
+! setup/microphysics_settings.f90) or set_kap_settings; nothing else
+! writes it.
+      type, public :: kap_settings_t
+! the interior tables (OPAL95-format, OPAL92, LAOL89) and the pure-Z
+! table for helium-burning cores; the molecular tables (Alexander 2006
+! or 1994/95, or Kurucz 1990); the Potekhin conductive opacities
+         logical :: use_opal95_tables = .false., use_opal92_tables = .false., &
+              use_laol89_tables = .false., use_pure_z_table = .false.
+         logical :: use_alex06_tables = .false., use_alex95_tables = .false., &
+              use_kurucz90_tables = .false.
+         logical :: use_conductive_opacity = .false.
+! read a second table at another Z and blend linearly in Z
+         logical :: use_two_z_tables = .false.
+! the tables' metal fractions: the OPAL95 surface table's, the two
+! OPAL92, LAOL89 and Kurucz tables', the Alexander 1994/95 tables'
+         real(dp) :: opal95_single_table_z = 0.0d0, opal_table_z1 = 0.0d0, &
+              opal_table_z2 = 0.0d0, laol_table_z1 = 0.0d0, &
+              laol_table_z2 = 0.0d0, kurucz_table_z1 = 0.0d0, &
+              kurucz_table_z2 = 0.0d0, alex_table_z1 = 0.0d0
+! log T below which only the molecular tables are used, and above which
+! only the interior ones; the opacity ramps between them
+         real(dp) :: molecular_opacity_logt_min = 0.0d0, &
+              molecular_opacity_logt_max = 0.0d0
+! how far Z may stray from the envelope's when only the surface table
+! is loaded; the LAOL89 extrapolation limit (tollaol)
+         real(dp) :: metal_fraction_match_tolerance = 0.0d0, &
+              laol_extrapolation_tolerance = 0.0d0
+      end type kap_settings_t
+      type(kap_settings_t), public, protected :: kap_settings
+      public :: set_kap_settings
+
 contains
+
+! set_kap_settings: install the run's opacity settings.
+subroutine set_kap_settings(settings)
+      type(kap_settings_t), intent(in) :: settings
+      kap_settings = settings
+end subroutine set_kap_settings
+
 
 ! stencil4_locate
 ! Warm-start search for the first index idx of the 4-point stencil

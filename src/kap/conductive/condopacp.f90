@@ -30,14 +30,12 @@
 !     has been done using the thermal averaging - for example
 !         A.Y.Potekhin, 1999, Astron. Astrophys. 351, 787.
 !     Please quote these publication when using this program
-!     SOURCE DATA FILE 'condall.d' MUST BE IN YOUR
-!      CURRENT DIRECTORY
+!     (The table is read once per run by kap_init:
+!      conductive_opacity_table's read_conductive_table.)
 !     Please address any questions/comments to Alexander Potekhin:
 !     e-mail: palex@astro.ioffe.rssi.ru
 subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
-      use star_info_lib, only: star
-
       use conductive_opacity_table, only: cond_table, cond_n_temp, cond_n_rho, cond_n_z, cond_table_loaded_marker
       use math_lib
       implicit none
@@ -49,8 +47,8 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       integer, intent(out) :: ierr
 ! (the grid sizes cond_n_* and the table itself, cond_table, live in
 ! kap/conductive_opacity_table.f90 and must be consistent with "condall.d")
-      integer :: file_unit, z_index, t_index, r_index
-      double precision :: z_grid_value, log10_ion_charge
+      integer :: z_index, t_index, r_index
+      double precision :: log10_ion_charge
       integer :: t_index_lo, t_index_hi, r_index_lo, r_index_hi
       double precision :: cktmz0, drktmz0, dr2ktmz0, xr
       double precision :: ckt0z0, drkt0z0, dr2kt0z0
@@ -67,28 +65,11 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       double precision :: cktp, drktp, dr2ktp
       double precision :: dt2k, drtk, drt2k, xt
 
-      if (cond_table%table_loaded_flag.ne.cond_table_loaded_marker) then   ! Reading
-         file_unit = star%ctrl%icondopacp
-! MHP 8/25 file opening moved to parmin
-!         open(IP,file=FcondOpacP,status='OLD')
-!         print*,'Reading thermal conductivity data...'
-         read(file_unit,'(A)') ! skip the first line
-        do z_index=1,cond_n_z
-           read(file_unit,*) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,cond_n_temp)
-           cond_table%z_grid(z_index)=log10(z_grid_value)
-          do r_index=1,cond_n_rho
-             read(file_unit,*) cond_table%rho_grid(r_index), &
-                  (cond_table%log10_kappa_table(t_index,r_index,z_index),t_index=1,cond_n_temp)
-          enddo
-      enddo
-         close(file_unit)
-         cond_table%table_loaded_flag=cond_table_loaded_marker
-! KC 2025-05-30 fixed -Winteger-division
-         z_index=int(cond_n_z/2.)+1
-         t_index=int(cond_n_temp/2.)+1
-         r_index=int(cond_n_rho/2.)+1
-!         print*,'Potekhin Conductivity File read in.'
-      endif
+      if (cond_table%table_loaded_flag.ne.cond_table_loaded_marker) then
+         write(*,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
+         ierr = 1
+         return
+      end if
       ierr = 0
       log10_ion_charge=log10(ion_charge)
       call hunt(cond_table%z_grid,cond_n_z,log10_ion_charge,z_index)

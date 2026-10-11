@@ -20,6 +20,7 @@
 subroutine setups(ierr)
       use eos_lib
       use kap_lib
+      use microphysics_settings, only: opacity_settings
       use atm_lib
       use atm_tables
       use star_info_lib, only: star
@@ -117,12 +118,13 @@ subroutine setups(ierr)
 !     SET UP OPACITY TABLES
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
-      call kap_init(star%envelope_hydrogen_fraction, &
+      call kap_init(opacity_settings(), star%envelope_hydrogen_fraction, &
            star%envelope_metal_fraction, star%job%mixture_weights, &
            star%job%alex06_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path, &
            star%job%laol_table_path,star%job%laol_table2_path, &
            star%job%opal95_table_path,star%job%opal92_table_path,star%job%opal92_table2_path, &
-           star%job%pure_z_table_path,star%job%alex95_table_paths, ierr)
+           star%job%pure_z_table_path,star%job%alex95_table_paths, &
+           star%job%conductive_table_path, ierr)
       if (ierr /= 0) return
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     READ IN MHD EOS TABLES

@@ -22,6 +22,7 @@ program test_kap
       use opacity_tables
       use scv_eos_tables
       implicit none
+      type(kap_settings_t) :: settings
       integer :: gerr
 
       character(len=256) :: yrec_input
@@ -106,6 +107,7 @@ program test_kap
       star%job%centre5_table_path = dummy_path
       star%job%opal92_table2_path = dummy_path
       star%job%pure_z_table_path = dummy_path
+      star%job%conductive_table_path = dummy_path
       star%job%scv_h_table_path = dummy_path
       star%job%scv_he_table_path = dummy_path
       star%job%scv_z_table_path = dummy_path
@@ -144,14 +146,17 @@ program test_kap
       call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
-      star%ctrl%use_opal95_tables = .false.
+      settings = kap_settings
+      settings%use_opal95_tables = .false.
+      call set_kap_settings(settings)
       logt = 6.0d0
       logd = -3.0d0
       fxion = 0.0d0
       call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
            kap_ierr)
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
-      star%ctrl%use_opal95_tables = .true.
+      settings%use_opal95_tables = .true.
+      call set_kap_settings(settings)
 
       call check_families()
 
@@ -215,8 +220,8 @@ contains
          call evaluate_points(0.70d0, 0.016232d0)
       end subroutine check_families
 
-! Load kap with one family's configuration (the controls a deck would
-! set, then kap_init with the table paths).
+! Load kap with one family's configuration (the settings a deck's
+! controls would give, then kap_init with the table paths).
       subroutine configure(label, opal95, opal92, laol89, alex06, alex95, kurucz90, &
            pure_z, conductive, z1, z2, two_z, opal95_path, opal92_path, &
            opal92_path2, laol_path, laol_path2, alex06_path, alex95_paths, &
@@ -231,41 +236,31 @@ contains
               kurucz_path2, pure_z_path
          character(len=256), intent(in), optional :: alex95_paths(7)
          character(len=256) :: p(9), p7(7)
+         type(kap_settings_t) :: s
          integer :: ierr
-         logical, save :: conductive_open = .false.
 
          write(*,'(a,a)') "# test_kap: family ", label
-         star%ctrl%use_opal95_tables = present(opal95)
-         star%ctrl%use_opal92_tables = present(opal92)
-         star%ctrl%use_laol89_tables = present(laol89)
-         star%ctrl%use_alex06_tables = present(alex06)
-         star%ctrl%use_alex95_tables = present(alex95)
-         star%ctrl%use_kurucz90_tables = present(kurucz90)
-         star%ctrl%use_pure_z_table = present(pure_z)
-         star%ctrl%use_conductive_opacity = present(conductive)
-         star%use_two_z_tables = two_z
-         star%ctrl%opal95_single_table_z = z1
-         star%ctrl%opal_table_z1 = z1
-         star%ctrl%opal_table_z2 = z2
-         star%ctrl%laol_table_z1 = z1
-         star%ctrl%laol_table_z2 = z2
-         star%ctrl%kurucz_table_z1 = z1
-         star%ctrl%kurucz_table_z2 = z2
-         star%ctrl%alex_table_z1 = z1
-         star%ctrl%metal_fraction_match_tolerance = 1.0d-8
-         star%ctrl%molecular_opacity_logt_min = 4.0d0
-         star%ctrl%molecular_opacity_logt_max = 4.1d0
-         star%ctrl%opal92_table_unit = 32
-         star%ctrl%kurucz_table_unit = 36
-         star%ctrl%alex94_table_unit = 39
-         star%ctrl%kurucz_table2_unit = 65
-         star%ctrl%alex06_table_unit = 90
-         if (present(conductive) .and. .not. conductive_open) then
-            star%ctrl%icondopacp = 75
-            open(75, file=trim(yrec_input)//"/opacity/conductive/potekhin/condall06.d", &
-                 status='old')
-            conductive_open = .true.
-         end if
+         s%use_opal95_tables = present(opal95)
+         s%use_opal92_tables = present(opal92)
+         s%use_laol89_tables = present(laol89)
+         s%use_alex06_tables = present(alex06)
+         s%use_alex95_tables = present(alex95)
+         s%use_kurucz90_tables = present(kurucz90)
+         s%use_pure_z_table = present(pure_z)
+         s%use_conductive_opacity = present(conductive)
+         s%use_two_z_tables = two_z
+         s%opal95_single_table_z = z1
+         s%opal_table_z1 = z1
+         s%opal_table_z2 = z2
+         s%laol_table_z1 = z1
+         s%laol_table_z2 = z2
+         s%kurucz_table_z1 = z1
+         s%kurucz_table_z2 = z2
+         s%alex_table_z1 = z1
+         s%metal_fraction_match_tolerance = 1.0d-8
+         s%molecular_opacity_logt_min = 4.0d0
+         s%molecular_opacity_logt_max = 4.1d0
+         s%laol_extrapolation_tolerance = 10.0d0
          p = ""
          p7 = ""
          if (present(alex06_path)) p(1) = alex06_path
@@ -279,8 +274,9 @@ contains
          if (present(pure_z_path)) p(9) = pure_z_path
          if (present(alex95_paths)) p7 = alex95_paths
          laol_work = 0.0d0
-         call kap_init(0.70d0, z1, laol_work, p(1), p(2), p(3), p(4), p(5), &
-              p(6), p(7), p(8), p(9), p7, ierr)
+         call kap_init(s, 0.70d0, z1, laol_work, p(1), p(2), p(3), p(4), p(5), &
+              p(6), p(7), p(8), p(9), p7, &
+              trim(yrec_input)//"/opacity/conductive/potekhin/condall06.d", ierr)
          if (ierr /= 0) write(*,'(a,i0)') "kap_init ierr = ", ierr
       end subroutine configure
 

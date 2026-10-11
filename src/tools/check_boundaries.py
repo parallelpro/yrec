@@ -168,7 +168,7 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net"]
+STAR_FREE_DIRS = ["net", "kap"]
 
 def check_star_free(src_root):
     problems = []

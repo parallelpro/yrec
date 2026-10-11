@@ -49,14 +49,9 @@ module star_info_lib
            i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9, n_species_basic, &
            n_species_extended
 
-! The 12-species surface mixture (job%mixture_weights,
-! ctrl%mixture_weights_seed, fxenv, read_starting_model's atomic
-! weights, rdlaol's table read): element per slot. H and He are
-! computed from the envelope X/Z, the ten metals are the mixture.
-      integer, parameter, public :: &
-           ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
-           ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
-           ix_ne = 11, ix_he = 12, n_mix_species = 12
+! The 12-species surface mixture slots: composition_layout.
+      public :: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, &
+           ix_ar, ix_ne, ix_he, n_mix_species
 
 ! Monte-Carlo sample capacity of the job%s11_rate .. job%age_target
 ! arrays.
@@ -128,7 +123,8 @@ module star_info_lib
                  zams_c_table_path, centre1_table_path, centre2_table_path, &
                  centre3_table_path, centre4_table_path, centre5_table_path
             character(len=256) :: opal92_table2_path, pure_z_table_path, &
-                 scv_h_table_path, scv_he_table_path, scv_z_table_path
+                 scv_h_table_path, scv_he_table_path, scv_z_table_path, &
+                 conductive_table_path
             character(len=256) :: alex95_table_paths(7)
             double precision :: mixture_weights(n_mix_species)
 ! phase C flattening: the Monte-Carlo sample arrays (former

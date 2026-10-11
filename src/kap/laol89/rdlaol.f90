@@ -21,7 +21,7 @@
 ! kept verbatim for table 2.
 subroutine rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
      laol_table2_path, ierr)
-      use star_info_lib, only: star, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
+      use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
       use opacity_tables
@@ -47,7 +47,7 @@ subroutine rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
       if (ierr /= 0) return
 
 ! DBG 4/94 New stuff follows
-      if (star%use_two_z_tables) then
+      if (kap_settings%use_two_z_tables) then
          call read_laol_table(laol_table2_path, opacity_table%laol(2), &
               work_array2, zdh2, ierr)
          if (ierr /= 0) return

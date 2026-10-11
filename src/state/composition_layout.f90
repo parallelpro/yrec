@@ -23,4 +23,12 @@ module composition_layout
            i_li6 = 13, i_li7 = 14, i_be9 = 15
       integer, parameter, public :: &
            n_species_basic = 11, n_species_extended = 15
+! The 12-species surface mixture (job%mixture_weights,
+! ctrl%mixture_weights_seed, fxenv, read_starting_model's atomic
+! weights, rdlaol's table read): element per slot. H and He are
+! computed from the envelope X/Z, the ten metals are the mixture.
+      integer, parameter, public :: &
+           ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
+           ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
+           ix_ne = 11, ix_he = 12, n_mix_species = 12
 end module composition_layout

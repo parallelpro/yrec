@@ -19,8 +19,6 @@
 ! they carried from the first table into the second is carried
 ! exactly as before.
 subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
-      use star_info_lib, only: star
-
       use opacity_tables
       use math_lib
       implicit none
@@ -39,13 +37,13 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
 ! only (the former kurucz2.f90 never had it).
       opacity_table%kurucz(2)%check_range = .false.
 
-      call read_kurucz_table(star%ctrl%kurucz_table_unit, kurucz_table_path, &
+      call read_kurucz_table(kurucz_table_path, &
            opacity_table%kurucz(1), ierr)
       if (ierr /= 0) return
 
 ! DBG 12/95 read in second Z table if requested
-      if (star%use_two_z_tables) then
-         call read_kurucz_table(star%ctrl%kurucz_table2_unit, kurucz_table2_path, &
+      if (kap_settings%use_two_z_tables) then
+         call read_kurucz_table(kurucz_table2_path, &
               opacity_table%kurucz(2), ierr)
          if (ierr /= 0) return
       end if
@@ -53,7 +51,7 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       call build_kurucz_splines(opacity_table%kurucz(1), ierr)
       if (ierr /= 0) return
 ! DBG 12/95 second Z table
-      if (star%use_two_z_tables) then
+      if (kap_settings%use_two_z_tables) then
          call build_kurucz_splines(opacity_table%kurucz(2), ierr)
       end if
 
@@ -61,16 +59,16 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
 
 contains
 
-! read_kurucz_table: read one Kurucz table file on `unit` into tbl.
-subroutine read_kurucz_table(unit, path, tbl, ierr)
-      integer, intent(in) :: unit
+! read_kurucz_table: read one Kurucz table file into tbl.
+subroutine read_kurucz_table(path, tbl, ierr)
       character(len=256), intent(in) :: path
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
+      integer :: unit
 
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
-      open(unit, file=path, status='OLD')
+      open(newunit=unit, file=path, status='OLD')
       read(unit,'(/)')
 
       num_read = 0

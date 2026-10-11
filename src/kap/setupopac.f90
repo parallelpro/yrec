@@ -15,8 +15,6 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      laol_table_path, laol_table2_path, opal95_table_path, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, ierr)
-      use star_info_lib, only: star
-
       use opacity_tables
       use eos_lib, only: eos_set_debye_huckel_z
       implicit none
@@ -36,28 +34,28 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 !     SET UP SPLINES FOR THE TABLES.
 !     WHEN LZRAMP=T OR LDIFZ=T THEN READ IN SECOND SET OF
 !     OPACITY TABLES AT DIFFERENT Z (E.G. ZOPAL952) -- the
-!     star%use_two_z_tables flag the readers test is decided by
+!     kap_settings%use_two_z_tables flag the readers test is decided by
 !     core/run_yrec.f90 right after the controls read.
 
 !     INTERIOR TABLES
 
 !     READ IN OPAL95 TABLES
       ierr = 0
-      if (star%ctrl%use_opal95_tables) then
+      if (kap_settings%use_opal95_tables) then
          call ll95tbl(opal95_table_path, ierr)
          if (ierr /= 0) return
          call opal95_surface_table(envelope_hydrogen_fraction)
       end if
 
 !     READ IN OPAL92 TABLES AT ZOPAL1 AND ZOPAL2
-      if (star%ctrl%use_opal92_tables) then
+      if (kap_settings%use_opal92_tables) then
          call read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
          if (ierr /= 0) return
          call opal92_surface_table(envelope_hydrogen_fraction, ierr)
          if (ierr /= 0) return
       end if
 !     READ IN LAOL89 TABLES AT ZLAOL1 AND ZLAOL2
-      if (star%ctrl%use_laol89_tables) then
+      if (kap_settings%use_laol89_tables) then
          call rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
               laol_table2_path, ierr)
          if (ierr /= 0) return
@@ -67,7 +65,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 
 !     READ IN LAOL89 PURE Z TABLE
 
-      if (star%ctrl%use_pure_z_table) then
+      if (kap_settings%use_pure_z_table) then
          call rdzlaol(pure_z_table_path, ierr)
          if (ierr /= 0) return
          call zsulaol
@@ -76,16 +74,16 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
 !     LOW TEMP TABLES
 
 !     READ IN ALEX 2006 TABLES
-      if (star%ctrl%use_alex06_tables) then
+      if (kap_settings%use_alex06_tables) then
          call readalex06(alex06_table_path, ierr)
          if (ierr /= 0) return
 !     READ IN ALEX 1995 TABLES
-      else if (star%ctrl%use_alex95_tables) then
+      else if (kap_settings%use_alex95_tables) then
          call read_alex94_tables(alex95_table_paths, ierr)
          if (ierr /= 0) return
          call alex94_surface_table(envelope_hydrogen_fraction)
 !     READ IN KURUCZ TABLE AT ZKUR1 AND ZKUR2
-      else if (star%ctrl%use_kurucz90_tables) then
+      else if (kap_settings%use_kurucz90_tables) then
          call read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
          if (ierr /= 0) return
       end if

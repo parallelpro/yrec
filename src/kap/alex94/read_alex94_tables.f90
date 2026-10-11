@@ -24,13 +24,13 @@
 !
 ! MHP 8/25 Added file name to subroutine call
 subroutine read_alex94_tables(alex95_table_paths, ierr)
-      use star_info_lib, only: star
-
       use opacity_tables
       use io_units
       implicit none
       integer, intent(out) :: ierr
 
+! the table file's unit
+      integer :: table_unit
       character(len=256), intent(in) :: alex95_table_paths(7)
 
 ! --- local arrays ---
@@ -45,7 +45,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
 
       do table_index=1,n_alex94_x
 !        OPEN EACH OF THE TABLES AT FIXED X WITH A RANGE OF Z.
-         open(unit=star%ctrl%alex94_table_unit,file=alex95_table_paths(table_index), &
+         open(newunit=table_unit,file=alex95_table_paths(table_index), &
               status='OLD', form='FORMATTED')
 !        READ IN INITIAL X AND Z; ENSURE THAT THEY HAVE THE EXPECTED VALUES.
          do i = n_alex94_z,1,-1
@@ -54,7 +54,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
 !           (0,0),(0.1,0),...(0.8,0),(0,0.00001),...
             ii = table_index + 7*(i-1)
 !           HEADER INFORMATION: X AND Z
-            read(star%ctrl%alex94_table_unit,10) header_x, header_z
+            read(table_unit,10) header_x, header_z
    10       format(18x,f6.2,2x,f7.2)
             if (header_x.ne.opacity_table%alex94_grid_x(table_index) .or. &
                  header_z.ne.opacity_table%alex94_grid_z(i)) then
@@ -69,7 +69,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
 !           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T,
 !           STARTING R.  STORE IN A NUMZ*NUMT*NUMR ARRAY.
             do j = n_alex94_t,1,-1
-               read(star%ctrl%alex94_table_unit,30) opacity_table%alex94_index_t, row_density_count, &
+               read(table_unit,30) opacity_table%alex94_index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,n_alex94_d)
                do k = 1, n_alex94_d
                   opacity_table%alex94_full_opacity(ii,j,k) = row_opacity_temp(k)
@@ -88,10 +88,10 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                endif
             end do
          end do
-         close(unit=star%ctrl%alex94_table_unit)
+         close(unit=table_unit)
       end do
       ierr = 0
-      target_z = star%ctrl%alex_table_z1
+      target_z = kap_settings%alex_table_z1
       call alex94_fixed_z_table(target_z)
       return
 end subroutine read_alex94_tables

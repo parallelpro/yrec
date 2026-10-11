@@ -20,7 +20,6 @@
 ! scalars stay host-associated. The stdout diagnostic no longer says
 ! "second".
 subroutine opal92_table_prep(ierr)
-      use star_info_lib, only: star
       use opacity_tables
       use numerics_lib
       implicit none
@@ -38,7 +37,7 @@ subroutine opal92_table_prep(ierr)
       if (ierr /= 0) return
 !
 ! DBG 5/94 ZRAMP stuff
-      if (star%use_two_z_tables) then
+      if (kap_settings%use_two_z_tables) then
          call prep_table(opacity_table%opal92(2), ierr)
       end if
 
