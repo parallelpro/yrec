@@ -1,4 +1,4 @@
-# test_braking: brake_convection_zone (j/m of the convection zone after the step)
+# brake_convection_zone (j/m of the convection zone after the step)
 cz pmm rossby, unsaturated, 1e17 s  ierr 0
    2.000000000000000E+16   1.866538006500705E+16   2.866538006500705E+16   3.866538006500705E+16
    4.866538006500705E+16   7.000000000000000E+16
@@ -42,7 +42,7 @@ ERROR IN WIND - TAUCZ NOT DEFINED    3.000E+01   5.000E-01STOPPED
 cz kawaler, tau_cz undefined  ierr 1
    2.000000000000000E+16   3.000000000000000E+16   4.000000000000000E+16   5.000000000000000E+16
    6.000000000000000E+16   7.000000000000000E+16
-# test_braking: compute_solid_body_braking (d omega at the start and end of the step)
+# compute_solid_body_braking (d omega at the start and end of the step)
 case 1 iteration 1 ierr 0   5.907453641210378E-08   4.307887391584093E-08
 case 1 iteration 2 ierr 0   5.907453641210378E-08   4.686803625965847E-08
 case 2 iteration 1 ierr 0   6.392406237752592E-08   4.661528960869795E-08
@@ -53,4 +53,22 @@ case 4 iteration 1 ierr 0   8.369946118473441E-08   6.101690720367138E-08
 case 4 iteration 2 ierr 0   8.369946118473441E-08   6.638936636846652E-08
 case 5 iteration 1 ierr 0   5.907453641210378E-08   4.307887391584093E-08
 case 5 iteration 2 ierr 0   5.907453641210378E-08   4.686803625965847E-08
-test_braking: done
+# shape quadratures (trapezoid refinement, equipotential average)
+trapezoid n s q 1   1.209506086956522E+34   1.209506086956522E+25
+trapezoid n s q 2   1.110126858974359E+34   1.209506086956522E+25
+trapezoid n s q 3   1.105244710621139E+34   1.209506086956522E+25
+trapezoid n s q 4   1.113634072007123E+34   1.209506086956522E+25
+trapezoid shell 2 n s q 1   1.124924693617021E+34   2.249849387234042E+25
+trapezoid shell 2 n s q 2   1.411412681086562E+34   2.249849387234042E+25
+equipotential g0g ginvg sphig   4.983308032557939E+49   2.085429793010086E-09   3.141595166863124E+20
+# angular-momentum tridiagonal solve
+omega
+   2.681583048954216E+00   3.494568082961360E+00   3.328903058187250E+00
+   2.726446820911357E+00   1.944770129365413E+00   1.111129721678024E+00
+dj
+  -8.636833902091570E-01  -3.002172766815456E+00  -5.802658165087650E+00
+  -8.218842543270915E+00  -9.055229870634587E+00  -6.941644333986372E+00
+sumdj ierr  -3.388423107000413E+01  0
+ tridia: singular matrix
+singular: ierr  1
+test_rotation: done

@@ -40,6 +40,9 @@
 ! can choose, over the same grid: the OPAL 1995 and 2001 tables over
 ! SCV, SCV alone, the Yale solvers alone, numerical derivatives,
 ! use_diffusion_z, and the Debye-Hueckel correction.
+!
+! And the MHD table interpolation on a synthetic table
+! (check_mhd_table_lookup), which runs without the MHD tables.
 program test_eos
       use io_units
       use star_info_lib, only: star
@@ -47,6 +50,7 @@ program test_eos
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
       use opal_eos, only: esac06
+      use numerics_lib, only: intpt
       implicit none
       type(eos_settings_t) :: settings
       integer :: gerr
@@ -323,6 +327,7 @@ program test_eos
 
       call check_configurations()
       call check_derivatives()
+      call check_mhd_table_lookup()
 
       close(run_log_unit)
       write(*,'(a)') "test_eos: done"
@@ -547,4 +552,34 @@ contains
             rel = (analytic - fd)/max(abs(fd), 1.0d-30)
             write(*,'(2x,a16,3(1pe13.4))') name, analytic, fd, rel
          end subroutine row
+! The MHD tables' (log P, log T) interpolation on a 7 (T) x 6 (rho) x 3
+! table whose column 2 is log P: inside, at the table corners (the
+! stencils clamp), and above the highest pressure (it returns with the
+! output unchanged).
+subroutine check_mhd_table_lookup()
+      integer, parameter :: nt = 7, nr = 6, nv = 3
+      double precision :: table(nt,nr,nv), tlog(nt), w1(nv,4), w2(nv,4), yw(nv), &
+           out(nv), log_p(4), log_t(4)
+      integer :: it, ir, i
+      write(*,'(a)') "# MHD table lookup (synthetic table)"
+      do it = 1, nt
+         tlog(it) = 3.5d0 + 0.25d0*it
+         do ir = 1, nr
+            table(it,ir,1) = -8.0d0 + ir
+            table(it,ir,2) = 2.0d0*tlog(it) + 0.8d0*ir
+            table(it,ir,3) = tlog(it)*ir - 0.1d0*ir*ir
+         end do
+      end do
+      log_p = [11.3d0, 9.0d0, 13.7d0, 30.0d0]
+      log_t = [4.6d0, 3.6d0, 5.3d0, 4.6d0]
+      do i = 1, 4
+         out = -9.0d0
+         w1 = 0.0d0
+         w2 = 0.0d0
+         yw = 0.0d0
+         call intpt(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, out)
+         write(*,'(a,2f6.2,a,3(1pe24.15))') "lookup at", log_p(i), log_t(i), " =", out
+      end do
+end subroutine check_mhd_table_lookup
+
 end program test_eos

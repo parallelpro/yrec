@@ -1,9 +1,15 @@
 !----------------------------------------------------------------------
-! test_braking
+! test_rotation
 !----------------------------------------------------------------------
-! Standalone test of magnetic braking, the wind torque on the surface
-! convection zone. It sets the controls and the model quantities the
-! braking laws read, then prints what each returns:
+! Standalone test of rotation's self-contained numerics, printed for
+! byte-comparison against expected_test_rotation.out:
+!   magnetic braking, the wind torque on the surface convection zone
+!   (the controls and model quantities the laws read are set here);
+!   the two quadratures of the shape factors (the trapezoid refinement
+!   of the distortion integral, the Gauss-Legendre average over an
+!   equipotential);
+!   the tridiagonal solve of angular-momentum transport.
+! The braking entry points:
 !   brake_convection_zone       the spin-down of the convection zone
 !                               over a step: its j/m afterwards. The
 !                               Matt (PMM) law with and without Rossby
@@ -21,12 +27,12 @@
 !                               alone; the Kawaler law with and without
 !                               saturation scaled by tau_cz
 ! The values are plausible solar-like ones, chosen to reach every
-! branch. Results print for byte-comparison against
-! expected_test_braking.out.
-program test_braking
+! branch.
+program test_rotation
       use star_info_lib, only: star, json
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
+      use numerics_lib, only: trapzd, qgauss, tridia
       implicit none
       double precision, parameter :: msun = 1.989d33
       double precision :: j(json), omega, dt, domega_start, domega_end
@@ -61,7 +67,7 @@ program test_braking
       star%pphot0 = 4.95d0
       star%pphot = 5.00d0
 
-      write(*,'(a)') "# test_braking: brake_convection_zone (j/m of the convection zone after the step)"
+      write(*,'(a)') "# brake_convection_zone (j/m of the convection zone after the step)"
       star%ctrl%use_pmm_wind_law = .true.
       star%ctrl%scale_by_rossby_number = .true.
       star%ctrl%scale_by_b_field = .false.
@@ -92,7 +98,7 @@ program test_braking
       star%convective_turnover_timescale = 1.1d6
       star%job%wind_saturation_omega = 3.0d-5
 
-      write(*,'(a)') "# test_braking: compute_solid_body_braking (d omega at the start and end of the step)"
+      write(*,'(a)') "# compute_solid_body_braking (d omega at the start and end of the step)"
       do k = 1, 5
          select case (k)
          case (1)
@@ -122,7 +128,9 @@ program test_braking
          write(*,'(a,i2,a,i2,2(1pe24.15))') "case", k, " iteration 2 ierr", ierr, &
               domega_start, domega_end
       end do
-      write(*,'(a)') "test_braking: done"
+      call shape_quadrature_check()
+      call angular_momentum_solve_check()
+      write(*,'(a)') "test_rotation: done"
 
 contains
 
@@ -144,4 +152,64 @@ subroutine cz_case(label, omega_surface, timestep, wind_flag)
       write(*,'(4(1pe24.15))') j(2:7)
 end subroutine cz_case
 
-end program test_braking
+! The trapezoid refinement of the distortion integral for one shell
+! (n = 1..4) and the next (n restarts), then the Gauss-Legendre
+! averages of g, 1/g and the area over the equipotential of shell 3.
+subroutine shape_quadrature_check()
+      external equipotential_integrand
+      double precision :: s, q, qp, r0(json), log_mass(json), g0g, ginvg, sphig
+      integer :: n
+      write(*,'(a)') "# shape quadratures (trapezoid refinement, equipotential average)"
+      qp = 0.02d0
+      do n = 1, 4
+         call trapzd(0.4d10, 0.6d10, s, n, 1.5d0, 2.0d0, 0.8d33, 0.6d33, 1.0d-11, &
+              1.2d-11, 2.3d0, 2.25d0, q, qp)
+         write(*,'(a,i2,2(1pe24.15))') "trapezoid n s q", n, s, q
+      end do
+      do n = 1, 2
+         call trapzd(0.6d10, 0.7d10, s, n, 1.2d0, 1.5d0, 0.9d33, 0.8d33, 0.9d-11, &
+              1.0d-11, 2.35d0, 2.3d0, q, qp)
+         write(*,'(a,i2,2(1pe24.15))') "trapezoid shell 2 n s q", n, s, q
+      end do
+      r0 = 0.0d0
+      log_mass = 0.0d0
+      r0(3) = 0.5d10
+      log_mass(3) = 32.9d0
+      call qgauss(equipotential_integrand, g0g, ginvg, sphig, 0.125d0*4.0d0*3.1415926535898d0, &
+           r0, log_mass, 1.0d33*s, q, 1.0d-11, 1.0d-3, 3)
+      write(*,'(a,3(1pe24.15))') "equipotential g0g ginvg sphig", g0g, ginvg, sphig
+end subroutine shape_quadrature_check
+
+! The angular-momentum tridiagonal solve on six points: the new
+! omega, the change in j weighted by the moment of inertia (dj, its
+! surface element seeded with the wind loss) and their sum; then a
+! singular system.
+subroutine angular_momentum_solve_check()
+      integer, parameter :: n = 6
+      double precision :: sub(json), diag(json), sup(json), rhs(json), solution(json), &
+           inertia(json), dj(json), sumdj
+      integer :: i
+      write(*,'(a)') "# angular-momentum tridiagonal solve"
+      sub = 0.0d0
+      diag = 0.0d0
+      sup = 0.0d0
+      rhs = 0.0d0
+      do i = 1, n
+         sub(i) = -1.0d0 + 0.1d0*i
+         diag(i) = 4.0d0 + 0.5d0*i
+         sup(i) = -1.5d0 + 0.05d0*i*i
+         rhs(i) = 1.0d0 + i*(7.0d0 - i)
+         inertia(i) = 0.2d0*i
+      end do
+      call tridia(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
+      write(*,'(a)') "omega"
+      write(*,'(3(1pe24.15))') solution(1:n)
+      write(*,'(a)') "dj"
+      write(*,'(3(1pe24.15))') dj(1:n)
+      write(*,'(a,1pe24.15,i3)') "sumdj ierr", sumdj, ierr
+      diag(2) = sub(2)*sup(1)/diag(1)
+      call tridia(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
+      write(*,'(a,i3)') "singular: ierr", ierr
+end subroutine angular_momentum_solve_check
+
+end program test_rotation

@@ -219,7 +219,7 @@ eos/opal/opal95_eos.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_co
 eos/opal/opal_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod opal95_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/opal_eos_tables.o: io_units.mod math_lib.mod
 eos/scv/scv_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod opal_eos.mod opal_eos_tables.mod star_info_lib.mod
+eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod numerics_lib.mod opal_eos.mod opal_eos_tables.mod star_info_lib.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
@@ -312,7 +312,7 @@ rotation/shape/shell_inertia_integral.o: math_lib.mod physical_constants.mod
 rotation/shape/zone_moments_of_inertia.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/solid_body_omega.o: rotation_scratch_lib.mod star_info_lib.mod
 rotation/species_table.o: physical_constants.mod star_info_lib.mod
-rotation/test/test_braking.o: magnetic_braking.mod physical_constants.mod star_info_lib.mod
+rotation/test/test_rotation.o: magnetic_braking.mod numerics_lib.mod physical_constants.mod star_info_lib.mod
 rotation/viscos.o: math_lib.mod physical_constants.mod star_info_lib.mod
 setup/locate_shell_boundaries.o: controls_buffer.mod star_info_lib.mod
 setup/map_user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
