@@ -181,18 +181,11 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos01_nt
 
-! density_index_edge(t6_idx): highest valid density-grid index for
-! temperature-grid row t6_idx (a local copy, DATA-initialized here;
-! NOTE its values differ from opal_eos_tables's
-! v%density_index_edge_at_t in the 115/113 runs -- preserved
-! verbatim).
-      integer :: density_index_edge(nt)
-      real(dp) :: rad_const_over_c
 ! NOTE: no D-suffix in the original (rhoofp01.f) -- preserved
 ! verbatim: parsed as a single-precision constant and then widened to
 ! double precision, which is NOT bit-identical to the correctly-
 ! rounded double value.
-      data rad_const_over_c/1.8914785e-3/
+      real(dp), parameter :: rad_const_over_c = 1.8914785e-3
 
 ! --- locals ---
       integer :: t6_scan_idx
@@ -206,11 +199,21 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: refine_count
 
-      data (density_index_edge(t6_scan_idx), t6_scan_idx=1,nt) &
-           /16*169, 168, 167, 166, 165, 2*164, 163, 2*162, 161, 160, 2*159, &
-           4*143, 5*137, 6*134, 2*125, 5*123, 2*122, 6*121, 4*119, 8*116, &
-           6*115, 8*113, 7*111, 6*110, 34*109, 107, 104, 40*100, 10*99, &
-           98, 97, 96, 95, 94, 93, 92/
+! The highest valid density column at each T6 row. These are the
+! values of opal01_density_index_edge except at rows 78-80 (113 here,
+! 115 there), as in OPAL's rhoofp01.
+      integer, parameter :: density_index_edge(nt) = [ &
+           (169,t6_scan_idx=1,16), 168, 167, 166, 165, &
+           (164,t6_scan_idx=1,2), 163, (162,t6_scan_idx=1,2), 161, 160, &
+           (159,t6_scan_idx=1,2), (143,t6_scan_idx=1,4), &
+           (137,t6_scan_idx=1,5), (134,t6_scan_idx=1,6), &
+           (125,t6_scan_idx=1,2), (123,t6_scan_idx=1,5), &
+           (122,t6_scan_idx=1,2), (121,t6_scan_idx=1,6), &
+           (119,t6_scan_idx=1,4), (116,t6_scan_idx=1,8), &
+           (115,t6_scan_idx=1,6), (113,t6_scan_idx=1,8), &
+           (111,t6_scan_idx=1,7), (110,t6_scan_idx=1,6), &
+           (109,t6_scan_idx=1,34), 107, 104, (100,t6_scan_idx=1,40), &
+           (99,t6_scan_idx=1,10), 98, 97, 96, 95, 94, 93, 92]
       integer, intent(out) :: ierr
       logical :: in_table
 
@@ -379,15 +382,13 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       integer, parameter :: mx = n_eos_mx, nr = n_eos01_nr, nt = n_eos01_nt
 
       real(dp) :: species_number_fraction(7)
-      real(dp) :: molar_gas_constant_mbcc
-      character(len=15) :: routine_id
 
 ! NOTE: this literal has no D0 suffix in the original (esac01.f), unlike
 ! esac's analogous 83.1446304d0 -- preserved verbatim: it is parsed
 ! as a single-precision constant and then widened to double precision,
 ! which is NOT bit-identical to the correctly-rounded double value.
-      data molar_gas_constant_mbcc/83.14511/
-      data routine_id/"OPALEOS/ESAC01:"/
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.14511
+      character(len=15), parameter :: routine_id = "OPALEOS/ESAC01:"
 ! --- locals ---
       integer :: x_loop_index_01
       real(dp) :: t6_value, density_value   ! working copies (slt/slr)
@@ -793,7 +794,7 @@ end subroutine t6rinteos01
 ! molar_specific_heat calculation isn't accurate enough to give
 ! accurate gammas directly via the eq. 16.16 Landau & Lifshitz route
 ! (marked "DIRECT" below) when radiation dominates.
-subroutine radsub01(v, t6_temperature, density, total_moles, &
+pure subroutine radsub01(v, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
 
@@ -803,12 +804,12 @@ subroutine radsub01(v, t6_temperature, density, total_moles, &
       real(dp), intent(in) :: total_moles
       real(dp), intent(in) :: mean_molecular_weight
 
-      real(dp) :: rad_const_over_c, molar_gas_constant_mbcc
 ! NOTE: neither literal has a D-suffix in the original (radsub01.f) --
 ! preserved verbatim: both are parsed as single-precision constants
 ! and then widened to double precision, which is NOT bit-identical to
 ! the correctly-rounded double values.
-      data rad_const_over_c/1.8914785e-3/, molar_gas_constant_mbcc/83.14510/
+      real(dp), parameter :: rad_const_over_c = 1.8914785e-3
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.14510
 ! --- locals ---
       real(dp) :: rat
       real(dp) :: moles_per_ev, radiation_pressure, &

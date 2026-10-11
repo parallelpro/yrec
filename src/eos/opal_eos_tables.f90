@@ -525,38 +525,27 @@ real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
 
 ! atomic_number(i): atomic number (= electrons per fully-ionized atom)
 ! of species i, for i=1,6 = Ne, O, N, C, He, H.
-      real(dp) :: atomic_number(6)
+      real(dp), parameter :: atomic_number(6) = [10.0d0, 8.0d0, &
+           7.0d0, 6.0d0, 2.0d0, 1.0d0]
 ! ionization_energy(i): total ground-state ionization energy (eV) of
 ! species i, same ordering as atomic_number.
-      real(dp) :: ionization_energy(6)
+      real(dp), parameter :: ionization_energy(6) = [-3394.873554d0, -1974.86545d0, -1433.92718d0, -993.326315d0, &
+           -76.1959403d0, -15.29409d0]
 ! atomic_weight(i): atomic weight (amu), i=1 electron, 2 Ne, 3 O, 4 N,
 ! 5 C, 6 He, 7 H.
-      real(dp) :: atomic_weight(7)
+      real(dp), parameter :: atomic_weight(7) = [0.00054858d0, 20.179d0, 15.9994d0, &
+           14.0067d0, 12.011d0, 4.0026d0, 1.0079d0]
 ! solar-relative mole-fraction-per-unit-Z of C, N, O, Ne in the metal
 ! mix (fixed composition assumed for all Z).
-      real(dp) :: carbon_mix_fraction, nitrogen_mix_fraction, &
-           oxygen_mix_fraction, neon_mix_fraction
+      real(dp), parameter :: carbon_mix_fraction = 0.247137766d0, &
+           nitrogen_mix_fraction = 0.0620782d0, &
+           oxygen_mix_fraction = 0.52837118d0, &
+           neon_mix_fraction = 0.1624188d0
       real(dp) :: carbon_moles, nitrogen_moles, oxygen_moles, &
            neon_moles
       real(dp) :: hydrogen_moles, helium_moles, total_moles_raw
       integer :: species_idx
 
-      data (ionization_energy(species_idx), species_idx=1,6) &
-           /-3394.873554d0, -1974.86545d0, -1433.92718d0, -993.326315d0, &
-           -76.1959403d0, -15.29409d0/
-      data (atomic_number(species_idx), species_idx=1,6) &
-           /10.0d0, 8.0d0, 7.0d0, 6.0d0, 2.0d0, 1.0d0/
-      carbon_mix_fraction = 0.247137766d0
-      nitrogen_mix_fraction = 0.0620782d0
-      oxygen_mix_fraction = 0.52837118d0
-      neon_mix_fraction = 0.1624188d0
-      atomic_weight(7) = 1.0079d0
-      atomic_weight(6) = 4.0026d0
-      atomic_weight(5) = 12.011d0
-      atomic_weight(4) = 14.0067d0
-      atomic_weight(3) = 15.9994d0
-      atomic_weight(2) = 20.179d0
-      atomic_weight(1) = 0.00054858d0
       metal_mole_fraction = metal_fraction/(carbon_mix_fraction* &
            atomic_weight(5) + nitrogen_mix_fraction*atomic_weight(4) + &
            oxygen_mix_fraction*atomic_weight(3) + neon_mix_fraction* &

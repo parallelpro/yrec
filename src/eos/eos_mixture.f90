@@ -51,14 +51,13 @@ contains
 ! weighted H/metal/He excesses that compute_blended_eos also needs for its Saha
 ! number fractions (dfx4 is defined only in that branch).  Shared by
 ! compute_mean_weights and compute_blended_eos.
-subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
+pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
      use_envelope)
       real(dp), intent(in) :: x, z
       real(dp), intent(out) :: mu_ion_inv, dfx1, dfx12, dfx4
       logical, intent(out) :: use_envelope
 ! inverse_atomic_weights: 1/A for H, He, C(12), and a spare slot
-      real(dp) :: inverse_atomic_weights(4)
-      data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
+      real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0]
 
 ! Set up fractional abundances
       dfx1 = (x - eos_mix%envelope_hydrogen_fraction)
@@ -83,7 +82,7 @@ end subroutine ion_mean_weight_excess
 ! and MHD paths call it). 1/mu_ion comes from ion_mean_weight_excess;
 ! 1/mu_e is backed out of the ideal-gas law with the given beta (the
 ! gas-pressure fraction).
-subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
+pure subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
      metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)
 

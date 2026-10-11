@@ -806,10 +806,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 ! tabulated values combined with the weights inter3 returns.
       real(dp) :: interp_x(3), interp_f(3), t_interp_weight(3), &
            t_interp_dweight(3), p_interp_weight(3), p_interp_dweight(3)
-      real(dp) :: hydrogen_atom_mass, helium_atom_mass, &
-           boltzmann_constant
-      data hydrogen_atom_mass, helium_atom_mass, boltzmann_constant &
-           /1.67357d-24, 6.646442d-24, 1.380658d-16/
+      real(dp), parameter :: hydrogen_atom_mass = 1.67357d-24
+      real(dp), parameter :: helium_atom_mass = 6.646442d-24
+      real(dp), parameter :: boltzmann_constant = 1.380658d-16
 ! --- locals ---
       integer :: t_idx, p_idx, k_idx, ii, jj
 ! log_t_work/log_p_work are reused as scratch across the file: log10

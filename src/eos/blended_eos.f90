@@ -314,16 +314,16 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
 ! --- locals ---
-      integer :: num_species, species_idx
-      real(dp) :: inverse_atomic_weights(4), atomic_weights_full(n_mix_species)
-      real(dp) :: saha_ramp_width, saha_ramp_scale
-      data num_species/12/
-      data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
-      data saha_ramp_width, saha_ramp_scale/0.500d0, 2.000d0/
+      integer :: species_idx
+      integer, parameter :: num_species = 12
+      real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, &
+           0.08322d0, 0.4995d0]
+      real(dp), parameter :: saha_ramp_width = 0.500d0, saha_ramp_scale = 2.000d0
 ! atomic weights in the ix_* species order (Na, Al, Mg, Fe, Si, C, H,
 ! O, N, Ar, Ne, He)
-      data atomic_weights_full/23.0d0, 26.99d0, 24.32d0, 55.86d0, 28.1d0, &
-           12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0/
+      real(dp), parameter :: atomic_weights_full(n_mix_species) = [23.0d0, &
+           26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
+           14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
       logical :: need_saha_solution, skip_relativistic_eos
       real(dp) :: saha_mass_fractions(n_mix_species)

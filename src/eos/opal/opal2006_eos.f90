@@ -292,12 +292,11 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos06_nt
 
-      real(dp) :: rad_const_over_c
 ! NOTE: no D-suffix in the original (rhoofp06.f) -- preserved
 ! verbatim: parsed as a single-precision constant and then widened to
 ! double precision, which is NOT bit-identical to the correctly-
 ! rounded double value.
-      data rad_const_over_c/1.8914785e-3/
+      real(dp), parameter :: rad_const_over_c = 1.8914785e-3
 ! --- locals ---
       real(dp) :: rat, radiation_pressure, pressure_no_rad
       real(dp) :: hydrogen_fraction_dbg, t6_dbg, density_dbg
@@ -482,15 +481,13 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       integer, parameter :: mx = n_eos_mx, nr = n_eos06_nr, nt = n_eos06_nt
 
       real(dp) :: species_number_fraction(7)
-      real(dp) :: molar_gas_constant_mbcc
-      character(len=15) :: routine_id
 
 ! NOTE: this literal has no D0 suffix in the original (esac06.f) --
 ! preserved verbatim: it is parsed as a single-precision constant and
 ! then widened to double precision, which is NOT bit-identical to the
 ! correctly-rounded double value.
-      data molar_gas_constant_mbcc/83.14511/
-      data routine_id/"OPALEOS/ESAC06:"/
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.14511
+      character(len=15), parameter :: routine_id = "OPALEOS/ESAC06:"
 ! --- locals ---
       integer :: x_loop_index_06
       real(dp) :: t6_value, density_value   ! working copies (slt/slr)
@@ -900,7 +897,7 @@ end subroutine t6rinteos06
 ! treatment here -- there is no gamma3_minus1 slot in the OPAL 2006
 ! table (9 variables, not 10; see esac06's header), and the
 ! corresponding line is commented out in the original.
-subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
+pure subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
 
@@ -911,8 +908,8 @@ subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
       real(dp), intent(in) :: total_moles
       real(dp), intent(in) :: mean_molecular_weight
 
-      real(dp) :: rad_const_over_c, molar_gas_constant_mbcc
-      data rad_const_over_c/1.8914785d-3/, molar_gas_constant_mbcc/83.14510d0/
+      real(dp), parameter :: rad_const_over_c = 1.8914785d-3
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.14510d0
 ! --- locals ---
       real(dp) :: rat, moles_per_ev
       real(dp) :: radiation_pressure, radiation_energy, radiation_entropy

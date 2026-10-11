@@ -189,13 +189,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos95_nt
 
-! density_index_edge(t6_idx): highest valid density-grid index for
-! temperature-grid row t6_idx (a local copy, DATA-initialized here;
-! same values as opal_eos_tables's v%density_index_edge_at_t but
-! separate storage).
-      integer :: density_index_edge(nt)
-      real(dp) :: rad_const_over_c
-      data rad_const_over_c/1.8914785d-3/
+      real(dp), parameter :: rad_const_over_c = 1.8914785d-3
 
 ! --- locals ---
       integer :: t6_scan_idx
@@ -209,10 +203,6 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: refine_count
 
-      data (density_index_edge(t6_scan_idx), t6_scan_idx=1,nt) &
-           /7*77, 2*76, 2*74, 2*72, 2*70, 68, 67, 66, 65, 64, 63, 61, &
-           60, 59, 58, 57, 55, 54, 53, 52, 51, 2*49, 48, 2*47, 46, &
-           2*45, 15*44, 2*37/
       integer, intent(out) :: ierr
       logical :: in_table
 
@@ -267,8 +257,8 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       t6_bisect_idx = lo_idx
 
       pressure_max = v%eos_table(x_bisect_idx,1,t6_bisect_idx, &
-           density_index_edge(t6_bisect_idx))*t6_temperature* &
-           v%density_grid(density_index_edge(t6_bisect_idx)) + &
+           opal95_density_index_edge(t6_bisect_idx))*t6_temperature* &
+           v%density_grid(opal95_density_index_edge(t6_bisect_idx)) + &
            rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
       pressure_min = v%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
            v%density_grid(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
@@ -279,7 +269,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
          return
       end if
 
-      density_trial1 = v%density_grid(density_index_edge(t6_bisect_idx))* &
+      density_trial1 = v%density_grid(opal95_density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, ierr, in_table)
@@ -302,8 +292,8 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
          pressure_trial1 = v%eos_output(i_opal_p)
       else
          density_trial2 = 5.0d0*density_trial1
-         if (density_trial2 > v%density_grid(density_index_edge(t6_bisect_idx))) &
-              density_trial2 = v%density_grid(density_index_edge(t6_bisect_idx))
+         if (density_trial2 > v%density_grid(opal95_density_index_edge(t6_bisect_idx))) &
+              density_trial2 = v%density_grid(opal95_density_index_edge(t6_bisect_idx))
          call esac(v, hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, ierr, in_table)
          if (ierr /= 0 .or. .not. in_table) then
@@ -388,8 +378,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       integer, parameter :: mx = n_eos_mx, nr = n_eos95_nr, nt = n_eos95_nt
 
       real(dp) :: species_number_fraction(7)
-      real(dp) :: molar_gas_constant_mbcc
-      data molar_gas_constant_mbcc/83.1446304d0/
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.1446304d0
 ! --- locals ---
       integer :: x_loop_index
       real(dp) :: t6_value, density_value   ! working copies (SLT/SLR)
@@ -847,7 +836,7 @@ end subroutine t6rinterp
 ! bars = Mb. sigma (Stefan-Boltzmann) = 5.67051e-5 erg/(s cm**2 K**4),
 ! c = 2.99792458e10 cm/sec; rad_const_over_c = sigma/c, converted to
 ! units of 1e6 K (T6) via *1e24.
-subroutine radsub(v, t6_temperature, density, total_moles, &
+pure subroutine radsub(v, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
 
@@ -857,10 +846,10 @@ subroutine radsub(v, t6_temperature, density, total_moles, &
       real(dp), intent(in) :: total_moles
       real(dp), intent(in) :: mean_molecular_weight
 
-      real(dp) :: rad_const_over_c, unit_factor, unit_factor_legacy, &
-           molar_gas_constant_mbcc
-      data unit_factor/0.9648575d0/, unit_factor_legacy/0.9652d0/, &
-           rad_const_over_c/1.8914785d-3/, molar_gas_constant_mbcc/83.1446304d0/
+      real(dp), parameter :: unit_factor = 0.9648575d0
+      real(dp), parameter :: unit_factor_legacy = 0.9652d0
+      real(dp), parameter :: rad_const_over_c = 1.8914785d-3
+      real(dp), parameter :: molar_gas_constant_mbcc = 83.1446304d0
 ! --- locals ---
       real(dp) :: moles_per_ev, radiation_pressure, &
            radiation_energy, radiation_entropy
@@ -938,17 +927,22 @@ real(dp) function gmass(hydrogen_fraction, metal_fraction, &
 
 ! atomic_number(i): atomic number (= electrons per fully-ionized atom)
 ! of species i, for i=1,6 = Ne, O, N, C, He, H.
-      real(dp) :: atomic_number(6)
+      real(dp), parameter :: atomic_number(6) = [10.0d0, 8.0d0, &
+           7.0d0, 6.0d0, 2.0d0, 1.0d0]
 ! ionization_energy(i): total ground-state ionization energy (eV) of
 ! species i, same ordering as atomic_number.
-      real(dp) :: ionization_energy(6)
+      real(dp), parameter :: ionization_energy(6) = [-3388.637d0, &
+           -1970.918d0, -1431.717d0, -993.2303d0, -76.2315d0, -15.29409d0]
 ! atomic_weight(i): atomic weight (amu), i=1 electron, 2 Ne, 3 O, 4 N,
 ! 5 C, 6 He, 7 H.
-      real(dp) :: atomic_weight(7)
+      real(dp), parameter :: atomic_weight(7) = [0.00054858d0, 20.179d0, 15.9994d0, &
+           14.0067d0, 12.011d0, 4.0026d0, 1.0079d0]
 ! solar-relative mole-fraction-per-unit-Z of C, N, O, Ne in the metal
 ! mix (fixed composition assumed for all Z).
-      real(dp) :: carbon_mix_fraction, nitrogen_mix_fraction, &
-           oxygen_mix_fraction, neon_mix_fraction
+      real(dp), parameter :: carbon_mix_fraction = 0.247137766d0, &
+           nitrogen_mix_fraction = 0.0620782d0, &
+           oxygen_mix_fraction = 0.52837118d0, &
+           neon_mix_fraction = 0.1624188d0
       real(dp) :: carbon_moles, nitrogen_moles, oxygen_moles, &
            neon_moles
       real(dp) :: hydrogen_moles, helium_moles, total_moles_raw
@@ -958,22 +952,6 @@ real(dp) function gmass(hydrogen_fraction, metal_fraction, &
       real(dp) :: electron_mole_excess
       integer :: species_idx
 
-      data (ionization_energy(species_idx), species_idx=1,6) &
-           /-3388.637d0, -1970.918d0, -1431.717d0, -993.2303d0, &
-           -76.2315d0, -15.29409d0/
-      data (atomic_number(species_idx), species_idx=1,6) &
-           /10.0d0, 8.0d0, 7.0d0, 6.0d0, 2.0d0, 1.0d0/
-      carbon_mix_fraction = 0.247137766d0
-      nitrogen_mix_fraction = 0.0620782d0
-      oxygen_mix_fraction = 0.52837118d0
-      neon_mix_fraction = 0.1624188d0
-      atomic_weight(7) = 1.0079d0
-      atomic_weight(6) = 4.0026d0
-      atomic_weight(5) = 12.011d0
-      atomic_weight(4) = 14.0067d0
-      atomic_weight(3) = 15.9994d0
-      atomic_weight(2) = 20.179d0
-      atomic_weight(1) = 0.00054858d0
       metal_mole_fraction = metal_fraction/(carbon_mix_fraction* &
            atomic_weight(5) + nitrogen_mix_fraction*atomic_weight(4) + &
            oxygen_mix_fraction*atomic_weight(3) + neon_mix_fraction* &

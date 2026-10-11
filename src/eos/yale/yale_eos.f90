@@ -86,15 +86,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
 ! (He I / He II) helium ionization treatment, handled separately from
 ! the 11-species loop because helium's 2nd ionization couples directly
 ! into the electron balance.
-      real(dp) :: ionization_temp(11), helium_ionization_temp_1, &
-           helium_ionization_temp_2
-      real(dp) :: saha_weight_term(13)
       real(dp) :: ionization_temp_over_t(11), saha_ratio(11)
-      integer :: nz
-      integer :: max_saha_iterations
-      real(dp) :: saha_exponent_tol
-      real(dp) :: mean_electrons_per_ion
-      real(dp) :: saha_convergence_tol
       real(dp) :: helium_mass_fraction, max_electrons_per_ion, &
            temperature_inverse
       real(dp) :: stemp
@@ -116,7 +108,6 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       real(dp) :: c12l, delx1l, fact1
       real(dp) :: c13l, deltel, fact2
       real(dp) :: deltx2
-      real(dp) :: helium_ion_fraction_1, helium_ion_fraction_2
       real(dp) :: r3t, r3p
       real(dp) :: helium_neutral_fraction, sk0qt, temp, r2t, r2p
       real(dp) :: sk1qt, r1t, r1p
@@ -137,20 +128,24 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       real(dp) :: btemp
       real(dp) :: qqutt, qqutp
 
-! NOTE: no D-suffix on the DATA literals below, as in the original
-! eqsaha.f -- preserved verbatim: parsed as single-precision constants
-! and widened to double precision.
-      data ionization_temp, helium_ionization_temp_1, &
-           helium_ionization_temp_2/59630.,69450.,88710.,91330.,94570., &
-           130630.,157800.,158000.,168630.,183080.,250200.,285270.,631370./
-      data saha_weight_term/-.01,-.47,.60,.49,.08,.11,.0,-.04,.64,.99, &
-           1.03,.6,.0/
-      data nz/11/
-      data max_saha_iterations/20/
-      data saha_exponent_tol/4.0D1/
-      data mean_electrons_per_ion, helium_ion_fraction_1, &
-           helium_ion_fraction_2/0.1D0,0.0D0,0.0D0/
-      data saha_convergence_tol/1.0D-09/
+! Single-precision literals, as in eqsaha.f: widened to double, they
+! differ from the correctly rounded doubles in the last bits. The
+! three saved values are the Saha solver's starting guesses, updated
+! by each call.
+      real(dp), parameter :: ionization_temp(11) = [real(dp) :: 59630., &
+           69450., 88710., 91330., 94570., 130630., 157800., 158000., 168630., &
+           183080., 250200.]
+      real(dp), parameter :: helium_ionization_temp_1 = 285270.
+      real(dp), parameter :: helium_ionization_temp_2 = 631370.
+      real(dp), parameter :: saha_weight_term(13) = [real(dp) :: -.01, -.47, &
+           .60, .49, .08, .11, .0, -.04, .64, .99, 1.03, .6, .0]
+      integer, parameter :: nz = 11
+      integer, parameter :: max_saha_iterations = 20
+      real(dp), parameter :: saha_exponent_tol = 4.0D1
+      real(dp), save :: mean_electrons_per_ion = 0.1D0
+      real(dp), save :: helium_ion_fraction_1 = 0.0D0
+      real(dp), save :: helium_ion_fraction_2 = 0.0D0
+      real(dp), parameter :: saha_convergence_tol = 1.0D-09
       helium_mass_fraction = saha_mass_fractions(ix_he)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction
       temperature_inverse = 1.0d0/temperature
