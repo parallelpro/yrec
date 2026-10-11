@@ -7,7 +7,7 @@
 ! atmosphere and envelope down to the fit point, driving the
 ! atmosphere_derivs/envelope_derivs integrands (which call the eos/
 ! kap facades) through numerics' bsstep in core/envelope_integration_kernel.f90,
-! consuming the pure atm surface lookups (surfp/kcsurfp/alsurfp --
+! consuming the pure atm surface lookups (surfp/kcsurfp/interpolate_allard_surface --
 ! still atm-domain physics) and writing model state (star%pphot,
 ! the pt_scr pulse scratch, the envelope/atmosphere structure
 ! arrays). In MESA terms this is star-solver code (create_atm/env

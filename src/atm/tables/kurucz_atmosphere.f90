@@ -1,43 +1,57 @@
 !----------------------------------------------------------------------
-! surfp
+! kurucz_atmosphere
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original surfp.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
+! The surface boundary condition from the Kurucz (1993) and the
+! Castelli & Kurucz (2003) tables of log P at (log Teff, log g):
+!     read_surface_pressure_table   read a table (at atm_init)
+!     interpolate_surface_pressure  log P at (log Teff, log g): cubic
+!                                   splines in log Teff and in log g
+!                                   (3-point or linear near the table's
+!                                   high-gravity edge)
+! The tables live in atm_tables (atm_table%kurucz_surface_p,
+! atm_table%castelli_surface_p).
+module kurucz_atmosphere
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use atm_tables
+      implicit none
+      private
+      public :: read_surface_pressure_table, interpolate_surface_pressure
+
+contains
+
+!----------------------------------------------------------------------
+! interpolate_surface_pressure (formerly surface_p_interp)
+!----------------------------------------------------------------------
+! surfp
 ! Interpolates a tabulated surface-pressure table (Kurucz ATMPL or
 ! Kurucz/Castelli ATMPLC) to find log(P) at the given log(Teff),
 ! log(g): a 4-point Lagrangian interpolation in temperature, and
 ! cubic-spline (or 3-point/linear fallback near the table's
 ! high-gravity edge) interpolation in gravity.
 !
-! 2026 wave 3 (R5): surface_p_interp is the interpolation on a
+! 2026 wave 3 (R5): interpolate_surface_pressure is the interpolation on a
 ! surface_p_table; surfp (Kurucz, atm_table%kurucz_surface_p) and
 ! kcsurfp (Kurucz/Castelli, atm_table%castelli_surface_p; formerly
 ! its own tables/kcsurfp.f90) are the two entries core/envelope_integration_kernel
 ! calls. `diff -w surfp.f90 kcsurfp.f90` differed only in the table
 ! names, the row count (atm_table_nt vs atm_table_ntc, now
 ! tbl%num_teff) and line continuation.
-subroutine surface_p_interp(tbl, log10_teff, log10_gravity, print_flag, ierr)
+subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
-      use atm_tables
       use io_units
       use numerics_lib
-      implicit none
       integer :: jerr_gate
 ! tbl%num_teff AND atm_table_ng FOR TABULATED SURFACE PRESSURES.
 
       type(surface_p_table), intent(inout) :: tbl
-      double precision, intent(in) :: log10_teff, log10_gravity
+      real(dp), intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag
 ! --- locals ---
-      double precision :: teff_nodes(4), gravity_nodes(4), &
+      real(dp) :: teff_nodes(4), gravity_nodes(4), &
            pressure_at_nodes(4), unused_deriv(3), gravity_weights(3), &
            gravity_nodes_3pt(3), pressure_table_vals(4), &
            teff_spline_deriv(4), gravity_spline_deriv(4)
-      double precision :: fx, interpolated_value
+      real(dp) :: fx, interpolated_value
       integer :: row, row_base, node, k, kk, kkk
 
 ! INTERPOLATES IN TEMPERATURE WITH A 4-POINT CUBIC SPLINE (kspline/
@@ -50,8 +64,8 @@ subroutine surface_p_interp(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
 ! Lower table edge, and the log Teff rows above which only 3 or 2 log g
 ! columns are tabulated (so 3-point Lagrangian or linear interpolation).
-      double precision, parameter :: table_logteff_min = 3.5d0, table_logg_min = -0.5d0
-      double precision, parameter :: logteff_three_point = 4.5d0, logteff_two_point = 4.55d0
+      real(dp), parameter :: table_logteff_min = 3.5d0, table_logg_min = -0.5d0
+      real(dp), parameter :: logteff_three_point = 4.5d0, logteff_two_point = 4.55d0
 
       ierr = 0
 
@@ -186,27 +200,115 @@ subroutine surface_p_interp(tbl, log10_teff, log10_gravity, print_flag, ierr)
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
       return
-end subroutine surface_p_interp
+end subroutine interpolate_surface_pressure
 
-! surfp: log P from the Kurucz (1993) table, atm_choice 3.
-subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
-      use atm_tables
-      implicit none
-      double precision, intent(in) :: log10_teff, log10_gravity
-      logical, intent(in) :: print_flag
-      integer, intent(out) :: ierr
-      call surface_p_interp(atm_table%kurucz_surface_p, log10_teff, &
-           log10_gravity, print_flag, ierr)
-end subroutine surfp
 
-! kcsurfp: JNT 06/2014, same interpolation on the newer Kurucz/
-! Castelli table, atm_choice 5.
-subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
-      use atm_tables
-      implicit none
-      double precision, intent(in) :: log10_teff, log10_gravity
-      logical, intent(in) :: print_flag
+!----------------------------------------------------------------------
+! read_surface_pressure_table
+!----------------------------------------------------------------------
+! Reads a surface-pressure table into tbl: the metal fraction of the
+! header (read past), num_teff log Teff rows (atm_table_nt for the
+! Kurucz table, atm_table_ntc for Castelli/Kurucz), the atm_table_ng
+! log g columns and log P; then finds each row's valid log g range
+! (G Somers 5/15: a row may end in -999 entries at high gravity).
+subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
+      character(len=*), intent(in) :: table_path
+      type(surface_p_table), intent(inout) :: tbl
+      integer, intent(in) :: num_teff
       integer, intent(out) :: ierr
-      call surface_p_interp(atm_table%castelli_surface_p, log10_teff, &
-           log10_gravity, print_flag, ierr)
-end subroutine kcsurfp
+      integer :: table_unit, teff_idx, logg_idx
+      logical :: found_valid_pressure
+      double precision :: kurucz_table_z
+
+      ierr = 0
+      call allocate_surface_p(tbl, num_teff)
+! OPEN SURFACE PRESSURE TABLE
+      open(newunit=table_unit, file=table_path, status='OLD', iostat=ierr)
+      if (ierr /= 0) then
+         write(*,*) 'atm_init: cannot open the atmosphere table ', trim(table_path)
+         ierr = 1
+         return
+      end if
+! GET ABUNDANCE:
+      read(table_unit,200) kurucz_table_z
+  200   format(1x,10x,1pe16.8,/)
+! GET VALUES OF LOG Teff:
+      if (num_teff == atm_table_nt) then
+         read(table_unit,201) (tbl%teff(teff_idx),teff_idx=1,num_teff)
+      else
+         read(table_unit,206) (tbl%teff(teff_idx),teff_idx=1,num_teff)
+      end if
+  201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
+  206   format(1p4e16.8,18(/1p4e16.8),/)
+! GET VALUES OF LOG G:
+      read(table_unit,202) (tbl%logg(logg_idx),logg_idx=1,atm_table_ng)
+  202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
+! GET GRID OF LOG PRESSURE VALUES:
+      do teff_idx=1,num_teff
+        read(table_unit,203) (tbl%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
+  203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
+      end do
+      rewind table_unit
+      close(table_unit)
+!       G Somers 5/15; added a catch that allows the code to work
+!                      if the highest gravity P value for a specific
+!                      temperature is -999 (find_gravity_edges).
+      call find_gravity_edges(tbl)
+
+contains
+
+! allocate_surface_p: on first use give tbl num_teff rows x
+! atm_table_ng columns, zero-filled like the static arrays it
+! replaces (an all -999 row leaves gmax_index untouched, so it must
+! read 0 as before). Later calls (a re-read of the same table) reuse
+! the storage as the static arrays did.
+subroutine allocate_surface_p(tbl, num_teff)
+      type(surface_p_table), intent(inout) :: tbl
+      integer, intent(in) :: num_teff
+      if (allocated(tbl%teff)) return
+      allocate(tbl%teff(num_teff), tbl%logg(atm_table_ng), &
+           tbl%log10_pressure(num_teff,atm_table_ng), &
+           tbl%gmin_index(num_teff), tbl%gmax_index(num_teff))
+      tbl%teff = 0.0d0
+      tbl%logg = 0.0d0
+      tbl%log10_pressure = 0.0d0
+      tbl%gmin_index = 0
+      tbl%gmax_index = 0
+      tbl%num_teff = num_teff
+end subroutine allocate_surface_p
+
+! find_gravity_edges: G Somers 5/15; per log Teff row, the lowest and
+! highest log g columns with a valid (positive) tabulated pressure.
+! LCATCH (found_valid_pressure) is set to true once the first valid P
+! is read, and it can set the minimum P thereafter.
+subroutine find_gravity_edges(tbl)
+      type(surface_p_table), intent(inout) :: tbl
+         do teff_idx = 1,tbl%num_teff
+            found_valid_pressure = .false.
+            do logg_idx = atm_table_ng,1,-1
+               if(tbl%log10_pressure(teff_idx,logg_idx).le.0.0d0)then
+!                 check if the first non-999 value has been reached.
+!                 if so, set IMIN.
+                  if(found_valid_pressure)then
+                     tbl%gmin_index(teff_idx) = logg_idx + 1
+                     exit
+                  endif
+               else
+!                 if we have reached a non-negative pressure value,
+!                 turn off the catch so IMIN can be set. also record
+!                 the highest gravity with a pressure for later int.
+                  if(.not.found_valid_pressure) tbl%gmax_index(teff_idx) = logg_idx
+                  found_valid_pressure = .true.
+               endif
+            end do
+            if (logg_idx .lt. 1) tbl%gmin_index(teff_idx) = 1
+!           if all of the P values at a given T are -999, set IMIN
+!           to the number of gravity terms. in responce, the code
+!           should break when trying to find surface P.
+            if(.not.found_valid_pressure) tbl%gmin_index(teff_idx) = atm_table_ng
+         end do
+end subroutine find_gravity_edges
+
+end subroutine read_surface_pressure_table
+
+end module kurucz_atmosphere
