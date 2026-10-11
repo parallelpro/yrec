@@ -33,11 +33,12 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, json
-      use net_lib
+      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h2, json
+      use net_lib, only: burn_deuterium_region, min_deuterium_substep, &
+           num_rate_rows
       use physical_constants
-      use burn_step
-      use net_lib, only: burn_deuterium_region, min_deuterium_substep
+      use burn_step, only: surface_accretion_now, burn_regions, &
+           network_rates_of_model
       use math_lib
       implicit none
 
@@ -61,7 +62,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 ! the composition rate vectors of the midpoint model, for rotmix
       double precision :: rate_by_zone(num_rate_rows, json)
       double precision :: total_epsilon
-      integer :: burn_zone_begin, burn_zone_end
+      integer, allocatable :: regions(:,:)
       integer :: solid_zone_start, solid_zone_end
 
       ierr = 0
@@ -160,7 +161,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
          end do
       end do
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (star%xa_start(12,star%nz).gt.1.0D-14) then
+      if (star%xa_start(i_h2,star%nz).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
          if (first_call) then
             do i = 1,star%nz
@@ -177,33 +178,16 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
                     star%deuterium_burning_rate_start(i))
             end do
          endif
-! RADIATIVE ZONES.
-!
-         do k = 1,num_radiative_zones
-            do j = radiative_zone_bounds(k,1),radiative_zone_bounds(k,2)
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-               if (rot_scr%log_temperature_mid(j).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-               burn_zone_begin = j
-               burn_zone_end = j
-               call burn_deuterium_region(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                    star%xa,sub_timestep,star%xa_start, &
-                    rot_scr%deuterium_rate_mid_start,rot_scr%deuterium_rate_mid, &
-                    surface_accretion_now(step_fraction_ratio*star%accreted_mass), &
-                    min_deuterium_substep)
-            end do
-         end do
-!
-! CONVECTION ZONES.
-! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
-!
-         do k = 1,num_convective_zones
-            burn_zone_begin = convective_zone_bounds(k,1)
-            burn_zone_end = convective_zone_bounds(k,2)
-            call burn_deuterium_region(burn_zone_begin,burn_zone_end,star%nz,star%dm, &
-                 star%xa,sub_timestep,star%xa_start, &
-                 rot_scr%deuterium_rate_mid_start,rot_scr%deuterium_rate_mid, &
+! EACH BURN REGION OF THE MIDPOINT MODEL (burn_regions).
+         regions = burn_regions(rot_scr%log_temperature_mid, &
+              radiative_zone_bounds, num_radiative_zones, &
+              convective_zone_bounds, num_convective_zones)
+         do k = 1, size(regions,2)
+            call burn_deuterium_region(regions(1,k), regions(2,k), star%nz, &
+                 star%dm, star%xa, sub_timestep, star%xa_start, &
+                 rot_scr%deuterium_rate_mid_start, rot_scr%deuterium_rate_mid, &
                  surface_accretion_now(step_fraction_ratio*star%accreted_mass), &
-                    min_deuterium_substep)
+                 min_deuterium_substep)
          end do
       endif
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.

@@ -31,7 +31,8 @@ subroutine neutrino_flux_table
            i_nu_o15, i_nu_f17, n_nu_fluxes
       use io_units
       use physical_constants
-      use burn_step
+      use net_lib, only: nuclear_energy_result
+      use burn_step, only: compute_zone_energy
       use math_lib
       use observables, only: shell_masses_from_log_mass
       implicit none

@@ -7,9 +7,9 @@
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! 1) USE KEMCOM TO IMPLICITLY SOLVE FOR ABUNDANCES IN RADIATIVE REGIONS.
-! 2) SOLVE FOR BURNING IN EACH CONVECTION ZONE.
-! Then (if diffuse_helium_active) performs gravitational settling of
+! Burns each burn region (burn_step's burn_regions: shell by shell in
+! the radiative regions, each convection zone as a unit, homogenized) by
+! burn_network_region. Then (if diffuse_helium_active) performs gravitational settling of
 ! helium (Bahcall & Loeb method), and finally renormalizes the
 ! composition to guard against small negative/overflowing abundances.
 ! rate_by_zone holds the composition rate vectors of the model being
@@ -29,7 +29,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use run_log, only: solver_diagnostics
       use physical_constants
       use math_lib
-      use burn_step, only: burn_network_region
+      use burn_step, only: burn_network_region, burn_regions
       use net_lib, only: num_rate_rows
       implicit none
 
@@ -51,8 +51,8 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       double precision :: dlnp_dr_settling(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
-      integer :: zone_idx, region_idx, species_idx, burn_zone_start, &
-           burn_zone_end, outer_boundary_zone, num_settling_substeps, &
+      integer, allocatable :: regions(:,:)
+      integer :: zone_idx, region_idx, species_idx, outer_boundary_zone, num_settling_substeps, &
            substep_idx
       double precision :: mass_fraction_above, settling_timescale, &
            max_settling_dt, settling_dt
@@ -67,36 +67,12 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       else
          num_species = 11
       end if
-!  DDAGE IS THE TIMESTEP IN YEARS.
-!
-!  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
-!  TIMESTEP.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
-!  AND FOR EACH CONVECTION ZONE AS A UNIT.
-!
-! RADIATIVE ZONES.
-!
-      do region_idx = 1,num_radiative_zones
-         do zone_idx = radiative_zone_bounds(region_idx,1), &
-              radiative_zone_bounds(region_idx,2)
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
-            if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-            burn_zone_start = zone_idx
-            burn_zone_end = zone_idx
-            call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
-                 rate_by_zone,shell_mass,composition, &
-                 timestep, ierr)
-            if (ierr /= 0) return
-         end do
-      end do
-!
-! CONVECTION ZONES.
-! NOTE KEMCOM ALSO AUTOMATICALLY HOMOGENIZE CONVECTION ZONES.
-!
-      do region_idx = 1,num_convective_zones
-         burn_zone_start = convective_zone_bounds(region_idx,1)
-         burn_zone_end = convective_zone_bounds(region_idx,2)
-         call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
-              rate_by_zone,shell_mass,composition, &
+! THE NEW ABUNDANCES AT THE END OF THE (SUB-)STEP, timestep (s).
+      regions = burn_regions(log_temperature, radiative_zone_bounds, &
+           num_radiative_zones, convective_zone_bounds, num_convective_zones)
+      do region_idx = 1, size(regions,2)
+         call burn_network_region(log_temperature, regions(1,region_idx), &
+              regions(2,region_idx), rate_by_zone, shell_mass, composition, &
               timestep, ierr)
          if (ierr /= 0) return
       end do

@@ -21,12 +21,12 @@
 ! covers them alongside evolve_state.
 subroutine evolve_step(model_iteration, step_status, ierr)
 
-      use net_lib
       use star_info_lib, only: star, evolve_step_reset_pending, i_h1, i_h2, i_he4, &
            n_species_basic, n_species_extended
       use io_units
       use physical_constants
-      use burn_step
+      use burn_step, only: store_start_li_be_rates, store_end_li_be_rates, &
+           burn_li_be
       use composition_step, only: advance_composition, predictor_pass, corrector_pass
       use henyey_iteration, only: refresh_surface_bc, henyey_iterate
       use convection_geometry, only: pressure_scale_height

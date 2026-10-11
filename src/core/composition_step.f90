@@ -76,8 +76,9 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use net_lib
-      use burn_step
+      use net_lib, only: num_rate_rows
+      use burn_step, only: compute_burn_rates, burn_network, &
+           burn_equilibrium, burn_deuterium
       use math_lib
       implicit none
 

@@ -150,13 +150,13 @@ core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod physical_constants.
 core/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope_integration_kernel.o: atm_tables.mod atmosphere_structure.mod envelope_structure.mod eos_lib.mod integration_parameters.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod point_scratch_lib.mod run_log.mod t_tau_relations.mod
 core/envelope_refit.o: envelope_structure.mod star_info_lib.mod
-core/evolve_step.o: burn_step.mod composition_step.mod convection_geometry.mod henyey_iteration.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod stitched_model.mod stop_conditions.mod yrec_output.mod
+core/evolve_step.o: burn_step.mod composition_step.mod convection_geometry.mod henyey_iteration.mod io_units.mod math_lib.mod observables.mod physical_constants.mod star_info_lib.mod stitched_model.mod stop_conditions.mod yrec_output.mod
 core/henyey_coefficients.o: burn_step.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients.mod
 core/henyey_elimination.o: physical_constants.mod star_info_lib.mod
 core/henyey_iteration.o: io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod yale_eos_tables.mod
 core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
-core/neutrino_flux_table.o: burn_step.mod io_units.mod math_lib.mod observables.mod physical_constants.mod star_info_lib.mod
+core/neutrino_flux_table.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/observables.o: convection_geometry.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/read_starting_model.o: controls_buffer.mod envelope_integration.mod envelope_refit.mod envelope_structure.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod observables.mod opacity_tables.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod stitched_model.mod temperature_gradients.mod yale_eos_tables.mod
 core/rebuild_envelope.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod envelope_structure.mod math_lib.mod physical_constants.mod star_info_lib.mod yale_eos_tables.mod
@@ -277,13 +277,13 @@ net/net_lib.o: light_elements.mod network.mod nuclear_energy.mod reaction_rates.
 net/network.o: numerics_lib.mod reaction_rates.mod star_info_lib.mod
 net/nuclear_energy.o: math_lib.mod network.mod physical_constants.mod reaction_rates.mod star_info_lib.mod thermal_neutrinos.mod
 net/reaction_rates.o: math_lib.mod physical_constants.mod star_info_lib.mod
-net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod light_elements.mod net_lib.mod network.mod reaction_rates.mod scv_eos_tables.mod star_info_lib.mod
+net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod net_lib.mod network.mod reaction_rates.mod scv_eos_tables.mod star_info_lib.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/numerics_lib.o: integration_parameters.mod io_units.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod math_lib.mod mid_timestep_model.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod secular_transport.mod star_info_lib.mod
+rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod math_lib.mod mid_timestep_model.mod physical_constants.mod rotation_scratch_lib.mod secular_transport.mod star_info_lib.mod
 rotation/microdiff/bahcall_loeb_units.o: physical_constants.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling.o: io_units.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling_setup.o: bahcall_loeb_units.mod io_units.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod species_table.mod star_info_lib.mod
@@ -335,7 +335,7 @@ setup/setup_star_calibration.o: controls_buffer.mod io_units.mod math_lib.mod ph
 setup/setups.o: atm_lib.mod atm_tables.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod t_tau_relations.mod yale_eos_tables.mod
 state/controls_sync.o: controls_buffer.mod star_info_lib.mod
 util/compute_timestep.o: controls_buffer.mod physical_constants.mod star_info_lib.mod
-util/timestep_limit_hburn.o: burn_step.mod controls_buffer.mod net_lib.mod physical_constants.mod star_info_lib.mod
+util/timestep_limit_hburn.o: controls_buffer.mod net_lib.mod physical_constants.mod star_info_lib.mod
 util/timestep_limit_heburn.o: burn_step.mod controls_buffer.mod net_lib.mod star_info_lib.mod
 util/timestep_limit_hr.o: controls_buffer.mod math_lib.mod star_info_lib.mod
 util/timestep_limit_omega.o: controls_buffer.mod star_info_lib.mod

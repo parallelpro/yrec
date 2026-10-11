@@ -22,9 +22,8 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       use controls_buffer, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
            itime_dx_shell, itime_dx_total
       use physical_constants
-      use net_lib
-      use burn_step
-      use net_lib, only: compute_equilibrium_burn_rates
+      use net_lib, only: compute_equilibrium_burn_rates, &
+           compute_network_rates, num_rate_rows
       implicit none
 
       double precision, intent(in) :: log_density(json)

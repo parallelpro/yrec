@@ -35,7 +35,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       use rotation_scratch_lib
       use henyey_elimination
 
-      use net_lib
+      use net_lib, only: nuclear_energy_result
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, &
            i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_n15, &
            i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9, &
@@ -44,7 +44,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       use physical_constants
       use eos_lib
       use kap_lib
-      use burn_step
+      use burn_step, only: compute_zone_energy
       use math_lib
       implicit none
 

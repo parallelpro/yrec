@@ -20,14 +20,17 @@ program test_net
       use controls_buffer
       use io_units
       use star_info_lib, only: star, i_h2
-      use net_lib
+      use net_lib, only: azbar, compute_network_rates, &
+           compute_reaction_rates, deuterium_rate, nuclear_rates, &
+           num_rate_rows, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
+           r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, r_pp, &
+           rv_frac_be7_ecap, sneut
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
       use scv_eos_tables, only: use_scv_eos
-      use burn_step
+      use burn_step, only: configure_network
       use network, only: write_network_table
-      use light_elements, only: deuterium_rate
       implicit none
 
       character(len=256) :: yrec_input

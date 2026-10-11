@@ -15,11 +15,11 @@
 subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
-      use net_lib
+      use net_lib, only: nuclear_energy_result
       use star_info_lib, only: star, json, i_h2, i_metals
       use controls_buffer, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
-      use burn_step
+      use burn_step, only: compute_zone_energy
       implicit none
 
       double precision, intent(in) :: composition(15,json)
