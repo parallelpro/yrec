@@ -27,7 +27,7 @@ subroutine warn_inconsistent_controls
       use io_units
 
 ! overshoot extents are consumed only inside the active-flag gates
-! (mixing/overshoot_boundaries.f90: core cycle at "SKIP IF NO CORE
+! (convection/convection_zones.f90's extend_by_overshoot: core cycle at "SKIP IF NO CORE
 ! OVERSHOOT", envelope likewise)
       if (star%ctrl%overshoot_alpha_core > 0.0d0 .and. &
            .not. star%job%core_overshoot_active) &

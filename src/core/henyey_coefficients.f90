@@ -414,8 +414,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
          end if
          star%pulse_electron_mean_weight_inverse(im) = eos_res%electron_mean_weight_inverse
          star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-! star%alfmlt/phmlt/cmxmlt are only ever set to zero (mixing/
-! temperature_gradients.f90), so these output arrays are always zero;
+! These MLT pulse-output arrays are always zero (the alfmlt/phmlt/cmxmlt
+! scalars they copied were only ever zeroed; they went in 2026-10);
 ! pending an author decision -- see audit SUMMARY.md 1.1 #10.
          star%valfmlt(im) = 0.0d0
          star%vphmlt(im) = 0.0d0

@@ -395,7 +395,7 @@ subroutine read_input(ierr)
 ! kept local under their NAMELIST spelling here and copy-assigned
 ! after the namelist read below. cdh/zdh/xxdh/yydh/zzdh/dhnue (former
 ! common/debhu/'s remaining members) are unused in this file --
-! setup/setups.f90 computes cdh/dhnue at startup, mixing/compute_scale_height.f90
+! setup/setups.f90 computes cdh/dhnue at startup, convection's compute_scale_height
 ! computes zdh/xxdh/yydh/zzdh per-shell -- so they're dropped entirely
 ! rather than carried forward.
       double precision :: etadh0, etadh1

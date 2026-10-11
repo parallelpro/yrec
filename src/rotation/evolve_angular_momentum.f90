@@ -97,7 +97,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 
 ! .false. always: the Bulirsch-Stoer mixing-plus-burning path it would
 ! select is compiled out unless YREC_BULIRSCH_STOER_BURN is defined
-! (see mixing/burn_settle_mix.f90)
+! (see rotation/burn_settle_mix.f90)
       burs_extrapolation_active = .false.
 ! DETERMINE THE NUMBER OF DIFFERENT ELEMENTS AND ISOTOPES BEING TRACKED
 ! BY THE CODE (NSPEC).
@@ -376,7 +376,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 #ifdef YREC_BULIRSCH_STOER_BURN
          else
 ! COMPUTE BURNING (Bulirsch-Stoer path, compiled out by default; see
-! mixing/burn_settle_mix.f90).
+! rotation/burn_settle_mix.f90).
             call burn_li_be_midpoint(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
                  star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
                  envelope_boundary_zone_prev,star%nz)

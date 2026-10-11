@@ -2,7 +2,7 @@
 ! convection_geometry
 !----------------------------------------------------------------------
 ! Where the convection zones end, in one place (2026-10). The zone flags
-! (mixing/find_convection_zones) say which shells are convective; the
+! (convection_lib's find_convection_zones) say which shells are convective; the
 ! routines here turn that into positions:
 !   cz_base_fraction           where del_rad - del_ad changes sign between
 !                              the last convective zone and the one below

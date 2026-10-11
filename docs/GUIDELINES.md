@@ -182,7 +182,7 @@ which replaces them).
    domain uses only that module; it re-exports what the rest of the code
    may see, so reading it shows the domain's whole interface.
    `tools/check_boundaries.py` enforces this for the domains listed in
-   `FACADE_ONLY_DOMAINS` (net, kap, eos, atm and numerics so far).
+   `FACADE_ONLY_DOMAINS` (net, kap, eos, atm, numerics and convection so far).
 3. **Every other module has no suffix and is named as a noun for what it
    holds**: `network`, `nuclear_energy`, `light_elements`,
    `convection_geometry`, `composition_step`.
@@ -216,7 +216,7 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
-   `STAR_FREE_DIRS` (`net/`, `kap/`, `eos/`, `atm/` and `numerics/` so far); add a
+   `STAR_FREE_DIRS` (`net/`, `kap/`, `eos/`, `atm/`, `numerics/` and `convection/` so far); add a
    domain there once it is clean.
 2. **Nothing returns results through `star`.** A routine returns what
    it computes in its arguments or a result record; the caller decides
@@ -718,6 +718,14 @@ only from evolve_step. Each moved to its one consumer:
 docs/TARGET_ARCHITECTURE.md's stage list). The radius-from-(L, Teff)
 identity both used is `physical_constants`'s
 `log10_radius_from_l_teff`.
+
+**mixing/ split the same way (2026-10-11).** Its convection physics
+(mixing-length gradient, zones, overshoot, semiconvection,
+homogenization) has consumers in core and rotation and is what a user
+changes to try another convection theory, so it became the star-free
+domain `convection/` behind `convection_lib`. Its burn-settle-mix
+sub-stepping (`rotmix` and the compiled-out Bulirsch-Stoer path) was
+called only from rotation's sub-steps and moved there.
 
 Three files were, though, found and relocated by the same
 zero-domain-content/callers-elsewhere test used for `meval.f90`/

@@ -119,7 +119,7 @@ end subroutine compute_zone_energy
 
 !----------------------------------------------------------------------
 ! average_li_be_over_cz: shared by burn_li_be and the compiled-out
-! burn_li_be_midpoint (mixing/burn_li_be_midpoint.f90) (2026
+! burn_li_be_midpoint (rotation/burn_li_be_midpoint.f90) (2026
 ! readability R3). The Li6, Li7, Be9 abundances (x_start, x_end) and the
 ! log of the burning rates (log_rate_start, log_rate_end), mass-averaged
 ! over the surface convection zone:

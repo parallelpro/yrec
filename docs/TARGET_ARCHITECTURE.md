@@ -488,12 +488,11 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `liburn`, `lirate88` | `core/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
 | `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
 | `mix` | `core/composition_step.f90` (`advance_composition`) |
-| `convec` | `mixing/find_convection_zones.f90` |
-| `oversh` | `mixing/overshoot_boundaries.f90` |
-| `sconvec` | `mixing/semiconvection.f90` |
-| `mixcz` | `mixing/homogenize_convection_zones.f90` |
-| `kemcom` | `mixing/solve_composition.f90` |
-| `tpgrad` | `mixing/temperature_gradients.f90` |
+| `convec`, `oversh`, `hsubp`, `mixcz` | `convection/convection_zones.f90` (`find_convection_zones`, `extend_by_overshoot`, `compute_scale_height`, `homogenize_convection_zones`) |
+| `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
+| `kemcom` | `net/network.f90` (`burn_implicitly`) |
+| `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
+| `rotmix`, `bursmix`, `bsrotmix` | `rotation/rotmix.f90`, `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two compiled out) |
 | `hpoint` | `setup/rezone.f90` |
 | `findsh` | `setup/locate_shell_boundaries.f90` |
 | `setups` | `setup/setups.f90` |

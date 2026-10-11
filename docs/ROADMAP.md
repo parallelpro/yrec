@@ -1460,3 +1460,39 @@ Msun case, and the full battery) except three error messages.
 - **Open:** the Numerical Recipes routines (cspline, splint, polint,
   ludcmp/lubksb, bsstep) remain a licensing liability
   (MODERNIZATION_CHANGES). Replacing them changes results at round-off.
+
+### mixing/ split: convection/ and rotation's burn-settle-mix (yrec-next, 2026-10-11)
+
+mixing/ held two unrelated things: convection physics, used by core
+and rotation, and the burn-settle-mix sub-stepping, used only by
+rotation. All bitwise identical (test_convection, test_rotation,
+test_numerics, the domain tests, gate1, the config matrix with its
+overshoot and semiconvection decks, the Allard, Kurucz and
+Debye-Hueckel decks, and the full battery).
+- **DONE: test_convection pins the convection physics** (1639147b):
+  the gradient on every path, the zones with every kind of overshoot
+  (Yale EOS scale heights), homogenization.
+- **DONE: burn-settle-mix moves to rotation** (960e717e): rotmix (live)
+  and the compiled-out Bulirsch-Stoer path (burn_settle_mix,
+  burn_mix_extrapolated, burn_li_be_midpoint).
+- **DONE: convection/ is a star-free domain behind convection_lib**
+  (238a7be2):
+  - modules temperature_gradients, convection_zones, semiconvection
+    and convection_configuration;
+  - settings installed every run card (mixing length, Lsun) plus a
+    setter for zenvm;
+  - the overshoot region (star%iov1/iov2) returned through arguments,
+    and the gradient takes in_overshoot_region;
+  - star%iovim and the always-zero star%alfmlt/phmlt/cmxmlt removed;
+  - core and rotation now call convection through an explicit
+    interface, which exposed am_convective_regions' intent(in)
+    convective flag (element num_zones+1 is written).
+- **Open:**
+  - The Bulirsch-Stoer burn-plus-mix path (about 770 lines in
+    rotation/) is compiled out and nothing can enable it. Keeping it is
+    the author's call. Its burn_li_be_midpoint is that path's own
+    variant of core's burn_li_be, not a live duplicate.
+  - rotmix's name is misleading: it burns and settles helium, it does
+    not mix. To be addressed in the rotation series.
+  - Semiconvection has no standalone test (it needs the opacity
+    tables); cm_semiconvection pins it.

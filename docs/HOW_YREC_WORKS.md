@@ -286,7 +286,7 @@ McAllister–Roulier `choose/cases/spline` machinery,
       save start-of-step composition -> star%xa_start
       COMPOSITION HALF-STEP (predictor pass)         advance_composition (mix)
         locate CZs (Schwarzschild), overshoot        find_convection_zones (convec)
-                                                       -> overshoot_boundaries (oversh)
+                                                       -> extend_by_overshoot (oversh)
         rates of every shell                         compute_burn_rates
         implicit burn per radiative shell            burn_network -> burn_network_region
           and per mixed zone (homogenized as unit)     -> burn_implicitly (kemcom)
@@ -394,7 +394,7 @@ Rosseland-mean κ blended from:
 Derivatives ∂lnκ/∂lnρ and ∂lnκ/∂lnT are returned from the interpolants
 (quadratic/cubic interpolation with stored weights per table family).
 
-### 4.3 Convection (`compute_temperature_gradients` (`tpgrad`), `mixing/temperature_gradients.f90`)
+### 4.3 Convection (`convection/`, through `convection_lib`; `compute_temperature_gradients` (`tpgrad`))
 
 Schwarzschild criterion (∇_rad vs ∇_ad; Ledoux/semiconvection is a
 separate flag treatment, mutually exclusive with core overshoot).
@@ -407,13 +407,13 @@ Jacobian. Starspot-modified variants (Somers: spot filling factor/flux
 contrast `star%ctrl%spot_filling_factor`/`spot_temp_contrast`, namelist
 `spotf/spotx`) adjust the effective ∇_rad. **Overshoot**: the
 mixed region is extended a fixed number of pressure scale heights
-(`star%ctrl%overshoot_alpha_core`/`_envelope`; `overshoot_boundaries`
-(`oversh`), `mixing/overshoot_boundaries.f90`, called from
+(`star%ctrl%overshoot_alpha_core`/`_envelope`; `extend_by_overshoot`
+(`oversh`), `convection/convection_zones.f90`, called from
 `find_convection_zones` (`convec`)) — mixing only ("step"
 overshoot), optionally with an adiabatic temperature gradient in the
 overshoot region (`star%ctrl%ladov`, inlist name
-`adiabatic_overshoot_active`); `semiconvection` (`sconvec`,
-`mixing/semiconvection.f90`) implements the
+`adiabatic_overshoot_active`); `extend_by_semiconvection` (`sconvec`,
+`convection/semiconvection.f90`) implements the
 rate-limited "semiconvective" overshoot variant with a propagation-speed
 cap.
 
@@ -507,7 +507,7 @@ None of the numerics keeps `save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files
 (`core/run_yrec.f90`, `core/evolve_step.f90`) and
-`mixing/burn_mix_extrapolated.f90`. `numerics/README.md` describes the
+`rotation/burn_mix_extrapolated.f90` (compiled out). `numerics/README.md` describes the
 modules.
 
 ## 6. Calibration modes

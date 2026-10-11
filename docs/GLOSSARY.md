@@ -177,7 +177,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | ln10 m/L☉ | g s erg⁻¹ | `cccql` (local) | `CCCQL` | core/henyey_coefficients.f90:308 | `ln10_over_lsun · m`; converts ε to q_L. |
 | (∂lnρ/∂lnP) at fixed T | — | `dlnrho_dlnp` (henyey argument; also `star%dlnrho_dlnp`, `eos_res(i_dlnrho_dlnp)`) | `QDP` | eos/eos_lib.f90 (via `eos_get`) | Logarithmic density derivative; 1/χ_ρ. |
 | (∂lnρ/∂lnT) at fixed P | — | `dlnrho_dlnt` (also `star%dlnrho_dlnt`, `eos_res(i_dlnrho_dlnt)`) | `QDT` | eos/eos_lib.f90 | Logarithmic density derivative; −δ. |
-| ∂ln∇/∂ln{T,P,R} | — | `dgrad_dt_component`, `dgrad_dp_component`, `dgrad_dr_component` | `QACT`, `QACP`, `QACR` | mixing/temperature_gradients.f90 | Logarithmic derivatives of the convective gradient. |
+| ∂ln∇/∂ln{T,P,R} | — | `dgrad_dt_component`, `dgrad_dp_component`, `dgrad_dr_component` | `QACT`, `QACP`, `QACR` | convection/temperature_gradients.f90 | Logarithmic derivatives of the convective gradient. |
 | — | mixed | `star%elim_coeff(4,2,json)` | `HHA` | core/henyey_elimination.f90 | Recursion coefficients expressing (P,T)-row unknowns of shell *i* in terms of (R,L). |
 | — | dex / L☉ | `star%elim_rhs(4,json)` | `HHB` | core/henyey_elimination.f90, core/henyey_solve.f90 | Residuals during elimination; overwritten in place with the corrections (ΔlogP, ΔlogT, ΔlogR, ΔL) by `henyey_solve` (trap 11). |
 | — | mixed | `star%surface_bc(6)` | `HSRF` | core/henyey_iteration.f90:202-212 | Outer-boundary rows built from `envelope_fit_coeffs`. |
@@ -329,17 +329,17 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
 | α_MLT | — | `star%mixing_length_alpha` | `CMIXL` (`/CONST3/`) | core/run_yrec.f90:270, core/check_solar_calibration.f90 | Working mixing length in pressure scale heights, copied from `job%mixing_length_array(nk)` each kind card. |
-| — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | mixing/find_convection_zones.f90 (called from core/composition_step.f90, core/evolve_step.f90) | First and last zone of each mixed (convective plus overshoot) region. |
+| — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | convection/convection_zones.f90 (`find_convection_zones`, called from core/composition_step.f90, core/evolve_step.f90) | First and last zone of each mixed (convective plus overshoot) region. |
 | — | zone index | `star%mixed_zone_bounds_no_overshoot(12,2)` | `MXZON0` | core/composition_step.f90 | Same without overshoot. |
-| — | zone index | `star%radiative_zone_bounds(13,2)` | `MRZONE` | mixing/find_convection_zones.f90 (called from core/evolve_step.f90:496) | First and last zone of each radiative region. |
+| — | zone index | `star%radiative_zone_bounds(13,2)` | `MRZONE` | convection/convection_zones.f90 (`find_convection_zones`, called from core/evolve_step.f90) | First and last zone of each radiative region. |
 | — | zone index | `star%core_cz_top_index` | `JCORE` | setup/rezone.f90:558, core/composition_step.f90 | Top zone of the convective core (1 if none). |
 | — | zone index | `star%envelope_cz_bottom_index` | `JENV` | setup/rezone.f90:567, core/composition_step.f90 | Bottom zone of the surface convection zone (`nz` if none). |
-| — | zone index | `star%iov1`, `star%iov2`, `star%iovim` | `IOV1`, `IOV2`, `IOVIM` (`/DPMIX/`) | mixing/overshoot_boundaries.f90 | Overshoot zone range, and the zone index passed to `temperature_gradients` for the adiabatic-overshoot test. |
+| — | zone index | `star%iov1`, `star%iov2` | `IOV1`, `IOV2` (`/DPMIX/`) | convection/convection_zones.f90 (returned by `find_convection_zones`) | The overshoot region below the envelope; a zone inside it is `in_overshoot_region` for the adiabatic-overshoot test of `compute_temperature_gradients`. (`IOVIM`, the zone index side channel, is gone.) |
 | α_ov H_P | cm | `star%pressure_scale_height_start`, `pressure_scale_height_end` | `PSCAL0`, `PSCAL1` (`/LIOV/`) | core/evolve_step.f90:537-545, rotation/evolve_angular_momentum.f90:343-348 | Envelope **overshoot distance** below the CZ base, not H_P itself (trap 13). |
 | r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/burn_step.f90:318, 336 | CZ-base radius at the end of the previous step, for light-element burning. |
 | — | zone index | `star%envelope_cz_base_zone_prev`, `star%jcz` | `JENVOS`, `JCZ` | core/burn_step.f90:355, core/evolve_step.f90:280 | CZ-base zone of the previous step; CZ-base zone used by deuterium burning. |
 | τ_cz | s | `star%convective_turnover_timescale`, `..._old` | `TAUCZ`, `TAUCZ0` (`/OVRTRN/`) | core/turnover_timescale.f90 | Convective turnover time, H_P/v_conv (or CZ width/v_conv) at the CZ base. |
-| — | — | `star%alfmlt`, `phmlt`, `cmxmlt`; `valfmlt`, `vphmlt`, `vcmxmlt` | `ALFMLT`, `PHMLT`, `CMXMLT`, `VALFMLT`, ... (`/PUALPHA/`) | mixing/temperature_gradients.f90 | MLT pulse-output scalars and vectors; currently always zero (henyey_coefficients.f90 comment). |
+| — | — | `star%valfmlt`, `vphmlt`, `vcmxmlt` | `VALFMLT`, ... (`/PUALPHA/`) | core/henyey_coefficients.f90 | MLT pulse-output vectors; always zero (the `ALFMLT`/`PHMLT`/`CMXMLT` scalars they copied were only ever zeroed and went in 2026-10). |
 
 ### 2.10 Timestep and driver state
 
