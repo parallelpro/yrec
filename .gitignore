@@ -18,6 +18,7 @@ src/test_atm.short
 src/test_net
 src/test_reentry
 src/test_braking
+src/test_numerics
 src/test_net.short
 COMMENTS.md
 src/libyrec.dylib
