@@ -2,12 +2,16 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd_eos_tables.f90 eos/opal_eos_tables.f90 eos/scv_eos_tables.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_opacity_table.f90 kap/kap_lib.f90 kap/opacity_tables.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd_eos_tables.f90 eos/opal_eos_tables.f90 eos/scv_eos_tables.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
 # (gfortran only rewrites a .mod whose content changed, so
 # consumers rebuild exactly when an interface changes)
+alex06_opacity.mod: kap/alex06/alex06_opacity.o
+	@true
+alex94_opacity.mod: kap/alex94/alex94_opacity.o
+	@true
 atm_lib.mod: atm/atm_lib.o
 	@true
 atm_tables.mod: atm/atm_tables.o
@@ -22,7 +26,7 @@ composition_layout.mod: state/composition_layout.o
 	@true
 composition_step.mod: core/composition_step.o
 	@true
-conductive_opacity_table.mod: kap/conductive_opacity_table.o
+conductive_opacity.mod: kap/conductive/conductive_opacity.o
 	@true
 controls_buffer.mod: io/controls_buffer.o
 	@true
@@ -58,6 +62,10 @@ io_units.mod: io/io_units.o
 	@true
 kap_lib.mod: kap/kap_lib.o
 	@true
+kurucz_opacity.mod: kap/kurucz90/kurucz_opacity.o
+	@true
+laol_opacity.mod: kap/laol89/laol_opacity.o
+	@true
 light_elements.mod: net/light_elements.o
 	@true
 math_lib.mod: math/math_lib.o
@@ -89,6 +97,10 @@ numerics_lib.mod: numerics/numerics_lib.o
 observables.mod: core/observables.o
 	@true
 opacity_tables.mod: kap/opacity_tables.o
+	@true
+opal92_opacity.mod: kap/opal92/opal92_opacity.o
+	@true
+opal95_opacity.mod: kap/opal95/opal95_opacity.o
 	@true
 opal_eos_tables.mod: eos/opal_eos_tables.o
 	@true
@@ -234,40 +246,14 @@ io/write_gyre_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod
 io/write_mod_model.o: io_units.mod run_log.mod star_info_lib.mod
 io/write_output_headers.o: io_units.mod star_info_lib.mod
 io/yrec_output.o: history_output.mod io_units.mod math_lib.mod physical_constants.mod profile_output.mod run_log.mod star_info_lib.mod stitched_model.mod
-kap/alex06/alex06tab.o: numerics_lib.mod opacity_tables.mod
-kap/alex06/getalex06.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
-kap/alex06/readalex06.o: opacity_tables.mod
-kap/alex94/alex94_fixed_z_table.o: numerics_lib.mod opacity_tables.mod
-kap/alex94/alex94_interp3d.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
-kap/alex94/alex94_surface_table.o: numerics_lib.mod opacity_tables.mod
-kap/alex94/read_alex94_tables.o: io_units.mod opacity_tables.mod
-kap/conductive/condopacp.o: conductive_opacity_table.mod math_lib.mod
-kap/conductive/condopacpint.o: math_lib.mod
-kap/conductive_opacity_table.o: math_lib.mod
-kap/kap_lib.o: conductive_opacity_table.mod io_units.mod math_lib.mod opacity_tables.mod
-kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/kurucz90/kurucz.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_tables.mod
-kap/laol89/gtlaol.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/laol89/gtpurz.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/laol89/rdlaol.o: composition_layout.mod io_units.mod opacity_tables.mod
-kap/laol89/rdzlaol.o: io_units.mod opacity_tables.mod
-kap/laol89/sulaol.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/laol89/zsulaol.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal92/opal92_interp2d.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal92/opal92_interp3d.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal92/opal92_surface_table.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal92/opal92_table_prep.o: numerics_lib.mod opacity_tables.mod
-kap/opal92/read_opal92_tables.o: math_lib.mod opacity_tables.mod
-kap/opal95/getopal95.o: numerics_lib.mod opacity_tables.mod
-kap/opal95/ll95tbl.o: io_units.mod opacity_tables.mod
-kap/opal95/opal95_fixed_z_table.o: numerics_lib.mod opacity_tables.mod
-kap/opal95/opal95_interp2d.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal95/opal95_interp3d.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal95/opal95_interp4d.o: math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal95/opal95_surface_table.o: numerics_lib.mod opacity_tables.mod
-kap/setupopac.o: eos_lib.mod opacity_tables.mod
-kap/surfopac.o: opacity_tables.mod
+kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
+kap/alex94/alex94_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
+kap/conductive/conductive_opacity.o: math_lib.mod
+kap/kap_lib.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod eos_lib.mod io_units.mod kurucz_opacity.mod laol_opacity.mod math_lib.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
+kap/kurucz90/kurucz_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
+kap/laol89/laol_opacity.o: composition_layout.mod io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
+kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod
+kap/opal95/opal95_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod scv_eos_tables.mod star_info_lib.mod
 mixing/burn_li_be_midpoint.o: burn_step.mod convection_geometry.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod

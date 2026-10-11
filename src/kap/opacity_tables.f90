@@ -17,8 +17,8 @@
 ! and the Alexander 94/06 table-grid arrays) are preserved here as
 ! declaration-time initializers, transcribed verbatim from the
 ! original DATA statements in kap/alex94/read_alex94_tables.f90,
-! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90 (and its former
-! kurucz2.f90 clone) and kap/opal92/opal92_interp3d.f90 (see
+! kap/alex06/read_alex06_tables.f90, kap/kurucz90/kurucz.f90 (and its former
+! kurucz2.f90 clone) and kap/opal92/compute_opal92_opacity.f90 (see
 ! opal92_table_set for the former kipmll2 asymmetry).
 module opacity_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -39,13 +39,13 @@ module opacity_tables
            kurucz_num_x_temp_entries = kurucz_max_num_temps*kurucz_num_x_tables, &
            kurucz_num_spline_coeffs = 4*kurucz_max_num_densities
 ! OPAL95 opacity table dimensions. n_opal95_xz is the SLOT count of
-! the unpacked (13 Z rows x 10 X columns) layout used by ll95tbl and
-! opal95_fixed_z_table (slot = start_index(iz) + ix), not the number
+! the unpacked (13 Z rows x 10 X columns) layout used by read_opal95_tables and
+! build_opal95_fixed_z_table (slot = start_index(iz) + ix), not the number
 ! of tables in the file (n_opal95_tables = 126). 2026 (bugsweep
 ! Batch 2): was 126 with a packed start_index -- see below.
       integer, parameter :: n_opal95_t = 70, n_opal95_d = 19, &
            n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 130
-! Number of tables in an OPAL95 table file (ll95tbl reads exactly this
+! Number of tables in an OPAL95 table file (read_opal95_tables reads exactly this
 ! many; 8 X columns at all 13 Z, X=0.95 at 10 Z, X=1-Z at 12 Z).
       integer, parameter :: n_opal95_tables = 126
 ! Empty-cell markers. OPAL95 cells with no data are stored as
@@ -55,9 +55,9 @@ module opacity_tables
       double precision, parameter :: opal95_missing_test = 9.9d0
       double precision, parameter :: opal92_missing_opacity = -9.999d0
 ! LAOL89 table dimensions (array extents; the file-size checks in
-! rdlaol/rdzlaol accept at most 11 X columns).
+! read_laol_tables/read_pure_z_table accept at most 11 X columns).
       integer, parameter :: n_laol_x = 12, n_laol_rho = 104, n_laol_t = 52
-! LAOL89 opacity cap returned by gtlaol/gtpurz when the
+! LAOL89 opacity cap returned by compute_laol_opacity/compute_pure_z_opacity when the
 ! interpolated log10(opacity) overflows.
       double precision, parameter :: laol_opacity_cap = 1.0d35
 ! Composition-cache tolerances: a lookup whose X (and Z) is within this
@@ -93,11 +93,11 @@ module opacity_tables
 ! slaol/ and their nwlaol2/, slaol2/ second-Z mirrors). 2026 wave 3
 ! (R5): the two member sets laol_*/slaol_* and laol2_*/slaol2_*
 ! became opacity_table%laol(1)/(2) so that one reader/spliner/
-! interpolator serves both. opacity, grid_x, grid_rho, grid_t (sulaol
+! interpolator serves both. opacity, grid_x, grid_rho, grid_t (build_laol_splines
 ! converts grid_t to log10 in place) and the extents num_x/num_rho/
-! num_t are the table as read by rdlaol; slaol_* are the
+! num_t are the table as read by read_laol_tables; slaol_* are the
 ! spline-prepared rows. Shapes unchanged. table_number (1 or 2,
-! rdlaol sets it) selects the "#2"/"SECOND" wording of the
+! read_laol_tables sets it) selects the "#2"/"SECOND" wording of the
 ! run-log diagnostics that named the table in the former clones.
       type, public :: laol_table_set
            double precision :: opacity(n_laol_x,n_laol_rho,n_laol_t), &
@@ -132,7 +132,7 @@ module opacity_tables
            integer :: density_start_index(n_opal92_xt), &
                 density_count(n_opal92_xt)
 ! former common/llot4/ (the surface-X table built by
-! opal92_surface_table)
+! build_opal92_surface_table)
            double precision :: surface_x, surface_z
            double precision :: surface_spline_coeffs(n_opal92_t,n_opal92_4d)
            integer :: surface_x_index
@@ -209,7 +209,7 @@ module opacity_tables
 ! former common/llot95a/: the OPAL95 opacity table grid and full
 ! (all-Z) opacity array. opal95_grid_x/opal95_grid_z/
 ! opal95_table_start_index/opal95_num_x_at_z DATA-initialized in
-! kap/opal95/ll95tbl.f90 (values transcribed verbatim below);
+! kap/opal95/read_opal95_tables.f90 (values transcribed verbatim below);
 ! opal95_grid_logt/opal95_full_opacity filled by file I/O there.
            double precision :: opal95_grid_logt(n_opal95_t)
            double precision :: opal95_grid_x(n_opal95_x) = &
@@ -244,7 +244,7 @@ module opacity_tables
            double precision :: opal95_surface_opacity(n_opal95_t,n_opal95_d)
            double precision :: opal95_surface_x
 ! former common/op95indx/: cached Z/X/T/rho interpolation indices, all
-! 22 scalar values DATA-initialized to 1 in kap/opal95/ll95tbl.f90.
+! 22 scalar values DATA-initialized to 1 in kap/opal95/read_opal95_tables.f90.
            integer :: opal95_index_z = 1
            integer :: opal95_index_x(4,4) = 1
            integer :: opal95_index_t = 1
@@ -311,7 +311,7 @@ end subroutine set_kap_settings
 ! grid(idx:idx+3) around x, starting from the previous idx: walk down
 ! while x is below grid(idx+2), otherwise walk up, clamping to
 ! 1..n-3. 2026 readability: extracted token-for-token from the four
-! identical copies in alex94_interp3d (T, R) and getalex06 (T, R);
+! identical copies in compute_alex94_opacity (T, R) and compute_alex06_opacity (T, R);
 ! callers must pre-clamp idx to 1..n-2 as they did before.
 subroutine stencil4_locate(grid, n, x, idx)
       implicit none
@@ -345,7 +345,7 @@ subroutine stencil4_locate(grid, n, x, idx)
 end subroutine stencil4_locate
 
 ! stencil4_locate_opal95
-! The OPAL95 flavour of stencil4_locate (getopal95's T and rho
+! The OPAL95 flavour of stencil4_locate (compute_opal95_opacity's T and rho
 ! searches): the up/down decision is ".ge. grid(idx+2)", the upward
 ! scan stops at n-1 and there is no min() clamp on the way up.
 ! Extracted token-for-token; the two flavours are deliberately not
@@ -383,7 +383,7 @@ end subroutine stencil4_locate_opal95
 ! alex_x_stencil_start
 ! First of the four Alexander-1994 X tables bracketing hydrogen_fraction
 ! (the 7-column X grid is walked as a fixed ladder: 1, 2, 3 or 4).
-! Extracted token-for-token from alex94_interp3d and alex94_surface_table.
+! Extracted token-for-token from compute_alex94_opacity and build_alex94_surface_table.
 integer function alex_x_stencil_start(hydrogen_fraction)
       implicit none
       double precision, intent(in) :: hydrogen_fraction

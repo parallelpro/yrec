@@ -963,7 +963,7 @@ subroutine read_input(ierr)
 !     ENTRY 1 =GS98(IN PARMIN),2=ASPLUND ET AL. 2021 A&A 653,141
 !     3,4=MAGG ET AL. 2021 (MET,PHOT) A&A 661,140
 !
-! DBG 1/96 THE ARRAY V, READ IN VIA RDLAOL, CONTAINED THE MASS FRACTIONS
+! DBG 1/96 THE ARRAY V, READ IN VIA read_laol_tables, CONTAINED THE MASS FRACTIONS
 ! OF THE ENVELOPE ELEMENTS. IT WAS USED IN STARIN TO DEFINE FXENV,
 ! WHICH ARE THE NUMBER FRACTION OF THE ENVELOPE ELEMENTS. FXENV WAS
 ! THEN UPDATED IN EQSTAT AND EQSAHA. VNEW (now a controls_buffer member)
@@ -1298,7 +1298,7 @@ subroutine read_input(ierr)
       iopale = 49
 ! (2026: the LAOL and pure-Z LAOL table units, formerly fixed
 ! iolaol = 61 / iopurez = 62, are newunit locals of kap/laol89/
-! rdlaol.f90 and rdzlaol.f90 now.)
+! read_laol_tables.f90 and read_pure_z_table.f90 now.)
 ! DBG 4/94
 !     INPUT:
 ! DBG 8/95 SECOND OPOACITY TABLES FOR ZRAMP AND Z DIFFUSION
