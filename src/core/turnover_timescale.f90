@@ -284,15 +284,15 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
                   spline_y_velocity(2) = convective_velocity(kk-1)
                   spline_y_velocity(3) = convective_velocity(kk)
                   spline_y_velocity(4) = convective_velocity(kk+1)
-                  call kspline(spline_x_delta,spline_y_velocity,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_velocity,spline_deriv,0.0d0,convective_velocity_bcz, ierr)
+                  call natural_spline(spline_x_delta, spline_y_velocity, 4, spline_deriv)
+                  call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
                   if (ierr /= 0) return
                   spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
                   spline_y_pscale(2) = exp(ln10*(log10_pressure(kk-1)-log10_density(kk-1)))/local_gravity(kk-1)
                   spline_y_pscale(3) = exp(ln10*(log10_pressure(kk)-log10_density(kk)))/local_gravity(kk)
                   spline_y_pscale(4) = exp(ln10*(log10_pressure(kk+1)-log10_density(kk+1)))/local_gravity(kk+1)
-                  call kspline(spline_x_delta,spline_y_pscale,spline_deriv)
-                  call ksplint(spline_x_delta,spline_y_pscale,spline_deriv,0.0d0,pressure_scale_height, ierr)
+                  call natural_spline(spline_x_delta, spline_y_pscale, 4, spline_deriv)
+                  call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                   if (ierr /= 0) return
 ! DEFINE TAUCZ
                   star%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
@@ -337,8 +337,8 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
             spline_y_velocity(2) = convective_velocity(kk-1)
             spline_y_velocity(3) = convective_velocity(kk)
             spline_y_velocity(4) = convective_velocity(kk+1)
-            call kspline(spline_x_radius,spline_y_velocity,spline_deriv)
-            call ksplint(spline_x_radius,spline_y_velocity,spline_deriv,radius_test,convective_velocity_bcz, ierr)
+            call natural_spline(spline_x_radius, spline_y_velocity, 4, spline_deriv)
+            call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
             if (ierr /= 0) return
 ! DEFINE TAUCZ
             star%convective_turnover_timescale = cz_width/convective_velocity_bcz

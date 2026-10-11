@@ -181,7 +181,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
 !
 !  SOLVE THE TRIDIAGONAL MATRIX SYSTEM FOR THE NEW RUN OF LI.
 !
-         call tridiag_gs(sub_diag, diag, super_diag, diffused_abundance_prime, &
+         call solve_tridiagonal(sub_diag, diag, super_diag, diffused_abundance_prime, &
               num_eq_points, diffused_abundance, ierr)
          if (ierr /= 0) return
 !

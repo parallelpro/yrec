@@ -234,7 +234,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 !
 !  SOLVE THE TRIDIAGONAL MATRIX SYSTEM FOR THE NEW RUN OF X.
 !
-         call tridiag_gs(sub_diag,diag,super_diag,hydrogen_x_prime, &
+         call solve_tridiagonal(sub_diag,diag,super_diag,hydrogen_x_prime, &
               num_equal_points,equal_hydrogen_fraction, ierr)
          if (ierr /= 0) return
 !

@@ -105,7 +105,9 @@ PUBLIC = {
                  "microdiff", "diffuse_composition_driver",
                  "diffuse_composition", "composition_grid",
                  "solid_body_omega"},
-    # numerics is the shared numerics library: all-public by design.
+    # numerics is the shared numerics library: everything numerics_lib
+    # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
+    # modules behind it).
     "numerics": None,
 }
 
@@ -164,7 +166,7 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net", "kap", "eos", "atm"]
+STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics"]
 
 def check_star_free(src_root):
     problems = []
@@ -186,7 +188,7 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm"]
+FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm", "numerics"]
 
 def check_facade_imports(src_root):
     problems = []

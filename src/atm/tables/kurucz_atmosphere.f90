@@ -15,7 +15,7 @@ module kurucz_atmosphere
       use atm_tables, only: atm_table, atm_table_ng, atm_table_nt, &
            surface_p_table
       use io_units, only: run_log_unit, terminal_unit
-      use numerics_lib, only: inter3, kspline, ksplint
+      use numerics_lib, only: inter3, natural_spline, splint
       implicit none
       private
       public :: read_surface_pressure_table, interpolate_surface_pressure
@@ -116,9 +116,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                pressure_table_vals(kk) = &
                     tbl%log10_pressure(row,atm_table_ng-4+kk)
             end do
-            call kspline(gravity_nodes, pressure_table_vals, &
-                 gravity_spline_deriv)
-            call ksplint(gravity_nodes, pressure_table_vals, &
+            call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
+            call splint(gravity_nodes, pressure_table_vals, 4, &
                  gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
             ! 2026 numerics-gate opt-in: interpolation failure returns via
             ! ierr (diagnostic printed at the gate) instead of stopping.
@@ -142,9 +141,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                   pressure_table_vals(kkk) = &
                        tbl%log10_pressure(row,kk+kkk-1)
                end do
-               call kspline(gravity_nodes, pressure_table_vals, &
-                    gravity_spline_deriv)
-               call ksplint(gravity_nodes, pressure_table_vals, &
+               call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
+               call splint(gravity_nodes, pressure_table_vals, 4, &
                     gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
                if (jerr_gate /= 0) then
                   ierr = jerr_gate
@@ -161,8 +159,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             pressure_table_vals(k) = &
                  tbl%log10_pressure(row,k+tbl%gmin_index(row)-1)
          end do
-         call kspline(gravity_nodes, pressure_table_vals, gravity_spline_deriv)
-         call ksplint(gravity_nodes, pressure_table_vals, &
+         call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
+         call splint(gravity_nodes, pressure_table_vals, 4, &
               gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
          if (jerr_gate /= 0) then
             ierr = jerr_gate
@@ -172,8 +170,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          end if
       end do
 ! Interpolate in temperature to find correct log P.
-      call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
-      call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &
+      call natural_spline(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv)
+      call splint(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv, &
            log10_teff, interpolated_value, jerr_gate)
       if (jerr_gate /= 0) then
          ierr = jerr_gate

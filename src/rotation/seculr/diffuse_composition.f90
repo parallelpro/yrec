@@ -112,7 +112,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_composition, equally_spaced_mass, rot_scr%ntot, &
               sub_diag, diag, super_diag, rhs)
 ! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
-         call ctridi(rot_scr%ntot, sub_diag, diag, super_diag, rhs, solution, ierr)
+         call solve_tridiagonal(sub_diag, diag, super_diag, rhs, rot_scr%ntot, solution, ierr)
          if (ierr /= 0) return
 ! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
 ! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE

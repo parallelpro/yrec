@@ -291,7 +291,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                     log10_density < row_log_rho(num_valid_rho)) then
                   call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
                        row_d2opacity, log10_density, log10_opacity_value, &
-                       spline_index_lo, spline_index_hi, jerr_gate)
+                       jerr_gate, spline_index_lo, spline_index_hi)
                   ! 2026 numerics-gate opt-in: interpolation failure returns via
                   ! ierr (diagnostic printed at the gate) instead of stopping.
                   if (jerr_gate /= 0) then
@@ -346,7 +346,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                  1.0d30, 1.0d30, logt_d2opacity)
             call splint(logt_values, logt_interp_opacity, num_valid_t, &
                  logt_d2opacity, log10_temperature, log10_opacity_value, &
-                 spline_index_lo, spline_index_hi, jerr_gate)
+                 jerr_gate, spline_index_lo, spline_index_hi)
             if (jerr_gate /= 0) then
                ierr = jerr_gate
                return
@@ -536,7 +536,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                  log10_density < row_log_rho(num_valid_rho)) then
                call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
                     row_d2opacity, log10_density, log10_opacity_value, &
-                    spline_index_lo, spline_index_hi, jerr_gate)
+                    jerr_gate, spline_index_lo, spline_index_hi)
                ! 2026 numerics-gate opt-in: interpolation failure returns via
                ! ierr (diagnostic printed at the gate) instead of stopping.
                if (jerr_gate /= 0) then
@@ -585,7 +585,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
               1.0d30, 1.0d30, logt_d2opacity)
          call splint(logt_values, logt_interp_opacity, num_valid_t, &
               logt_d2opacity, log10_temperature, log10_opacity_value, &
-              spline_index_lo, spline_index_hi, jerr_gate)
+              jerr_gate, spline_index_lo, spline_index_hi)
          if (jerr_gate /= 0) then
             ierr = jerr_gate
             return

@@ -12,21 +12,21 @@ splint at  3.95 =   5.472987500000001E+01  5  6  0
 splint at  4.50 =   8.312500000000000E+01  5  6  0
  ERROR IN SPLINT ROUTINE.
 splint, repeated abscissa: klo khi ierr  5  6  1
-# kspline/ksplint: four points
-kspline y2
+# natural_spline/splint: four points
+natural_spline y2
    0.000000000000000E+00   3.826530612244898E-01  -2.295918367346941E-02
    0.000000000000000E+00
-ksplint at  1.50 =   7.260841836734694E-01  0
-ksplint at  4.00 =   2.500000000000000E-01  0
-ksplint at  6.50 =   1.662946428571428E-01  0
- Ksplint failure
-ksplint, repeated abscissa: ierr  1
-# splinc/splintd2: seven points in json-sized arrays
-splinc y2
+splint at  1.50 =   7.260841836734694E-01  0
+splint at  4.00 =   2.500000000000000E-01  0
+splint at  6.50 =   1.662946428571428E-01  0
+ ERROR IN SPLINT ROUTINE.
+splint (4 points), repeated abscissa: ierr  1
+# natural_spline/splint: seven points in json-sized arrays
+natural_spline y2
    0.000000000000000E+00   6.531649206209781E-01   1.886032333071000E-01
    1.640267709256824E-01   8.710562698595546E-02   7.490486348979628E-02
    0.000000000000000E+00
-splintd2 at 1.234 =   6.818676406005715E-01  3  4  0
+splint at 1.234 =   6.818676406005715E-01  3  4  0
 # ysplin/intpol: eight points
 intpol at  0.20 =  -4.734650635520440E+00   5.693895568533151E+00  0
 intpol at  0.50 =  -2.875000000000000E+00   6.451305393335623E+00  0
@@ -162,20 +162,15 @@ simeqc
    5.319148936170220E-03  -2.765957446808510E-01   3.776595744680851E-01
 simeqc ierr  0
 simeqc singular: ierr  1
-# tridiag_gs/ctridi
-tridiag_gs
+# solve_tridiagonal
+solve_tridiagonal
    2.681583048954216E+00   3.494568082961360E+00   3.328903058187250E+00
    2.726446820911357E+00   1.944770129365413E+00   1.111129721678024E+00
-ctridi
-   2.681583048954216E+00   3.494568082961360E+00   3.328903058187250E+00
-   2.726446820911357E+00   1.944770129365413E+00   1.111129721678024E+00
-ctridi n-2
+solve_tridiagonal, first n-2 rows
    2.677538607439323E+00   3.482016367915140E+00   3.283116118172492E+00
    2.494978278483916E+00
- tridia: singular matrix
-tridiag_gs singular: ierr  1
- tridia: singular matrix
-ctridi singular: ierr  1
+ solve_tridiagonal: singular matrix
+solve_tridiagonal singular: ierr  1
 # bsstep (mmid, ratext)
 step 1 ierr  0 deriv calls    33
   y, x, h_did, h_next

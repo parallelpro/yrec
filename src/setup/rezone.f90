@@ -77,7 +77,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       double precision :: delta_chi
       integer :: segment_point_count
       double precision :: spline_eval_x, spline_eval_y
-      integer :: spline_klo, spline_khi
       integer :: gradient_flag_count
       double precision :: luminosity_max
       double precision :: log_omega_top, log_omega_bot
@@ -383,7 +382,7 @@ subroutine assign_new_points
          spline_y(j) = star%log_mass(j)
       end do
 ! GET SPLINE COEFFICIENTS
-      call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
+      call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
       chi_prev = chi(1)
       point_prev_index = 1
       new_num_zones = 1
@@ -404,9 +403,8 @@ subroutine assign_new_points
 ! ASSIGN NEW POINTS
          do j = point_prev_index+1,point_prev_index+segment_point_count
             spline_eval_x = chi_prev + dchi
-            call splintd2(spline_x, spline_y, star%nz, &
-                 spline_second_deriv, spline_eval_x, spline_eval_y, &
-                 spline_klo, spline_khi, jerr_gate)
+            call splint(spline_x, spline_y, star%nz, &
+                 spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
             ! 2026 numerics-gate opt-in: interpolation failure returns via
             ! ierr (diagnostic printed at the gate) instead of stopping.
             if (jerr_gate /= 0) then
@@ -425,12 +423,12 @@ subroutine assign_new_points
          spline_y(j) = star%xa(i_h1,j)
       end do
 ! GET SPLINE COEFFICIENTS
-      call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
+      call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
 ! ASSIGN INTERPOLATED VECTOR OF X VALUES TO x_new
       do i = 2,new_num_zones
          spline_eval_x = new_log_mass(i)
-         call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
+         call splint(spline_x, spline_y, star%nz, spline_second_deriv, &
+              spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
             ierr = jerr_gate
             return
@@ -474,12 +472,12 @@ subroutine assign_new_points
          spline_y(j) = star%xa(i_metals,j)
       end do
 ! GET SPLINE COEFFICIENTS
-      call splinc(spline_x,spline_y,spline_second_deriv,star%nz)
+      call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
 ! ASSIGN INTERPOLATED VECTOR OF Z VALUES TO z_new
       do i = 2,new_num_zones
          spline_eval_x = new_log_mass(i)
-         call splintd2(spline_x, spline_y, star%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, spline_klo, spline_khi, jerr_gate)
+         call splint(spline_x, spline_y, star%nz, spline_second_deriv, &
+              spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
             ierr = jerr_gate
             return

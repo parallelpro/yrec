@@ -6,14 +6,14 @@
 ! byte-comparison against expected_test_numerics.out. The data are
 ! polynomials and rationals, so no elementary function enters the
 ! inputs. Families:
-!   cubic splines     cspline/splint, kspline/ksplint, splinc/splintd2,
-!                     ysplin/intpol
+!   cubic splines     cspline/splint, natural_spline (four points and
+!                     seven), ysplin/intpol
 !   quadratic spline  osplin (McAllister-Roulier), through all four of
 !                     its knot cases, extrapolation and single points
 !   interpolation     inter3, interp, intrp2, lagrange4, quint, polint,
 !                     lir (cubic, linear, on a node, extrapolated)
 !   search            findex, locate
-!   linear algebra    ludcmp/lubksb, simeqc, tridiag_gs, ctridi
+!   linear algebra    ludcmp/lubksb, simeqc, solve_tridiagonal
 !   ODE               bsstep (with mmid and ratext), its integrand
 !                     failure and its step underflow
 module test_numerics_callbacks
@@ -81,41 +81,41 @@ program test_numerics
       pts(1:5) = [-0.25d0, 0.5d0, 1.7d0, 3.95d0, 4.5d0]
       do i = 1, 5
          v = pts(i)
-         call splint(x6, y6, 6, y26, v, d, klo, khi, ierr)
+         call splint(x6, y6, 6, y26, v, d, ierr, klo, khi)
          write(*,'(a,f6.2,a,1pe24.15,3i3)') "splint at", v, " =", d, klo, khi, ierr
       end do
 ! bisection gives a zero-width interval only between equal last points
       x6(6) = x6(5)
-      call splint(x6, y6, 6, y26, 5.0d0, d, klo, khi, ierr)
+      call splint(x6, y6, 6, y26, 5.0d0, d, ierr, klo, khi)
       write(*,'(a,3i3)') "splint, repeated abscissa: klo khi ierr", klo, khi, ierr
       x6(6) = 4.0d0
 
-      write(*,'(a)') "# kspline/ksplint: four points"
+      write(*,'(a)') "# natural_spline/splint: four points"
       x4 = [1.0d0, 2.0d0, 4.0d0, 7.0d0]
       y4 = 1.0d0/x4
-      call kspline(x4, y4, y24)
-      call show("kspline y2", y24)
+      call natural_spline(x4, y4, 4, y24)
+      call show("natural_spline y2", y24)
       pts(1:3) = [1.5d0, 4.0d0, 6.5d0]
       do i = 1, 3
          v = pts(i)
-         call ksplint(x4, y4, y24, v, d, ierr)
-         write(*,'(a,f6.2,a,1pe24.15,i3)') "ksplint at", v, " =", d, ierr
+         call splint(x4, y4, 4, y24, v, d, ierr)
+         write(*,'(a,f6.2,a,1pe24.15,i3)') "splint at", v, " =", d, ierr
       end do
       x4(4) = x4(3)
-      call ksplint(x4, y4, y24, 8.0d0, d, ierr)
-      write(*,'(a,i3)') "ksplint, repeated abscissa: ierr", ierr
+      call splint(x4, y4, 4, y24, 8.0d0, d, ierr)
+      write(*,'(a,i3)') "splint (4 points), repeated abscissa: ierr", ierr
 
-      write(*,'(a)') "# splinc/splintd2: seven points in json-sized arrays"
+      write(*,'(a)') "# natural_spline/splint: seven points in json-sized arrays"
       jx = 0.0d0
       jy = 0.0d0
       do i = 1, 7
          jx(i) = 0.3d0*i + 0.01d0*i*i
          jy(i) = jx(i)**2/(1.0d0 + jx(i))
       end do
-      call splinc(jx, jy, jy2, 7)
-      call show("splinc y2", jy2(1:7))
-      call splintd2(jx, jy, 7, jy2, 1.234d0, d, klo, khi, ierr)
-      write(*,'(a,1pe24.15,3i3)') "splintd2 at 1.234 =", d, klo, khi, ierr
+      call natural_spline(jx, jy, 7, jy2)
+      call show("natural_spline y2", jy2(1:7))
+      call splint(jx, jy, 7, jy2, 1.234d0, d, ierr, klo, khi)
+      write(*,'(a,1pe24.15,3i3)') "splint at 1.234 =", d, klo, khi, ierr
 
       write(*,'(a)') "# ysplin/intpol: eight points"
       do i = 1, 8
@@ -296,33 +296,33 @@ subroutine lir_check()
       do i = 1, 5
          v = pts(i)
          res = -1.0d0
-         call lir(v, tz, res, ty, 2, 2, 6, 1, flag)
+         call lir(v, tz, res, ty, 2, 2, 6, flag)
          write(*,'(a,f6.2,a,2(1pe24.15),i3)') "lir cubic at", v, " =", res, flag
       end do
       res = -1.0d0
-      call lir(2.7d0, tz, res, ty, 2, 2, 3, 1, flag)
+      call lir(2.7d0, tz, res, ty, 2, 2, 3, flag)
       write(*,'(a,2(1pe24.15),i3)') "lir linear (3 points)", res, flag
       res = -1.0d0
-      call lir(2.7d0, tz(6:1:-1), res, ty(:,6:1:-1), 2, 2, 6, 1, flag)
+      call lir(2.7d0, tz(6:1:-1), res, ty(:,6:1:-1), 2, 2, 6, flag)
       write(*,'(a,2(1pe24.15),i3)') "lir decreasing table", res, flag
       res = -1.0d0
       flag = -7
-      call lir(2.7d0, tz, res, ty, 2, 2, 1, 1, flag)
+      call lir(2.7d0, tz, res, ty, 2, 2, 1, flag)
       write(*,'(a,2(1pe24.15),i3)') "lir one point (no change)", res, flag
       res = -1.0d0
-      call lir(2.7d0, [3.0d0, 3.0d0, 3.0d0, 3.0d0], res, ty, 2, 2, 4, 1, flag)
+      call lir(2.7d0, [3.0d0, 3.0d0, 3.0d0, 3.0d0], res, ty, 2, 2, 4, flag)
       write(*,'(a,2(1pe24.15),i3)') "lir flat table (no change)", res, flag
       res = -1.0d0
       ty(1,3) = 0.0d0
-      call lir(3.5d0, tz, res, ty, 2, 2, 6, 1, flag)
+      call lir(3.5d0, tz, res, ty, 2, 2, 6, flag)
       write(*,'(a,2(1pe24.15),i3)') "lir zero on a node", res, flag
 end subroutine lir_check
 
-! tridiag_gs and ctridi on one system (ctridi twice: no carried
-! state), and a singular system
+! solve_tridiagonal on one system, on its first n-2 rows, and on a
+! singular system
 subroutine tridiagonal_check()
       integer, parameter :: n = 6
-      write(*,'(a)') "# tridiag_gs/ctridi"
+      write(*,'(a)') "# solve_tridiagonal"
       ja = 0.0d0
       jb = 0.0d0
       jc = 0.0d0
@@ -333,17 +333,13 @@ subroutine tridiagonal_check()
          jc(i) = -1.5d0 + 0.05d0*i*i
          jr(i) = 1.0d0 + i*(7.0d0 - i)
       end do
-      call tridiag_gs(ja, jb, jc, jr, n, jsol, ierr)
-      call show("tridiag_gs", jsol(1:n))
-      call ctridi(n, ja, jb, jc, jr, jsol, ierr)
-      call show("ctridi", jsol(1:n))
-      call ctridi(n - 2, ja, jb, jc, jr, jsol, ierr)
-      call show("ctridi n-2", jsol(1:n-2))
+      call solve_tridiagonal(ja, jb, jc, jr, n, jsol, ierr)
+      call show("solve_tridiagonal", jsol(1:n))
+      call solve_tridiagonal(ja, jb, jc, jr, n - 2, jsol, ierr)
+      call show("solve_tridiagonal, first n-2 rows", jsol(1:n-2))
       jb(2) = ja(2)*jc(1)/jb(1)
-      call tridiag_gs(ja, jb, jc, jr, n, jsol, ierr)
-      write(*,'(a,i3)') "tridiag_gs singular: ierr", ierr
-      call ctridi(n, ja, jb, jc, jr, jsol, ierr)
-      write(*,'(a,i3)') "ctridi singular: ierr", ierr
+      call solve_tridiagonal(ja, jb, jc, jr, n, jsol, ierr)
+      write(*,'(a,i3)') "solve_tridiagonal singular: ierr", ierr
 end subroutine tridiagonal_check
 
 ! bsstep: four accepted steps of the harmonic system from x = 0; large

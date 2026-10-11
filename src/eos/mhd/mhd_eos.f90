@@ -553,7 +553,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       real(dp) :: cubic_vars(ivarx,4), cubic_x_nodes(4)
       integer :: cubic_table_index(4)
 ! LIR's "type" flag (an integer, despite the original's L-prefixed name).
-      integer :: lir_type_flag
 !     Read from appropriate tables
 !     and fill arrays varout and XC
 !     CAN WE DO IT?
@@ -635,10 +634,8 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          num_vars=ivarx
          var_leading_dim=ivarx
          num_points=4
-         lir_type_flag=1
-         interp_mode=1
          call lir(hydrogen_fraction, cubic_x_nodes, mhd%mhd_output, cubic_vars, &
-              num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
+              num_vars, var_leading_dim, num_points, interp_mode)
       end if
 end subroutine mhdpx1
 
@@ -757,8 +754,6 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
 
       integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
       real(dp) :: x_nodes(4)
-! lir_order is lir's continue_search argument (1 = fresh scan).
-      integer :: lir_order
 
       integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
       real(dp) :: p_min, p_max
@@ -805,8 +800,6 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       lir_num_vars=num_vars
       lir_leading_dim=num_vars
       lir_num_points=4
-      lir_order=1
-      lir_interp_mode=1
       do t_col=1,4
          t_idx=t_indices(t_col)
          do i=1,4
@@ -821,7 +814,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
          end do
 
          call lir(log10_pressure, x_nodes, y_work, work1, lir_num_vars, &
-              lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+              lir_leading_dim, lir_num_points, lir_interp_mode)
          do iv=1,num_vars
             work2(iv,t_col) = y_work(iv)
          end do
@@ -833,7 +826,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       end do
 
       call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
-           lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+           lir_leading_dim, lir_num_points, lir_interp_mode)
 
       return
 end subroutine interpolate_mhd_table

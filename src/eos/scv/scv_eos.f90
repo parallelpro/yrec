@@ -27,7 +27,7 @@ module scv_eos
            scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
            tlogx
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
-      use numerics_lib, only: inter3, interp, kspline, ksplint
+      use numerics_lib, only: inter3, interp, natural_spline, splint
       use io_units, only: run_log_unit
       use eos_mixture, only: eos_mix
       use math_lib
@@ -430,8 +430,8 @@ subroutine spline_cell(t_shift, p_shift, result)
             do k = 1,4
                ytab_work(k) = tablenv(ii,idp+k-1+p_shift,j+1)
             end do
-            call kspline(interp_nodes, ytab_work, spline_second_deriv)
-            call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
+            call natural_spline(interp_nodes, ytab_work, 4, spline_second_deriv)
+            call splint(interp_nodes, ytab_work, 4, spline_second_deriv, &
                  log10_gas_pressure, spline_value, jerr_gate)
             ! 2026 numerics-gate opt-in (see numerics_lib): interpolation
             ! failure returns via ierr instead of stopping.
@@ -450,8 +450,8 @@ subroutine spline_cell(t_shift, p_shift, result)
          do k = 1,4
             ytab_work(k) = temp_grid(k,j)
          end do
-         call kspline(interp_nodes, ytab_work, spline_second_deriv)
-         call ksplint(interp_nodes, ytab_work, spline_second_deriv, &
+         call natural_spline(interp_nodes, ytab_work, 4, spline_second_deriv)
+         call splint(interp_nodes, ytab_work, 4, spline_second_deriv, &
               log10_temperature, spline_value, jerr_gate)
          if (jerr_gate /= 0) then
             ierr = jerr_gate
