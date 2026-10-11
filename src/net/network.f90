@@ -340,7 +340,7 @@ end subroutine compute_abundance_rates
 ! max_iterations attempts. As in kemcom, Jacobian entries below 1e-8 in
 ! magnitude (off the diagonal) are dropped, and if none remain the
 ! residual itself is taken as the correction.
-subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
+pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
       use numerics_lib, only: simeqc
       real(dp), intent(in) :: x_start(n_network), rate_vec(:), dt

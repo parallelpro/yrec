@@ -265,9 +265,8 @@ rewritten, each conversion a byte-identical commit.
    callers pass whole arrays as before, and the declaration no longer
    pretends to know the caller's dimensions.
 5. **Procedures without side effects are `pure`**, and the compiler
-   checks it. In net/ the exceptions are Timmes' neutrino routines
-   (saved tables), `burn_implicitly` (it calls `numerics_lib`'s
-   `simeqc`) and their callers.
+   checks it. In net/ the only exceptions are Timmes' neutrino routines
+   (saved tables) and their callers.
 
 ## Code style (2026-10)
 

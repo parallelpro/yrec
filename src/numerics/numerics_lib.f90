@@ -1992,19 +1992,15 @@ end subroutine ratext
 !----------------------------------------------------------------------
 ! simeqc
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original simeqc.f; only variable names, source form, and comment
-! style were updated.
-!
 ! Gauss-Jordan elimination with partial pivoting, operating on a
 ! system matrix stored as a flat array: num_unknowns equations (rows),
 ! num_cols columns (num_cols > num_unknowns for one or more augmented
-! right-hand-side columns), stored column-major (2026-10: sized from
-! the arguments; it was a fixed system_matrix(56), the 7x8 kemcom case).
-subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
-
-      implicit none
+! right-hand-side columns), stored column-major. A singular matrix
+! returns ierr = 1. Pure: the network's implicit burn (burn_implicitly)
+! is its one caller. (2026-10: sized from the arguments, it was a fixed
+! system_matrix(56), the 7x8 kemcom case; the singular case no longer
+! writes "STOPPED AT 1010" to unit 5, which is standard input.)
+pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
 
       integer, intent(in) :: num_cols, num_unknowns
       double precision, intent(inout) :: system_matrix(num_unknowns*num_cols)
@@ -2029,11 +2025,6 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       imax=i
       end do
       if (dabs(biga).eq.0.0d0) then
-      write (5,1011)
- 1011 format (1x,'STOPPED AT 1010')
-      ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-      ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-      ! preserve the historical stop on a nonzero return.
       ierr = 1
       return
       end if
