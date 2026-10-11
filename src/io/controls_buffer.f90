@@ -669,6 +669,11 @@ module controls_buffer
       logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
            use_numerical_derivatives
       integer :: iopale
+! the SCV low-temperature EOS (namelist lscv), and the Debye-Hueckel
+! correction with its eta limits (namelist ldh, etadh0, etadh1); in
+! eos_lib's module state until 2026-10
+      logical :: use_scv_eos, use_debye_huckel_correction
+      double precision :: debye_huckel_eta_min, debye_huckel_eta_max
 
 ! former common/newopac/: laol_table_z1/laol_table_z2/opal_table_z1/
 ! opal_table_z2/opal95_single_table_z/alex_table_z1/kurucz_table_z1/

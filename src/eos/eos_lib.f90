@@ -55,6 +55,7 @@ module eos_lib
 ! unchanged, so results are byte-identical.
       use scv_eos_tables
       use yale_eos_tables
+      use eos_configuration, only: eos_settings_t, eos_settings, set_eos_settings
       implicit none
 ! Everything is private unless exported below (2026: eos_get is the
 ! single public query -- the named-index result-array form; the
@@ -67,6 +68,10 @@ module eos_lib
       private
       public :: eos_get, eos_get_gamma1, eos_init, eos_set_mixture, eos_set_debye_huckel_z
       public :: eos_eval
+! the settings record (eos_configuration) and its setter; the per-zone
+! Debye-Hueckel composition; the envelope-mixture SCV table
+      public :: eos_settings_t, set_eos_settings, eos_set_debye_huckel_composition, &
+           eos_update_envelope_tables
 ! result-array slots for eos_get
       integer, parameter, public :: &
            i_temperature = 1, i_pressure = 2, i_log10_density = 3, &
@@ -124,7 +129,6 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
-      use star_info_lib, only: star
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -161,7 +165,7 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       ierr = 0
       jerr = 0
 
-      if (star%ctrl%use_mhd_eos) then
+      if (eos_settings%use_mhd_eos) then
          call meqos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
@@ -176,7 +180,7 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
             return
          end if
       else
-         if (present(composition_at_zone) .and. use_debye_huckel_correction) then
+         if (present(composition_at_zone) .and. eos_settings%use_debye_huckel_correction) then
             debye_huckel_x = composition_at_zone(1)
             debye_huckel_y = composition_at_zone(2)+composition_at_zone(4)
             debye_huckel_z_total = composition_at_zone(3)
@@ -228,12 +232,12 @@ end subroutine eos_eval
 ! read is provably independent of the atm tables read later in
 ! startup (separate file units, disjoint state), so absorbing it here
 ! is order-safe.
-subroutine eos_init(fermi_table_path, scv_h_table_path, &
+subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
      scv_he_table_path, scv_z_table_path, zams_a_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
-     centre5_table_path, ierr)
-      use star_info_lib, only: star
+     centre5_table_path, opal_eos_table_path, ierr)
+      use opal_eos_tables, only: opal_eos
 
       use yale_eos_tables
       use io_units
@@ -249,6 +253,10 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
+! the run's EOS settings (installed here); the OPAL table the settings
+! select (opened here, read lazily by its vintage's reader)
+      type(eos_settings_t), intent(in) :: settings
+      character(len=*), intent(in) :: opal_eos_table_path
 ! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
       integer, intent(out) :: ierr
 
@@ -258,11 +266,43 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       integer :: t_idx, p_idx
       double precision :: scvhe_dummy_val, scvz_dummy_val
       integer :: scvhe_dummy_npts, scvz_dummy_npts
+      integer :: fermi_unit, scv_h_unit, scv_he_unit, scv_z_unit
+      logical :: is_open
+! the Debye-Hueckel coefficient's constants (cgs; formerly computed in
+! setups)
+      double precision, parameter :: boltzmann_constant = 1.380658d-16, &
+           electron_charge_esu = 4.802d-10
+      double precision :: hydrogen_atom_mass
 
       ierr = 0
       jerr = 0
-
-      if (star%ctrl%use_mhd_eos) then
+      call set_eos_settings(settings)
+! the Debye-Hueckel coefficient and the charges of the 18 metals it
+! weights (C, N, O, Ne, Na, Mg, Al, Si, P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni)
+      hydrogen_atom_mass = 1.0d0/6.0222137d23
+      debye_huckel_coefficient = -sqrt(cpi/(boltzmann_constant*hydrogen_atom_mass* &
+           hydrogen_atom_mass*hydrogen_atom_mass))*electron_charge_esu* &
+           electron_charge_esu*electron_charge_esu/3.0d0
+      debye_huckel_nu = [6.0d0, 7.0d0, 8.0d0, 10.0d0, 11.0d0, 12.0d0, 13.0d0, &
+           14.0d0, 15.0d0, 16.0d0, 17.0d0, 18.0d0, 20.0d0, 22.0d0, 24.0d0, &
+           25.0d0, 26.0d0, 28.0d0]
+! the OPAL table, opened for its reader
+      if (settings%use_opal95_eos .or. settings%use_opal2001_eos .or. &
+           settings%use_opal2006_eos) then
+         if (opal_eos%table_unit /= 0) then
+            inquire(unit=opal_eos%table_unit, opened=is_open)
+            if (is_open) close(opal_eos%table_unit)
+         end if
+         open(newunit=opal_eos%table_unit, file=opal_eos_table_path, status='OLD', &
+              iostat=jerr)
+         if (jerr /= 0) then
+            write(run_log_unit,*) 'eos_init: cannot open the OPAL EOS table ', &
+                 trim(opal_eos_table_path)
+            ierr = 1
+            return
+         end if
+      end if
+      if (settings%use_mhd_eos) then
          call mhdtbl(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
@@ -275,14 +315,14 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
 
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
 !  OPEN DATA FILES
-      open(unit=star%ctrl%fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(star%ctrl%fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(star%ctrl%fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
+      open(newunit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
+      read(fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
            col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
-      rewind star%ctrl%fermi_unit
+      rewind fermi_unit
       bin_start = 1
       do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
@@ -306,30 +346,30 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       end do
 
 !  CLOSE EQUATION OF STATE FILE.
-      close(star%ctrl%fermi_unit)
+      close(fermi_unit)
 
 ! MHP 5/97 ADDED OPTION FOR NEW SCV EQUATION OF STATE TABLES.
-      if(use_scv_eos)then
-         open(unit=star%ctrl%scv_h_unit,file=scv_h_table_path,status='OLD')
-         open(unit=star%ctrl%scv_he_unit,file=scv_he_table_path,status='OLD')
-         open(unit=star%ctrl%scv_z_unit,file=scv_z_table_path,status='OLD')
+      if(settings%use_scv_eos)then
+         open(newunit=scv_h_unit,file=scv_h_table_path,status='OLD')
+         open(newunit=scv_he_unit,file=scv_he_table_path,status='OLD')
+         open(newunit=scv_z_unit,file=scv_z_table_path,status='OLD')
 !  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
          do t_idx = 1, nts
-            read(star%ctrl%scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
-            read(star%ctrl%scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
-            read(star%ctrl%scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
+            read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
+            read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
+            read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
     1       format(f5.2,i4)
 ! The He and Z tables share the H table's T grid and P(T) point
 ! counts; their copies are read into dummies.
             do p_idx = 1, nptsx(t_idx)
-               read(star%ctrl%scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-               read(star%ctrl%scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+               read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
     2          format(f6.2,1p2e13.5,0p,8f9.4)
             end do
 !  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
 ! EQUATION OF STATE IN THE OLD YALE CODE.
             do p_idx = nptsx(t_idx),1,-1
-               read(star%ctrl%scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+               read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
  3             format(f6.2,12f9.4)
             end do
          end do
@@ -358,8 +398,6 @@ end subroutine eos_init
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
-      use star_info_lib, only: star
-
       use opal_eos_tables
       use physical_constants
       use math_lib
@@ -395,7 +433,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       ierr = 0
       jerr = 0
 
-      if (star%ctrl%use_opal2006_eos) then
+      if (eos_settings%use_opal2006_eos) then
          eos_interp_order = 9
          eos_rad_flag = 1
          x_local = hydrogen_fraction
@@ -490,5 +528,39 @@ subroutine eos_set_debye_huckel_z(metal_mixture)
 
       return
 end subroutine eos_set_debye_huckel_z
+
+!----------------------------------------------------------------------
+! eos_set_debye_huckel_composition
+!----------------------------------------------------------------------
+! The composition the Debye-Hueckel correction uses on calls that pass
+! none (composition_at_zone absent), from a zone's composition (star%xa
+! layout): the star layer sets the surface zone's before the envelope
+! integration. Does nothing when the correction is off. (2026-10: the
+! three callers wrote yale_eos_tables' variables themselves.)
+subroutine eos_set_debye_huckel_composition(composition)
+      double precision, intent(in) :: composition(:)
+
+      if (.not. eos_settings%use_debye_huckel_correction) return
+      debye_huckel_x = composition(1)
+      debye_huckel_y = composition(2)+composition(4)
+      debye_huckel_z_total = composition(3)
+      debye_huckel_z(1) = composition(5)+composition(6)
+      debye_huckel_z(2) = composition(7)+composition(8)
+      debye_huckel_z(3) = composition(9)+composition(10)+composition(11)
+end subroutine eos_set_debye_huckel_composition
+
+!----------------------------------------------------------------------
+! eos_update_envelope_tables
+!----------------------------------------------------------------------
+! Rebuild the tables tied to the envelope composition: the SCV
+! envelope-mixture table, when SCV is on.
+subroutine eos_update_envelope_tables(envelope_hydrogen_fraction, &
+     envelope_metal_fraction)
+      double precision, intent(in) :: envelope_hydrogen_fraction, &
+           envelope_metal_fraction
+
+      if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
+           envelope_hydrogen_fraction, envelope_metal_fraction)
+end subroutine eos_update_envelope_tables
 
 end module eos_lib

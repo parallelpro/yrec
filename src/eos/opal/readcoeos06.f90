@@ -24,8 +24,6 @@
 ! transliterated exactly rather than "fixed"; log10_ne_grid_06 is never
 ! read anywhere.
 subroutine readcoeos06(v, ierr)
-      use star_info_lib, only: star
-
       use opal_eos_tables
       use io_units
       implicit none
@@ -65,19 +63,19 @@ subroutine readcoeos06(v, ierr)
       end if
 
       close (2)
-! .....read  tables (the file is opened on star%ctrl%iopale by read_controls)
+! .....read  tables (the file is opened on opal_eos%table_unit by read_controls)
       do x_loop_index_06 = 1, mx
-         read (star%ctrl%iopale,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
+         read (opal_eos%table_unit,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
               v%hydrogen_fraction_header(x_loop_index_06), &
               v%z_table(x_loop_index_06), &
               v%moles_per_gram_table(x_loop_index_06), &
               v%mean_molecular_weight_header(x_loop_index_06)
-         read (star%ctrl%iopale,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+         read (opal_eos%table_unit,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
               &4X,E11.4)') (v%species_fraction_header(x_loop_index_06,species_read_idx), &
               species_read_idx=1,6)
-         read (star%ctrl%iopale,'(A)') blank_line
+         read (opal_eos%table_unit,'(A)') blank_line
          do density_row = 1, nr
-            read (star%ctrl%iopale,'(2I5,2F12.7,17X,E15.7)') record_number, &
+            read (opal_eos%table_unit,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  v%temperature_count_used(x_loop_index_06,density_row), &
                  unused_field, unused_field, &
                  v%density_grid_table(x_loop_index_06,density_row)
@@ -89,8 +87,8 @@ subroutine readcoeos06(v, ierr)
                ierr = 1
                return
             end if
-            read(star%ctrl%iopale,'(A)') blank_line
-            read(star%ctrl%iopale,'(A)') blank_line
+            read(opal_eos%table_unit,'(A)') blank_line
+            read(opal_eos%table_unit,'(A)') blank_line
             if (v%temperature_count_used(x_loop_index_06,density_row).lt. &
                  opal06_t6_index_lo(density_row)) then
                write (run_log_unit,'("Problem with OEOS96 data files: X=",F6.4, &
@@ -103,20 +101,20 @@ subroutine readcoeos06(v, ierr)
             end if
             do t6_row = 1, v%temperature_count_used(x_loop_index_06,density_row)
                if (t6_row.gt.opal06_t6_index_lo(density_row)) then
-                  read (star%ctrl%iopale,'(A)') blank_line
+                  read (opal_eos%table_unit,'(A)') blank_line
                   cycle
                end if
-               read (star%ctrl%iopale,'(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)') &
+               read (opal_eos%table_unit,'(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)') &
                     v%t6_list(density_row,t6_row), v%amu_grid(density_row,t6_row), &
                     v%log10_ne_grid(density_row,var_idx), &
                     (v%eos_table(x_loop_index_06,opal_eos_var_order(table_var_idx), &
                     t6_row,density_row), table_var_idx=1,9)
             end do
-            read(star%ctrl%iopale,'(A)') blank_line
-            read(star%ctrl%iopale,'(A)') blank_line
-            read(star%ctrl%iopale,'(A)') blank_line
+            read(opal_eos%table_unit,'(A)') blank_line
+            read(opal_eos%table_unit,'(A)') blank_line
+            read(opal_eos%table_unit,'(A)') blank_line
          end do
-         read(star%ctrl%iopale,'(A)') blank_line
+         read(opal_eos%table_unit,'(A)') blank_line
       end do
 
       do t6_scan_idx = 1, nt
@@ -143,7 +141,7 @@ subroutine readcoeos06(v, ierr)
       do x_idx = 2, mx
          v%x_grid_spacing_inv(x_idx) = 1.0d0/(v%x_grid_copy(x_idx) - v%x_grid_copy(x_idx-1))
       end do
-      close (star%ctrl%iopale)
+      close (opal_eos%table_unit)
 
       return
 end subroutine readcoeos06

@@ -22,7 +22,6 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
-      use star_info_lib, only: star
 !
 !  Input Arguments: log10_temperature, log10_pressure, hydrogen_fraction,
 !          metal_fraction, want_derivatives, in_atmosphere
@@ -39,6 +38,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 
       use physical_constants
       use math_lib
+      use eos_configuration, only: eos_settings
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -96,7 +96,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       in_atmosphere_local = in_atmosphere
       saha_state_local = saha_state
 
-      if (want_derivatives .and. star%ctrl%use_numerical_derivatives) then
+      if (want_derivatives .and. eos_settings%use_numerical_derivatives) then
 !        Get Numerical Derivatives of Current EOS    LLP  8/5/07
 !        If both derivatives and numerical derivatives are requested.
 !
@@ -206,7 +206,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       log10_temperature = log10_temperature_orig   ! Restore original TL and PL.
       log10_pressure = log10_pressure_orig
 
-      if (want_derivatives .and. .not.star%ctrl%use_numerical_derivatives) then
+      if (want_derivatives .and. .not.eos_settings%use_numerical_derivatives) then
          want_derivatives_2 = .true.   ! Need derivatives and have no numerical ones.
                           ! Call eqstat2 and request derivatives
          call eqstat2(log10_temperature, temperature, log10_pressure, &
@@ -298,14 +298,13 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
-      use star_info_lib, only: star
-
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, &
            n_mix_species, ix_na, ix_c, ix_h, ix_o, ix_ne, ix_he
       use io_units
       use physical_constants
       use scv_eos_tables
       use math_lib
+      use eos_configuration, only: eos_settings
       implicit none
 
       double precision, intent(inout) :: log10_temperature
@@ -387,12 +386,12 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      need_saha_solution = log10_temperature.lt.star%ctrl%saha_log10t_cutoff
+      need_saha_solution = log10_temperature.lt.eos_settings%saha_log10t_cutoff
       skip_relativistic_eos = log10_temperature.le. &
-           (star%ctrl%saha_log10t_cutoff - saha_ramp_width)
+           (eos_settings%saha_log10t_cutoff - saha_ramp_width)
 
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
-      if (star%job%use_diffusion_z) then
+      if (eos_settings%use_diffusion_z) then
 !        THE VECTOR eos_mix%fxenv IS DEFINED IN STARIN AS
 !        (MASS FRACTION OF SPECIES/ATOMIC WT/AMUENV) FOR THE COMPOSITION
 !        XENV,ZENV.
@@ -496,7 +495,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       else
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
 !     THIS EOS REPLACES THE CALL TO saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
-      if (use_scv_eos) then
+      if (eos_settings%use_scv_eos) then
          call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
@@ -562,7 +561,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp)
 !     INTERPOLATE VALUES
-      ramp_weight = saha_ramp_scale*(star%ctrl%saha_log10t_cutoff - log10_temperature)
+      ramp_weight = saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature)
       ramp_weight_sq = ramp_weight*ramp_weight
       ramp_factor = ramp_weight_sq*ramp_weight* &
            (6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)
@@ -604,7 +603,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     1995 OPAL eqos
-      if (star%ctrl%use_opal95_eos) then
+      if (eos_settings%use_opal95_eos) then
       if (temperature.ge.opal95_t_min .and. log10_temperature.le.opal95_log10_t_max .and. &
            log10_density.le.opal95_log10_rho_max) then
 
@@ -629,7 +628,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2001 OPAL eqos  LLP 6/17/03
-      if (star%ctrl%use_opal2001_eos) then
+      if (eos_settings%use_opal2001_eos) then
       if (temperature.ge.opal01_t_min .and. temperature.le.opal01_t_max .and. &
            log10_density.le.opal01_log10_rho_max) then
          call oeqos01(log10_temperature, temperature, log10_pressure, &
@@ -655,7 +654,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
 
 !     2006 OPAL eqos  LLP 10/13/2996
-      if (star%ctrl%use_opal2006_eos) then
+      if (eos_settings%use_opal2006_eos) then
       if (temperature.ge.opal06_t_min .and. temperature.le.opal06_t_max .and. &
            log10_density.le.opal06_log10_rho_max) then
          call oeqos06(log10_temperature, temperature, log10_pressure, &

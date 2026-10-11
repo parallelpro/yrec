@@ -20,12 +20,11 @@
 subroutine setups(ierr)
       use eos_lib
       use kap_lib
-      use microphysics_settings, only: opacity_settings
+      use microphysics_settings, only: opacity_settings, equation_of_state_settings
       use atm_lib
       use atm_tables
       use star_info_lib, only: star
       use physical_constants
-      use yale_eos_tables
       use math_lib
       use t_tau_relations, only: hsra_t_tau_offset
       implicit none
@@ -83,33 +82,7 @@ subroutine setups(ierr)
       cdelrl = -c4pi3l - csigl - log10(16.0d0)
       cmixl2 = cc13
       cmixl3 = 16.0d0*dsqrt(2.0d0)*csig
-! DBG CALCULATE DEBYE-HUCKEL CONSTAND CDH
-! mass hydrogen atom (gm)
-      hydrogen_atom_mass = 1.0d0/6.0222137d23
-! charge electron (ESU)
-      electron_charge_esu=4.802d-10
-      debye_huckel_coefficient = -sqrt(cpi/(boltzmann_constant*hydrogen_atom_mass* &
-           hydrogen_atom_mass*hydrogen_atom_mass))*electron_charge_esu* &
-           electron_charge_esu*electron_charge_esu/3.0d0
-! Electric charge of C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni
-      debye_huckel_nu(1) = 6.0d0
-      debye_huckel_nu(2) = 7.0d0
-      debye_huckel_nu(3) = 8.0d0
-      debye_huckel_nu(4) = 10.0d0
-      debye_huckel_nu(5) = 11.0d0
-      debye_huckel_nu(6) = 12.0d0
-      debye_huckel_nu(7) = 13.0d0
-      debye_huckel_nu(8) = 14.0d0
-      debye_huckel_nu(9) = 15.0d0
-      debye_huckel_nu(10) = 16.0d0
-      debye_huckel_nu(11) = 17.0d0
-      debye_huckel_nu(12) = 18.0d0
-      debye_huckel_nu(13) = 20.0d0
-      debye_huckel_nu(14) = 22.0d0
-      debye_huckel_nu(15) = 24.0d0
-      debye_huckel_nu(16) = 25.0d0
-      debye_huckel_nu(17) = 26.0d0
-      debye_huckel_nu(18) = 28.0d0
+! (the Debye-Hueckel constants are eos_init's, 2026-10)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -135,10 +108,11 @@ subroutine setups(ierr)
 ! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
 ! eos_init also reads the Fermi-Dirac degenerate-electron table
 ! (the F-tables block that used to sit inline just below).
-      call eos_init(star%job%fermi_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path, &
+      call eos_init(equation_of_state_settings(), star%job%fermi_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path, &
            star%job%scv_z_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path, &
            star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path, &
-           star%job%centre3_table_path,star%job%centre4_table_path,star%job%centre5_table_path, ierr)
+           star%job%centre3_table_path,star%job%centre4_table_path,star%job%centre5_table_path, &
+           star%job%opal_eos_table_path, ierr)
       if (ierr /= 0) return
 !
 !

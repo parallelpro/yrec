@@ -258,6 +258,9 @@ module opal_eos_tables
 ! /lreadco/, so loading one vintage kept the next from reading its own
 ! table in the same process)
            integer :: table_loaded_flag(n_opal_vintages) = 0
+! the unit eos_init opened the run's OPAL table on (2026-10:
+! read_controls opened it on ctrl%iopale)
+           integer :: table_unit = 0
 ! save-migration campaign (2026): lazy-load guards and first-load
 ! table-Z memory, promoted from SAVEd locals; indexed by iv_opal95/01/06.
             integer :: readco_init_flag(n_opal_vintages) = 0

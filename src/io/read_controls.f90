@@ -83,8 +83,6 @@ subroutine read_input(ierr)
       use integration_parameters
       use yrec_output, only: output_init_mesa
       use atm_tables
-      use yale_eos_tables
-      use scv_eos_tables
       use eos_lib, only: eos_set_mixture
       implicit none
 
@@ -1858,16 +1856,18 @@ subroutine derive_options_and_open_files
 ! G Somers END
 ! MHP 8/25 open relevant table as well as ensuring that only one is selected
 !  Disable Older OPAL EOS's if a newer one is specified
+!  (2026-10: eos_init opens the selected table, star%job%opal_eos_table_path)
+      star%job%opal_eos_table_path = ""
       if (lopale06) then
           lopale01 = .false.
           lopale = .false.
-         open(iopale, file=fopale06,status='OLD')
+         star%job%opal_eos_table_path = fopale06
       endif
       if (lopale01) then
-         open(iopale, file=fopale01,status='OLD')
+         star%job%opal_eos_table_path = fopale01
          lopale = .false.
       else if(lopale) then
-         open(iopale, file=fopale,status='OLD')
+         star%job%opal_eos_table_path = fopale
       endif
 ! 3/09 Disable older Alexander opacities if a newer one is specified
       if(lalex06)then
@@ -2432,8 +2432,6 @@ end subroutine read_input
 subroutine expand_value(path_value)
 
       use atm_tables
-      use yale_eos_tables
-      use scv_eos_tables
       implicit none
 
       integer, parameter :: n_env_vars = 3  ! Number of possible env. vars.

@@ -13,18 +13,21 @@
 ! completes du/dt and the entropy-of-mixing correction (smix) on the
 ! native H/He table grid, then combines the three species by the
 ! additive-volume rule at the envelope composition (X=envelope_hydrogen_
-! fraction, Z=star%envelope_metal_fraction) to fill tablenv columns 1-6,
+! fraction, Z=envelope_metal_fraction) to fill tablenv columns 1-6,
 ! then numerically differentiates those columns (in log T and log P)
 ! to fill tablenv columns 7-12.
-subroutine build_scv_envelope_table
+subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
+     envelope_metal_fraction)
 
-      use star_info_lib, only: star
       use physical_constants
       use numerics_lib
       use scv_eos_tables
       use math_lib
       implicit none
       integer, parameter :: nts = scv_nt
+! the envelope composition the table is built for
+      double precision, intent(in) :: envelope_hydrogen_fraction, &
+           envelope_metal_fraction
 
 ! interp_x: the three abscissae handed to inter3; interp_f: the three
 ! tabulated values combined with the weights inter3 returns.
@@ -78,7 +81,7 @@ subroutine build_scv_envelope_table
                  tlogx(t_idx)))*tabley(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tabley(t_idx,p_idx,iscv_dlnrho_dlnp)
 ! COMPUTE THE ENTROPY OF MIXING.
 ! NUMBER DENSITY OF HYDROGEN AND HELIUM
-            helium_fraction_hhe = 1.0d0-star%envelope_hydrogen_fraction
+            helium_fraction_hhe = 1.0d0-envelope_hydrogen_fraction
             one_minus_y_local = 1.0d0 - helium_fraction_hhe
             density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
             density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
@@ -155,8 +158,8 @@ subroutine build_scv_envelope_table
         call inter3(interp_x,t_interp_weight,t_interp_dweight,ln_t_work)
          do p_idx=1,nptsx(t_idx)
             log_p_work = tablex(t_idx,p_idx,iscv_log10_p)
-            hydrogen_fraction_local = star%envelope_hydrogen_fraction
-            metal_fraction_local = star%envelope_metal_fraction
+            hydrogen_fraction_local = envelope_hydrogen_fraction
+            metal_fraction_local = envelope_metal_fraction
             helium_fraction_local = 1.0d0 - hydrogen_fraction_local - &
                  metal_fraction_local
             pressure_value = (exp10(log_p_work))

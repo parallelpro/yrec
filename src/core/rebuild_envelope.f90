@@ -15,6 +15,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
+      use eos_lib, only: eos_set_debye_huckel_composition
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff
       use envelope_integration_kernel, only: senv_thin_envelope
@@ -23,7 +24,6 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use controls_buffer, only: ichi_dp_env_max
       use envelope_structure
       use physical_constants
-      use yale_eos_tables
       use math_lib
       implicit none
       integer, intent(out) :: ierr
@@ -114,15 +114,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! FIRST TIME IT TRIES TO DO SO.
       pressure_limit = log_pressure(num_zones)
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
-      if (use_debye_huckel_correction) then
-         debye_huckel_x = composition(i_h1,num_zones)
-         debye_huckel_y = composition(i_he4,num_zones)+composition(i_he3,num_zones)
-         debye_huckel_z_total = composition(i_metals,num_zones)
-         debye_huckel_z(1) = composition(i_c12,num_zones)+composition(i_c13,num_zones)
-         debye_huckel_z(2) = composition(i_n14,num_zones)+composition(i_n15,num_zones)
-         debye_huckel_z(3) = composition(i_o16,num_zones)+composition(i_o17,num_zones)+ &
-              composition(i_o18,num_zones)
-      end if
+      call eos_set_debye_huckel_composition(composition(:,num_zones))
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
 ! FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL

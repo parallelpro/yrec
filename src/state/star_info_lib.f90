@@ -124,7 +124,7 @@ module star_info_lib
                  centre3_table_path, centre4_table_path, centre5_table_path
             character(len=256) :: opal92_table2_path, pure_z_table_path, &
                  scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-                 conductive_table_path
+                 conductive_table_path, opal_eos_table_path
             character(len=256) :: alex95_table_paths(7)
             double precision :: mixture_weights(n_mix_species)
 ! phase C flattening: the Monte-Carlo sample arrays (former

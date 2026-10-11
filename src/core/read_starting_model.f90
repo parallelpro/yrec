@@ -43,8 +43,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use physical_constants
       use eos_lib
       use kap_lib
-      use yale_eos_tables
-      use scv_eos_tables
       use stitched_model, only: build_stitched_model
       implicit none
       integer :: jerr_atm
@@ -722,15 +720,7 @@ subroutine rescale_and_refit_envelope
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
           log10_pressure_limit = star%logP(star%nz)
-            if (use_debye_huckel_correction) then
-               debye_huckel_x = star%xa(i_h1,star%nz)
-               debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
-               debye_huckel_z_total = star%xa(i_metals,star%nz)
-               debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
-               debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
-               debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
-                    star%xa(i_o18,star%nz)
-            end if
+            call eos_set_debye_huckel_composition(star%xa(:,star%nz))
 ! G Somers 10/14, FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
           if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
@@ -924,9 +914,8 @@ subroutine update_surface_mixture
 ! DBG 11/95 GENERATE NEW SURFACE OPACITY TABLES
       call kap_update_surface_tables(star%envelope_hydrogen_fraction, ierr=ierr)
       if (ierr /= 0) return
-      if (use_scv_eos) then
-         call build_scv_envelope_table
-      endif
+      call eos_update_envelope_tables(star%envelope_hydrogen_fraction, &
+           star%envelope_metal_fraction)
 
 end subroutine update_surface_mixture
 

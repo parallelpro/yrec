@@ -17,20 +17,17 @@
 ! module. MESA-equivalently: composition is an INPUT of the eos,
 ! owned on the physics side of the boundary.
 module eos_mixture
+      use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
+           ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, n_mix_species
       implicit none
       private
 
-! The 12-species surface mixture layout: element per slot of fxenv,
-! eqstat2's atomic_weights_full table and the saha_mass_fractions
-! vector handed to eos/yale/saha_eos. Same values as star_info_lib's
-! ix_* / n_mix_species (the star layer fills fxenv in that order in
-! core/read_starting_model.f90's update_surface_mixture); a copy
-! because this module must not depend on star_info_lib (physics-purity
-! pass), like reaction_rates' num_reactions.
-      integer, parameter, public :: &
-           ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
-           ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &
-           ix_ne = 11, ix_he = 12, n_mix_species = 12
+! The 12-species surface mixture layout (composition_layout's ix_*,
+! re-exported): element per slot of fxenv, eqstat2's
+! atomic_weights_full table and the saha_mass_fractions vector handed
+! to eos/yale/saha_eos.
+      public :: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, &
+           ix_ar, ix_ne, ix_he, n_mix_species
 
       type, public :: eos_mixture_state
             double precision :: envelope_hydrogen_fraction, &

@@ -51,12 +51,8 @@ module yale_eos_tables
 ! recomputes them per shell from the local composition -- so they too
 ! have no declaration-time default.
       double precision :: debye_huckel_coefficient
-      double precision :: debye_huckel_eta_min, debye_huckel_eta_max
       double precision :: debye_huckel_z(18)
       double precision :: debye_huckel_x, debye_huckel_y, &
            debye_huckel_z_total
       double precision :: debye_huckel_nu(18)
-      logical :: use_debye_huckel_correction
-
-
 end module yale_eos_tables

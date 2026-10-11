@@ -60,7 +60,8 @@ PUBLIC = {
     # eos_get_gamma1 is test-only: its sole caller is
     # eos/test/test_eos.f90 (the calcad diagnostic it served is gone).
     "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",
-            "eos_set_debye_huckel_z"},
+            "eos_set_debye_huckel_z", "eos_set_debye_huckel_composition",
+            "eos_update_envelope_tables", "set_eos_settings"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).
     # kap_get is the named-index result-array query (the former
@@ -168,7 +169,7 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net", "kap"]
+STAR_FREE_DIRS = ["net", "kap", "eos"]
 
 def check_star_free(src_root):
     problems = []
@@ -190,7 +191,7 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net", "kap"]
+FACADE_ONLY_DOMAINS = ["net", "kap", "eos"]
 
 def check_facade_imports(src_root):
     problems = []

@@ -260,6 +260,10 @@ subroutine seed_controls_buffer
       use_opal2006_eos = star%ctrl%use_opal2006_eos
       use_numerical_derivatives = star%ctrl%use_numerical_derivatives
       iopale = star%ctrl%iopale
+      use_scv_eos = star%ctrl%use_scv_eos
+      use_debye_huckel_correction = star%ctrl%use_debye_huckel_correction
+      debye_huckel_eta_min = star%ctrl%debye_huckel_eta_min
+      debye_huckel_eta_max = star%ctrl%debye_huckel_eta_max
       laol_table_z1 = star%ctrl%laol_table_z1
       laol_table_z2 = star%ctrl%laol_table_z2
       opal_table_z1 = star%ctrl%opal_table_z1
@@ -629,6 +633,10 @@ subroutine store_controls_to_star
       star%ctrl%use_opal2006_eos = use_opal2006_eos
       star%ctrl%use_numerical_derivatives = use_numerical_derivatives
       star%ctrl%iopale = iopale
+      star%ctrl%use_scv_eos = use_scv_eos
+      star%ctrl%use_debye_huckel_correction = use_debye_huckel_correction
+      star%ctrl%debye_huckel_eta_min = debye_huckel_eta_min
+      star%ctrl%debye_huckel_eta_max = debye_huckel_eta_max
       star%ctrl%laol_table_z1 = laol_table_z1
       star%ctrl%laol_table_z2 = laol_table_z2
       star%ctrl%opal_table_z1 = opal_table_z1

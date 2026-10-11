@@ -24,7 +24,6 @@ program test_atm
       use io_units
       use atm_tables
       use atm_lib
-      use scv_eos_tables
       implicit none
       integer :: gerr
 
@@ -71,7 +70,7 @@ program test_atm
 ! everything else gated off (setups calls eos_init/kap_init/atm_init
 ! unconditionally; only the Fermi table is a hard requirement)
       star%ctrl%use_mhd_eos = .false.
-      use_scv_eos = .false.
+      star%ctrl%use_scv_eos = .false.
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .false.

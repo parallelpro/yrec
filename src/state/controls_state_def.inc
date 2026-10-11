@@ -176,6 +176,10 @@
             logical :: use_opal2006_eos = .false.
             logical :: use_numerical_derivatives = .false.
             integer :: iopale = 0
+            logical :: use_scv_eos = .false.
+            logical :: use_debye_huckel_correction = .false.
+            double precision :: debye_huckel_eta_min = 0.0d0
+            double precision :: debye_huckel_eta_max = 0.0d0
             double precision :: laol_table_z1 = 0.0d0
             double precision :: laol_table_z2 = 0.0d0
             double precision :: opal_table_z1 = 0.0d0

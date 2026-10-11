@@ -44,9 +44,9 @@ contains
 subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
      stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
+      use eos_lib, only: eos_set_debye_huckel_composition
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, &
            i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
-      use yale_eos_tables
       implicit none
 
       integer, intent(in) :: iteration_level
@@ -90,15 +90,7 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
        hydrogen_fraction = star%xnew
        metal_fraction = star%znew
        log10_pressure_limit = star%logP(star%nz)
-       if (use_debye_huckel_correction) then
-          debye_huckel_x = star%xa(i_h1,star%nz)
-          debye_huckel_y = star%xa(i_he4,star%nz)+star%xa(i_he3,star%nz)
-          debye_huckel_z_total = star%xa(i_metals,star%nz)
-          debye_huckel_z(1) = star%xa(i_c12,star%nz)+star%xa(i_c13,star%nz)
-          debye_huckel_z(2) = star%xa(i_n14,star%nz)+star%xa(i_n15,star%nz)
-          debye_huckel_z(3) = star%xa(i_o16,star%nz)+star%xa(i_o17,star%nz)+ &
-               star%xa(i_o18,star%nz)
-       end if
+       call eos_set_debye_huckel_composition(star%xa(:,star%nz))
        call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &

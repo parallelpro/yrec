@@ -47,7 +47,6 @@ program test_net
            rv_frac_be7_ecap, net_settings
       use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates
       use thermal_neutrinos, only: sneut, azbar
-      use scv_eos_tables, only: use_scv_eos
       use burn_step, only: configure_network
       implicit none
 
@@ -97,7 +96,7 @@ program test_net
 
 ! everything gated off; only the Fermi table is a hard requirement
       star%ctrl%use_mhd_eos = .false.
-      use_scv_eos = .false.
+      star%ctrl%use_scv_eos = .false.
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .false.

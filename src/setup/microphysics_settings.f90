@@ -5,11 +5,13 @@
 ! run's controls by the star layer (2026-10, Phase 3). Each domain
 ! installs its record at init and reads no other configuration:
 !     opacity_settings   kap (kap_init)
+!     equation_of_state_settings       eos (eos_init)
 module microphysics_settings
       use kap_lib, only: kap_settings_t
+      use eos_lib, only: eos_settings_t
       implicit none
       private
-      public :: opacity_settings
+      public :: opacity_settings, equation_of_state_settings
 
 contains
 
@@ -52,5 +54,30 @@ function opacity_settings() result(s)
       s%metal_fraction_match_tolerance = star%ctrl%metal_fraction_match_tolerance
       s%laol_extrapolation_tolerance = star%ctrl%tollaol
 end function opacity_settings
+
+!----------------------------------------------------------------------
+! equation_of_state_settings: eos's settings from the controls.
+!   star reads: ctrl%debye_huckel_eta_max, ctrl%debye_huckel_eta_min,
+!     ctrl%saha_log10t_cutoff, ctrl%use_debye_huckel_correction,
+!     ctrl%use_mhd_eos, ctrl%use_numerical_derivatives,
+!     ctrl%use_opal2001_eos, ctrl%use_opal2006_eos, ctrl%use_opal95_eos,
+!     ctrl%use_scv_eos, job%use_diffusion_z
+!   star writes: none
+function equation_of_state_settings() result(s)
+      use star_info_lib, only: star
+      type(eos_settings_t) :: s
+
+      s%use_mhd_eos = star%ctrl%use_mhd_eos
+      s%use_opal95_eos = star%ctrl%use_opal95_eos
+      s%use_opal2001_eos = star%ctrl%use_opal2001_eos
+      s%use_opal2006_eos = star%ctrl%use_opal2006_eos
+      s%use_scv_eos = star%ctrl%use_scv_eos
+      s%use_numerical_derivatives = star%ctrl%use_numerical_derivatives
+      s%use_diffusion_z = star%job%use_diffusion_z
+      s%use_debye_huckel_correction = star%ctrl%use_debye_huckel_correction
+      s%debye_huckel_eta_min = star%ctrl%debye_huckel_eta_min
+      s%debye_huckel_eta_max = star%ctrl%debye_huckel_eta_max
+      s%saha_log10t_cutoff = star%ctrl%saha_log10t_cutoff
+end function equation_of_state_settings
 
 end module microphysics_settings

@@ -35,6 +35,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       use physical_constants
       use io_units
       use math_lib
+      use eos_configuration, only: eos_settings
       implicit none
 
       double precision, intent(in) :: log10_temperature
@@ -98,7 +99,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       nden = 1
       id1p = -100
 ! DBG 7/92 CALCULATE D.H. TERMS: ALPHA-MIXTURE, MASS-FRAC0, MASS-FRAC1
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          almix = 0.0d0
          do ii=1,18
             almix = almix + debye_huckel_nu(ii)*debye_huckel_z(ii)
@@ -144,18 +145,18 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       dcl1 = (dx2 + dx3)*cden1
       dcl2 = (dx3 + dx1)*cden2
       dcl3 = (dx1 + dx2)*cden3
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          electron_degeneracy_parameter = cl1*yale_eos%fermi_table_eta(id1) + &
               cl2*yale_eos%fermi_table_eta(id2) + cl3*yale_eos%fermi_table_eta(id3)
-         if (electron_degeneracy_parameter .lt. debye_huckel_eta_min) then
+         if (electron_degeneracy_parameter .lt. eos_settings%debye_huckel_eta_min) then
             cmfdh = cmfdh0*sqrt(cmfdh0)
-         else if (electron_degeneracy_parameter .gt. debye_huckel_eta_max) then
+         else if (electron_degeneracy_parameter .gt. eos_settings%debye_huckel_eta_max) then
             cmfdh = cmfdh0*sqrt(cmfdh1)
          else
             t0 = cmfdh0*sqrt(cmfdh0)
             t1 = cmfdh0*sqrt(cmfdh1)
-            slope = (t1-t0)/(debye_huckel_eta_max-debye_huckel_eta_min)
-            cmfdh = t0+(electron_degeneracy_parameter-debye_huckel_eta_min)*slope
+            slope = (t1-t0)/(eos_settings%debye_huckel_eta_max-eos_settings%debye_huckel_eta_min)
+            cmfdh = t0+(electron_degeneracy_parameter-eos_settings%debye_huckel_eta_min)*slope
          end if
       end if
 !  NOW FIND PE AND ITS 1ST AND 2ND DERIVS.W/R/T DENSITY
@@ -165,22 +166,22 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       d8 = exp(ln10*dl8)
       pa = ramut*d8
       pe = exp(ln10*pel)
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/temperature)*d8
       end if
       pt = pa + pe + pr
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          pt = pt + pdh
          pdhp = pdh/pt
       end if
       ptl = log10(pt)
       pr7 = (pa + pe*dpel1)/pt
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          pr7 = pr7 + 1.5d0*pdhp
       end if
       pr8 = (ptl - pl8)/pr7
       pr9 = ln10*( (pa + pe*(dpel1**2+dpel2/ln10))/(pt*pr7) - pr7 )
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          pr9 = pr9 + 2.25d0*pdhp/pr7
       end if
 ! FACTOR IS THE DIFFERENCE BETWEEN THE P PREDICTED FROM THE GIVEN RHO
@@ -230,23 +231,23 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       qpeqd = peq*pr4
       qpeqt = peq*(pr5 - 1.50d0*pr4)
       qpt = (pa + peq)*pinv + 4.0d0*beta1
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qpt = qpt - 0.5d0*pdhp
       end if
       qpd = (pa + pe*qped)*pinv
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qpd = qpd + 1.5d0*pdhp
       end if
       qqptt = (pa + qpeqt)*pinv + 16.0d0*beta1 - qpt**2
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qqptt = qqptt+(0.5d0*qpt+0.25d0)*pdhp
       end if
       qqpdt = (pa + qpeqd)*pinv - qpt*qpd
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qqpdt = qqpdt+(0.5d0*qpt-0.75d0)*pdhp
       end if
       qqpdd = (pa + pe*(qped**2 + qqpedd))*pinv - qpd**2
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
         qqpdd = qqpdd + (-1.5d0*qpd+2.25d0)*pdhp
       end if
 ! DERIVATIVES OF DENSITY
@@ -269,31 +270,31 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
       pdt = pd/temperature
       ua = 1.50d0*ramut
       ur = 3.0d0*beta1*pd
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          udh = 3.0d0*pdh/d8
       end if
       u = ua + ue + ur
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          u = u + udh
          udhu = udh/u
       end if
       ui = 1.0d0/u
       pdu = pd*ui
       qutd = (ua + ueq + 4.0d0*ur)*ui
-      if(use_debye_huckel_correction) then
+      if(eos_settings%use_debye_huckel_correction) then
          qutd = qutd -0.5d0*udhu
       end if
       qudt = pdu*(1.0d0 - qpt)
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qudt = qudt + 0.5d0*udhu
       end if
       qutp = qutd + dlnrho_dlnt*qudt
       qqutt = (ua + queqt + 16.0d0*ur)*ui - qutd**2
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qqutt = qqutt + (0.5d0*qutd+0.25d0)*udhu
       end if
       qqudt = qudt*(qpt - qutd) - pdu*qqptt
-      if (use_debye_huckel_correction) then
+      if (eos_settings%use_debye_huckel_correction) then
          qqudt = qqudt + (0.5d0*qudt-0.25d0)*udhu
       end if
 ! SPECIFIC HEAT(QCP) AND ITS DERIVATIVES

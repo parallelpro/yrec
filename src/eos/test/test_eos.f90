@@ -44,10 +44,10 @@ program test_eos
       use io_units
       use star_info_lib, only: star
       use eos_lib
-      use yale_eos_tables
-      use scv_eos_tables
+      use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
       implicit none
+      type(eos_settings_t) :: settings
       integer :: gerr
 
       character(len=256) :: yrec_input, mhd_dir
@@ -109,18 +109,17 @@ program test_eos
       star%ctrl%scv_h_unit = 72
       star%ctrl%scv_he_unit = 73
       star%ctrl%scv_z_unit = 74
-      star%ctrl%iopale = 49
       open(run_log_unit, file="test_eos.short", status="replace")
 
 ! eos configuration
       star%ctrl%use_mhd_eos = .false.
-      use_scv_eos = .true.
+      star%ctrl%use_scv_eos = .true.
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .true.
       star%job%use_diffusion_z = .false.
       star%ctrl%use_numerical_derivatives = .false.
-      use_debye_huckel_correction = .false.
+      star%ctrl%use_debye_huckel_correction = .false.
       star%ctrl%saha_log10t_cutoff = 6.0d0
 
 ! kap/atm gated off so setups' kap_init/atm_init are no-ops
@@ -191,15 +190,15 @@ program test_eos
       star%job%scv_he_table_path = scvhe_path
       star%job%scv_z_table_path = scvz_path
       star%job%alex95_table_paths = dummy_paths7
+      star%job%opal_eos_table_path = opal06_path
       call setups(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_eos: FAIL (setups error)"
          stop 1
       end if
 
-! OPAL-2006 EOS file, opened as core/read_input.f90 does (esac06 reads it
-! lazily on first use)
-      open(star%ctrl%iopale, file=opal06_path, status='OLD')
+! (the OPAL-2006 EOS file is opened by eos_init, from
+! star%job%opal_eos_table_path; esac06 reads it lazily on first use)
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
@@ -250,7 +249,9 @@ program test_eos
 ! (which set LOPALE06), and not meaningfully pinnable.
       write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch " // &
            "(defined regime only)"
-      star%ctrl%use_opal2006_eos = .false.
+      settings = eos_settings
+      settings%use_opal2006_eos = .false.
+      call set_eos_settings(settings)
       do ipt = 3, ng1
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
@@ -261,7 +262,8 @@ program test_eos
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
-      star%ctrl%use_opal2006_eos = .true.
+      settings%use_opal2006_eos = .true.
+      call set_eos_settings(settings)
 
 ! MHD path: infrastructure for closing the LMHD coverage gap; runs
 ! only when tables are supplied from outside the repository.
@@ -270,12 +272,13 @@ program test_eos
          write(*,'(a)') "# test_eos: MHD path SKIPPED " // &
               "(YREC_MHD_TABLES not set; no MHD tables ship with YREC)"
       else
-         star%ctrl%use_mhd_eos = .true.
-         call eos_init(fermi_path, scvh_path, scvhe_path, scvz_path, &
+         settings = eos_settings
+         settings%use_mhd_eos = .true.
+         call eos_init(settings, fermi_path, scvh_path, scvhe_path, scvz_path, &
               trim(mhd_dir)//"/zams_a", trim(mhd_dir)//"/zams_b", &
               trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
               trim(mhd_dir)//"/centre2", trim(mhd_dir)//"/centre3", &
-              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5", gerr)
+              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5", opal06_path, gerr)
       if (gerr /= 0) stop 1
          write(*,'(a)') "# test_eos: eos_eval over the same grid, MHD"
          do ipt = 1, npts
@@ -347,47 +350,51 @@ contains
       subroutine check_configurations()
          character(len=256) :: legacy
          legacy = trim(yrec_input)//"/eos/legacy/"
-         call configure("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
+         call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
          call evaluate_grid(0.70d0, 0.0188d0)
-         call configure("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
+         call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
          call evaluate_grid(0.70d0, 0.0188d0)
-         call configure("scv_only", scv=.true.)
+         call configure_eos("scv_only", scv=.true.)
          call evaluate_grid(0.70d0, 0.016492d0)
-         call configure("yale_only")
+         call configure_eos("yale_only")
          call evaluate_grid(0.70d0, 0.016492d0)
-         call configure("numerical", opal2006=.true., scv=.true., numerical=.true.)
+         call configure_eos("numerical", opal2006=.true., scv=.true., numerical=.true., file=opal06_path)
          call evaluate_grid(0.70d0, 0.016492d0)
-         call configure("diffusion_z", opal2006=.true., scv=.true., diffusion_z=.true.)
+         call configure_eos("diffusion_z", opal2006=.true., scv=.true., diffusion_z=.true., file=opal06_path)
          call evaluate_grid(0.70d0, 0.016492d0)
-         call configure("debye_huckel", debye_huckel=.true.)
+         call configure_eos("debye_huckel", debye_huckel=.true.)
          call evaluate_grid(0.70d0, 0.016492d0, with_composition=.true.)
       end subroutine check_configurations
 
 ! Set one configuration (the controls a deck would set), opening an OPAL
 ! file on the unit read_controls would use when one is named.
-      subroutine configure(label, opal95, opal2001, opal2006, scv, numerical, &
+      subroutine configure_eos(label, opal95, opal2001, opal2006, scv, numerical, &
            diffusion_z, debye_huckel, file)
          character(len=*), intent(in) :: label
          logical, intent(in), optional :: opal95, opal2001, opal2006, scv, &
               numerical, diffusion_z, debye_huckel
          character(len=*), intent(in), optional :: file
-         logical :: is_open
+         type(eos_settings_t) :: s
+         character(len=256) :: opal_path
+         integer :: ierr
          write(*,'(a,a)') "# test_eos: configuration ", label
-         star%ctrl%use_opal95_eos = present(opal95)
-         star%ctrl%use_opal2001_eos = present(opal2001)
-         star%ctrl%use_opal2006_eos = present(opal2006)
-         use_scv_eos = present(scv)
-         star%ctrl%use_numerical_derivatives = present(numerical)
-         star%job%use_diffusion_z = present(diffusion_z)
-         use_debye_huckel_correction = present(debye_huckel)
-         debye_huckel_eta_min = -1.0d0
-         debye_huckel_eta_max = 1.0d0
-         if (present(file)) then
-            inquire(unit=star%ctrl%iopale, opened=is_open)
-            if (is_open) close(star%ctrl%iopale)
-            open(star%ctrl%iopale, file=file, status='OLD')
-         end if
-      end subroutine configure
+         s = eos_settings
+         s%use_opal95_eos = present(opal95)
+         s%use_opal2001_eos = present(opal2001)
+         s%use_opal2006_eos = present(opal2006)
+         s%use_scv_eos = present(scv)
+         s%use_numerical_derivatives = present(numerical)
+         s%use_diffusion_z = present(diffusion_z)
+         s%use_debye_huckel_correction = present(debye_huckel)
+         s%debye_huckel_eta_min = -1.0d0
+         s%debye_huckel_eta_max = 1.0d0
+         opal_path = ""
+         if (present(file)) opal_path = file
+         call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
+              dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
+              dummy_path, dummy_path, dummy_path, opal_path, ierr)
+         if (ierr /= 0) write(*,'(a,i0)') "eos_init ierr = ", ierr
+      end subroutine configure_eos
 
       subroutine evaluate_grid(x, z, with_composition)
          double precision, intent(in) :: x, z

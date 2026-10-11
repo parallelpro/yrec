@@ -32,8 +32,6 @@ module scv_eos_tables
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
            tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
       integer :: nptsx(scv_nt), idtt, idp
-      logical :: use_scv_eos
-
 ! Readability W3 (2026): named table columns. Only the columns some
 ! reader or writer in eos/ addresses are named; their meanings follow
 ! from those uses (eos/scv/eqscvg.f90, eqscve.f90,

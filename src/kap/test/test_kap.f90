@@ -20,7 +20,6 @@ program test_kap
       use star_info_lib, only: star
       use kap_lib
       use opacity_tables
-      use scv_eos_tables
       implicit none
       type(kap_settings_t) :: settings
       integer :: gerr
@@ -75,7 +74,7 @@ program test_kap
 ! eos side gated off except the always-loaded Fermi table (setups
 ! calls eos_init unconditionally)
       star%ctrl%use_mhd_eos = .false.
-      use_scv_eos = .false.
+      star%ctrl%use_scv_eos = .false.
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .false.
