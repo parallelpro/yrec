@@ -270,6 +270,7 @@ mixing/overshoot_boundaries.o: io_units.mod math_lib.mod physical_constants.mod 
 mixing/rotmix.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod temperature_gradients.mod
 mixing/temperature_gradients.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
+mixing/test/test_convection.o: eos_lib.mod io_units.mod kap_lib.mod star_info_lib.mod temperature_gradients.mod
 net/light_elements.o: composition_layout.mod math_lib.mod physical_constants.mod reaction_rates.mod
 net/net_lib.o: light_elements.mod network.mod nuclear_energy.mod reaction_rates.mod
 net/network.o: composition_layout.mod numerics_lib.mod physical_constants.mod reaction_rates.mod
