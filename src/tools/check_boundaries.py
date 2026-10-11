@@ -219,9 +219,25 @@ def check_math_lib(src_root):
     """Reproducibility contract (2026): every file calling an elementary
     transcendental must `use math_lib` (so USE_CRMATH builds shadow the
     intrinsics), and no real-exponent ** may exist (a hidden libm pow;
-    write pow()/exp10()). Integer-literal exponents are exact and fine."""
+    write pow()/exp10()). Integer-literal exponents are exact and fine.
+    Parameter initializers are exempt: the compiler folds them, correctly
+    rounded, and a math_lib procedure may not appear in a constant
+    expression."""
     import re as _re
     ref = _re.compile(r"(?i)(?<![a-z0-9_])" + MATH_FUNCS + r"\s*\(")
+    param_decl = _re.compile(r"(?i)^\s*(double\s+precision|real|integer)\b[^:]*\bparameter\b[^:]*::")
+
+    def without_parameter_decls(lines):
+        kept, stmt = [], []
+        for line in lines:
+            stmt.append(line)
+            if line.rstrip().endswith("&"):
+                continue
+            if not param_decl.search(" ".join(stmt)):
+                kept.extend(stmt)
+            stmt = []
+        return kept + stmt
+
     problems = []
     for f in sorted(src_root.rglob("*.f90")):
         rel = f.relative_to(src_root).as_posix()
@@ -229,7 +245,7 @@ def check_math_lib(src_root):
             continue
         raw = f.read_text(errors="replace")
         code_lines = [mask_strings(l) for l in raw.splitlines()]
-        code = "\n".join(code_lines)
+        code = "\n".join(without_parameter_decls(code_lines))
         if ref.search(code) and "use math_lib" not in raw:
             problems.append(f"{rel}: calls elementary math without `use math_lib`")
         for i, cl in enumerate(code_lines, 1):

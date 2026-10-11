@@ -4,7 +4,10 @@
 ! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The genuinely physical
 ! and derived constants split out of const_lib: former common/const1/,
 ! /const2/, /const3/ (set once by setups, read broadly), and the
-! version string. Everything here is immutable after startup: cmixl,
+! version string. The mathematical constants are parameters (2026-10:
+! setups assigned them at run time, so any caller of a physics domain
+! had to run setups first; each compile-time value is bit-identical to
+! the run-time one). The rest is immutable after startup: cmixl,
 ! the historical mutable exception, moved to
 ! star%mixing_length_alpha in the 2026 phase-A eviction. (cmixl2/
 ! cmixl3, despite the names, are MLT formula constants -- cc13 and
@@ -12,15 +15,19 @@
 module physical_constants
       implicit none
 
-! former common/const1/
-      double precision :: ln10, clni, c4pi, c4pil, c4pi3l, cc13, cc23, cpi
+! mathematical constants (former common/const1/, and clndp and
+! seconds_per_year of /const3/); clndp is ln10's legacy twin
+      double precision, parameter :: ln10 = log(10.0d0), clndp = ln10, &
+           clni = 1.0d0/ln10, cc13 = 1.0d0/3.0d0, cc23 = cc13 + cc13, &
+           cpi = 3.1415926535898d0, c4pi = 4.0d0*cpi, c4pil = log10(c4pi), &
+           c4pi3l = log10(cc13*c4pi), seconds_per_year = 3.1558d7
 
 ! former common/const2/
       double precision :: gas_constant, radiation_constant_over_3, ca3l, &
            csig, csigl, cgl, cmkh, cmkhn
 
 ! former common/const3/.
-      double precision :: cdelrl, cmixl2, cmixl3, clndp, seconds_per_year
+      double precision :: cdelrl, cmixl2, cmixl3
 
 ! ---- named physical constants (2026 readability sweep) ----
 ! Each keeps exactly the literal value of the site it replaced; the

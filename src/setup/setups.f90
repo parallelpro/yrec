@@ -40,9 +40,8 @@ subroutine setups(ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! SETUP CONSTANTS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      clndp = log(10.0d0)
-      ln10 = clndp
-      clni = 1.0d0/ln10
+! (ln10, cc13, cpi and the other mathematical constants are parameters
+! of physical_constants)
 ! Luminosity of Sun
       star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
       star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
@@ -53,14 +52,6 @@ subroutine setups(ierr)
       star%log10_solar_radius = log10(star%solar_radius_cgs)
 ! Bolometric magnitude of the sun
       star%solar_bolometric_magnitude = 4.79d0
-! No. of seconds per year and other mathematical constants
-      seconds_per_year = 3.1558d7
-      cc13 = 1.0d0/3.0d0
-      cc23 = cc13 + cc13
-      cpi = 3.1415926535898d0
-      c4pi = 4.0d0*cpi
-      c4pil = log10(c4pi)
-      c4pi3l = log10(cc13*c4pi)
 ! Speed of Light
       speed_of_light = 2.99792458d10
 ! Stefan-Boltzmann constant
