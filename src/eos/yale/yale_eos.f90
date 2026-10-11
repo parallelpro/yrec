@@ -100,6 +100,56 @@ module yale_eos
          real(dp) :: betaut = 0.0d0
       end type saha_sensitivities
 
+
+! The state of one fully ionized solution that its steps share: the
+! Fermi-table interpolation (rows, factors, interpolated values), the
+! pressure terms and the pressure derivatives.
+      type :: fermi_solution
+         real(dp) :: beta1 = 0.0d0
+         real(dp) :: cl1 = 0.0d0
+         real(dp) :: cl2 = 0.0d0
+         real(dp) :: cl3 = 0.0d0
+         real(dp) :: cmfdh0 = 0.0d0
+         real(dp) :: cmfdh1 = 0.0d0
+         real(dp) :: d8 = 0.0d0
+         real(dp) :: dcl1 = 0.0d0
+         real(dp) :: dcl2 = 0.0d0
+         real(dp) :: dcl3 = 0.0d0
+         real(dp) :: df1(5,3) = 0.0d0
+         real(dp) :: df2(5,3) = 0.0d0
+         real(dp) :: dl8 = 0.0d0
+         real(dp) :: dml = 0.0d0
+         real(dp) :: emul = 0.0d0
+         real(dp) :: emul8 = 0.0d0
+         real(dp) :: ff(5,3) = 0.0d0
+         real(dp) :: ffe(5) = 0.0d0
+         integer :: id1 = 0
+         integer :: id1p = 0
+         integer :: id2 = 0
+         integer :: id3 = 0
+         integer :: jt1 = 0
+         integer :: jt2 = 0
+         integer :: jt3 = 0
+         integer :: nden = 0
+         real(dp) :: pa = 0.0d0
+         real(dp) :: pdh = 0.0d0
+         real(dp) :: pdhp = 0.0d0
+         real(dp) :: pe = 0.0d0
+         real(dp) :: pinv = 0.0d0
+         real(dp) :: pl8 = 0.0d0
+         real(dp) :: pr = 0.0d0
+         real(dp) :: qpd = 0.0d0
+         real(dp) :: qpt = 0.0d0
+         real(dp) :: qqpdd = 0.0d0
+         real(dp) :: qqpdt = 0.0d0
+         real(dp) :: qqptt = 0.0d0
+         real(dp) :: ramut = 0.0d0
+         real(dp) :: tl8 = 0.0d0
+         real(dp) :: ttcu = 0.0d0
+         real(dp) :: ttdcu = 0.0d0
+         real(dp) :: ttud = 0.0d0
+      end type fermi_solution
+
 contains
 
 !----------------------------------------------------------------------
@@ -621,144 +671,195 @@ end subroutine differentiate_saha_solution_twice
 !     D-H correction is used (this is not correct but, hopefully is
 !     close enough.)  The constant term is debye_huckel_coefficient.
 subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
-
-
-      real(dp), intent(in) :: log10_temperature
+      real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
-      real(dp), intent(in) :: log10_pressure
-! --- locals ---
-! Scratch algebra kept close to the original short names (rather than
-! invented descriptive names) given the density of unlabeled physics
-! here; see the inline comments (carried over from the original) for
-! what each quantity represents. qpd (d ln P/d ln rho, a byproduct of
-! the Newton iteration) is intentionally a separate local from the
-! dlnrho_dlnp output argument (d ln rho/d ln P, its reciprocal) --
-! they are related but distinct quantities in the original code (QPD
-! vs QDP) and must not be aliased to the same name.
-      real(dp) :: pinv, beta1, tl8, pl8, pr, ramu, ramut, emul, &
-           emul8, ttud, ttcu, ttdcu, dml, almix, cmfdh0, cmfdh1, cmfdh, &
-           xx, pr6, pr9, pr8, pr7, cden1, cden2, cden3, dpel2, dx1, dx2, &
-           dx3, cl1, cl2, cl3, dcl1, dcl2, dcl3, t0, t1, slope, pel, &
-           dpel1, dl8, d8, pa, pe, pdh, pt, pdhp, ptl, factor, pr8l, &
-           pr9l, factl, fact, corr, peq, qped, qqpedd, pr1, pr2, pr3, &
-           pr4, pr5, qpeqd, qpeqt, qpt, qpd, qqptt, qqpdt, qqpdd, qdpp, &
-           ue, ueq, queqt, pd, pdt, ua, ur, udh, u, udhu, ui, pdu, qutd, &
-           qudt, qutp, qqutt, qqudt, acp, bcp, qcpi
-      integer :: jt1, jt2, jt3, nden, id1p, ii, kk, id1, id2, id3, nn, id
-      real(dp) :: df1(5,3), df2(5,3), ff(5,3), ffe(5)
+      type(fermi_solution) :: f
+      logical :: converged
 
-!  The electron pressure (tabulated in Fermi table) for a given (rho,T)
-!  is found here; the density is adjusted so that the resulting total
-!  pressure (pe + pa + pr) equals the initial P.  For details
-!  consult Prather's thesis.
-!  Suffix e=electron;R=radiation;a=nucleon;i.e. pa=pressure due to nuclei
-      pinv = 1.0d0/r%pressure
-      beta1 = 1.0d0 - r%beta
-      tl8 = log10_temperature
-      pl8 = log10_pressure
-      pr = beta1*r%pressure
+      call start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
+      call iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
+      if (.not. converged) return
+      r%log10_density = f%dl8
+      r%density = f%d8
+      call interpolate_fermi_table(f)
+      call differentiate_pressure(f)
+      call differentiate_density(f, r)
+      call compute_internal_energy_and_cp(f, r)
+      r%electron_degeneracy_parameter = f%cl1*yale%fermi_table_eta(f%id1) + &
+           f%cl2*yale%fermi_table_eta(f%id2) + f%cl3*yale%fermi_table_eta(f%id3)
+
+end subroutine compute_fully_ionized_eos
+
+!----------------------------------------------------------------------
+! start_fully_ionized_solution
+!----------------------------------------------------------------------
+! The pressures that do not depend on density (radiation, and the
+! Debye-Hueckel mass terms), the log T row of the Fermi table and its
+! interpolation factors, and the starting log density.
+subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
+      real(dp), intent(in) :: log10_temperature, log10_pressure
+      type(eos_result), intent(in) :: r
+      type(fermi_solution), intent(inout) :: f
+      real(dp) :: almix
+      integer :: ii
+      real(dp) :: ramu
+
+      f%pinv = 1.0d0/r%pressure
+      f%beta1 = 1.0d0 - r%beta
+      f%tl8 = log10_temperature
+      f%pl8 = log10_pressure
+      f%pr = f%beta1*r%pressure
       ramu = gas_constant*r%ion_mean_weight_inverse
-      ramut = ramu*r%temperature
-      emul = log10(r%electron_mean_weight_inverse)
-      emul8 = emul
+      f%ramut = ramu*r%temperature
+      f%emul = log10(r%electron_mean_weight_inverse)
+      f%emul8 = f%emul
 !  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
 !  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
 ! MHP 10/02 corrected mixed type
-      jt1 = int(5.0d0*(log10_temperature - 5.0d0))
-      jt1 = max0(1,min0(jt1,18))  ! Force jt1 to be in the table
-      jt2 = jt1 + 1
-      jt3 = jt1 + 2
-      ttud = 5.0d0*(tl8 - (5.0d0 + 0.20d0*real(jt1, dp)))
-      ttcu = 0.50d0*ttud*(ttud - 1.0d0)
-      ttdcu = ttud - 0.50d0
-      dml = r%log10_density + emul
-      nden = 1
-      id1p = -100
+      f%jt1 = int(5.0d0*(log10_temperature - 5.0d0))
+      f%jt1 = max0(1,min0(f%jt1,18))  ! Force jt1 to be in the table
+      f%jt2 = f%jt1 + 1
+      f%jt3 = f%jt1 + 2
+      f%ttud = 5.0d0*(f%tl8 - (5.0d0 + 0.20d0*real(f%jt1, dp)))
+      f%ttcu = 0.50d0*f%ttud*(f%ttud - 1.0d0)
+      f%ttdcu = f%ttud - 0.50d0
+      f%dml = r%log10_density + f%emul
+      f%nden = 1
+      f%id1p = -100
 ! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1
       if (eos_settings%use_debye_huckel_correction) then
          almix = 0.0d0
          do ii=1,18
             almix = almix + debye_huckel_nu(ii)*debye_huckel_z(ii)
          end do
-         cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)
-         cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
+         f%cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)
+         f%cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
       end if
+end subroutine start_fully_ionized_solution
+
+!----------------------------------------------------------------------
+! iterate_fully_ionized_density
+!----------------------------------------------------------------------
+! Newton iteration on log rho until the electron (Fermi table), ion and
+! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
+! are capped at 4 dex, and 20 steps without convergence is a failure
+! (converged false, a message in the run log). For details consult
+! Prather's thesis. The electron pressure pe is tabulated against
+! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
+! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
+! pr the radiation pressure, pdh the Debye-Hueckel term.
+subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
+      real(dp), intent(in) :: log10_temperature, log10_pressure
+      type(eos_result), intent(inout) :: r
+      type(fermi_solution), intent(inout) :: f
+      logical, intent(out) :: converged
+      real(dp) :: cden1
+      real(dp) :: cden2
+      real(dp) :: cden3
+      real(dp) :: cmfdh
+      real(dp) :: corr
+      real(dp) :: dpel1
+      real(dp) :: dpel2
+      real(dp) :: dx1
+      real(dp) :: dx2
+      real(dp) :: dx3
+      real(dp) :: fact
+      real(dp) :: factl
+      real(dp) :: factor
+      integer :: id
+      integer :: kk
+      integer :: nn
+      real(dp) :: pel
+      real(dp) :: pr6
+      real(dp) :: pr7
+      real(dp) :: pr8
+      real(dp) :: pr8l
+      real(dp) :: pr9
+      real(dp) :: pr9l
+      real(dp) :: pt
+      real(dp) :: ptl
+      real(dp) :: slope
+      real(dp) :: t0
+      real(dp) :: t1
+      real(dp) :: xx
+
+      converged = .true.
       density_iter: do
 ! Begin iteration loop for correct density (was label 10)
 !  find index (ID1,ID2,ID3) for 3-pt interpolation in X
-      xx = dml - 1.50d0*tl8
+      xx = f%dml - 1.50d0*f%tl8
       pr6= 20.0d0*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
       kk = int(pr6)
       kk = min0(261,max0(1,kk))
-      id1 = yale%fermi_table_x_lookup(kk)
+      f%id1 = yale%fermi_table_x_lookup(kk)
 !  If index unchanged from previous loop,skip this section
-      if (id1 /= id1p) then
-      id1p = id1
-      id2 = id1 + 1
-      id3 = id1 + 2
-      pr9 = 1.0d0/( yale%fermi_table_x_grid(id3) - yale%fermi_table_x_grid(id2) )
-      pr8 = 1.0d0/( yale%fermi_table_x_grid(id2) - yale%fermi_table_x_grid(id1) )
-      pr7 = 1.0d0/( yale%fermi_table_x_grid(id1) - yale%fermi_table_x_grid(id3) )
+      if (f%id1 /= f%id1p) then
+      f%id1p = f%id1
+      f%id2 = f%id1 + 1
+      f%id3 = f%id1 + 2
+      pr9 = 1.0d0/( yale%fermi_table_x_grid(f%id3) - yale%fermi_table_x_grid(f%id2) )
+      pr8 = 1.0d0/( yale%fermi_table_x_grid(f%id2) - yale%fermi_table_x_grid(f%id1) )
+      pr7 = 1.0d0/( yale%fermi_table_x_grid(f%id1) - yale%fermi_table_x_grid(f%id3) )
       cden1 = -pr7*pr8
       cden2 = -pr8*pr9
       cden3 = -pr9*pr7
 !  Interpolation in Y is Newtonian(equal spacing in Y)
       do nn = 1,3
-       id = id1 + nn - 1
-       df1(1,nn) = yale%fermi_table_data(1,id,jt2) - yale%fermi_table_data(1,id,jt1)
-       df2(1,nn) = yale%fermi_table_data(1,id,jt3)-yale%fermi_table_data(1,id,jt2)-df1(1,nn)
-       ff(1,nn) = yale%fermi_table_data(1,id,jt1) + ttud*df1(1,nn) + ttcu*df2(1,nn)
+       id = f%id1 + nn - 1
+       f%df1(1,nn) = yale%fermi_table_data(1,id,f%jt2) - yale%fermi_table_data(1,id,f%jt1)
+       f%df2(1,nn) = yale%fermi_table_data(1,id,f%jt3)-yale%fermi_table_data(1,id,f%jt2)-f%df1(1,nn)
+       f%ff(1,nn) = yale%fermi_table_data(1,id,f%jt1) + f%ttud*f%df1(1,nn) + f%ttcu*f%df2(1,nn)
       end do
-      dpel2 = 2.0d0*(ff(1,1)*cden1 + ff(1,2)*cden2 + ff(1,3)*cden3)
+      dpel2 = 2.0d0*(f%ff(1,1)*cden1 + f%ff(1,2)*cden2 + f%ff(1,3)*cden3)
       end if
-      dx1 = xx - yale%fermi_table_x_grid(id1)
-      dx2 = xx - yale%fermi_table_x_grid(id2)
-      dx3 = xx - yale%fermi_table_x_grid(id3)
+      dx1 = xx - yale%fermi_table_x_grid(f%id1)
+      dx2 = xx - yale%fermi_table_x_grid(f%id2)
+      dx3 = xx - yale%fermi_table_x_grid(f%id3)
 !  Interpolation in X is Lagrangian(unequal table spacing in X)
-      cl1 = dx2*dx3*cden1
-      cl2 = dx3*dx1*cden2
-      cl3 = dx1*dx2*cden3
-      dcl1 = (dx2 + dx3)*cden1
-      dcl2 = (dx3 + dx1)*cden2
-      dcl3 = (dx1 + dx2)*cden3
+      f%cl1 = dx2*dx3*cden1
+      f%cl2 = dx3*dx1*cden2
+      f%cl3 = dx1*dx2*cden3
+      f%dcl1 = (dx2 + dx3)*cden1
+      f%dcl2 = (dx3 + dx1)*cden2
+      f%dcl3 = (dx1 + dx2)*cden3
       if (eos_settings%use_debye_huckel_correction) then
-         r%electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
-              cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
+         r%electron_degeneracy_parameter = f%cl1*yale%fermi_table_eta(f%id1) + &
+              f%cl2*yale%fermi_table_eta(f%id2) + f%cl3*yale%fermi_table_eta(f%id3)
          if (r%electron_degeneracy_parameter < eos_settings%debye_huckel_eta_min) then
-            cmfdh = cmfdh0*sqrt(cmfdh0)
+            cmfdh = f%cmfdh0*sqrt(f%cmfdh0)
          else if (r%electron_degeneracy_parameter > eos_settings%debye_huckel_eta_max) then
-            cmfdh = cmfdh0*sqrt(cmfdh1)
+            cmfdh = f%cmfdh0*sqrt(f%cmfdh1)
          else
-            t0 = cmfdh0*sqrt(cmfdh0)
-            t1 = cmfdh0*sqrt(cmfdh1)
+            t0 = f%cmfdh0*sqrt(f%cmfdh0)
+            t1 = f%cmfdh0*sqrt(f%cmfdh1)
             slope = (t1-t0)/(eos_settings%debye_huckel_eta_max-eos_settings%debye_huckel_eta_min)
             cmfdh = t0+(r%electron_degeneracy_parameter-eos_settings%debye_huckel_eta_min)*slope
          end if
       end if
 !  Now find pe and its 1st and 2nd derivatives w.r.t. density
-      pel =  cl1*ff(1,1) +  cl2*ff(1,2) +  cl3*ff(1,3)
-      dpel1 = dcl1*ff(1,1) + dcl2*ff(1,2) + dcl3*ff(1,3)
-      dl8 = dml - emul8
-      d8 = exp(ln10*dl8)
-      pa = ramut*d8
-      pe = exp(ln10*pel)
+      pel =  f%cl1*f%ff(1,1) +  f%cl2*f%ff(1,2) +  f%cl3*f%ff(1,3)
+      dpel1 = f%dcl1*f%ff(1,1) + f%dcl2*f%ff(1,2) + f%dcl3*f%ff(1,3)
+      f%dl8 = f%dml - f%emul8
+      f%d8 = exp(ln10*f%dl8)
+      f%pa = f%ramut*f%d8
+      f%pe = exp(ln10*pel)
       if (eos_settings%use_debye_huckel_correction) then
-         pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/r%temperature)*d8
+         f%pdh = debye_huckel_coefficient*cmfdh*sqrt(f%d8/r%temperature)*f%d8
       end if
-      pt = pa + pe + pr
+      pt = f%pa + f%pe + f%pr
       if (eos_settings%use_debye_huckel_correction) then
-         pt = pt + pdh
-         pdhp = pdh/pt
+         pt = pt + f%pdh
+         f%pdhp = f%pdh/pt
       end if
       ptl = log10(pt)
-      pr7 = (pa + pe*dpel1)/pt
+      pr7 = (f%pa + f%pe*dpel1)/pt
       if (eos_settings%use_debye_huckel_correction) then
-         pr7 = pr7 + 1.5d0*pdhp
+         pr7 = pr7 + 1.5d0*f%pdhp
       end if
-      pr8 = (ptl - pl8)/pr7
-      pr9 = ln10*( (pa + pe*(dpel1**2+dpel2/ln10))/(pt*pr7) - pr7 )
+      pr8 = (ptl - f%pl8)/pr7
+      pr9 = ln10*( (f%pa + f%pe*(dpel1**2+dpel2/ln10))/(pt*pr7) - pr7 )
       if (eos_settings%use_debye_huckel_correction) then
-         pr9 = pr9 + 2.25d0*pdhp/pr7
+         pr9 = pr9 + 2.25d0*f%pdhp/pr7
       end if
 ! Factor is the difference between the P predicted from the given rho
 ! and the true P; if too large increment rho and try again.
@@ -774,80 +875,161 @@ subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
       if(corr > 4d0) corr =  4d0
       if(corr < -4d0) corr = -4d0
       if(abs(corr) >= 1.0d-08) then
-       dml = dml + corr
-       nden = nden + 1
-       if(nden <= 20) cycle density_iter
-       write(run_log_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
+       f%dml = f%dml + corr
+       f%nden = f%nden + 1
+       if(f%nden <= 20) cycle density_iter
+       write(run_log_unit,40) log10_temperature,log10_pressure,ptl,f%dml,corr
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
+       converged = .false.
        return
       end if
       exit density_iter
       end do density_iter
-      r%log10_density = dl8
-      r%density = d8
+end subroutine iterate_fully_ionized_density
+
+!----------------------------------------------------------------------
+! interpolate_fermi_table
+!----------------------------------------------------------------------
+! The other Fermi-table quantities (rows 2-5) at the converged point.
+subroutine interpolate_fermi_table(f)
+      type(fermi_solution), intent(inout) :: f
+      integer :: id
+      integer :: kk
+      integer :: nn
+
       do kk = 2,5
        do nn = 1,3
-          id = id1 + nn - 1
-          df1(kk,nn) = yale%fermi_table_data(kk,id,jt2) - yale%fermi_table_data(kk,id,jt1)
-          df2(kk,nn)=(yale%fermi_table_data(kk,id,jt3)-yale%fermi_table_data(kk,id,jt2))-df1(kk,nn)
-          ff(kk,nn)=yale%fermi_table_data(kk,id,jt1)+ttud*df1(kk,nn)+ttcu*df2(kk,nn)
+          id = f%id1 + nn - 1
+          f%df1(kk,nn) = yale%fermi_table_data(kk,id,f%jt2) - yale%fermi_table_data(kk,id,f%jt1)
+          f%df2(kk,nn)=(yale%fermi_table_data(kk,id,f%jt3)-yale%fermi_table_data(kk,id,f%jt2))-f%df1(kk,nn)
+          f%ff(kk,nn)=yale%fermi_table_data(kk,id,f%jt1)+f%ttud*f%df1(kk,nn)+f%ttcu*f%df2(kk,nn)
        end do
-       ffe(kk) = cl1*ff(kk,1) + cl2*ff(kk,2) + cl3*ff(kk,3)
+       f%ffe(kk) = f%cl1*f%ff(kk,1) + f%cl2*f%ff(kk,2) + f%cl3*f%ff(kk,3)
       end do
+end subroutine interpolate_fermi_table
+
+!----------------------------------------------------------------------
+! differentiate_pressure
+!----------------------------------------------------------------------
+! The log derivatives of P in T and rho, first and second: qpt =
+! dln P/dln T, qpd = dln P/dln rho (the reciprocal of dlnrho_dlnp, kept
+! as its own quantity as in the original), qqptt, qqpdt, qqpdd.
+subroutine differentiate_pressure(f)
+      type(fermi_solution), intent(inout) :: f
+      real(dp) :: peq
+      real(dp) :: pr1
+      real(dp) :: pr2
+      real(dp) :: pr3
+      real(dp) :: pr4
+      real(dp) :: pr5
+      real(dp) :: qped
+      real(dp) :: qpeqd
+      real(dp) :: qpeqt
+      real(dp) :: qqpedd
+
 ! Derivatives of P
-      peq = exp(ln10*ffe(3))
-      qped = ffe(4)
-      qqpedd =(dcl1*ff(4,1) + dcl2*ff(4,2) + dcl3*ff(4,3))*clni
-      pr1 = df1(3,1)+ttdcu*df2(3,1)
-      pr2 = df1(3,2)+ttdcu*df2(3,2)
-      pr3 = df1(3,3)+ttdcu*df2(3,3)
-      pr4 = dcl1*ff(3,1) + dcl2*ff(3,2) + dcl3*ff(3,3)
-      pr5 =   5.0d0*(cl1*pr1 + cl2*pr2 + cl3*pr3)
+      peq = exp(ln10*f%ffe(3))
+      qped = f%ffe(4)
+      qqpedd =(f%dcl1*f%ff(4,1) + f%dcl2*f%ff(4,2) + f%dcl3*f%ff(4,3))*clni
+      pr1 = f%df1(3,1)+f%ttdcu*f%df2(3,1)
+      pr2 = f%df1(3,2)+f%ttdcu*f%df2(3,2)
+      pr3 = f%df1(3,3)+f%ttdcu*f%df2(3,3)
+      pr4 = f%dcl1*f%ff(3,1) + f%dcl2*f%ff(3,2) + f%dcl3*f%ff(3,3)
+      pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       qpeqd = peq*pr4
       qpeqt = peq*(pr5 - 1.50d0*pr4)
-      qpt = (pa + peq)*pinv + 4.0d0*beta1
+      f%qpt = (f%pa + peq)*f%pinv + 4.0d0*f%beta1
       if (eos_settings%use_debye_huckel_correction) then
-         qpt = qpt - 0.5d0*pdhp
+         f%qpt = f%qpt - 0.5d0*f%pdhp
       end if
-      qpd = (pa + pe*qped)*pinv
+      f%qpd = (f%pa + f%pe*qped)*f%pinv
       if (eos_settings%use_debye_huckel_correction) then
-         qpd = qpd + 1.5d0*pdhp
+         f%qpd = f%qpd + 1.5d0*f%pdhp
       end if
-      qqptt = (pa + qpeqt)*pinv + 16.0d0*beta1 - qpt**2
+      f%qqptt = (f%pa + qpeqt)*f%pinv + 16.0d0*f%beta1 - f%qpt**2
       if (eos_settings%use_debye_huckel_correction) then
-         qqptt = qqptt+(0.5d0*qpt+0.25d0)*pdhp
+         f%qqptt = f%qqptt+(0.5d0*f%qpt+0.25d0)*f%pdhp
       end if
-      qqpdt = (pa + qpeqd)*pinv - qpt*qpd
+      f%qqpdt = (f%pa + qpeqd)*f%pinv - f%qpt*f%qpd
       if (eos_settings%use_debye_huckel_correction) then
-         qqpdt = qqpdt+(0.5d0*qpt-0.75d0)*pdhp
+         f%qqpdt = f%qqpdt+(0.5d0*f%qpt-0.75d0)*f%pdhp
       end if
-      qqpdd = (pa + pe*(qped**2 + qqpedd))*pinv - qpd**2
+      f%qqpdd = (f%pa + f%pe*(qped**2 + qqpedd))*f%pinv - f%qpd**2
       if (eos_settings%use_debye_huckel_correction) then
-        qqpdd = qqpdd + (-1.5d0*qpd+2.25d0)*pdhp
+        f%qqpdd = f%qqpdd + (-1.5d0*f%qpd+2.25d0)*f%pdhp
       end if
+end subroutine differentiate_pressure
+
+!----------------------------------------------------------------------
+! differentiate_density
+!----------------------------------------------------------------------
+! dln rho/dln T, dln rho/dln P and their T and P derivatives, from the
+! pressure derivatives.
+subroutine differentiate_density(f, r)
+      type(fermi_solution), intent(in) :: f
+      type(eos_result), intent(inout) :: r
+      real(dp) :: pr1
+      real(dp) :: qdpp
+
 ! Derivatives of density
-      r%dlnrho_dlnp = 1.0d0/qpd
-      r%dlnrho_dlnt = -qpt*r%dlnrho_dlnp
+      r%dlnrho_dlnp = 1.0d0/f%qpd
+      r%dlnrho_dlnt = -f%qpt*r%dlnrho_dlnp
       pr1 = r%dlnrho_dlnp**2
-      qdpp = -qqpdd*r%dlnrho_dlnp*pr1
-      r%dlnrho_dlnt_dp = -qpt*qdpp - qqpdt*pr1
-      r%dlnrho_dlnt_dt = -qpt*r%dlnrho_dlnt_dp - r%dlnrho_dlnp*(qqptt + r%dlnrho_dlnt*qqpdt)
+      qdpp = -f%qqpdd*r%dlnrho_dlnp*pr1
+      r%dlnrho_dlnt_dp = -f%qpt*qdpp - f%qqpdt*pr1
+      r%dlnrho_dlnt_dt = -f%qpt*r%dlnrho_dlnt_dp - r%dlnrho_dlnp*(f%qqptt + r%dlnrho_dlnt*f%qqpdt)
+end subroutine differentiate_density
+
+!----------------------------------------------------------------------
+! compute_internal_energy_and_cp
+!----------------------------------------------------------------------
+! The internal energy and its derivatives, cp and grad_ad, and their
+! log derivatives in T and P.
+subroutine compute_internal_energy_and_cp(f, r)
+      type(fermi_solution), intent(in) :: f
+      type(eos_result), intent(inout) :: r
+      real(dp) :: acp
+      real(dp) :: bcp
+      real(dp) :: pd
+      real(dp) :: pdt
+      real(dp) :: pdu
+      real(dp) :: pr1
+      real(dp) :: pr2
+      real(dp) :: pr3
+      real(dp) :: pr4
+      real(dp) :: pr5
+      real(dp) :: qcpi
+      real(dp) :: qqudt
+      real(dp) :: qqutt
+      real(dp) :: qudt
+      real(dp) :: queqt
+      real(dp) :: qutd
+      real(dp) :: qutp
+      real(dp) :: u
+      real(dp) :: ua
+      real(dp) :: udh
+      real(dp) :: udhu
+      real(dp) :: ue
+      real(dp) :: ueq
+      real(dp) :: ui
+      real(dp) :: ur
+
 ! Internal energy term(u) and its derivatives
-      ue  = exp(ln10*(ffe(2) + emul))
-      ueq = exp(ln10*(ffe(5) + emul))
-      pr1 = df1(5,1)+ttdcu*df2(5,1)
-      pr2 = df1(5,2)+ttdcu*df2(5,2)
-      pr3 = df1(5,3)+ttdcu*df2(5,3)
-      pr4 = dcl1*ff(5,1) + dcl2*ff(5,2) + dcl3*ff(5,3)
-      pr5 =   5.0d0*(cl1*pr1 + cl2*pr2 + cl3*pr3)
+      ue  = exp(ln10*(f%ffe(2) + f%emul))
+      ueq = exp(ln10*(f%ffe(5) + f%emul))
+      pr1 = f%df1(5,1)+f%ttdcu*f%df2(5,1)
+      pr2 = f%df1(5,2)+f%ttdcu*f%df2(5,2)
+      pr3 = f%df1(5,3)+f%ttdcu*f%df2(5,3)
+      pr4 = f%dcl1*f%ff(5,1) + f%dcl2*f%ff(5,2) + f%dcl3*f%ff(5,3)
+      pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       queqt = ueq*(pr5 - 1.50d0*pr4)
       pd = r%pressure/r%density
       pdt = pd/r%temperature
-      ua = 1.50d0*ramut
-      ur = 3.0d0*beta1*pd
+      ua = 1.50d0*f%ramut
+      ur = 3.0d0*f%beta1*pd
       if (eos_settings%use_debye_huckel_correction) then
-         udh = 3.0d0*pdh/d8
+         udh = 3.0d0*f%pdh/f%d8
       end if
       u = ua + ue + ur
       if (eos_settings%use_debye_huckel_correction) then
@@ -860,7 +1042,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
       if(eos_settings%use_debye_huckel_correction) then
          qutd = qutd -0.5d0*udhu
       end if
-      qudt = pdu*(1.0d0 - qpt)
+      qudt = pdu*(1.0d0 - f%qpt)
       if (eos_settings%use_debye_huckel_correction) then
          qudt = qudt + 0.5d0*udhu
       end if
@@ -869,7 +1051,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
       if (eos_settings%use_debye_huckel_correction) then
          qqutt = qqutt + (0.5d0*qutd+0.25d0)*udhu
       end if
-      qqudt = qudt*(qpt - qutd) - pdu*qqptt
+      qqudt = qudt*(f%qpt - qutd) - pdu*f%qqptt
       if (eos_settings%use_debye_huckel_correction) then
          qqudt = qqudt + (0.5d0*qudt-0.25d0)*udhu
       end if
@@ -878,23 +1060,20 @@ subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
       pr2 = u/r%temperature
       pr3 = -(1.0d0 + r%dlnrho_dlnt) +  r%dlnrho_dlnt_dt/r%dlnrho_dlnt
       pr4 = (1.0d0 - r%dlnrho_dlnp) +  r%dlnrho_dlnt_dp/r%dlnrho_dlnt
-      acp = pr1*qpt
+      acp = pr1*f%qpt
       bcp = pr2*qutd
       r%specific_heat_cp = acp + bcp
       qcpi = 1.0d0/r%specific_heat_cp
-      r%specific_heat_cp_dt = acp*pr3 + pr1*(qqptt + r%dlnrho_dlnt*qqpdt) + &
+      r%specific_heat_cp_dt = acp*pr3 + pr1*(f%qqptt + r%dlnrho_dlnt*f%qqpdt) + &
               bcp*(qutp - 1.0d0) + pr2*(qqutt + r%dlnrho_dlnt*qqudt)
-      r%specific_heat_cp_dp = acp*pr4 + r%dlnrho_dlnp*(pr1*qqpdt + bcp*qudt + pr2*qqudt)
+      r%specific_heat_cp_dp = acp*pr4 + r%dlnrho_dlnp*(pr1*f%qqpdt + bcp*qudt + pr2*qqudt)
       r%specific_heat_cp_dt = r%specific_heat_cp_dt*qcpi
       r%specific_heat_cp_dp = r%specific_heat_cp_dp*qcpi
 ! Adiabatic gradient(dela) and derivatives ( all derivs are ln(dela)/ln(
       r%adiabatic_gradient = pr1*qcpi
       r%adiabatic_gradient_dt = pr3 - r%specific_heat_cp_dt
       r%adiabatic_gradient_dp = pr4 - r%specific_heat_cp_dp
-      r%electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
-           cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
-
-end subroutine compute_fully_ionized_eos
+end subroutine compute_internal_energy_and_cp
 
 !----------------------------------------------------------------------
 ! read_fermi_table
