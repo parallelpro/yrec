@@ -921,16 +921,16 @@ but on lovstm in evolve_angular_momentum.
 
 ### Phase 1 (network) on yrec-next -- see docs/TARGET_ARCHITECTURE.md
 
-- **Table-driven implicit burning -- DONE (d06fb3b4).** net/network_lib.f90:
+- **Table-driven implicit burning -- DONE (6846ee78).** net/network_lib.f90:
   the network as species + reaction rows (rate row, rate law, change
   list); one implicit_burn_step builds the equations and Jacobian from
   the table. kemcom's hand-coded 7-species system is gone
   (solve_composition 423 -> 104 lines). Agrees with kemcom to 3e-14 on
   20,000 random cases.
-- **Table self-check -- DONE (8de43084).** emitted_mass per row; every
+- **Table self-check -- DONE (9c216c31).** emitted_mass per row; every
   row conserves baryon number; the table is printed and pinned in
   test_net.
-- **One rate evaluation -- DONE (f133505c).** net_lib's
+- **One rate evaluation -- DONE (35db7fa5).** net_lib's
   nuclear_reaction_rates feeds both rates (composition) and engeb
   (energy, derivatives, fluxes); the duplicated block is gone.
   Bit-identical to both former copies on a 6,150-point grid.
@@ -947,16 +947,16 @@ but on lovstm in evolve_angular_momentum.
   at 4.568 Gyr: |dlog L| <= 1.4e-4, |dX_c| <= 3.8e-4, |dlog Teff|
   <= 6e-5, |dlog R| <= 2e-5; 16 solar-age pins reseeded, 19 short
   pre-MS/config pins byte-identical.
-- **Exact T-derivative of reactions 1-7 -- DONE (92b5f044).** The
+- **Exact T-derivative of reactions 1-7 -- DONE (89c1fa42).** The
   Jacobian term now carries the S'/S'' scales; test_net checks every
   slot's analytic dln(rate)/dlnT and dln(rate)/dln rho against centred
   differences (pinned). N14+p was off by 5.4e-4, O16+p by 7.7e-3.
-- **rates takes the composition vector -- DONE (ea910124).**
-- **Deuterium in the composition path's screening -- DONE (a3c94ac1).**
-- **LNEWNUC = .false. restored -- DONE (b32533b4).** A 2026 regression
+- **rates takes the composition vector -- DONE (fb6ddfd6).**
+- **Deuterium in the composition path's screening -- DONE (b3f5a322).**
+- **LNEWNUC = .false. restored -- DONE (fff3deb5).** A 2026 regression
   (rename campaign dropped the SSTANDARD copy): the flag left every
   pp/CNO rate zero. New test_physics::test_legacy_cross_sections.
-- **neutrino_flux_table cutoff guard -- DONE (6c343a9c).**
+- **neutrino_flux_table cutoff guard -- DONE (9be2a129).**
 - Deliberately left as special operators (documented in network_lib):
   deuterium (exponential sub-stepping with the overturn cap), Li/Be
   (liburn), eqburn's equilibrium mode, the Be7/N15 branchings. Making
@@ -968,9 +968,9 @@ but on lovstm in evolve_angular_momentum.
 
 ### Network reorganization (yrec-next) -- burning code into net/
 
-Rate rows into net_lib (211f503d); nuclear energy generation as the
+Rate rows into net_lib (d3b3d440); nuclear energy generation as the
 side-effect-free net routine nuclear_energy with engeb as its adapter
-(aebcfff6); eqburn into network_lib (a31d716a); deuterium (deutrate ->
+(b8fb1ff7); eqburn into network_lib (5153a25e); deuterium (deutrate ->
 deuterium_rate, dburn, dburnm) into net/light_elements.f90 with the
 model state as arguments. All byte-identical. Bugs seen on the way,
 left for a decision (physics changes):
@@ -1002,11 +1002,11 @@ left for a decision (physics changes):
 
 ### Information flow (yrec-next) -- results through arguments, stages in order
 
-- **compute_zone_energy returns everything -- DONE (053b178e).** The
+- **compute_zone_energy returns everything -- DONE (f1585425).** The
   neutrino loss, alpha-capture and He3 energies, fluxes and Be7 came
   back through star% scalars; per-shell reaction rates and branchings
   were stored and never read (removed).
-- **mix -> core/composition_step.f90 -- DONE (e6d60e7e).**
+- **mix -> core/composition_step.f90 -- DONE (86fd404d).**
 - **The composition step is called by evolve_step, not by the
   structure solver -- DONE.** henyey_iterate (crrect) refreshed the
   surface boundary condition, re-ran the composition step at levels
@@ -1084,7 +1084,7 @@ left for a decision (physics changes):
 
 ### Module naming (yrec-next, 2026-10) -- docs/GUIDELINES.md naming rules
 
-- **Sweep -- DONE (382b6055, e2bf236a, 3cafc9eb, c4cb4092, d312e330).**
+- **Sweep -- DONE (cfd4b460, 166b30d2, 8d4bdcbb, 4766b8c0, bd754c07).**
   Every file is named after its module; _lib remains only on the domain
   facades (atm_lib, eos_lib, kap_lib, math_lib, net_lib, numerics_lib,
   wind_lib); every other module is a noun. Ten modules had carried _lib
@@ -1114,10 +1114,10 @@ left for a decision (physics changes):
 ### net/ hygiene (yrec-next, 2026-10) -- the evaluation's six items
 
 - **DONE, bitwise identical:** compute_nuclear_energy in explicit steps
-  on one composition array (d1b3549c); compute_reaction_rates in named
-  steps (df742f0b); the compiled-out Li/Be midpoint variant in its own
-  file (150074ac); burn_step's five region loops as one burn_regions
-  list, burn_step private, explicit imports (c7ed8e86).
+  on one composition array (35e5f699); compute_reaction_rates in named
+  steps (8f619439); the compiled-out Li/Be midpoint variant in its own
+  file (9274053d); burn_step's five region loops as one burn_regions
+  list, burn_step private, explicit imports (71a9bfb7).
 - **DONE: test_net covers the solver, trace integrator, energy and
   table.** Closed forms for burn_implicitly, the integrator against
   closed forms and quadrature, eps at three reference points with
