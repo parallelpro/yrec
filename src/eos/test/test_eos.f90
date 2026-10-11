@@ -35,6 +35,11 @@
 ! MHD tables, so by default that section reports SKIPPED. This is
 ! the infrastructure half of closing docs/ROADMAP.md's LMHD coverage gap;
 ! the data half needs tables from outside the repo.
+!
+! Then (2026-10, check_configurations) every EOS configuration a deck
+! can choose, over the same grid: the OPAL 1995 and 2001 tables over
+! SCV, SCV alone, the Yale solvers alone, numerical derivatives,
+! use_diffusion_z, and the Debye-Hueckel correction.
 program test_eos
       use io_units
       use star_info_lib, only: star
@@ -322,6 +327,104 @@ program test_eos
   300 continue
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
+      call check_configurations()
+
       close(run_log_unit)
       write(*,'(a)') "test_eos: done"
+contains
+
+! Every EOS configuration a deck can choose, each evaluated with eos_eval
+! over the same (log T, log P) grid as the first section:
+!   opal95, opal2001   the OPAL 1995 and 2001 tables, over SCV
+!   scv_only           SCV at low T, no OPAL table
+!   yale_only          the Yale Saha and fully ionized solvers alone
+!   numerical          OPAL 2006 + SCV with numerical derivatives
+!   diffusion_z        OPAL 2006 + SCV with use_diffusion_z
+!   debye_huckel       the Yale solvers with the Debye-Hueckel correction,
+!                      the composition passed per zone
+! Each point prints log rho, beta, dln rho/dln T, dln rho/dln P, cp,
+! grad_ad, eta and the Saha state.
+      subroutine check_configurations()
+         character(len=256) :: legacy
+         legacy = trim(yrec_input)//"/eos/legacy/"
+         call configure("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
+         call evaluate_grid(0.70d0, 0.0188d0)
+         call configure("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
+         call evaluate_grid(0.70d0, 0.0188d0)
+         call configure("scv_only", scv=.true.)
+         call evaluate_grid(0.70d0, 0.016492d0)
+         call configure("yale_only")
+         call evaluate_grid(0.70d0, 0.016492d0)
+         call configure("numerical", opal2006=.true., scv=.true., numerical=.true.)
+         call evaluate_grid(0.70d0, 0.016492d0)
+         call configure("diffusion_z", opal2006=.true., scv=.true., diffusion_z=.true.)
+         call evaluate_grid(0.70d0, 0.016492d0)
+         call configure("debye_huckel", debye_huckel=.true.)
+         call evaluate_grid(0.70d0, 0.016492d0, with_composition=.true.)
+      end subroutine check_configurations
+
+! Set one configuration (the controls a deck would set), opening an OPAL
+! file on the unit read_controls would use when one is named.
+      subroutine configure(label, opal95, opal2001, opal2006, scv, numerical, &
+           diffusion_z, debye_huckel, file)
+         character(len=*), intent(in) :: label
+         logical, intent(in), optional :: opal95, opal2001, opal2006, scv, &
+              numerical, diffusion_z, debye_huckel
+         character(len=*), intent(in), optional :: file
+         logical :: is_open
+         write(*,'(a,a)') "# test_eos: configuration ", label
+         star%ctrl%use_opal95_eos = present(opal95)
+         star%ctrl%use_opal2001_eos = present(opal2001)
+         star%ctrl%use_opal2006_eos = present(opal2006)
+         use_scv_eos = present(scv)
+         star%ctrl%use_numerical_derivatives = present(numerical)
+         star%job%use_diffusion_z = present(diffusion_z)
+         use_debye_huckel_correction = present(debye_huckel)
+         debye_huckel_eta_min = -1.0d0
+         debye_huckel_eta_max = 1.0d0
+         if (present(file)) then
+            inquire(unit=star%ctrl%iopale, opened=is_open)
+            if (is_open) close(star%ctrl%iopale)
+            open(star%ctrl%iopale, file=file, status='OLD')
+         end if
+      end subroutine configure
+
+      subroutine evaluate_grid(x, z, with_composition)
+         double precision, intent(in) :: x, z
+         logical, intent(in), optional :: with_composition
+         double precision :: comp(15)
+         integer :: k, ierr
+         comp = 0.0d0
+         comp(1) = x
+         comp(2) = 1.0d0 - x - z
+         comp(3) = z
+         comp(5) = 0.17d0*z
+         comp(7) = 0.05d0*z
+         comp(9) = 0.48d0*z
+         do k = 1, npts
+            logt = grid_logt(k)
+            logp = grid_logp(k)
+            logd = 0.0d0
+            d = 0.0d0
+            ksaha = 0
+            fxion = 0.0d0
+            if (present(with_composition)) then
+               call eos_eval(logt, t, logp, p, logd, d, x, z, &
+                    beta, betai, beta14, fxion, rmu, amu, emu, eta, &
+                    qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
+                    .true., .false., ksaha, composition_at_zone=comp, ierr=ierr)
+            else
+               call eos_eval(logt, t, logp, p, logd, d, x, z, &
+                    beta, betai, beta14, fxion, rmu, amu, emu, eta, &
+                    qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
+                    .true., .false., ksaha, ierr=ierr)
+            end if
+            if (ierr /= 0) then
+               write(*,'(a,2f7.3,a,i0)') "eos logT logP", logt, logp, " ierr ", ierr
+            else
+               write(*,'(a,2f7.3,4(1pe23.15))') "eos", logt, logp, logd, beta, qdt, qdp
+               write(*,'(a,14x,3(1pe23.15),i3)') "   ", qcp, dela, eta, ksaha
+            end if
+         end do
+      end subroutine evaluate_grid
 end program test_eos
