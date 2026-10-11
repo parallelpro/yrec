@@ -12,6 +12,8 @@ are bit-identical.
 import pathlib
 import re
 
+from generated_files import emit, finish
+
 SRC = pathlib.Path(__file__).resolve().parent.parent
 DEFS = [("ctrl", SRC / "state" / "controls_state_def.inc"),
         ("job", SRC / "state" / "job_controls_def.inc")]
@@ -27,7 +29,7 @@ def dims_of(spec):
     return [d.strip() for d in spec.split(",")]
 
 
-def emit(group, name, kind, dims):
+def writes_for(group, name, kind, dims):
     ref = f"star%{group}%{name}"
     if kind.startswith("character"):
         fmt, val = "a", f"'\"'//trim({ref}{{idx}})//'\"'"
@@ -36,11 +38,8 @@ def emit(group, name, kind, dims):
     label = f"{group}%{name}"
     if not dims:
         return [f"      write(u,'(a,\" = \",{fmt})') '{label}', {val.format(idx='')}"]
-    loops = []
     idx_vars = ["i1", "i2", "i3"][:len(dims)]
     lines = []
-    for v, d in reversed(list(zip(idx_vars, dims))):
-        pass
     # nested loops, first index fastest
     for v, d in zip(reversed(idx_vars), reversed(dims)):
         lines.append(f"      do {v} = 1, {d}")
@@ -61,7 +60,8 @@ for group, path in DEFS:
         if not m:
             continue
         kind, name, dims = m.group(1), m.group(2), dims_of(m.group(4))
-        out += emit(group, name, kind, dims)
+        out += writes_for(group, name, kind, dims)
         n += 1
-OUT.write_text("\n".join(out) + "\n")
+emit(OUT, "\n".join(out) + "\n")
+finish("gen_controls_dump.py")
 print(f"{n} members -> {OUT.relative_to(SRC)}")
