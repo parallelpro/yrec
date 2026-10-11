@@ -2,7 +2,7 @@
 ! opal_eos_tables
 !----------------------------------------------------------------------
 ! The OPAL EOS tables and interpolation state, one instance per
-! vintage (opal95, opal01, opal06), plus opal_eos for what the vintages
+! vintage (opal95, opal01, opal06), plus opal_shared for what the vintages
 ! share: the table unit, the loaded flags and each table's Z. The
 ! interpolation routines take the instance as their first argument,
 ! "v". Also here: each vintage's read-only grids (x_grid,
@@ -34,7 +34,7 @@ module opal_eos_tables
       use math_lib
       implicit none
       private
-      public :: open_opal_eos_table, find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
+      public :: n_eos_nr_max, n_opal_vintages, open_opal_eos_table, find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
            i_opal01_cv, i_opal01_e, i_opal01_gamma1, i_opal01_gamma2_ratio, &
            i_opal01_gamma3m1, i_opal01_p, i_opal01_s, i_opal_chi_rho, &
            i_opal_chi_t, i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
@@ -45,7 +45,7 @@ module opal_eos_tables
            opal01_t6_index_lo, opal01_x_grid, opal06, &
            opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
            opal95, opal95_density_index_edge, opal95_t6_index_lo, &
-           opal95_x_grid, opal_eos, opal_eos_var_order, opal_eos_vintage, &
+           opal95_x_grid, opal_shared, opal_eos_var_order, opal_eos_vintage, &
            opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
@@ -54,7 +54,7 @@ module opal_eos_tables
 ! Largest 2001/2006 table dimensions: the physical size of every
 ! opal_eos_vintage table array (the 2001 loops run to n_eos01_*).
       integer, parameter :: n_eos_nr_max = n_eos06_nr, n_eos_nt_max = n_eos06_nt
-! Vintage ids: indices of opal_eos%readco_init_flag / table_metal_fraction.
+! Vintage ids: indices of opal_shared%readco_init_flag / table_metal_fraction.
       integer, parameter :: n_opal_vintages = 3
       integer, parameter :: iv_opal95 = 1, iv_opal01 = 2, iv_opal06 = 3
 ! Variable numbers of the OPAL EOS results (the slots of
@@ -86,7 +86,7 @@ module opal_eos_tables
       integer, parameter :: i_opal01_gamma2_ratio = 8
       integer, parameter :: i_opal01_gamma3m1 = 9
 ! Density returned by rhoofp/rhoofp01/rhoofp06 when the (P,T6) point
-! is not in the table (the compute_opal95_eos* callers test for .le. -998).
+! is not in the table (compute_opal_eos tests for .le. -998).
       real(dp), parameter :: opal_rho_not_found = -999.0d0
 ! Value of the table_loaded_flag / readco_init_flag members once the
 ! corresponding tables have been read.
@@ -252,7 +252,7 @@ module opal_eos_tables
             real(dp) :: table_metal_fraction(n_opal_vintages) = 0.0d0
       end type opal_eos_state
 
-      type(opal_eos_state) :: opal_eos
+      type(opal_eos_state) :: opal_shared
       type(opal_eos_vintage95) :: opal95
       type(opal_eos_vintage) :: opal01, opal06
 
@@ -358,18 +358,18 @@ end subroutine interpolate_opal_t6_rho
 ! their own density checks. find_opal2006_ramp searches the 2006
 ! table's ragged edge differently.
 !
-! Arguments: the vintage's row/column counts nt/nr, t6_grid (nt
+! Arguments: the vintage's row count nt, t6_grid (nt
 ! descending T6 rows), the caller's cached row index t_row_index
 ! (updated here), density_edge_at_t (table-edge density per row),
 ! density_index_edge (column of that edge per row) and density_grid
-! (the nr density columns), then the point (t6, log10_density) and the
+! (the density columns), then the point (t6, log10_density) and the
 ! find_opal95_ramp outputs.
-subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
+subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
      density_index_edge, density_grid, t6, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
 
-      integer, intent(in) :: nt, nr
+      integer, intent(in) :: nt
       real(dp), intent(in) :: t6_grid(:), density_edge_at_t(:)
       integer, intent(in) :: density_index_edge(:)
       real(dp), intent(in) :: density_grid(:)
@@ -585,18 +585,18 @@ end function gmass01
 ! open_opal_eos_table
 !----------------------------------------------------------------------
 ! Opens the OPAL EOS table the settings select on a new unit
-! (opal_eos%table_unit), closing one left open by an earlier
+! (opal_shared%table_unit), closing one left open by an earlier
 ! eos_init. The vintage's reader reads it on first use.
 subroutine open_opal_eos_table(opal_eos_table_path, ierr)
       character(len=*), intent(in) :: opal_eos_table_path
       integer, intent(out) :: ierr
       logical :: is_open
 
-      if (opal_eos%table_unit /= 0) then
-         inquire(unit=opal_eos%table_unit, opened=is_open)
-         if (is_open) close(opal_eos%table_unit)
+      if (opal_shared%table_unit /= 0) then
+         inquire(unit=opal_shared%table_unit, opened=is_open)
+         if (is_open) close(opal_shared%table_unit)
       end if
-      open(newunit=opal_eos%table_unit, file=opal_eos_table_path, status='OLD', &
+      open(newunit=opal_shared%table_unit, file=opal_eos_table_path, status='OLD', &
            iostat=ierr)
       if (ierr /= 0) then
          write(run_log_unit,*) 'eos_init: cannot open the OPAL EOS table ', &

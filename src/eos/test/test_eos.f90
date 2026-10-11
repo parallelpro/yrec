@@ -46,7 +46,7 @@ program test_eos
       use eos_lib
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
-      use opal2006_eos, only: esac06
+      use opal_eos, only: esac06
       implicit none
       type(eos_settings_t) :: settings
       integer :: gerr

@@ -31,7 +31,7 @@ module eos_lib
            set_eos_settings
       use blended_eos, only: compute_blended_eos, blend_eos
       use mhd_eos, only: compute_mhd_eos, read_mhd_tables
-      use opal2006_eos, only: esac06
+      use opal_eos, only: esac06
       use scv_eos, only: build_scv_envelope_table, read_scv_tables
       use yale_eos, only: read_fermi_table
       use eos_mixture, only: eos_mix

@@ -512,7 +512,8 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `massloss` | `wind/massloss.f90` |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
 | `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`, `read_mhd_tables`) |
-| `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal95_eos.f90`, `opal2001_eos.f90`, `opal2006_eos.f90` (`compute_opal95_eos`, ...; `find_opal95_ramp`, ...) |
+| `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three; `find_opal_edge_ramp` over `find_opal95_ramp` (`opal95_eos.f90`), `find_opal2001_ramp`, `find_opal2006_ramp`) |
+| `esac01`/`esac06`, `readcoeos01`/`06`, `t6rinteos01`/`06` | `eos/opal/opal_eos.f90` (`interpolate_opal_eos`, `readcoeos`, `t6rinteos`, branching on the vintage; `esac01`/`esac06` remain as entry points) |
 | `eqscve`, `eqscvg`, `setscv` | `eos/scv/scv_eos.f90` (`compute_scv_envelope_eos`, `compute_scv_eos`, `build_scv_envelope_table`) |
 | `eqsaha`, `eqrelv` | `eos/yale/yale_eos.f90` (`compute_saha_eos`, `compute_fully_ionized_eos`) |
 | `mu` | `eos/eos_mixture.f90` (`compute_mean_weights`) |

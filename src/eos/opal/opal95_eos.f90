@@ -2,125 +2,35 @@
 ! opal95_eos
 !----------------------------------------------------------------------
 ! The OPAL 1995 equation of state (Rogers, Swenson & Iglesias 1996),
-! tabulated in X, T6 and density at one Z.
-!     compute_opal95_eos   density and the thermodynamic derivatives at
-!                          (log T, log P, X, Z); in_table is false when
-!                          the tables do not cover the point
-!     find_opal95_ramp     whether a (T, log rho) point is inside the
-!                          table, and its weight in the blend with the
-!                          Yale/SCV result near the table's edge
-! Under these: OPAL's own routines, under their original names: rhoofp
-! (the density that gives P), esac (interpolation in X, T6 and rho),
-! t6rinterp, radsub (the radiation correction), gmass and readco (the
-! table reader, run once on first use). The tables and the
-! interpolation state live in opal_eos_tables (opal95).
+! tabulated in X, T6 and density at one Z; opal_eos's compute_opal_eos
+! and find_opal_edge_ramp are the entry points. Its own state layout
+! (opal_eos_vintage95, see opal_eos_tables) keeps it apart from the 2001
+! and 2006 code.
+!     find_opal95_ramp  whether a (T, log rho) point is inside the
+!                       table, and its weight in the blend with the
+!                       Yale/SCV result near the table's edge
+!     rhoofp            the density that gives P
+!     esac              interpolation in X, T6 and rho
+! and under these, OPAL's t6rinterp, radsub (the radiation correction),
+! gmass and readco (the table reader, run once on first use). The tables
+! and the interpolation state live in opal_eos_tables (opal95).
 module opal95_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use eos_results, only: eos_result
       use opal_eos_tables, only: find_opal_ramp, i_opal_chi_rho, i_opal_chi_t, &
            i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
            i_opal_gamma2_ratio, i_opal_gamma3m1, i_opal_p, i_opal_s, &
            iv_opal95, n_eos95_nr, n_eos95_nt, n_eos_mv, n_eos_mx, opal95, &
            opal95_density_index_edge, opal95_t6_index_lo, opal95_x_grid, &
-           opal_eos, opal_eos_var_order, opal_eos_vintage95, opal_flag_set, &
+           opal_shared, opal_eos_var_order, opal_eos_vintage95, opal_flag_set, &
            opal_rho_not_found, quad
       use physical_constants, only: gas_constant
       use io_units, only: run_log_unit
-      use eos_mixture, only: compute_mean_weights
       use math_lib
       implicit none
       private
-      public :: compute_opal95_eos, find_opal95_ramp
+      public :: esac, rhoofp, find_opal95_ramp
 
 contains
-
-!----------------------------------------------------------------------
-! compute_opal95_eos (formerly oeqos)
-!----------------------------------------------------------------------
-! OPAL (1995) equation of state. Implemented by YC (Feb. 21, 1995).
-! Given log10(T), log10(P), X, and Z, looks up density and the
-! thermodynamic derivatives needed by the rest of the EOS machinery
-! from the OPAL 1995 tables (via esac). Called from
-! blend_eos (compute_blended_eos); in_table is false when the point
-! is outside the OPAL tables.
-subroutine compute_opal95_eos(log10_temperature, log10_pressure, &
-     hydrogen_fraction, metal_fraction, r, ierr, in_table)
-
-
-      real(dp), intent(in) :: log10_temperature, log10_pressure
-      type(eos_result), intent(inout) :: r
-      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-
-      real(dp) :: t_million_k, p_e12
-      real(dp) :: hydrogen_fraction_work
-      real(dp) :: density_cgs
-      real(dp) :: specific_gas_constant_check
-      integer :: rad_flag, deriv_order
-
-      integer, intent(out) :: ierr
-! in_table is false outside the table's T range, when no density
-! matches P, or when esac finds the point outside the table
-      logical, intent(out) :: in_table
-
-      ierr = 0
-      in_table = .true.
-
-      r%temperature = exp10(log10_temperature)
-      r%pressure = exp10(log10_pressure)
-      t_million_k = r%temperature/1.0d6
-      p_e12 = r%pressure/1.0d12
-      if (t_million_k < 0.0050d0 .or. t_million_k > 100.0d0) then
-         in_table = .false.
-         return
-      end if
-      hydrogen_fraction_work = hydrogen_fraction
-
-      rad_flag = 1
-      deriv_order = 10
-
-      density_cgs = rhoofp(opal95, hydrogen_fraction_work, t_million_k, p_e12, rad_flag, ierr)
-      if (ierr /= 0) return
-      if (density_cgs <= -998.0d0) then
-         in_table = .false.
-         return
-      end if
-      r%density = density_cgs
-      r%log10_density = log10(r%density)
-
-      call esac(opal95, hydrogen_fraction_work, t_million_k, density_cgs, &
-           deriv_order, rad_flag, ierr, in_table)
-      if (.not. in_table) then
-         write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
-         return
-      end if
-      if (ierr /= 0) return
-
-      if (abs((p_e12-opal95%eos_output(i_opal_p))/p_e12) > 0.5d-6) then
-         write(run_log_unit,*) p_e12, opal95%eos_output(i_opal_p)
-         ierr = 1
-         return
-      end if
-      r%dlnrho_dlnp = 1.0d0/opal95%eos_output(i_opal_chi_rho)
-      r%dlnrho_dlnt = -opal95%eos_output(i_opal_chi_t)/opal95%eos_output(i_opal_chi_rho)
-
-      r%specific_heat_cp = 1.0d6*opal95%eos_output(i_opal_cv)*opal95%eos_output(i_opal_gamma1)/opal95%eos_output(i_opal_chi_rho)
-      r%adiabatic_gradient = 1.0d0/opal95%eos_output(i_opal_gamma2_ratio)
-
-      r%beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
-           (t_million_k*t_million_k/p_e12)
-      r%beta = 1.0d0 - r%beta14
-      r%beta_inverse = 1.0d0/r%beta
-      r%specific_gas_constant = r%pressure*r%beta/(r%density*r%temperature)
-      call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
-           metal_fraction, specific_gas_constant_check, &
-           r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
-      if (r%electron_mean_weight_inverse <= 0.0d0) then
-      r%electron_mean_weight_inverse = 0.0d0
-      r%ion_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
-           r%electron_mean_weight_inverse
-      end if
-
-end subroutine compute_opal95_eos
 
 !----------------------------------------------------------------------
 ! find_opal95_ramp (formerly eqbound)
@@ -128,15 +38,15 @@ end subroutine compute_opal95_eos
 ! MHP 8/98: checks whether a (T, log10 rho) point falls within the
 ! OPAL 1995 EOS table, and if it is near the table's edge, computes
 ! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (see blend_eos.f90's use_opal95_eos branch, which calls this
-! immediately after compute_opal95_eos).
+! result (blend_eos calls it, through find_opal_edge_ramp, right after
+! compute_opal_eos).
 !
 ! The 1995 density check (log10 rho outside -14..5 is outside the
 ! table), then find_opal_ramp.
 subroutine find_opal95_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
-      integer, parameter :: nt = n_eos95_nt, nr = n_eos95_nr
+      integer, parameter :: nt = n_eos95_nt
 
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
@@ -156,7 +66,7 @@ subroutine find_opal95_ramp(temperature, log10_density, ramp_factor, &
          ramp_factor = 0d0
          return
       end if
-      call find_opal_ramp(nt, nr, opal95%t6_grid, opal95%t_row_index, opal95%density_edge_at_t, &
+      call find_opal_ramp(nt, opal95%t6_grid, opal95%t_row_index, opal95%density_edge_at_t, &
            opal95_density_index_edge, opal95%density_grid, t6, log10_density, ramp_factor, &
            in_opal_table, needs_ramp, ierr)
 
@@ -168,7 +78,7 @@ end subroutine find_opal95_ramp
 ! Finds the OPAL 1995 EOS density that reproduces a target pressure
 ! at a given (hydrogen_fraction, t6_temperature), by secant-method
 ! refinement of trial densities through esac. Returns -999 (a
-! sentinel checked by compute_opal95_eos) if the point isn't bracketed in the
+! sentinel checked by compute_opal_eos) if the point isn't bracketed in the
 ! table or the iteration fails to converge in 10 tries.
 real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
@@ -185,7 +95,6 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       real(dp), parameter :: rad_const_over_c = 1.8914785d-3
 
 ! --- locals ---
-      integer :: t6_scan_idx
       real(dp) :: rat, radiation_pressure, pressure_no_rad
       real(dp) :: hydrogen_fraction_dbg, t6_dbg, density_dbg
       integer :: ideriv_dbg
@@ -208,7 +117,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       radiation_pressure = 0.0d0
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (opal_eos%table_loaded_flag(iv_opal95) /= opal_flag_set) then
+      if (opal_shared%table_loaded_flag(iv_opal95) /= opal_flag_set) then
          hydrogen_fraction_dbg = 0.5d0
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
@@ -408,8 +317,8 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       t6_value = t6_temperature
       density_value = density
 
-      if (opal_eos%table_loaded_flag(iv_opal95) /= opal_flag_set) then
-         opal_eos%table_loaded_flag(iv_opal95) = opal_flag_set
+      if (opal_shared%table_loaded_flag(iv_opal95) /= opal_flag_set) then
+         opal_shared%table_loaded_flag(iv_opal95) = opal_flag_set
          do index_idx = 1, 10
             do species_idx = 1, 10
                if (opal_eos_var_order(index_idx) == species_idx) &
@@ -423,11 +332,11 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
 ! ..... read the data files
          call readco(v, ierr)
          if (ierr /= 0) return
-         opal_eos%table_metal_fraction(iv_opal95) = v%z_table(1)
+         opal_shared%table_metal_fraction(iv_opal95) = v%z_table(1)
 
-         if (opal_eos%table_metal_fraction(iv_opal95) + hydrogen_fraction - 1.0d-6 > 1.0d0) then
+         if (opal_shared%table_metal_fraction(iv_opal95) + hydrogen_fraction - 1.0d-6 > 1.0d0) then
             write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-            write(run_log_unit,*) opal_eos%table_metal_fraction(iv_opal95), hydrogen_fraction
+            write(run_log_unit,*) opal_shared%table_metal_fraction(iv_opal95), hydrogen_fraction
             ierr = 1
             return
          end if
@@ -601,7 +510,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-      if (opal_eos%table_metal_fraction(iv_opal95) /= v%z_table(v%x_index_lo)) exit
+      if (opal_shared%table_metal_fraction(iv_opal95) /= v%z_table(v%x_index_lo)) exit
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
@@ -688,7 +597,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
            t6_temperature   ! interpolated in E/T6
 ! dE/dRho (slot 4) is deliberately not rescaled here (YCK commented out
 ! EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) in the original).
-      mean_molecular_weight = gmass(hydrogen_fraction, opal_eos%table_metal_fraction(iv_opal95), &
+      mean_molecular_weight = gmass(hydrogen_fraction, opal_shared%table_metal_fraction(iv_opal95), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
       if (rad_flag == 1) then
@@ -707,7 +616,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
            v%z_table(v%x_index_lo)
       write(run_log_unit,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') &
            v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
-           hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction(iv_opal95)
+           hydrogen_fraction, t6_temperature, density, opal_shared%table_metal_fraction(iv_opal95)
       ierr = 1
 
 end subroutine esac
@@ -985,10 +894,10 @@ end function gmass
 ! readco
 !----------------------------------------------------------------------
 ! Reads the OPAL 1995 EOS data tables (one block per tabulated X
-! value) into opal_eos_tables's opal_eos state and derives the auxiliary
+! value) into opal_eos_tables's opal_shared state and derives the auxiliary
 ! grid-spacing arrays used by t6rinterp for
 ! interpolation. Called once from esac (guarded by
-! opal_eos%table_loaded_flag).
+! opal_shared%table_loaded_flag).
 subroutine readco(v, ierr)
 
       type(opal_eos_vintage95), intent(inout) :: v
@@ -1009,7 +918,7 @@ subroutine readco(v, ierr)
 
       blank_line = ' '
 
-      if (opal_eos%readco_init_flag(iv_opal95) /= opal_flag_set) then
+      if (opal_shared%readco_init_flag(iv_opal95) /= opal_flag_set) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -1019,23 +928,23 @@ subroutine readco(v, ierr)
                end do
             end do
          end do
-         opal_eos%readco_init_flag(iv_opal95) = opal_flag_set
+         opal_shared%readco_init_flag(iv_opal95) = opal_flag_set
       end if
 
-! ..... read  tables (the file is opened on opal_eos%table_unit by read_controls)
+! ..... read  tables (the file is opened on opal_shared%table_unit by read_controls)
       do x_loop_index = 1, mx
 
-         read (opal_eos%table_unit,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &
+         read (opal_shared%table_unit,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &
               v%hydrogen_fraction_header(x_loop_index), &
               v%z_table(x_loop_index), &
               v%moles_per_gram_table(x_loop_index), &
               v%mean_molecular_weight_header(x_loop_index)
-         read (opal_eos%table_unit,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+         read (opal_shared%table_unit,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
               &4X,E11.4)') (v%species_fraction_header(x_loop_index,var_idx), &
               var_idx=1,6)
-         read (opal_eos%table_unit,'(A)') blank_line
+         read (opal_shared%table_unit,'(A)') blank_line
          do density_row = 1, nr
-            read (opal_eos%table_unit,'(2I5,2F12.7,17X,E15.7)') record_number, &
+            read (opal_shared%table_unit,'(2I5,2F12.7,17X,E15.7)') record_number, &
                  v%temperature_count_used(x_loop_index,density_row), &
                  unused_field, unused_field, &
                  v%density_grid_table(x_loop_index,density_row)
@@ -1045,8 +954,8 @@ subroutine readco(v, ierr)
                ierr = 1
                return
             end if
-            read(opal_eos%table_unit,'(A)') blank_line
-            read(opal_eos%table_unit,'(A)') blank_line
+            read(opal_shared%table_unit,'(A)') blank_line
+            read(opal_shared%table_unit,'(A)') blank_line
             if (v%temperature_count_used(x_loop_index,density_row) < &
                  opal95_t6_index_lo(density_row)) then
                write(run_log_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
@@ -1057,20 +966,20 @@ subroutine readco(v, ierr)
             end if
             do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
                if (t6_row > opal95_t6_index_lo(density_row)) then
-                  read (opal_eos%table_unit,'(A)') blank_line
+                  read (opal_shared%table_unit,'(A)') blank_line
                   cycle
                end if
-               read (opal_eos%table_unit,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
+               read (opal_shared%table_unit,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
                     v%t6_list(density_row,t6_row), &
                     v%log10_r_value(density_row,t6_row), &
                     (v%eos_table(x_loop_index,opal_eos_var_order(var_idx), &
                     t6_row,density_row), var_idx=1,10)
             end do
-            read(opal_eos%table_unit,'(A)') blank_line
-            read(opal_eos%table_unit,'(A)') blank_line
-            read(opal_eos%table_unit,'(A)') blank_line
+            read(opal_shared%table_unit,'(A)') blank_line
+            read(opal_shared%table_unit,'(A)') blank_line
+            read(opal_shared%table_unit,'(A)') blank_line
          end do
-         read(opal_eos%table_unit,'(A)') blank_line
+         read(opal_shared%table_unit,'(A)') blank_line
       end do
 
       do t6_scan_idx = 1, nt
@@ -1091,7 +1000,7 @@ subroutine readco(v, ierr)
          v%x_grid_spacing_inv(x_idx) = 1.0d0/(v%x_grid_copy(x_idx) - v%x_grid_copy(x_idx-1))
       end do
 
-      close (opal_eos%table_unit)
+      close (opal_shared%table_unit)
 !  MHP 8/98 added ramp between OPAL and other EOS
 !  need edge of table at high rho, fixed T.
       v%t_row_index = 1

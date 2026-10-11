@@ -18,9 +18,8 @@ module blended_eos
       use eos_results, only: eos_result
       use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
       use scv_eos, only: compute_scv_envelope_eos
-      use opal95_eos, only: compute_opal95_eos, find_opal95_ramp
-      use opal2001_eos, only: compute_opal2001_eos, find_opal2001_ramp
-      use opal2006_eos, only: compute_opal2006_eos, find_opal2006_ramp
+      use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, iv_opal95, &
+           iv_opal01, iv_opal06
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
       use io_units, only: run_log_unit
@@ -165,7 +164,7 @@ end subroutine compute_blended_eos
 ! it, it is fully ionized (compute_fully_ionized_eos); near the cutoff
 ! the two are interpolated. Then, if an OPAL table (1995, 2001 or
 ! 2006) covers the point, its result is adopted, or blended in with
-! the weight find_opal*_ramp returns near the table's edge.
+! the weight find_opal_edge_ramp returns near the table's edge.
 ! metal_fraction is intent(in): no callee writes it.
 subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
      metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
@@ -202,6 +201,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       real(dp) :: ramp_factor
       logical :: in_opal_table, needs_ramp
       logical :: opal_covers_point
+      integer :: vintage
 ! (T, rho) window inside which each OPAL vintage is consulted at all
 ! (the table edge itself is then handled by find_opal95_ramp/find_opal2001_ramp/
 ! find_opal2006_ramp). The three gates are not the same test: 1995 bounds
@@ -418,81 +418,24 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       end if
       end if
 
-!     1995 OPAL eqos
-      if (eos_settings%use_opal95_eos) then
-      if (r%temperature >= opal95_t_min .and. log10_temperature <= opal95_log10_t_max .and. &
-           r%log10_density <= opal95_log10_rho_max) then
-
-         call compute_opal95_eos(log10_temperature, log10_pressure, &
-              hydrogen_fraction, metal_fraction, opal_r, ierr, &
-              opal_covers_point)
+! The OPAL tables, in the order 1995, 2001, 2006: inside a selected
+! vintage's (T, rho) window, its result replaces the Yale/SCV one, or is
+! blended in with weight ramp_factor near the table's edge. A point the
+! table does not cover ends the evaluation with the result so far.
+      do vintage = iv_opal95, iv_opal06
+         if (.not. opal_selected(vintage)) cycle
+         if (.not. inside_opal_window(vintage)) cycle
+         call compute_opal_eos(vintage, log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, opal_r, ierr, opal_covers_point)
          r%temperature = opal_r%temperature
          r%pressure = opal_r%pressure
          if (ierr /= 0 .or. .not. opal_covers_point) return
-
-         call find_opal95_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
-              in_opal_table, needs_ramp, ierr)
+         call find_opal_edge_ramp(vintage, r%temperature, opal_r%log10_density, &
+              ramp_factor, in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
-
-         if (.not.in_opal_table) return
-
+         if (.not. in_opal_table) return
          call adopt_or_blend_opal_result()
-      end if
-      end if
-
-!     2001 OPAL eqos  LLP 6/17/03
-      if (eos_settings%use_opal2001_eos) then
-      if (r%temperature >= opal01_t_min .and. r%temperature <= opal01_t_max .and. &
-           r%log10_density <= opal01_log10_rho_max) then
-         call compute_opal2001_eos(log10_temperature, log10_pressure, &
-              hydrogen_fraction, metal_fraction, opal_r, ierr, &
-              opal_covers_point)
-         r%temperature = opal_r%temperature
-         r%pressure = opal_r%pressure
-         if (ierr /= 0 .or. .not. opal_covers_point) return
-
-         call find_opal2001_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
-              in_opal_table, needs_ramp, ierr)
-         if (ierr /= 0) return
-!        find_opal2001_ramp determines whether or not the point is in the OPAL
-!        2001 EOS table
-
-         if (.not.in_opal_table) return
-!        Use OPAL results if not in (rho,T) regime where ramp needed
-         call adopt_or_blend_opal_result()
-      end if
-      end if
-
-!     2006 OPAL eqos  LLP 10/13/2996
-      if (eos_settings%use_opal2006_eos) then
-      if (r%temperature >= opal06_t_min .and. r%temperature <= opal06_t_max .and. &
-           r%log10_density <= opal06_log10_rho_max) then
-         call compute_opal2006_eos(log10_temperature, log10_pressure, &
-              hydrogen_fraction, metal_fraction, opal_r, ierr, &
-              opal_covers_point)
-         r%temperature = opal_r%temperature
-         r%pressure = opal_r%pressure
-         if (ierr /= 0 .or. .not. opal_covers_point) return
-
-         call find_opal2006_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
-              in_opal_table, needs_ramp)
-!        find_opal2006_ramp determines whether or not the point is in the OPAL
-!        2006 EOS table.
-!        If in_opal_table is true, point is in Opal 2006 table.
-!        If needs_ramp is true, point is in ramp area, and ramping is
-!        required. ramp_factor is the weight of the point for ramping
-!        purposes.
-!        Also, to eliminate a point, one can set needs_ramp to true and
-!        ramp_factor to zero.
-
-         if (.not.in_opal_table) return
-
-!        Use OPAL 2006 results only if not in (rho,T) regime where
-!        ramping is needed
-         call adopt_or_blend_opal_result()
-      end if
-      end if
-
+      end do
       return
 
 contains
@@ -502,6 +445,36 @@ contains
 ! weight ramp_factor when the point lies in the ramp zone at the table
 ! edge. Shared by the 1995, 2001 and 2006 branches above; every
 ! variable is host-associated from blend_eos.
+logical function opal_selected(vintage)
+      integer, intent(in) :: vintage
+      select case (vintage)
+      case (iv_opal95)
+         opal_selected = eos_settings%use_opal95_eos
+      case (iv_opal01)
+         opal_selected = eos_settings%use_opal2001_eos
+      case default
+         opal_selected = eos_settings%use_opal2006_eos
+      end select
+end function opal_selected
+
+! the (T, rho) window inside which a vintage is consulted (its own test:
+! 1995 bounds log T, the others T)
+logical function inside_opal_window(vintage)
+      integer, intent(in) :: vintage
+      select case (vintage)
+      case (iv_opal95)
+         inside_opal_window = r%temperature >= opal95_t_min .and. &
+              log10_temperature <= opal95_log10_t_max .and. &
+              r%log10_density <= opal95_log10_rho_max
+      case (iv_opal01)
+         inside_opal_window = r%temperature >= opal01_t_min .and. &
+              r%temperature <= opal01_t_max .and. r%log10_density <= opal01_log10_rho_max
+      case default
+         inside_opal_window = r%temperature >= opal06_t_min .and. &
+              r%temperature <= opal06_t_max .and. r%log10_density <= opal06_log10_rho_max
+      end select
+end function inside_opal_window
+
 subroutine adopt_or_blend_opal_result()
          if (.not.needs_ramp) then
             r%log10_density = opal_r%log10_density

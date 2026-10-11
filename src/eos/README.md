@@ -15,7 +15,8 @@ This directory computes the density of a zone and its thermodynamic quantities (
 | `blended_eos` (`blended_eos.f90`) | The EOS of every run without MHD (section 2): `blend_eos` evaluates one point; `compute_blended_eos` adds the numerical derivatives. |
 | `yale_eos` (`yale/`) | The Yale EOS of Prather (1976): `compute_saha_eos` (partial ionization), `compute_fully_ionized_eos` (degenerate, relativistic electrons, optional Debye-Hückel correction) and `read_fermi_table`. |
 | `scv_eos` (`scv/`) | The Saumon-Chabrier-Van Horn EOS: `read_scv_tables`, `build_scv_envelope_table` (the H, He and metal tables combined at the envelope composition), `compute_scv_envelope_eos` and `compute_scv_eos`. |
-| `opal95_eos`, `opal2001_eos`, `opal2006_eos` (`opal/`) | The three OPAL vintages, one module each: `compute_opal*_eos` (density and derivatives at P) and `find_opal*_ramp` (whether the table covers the point, and its weight near the edge). OPAL's own routines keep their names (`esac`, `rhoofp`, `readco`, `radsub`, ...). |
+| `opal_eos` (`opal/`) | The OPAL EOS: `compute_opal_eos` (density and derivatives at P, for any vintage) and `find_opal_edge_ramp` (whether the vintage's table covers the point, and its weight near the edge), and the 2001 and 2006 tables, which share one state layout. Where the two differ (table size, slot numbers, messages, the reader's columns, the density search and radiation correction), the code branches on the vintage. OPAL's own routines keep their names (`esac01`/`esac06` are entry points to `interpolate_opal_eos`; `rhoofp01/06`, `radsub01/06`). |
+| `opal95_eos` (`opal/`) | The OPAL 1995 tables, with their own state layout: `find_opal95_ramp`, `rhoofp`, `esac`, `readco`, `radsub`, ... |
 | `mhd_eos` (`mhd/`) | The Mihalas-Hummer-Däppen EOS: `read_mhd_tables` and `compute_mhd_eos`. Däppen's routines keep their names (`mhdst`, `mhdpx`, ...). |
 | `opal_eos_tables`, `mhd_eos_tables`, `scv_eos_tables`, `yale_eos_tables` | Each family's tables and state. `opal_eos_tables` also holds the helpers the OPAL vintages share (`interpolate_opal_t6_rho`, `find_opal_ramp`, `quad`, `gmass01`, `open_opal_eos_table`). |
 
@@ -24,7 +25,7 @@ This directory computes the density of a zone and its thermodynamic quantities (
 With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blended_eos`, which calls `blend_eos` once, or four more times for finite-difference derivatives when `use_numerical_derivatives` is set. For one (log T, log P, X, Z), `blend_eos`:
 1. **Below the ionization cutoff** (`saha_log10t_cutoff`): solves the Saha equations (`compute_saha_eos`), or, with `use_scv_eos`, looks the point up in the SCV tables and takes from Saha only what SCV lacks.
 2. **Above it**: treats the gas as fully ionized (`compute_fully_ionized_eos`). Near the cutoff the two results are interpolated.
-3. **OPAL**: if an OPAL vintage is selected and its table covers the point, adopts the OPAL result, or blends it in with the weight `find_opal*_ramp` returns near the table's edge.
+3. **OPAL**: if an OPAL vintage is selected and its table covers the point, adopts the OPAL result, or blends it in with the weight `find_opal_edge_ramp` returns near the table's edge.
 
 ## 3. Conventions
 
