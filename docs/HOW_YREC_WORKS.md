@@ -379,12 +379,12 @@ Jacobians (`want_derivatives`).
 Rosseland-mean κ blended from:
 
 - **conductive opacities** (Potekhin tables,
-  `kap/conductive/condopacp.f90`, added in parallel:
+  `kap/conductive/conductive_opacity.f90`, added in parallel:
   1/κ = 1/κ_rad + 1/κ_cond);
 - **radiative tables**, chosen by regime and namelist: OPAL 1995 (GS98
   mixture as shipped; 4-D interpolation in (Z, X, T, log R ≡ ρ/T₆³),
   including the X-, Z-direction table stacking and edge extrapolation
-  logic in `kap/opal95/getopal95.f90`), OPAL 1992, LAOL 1989;
+  logic in `kap/opal95/opal95_opacity.f90`), OPAL 1992, LAOL 1989;
   **low-temperature molecular opacities** from Ferguson/Alexander 2006 or Alexander 1995,
   or Kurucz 1990, blended across a T_mol transition window;
 - optional pure-Z tables supporting metal diffusion.
@@ -495,7 +495,7 @@ interpolated in both directions with edge-validity bookkeeping
 | `tridia`/`ctridi` | tridiagonal (Thomas) solvers | AM diffusion (`tridia`), rotational composition diffusion (`ctridi`) |
 | `kspline`/`ksplint`, `splinc`/`splintd2`, `spline`(osculatory), `osplin`→`meval`/`choose`/`cases` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
 | `lir` | 4-point Lagrange / linear table interpolation with index memory (`lir1` was removed as dead code) | MHD EOS table lookups |
-| `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (`hunt` lives in `kap/conductive/condopacp.f90`) | all table families |
+| `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (`hunt` lives in `kap/conductive/conductive_opacity.f90`) | all table families |
 | `qgauss` | 5-point Gauss–Legendre quadrature | shape integrals |
 | `intpol` | spline interpolation with derivative | OPAL 1992 and Kurucz 1990 opacity interpolation |
 

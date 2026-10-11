@@ -16,7 +16,8 @@
 ! tables live in opacity_tables (opacity_table%laol(1:2), %laol_pure_z).
 module laol_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables
+      use opacity_tables, only: kap_settings, laol_opacity_cap, &
+           laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
       use numerics_lib, only: cspline, locate, splint
       use io_units, only: run_log_unit
       use math_lib
@@ -95,7 +96,7 @@ subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
 !     READ IN ARRAY SIZES
       read(laol_unit,100) tbl%num_x,tbl%num_rho,tbl%num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
-      if (tbl%num_x.gt.n_laol_x-1.or.tbl%num_rho.gt.n_laol_rho.or.tbl%num_t.gt.n_laol_t) then
+      if (tbl%num_x > n_laol_x-1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
          if (tbl%table_number == 2) then
          write(run_log_unit,*)' SECOND OPACITY ARRAY TOO LARGE.'
          else
@@ -196,13 +197,13 @@ subroutine spline_laol_table(tbl)
                 tbl%slaol_opacity(ix,ir,it) = 0.0d0
                 tbl%slaol_log_rho(ix,ir,it) = 0.0d0
                 tbl%slaol_d2opacity(ix,ir,it) = 0.0d0
-                if (tbl%opacity(ix,ir,it) .ne. 0.0d0) then
+                if (tbl%opacity(ix,ir,it) /= 0.0d0) then
                    num_valid_rho = num_valid_rho+1
                    row_log10_opacity(num_valid_rho) = log10(tbl%opacity(ix,ir,it))
                    row_log_rho(num_valid_rho) = log10(tbl%grid_rho(ir))
                 end if
             end do
-            if (num_valid_rho .ge. 4) then
+            if (num_valid_rho >= 4) then
                tbl%slaol_num_points(ix,it)=num_valid_rho
                call cspline(row_log_rho, row_log10_opacity, num_valid_rho, &
                     1.0d30, 1.0d30, row_d2opacity)
@@ -263,10 +264,10 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
       log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
       call locate(tbl%grid_t, tbl%num_t, log10_temperature, t_locate_guess)
       call locate(tbl%grid_x, tbl%num_x, hydrogen_fraction, x_grid_index)
-      if (x_grid_index .eq. tbl%num_x) then
+      if (x_grid_index == tbl%num_x) then
           x_grid_index = tbl%num_x-1
       end if
-      if (x_grid_index .eq. 0) then
+      if (x_grid_index == 0) then
           x_grid_index = 1
       end if
       num_valid_x = 0
@@ -277,7 +278,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
          call xrng4(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
          do t_index=t_range_lo, t_range_hi
             num_valid_rho = tbl%slaol_num_points(x_loop_index,t_index)
-            if (num_valid_rho .ge. 4) then
+            if (num_valid_rho >= 4) then
                do rho_loop_index=1, num_valid_rho
                   row_log10_opacity(rho_loop_index) = &
                        tbl%slaol_opacity(x_loop_index,rho_loop_index,t_index)
@@ -286,8 +287,8 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   row_d2opacity(rho_loop_index) = &
                        tbl%slaol_d2opacity(x_loop_index,rho_loop_index,t_index)
                end do
-               if (log10_density.gt.row_log_rho(1) .and. &
-                    log10_density.lt.row_log_rho(num_valid_rho)) then
+               if (log10_density > row_log_rho(1) .and. &
+                    log10_density < row_log_rho(num_valid_rho)) then
                   call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
                        row_d2opacity, log10_density, log10_opacity_value, &
                        spline_index_lo, spline_index_hi, jerr_gate)
@@ -303,8 +304,8 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   dlnkap_dlnrho_by_t(num_valid_t) = &
                        (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                        (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
-               else if (log10_density.gt.row_log_rho(1)-log_extrap_tolerance .and. &
-                    log10_density.le.row_log_rho(1)) then
+               else if (log10_density > row_log_rho(1)-log_extrap_tolerance .and. &
+                    log10_density <= row_log_rho(1)) then
 !                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
                   slope = (row_log10_opacity(2)-row_log10_opacity(1))/ &
                        (row_log_rho(2)-row_log_rho(1))
@@ -313,8 +314,8 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   logt_interp_opacity(num_valid_t) = log10_opacity_value
                   logt_values(num_valid_t) = tbl%grid_t(t_index)
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
-               else if (log10_density.ge.row_log_rho(num_valid_rho) .and. &
-                    log10_density.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
+               else if (log10_density >= row_log_rho(num_valid_rho) .and. &
+                    log10_density < row_log_rho(num_valid_rho)+log_extrap_tolerance) then
 !                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
                   slope = (row_log10_opacity(num_valid_rho-1)-row_log10_opacity(num_valid_rho))/ &
                        (row_log_rho(num_valid_rho-1)-row_log_rho(num_valid_rho))
@@ -340,7 +341,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                return
             end if
          end do
-         if (num_valid_t .ge. 4) then
+         if (num_valid_t >= 4) then
             call cspline(logt_values, logt_interp_opacity, num_valid_t, &
                  1.0d30, 1.0d30, logt_d2opacity)
             call splint(logt_values, logt_interp_opacity, num_valid_t, &
@@ -383,14 +384,13 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
       dlnkap_dlnt = dlnkap_dlnt_by_x(1) + slope*(hydrogen_fraction-x_values(1))
       slope = (dlnkap_dlnrho_by_x(2)-dlnkap_dlnrho_by_x(1))/(x_values(2)-x_values(1))
       dlnkap_dlnrho = dlnkap_dlnrho_by_x(1)+slope*(hydrogen_fraction-x_values(1))
-      if (log10_opacity_value .gt. 35) then
+      if (log10_opacity_value > 35) then
          opacity = laol_opacity_cap
          log10_opacity = 35.0d0
       else
          opacity = exp10(log10_opacity_value)
          log10_opacity = log10_opacity_value
       end if
-      return
 end subroutine compute_laol_opacity
 
 !----------------------------------------------------------------------
@@ -414,7 +414,7 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
 !     READ IN ARRAY SIZES
       read(pure_z_unit,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
-      if (n.ne.1.or.opacity_table%zlaol_num_rho.gt.n_laol_rho.or.opacity_table%zlaol_num_t.gt.n_laol_t) then
+      if (n /= 1.or.opacity_table%zlaol_num_rho > n_laol_rho.or.opacity_table%zlaol_num_t > n_laol_t) then
          write(run_log_unit,*)' Z OPACITY INPUT ERROR.'
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
@@ -444,7 +444,6 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
          end do
       close(pure_z_unit)
 
-      return
 end subroutine read_pure_z_table
 
 !----------------------------------------------------------------------
@@ -469,13 +468,13 @@ subroutine build_pure_z_splines
                   opacity_table%zslaol_opacity(ir,it) = 0.0d0
                   opacity_table%zslaol_log_rho(ir,it) = 0.0d0
                   opacity_table%zslaol_d2opacity(ir,it) = 0.0d0
-                  if (opacity_table%zlaol_opacity(ir,it) .ne. 0.0d0) then
+                  if (opacity_table%zlaol_opacity(ir,it) /= 0.0d0) then
                      num_valid_rho = num_valid_rho+1
                      row_log10_opacity(num_valid_rho) = log10(opacity_table%zlaol_opacity(ir,it))
                      row_log_rho(num_valid_rho) = log10(opacity_table%zlaol_logrho_grid(ir))
                   end if
             end do
-            if (num_valid_rho .ge. 4) then
+            if (num_valid_rho >= 4) then
                opacity_table%zslaol_num_points(it)=num_valid_rho
                call cspline(row_log_rho, row_log10_opacity, num_valid_rho, &
                     1.0d30, 1.0d30, row_d2opacity)
@@ -488,7 +487,6 @@ subroutine build_pure_z_splines
                opacity_table%zslaol_num_points(it) = 0
             end if
         end do
-      return
 end subroutine build_pure_z_splines
 
 !----------------------------------------------------------------------
@@ -528,14 +526,14 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
       call xrng4(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
       do t_index=t_range_lo, t_range_hi
          num_valid_rho = opacity_table%zslaol_num_points(t_index)
-         if (num_valid_rho .ge. 4) then
+         if (num_valid_rho >= 4) then
             do rho_loop_index=1, num_valid_rho
                row_log10_opacity(rho_loop_index) = opacity_table%zslaol_opacity(rho_loop_index,t_index)
                row_log_rho(rho_loop_index) = opacity_table%zslaol_log_rho(rho_loop_index,t_index)
                row_d2opacity(rho_loop_index) = opacity_table%zslaol_d2opacity(rho_loop_index,t_index)
             end do
-            if (log10_density.gt.row_log_rho(1) .and. &
-                 log10_density.lt.row_log_rho(num_valid_rho)) then
+            if (log10_density > row_log_rho(1) .and. &
+                 log10_density < row_log_rho(num_valid_rho)) then
                call splint(row_log_rho, row_log10_opacity, num_valid_rho, &
                     row_d2opacity, log10_density, log10_opacity_value, &
                     spline_index_lo, spline_index_hi, jerr_gate)
@@ -551,8 +549,8 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                dlnkap_dlnrho_by_t(num_valid_t) = &
                     (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                     (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
-            else if (log10_density.gt.row_log_rho(1)-log_extrap_tolerance .and. &
-                 log10_density.le.row_log_rho(1)) then
+            else if (log10_density > row_log_rho(1)-log_extrap_tolerance .and. &
+                 log10_density <= row_log_rho(1)) then
 !              PUT LINEAR EXTRAPOLATION ROUTINES HERE
                slope = (row_log10_opacity(2)-row_log10_opacity(1))/ &
                     (row_log_rho(2)-row_log_rho(1))
@@ -561,8 +559,8 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                logt_interp_opacity(num_valid_t) = log10_opacity_value
                logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = slope
-            else if (log10_density.ge.row_log_rho(num_valid_rho) .and. &
-                 log10_density.lt.row_log_rho(num_valid_rho)+log_extrap_tolerance) then
+            else if (log10_density >= row_log_rho(num_valid_rho) .and. &
+                 log10_density < row_log_rho(num_valid_rho)+log_extrap_tolerance) then
 !              PUT LINEAR EXTRAPOLATION ROUTINES HERE
                slope = (row_log10_opacity(num_valid_rho-1)-row_log10_opacity(num_valid_rho))/ &
                     (row_log_rho(num_valid_rho-1)-row_log_rho(num_valid_rho))
@@ -582,7 +580,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
             return
          end if
       end do
-      if (num_valid_t .ge. 4) then
+      if (num_valid_t >= 4) then
          call cspline(logt_values, logt_interp_opacity, num_valid_t, &
               1.0d30, 1.0d30, logt_d2opacity)
          call splint(logt_values, logt_interp_opacity, num_valid_t, &
@@ -606,14 +604,13 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
          ierr = 1
          return
       end if
-      if (log10_opacity_value .gt. 35) then
+      if (log10_opacity_value > 35) then
          opacity = laol_opacity_cap
          log10_opacity = 35.0d0
       else
          opacity = exp10(log10_opacity_value)
          log10_opacity = log10_opacity_value
       end if
-      return
 end subroutine compute_pure_z_opacity
 
 end module laol_opacity

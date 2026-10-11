@@ -12,7 +12,8 @@
 ! The tables live in opacity_tables (opacity_table%alex06_*).
 module alex06_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables
+      use opacity_tables, only: alex_composition_tol, n_alex06_d, n_alex06_t, &
+           n_alex06_x, n_alex06_z, opacity_table, stencil4_locate
       use numerics_lib, only: interp, intrp2, lagrange4
       use physical_constants, only: ln10
       use math_lib
@@ -69,7 +70,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !           HEADER INFORMATION: X AND Z; CHECK FOR CONSISTENCY
             read(table_unit,10) header_x, header_z
    10       format(30x,f9.6,7x,f9.6//)
-            if (header_x.ne.opacity_table%alex06_grid_x(i) .or. header_z.ne.opacity_table%alex06_grid_z(ii)) then
+            if (header_x /= opacity_table%alex06_grid_x(i) .or. header_z /= opacity_table%alex06_grid_z(ii)) then
                write(*,15) opacity_table%alex06_grid_x(i), header_x, opacity_table%alex06_grid_z(ii), header_z
    15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
@@ -78,7 +79,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
             read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
    20       format(6x,19f7.3)
             do kk=1,16
-               if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
+               if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
                   write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
    25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
@@ -93,7 +94,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
             do j = n_alex06_t,1,-1
                read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
    30          format(f5.3,1x,19f7.3)
-               if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
+               if (row_temp /= opacity_table%alex06_grid_logt(j)) then
                   write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
    35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
@@ -113,8 +114,8 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !        at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
 !        HEADER INFORMATION: X AND Z; CHECK FOR CONSISTENCY
          read(table_unit,10) header_x, header_z
-         if (header_x.ne.(1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
-              header_z.ne.opacity_table%alex06_grid_z(ii)) then
+         if (header_x /= (1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
+              header_z /= opacity_table%alex06_grid_z(ii)) then
             write(*,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
             ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
             ierr = 1
@@ -122,7 +123,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
          endif
          read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
          do kk=1,16
-            if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
+            if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
                write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
@@ -134,7 +135,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !        STORE IN A NUMXZ*NUMT*NUMR ARRAY.
          do j = n_alex06_t,1,-1
             read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
-            if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
+            if (row_temp /= opacity_table%alex06_grid_logt(j)) then
                write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
@@ -149,7 +150,6 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
             opacity_table%alex06_opacity(i,j)=opacity_table%alex06_full_opacity(1,i,j)
          end do
       end do
-      return
 end subroutine read_alex06_tables
 
 !----------------------------------------------------------------------
@@ -174,7 +174,7 @@ subroutine build_alex06_composition_table(ierr)
       ierr = 0
       x_max = 1.0d0 - opacity_table%alex06_cached_z
 !     CHECK THAT THE REQUESTED COMPOSITION IS INSIDE TABLE BOUNDS
-      if (opacity_table%alex06_cached_x.lt.0.0d0 .or. opacity_table%alex06_cached_x .gt. x_max) then
+      if (opacity_table%alex06_cached_x < 0.0d0 .or. opacity_table%alex06_cached_x > x_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
@@ -183,7 +183,7 @@ subroutine build_alex06_composition_table(ierr)
       endif
 !     PERMIT EXTRAPOLATION IN Z BY UP TO 1 TABLE ELEMENT
       z_max = opacity_table%alex06_grid_z(n_alex06_z)+(opacity_table%alex06_grid_z(n_alex06_z)-opacity_table%alex06_grid_z(n_alex06_z-1))
-      if (opacity_table%alex06_cached_z.lt.0.0d0 .or. opacity_table%alex06_cached_z .gt. z_max) then
+      if (opacity_table%alex06_cached_z < 0.0d0 .or. opacity_table%alex06_cached_z > z_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
@@ -191,7 +191,7 @@ subroutine build_alex06_composition_table(ierr)
       endif
 !     FIND 4 NEAREST TABLES IN Z.
       do i = 3,n_alex06_z-2
-         if (opacity_table%alex06_cached_z.le.opacity_table%alex06_grid_z(i)) then
+         if (opacity_table%alex06_cached_z <= opacity_table%alex06_grid_z(i)) then
             iz = i - 2
             exit
          endif
@@ -201,14 +201,14 @@ subroutine build_alex06_composition_table(ierr)
       end if
 !     FIND 4 NEAREST TABLES IN X.
       do i = 3,n_alex06_x-2
-         if (opacity_table%alex06_cached_x.le.opacity_table%alex06_grid_x(i)) then
+         if (opacity_table%alex06_cached_x <= opacity_table%alex06_grid_x(i)) then
             opacity_table%alex06_index_x = i - 2
             exit
          endif
       end do
       if (i > (n_alex06_x-2)) then
 !     NO TABLE FOR X > 0.9 IF Z =0.10 OR MORE
-      if (opacity_table%alex06_cached_z.ge.0.1d0) then
+      if (opacity_table%alex06_cached_z >= 0.1d0) then
          opacity_table%alex06_index_x = n_alex06_x - 4
       else
          opacity_table%alex06_index_x = n_alex06_x - 3
@@ -234,7 +234,7 @@ subroutine build_alex06_composition_table(ierr)
       end do
 !     IF IN THE HIGH Z AND HIGH X DOMAIN THE TOP TABLE IS X = 1-Z (ENTRY NUMX) EXCEPT
 !     FOR THE Z=0.10 CASE (WHERE THE X=0.9 CASE DOUBLES AS THE X=1-Z CASE).
-      if (opacity_table%alex06_index_x.eq.n_alex06_x-3.and.iz.eq.n_alex06_z-3) then
+      if (opacity_table%alex06_index_x == n_alex06_x-3.and.iz == n_alex06_z-3) then
 !        USE DIFFERENT INDEXING FOR THE LAST TABLE
          kk = n_alex06_z*(opacity_table%alex06_index_x+2)+iz
          kk2 = kk + 1
@@ -260,7 +260,7 @@ subroutine build_alex06_composition_table(ierr)
       do i = 1,3
          interp_nodes(i) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+i-1)
       end do
-      if (iz.eq.n_alex06_z-3) then
+      if (iz == n_alex06_z-3) then
          interp_nodes(4) = 1.0d0-opacity_table%alex06_cached_z
       else
          interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
@@ -272,7 +272,6 @@ subroutine build_alex06_composition_table(ierr)
             opacity_table%alex06_opacity(i,j) = lagrange4(weight_x, opacity_by_x(1:4,i,j))
          end do
       end do
-      return
 end subroutine build_alex06_composition_table
 
 !----------------------------------------------------------------------
@@ -302,7 +301,7 @@ subroutine compute_alex06_opacity(log10_density, log10_temperature, hydrogen_fra
       delta_z = abs(metal_fraction-opacity_table%alex06_cached_z)
       delta_x = abs(hydrogen_fraction-opacity_table%alex06_cached_x)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME X,Z VALUE AS THE POINT
-      if (delta_z.gt.alex_composition_tol .or. delta_x.gt.alex_composition_tol) then
+      if (delta_z > alex_composition_tol .or. delta_x > alex_composition_tol) then
          opacity_table%alex06_cached_z = metal_fraction
          opacity_table%alex06_cached_x = hydrogen_fraction
          call build_alex06_composition_table(ierr)
@@ -311,8 +310,8 @@ subroutine compute_alex06_opacity(log10_density, log10_temperature, hydrogen_fra
 !     COMPUTE R FOR GRID POINT
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     Insure that index IT is within the required array bounds
-      if (opacity_table%alex06_index_t .lt. 1) opacity_table%alex06_index_t=1
-      if ((opacity_table%alex06_index_t+2) .gt. n_alex06_t) opacity_table%alex06_index_t=n_alex06_t-2
+      if (opacity_table%alex06_index_t < 1) opacity_table%alex06_index_t=1
+      if ((opacity_table%alex06_index_t+2) > n_alex06_t) opacity_table%alex06_index_t=n_alex06_t-2
 !     FIND NEAREST GRID POINTS IN T.
       call stencil4_locate(opacity_table%alex06_grid_logt, n_alex06_t, log10_temperature, opacity_table%alex06_index_t)
 !     INTERPOLATION FACTORS IN LOG T
@@ -321,12 +320,12 @@ subroutine compute_alex06_opacity(log10_density, log10_temperature, hydrogen_fra
       end do
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
 !     Insure that index ID is within the required array bounds
-      if (opacity_table%alex06_index_r .lt. 1) opacity_table%alex06_index_r=1
-      if ((opacity_table%alex06_index_r+2) .gt. n_alex06_d) opacity_table%alex06_index_r=n_alex06_d-2
+      if (opacity_table%alex06_index_r < 1) opacity_table%alex06_index_r=1
+      if ((opacity_table%alex06_index_r+2) > n_alex06_d) opacity_table%alex06_index_r=n_alex06_d-2
 !     FIND NEAREST GRID POINTS IN R = RHO/T6**3
       call stencil4_locate(opacity_table%alex06_grid_logr, n_alex06_d, logr, opacity_table%alex06_index_r)
 !     INTERPOLATION FACTORS IN LOG R
-      if (logr.gt.opacity_table%alex06_grid_logr(n_alex06_d)) then
+      if (logr > opacity_table%alex06_grid_logr(n_alex06_d)) then
          extrapolate_linear = .true.
          saved_r = logr
          logr = opacity_table%alex06_grid_logr(n_alex06_d)
@@ -367,7 +366,6 @@ subroutine compute_alex06_opacity(log10_density, log10_temperature, hydrogen_fra
 !     CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = exp(ln10*log10_opacity)
-      return
 end subroutine compute_alex06_opacity
 
 end module alex06_opacity

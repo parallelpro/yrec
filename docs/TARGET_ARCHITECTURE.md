@@ -511,7 +511,11 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `mwind`, `mcowind` | `wind/matt_wind.f90`, `wind/wind_spindown_matt.f90` |
 | `massloss` | `wind/massloss.f90` |
 | `eqstat`, `eqstat2`, `meqos` | `eos/eqstat.f90` (both), `eos/mhd/meqos.f90` |
-| `getopac`, `setupopac` | `kap/kap_lib.f90`, `kap/setupopac.f90` |
+| `getopac` (`kap_eval`), `setupopac` (`load_opacity_tables`), `surfopac` (`refresh_surface_tables`) | `kap/kap_lib.f90` (all three) |
+| `ll95tbl`, `getopal95` | `kap/opal95/opal95_opacity.f90` (`read_opal95_tables`, `compute_opal95_opacity`) |
+| `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_opacity.f90` (`read_laol_tables`, `compute_laol_opacity`, `read_pure_z_table`, `compute_pure_z_opacity`) |
+| `readalex06`, `getalex06` | `kap/alex06/alex06_opacity.f90` (`read_alex06_tables`, `compute_alex06_opacity`) |
+| `kurucz`, `condopacpint`, `condopacp` | `kap/kurucz90/kurucz_opacity.f90` (`compute_kurucz_opacity`), `kap/conductive/conductive_opacity.f90` (`compute_conductive_opacity`, `condopacp`) |
 | `parmin` | `io/read_controls.f90` |
 | `wrtout` | retired; replaced by `io/yrec_output.f90` |
 

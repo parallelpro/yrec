@@ -713,7 +713,7 @@ module controls_buffer
       logical :: use_conductive_opacity
 
 ! former common/alexo/: alex94_table_unit (originally ialxo; the
-! Alexander 1994 low-T table unit, kap/alex94/read_alex94_tables.f90)
+! Alexander 1994 low-T table unit, kap/alex94/alex94_opacity.f90)
 ! is not a namelist value -- genuinely used in io/read_controls.f90,
 ! renamed in place there. The namelist names lalex95 /
 ! use_alex95_tables / alex95_table_z_list keep their historical "95".

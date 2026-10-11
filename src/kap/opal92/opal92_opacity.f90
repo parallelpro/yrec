@@ -12,7 +12,9 @@
 ! The tables live in opacity_tables (opacity_table%opal92(1:2)).
 module opal92_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables
+      use opacity_tables, only: kap_settings, n_opal92_d, n_opal92_t, &
+           n_opal92_x, opacity_table, opal92_missing_opacity, &
+           opal92_table_set, opal92_x_match_tol
       use numerics_lib, only: findex, intpol, ysplin
       use math_lib
       implicit none
@@ -160,10 +162,10 @@ subroutine prep_table(tbl, ierr)
           chkd = tbl%grid_logr(id)
           chko = tbl%log10_opacity(it+n_opal92_t*(ix-1),id)
 !>>>> CHECK THE EMPTY REGION
-          if (chko.le.opal92_missing_opacity) cycle
-          if (jd.le.0) then
+          if (chko <= opal92_missing_opacity) cycle
+          if (jd <= 0) then
              tbl%density_start_index(index1) = id
-             if (id.ne.1) then
+             if (id /= 1) then
                 write(*,*) 'prepare_opal92_tables: opal92 table density grid does not start at index 1'
                 ierr = 1
                 return
@@ -175,7 +177,7 @@ subroutine prep_table(tbl, ierr)
           spline_work(1,jd) = chko
         end do
         tbl%density_count(index1) = jd
-        if (jd.le.1) cycle
+        if (jd <= 1) cycle
         call ysplin(density_nodes, spline_work, jd)
         do j = 1,jd
         do i = 1,4
@@ -242,9 +244,9 @@ subroutine build_surface_table(tbl, table_z, ierr)
       tbl%surface_x=hydrogen_fraction
       tbl%surface_z=table_z
       call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, x_index)
-      if (x_index.lt.0) x_index=-x_index
-      if (x_index.ge.3) x_index=2
-      if (x_index.le.0) then
+      if (x_index < 0) x_index=-x_index
+      if (x_index >= 3) x_index=2
+      if (x_index <= 0) then
          write(*,*) 'build_opal92_surface_table: surface X outside table X grid'
          ierr = 1
          return
@@ -256,7 +258,7 @@ subroutine build_surface_table(tbl, table_z, ierr)
          temp_index=im2
          row_index=im2+(x_index-1)*tbl%num_temps
          density_start=tbl%density_start_index(row_index)
-         if (density_start.ne.1) then
+         if (density_start /= 1) then
             write(*,*) 'build_opal92_surface_table: surface-table density grid does not start at index 1'
             ierr = 1
             return
@@ -333,13 +335,13 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
 ! RHOT3 = LOG10(RHO/(T/10E6)**3)
       rhot3 = log10_density - 3.0d0*t6
 
-      if (dabs(tbl%surface_x-hydrogen_fraction).le.opal92_x_match_tol) then
+      if (abs(tbl%surface_x-hydrogen_fraction) <= opal92_x_match_tol) then
          tbl%index_x = 4
          single_x_table = .true.
       endif
       if (.not. single_x_table) then
       do im1 = 1,n_opal92_x
-         if (dabs(tbl%grid_x(im1)-hydrogen_fraction).le.opal92_x_match_tol) then
+         if (abs(tbl%grid_x(im1)-hydrogen_fraction) <= opal92_x_match_tol) then
             tbl%index_x = im1
             single_x_table = .true.
             exit
@@ -348,18 +350,18 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       end if
       if (.not. single_x_table) then
       call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, tbl%index_x)
-      if (tbl%index_x.lt.0) tbl%index_x = -tbl%index_x
-      if (tbl%index_x.le.1.and.rhot3.gt.-1.0d0) tbl%index_x = 2
-      if (tbl%index_x.ge.3) tbl%index_x = 2
-      if (tbl%index_x.le.0) then
+      if (tbl%index_x < 0) tbl%index_x = -tbl%index_x
+      if (tbl%index_x <= 1.and.rhot3 > -1.0d0) tbl%index_x = 2
+      if (tbl%index_x >= 3) tbl%index_x = 2
+      if (tbl%index_x <= 0) then
          write(*,*) 'compute_opal92_opacity: error in X grid'
          ierr = 1
          return
       end if
       end if
       call findex(tbl%grid_logt, tbl%num_temps, t6, tbl%index_t)
-      if (tbl%index_t.lt.0.and.tbl%grid_logt(tbl%num_temps).eq.t6) tbl%index_t = -tbl%index_t
-      if (tbl%index_t.lt.0) then
+      if (tbl%index_t < 0.and.tbl%grid_logt(tbl%num_temps) == t6) tbl%index_t = -tbl%index_t
+      if (tbl%index_t < 0) then
          write(*,*) 'compute_opal92_opacity: T out of table'
          ierr = 1
          return
@@ -386,7 +388,6 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       dlnkap_dlnrho = qodi
       dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho
 
-      return
 end subroutine compute_opal92_opacity
 
 !----------------------------------------------------------------------
@@ -427,10 +428,10 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       ierr = 0
 ! FOR SIX GRID POINTS OF TEMPERATURE
       its = temp_index - 2
-      if (its.le.0) its = 1
+      if (its <= 0) its = 1
       itf = temp_index + 3
-      if (itf.gt.tbl%num_temps) itf = tbl%num_temps
-      if (abund_index.lt.4) then
+      if (itf > tbl%num_temps) itf = tbl%num_temps
+      if (abund_index < 4) then
          mm1 = abund_index
       else
          mm1 = tbl%surface_x_index
@@ -439,20 +440,20 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       do it = its,itf
          index1 = it + (mm1-1)*tbl%num_temps
          ndss = tbl%density_start_index(index1)
-         if (ndss.ne.1) then
+         if (ndss /= 1) then
             write(*,*) 'interpolate_opal92_2d: CHECK NDSS'
             ierr = 1
             return
          end if
          ndf = ndss + tbl%density_count(index1) - 1
          call findex(tbl%grid_logr, ndf, density, dens_index)
-         if (dens_index.lt.0) then
+         if (dens_index < 0) then
 ! OUT SIDE THEN  LINEAR EXTRAPOLATION
             dens_index = -dens_index
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
             dx = density - tbl%grid_logr(dens_index)
-            if (abund_index.lt.4) then
+            if (abund_index < 4) then
                c1 = tbl%spline_coeffs(index1,index2+1)
                c2 = tbl%spline_coeffs(index1,index2+2)
             else
@@ -466,7 +467,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
             dx = density - tbl%grid_logr(dens_index)
-            if (abund_index.lt.4) then
+            if (abund_index < 4) then
                c1 = tbl%spline_coeffs(index1,index2+1)
                c2 = tbl%spline_coeffs(index1,index2+2)
                c3 = tbl%spline_coeffs(index1,index2+3)
@@ -489,7 +490,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          yto(jt) = ol0
          aqod(jt) = qodi
       end do
-      if (xt(1).gt.temperature.or.xt(jt).lt.temperature) then
+      if (xt(1) > temperature.or.xt(jt) < temperature) then
          write(*,*) 'interpolate_opal92_2d: extrapolation fails'
          ierr = 1
          return
@@ -506,7 +507,6 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       if (ierr /= 0) return
 ! QODF = D LN(O)/D LN(D)
 
-      return
 end subroutine interpolate_opal92_2d
 
 end module opal92_opacity

@@ -95,10 +95,9 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
       real(dp), intent(in) :: ion_fraction(3)
       logical, intent(out) :: got_conductive_opacity
       integer, intent(out) :: ierr
-      real(dp) :: atomic_weight_h1, atomic_weight_he4, &
-           atomic_weight_ox
-      data atomic_weight_h1,atomic_weight_he4,atomic_weight_ox &
-           /1.008D0,4.004D0,16D0/
+! atomic weights of H, He4 and the oxygen proxy for the metals
+      real(dp), parameter :: atomic_weight_h1 = 1.008D0, &
+           atomic_weight_he4 = 4.004D0, atomic_weight_ox = 16D0
 
 ! --- locals ---
       real(dp) :: helium_fraction
@@ -150,9 +149,9 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
 
        extrapolation_indicator = log10_density - 3.0D0*(log10_temperature-6.0D0)
 !     DO CONDUCTIVE OPACITY CORRECTION in fully ionized approximation
-      if(log10_temperature.ge.3.0D0.and.log10_temperature.le.9.0D0 &
-           .and.log10_density.le.9.75D0) then
-         if (log10_density.ge.-6.0D0) then
+      if(log10_temperature >= 3.0D0.and.log10_temperature <= 9.0D0 &
+           .and.log10_density <= 9.75D0) then
+         if (log10_density >= -6.0D0) then
            call condopacp(1.0D0,log10_temperature,log10_density, &
                 log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,ierr)
            if (ierr /= 0) return
@@ -198,7 +197,7 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
            got_conductive_opacity=.TRUE.
            conductive_opacity = exp10(conductive_log10_opacity)
          end if
-         if (log10_density.lt.-6.0D0.and.extrapolation_indicator.ge.0.0D0) then
+         if (log10_density < -6.0D0.and.extrapolation_indicator >= 0.0D0) then
 ! Extrapolate Conductive opacity
            call condopacp(1.0D0,log10_temperature,-6.0D0,log10_cond_h1, &
                 conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,ierr)
@@ -229,7 +228,6 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
          end if
       end if
 
-      return
 end subroutine compute_conductive_opacity
 
 !----------------------------------------------------------------------
@@ -268,7 +266,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            dlnkappa_dlnrho, dlnkappa_dlnt
       integer, intent(out) :: ierr
 ! (the grid sizes cond_n_* and the table itself, cond_table, live in
-! kap/conductive_opacity_table.f90 and must be consistent with "condall.d")
+! kap/conductive/conductive_opacity.f90 and must be consistent with "condall.d")
       integer :: z_index, t_index, r_index
       real(dp) :: log10_ion_charge
       integer :: t_index_lo, t_index_hi, r_index_lo, r_index_hi
@@ -287,7 +285,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       real(dp) :: cktp, drktp, dr2ktp
       real(dp) :: dt2k, drtk, drt2k, xt
 
-      if (cond_table%table_loaded_flag.ne.cond_table_loaded_marker) then
+      if (cond_table%table_loaded_flag /= cond_table_loaded_marker) then
          write(*,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
          ierr = 1
          return
@@ -295,7 +293,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       ierr = 0
       log10_ion_charge=log10(ion_charge)
       call hunt(cond_table%z_grid,cond_n_z,log10_ion_charge,z_index)
-      if (z_index.eq.0.or.z_index.eq.cond_n_z) then
+      if (z_index == 0.or.z_index == cond_n_z) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
          write(*,*) 'CONINTER: Z out of range'
@@ -305,7 +303,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       call hunt(cond_table%temp_grid,cond_n_temp,log10_temperature,t_index)
 
 !      if (IT.eq.0.or.IT.eq.MAXT) stop 'CONINTER: T out of range'
-      if (t_index.eq.0.or.t_index.eq.cond_n_temp) then
+      if (t_index == 0.or.t_index == cond_n_temp) then
                   print*, cond_table%z_grid
                   print*, cond_n_z, log10_temperature, z_index
 ! 2026 (docs/ROADMAP.md stage 3): stop 'CONINTER: T out of range'
@@ -316,7 +314,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       endif
 
       call hunt(cond_table%rho_grid,cond_n_rho,log10_density,r_index)
-      if (r_index.eq.0.or.r_index.eq.cond_n_rho) then
+      if (r_index == 0.or.r_index == cond_n_rho) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
          write(*,*) 'CONINTER: rho out of range'
@@ -420,7 +418,6 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            drktm,drkt0,drkt1,drktp, & ! input: values of d lg k / d lg rho
            dlnkappa_dlnrho,drtk,drt2k,xt,ierr) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
       if (ierr /= 0) return
-      return
 end subroutine condopacp
 
 ! Given 4 values of Z and 4 values of V, find VF corresponding to 5th Z
@@ -446,7 +443,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       real(dp) :: x, h, hm, v01, hp, v11, c2, c3
 
       ierr = 0
-      if (grid_index.le.0.or.grid_index.ge.grid_size) then
+      if (grid_index <= 0.or.grid_index >= grid_size) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
          write(*,*) 'CINTERP: N0 out of range'
@@ -456,17 +453,17 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       x=grid_target-grid_lo1
       h=grid_hi1-grid_lo1   ! basic interval
       interp_frac=x/h
-      if (grid_index.gt.1) then
+      if (grid_index > 1) then
          hm=grid_lo1-grid_lo2  ! left adjoint interval
          v01=((val_hi1-val_lo1)/h**2+(val_lo1-val_lo2)/hm**2)/ &
          (1d0/h+1d0/hm) ! left derivative
       endif
-      if (grid_index.lt.grid_size-1) then
+      if (grid_index < grid_size-1) then
          hp=grid_hi2-grid_hi1 ! right adjoint interval
          v11=((val_hi1-val_lo1)/h**2+(val_hi2-val_hi1)/hp**2)/ &
          (1d0/h+1d0/hp) ! right derivative
       endif
-      if (grid_index.gt.1.and.grid_index.lt.grid_size-1) then   ! Cubic interpolation
+      if (grid_index > 1.and.grid_index < grid_size-1) then   ! Cubic interpolation
          c2=3d0*(val_hi1-val_lo1)-h*(v11+2d0*v01)
          c3=h*(v01+v11)-2d0*(val_hi1-val_lo1)
          interp_value=val_lo1+v01*x+c2*interp_frac**2+c3*interp_frac**3
@@ -474,7 +471,7 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_deriv2=(2d0*c2+6d0*c3*interp_frac)/h**2
          return
       endif
-      if (grid_index.eq.1) then   ! Quadratic interpolation
+      if (grid_index == 1) then   ! Quadratic interpolation
          c2=val_lo1-val_hi1+v11*h
          interp_value=val_hi1-v11*(h-x)+c2*(1d0-interp_frac)**2
          interp_deriv=v11-2d0*c2*(1d0-interp_frac)/h
@@ -485,7 +482,6 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
          interp_deriv=v01+2d0*c2*interp_frac/h
          interp_deriv2=2d0*c2/h**2
       endif
-      return
 end subroutine cinterp3
 
 !   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling
@@ -495,7 +491,7 @@ end subroutine cinterp3
 !     XX must be monotonic, either increasing or decreasing.
 !     JLO=0 or JLO=N is returned to indicate that X is out of range.
 !     JLO on input is taken as the initial guess for JLO on output.
-subroutine hunt(table,n,target_value,index)
+pure subroutine hunt(table,n,target_value,index)
 
 
       integer, intent(in) :: n
@@ -506,19 +502,19 @@ subroutine hunt(table,n,target_value,index)
       logical :: ascending
       integer :: index_hi, increment, index_mid
 
-      ascending=table(n).gt.table(1) ! true if ascending order, false otherwise
-      if (index.le.0.or.index.gt.n) then ! Input guess not useful.
+      ascending=table(n) > table(1) ! true if ascending order, false otherwise
+      if (index <= 0.or.index > n) then ! Input guess not useful.
          index=0
          index_hi=n+1  ! go immediately to bisection
       else
       increment=1 ! set the hunting increment
-      if (target_value.ge.table(index).eqv.ascending) then ! Hunt up:
+      if (target_value >= table(index).eqv.ascending) then ! Hunt up:
         do
           index_hi=index+increment
-        if (index_hi.gt.n) then ! Done hunting, since off end of table
+        if (index_hi > n) then ! Done hunting, since off end of table
            index_hi=n+1
            exit
-        elseif (target_value.ge.table(index_hi).eqv.ascending) then ! Not done hunting
+        elseif (target_value >= table(index_hi).eqv.ascending) then ! Not done hunting
            index=index_hi
            increment=increment+increment
         else
@@ -529,10 +525,10 @@ subroutine hunt(table,n,target_value,index)
          index_hi=index
          do
           index=index_hi-increment
-        if (index.lt.1) then ! Done hunting, since off end of table
+        if (index < 1) then ! Done hunting, since off end of table
            index=0
            exit
-        elseif (target_value.lt.table(index).eqv.ascending) then ! Not done hunting
+        elseif (target_value < table(index).eqv.ascending) then ! Not done hunting
            index_hi=index
            increment=increment+increment ! so double the increment
         else
@@ -543,9 +539,9 @@ subroutine hunt(table,n,target_value,index)
       endif
 !   Hunt is done, so begin the final bisection phase:
       do
-      if (index_hi-index.eq.1) return
+      if (index_hi-index == 1) return
       index_mid=(index_hi+index)/2
-      if (target_value.ge.table(index_mid).eqv.ascending) then
+      if (target_value >= table(index_mid).eqv.ascending) then
          index=index_mid
       else
          index_hi=index_mid

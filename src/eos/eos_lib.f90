@@ -477,7 +477,7 @@ end subroutine eos_set_mixture
 ! Added 2026 (wave 2): the LAOL89 opacity table header carries the
 ! 18-element metal mixture (C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,
 ! Mn,Fe,Ni, scaled to sum to ZHIT) that the Debye-Huckel correction
-! weights with debye_huckel_nu; kap/setupopac.f90 pushes it here
+! weights with debye_huckel_nu; kap/kap_lib.f90 pushes it here
 ! right after read_laol_tables reads it (formerly read_laol_tables wrote yale_eos_tables's
 ! debye_huckel_z directly). Elements 1-3 are recomputed per shell by
 ! the star layer (core/henyey_iteration.f90 etc.); 4-18 come only from

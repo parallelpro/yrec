@@ -11,7 +11,9 @@
 ! The tables live in opacity_tables (opacity_table%alex94_*).
 module alex94_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables
+      use opacity_tables, only: alex_composition_tol, alex_x_stencil_start, &
+           kap_settings, n_alex94_d, n_alex94_t, n_alex94_x, n_alex94_z, &
+           opacity_table, stencil4_locate
       use numerics_lib, only: interp, intrp2, lagrange4
       use physical_constants, only: ln10
       use io_units, only: run_log_unit
@@ -73,8 +75,8 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
 !           HEADER INFORMATION: X AND Z
             read(table_unit,10) header_x, header_z
    10       format(18x,f6.2,2x,f7.2)
-            if (header_x.ne.opacity_table%alex94_grid_x(table_index) .or. &
-                 header_z.ne.opacity_table%alex94_grid_z(i)) then
+            if (header_x /= opacity_table%alex94_grid_x(table_index) .or. &
+                 header_z /= opacity_table%alex94_grid_z(i)) then
                write(run_log_unit,20) header_x, opacity_table%alex94_grid_x(table_index), &
                     header_z, opacity_table%alex94_grid_z(i)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
@@ -92,8 +94,8 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                   opacity_table%alex94_full_opacity(ii,j,k) = row_opacity_temp(k)
                end do
    30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
-               if (row_density_count.ne.n_alex94_d .or. row_temp.ne.opacity_table%alex94_grid_logt(j) &
-                    .or. row_logr0.ne.opacity_table%alex94_grid_logr(1)) then
+               if (row_density_count /= n_alex94_d .or. row_temp /= opacity_table%alex94_grid_logt(j) &
+                    .or. row_logr0 /= opacity_table%alex94_grid_logr(1)) then
                   write(run_log_unit,40) row_density_count, row_temp, &
                        opacity_table%alex94_grid_logt(j), row_logr0, opacity_table%alex94_grid_logr(1)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
@@ -110,7 +112,6 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       ierr = 0
       target_z = kap_settings%alex_table_z1
       call build_alex94_fixed_z_table(target_z)
-      return
 end subroutine read_alex94_tables
 
 !----------------------------------------------------------------------
@@ -130,7 +131,7 @@ subroutine build_alex94_fixed_z_table(metal_fraction)
 
 !     LOCATE FOUR NEAREST TABLES IN Z
       do i=3,n_alex94_z-1
-         if (metal_fraction.lt.opacity_table%alex94_grid_z(i)) then
+         if (metal_fraction < opacity_table%alex94_grid_z(i)) then
             idz = i - 2
             exit
          endif
@@ -161,7 +162,6 @@ subroutine build_alex94_fixed_z_table(metal_fraction)
          end do
       end do
       opacity_table%alex94_cached_z = metal_fraction
-      return
 end subroutine build_alex94_fixed_z_table
 
 !----------------------------------------------------------------------
@@ -195,7 +195,6 @@ subroutine build_alex94_surface_table(hydrogen_fraction)
                  weight_x(4)*opacity_table%alex94_opacity(opacity_table%alex94_index_x+3,i,j)
          end do
       end do
-      return
 end subroutine build_alex94_surface_table
 
 !----------------------------------------------------------------------
@@ -224,7 +223,7 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
 
       delta_z = abs(metal_fraction-opacity_table%alex94_cached_z)
 !     ENSURE THAT OPACITY TABLE HAS THE SAME Z VALUE AS THE ENVELOPE.
-      if (delta_z.gt.alex_composition_tol) then
+      if (delta_z > alex_composition_tol) then
          call build_alex94_fixed_z_table(metal_fraction)
          call build_alex94_surface_table(hydrogen_fraction)
       endif
@@ -232,8 +231,8 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     FIND NEAREST GRID POINTS IN T.
 !     Insure that index IT is within the required array bounds  llp  8/19/08
-      if (opacity_table%alex94_index_t .lt. 1) opacity_table%alex94_index_t=1
-      if ((opacity_table%alex94_index_t+2) .gt. n_alex94_t) opacity_table%alex94_index_t=n_alex94_t-2
+      if (opacity_table%alex94_index_t < 1) opacity_table%alex94_index_t=1
+      if ((opacity_table%alex94_index_t+2) > n_alex94_t) opacity_table%alex94_index_t=n_alex94_t-2
       call stencil4_locate(opacity_table%alex94_grid_logt, n_alex94_t, log10_temperature, opacity_table%alex94_index_t)
 !     INTERPOLATION FACTORS IN LOG T
       do i = 1,4
@@ -243,8 +242,8 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
 !     FIND NEAREST GRID POINTS IN R = RHO/T6**3
       call stencil4_locate(opacity_table%alex94_grid_logr, n_alex94_d, logr, opacity_table%alex94_index_r)
 !     INTERPOLATION FACTORS IN LOG R
-      if (logr.gt.opacity_table%alex94_grid_logr(n_alex94_d).and. &
-           abs(hydrogen_fraction-opacity_table%alex94_cached_x).lt.alex_composition_tol) then
+      if (logr > opacity_table%alex94_grid_logr(n_alex94_d).and. &
+           abs(hydrogen_fraction-opacity_table%alex94_cached_x) < alex_composition_tol) then
          extrapolate_linear = .true.
          saved_r = logr
          logr = opacity_table%alex94_grid_logr(n_alex94_d)
@@ -257,7 +256,7 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
       call interp(interp_nodes, weight_r, dweight_r, logr)
 !     NOW EITHER INTERPOLATE IN SURFACE X TABLE OR CALCULATE OPACITY AT
 !     4 DIFFERENT VALUES OF X AND INTERPOLATE IN X.
-      if (abs(hydrogen_fraction-opacity_table%alex94_cached_x).lt.alex_composition_tol) then
+      if (abs(hydrogen_fraction-opacity_table%alex94_cached_x) < alex_composition_tol) then
 !        SURFACE ABUNDANCE TABLE
 !        INTERPOLATE IN LOG R AT FIXED T
          do i = 1,4
@@ -325,7 +324,6 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
       endif
-      return
 end subroutine compute_alex94_opacity
 
 end module alex94_opacity

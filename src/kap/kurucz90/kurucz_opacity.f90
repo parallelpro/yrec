@@ -13,7 +13,8 @@
 ! The tables live in opacity_tables (opacity_table%kurucz(1:2)).
 module kurucz_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables
+      use opacity_tables, only: kap_settings, kurucz_max_num_densities, &
+           kurucz_max_num_temps, kurucz_table_set, opacity_table
       use numerics_lib, only: findex, intpol, ysplin
       use io_units, only: run_log_unit
       use math_lib
@@ -95,11 +96,11 @@ subroutine read_kurucz_table(path, tbl, ierr)
            log10_opacity0, log10_opacity1, log10_opacity2, &
            log10_opacity4, log10_opacity8, electron_density, &
            atom_density, density, unused_col
-      if (read_status .gt. 0) cycle table_read   ! was err=110: reread next record
-      if (read_status .lt. 0) exit table_read    ! was end=120
-      if (prev_grid_temp.ne.grid_temp) then
+      if (read_status > 0) cycle table_read   ! was err=110: reread next record
+      if (read_status < 0) exit table_read    ! was end=120
+      if (prev_grid_temp /= grid_temp) then
          num_read = num_read+1
-         if (num_read.gt.kurucz_max_num_temps) then
+         if (num_read > kurucz_max_num_temps) then
             write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
                  trim(path)
             ierr = 1
@@ -109,7 +110,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
          prev_grid_temp = grid_temp
          density_index = 1
       endif
-      if (num_read.lt.1) then
+      if (num_read < 1) then
          write(*,*) 'read_kurucz_tables: no header row read from ', &
               trim(path)
          ierr = 1
@@ -161,19 +162,19 @@ subroutine build_kurucz_splines(tbl, ierr)
          do id = 1,kurucz_max_num_densities
             chkd = tbl%log10_rho(it,id)
             chko = tbl%log10_opacity(it,id)
-            if (chko.le.0.0d0) cycle
-            if (jd.le.0) tbl%density_start_index(it) = id
+            if (chko <= 0.0d0) cycle
+            if (jd <= 0) tbl%density_start_index(it) = id
             jd = jd + 1
             density_nodes(jd) = chkd
             spline_work(1,jd) = log10(chko)
          end do
          tbl%density_count(it) = jd
-         if (tbl%density_start_index(it).ne.1) then
+         if (tbl%density_start_index(it) /= 1) then
             write(*,*) 'build_kurucz_splines: kurucz table density grid does not start at index 1'
             ierr = 1
             return
          end if
-         if (tbl%density_count(it).lt.25) then
+         if (tbl%density_count(it) < 25) then
             write(*,*) 'build_kurucz_splines: kurucz table has fewer than 25 density points'
             ierr = 1
             return
@@ -187,7 +188,6 @@ subroutine build_kurucz_splines(tbl, ierr)
          end do
       end do
 
-      return
 end subroutine build_kurucz_splines
 
 !----------------------------------------------------------------------
@@ -249,15 +249,15 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       ierr = 0
       in_table = .false.
       if (tbl%check_range) then
-      if (.not.(log10_density.le.kurucz_logrho_max .and. &
-           log10_temperature.le.kurucz_logt_max)) return
+      if (.not.(log10_density <= kurucz_logrho_max .and. &
+           log10_temperature <= kurucz_logt_max)) return
       end if
       search_full_range = .true.
 !     FOR SIX GRID POINTS OF TEMPERATURE
       temp_index_start = tbl%ix_t-2
-      if (temp_index_start.le.0) temp_index_start = 1
+      if (temp_index_start <= 0) temp_index_start = 1
       temp_index_end = tbl%ix_t+3
-      if (temp_index_end.gt.tbl%num_temps) temp_index_end = tbl%num_temps
+      if (temp_index_end > tbl%num_temps) temp_index_end = tbl%num_temps
       full_search: do
       num_valid_temps = 0
       do temp_index = temp_index_start, temp_index_end
@@ -266,12 +266,12 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          row_density_end = row_density_start + &
               tbl%density_count(temp_index) - 1
 !        FIND THE 'M3'
-         if (tbl%ix_rho.lt.row_density_start .or. &
-              tbl%ix_rho.gt.row_density_end) tbl%ix_rho = row_density_end
+         if (tbl%ix_rho < row_density_start .or. &
+              tbl%ix_rho > row_density_end) tbl%ix_rho = row_density_end
          density_pointer = tbl%ix_rho
-         if (log10_density.lt.tbl%log10_rho(temp_index, density_pointer)) then
+         if (log10_density < tbl%log10_rho(temp_index, density_pointer)) then
             do density_scan_index = density_pointer-1, row_density_start, -1
-               if (tbl%log10_rho(temp_index, density_scan_index).le. &
+               if (tbl%log10_rho(temp_index, density_scan_index) <= &
                     log10_density) then
                   density_pointer = density_scan_index
                   density_found = .true.
@@ -280,7 +280,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
             end do
          else
             do density_scan_index = density_pointer, row_density_end-1
-               if (tbl%log10_rho(temp_index, density_scan_index+1).gt. &
+               if (tbl%log10_rho(temp_index, density_scan_index+1) > &
                     log10_density) then
                   density_pointer = density_scan_index
                   density_found = .true.
@@ -288,7 +288,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
                endif
             end do
             if (.not. density_found) then
-            if (tbl%log10_rho(temp_index, row_density_end).ge. &
+            if (tbl%log10_rho(temp_index, row_density_end) >= &
                  log10_density) then
                density_pointer = row_density_end
                density_found = .true.
@@ -316,7 +316,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          temp_subset_log10_opacity(num_valid_temps) = log10_opacity_at_rho
          temp_subset_dlnkap_dlnrho(num_valid_temps) = dlnkap_dlnrho_at_rho
       end do
-      if (num_valid_temps.le.3) then
+      if (num_valid_temps <= 3) then
          if (search_full_range) then
             temp_index_start = 1
             temp_index_end = tbl%num_temps
@@ -331,8 +331,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       endif
       exit full_search
       end do full_search
-      if (temp_subset_logt(1).gt.log10_temperature .or. &
-           temp_subset_logt(num_valid_temps).lt.log10_temperature) return
+      if (temp_subset_logt(1) > log10_temperature .or. &
+           temp_subset_logt(num_valid_temps) < log10_temperature) return
       in_table = .true.
 !     INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
 !     GET THE PARTIAL DERIVATIVE OF OL WRT T.
@@ -355,7 +355,6 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          return
       end if
 !     QODF = D LN(O)/D LN(D)
-      return
 end subroutine compute_kurucz_opacity
 
 end module kurucz_opacity

@@ -15,7 +15,9 @@
 ! hosting a real callable subroutine." kap_eval's body, dispatch logic,
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
-      use opacity_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use opacity_tables, only: kap_settings, kap_settings_t, opacity_table, &
+           set_kap_settings
       use opal95_opacity, only: compute_opal95_opacity, read_opal95_tables, &
            build_opal95_surface_table
       use conductive_opacity, only: compute_conductive_opacity
@@ -44,7 +46,7 @@ module kap_lib
 ! the envelope metal fraction the surface-table machinery was
 ! initialized with (set by kap_init, checked by kap_eval's
 ! single-Z-table range test)
-      double precision, save :: kap_envelope_metal_fraction
+      real(dp), save :: kap_envelope_metal_fraction
 ! result-array slots for kap_get (2026, MESA kap-results shape)
       integer, parameter, public :: &
            i_kap = 1, i_log10_kap = 2, i_dlnkap_dlnrho = 3, &
@@ -60,10 +62,10 @@ contains
 ! typically the caller's eos_res(i_fxion:i_fxion+2) slice).
 subroutine kap_get(log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, res, ion_fraction, ierr)
-      double precision, intent(in) :: log10_density, log10_temperature, &
+      real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: res(num_kap_results)
-      double precision, intent(inout) :: ion_fraction(3)
+      real(dp), intent(inout) :: res(num_kap_results)
+      real(dp), intent(inout) :: ion_fraction(3)
       integer, intent(out) :: ierr
 
       call kap_eval(log10_density, log10_temperature, &
@@ -81,34 +83,31 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use io_units
-      use opacity_tables
-      implicit none
-
-      double precision, intent(in) :: log10_density, log10_temperature, &
+      real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
-      double precision, intent(out) :: opacity, log10_opacity, &
+      real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
-      double precision, intent(inout) :: ion_fraction(3)
+      real(dp), intent(inout) :: ion_fraction(3)
 ! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop. Any error inside a table
 ! lookup (its diagnostic is still printed at the point of failure)
 ! comes back here as ierr /= 0; nothing in the kap domain stops.
       integer, intent(out) :: ierr
 ! --- locals ---
       logical :: got_atmosphere_opacity, got_conductive_opacity, in_table
-      double precision :: atm_opacity, atm_log10_opacity, &
+      real(dp) :: atm_opacity, atm_log10_opacity, &
            atm_dlnkap_dlnrho, atm_dlnkap_dlnt
-      double precision :: atm_opacity_2, atm_log10_opacity_2, &
+      real(dp) :: atm_opacity_2, atm_log10_opacity_2, &
            atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2
-      double precision :: purez_opacity, purez_log10_opacity, &
+      real(dp) :: purez_opacity, purez_log10_opacity, &
            purez_dlnkap_dlnrho, purez_dlnkap_dlnt
-      double precision :: table_metal_fraction
-      double precision :: opacity_2, log10_opacity_2, dlnkap_dlnrho_2, &
+      real(dp) :: table_metal_fraction
+      real(dp) :: opacity_2, log10_opacity_2, dlnkap_dlnrho_2, &
            dlnkap_dlnt_2
-      double precision :: ramp_weight
-      double precision :: conductive_opacity, conductive_log10_opacity, &
+      real(dp) :: ramp_weight
+      real(dp) :: conductive_opacity, conductive_log10_opacity, &
            conductive_dlnkap_dlnrho, conductive_dlnkap_dlnt
-      double precision :: log10_conductive_opacity
-      double precision :: radiative_opacity, radiative_dlnkap_dlnrho, &
+      real(dp) :: log10_conductive_opacity
+      real(dp) :: radiative_opacity, radiative_dlnkap_dlnrho, &
            radiative_dlnkap_dlnt
       integer :: jerr
 
@@ -122,7 +121,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       ierr = 0
       jerr = 0
       got_atmosphere_opacity = .false.
-      if (log10_temperature.le.kap_settings%molecular_opacity_logt_max) then
+      if (log10_temperature <= kap_settings%molecular_opacity_logt_max) then
          if (kap_settings%use_alex06_tables) then
             call compute_alex06_opacity(log10_density, log10_temperature, &
                  hydrogen_fraction, metal_fraction, atm_opacity, &
@@ -172,7 +171,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 
 !     GET INTERIOR OPACITY IF NEEDED
 
-      if (.not. (log10_temperature.lt.kap_settings%molecular_opacity_logt_min .and. got_atmosphere_opacity)) then
+      if (.not. (log10_temperature < kap_settings%molecular_opacity_logt_min .and. got_atmosphere_opacity)) then
 
 !     HELIUM BURNING REGION (HB EVOLUTION) USE PURE Z TABLE
 !     mhp 7/12 Altered logic of the opacities in the He burnng
@@ -181,7 +180,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     JCZ 211125 changing temperature limit to 7.0 to accommodate
 !     semiconvection+overshoot HB models, which can reach lower core
 !     temperatures
-      if ((metal_fraction.gt.0.1d0) .and. (log10_temperature.gt.7.0d0)) then
+      if ((metal_fraction > 0.1d0) .and. (log10_temperature > 7.0d0)) then
          if (.not.kap_settings%use_pure_z_table) then
             write(run_log_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
                  ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
@@ -235,8 +234,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          call blend_in_z(dlnkap_dlnt, purez_dlnkap_dlnt, &
               metal_fraction, table_metal_fraction, 1.0d0)
 
-      else if ((metal_fraction.gt.0.12d0) .or. &
-           ((abs(metal_fraction - kap_envelope_metal_fraction).gt. &
+      else if ((metal_fraction > 0.12d0) .or. &
+           ((abs(metal_fraction - kap_envelope_metal_fraction) > &
            kap_settings%metal_fraction_match_tolerance) .and. .not.kap_settings%use_two_z_tables &
            .and. .not.kap_settings%use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
@@ -321,8 +320,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     DO A RAMP BETWEEN SURFACE AND INTERIOR OPACITY
 
       if (got_atmosphere_opacity .and. &
-           log10_temperature.le.kap_settings%molecular_opacity_logt_max) then
-         if (log10_temperature.ge.kap_settings%molecular_opacity_logt_min) then
+           log10_temperature <= kap_settings%molecular_opacity_logt_max) then
+         if (log10_temperature >= kap_settings%molecular_opacity_logt_min) then
             ramp_weight = (log10_temperature - kap_settings%molecular_opacity_logt_min) / &
                  (kap_settings%molecular_opacity_logt_max - kap_settings%molecular_opacity_logt_min)
             opacity = ramp_weight*opacity + (1.0d0 - ramp_weight)*atm_opacity
@@ -358,9 +357,9 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       if (.not.got_conductive_opacity) then
 !        If we get here we have no Potekhin opacity, so we
 !        try for Hubbard Lampe
-         if (log10_temperature.lt.4.2d0) then
+         if (log10_temperature < 4.2d0) then
             return
-         else if (log10_density.lt.(2.0d0*log10_temperature - 13.0d0)) then
+         else if (log10_density < (2.0d0*log10_temperature - 13.0d0)) then
             return
          else
 !           Do Hubbard Lampe conductive opacity calculation
@@ -393,7 +392,6 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
            conductive_opacity*conductive_dlnkap_dlnt) / &
            (radiative_opacity + conductive_opacity))
 
-      return
 end subroutine kap_eval
 
 !----------------------------------------------------------------------
@@ -411,16 +409,14 @@ subroutine kap_init(settings, envelope_hydrogen_fraction, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, conductive_table_path, ierr)
 
-      use opacity_tables
       use conductive_opacity, only: read_conductive_table
-      implicit none
 
 ! the run's opacity settings (installed here: kap reads no other
 ! configuration)
       type(kap_settings_t), intent(in) :: settings
-      double precision, intent(in) :: envelope_hydrogen_fraction, &
+      real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction
-      double precision, intent(inout) :: laol_work_array(12)
+      real(dp), intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: alex06_table_path, &
            kurucz_table_path, kurucz_table2_path, laol_table_path, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
@@ -454,7 +450,6 @@ subroutine kap_init(settings, envelope_hydrogen_fraction, &
          return
       end if
 
-      return
 end subroutine kap_init
 
 !----------------------------------------------------------------------
@@ -465,18 +460,13 @@ end subroutine kap_init
 ! (OPAL95/OPAL92/ALEX94 fixed-X tables) when the envelope hydrogen
 ! fraction changes (refresh_surface_tables).
 subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
-
-      use opacity_tables
-      implicit none
-
-      double precision, intent(in) :: hydrogen_fraction
+      real(dp), intent(in) :: hydrogen_fraction
 ! same ierr contract as kap_eval's: table errors come back as
 ! ierr /= 0.
       integer, intent(out) :: ierr
 
       call refresh_surface_tables(hydrogen_fraction, ierr)
 
-      return
 end subroutine kap_update_surface_tables
 
 
@@ -488,11 +478,10 @@ end subroutine kap_update_surface_tables
 ! two-table lookup in kap_eval. 2026 readability: extracted from four
 ! copies; the arithmetic is token-for-token the original
 ! (slope, then base + (Z - Z2)*slope).
-subroutine blend_in_z(value_z1, value_z2, metal_fraction, table_z1, table_z2)
-      implicit none
-      double precision, intent(inout) :: value_z1
-      double precision, intent(in) :: value_z2, metal_fraction, table_z1, table_z2
-      double precision :: slope
+pure subroutine blend_in_z(value_z1, value_z2, metal_fraction, table_z1, table_z2)
+      real(dp), intent(inout) :: value_z1
+      real(dp), intent(in) :: value_z2, metal_fraction, table_z1, table_z2
+      real(dp) :: slope
 
       slope = (value_z1 - value_z2) / &
            (table_z1 - table_z2)
@@ -516,15 +505,15 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, ierr)
       use eos_lib, only: eos_set_debye_huckel_z
-      double precision, intent(in) :: envelope_hydrogen_fraction
-      double precision, intent(inout) :: laol_work_array(12)
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      real(dp), intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: alex06_table_path, &
            kurucz_table_path, kurucz_table2_path, laol_table_path, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
       integer, intent(out) :: ierr
-      double precision :: laol_debye_huckel_z(18)
+      real(dp) :: laol_debye_huckel_z(18)
 
       ierr = 0
 ! the interior tables
@@ -572,7 +561,7 @@ end subroutine load_opacity_tables
 ! fraction (OPAL95-format, OPAL92, Alexander 1994/95), from tables
 ! already read.
 subroutine refresh_surface_tables(hydrogen_fraction, ierr)
-      double precision, intent(in) :: hydrogen_fraction
+      real(dp), intent(in) :: hydrogen_fraction
       integer, intent(out) :: ierr
 
       ierr = 0
