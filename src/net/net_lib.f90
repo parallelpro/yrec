@@ -35,7 +35,8 @@ module net_lib
 ! the implicit burn (with the network species a caller maps its
 ! abundances onto) and the equilibrium burn
       use network, only: burn_implicitly, n_solved, n_network, &
-           s_h1, s_he3, s_he4, compute_equilibrium_burn_rates
+           network_species_slot, s_h1, s_he3, s_he4, &
+           compute_equilibrium_burn_rates
 ! the energy generation
       use nuclear_energy, only: nuclear_energy_result, compute_nuclear_energy
 ! the light elements

@@ -43,6 +43,8 @@
 ! species list and to the rows that touch it.
 module network
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use composition_layout, only: i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, &
+           i_o16, i_o18
       use reaction_rates, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap
@@ -55,6 +57,9 @@ module network
 ! the first n_solved species are solved implicitly; the rest are
 ! products updated explicitly after convergence
       integer, parameter, public :: n_solved = 7, n_network = 8
+! the composition-vector (xa) slot of each network species, s_* order
+      integer, parameter, public :: network_species_slot(n_network) = &
+           [i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, i_o16, i_o18]
       real(dp), parameter, public :: mass_number(n_network) = &
            [1.0d0, 3.0d0, 4.0d0, 12.0d0, 13.0d0, 14.0d0, 16.0d0, 18.0d0]
 ! atomic mass excesses, MeV (AME2020: Wang et al. 2021), of the network
@@ -455,7 +460,7 @@ pure subroutine compute_equilibrium_burn_rates(rate_by_zone, xa_start, &
      shell_mass, shell_temperature, zone_begin, zone_end, dc_dt, do_dt, &
      dx_dt, dy_dt, equilibrium_xc12, equilibrium_xo16, hydrogen_fraction, &
      metal_fraction)
-      use star_info_lib, only: n_species_basic, i_h1, i_he4, i_metals, &
+      use composition_layout, only: n_species_basic, i_h1, i_he4, i_metals, &
            i_he3, i_c12, i_c13, i_n14, i_o16
       use reaction_rates, only: net_settings
 ! rate_by_zone(r_*/rv_*, zone) from compute_network_rates; xa_start the

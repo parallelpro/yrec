@@ -17,6 +17,7 @@
 ! added here. Sources and history: the end of this file.
 module nuclear_energy
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use neutrino_flux_layout, only: n_nu_fluxes
       use reaction_rates, only: nuclear_rates, compute_reaction_rates, &
            net_settings, screening_mass_fractions, &
            deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu, &
@@ -25,8 +26,7 @@ module nuclear_energy
            r_c12c12_unused, xs_pep
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_energies, n_chains, n_network, &
-           s_h1, s_he3, s_he4, s_c12, s_c13, s_n14, s_o16, s_o18, chain_pp1, &
-           chain_pp2, chain_pp3, chain_cno, chain_alpha_capture, &
+           network_species_slot, chain_pp1, chain_pp2, chain_pp3, chain_cno, chain_alpha_capture, &
            chain_triple_alpha
       implicit none
       private
@@ -47,7 +47,7 @@ module nuclear_energy
          real(dp) :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
 ! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
-         real(dp) :: neutrino_flux(10) = 0.0d0
+         real(dp) :: neutrino_flux(n_nu_fluxes) = 0.0d0
          real(dp) :: be7_mass_fraction = 0.0d0
       end type nuclear_energy_result
 
@@ -136,7 +136,7 @@ end subroutine energy_path_rates
 ! convective overturn. Zero at or below min_deuterium.
 pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
      energy, dlneps_dlnt)
-      use star_info_lib, only: i_h1, i_h2
+      use composition_layout, only: i_h1, i_h2
       use physical_constants, only: cc13
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(in) :: xa(:), turnover_timescale
@@ -168,7 +168,8 @@ end subroutine compute_deuterium_burning
 ! Each slot's rate times its reactants' mass fractions (reactions per
 ! gram per second, the EG(I) of engeb); slots 9 and 13 stay zero.
 pure function rates_times_reactants(rate, xa) result(eg)
-      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16
+      use composition_layout, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, &
+           i_o16
       real(dp), intent(in) :: rate(num_reactions), xa(:)
       real(dp) :: eg(num_reactions)
 
@@ -190,19 +191,10 @@ end function rates_times_reactants
 ! The network species' mass fractions (network's s_* order) from a
 ! zone's composition in the star%xa layout.
 pure function network_mass_fractions(xa) result(x)
-      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18
       real(dp), intent(in) :: xa(:)
       real(dp) :: x(n_network)
 
-      x = 0.0d0
-      x(s_h1) = xa(i_h1)
-      x(s_he3) = xa(i_he3)
-      x(s_he4) = xa(i_he4)
-      x(s_c12) = xa(i_c12)
-      x(s_c13) = xa(i_c13)
-      x(s_n14) = xa(i_n14)
-      x(s_o16) = xa(i_o16)
-      x(s_o18) = xa(i_o18)
+      x = xa(network_species_slot)
 end function network_mass_fractions
 
 !----------------------------------------------------------------------
@@ -277,8 +269,9 @@ end subroutine store_chain_energies
 ! slower He3 + He4 production; computed because some applications want
 ! it). Off in hydrogen-exhausted zones (X <= 1e-6, MHP 9/91).
 pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
-      use star_info_lib, only: i_h1, i_he3, i_nu_b8, i_nu_be7, i_nu_f17, &
-           i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_nu_he3he3, i_nu_he3he4
+      use composition_layout, only: i_h1, i_he3
+      use neutrino_flux_layout, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, &
+           i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_nu_he3he3, i_nu_he3he4
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(in) :: xa(:), reactions_per_gram(num_reactions)
       type(nuclear_energy_result), intent(inout) :: e
@@ -327,7 +320,7 @@ end subroutine compute_solar_neutrino_fluxes
 ! Newsham 9/06), otherwise the Beaudet, Petrosian & Salpeter (1967) fits
 ! for the pair, photo and plasma losses.
 subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
-      use star_info_lib, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
+      use composition_layout, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
       use physical_constants, only: cc13, ln10
       use math_lib
       real(dp), intent(in) :: log_density, log_temperature, t9, xa(:)

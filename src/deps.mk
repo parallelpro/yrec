@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd_eos_tables.f90 eos/opal_eos_tables.f90 eos/scv_eos_tables.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_opacity_table.f90 kap/kap_lib.f90 kap/opacity_tables.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 state/controls_sync.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd_eos_tables.f90 eos/opal_eos_tables.f90 eos/scv_eos_tables.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_opacity_table.f90 kap/kap_lib.f90 kap/opacity_tables.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 state/composition_layout.f90 state/controls_sync.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -17,6 +17,8 @@ atmosphere_structure.mod: atm/atmosphere_structure.o
 bahcall_loeb_units.mod: rotation/microdiff/bahcall_loeb_units.o
 	@true
 burn_step.mod: core/burn_step.o
+	@true
+composition_layout.mod: state/composition_layout.o
 	@true
 composition_step.mod: core/composition_step.o
 	@true
@@ -75,6 +77,8 @@ monte_carlo.mod: core/monte_carlo.o
 net_lib.mod: net/net_lib.o
 	@true
 network.mod: net/network.o
+	@true
+neutrino_flux_layout.mod: state/neutrino_flux_layout.o
 	@true
 nuclear_energy.mod: net/nuclear_energy.o
 	@true
@@ -272,11 +276,11 @@ mixing/overshoot_boundaries.o: io_units.mod math_lib.mod physical_constants.mod 
 mixing/rotmix.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod temperature_gradients.mod
 mixing/temperature_gradients.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
-net/light_elements.o: math_lib.mod physical_constants.mod reaction_rates.mod star_info_lib.mod
+net/light_elements.o: composition_layout.mod math_lib.mod physical_constants.mod reaction_rates.mod
 net/net_lib.o: light_elements.mod network.mod nuclear_energy.mod reaction_rates.mod
-net/network.o: numerics_lib.mod reaction_rates.mod star_info_lib.mod
-net/nuclear_energy.o: math_lib.mod network.mod physical_constants.mod reaction_rates.mod star_info_lib.mod thermal_neutrinos.mod
-net/reaction_rates.o: math_lib.mod physical_constants.mod star_info_lib.mod
+net/network.o: composition_layout.mod numerics_lib.mod reaction_rates.mod
+net/nuclear_energy.o: composition_layout.mod math_lib.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_rates.mod thermal_neutrinos.mod
+net/reaction_rates.o: composition_layout.mod math_lib.mod physical_constants.mod
 net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod net_lib.mod network.mod reaction_rates.mod scv_eos_tables.mod star_info_lib.mod thermal_neutrinos.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/numerics_lib.o: integration_parameters.mod io_units.mod math_lib.mod star_info_lib.mod
@@ -334,6 +338,7 @@ setup/setup_solar_calibration.o: controls_buffer.mod star_info_lib.mod
 setup/setup_star_calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 setup/setups.o: atm_lib.mod atm_tables.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod t_tau_relations.mod yale_eos_tables.mod
 state/controls_sync.o: controls_buffer.mod star_info_lib.mod
+state/star_info_lib.o: composition_layout.mod neutrino_flux_layout.mod
 util/compute_timestep.o: controls_buffer.mod physical_constants.mod star_info_lib.mod
 util/timestep_limit_hburn.o: controls_buffer.mod net_lib.mod physical_constants.mod star_info_lib.mod
 util/timestep_limit_heburn.o: burn_step.mod controls_buffer.mod net_lib.mod star_info_lib.mod

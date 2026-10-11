@@ -576,7 +576,7 @@ end subroutine compute_hep_rate
 ! are zero; deuterium is included (2026-10: the composition path used to
 ! leave it out).
 pure function screening_mass_fractions(xa) result(mass_frac)
-      use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
+      use composition_layout, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
            i_n14, i_o16, i_o18
       real(dp), intent(in) :: xa(:)
       real(dp) :: mass_frac(num_isotopes)

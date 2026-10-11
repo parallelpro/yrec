@@ -172,7 +172,7 @@ STAR_FREE_DIRS = ["net"]
 
 def check_star_free(src_root):
     problems = []
-    use_star = re.compile(r"(?im)^\s*use\s+star_info_lib\s*,\s*only\s*:(.*(?:&\s*\n.*)*)")
+    use_star = re.compile(r"(?im)^\s*use\s+star_info_lib\b")
     for d in STAR_FREE_DIRS:
         for f in sorted((src_root / d).rglob("*.f90")):
             rel = f.relative_to(src_root).as_posix()
@@ -180,9 +180,8 @@ def check_star_free(src_root):
                 continue
             code = strip_comments(f.read_text(errors="replace"))
             for m in use_star.finditer(code):
-                names = [n.strip().lower() for n in re.split(r"[,&\n]", m.group(1)) if n.strip()]
-                if "star" in names:
-                    problems.append(f"{rel}: imports the star object (STAR_FREE_DIRS)")
+                problems.append(f"{rel}: uses star_info_lib (STAR_FREE_DIRS; the "
+                                "slot constants are in composition_layout)")
             if re.search(r"(?i)\bstar%", code):
                 problems.append(f"{rel}: references star% (STAR_FREE_DIRS)")
     return problems

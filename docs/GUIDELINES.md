@@ -212,10 +212,12 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    arguments and their configuration as one settings record filled by
    the star layer at the start of a run (`net/`: `net_lib`'s
    `net_settings`, filled by `configure_network` in
-   `core/burn_step.f90`). Index constants from `star_info_lib` (`i_h1`,
-   `json`, ...) are allowed. `tools/check_boundaries.py` enforces this
-   for the directories in `STAR_FREE_DIRS` (`net/` so far); add a
-   domain there once it is clean.
+   `core/burn_step.f90`). They take the slot constants from the
+   constants-only modules `composition_layout` (`i_h1`, ...) and
+   `neutrino_flux_layout`, and do not use `star_info_lib` at all.
+   `tools/check_boundaries.py` enforces this for the directories in
+   `STAR_FREE_DIRS` (`net/` so far); add a domain there once it is
+   clean.
 2. **Nothing returns results through `star`.** A routine returns what
    it computes in its arguments or a result record; the caller decides
    what to store. (The old `compute_zone_energy` handed the neutrino loss

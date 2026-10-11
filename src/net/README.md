@@ -147,7 +147,7 @@ Two things often surprise newcomers:
 
 ## 3. Units and conventions
 
-- **Composition.** `star%xa(i, k)` holds mass fractions in the slots `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
+- **Composition.** `star%xa(i, k)` holds mass fractions in the slots of `state/composition_layout.f90` (net/ takes them from there, never from `star_info_lib`): `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
 - **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is that times the atomic mass unit in grams, per s per amu: with Y = X/A, dY/dt = Σ ν R. Every time in the burning code is in seconds (2026-10; it used to mix years and Gyr, with a year length that differed by 4.7×10⁻⁶ between the timestep and the rates). Integer mass numbers convert X to Y.
 - **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/henyey_elimination.f90`).
 - **Temperature cutoffs.** `net_settings%logT_cutoffs` (from `ctrl%nuclear_logT_cutoffs`): `(1)` gates all burning, `(2)` and `(3)` gate parts of `compute_equilibrium_burn_rates`, `(4)` gates helium burning, and `(5)` the solar neutrino fluxes and thermal neutrino losses.
@@ -183,8 +183,8 @@ A deliberate change to its output means regenerating `net/test/expected_test_net
 The rate formula itself still lives in `compute_reaction_rates`; TARGET_ARCHITECTURE §4.5(b) would also move it into the table entry as a rate function.
 
 **Add a tracked isotope.** Today this needs:
-- a slot in `state/star_info_lib.f90` (the species count is still a literal 15 in many declarations, which Phase 5 removes);
-- an entry in `network`'s species list (`s_*`, `mass_number`) if it is solved implicitly, and in `burn_network_region`'s `xa_slot` map;
+- a slot in `state/composition_layout.f90` (the species count is still a literal 15 in many declarations, which Phase 5 removes);
+- an entry in `network`'s species list (`s_*`, `mass_number`, and its `xa` slot in `network_species_slot`) if it is solved implicitly;
 - any reactions, as above.
 
 **Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments), driven per region from `burn_step`.

@@ -33,26 +33,21 @@
 ! seculr/rotmix) are working state of the rotation pipeline, not the
 ! model; routines that receive those keep explicit arguments.
 module star_info_lib
+! the slots of the composition and neutrino-flux vectors, re-exported
+! (they live in constants-only modules so that the physics domains can
+! share them without using this module)
+      use composition_layout
+      use neutrino_flux_layout
       implicit none
       private
       integer, parameter, public :: json = 5000
 
 ! ---- named indices for the positional array slots (2026) ----
-! The composition array xa(15,json): species slot per row. Slot 3 is
-! the TOTAL metal mass fraction Z (YREC evolves Z as one species);
-! the heavy elements in slots 5..11,13..15 are diffusion/burning
-! tracers carried inside Z, not independent contributions to it.
-      integer, parameter, public :: &
-           i_h1  = 1,  i_he4 = 2,  i_metals = 3,  i_he3 = 4, &
-           i_c12 = 5,  i_c13 = 6,  i_n14 = 7,     i_n15 = 8, &
-           i_o16 = 9,  i_o17 = 10, i_o18 = 11,    i_h2  = 12, &
-           i_li6 = 13, i_li7 = 14, i_be9 = 15
-! Species counts of the two composition layouts: the basic set is
-! slots i_h1..i_o18, the extended set (job%use_extended_composition)
-! adds i_h2..i_be9. The composition arrays are always dimensioned
-! for the extended set.
-      integer, parameter, public :: &
-           n_species_basic = 11, n_species_extended = 15
+! The composition array xa(15,json) and its species counts:
+! composition_layout.
+      public :: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_n15, &
+           i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9, n_species_basic, &
+           n_species_extended
 
 ! The 12-species surface mixture (job%mixture_weights,
 ! ctrl%mixture_weights_seed, fxenv, read_starting_model's atomic
@@ -93,16 +88,9 @@ module star_info_lib
            i_lum_cno = 4, i_lum_3alpha = 5, i_lum_neu = 6, &
            i_lum_grav = 7, i_lum_he_c = 8, n_lum_channels = 8
 
-! neutrino_flux_total(n_nu_fluxes) and neutrino_flux_zone(n_nu_fluxes,json),
-! and nuclear_energy_result%neutrino_flux: solar-neutrino source per
-! slot (the SNU tables). Slots 1-8 are the real neutrino sources;
-! slots 9-10 hold the He3+He3 and He3+He4 reaction rates in the same
-! flux units, as if each reaction emitted one neutrino ("fictional"
-! fluxes, tabulated with the others by neutrino_flux_table).
-      integer, parameter, public :: &
-           i_nu_pp = 1, i_nu_pep = 2, i_nu_hep = 3, i_nu_be7 = 4, &
-           i_nu_b8 = 5, i_nu_n13 = 6, i_nu_o15 = 7, i_nu_f17 = 8, &
-           i_nu_he3he3 = 9, i_nu_he3he4 = 10, n_nu_fluxes = 10
+! The neutrino-flux slots: neutrino_flux_layout.
+      public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
+           i_nu_o15, i_nu_f17, i_nu_he3he3, i_nu_he3he4, n_nu_fluxes
 
 ! 2026 state consolidation: the sub-struct TYPE definitions moved
 ! here from their former one-type-per-file modules in state/ --

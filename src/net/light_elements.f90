@@ -201,7 +201,7 @@ end function deuterium_rate
 pure subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, &
      shell_mass, composition, timestep, xa_start, rate_start_zone, &
      rate_end_zone, accretion, min_deuterium)
-      use star_info_lib, only: i_h1, i_he3, i_h2
+      use composition_layout, only: i_h1, i_he3, i_h2
       use math_lib
       integer, intent(in) :: zone_begin, zone_end, num_zones
       real(dp), intent(in) :: shell_mass(:)

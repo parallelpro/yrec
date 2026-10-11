@@ -461,10 +461,9 @@ end subroutine store_end_li_be_rates
 subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep, ierr)
 
-      use star_info_lib, only: star, json, i_h1, i_he3, i_he4, i_metals, &
-           i_c12, i_c13, i_n14, i_o16, i_o18, n_species_basic
+      use star_info_lib, only: star, json, i_h1, i_metals, n_species_basic
       use net_lib, only: burn_implicitly, n_solved, n_network, &
-           s_h1, s_he3, s_he4
+           network_species_slot, s_h1, s_he3, s_he4
       use io_units, only: run_log_unit
 
       double precision, intent(in) :: log_temperature(json)
@@ -476,9 +475,6 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
 
-! star%xa slot of each network species (network's s_* order)
-      integer, parameter :: xa_slot(n_network) = &
-           [i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, i_o16, i_o18]
       double precision :: region_start(n_species_basic), rate_vec(num_rate_rows)
       double precision :: x_start(n_network), x(n_network), region_mass, metals
       integer :: k, guess_zone
@@ -513,8 +509,8 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
 
 ! first guess: the shell just solved below (or this one, at the centre)
       guess_zone = max(zone_begin - 1, 1)
-      x_start = region_start(xa_slot)
-      x(1:n_solved) = composition(xa_slot(1:n_solved), guess_zone)
+      x_start = region_start(network_species_slot)
+      x(1:n_solved) = composition(network_species_slot(1:n_solved), guess_zone)
       x(n_solved+1:) = x_start(n_solved+1:)
 
       call burn_implicitly(x_start, rate_vec, timestep, &
@@ -534,7 +530,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
          metals = region_start(i_metals)
       end if
       do k = zone_begin, zone_end
-         composition(xa_slot,k) = x
+         composition(network_species_slot,k) = x
          composition(i_metals,k) = metals
       end do
 end subroutine burn_network_region
