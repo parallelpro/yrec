@@ -15,6 +15,7 @@
 ! The tables live in scv_eos_tables.
 module scv_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use scv_eos_tables, only: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
            iscv_dlns_dlnt, iscv_du_dt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
@@ -49,23 +50,17 @@ contains
 ! ionization fractions, with an additional smoothing pass across
 ! adjacent table cells (the 4-pt Lagrange interpolation of the
 ! original version was replaced with a 4-pt natural spline).
-subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
-     log10_density, density, hydrogen_fraction, metal_fraction, beta, &
-     ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-     adiabatic_gradient, valid_table_point, ierr)
+subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
+     metal_fraction, r, valid_table_point, ierr)
 
       integer, intent(out) :: ierr
       integer :: jerr_gate
 
       integer, parameter :: nts = scv_nt
 
-      real(dp), intent(in) :: log10_temperature, temperature, &
-           pressure
-      real(dp), intent(out) :: log10_density, density
-      real(dp), intent(in) :: hydrogen_fraction, metal_fraction, beta
-      real(dp), intent(out) :: ion_fraction(:)
-      real(dp), intent(out) :: dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient
+      type(eos_result), intent(inout) :: r
+real(dp), intent(in) :: log10_temperature
+real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(out) :: valid_table_point
 
 ! Replace 4-pt Lagrange interpolate with 4-pt natural spline
@@ -100,15 +95,13 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       ierr = 0
       if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction) > 1.0d-5 &
            .or. abs(metal_fraction-eos_mix%envelope_metal_fraction) > 1.0d-5) then
-         call compute_scv_eos(log10_temperature, temperature, pressure, &
-              log10_density, density, hydrogen_fraction, metal_fraction, &
-              beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, valid_table_point)
+         call compute_scv_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
+              r, valid_table_point)
          return
       end if
 ! find gas pressure (which is the quantity which is tabulated).
-      beta_complement = 1.0d0 - beta
-      log10_gas_pressure = log10(beta*pressure)
+      beta_complement = 1.0d0 - r%beta
+      log10_gas_pressure = log10(r%beta*r%pressure)
 !  check if the point is within the table
       if (log10_temperature < tlogx(1) .or. &
            log10_temperature > tlogx(nts) .or. &
@@ -223,7 +216,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
          end if
       end if
 ! include radiation pressure in the equation of state.
-      radiation_pressure = beta_complement*pressure
+      radiation_pressure = beta_complement*r%pressure
       call spline_cell(0, 0, interp_result)
       if (ierr /= 0) return
 ! perform interpolation at adjacent temperature table points
@@ -310,21 +303,21 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
           end do
        end if
 !  density
-      log10_density = interp_result(1)
-      density = exp(ln10*log10_density)
+      r%log10_density = interp_result(1)
+      r%density = exp(ln10*r%log10_density)
 ! d ln rho/ d ln p = qdp
 ! for gas pressure qdp(tot) = qdp(x)*x*rho/rho(x)+qdp(y)*y*rho/rho(y)
 ! for radiation pressure qdp = 0, so qdp(tot) = qdp(gas)*p/pgas
       dlnrho_dlnp_gas = interp_result(3)
-      dlnrho_dlnp = dlnrho_dlnp_gas/beta
+      r%dlnrho_dlnp = dlnrho_dlnp_gas/r%beta
 ! d ln rho/ d ln t = qdt (note : d ln p/ d ln t = qpt)
 ! for gas pressure, correct as per qdp
 ! for radiation pressure, use qdt = -qdp*qpt.  correct qpt for
 ! radiation pressure and use the corrected qdp, qpt to get qdt.
       dlnrho_dlnt_gas = interp_result(2)
       dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
-      dlnp_dlnt = dlnp_dlnt_gas*beta + 4.0d0*beta_complement
-      dlnrho_dlnt = -dlnp_dlnt*dlnrho_dlnp
+      dlnp_dlnt = dlnp_dlnt_gas*r%beta + 4.0d0*beta_complement
+      r%dlnrho_dlnt = -dlnp_dlnt*r%dlnrho_dlnp
 !  cp = s*(d ln s/ d ln t)|p is tabulated. use
 !  cp = du/dt + p*(d ln rho/d ln t)**2/rho/t/(d ln rho/ d ln p)
 !  to find du/dt.  then include the effects of radiation pressure
@@ -334,14 +327,14 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
 ! now find du/dt from the original table.
       du_dt = interp_result(5)
 ! correct du/dt for radiation
-      radiation_energy_density_term = 3.0d0*radiation_pressure/density
-      du_dt = du_dt + 4.0d0*radiation_energy_density_term/temperature
+      radiation_energy_density_term = 3.0d0*radiation_pressure/r%density
+      du_dt = du_dt + 4.0d0*radiation_energy_density_term/r%temperature
 ! correct cp for radiation pressure
-      specific_heat_cp = du_dt - pressure*dlnrho_dlnt*dlnp_dlnt/density/ &
-           temperature
+      r%specific_heat_cp = du_dt - r%pressure*r%dlnrho_dlnt*dlnp_dlnt/r%density/ &
+           r%temperature
 ! adiabatic temperature gradient
-      adiabatic_gradient = -pressure*dlnrho_dlnt/density/temperature/ &
-           specific_heat_cp
+      r%adiabatic_gradient = -r%pressure*r%dlnrho_dlnt/r%density/r%temperature/ &
+           r%specific_heat_cp
 
 ! Get fractions of total particles (including electrons), as follows:
 !   XTF_H2  the fraction that is neutral hydrogen molecules, and
@@ -407,9 +400,9 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       xhepp = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
 
 ! In the same order, these are the desired elements of array ion_fraction(3)
-      ion_fraction(1) = xhp
-      ion_fraction(2) = xhep
-      ion_fraction(3) = xhepp
+      r%ion_fraction(1) = xhp
+      r%ion_fraction(2) = xhep
+      r%ion_fraction(3) = xhepp
 
       return  ! Normal exit. Valid table entry. valid_table_point is true.
 
@@ -479,21 +472,15 @@ end subroutine compute_scv_envelope_eos
 ! table cell in (log10 T, log10 Pgas) and interpolates density and
 ! its logarithmic derivatives, plus the specific heat, adiabatic
 ! gradient, and ionization fractions.
-subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
-     log10_density, density, hydrogen_fraction, metal_fraction, beta, &
-     ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-     adiabatic_gradient, valid_table_point)
+subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
+     metal_fraction, r, valid_table_point)
 
 
       integer, parameter :: nts = scv_nt
 
-      real(dp), intent(in) :: log10_temperature, temperature
-      real(dp), intent(in) :: pressure
-      real(dp), intent(out) :: log10_density, density
-      real(dp), intent(in) :: hydrogen_fraction, metal_fraction, beta
-      real(dp), intent(out) :: ion_fraction(:)
-      real(dp), intent(out) :: dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient
+      type(eos_result), intent(inout) :: r
+real(dp), intent(in) :: log10_temperature
+real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(out) :: valid_table_point
 
       real(dp) :: interp_nodes(4), temp_interp_weights(4), &
@@ -521,8 +508,8 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
            xtf_he_e, xtf_hepp, xhp, xhep, xhepp
       integer :: i, ii, j, jj, jjj, k
-      beta_complement = 1.0d0 - beta
-      log10_gas_pressure = log10(beta*pressure)
+      beta_complement = 1.0d0 - r%beta
+      log10_gas_pressure = log10(r%beta*r%pressure)
 ! check if the point is within the table
       if (log10_temperature < tlogx(1) .or. &
            log10_temperature > tlogx(nts) .or. &
@@ -604,8 +591,8 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
            press_interp_weight_derivs, log10_gas_pressure)
       helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
 ! include radiation pressure in the equation of state.
-      radiation_pressure = beta_complement*pressure
-      gas_pressure = beta*pressure
+      radiation_pressure = beta_complement*r%pressure
+      gas_pressure = r%beta*r%pressure
 ! density for x=1, y=1, z=1
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
@@ -622,12 +609,12 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       log10_density_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       density_pure_z = exp(ln10*log10_density_pure_z)
 ! density
-      density = 1.0d0/(hydrogen_fraction/density_pure_h + &
+      r%density = 1.0d0/(hydrogen_fraction/density_pure_h + &
            helium_fraction/density_pure_he + metal_fraction/density_pure_z)
-      log10_density = log10(density)
-      volume_frac_h = hydrogen_fraction*density/density_pure_h
-      volume_frac_he = helium_fraction*density/density_pure_he
-      volume_frac_z = metal_fraction*density/density_pure_z
+      r%log10_density = log10(r%density)
+      volume_frac_h = hydrogen_fraction*r%density/density_pure_h
+      volume_frac_he = helium_fraction*r%density/density_pure_he
+      volume_frac_z = metal_fraction*r%density/density_pure_z
 ! d ln rho/ d ln p = qdp
 ! for gas pressure qdp(tot) = qdp(x)*x*rho/rho(x)+qdp(y)*y*rho/rho(y)
 ! for radiation pressure qdp = 0, so qdp(tot) = qdp(gas)*p/pgas
@@ -644,7 +631,7 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       dlnrho_dlnp_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
       dlnrho_dlnp_gas = dlnrho_dlnp_pure_h*volume_frac_h + &
            dlnrho_dlnp_pure_he*volume_frac_he + dlnrho_dlnp_pure_z*volume_frac_z
-      dlnrho_dlnp = dlnrho_dlnp_gas/beta
+      r%dlnrho_dlnp = dlnrho_dlnp_gas/r%beta
 ! d ln rho/ d ln t = qdt (note : d ln p/ d ln t = qpt)
 ! for gas pressure, correct as per qdp
 ! for radiation pressure, use qdt = -qdp*qpt.  correct qpt for
@@ -663,8 +650,8 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       dlnrho_dlnt_gas = dlnrho_dlnt_pure_h*volume_frac_h + &
            dlnrho_dlnt_pure_he*volume_frac_he + dlnrho_dlnt_pure_z*volume_frac_z
       dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
-      dlnp_dlnt = dlnp_dlnt_gas*beta + 4.0d0*beta_complement
-      dlnrho_dlnt = -dlnp_dlnt*dlnrho_dlnp
+      dlnp_dlnt = dlnp_dlnt_gas*r%beta + 4.0d0*beta_complement
+      r%dlnrho_dlnt = -dlnp_dlnt*r%dlnrho_dlnp
 ! cp = s*(d ln s/ d ln t)|p is tabulated. use
 ! cp = du/dt + p*(d ln rho/d ln t)**2/rho/t/(d ln rho/ d ln p)
 ! to find du/dt.  then include the effects of radiation pressure
@@ -709,19 +696,19 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
            entropy_of_mixing*dlnsmix_dlnt
       specific_heat_cp_gas = dlns_dlnt_p + metal_fraction*(du_dt_pure_z + &
            gas_pressure*dlnrho_dlnt_pure_z**2/dlnrho_dlnp_pure_z/ &
-           density_pure_z/temperature)
+           density_pure_z/r%temperature)
 ! now find du/dt from the original table.
       du_dt = specific_heat_cp_gas - gas_pressure*dlnrho_dlnt_gas**2/ &
-           dlnrho_dlnp_gas/density/temperature
+           dlnrho_dlnp_gas/r%density/r%temperature
 ! correct du/dt for radiation
-      radiation_energy_density_term = 3.0d0*radiation_pressure/density
-      du_dt = du_dt + 4.0d0*radiation_energy_density_term/temperature
+      radiation_energy_density_term = 3.0d0*radiation_pressure/r%density
+      du_dt = du_dt + 4.0d0*radiation_energy_density_term/r%temperature
 ! correct cp for radiation pressure
-      specific_heat_cp = du_dt + pressure*dlnrho_dlnt**2/dlnrho_dlnp/ &
-           density/temperature
+      r%specific_heat_cp = du_dt + r%pressure*r%dlnrho_dlnt**2/r%dlnrho_dlnp/ &
+           r%density/r%temperature
 ! adiabatic temperature gradient
-      adiabatic_gradient = -pressure*dlnrho_dlnt/density/temperature/ &
-           specific_heat_cp
+      r%adiabatic_gradient = -r%pressure*r%dlnrho_dlnt/r%density/r%temperature/ &
+           r%specific_heat_cp
 
 ! Get fractions of total particles (including electrons), as follows:
 !   XTF_H2  the fraction that is neutral hydrogen molecules, and
@@ -774,9 +761,9 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       xhepp = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
 
 ! In the same order, these are the desired elements of array ion_fraction(3)
-      ion_fraction(1) = xhp
-      ion_fraction(2) = xhep
-      ion_fraction(3) = xhepp
+      r%ion_fraction(1) = xhp
+      r%ion_fraction(2) = xhep
+      r%ion_fraction(3) = xhepp
 
       return    ! Primay exit. Success. valid_table_point is true.
 

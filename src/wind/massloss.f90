@@ -94,7 +94,7 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
 ! SAVE carried the previous call's converged log10 rho / beta into the
 ! inout seed slots; the modern locals are seeded to zero at entry
 ! (below), which is what the original saw on its first call.
-      double precision :: eos_res(num_eos_results)
+      type(eos_result) :: eos_res
       double precision :: mass_loss_rate_cgs, pressure_from_wind, &
            temperature_from_wind
       integer :: zone_idx
@@ -220,19 +220,19 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
          eos_deriv_flag = .false.
          saha_flag = 1
          eos_atmosphere_flag = .true.
-         eos_res(i_log10_density) = log10_density_local
-         eos_res(i_beta) = beta_local
+         eos_res%log10_density = log10_density_local
+         eos_res%beta = beta_local
          call eos_get(log10_temperature_local, log10_pressure_local, &
               hydrogen_fraction_local, metal_fraction_local, eos_res, &
               eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
          if (ierr /= 0) return
-         log10_density_local = eos_res(i_log10_density)
-         beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
-              eos_res(i_pressure))
-         mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
-              (eos_res(i_density)*eos_res(i_temperature))
+         log10_density_local = eos_res%log10_density
+         beta_local = 1.0d0-(radiation_constant_over_3*eos_res%temperature**4/ &
+              eos_res%pressure)
+         mean_molecular_weight_local = eos_res%pressure*beta_local/ &
+              (eos_res%density*eos_res%temperature)
          rot_scr%accretion_specific_entropy = mean_molecular_weight_local* &
-              (1.5d0*log(eos_res(i_temperature))-log(eos_res(i_density)))
+              (1.5d0*log(eos_res%temperature)-log(eos_res%density))
 ! ALTERNATE EXPRESSION FOR SURFACE PRESSURE AND LUMINOSITY, FROM STAHLER 1988.
 ! ONLY mean_molecular_weight_local FROM THIS SECOND EOS CALL IS USED
 ! (PASSED ON TO mdot); THE ENTROPY IT WOULD GIVE IS NOT.
@@ -247,17 +247,17 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
                  csig, 0.25d0)
             log10_pressure_local = log10(pressure_from_wind)
             log10_temperature_local = log10(temperature_from_wind)
-            eos_res(i_log10_density) = log10_density_local
-            eos_res(i_beta) = beta_local
+            eos_res%log10_density = log10_density_local
+            eos_res%beta = beta_local
             call eos_get(log10_temperature_local, log10_pressure_local, &
                  hydrogen_fraction_local, metal_fraction_local, eos_res, &
                  eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
             if (ierr /= 0) return
-            log10_density_local = eos_res(i_log10_density)
-            beta_local = 1.0d0-(radiation_constant_over_3*eos_res(i_temperature)**4/ &
-                 eos_res(i_pressure))
-            mean_molecular_weight_local = eos_res(i_pressure)*beta_local/ &
-                 (eos_res(i_density)*eos_res(i_temperature))
+            log10_density_local = eos_res%log10_density
+            beta_local = 1.0d0-(radiation_constant_over_3*eos_res%temperature**4/ &
+                 eos_res%pressure)
+            mean_molecular_weight_local = eos_res%pressure*beta_local/ &
+                 (eos_res%density*eos_res%temperature)
             rot_scr%envelope_specific_entropy = 0.0d0
          else
             rot_scr%envelope_specific_entropy = 0.0d0

@@ -71,7 +71,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! (they are this routine's outputs to the driver) and are packed/
 ! unpacked around the eos call to keep the historical inout guess
 ! chain through the caller's storage.
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
 ! every mesh point is interior (not atmosphere) and the eos/gradient
 ! derivatives are always wanted (2026 W2: formerly intent(out) flags
 ! relayed up to henyey_iterate/evolve_step locals that nothing read)
@@ -152,24 +153,24 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        zone_log10_density = star%logRho(im)
        pressure_rotation_factor = star%fp_rot(im)
         temperature_rotation_factor = star%ft_rot(im)
-         eos_res(i_log10_density) = zone_log10_density
-         eos_res(i_dlnrho_dlnt) = dlnrho_dlnt
-         eos_res(i_dlnrho_dlnp) = dlnrho_dlnp
+         eos_res%log10_density = zone_log10_density
+         eos_res%dlnrho_dlnt = dlnrho_dlnt
+         eos_res%dlnrho_dlnp = dlnrho_dlnp
          call eos_get(zone_log_temperature, zone_log_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=star%xa(:,im), ierr=ierr)
          if (ierr /= 0) return
-         dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
-         dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
+         dlnrho_dlnt = eos_res%dlnrho_dlnt
+         dlnrho_dlnp = eos_res%dlnrho_dlnp
 ! compute_blended_eos historically updated zone_log10_density in place; the tail
 ! (cur%qr, energy generation, star%elim_rhs) reads the updated value.
-         zone_log10_density = eos_res(i_log10_density)
+         zone_log10_density = eos_res%log10_density
 ! DBG 12/95 GET OPACITY (at compute_blended_eos's returned density -- the
 ! historical inout dataflow)
-         call kap_get(eos_res(i_log10_density), zone_log_temperature, &
+         call kap_get(eos_res%log10_density, zone_log_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
-              eos_res(i_fxion:i_fxion+2), ierr=ierr)
+              eos_res%ion_fraction, ierr=ierr)
          if (ierr /= 0) return
          call compute_temperature_gradients(zone_log_temperature, zone_log_pressure, &
               eos_res, kap_res, zone_log_radius, zone_log_mass, &
@@ -179,7 +180,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
               pressure_rotation_factor, temperature_rotation_factor, &
               star%log_Teff, ierr, zone_index=im)
          if (ierr /= 0) return
-       star%logRho(im) = eos_res(i_log10_density)
+       star%logRho(im) = eos_res%log10_density
 ! COMPUTE DERIVATIVES
        qtemp = c4pil + zone_log_radius + zone_log_radius + zone_log_radius
        cur%qr =+exp(ln10*(zone_log_mass - zone_log10_density - qtemp))
@@ -276,8 +277,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             end if
             if (star%xa(i_h1,im).gt.0.01d0 .and. delta_time.lt.one_year_sec) &
                  zone_dt = one_year_sec_inv
-            entropy_term1 = eos_res(i_pressure)*dlnrho_dlnt/eos_res(i_density)
-            entropy_term2 = entropy_term1/eos_res(i_grada)
+            entropy_term1 = eos_res%pressure*dlnrho_dlnt/eos_res%density
+            entropy_term2 = entropy_term1/eos_res%adiabatic_gradient
             entropy_term = (entropy_term2*zone_log_temperature_delta - &
                  entropy_term1*zone_log_pressure_delta)*ln10
             entropy_term3 = entropy_term2*ln10*zone_log_temperature_delta
@@ -289,11 +290,11 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  star%solar_luminosity_cgs)*egrav
             cur%ql = cur%ql + egrav
             cur%ql_dp = cur%ql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
-                 eos_res(i_dlnrho_dlnp_dt))-entropy_term1 - entropy_term3* &
-                 eos_res(i_grada_dp))
+                 eos_res%dlnrho_dlnt_dp)-entropy_term1 - entropy_term3* &
+                 eos_res%adiabatic_gradient_dp)
             cur%ql_dt = cur%ql_dt + zone_dt*(entropy_term*(-dlnrho_dlnt+ &
-                 eos_res(i_dlnrho_dlnt_dt)) + entropy_term2 - entropy_term3* &
-                 eos_res(i_grada_dt))
+                 eos_res%dlnrho_dlnt_dt) + entropy_term2 - entropy_term3* &
+                 eos_res%adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (star%job%rotation_active) then
                rot_scr%rotational_energy_term(im) = zone_dt*(star%kinetic_energy_rot(im)- &
@@ -350,23 +351,23 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                star%eps_channels(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
          end if
-         star%beta(im) = eos_res(i_beta)
-         star%eta(im) = eos_res(i_eta)
+         star%beta(im) = eos_res%beta
+         star%eta(im) = eos_res%electron_degeneracy_parameter
          star%opacity_zone(im) = kap_res(i_kap)
          star%gradr(im) = radiative_gradient
          star%gradT(im) = actual_gradient
-         star%grada(im) = eos_res(i_grada)
+         star%grada(im) = eos_res%adiabatic_gradient
          do j = 1,3
-            star%fxion_zone(j,im) = eos_res(i_fxion-1+j)
+            star%fxion_zone(j,im) = eos_res%ion_fraction(j)
          end do
          star%conv_vel(im) = convective_velocity
-         star%scp(im) = eos_res(i_cp)
+         star%scp(im) = eos_res%specific_heat_cp
 ! GAMMA1 FROM GUENTHER 1995 P.C. (always computed):
             chi_rho = 1.0d0/dlnrho_dlnp
             chi_t = -chi_rho*dlnrho_dlnt
-            specific_heat_cv = eos_res(i_cp) - exp(ln10*(star%logP(im)- &
+            specific_heat_cv = eos_res%specific_heat_cp - exp(ln10*(star%logP(im)- &
                  star%logRho(im)-star%logT(im)))*chi_t**2/chi_rho
-            star%adiabatic_index_gamma1(im) = chi_rho*eos_res(i_cp)/ &
+            star%adiabatic_index_gamma1(im) = chi_rho*eos_res%specific_heat_cp/ &
                  specific_heat_cv
 
          if (star%job%rotation_active) then
@@ -401,16 +402,16 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
          star%pulse_deps_dlnt(im) = zone_deps_dlnt
          star%pulse_dlnkap_dlnrho(im) = kap_res(i_dlnkap_dlnrho)
          star%pulse_dlnkap_dlnt(im) = kap_res(i_dlnkap_dlnt)
-         star%pulse_specific_heat(im) = eos_res(i_cp)
-! 2026 (bugsweep sec-11): eos_res(i_gas_constant) is R/mu (the
+         star%pulse_specific_heat(im) = eos_res%specific_heat_cp
+! 2026 (bugsweep sec-11): eos_res%specific_gas_constant is R/mu (the
 ! specific gas constant), not mu -- store the real mean molecular
 ! weight; the electron slot is 1/mu_e straight from the eos.
-         if (eos_res(i_gas_constant) > 0.0d0) then
-            star%pulse_mean_molecular_weight(im) = gas_constant/eos_res(i_gas_constant)
+         if (eos_res%specific_gas_constant > 0.0d0) then
+            star%pulse_mean_molecular_weight(im) = gas_constant/eos_res%specific_gas_constant
          else
             star%pulse_mean_molecular_weight(im) = 0.0d0
          end if
-         star%pulse_electron_mean_weight_inverse(im) = eos_res(i_mu_e_inv)
+         star%pulse_electron_mean_weight_inverse(im) = eos_res%electron_mean_weight_inverse
          star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
 ! star%alfmlt/phmlt/cmxmlt are only ever set to zero (mixing/
 ! temperature_gradients.f90), so these output arrays are always zero;

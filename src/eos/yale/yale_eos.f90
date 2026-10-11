@@ -14,6 +14,7 @@
 ! yale_eos_tables (yale).
 module yale_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_x, debye_huckel_y, debye_huckel_z, &
            debye_huckel_z_total, yale
@@ -39,32 +40,15 @@ contains
 ! whenever the temperature is below the ionization cutoff, either
 ! directly (Prather EOS) or ahead of the SCV table lookup (to get
 ! derivatives SCV itself does not supply).
-subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
-     log10_pressure, pressure, log10_density, density, beta, &
-     beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-     ion_mean_weight_inverse, electron_mean_weight_inverse, &
-     want_derivatives, in_atmosphere, dlnrho_dlnt, dlnrho_dlnp, &
-     specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-     dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-     specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
+subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
+     log10_pressure, r, want_derivatives, in_atmosphere, saha_state)
 
 
       real(dp), intent(in) :: saha_mass_fractions(:)
       real(dp), intent(in) :: log10_temperature
-      real(dp), intent(in) :: temperature
+      type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: log10_pressure
-      real(dp), intent(in) :: pressure
-      real(dp), intent(out) :: log10_density, density
-      real(dp), intent(in) :: beta, beta_inverse, beta14
-      real(dp), intent(out) :: ion_fraction(:), &
-           specific_gas_constant
-      real(dp), intent(in) :: ion_mean_weight_inverse
-      real(dp), intent(out) :: electron_mean_weight_inverse
       logical, intent(in) :: want_derivatives, in_atmosphere
-      real(dp), intent(out) :: dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
       integer, intent(inout) :: saha_state
 
 ! --- locals ---
@@ -148,7 +132,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       real(dp), parameter :: saha_convergence_tol = 1.0D-09
       helium_mass_fraction = saha_mass_fractions(ix_he)
       max_electrons_per_ion = 1.0d0 + helium_mass_fraction
-      temperature_inverse = 1.0d0/temperature
+      temperature_inverse = 1.0d0/r%temperature
 ! Begin Saha routine
 ! compute Saha K's
       stemp = 2.50d0*log10_temperature - log10_pressure + cmkh
@@ -159,7 +143,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
               ionization_temp_over_t(i)
          if(saha_ratio(i) < -saha_exponent_tol) exit
          if (saha_ratio(i) <= +saha_exponent_tol) then
-         saha_ratio(i) = beta_inverse*exp(saha_ratio(i))
+         saha_ratio(i) = r%beta_inverse*exp(saha_ratio(i))
          cycle
          end if
          saha_ratio(i) = 1.0d16
@@ -174,17 +158,17 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       skip_helium_ii= .true.
       if (helium_mass_fraction >= 1.0d-10) then
       helium_saha_ratio_1 = ln10*(saha_weight_term(12) + stemp) - &
-           helium_ionization_temp_1/temperature
+           helium_ionization_temp_1/r%temperature
       if (helium_saha_ratio_1 >= -saha_exponent_tol) then
       skip_helium_i = .false.
-      helium_saha_ratio_1 = beta_inverse*exp(helium_saha_ratio_1)
+      helium_saha_ratio_1 = r%beta_inverse*exp(helium_saha_ratio_1)
       helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
-           helium_ionization_temp_2/temperature
+           helium_ionization_temp_2/r%temperature
       if(helium_saha_ratio_2 < -saha_exponent_tol) then
       helium_ion_fraction_2 = 0.0d0
       else
       skip_helium_ii= .false.
-      helium_saha_ratio_2 = beta_inverse*exp(helium_saha_ratio_2)
+      helium_saha_ratio_2 = r%beta_inverse*exp(helium_saha_ratio_2)
       end if
       else
       helium_ion_fraction_1 = 0.0d0
@@ -315,15 +299,15 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
       end if
 ! System has been solved for e
-      electron_mean_weight_inverse = mean_electrons_per_ion*ion_mean_weight_inverse
-      specific_gas_constant = gas_constant*(electron_mean_weight_inverse + &
-           ion_mean_weight_inverse)
-      density = beta*pressure/(specific_gas_constant*temperature)
-      log10_density = log10(density)
-      ion_fraction(1) = 0.0d0
-      if(nz0 >= 7) ion_fraction(1) = species_ion_fraction(7)
-      ion_fraction(2) = helium_ion_fraction_1
-      ion_fraction(3) = helium_ion_fraction_2
+      r%electron_mean_weight_inverse = mean_electrons_per_ion*r%ion_mean_weight_inverse
+      r%specific_gas_constant = gas_constant*(r%electron_mean_weight_inverse + &
+           r%ion_mean_weight_inverse)
+      r%density = r%beta*r%pressure/(r%specific_gas_constant*r%temperature)
+      r%log10_density = log10(r%density)
+      r%ion_fraction(1) = 0.0d0
+      if(nz0 >= 7) r%ion_fraction(1) = species_ion_fraction(7)
+      r%ion_fraction(2) = helium_ion_fraction_1
+      r%ion_fraction(3) = helium_ion_fraction_2
       if (in_atmosphere) then
          return
       end if
@@ -333,22 +317,22 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       if (nz0 > 0) then
       do i=nz1,nz0
          r3p = r3p - species_weighted_term(i)
-         r3t = r3t -species_weighted_term(i)*(2.5d0 + beta14 + &
+         r3t = r3t -species_weighted_term(i)*(2.5d0 + r%beta14 + &
               ionization_temp_over_t(i))
       end do
-      r3p = -beta_inverse*r3p
+      r3p = -r%beta_inverse*r3p
       end if
       if (.not. skip_helium_i) then
       helium_neutral_fraction = 1.0d0 - helium_ion_fraction_1 - helium_ion_fraction_2
-      sk0qt = 2.5d0 + beta14 + helium_ionization_temp_1*temperature_inverse
+      sk0qt = 2.5d0 + r%beta14 + helium_ionization_temp_1*temperature_inverse
       temp = helium_saha_ratio_1*helium_neutral_fraction
       r2t = temp*sk0qt
-      r2p = -temp*beta_inverse
+      r2p = -temp*r%beta_inverse
       if (.not. skip_helium_ii) then
-      sk1qt = 2.5d0 + beta14 + helium_ionization_temp_2*temperature_inverse
+      sk1qt = 2.5d0 + r%beta14 + helium_ionization_temp_2*temperature_inverse
       temp = helium_saha_ratio_2*helium_ion_fraction_1
       r1t = temp*sk1qt
-      r1p = -temp*beta_inverse
+      r1p = -temp*r%beta_inverse
       r2t = r2t + cr12*r1t
       r2p = r2p + cr12*r1p
       r3t = r3t + cr13*r1t
@@ -359,8 +343,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       end if
       sqet = r3t/c33
       sqep = r3p/c33
-      dlnrho_dlnt = -1.0d0 - beta14 - ep1*sqet
-      dlnrho_dlnp = beta_inverse - ep1*sqep
+      r%dlnrho_dlnt = -1.0d0 - r%beta14 - ep1*sqet
+      r%dlnrho_dlnp = r%beta_inverse - ep1*sqep
 ! Compute internal energy temperature derivative(qut)
       usum = 0.0d0
       if (.not. skip_helium_i) then
@@ -378,28 +362,28 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
            sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
       end if
       if (nz0 > 0) then
-      stemp = 2.50d0 + beta14 - ep1e*sqet
+      stemp = 2.50d0 + r%beta14 - ep1e*sqet
       do i=nz1,nz0
          species_temp_deriv_term(i) = species_weighted_term(i)*(stemp + &
               ionization_temp_over_t(i))
          usum = usum + species_temp_deriv_term(i)*ionization_temp(i)
       end do
       end if
-      betaut = 0.75d0*(2.0d0 + beta14)
-      ramu = gas_constant*ion_mean_weight_inverse
-      qut =ramu*((1d0+mean_electrons_per_ion)*(betaut+3d0*beta_inverse*beta14) &
+      betaut = 0.75d0*(2.0d0 + r%beta14)
+      ramu = gas_constant*r%ion_mean_weight_inverse
+      qut =ramu*((1d0+mean_electrons_per_ion)*(betaut+3d0*r%beta_inverse*r%beta14) &
            +betaut*sqet+usum*temperature_inverse)
 ! Compute specific heat(qcp) and adiabatic gradient(dela)
-      pdt = pressure/(density*temperature)
-      pdtq = pdt*dlnrho_dlnt
-      specific_heat_cp = qut - pdtq
-      qcpi = 1.0d0/specific_heat_cp
-      adiabatic_gradient = -pdtq*qcpi
+      pdt = r%pressure/(r%density*r%temperature)
+      pdtq = pdt*r%dlnrho_dlnt
+      r%specific_heat_cp = qut - pdtq
+      qcpi = 1.0d0/r%specific_heat_cp
+      r%adiabatic_gradient = -pdtq*qcpi
       if (.not.want_derivatives) then
          return
       end if
 ! Compute derivatives of qdt,qcp,dela
-      beta16 = 4.0d0*beta_inverse*beta14
+      beta16 = 4.0d0*r%beta_inverse*r%beta14
       r3t = 0.0d0
       r3p = 0.0d0
       utsum = 0.0d0
@@ -407,9 +391,9 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       if (nz0 > 0) then
       etemp = (1.0d0+mean_electrons_per_ion+mean_electrons_per_ion)/ &
            (mean_electrons_per_ion*(1.0d0+mean_electrons_per_ion))**2
-      stemp1 = 2.5d0 + beta14 - sqet*ep1e
-      stemp2 = -beta_inverse - sqep*ep1e
-      stemp3 = etemp*sqep*sqet - beta_inverse*beta14
+      stemp1 = 2.5d0 + r%beta14 - sqet*ep1e
+      stemp2 = -r%beta_inverse - sqep*ep1e
+      stemp3 = etemp*sqep*sqet - r%beta_inverse*r%beta14
       stemp4 = etemp*sqet**2 + beta16
       do i=nz1,nz0
          stemp5 = (stemp1 + ionization_temp_over_t(i))* &
@@ -428,16 +412,16 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       r2t = helium_saha_ratio_1*(helium_neutral_fraction*(beta16- &
            helium_ionization_temp_1*temperature_inverse+sk0qt**2)+2d0*sx0qt*sk0qt) &
            +ep12*(stemp*sqet - 2.0d0*sx1qt*sqet)
-      r2p = helium_saha_ratio_1*(helium_neutral_fraction*beta_inverse* &
-           (-beta14-sk0qt)+sx0qp*sk0qt-beta_inverse* &
+      r2p = helium_saha_ratio_1*(helium_neutral_fraction*r%beta_inverse* &
+           (-r%beta14-sk0qt)+sx0qp*sk0qt-r%beta_inverse* &
            sx0qt) + ep12*(stemp*sqep - sx1qp*sqet - sx1qt*sqep)
       if (.not. skip_helium_ii) then
       stemp = 2.0d0*helium_ion_fraction_2*ep1*sqet
       r1t = helium_saha_ratio_2*(helium_ion_fraction_1*(beta16- &
            helium_ionization_temp_2*temperature_inverse+sk1qt**2)+2d0*sx1qt*sk1qt) &
            +ep12*(stemp*sqet - 2.0d0*sx2qt*sqet)
-      r1p = helium_saha_ratio_2*(helium_ion_fraction_1*beta_inverse* &
-           (-beta14-sk1qt)+sx1qp*sk1qt-beta_inverse* &
+      r1p = helium_saha_ratio_2*(helium_ion_fraction_1*r%beta_inverse* &
+           (-r%beta14-sk1qt)+sx1qp*sk1qt-r%beta_inverse* &
            sx1qt) + ep12*(stemp*sqep - sx2qp*sqet - sx2qt*sqep)
       r2t = r2t + cr12*r1t
       r2p = r2p + cr12*r1p
@@ -449,8 +433,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       end if
       sqett = r3t/c33
       sqetp = r3p/c33
-      dlnrho_dlnt_dt = -beta16 + (ep1*sqet)**2 - ep1*sqett
-      dlnrho_dlnp_dt = beta_inverse*beta14 + ep12*sqet*sqep - ep1*sqetp
+      r%dlnrho_dlnt_dt = -beta16 + (ep1*sqet)**2 - ep1*sqett
+      r%dlnrho_dlnt_dp = r%beta_inverse*r%beta14 + ep12*sqet*sqep - ep1*sqetp
       if (nz0 > 0) then
       stemp = ep1e*sqett
       stemp1 = ep1e*sqetp
@@ -473,18 +457,18 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       utsum = utsum + helium_mass_fraction*helium_ionization_temp_1*(sx1qtt - sx1qt)
       upsum = upsum + helium_mass_fraction*helium_ionization_temp_1*sx1qtp
       end if
-      btemp = (1.0d0+mean_electrons_per_ion)*beta14*beta_inverse* &
-           (24.0d0*beta_inverse - 9.0d0)
-      qqutt = ramu*(btemp+0.75d0*(2.0d0+beta14*(8.0d0*beta_inverse+1d0))*sqet+ &
+      btemp = (1.0d0+mean_electrons_per_ion)*r%beta14*r%beta_inverse* &
+           (24.0d0*r%beta_inverse - 9.0d0)
+      qqutt = ramu*(btemp+0.75d0*(2.0d0+r%beta14*(8.0d0*r%beta_inverse+1d0))*sqet+ &
            betaut*sqett + utsum*temperature_inverse)
-      qqutp = ramu*(-0.25d0*btemp+0.75d0*((2.0d0+beta14*(4.0d0*beta_inverse &
-           +1.0d0))*sqep-beta14*beta_inverse*sqet) +betaut*sqetp+upsum*temperature_inverse)
-      specific_heat_cp_dt = qcpi*(qqutt + pdtq*(1.0d0+dlnrho_dlnt) - pdt*dlnrho_dlnt_dt)
-      specific_heat_cp_dp = qcpi*(qqutp - pdtq*(1.0d0-dlnrho_dlnp) - pdt*dlnrho_dlnp_dt)
-      adiabatic_gradient_dt = -1.0d0 - dlnrho_dlnt - specific_heat_cp_dt + &
-           dlnrho_dlnt_dt/dlnrho_dlnt
-      adiabatic_gradient_dp = 1.0d0 - dlnrho_dlnp - specific_heat_cp_dp + &
-           dlnrho_dlnp_dt/dlnrho_dlnt
+      qqutp = ramu*(-0.25d0*btemp+0.75d0*((2.0d0+r%beta14*(4.0d0*r%beta_inverse &
+           +1.0d0))*sqep-r%beta14*r%beta_inverse*sqet) +betaut*sqetp+upsum*temperature_inverse)
+      r%specific_heat_cp_dt = qcpi*(qqutt + pdtq*(1.0d0+r%dlnrho_dlnt) - pdt*r%dlnrho_dlnt_dt)
+      r%specific_heat_cp_dp = qcpi*(qqutp - pdtq*(1.0d0-r%dlnrho_dlnp) - pdt*r%dlnrho_dlnt_dp)
+      r%adiabatic_gradient_dt = -1.0d0 - r%dlnrho_dlnt - r%specific_heat_cp_dt + &
+           r%dlnrho_dlnt_dt/r%dlnrho_dlnt
+      r%adiabatic_gradient_dp = 1.0d0 - r%dlnrho_dlnp - r%specific_heat_cp_dp + &
+           r%dlnrho_dlnt_dp/r%dlnrho_dlnt
 
 end subroutine compute_saha_eos
 
@@ -509,26 +493,12 @@ end subroutine compute_saha_eos
 !     between the nondegenerate and degernate electron gas cases of the
 !     D-H correction is used (this is not correct but, hopefully is
 !     close enough.)  The constant term is debye_huckel_coefficient.
-subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
-     pressure, log10_density, density, beta, ion_mean_weight_inverse, &
-     electron_mean_weight_inverse, electron_degeneracy_parameter, &
-     dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, &
-     dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-     adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
+subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
 
 
       real(dp), intent(in) :: log10_temperature
-      real(dp), intent(in) :: temperature
+      type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: log10_pressure
-      real(dp), intent(in) :: pressure
-      real(dp), intent(inout) :: log10_density
-      real(dp), intent(out) :: density
-      real(dp), intent(in) :: beta, ion_mean_weight_inverse, &
-           electron_mean_weight_inverse
-      real(dp), intent(out) :: electron_degeneracy_parameter, &
-           dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, &
-           dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
-           adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp
 ! --- locals ---
 ! Scratch algebra kept close to the original short names (rather than
 ! invented descriptive names) given the density of unlabeled physics
@@ -555,14 +525,14 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
 !  pressure (pe + pa + pr) equals the initial P.  For details
 !  consult Prather's thesis.
 !  Suffix e=electron;R=radiation;a=nucleon;i.e. pa=pressure due to nuclei
-      pinv = 1.0d0/pressure
-      beta1 = 1.0d0 - beta
+      pinv = 1.0d0/r%pressure
+      beta1 = 1.0d0 - r%beta
       tl8 = log10_temperature
       pl8 = log10_pressure
-      pr = beta1*pressure
-      ramu = gas_constant*ion_mean_weight_inverse
-      ramut = ramu*temperature
-      emul = log10(electron_mean_weight_inverse)
+      pr = beta1*r%pressure
+      ramu = gas_constant*r%ion_mean_weight_inverse
+      ramut = ramu*r%temperature
+      emul = log10(r%electron_mean_weight_inverse)
       emul8 = emul
 !  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
 !  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
@@ -574,7 +544,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       ttud = 5.0d0*(tl8 - (5.0d0 + 0.20d0*real(jt1, dp)))
       ttcu = 0.50d0*ttud*(ttud - 1.0d0)
       ttdcu = ttud - 0.50d0
-      dml = log10_density + emul
+      dml = r%log10_density + emul
       nden = 1
       id1p = -100
 ! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1
@@ -625,17 +595,17 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       dcl2 = (dx3 + dx1)*cden2
       dcl3 = (dx1 + dx2)*cden3
       if (eos_settings%use_debye_huckel_correction) then
-         electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
+         r%electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
               cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
-         if (electron_degeneracy_parameter < eos_settings%debye_huckel_eta_min) then
+         if (r%electron_degeneracy_parameter < eos_settings%debye_huckel_eta_min) then
             cmfdh = cmfdh0*sqrt(cmfdh0)
-         else if (electron_degeneracy_parameter > eos_settings%debye_huckel_eta_max) then
+         else if (r%electron_degeneracy_parameter > eos_settings%debye_huckel_eta_max) then
             cmfdh = cmfdh0*sqrt(cmfdh1)
          else
             t0 = cmfdh0*sqrt(cmfdh0)
             t1 = cmfdh0*sqrt(cmfdh1)
             slope = (t1-t0)/(eos_settings%debye_huckel_eta_max-eos_settings%debye_huckel_eta_min)
-            cmfdh = t0+(electron_degeneracy_parameter-eos_settings%debye_huckel_eta_min)*slope
+            cmfdh = t0+(r%electron_degeneracy_parameter-eos_settings%debye_huckel_eta_min)*slope
          end if
       end if
 !  Now find pe and its 1st and 2nd derivatives w.r.t. density
@@ -646,7 +616,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       pa = ramut*d8
       pe = exp(ln10*pel)
       if (eos_settings%use_debye_huckel_correction) then
-         pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/temperature)*d8
+         pdh = debye_huckel_coefficient*cmfdh*sqrt(d8/r%temperature)*d8
       end if
       pt = pa + pe + pr
       if (eos_settings%use_debye_huckel_correction) then
@@ -687,8 +657,8 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       end if
       exit density_iter
       end do density_iter
-      log10_density = dl8
-      density = d8
+      r%log10_density = dl8
+      r%density = d8
       do kk = 2,5
        do nn = 1,3
           id = id1 + nn - 1
@@ -730,12 +700,12 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
         qqpdd = qqpdd + (-1.5d0*qpd+2.25d0)*pdhp
       end if
 ! Derivatives of density
-      dlnrho_dlnp = 1.0d0/qpd
-      dlnrho_dlnt = -qpt*dlnrho_dlnp
-      pr1 = dlnrho_dlnp**2
-      qdpp = -qqpdd*dlnrho_dlnp*pr1
-      dlnrho_dlnp_dt = -qpt*qdpp - qqpdt*pr1
-      dlnrho_dlnt_dt = -qpt*dlnrho_dlnp_dt - dlnrho_dlnp*(qqptt + dlnrho_dlnt*qqpdt)
+      r%dlnrho_dlnp = 1.0d0/qpd
+      r%dlnrho_dlnt = -qpt*r%dlnrho_dlnp
+      pr1 = r%dlnrho_dlnp**2
+      qdpp = -qqpdd*r%dlnrho_dlnp*pr1
+      r%dlnrho_dlnt_dp = -qpt*qdpp - qqpdt*pr1
+      r%dlnrho_dlnt_dt = -qpt*r%dlnrho_dlnt_dp - r%dlnrho_dlnp*(qqptt + r%dlnrho_dlnt*qqpdt)
 ! Internal energy term(u) and its derivatives
       ue  = exp(ln10*(ffe(2) + emul))
       ueq = exp(ln10*(ffe(5) + emul))
@@ -745,8 +715,8 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       pr4 = dcl1*ff(5,1) + dcl2*ff(5,2) + dcl3*ff(5,3)
       pr5 =   5.0d0*(cl1*pr1 + cl2*pr2 + cl3*pr3)
       queqt = ueq*(pr5 - 1.50d0*pr4)
-      pd = pressure/density
-      pdt = pd/temperature
+      pd = r%pressure/r%density
+      pdt = pd/r%temperature
       ua = 1.50d0*ramut
       ur = 3.0d0*beta1*pd
       if (eos_settings%use_debye_huckel_correction) then
@@ -767,7 +737,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       if (eos_settings%use_debye_huckel_correction) then
          qudt = qudt + 0.5d0*udhu
       end if
-      qutp = qutd + dlnrho_dlnt*qudt
+      qutp = qutd + r%dlnrho_dlnt*qudt
       qqutt = (ua + queqt + 16.0d0*ur)*ui - qutd**2
       if (eos_settings%use_debye_huckel_correction) then
          qqutt = qqutt + (0.5d0*qutd+0.25d0)*udhu
@@ -777,24 +747,24 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
          qqudt = qqudt + (0.5d0*qudt-0.25d0)*udhu
       end if
 ! Specific heat(qcp) and its derivatives
-      pr1 =-pdt*dlnrho_dlnt
-      pr2 = u/temperature
-      pr3 = -(1.0d0 + dlnrho_dlnt) +  dlnrho_dlnt_dt/dlnrho_dlnt
-      pr4 = (1.0d0 - dlnrho_dlnp) +  dlnrho_dlnp_dt/dlnrho_dlnt
+      pr1 =-pdt*r%dlnrho_dlnt
+      pr2 = u/r%temperature
+      pr3 = -(1.0d0 + r%dlnrho_dlnt) +  r%dlnrho_dlnt_dt/r%dlnrho_dlnt
+      pr4 = (1.0d0 - r%dlnrho_dlnp) +  r%dlnrho_dlnt_dp/r%dlnrho_dlnt
       acp = pr1*qpt
       bcp = pr2*qutd
-      specific_heat_cp = acp + bcp
-      qcpi = 1.0d0/specific_heat_cp
-      specific_heat_cp_dt = acp*pr3 + pr1*(qqptt + dlnrho_dlnt*qqpdt) + &
-              bcp*(qutp - 1.0d0) + pr2*(qqutt + dlnrho_dlnt*qqudt)
-      specific_heat_cp_dp = acp*pr4 + dlnrho_dlnp*(pr1*qqpdt + bcp*qudt + pr2*qqudt)
-      specific_heat_cp_dt = specific_heat_cp_dt*qcpi
-      specific_heat_cp_dp = specific_heat_cp_dp*qcpi
+      r%specific_heat_cp = acp + bcp
+      qcpi = 1.0d0/r%specific_heat_cp
+      r%specific_heat_cp_dt = acp*pr3 + pr1*(qqptt + r%dlnrho_dlnt*qqpdt) + &
+              bcp*(qutp - 1.0d0) + pr2*(qqutt + r%dlnrho_dlnt*qqudt)
+      r%specific_heat_cp_dp = acp*pr4 + r%dlnrho_dlnp*(pr1*qqpdt + bcp*qudt + pr2*qqudt)
+      r%specific_heat_cp_dt = r%specific_heat_cp_dt*qcpi
+      r%specific_heat_cp_dp = r%specific_heat_cp_dp*qcpi
 ! Adiabatic gradient(dela) and derivatives ( all derivs are ln(dela)/ln(
-      adiabatic_gradient = pr1*qcpi
-      adiabatic_gradient_dt = pr3 - specific_heat_cp_dt
-      adiabatic_gradient_dp = pr4 - specific_heat_cp_dp
-      electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
+      r%adiabatic_gradient = pr1*qcpi
+      r%adiabatic_gradient_dt = pr3 - r%specific_heat_cp_dt
+      r%adiabatic_gradient_dp = pr4 - r%specific_heat_cp_dp
+      r%electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
            cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
 
 end subroutine compute_fully_ionized_eos

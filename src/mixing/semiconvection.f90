@@ -73,10 +73,11 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
       double precision :: pressure_rotation_factor, &
            temperature_rotation_factor
 ! 2026 named-index results: the eos/kap relay soup is two arrays.
-! eos_res(i_log10_density) mirrors the historical in-place update of
+! eos_res%log10_density mirrors the historical in-place update of
 ! log_density_zone -- call 2 seeds from call 1's result, and the
 ! search loop re-seeds from log_density() each iteration.
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
@@ -151,18 +152,18 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
 !*** ADD ROTATION VECTORS ***
             pressure_rotation_factor = 1.0d0
             temperature_rotation_factor = 1.0d0
-            eos_res(i_log10_density) = log_density_zone
+            eos_res%log10_density = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
                  composition_at_zone=composition(:,cz_edge_idx), ierr=ierr)
             if (ierr /= 0) return
-            log_density_zone = eos_res(i_log10_density)
+            log_density_zone = eos_res%log10_density
 ! DBG 12/95 GET OPACITY (at compute_blended_eos's returned density -- the
 ! historical inout dataflow)
-            call kap_get(eos_res(i_log10_density), log_temperature_zone, &
+            call kap_get(eos_res%log10_density, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
-                 eos_res(i_fxion:i_fxion+2), ierr=ierr)
+                 eos_res%ion_fraction, ierr=ierr)
             if (ierr /= 0) return
 ! zone_index = -1 (here and at the two calls below). Before 2026 W2
 ! this routine never set star%iovim, so temperature_gradients saw
@@ -181,28 +182,28 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                  log_teff, ierr, zone_index=-1)
             if (ierr /= 0) return
 ! SKIP IF ZONE IS STABLE WITH THE CORE COMPOSITION.
-            if (radiative_gradient.lt.eos_res(i_grada)) cycle
+            if (radiative_gradient.lt.eos_res%adiabatic_gradient) cycle
 ! STORE MEAN MOLECULAR WEIGHT, ADJUSTED RADIATIVE TEMPERATURE GRADIENT,
 ! AND THE QUANTITY (DELR - DELA)/DELR.
-            boundary_mean_molecular_weight = eos_res(i_mu_ion_inv) + &
-                 eos_res(i_mu_e_inv)
+            boundary_mean_molecular_weight = eos_res%ion_mean_weight_inverse + &
+                 eos_res%electron_mean_weight_inverse
             perturbed_radiative_gradient = radiative_gradient
-            max_overshoot_radius = 1.0d0 - eos_res(i_grada)/ &
+            max_overshoot_radius = 1.0d0 - eos_res%adiabatic_gradient/ &
                  radiative_gradient
 ! REPEAT CALL WITH THE LOCAL COMPOSITION.
             hydrogen_fraction = composition(1,adjacent_radiative_idx)
             metal_fraction = composition(3,adjacent_radiative_idx)
-            eos_res(i_log10_density) = log_density_zone
+            eos_res%log10_density = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
                  want_derivatives, in_atmosphere, saha_state, &
                  composition_at_zone=composition(:,adjacent_radiative_idx), ierr=ierr)
             if (ierr /= 0) return
-            log_density_zone = eos_res(i_log10_density)
+            log_density_zone = eos_res%log10_density
 ! DBG 12/95 GET OPACITY (at compute_blended_eos's returned density)
-            call kap_get(eos_res(i_log10_density), log_temperature_zone, &
+            call kap_get(eos_res%log10_density, log_temperature_zone, &
                  hydrogen_fraction, metal_fraction, kap_res, &
-                 eos_res(i_fxion:i_fxion+2), ierr=ierr)
+                 eos_res%ion_fraction, ierr=ierr)
             if (ierr /= 0) return
             call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
@@ -248,7 +249,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                radius_diff = radius_curr - radius_prev
                radius_sum = radius_sum + (1.0d0 - &
                     boundary_mean_molecular_weight/( &
-                    eos_res(i_mu_ion_inv)+eos_res(i_mu_e_inv)))* &
+                    eos_res%ion_mean_weight_inverse+eos_res%electron_mean_weight_inverse))* &
                     radius_diff
                radius_prev = radius_curr
                if (radius_sum.gt.max_overshoot_radius) then
@@ -263,17 +264,17 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                log_density_zone = log_density(search_zone_idx)
                hydrogen_fraction = composition(1,search_zone_idx)
                metal_fraction = composition(3,search_zone_idx)
-               eos_res(i_log10_density) = log_density_zone
+               eos_res%log10_density = log_density_zone
                call eos_get(log_temperature_zone, log_pressure_zone, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
                     composition_at_zone=composition(:,search_zone_idx), ierr=ierr)
                if (ierr /= 0) return
-               log_density_zone = eos_res(i_log10_density)
+               log_density_zone = eos_res%log10_density
 ! DBG 12/95 GET OPACITY (at compute_blended_eos's returned density)
-               call kap_get(eos_res(i_log10_density), log_temperature_zone, &
+               call kap_get(eos_res%log10_density, log_temperature_zone, &
                     hydrogen_fraction, metal_fraction, kap_res, &
-                    eos_res(i_fxion:i_fxion+2), ierr=ierr)
+                    eos_res%ion_fraction, ierr=ierr)
                if (ierr /= 0) return
                call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                     eos_res, kap_res, log_radius_zone, log_mass_zone, &
@@ -285,7 +286,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                if (ierr /= 0) return
                log_density(search_zone_idx) = log_density_zone
 ! EXIT IF ZONE IS RADIATIVELY STABLE.
-               if (gradient_ratio*radiative_gradient.lt.eos_res(i_grada)) exit
+               if (gradient_ratio*radiative_gradient.lt.eos_res%adiabatic_gradient) exit
             end do
 ! (Natural loop completion already leaves search_zone_idx at 0 for a
 ! downward scan and num_zones+1 for an upward one -- the old explicit

@@ -10,6 +10,7 @@
 ! interpolation state live in opal_eos_tables (opal01).
 module opal2001_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal01_chi_rho, &
            i_opal01_chi_t, i_opal01_cv, i_opal01_e, i_opal01_gamma1, &
            i_opal01_gamma2_ratio, i_opal01_gamma3m1, i_opal01_p, i_opal01_s, &
@@ -36,21 +37,13 @@ contains
 ! 2001 tables (via esac01). Called from blend_eos
 ! (compute_blended_eos); in_table is false when the point is
 ! outside the OPAL tables.
-subroutine compute_opal2001_eos(log10_temperature, temperature, log10_pressure, &
-     pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
-     beta, beta_inverse, beta14, specific_gas_constant, &
-     ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
-     dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, in_table)
+subroutine compute_opal2001_eos(log10_temperature, log10_pressure, &
+     hydrogen_fraction, metal_fraction, r, ierr, in_table)
 
 
       real(dp), intent(in) :: log10_temperature, log10_pressure
-      real(dp), intent(out) :: temperature, pressure, &
-           log10_density, density
+      type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      real(dp), intent(out) :: beta, beta_inverse, beta14, &
-           specific_gas_constant, ion_mean_weight_inverse, &
-           electron_mean_weight_inverse, dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient
 
       real(dp) :: t_million_k, p_e12
       real(dp) :: hydrogen_fraction_work
@@ -71,10 +64,10 @@ subroutine compute_opal2001_eos(log10_temperature, temperature, log10_pressure, 
 !     NOTE: rad_flag=0 does not add radiation; rad_flag=1 adds radiation
       rad_flag = 1     ! does add radiation  corrections
 
-      temperature = exp10(log10_temperature)
-      pressure = exp10(log10_pressure)
-      t_million_k = temperature/1.0d6
-      p_e12 = pressure/1.0d12
+      r%temperature = exp10(log10_temperature)
+      r%pressure = exp10(log10_pressure)
+      t_million_k = r%temperature/1.0d6
+      p_e12 = r%pressure/1.0d12
       if (t_million_k < 0.0020d0 .or. t_million_k > 100.0d0) then
          in_table = .false.
          return
@@ -88,8 +81,8 @@ subroutine compute_opal2001_eos(log10_temperature, temperature, log10_pressure, 
          in_table = .false.
          return
       end if
-      density = density_cgs
-      log10_density = log10(density)
+      r%density = density_cgs
+      r%log10_density = log10(r%density)
 
       call esac01(opal01, hydrogen_fraction_work, t_million_k, density_cgs, &
            deriv_order, rad_flag, ierr, in_table)
@@ -101,24 +94,24 @@ subroutine compute_opal2001_eos(log10_temperature, temperature, log10_pressure, 
 
 ! The 2001 tables carry no dE/dRho slot, so the slot numbers are one
 ! lower than in compute_opal2006_eos (see esac01's header).
-      dlnrho_dlnp = 1.0d0/opal01%eos_output(i_opal01_chi_rho)
-      dlnrho_dlnt = -opal01%eos_output(i_opal01_chi_t)/opal01%eos_output(i_opal01_chi_rho)
+      r%dlnrho_dlnp = 1.0d0/opal01%eos_output(i_opal01_chi_rho)
+      r%dlnrho_dlnt = -opal01%eos_output(i_opal01_chi_t)/opal01%eos_output(i_opal01_chi_rho)
 
-      specific_heat_cp = 1.0d6*opal01%eos_output(i_opal01_cv)*opal01%eos_output(i_opal01_gamma1)/opal01%eos_output(i_opal01_chi_rho)
-      adiabatic_gradient = 1.0d0/opal01%eos_output(i_opal01_gamma2_ratio)
+      r%specific_heat_cp = 1.0d6*opal01%eos_output(i_opal01_cv)*opal01%eos_output(i_opal01_gamma1)/opal01%eos_output(i_opal01_chi_rho)
+      r%adiabatic_gradient = 1.0d0/opal01%eos_output(i_opal01_gamma2_ratio)
 
-      beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
+      r%beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)
-      beta = 1.0d0 - beta14
-      beta_inverse = 1.0d0/beta
-      specific_gas_constant = pressure*beta/(density*temperature)
-      call compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
+      r%beta = 1.0d0 - r%beta14
+      r%beta_inverse = 1.0d0/r%beta
+      r%specific_gas_constant = r%pressure*r%beta/(r%density*r%temperature)
+      call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
-      if (electron_mean_weight_inverse <= 0.0d0) then
-      electron_mean_weight_inverse = 0.0d0
-      ion_mean_weight_inverse = specific_gas_constant/gas_constant - &
-           electron_mean_weight_inverse
+           r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
+      if (r%electron_mean_weight_inverse <= 0.0d0) then
+      r%electron_mean_weight_inverse = 0.0d0
+      r%ion_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
+           r%electron_mean_weight_inverse
       end if
 
 end subroutine compute_opal2001_eos

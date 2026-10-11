@@ -107,7 +107,8 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            point_temperature_rotation_factor
 ! 2026 named-index results for the convective-flag test of the new
 ! last shell (the envint/atm_get sites below keep their scalars).
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       double precision :: radiative_gradient, dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component
       logical :: is_convective
@@ -671,16 +672,16 @@ subroutine rescale_and_refit_envelope
              log10_mass = star%log_mass(star%nz)
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
-               eos_res(i_log10_density) = log10_density
+               eos_res%log10_density = log10_density
                call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
                     composition_at_zone=star%xa(:,star%nz), ierr=ierr)
                if (ierr /= 0) return
 ! kap at compute_blended_eos's returned density -- the historical inout dataflow
-               call kap_get(eos_res(i_log10_density), log10_temperature, &
+               call kap_get(eos_res%log10_density, log10_temperature, &
                     hydrogen_fraction, metal_fraction, kap_res, &
-                    eos_res(i_fxion:i_fxion+2), ierr=ierr)
+                    eos_res%ion_fraction, ierr=ierr)
                if (ierr /= 0) return
 ! 2026 W3: zone_index=-1 (no overshoot zone) is passed directly; this
 ! was the last writer of the star%iovim side channel.
@@ -697,7 +698,7 @@ subroutine rescale_and_refit_envelope
                   ierr = jerr
                   return
                end if
-               log10_density = eos_res(i_log10_density)
+               log10_density = eos_res%log10_density
                star%logRho(star%nz) = log10_density
                star%convective_flag(star%nz) = is_convective
           endif

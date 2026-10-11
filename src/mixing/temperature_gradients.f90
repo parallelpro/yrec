@@ -48,10 +48,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
      want_derivatives, is_convective, pressure_rotation_factor, &
      temperature_rotation_factor, log_teff, ierr, zone_index)
 
-      use eos_lib, only: num_eos_results, i_temperature, i_pressure, &
-           i_density, i_dlnrho_dlnt, i_dlnrho_dlnp, i_cp, i_grada, &
-           i_dlnrho_dlnt_dt, i_dlnrho_dlnp_dt, i_grada_dt, i_grada_dp, &
-           i_cp_dt, i_cp_dp
+      use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
       use star_info_lib, only: star
@@ -62,8 +59,8 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
 
       double precision, intent(in) :: log_temperature, &
            log_pressure, log_radius, log_mass, luminosity_lsun
-      double precision, intent(in) :: eos_res(num_eos_results), &
-           kap_res(num_kap_results)
+      type(eos_result), intent(in) :: eos_res
+      double precision, intent(in) :: kap_res(num_kap_results)
       double precision, intent(out) :: actual_gradient, radiative_gradient
       double precision, intent(out) :: dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component
@@ -73,7 +70,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       double precision :: temperature, pressure, density, opacity, &
            dlnrho_dlnt, dlnrho_dlnp, dlnkap_dlnt, dlnkap_dlnrho, &
            specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
+           dlnrho_dlnt_dp, adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives
       logical, intent(out) :: is_convective
@@ -104,19 +101,19 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
          overshoot_zone_index = star%iovim
       end if
 
-      temperature = eos_res(i_temperature)
-      pressure = eos_res(i_pressure)
-      density = eos_res(i_density)
-      dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
-      dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
-      specific_heat_cp = eos_res(i_cp)
-      adiabatic_gradient = eos_res(i_grada)
-      dlnrho_dlnt_dt = eos_res(i_dlnrho_dlnt_dt)
-      dlnrho_dlnp_dt = eos_res(i_dlnrho_dlnp_dt)
-      adiabatic_gradient_dt = eos_res(i_grada_dt)
-      adiabatic_gradient_dp = eos_res(i_grada_dp)
-      specific_heat_cp_dt = eos_res(i_cp_dt)
-      specific_heat_cp_dp = eos_res(i_cp_dp)
+      temperature = eos_res%temperature
+      pressure = eos_res%pressure
+      density = eos_res%density
+      dlnrho_dlnt = eos_res%dlnrho_dlnt
+      dlnrho_dlnp = eos_res%dlnrho_dlnp
+      specific_heat_cp = eos_res%specific_heat_cp
+      adiabatic_gradient = eos_res%adiabatic_gradient
+      dlnrho_dlnt_dt = eos_res%dlnrho_dlnt_dt
+      dlnrho_dlnt_dp = eos_res%dlnrho_dlnt_dp
+      adiabatic_gradient_dt = eos_res%adiabatic_gradient_dt
+      adiabatic_gradient_dp = eos_res%adiabatic_gradient_dp
+      specific_heat_cp_dt = eos_res%specific_heat_cp_dt
+      specific_heat_cp_dp = eos_res%specific_heat_cp_dp
       opacity = kap_res(i_kap)
       dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
@@ -260,7 +257,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
        qa1t = tempot*(1d0-temp1)-specific_heat_cp_dt-0.5d0*(dlnrho_dlnt+ &
             qddelt+dlnrho_dlnt_dt/dlnrho_dlnt)+3d0
        qa1p = tempop*(1d0-temp1)-temp1-specific_heat_cp_dp-0.5d0 &
-                *(dlnrho_dlnp+qddelp+dlnrho_dlnp_dt/dlnrho_dlnt) + 0.5d0
+                *(dlnrho_dlnp+qddelp+dlnrho_dlnt_dp/dlnrho_dlnt) + 0.5d0
        qa1r = -2.0d0*temp1 + 2.0d0
        qa3t = 2.0d0*phiphi*tempot - qa1t
        qa3p = 2.0d0*phiphi*(1.0d0+tempop) - qa1p

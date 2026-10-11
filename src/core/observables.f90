@@ -163,11 +163,11 @@ subroutine compute_central_conditions(ierr)
            metal_fraction_center
       logical :: is_atmosphere_point, compute_derivatives
 ! 2026 named-index results: the former 20-variable central-conditions
-! soup is one eos result array (see eos_lib's index constants).
-      double precision :: eos_res(num_eos_results)
+! soup is one eos_result record.
+      type(eos_result) :: eos_res
 
       ierr = 0
-      eos_res = 0.0d0
+      eos_res = eos_result()
 
 !  EXTRAPOLATE FROM INNER SHELL P AND T TO CENTRAL P AND T
       temp_value =0.5D0*exp(ln10*(cc13*(c4pi3l+star%logRho(1)-star%log_mass(1))+star%logRho(1)+cgl+star%log_mass(1)))
@@ -175,7 +175,7 @@ subroutine compute_central_conditions(ierr)
       log_pressure_center = log10(pressure_linear + temp_value)
 !  SDEL(2,1) IS THE ACTUAL T GRADIENT AT POINT 1( = DEL)
       log_temperature_center = star%logT(1) + log10(1.0D0+ temp_value*star%gradT(1)/pressure_linear)
-      eos_res(i_log10_density) = star%logRho(1)
+      eos_res%log10_density = star%logRho(1)
       hydrogen_fraction_center = star%xa(i_h1,1)
       metal_fraction_center = star%xa(i_metals,1)
       is_atmosphere_point = .true.
@@ -189,9 +189,9 @@ subroutine compute_central_conditions(ierr)
 ! STORE CENTRAL RHO,P,T FOR LATER USE
       star%central_log10_pressure = log_pressure_center
       star%central_log10_temperature = log_temperature_center
-      star%central_log10_density = eos_res(i_log10_density)
-      star%central_beta = eos_res(i_beta)
-      star%central_degeneracy_eta = eos_res(i_eta)
+      star%central_log10_density = eos_res%log10_density
+      star%central_beta = eos_res%beta
+      star%central_degeneracy_eta = eos_res%electron_degeneracy_parameter
 end subroutine compute_central_conditions
 
 ! ---------------------------------------------------------------

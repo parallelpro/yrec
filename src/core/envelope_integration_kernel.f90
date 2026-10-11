@@ -117,7 +117,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter
       double precision :: dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-           adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
+           adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnt_dp, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
@@ -125,7 +125,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! other migrated sites, the relay scalars above STAY: they are host-
 ! associated across the contained routines (and the atm_retry loop),
 ! so the call is wrapped with a symmetric prepack/unpack instead.
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       double precision :: indep_var
       double precision :: chi_rho, chi_t, specific_heat_cv, gamma1
       double precision :: prev_tau, prev_opacity, &
@@ -259,28 +260,28 @@ subroutine integrate_atmosphere
 ! prepack every result slot from its host scalar, call, unpack every
 ! one back: identity for slots compute_blended_eos leaves alone, and the host
 ! scalars keep carrying the historical inout guesses across calls.
-      eos_res(i_temperature) = temperature
-      eos_res(i_pressure) = pressure
-      eos_res(i_log10_density) = log10_density
-      eos_res(i_density) = density
-      eos_res(i_beta) = beta
-      eos_res(i_beta_inverse) = beta_inverse
-      eos_res(i_beta14) = beta14
-      eos_res(i_fxion:i_fxion+2) = ion_fraction
-      eos_res(i_gas_constant) = specific_gas_constant
-      eos_res(i_mu_ion_inv) = ion_mean_weight_inverse
-      eos_res(i_mu_e_inv) = electron_mean_weight_inverse
-      eos_res(i_eta) = electron_degeneracy_parameter
-      eos_res(i_dlnrho_dlnt) = dlnrho_dlnt
-      eos_res(i_dlnrho_dlnp) = dlnrho_dlnp
-      eos_res(i_cp) = specific_heat_cp
-      eos_res(i_grada) = adiabatic_gradient
-      eos_res(i_dlnrho_dlnt_dt) = dlnrho_dlnt_dt
-      eos_res(i_dlnrho_dlnp_dt) = dlnrho_dlnp_dt
-      eos_res(i_grada_dt) = adiabatic_gradient_dt
-      eos_res(i_grada_dp) = adiabatic_gradient_dp
-      eos_res(i_cp_dt) = specific_heat_cp_dt
-      eos_res(i_cp_dp) = specific_heat_cp_dp
+      eos_res%temperature = temperature
+      eos_res%pressure = pressure
+      eos_res%log10_density = log10_density
+      eos_res%density = density
+      eos_res%beta = beta
+      eos_res%beta_inverse = beta_inverse
+      eos_res%beta14 = beta14
+      eos_res%ion_fraction = ion_fraction
+      eos_res%specific_gas_constant = specific_gas_constant
+      eos_res%ion_mean_weight_inverse = ion_mean_weight_inverse
+      eos_res%electron_mean_weight_inverse = electron_mean_weight_inverse
+      eos_res%electron_degeneracy_parameter = electron_degeneracy_parameter
+      eos_res%dlnrho_dlnt = dlnrho_dlnt
+      eos_res%dlnrho_dlnp = dlnrho_dlnp
+      eos_res%specific_heat_cp = specific_heat_cp
+      eos_res%adiabatic_gradient = adiabatic_gradient
+      eos_res%dlnrho_dlnt_dt = dlnrho_dlnt_dt
+      eos_res%dlnrho_dlnt_dp = dlnrho_dlnt_dp
+      eos_res%adiabatic_gradient_dt = adiabatic_gradient_dt
+      eos_res%adiabatic_gradient_dp = adiabatic_gradient_dp
+      eos_res%specific_heat_cp_dt = specific_heat_cp_dt
+      eos_res%specific_heat_cp_dp = specific_heat_cp_dp
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_state, ierr=jerr)
@@ -288,28 +289,28 @@ subroutine integrate_atmosphere
          ierr = jerr
          return
       end if
-      temperature = eos_res(i_temperature)
-      pressure = eos_res(i_pressure)
-      log10_density = eos_res(i_log10_density)
-      density = eos_res(i_density)
-      beta = eos_res(i_beta)
-      beta_inverse = eos_res(i_beta_inverse)
-      beta14 = eos_res(i_beta14)
-      ion_fraction = eos_res(i_fxion:i_fxion+2)
-      specific_gas_constant = eos_res(i_gas_constant)
-      ion_mean_weight_inverse = eos_res(i_mu_ion_inv)
-      electron_mean_weight_inverse = eos_res(i_mu_e_inv)
-      electron_degeneracy_parameter = eos_res(i_eta)
-      dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
-      dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
-      specific_heat_cp = eos_res(i_cp)
-      adiabatic_gradient = eos_res(i_grada)
-      dlnrho_dlnt_dt = eos_res(i_dlnrho_dlnt_dt)
-      dlnrho_dlnp_dt = eos_res(i_dlnrho_dlnp_dt)
-      adiabatic_gradient_dt = eos_res(i_grada_dt)
-      adiabatic_gradient_dp = eos_res(i_grada_dp)
-      specific_heat_cp_dt = eos_res(i_cp_dt)
-      specific_heat_cp_dp = eos_res(i_cp_dp)
+      temperature = eos_res%temperature
+      pressure = eos_res%pressure
+      log10_density = eos_res%log10_density
+      density = eos_res%density
+      beta = eos_res%beta
+      beta_inverse = eos_res%beta_inverse
+      beta14 = eos_res%beta14
+      ion_fraction = eos_res%ion_fraction
+      specific_gas_constant = eos_res%specific_gas_constant
+      ion_mean_weight_inverse = eos_res%ion_mean_weight_inverse
+      electron_mean_weight_inverse = eos_res%electron_mean_weight_inverse
+      electron_degeneracy_parameter = eos_res%electron_degeneracy_parameter
+      dlnrho_dlnt = eos_res%dlnrho_dlnt
+      dlnrho_dlnp = eos_res%dlnrho_dlnp
+      specific_heat_cp = eos_res%specific_heat_cp
+      adiabatic_gradient = eos_res%adiabatic_gradient
+      dlnrho_dlnt_dt = eos_res%dlnrho_dlnt_dt
+      dlnrho_dlnt_dp = eos_res%dlnrho_dlnt_dp
+      adiabatic_gradient_dt = eos_res%adiabatic_gradient_dt
+      adiabatic_gradient_dp = eos_res%adiabatic_gradient_dp
+      specific_heat_cp_dt = eos_res%specific_heat_cp_dt
+      specific_heat_cp_dp = eos_res%specific_heat_cp_dp
 ! DBG 12/95 GET OPACITY (log10_density just unpacked = compute_blended_eos's
 ! returned density, the historical inout dataflow)
       call kap_get(log10_density, log10_temperature, hydrogen_fraction, &

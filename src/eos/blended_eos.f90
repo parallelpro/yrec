@@ -15,6 +15,7 @@
 !                          is set
 module blended_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
       use scv_eos, only: compute_scv_envelope_eos
       use opal95_eos, only: compute_opal95_eos, find_opal95_ramp
@@ -37,235 +38,120 @@ contains
 !----------------------------------------------------------------------
 ! compute_blended_eos (formerly eqstat)
 !----------------------------------------------------------------------
-! New front end to equation of state routines. Provided to allow
-! numerical differentiation of the EOS (via blend_eos, below) by calling
-! it at adjacent P and T points, when use_numerical_derivatives is
-! set, instead of relying on blend_eos's own (analytic/table)
-! derivatives.
-!                                                                 LLP  10-22-06
-subroutine compute_blended_eos(log10_temperature, temperature, log10_pressure, &
-     pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
-     beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-     ion_mean_weight_inverse, electron_mean_weight_inverse, &
-     electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-     specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-     dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-     specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-     in_atmosphere, saha_state, ierr)
-!
-!  Input Arguments: log10_temperature, log10_pressure, hydrogen_fraction,
-!          metal_fraction, want_derivatives, in_atmosphere
-!
-!  Output Arguments: temperature, pressure, density, log10_density, beta,
-!          beta_inverse, beta14, ion_fraction, specific_gas_constant,
-!          ion_mean_weight_inverse, electron_mean_weight_inverse,
-!          dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, adiabatic_gradient,
-!          dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt,
-!          adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp
-!
-!  Update (Input and Output) Arguments: saha_state
-!
-
-
-      real(dp), intent(inout) :: log10_temperature
-      real(dp), intent(out) :: temperature
-      real(dp), intent(inout) :: log10_pressure
-      real(dp), intent(out) :: pressure
-      real(dp), intent(inout) :: log10_density
-      real(dp), intent(out) :: density
+! The blended EOS at (log T, log P, X, Z): blend_eos once. With
+! want_derivatives and use_numerical_derivatives, the six second
+! derivatives are instead taken by centred differences of blend_eos's
+! first derivatives, four extra evaluations at log T +- dtl and
+! log P +- dpl (LLP 10-22-06, 8-5-07):
+!   dlnrho_dlnt_dt = d(dln rho/dln T)/dln T, dlnrho_dlnt_dp the same
+!   in P; adiabatic_gradient_dt/_dp and specific_heat_cp_dt/_dp the log
+!   derivatives of grad_ad and cp.
+! The shifted evaluations share beta, the ionization fractions and the
+! mean weights with r (they are overwritten by the final call), carry
+! their own density guess from one to the next, and use a copy of
+! saha_state.
+subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
+     metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
+      real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      real(dp), intent(inout) :: beta
-      real(dp), intent(out) :: beta_inverse, beta14
-      real(dp), intent(inout) :: ion_fraction(:)
-      real(dp), intent(out) :: specific_gas_constant
-      real(dp), intent(inout) :: ion_mean_weight_inverse
-      real(dp), intent(out) :: electron_mean_weight_inverse, &
-           electron_degeneracy_parameter
-      real(dp), intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient
-      real(dp), intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
-           adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
+      type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
-
-!  want_derivatives: if true, provide derivatives needed for
-!  relaxation, else don't
-!
-!  use_numerical_derivatives - if true derivatives are calculated
-!  numerically, else get them the old way using Yale EOS.
-
-      real(dp) :: log10_pressure_orig, log10_temperature_orig
-      logical :: in_atmosphere_local
-      integer :: saha_state_local
-      logical :: want_derivatives_2
-      real(dp) :: dpl, dtl, dpl2, dtl2
-      real(dp) :: log10_density_1, density_1
-      real(dp) :: ttl, ppl
-      real(dp) :: dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
-           adiabatic_gradient_1
-      real(dp) :: dlnrho_dlnt_2, dlnrho_dlnp_2, specific_heat_cp_2, &
-           adiabatic_gradient_2
-      real(dp) :: dlnrho_dlnt_dt_1, dlnrho_dlnp_dt_1, &
-           adiabatic_gradient_dt_1, adiabatic_gradient_dp_1, &
-           specific_heat_cp_dt_1, specific_heat_cp_dp_1
-      real(dp) :: dlnrho_dlnt_dt_throwaway, dlnrho_dlnp_dt_throwaway, &
-           adiabatic_gradient_dt_throwaway, adiabatic_gradient_dp_throwaway, &
-           specific_heat_cp_dt_throwaway, specific_heat_cp_dp_throwaway
-
       integer, intent(out) :: ierr
+! the steps in log T and log P: a hundredth of the tables' approximate
+! intervals (0.03, 0.15), which worked best empirically
+      real(dp), parameter :: dtl = 0.030d0*0.01d0, dpl = 0.150d0*0.01d0
+      real(dp), parameter :: dtl2 = 2.0d0*dtl, dpl2 = 2.0d0*dpl
+! the shifted evaluations: their record, their density guess, the first
+! derivatives (dln rho/dln T, dln rho/dln P, cp, grad_ad) above and
+! below, and their unused second derivatives
+      type(eos_result) :: shifted
+      real(dp) :: shifted_log10_density, shifted_density
+      real(dp) :: above(4), below(4), unused(6)
+      real(dp) :: kept(6)
+      integer :: saha_state_local
 
       ierr = 0
-
-      log10_pressure_orig = log10_pressure
-      log10_temperature_orig = log10_temperature
-      in_atmosphere_local = in_atmosphere
-      saha_state_local = saha_state
-
       if (want_derivatives .and. eos_settings%use_numerical_derivatives) then
-!        Get Numerical Derivatives of Current EOS    LLP  8/5/07
-!        If both derivatives and numerical derivatives are requested.
-!
-!        A central difference approximation using values on both sides
-!        of TL and then PL is used. The error term in this
-!        approximation of the derivatives is of order h**2, where h is
-!        the interval. The error term when one sided derivatives are
-!        used is of order h.
-
-         dpl = .150d0    ! the approximate table intervals
-         dtl = .030d0
-
-         dpl = dpl * .01d0   ! Empirically, scaling the intervals down
-         dtl = dtl * .01d0   ! by 100 seemed to work best.
-
-         dpl2 = 2d0 * dpl
-         dtl2 = 2d0 * dtl
-
-         log10_density_1 = log10_density   ! Initialize to called values.
-         density_1 = density     ! This can avoid problems in initial table lookups
-
-         ttl = log10_temperature + dtl   ! Get derivatives wrt T.
-         temperature = exp10(ttl)
-         want_derivatives_2 = .false.
-         call blend_eos(ttl, temperature, log10_pressure, pressure, &
-              log10_density_1, density_1, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
-              adiabatic_gradient_1, dlnrho_dlnt_dt_throwaway, &
-              dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
-              adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
-              specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local, ierr)
+         saha_state_local = saha_state
+         shifted_log10_density = r%log10_density
+         shifted_density = r%density
+         above = 0.0d0
+         below = 0.0d0
+         unused = 0.0d0
+         call evaluate_shifted(log10_temperature + dtl, log10_pressure, above)
          if (ierr /= 0) return
-
-         ttl = log10_temperature - dtl
-         temperature = exp10(ttl)
-         want_derivatives_2 = .false.
-         call blend_eos(ttl, temperature, log10_pressure, pressure, &
-              log10_density_1, density_1, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt_2, dlnrho_dlnp_2, specific_heat_cp_2, &
-              adiabatic_gradient_2, dlnrho_dlnt_dt_throwaway, &
-              dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
-              adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
-              specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local, ierr)
+         call evaluate_shifted(log10_temperature - dtl, log10_pressure, below)
          if (ierr /= 0) return
-         dlnrho_dlnt_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dtl2/ln10
-         specific_heat_cp_dt_1 = (log10(specific_heat_cp_1) - &
-              log10(specific_heat_cp_2))/dtl2
-         adiabatic_gradient_dt_1 = (log10(adiabatic_gradient_1) - &
-              log10(adiabatic_gradient_2))/dtl2
-         log10_temperature = log10_temperature_orig
-         temperature = exp10(log10_temperature_orig)   ! Restore original T
-
-         ppl = log10_pressure + dpl
-         pressure = exp10(ppl)
-         want_derivatives_2 = .false.
-         call blend_eos(log10_temperature, temperature, ppl, pressure, &
-              log10_density_1, density_1, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
-              adiabatic_gradient_1, dlnrho_dlnt_dt_throwaway, &
-              dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
-              adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
-              specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local, ierr)
+         r%dlnrho_dlnt_dt = (above(1) - below(1))/dtl2/ln10
+         r%specific_heat_cp_dt = (log10(above(3)) - log10(below(3)))/dtl2
+         r%adiabatic_gradient_dt = (log10(above(4)) - log10(below(4)))/dtl2
+         call evaluate_shifted(log10_temperature, log10_pressure + dpl, above)
          if (ierr /= 0) return
-         ppl = log10_pressure - dpl
-         pressure = exp10(ppl)
-         want_derivatives_2 = .false.
-         call blend_eos(log10_temperature, temperature, ppl, pressure, &
-              log10_density_1, density_1, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt_2, dlnrho_dlnp_2, specific_heat_cp_2, &
-              adiabatic_gradient_2, dlnrho_dlnt_dt_throwaway, &
-              dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
-              adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
-              specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere_local, saha_state_local, ierr)
+         call evaluate_shifted(log10_temperature, log10_pressure - dpl, below)
          if (ierr /= 0) return
-         log10_pressure = log10_pressure_orig
-         pressure = exp10(log10_pressure_orig)   ! Restore original P
-         dlnrho_dlnp_dt_1 = (dlnrho_dlnt_1 - dlnrho_dlnt_2)/dpl2/ln10
-         specific_heat_cp_dp_1 = (log10(specific_heat_cp_1) - &
-              log10(specific_heat_cp_2))/dpl2
-         adiabatic_gradient_dp_1 = (log10(adiabatic_gradient_1) - &
-              log10(adiabatic_gradient_2))/dpl2
-
-         dlnrho_dlnt_dt = dlnrho_dlnt_dt_1
-         dlnrho_dlnp_dt = dlnrho_dlnp_dt_1
-         adiabatic_gradient_dt = adiabatic_gradient_dt_1
-         adiabatic_gradient_dp = adiabatic_gradient_dp_1
-         specific_heat_cp_dp = specific_heat_cp_dp_1
-         specific_heat_cp_dt = specific_heat_cp_dt_1
+         r%dlnrho_dlnt_dp = (above(1) - below(1))/dpl2/ln10
+         r%specific_heat_cp_dp = (log10(above(3)) - log10(below(3)))/dpl2
+         r%adiabatic_gradient_dp = (log10(above(4)) - log10(below(4)))/dpl2
       end if
 
-      log10_temperature = log10_temperature_orig   ! Restore original TL and PL.
-      log10_pressure = log10_pressure_orig
-
-      if (want_derivatives .and. .not.eos_settings%use_numerical_derivatives) then
-         want_derivatives_2 = .true.   ! Need derivatives and have no numerical ones.
-                          ! Call blend_eos and request derivatives
-         call blend_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, log10_density, density, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-              adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
-              adiabatic_gradient_dt, adiabatic_gradient_dp, &
-              specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives_2, &
-              in_atmosphere, saha_state, ierr)
-         if (ierr /= 0) return
+      if (want_derivatives .and. .not. eos_settings%use_numerical_derivatives) then
+         call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
+              metal_fraction, r, .true., in_atmosphere, saha_state, ierr)
       else
-         want_derivatives_2 = .false.  ! We either already have numerical derivatives
-                        ! or do not need any derivatives.
-                          ! Call blend_eos and request no derivatives
-         call blend_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, log10_density, density, hydrogen_fraction, &
-              metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
-              specific_gas_constant, ion_mean_weight_inverse, &
-              electron_mean_weight_inverse, electron_degeneracy_parameter, &
-              dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-              adiabatic_gradient, dlnrho_dlnt_dt_throwaway, &
-              dlnrho_dlnp_dt_throwaway, adiabatic_gradient_dt_throwaway, &
-              adiabatic_gradient_dp_throwaway, specific_heat_cp_dt_throwaway, &
-              specific_heat_cp_dp_throwaway, want_derivatives_2, &
-              in_atmosphere, saha_state, ierr)
-         if (ierr /= 0) return
-!            Note that the dlnrho_dlnt_dt, dlnrho_dlnp_dt, etc OUTPUTS
-!            are to dummy variables so they can not affect the
-!            previously calculated second derivatives.
+! no analytic second derivatives: r keeps the ones it has (the
+! numerical ones, or the caller's)
+         kept = [r%dlnrho_dlnt_dt, r%dlnrho_dlnt_dp, r%adiabatic_gradient_dt, &
+              r%adiabatic_gradient_dp, r%specific_heat_cp_dt, r%specific_heat_cp_dp]
+         call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
+              metal_fraction, r, .false., in_atmosphere, saha_state, ierr)
+         r%dlnrho_dlnt_dt = kept(1)
+         r%dlnrho_dlnt_dp = kept(2)
+         r%adiabatic_gradient_dt = kept(3)
+         r%adiabatic_gradient_dp = kept(4)
+         r%specific_heat_cp_dt = kept(5)
+         r%specific_heat_cp_dp = kept(6)
       end if
+
+contains
+
+! One shifted evaluation (no second derivatives). first carries this
+! side's first derivatives in and out.
+subroutine evaluate_shifted(lt, lp, first)
+      real(dp), intent(in) :: lt, lp
+      real(dp), intent(inout) :: first(4)
+      shifted = r
+      shifted%log10_density = shifted_log10_density
+      shifted%density = shifted_density
+      shifted%dlnrho_dlnt = first(1)
+      shifted%dlnrho_dlnp = first(2)
+      shifted%specific_heat_cp = first(3)
+      shifted%adiabatic_gradient = first(4)
+      shifted%dlnrho_dlnt_dt = unused(1)
+      shifted%dlnrho_dlnt_dp = unused(2)
+      shifted%adiabatic_gradient_dt = unused(3)
+      shifted%adiabatic_gradient_dp = unused(4)
+      shifted%specific_heat_cp_dt = unused(5)
+      shifted%specific_heat_cp_dp = unused(6)
+      call blend_eos(lt, lp, hydrogen_fraction, metal_fraction, shifted, &
+           .false., in_atmosphere, saha_state_local, ierr)
+      r%temperature = shifted%temperature
+      r%pressure = shifted%pressure
+      r%beta = shifted%beta
+      r%beta_inverse = shifted%beta_inverse
+      r%beta14 = shifted%beta14
+      r%ion_fraction = shifted%ion_fraction
+      r%specific_gas_constant = shifted%specific_gas_constant
+      r%ion_mean_weight_inverse = shifted%ion_mean_weight_inverse
+      r%electron_mean_weight_inverse = shifted%electron_mean_weight_inverse
+      r%electron_degeneracy_parameter = shifted%electron_degeneracy_parameter
+      shifted_log10_density = shifted%log10_density
+      shifted_density = shifted%density
+      first = [shifted%dlnrho_dlnt, shifted%dlnrho_dlnp, shifted%specific_heat_cp, &
+           shifted%adiabatic_gradient]
+      unused = [shifted%dlnrho_dlnt_dt, shifted%dlnrho_dlnt_dp, shifted%adiabatic_gradient_dt, &
+           shifted%adiabatic_gradient_dp, shifted%specific_heat_cp_dt, shifted%specific_heat_cp_dp]
+end subroutine evaluate_shifted
 
 end subroutine compute_blended_eos
 
@@ -281,36 +167,14 @@ end subroutine compute_blended_eos
 ! 2006) covers the point, its result is adopted, or blended in with
 ! the weight find_opal*_ramp returns near the table's edge.
 ! metal_fraction is intent(in): no callee writes it.
-subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
-     pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
-     beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-     ion_mean_weight_inverse, electron_mean_weight_inverse, &
-     electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-     specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-     dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-     specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
-     in_atmosphere, saha_state, ierr)
+subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
+     metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
 
-      real(dp), intent(inout) :: log10_temperature
-      real(dp), intent(out) :: temperature
-      real(dp), intent(inout) :: log10_pressure
-      real(dp), intent(out) :: pressure
-      real(dp), intent(inout) :: log10_density
-      real(dp), intent(out) :: density
+      real(dp), intent(in) :: log10_temperature
+      type(eos_result), intent(inout) :: r
+      real(dp), intent(in) :: log10_pressure
       real(dp), intent(in) :: hydrogen_fraction
       real(dp), intent(in) :: metal_fraction
-      real(dp), intent(inout) :: beta
-      real(dp), intent(out) :: beta_inverse, beta14
-      real(dp), intent(inout) :: ion_fraction(:)
-      real(dp), intent(out) :: specific_gas_constant
-      real(dp), intent(inout) :: ion_mean_weight_inverse
-      real(dp), intent(out) :: electron_mean_weight_inverse, &
-           electron_degeneracy_parameter
-      real(dp), intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient
-      real(dp), intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
-           adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
 ! --- locals ---
@@ -332,11 +196,9 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       real(dp) :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
       logical :: use_envelope_mixture
       logical :: valid_table_point
-      real(dp) :: opal_log10_density, opal_density, opal_beta, &
-           opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
-           opal_ion_mean_weight_inverse, opal_electron_mean_weight_inverse, &
-           opal_dlnrho_dlnt, opal_dlnrho_dlnp, opal_specific_heat_cp, &
-           opal_adiabatic_gradient
+! the OPAL result, adopted or blended in (its T and P are copied to r
+! right after each OPAL call, as the call used to write them there)
+      type(eos_result) :: opal_r
       real(dp) :: ramp_factor
       logical :: in_opal_table, needs_ramp
       logical :: opal_covers_point
@@ -357,7 +219,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 ! near the ionization cutoff
       real(dp) :: saha_log10_density, saha_dlnrho_dlnt, &
            saha_dlnrho_dlnp, saha_specific_heat_cp, saha_adiabatic_gradient
-      real(dp) :: saha_dlnrho_dlnt_dt, saha_dlnrho_dlnp_dt, &
+      real(dp) :: saha_dlnrho_dlnt_dt, saha_dlnrho_dlnt_dp, &
            saha_specific_heat_cp_dt, saha_specific_heat_cp_dp, &
            saha_adiabatic_gradient_dt, saha_adiabatic_gradient_dp
       real(dp) :: ramp_weight, ramp_weight_sq
@@ -385,42 +247,42 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 !        assumed to change equally.
          metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
          amu_correction = (metal_ratio - 1.0d0)*eos_mix%amuenv
-         ion_mean_weight_inverse = eos_mix%amuenv
+         r%ion_mean_weight_inverse = eos_mix%amuenv
          do species_idx = ix_na, ix_c
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
+            r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
          h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)/ &
               atomic_weights_full(ix_h)
-         ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
+         r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + h_excess
          do species_idx = ix_o, ix_ne
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
+            r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
          y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
               hydrogen_fraction - metal_fraction)/atomic_weights_full(ix_he)
-         ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
+         r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + y_excess
          envelope_amu_over_amu = metal_ratio*eos_mix%amuenv/ &
-              ion_mean_weight_inverse
+              r%ion_mean_weight_inverse
          if (need_saha_solution) then
             do species_idx = ix_na, ix_c
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
                     eos_mix%fxenv(species_idx)
             end do
             saha_mass_fractions(ix_h) = (eos_mix%fxenv(ix_h)* &
-                 eos_mix%amuenv + h_excess)/ion_mean_weight_inverse
+                 eos_mix%amuenv + h_excess)/r%ion_mean_weight_inverse
             do species_idx = ix_o, ix_ne
                saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
                     eos_mix%fxenv(species_idx)
             end do
             saha_mass_fractions(ix_he) = (eos_mix%fxenv(ix_he)* &
-                 eos_mix%amuenv + y_excess)/ion_mean_weight_inverse
+                 eos_mix%amuenv + y_excess)/r%ion_mean_weight_inverse
          end if
       else
 !        Ion mean weight from the envelope mixture plus the H/he/metal
 !        EXCESS (SHARED WITH compute_mean_weights), THEN THE SAHA NUMBER FRACTIONS
          call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
-              ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
+              r%ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
          if (use_envelope_mixture) then
 !           Use envelope abundances
             if (need_saha_solution) then
@@ -430,7 +292,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
                end do
             end if
          else
-            amu_inverse = 1.0d0/ion_mean_weight_inverse
+            amu_inverse = 1.0d0/r%ion_mean_weight_inverse
             if (need_saha_solution) then
                envelope_amu_frac = eos_mix%amuenv*amu_inverse
                do species_idx = 1, num_species
@@ -447,136 +309,110 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
          end if
       end if
 !     Compute radiation pressure
-      temperature = exp(ln10*log10_temperature)
-      pressure = exp(ln10*log10_pressure)
-      beta14 = radiation_constant_over_3*(temperature**2)**2/pressure
-      beta = 1 - beta14
+      r%temperature = exp(ln10*log10_temperature)
+      r%pressure = exp(ln10*log10_pressure)
+      r%beta14 = radiation_constant_over_3*(r%temperature**2)**2/r%pressure
+      r%beta = 1 - r%beta14
 
-      if (beta < 0d0) then
+      if (r%beta < 0d0) then
          write(run_log_unit,*) &
               'EQSTAT2: BETA is negative: TL,PL,BETA,1-BETA', &
-              log10_temperature, log10_pressure, beta, 1d0 - beta
+              log10_temperature, log10_pressure, r%beta, 1d0 - r%beta
       end if
 
-      beta_inverse = 1.0d0/beta
-      beta14 = 4.0d0*beta_inverse*min(1.0d0, beta14)
-      electron_degeneracy_parameter = 0.0d0
+      r%beta_inverse = 1.0d0/r%beta
+      r%beta14 = 4.0d0*r%beta_inverse*min(1.0d0, r%beta14)
+      r%electron_degeneracy_parameter = 0.0d0
       if (.not.need_saha_solution) then
 !        Compute values for fully ionized gas and return
-         electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) &
+         r%electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) &
               + (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
-         specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
-              electron_mean_weight_inverse)
-         ion_fraction(1) = 1.0d0
-         ion_fraction(2) = 0.0d0
-         ion_fraction(3) = 1.0d0
-         call compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, log10_density, density, beta, &
-              ion_mean_weight_inverse, electron_mean_weight_inverse, &
-              electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-              specific_heat_cp_dt, specific_heat_cp_dp)
+         r%specific_gas_constant = gas_constant*(r%ion_mean_weight_inverse + &
+              r%electron_mean_weight_inverse)
+         r%ion_fraction(1) = 1.0d0
+         r%ion_fraction(2) = 0.0d0
+         r%ion_fraction(3) = 1.0d0
+         call compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
       else
 !     Check if Saumon, Chabrier, and Van Horn equation of state needed.
 !     THIS EOS REPLACES THE CALL TO compute_saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
       if (eos_settings%use_scv_eos) then
-         call compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
-              log10_pressure, pressure, log10_density, density, beta, &
-              beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-              ion_mean_weight_inverse, electron_mean_weight_inverse, &
-              want_derivatives, in_atmosphere, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-              specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
-         call compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
-              log10_density, density, hydrogen_fraction, metal_fraction, &
-              beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
+         call compute_saha_eos(saha_mass_fractions, log10_temperature, &
+              log10_pressure, r, want_derivatives, in_atmosphere, &
+              saha_state)
+         call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
+              metal_fraction, r, valid_table_point, ierr)
          if (ierr /= 0) return
-
 ! The SCV path takes its derivatives from compute_saha_eos (analytic).
-
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
 !        it has failed.
-         call compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
-              log10_pressure, pressure, log10_density, density, beta, &
-              beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-              ion_mean_weight_inverse, electron_mean_weight_inverse, &
-              want_derivatives, in_atmosphere, dlnrho_dlnt, dlnrho_dlnp, &
-              specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-              dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-              specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
+         call compute_saha_eos(saha_mass_fractions, log10_temperature, &
+              log10_pressure, r, want_derivatives, in_atmosphere, &
+              saha_state)
       end if
 !     STORE compute_saha_eos VALUES FOR INTERPOLATION WITH compute_fully_ionized_eos VALUES
-      saha_log10_density = log10_density
-      saha_dlnrho_dlnt = dlnrho_dlnt
-      saha_dlnrho_dlnp = dlnrho_dlnp
-      saha_specific_heat_cp = specific_heat_cp
-      saha_adiabatic_gradient = adiabatic_gradient
+      saha_log10_density = r%log10_density
+      saha_dlnrho_dlnt = r%dlnrho_dlnt
+      saha_dlnrho_dlnp = r%dlnrho_dlnp
+      saha_specific_heat_cp = r%specific_heat_cp
+      saha_adiabatic_gradient = r%adiabatic_gradient
       if (want_derivatives) then
-         saha_dlnrho_dlnt_dt = dlnrho_dlnt_dt
-         saha_dlnrho_dlnp_dt = dlnrho_dlnp_dt
-         saha_specific_heat_cp_dt = specific_heat_cp_dt
-         saha_specific_heat_cp_dp = specific_heat_cp_dp
-         saha_adiabatic_gradient_dt = adiabatic_gradient_dt
-         saha_adiabatic_gradient_dp = adiabatic_gradient_dp
+         saha_dlnrho_dlnt_dt = r%dlnrho_dlnt_dt
+         saha_dlnrho_dlnt_dp = r%dlnrho_dlnt_dp
+         saha_specific_heat_cp_dt = r%specific_heat_cp_dt
+         saha_specific_heat_cp_dp = r%specific_heat_cp_dp
+         saha_adiabatic_gradient_dt = r%adiabatic_gradient_dt
+         saha_adiabatic_gradient_dp = r%adiabatic_gradient_dp
       end if
 !     Bypass relativistic EOS (compute_fully_ionized_eos) if in low temperature region
       if (.not. skip_relativistic_eos) then
 !     Compute values for fully ionized gas
-      electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) + &
+      r%electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) + &
            (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
-      specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
-           electron_mean_weight_inverse)
-      ion_fraction(1) = 1.0d0
-      ion_fraction(2) = 0.0d0
-      ion_fraction(3) = 1.0d0
-      call compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
-           pressure, log10_density, density, beta, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, &
-           electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp)
+      r%specific_gas_constant = gas_constant*(r%ion_mean_weight_inverse + &
+           r%electron_mean_weight_inverse)
+      r%ion_fraction(1) = 1.0d0
+      r%ion_fraction(2) = 0.0d0
+      r%ion_fraction(3) = 1.0d0
+      call compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
 !     Interpolate values
       ramp_weight = saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature)
       ramp_weight_sq = ramp_weight*ramp_weight
       ramp_factor = ramp_weight_sq*ramp_weight* &
            (6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)
-      saha_log10_density = saha_log10_density - log10_density
-      saha_dlnrho_dlnt = saha_dlnrho_dlnt - dlnrho_dlnt
-      saha_dlnrho_dlnp = saha_dlnrho_dlnp - dlnrho_dlnp
-      saha_specific_heat_cp = saha_specific_heat_cp - specific_heat_cp
-      saha_adiabatic_gradient = saha_adiabatic_gradient - adiabatic_gradient
-      saha_specific_heat_cp_dt = saha_specific_heat_cp_dt - specific_heat_cp_dt
-      saha_specific_heat_cp_dp = saha_specific_heat_cp_dp - specific_heat_cp_dp
-      saha_adiabatic_gradient_dt = saha_adiabatic_gradient_dt - adiabatic_gradient_dt
-      saha_adiabatic_gradient_dp = saha_adiabatic_gradient_dp - adiabatic_gradient_dp
-      log10_density = log10_density + ramp_factor*saha_log10_density
-      density = exp(ln10*log10_density)
-      specific_gas_constant = beta*pressure/(density*temperature)
-      electron_mean_weight_inverse = specific_gas_constant/gas_constant - &
-           ion_mean_weight_inverse
-      ion_fraction(1) = 1.0d0 + ramp_factor*(ion_fraction(1) - 1.0d0)
-      ion_fraction(2) = ramp_factor*ion_fraction(2)
-      ion_fraction(3) = 1.0d0 + ramp_factor*(ion_fraction(3) - 1.0d0)
-      dlnrho_dlnt = dlnrho_dlnt + ramp_factor*saha_dlnrho_dlnt
-      dlnrho_dlnp = dlnrho_dlnp + ramp_factor*saha_dlnrho_dlnp
-      specific_heat_cp = specific_heat_cp + ramp_factor*saha_specific_heat_cp
-      adiabatic_gradient = adiabatic_gradient + &
+      saha_log10_density = saha_log10_density - r%log10_density
+      saha_dlnrho_dlnt = saha_dlnrho_dlnt - r%dlnrho_dlnt
+      saha_dlnrho_dlnp = saha_dlnrho_dlnp - r%dlnrho_dlnp
+      saha_specific_heat_cp = saha_specific_heat_cp - r%specific_heat_cp
+      saha_adiabatic_gradient = saha_adiabatic_gradient - r%adiabatic_gradient
+      saha_specific_heat_cp_dt = saha_specific_heat_cp_dt - r%specific_heat_cp_dt
+      saha_specific_heat_cp_dp = saha_specific_heat_cp_dp - r%specific_heat_cp_dp
+      saha_adiabatic_gradient_dt = saha_adiabatic_gradient_dt - r%adiabatic_gradient_dt
+      saha_adiabatic_gradient_dp = saha_adiabatic_gradient_dp - r%adiabatic_gradient_dp
+      r%log10_density = r%log10_density + ramp_factor*saha_log10_density
+      r%density = exp(ln10*r%log10_density)
+      r%specific_gas_constant = r%beta*r%pressure/(r%density*r%temperature)
+      r%electron_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
+           r%ion_mean_weight_inverse
+      r%ion_fraction(1) = 1.0d0 + ramp_factor*(r%ion_fraction(1) - 1.0d0)
+      r%ion_fraction(2) = ramp_factor*r%ion_fraction(2)
+      r%ion_fraction(3) = 1.0d0 + ramp_factor*(r%ion_fraction(3) - 1.0d0)
+      r%dlnrho_dlnt = r%dlnrho_dlnt + ramp_factor*saha_dlnrho_dlnt
+      r%dlnrho_dlnp = r%dlnrho_dlnp + ramp_factor*saha_dlnrho_dlnp
+      r%specific_heat_cp = r%specific_heat_cp + ramp_factor*saha_specific_heat_cp
+      r%adiabatic_gradient = r%adiabatic_gradient + &
            ramp_factor*saha_adiabatic_gradient
       if (want_derivatives) then
-         dlnrho_dlnt_dt = dlnrho_dlnt_dt + ramp_factor*saha_dlnrho_dlnt_dt
-         dlnrho_dlnp_dt = dlnrho_dlnp_dt + ramp_factor*saha_dlnrho_dlnp_dt
-         specific_heat_cp_dt = specific_heat_cp_dt + &
+         r%dlnrho_dlnt_dt = r%dlnrho_dlnt_dt + ramp_factor*saha_dlnrho_dlnt_dt
+         r%dlnrho_dlnt_dp = r%dlnrho_dlnt_dp + ramp_factor*saha_dlnrho_dlnt_dp
+         r%specific_heat_cp_dt = r%specific_heat_cp_dt + &
               ramp_factor*saha_specific_heat_cp_dt
-         specific_heat_cp_dp = specific_heat_cp_dp + &
+         r%specific_heat_cp_dp = r%specific_heat_cp_dp + &
               ramp_factor*saha_specific_heat_cp_dp
-         adiabatic_gradient_dt = adiabatic_gradient_dt + &
+         r%adiabatic_gradient_dt = r%adiabatic_gradient_dt + &
               ramp_factor*saha_adiabatic_gradient_dt
-         adiabatic_gradient_dp = adiabatic_gradient_dp + &
+         r%adiabatic_gradient_dp = r%adiabatic_gradient_dp + &
               ramp_factor*saha_adiabatic_gradient_dp
       end if
       end if
@@ -584,20 +420,17 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     1995 OPAL eqos
       if (eos_settings%use_opal95_eos) then
-      if (temperature >= opal95_t_min .and. log10_temperature <= opal95_log10_t_max .and. &
-           log10_density <= opal95_log10_rho_max) then
+      if (r%temperature >= opal95_t_min .and. log10_temperature <= opal95_log10_t_max .and. &
+           r%log10_density <= opal95_log10_rho_max) then
 
-         call compute_opal95_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, opal_log10_density, opal_density, &
-              hydrogen_fraction, metal_fraction, opal_beta, &
-              opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
-              opal_ion_mean_weight_inverse, &
-              opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
-              opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, opal_covers_point)
+         call compute_opal95_eos(log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, opal_r, ierr, &
+              opal_covers_point)
+         r%temperature = opal_r%temperature
+         r%pressure = opal_r%pressure
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call find_opal95_ramp(temperature, opal_log10_density, ramp_factor, &
+         call find_opal95_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 
@@ -609,19 +442,16 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     2001 OPAL eqos  LLP 6/17/03
       if (eos_settings%use_opal2001_eos) then
-      if (temperature >= opal01_t_min .and. temperature <= opal01_t_max .and. &
-           log10_density <= opal01_log10_rho_max) then
-         call compute_opal2001_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, opal_log10_density, opal_density, &
-              hydrogen_fraction, metal_fraction, opal_beta, &
-              opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
-              opal_ion_mean_weight_inverse, &
-              opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
-              opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, opal_covers_point)
+      if (r%temperature >= opal01_t_min .and. r%temperature <= opal01_t_max .and. &
+           r%log10_density <= opal01_log10_rho_max) then
+         call compute_opal2001_eos(log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, opal_r, ierr, &
+              opal_covers_point)
+         r%temperature = opal_r%temperature
+         r%pressure = opal_r%pressure
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call find_opal2001_ramp(temperature, opal_log10_density, ramp_factor, &
+         call find_opal2001_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 !        find_opal2001_ramp determines whether or not the point is in the OPAL
@@ -635,19 +465,16 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     2006 OPAL eqos  LLP 10/13/2996
       if (eos_settings%use_opal2006_eos) then
-      if (temperature >= opal06_t_min .and. temperature <= opal06_t_max .and. &
-           log10_density <= opal06_log10_rho_max) then
-         call compute_opal2006_eos(log10_temperature, temperature, log10_pressure, &
-              pressure, opal_log10_density, opal_density, &
-              hydrogen_fraction, metal_fraction, opal_beta, &
-              opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
-              opal_ion_mean_weight_inverse, &
-              opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
-              opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, opal_covers_point)
+      if (r%temperature >= opal06_t_min .and. r%temperature <= opal06_t_max .and. &
+           r%log10_density <= opal06_log10_rho_max) then
+         call compute_opal2006_eos(log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, opal_r, ierr, &
+              opal_covers_point)
+         r%temperature = opal_r%temperature
+         r%pressure = opal_r%pressure
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call find_opal2006_ramp(temperature, opal_log10_density, ramp_factor, &
+         call find_opal2006_ramp(r%temperature, opal_r%log10_density, ramp_factor, &
               in_opal_table, needs_ramp)
 !        find_opal2006_ramp determines whether or not the point is in the OPAL
 !        2006 EOS table.
@@ -677,39 +504,39 @@ contains
 ! variable is host-associated from blend_eos.
 subroutine adopt_or_blend_opal_result()
          if (.not.needs_ramp) then
-            log10_density = opal_log10_density
-            density = exp10(log10_density)
-            beta = opal_beta
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = opal_specific_gas_constant
-            ion_mean_weight_inverse = opal_ion_mean_weight_inverse
-            electron_mean_weight_inverse = opal_electron_mean_weight_inverse
-            dlnrho_dlnt = opal_dlnrho_dlnt
-            dlnrho_dlnp = opal_dlnrho_dlnp
-            specific_heat_cp = opal_specific_heat_cp
-            adiabatic_gradient = opal_adiabatic_gradient
+            r%log10_density = opal_r%log10_density
+            r%density = exp10(r%log10_density)
+            r%beta = opal_r%beta
+            r%beta_inverse = 1.0d0/r%beta
+            r%beta14 = 1.0d0 - r%beta
+            r%specific_gas_constant = opal_r%specific_gas_constant
+            r%ion_mean_weight_inverse = opal_r%ion_mean_weight_inverse
+            r%electron_mean_weight_inverse = opal_r%electron_mean_weight_inverse
+            r%dlnrho_dlnt = opal_r%dlnrho_dlnt
+            r%dlnrho_dlnp = opal_r%dlnrho_dlnp
+            r%specific_heat_cp = opal_r%specific_heat_cp
+            r%adiabatic_gradient = opal_r%adiabatic_gradient
          else
-            log10_density = log10_density + &
-                 ramp_factor*(opal_log10_density - log10_density)
-            density = exp10(log10_density)
-            beta = beta + ramp_factor*(opal_beta - beta)
-            beta_inverse = 1.0d0/beta
-            beta14 = 1.0d0 - beta
-            specific_gas_constant = specific_gas_constant + &
-                 ramp_factor*(opal_specific_gas_constant - specific_gas_constant)
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 ramp_factor*(opal_ion_mean_weight_inverse - ion_mean_weight_inverse)
-            electron_mean_weight_inverse = electron_mean_weight_inverse + &
-                 ramp_factor*(opal_electron_mean_weight_inverse - electron_mean_weight_inverse)
-            dlnrho_dlnt = dlnrho_dlnt + &
-                 ramp_factor*(opal_dlnrho_dlnt - dlnrho_dlnt)
-            dlnrho_dlnp = dlnrho_dlnp + &
-                 ramp_factor*(opal_dlnrho_dlnp - dlnrho_dlnp)
-            specific_heat_cp = specific_heat_cp + &
-                 ramp_factor*(opal_specific_heat_cp - specific_heat_cp)
-            adiabatic_gradient = adiabatic_gradient + &
-                 ramp_factor*(opal_adiabatic_gradient - adiabatic_gradient)
+            r%log10_density = r%log10_density + &
+                 ramp_factor*(opal_r%log10_density - r%log10_density)
+            r%density = exp10(r%log10_density)
+            r%beta = r%beta + ramp_factor*(opal_r%beta - r%beta)
+            r%beta_inverse = 1.0d0/r%beta
+            r%beta14 = 1.0d0 - r%beta
+            r%specific_gas_constant = r%specific_gas_constant + &
+                 ramp_factor*(opal_r%specific_gas_constant - r%specific_gas_constant)
+            r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
+                 ramp_factor*(opal_r%ion_mean_weight_inverse - r%ion_mean_weight_inverse)
+            r%electron_mean_weight_inverse = r%electron_mean_weight_inverse + &
+                 ramp_factor*(opal_r%electron_mean_weight_inverse - r%electron_mean_weight_inverse)
+            r%dlnrho_dlnt = r%dlnrho_dlnt + &
+                 ramp_factor*(opal_r%dlnrho_dlnt - r%dlnrho_dlnt)
+            r%dlnrho_dlnp = r%dlnrho_dlnp + &
+                 ramp_factor*(opal_r%dlnrho_dlnp - r%dlnrho_dlnp)
+            r%specific_heat_cp = r%specific_heat_cp + &
+                 ramp_factor*(opal_r%specific_heat_cp - r%specific_heat_cp)
+            r%adiabatic_gradient = r%adiabatic_gradient + &
+                 ramp_factor*(opal_r%adiabatic_gradient - r%adiabatic_gradient)
          end if
 end subroutine adopt_or_blend_opal_result
 

@@ -54,7 +54,8 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       double precision :: log10_pressure, log10_mass, log10_temperature
 ! 2026 named-index results: the eos/kap relay soup is two arrays
 ! (fresh each call -- this is an ODE integrand).
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component
       double precision :: convective_velocity
@@ -74,9 +75,9 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            saha_state, ierr=ierr)
       if (ierr /= 0) return
 ! kap at compute_blended_eos's returned density -- the historical inout dataflow
-      call kap_get(eos_res(i_log10_density), log10_temperature, &
+      call kap_get(eos_res%log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
-           eos_res(i_fxion:i_fxion+2), ierr=ierr)
+           eos_res%ion_fraction, ierr=ierr)
       if (ierr /= 0) return
       call compute_temperature_gradients(log10_temperature, log10_pressure, &
            eos_res, kap_res, log10_radius, log10_mass, luminosity_linear, &
@@ -96,26 +97,26 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
 ! `*pressure_rotation_factor` violated mass continuity by f_P^-2 in
 ! rotating envelopes. f_P = 1 exactly for non-rotating runs.
       dydx(3) = -exp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
-           eos_res(i_log10_density)))/pressure_rotation_factor
+           eos_res%log10_density))/pressure_rotation_factor
 ! 07/02 ALWAYS STORE THE BASIC STRUCTURE VARIABLES.
       pt_scr%current_log10_pressure = log10_pressure
       pt_scr%current_log10_temperature = log10_temperature
       pt_scr%current_log10_mass = log10_mass - star%stotal
       pt_scr%current_log10_radius = log10_radius
-      pt_scr%current_log10_density = eos_res(i_log10_density)
+      pt_scr%current_log10_density = eos_res%log10_density
       pt_scr%current_velocity = convective_velocity
 ! JVS 08/13 ALWAYS STORE GRADIENTS (FOR TRACKING CZ)
        pt_scr%current_gradients(1) = radiative_gradient
-       pt_scr%current_gradients(2) = eos_res(i_grada)
+       pt_scr%current_gradients(2) = eos_res%adiabatic_gradient
        pt_scr%current_gradients(3) = actual_gradient
-       pt_scr%current_beta = eos_res(i_beta) ! added 03/14
+       pt_scr%current_beta = eos_res%beta ! added 03/14
 ! JVS 08/25 ALSO ALWAYS SAVE ADDITIONAL INFO FOR PROFILE
-      pt_scr%current_ion_fraction(1) = eos_res(i_fxion)
-      pt_scr%current_ion_fraction(2) = eos_res(i_fxion+1)
-      pt_scr%current_ion_fraction(3) = eos_res(i_fxion+2)
-      pt_scr%qqdp = eos_res(i_dlnrho_dlnp)
-      pt_scr%qqdt = eos_res(i_dlnrho_dlnt)
-      pt_scr%qqcp = eos_res(i_cp)
+      pt_scr%current_ion_fraction(1) = eos_res%ion_fraction(1)
+      pt_scr%current_ion_fraction(2) = eos_res%ion_fraction(2)
+      pt_scr%current_ion_fraction(3) = eos_res%ion_fraction(3)
+      pt_scr%qqdp = eos_res%dlnrho_dlnp
+      pt_scr%qqdt = eos_res%dlnrho_dlnt
+      pt_scr%qqcp = eos_res%specific_heat_cp
 
 ! 2026 (.store convergence): these saves were gated on the print
 ! flag (or the retired pulse-derivative mode), which left
@@ -128,16 +129,16 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       pt_scr%qt = exp(ln10*log10_temperature)
       pt_scr%qpl = log10_pressure
       pt_scr%qp = exp(ln10*log10_pressure)
-      pt_scr%qdl = eos_res(i_log10_density)
-      pt_scr%qd = exp(ln10*eos_res(i_log10_density))
+      pt_scr%qdl = eos_res%log10_density
+      pt_scr%qd = exp(ln10*eos_res%log10_density)
       pt_scr%qo = kap_res(i_kap)
       pt_scr%qol = kap_res(i_log10_kap)
       pt_scr%qqod = kap_res(i_dlnkap_dlnrho)
       pt_scr%qqot = kap_res(i_dlnkap_dlnt)
       pt_scr%qdel = actual_gradient
-      pt_scr%qdela = eos_res(i_grada)
-      pt_scr%qrmu = eos_res(i_gas_constant)
-      pt_scr%qemu = eos_res(i_mu_e_inv)
+      pt_scr%qdela = eos_res%adiabatic_gradient
+      pt_scr%qrmu = eos_res%specific_gas_constant
+      pt_scr%qemu = eos_res%electron_mean_weight_inverse
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, log10_gravity, conductive_opacity_flag

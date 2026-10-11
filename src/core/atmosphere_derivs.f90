@@ -46,7 +46,8 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       double precision :: log10_temperature, log10_pressure
 ! 2026 named-index results: the eos/kap relay soup is two arrays
 ! (fresh each call -- this is an ODE integrand).
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       ierr = 0
       effective_gravity = exp(ln10*log10_gravity)*pressure_rotation_factor
       atm_point%log10_tau = log10_optical_depth
@@ -61,12 +62,12 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
            saha_state, ierr=ierr)
       if (ierr /= 0) return
 ! kap at compute_blended_eos's returned density -- the historical inout dataflow
-      call kap_get(eos_res(i_log10_density), log10_temperature, &
+      call kap_get(eos_res%log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
-           eos_res(i_fxion:i_fxion+2), ierr=ierr)
+           eos_res%ion_fraction, ierr=ierr)
       if (ierr /= 0) return
       dydx(1) = effective_gravity*optical_depth/ &
-           (eos_res(i_pressure)*kap_res(i_kap))
+           (eos_res%pressure*kap_res(i_kap))
       atm_point%log10_pressure = log10_pressure
       atm_point%log10_temperature = log10_temperature
 ! 2026 (.store convergence): these saves were gated on the print
@@ -76,28 +77,28 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 ! for printing. They are output-only scratch (no physics reads
 ! them), so save unconditionally: every integration leaves a fully
 ! populated atm_table behind.
-      atm_point%log10_density = eos_res(i_log10_density)
+      atm_point%log10_density = eos_res%log10_density
       atm_point%opacity = kap_res(i_kap)
-      atm_point%ion_fraction(1) = eos_res(i_fxion)
-      atm_point%ion_fraction(2) = eos_res(i_fxion+1)
-      atm_point%ion_fraction(3) = eos_res(i_fxion+2)
+      atm_point%ion_fraction(1) = eos_res%ion_fraction(1)
+      atm_point%ion_fraction(2) = eos_res%ion_fraction(2)
+      atm_point%ion_fraction(3) = eos_res%ion_fraction(3)
       pt_scr%qtl = log10_temperature
       pt_scr%qt = exp(ln10*log10_temperature)
       pt_scr%qpl = log10_pressure
       pt_scr%qp = exp(ln10*log10_pressure)
-      pt_scr%qdl = eos_res(i_log10_density)
-      pt_scr%qd = exp(ln10*eos_res(i_log10_density))
+      pt_scr%qdl = eos_res%log10_density
+      pt_scr%qd = exp(ln10*eos_res%log10_density)
       pt_scr%qo = kap_res(i_kap)
       pt_scr%qol = kap_res(i_log10_kap)
-      pt_scr%qqdp = eos_res(i_dlnrho_dlnp)
+      pt_scr%qqdp = eos_res%dlnrho_dlnp
       pt_scr%qqod = kap_res(i_dlnkap_dlnrho)
       pt_scr%qqot = kap_res(i_dlnkap_dlnt)
       pt_scr%qdel = 0.0d0
-      pt_scr%qqdt = eos_res(i_dlnrho_dlnt)
-      pt_scr%qdela = eos_res(i_grada)
-      pt_scr%qqcp = eos_res(i_cp)
-      pt_scr%qrmu = eos_res(i_gas_constant)
-      pt_scr%qemu = eos_res(i_mu_e_inv)
+      pt_scr%qqdt = eos_res%dlnrho_dlnt
+      pt_scr%qdela = eos_res%adiabatic_gradient
+      pt_scr%qqcp = eos_res%specific_heat_cp
+      pt_scr%qrmu = eos_res%specific_gas_constant
+      pt_scr%qemu = eos_res%electron_mean_weight_inverse
 
 ! KC 2025-05-31 THESE MUST BE RETAINED FOR EXTERNAL PROCEDURE COMPATIBILITY.
       if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius

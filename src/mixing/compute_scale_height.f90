@@ -35,7 +35,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
 ! 2026 named-index results: the former 20-variable eos output soup is
 ! one result array (see eos_lib's index constants); only the inout
 ! i_log10_density (the density consistent with P,T,X,Z) is consumed here.
-      double precision :: eos_res(num_eos_results)
+      type(eos_result) :: eos_res
       double precision :: log10_mass, log10_radius
 
 !  CALL EQUATION OF STATE TO GET THE DENSITY AT THE EDGE ZONE.
@@ -48,8 +48,8 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       log10_pressure = log_pressure(edge_zone)
       log10_temperature = log_temperature(edge_zone)
       log10_density = log_density(edge_zone)
-      eos_res = 0.0d0
-      eos_res(i_log10_density) = log10_density
+      eos_res = eos_result()
+      eos_res%log10_density = log10_density
       call eos_get(log10_temperature, log10_pressure, &
            hydrogen_fraction, metal_fraction, eos_res, lderiv, latmo, &
            ksaha, composition_at_zone=composition(:,edge_zone), ierr=ierr)
@@ -58,6 +58,6 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       log10_mass = log_mass(edge_zone)
       log10_radius = log_radius(edge_zone)
       pscahe = exp(ln10*(log10_pressure + 2.0d0*log10_radius - &
-           eos_res(i_log10_density) - cgl - log10_mass))
+           eos_res%log10_density - cgl - log10_mass))
       return
 end subroutine compute_scale_height

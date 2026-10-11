@@ -65,7 +65,7 @@ program test_eos
       double precision :: w(12), wsum, scale
       integer :: setups_ierr, i, ipt, eos_ierr
 
-! eos_eval argument set
+! the EOS variables the sections print (see eval_eos)
       double precision :: logt, t, logp, p, logd, d
       double precision :: x_frac, z_frac
       double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
@@ -215,10 +215,7 @@ program test_eos
          lderiv = .true.
          latmo = .false.
          fxion = 0.0d0
-         call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
-              beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-              qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-              lderiv, latmo, ksaha, ierr=gerr)
+         call eval_eos(x_frac, z_frac, lderiv, latmo, gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2)') "point ", ipt
          write(*,'(4(1pe24.15))') logt, logp, logd, beta
@@ -290,10 +287,7 @@ program test_eos
             lderiv = .true.
             latmo = .false.
             fxion = 0.0d0
-            call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
-                 beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-                 qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-                 lderiv, latmo, ksaha, ierr=gerr)
+            call eval_eos(x_frac, z_frac, lderiv, latmo, gerr)
       if (gerr /= 0) stop 1
             write(*,'(a,i2)') "mhd point ", ipt
             write(*,'(4(1pe24.15))') logt, logp, logd, beta
@@ -322,10 +316,7 @@ program test_eos
       lderiv = .true.
       latmo = .false.
       fxion = 0.0d0
-      call eos_eval(logt, t, logp, p, logd, d, x_frac, z_frac, &
-           beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-           qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-           lderiv, latmo, ksaha, ierr=eos_ierr)
+      call eval_eos(x_frac, z_frac, lderiv, latmo, eos_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", eos_ierr
       call esac06(opal06, 0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, in_table)
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
@@ -337,7 +328,7 @@ program test_eos
       write(*,'(a)') "test_eos: done"
 contains
 
-! Every EOS configuration a deck can choose, each evaluated with eos_eval
+! Every EOS configuration a deck can choose, each evaluated with eos_get
 ! over the same (log T, log P) grid as the first section:
 !   opal95, opal2001   the OPAL 1995 and 2001 tables, over SCV
 !   scv_only           SCV at low T, no OPAL table
@@ -417,15 +408,9 @@ contains
             ksaha = 0
             fxion = 0.0d0
             if (present(with_composition)) then
-               call eos_eval(logt, t, logp, p, logd, d, x, z, &
-                    beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-                    qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-                    .true., .false., ksaha, composition_at_zone=comp, ierr=ierr)
+               call eval_eos(x, z, .true., .false., ierr, comp)
             else
-               call eos_eval(logt, t, logp, p, logd, d, x, z, &
-                    beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-                    qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-                    .true., .false., ksaha, ierr=ierr)
+               call eval_eos(x, z, .true., .false., ierr)
             end if
             if (ierr /= 0) then
                write(*,'(a,2f7.3,a,i0)') "eos logT logP", logt, logp, " ierr ", ierr
@@ -436,13 +421,55 @@ contains
          end do
       end subroutine evaluate_grid
 
+! eos_get on the test's variables: they go into an eos_result and come
+! back out (log T and log P are inputs only)
+      subroutine eval_eos(x, z, want, atm, ierr, comp)
+         double precision, intent(in) :: x, z
+         logical, intent(in) :: want, atm
+         integer, intent(out) :: ierr
+         double precision, intent(in), optional :: comp(:)
+         type(eos_result) :: res
+         res = eos_result(temperature=t, pressure=p, log10_density=logd, density=d, &
+              beta=beta, beta_inverse=betai, beta14=beta14, ion_fraction=fxion, &
+              specific_gas_constant=rmu, ion_mean_weight_inverse=amu, &
+              electron_mean_weight_inverse=emu, electron_degeneracy_parameter=eta, &
+              dlnrho_dlnt=qdt, dlnrho_dlnp=qdp, specific_heat_cp=qcp, &
+              adiabatic_gradient=dela, dlnrho_dlnt_dt=qdtt, dlnrho_dlnt_dp=qdtp, &
+              adiabatic_gradient_dt=qat, adiabatic_gradient_dp=qap, &
+              specific_heat_cp_dt=qcpt, specific_heat_cp_dp=qcpp)
+         call eos_get(logt, logp, x, z, res, want, atm, ksaha, &
+              composition_at_zone=comp, ierr=ierr)
+         t = res%temperature
+         p = res%pressure
+         logd = res%log10_density
+         d = res%density
+         beta = res%beta
+         betai = res%beta_inverse
+         beta14 = res%beta14
+         fxion = res%ion_fraction
+         rmu = res%specific_gas_constant
+         amu = res%ion_mean_weight_inverse
+         emu = res%electron_mean_weight_inverse
+         eta = res%electron_degeneracy_parameter
+         qdt = res%dlnrho_dlnt
+         qdp = res%dlnrho_dlnp
+         qcp = res%specific_heat_cp
+         dela = res%adiabatic_gradient
+         qdtt = res%dlnrho_dlnt_dt
+         qdtp = res%dlnrho_dlnt_dp
+         qat = res%adiabatic_gradient_dt
+         qap = res%adiabatic_gradient_dp
+         qcpt = res%specific_heat_cp_dt
+         qcpp = res%specific_heat_cp_dp
+      end subroutine eval_eos
+
 ! The derivative check: at points in each regime, every configuration's
 ! analytic derivatives against centred finite differences of its own
 ! values (a step of 1e-4 in log T and in log P). Each row prints the
 ! analytic value, the finite difference and their relative difference.
 ! The second-derivative outputs are checked as
 !   dlnrho_dlnt_dt   d(dln rho/dln T)/dln T
-!   dlnrho_dlnp_dt   d(dln rho/dln T)/dln P
+!   dlnrho_dlnt_dp   d(dln rho/dln T)/dln P
 !   adiabatic_gradient_dt, _dp   dln grad_ad/dln T, dln grad_ad/dln P
 !   specific_heat_cp_dt, _dp     dln cp/dln T, dln cp/dln P
 ! Table interpolation adds noise to finite differences, so agreement is
@@ -488,7 +515,7 @@ contains
                call row("dlnrho_dlnt", c(2), (tp(1) - tm(1))/(2.0d0*h))
                call row("dlnrho_dlnp", c(3), (pp(1) - pm(1))/(2.0d0*h))
                call row("dlnrho_dlnt_dt", c(6), (tp(2) - tm(2))/(2.0d0*h*ln10))
-               call row("dlnrho_dlnp_dt", c(7), (pp(2) - pm(2))/(2.0d0*h*ln10))
+               call row("dlnrho_dlnt_dp", c(7), (pp(2) - pm(2))/(2.0d0*h*ln10))
                call row("grad_ad_dt", c(8), (log10(tp(5)) - log10(tm(5)))/(2.0d0*h))
                call row("grad_ad_dp", c(9), (log10(pp(5)) - log10(pm(5)))/(2.0d0*h))
                call row("cp_dt", c(10), (log10(tp(4)) - log10(tm(4)))/(2.0d0*h))
@@ -507,10 +534,7 @@ contains
             d = 0.0d0
             ksaha = 0
             fxion = 0.0d0
-            call eos_eval(logt, t, logp, p, logd, d, 0.70d0, 0.016492d0, &
-                 beta, betai, beta14, fxion, rmu, amu, emu, eta, &
-                 qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
-                 want, .false., ksaha, ierr=ierr)
+            call eval_eos(0.70d0, 0.016492d0, want, .false., ierr)
             if (ierr /= 0) write(*,'(a,2f8.4,a,i0)') "eos logT logP", lt, lp, " ierr ", ierr
             v = [logd, qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp]
          end subroutine eval_point

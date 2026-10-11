@@ -12,6 +12,7 @@
 ! interpolate them. The tables live in mhd_eos_tables (mhd).
 module mhd_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use mhd_eos_tables, only: i_mhd_chi_rho, i_mhd_chi_t, &
            i_mhd_dgrad_ad_dlog10_rho, i_mhd_dgrad_ad_dlog10_t, &
            i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, i_mhd_dlog10p_dx, &
@@ -41,28 +42,13 @@ contains
 ! table interpolator (mhdpx) and converts its output
 ! (mhd%mhd_output) into the same thermodynamic derivative set
 ! used by the rest of the EOS machinery.
-subroutine compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
-     pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
-     beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
-     ion_mean_weight_inverse, electron_mean_weight_inverse, &
-     electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-     specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-     dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-     specific_heat_cp_dt, specific_heat_cp_dp, ierr)
+subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
+     hydrogen_fraction, metal_fraction, r, ierr)
 
 
       real(dp), intent(in) :: log10_temperature, log10_pressure
-      real(dp), intent(out) :: temperature, pressure, &
-           log10_density, density
+      type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      real(dp), intent(out) :: beta, beta_inverse, beta14
-      real(dp), intent(out) :: ion_fraction(:)
-      real(dp), intent(out) :: specific_gas_constant, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, &
-           electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
-           specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
-           dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
 
       real(dp), parameter :: cnvs = 0.434294481d0
       real(dp) :: mhdpx_r10
@@ -74,48 +60,48 @@ subroutine compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      temperature = exp10(log10_temperature)
-      pressure = exp10(log10_pressure)
+      r%temperature = exp10(log10_temperature)
+      r%pressure = exp10(log10_pressure)
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            mhdpx_r10, ierr)
       if (ierr /= 0) return
-      log10_density = mhd%mhd_output(i_mhd_log10_rho)
-      density = exp10(log10_density)
-      dlnrho_dlnp = 1.0d0/mhd%mhd_output(i_mhd_chi_rho)
+      r%log10_density = mhd%mhd_output(i_mhd_log10_rho)
+      r%density = exp10(r%log10_density)
+      r%dlnrho_dlnp = 1.0d0/mhd%mhd_output(i_mhd_chi_rho)
       chi_rho = mhd%mhd_output(i_mhd_chi_rho)
       chi_t = mhd%mhd_output(i_mhd_chi_t)
-      dlnrho_dlnt = -chi_t/chi_rho
+      r%dlnrho_dlnt = -chi_t/chi_rho
       log10_specific_heat_cp = mhd%mhd_output(i_mhd_log10_cp)
-      specific_heat_cp = exp10(log10_specific_heat_cp)
-      specific_heat_cp_dp = dlnrho_dlnp*mhd%mhd_output(i_mhd_dlogcp_dlogrho)
-      specific_heat_cp_dt = mhd%mhd_output(i_mhd_dlogcp_dlogt) + mhd%mhd_output(i_mhd_dlogcp_dlogrho)*dlnrho_dlnt
-      adiabatic_gradient = mhd%mhd_output(i_mhd_grad_ad)
-      adiabatic_gradient_dp = dlnrho_dlnp*mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*cnvs/adiabatic_gradient
-      adiabatic_gradient_dt = (mhd%mhd_output(i_mhd_dgrad_ad_dlog10_t) + mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*dlnrho_dlnt)* &
-           cnvs/adiabatic_gradient
-      dlnrho_dlnp_dt = dlnrho_dlnt*(adiabatic_gradient_dp - 1.0d0 + &
-           dlnrho_dlnp + specific_heat_cp_dp)
-      dlnrho_dlnt_dt = dlnrho_dlnt*(adiabatic_gradient_dt + 1.0d0 + &
-           dlnrho_dlnt + specific_heat_cp_dt)
-      beta = exp10((mhd%mhd_output(i_mhd_log10_pgas) - mhd%mhd_output(i_mhd_log10_p)))
-      beta_inverse = 1.0d0/beta
-      beta14 = 1.0d0 - beta
+      r%specific_heat_cp = exp10(log10_specific_heat_cp)
+      r%specific_heat_cp_dp = r%dlnrho_dlnp*mhd%mhd_output(i_mhd_dlogcp_dlogrho)
+      r%specific_heat_cp_dt = mhd%mhd_output(i_mhd_dlogcp_dlogt) + mhd%mhd_output(i_mhd_dlogcp_dlogrho)*r%dlnrho_dlnt
+      r%adiabatic_gradient = mhd%mhd_output(i_mhd_grad_ad)
+      r%adiabatic_gradient_dp = r%dlnrho_dlnp*mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*cnvs/r%adiabatic_gradient
+      r%adiabatic_gradient_dt = (mhd%mhd_output(i_mhd_dgrad_ad_dlog10_t) + mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*r%dlnrho_dlnt)* &
+           cnvs/r%adiabatic_gradient
+      r%dlnrho_dlnt_dp = r%dlnrho_dlnt*(r%adiabatic_gradient_dp - 1.0d0 + &
+           r%dlnrho_dlnp + r%specific_heat_cp_dp)
+      r%dlnrho_dlnt_dt = r%dlnrho_dlnt*(r%adiabatic_gradient_dt + 1.0d0 + &
+           r%dlnrho_dlnt + r%specific_heat_cp_dt)
+      r%beta = exp10((mhd%mhd_output(i_mhd_log10_pgas) - mhd%mhd_output(i_mhd_log10_p)))
+      r%beta_inverse = 1.0d0/r%beta
+      r%beta14 = 1.0d0 - r%beta
       do ion_idx = 1, 3
-      ion_fraction(ion_idx) = mhd%mhd_output(ion_idx+i_mhd_ion_frac_1-1)
+      r%ion_fraction(ion_idx) = mhd%mhd_output(ion_idx+i_mhd_ion_frac_1-1)
       end do
-      electron_degeneracy_parameter = mhd%mhd_output(i_mhd_eta)
-      specific_gas_constant = exp10(mhd%mhd_output(i_mhd_log10_pgas))/(density*temperature)
-      call compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
+      r%electron_degeneracy_parameter = mhd%mhd_output(i_mhd_eta)
+      r%specific_gas_constant = exp10(mhd%mhd_output(i_mhd_log10_pgas))/(r%density*r%temperature)
+      call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
-      if (abs((specific_gas_constant-specific_gas_constant_check)/ &
-           specific_gas_constant) > 5.0d-7) then
+           r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
+      if (abs((r%specific_gas_constant-specific_gas_constant_check)/ &
+           r%specific_gas_constant) > 5.0d-7) then
           write(terminal_unit,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
-          write(terminal_unit,*) specific_gas_constant, &
+          write(terminal_unit,*) r%specific_gas_constant, &
                specific_gas_constant_check
         write(terminal_unit,*) 'ERROR (MHD): CHECK MU'
           write(run_log_unit,*)' ERROR(MHD): IN MEAN WEIGHTS ... '
-          write(run_log_unit,*) specific_gas_constant, &
+          write(run_log_unit,*) r%specific_gas_constant, &
                specific_gas_constant_check
         write(run_log_unit,*) 'ERROR (MHD): CHECK MU'
           ierr = 1

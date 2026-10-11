@@ -51,11 +51,12 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
 ! (see eos_lib/kap_lib index constants). Loop-carried inout slots
 ! (log10_density mode input, the gradient/cp guesses, the ionization
 ! fractions) persist across shells in the arrays exactly as the old
-! locals did. NOTE: kap_get receives eos_res(i_log10_density) --
+! locals did. NOTE: kap_get receives eos_res%log10_density --
 ! the density compute_blended_eos just RETURNED -- matching the historical inout
 ! dataflow (passing the model's log_density instead drifts rotating
 ! runs, caught by the byte gate).
-      double precision :: eos_res(num_eos_results), kap_res(num_kap_results)
+      type(eos_result) :: eos_res
+      double precision :: kap_res(num_kap_results)
       integer :: saha_state
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -86,15 +87,15 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          pressure_rotation_factor = fp(im)
          temperature_rotation_factor = ft(im)
 
-         eos_res(i_log10_density) = log10_density
+         eos_res%log10_density = log10_density
          call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_state, &
               composition_at_zone=composition(:,im), ierr=ierr)
          if (ierr /= 0) return
-         call kap_get(eos_res(i_log10_density), log10_temperature, &
+         call kap_get(eos_res%log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
-              eos_res(i_fxion:i_fxion+2), ierr=ierr)
+              eos_res%ion_fraction, ierr=ierr)
          if (ierr /= 0) return
          call compute_temperature_gradients(log10_temperature, log10_pressure, &
               eos_res, kap_res, log10_radius, log10_mass, &
@@ -107,7 +108,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          convective_flag(im) = is_convective
          star%gradr(im) = radiative_gradient
          star%gradT(im) = actual_gradient
-         star%grada(im) = eos_res(i_grada)
+         star%grada(im) = eos_res%adiabatic_gradient
 !  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
 !  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
          dfx1 = composition(i_h1,im) - star%envelope_hydrogen_fraction
@@ -124,8 +125,8 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
          emu2 = 1.0d0/temp_scratch
          star%mu(im) = amu2*emu2/(amu2+emu2)
          star%opacity_zone(im) = kap_res(i_kap)
-         star%cp(im) = eos_res(i_cp)
-         star%qdt(im) = eos_res(i_dlnrho_dlnt)
+         star%cp(im) = eos_res%specific_heat_cp
+         star%qdt(im) = eos_res%dlnrho_dlnt
          star%conv_vel(im) = convective_velocity
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.

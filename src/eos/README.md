@@ -8,7 +8,8 @@ This directory computes the density of a zone and its thermodynamic quantities (
 
 | Module (file) | What it holds |
 |---|---|
-| `eos_lib` (`eos_lib.f90`) | **The public interface.** `eos_init` installs the settings and loads the tables they select. `eos_get` (a result array) and `eos_eval` (separate outputs) evaluate a zone. `eos_set_mixture`, `eos_set_debye_huckel_z`, `eos_set_debye_huckel_composition` and `eos_update_envelope_tables` take the compositions the star layer owns. `eos_get_gamma1` returns gamma1 and the adiabatic gradient at (T, rho), for test_eos. |
+| `eos_lib` (`eos_lib.f90`) | **The public interface.** `eos_init` installs the settings and loads the tables they select. `eos_get` evaluates a zone into an `eos_result` record. `eos_set_mixture`, `eos_set_debye_huckel_z`, `eos_set_debye_huckel_composition` and `eos_update_envelope_tables` take the compositions the star layer owns. `eos_get_gamma1` returns gamma1 and the adiabatic gradient at (T, rho), for test_eos. |
+| `eos_results` | `eos_result`, the record every EOS family fills: one named field per quantity, each with its definition and unit. |
 | `eos_configuration` | The settings record (`eos_settings_t`, `eos_settings`). |
 | `eos_mixture` | The envelope mixture (`eos_mix`), `ion_mean_weight_excess` and `compute_mean_weights`. |
 | `blended_eos` (`blended_eos.f90`) | The EOS of every run without MHD (section 2): `blend_eos` evaluates one point; `compute_blended_eos` adds the numerical derivatives. |
@@ -18,7 +19,7 @@ This directory computes the density of a zone and its thermodynamic quantities (
 | `mhd_eos` (`mhd/`) | The Mihalas-Hummer-Däppen EOS: `read_mhd_tables` and `compute_mhd_eos`. Däppen's routines keep their names (`mhdst`, `mhdpx`, ...). |
 | `opal_eos_tables`, `mhd_eos_tables`, `scv_eos_tables`, `yale_eos_tables` | Each family's tables and state. `opal_eos_tables` also holds the helpers the OPAL vintages share (`interpolate_opal_t6_rho`, `find_opal_ramp`, `quad`, `gmass01`, `open_opal_eos_table`). |
 
-## 2. What eos_eval does
+## 2. What eos_get does
 
 With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blended_eos`, which calls `blend_eos` once, or four more times for finite-difference derivatives when `use_numerical_derivatives` is set. For one (log T, log P, X, Z), `blend_eos`:
 1. **Below the ionization cutoff** (`saha_log10t_cutoff`): solves the Saha equations (`compute_saha_eos`), or, with `use_scv_eos`, looks the point up in the SCV tables and takes from Saha only what SCV lacks.
@@ -33,7 +34,7 @@ With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blend
   | Output | Definition |
   |---|---|
   | `dlnrho_dlnt_dt` | ∂(∂lnρ/∂lnT)/∂lnT |
-  | `dlnrho_dlnp_dt` | ∂(∂lnρ/∂lnT)/∂lnP (not a derivative of ∂lnρ/∂lnP, despite the name) |
+  | `dlnrho_dlnt_dp` | ∂(∂lnρ/∂lnT)/∂lnP (named `dlnrho_dlnp_dt` until 2026-10) |
   | `adiabatic_gradient_dt`, `_dp` | ∂ln∇ad/∂lnT, ∂ln∇ad/∂lnP |
   | `specific_heat_cp_dt`, `_dp` | ∂ln cp/∂lnT, ∂ln cp/∂lnP |
 
@@ -49,4 +50,4 @@ With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blend
 
 `test_eos` (`make tests` in `src/`, then `pytest test_eos.py` from the repository root) pins the production EOS (SCV and OPAL 2006) on a (log T, log P) grid, `eos_get_gamma1` on both branches, the error paths, and every configuration a deck can choose: OPAL 1995 and 2001, SCV only, Yale only, numerical derivatives, diffusion of Z and the Debye-Hückel correction. The MHD tables are not shipped; with `YREC_MHD_TABLES` set to their directory, test_eos also evaluates the MHD path. A deliberate change to its output means regenerating `eos/test/expected_test_eos.out`.
 
-**Add an EOS family:** a module in its own directory with `read_*_tables` (called from `eos_init`) and `compute_*_eos`; its state in a `*_tables` module; a `use_*` flag in `eos_settings_t` (and in `equation_of_state_settings`); a branch in `eos_eval` or `blend_eos`; and a `check_configurations` section in `test_eos`.
+**Add an EOS family:** a module in its own directory with `read_*_tables` (called from `eos_init`) and `compute_*_eos`; its state in a `*_tables` module; a `use_*` flag in `eos_settings_t` (and in `equation_of_state_settings`); a branch in `eos_get` or `blend_eos`; a `compute_*_eos` that fills an `eos_result`; and a `check_configurations` section in `test_eos`.
