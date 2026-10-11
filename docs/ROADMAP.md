@@ -1312,3 +1312,45 @@ config matrix, the testsuite's Allard and Kurucz solar models).
   wind/massloss reads the shared atmosphere point after an Allard
   lookup that may have failed (kept as it was). The atm_table_file_unit
   and allard_table_unit controls are no longer read.
+
+### eos/ follow-up: interface, derivatives, solvers, OPAL (yrec-next, 2026-10-11)
+
+From an evaluation of eos/ (readability ~6, maintainability ~5.5,
+hygiene ~8.5 out of 10). All bitwise identical (domain tests, gate1,
+config matrix, the testsuite's Allard and Kurucz solar models, the
+Debye-Hueckel 0.03 Msun case) except where noted.
+- **DONE: the derivative contract** (1c177c25, b96442be): test_eos
+  checks every derivative against centred finite differences at six
+  points per configuration; eos/README.md states what each one is. It
+  found:
+  - dlnrho_dlnp_dt was d(dln rho/dln T)/dln P (renamed dlnrho_dlnt_dp);
+  - with an OPAL table, the six second derivatives are the Yale
+    solution's while density and the first derivatives are OPAL's
+    (off by 8-180%, one sign flip);
+  - in the Saha-to-fully-ionized ramp the blend omits the ramp weight's
+    T dependence (eqstat2.f's WT1 line is commented out) and blends
+    QDTT/QDTP as fully + w*saha (it never forms the differences);
+  - of eos_eval's inout arguments only the density (the fully ionized
+    iteration's starting guess) and saha_state carry information in.
+  use_numerical_derivatives agrees with finite differences to ~1e-6.
+  All of these are recorded, not fixed: correcting them is a physics
+  change (they feed the Newton Jacobian, so they should affect
+  convergence rather than converged models, which is untested).
+- **DONE: eos_result** (5d39f836): one named record replaces the 24
+  slots and the 31-argument eos_eval. The families take it as r, so
+  20-30 argument lists become 3-9. log T and log P are intent(in).
+- **DONE: the Yale solvers as named steps** (cdda0898, 9e0169dd):
+  compute_saha_eos (447 lines) and compute_fully_ionized_eos (288)
+  become drivers over 4 and 6 steps, with records for the state the
+  steps share. The Saha solver's hidden SAVE guesses are now module
+  variables. Prather's symbols stay, with a notation key, rather than
+  long names that would bloat the algebra.
+- **DONE: the OPAL fold** (522fdf58): one compute_opal_eos for all
+  vintages, one loop in blend_eos, and the 2001/2006 code merged into
+  opal_eos with esac/readcoeos/t6rinteos folded, branching on the
+  vintage only where they differ. The OPAL code drops from 3238 to
+  2688 lines; rhoofp01/06 and radsub01/06 differ in algorithm and stay
+  two, and the 1995 code keeps its own state layout.
+- **Open:** the derivative findings above; the MHD path is still
+  unpinned (it compiles against the new record); beta14's two
+  definitions.

@@ -308,7 +308,7 @@ end type
 
 **EOS:**
 
-- **A named result type** (`eos_result`): log ρ, ∂ln ρ/∂ln P at fixed T, ∂ln ρ/∂ln T at fixed P, c_P, ∇_ad, Γ₁, β, η, the ionization fractions and the second derivatives the solver uses. Each field states its units and its definition. It replaces the 24 positional slots.
+- **A named result type** (`eos_result`): log ρ, ∂ln ρ/∂ln P at fixed T, ∂ln ρ/∂ln T at fixed P, c_P, ∇_ad, Γ₁, β, η, the ionization fractions and the second derivatives the solver uses. Each field states its units and its definition. It replaces the 24 positional slots. (Done 2026-10-11: `eos/eos_results.f90`; Γ₁ is still derived by the caller.)
 - **One integration pattern instead of two:** an ordered list of sources with validity windows and a blend. The Yale/Saha base, SCV, OPAL 95/01/06 and MHD all become entries.
 
 #### (d) Rotational transport mechanisms
@@ -555,6 +555,6 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - It is inherited: in the original F77 only `dadcoeft.f` referenced `/DIFAD4/`, `/EGRIDCHI/`, `FGEOM`, `ECOD5/6` and the `EV*` arrays.
    - The flag takes effect only in rotating runs with instability transport. 16 legacy decks and 316 inlists set it, but none of them rotate, so for them it is inert.
    - Fixed (2026-10): `secular_transport` now stops with an error when the flag would take effect.
-5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`blended_eos.f90:462` vs `:684`).
+5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`blended_eos.f90:324` vs `:484`).
 6. **Opacity ramp derivatives are inconsistent** (*reported, not yet checked*). The ramp blends κ linearly but averages the dln κ derivatives without weighting them and drops the dw/dln T term (`kap_lib.f90:312–317`).
 7. **`max_delta_j_by_iter(16)` can overflow** (*reported, not yet checked*). It overflows when `max_diffusion_iters > 16` (`check_angular_momentum.f90:91`).
