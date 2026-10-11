@@ -12,9 +12,52 @@ module run_files
       use legacy_controls
       implicit none
       private
-      public :: resolve_output_mode_and_paths, derive_options_and_open_files, expand_value
+      public :: assign_unit_numbers, resolve_output_mode_and_paths, &
+           derive_options_and_open_files, expand_value
 
 contains
+
+! ---------------------------------------------------------------
+! The fixed unit numbers of the run's files and tables (the newer
+! readers and writers use newunit instead).
+subroutine assign_unit_numbers
+      terminal_unit = 6
+      last_model_unit = 11
+      first_unit = 12
+! the physics and control namelists
+      run_unit = 13
+      standard_unit = 14
+      fermi_unit = 15
+      run_log_unit = 20
+      dynamics_unit = 30
+      opal92_table_unit = 32
+      opal95_table_unit = 48
+      composition_unit = 34
+      kurucz_table_unit = 36
+      isochrone_file_unit = 37
+      alex94_table_unit = 39
+! the MHD EOS tables (mhdst treats a unit <= 0 as a missing table)
+      unit_zams_a = 40
+      unit_zams_b = 41
+      unit_zams_c = 42
+      unit_centre1 = 43
+      unit_centre2 = 44
+      unit_centre3 = 45
+      unit_centre4 = 46
+      unit_centre5 = 47
+! the OPAL EOS
+      iopale = 49
+      kurucz_table2_unit = 65
+      allard_table_unit = 66
+      monte_carlo_unit1 = 70
+      monte_carlo_unit2 = 71
+      scv_h_unit = 72
+      scv_he_unit = 73
+      scv_z_unit = 74
+! the Potekhin conductive opacities
+      icondopacp = 75
+      alex06_table_unit = 90
+end subroutine assign_unit_numbers
 
 ! ---------------------------------------------------------------
 ! Expand environment variables in every configured file path.
