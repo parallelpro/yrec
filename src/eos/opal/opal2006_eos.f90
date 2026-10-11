@@ -11,8 +11,17 @@
 ! state live in opal_eos_tables (opal06).
 module opal2006_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opal_eos_tables
+      use opal_eos_tables, only: gmass01, i_opal_chi_rho, i_opal_chi_t, &
+           i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
+           i_opal_gamma2_ratio, i_opal_p, i_opal_s, interpolate_opal_t6_rho, &
+           iv_opal06, n_eos06_nr, n_eos06_nt, n_eos_mv, n_eos_mx, opal06, &
+           opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
+           opal_eos, opal_eos_var_order, opal_eos_vintage, opal_flag_set, &
+           opal_rho_not_found, quad
+      use physical_constants, only: gas_constant
+      use io_units, only: run_log_unit
       use eos_mixture, only: compute_mean_weights
+      use math_lib
       implicit none
       private
       public :: compute_opal2006_eos, find_opal2006_ramp, esac06
@@ -34,9 +43,6 @@ subroutine compute_opal2006_eos(log10_temperature, temperature, log10_pressure, 
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, in_table)
 
-      use physical_constants
-      use io_units
-      use math_lib
 
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(out) :: temperature, pressure, &
@@ -70,7 +76,7 @@ subroutine compute_opal2006_eos(log10_temperature, temperature, log10_pressure, 
       pressure = exp10(log10_pressure)
       t_million_k = temperature/1.0d6
       p_e12 = pressure/1.0d12
-      if (t_million_k.lt.0.001870d0 .or. t_million_k.gt.200.0d0) then
+      if (t_million_k < 0.001870d0 .or. t_million_k > 200.0d0) then
          in_table = .false.
          return
       end if
@@ -79,7 +85,7 @@ subroutine compute_opal2006_eos(log10_temperature, temperature, log10_pressure, 
       density_cgs = rhoofp06(opal06, hydrogen_fraction_work, t_million_k, p_e12, &
            rad_flag, ierr)
       if (ierr /= 0) return
-      if (density_cgs.le.-998.0d0) then
+      if (density_cgs <= -998.0d0) then
          in_table = .false.
          return
       end if
@@ -111,13 +117,12 @@ subroutine compute_opal2006_eos(log10_temperature, temperature, log10_pressure, 
       call compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
-      if (electron_mean_weight_inverse.le.0.0d0) then
+      if (electron_mean_weight_inverse <= 0.0d0) then
       electron_mean_weight_inverse = 0.0d0
       ion_mean_weight_inverse = specific_gas_constant/gas_constant - &
            electron_mean_weight_inverse
       end if
 
-      return
 end subroutine compute_opal2006_eos
 
 !----------------------------------------------------------------------
@@ -131,10 +136,9 @@ end subroutine compute_opal2006_eos
 ! this version tracks the table's ragged edge via per-row/per-column
 ! index arrays (opal06_t6_index_lo/opal06_density_index_edge) rather than a single
 ! linear-interpolated edge value.
-subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
+pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
 
-      use math_lib
 
       integer, parameter :: nr = n_eos06_nr, nt = n_eos06_nt
 
@@ -151,7 +155,7 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
       density = pow(10d0, log10_density)
 
 !     Exit if outside table in rho
-      if ((density.lt.opal06%density_grid(1)) .or. (density.ge.opal06%density_grid(nr))) then
+      if ((density < opal06%density_grid(1)) .or. (density >= opal06%density_grid(nr))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -159,7 +163,7 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
       end if
 
 !     Exit if outside table in T6
-      if ((t6.gt.opal06%t6_grid(1)) .or. (t6.le.opal06%t6_grid(nt))) then
+      if ((t6 > opal06%t6_grid(1)) .or. (t6 <= opal06%t6_grid(nt))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -174,11 +178,11 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
                                    ! i.e. we are not in the border of the table.
 
 !     Check for easy borders
-      if (t6.gt.opal06%t6_grid(2)) then
+      if (t6 > opal06%t6_grid(2)) then
           t6_ramp_factor = (t6-opal06%t6_grid(1))/(opal06%t6_grid(2)-opal06%t6_grid(1)) ! Ramp in temperature
           needs_ramp = .true.
       end if
-      if (density.lt.opal06%density_grid(2)) then
+      if (density < opal06%density_grid(2)) then
           density_ramp_factor = (density - opal06%density_grid(1))/ &
                (opal06%density_grid(2)-opal06%density_grid(1)) ! Ramp in density
           needs_ramp = .true.
@@ -190,19 +194,19 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
 !     The ESAC06 variables (k=)opal06%t6_index_3 and (l-)opal06%density_index_2 are
 !     close to what we need. A linear search will work fine.
       t6_row = opal06%t6_index_3
-   do while (t6.le.opal06%t6_grid(t6_row))
+   do while (t6 <= opal06%t6_grid(t6_row))
         t6_row = t6_row+1
    end do
-   do while (t6.gt.opal06%t6_grid(t6_row-1))
+   do while (t6 > opal06%t6_grid(t6_row-1))
         t6_row = t6_row-1
    end do
 !     We now have: opal06%t6_grid(t6_row-1) >= T6 > opal06%t6_grid(t6_row)
 
       density_row = opal06%density_index_2
-   do while (density.gt.opal06%density_grid(density_row))
+   do while (density > opal06%density_grid(density_row))
         density_row = density_row+1
    end do
-   do while (density.le.opal06%density_grid(density_row-1))
+   do while (density <= opal06%density_grid(density_row-1))
         density_row = density_row-1
    end do
 !     We now have: opal06%density_grid(density_row-1) < D <= opal06%density_grid(density_row)
@@ -215,13 +219,13 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
 !     A valid index in array opal06%density_grid must be less than or equal
 !     to opal06_density_index_edge(t6_row)
 
-      if (density_row.gt.opal06_density_index_edge(t6_row)) then
+      if (density_row > opal06_density_index_edge(t6_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (density_row.eq.opal06_density_index_edge(t6_row)) then
+      if (density_row == opal06_density_index_edge(t6_row)) then
         needs_ramp = .true.
         density_ramp_factor = (opal06%density_grid(density_row)-density)/ &
              (opal06%density_grid(density_row)-opal06%density_grid(density_row-1))
@@ -236,19 +240,18 @@ subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
 !     decreasing array.) A valid index in opal06%t6_grid must be less than or
 !     equal to opal06_t6_index_lo(density_row).
 
-      if (t6_row.gt.opal06_t6_index_lo(density_row)) then
+      if (t6_row > opal06_t6_index_lo(density_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (t6_row.eq.opal06_t6_index_lo(density_row)) then
+      if (t6_row == opal06_t6_index_lo(density_row)) then
         needs_ramp = .true.
         t6_ramp_factor = (t6-opal06%t6_grid(t6_row))/(opal06%t6_grid(t6_row-1)-opal06%t6_grid(t6_row))
       end if
 
       ramp_factor = density_ramp_factor * t6_ramp_factor
-      return
 end subroutine find_opal2006_ramp
 
 !----------------------------------------------------------------------
@@ -280,7 +283,6 @@ end subroutine find_opal2006_ramp
 real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
-      use io_units, only: run_log_unit
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -315,10 +317,10 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
 
       rat = rad_const_over_c
       radiation_pressure = 0.0d0
-      if (rad_flag.eq.1) radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
+      if (rad_flag == 1) radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (opal_eos%table_loaded_flag(iv_opal06).ne.opal_flag_set) then
+      if (opal_eos%table_loaded_flag(iv_opal06) /= opal_flag_set) then
          hydrogen_fraction_dbg = 0.5d0
          t6_dbg = 1.0d0
          density_dbg = 0.001d0
@@ -338,9 +340,9 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
 
       lo_idx = 2
       hi_idx = mx
-    do while (hi_idx-lo_idx.gt.1)
+    do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction.le.opal06_x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction <= opal06_x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -350,13 +352,13 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
 
       lo_idx = nt
       hi_idx = 2
-   do while (lo_idx-hi_idx.gt.1)
+   do while (lo_idx-hi_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (t6_temperature.eq.v%t6_list(1,mid_idx)) then
+         if (t6_temperature == v%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
             exit
          end if
-         if (t6_temperature.le.v%t6_list(1,mid_idx)) then
+         if (t6_temperature <= v%t6_list(1,mid_idx)) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -369,8 +371,8 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
            v%density_grid(opal06_density_index_edge(t6_bisect_idx))
       pressure_min = v%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
            v%density_grid(1)
-      if ((pressure_no_rad.gt.1.25d0*pressure_max) .or. &
-           (pressure_no_rad.lt.pressure_min)) then
+      if ((pressure_no_rad > 1.25d0*pressure_max) .or. &
+           (pressure_no_rad < pressure_min)) then
 !        requested pressure-temperature not in the OPAL 2006 EOS table
          rhoofp06 = opal_rho_not_found
          return
@@ -384,14 +386,14 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
          return
       end if
       pressure_trial1 = v%eos_output(i_opal_p)
-      if (pressure_trial1.gt.pressure_no_rad) then
+      if (pressure_trial1 > pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
          shrink_count = 0
          shrink: do
             shrink_count = shrink_count + 1
             density_trial1 = 0.2d0*density_trial1
-            if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
+            if (density_trial1 < 1.0d-14) density_trial1 = 1.0d-14
             call esac06(v, hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, in_table)
             if (ierr /= 0 .or. .not. in_table) then
                rhoofp06 = opal_rho_not_found
@@ -401,12 +403,12 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
 ! 2026 (bugsweep Batch 2): keep shrinking until the root is bracketed
 ! (the original did a single x0.2 step and let regula falsi
 ! extrapolate from an unbracketed pair).
-            if (pressure_trial1.le.pressure_no_rad) exit shrink
-            if (density_trial1.le.1.0d-14 .or. shrink_count.ge.max_shrink) exit shrink
+            if (pressure_trial1 <= pressure_no_rad) exit shrink
+            if (density_trial1 <= 1.0d-14 .or. shrink_count >= max_shrink) exit shrink
          end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
-         if (density_trial2.gt.v%density_grid(opal06_density_index_edge(t6_bisect_idx))) &
+         if (density_trial2 > v%density_grid(opal06_density_index_edge(t6_bisect_idx))) &
               density_trial2 = v%density_grid(opal06_density_index_edge(t6_bisect_idx))
          call esac06(v, hydrogen_fraction, t6_temperature, density_trial2, 1, 0, ierr, in_table)
          if (ierr /= 0 .or. .not. in_table) then
@@ -429,18 +431,18 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
       pressure_trial3 = v%eos_output(i_opal_p)
 ! 2026 (bugsweep Batch 2): tolerance restored to the original 0.5d-7
 ! (was 1.0d-5 from 2025-10-10 to 2026-09; see the header note).
-      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad).lt.0.5d-7) then
+      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
          rhoofp06 = density_trial3
          return
       end if
-      if (pressure_trial3.gt.pressure_no_rad) then
+      if (pressure_trial3 > pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
       end if
-      if (refine_count.lt.max_refine) cycle refine
+      if (refine_count < max_refine) cycle refine
       write (run_log_unit,'("RHOOFP06: no convergence after ",I0," tries;", &
            & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
            max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
@@ -470,7 +472,6 @@ end function rhoofp06
 subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, in_table)
 
-      use io_units
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -515,10 +516,10 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       ierr = 0
       in_table = .true.
 
-      if (deriv_order.gt.9) then
+      if (deriv_order > 9) then
          write (run_log_unit,'(A, " iorder cannot exceed 9")') routine_id
       end if
-      if ((rad_flag.ne.0) .and. (rad_flag.ne.1)) then
+      if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
          write (run_log_unit,'(A, " Irad must be 0 or 1")') routine_id
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
@@ -528,11 +529,11 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       t6_value = t6_temperature
       density_value = density
 !
-      if (opal_eos%table_loaded_flag(iv_opal06).ne.opal_flag_set) then
+      if (opal_eos%table_loaded_flag(iv_opal06) /= opal_flag_set) then
          opal_eos%table_loaded_flag(iv_opal06) = opal_flag_set
          do index_idx = 1, 10
             do species_idx = 1, 10
-               if (opal_eos_var_order(index_idx).eq.species_idx) &
+               if (opal_eos_var_order(index_idx) == species_idx) &
                     v%eos_index_inverse(index_idx) = species_idx
             end do
          end do
@@ -545,7 +546,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          if (ierr /= 0) return
          opal_eos%table_metal_fraction(iv_opal06) = v%z_table(1)
 
-         if (opal_eos%table_metal_fraction(iv_opal06)+hydrogen_fraction-1.0d-6.gt.1) then
+         if (opal_eos%table_metal_fraction(iv_opal06)+hydrogen_fraction-1.0d-6 > 1) then
             write(run_log_unit,*) routine_id, "Mass fractions exceed unity (61)"
             write(run_log_unit,*) 'Z, XH', opal_eos%table_metal_fraction(iv_opal06), hydrogen_fraction
             
@@ -558,7 +559,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
 !
 ! ..... Determine T6,rho grid points to use in the
 !       interpolation.
-      if ((t6_value.gt.v%t6_grid(1)) .or. (t6_value.lt.v%t6_grid(nt))) then
+      if ((t6_value > v%t6_grid(1)) .or. (t6_value < v%t6_grid(nt))) then
          write(run_log_unit,*) routine_id, " T6/LogR outside of table range (62)"
          write(run_log_unit,*) "slt, t6a(1),t6a(nt):", t6_value, v%t6_grid(1), &
          v%t6_grid(nt)
@@ -567,7 +568,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          in_table = .false.
          return
       end if
-      if ((density_value.lt.v%density_grid(1)) .or. (density_value.gt.v%density_grid(nr))) then
+      if ((density_value < v%density_grid(1)) .or. (density_value > v%density_grid(nr))) then
          write(run_log_unit,*) routine_id, " T6/LogR outside of table range (62)"
          write(run_log_unit,*) "slt, t6a(1),t6a(nt):", t6_value, v%t6_grid(1), &
          v%t6_grid(nt)
@@ -581,9 +582,9 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
 !
       lo_idx = 2
       hi_idx = mx
-    do while (hi_idx-lo_idx.gt.1)
+    do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction.le.opal06_x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction <= opal06_x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -595,25 +596,25 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       x_index_3 = result_idx
       x_index_4 = result_idx + 1
       x_index_hi = x_index_4
-      if (hydrogen_fraction.lt.1.0d-6) then
+      if (hydrogen_fraction < 1.0d-6) then
          v%x_index_lo = 1
          x_index_2 = 1
          x_index_3 = 1
          x_index_4 = 2
          x_index_hi = 1
       end if
-      if ((hydrogen_fraction.le.opal06_x_grid(2)+1.0d-7) .or. &
-           (hydrogen_fraction.ge.opal06_x_grid(mx-2)-1.0d-7)) x_index_hi = x_index_3
+      if ((hydrogen_fraction <= opal06_x_grid(2)+1.0d-7) .or. &
+           (hydrogen_fraction >= opal06_x_grid(mx-2)-1.0d-7)) x_index_hi = x_index_3
 !
       lo_idx = 2
       hi_idx = nr
-   do while (hi_idx-lo_idx.gt.1)
+   do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (density_value.eq.v%density_grid(mid_idx)) then
+         if (density_value == v%density_grid(mid_idx)) then
             hi_idx = mid_idx
             exit
          end if
-         if (density_value.le.v%density_grid(mid_idx)) then
+         if (density_value <= v%density_grid(mid_idx)) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -625,17 +626,17 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       v%density_index_3 = result_idx
       v%density_index_4 = v%density_index_3 + 1
       density_order_hi = 3
-      if (v%density_index_4.gt.nr) density_order_hi = 2
+      if (v%density_index_4 > nr) density_order_hi = 2
 !
       lo_idx = nt
       hi_idx = 2
-   do while (lo_idx-hi_idx.gt.1)
+   do while (lo_idx-hi_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (t6_temperature.eq.v%t6_list(1,mid_idx)) then
+         if (t6_temperature == v%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
             exit
          end if
-         if (t6_temperature.le.v%t6_list(1,mid_idx)) then
+         if (t6_temperature <= v%t6_list(1,mid_idx)) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -647,8 +648,8 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       v%t6_index_3 = result_idx
       v%t6_index_4 = v%t6_index_3 + 1
       t6_order_hi = 3
-      if (v%t6_index_4.gt.nt) t6_order_hi = 2
-      if (v%t6_index_3.eq.0) then
+      if (v%t6_index_4 > nt) t6_order_hi = 2
+      if (v%t6_index_3 == 0) then
          write (run_log_unit,'(A, " ihi,ilo,imd",3I5)') routine_id, &
               hi_idx, lo_idx, mid_idx
       end if
@@ -673,7 +674,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
                     v%eos_table(x_loop_index_06,1,t6_scan_idx,density_scan_idx)
             end do
          end do
-         if (t6_order_hi.eq.3) then
+         if (t6_order_hi == 3) then
             do density_scan_idx = v%density_index_1, v%density_index_1+2
                do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
                   table_sum_3x4 = table_sum_3x4 + &
@@ -683,7 +684,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          else
             table_sum_3x4 = 2.0d+30
          end if
-         if (density_order_hi.eq.3) then
+         if (density_order_hi == 3) then
             do density_scan_idx = v%density_index_1, v%density_index_1+3
                do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
                   table_sum_4x4 = table_sum_4x4 + &
@@ -696,8 +697,8 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       end do
       v%density_interp_order = 2
       v%t6_interp_order = 2
-      if (table_sum_3x3.gt.1.0d+30) then
-         if (table_sum_2x2.lt.1.0d+25) then
+      if (table_sum_3x3 > 1.0d+30) then
+         if (table_sum_2x2 < 1.0d+25) then
             v%t6_index_1 = v%t6_index_3 - 3
             v%t6_index_2 = v%t6_index_1 + 1
             v%t6_index_3 = v%t6_index_2 + 1
@@ -712,13 +713,13 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
             return
          end if
       else
-      if (table_sum_3x4.lt.1.0d+30) v%t6_interp_order = 3
-      if (table_sum_4x4.lt.1.0d+30) v%density_interp_order = 3
+      if (table_sum_3x4 < 1.0d+30) v%t6_interp_order = 3
+      if (table_sum_4x4 < 1.0d+30) v%density_interp_order = 3
 
-      if (t6_temperature.ge.v%t6_list(1,2)+1.0d-7) v%t6_interp_order = 2
-      if (density_value.le.v%density_grid(2)+1.0d-15) v%density_interp_order = 2
+      if (t6_temperature >= v%t6_list(1,2)+1.0d-7) v%t6_interp_order = 2
+      if (density_value <= v%density_grid(2)+1.0d-15) v%density_interp_order = 2
 
-      if ((v%density_index_3.eq.nr) .or. (v%t6_index_3.eq.nt)) then
+      if ((v%density_index_3 == nr) .or. (v%t6_index_3 == nt)) then
          v%density_interp_order = 2
          v%t6_interp_order = 2
       end if
@@ -737,8 +738,8 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          end do
       end do
       end do
-      if ((v%z_table(x_index_2).ne.v%z_table(v%x_index_lo)) .or. &
-           (v%z_table(x_index_3).ne.v%z_table(v%x_index_lo))) then
+      if ((v%z_table(x_index_2) /= v%z_table(v%x_index_lo)) .or. &
+           (v%z_table(x_index_3) /= v%z_table(v%x_index_lo))) then
          write(run_log_unit,'(A,"Z does not match Z in OEOS06 files you are" &
               &," using")') routine_id
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -746,12 +747,12 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          ierr = 1
          return
       end if
-      if (opal_eos%table_metal_fraction(iv_opal06).ne.v%z_table(v%x_index_lo)) exit
+      if (opal_eos%table_metal_fraction(iv_opal06) /= v%z_table(v%x_index_lo)) exit
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
-            if (x_index_hi.eq.1) then
+            if (x_index_hi == 1) then
                v%x_interp_result(t6_scan_idx,density_scan_idx) = &
                     v%x_interp_workspace(v%x_index_lo,t6_scan_idx,density_scan_idx)
                cycle
@@ -763,7 +764,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
                  v%x_interp_workspace(x_index_3,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(v%x_index_lo), v%x_grid_copy(x_index_2), &
                  v%x_grid_copy(x_index_3))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx).gt.1.0d+20) then
+            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) then
                write(run_log_unit,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') &
                     routine_id, t6_scan_idx, density_scan_idx, v%density_index_3, &
                     v%t6_index_3, v%density_interp_order, v%t6_interp_order
@@ -775,7 +776,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
          end do
       end do
 
-      if (x_index_4.eq.x_index_hi) then  ! interpolate between quadratics
+      if (x_index_4 == x_index_hi) then  ! interpolate between quadratics
       recompute_flag = 0
       cache_slot = 1
       x_interp_weight = (v%x_grid_copy(x_index_3) - hydrogen_fraction)* &
@@ -789,7 +790,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx).gt.1.0d+20) then
+            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) then
                write(run_log_unit,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') &
                     routine_id, t6_scan_idx, density_scan_idx, v%density_index_3, &
                     v%t6_index_3, v%density_interp_order, v%t6_interp_order
@@ -833,7 +834,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       mean_molecular_weight = gmass01(hydrogen_fraction, opal_eos%table_metal_fraction(iv_opal06), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
-      if (rad_flag.eq.1) then
+      if (rad_flag == 1) then
          call radsub06(v, rad_flag, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else
@@ -853,7 +854,6 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
-      return
 
 end subroutine esac06
 
@@ -870,7 +870,6 @@ end subroutine esac06
 ! message.
 recursive subroutine t6rinteos06(v, slr, slt, ierr)
 
-      use io_units
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -881,7 +880,7 @@ recursive subroutine t6rinteos06(v, slr, slt, ierr)
       ierr = 0
 
       call interpolate_opal_t6_rho(v, slr, slt)
-      if (v%esact.gt.1.0d+15) then
+      if (v%esact > 1.0d+15) then
          write(run_log_unit,'("T6RINTEOS06: Interpolation indices out", &
               &" of range;please report conditions.")')
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -890,7 +889,6 @@ recursive subroutine t6rinteos06(v, slr, slt, ierr)
          return
       end if
 
-      return
 end subroutine t6rinteos06
 
 !----------------------------------------------------------------------
@@ -957,7 +955,7 @@ subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
       gamma2_over_gamma2_minus1_norad = gamma1_norad/gamma3_minus1_norad
 !---- End  no radiation calculation
 
-      if (rad_flag.ne.0) then
+      if (rad_flag /= 0) then
 !---- Calculate EOS with radiation calculation
          radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
          radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
@@ -998,7 +996,6 @@ subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
       v%eos_output(v%eos_index_inverse(i_opal_cv)) = molar_specific_heat
       v%eos_output(v%eos_index_inverse(i_opal_chi_rho)) = chi_rho
       v%eos_output(v%eos_index_inverse(i_opal_chi_t)) = chi_t6
-      return
 end subroutine radsub06
 
 !----------------------------------------------------------------------
@@ -1022,7 +1019,6 @@ end subroutine radsub06
 ! transliterated exactly rather than "fixed"; log10_ne_grid_06 is never
 ! read anywhere.
 subroutine readcoeos06(v, ierr)
-      use io_units
 
       type(opal_eos_vintage), intent(inout) :: v
 
@@ -1042,7 +1038,7 @@ subroutine readcoeos06(v, ierr)
 
       blank_line = ' '
 
-      if (opal_eos%readco_init_flag(iv_opal06).ne.opal_flag_set) then
+      if (opal_eos%readco_init_flag(iv_opal06) /= opal_flag_set) then
          do x_idx = 1, mx
             do var_idx = 1, mv
                do t6_idx = 1, nt
@@ -1075,7 +1071,7 @@ subroutine readcoeos06(v, ierr)
                  v%temperature_count_used(x_loop_index_06,density_row), &
                  unused_field, unused_field, &
                  v%density_grid_table(x_loop_index_06,density_row)
-            if (record_number.ne.density_row) then
+            if (record_number /= density_row) then
                write (run_log_unit,'(" OEOS06 Data file incorrect: numtot,jcs= " &
                     &,2I5)') record_number, density_row
                ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -1085,7 +1081,7 @@ subroutine readcoeos06(v, ierr)
             end if
             read(opal_eos%table_unit,'(A)') blank_line
             read(opal_eos%table_unit,'(A)') blank_line
-            if (v%temperature_count_used(x_loop_index_06,density_row).lt. &
+            if (v%temperature_count_used(x_loop_index_06,density_row) < &
                  opal06_t6_index_lo(density_row)) then
                write (run_log_unit,'("Problem with OEOS96 data files: X=",F6.4, &
                     &" density=",E14.4)') v%hydrogen_fraction_header(x_loop_index_06), &
@@ -1096,7 +1092,7 @@ subroutine readcoeos06(v, ierr)
                return
             end if
             do t6_row = 1, v%temperature_count_used(x_loop_index_06,density_row)
-               if (t6_row.gt.opal06_t6_index_lo(density_row)) then
+               if (t6_row > opal06_t6_index_lo(density_row)) then
                   read (opal_eos%table_unit,'(A)') blank_line
                   cycle
                end if
@@ -1114,7 +1110,7 @@ subroutine readcoeos06(v, ierr)
       end do
 
       do t6_scan_idx = 1, nt
-         if (v%t6_list(1,t6_scan_idx).eq.0.0d0) then
+         if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
             write(run_log_unit,'("READCOEOS06: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
             ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
@@ -1139,7 +1135,6 @@ subroutine readcoeos06(v, ierr)
       end do
       close (opal_eos%table_unit)
 
-      return
 end subroutine readcoeos06
 
 end module opal2006_eos

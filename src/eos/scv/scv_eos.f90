@@ -15,7 +15,20 @@
 ! The tables live in scv_eos_tables.
 module scv_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use scv_eos_tables
+      use scv_eos_tables, only: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
+           iscv_dlns_dlnt, iscv_du_dt, iscv_frac_atom_ion1, iscv_frac_neutral, &
+           iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
+           iscvenv_dlncp_dlnt, iscvenv_dlnp_dlnrho, iscvenv_dlnrho_dlnp, &
+           iscvenv_dlnrho_dlnt, iscvenv_dqdt_dlnp, iscvenv_dqdt_dlnt, &
+           iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
+           iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
+           iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
+           scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
+           tlogx
+      use physical_constants, only: cc13, ln10, radiation_constant_over_3
+      use numerics_lib, only: inter3, interp, kspline, ksplint
+      use eos_mixture, only: eos_mix
+      use math_lib
       implicit none
       private
       public :: compute_scv_envelope_eos, build_scv_envelope_table
@@ -40,10 +53,6 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point, ierr)
 
-      use physical_constants
-      use eos_mixture, only: eos_mix
-      use numerics_lib
-      use math_lib
       integer, intent(out) :: ierr
       integer :: jerr_gate
 
@@ -53,7 +62,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
            pressure
       real(dp), intent(out) :: log10_density, density
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction, beta
-      real(dp), intent(out) :: ion_fraction(3)
+      real(dp), intent(out) :: ion_fraction(:)
       real(dp), intent(out) :: dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
       logical, intent(out) :: valid_table_point
@@ -88,8 +97,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, jj, jjj, k
       ierr = 0
-      if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction).gt.1.0d-5 &
-           .or. abs(metal_fraction-eos_mix%envelope_metal_fraction).gt.1.0d-5) then
+      if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction) > 1.0d-5 &
+           .or. abs(metal_fraction-eos_mix%envelope_metal_fraction) > 1.0d-5) then
          call compute_scv_eos(log10_temperature, temperature, pressure, &
               log10_density, density, hydrogen_fraction, metal_fraction, &
               beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
@@ -100,17 +109,17 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       beta_complement = 1.0d0 - beta
       log10_gas_pressure = log10(beta*pressure)
 !  check if the point is within the table
-      if (log10_temperature.lt.tlogx(1) .or. &
-           log10_temperature.gt.tlogx(nts) .or. &
-           log10_gas_pressure.lt.4.0d0) then
+      if (log10_temperature < tlogx(1) .or. &
+           log10_temperature > tlogx(nts) .or. &
+           log10_gas_pressure < 4.0d0) then
          valid_table_point = .false.   ! Error exit - no valid table entry
          return
       end if
 !  find nearest points in temperature.
-      if (log10_temperature.lt.tlogx(idtt+1)) then
+      if (log10_temperature < tlogx(idtt+1)) then
 ! search down to find nearest 4 table elements
          do i = idtt, 1, -1
-            if (log10_temperature.gt.tlogx(i)) then
+            if (log10_temperature > tlogx(i)) then
                ii = i - 1
                exit
             end if
@@ -121,7 +130,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       else
 ! search up for nearest 4 table elements
          do i = idtt+2, nts
-            if (log10_temperature.lt.tlogx(i)) then
+            if (log10_temperature < tlogx(i)) then
                ii = i - 2
                exit
             end if
@@ -133,20 +142,20 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       idtt = max(1,ii)
       idtt = min(nts-3,idtt)
       temp_needs_smoothing = .false.
-      if (idtt.eq.ii) then
+      if (idtt == ii) then
          temp_dist_above = log10_temperature - &
               tlogx(idtt+1)
          temp_dist_below = tlogx(idtt+2) - &
               log10_temperature
-         if (temp_dist_above.lt.tol_temp_smooth) then
-            if (idtt.gt.1) then
+         if (temp_dist_above < tol_temp_smooth) then
+            if (idtt > 1) then
                temp_needs_smoothing = .true.
                temp_smooth_direction = -1
                temp_smooth_weight = (temp_dist_above+tol_temp_smooth)/ &
                     (2.0d0*tol_temp_smooth)
             end if
-         else if (temp_dist_below.lt.tol_temp_smooth) then
-            if (idtt.lt.nts-3) then
+         else if (temp_dist_below < tol_temp_smooth) then
+            if (idtt < nts-3) then
                temp_needs_smoothing = .true.
                temp_smooth_direction = 1
 ! 2026 (bugsweep Batch 2): weight must be 0.5 AT the node and fall
@@ -159,10 +168,10 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       end if
 !  find nearest points in pressure.
       jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure.lt.tablenv(idtt,jjj+1,iscvenv_log10_p)) then
+      if (log10_gas_pressure < tablenv(idtt,jjj+1,iscvenv_log10_p)) then
 ! search down to find nearest 4 table elements
          do j = jjj, 1, -1
-            if (log10_gas_pressure.gt.tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure > tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 1
                exit
             end if
@@ -177,7 +186,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
 ! search up for nearest 4 table elements.  note search is done at lowest
 ! temperature point (with the minimum range in p).
          do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure.lt.tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure < tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 2
                exit
             end if
@@ -191,20 +200,20 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       end if
       valid_table_point = .true.
       press_needs_smoothing = .false.
-      if (idp.eq.jj) then
+      if (idp == jj) then
          press_dist_above = log10_gas_pressure - &
               tablenv(idtt,idp+1,iscvenv_log10_p)
          press_dist_below = tablenv(idtt, &
               idp+2,iscvenv_log10_p) - log10_gas_pressure
-         if (press_dist_above.lt.tol_pressure_smooth) then
-            if (idp.gt.1) then
+         if (press_dist_above < tol_pressure_smooth) then
+            if (idp > 1) then
                press_needs_smoothing = .true.
                press_smooth_direction = -1
                press_smooth_weight = (press_dist_above+tol_pressure_smooth)/ &
                     (2.0d0*tol_pressure_smooth)
             end if
-         else if (press_dist_below.lt.tol_pressure_smooth) then
-            if (idp.lt.nptsx(idtt)-3) then
+         else if (press_dist_below < tol_pressure_smooth) then
+            if (idp < nptsx(idtt)-3) then
                press_needs_smoothing = .true.
                press_smooth_direction = 1
 ! 2026 (bugsweep Batch 2): same reversal as the T branch above.
@@ -220,7 +229,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       if (temp_needs_smoothing) then
       call spline_cell(temp_smooth_direction, 0, interp_result_temp_shift)
       if (ierr /= 0) return
-      if (temp_smooth_direction.eq.-1) then
+      if (temp_smooth_direction == -1) then
          do j = 1,5
             interp_result_temp_smoothed(j) = interp_result_temp_shift(j) + &
                  temp_smooth_weight*(interp_result(j) - &
@@ -238,7 +247,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
       if (press_needs_smoothing) then
       call spline_cell(0, press_smooth_direction, interp_result_press_shift)
       if (ierr /= 0) return
-      if (press_smooth_direction.eq.-1) then
+      if (press_smooth_direction == -1) then
          do j = 1,5
             interp_result_press_smoothed(j) = interp_result_press_shift(j) + &
                  press_smooth_weight*(interp_result(j) - &
@@ -262,7 +271,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
 ! add changes for both t and p interpolation
          if (press_needs_smoothing) then
             do j = 1,5
-               if (temp_smooth_direction.eq.-1) then
+               if (temp_smooth_direction == -1) then
 ! interpolate in t at fixed p
                   change_t1 = interp_result_temp_shift(j) + &
                        temp_smooth_weight*(interp_result(j) - &
@@ -279,7 +288,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
                        temp_smooth_weight*(interp_result_both_shift(j) - &
                        interp_result_press_shift(j))
                end if
-               if (press_smooth_direction.eq.-1) then
+               if (press_smooth_direction == -1) then
                   interp_result(j) = change_t2+press_smooth_weight* &
                        (change_t1-change_t2)
                else
@@ -415,7 +424,7 @@ contains
 ! spline failure ierr is set and the caller must return.
 subroutine spline_cell(t_shift, p_shift, result)
       integer, intent(in) :: t_shift, p_shift
-      real(dp), intent(out) :: result(5)
+      real(dp), intent(out) :: result(:)
 
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
@@ -474,9 +483,6 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
      ion_fraction, dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
      adiabatic_gradient, valid_table_point)
 
-      use physical_constants
-      use numerics_lib
-      use math_lib
 
       integer, parameter :: nts = scv_nt
 
@@ -484,7 +490,7 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       real(dp), intent(in) :: pressure
       real(dp), intent(out) :: log10_density, density
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction, beta
-      real(dp), intent(out) :: ion_fraction(3)
+      real(dp), intent(out) :: ion_fraction(:)
       real(dp), intent(out) :: dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
       logical, intent(out) :: valid_table_point
@@ -517,17 +523,17 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       beta_complement = 1.0d0 - beta
       log10_gas_pressure = log10(beta*pressure)
 ! check if the point is within the table
-      if (log10_temperature.lt.tlogx(1) .or. &
-           log10_temperature.gt.tlogx(nts) .or. &
-           log10_gas_pressure.lt.4.0d0) then
+      if (log10_temperature < tlogx(1) .or. &
+           log10_temperature > tlogx(nts) .or. &
+           log10_gas_pressure < 4.0d0) then
          valid_table_point = .false.
          return
       end if
 ! find nearest points in temperature.
-      if (log10_temperature.lt.tlogx(idtt+1)) then
+      if (log10_temperature < tlogx(idtt+1)) then
 ! search down to find nearest 4 table elements
          do i = idtt, 1, -1
-            if (log10_temperature.gt.tlogx(i)) then
+            if (log10_temperature > tlogx(i)) then
                ii = i - 1
                exit
             end if
@@ -540,7 +546,7 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       else
 ! search up for nearest 4 table elements
          do i = idtt+2, nts
-            if (log10_temperature.lt.tlogx(i)) then
+            if (log10_temperature < tlogx(i)) then
                ii = i - 2
                exit
             end if
@@ -553,10 +559,10 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
       end if
 ! find nearest points in pressure.
       jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure.lt.tablenv(idtt,jjj+1,iscvenv_log10_p)) then
+      if (log10_gas_pressure < tablenv(idtt,jjj+1,iscvenv_log10_p)) then
 ! search down to find nearest 4 table elements
          do j = jjj, 1, -1
-            if (log10_gas_pressure.gt.tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure > tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 1
                exit
             end if
@@ -571,7 +577,7 @@ subroutine compute_scv_eos(log10_temperature, temperature, pressure, &
 ! search up for nearest 4 table elements.  note search is done at lowest
 ! temperature point (with the minimum range in p).
          do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure.lt.tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure < tablenv(idtt,j,iscvenv_log10_p)) then
                jj = j - 2
                exit
             end if
@@ -790,9 +796,6 @@ end subroutine compute_scv_eos
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
 
-      use physical_constants
-      use numerics_lib
-      use math_lib
       integer, parameter :: nts = scv_nt
 ! the envelope composition the table is built for
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
@@ -872,8 +875,8 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             hydrogen_electron_density = max(hydrogen_electron_density,1.0d0)
             helium_electron_density = max(helium_electron_density,1.0d0)
             total_electron_density = max(total_electron_density,1.0d0)
-            if (hydrogen_number_density.eq.0.0d0 .or. &
-                 helium_number_density.eq.0.0d0) then
+            if (hydrogen_number_density == 0.0d0 .or. &
+                 helium_number_density == 0.0d0) then
                smix(t_idx,p_idx) = 0.0d0
             else
                mixing_beta = (hydrogen_atom_mass/helium_atom_mass)* &
@@ -884,12 +887,12 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                hydrogen_xd = 1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1)
                helium_yd = 2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - &
                     tabley(t_idx,p_idx,iscv_frac_atom_ion1)
-               if (hydrogen_xd.gt.0.0d0) then
+               if (hydrogen_xd > 0.0d0) then
                  mix_de = 1.5d0*helium_yd*mixing_beta*mixing_gamma/hydrogen_xd
                else
                  mix_de = 0.0d0
                end if
-               if (helium_yd.gt.0.0d0) then
+               if (helium_yd > 0.0d0) then
                   mix_dei = hydrogen_xd/(1.5d0*helium_yd*mixing_beta*mixing_gamma)
                else
                   mix_dei = 0.0d0
@@ -913,9 +916,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
          log_t_work = tlogx(t_idx)
          temp_value = (exp10(log_t_work))
 ! TEMPERATURE INTERPOLATION FACTORS
-        if (t_idx.eq.1) then
+        if (t_idx == 1) then
            idtt = 1
-        else if (t_idx.eq.nts) then
+        else if (t_idx == nts) then
            idtt = t_idx - 2
         else
            idtt = t_idx - 1
@@ -1005,9 +1008,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 ! D LN DEL(AD) / D LN T
       do t_idx = 1, nts
 ! TEMPERATURE INTERPOLATION FACTORS
-        if (t_idx.eq.1) then
+        if (t_idx == 1) then
            idtt = 1
-        else if (t_idx.eq.nts) then
+        else if (t_idx == nts) then
            idtt = t_idx - 2
         else
            idtt = t_idx - 1
@@ -1020,9 +1023,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
         temp_value = exp(log_t_work)
         do p_idx = 1, nptsx(t_idx)
 ! PRESSURE INTERPOLATION FACTORS
-           if (p_idx.eq.1) then
+           if (p_idx == 1) then
               idp = 1
-           else if (p_idx.eq.nptsx(t_idx)) then
+           else if (p_idx == nptsx(t_idx)) then
               idp = p_idx - 2
            else
               idp = p_idx - 1
@@ -1080,7 +1083,6 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
         end do
       end do
 
-      return
 end subroutine build_scv_envelope_table
 
 end module scv_eos

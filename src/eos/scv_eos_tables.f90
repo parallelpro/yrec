@@ -9,8 +9,20 @@
 ! build_scv_envelope_table (called from core/read_starting_model);
 ! read by eos/scv/compute_scv_envelope_eos and compute_scv_eos.
 module scv_eos_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
 
+      private
+      public :: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
+           iscv_dlns_dlnt, iscv_du_dt, iscv_frac_atom_ion1, iscv_frac_neutral, &
+           iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
+           iscvenv_dlncp_dlnt, iscvenv_dlnp_dlnrho, iscvenv_dlnrho_dlnp, &
+           iscvenv_dlnrho_dlnt, iscvenv_dqdt_dlnp, iscvenv_dqdt_dlnt, &
+           iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
+           iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
+           iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
+           scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
+           tlogx
 ! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
 ! tablez/tablenv/nptsx/idtt/idp are spelled identically to their
 ! canonical names in the majority of files that declare this block
@@ -28,7 +40,7 @@ module scv_eos_tables
       integer, parameter :: scv_np = 76
       integer, parameter :: scv_nvar = 12
       integer, parameter :: scv_nvar_z = 13
-      double precision :: tlogx(scv_nt), tablex(scv_nt,scv_np,scv_nvar), &
+      real(dp) :: tlogx(scv_nt), tablex(scv_nt,scv_np,scv_nvar), &
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
            tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
       integer :: nptsx(scv_nt), idtt, idp
@@ -74,8 +86,8 @@ contains
 ! Four-point Lagrange sum used by compute_scv_envelope_eos/compute_scv_eos to interpolate a table
 ! column along one axis: w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4),
 ! evaluated left to right exactly as the former inline expressions.
-double precision function scv_weighted_sum4(w, y)
-      double precision, intent(in) :: w(4), y(4)
+pure real(dp) function scv_weighted_sum4(w, y)
+      real(dp), intent(in) :: w(:), y(:)
       scv_weighted_sum4 = w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
 end function scv_weighted_sum4
 

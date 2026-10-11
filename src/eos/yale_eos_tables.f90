@@ -21,15 +21,19 @@
 ! load time mapping a scaled abscissa to its table interval (see
 ! eos_init's bin-construction loop).
 module yale_eos_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
 
-      type, public :: yale_eos_state
-           double precision :: fermi_table_x_grid(43), fermi_table_eta(43), &
+      private
+      public :: debye_huckel_coefficient, debye_huckel_nu, debye_huckel_x, &
+           debye_huckel_y, debye_huckel_z, debye_huckel_z_total, yale
+      type :: yale_eos_state
+           real(dp) :: fermi_table_x_grid(43), fermi_table_eta(43), &
                 fermi_table_data(5,43,20)
            integer :: fermi_table_x_lookup(261)
       end type yale_eos_state
 
-      type(yale_eos_state), public :: yale
+      type(yale_eos_state) :: yale
 
 
 ! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
@@ -50,9 +54,9 @@ module yale_eos_tables
 ! zzdh/zdh) are likewise not namelist values -- mixing/compute_scale_height.f90
 ! recomputes them per shell from the local composition -- so they too
 ! have no declaration-time default.
-      double precision :: debye_huckel_coefficient
-      double precision :: debye_huckel_z(18)
-      double precision :: debye_huckel_x, debye_huckel_y, &
+      real(dp) :: debye_huckel_coefficient
+      real(dp) :: debye_huckel_z(18)
+      real(dp) :: debye_huckel_x, debye_huckel_y, &
            debye_huckel_z_total
-      double precision :: debye_huckel_nu(18)
+      real(dp) :: debye_huckel_nu(18)
 end module yale_eos_tables

@@ -12,8 +12,21 @@
 ! interpolate them. The tables live in mhd_eos_tables (mhd).
 module mhd_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use mhd_eos_tables
+      use mhd_eos_tables, only: i_mhd_chi_rho, i_mhd_chi_t, &
+           i_mhd_dgrad_ad_dlog10_rho, i_mhd_dgrad_ad_dlog10_t, &
+           i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, i_mhd_dlog10p_dx, &
+           i_mhd_dlog10u_dx, i_mhd_dlogcp_dlogrho, i_mhd_dlogcp_dlogt, &
+           i_mhd_eta, i_mhd_grad_ad, i_mhd_ion_frac_1, i_mhd_log10_cp, &
+           i_mhd_log10_p, i_mhd_log10_pgas, i_mhd_log10_rho, i_mhd_log10_u, &
+           i_mhd_placeholder, imhd_centre_1, imhd_centre_2, imhd_centre_3, &
+           imhd_centre_4, imhd_centre_5, imhd_zams_a, imhd_zams_b, &
+           imhd_zams_c, mhd, mhd_ivarc, mhd_ivarx, mhd_n_centre, mhd_n_zams, &
+           mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, mhd_nt2m, &
+           mhd_ntxm
+      use io_units, only: run_log_unit, terminal_unit
+      use numerics_lib, only: intpt, lir, quint
       use eos_mixture, only: compute_mean_weights
+      use math_lib
       implicit none
       private
       public :: compute_mhd_eos, read_mhd_tables
@@ -37,15 +50,13 @@ subroutine compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, ierr)
 
-      use io_units
-      use math_lib
 
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(out) :: temperature, pressure, &
            log10_density, density
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: beta, beta_inverse, beta14
-      real(dp), intent(out) :: ion_fraction(3)
+      real(dp), intent(out) :: ion_fraction(:)
       real(dp), intent(out) :: specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -98,7 +109,7 @@ subroutine compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
            metal_fraction, specific_gas_constant_check, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, beta)
       if (abs((specific_gas_constant-specific_gas_constant_check)/ &
-           specific_gas_constant).gt.5.0d-7) then
+           specific_gas_constant) > 5.0d-7) then
           write(terminal_unit,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
           write(terminal_unit,*) specific_gas_constant, &
                specific_gas_constant_check
@@ -112,7 +123,6 @@ subroutine compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
           ierr = 1
           return
       end if
-      return
 end subroutine compute_mhd_eos
 
 !----------------------------------------------------------------------
@@ -162,7 +172,6 @@ subroutine read_mhd_tables(zams_a_table_path, zams_b_table_path, zams_c_table_pa
       close(unit_centre3)
       close(unit_centre4)
       close(unit_centre5)
-      return
 end subroutine read_mhd_tables
 
 !----------------------------------------------------------------------
@@ -233,7 +242,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       unit_centre(imhd_centre_5) = unit_centre5
 !     READ ZAMS TABLES
       do ic = 1, mhd_n_zams
-         if (unit_zams(ic).gt.0) then
+         if (unit_zams(ic) > 0) then
             table_index = 0
             call mhdst1(unit_zams(ic),table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
                         mhd%zams_lower_num_t,mhd%zams_lower_num_r,mhd%zams_upper_num_t,mhd%zams_upper_num_r, &
@@ -250,7 +259,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       end do
 !     READ CENTRE TABLES
       do ic = 1, mhd_n_centre
-         if (unit_centre(ic).gt.0) then
+         if (unit_centre(ic) > 0) then
             table_index = 1
             call mhdst1(unit_centre(ic),table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
                         unused_num_t,unused_num_r,mhd%centre_num_t,mhd%centre_num_r,unused_zams_log10t, &
@@ -267,14 +276,13 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
 !     TEMPERATURE LIMITS
       mhd%table_log10t_min = mhd%zams_lower_log10t(  1)
       mhd%zams_lower_upper_boundary_log10t = mhd%zams_lower_log10t(mhd%zams_lower_num_t)
-      if (unit_centre1.le.0) then
+      if (unit_centre1 <= 0) then
          mhd%zams_centre_boundary_log10t = mhd%zams_upper_log10t(mhd%zams_upper_num_t)
          mhd%table_log10t_max = mhd%zams_centre_boundary_log10t
       else
          mhd%zams_centre_boundary_log10t = mhd%centre_log10t(  1)
          mhd%table_log10t_max = mhd%centre_log10t(mhd%centre_num_t)
       end if
-      return
 end subroutine mhdst
 
 !----------------------------------------------------------------------
@@ -294,9 +302,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
                   number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-      use mhd_eos_tables, only: i_mhd_log10_p, i_mhd_log10_u, i_mhd_grad_ad, &
-           i_mhd_log10_cp, i_mhd_dlog10p_dx, i_mhd_dlog10u_dx, &
-           i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, i_mhd_placeholder
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
            nt2m, nr2m, ivar2, nchem0
       integer, intent(inout) :: num_t1, num_r1, num_t2, num_r2, num_chem
@@ -327,89 +332,89 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 
       ierr = 0
 
-      if (table_kind.eq.0) then
+      if (table_kind == 0) then
           num_composition_reads = 1
       else
           num_composition_reads = 3
       end if
       do composition_pass=1,num_composition_reads
       read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
-      if (ivar1.lt.num_vars_read) then
+      if (ivar1 < num_vars_read) then
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      if (table_kind.ne.table_kind_read) then
+      if (table_kind /= table_kind_read) then
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      if (composition_pass.eq.1) then
+      if (composition_pass == 1) then
           composition_flag_expected= 0
-      else if (composition_pass.eq.2) then
+      else if (composition_pass == 2) then
           composition_flag_expected=-1
-      else if (composition_pass.eq.3) then
+      else if (composition_pass == 3) then
           composition_flag_expected= 1
       end if
-      if (composition_flag_expected.ne.composition_flag_read) then
+      if (composition_flag_expected /= composition_flag_read) then
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      if (composition_pass.eq.1) call rabu(table_unit,nchem0,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight,ierr)
-      if (composition_pass.eq.2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down,ierr)
-      if (composition_pass.eq.3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up,ierr)
+      if (composition_pass == 1) call rabu(table_unit,nchem0,num_chem,atomic_weight,number_abundance,mass_fraction,mean_molecular_weight,ierr)
+      if (composition_pass == 2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down,ierr)
+      if (composition_pass == 3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up,ierr)
       if (ierr /= 0) return
       read(table_unit     ) num_t1,num_t2,drho1,drho2
-      if (table_kind.eq.1 .and. num_t1.ne.0) then
+      if (table_kind == 1 .and. num_t1 /= 0) then
           ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
           ! facades stop when their caller passes no ierr.
           ierr = 1
           return
       end if
-      if (num_t1.gt.0) then
+      if (num_t1 > 0) then
          call rtab(table_unit,nt1m,nr1m,ivar1,num_t1,num_r1,log10t1,table_vars1, ierr)
          if (ierr /= 0) return
       end if
-      if (table_kind.eq.1) then
-       if (composition_pass.eq.1) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t2,table_vars_centroid, ierr)
+      if (table_kind == 1) then
+       if (composition_pass == 1) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t2,table_vars_centroid, ierr)
        if (ierr /= 0) return
-       if (composition_pass.eq.2) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_down,table_vars_down, ierr)
+       if (composition_pass == 2) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_down,table_vars_down, ierr)
        if (ierr /= 0) return
-       if (composition_pass.eq.3) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_up,table_vars_up, ierr)
+       if (composition_pass == 3) call rtab(table_unit,nt2m,nr2m,ivar1,num_t2,num_r2,log10t_up,table_vars_up, ierr)
        if (ierr /= 0) return
-      else if (table_kind.eq.0) then
+      else if (table_kind == 0) then
        call rtab(table_unit,nt2m,nr2m,ivar2,num_t2,num_r2,log10t2,table_vars2, ierr)
        if (ierr /= 0) return
       end if
       end do
-      if (table_kind.ne.0) then
+      if (table_kind /= 0) then
 !     IF IDX=1: CHECK TABLES FOR CORRECT COMPOSITION CONSTRUCTION
 !     AND PERFORM NUMERICAL DERIVATIVES W.R.T. X
       composition_tolerance = 0.05d0*abs(delta_x)
-      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x).gt.composition_tolerance  .or. abs(mass_fraction(1)-mass_fraction_up(1)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_down(2)+delta_x).gt.composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_up(2)-delta_x).gt.composition_tolerance ) then
+      if ( abs(mass_fraction(1)-mass_fraction_down(1)-delta_x) > composition_tolerance  .or. abs(mass_fraction(1)-mass_fraction_up(1)+delta_x) > composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_down(2)+delta_x) > composition_tolerance  .or. abs(mass_fraction(2)-mass_fraction_up(2)-delta_x) > composition_tolerance ) then
          ierr = 1
          return
       end if
       do species_index=3,num_chem
-      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)).gt.composition_tolerance ) then
+      if ( abs(mass_fraction(species_index)-mass_fraction_up(species_index)) > composition_tolerance ) then
          ierr = 1
          return
       end if
-      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)).gt.composition_tolerance ) then
+      if ( abs(mass_fraction(species_index)-mass_fraction_down(species_index)) > composition_tolerance ) then
          ierr = 1
          return
       end if
       end do
       do temp_check_index=1,num_t2
-      if (log10t2(temp_check_index).ne.log10t_down(temp_check_index)) then
+      if (log10t2(temp_check_index) /= log10t_down(temp_check_index)) then
          ierr = 1
          return
       end if
-      if (log10t2(temp_check_index).ne.log10t_up(temp_check_index)) then
+      if (log10t2(temp_check_index) /= log10t_up(temp_check_index)) then
          ierr = 1
          return
       end if
@@ -438,7 +443,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
 !     EOF while reading a table header
  1000 continue
       ierr = 1
-      return
 end subroutine mhdst1
 
 !----------------------------------------------------------------------
@@ -464,13 +468,12 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
 
       read(table_unit   ) num_chem,(atomic_weight(ic),number_abundance(ic), &
            mass_fraction(ic), ic=1,num_chem),mean_molecular_weight
-      if (nchem0.lt.num_chem) then
+      if (nchem0 < num_chem) then
 ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
 ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      return
 end subroutine rabu
 
 !----------------------------------------------------------------------
@@ -501,15 +504,15 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 
       do t_idx = 1, num_t_points
       read(file_unit     ) rho_count_read,log_t(t_idx)
-      if(t_idx.eq.1) num_rho_points=rho_count_read
+      if(t_idx == 1) num_rho_points=rho_count_read
 !     CHECK LIMITS AND NUMBER OF DENSITY POINTS OF TABLE
-      if ( num_t_points.gt.max_t_points .or.  num_rho_points.gt.max_rho_points ) then
+      if ( num_t_points > max_t_points .or.  num_rho_points > max_rho_points ) then
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
-      if ( t_idx.gt.1 .and. rho_count_read.ne.num_rho_points ) then
+      if ( t_idx > 1 .and. rho_count_read /= num_rho_points ) then
          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
@@ -519,7 +522,6 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       read(file_unit     ) (table_data(t_idx,rho_idx,var_idx),var_idx=1,num_vars)
       end do
       end do
-      return
 end subroutine rtab
 
 !----------------------------------------------------------------------
@@ -556,7 +558,6 @@ subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
       call mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       if (ierr /= 0) return
       log10_density = mhd%mhd_output(i_mhd_log10_rho)
-      return
 end subroutine mhdpx
 
 !----------------------------------------------------------------------
@@ -576,8 +577,6 @@ end subroutine mhdpx
 !     An out-of-range TL returns silently with ierr = 0 and
 !     mhd%mhd_output untouched (historical behaviour, preserved).
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
-      use io_units
-      use numerics_lib
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: ndimt = 8
 
@@ -604,17 +603,17 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 
       ierr = 0
 
-      if (log10_temperature.lt.mhd%table_log10t_min .or. &
-           log10_temperature.gt.mhd%table_log10t_max) then
+      if (log10_temperature < mhd%table_log10t_min .or. &
+           log10_temperature > mhd%table_log10t_max) then
           return
       end if
 !     LOWER ZAMS TABLES
-      if (log10_temperature.lt.mhd%zams_lower_upper_boundary_log10t) then
+      if (log10_temperature < mhd%zams_lower_upper_boundary_log10t) then
          do i=1,3
          itbl = -i
          call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
          end do
-      else if (log10_temperature.lt.mhd%zams_centre_boundary_log10t) then
+      else if (log10_temperature < mhd%zams_centre_boundary_log10t) then
 !     UPPER ZAMS TABLES
          do i=1,3
          itbl = i
@@ -629,11 +628,11 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          end do
       end if
 !     INTERPOLATION IN X
-      if (log10_temperature.le.mhd%zams_centre_boundary_log10t) then
+      if (log10_temperature <= mhd%zams_centre_boundary_log10t) then
 !        QUADRATIC NEWTON (EQUIDISTANT XC'S)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
-         if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing).gt.1.d-4) then
+         if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing) > 1.d-4) then
             write(terminal_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
             write(terminal_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             write(run_log_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
@@ -655,12 +654,12 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !     USE 4 HIGHEST XC(I)'S, IF POSSIBLE.
 !     DISTINGUISH CASE WHERE THE XC(I), I=4..8,
 !     INCREASE OR DECREASE.
-         if (table_hfrac(4).lt.table_hfrac(8)) then
+         if (table_hfrac(4) < table_hfrac(8)) then
             ixmin = 5
-            if (hydrogen_fraction.lt.table_hfrac(5)) ixmin=4
+            if (hydrogen_fraction < table_hfrac(5)) ixmin=4
          else
             ixmin = 4
-            if (hydrogen_fraction.lt.table_hfrac(7)) ixmin=5
+            if (hydrogen_fraction < table_hfrac(7)) ixmin=5
          end if
          do i=1,4
             cubic_table_index(i)=ixmin+i-1
@@ -679,7 +678,6 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          call lir(hydrogen_fraction, cubic_x_nodes, mhd%mhd_output, cubic_vars, &
               num_vars, var_leading_dim, num_points, lir_type_flag, interp_mode)
       end if
-      return
 end subroutine mhdpx1
 
 !----------------------------------------------------------------------
@@ -698,7 +696,6 @@ end subroutine mhdpx1
 ! imhd_centre_1..5 in mhd_eos_tables).
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
      table_vars, table_hfrac, ndimt)
-      use numerics_lib
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: nt1m = mhd_nt1m
@@ -731,19 +728,19 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 !     mhd_n_zams+ic is centre composition ic (row mhd_n_zams+ic). Any
 !     other selector still does nothing, as before.
 !     ZAMS TABLES
-      if (table_selector.le.-1 .and. table_selector.ge.-mhd_n_zams) then
+      if (table_selector <= -1 .and. table_selector >= -mhd_n_zams) then
          ic = -table_selector
          call interpolate_and_store(mhd%zams_lower_table(:,:,:,ic), &
               nt1m, nr1m, ivarc, mhd%zams_lower_log10t, mhd%zams_lower_num_t, &
               mhd%zams_lower_num_r, ic, mhd%zams_mass_fraction(1,ic))
-      else if (table_selector.ge.1 .and. table_selector.le.mhd_n_zams) then
+      else if (table_selector >= 1 .and. table_selector <= mhd_n_zams) then
          ic = table_selector
          call interpolate_and_store(mhd%zams_upper_table(:,:,:,ic), &
               nt2m, nr2m, ivarc, mhd%zams_upper_log10t, mhd%zams_upper_num_t, &
               mhd%zams_upper_num_r, ic, mhd%zams_mass_fraction(1,ic))
 !     CENTER TABLES
-      else if (table_selector.ge.mhd_n_zams+1 .and. &
-           table_selector.le.mhd_n_zams+mhd_n_centre) then
+      else if (table_selector >= mhd_n_zams+1 .and. &
+           table_selector <= mhd_n_zams+mhd_n_centre) then
          ic = table_selector - mhd_n_zams
          call interpolate_and_store(mhd%centre_table(:,:,:,ic), &
               ntxm, nrxm, ivarx, mhd%centre_log10t, mhd%centre_num_t, &

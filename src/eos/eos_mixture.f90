@@ -17,8 +17,10 @@
 ! module. MESA-equivalently: composition is an INPUT of the eos,
 ! owned on the physics side of the boundary.
 module eos_mixture
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, n_mix_species
+      use physical_constants, only: gas_constant
       implicit none
       private
 
@@ -30,14 +32,14 @@ module eos_mixture
            ix_ar, ix_ne, ix_he, n_mix_species
 
       type, public :: eos_mixture_state
-            double precision :: envelope_hydrogen_fraction, &
+            real(dp) :: envelope_hydrogen_fraction, &
                  envelope_metal_fraction
-            double precision :: amuenv
+            real(dp) :: amuenv
 ! fxenv(i): number fraction of species i in the envelope mixture,
 ! in the ix_* order above (the metals Na..Si, C, then H, O..Ne, He;
 ! slots ix_h and ix_he are set from X and Y directly, the metals from
 ! the mixture_weights_seed control scaled to Z).
-            double precision :: fxenv(n_mix_species)
+            real(dp) :: fxenv(n_mix_species)
       end type eos_mixture_state
 
       type(eos_mixture_state), public, save :: eos_mix
@@ -58,18 +60,17 @@ contains
 ! compute_mean_weights and compute_blended_eos.
 subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
      use_envelope)
-      implicit none
-      double precision, intent(in) :: x, z
-      double precision, intent(out) :: mu_ion_inv, dfx1, dfx12, dfx4
+      real(dp), intent(in) :: x, z
+      real(dp), intent(out) :: mu_ion_inv, dfx1, dfx12, dfx4
       logical, intent(out) :: use_envelope
 ! inverse_atomic_weights: 1/A for H, He, C(12), and a spare slot
-      double precision :: inverse_atomic_weights(4)
+      real(dp) :: inverse_atomic_weights(4)
       data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
 
 ! SET UP FRACTIONAL ABUNDANCES
       dfx1 = (x - eos_mix%envelope_hydrogen_fraction)
       dfx12 = (z - eos_mix%envelope_metal_fraction)
-      use_envelope = dabs(dfx1) + dabs(dfx12) .lt. 1.0d-5
+      use_envelope = abs(dfx1) + abs(dfx12) < 1.0d-5
       if (use_envelope) then
 ! USE ENVELOPE ABUNDANCES
          mu_ion_inv = eos_mix%amuenv
@@ -93,17 +94,15 @@ subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fractio
      metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)
 
-      use physical_constants, only: gas_constant
-      implicit none
 
-      double precision, intent(in) :: temperature, pressure, density, &
+      real(dp), intent(in) :: temperature, pressure, density, &
            hydrogen_fraction, metal_fraction, beta
-      double precision, intent(out) :: specific_gas_constant, &
+      real(dp), intent(out) :: specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse
 
 ! dfx1/dfx12/dfx4: per-species excesses returned by
 ! ion_mean_weight_excess; only ion_mean_weight_inverse is needed here.
-      double precision :: dfx1, dfx12, dfx4, ee
+      real(dp) :: dfx1, dfx12, dfx4, ee
       logical :: use_envelope
 
 ! ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL EXCESS
@@ -115,7 +114,6 @@ subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fractio
       specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
            electron_mean_weight_inverse)
 
-      return
 end subroutine compute_mean_weights
 
 end module eos_mixture

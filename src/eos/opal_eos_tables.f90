@@ -42,7 +42,22 @@
 ! dimensions and member order exactly as they were laid out before.
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use math_lib
       implicit none
+      private
+      public :: find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
+           i_opal01_cv, i_opal01_e, i_opal01_gamma1, i_opal01_gamma2_ratio, &
+           i_opal01_gamma3m1, i_opal01_p, i_opal01_s, i_opal_chi_rho, &
+           i_opal_chi_t, i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
+           i_opal_gamma2_ratio, i_opal_gamma3m1, i_opal_p, i_opal_s, &
+           interpolate_opal_t6_rho, iv_opal01, iv_opal06, iv_opal95, &
+           n_eos01_nr, n_eos01_nt, n_eos06_nr, n_eos06_nt, n_eos95_nr, &
+           n_eos95_nt, n_eos_mv, n_eos_mx, opal01, opal01_density_index_edge, &
+           opal01_t6_index_lo, opal01_x_grid, opal06, &
+           opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
+           opal95, opal95_density_index_edge, opal95_t6_index_lo, &
+           opal95_x_grid, opal_eos, opal_eos_var_order, opal_eos_vintage, &
+           opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
       integer, parameter :: n_eos01_nr = 169, n_eos01_nt = 191
@@ -83,7 +98,7 @@ module opal_eos_tables
       integer, parameter :: i_opal01_gamma3m1 = 9
 ! Density returned by rhoofp/rhoofp01/rhoofp06 when the (P,T6) point
 ! is not in the table (the compute_opal95_eos* callers test for .le. -998).
-      double precision, parameter :: opal_rho_not_found = -999.0d0
+      real(dp), parameter :: opal_rho_not_found = -999.0d0
 ! Value of the table_loaded_flag / readco_init_flag members once the
 ! corresponding tables have been read.
       integer, parameter :: opal_flag_set = 12345678
@@ -97,15 +112,15 @@ module opal_eos_tables
 ! ==================== read-only per-vintage tables ====================
 ! Hydrogen-fraction grid of each vintage's table set (former common/a/
 ! x_grid, common/aeos/ x_grid_01, common/aeos06/ x_grid_06).
-      double precision, parameter :: opal95_x_grid(n_eos_mx) = &
+      real(dp), parameter :: opal95_x_grid(n_eos_mx) = &
            [0.0d0,0.2d0,0.4d0,0.6d0,0.8d0]
 ! NOTE: no D-suffix, as in the original (esac01.f/esac06.f) -- preserved
 ! verbatim: parsed as single-precision constants and widened to double
 ! precision (0.2/0.4/0.6/0.8 are not exactly representable in binary
 ! floating point, so these are NOT bit-identical to the correctly-
 ! rounded double values).
-      double precision, parameter :: opal01_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
-      double precision, parameter :: opal06_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
+      real(dp), parameter :: opal01_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
+      real(dp), parameter :: opal06_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
 ! Table-column -> eos_output-slot permutation (the identity for all
 ! three vintages; former common/b/ eos_var_order and its _01/_06 twins).
       integer, parameter :: opal_eos_var_order(n_eos_mv) = [1,2,3,4,5,6,7,8,9,10]
@@ -152,8 +167,8 @@ module opal_eos_tables
 ! quad's per-slot Lagrange-coefficient cache (recomputed when
 ! recompute_flag==0, read on every other call) -- promoted from SAVEd
 ! function locals in the save-migration campaign; one per vintage.
-      type, public :: opal_quad_cache
-            double precision :: x12_inv(30), x13_inv(30), x23_inv(30), &
+      type :: opal_quad_cache
+            real(dp) :: x12_inv(30), x13_inv(30), x23_inv(30), &
                  x1_squared(30), x1_plus_x2(30)
       end type opal_quad_cache
 
@@ -161,10 +176,10 @@ module opal_eos_tables
 ! 1995 has its own type). Table arrays are dimensioned by the 2006
 ! table; the 2001 code addresses only its first n_eos01_nr/n_eos01_nt
 ! rows/columns.
-      type, public :: opal_eos_vintage
+      type :: opal_eos_vintage
             type(opal_quad_cache) :: quad
 ! former common/aeos/ and aeos06/
-           double precision :: eos_table(n_eos_mx,n_eos_mv,n_eos_nt_max,n_eos_nr_max), &
+           real(dp) :: eos_table(n_eos_mx,n_eos_mv,n_eos_nt_max,n_eos_nr_max), &
                 t6_list(n_eos_nr_max,n_eos_nt_max), density_grid(n_eos_nr_max), &
                 t6_grid(n_eos_nt_max), x_interp_result(n_eos_nt_max,n_eos_nr_max), &
                 x_interp_result_alt(n_eos_nt_max,n_eos_nr_max), &
@@ -176,9 +191,9 @@ module opal_eos_tables
 ! component.
            integer :: x_index_lo
 ! former common/aaeos/ and aaeos06/ (xxh is not referenced anywhere)
-           double precision :: rho_interp_hi(4), rho_interp_lo(4), xxh
+           real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
 ! former common/beos/ and beos06/
-           double precision :: z_table(n_eos_mx)
+           real(dp) :: z_table(n_eos_mx)
            integer :: eos_index_inverse(10)
 ! former common/bbeos/ and bbeos06/
            integer :: density_index_1, density_index_2, density_index_3, &
@@ -188,13 +203,13 @@ module opal_eos_tables
 ! atm_tables in 2026 (docs/ROADMAP.md stage 1); its former non-eos reader
 ! (a direct eos_output(8)/(9) read in the turnover-timescale code,
 ! since removed) was replaced by eos_lib's eos_get_gamma1.
-           double precision :: esact, eos_output(n_eos_mv)
+           real(dp) :: esact, eos_output(n_eos_mv)
 ! former common/eeeos/ and eeeos06/
-           double precision :: x_interp_workspace(n_eos_mx,n_eos_nt_max,n_eos_nr_max), &
+           real(dp) :: x_interp_workspace(n_eos_mx,n_eos_nt_max,n_eos_nr_max), &
                 x_grid_copy(n_eos_mx)
 ! former common/eeeeos/ and eeeeos06/ (amu_grid and log10_ne_grid are
 ! read from the 2006 tables only)
-           double precision :: moles_per_gram_table(n_eos_mx), &
+           real(dp) :: moles_per_gram_table(n_eos_mx), &
                 hydrogen_fraction_header(n_eos_mx), &
                 mean_molecular_weight_header(n_eos_mx), &
                 amu_grid(n_eos_nr_max,n_eos_nt_max), &
@@ -205,7 +220,7 @@ module opal_eos_tables
            integer :: temperature_count_used(n_eos_mx,n_eos_nr_max)
 ! former common/rmpopeos01/ (2001 only: find_opal2006_ramp works from the
 ! density_index_edge table directly)
-           double precision :: density_edge_at_t(n_eos_nt_max)
+           real(dp) :: density_edge_at_t(n_eos_nt_max)
            integer :: t_row_index
       end type opal_eos_vintage
 
@@ -213,10 +228,10 @@ module opal_eos_tables
 ! opal_eos_vintage (minus the 2006-only amu/log10_ne grids) at the
 ! 1995 dimensions, in the member order the 1995 stencil overruns rely
 ! on (header note).
-      type, public :: opal_eos_vintage95
+      type :: opal_eos_vintage95
             type(opal_quad_cache) :: quad
 ! former common/a/
-           double precision :: eos_table(n_eos_mx,n_eos_mv,n_eos95_nt,n_eos95_nr), &
+           real(dp) :: eos_table(n_eos_mx,n_eos_mv,n_eos95_nt,n_eos95_nr), &
                 t6_list(n_eos95_nr,n_eos95_nt), density_grid(n_eos95_nr), &
                 t6_grid(n_eos95_nt), x_interp_result(n_eos95_nt,n_eos95_nr), &
                 x_interp_result_alt(n_eos95_nt,n_eos95_nr), &
@@ -224,21 +239,21 @@ module opal_eos_tables
                 density_grid_spacing_inv(n_eos95_nr)
            integer :: x_index_lo
 ! former common/aa/ (xxh is not referenced anywhere)
-           double precision :: rho_interp_hi(4), rho_interp_lo(4), xxh
+           real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
 ! former common/b/
-           double precision :: z_table(n_eos_mx)
+           real(dp) :: z_table(n_eos_mx)
            integer :: eos_index_inverse(10)
 ! former common/bb/
            integer :: density_index_1, density_index_2, density_index_3, &
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
                 t6_index_4, t6_interp_order, density_interp_order
 ! former common/e/
-           double precision :: esact, eos_output(n_eos_mv)
+           real(dp) :: esact, eos_output(n_eos_mv)
 ! former common/ee/
-           double precision :: x_interp_workspace(n_eos_mx,n_eos95_nt,n_eos95_nr), &
+           real(dp) :: x_interp_workspace(n_eos_mx,n_eos95_nt,n_eos95_nr), &
                 x_grid_copy(n_eos_mx)
 ! former common/eee/
-           double precision :: moles_per_gram_table(n_eos_mx), &
+           real(dp) :: moles_per_gram_table(n_eos_mx), &
                 hydrogen_fraction_header(n_eos_mx), &
                 mean_molecular_weight_header(n_eos_mx), &
                 density_grid_table(n_eos_mx,n_eos95_nr), &
@@ -246,14 +261,14 @@ module opal_eos_tables
                 log10_r_value(n_eos95_nr,n_eos95_nt)
            integer :: temperature_count_used(n_eos_mx,n_eos95_nr)
 ! former common/rmpopeos/
-           double precision :: density_edge_at_t(n_eos95_nt)
+           real(dp) :: density_edge_at_t(n_eos95_nt)
            integer :: t_row_index
       end type opal_eos_vintage95
 
 ! Flags shared by, or indexed by, vintage. Kept apart from the vintage
 ! instances so that those (48 MB apiece) stay initializer-free and
 ! zero-filled at load rather than becoming initialized data.
-      type, public :: opal_eos_state
+      type :: opal_eos_state
 ! whether each vintage's table is loaded, indexed by iv_opal95/01/06
 ! (2026-10: one flag shared by all three, from the original common
 ! /lreadco/, so loading one vintage kept the next from reading its own
@@ -265,12 +280,12 @@ module opal_eos_tables
 ! save-migration campaign (2026): lazy-load guards and first-load
 ! table-Z memory, promoted from SAVEd locals; indexed by iv_opal95/01/06.
             integer :: readco_init_flag(n_opal_vintages) = 0
-            double precision :: table_metal_fraction(n_opal_vintages) = 0.0d0
+            real(dp) :: table_metal_fraction(n_opal_vintages) = 0.0d0
       end type opal_eos_state
 
-      type(opal_eos_state), public :: opal_eos
-      type(opal_eos_vintage95), public :: opal95
-      type(opal_eos_vintage), public :: opal01, opal06
+      type(opal_eos_state) :: opal_eos
+      type(opal_eos_vintage95) :: opal95
+      type(opal_eos_vintage) :: opal01, opal06
 
 
 contains
@@ -314,7 +329,7 @@ subroutine interpolate_opal_t6_rho(v, slr, slt)
               v%x_interp_result(t6_grid_idx,v%density_index_3), &
               v%density_grid(v%density_index_1), v%density_grid(v%density_index_2), &
               v%density_grid(v%density_index_3))
-         if (v%density_interp_order.eq.3) then
+         if (v%density_interp_order == 3) then
             cache_slot = 2
             v%rho_interp_hi(hi_loop_count) = quad(v%quad, recompute_flag, cache_slot, &
                  slr, v%x_interp_result(t6_grid_idx,v%density_index_2), &
@@ -332,13 +347,13 @@ subroutine interpolate_opal_t6_rho(v, slr, slt)
       v%esact = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(1), &
            v%rho_interp_lo(2), v%rho_interp_lo(3), v%t6_grid(v%t6_index_1), &
            v%t6_grid(v%t6_index_2), v%t6_grid(v%t6_index_3))
-      if (v%density_interp_order.eq.3) then
+      if (v%density_interp_order == 3) then
 ! .....    eos(i) upper-right 3x3(i=i1+1,i1+3 j=j1,j1+2)
          esactq = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_hi(1), &
               v%rho_interp_hi(2), v%rho_interp_hi(3), v%t6_grid(v%t6_index_1), &
               v%t6_grid(v%t6_index_2), v%t6_grid(v%t6_index_3))
       end if
-      if (v%t6_interp_order.eq.3) then
+      if (v%t6_interp_order == 3) then
 ! .....    eos(i) in lower-left 3x3.
          esact2 = quad(v%quad, recompute_flag, cache_slot, slt, v%rho_interp_lo(2), &
               v%rho_interp_lo(3), v%rho_interp_lo(4), v%t6_grid(v%t6_index_2), &
@@ -347,7 +362,7 @@ subroutine interpolate_opal_t6_rho(v, slr, slt)
          dix = (v%t6_grid(v%t6_index_3) - slt)*v%t6_grid_spacing_inv(v%t6_index_3)
          v%esact = v%esact*dix + esact2*(1.0d0 - dix)
 ! endif   ! moved to loc a
-         if (v%density_interp_order.eq.3) then
+         if (v%density_interp_order == 3) then
 
 ! .....     eos(i) in upper-right 3x3.
             esactq2 = quad(v%quad, recompute_flag, cache_slot, slt, &
@@ -358,16 +373,15 @@ subroutine interpolate_opal_t6_rho(v, slr, slt)
          end if
       end if  ! loc a
 !
-      if (v%density_interp_order.eq.3) then
+      if (v%density_interp_order == 3) then
          dix2 = (v%density_grid(v%density_index_3) - slr)* &
               v%density_grid_spacing_inv(v%density_index_3)
-         if (v%t6_interp_order.eq.3) then
+         if (v%t6_interp_order == 3) then
 ! .....        eos(i) smoothed in both log(T6) and log(R)
             v%esact = v%esact*dix2 + esactq*(1.0d0 - dix2)
          end if
       end if
 
-      return
 end subroutine interpolate_opal_t6_rho
 
 !----------------------------------------------------------------------
@@ -391,12 +405,11 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
      density_index_edge, density_grid, t6, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
-      use math_lib
 
       integer, intent(in) :: nt, nr
-      real(dp), intent(in) :: t6_grid(nt), density_edge_at_t(nt)
-      integer, intent(in) :: density_index_edge(nt)
-      real(dp), intent(in) :: density_grid(nr)
+      real(dp), intent(in) :: t6_grid(:), density_edge_at_t(:)
+      integer, intent(in) :: density_index_edge(:)
+      real(dp), intent(in) :: density_grid(:)
       integer, intent(inout) :: t_row_index
 
       real(dp), intent(in) :: t6, log10_density
@@ -412,9 +425,9 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
       ierr = 0
 
 !     find nearest table element in t.
-      if (t6.lt.t6_grid(t_row_index)) then
+      if (t6 < t6_grid(t_row_index)) then
          do t6_scan_idx = t_row_index+1, nt
-            if (t6.ge.t6_grid(t6_scan_idx)) then
+            if (t6 >= t6_grid(t6_scan_idx)) then
                t_row_index = t6_scan_idx - 1
                exit
             end if
@@ -431,7 +444,7 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
          end if
       else
          do t6_scan_idx = t_row_index, 1, -1
-            if (t6.le.t6_grid(t6_scan_idx)) then
+            if (t6 <= t6_grid(t6_scan_idx)) then
                t_row_index = t6_scan_idx
                exit
             end if
@@ -454,7 +467,7 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
       ramp_start_density = density_grid(density_index_edge(t_row_index+1)-1)
       ramp_start_density = log10(ramp_start_density)
 !     check if within table bounds in rho
-      if (log10_density.gt.table_edge_density) then
+      if (log10_density > table_edge_density) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -466,13 +479,13 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
 
 !     Now we check if ramping is needed.
 !     First we check if ramping in temperature is needed.
-      if (t6.le.t6_grid(nt-1)) then
+      if (t6 <= t6_grid(nt-1)) then
          needs_ramp = .true.
          ramp_factor = (t6-t6_grid(nt))/(t6_grid(nt-1)-t6_grid(nt))
-      else if (t6.ge.t6_grid(2)) then
+      else if (t6 >= t6_grid(2)) then
          needs_ramp = .true.
          ramp_factor = (t6_grid(1)-t6)/(t6_grid(1)-t6_grid(2))
-      else if (log10_density.ge.ramp_start_density) then
+      else if (log10_density >= ramp_start_density) then
 !        If we get here, ramping in density is needed.
          needs_ramp = .true.
          ramp_factor = (table_edge_density-log10_density)/ &
@@ -481,7 +494,6 @@ subroutine find_opal_ramp(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
          needs_ramp = .false.
       end if
 
-      return
 end subroutine find_opal_ramp
 
 !----------------------------------------------------------------------
@@ -520,7 +532,7 @@ real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
       grid_y(1) = y1
       grid_y(2) = y2
       grid_y(3) = y3
-      if (recompute_flag.eq.0) then
+      if (recompute_flag == 0) then
          cache%x12_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(2))
          cache%x13_inv(cache_slot) = 1.0d0/(grid_x(1) - grid_x(3))
          cache%x23_inv(cache_slot) = 1.0d0/(grid_x(2) - grid_x(3))
@@ -534,7 +546,6 @@ real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
            cache%x1_plus_x2(cache_slot)*coef2
       coef0 = grid_y(1) - grid_x(1)*coef1 - cache%x1_squared(cache_slot)*coef2
       quad = coef0 + eval_point*(coef1 + eval_point*coef2)
-      return
 end function quad
 
 !----------------------------------------------------------------------
@@ -557,7 +568,7 @@ real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
            metal_mole_fraction
 ! species_number_fraction(1:6): number (mole) fractions of Ne, O, N, C,
 ! He, H (same order as atomic_number); slot 7 is never assigned.
-      real(dp), intent(out) :: species_number_fraction(7)
+      real(dp), intent(out) :: species_number_fraction(:)
 
 ! atomic_number(i): atomic number (= electrons per fully-ionized atom)
 ! of species i, for i=1,6 = Ne, O, N, C, He, H.
@@ -626,7 +637,6 @@ real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
               species_number_fraction(species_idx - 1)
       end do
 
-      return
 end function gmass01
 
 end module opal_eos_tables

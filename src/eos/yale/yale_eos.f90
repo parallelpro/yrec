@@ -14,7 +14,14 @@
 ! yale_eos_tables (yale).
 module yale_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use yale_eos_tables
+      use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
+           debye_huckel_x, debye_huckel_y, debye_huckel_z, &
+           debye_huckel_z_total, yale
+      use physical_constants, only: clni, cmkh, gas_constant, ln10
+      use io_units, only: run_log_unit
+      use eos_mixture, only: ix_he, n_mix_species
+      use eos_configuration, only: eos_settings
+      use math_lib
       implicit none
       private
       public :: compute_saha_eos, compute_fully_ionized_eos
@@ -41,19 +48,15 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
 
-      use io_units
-      use physical_constants
-      use math_lib
-      use eos_mixture, only: n_mix_species, ix_he
 
-      real(dp), intent(in) :: saha_mass_fractions(n_mix_species)
+      real(dp), intent(in) :: saha_mass_fractions(:)
       real(dp), intent(in) :: log10_temperature
       real(dp), intent(in) :: temperature
       real(dp), intent(in) :: log10_pressure
       real(dp), intent(in) :: pressure
       real(dp), intent(out) :: log10_density, density
       real(dp), intent(in) :: beta, beta_inverse, beta14
-      real(dp), intent(out) :: ion_fraction(3), &
+      real(dp), intent(out) :: ion_fraction(:), &
            specific_gas_constant
       real(dp), intent(in) :: ion_mean_weight_inverse
       real(dp), intent(out) :: electron_mean_weight_inverse
@@ -159,8 +162,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          ionization_temp_over_t(i) = ionization_temp(i)*temperature_inverse
          saha_ratio(i) = ln10*(saha_weight_term(i) + stemp) - &
               ionization_temp_over_t(i)
-         if(saha_ratio(i).lt.-saha_exponent_tol) exit
-         if (saha_ratio(i).le.+saha_exponent_tol) then
+         if(saha_ratio(i) < -saha_exponent_tol) exit
+         if (saha_ratio(i) <= +saha_exponent_tol) then
          saha_ratio(i) = beta_inverse*exp(saha_ratio(i))
          cycle
          end if
@@ -174,15 +177,15 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       nz1 = min0(nz,nz1)
       skip_helium_i = .true.
       skip_helium_ii= .true.
-      if (helium_mass_fraction.ge.1.0d-10) then
+      if (helium_mass_fraction >= 1.0d-10) then
       helium_saha_ratio_1 = ln10*(saha_weight_term(12) + stemp) - &
            helium_ionization_temp_1/temperature
-      if (helium_saha_ratio_1.ge.-saha_exponent_tol) then
+      if (helium_saha_ratio_1 >= -saha_exponent_tol) then
       skip_helium_i = .false.
       helium_saha_ratio_1 = beta_inverse*exp(helium_saha_ratio_1)
       helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
            helium_ionization_temp_2/temperature
-      if(helium_saha_ratio_2.lt.-saha_exponent_tol) then
+      if(helium_saha_ratio_2 < -saha_exponent_tol) then
       helium_ion_fraction_2 = 0.0d0
       else
       skip_helium_ii= .false.
@@ -205,7 +208,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          eep1 = mean_electrons_per_ion*ep1
          c33 = -mean_electrons_per_ion*(1.0d0 + mean_electrons_per_ion)
          r3 = mean_electrons_per_ion
-         if (nz0.gt.0) then
+         if (nz0 > 0) then
          do i=1,nz0
             div = 1.0d0/(saha_ratio(i) + eep1)
             temp8 = saha_ratio(i)*div
@@ -220,7 +223,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          c33 = c33*ep1e
          r3 = r3 - helium_mass_fraction*(helium_ion_fraction_1 + &
               helium_ion_fraction_2+helium_ion_fraction_2)
-         converged = dabs(r3).lt.saha_convergence_tol
+         converged = abs(r3) < saha_convergence_tol
          if (.not. skip_helium_i) then
          c22 = helium_saha_ratio_1 + eep1
          c23 = helium_ion_fraction_1*ep12
@@ -242,19 +245,19 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          c32 = c32 + cr13*c12
          c23 = c23 + cr12*c13
          c33 = c33 + cr13*c13
-         if (r1.ne.0.0d0) then
-         r1l=log10(dabs(r1))
-         if (cr12.ne.0.0d0) then
-         cr12l=log10(dabs(cr12))
+         if (r1 /= 0.0d0) then
+         r1l=log10(abs(r1))
+         if (cr12 /= 0.0d0) then
+         cr12l=log10(abs(cr12))
          fact=cr12l+r1l
-         if (fact.ge.-38.0d0) then
+         if (fact >= -38.0d0) then
          r2 = r2 + cr12*r1
          end if
          end if
-         if (cr13.ne.0.0d0) then
-         cr13l=log10(dabs(cr13))
+         if (cr13 /= 0.0d0) then
+         cr13l=log10(abs(cr13))
          fact=cr13l+r1l
-         if (fact.ge.-38.0d0) then
+         if (fact >= -38.0d0) then
          r3 = r3 + cr13*r1
          end if
          end if
@@ -270,29 +273,29 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          if (.not. skip_helium_i) then
          deltx1 = (r2 - c23*delta_electrons_per_ion)/c22
          helium_ion_fraction_1 = helium_ion_fraction_1 + deltx1
-         helium_ion_fraction_1 = dmax1(0.0d0,dmin1(1.0d0,helium_ion_fraction_1))
+         helium_ion_fraction_1 = max(0.0d0,min(1.0d0,helium_ion_fraction_1))
          if (.not. skip_helium_ii) then
 !CC   STATEMENT RECALCULATED FOR DEC-20 SYSTEM
-         if (c12.ne.0.d0 .and. deltx1.ne.0.d0) then
-         c12l=log10(dabs(c12))
-         delx1l=log10(dabs(deltx1))
+         if (c12 /= 0.d0 .and. deltx1 /= 0.d0) then
+         c12l=log10(abs(c12))
+         delx1l=log10(abs(deltx1))
          fact1=c12l+delx1l
-         if (fact1.lt.-38.0d0) then
+         if (fact1 < -38.0d0) then
          fact1=-38.0d0
-         fact1=exp(ln10*fact1)*dsign(1.0d0,c12)*dsign(1.0d0,deltx1)
+         fact1=exp(ln10*fact1)*sign(1.0d0,c12)*sign(1.0d0,deltx1)
          else
          fact1=c12*deltx1
          end if
          else
          fact1=c12*deltx1
          end if
-         if (c13.ne.0.d0 .and. delta_electrons_per_ion.ne.0.d0) then
-         c13l=log10(dabs(c13))
-         deltel=log10(dabs(delta_electrons_per_ion))
+         if (c13 /= 0.d0 .and. delta_electrons_per_ion /= 0.d0) then
+         c13l=log10(abs(c13))
+         deltel=log10(abs(delta_electrons_per_ion))
          fact2=c13l+deltel
-         if (fact2.lt.-38.0d0) then
+         if (fact2 < -38.0d0) then
          fact2=-38.0d0
-         fact2=exp(ln10*fact2)*dsign(1.0d0,c13)*dsign(1.0d0,delta_electrons_per_ion)
+         fact2=exp(ln10*fact2)*sign(1.0d0,c13)*sign(1.0d0,delta_electrons_per_ion)
          else
          fact2=c13*delta_electrons_per_ion
          end if
@@ -301,16 +304,16 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
          end if
          deltx2=(r1-fact1-fact2)/c11
          helium_ion_fraction_2 = helium_ion_fraction_2 + deltx2
-         helium_ion_fraction_2 = dmax1(0.0d0,dmin1(1.0d0,helium_ion_fraction_2))
+         helium_ion_fraction_2 = max(0.0d0,min(1.0d0,helium_ion_fraction_2))
          end if
          end if
          mean_electrons_per_ion = mean_electrons_per_ion + delta_electrons_per_ion
-         mean_electrons_per_ion = dmax1(1.0d-11,dmin1(max_electrons_per_ion, &
+         mean_electrons_per_ion = max(1.0d-11,min(max_electrons_per_ion, &
               mean_electrons_per_ion))
-         converged = converged .and. dabs(delta_electrons_per_ion).lt.saha_convergence_tol
+         converged = converged .and. abs(delta_electrons_per_ion) < saha_convergence_tol
          if(converged) exit
       end do
-      if (isaha .gt. max_saha_iterations) then
+      if (isaha > max_saha_iterations) then
       write(run_log_unit,99) log10_temperature,log10_pressure, &
            mean_electrons_per_ion,delta_electrons_per_ion
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
@@ -322,7 +325,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       density = beta*pressure/(specific_gas_constant*temperature)
       log10_density = log10(density)
       ion_fraction(1) = 0.0d0
-      if(nz0.ge.7) ion_fraction(1) = species_ion_fraction(7)
+      if(nz0 >= 7) ion_fraction(1) = species_ion_fraction(7)
       ion_fraction(2) = helium_ion_fraction_1
       ion_fraction(3) = helium_ion_fraction_2
       if (in_atmosphere) then
@@ -331,7 +334,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
 ! COMPUTE FIRST DERIVATIVES
       r3t = 0.0d0
       r3p = 0.0d0
-      if (nz0.gt.0) then
+      if (nz0 > 0) then
       do i=nz1,nz0
          r3p = r3p - species_weighted_term(i)
          r3t = r3t -species_weighted_term(i)*(2.5d0 + beta14 + &
@@ -378,7 +381,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       usum = helium_mass_fraction*(sx1qt*helium_ionization_temp_1 + &
            sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
       end if
-      if (nz0.gt.0) then
+      if (nz0 > 0) then
       stemp = 2.50d0 + beta14 - ep1e*sqet
       do i=nz1,nz0
          species_temp_deriv_term(i) = species_weighted_term(i)*(stemp + &
@@ -405,7 +408,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       r3p = 0.0d0
       utsum = 0.0d0
       upsum = 0.0d0
-      if (nz0.gt.0) then
+      if (nz0 > 0) then
       etemp = (1.0d0+mean_electrons_per_ion+mean_electrons_per_ion)/ &
            (mean_electrons_per_ion*(1.0d0+mean_electrons_per_ion))**2
       stemp1 = 2.5d0 + beta14 - sqet*ep1e
@@ -452,7 +455,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       sqetp = r3p/c33
       dlnrho_dlnt_dt = -beta16 + (ep1*sqet)**2 - ep1*sqett
       dlnrho_dlnp_dt = beta_inverse*beta14 + ep12*sqet*sqep - ep1*sqetp
-      if (nz0.gt.0) then
+      if (nz0 > 0) then
       stemp = ep1e*sqett
       stemp1 = ep1e*sqetp
       do i=nz1,nz0
@@ -487,7 +490,6 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, temperature,
       adiabatic_gradient_dp = 1.0d0 - dlnrho_dlnp - specific_heat_cp_dp + &
            dlnrho_dlnp_dt/dlnrho_dlnt
 
-      return
 end subroutine compute_saha_eos
 
 !----------------------------------------------------------------------
@@ -518,10 +520,6 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
      dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
-      use physical_constants
-      use io_units
-      use math_lib
-      use eos_configuration, only: eos_settings
 
       real(dp), intent(in) :: log10_temperature
       real(dp), intent(in) :: temperature
@@ -577,7 +575,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       jt1 = max0(1,min0(jt1,18))  ! Force jt1 to be in the table
       jt2 = jt1 + 1
       jt3 = jt1 + 2
-      ttud = 5.0d0*(tl8 - (5.0d0 + 0.20d0*dfloat(jt1)))
+      ttud = 5.0d0*(tl8 - (5.0d0 + 0.20d0*real(jt1, dp)))
       ttcu = 0.50d0*ttud*(ttud - 1.0d0)
       ttdcu = ttud - 0.50d0
       dml = log10_density + emul
@@ -601,7 +599,7 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       kk = min0(261,max0(1,kk))
       id1 = yale%fermi_table_x_lookup(kk)
 !  IF INDEX UNCHANGED FROM PREVIOUS LOOP,SKIP THIS SECTION
-      if (id1.ne.id1p) then
+      if (id1 /= id1p) then
       id1p = id1
       id2 = id1 + 1
       id3 = id1 + 2
@@ -633,9 +631,9 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       if (eos_settings%use_debye_huckel_correction) then
          electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
               cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
-         if (electron_degeneracy_parameter .lt. eos_settings%debye_huckel_eta_min) then
+         if (electron_degeneracy_parameter < eos_settings%debye_huckel_eta_min) then
             cmfdh = cmfdh0*sqrt(cmfdh0)
-         else if (electron_degeneracy_parameter .gt. eos_settings%debye_huckel_eta_max) then
+         else if (electron_degeneracy_parameter > eos_settings%debye_huckel_eta_max) then
             cmfdh = cmfdh0*sqrt(cmfdh1)
          else
             t0 = cmfdh0*sqrt(cmfdh0)
@@ -671,21 +669,21 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       end if
 ! FACTOR IS THE DIFFERENCE BETWEEN THE P PREDICTED FROM THE GIVEN RHO
 ! AND THE TRUE P; IF TOO LARGE INCREMENT RHO AND TRY AGAIN.
-      factor=dabs(pr8)
-      if(factor .lt. 1d-15) factor = 1d-15
+      factor=abs(pr8)
+      if(factor < 1d-15) factor = 1d-15
       pr8l=log10(factor)
-      pr9l=log10(dabs(pr9))
+      pr9l=log10(abs(pr9))
       factl=log10(0.5d0)+pr9l+2.d0*pr8l
       fact=exp(ln10*factl)
-      fact=dsign(fact,pr9)
+      fact=sign(fact,pr9)
       corr=-pr8-fact
 !  limit range of changes in density to a factor of 10**4   llp  1/31/07
-      if(corr .gt.  4d0) corr =  4d0
-      if(corr .lt. -4d0) corr = -4d0
-      if(dabs(corr).ge.1.0d-08) then
+      if(corr > 4d0) corr =  4d0
+      if(corr < -4d0) corr = -4d0
+      if(abs(corr) >= 1.0d-08) then
        dml = dml + corr
        nden = nden + 1
-       if(nden.le.20) cycle density_iter
+       if(nden <= 20) cycle density_iter
        write(run_log_unit,40) log10_temperature,log10_pressure,ptl,dml,corr
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
@@ -803,7 +801,6 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
       electron_degeneracy_parameter = cl1*yale%fermi_table_eta(id1) + &
            cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
 
-      return
 end subroutine compute_fully_ionized_eos
 
 end module yale_eos

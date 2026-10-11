@@ -20,6 +20,13 @@ module blended_eos
       use opal95_eos, only: compute_opal95_eos, find_opal95_ramp
       use opal2001_eos, only: compute_opal2001_eos, find_opal2001_ramp
       use opal2006_eos, only: compute_opal2006_eos, find_opal2006_ramp
+      use physical_constants, only: gas_constant, ln10, &
+           radiation_constant_over_3
+      use io_units, only: run_log_unit
+      use eos_mixture, only: eos_mix, ion_mean_weight_excess, ix_c, ix_h, &
+           ix_he, ix_na, ix_ne, ix_o, n_mix_species
+      use eos_configuration, only: eos_settings
+      use math_lib
 
       implicit none
       private
@@ -59,9 +66,6 @@ subroutine compute_blended_eos(log10_temperature, temperature, log10_pressure, &
 !  Update (Input and Output) Arguments: saha_state
 !
 
-      use physical_constants
-      use math_lib
-      use eos_configuration, only: eos_settings
 
       real(dp), intent(inout) :: log10_temperature
       real(dp), intent(out) :: temperature
@@ -72,7 +76,7 @@ subroutine compute_blended_eos(log10_temperature, temperature, log10_pressure, &
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp), intent(inout) :: beta
       real(dp), intent(out) :: beta_inverse, beta14
-      real(dp), intent(inout) :: ion_fraction(3)
+      real(dp), intent(inout) :: ion_fraction(:)
       real(dp), intent(out) :: specific_gas_constant
       real(dp), intent(inout) :: ion_mean_weight_inverse
       real(dp), intent(out) :: electron_mean_weight_inverse, &
@@ -263,7 +267,6 @@ subroutine compute_blended_eos(log10_temperature, temperature, log10_pressure, &
 !            previously calculated second derivatives.
       end if
 
-      return
 end subroutine compute_blended_eos
 
 !----------------------------------------------------------------------
@@ -287,13 +290,6 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, ierr)
-      use eos_mixture, only: eos_mix, ion_mean_weight_excess, &
-           n_mix_species, ix_na, ix_c, ix_h, ix_o, ix_ne, ix_he
-      use io_units
-      use physical_constants
-      use scv_eos_tables
-      use math_lib
-      use eos_configuration, only: eos_settings
 
       real(dp), intent(inout) :: log10_temperature
       real(dp), intent(out) :: temperature
@@ -305,7 +301,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       real(dp), intent(in) :: metal_fraction
       real(dp), intent(inout) :: beta
       real(dp), intent(out) :: beta_inverse, beta14
-      real(dp), intent(inout) :: ion_fraction(3)
+      real(dp), intent(inout) :: ion_fraction(:)
       real(dp), intent(out) :: specific_gas_constant
       real(dp), intent(inout) :: ion_mean_weight_inverse
       real(dp), intent(out) :: electron_mean_weight_inverse, &
@@ -375,8 +371,8 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
       ierr = 0
 
-      need_saha_solution = log10_temperature.lt.eos_settings%saha_log10t_cutoff
-      skip_relativistic_eos = log10_temperature.le. &
+      need_saha_solution = log10_temperature < eos_settings%saha_log10t_cutoff
+      skip_relativistic_eos = log10_temperature <= &
            (eos_settings%saha_log10t_cutoff - saha_ramp_width)
 
 !     MHP 3/94 METAL DIFFUSION ADDED.  ASSUME ALL METALS SCALE EQUALLY.
@@ -456,14 +452,14 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
       beta14 = radiation_constant_over_3*(temperature**2)**2/pressure
       beta = 1 - beta14
 
-      if (beta.lt.0d0) then
+      if (beta < 0d0) then
          write(run_log_unit,*) &
               'blend_eos: BETA is negative: TL,PL,BETA,1-BETA', &
               log10_temperature, log10_pressure, beta, 1d0 - beta
       end if
 
       beta_inverse = 1.0d0/beta
-      beta14 = 4.0d0*beta_inverse*dmin1(1.0d0, beta14)
+      beta14 = 4.0d0*beta_inverse*min(1.0d0, beta14)
       electron_degeneracy_parameter = 0.0d0
       if (.not.need_saha_solution) then
 !        COMPUTE VALUES FOR FULLY IONIZED GAS AND RETURN
@@ -593,8 +589,8 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     1995 OPAL eqos
       if (eos_settings%use_opal95_eos) then
-      if (temperature.ge.opal95_t_min .and. log10_temperature.le.opal95_log10_t_max .and. &
-           log10_density.le.opal95_log10_rho_max) then
+      if (temperature >= opal95_t_min .and. log10_temperature <= opal95_log10_t_max .and. &
+           log10_density <= opal95_log10_rho_max) then
 
          call compute_opal95_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
@@ -618,8 +614,8 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     2001 OPAL eqos  LLP 6/17/03
       if (eos_settings%use_opal2001_eos) then
-      if (temperature.ge.opal01_t_min .and. temperature.le.opal01_t_max .and. &
-           log10_density.le.opal01_log10_rho_max) then
+      if (temperature >= opal01_t_min .and. temperature <= opal01_t_max .and. &
+           log10_density <= opal01_log10_rho_max) then
          call compute_opal2001_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
@@ -644,8 +640,8 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
 !     2006 OPAL eqos  LLP 10/13/2996
       if (eos_settings%use_opal2006_eos) then
-      if (temperature.ge.opal06_t_min .and. temperature.le.opal06_t_max .and. &
-           log10_density.le.opal06_log10_rho_max) then
+      if (temperature >= opal06_t_min .and. temperature <= opal06_t_max .and. &
+           log10_density <= opal06_log10_rho_max) then
          call compute_opal2006_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &

@@ -204,7 +204,7 @@ core/test/test_reentry.o: star_info_lib.mod
 core/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-eos/blended_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod opal2001_eos.mod opal2006_eos.mod opal95_eos.mod physical_constants.mod scv_eos.mod scv_eos_tables.mod yale_eos.mod
+eos/blended_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod opal2001_eos.mod opal2006_eos.mod opal95_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod
 eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod mhd_eos.mod opal2006_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod scv_eos_tables.mod yale_eos_tables.mod
 eos/eos_mixture.o: composition_layout.mod physical_constants.mod
 eos/mhd/mhd_eos.o: eos_mixture.mod io_units.mod math_lib.mod mhd_eos_tables.mod numerics_lib.mod

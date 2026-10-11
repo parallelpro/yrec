@@ -23,7 +23,19 @@
 ! composition's slice (:,:,:,ic) has the same shape and element order
 ! as the member it replaces.
 module mhd_eos_tables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
+      private
+      public :: i_mhd_chi_rho, i_mhd_chi_t, i_mhd_dgrad_ad_dlog10_rho, &
+           i_mhd_dgrad_ad_dlog10_t, i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, &
+           i_mhd_dlog10p_dx, i_mhd_dlog10u_dx, i_mhd_dlogcp_dlogrho, &
+           i_mhd_dlogcp_dlogt, i_mhd_eta, i_mhd_grad_ad, i_mhd_ion_frac_1, &
+           i_mhd_log10_cp, i_mhd_log10_p, i_mhd_log10_pgas, i_mhd_log10_rho, &
+           i_mhd_log10_u, i_mhd_placeholder, imhd_centre_1, imhd_centre_2, &
+           imhd_centre_3, imhd_centre_4, imhd_centre_5, imhd_zams_a, &
+           imhd_zams_b, imhd_zams_c, mhd, mhd_ivarc, mhd_ivarx, mhd_n_centre, &
+           mhd_n_zams, mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, &
+           mhd_nt2m, mhd_ntxm
       integer, parameter :: mhd_ivarc = 20
       integer, parameter :: mhd_ivarx = 25
       integer, parameter :: mhd_nchem0 = 6
@@ -71,41 +83,41 @@ module mhd_eos_tables
       integer, parameter :: i_mhd_dlog10cp_dx = 24  ! d(log10 cp)/dX
       integer, parameter :: i_mhd_placeholder = 25  ! space-holder (8888844444.d0)
 
-      type, public :: mhd_eos_state
+      type :: mhd_eos_state
 ! former common/mhdout/
-           double precision :: mhd_output(mhd_ivarx)
+           real(dp) :: mhd_output(mhd_ivarx)
 ! former common/tttt/
-           double precision :: zams_lower_upper_boundary_log10t, &
+           real(dp) :: zams_lower_upper_boundary_log10t, &
                 zams_centre_boundary_log10t, table_log10t_min, table_log10t_max
 ! former common/tab1a/ (composition A's table plus the lower-T grid
 ! shared by all three ZAMS compositions)
-           double precision :: zams_lower_table(mhd_nt1m,mhd_nr1m,mhd_ivarc,mhd_n_zams), &
+           real(dp) :: zams_lower_table(mhd_nt1m,mhd_nr1m,mhd_ivarc,mhd_n_zams), &
                 zams_lower_log10t(mhd_nt1m)
            integer :: zams_lower_num_t, zams_lower_num_r
-           double precision :: zams_lower_drho
+           real(dp) :: zams_lower_drho
 ! former common/tab2a/ (likewise for the upper-T ZAMS tables)
-           double precision :: zams_upper_table(mhd_nt2m,mhd_nr2m,mhd_ivarc,mhd_n_zams), &
+           real(dp) :: zams_upper_table(mhd_nt2m,mhd_nr2m,mhd_ivarc,mhd_n_zams), &
                 zams_upper_log10t(mhd_nt2m)
            integer :: zams_upper_num_t, zams_upper_num_r
-           double precision :: zams_upper_drho
+           real(dp) :: zams_upper_drho
 ! former common/chea/, cheb/, chec/ (per ZAMS composition)
-           double precision :: zams_atomic_weight(mhd_nchem0,mhd_n_zams), &
+           real(dp) :: zams_atomic_weight(mhd_nchem0,mhd_n_zams), &
                 zams_number_abundance(mhd_nchem0,mhd_n_zams), &
                 zams_mass_fraction(mhd_nchem0,mhd_n_zams), &
                 zams_mean_molecular_weight(mhd_n_zams)
 ! former common/tabx1/ .. tabx5/ (centre-type tables, one per
 ! composition, sharing one log10 T grid)
-           double precision :: centre_table(mhd_ntxm,mhd_nrxm,mhd_ivarx,mhd_n_centre), &
+           real(dp) :: centre_table(mhd_ntxm,mhd_nrxm,mhd_ivarx,mhd_n_centre), &
                 centre_log10t(mhd_ntxm)
            integer :: centre_num_t, centre_num_r
-           double precision :: centre_drho
+           real(dp) :: centre_drho
 ! former common/che1/ .. che5/ (per centre composition)
-           double precision :: centre_atomic_weight(mhd_nchem0,mhd_n_centre), &
+           real(dp) :: centre_atomic_weight(mhd_nchem0,mhd_n_centre), &
                 centre_number_abundance(mhd_nchem0,mhd_n_centre), &
                 centre_mass_fraction(mhd_nchem0,mhd_n_centre), &
                 centre_mean_molecular_weight(mhd_n_centre)
       end type mhd_eos_state
 
-      type(mhd_eos_state), public :: mhd
+      type(mhd_eos_state) :: mhd
 
 end module mhd_eos_tables

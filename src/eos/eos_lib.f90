@@ -43,6 +43,19 @@
 ! (calcad), which has since been retired (commit 55c372b); its only
 ! remaining caller is eos/test/test_eos.f90.
 module eos_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
+           opal_eos
+      use scv_eos_tables, only: nptsx, scv_nt, tablex, tabley, tablez, tlogx
+      use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
+           debye_huckel_x, debye_huckel_y, debye_huckel_z, &
+           debye_huckel_z_total, yale
+      use physical_constants, only: cpi, ln10
+      use io_units, only: run_log_unit
+      use eos_mixture, only: eos_mix, n_mix_species
+      use eos_configuration, only: eos_settings, eos_settings_t, &
+           set_eos_settings
+      use math_lib
 ! 2026 named-index result array (ROADMAP "Named-index result arrays"):
 ! eos_get packs eos_eval's 24 thermodynamic outputs into one
 ! res(num_eos_results) array indexed by the constants below (MESA's
@@ -53,9 +66,6 @@ module eos_lib
 ! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
 ! exactly as the old per-caller locals did; eos_eval itself is called
 ! unchanged, so results are byte-identical.
-      use scv_eos_tables
-      use yale_eos_tables
-      use eos_configuration, only: eos_settings_t, eos_settings, set_eos_settings
       use blended_eos, only: compute_blended_eos, blend_eos
       use mhd_eos, only: compute_mhd_eos, read_mhd_tables
       use opal2006_eos, only: esac06
@@ -95,14 +105,14 @@ contains
 subroutine eos_get(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, res, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
-      double precision, intent(inout) :: log10_temperature, log10_pressure
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: res(num_eos_results)
+      real(dp), intent(inout) :: log10_temperature, log10_pressure
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(inout) :: res(:)
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
-      double precision, intent(in), optional :: composition_at_zone(15)
+      real(dp), intent(in), optional :: composition_at_zone(:)
       integer, intent(out) :: ierr
-      double precision :: fxion_local(3)
+      real(dp) :: fxion_local(3)
 
 ! The three ionization fractions occupy res(i_fxion:i_fxion+2); they
 ! go through a contiguous local because eos_eval takes them as one
@@ -133,30 +143,29 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, want_derivatives, &
      in_atmosphere, saha_state, composition_at_zone, ierr)
-      implicit none
 
-      double precision, intent(inout) :: log10_temperature
-      double precision, intent(out) :: temperature
-      double precision, intent(inout) :: log10_pressure
-      double precision, intent(out) :: pressure
-      double precision, intent(inout) :: log10_density
-      double precision, intent(out) :: density
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: beta
-      double precision, intent(out) :: beta_inverse, beta14
-      double precision, intent(inout) :: ion_fraction(3)
-      double precision, intent(out) :: specific_gas_constant
-      double precision, intent(inout) :: ion_mean_weight_inverse
-      double precision, intent(out) :: electron_mean_weight_inverse, &
+      real(dp), intent(inout) :: log10_temperature
+      real(dp), intent(out) :: temperature
+      real(dp), intent(inout) :: log10_pressure
+      real(dp), intent(out) :: pressure
+      real(dp), intent(inout) :: log10_density
+      real(dp), intent(out) :: density
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(inout) :: beta
+      real(dp), intent(out) :: beta_inverse, beta14
+      real(dp), intent(inout) :: ion_fraction(:)
+      real(dp), intent(out) :: specific_gas_constant
+      real(dp), intent(inout) :: ion_mean_weight_inverse
+      real(dp), intent(out) :: electron_mean_weight_inverse, &
            electron_degeneracy_parameter
-      double precision, intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
+      real(dp), intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
-      double precision, intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
+      real(dp), intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
-      double precision, intent(in), optional :: composition_at_zone(15)
+      real(dp), intent(in), optional :: composition_at_zone(:)
 ! 2026 (docs/ROADMAP.md stage 3): ierr follows MESA's ierr-not-stop
 ! discipline (same shape as kap_lib's kap_get): any error condition
 ! that used to stop deep inside the eos internals is returned here
@@ -209,7 +218,6 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
          end if
       end if
 
-      return
 end subroutine eos_eval
 
 !----------------------------------------------------------------------
@@ -241,13 +249,7 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
      zams_b_table_path, zams_c_table_path, centre1_table_path, &
      centre2_table_path, centre3_table_path, centre4_table_path, &
      centre5_table_path, opal_eos_table_path, ierr)
-      use opal_eos_tables, only: opal_eos
 
-      use yale_eos_tables
-      use io_units
-      use physical_constants
-      use scv_eos_tables
-      implicit none
       integer, parameter :: nts = scv_nt
 
       character(len=256), intent(in) :: fermi_table_path
@@ -268,15 +270,15 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
       integer :: grid_idx, iden_idx, col_idx, card_idx
       integer :: bin_start, bin_width, bin_end
       integer :: t_idx, p_idx
-      double precision :: scvhe_dummy_val, scvz_dummy_val
+      real(dp) :: scvhe_dummy_val, scvz_dummy_val
       integer :: scvhe_dummy_npts, scvz_dummy_npts
       integer :: fermi_unit, scv_h_unit, scv_he_unit, scv_z_unit
       logical :: is_open
 ! the Debye-Hueckel coefficient's constants (cgs; formerly computed in
 ! setups)
-      double precision, parameter :: boltzmann_constant = 1.380658d-16, &
+      real(dp), parameter :: boltzmann_constant = 1.380658d-16, &
            electron_charge_esu = 4.802d-10
-      double precision :: hydrogen_atom_mass
+      real(dp) :: hydrogen_atom_mass
 
       ierr = 0
       jerr = 0
@@ -330,7 +332,7 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
       bin_start = 1
       do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
-       if (yale%fermi_table_x_grid(grid_idx+1).le.yale%fermi_table_x_grid(grid_idx)) then
+       if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
 !       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
           write(run_log_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
@@ -342,7 +344,7 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
        endif
        bin_width = int((yale%fermi_table_x_grid(grid_idx+1) - yale%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
-       if (grid_idx.eq.41)  bin_end = 261
+       if (grid_idx == 41)  bin_end = 261
        do iden_idx=bin_start,bin_end
           yale%fermi_table_x_lookup(iden_idx) = grid_idx
        end do
@@ -379,7 +381,6 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
          end do
       endif
 
-      return
 end subroutine eos_init
 
 !----------------------------------------------------------------------
@@ -401,14 +402,10 @@ end subroutine eos_init
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
-      use opal_eos_tables
-      use physical_constants
-      use math_lib
-      implicit none
 
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction, &
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
-      double precision, intent(out) :: gamma1, adiabatic_gradient
+      real(dp), intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
 ! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
 ! Note an out-of-table esac06 lookup (in_table false) is NOT an
@@ -421,16 +418,16 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 ! --- locals (per-call copies: esac06/blend_eos write into several of
 !     the positions the inputs occupy) ---
       integer :: eos_interp_order, eos_rad_flag
-      double precision :: x_local, t6_local, d_local
-      double precision :: temperature_local, log10_temperature, &
+      real(dp) :: x_local, t6_local, d_local
+      real(dp) :: temperature_local, log10_temperature, &
            log10_pressure, pressure_local, log10_density
-      double precision :: beta_local, beta_inverse_local, beta14_local, &
+      real(dp) :: beta_local, beta_inverse_local, beta14_local, &
            ion_fraction_local(3), specific_gas_constant_local, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter
-      double precision :: qdt_eos, qdp_eos, qcp_eos, dela_eos, qdtt_eos, &
+      real(dp) :: qdt_eos, qdp_eos, qcp_eos, dela_eos, qdtt_eos, &
            qdtp_eos, qat_eos, qap_eos, qcpt_eos, qcpp_eos
-      double precision :: chi_rho, chi_t, specific_heat_cv
+      real(dp) :: chi_rho, chi_t, specific_heat_cv
       logical :: eos_deriv_flag, eos_atmosphere_flag, in_table
 
       ierr = 0
@@ -481,7 +478,6 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          adiabatic_gradient = dela_eos
       end if
 
-      return
 end subroutine eos_get_gamma1
 
 
@@ -496,19 +492,16 @@ end subroutine eos_get_gamma1
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
 
-      use eos_mixture, only: eos_mix, n_mix_species
-      implicit none
 
-      double precision, intent(in) :: envelope_hydrogen_fraction, &
+      real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction, mean_atomic_mass
-      double precision, intent(in) :: species_fractions(n_mix_species)
+      real(dp), intent(in) :: species_fractions(:)
 
       eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
       eos_mix%amuenv = mean_atomic_mass
       eos_mix%fxenv = species_fractions
 
-      return
 end subroutine eos_set_mixture
 
 !----------------------------------------------------------------------
@@ -523,12 +516,10 @@ end subroutine eos_set_mixture
 ! the star layer (core/henyey_iteration.f90 etc.); 4-18 come only from
 ! here.
 subroutine eos_set_debye_huckel_z(metal_mixture)
-      implicit none
-      double precision, intent(in) :: metal_mixture(18)
+      real(dp), intent(in) :: metal_mixture(:)
 
       debye_huckel_z = metal_mixture
 
-      return
 end subroutine eos_set_debye_huckel_z
 
 !----------------------------------------------------------------------
@@ -540,7 +531,7 @@ end subroutine eos_set_debye_huckel_z
 ! integration. Does nothing when the correction is off. (2026-10: the
 ! three callers wrote yale_eos_tables' variables themselves.)
 subroutine eos_set_debye_huckel_composition(composition)
-      double precision, intent(in) :: composition(:)
+      real(dp), intent(in) :: composition(:)
 
       if (.not. eos_settings%use_debye_huckel_correction) return
       debye_huckel_x = composition(1)
@@ -558,7 +549,7 @@ end subroutine eos_set_debye_huckel_composition
 ! envelope-mixture table, when SCV is on.
 subroutine eos_update_envelope_tables(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
-      double precision, intent(in) :: envelope_hydrogen_fraction, &
+      real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction
 
       if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
