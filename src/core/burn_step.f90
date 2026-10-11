@@ -17,8 +17,9 @@ module burn_step
 ! nuclear_energy_result (net/nuclear_energy.f90) is re-exported: it is
 ! what compute_zone_energy returns.
       use nuclear_energy_lib, only: nuclear_energy, nuclear_energy_result
+      use convection_geometry, only: locate_surface_mixing_base
       implicit none
-      private :: locate_cz_base, average_li_be_over_cz, store_li_be_rates
+      private :: average_li_be_over_cz, store_li_be_rates
 
 contains
 
@@ -122,105 +123,6 @@ subroutine compute_zone_energy(log_density, log_temperature, &
            shell_index.ge.star%jcz, star%convective_turnover_timescale, e)
 end subroutine compute_zone_energy
 
-!----------------------------------------------------------------------
-! locate_cz_base: shared by burn_li_be and burn_li_be_midpoint (2026 readability R3;
-! the block was byte-identical in both). Locates the true base of the
-! surface convection zone at the end of the step (cz_base_zone, with
-! cz_base_frac the offset of the true base from the zone midpoint in
-! units of the zone width: negative = higher, positive = lower) and
-! the base at the start of the step (cz_base_zone_old), including
-! envelope overshoot when active, and records cz_base_zone in
-! star%envelope_cz_base_zone_prev.
-! cz_base_frac is intent(inout): it is assigned only when the CZ base
-! is an interior zone (1 < env_cz_zone < num_zones), exactly as in the
-! original inline block, and is never read by the callers otherwise.
-!   star reads: grada, gradr, job%envelope_overshoot_active,
-!     job%instability_transport_active, job%rotation_active, logR_start,
-!     pressure_scale_height_end, pressure_scale_height_start
-!   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
-subroutine locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
-     cz_base_zone, cz_base_zone_old, cz_base_frac)
-      use rotation_scratch_lib
-      use star_info_lib, only: star, json
-      use phys_const_lib
-      use math_lib
-      implicit none
-
-      double precision, intent(in) :: radius(json)
-      integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
-      integer, intent(out) :: cz_base_zone, cz_base_zone_old
-      double precision, intent(inout) :: cz_base_frac
-
-      integer :: zone_idx
-      double precision :: del_diff, del_diff_below
-      double precision :: search_radius, shell_radius, delta_radius, &
-           cz_base_radius
-
-      if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
-                 mix_scr%del_radiative_mix(env_cz_zone)
-            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
-                 mix_scr%del_radiative_mix(env_cz_zone-1)
-         else
-! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
-! BELOW IT.
-            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
-            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
-         endif
-! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
-! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
-! BASE IS HIGHER; IF IT IS POSITIVE, THE TRUE BASE IS LOWER.
-         cz_base_frac = max(-0.5d0,0.5d0-del_diff_below/ &
-              (del_diff_below-del_diff))
-         cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.star%job%envelope_overshoot_active)then
-            cz_base_zone = env_cz_zone
-            cz_base_zone_old = env_cz_zone_old
-         else
-! STARTING CZ DEPTH (cz_base_radius_prev = 0 means no previous step
-! has stored one: locate it from the start-of-step model).
-            if(star%cz_base_radius_prev.eq.0.0d0)then
-               star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
-                        +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-               search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
-               do zone_idx = env_cz_zone_old-1,1,-1
-                  shell_radius = exp(ln10*star%logR_start(zone_idx))
-                  if(shell_radius.lt.search_radius)then
-                     cz_base_zone_old = zone_idx + 1
-                     exit
-                  endif
-               end do
-               if (zone_idx .lt. 1) cz_base_zone_old = 1
-            else
-               cz_base_zone_old = star%envelope_cz_base_zone_prev
-            endif
-! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
-            delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
-            cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
-                    -cz_base_frac*delta_radius
-            star%cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - star%pressure_scale_height_end
-            do zone_idx = env_cz_zone-1,1,-1
-               shell_radius = exp(ln10*radius(zone_idx))
-               if(shell_radius.lt.search_radius)then
-                  cz_base_zone = zone_idx + 1
-                  delta_radius = exp(ln10*star%logR_start(zone_idx+1))-shell_radius
-                  cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
-                  cz_base_frac = max(-0.5d0,cz_base_frac)
-                  cz_base_frac = min(0.5d0,cz_base_frac)
-                  exit
-               endif
-            end do
-            if (zone_idx .lt. 1) cz_base_zone = 1
-         endif
-      else
-         cz_base_zone = env_cz_zone
-         cz_base_zone_old = env_cz_zone_old
-      endif
-      star%envelope_cz_base_zone_prev = cz_base_zone
-      return
-end subroutine locate_cz_base
 
 !----------------------------------------------------------------------
 ! average_li_be_over_cz: shared by burn_li_be and burn_li_be_midpoint (2026 readability
@@ -443,7 +345,7 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
 ! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
-      call locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+      call locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
            cz_base_zone, cz_base_zone_old, cz_base_frac)
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)
@@ -837,7 +739,7 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
 ! DETERMINE THE TRUE LOCATION (FX) OF THE BASE OF THE CZ AT THE END
 ! OF THE TIMESTEP, AND THE LOCATION OF THE EDGE OF OVERSHOOT REGIONS
 ! IF APPLICABLE.
-      call locate_cz_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+      call locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
            cz_base_zone, cz_base_zone_old, cz_base_frac)
 ! RADIATIVE INTERIOR.
       min_zone = min(cz_base_zone,cz_base_zone_old)

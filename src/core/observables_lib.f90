@@ -202,6 +202,7 @@ end subroutine compute_central_conditions
 ! compute_central_conditions runs first.)
 subroutine locate_surface_cz_base
       use math_lib
+      use convection_geometry, only: cz_base_fraction
       double precision :: dd1, dd2, cz_base_mass, envelope_boundary_fx
       double precision :: envelope_cz_log_temperature, &
            envelope_cz_log_density, envelope_cz_log_pressure
@@ -211,7 +212,7 @@ subroutine locate_surface_cz_base
 !  FIND MASS FRACTION OF THE ZONE EDGE AT BASE OF SURFACE C.Z.
             dd2 = star%gradr(star%envelope_cz_bottom_index-1)-star%grada(star%envelope_cz_bottom_index-1)
             dd1 = star%gradr(star%envelope_cz_bottom_index)-star%grada(star%envelope_cz_bottom_index)
-            envelope_boundary_fx = dd2/(dd2-dd1)
+            envelope_boundary_fx = cz_base_fraction(dd2, dd1)
             cz_base_mass = star%m(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
             star%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs

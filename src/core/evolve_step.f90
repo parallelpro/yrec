@@ -29,6 +29,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use burn_step
       use composition_step_lib, only: composition_step, predictor_pass, corrector_pass
       use henyey_iterate_lib, only: refresh_surface_bc, henyey_iterate
+      use convection_geometry, only: pressure_scale_height
       use yrec_output, only: output_write_model
       use observables_lib, only: compute_observables
       use stitched_model_lib, only: build_stitched_model
@@ -582,8 +583,11 @@ end subroutine solve_level
 double precision function envelope_overshoot_depth()
       use math_lib
       if (star%job%envelope_overshoot_active) then
-         envelope_overshoot_depth = star%ctrl%overshoot_alpha_envelope*exp(clndp*(star%logP(star%envelope_cz_bottom_index)+2.0D0*star%logR(star%envelope_cz_bottom_index) &
-              -star%logRho(star%envelope_cz_bottom_index)-cgl-star%log_mass(star%envelope_cz_bottom_index)))
+         envelope_overshoot_depth = star%ctrl%overshoot_alpha_envelope* &
+              pressure_scale_height(star%logP(star%envelope_cz_bottom_index), &
+              star%logR(star%envelope_cz_bottom_index), &
+              star%logRho(star%envelope_cz_bottom_index), &
+              star%log_mass(star%envelope_cz_bottom_index))
       else
          envelope_overshoot_depth = 0.0D0
       endif

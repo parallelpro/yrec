@@ -34,6 +34,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use net_lib
       use phys_const_lib
       use burn_step
+      use convection_geometry, only: pressure_scale_height
       use math_lib
       implicit none
 
@@ -344,9 +345,11 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          if (ierr /= 0) return
 ! 11/91 CHANGED FOR LITHIUM BURNING WITH OVERSHOOT.
          if(star%job%lovstm .and. rot_scr%convective_flag_mid(star%nz))then
-            star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope*exp(clndp*(rot_scr%log_pressure_mid(envelope_boundary_zone_cur)+ &
-                 2.0D0*rot_scr%log_radius_mid(envelope_boundary_zone_cur) &
-                 -rot_scr%log_density_mid(envelope_boundary_zone_cur)-cgl-star%log_mass(envelope_boundary_zone_cur)))
+            star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope* &
+                 pressure_scale_height(rot_scr%log_pressure_mid(envelope_boundary_zone_cur), &
+                 rot_scr%log_radius_mid(envelope_boundary_zone_cur), &
+                 rot_scr%log_density_mid(envelope_boundary_zone_cur), &
+                 star%log_mass(envelope_boundary_zone_cur))
          else
             star%pressure_scale_height_end = 0.0D0
          endif

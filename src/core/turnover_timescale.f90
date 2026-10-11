@@ -110,6 +110,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
      adiabatic_gradient, radius_at_bcz)
       use math_lib
       use numerics_lib
+      use convection_geometry, only: cz_base_fraction
 
       double precision, intent(in) :: shell_mass(json)
       logical, intent(in) :: convective_flag(json)
@@ -238,7 +239,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 !           PINPOINT RCZ LINEARLY
             dd2 = radiative_gradient(cz_base_index-1)-adiabatic_gradient(cz_base_index-1)
             dd1 = radiative_gradient(cz_base_index)-adiabatic_gradient(cz_base_index)
-            interp_fraction = dd2/(dd2-dd1)
+            interp_fraction = cz_base_fraction(dd2, dd1)
             radius_at_bcz = log10_radius(cz_base_index-1)+interp_fraction* &
                  (log10_radius(cz_base_index)-log10_radius(cz_base_index-1))
          endif
@@ -313,7 +314,7 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 ! PINPOINT TOP OF CZ LINEARLY
             dd2 = radiative_gradient(cz_top_index)-adiabatic_gradient(cz_top_index)
             dd1 = radiative_gradient(cz_top_index+1)-adiabatic_gradient(cz_top_index+1)
-            interp_fraction = dd2/(dd2-dd1)
+            interp_fraction = cz_base_fraction(dd2, dd1)
             radius_top_cz = log10_radius(cz_top_index)+interp_fraction*(log10_radius(cz_top_index+1)-log10_radius(cz_top_index))
             radius_top_cz = exp(ln10*radius_top_cz)
 ! CALCULATE WIDTH OF THE CONVECTION CELL

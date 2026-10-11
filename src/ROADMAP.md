@@ -1022,3 +1022,18 @@ left for a decision (physics changes):
   predictors, so the converged model is affected only through the
   starting point of levels 3-4. Likely unintended; fixing it changes
   accretion runs.
+- **core/convection_geometry.f90 -- DONE.** The CZ-base interpolation
+  (three copies: observables_lib, turnover_timescale, burn_step's
+  locate_cz_base), the pressure scale height behind the envelope
+  overshoot depth (evolve_step, evolve_angular_momentum) and the
+  overshoot-edge search (twice in locate_cz_base) are now
+  cz_base_fraction, pressure_scale_height and first_zone_above;
+  locate_cz_base moved there as locate_surface_mixing_base. Each caller
+  keeps its own gradients (plain or rotation-corrected) and its own
+  overshoot switch (envelope_overshoot_active, or lovstm in the rotation
+  sub-steps -- the open gating question above). Byte-identical.
+- **Open: the overshoot edge's zone width mixes two models.**
+  locate_surface_mixing_base finds the end-of-step overshoot edge in the
+  current radii but takes the width of the zone above it from the
+  start-of-step radius (logR_start), so cz_base_frac mixes two models.
+  Likely meant radius(cz_base_zone); preserved for now.
