@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! test_atm
 !----------------------------------------------------------------------
-! Standalone atm-domain test program (2026, phase three -- ROADMAP.md
+! Standalone atm-domain test program (2026, phase three -- docs/ROADMAP.md
 ! stage 2), companion to eos/test/test_eos.f90 (see there for the
 ! initialization conventions). Exercises the surface-boundary-
 ! condition table machinery for all three tabulated atmosphere
@@ -17,7 +17,7 @@
 ! the domain's own code has. The full envelope integration
 ! (core/envint_lib.f90) is
 ! NOT exercised here: it needs the entire eos+kap+solver state booted
-! (a full-model concern, covered by Stage-0); noted in ROADMAP.md.
+! (a full-model concern, covered by Stage-0); noted in docs/ROADMAP.md.
 ! Results print for byte-comparison against expected_test_atm.out.
 program test_atm
       use star_info_lib, only: star
@@ -162,7 +162,7 @@ program test_atm
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
       end do
 
-! Error paths (2026, ROADMAP.md stage 3): surfp's out-of-table check
+! Error paths (2026, docs/ROADMAP.md stage 3): surfp's out-of-table check
 ! (logTeff < 3.5 or logG < -0.5) used to stop the run; with the new
 ! required ierr it returns 1 -- diagnostics go to terminal_unit/run_log_unit
 ! as always (both pointed at the scratch .short file here). The

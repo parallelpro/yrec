@@ -69,7 +69,7 @@ subroutine readco(v, ierr)
             if (record_number.ne.density_row) then
                write(run_log_unit,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') &
                     record_number, density_row
-               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
                ierr = 1
                return
@@ -81,7 +81,7 @@ subroutine readco(v, ierr)
                write(run_log_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
                     &E14.4)') v%hydrogen_fraction_header(x_loop_index), &
                     v%density_grid_table(x_loop_index,density_row)
-               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
                ierr = 1
                return

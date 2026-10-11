@@ -60,7 +60,7 @@
 ! common/tridi/ (positional storage; surface_wind_loss_term was
 ! smuggled through the gamma_elim(num_eq_points) slot specifically so
 ! tridia.f90's first statement could read it before overwriting
-! gamma_elim as pure solver scratch). Converted (2026, GUIDELINES.md)
+! gamma_elim as pure solver scratch). Converted (2026, docs/GUIDELINES.md)
 ! to explicit output arguments since this is real per-call data flow,
 ! not global configuration -- see tridia.f90's matching dj_n_seed
 ! input argument.

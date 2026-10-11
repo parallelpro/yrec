@@ -53,7 +53,7 @@ subroutine eqbound_core(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
 !        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, t_row_index
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
@@ -69,7 +69,7 @@ subroutine eqbound_core(nt, nr, t6_grid, t_row_index, density_edge_at_t, &
          t6_top_of_table = t6_grid(1)
 !        caller should have stopped outside table bounds; error exit
          write(*,5) t6, t6_top_of_table, t_row_index
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

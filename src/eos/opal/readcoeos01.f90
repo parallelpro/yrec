@@ -69,7 +69,7 @@ subroutine readcoeos01(v, ierr)
             if (record_number.ne.density_row) then
                write (run_log_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
                     record_number, density_row
-               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
                ierr = 1
                return
@@ -81,7 +81,7 @@ subroutine readcoeos01(v, ierr)
                write (run_log_unit,'("problem with data files: X=",F6.4, &
                     &" density=",E14.4)') v%hydrogen_fraction_header(x_loop_index_01), &
                     v%density_grid_table(x_loop_index_01,density_row)
-               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
                ! facades stop when their caller passes no ierr.
                ierr = 1
                return
@@ -108,7 +108,7 @@ subroutine readcoeos01(v, ierr)
          if (v%t6_list(1,t6_scan_idx).eq.0.0d0) then
             write(run_log_unit,'("READCOEOS01: Error:",I4, &
                  &"-th T6 value is zero")') t6_scan_idx
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
             ! facades stop when their caller passes no ierr.
             ierr = 1
             return

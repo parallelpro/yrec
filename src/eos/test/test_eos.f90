@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! test_eos
 !----------------------------------------------------------------------
-! Standalone eos-domain test program (2026, phase three -- ROADMAP.md
+! Standalone eos-domain test program (2026, phase three -- docs/ROADMAP.md
 ! stage 2), following MESA's per-module test convention: boot only
 ! what the eos domain needs, evaluate the public facade entries over
 ! a fixed grid of points, and print the results in a stable format
@@ -33,7 +33,7 @@
 ! The MHD path is exercised only if YREC_MHD_TABLES is set to a
 ! directory holding the 8 MHD table files -- the repository ships no
 ! MHD tables, so by default that section reports SKIPPED. This is
-! the infrastructure half of closing ROADMAP.md's LMHD coverage gap;
+! the infrastructure half of closing docs/ROADMAP.md's LMHD coverage gap;
 ! the data half needs tables from outside the repo.
 program test_eos
       use io_units
@@ -294,7 +294,7 @@ program test_eos
          star%ctrl%use_mhd_eos = .false.
       end if
 
-! Error paths (2026, ROADMAP.md stage 3): in the eos domain the error
+! Error paths (2026, docs/ROADMAP.md stage 3): in the eos domain the error
 ! conditions behind the converted stops are corrupt-table /
 ! misconfiguration cases (out-of-table lookups stay *recoverable* by
 ! design here -- alternate returns and sentinels -- unlike kap), so

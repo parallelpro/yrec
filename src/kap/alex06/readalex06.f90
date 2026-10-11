@@ -67,7 +67,7 @@ subroutine readalex06(alex06_table_path, ierr)
                   write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
    25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
-                  ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                   ierr = 1
                   return
                endif
@@ -82,7 +82,7 @@ subroutine readalex06(alex06_table_path, ierr)
                   write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
    35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
-                  ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                   ierr = 1
                   return
                endif
@@ -101,7 +101,7 @@ subroutine readalex06(alex06_table_path, ierr)
          if (header_x.ne.(1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
               header_z.ne.opacity_table%alex06_grid_z(ii)) then
             write(*,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
-            ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+            ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
             ierr = 1
             return
          endif
@@ -109,7 +109,7 @@ subroutine readalex06(alex06_table_path, ierr)
          do kk=1,16
             if (row_logr_check(kk).ne.opacity_table%alex06_grid_logr(kk)) then
                write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
-               ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
                return
             endif
@@ -121,7 +121,7 @@ subroutine readalex06(alex06_table_path, ierr)
             read(star%ctrl%alex06_table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
             if (row_temp.ne.opacity_table%alex06_grid_logt(j)) then
                write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
-               ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
                return
             endif

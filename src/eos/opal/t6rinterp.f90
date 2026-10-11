@@ -100,7 +100,7 @@ subroutine t6rinterp(v, slr, slt, ierr)
       if (v%esact.gt.1.0d+15) then
          write(run_log_unit,'("INTERPOLATION INDICES OUT OF RANGE", &
               &";PLEASE REPORT CONDITIONS.")')
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

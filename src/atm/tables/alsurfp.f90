@@ -174,7 +174,7 @@ subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
         write(run_log_unit,*)
         write(run_log_unit,*)'******** ALSURF: Program Terminated ********'
         write(run_log_unit,*)
-        ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+        ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
         ! facades stop when their caller passes no ierr.
         ierr = 1
         return

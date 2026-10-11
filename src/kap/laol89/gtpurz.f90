@@ -96,7 +96,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
             write(run_log_unit,120) log10_density, log10_temperature
   120       format(' OUTSIDE Z OPACITY TABLE, IN DENSITY.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
             ierr = 1
             return
          end if
@@ -121,7 +121,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
          write(run_log_unit,121) log10_density, log10_temperature
   121    format(' OUTSIDE Z OPACITY TABLE, IN TEMPERATURE.  ', &
               'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
       end if

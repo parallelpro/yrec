@@ -1,4 +1,4 @@
-"""Standalone kap-domain regression test (phase three, ROADMAP.md stage 2).
+"""Standalone kap-domain regression test (phase three, docs/ROADMAP.md stage 2).
 
 Runs src/test_kap (built by `make tests` in src/) against the
 repository's OPAL95/GS98.OP17 opacity table and byte-compares its

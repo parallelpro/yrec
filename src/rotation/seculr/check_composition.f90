@@ -102,7 +102,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
               ' ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5,' ABUNDANCE ', &
               1pe12.3/' 3 ATTEMPTS AT TIMESTEP CUTTING FAILED'/ &
               'RUN STOPPED')
-                  ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+                  ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
                   ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
                   ! preserve the historical stop on a nonzero return.
                   ierr = 1

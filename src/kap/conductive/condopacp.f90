@@ -105,7 +105,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       if (t_index.eq.0.or.t_index.eq.cond_n_temp) then
                   print*, cond_table%z_grid
                   print*, cond_n_z, log10_temperature, z_index
-! 2026 (ROADMAP.md stage 3): stop 'CONINTER: T out of range'
+! 2026 (docs/ROADMAP.md stage 3): stop 'CONINTER: T out of range'
 ! converted to ierr (see kap_lib's kap_get); message preserved.
                   print*, 'CONINTER: T out of range'
                   ierr = 1

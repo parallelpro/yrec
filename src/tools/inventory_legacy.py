@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inventory of legacy constructs: blanket SAVE and goto (2026).
 
-Position (see ROADMAP.md "Legacy constructs: position and policy"):
+Position (see docs/ROADMAP.md "Legacy constructs: position and policy"):
 - Blanket `save` as hidden static state is the enemy of re-entrancy;
   every occurrence is either (a) already covered by the phase-five
   reset machinery, (b) a benign first-call table cache, or (c) unaudited

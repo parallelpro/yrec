@@ -209,7 +209,7 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
            temperature_rotation_factor,pressure_rotation_factor,radiative_gradient, &
            adiabatic_gradient,log_radius
  911  format(1p10e12.3)
-          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
           ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
           ! preserve the historical stop on a nonzero return.
           ierr = 1

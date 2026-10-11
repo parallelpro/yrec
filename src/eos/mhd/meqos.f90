@@ -93,7 +93,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
           write(run_log_unit,*) specific_gas_constant, &
                specific_gas_constant_check
         write(run_log_unit,*) 'ERROR (MHD): CHECK MU'
-          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
           ! facades stop when their caller passes no ierr.
           ierr = 1
           return

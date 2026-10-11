@@ -2,7 +2,7 @@
 ! io_units
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
-! GUIDELINES.md). Replaces common/luout/: I/O logical unit numbers,
+! docs/GUIDELINES.md). Replaces common/luout/: I/O logical unit numbers,
 ! assigned once at run startup (io/read_controls.f90) and read
 ! broadly -- global configuration, not per-call data, so (like
 ! const_lib) this is a module of plain module-level variables rather

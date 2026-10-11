@@ -125,7 +125,7 @@ subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
   120          format(' OUTSIDE OPACITY TABLE, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
                end if
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
                ierr = 1
                return
             end if
@@ -160,7 +160,7 @@ subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
   121       format(' OUTSIDE OPACITY TABLE, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
             end if
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
             ierr = 1
             return
          end if

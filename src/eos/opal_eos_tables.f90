@@ -184,7 +184,7 @@ module opal_eos_tables
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
                 t6_index_4, t6_interp_order, density_interp_order
 ! former common/eeos/ and eeos06/ -- the latter relocated here from
-! atm_tables in 2026 (ROADMAP.md stage 1); its former non-eos reader
+! atm_tables in 2026 (docs/ROADMAP.md stage 1); its former non-eos reader
 ! (a direct eos_output(8)/(9) read in the turnover-timescale code,
 ! since removed) was replaced by eos_lib's eos_get_gamma1.
            double precision :: esact, eos_output(n_eos_mv)

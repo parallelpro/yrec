@@ -140,7 +140,7 @@ subroutine kurucz(tbl, log10_density, log10_temperature, opacity, &
          endif
          write(run_log_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
               log10_density, log10_temperature
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
       endif

@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Added 2026 as part of the YREC readability refactor's phase two
 ! (disentangling the solver from the physics domains -- see
-! GUIDELINES.md's "Physics domains still entangled with the solver").
+! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
 ! Public facade of the atm domain (same shape as eos_lib/kap_lib):
 ! atm_init loads the tabulated-atmosphere surface-pressure tables at
 ! startup, and atm_get_surface_pt is the Allard-table surface lookup
@@ -18,7 +18,7 @@ contains
 !----------------------------------------------------------------------
 ! atm_init
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): the atm domain's
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): the atm domain's
 ! startup-time table-load lifecycle entry, following MESA's
 ! <mod>_init convention. Covers, per the atm_choice option in force:
 ! the Kurucz surface-pressure table (atm_choice 3 and 4, into
@@ -45,7 +45,7 @@ subroutine atm_init(atm_table_path, allard_table_path, ierr)
       implicit none
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path
-! 2026 (ROADMAP.md stage 3): ierr-not-stop; table-load failures print
+! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop; table-load failures print
 ! their diagnostic at the point of failure and come back as ierr /= 0.
       integer, intent(out) :: ierr
 
@@ -183,7 +183,7 @@ end subroutine atm_init
 !----------------------------------------------------------------------
 ! atm_get_surface_pt
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): public accessor for
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): public accessor for
 ! the Allard-atmosphere surface lookup, created so wind/massloss.f90
 ! (previously the last file calling tables/alsurfp.f90 directly) can
 ! go through the facade. Given log10(Teff) and log10(g), performs the
@@ -200,7 +200,7 @@ subroutine atm_get_surface_pt(log_teff, log_g, print_to_files, &
       double precision, intent(in) :: log_teff, log_g
       logical, intent(in) :: print_to_files
       logical, intent(out) :: lookup_failed
-! 2026 (ROADMAP.md stage 3): ierr-not-stop. alsurfp's own ierr is
+! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop. alsurfp's own ierr is
 ! deliberately not propagated here (it has always been ignored on
 ! this path); ierr is returned as 0 and lookup_failed carries the
 ! table-range result.

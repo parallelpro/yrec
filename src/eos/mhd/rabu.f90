@@ -28,7 +28,7 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
       read(table_unit   ) num_chem,(atomic_weight(ic),number_abundance(ic), &
            mass_fraction(ic), ic=1,num_chem),mean_molecular_weight
       if (nchem0.lt.num_chem) then
-! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
 ! facades stop when their caller passes no ierr.
          ierr = 1
          return

@@ -1,4 +1,4 @@
-"""libyrec/pyyrec acceptance test (2026 -- ROADMAP.md).
+"""libyrec/pyyrec acceptance test (2026 -- docs/ROADMAP.md).
 
 Runs the solar noGS/norot case three ways -- once through the yrec CLI
 binary in a fresh process, then TWICE through pyyrec inside this very

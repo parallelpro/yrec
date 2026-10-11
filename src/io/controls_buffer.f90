@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! controls_buffer
 !----------------------------------------------------------------------
-! Added 2026 (phase six, step 3 -- ROADMAP.md). The run controls split
+! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The run controls split
 ! out of const_lib: essentially every NAMELIST /control/ and /physics/
 ! target (io/read_controls.f90 reads into these), grouped by their former
 ! COMMON blocks with the original per-block commentary retained.

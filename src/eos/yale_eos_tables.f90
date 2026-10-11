@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! yale_eos_tables
 !----------------------------------------------------------------------
-! New (2026, phase three -- ROADMAP.md stage 1). Holds the Yale/
+! New (2026, phase three -- docs/ROADMAP.md stage 1). Holds the Yale/
 ! Prather EOS's tabulated state: the degenerate-electron (Fermi-Dirac)
 ! table, former common/ccr/, read once at startup (now by eos_lib's
 ! eos_init; historically by an inline block in setup/setups.f90) and
@@ -32,7 +32,7 @@ module yale_eos_tables
       type(yale_eos_state), public :: yale_eos
 
 
-! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
+! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
 ! const_lib, where this table/working data had landed during the
 ! phase-one COMMON conversion; it belongs with this domain's state.
 ! former common/debhu/: Debye-Huckel EOS correction data. No readable

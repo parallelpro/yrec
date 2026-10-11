@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! eos_mixture
 !----------------------------------------------------------------------
-! Added 2026 (physics-purity pass -- see ROADMAP.md "Decoupling the
+! Added 2026 (physics-purity pass -- see docs/ROADMAP.md "Decoupling the
 ! physics domains from the model"). The envelope mixture the eos
 ! domain evaluates with: surface hydrogen/metal fractions, the mean
 ! atomic mass, and the 12-species number fractions consumed by the

@@ -63,13 +63,13 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       do composition_pass=1,num_composition_reads
       read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
       if (ivar1.lt.num_vars_read) then
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
       if (table_kind.ne.table_kind_read) then
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
@@ -82,7 +82,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
           composition_flag_expected= 1
       end if
       if (composition_flag_expected.ne.composition_flag_read) then
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
@@ -93,7 +93,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       if (ierr /= 0) return
       read(table_unit     ) num_t1,num_t2,drho1,drho2
       if (table_kind.eq.1 .and. num_t1.ne.0) then
-          ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+          ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
           ! facades stop when their caller passes no ierr.
           ierr = 1
           return

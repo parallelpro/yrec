@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! test_reentry
 !----------------------------------------------------------------------
-! Phase-five step C acceptance driver (2026 -- ROADMAP.md): calls the
+! Phase-five step C acceptance driver (2026 -- docs/ROADMAP.md): calls the
 ! run_yrec engine TWICE in one process. The second run's outputs must
 ! be byte-identical to a fresh single-process run's -- the re-entrancy
 ! contract ("two calls in one process == two processes"), enforced by

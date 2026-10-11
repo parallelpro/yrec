@@ -60,7 +60,7 @@ subroutine surface_p_interp(tbl, log10_teff, log10_gravity, print_flag, ierr)
          write(run_log_unit,911) log10_teff, log10_gravity
   911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
               ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

@@ -3,8 +3,8 @@
 Baseline: the original fixed-form F77 import, commit `6cd56739` (2025-04-10).
 Head: branch `yrec-modern` at `c994fa1d` (2026-09-04). 728 commits between them.
 
-Sources: the full commit history (subjects and bodies), `src/ROADMAP.md`,
-`src/GUIDELINES.md`, `audit/*`, the in-source "preserved" / "fixed here"
+Sources: the full commit history (subjects and bodies), `docs/ROADMAP.md`,
+`docs/GUIDELINES.md`, `audit/*`, the in-source "preserved" / "fixed here"
 annotations, and a file-level diff of the two trees. Commit hashes are given so
 every claim can be checked with `git show <hash>`.
 
@@ -316,7 +316,7 @@ frequencies computed from them, but not the evolution itself.
   re-entrancy, pyyrec, error exit, stop conditions, MESA output layout, and a
   loose physics sanity test. GitHub Actions builds, runs the domain tests,
   checks generated files, and runs the solar case twice to prove determinism.
-- **Verification tiers** are codified in `src/GUIDELINES.md`: Tier 1 (every
+- **Verification tiers** are codified in `docs/GUIDELINES.md`: Tier 1 (every
   commit) is a strict byte-diff of a legacy solar run; Tier 3 (full battery)
   for layout or format changes, with a documented reseed ritual.
 
@@ -343,7 +343,7 @@ frequencies computed from them, but not the evolution itself.
 
 ### 3.9 Documentation
 
-- New: `src/GUIDELINES.md`, `src/ROADMAP.md`, the controls registry and
+- New: `docs/GUIDELINES.md`, `docs/ROADMAP.md`, the controls registry and
   defaults files, column lists, `docs/HOW_YREC_WORKS.md`, 60 audit reports
   under `audit/`, per-case READMEs, wrapper READMEs, a 43-line README with
   citations, and the release paper.
@@ -386,7 +386,7 @@ stay valid. Each is annotated in the source.
 
 ## 5. Open numerical issues (not yet fixed)
 
-The bug sweeps left a triaged backlog in `src/ROADMAP.md` sections 10 and 11
+The bug sweeps left a triaged backlog in `docs/ROADMAP.md` sections 10 and 11
 and in `audit/readability-sweep-2026-09-03/`. The ones most likely to matter
 to users:
 
@@ -438,7 +438,7 @@ OPAL95 EOS, `lvfc` rotation, mass loss, Itoh neutrinos, He-burning Jacobians.
 - The single-precision literal policy is domain-dependent and undocumented:
   burn/net literals were promoted in Batch 3, while `microdiff_coefficients`
   and `opal_eos_lib` still say in capitals not to fix theirs.
-- `src/GUIDELINES.md` still defines the Stage-0 byte-diff in terms of
+- `docs/GUIDELINES.md` still defines the Stage-0 byte-diff in terms of
   `.short`, `.track`, and `.store`, all of which were retired.
 - ROADMAP section 6 still lists the TAHB failure as needing investigation;
   section 11 records it fixed. Section 8 still lists the pulse column indices

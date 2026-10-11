@@ -1,7 +1,7 @@
 """pyyrec -- run the YREC stellar-evolution engine in-process.
 
 The 2026 modernization made the engine an embeddable, re-enterable
-library (phase five: run_yrec + yrec_reset; see src/ROADMAP.md). This
+library (phase five: run_yrec + yrec_reset; see docs/ROADMAP.md). This
 package is the thin ctypes binding over `libyrec` (built by
 `make lib` in src/): each `run()` call executes one full YREC job --
 exactly what `yrec <nml1> <nml2>` does from a working directory --

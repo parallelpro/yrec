@@ -3,14 +3,14 @@
 !----------------------------------------------------------------------
 ! Added 2026 as part of the YREC readability refactor's phase two
 ! (disentangling the solver from the physics domains -- see
-! GUIDELINES.md's "Physics domains still entangled with the solver").
+! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
 ! Unlike eos_lib.f90's eos_get, this is not a new dispatch consolidation:
 ! getopac (renamed kap_eval) was already the single, clean, explicit-
 ! interface entry point every external caller used uniformly -- no
 ! duplicated dispatch logic existed at any of its 8 call sites. This
 ! rename/module-wrap is purely to give kap/ the same public-facade
 ! shape as eos_lib (a module named `<domain>_lib`, matching
-! GUIDELINES.md's naming rule, which already anticipated `kap_lib` by
+! docs/GUIDELINES.md's naming rule, which already anticipated `kap_lib` by
 ! name) and the same numerics_lib/eos_lib precedent for "a module
 ! hosting a real callable subroutine." kap_eval's body, dispatch logic,
 ! and argument list are otherwise unchanged from getopac.
@@ -76,7 +76,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       double precision, intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       double precision, intent(inout) :: ion_fraction(3)
-! 2026 (ROADMAP.md stage 3): ierr-not-stop. Any error inside a table
+! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop. Any error inside a table
 ! lookup (its diagnostic is still printed at the point of failure)
 ! comes back here as ierr /= 0; nothing in the kap domain stops.
       integer, intent(out) :: ierr
@@ -383,7 +383,7 @@ end subroutine kap_eval
 !----------------------------------------------------------------------
 ! kap_init
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): the kap domain's
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): the kap domain's
 ! startup-time table-load lifecycle entry, following MESA's
 ! <mod>_init convention. Wraps setupopac.f90 (which reads whichever
 ! opacity tables the use_*_tables flags select and builds their
@@ -408,7 +408,7 @@ subroutine kap_init(envelope_hydrogen_fraction, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
-! 2026 (ROADMAP.md stage 3): same ierr contract as kap_eval's.
+! 2026 (docs/ROADMAP.md stage 3): same ierr contract as kap_eval's.
 ! Table-load failures print their diagnostic at the point of failure
 ! and surface here as ierr /= 0.
       integer, intent(out) :: ierr
@@ -433,7 +433,7 @@ end subroutine kap_init
 !----------------------------------------------------------------------
 ! kap_update_surface_tables
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): public lifecycle entry
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): public lifecycle entry
 ! for refreshing the cached surface-composition opacity-table slices
 ! (OPAL95/OPAL92/ALEX94 fixed-X tables) when the envelope hydrogen
 ! fraction changes. Wraps surfopac.f90; core/read_starting_model.f90 and

@@ -2,7 +2,7 @@
 
 **Status:** draft for discussion in the YREC group, 2026-10-10.
 **Applies to:** branch `yrec-modern`.
-**Companion documents:** `docs/HOW_YREC_WORKS.md` (physics and numerics, currently using legacy routine names), `docs/MODERNIZATION_CHANGES.md` (what the 2025–26 modernization changed), `src/ROADMAP.md` (open work items).
+**Companion documents:** `docs/HOW_YREC_WORKS.md` (physics and numerics, currently using legacy routine names), `docs/MODERNIZATION_CHANGES.md` (what the 2025–26 modernization changed), `docs/ROADMAP.md` (open work items).
 
 ---
 

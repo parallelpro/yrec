@@ -85,7 +85,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
             write(terminal_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
             write(run_log_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
             write(run_log_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
             ! facades stop when their caller passes no ierr.
             ierr = 1
             return

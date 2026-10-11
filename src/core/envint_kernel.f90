@@ -70,7 +70,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! Declaring them intent(in) here was a pre-existing bug (silently
 ! tolerated under the old implicit-interface calling convention,
 ! surfaced once bsstep moved into numerics_lib and gained an explicit
-! interface -- see GUIDELINES.md); every call site already passes real
+! interface -- see docs/GUIDELINES.md); every call site already passes real
 ! variables for these positions, so widening the intent here changes
 ! nothing about how any of them are called.
       type(envint_config), intent(inout) :: cfg

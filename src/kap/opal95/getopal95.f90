@@ -46,7 +46,7 @@ subroutine getopal95(log10_density, log10_temperature, hydrogen_fraction, &
            log10_temperature.gt.opacity_table%opal95_grid_logt(n_opal95_t)) then
          write(*,5) log10_temperature
     5    format(' LOG T OF',f11.6,'OUT OF OPAL 95 TABLE RANGE')
-! 2026 (ROADMAP.md stage 3): stop converted to ierr; the facade
+! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the facade
 ! (kap_lib's kap_get) stops when its caller passes no ierr.
          ierr = 1
          return

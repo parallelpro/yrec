@@ -118,7 +118,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                        5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                        ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
                        'RUN STOPPED')
-               ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
                ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
                ! preserve the historical stop on a nonzero return.
                ierr = 1

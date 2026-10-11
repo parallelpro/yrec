@@ -131,7 +131,7 @@ subroutine altabinit(ierr)
        write(run_log_unit,*)'******** ALTABINIT: Program Terminated ********'
        write(run_log_unit,*)
        call print_allard_tables
-       ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the atm_lib
+       ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
        ! facades stop when their caller passes no ierr.
        ierr = 1
        return

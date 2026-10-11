@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! test_kap
 !----------------------------------------------------------------------
-! Standalone kap-domain test program (2026, phase three -- ROADMAP.md
+! Standalone kap-domain test program (2026, phase three -- docs/ROADMAP.md
 ! stage 2), companion to eos/test/test_eos.f90 (see there for the
 ! initialization conventions; each piece below cites its source the
 ! same way). Boots the OPAL95 atomic-opacity configuration used by
@@ -127,7 +127,7 @@ program test_kap
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 
-! Error paths (2026, ROADMAP.md stage 3): out-of-range points and
+! Error paths (2026, docs/ROADMAP.md stage 3): out-of-range points and
 ! misconfiguration return ierr /= 0 instead of stopping -- the first
 ! time these paths are testable at all. The diagnostic each failure
 ! writes goes to run_log_unit / stdout at the point of failure, as

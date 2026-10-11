@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Added 2026 as part of the YREC readability refactor's phase two
 ! (disentangling the solver from the physics domains -- see
-! GUIDELINES.md's "Physics domains still entangled with the solver").
+! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
 !
 ! eos_eval is the first facade of this phase: a single explicit-
 ! interface entry point that replaces the `if (use_mhd_eos) call meqos
@@ -149,7 +149,7 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
       double precision, intent(in), optional :: composition_at_zone(15)
-! 2026 (ROADMAP.md stage 3): ierr follows MESA's ierr-not-stop
+! 2026 (docs/ROADMAP.md stage 3): ierr follows MESA's ierr-not-stop
 ! discipline (same shape as kap_lib's kap_get): any error condition
 ! that used to stop deep inside the eos internals is returned here
 ! instead, ierr /= 0, with the diagnostic already printed at the point
@@ -207,7 +207,7 @@ end subroutine eos_eval
 !----------------------------------------------------------------------
 ! eos_init
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): the eos domain's
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): the eos domain's
 ! startup-time table-load lifecycle entry, following MESA's
 ! <mod>_init convention. Covers the eos tables loaded from named
 ! files at startup: the MHD EOS tables (gated on use_mhd_eos, moved
@@ -218,7 +218,7 @@ end subroutine eos_eval
 ! yale_eos_tables; this block previously lived inline in
 ! setup/setups.f90, writing into atm_tables -- moved here
 ! verbatim, including its bin-construction loop, its glitch check,
-! and that check's `stop`, which ROADMAP.md stage 3 will convert to
+! and that check's `stop`, which docs/ROADMAP.md stage 3 will convert to
 ! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
 ! they are lazily read on first use inside esac/esac01/esac06 via
 ! their table_loaded_flag guards. The SCV (Saumon-Chabrier-Van Horn)
@@ -249,7 +249,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
            zams_b_table_path, zams_c_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path
-! 2026 (ROADMAP.md stage 3): ierr, same contract as eos_eval's.
+! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
       integer, intent(out) :: ierr
 
       integer :: jerr
@@ -291,7 +291,7 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
           write(run_log_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
            1x,'GLITCH IN FERMI TABLE ELEMENT',i4/1x,'RUN STOPPED')
-! 2026 (ROADMAP.md stage 3): stop converted to the ierr funnel below.
+! 2026 (docs/ROADMAP.md stage 3): stop converted to the ierr funnel below.
           jerr = 1
           ierr = jerr
           return
@@ -341,7 +341,7 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! eos_get_gamma1
 !----------------------------------------------------------------------
-! Added 2026 (phase three, ROADMAP.md stage 1): a component-accessor
+! Added 2026 (phase three, docs/ROADMAP.md stage 1): a component-accessor
 ! entry in the spirit of MESA's eosDT_get_component, created for the
 ! acoustic-depth diagnostic (calcad). That diagnostic was retired in
 ! commit 55c372b, so this entry now has NO production caller: it is
@@ -369,7 +369,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       double precision, intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
-! 2026 (ROADMAP.md stage 3): ierr, same contract as eos_eval's.
+! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
 ! Note the out-of-table alternate return of esac06 is NOT an error
 ! here: it falls through with the previous point's results, preserved
 ! verbatim from calcad's original handling.

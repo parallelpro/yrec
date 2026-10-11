@@ -1,4 +1,4 @@
-"""Domain-boundary regression test (phase three, ROADMAP.md stage 2).
+"""Domain-boundary regression test (phase three, docs/ROADMAP.md stage 2).
 
 Runs src/tools/check_boundaries.py, which enforces that every
 cross-domain call in src/ goes through the target domain's public

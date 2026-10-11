@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! envint_lib
 !----------------------------------------------------------------------
-! Added 2026 (physics-purity pass, atm split -- ROADMAP.md): the
+! Added 2026 (physics-purity pass, atm split -- docs/ROADMAP.md): the
 ! envelope/atmosphere INTEGRATION, moved out of atm_lib. atm_get is
 ! the star solver's outer-boundary integrator: it integrates the
 ! atmosphere and envelope down to the fit point, driving the

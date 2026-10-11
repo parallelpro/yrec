@@ -9,7 +9,7 @@ Two layers are involved:
 
 Callers elsewhere in the code (the composition step `core/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC may use from the five modules below. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
 
-Names follow the project rules (`src/GUIDELINES.md`): modules are nouns named for what they hold, procedures are verbs (`compute_…`, `burn_…`), and functions returning a quantity are named for it (`deuterium_rate`).
+Names follow the project rules (`docs/GUIDELINES.md`): modules are nouns named for what they hold, procedures are verbs (`compute_…`, `burn_…`), and functions returning a quantity are named for it (`deuterium_rate`).
 
 ---
 
@@ -185,7 +185,7 @@ The rate formula itself still lives in `compute_reaction_rates`; TARGET_ARCHITEC
 
 ## 5. Known limitations and open items
 
-These are tracked in `ROADMAP.md` §13.
+These are tracked in `docs/ROADMAP.md` §13.
 - **Special-purpose operators.** Deuterium, Li/Be and the equilibrium burn are not entries in the reaction table. Making deuterium a network species would change the pp-chain model (p + p → d would no longer be instantaneous).
 - **Surface Li has a numerical noise floor of about 0.005 dex.** The start-of-step CZ rate average uses the integer zone index of the CZ base (only the end of the step is interpolated within the zone), so a roundoff-level change in the structure can move it by one zone and shift surface Li7 by ~1% (ROADMAP §13).
 - **Legacy cross sections.** `LNEWNUC = .false.` takes the cross sections from the legacy `SSTANDARD` ratios. Every shipped deck uses `.true.`.

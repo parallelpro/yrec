@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! physical_constants
 !----------------------------------------------------------------------
-! Added 2026 (phase six, step 3 -- ROADMAP.md). The genuinely physical
+! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The genuinely physical
 ! and derived constants split out of const_lib: former common/const1/,
 ! /const2/, /const3/ (set once by setups, read broadly), and the
 ! version string. Everything here is immutable after startup: cmixl,

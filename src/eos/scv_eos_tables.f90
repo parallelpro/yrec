@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! scv_eos_tables
 !----------------------------------------------------------------------
-! Added 2026 (phase six, step 3 -- ROADMAP.md). The SCV
+! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The SCV
 ! (Saumon-Chabrier-Van Horn) EOS table state, evicted from const_lib
 ! where it had landed as former common/scveos/ during the phase-one
 ! COMMON conversion. The pure-species tables are loaded by eos_lib's

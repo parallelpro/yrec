@@ -2,7 +2,7 @@
 ! integration_parameters
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
-! GUIDELINES.md). Replaces common/intpar/: Bulirsch-Stoer integrator
+! docs/GUIDELINES.md). Replaces common/intpar/: Bulirsch-Stoer integrator
 ! control parameters (tolerance_fraction/max_stage_index/extrap_order),
 ! set once from NAMELIST /physics/ (io/read_controls.f90, defaulted there
 ! via a DATA statement) and read by numerics/bsstep.f90 and

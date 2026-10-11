@@ -2,7 +2,7 @@
 ! net_lib -- the public interface of net/
 !----------------------------------------------------------------------
 ! Everything code outside net/ may use from the nuclear network, in one
-! place (src/GUIDELINES.md, naming rule 2; tools/check_boundaries.py
+! place (docs/GUIDELINES.md, naming rule 2; tools/check_boundaries.py
 ! enforces that the rest of the code uses net/ only through this
 ! module). It holds no code of its own: it re-exports the public parts
 ! of net/'s five modules.

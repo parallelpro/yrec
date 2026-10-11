@@ -1,5 +1,7 @@
 # YREC module-modernization guidelines
 
+> File paths in this document are relative to `src/` unless they start with `docs/` (moved here from `src/` in 2026-10).
+
 This document records the ground rules developed while converting YREC's
 COMMON-block-based Fortran into modules. It exists so that future work
 (by a person or an agent) on any not-yet-converted folder follows the same
@@ -165,27 +167,34 @@ this; renames of older names happen as code is touched (byte-identical
 commits). Output columns keep their MESA names.
 
 
-- `_lib` is reserved for exactly one module per domain: the small,
-  public, callable-from-anywhere surface for that domain (`numerics_lib`,
-  `const_lib`, `luout_lib`, and later `eos_lib`, `kap_lib`, etc.) --
-  matching MESA's own convention (`eos_lib`, `kap_lib`, `num_lib`).
-- Internal implementation detail (where a domain is large/entangled
-  enough to need a facade over existing legacy code rather than a
-  direct merge) does not need a uniform suffix -- name it for what it
-  does, the way MESA's private implementation modules are (`eosDT_eval`,
-  not `eosDT_mod`). Only the one public facade per domain gets `_lib`.
-- For a domain small and self-contained enough to convert directly
-  (no facade needed, as with `numerics_lib`), merge routines into the
-  one `_lib` file rather than keeping one module per routine -- Fortran
-  can't split a single `module` across files (only submodules can, a
-  heavier mechanism nothing else here uses), and one module per routine
-  would mean either breaking the one-routine-per-file convention
-  everywhere else in this codebase's history, or accepting an
-  aggregator-of-aggregators. Merge when the domain is a real "library"
-  of leaf routines (as `numerics_lib` is); keep the facade-over-legacy-
-  code pattern for domains still entangled with the solver (`eos`,
-  `kap`, etc. -- see below).
+**Modules, files and procedures (2026-10).** Four rules; new code
+follows them, and the 2026-10 sweep brought the tree into line (the state
+modules star_info_lib, rotation_scratch_lib and point_scratch_lib wait
+for the Phase 5 state split, docs/TARGET_ARCHITECTURE.md section 4.2,
+which replaces them).
 
+1. **A file is named exactly after its module.** `use network` means
+   `network.f90` in the domain's directory. A legacy file holding a
+   single bare subroutine is named after that subroutine.
+2. **`<domain>_lib` is a physics or numerics domain's one public
+   module** -- `eos_lib`, `kap_lib`, `atm_lib`, `net_lib`, `wind_lib`,
+   `numerics_lib`, `math_lib` (MESA's convention). Code outside the
+   domain uses only that module; it re-exports what the rest of the code
+   may see, so reading it shows the domain's whole interface.
+   `tools/check_boundaries.py` enforces this for the domains listed in
+   `FACADE_ONLY_DOMAINS`.
+3. **Every other module has no suffix and is named as a noun for what it
+   holds**: `network`, `nuclear_energy`, `light_elements`,
+   `convection_geometry`, `composition_step`.
+4. **Procedures are verbs** -- `compute_...`, `burn_...`, `locate_...`,
+   `store_...`, `advance_...`. A function that returns a quantity may be
+   named for the quantity (`deuterium_rate`, `pressure_scale_height`).
+   This is also why rule 3 works: gfortran rejects a module that
+   contains a procedure of its own name, which is how ten modules once
+   came to carry `_lib` -- the file was named after its main routine and
+   the module needed some other name. With noun modules and verb
+   procedures the clash cannot arise. (External routines keep their
+   authors' names: Timmes' `sneut`, `azbar`, `ifermi12`, `zfermim12`.)
 
 ## The star object: five rules (2026-10)
 

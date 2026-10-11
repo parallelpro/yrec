@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! evolve_step
 !----------------------------------------------------------------------
-! Added 2026 (phase five -- the embeddable engine; ROADMAP.md). One
+! Added 2026 (phase five -- the embeddable engine; docs/ROADMAP.md). One
 ! model advance, moved from run_yrec's model loop body: the
 ! divergence/retry loop (retry_step), the corrector ladder via
 ! henyey_iterate (solve_level), mixing, rotation

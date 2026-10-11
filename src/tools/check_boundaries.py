@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Domain-boundary checker for YREC (phase three, ROADMAP.md stage 2).
+"""Domain-boundary checker for YREC (phase three, docs/ROADMAP.md stage 2).
 
 Enforces the public/private rule established in stage 1: a file outside
 a physics domain may only call that domain's *public* entry points.
@@ -191,7 +191,7 @@ def check_star_free(src_root):
     return problems
 
 
-# Domains whose modules only their facade may expose (src/GUIDELINES.md,
+# Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
 FACADE_ONLY_DOMAINS = ["net"]

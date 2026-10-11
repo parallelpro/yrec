@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! yrec_reset_lib
 !----------------------------------------------------------------------
-! Added 2026 (phase five, step C -- ROADMAP.md): the re-entrancy
+! Added 2026 (phase five, step C -- docs/ROADMAP.md): the re-entrancy
 ! prologue. Fresh-process semantics for repeated run_yrec calls in
 ! one process, by pristine snapshot: at the FIRST entry star's
 ! startup state is captured (module/static storage is

@@ -69,7 +69,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
 
       if (abs((p_e12-opal95%eos_output(i_opal_p))/p_e12).gt.0.5d-6) then
          write(run_log_unit,*) p_e12, opal95%eos_output(i_opal_p)
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

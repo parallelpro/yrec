@@ -1,5 +1,7 @@
 # YREC modernization roadmap -- remaining work
 
+> File paths in this document are relative to `src/` unless they start with `docs/` (moved here from `src/` in 2026-10).
+
 This file lists what is NOT done yet. Completed campaigns are
 documented in the git history of this file and in the commit
 messages; the one-line summary:

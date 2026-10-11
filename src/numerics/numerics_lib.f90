@@ -17,7 +17,7 @@
 ! nuclear-physics content, and this module's own bsstep/intpt already
 ! called them via an errant `use net_lib` (ratext is in fact the
 ! textbook Numerical-Recipes companion to bsstep/mmid above). See
-! GUIDELINES.md's rule that folder/module placement should track
+! docs/GUIDELINES.md's rule that folder/module placement should track
 ! function, not caller.
 module numerics_lib
 ! 2026 numerics-gate opt-in: callers that pass the optional ierr of
@@ -388,7 +388,7 @@ subroutine ksplint(xa, ya, y2a, x, y, ierr)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
             print*, 'Ksplint failure'
-            ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+            ! 2026 (docs/ROADMAP.md stage 3): the historical stop became an ierr
             ! return (numerics has no facade -- each public procedure carries
             ! its own gate).
             ierr = 1
@@ -1003,9 +1003,9 @@ end subroutine ysplin
 ! solver): same Thomas-algorithm layout, used here for compositional
 ! (species-abundance) diffusion solves instead. Was originally shared
 ! with tridia.f90 via common/tridi/ (positional storage); converted
-! (2026, GUIDELINES.md) to explicit arguments since this is real
+! (2026, docs/GUIDELINES.md) to explicit arguments since this is real
 ! per-call data flow (matrix in, solution out), not global
-! configuration -- see GUIDELINES.md's module-vs-argument distinction.
+! configuration -- see docs/GUIDELINES.md's module-vs-argument distinction.
 subroutine ctridi(n, sub_diag, diag, super_diag, rhs, solution, ierr)
       use star_info_lib, only: json
 
@@ -1073,7 +1073,7 @@ end subroutine ctridi
 ! weighted by ei(:), and sumdj, their sum.
 !
 ! Was originally shared with ctridi.f90 via common/tridi/ (positional
-! storage); converted (2026, GUIDELINES.md) to explicit arguments
+! storage); converted (2026, docs/GUIDELINES.md) to explicit arguments
 ! since this is real per-call data flow, not global configuration.
 ! dj_n_seed replaces what was previously smuggled in via
 ! gamma_elim(n): the caller (am_diffusion_coeffs.f90, via secular_transport.f90) computes a
@@ -1251,7 +1251,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
       if(hydrogen_fraction+h.eq.hydrogen_fraction) then
          write(*,*) 'ERROR IN BSSTEP'
-       ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+       ! 2026 (docs/ROADMAP.md stage 3): the historical stop became an ierr
        ! return (numerics has no facade -- each public procedure carries
        ! its own gate).
        ierr = 1
@@ -1336,7 +1336,7 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       if((k_hi-k_lo).le.0)then
          write(terminal_unit, *) 'ERROR COX OP: INTERPOLATION'
          write(run_log_unit, *) 'ERROR COX OP: INTERPOLATION'
-         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+         ! 2026 (docs/ROADMAP.md stage 3): the historical stop became an ierr
          ! return (numerics has no facade -- each public procedure carries
          ! its own gate).
          ierr = 1
@@ -1402,7 +1402,7 @@ subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
       h = xa(khi) - xa(klo)
       if (h .eq. 0d0) then
            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
-         ! 2026 (ROADMAP.md stage 3): the historical stop became an ierr
+         ! 2026 (docs/ROADMAP.md stage 3): the historical stop became an ierr
          ! return (numerics has no facade -- each public procedure carries
          ! its own gate).
          ierr = 1
@@ -1558,7 +1558,7 @@ subroutine qgauss(integrand, g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
 
       implicit none
 
-! 2026 (phase four, step 2 -- ROADMAP.md): the integrand used to be a
+! 2026 (phase four, step 2 -- docs/ROADMAP.md): the integrand used to be a
 ! hard-coded call to rotation's shape-integrand `func`, the one
 ! backwards dependency that kept numerics from being a pure leaf. It
 ! is now a procedure dummy; rotation/shape/rotation_shape_factors.f90 passes `func` at
@@ -1741,7 +1741,7 @@ end subroutine intpt
 ! -- called by this module's own intpt above, and by eos/mhd/mhdpx1.f90;
 ! it was mis-homed in net_lib purely because its own burn_li_be
 ! also happens to use it (see ratext below, which shares that
-! history). Naming/module placement follows GUIDELINES.md's rule that
+! history). Naming/module placement follows docs/GUIDELINES.md's rule that
 ! folder/module placement should track function, not caller.
 !
 ! Generic table-lookup interpolation/extrapolation routine: cubic
@@ -2031,7 +2031,7 @@ subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       if (dabs(biga).eq.0.0d0) then
       write (5,1011)
  1011 format (1x,'STOPPED AT 1010')
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+      ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
       ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
       ! preserve the historical stop on a nonzero return.
       ierr = 1

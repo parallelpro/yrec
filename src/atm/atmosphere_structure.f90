@@ -2,7 +2,7 @@
 ! atmosphere_structure
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
-! GUIDELINES.md). Replaces common/atmstruct/: the per-point atmosphere
+! docs/GUIDELINES.md). Replaces common/atmstruct/: the per-point atmosphere
 ! structure profile (pressure/temperature/density/depth/gradients/
 ! ionization/opacity/specific heat in log space, indexed
 ! 1..num_atm_points), the atmosphere-region counterpart of
@@ -11,7 +11,7 @@
 ! read by the stitched-model/profile writers (core/stitched_model.f90
 ! and its callers) needing the current atmosphere structure.
 !
-! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as
+! Per docs/GUIDELINES.md's module-vs-argument test this is case 1b, same as
 ! envelope_structure/scrtch_lib/mdphy_lib: genuinely evolving per-model
 ! state, read from distant, unrelated points in the call graph. Field
 ! names are unchanged from the original COMMON member names, matching

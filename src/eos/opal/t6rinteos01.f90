@@ -31,7 +31,7 @@ subroutine t6rinteos01(v, slr, slt, ierr)
       if (v%esact.gt.1.0d+15) then
          write(run_log_unit,'("Interpolation indices out of range", &
               &";please report conditions.")')
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

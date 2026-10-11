@@ -63,7 +63,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
          else
             write(*,911)star%job%wind_saturation_omega,star%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
             ! preserve the historical stop on a nonzero return.
             ierr = 1

@@ -50,7 +50,7 @@ PREFIX ?= /usr/local/bin
 # subdirectories by physics domain (eos/, kap/, rotation/, etc.) -- find
 # every .f90 file recursively and keep each .o alongside its source.
 # Per-domain test/ directories hold standalone test PROGRAMs (phase
-# three, ROADMAP.md stage 2) and are excluded here so the yrec link
+# three, docs/ROADMAP.md stage 2) and are excluded here so the yrec link
 # never sees a second `program` unit; they build via their own targets
 # below.
 SRCS := $(shell find . -name '*.f90' -not -path '*/test/*' | sed 's|^\./||')
@@ -220,7 +220,7 @@ endif
 %.o: %.f90
 	$(FC) $(FFLAGS) -c $< -o $@
 
-# Per-domain static libraries (phase three, ROADMAP.md stage 2),
+# Per-domain static libraries (phase three, docs/ROADMAP.md stage 2),
 # following MESA's one-library-per-module convention. `make libs`
 # builds all of them; the yrec executable itself still links the flat
 # object list (the transition to library-based linking can go domain
@@ -256,7 +256,7 @@ yrec_libs: core/main.o $(LIBS)
 	$(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) \
 	$(HDF5_LIBS) $(CRMATH_LIBS)
 
-# Standalone per-domain test programs (phase three, ROADMAP.md stage
+# Standalone per-domain test programs (phase three, docs/ROADMAP.md stage
 # 2). Each links the full object set minus core/main.o (the flat-link
 # transitional form; library-based linking can follow the yrec
 # executable's own transition). Compiled with the release flags so

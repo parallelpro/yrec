@@ -31,7 +31,7 @@ subroutine alex06tab(ierr)
       if (opacity_table%alex06_cached_x.lt.0.0d0 .or. opacity_table%alex06_cached_x .gt. x_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
       endif
@@ -39,7 +39,7 @@ subroutine alex06tab(ierr)
       z_max = opacity_table%alex06_grid_z(n_alex06_z)+(opacity_table%alex06_grid_z(n_alex06_z)-opacity_table%alex06_grid_z(n_alex06_z-1))
       if (opacity_table%alex06_cached_z.lt.0.0d0 .or. opacity_table%alex06_cached_z .gt. z_max) then
          write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
-! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
+! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
       endif

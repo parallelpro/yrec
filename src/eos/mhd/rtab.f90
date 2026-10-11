@@ -37,13 +37,13 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       if(t_idx.eq.1) num_rho_points=rho_count_read
 !     CHECK LIMITS AND NUMBER OF DENSITY POINTS OF TABLE
       if ( num_t_points.gt.max_t_points .or.  num_rho_points.gt.max_rho_points ) then
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       end if
       if ( t_idx.gt.1 .and. rho_count_read.ne.num_rho_points ) then
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return

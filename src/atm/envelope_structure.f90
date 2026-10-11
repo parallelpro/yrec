@@ -2,7 +2,7 @@
 ! envelope_structure
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
-! GUIDELINES.md). Replaces common/envstruct/: the per-point envelope
+! docs/GUIDELINES.md). Replaces common/envstruct/: the per-point envelope
 ! structure profile (pressure/temperature/mass/density/radius/
 ! composition/convective-flag/gradients/velocity/opacity/luminosity in
 ! log space, indexed 1..num_env_points), computed by the envelope
@@ -10,7 +10,7 @@
 ! read by core/read_starting_model.f90 and other callers that need the
 ! just-integrated envelope profile.
 !
-! Per GUIDELINES.md's module-vs-argument test this is case 1b, same as
+! Per docs/GUIDELINES.md's module-vs-argument test this is case 1b, same as
 ! scrtch_lib/mdphy_lib/temp_lib: genuinely evolving per-model state,
 ! read from distant, unrelated points in the call graph. Field names
 ! are unchanged from the original COMMON member names, matching that

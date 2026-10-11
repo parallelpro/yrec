@@ -126,7 +126,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             write(run_log_unit,911)
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL'/ &
                  'STOPPED IN SUBROUTINE MIX')
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
             ! preserve the historical stop on a nonzero return.
             ierr = 1

@@ -37,7 +37,7 @@ subroutine opal95_fixed_z_table(metal_fraction, ierr)
       write(*,5)metal_fraction
     5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
            ' RUN STOPPED')
-      ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+      ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
       ierr = 1
       return
       end if

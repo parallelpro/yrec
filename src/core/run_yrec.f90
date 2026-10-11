@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! run_yrec
 !----------------------------------------------------------------------
-! Added 2026 (phase five -- the embeddable engine; see ROADMAP.md).
+! Added 2026 (phase five -- the embeddable engine; see docs/ROADMAP.md).
 ! The body of the former `program main`: namelist/controls read
 ! (read_parameters), table setup (setup_tables), and the Monte-Carlo /
 ! kind-card run loop around evolve_step. `program main` is a thin CLI

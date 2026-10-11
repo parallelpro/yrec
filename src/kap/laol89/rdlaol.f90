@@ -83,7 +83,7 @@ subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
          else
          write(run_log_unit,*)' OPACITY ARRAY TOO LARGE.'
          end if
-         ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return
       end if

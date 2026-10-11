@@ -72,7 +72,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       end if
       if ((rad_flag.ne.0) .and. (rad_flag.ne.1)) then
          write (run_log_unit,'(A, " Irad must be 0 or 1")') routine_id
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
@@ -290,7 +290,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
            (v%z_table(x_index_3).ne.v%z_table(v%x_index_lo))) then
          write(run_log_unit,'(A,"Z does not match Z in OEOS06 files you are" &
               &," using")') routine_id
-         ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
          ! facades stop when their caller passes no ierr.
          ierr = 1
          return
@@ -399,7 +399,7 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
       write(run_log_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
            v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
            hydrogen_fraction, t6_temperature, density, opal_eos%table_metal_fraction(iv_opal06)
-      ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the eos_lib
+      ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the eos_lib
       ! facades stop when their caller passes no ierr.
       ierr = 1
       return

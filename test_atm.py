@@ -1,4 +1,4 @@
-"""Standalone atm-domain regression test (phase three, ROADMAP.md stage 2).
+"""Standalone atm-domain regression test (phase three, docs/ROADMAP.md stage 2).
 
 Runs src/test_atm (built by `make tests` in src/) against the
 repository's Kurucz, Castelli/Kurucz, and Allard atmosphere tables

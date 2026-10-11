@@ -42,7 +42,7 @@ subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
       do i = 1,nm-5
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
             ! preserve the historical stop on a nonzero return.
             ierr = 1
@@ -67,7 +67,7 @@ subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
          ii = nm-i
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
             ! preserve the historical stop on a nonzero return.
             ierr = 1

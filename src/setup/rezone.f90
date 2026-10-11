@@ -93,7 +93,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: radiative_zone_begin, radiative_zone_end
       integer :: num_radiative_zones, num_convective_zones
 
-      ! 2026 (ROADMAP.md stage 3): library errors return here via ierr;
+      ! 2026 (docs/ROADMAP.md stage 3): library errors return here via ierr;
       ! this driver-side call site preserves the historical stop.
       integer :: jerr
 

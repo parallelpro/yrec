@@ -263,7 +263,7 @@ module opacity_tables
       type(opacity_table_state), public :: opacity_table
 
 
-! 2026 (phase six, step 3 -- ROADMAP.md): evicted here from
+! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
 ! const_lib, where this table/working data had landed during the
 ! phase-one COMMON conversion; it belongs with this domain's state.
 ! former common/nwlaol/'s one remaining member (the table arrays are

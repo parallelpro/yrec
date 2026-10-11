@@ -46,7 +46,7 @@
 !
 ! sub_diag/diag/super_diag/rhs were originally shared with diffuse_composition.f90/
 ! ctridi.f90 via common/tridi/ (positional storage); converted (2026,
-! GUIDELINES.md) to explicit output arguments since this is real
+! docs/GUIDELINES.md) to explicit output arguments since this is real
 ! per-call data flow, not global configuration.
 subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)

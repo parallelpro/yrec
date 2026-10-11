@@ -138,7 +138,7 @@ subroutine setups(ierr)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! MHP 8/25 Passed file names directly instead of through common, as
 ! character strings in common blocks can cause problems
-! 2026 (ROADMAP.md stage 1): the use_mhd_eos gate moved inside
+! 2026 (docs/ROADMAP.md stage 1): the use_mhd_eos gate moved inside
 ! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
 ! eos_init also reads the Fermi-Dirac degenerate-electron table
 ! (the F-tables block that used to sit inline just below).
@@ -150,21 +150,21 @@ subroutine setups(ierr)
 !
 !
 ! (The F-tables read for the degenerate equation of state that lived
-! here moved into eos_lib's eos_init above -- 2026, ROADMAP.md
+! here moved into eos_lib's eos_init above -- 2026, docs/ROADMAP.md
 ! stage 1 -- along with its state's relocation from atm_tables to
 ! yale_eos_tables.)
 ! JMH 8/18/91
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! 2026 (ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
+! 2026 (docs/ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
 ! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
 ! loads that lived inline here moved into atm_lib's atm_init.
       call atm_init(star%job%atm_table_path,star%job%allard_table_path, ierr)
       if (ierr /= 0) return
 
 ! (The SCV equation-of-state table reads that lived here moved into
-! eos_lib's eos_init -- 2026, ROADMAP.md stage 1 -- alongside the
+! eos_lib's eos_init -- 2026, docs/ROADMAP.md stage 1 -- alongside the
 ! Fermi-Dirac table read.)
 
       return

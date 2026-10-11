@@ -1,4 +1,4 @@
-"""Phase-five step C acceptance test (2026 -- ROADMAP.md): re-entrancy.
+"""Phase-five step C acceptance test (2026 -- docs/ROADMAP.md): re-entrancy.
 
 The contract: two run_yrec calls in one process produce, on the second
 call, outputs byte-identical to a fresh single-process run. src/

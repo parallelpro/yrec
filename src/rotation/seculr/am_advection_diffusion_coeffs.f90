@@ -455,7 +455,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          num_substeps = 2*num_substeps
          if (timestep_cut_count.gt.5) then
             write(*,*) 'TIMESTEP CUT MORE THAN 5 TIMES - RUN STOPPED'
-            ! 2026 (ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
             ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
             ! preserve the historical stop on a nonzero return.
             ierr = 1

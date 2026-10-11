@@ -1,4 +1,4 @@
-"""Standalone eos-domain regression test (phase three, ROADMAP.md stage 2).
+"""Standalone eos-domain regression test (phase three, docs/ROADMAP.md stage 2).
 
 Runs src/test_eos (built by `make tests` in src/) with YREC_INPUT
 pointing at the repository's input/ tables, and byte-compares its

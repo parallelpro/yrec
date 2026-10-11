@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! star_info_lib
 !----------------------------------------------------------------------
-! Added 2026 (phase four, step 3 -- ROADMAP.md "Phase four: the star
+! Added 2026 (phase four, step 3 -- docs/ROADMAP.md "Phase four: the star
 ! layer"). The single owned representation of the stellar model,
 ! adapted from MESA's star_info to YREC's single-star-per-process
 ! design (phase-one decision: one module-level instance, no handles --
@@ -494,7 +494,7 @@ module star_info_lib
             double precision :: pulse_electron_mean_weight_inverse(json)
 ! 2026 (phase six, step 1): the nine remaining model-state modules,
 ! folded in the same way as prev/diag/run/rot -- types stay in their
-! own files, the single instances live here. See ROADMAP.md phase six
+! own files, the single instances live here. See docs/ROADMAP.md phase six
 ! for the per-module classification (envstruct/atmstruct deliberately
 ! stay atm-domain state and are NOT here).
 ! job configuration and driver-step state (2026 MESA-convention pass:

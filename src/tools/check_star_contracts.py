@@ -19,7 +19,7 @@ actual argument to a dummy declared intent(out) or intent(inout). A
 member that is both read and written is listed under writes only.
 
 The check is opt-in: only procedures that carry the two lines are
-checked, so contracts can be added driver by driver (src/GUIDELINES.md,
+checked, so contracts can be added driver by driver (docs/GUIDELINES.md,
 "the star object").
 
 usage: check_star_contracts.py          check; exit 1 on any mismatch

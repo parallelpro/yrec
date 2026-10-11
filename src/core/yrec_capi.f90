@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! yrec_capi
 !----------------------------------------------------------------------
-! Added 2026 (libyrec milestone -- ROADMAP.md). The C-interoperable
+! Added 2026 (libyrec milestone -- docs/ROADMAP.md). The C-interoperable
 ! surface of the embeddable engine, consumed by pyyrec (the ctypes
 ! binding under /Applications/YREC/pyyrec). One entry:
 !

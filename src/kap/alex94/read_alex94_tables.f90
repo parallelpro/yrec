@@ -62,7 +62,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                     header_z, opacity_table%alex94_grid_z(i)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
-               ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
                return
             endif
@@ -82,7 +82,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
                        ' RUN STOPPED')
-                  ! 2026 (ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                   ierr = 1
                   return
                endif
