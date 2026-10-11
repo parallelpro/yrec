@@ -51,6 +51,7 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
            60, 59, 58, 57, 55, 54, 53, 52, 51, 2*49, 48, 2*47, 46, &
            2*45, 15*44, 2*37/
       integer, intent(out) :: ierr
+      logical :: in_table
 
       ierr = 0
 
@@ -67,8 +68,8 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
          density_dbg = 0.001d0
          ideriv_dbg = 1
          call esac(v, hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              rad_flag, ierr, *999)
-         if (ierr /= 0) then
+              rad_flag, ierr, in_table)
+         if (ierr /= 0 .or. .not. in_table) then
             rhoofp = opal_rho_not_found
             return
          end if
@@ -118,8 +119,8 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
       density_trial1 = v%density_grid(density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
-           rad_flag, ierr, *999)
-      if (ierr /= 0) then
+           rad_flag, ierr, in_table)
+      if (ierr /= 0 .or. .not. in_table) then
          rhoofp = opal_rho_not_found
          return
       end if
@@ -130,8 +131,8 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
          density_trial1 = 0.2d0*density_trial1
          if (density_trial1.lt.1.0d-14) density_trial1 = 1.0d-14
          call esac(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
-              rad_flag, ierr, *999)
-         if (ierr /= 0) then
+              rad_flag, ierr, in_table)
+         if (ierr /= 0 .or. .not. in_table) then
             rhoofp = opal_rho_not_found
             return
          end if
@@ -141,8 +142,8 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
          if (density_trial2.gt.v%density_grid(density_index_edge(t6_bisect_idx))) &
               density_trial2 = v%density_grid(density_index_edge(t6_bisect_idx))
          call esac(v, hydrogen_fraction, t6_temperature, density_trial2, 1, &
-              rad_flag, ierr, *999)
-         if (ierr /= 0) then
+              rad_flag, ierr, in_table)
+         if (ierr /= 0 .or. .not. in_table) then
             rhoofp = opal_rho_not_found
             return
          end if
@@ -155,8 +156,8 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
       density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
            (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
       call esac(v, hydrogen_fraction, t6_temperature, density_trial3, 1, &
-           rad_flag, ierr, *999)
-      if (ierr /= 0) then
+           rad_flag, ierr, in_table)
+      if (ierr /= 0 .or. .not. in_table) then
          rhoofp = opal_rho_not_found
          return
       end if
@@ -181,8 +182,4 @@ double precision function rhoofp(v, hydrogen_fraction, t6_temperature, &
          return
       end if
       end do refine
-  999 continue
-!     esac took its alternate return: failed to find rho
-      rhoofp = opal_rho_not_found
-      return
 end function rhoofp

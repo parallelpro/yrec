@@ -33,7 +33,7 @@
 ! EOS variables are stored in v%eos_output/v%eos_table (by default
 ! 1,2,...,10, i.e. unpermuted).
 subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, ierr, *)
+     deriv_order, rad_flag, ierr, in_table)
 
       use opal_eos_tables
       use io_units
@@ -68,8 +68,12 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       double precision, external :: quad, gmass
 
       integer, intent(out) :: ierr
+! in_table is false when (T6, rho) is outside the table or in an
+! empty region of it
+      logical, intent(out) :: in_table
 
       ierr = 0
+      in_table = .true.
 
       if (deriv_order.gt.10) then
          write(run_log_unit,'(" IORDER CANNOT EXCEED 10")')
@@ -117,13 +121,15 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
          write(run_log_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
          write(run_log_unit,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
          write(run_log_unit,*) v%density_grid(1), density_value, v%density_grid(nr)
-         return 1
+         in_table = .false.
+         return
       end if
       if ((density_value.lt.v%density_grid(1)) .or. (density_value.gt.v%density_grid(nr))) then
          write(run_log_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
          write(run_log_unit,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
          write(run_log_unit,*) v%density_grid(1), density_value, v%density_grid(nr)
-         return 1
+         in_table = .false.
+         return
       end if
 !
 !
@@ -242,7 +248,8 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
             write(run_log_unit,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
             write(run_log_unit,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, &
             t6_temperature, density
-            return 1
+            in_table = .false.
+            return
          end if
       else
       if (table_sum_3x4.lt.1.0d+30) v%t6_interp_order = 3

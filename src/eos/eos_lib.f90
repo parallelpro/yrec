@@ -391,8 +391,7 @@ end subroutine eos_init
 ! use_opal2006_eos exactly as calcad historically did: the OPAL 2006
 ! table (via esac06, density-basis, radiation correction on, 9
 ! variables; a failed table lookup falls through with whatever the
-! previous point left behind, preserved verbatim from calcad's
-! original alternate-return handling) when enabled, otherwise the
+! previous point left behind, as calcad did) when enabled, otherwise the
 ! Yale/SCV path (via eqstat2, pressure-basis) with gamma1 built from
 ! chi_rho/chi_T/cv per Cox & Giuli ch. 9.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
@@ -408,8 +407,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       double precision, intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_state
 ! 2026 (docs/ROADMAP.md stage 3): ierr, same contract as eos_eval's.
-! Note the out-of-table alternate return of esac06 is NOT an error
-! here: it falls through with the previous point's results, preserved
+! Note an out-of-table esac06 lookup (in_table false) is NOT an
+! error here: it falls through with the previous point's results, preserved
 ! verbatim from calcad's original handling.
       integer, intent(out) :: ierr
 
@@ -428,7 +427,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       double precision :: qdt_eos, qdp_eos, qcp_eos, dela_eos, qdtt_eos, &
            qdtp_eos, qat_eos, qap_eos, qcpt_eos, qcpp_eos
       double precision :: chi_rho, chi_t, specific_heat_cv
-      logical :: eos_deriv_flag, eos_atmosphere_flag
+      logical :: eos_deriv_flag, eos_atmosphere_flag, in_table
 
       ierr = 0
       jerr = 0
@@ -440,12 +439,11 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          t6_local = temperature_1e6k
          d_local = density
          call esac06(opal06, x_local, t6_local, d_local, eos_interp_order, &
-              eos_rad_flag, jerr, *100)
+              eos_rad_flag, jerr, in_table)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
-  100    continue
          gamma1 = opal06%eos_output(i_opal_gamma1)
          adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)
       else

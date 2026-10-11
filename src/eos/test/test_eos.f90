@@ -69,7 +69,7 @@ program test_eos
       double precision :: x_frac, z_frac
       double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
       double precision :: qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp
-      logical :: lderiv, latmo
+      logical :: lderiv, latmo, in_table
       integer :: ksaha
 
 ! eos_get_gamma1 argument set
@@ -304,7 +304,7 @@ program test_eos
 ! Error paths (2026, docs/ROADMAP.md stage 3): in the eos domain the error
 ! conditions behind the converted stops are corrupt-table /
 ! misconfiguration cases (out-of-table lookups stay *recoverable* by
-! design here -- alternate returns and sentinels -- unlike kap), so
+! design here -- in_table flags and sentinels -- unlike kap), so
 ! with healthy tables the facade cannot be driven to ierr /= 0. The
 ! first check asserts the success path threads ierr = 0 end to end
 ! through eqstat/eqstat2/oeqos06/esac06. The second drives esac06 (a
@@ -326,8 +326,7 @@ program test_eos
            qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
            lderiv, latmo, ksaha, ierr=eos_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", eos_ierr
-      call esac06(opal06, 0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, *300)
-  300 continue
+      call esac06(opal06, 0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, in_table)
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
       call check_configurations()

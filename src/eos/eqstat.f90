@@ -355,6 +355,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            opal_adiabatic_gradient
       double precision :: ramp_factor
       logical :: in_opal_table, needs_ramp
+      logical :: opal_covers_point
 ! (T, rho) window inside which each OPAL vintage is consulted at all
 ! (the table edge itself is then handled by eqbound/eqbound01/
 ! eqbound06). The three gates are not the same test: 1995 bounds
@@ -614,8 +615,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, *998)
-         if (ierr /= 0) return
+              opal_adiabatic_gradient, ierr, opal_covers_point)
+         if (ierr /= 0 .or. .not. opal_covers_point) return
 
          call eqbound(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
@@ -638,8 +639,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, *998)
-         if (ierr /= 0) return
+              opal_adiabatic_gradient, ierr, opal_covers_point)
+         if (ierr /= 0 .or. .not. opal_covers_point) return
 
          call eqbound01(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
@@ -664,8 +665,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_ion_mean_weight_inverse, &
               opal_electron_mean_weight_inverse, opal_dlnrho_dlnt, &
               opal_dlnrho_dlnp, opal_specific_heat_cp, &
-              opal_adiabatic_gradient, ierr, *998)
-         if (ierr /= 0) return
+              opal_adiabatic_gradient, ierr, opal_covers_point)
+         if (ierr /= 0 .or. .not. opal_covers_point) return
 
          call eqbound06(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp)
@@ -686,7 +687,6 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       end if
       end if
 
-  998 continue
       return
 
 contains

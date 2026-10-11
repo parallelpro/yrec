@@ -11,13 +11,13 @@
 ! log10(P), X, and Z, looks up density and the thermodynamic
 ! derivatives needed by the rest of the EOS machinery from the OPAL
 ! 2006 tables (via rhoofp06.f90/esac06.f90). Called from eqstat2
-! (eqstat.f90); the alternate return is taken when the point is
+! (eqstat.f90); in_table is false when the point is
 ! outside the OPAL tables.
 subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, specific_gas_constant, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
-     dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, *)
+     dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, in_table)
 
       use opal_eos_tables
       use physical_constants
@@ -42,8 +42,12 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       double precision, external :: rhoofp06
 
       integer, intent(out) :: ierr
+! in_table is false outside the table's T range, when no density
+! matches P, or when esac06 finds the point outside the table
+      logical, intent(out) :: in_table
 
       ierr = 0
+      in_table = .true.
 
       deriv_order = 9  ! gives all 1st and 2nd order data. See instructions
 !                  in esac06.
@@ -54,20 +58,28 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       pressure = exp10(log10_pressure)
       t_million_k = temperature/1.0d6
       p_e12 = pressure/1.0d12
-      if (t_million_k.lt.0.001870d0 .or. t_million_k.gt.200.0d0) return 1
+      if (t_million_k.lt.0.001870d0 .or. t_million_k.gt.200.0d0) then
+         in_table = .false.
+         return
+      end if
       hydrogen_fraction_work = hydrogen_fraction
 
       density_cgs = rhoofp06(opal06, hydrogen_fraction_work, t_million_k, p_e12, &
            rad_flag, ierr)
       if (ierr /= 0) return
       if (density_cgs.le.-998.0d0) then
-         return 1
+         in_table = .false.
+         return
       end if
       density = density_cgs
       log10_density = log10(density)
 
       call esac06(opal06, hydrogen_fraction_work, t_million_k, density_cgs, &
-           deriv_order, rad_flag, ierr, *999)
+           deriv_order, rad_flag, ierr, in_table)
+      if (.not. in_table) then
+         write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
+         return
+      end if
       if (ierr /= 0) return
 
 
@@ -94,7 +106,4 @@ subroutine oeqos06(log10_temperature, temperature, log10_pressure, &
       end if
 
       return
-  999 write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
-
-      return 1
 end subroutine oeqos06

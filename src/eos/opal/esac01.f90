@@ -25,7 +25,7 @@
 !   v%eos_output(8) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 !   v%eos_output(9) gamma3-1 (Cox & Guili eq 9.88)
 subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, ierr, *)
+     deriv_order, rad_flag, ierr, in_table)
 
       use opal_eos_tables
       use io_units
@@ -68,8 +68,12 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       double precision, external :: quad, gmass01
 
       integer, intent(out) :: ierr
+! in_table is false when (T6, rho) is outside the table or in an
+! empty region of it
+      logical, intent(out) :: in_table
 
       ierr = 0
+      in_table = .true.
 
       if (deriv_order.gt.9) then
          write (run_log_unit,'(A, " iorder cannot exceed 9")') routine_id
@@ -120,7 +124,8 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
          v%t6_grid(nt)
          write(run_log_unit,*) "slr,r,rho(1),rho(nr):", density_value, &
          density, v%density_grid(1), v%density_grid(nr)
-         return 1
+         in_table = .false.
+         return
       end if
       if ((density_value.lt.v%density_grid(1)) .or. (density_value.gt.v%density_grid(nr))) then
          continue
@@ -129,7 +134,8 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
          v%t6_grid(nt)
          write(run_log_unit,*) "slr,r,rho(1),rho(nr):", density_value, &
          density, v%density_grid(1), v%density_grid(nr)
-         return 1
+         in_table = .false.
+         return
       end if
 !
 !
@@ -263,7 +269,8 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
             " table (65)"
             write(run_log_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, &
             t6_temperature, density
-            return 1
+            in_table = .false.
+            return
          end if
       else
       if (table_sum_3x4.lt.1.0d+30) v%t6_interp_order = 3
