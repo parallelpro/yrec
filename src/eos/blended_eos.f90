@@ -454,7 +454,7 @@ subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
 
       if (beta < 0d0) then
          write(run_log_unit,*) &
-              'blend_eos: BETA is negative: TL,PL,BETA,1-BETA', &
+              'EQSTAT2: BETA is negative: TL,PL,BETA,1-BETA', &
               log10_temperature, log10_pressure, beta, 1d0 - beta
       end if
 
