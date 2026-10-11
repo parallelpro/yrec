@@ -213,8 +213,8 @@ end function deuterium_rate
 ! s, from deuterium_rate; surviving_fraction). D + p -> He3: X changes by D/2 and He3 by
 ! -3D/2 of the deuterium burned. Under mass accretion the outermost
 ! region blends in the gas accreted over the step (accretion),
-! mass-weighted. Below min_deuterium (after
-! that blend) the region's deuterium is set to zero.
+! mass-weighted. Below min_deuterium (after that blend) the region's
+! deuterium is set to zero.
 !
 ! 2026-10: one routine for the main step (burn_deuterium,
 ! min_deuterium = 1e-11) and the rotation sub-steps
@@ -222,131 +222,104 @@ end function deuterium_rate
 ! accreted mass, min_deuterium = 1e-14) -- formerly dburn and dburnm,
 ! two copies that differed in units, in dburnm's grams-plus-one
 ! accretion blend and in its accretion-blind threshold test.
-pure subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
-     composition, timestep, xa_start, rate_start_zone, rate_end_zone, &
-     accretion, min_deuterium)
-
-      use star_info_lib, only: i_h2
+pure subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, &
+     shell_mass, composition, timestep, xa_start, rate_start_zone, &
+     rate_end_zone, accretion, min_deuterium)
+      use star_info_lib, only: i_h1, i_he3, i_h2
       use math_lib
-      implicit none
-
       integer, intent(in) :: zone_begin, zone_end, num_zones
       real(dp), intent(in) :: shell_mass(:)
+! composition: out, the region's new X, He3 and D (star%xa layout)
       real(dp), intent(inout) :: composition(:,:)
-      real(dp), intent(in) :: timestep
-! timestep in s; the start-of-step composition; the deuterium rates
-! per shell at the start and end of the step (per s); the gas accreted over
+! timestep in s; the start-of-step composition; the deuterium rates per
+! shell at the start and end of the step (per s); the gas accreted over
 ! this step; the threshold below which deuterium is zeroed
-      real(dp), intent(in) :: xa_start(:,:), &
-           rate_start_zone(:), rate_end_zone(:), min_deuterium
+      real(dp), intent(in) :: timestep
+      real(dp), intent(in) :: xa_start(:,:), rate_start_zone(:), &
+           rate_end_zone(:), min_deuterium
       type(surface_accretion), intent(in) :: accretion
-      real(dp) :: hydrogen_fraction, deuterium_fraction, &
-           helium3_fraction, rate_start, rate_end
-      real(dp) :: total_shell_mass, rate_start_sum, rate_end_sum
-      integer :: zone_idx
-      real(dp) :: deuterium_fraction_test
-      real(dp) :: deuterium_fraction_burned, accreted_deuterium_burned
-      real(dp) :: deuterium_change_original, &
-           deuterium_change_accreted, deuterium_fraction_new, &
-           hydrogen_fraction_new, helium3_fraction_new, deuterium_change
 
-      if (zone_begin.eq.zone_end) then
-! the region mass weights the accreted material below (2026-10: it was
-! left unset here, i.e. zero, so a lone accreting surface shell took
-! the accreted deuterium and dropped its own)
-         total_shell_mass = shell_mass(zone_begin)
-         hydrogen_fraction = xa_start(1,zone_begin)
-         deuterium_fraction = xa_start(12,zone_begin)
-         helium3_fraction = xa_start(4,zone_begin)
+      real(dp) :: region_mass, hydrogen, deuterium, helium3, rate_start, &
+           rate_end
+      real(dp) :: mixed_deuterium, deuterium_left, accreted_left, change, &
+           change_accreted, burned, total_mass, new_hydrogen, new_helium3, &
+           new_deuterium
+      logical :: surface
+      integer :: k
+
+! the region's start-of-step X, D, He3 and rates (mass-weighted over a
+! mixed region)
+      if (zone_begin == zone_end) then
+         region_mass = shell_mass(zone_begin)
+         hydrogen = xa_start(i_h1, zone_begin)
+         deuterium = xa_start(i_h2, zone_begin)
+         helium3 = xa_start(i_he3, zone_begin)
          rate_start = rate_start_zone(zone_begin)
          rate_end = rate_end_zone(zone_begin)
       else
-         total_shell_mass = 0.0d0
-         rate_start_sum = 0.0d0
-         rate_end_sum = 0.0d0
-         hydrogen_fraction = 0.0d0
-         deuterium_fraction = 0.0d0
-         helium3_fraction = 0.0d0
-         do zone_idx = zone_begin, zone_end
-            total_shell_mass = total_shell_mass + shell_mass(zone_idx)
-            rate_start_sum = rate_start_sum + &
-                 shell_mass(zone_idx)*rate_start_zone(zone_idx)
-            rate_end_sum = rate_end_sum + &
-                 shell_mass(zone_idx)*rate_end_zone(zone_idx)
-            hydrogen_fraction = hydrogen_fraction + &
-                 xa_start(1,zone_idx)*shell_mass(zone_idx)
-            deuterium_fraction = deuterium_fraction + &
-                 xa_start(12,zone_idx)*shell_mass(zone_idx)
-            helium3_fraction = helium3_fraction + &
-                 xa_start(4,zone_idx)*shell_mass(zone_idx)
+         region_mass = 0.0d0
+         rate_start = 0.0d0
+         rate_end = 0.0d0
+         hydrogen = 0.0d0
+         deuterium = 0.0d0
+         helium3 = 0.0d0
+         do k = zone_begin, zone_end
+            region_mass = region_mass + shell_mass(k)
+            rate_start = rate_start + shell_mass(k)*rate_start_zone(k)
+            rate_end = rate_end + shell_mass(k)*rate_end_zone(k)
+            hydrogen = hydrogen + xa_start(i_h1, k)*shell_mass(k)
+            deuterium = deuterium + xa_start(i_h2, k)*shell_mass(k)
+            helium3 = helium3 + xa_start(i_he3, k)*shell_mass(k)
          end do
-         rate_start = rate_start_sum/total_shell_mass
-         rate_end = rate_end_sum/total_shell_mass
-         hydrogen_fraction = hydrogen_fraction/total_shell_mass
-         deuterium_fraction = deuterium_fraction/total_shell_mass
-         helium3_fraction = helium3_fraction/total_shell_mass
+         rate_start = rate_start/region_mass
+         rate_end = rate_end/region_mass
+         hydrogen = hydrogen/region_mass
+         deuterium = deuterium/region_mass
+         helium3 = helium3/region_mass
       end if
-      if (accretion%on .and. zone_end.eq.num_zones .and. &
-           accretion%inflow) then
-         deuterium_fraction_test = (deuterium_fraction*total_shell_mass + &
+
+! under accretion the surface region takes in the gas accreted over the
+! step; too little deuterium (counting that gas when it flows in): none
+      surface = accretion%on .and. zone_end == num_zones
+      if (surface .and. accretion%inflow) then
+         mixed_deuterium = (deuterium*region_mass + &
               accretion%deuterium_fraction*accretion%mass)/ &
-              (total_shell_mass + accretion%mass)
+              (region_mass + accretion%mass)
       else
-         deuterium_fraction_test = deuterium_fraction
+         mixed_deuterium = deuterium
       end if
-      if (deuterium_fraction_test.lt.min_deuterium) then
-         do zone_idx = zone_begin, zone_end
-            composition(i_h2,zone_idx) = 0.0d0
-         end do
+      if (mixed_deuterium < min_deuterium) then
+         composition(i_h2, zone_begin:zone_end) = 0.0d0
          return
       end if
-!     BURN DEUTERIUM OVER THE STEP. D + p -> He3 removes deuterium at
-!     twice the per-amu rate (A_D = 2), with the rate linear in time
-!     between its start and end values. (2026-10: closed form; the
-!     sub-steps of 0.1 in ln that stood here summed to the same integral
-!     without accretion, and approximated accreted_survival with it.)
-      deuterium_fraction_burned = deuterium_fraction* &
-           surviving_fraction(2.0d0*rate_start, 2.0d0*rate_end, timestep, &
-           linear_in_time)
-!     INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
-      if (accretion%on .and. zone_end.eq.num_zones) then
-!        THE ACCRETED GAS (accretion%mass GRAMS OVER THE STEP) BURNS
-!        FROM ITS ARRIVAL ON. BURN BOTH THE ACCRETED D AND THE ORIGINAL
-!        D SEPARATELY AND FIND THE NEW MASS-WEIGHTED AVERAGE D.  NOTE
-!        THAT ACCRETION OF ELEMENTS 1-11 HAS ALREADY BEEN TREATED.
-         accreted_deuterium_burned = accretion%deuterium_fraction* &
+
+! D + p -> He3 removes deuterium at twice the per-amu rate (A_D = 2),
+! the rate linear in time over the step; X gains half the deuterium
+! burned and He3 loses three halves. The accreted gas burns from its
+! arrival on (accreted_survival) and mixes in by mass.
+      deuterium_left = deuterium*surviving_fraction(2.0d0*rate_start, &
+           2.0d0*rate_end, timestep, linear_in_time)
+      if (surface) then
+         accreted_left = accretion%deuterium_fraction* &
               accreted_survival(2.0d0*rate_start, 2.0d0*rate_end, timestep, &
               linear_in_time)
-!        NOW PERFORM A WEIGHTED SUM OF THE ORIGINAL
-!        AND NEWLY ACCRETED MATTER
-         deuterium_change_original = deuterium_fraction_burned - &
-              deuterium_fraction
-         deuterium_change_accreted = accreted_deuterium_burned - &
-              accretion%deuterium_fraction
-         deuterium_fraction_new = (deuterium_fraction_burned*total_shell_mass &
-              + accreted_deuterium_burned*accretion%mass)/ &
-              (total_shell_mass + accretion%mass)
-         hydrogen_fraction_new = hydrogen_fraction + 0.5d0* &
-              (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accretion%mass)/ &
-              (total_shell_mass + accretion%mass)
-         helium3_fraction_new = helium3_fraction - 1.5d0* &
-              (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accretion%mass)/ &
-              (total_shell_mass + accretion%mass)
+         change = deuterium_left - deuterium
+         change_accreted = accreted_left - accretion%deuterium_fraction
+         burned = change*region_mass + change_accreted*accretion%mass
+         total_mass = region_mass + accretion%mass
+         new_deuterium = (deuterium_left*region_mass + &
+              accreted_left*accretion%mass)/total_mass
+         new_hydrogen = hydrogen + 0.5d0*burned/total_mass
+         new_helium3 = helium3 - 1.5d0*burned/total_mass
       else
-!        INCREMENT H,D,HE3 WITHOUT MASS ACCRETION
-         deuterium_change = deuterium_fraction_burned - deuterium_fraction
-         deuterium_fraction_new = deuterium_fraction_burned
-         hydrogen_fraction_new = hydrogen_fraction + 0.5d0*deuterium_change
-         helium3_fraction_new = helium3_fraction - 1.5d0*deuterium_change
+         change = deuterium_left - deuterium
+         new_deuterium = deuterium_left
+         new_hydrogen = hydrogen + 0.5d0*change
+         new_helium3 = helium3 - 1.5d0*change
       end if
-      do zone_idx = zone_begin, zone_end
-         composition(1,zone_idx) = hydrogen_fraction_new
-         composition(4,zone_idx) = helium3_fraction_new
-         composition(i_h2,zone_idx) = deuterium_fraction_new
-      end do
-      return
+      composition(i_h1, zone_begin:zone_end) = new_hydrogen
+      composition(i_he3, zone_begin:zone_end) = new_helium3
+      composition(i_h2, zone_begin:zone_end) = new_deuterium
 end subroutine burn_deuterium_region
 
 
