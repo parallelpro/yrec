@@ -322,9 +322,9 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
-      use star_info_lib, only: star, json, n_species_extended, i_h1, i_he4, &
+      use star_info_lib, only: json, n_species_extended, i_h1, i_he4, &
            i_metals, i_he3, i_c12, i_c13, i_n14, i_o16
-      use net_lib, only: num_rate_rows
+      use net_lib, only: num_rate_rows, net_settings
       implicit none
 
 ! rate_by_zone(rr_*, zone): the per-zone rate vectors written by
@@ -362,7 +362,7 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
       dy_dt = 0.0d0
       dc_dt = 0.0d0
       do_dt = 0.0d0
-      if (shell_temperature(zone_begin).lt.star%ctrl%nuclear_logT_cutoffs(1)) return
+      if (shell_temperature(zone_begin).lt.net_settings%logT_cutoffs(1)) return
 !     COMPUTE EXPLICIT HYDROGEN AND HELIUM BURNING RATES ASSUMING EQUILIBRIUM
 !     HE3 AND CN CYCLE ABUNDANCES.
 !     THIS IS USED FOR AN INITIAL GUESS AT THE BURNING RATES AT THE START
@@ -469,7 +469,7 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
       local_xn14 = zone_avg_abundance(i_n14)
       equilibrium_xo16 = zone_avg_abundance(i_o16)
       if (hydrogen_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(2)) then
+           shell_temperature(zone_begin).gt.net_settings%logT_cutoffs(2)) then
 !        FIND EQUILIBRIUM HELIUM-3 ABUNDANCE, USING THE QUADRATIC FORMULA.
 !        THE EQUATION IS -2*R(3,3)*XHE3**2 - R(3,4)*XHE3*XHE4 + R(1,1)X**2 = 0.
          pp_reaction_term = pp_rate*hydrogen_fraction**2
@@ -485,7 +485,7 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
          dx_dt = -3.0d0*pp_reaction_term + 2.0d0*he3_he3_rate*local_xhe3**2 &
               - he3_he4_reaction_term*local_xhe3
 !        CN CYCLE (only on the hydrogen-burning branch).
-         if (shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(3)) then
+         if (shell_temperature(zone_begin).gt.net_settings%logT_cutoffs(3)) then
 !           FIND EQUILIBRIUM C12,C13,N14 ABUNDANCES TREATING CN PROCESSING AS
 !           A CLOSED LOOP.
             cno_sum = equilibrium_xc12/1.2d1 + local_xc13/1.3d1 + &
@@ -513,7 +513,7 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
 !     HELIUM BURNING REACTIONS (dy_dt, dc_dt, do_dt stay at the zero set
 !     above when helium does not burn).
       if (helium_fraction.gt.1.0d-10 .and. &
-           shell_temperature(zone_begin).gt.star%ctrl%nuclear_logT_cutoffs(4)) then
+           shell_temperature(zone_begin).gt.net_settings%logT_cutoffs(4)) then
          triple_alpha_term = triple_alpha_rate*helium_fraction**3
          c12_alpha_term = c12_alpha_rate*helium_fraction*equilibrium_xc12
          dy_dt = -4.0d0*(c12_alpha_term + 3.0d0*triple_alpha_term)

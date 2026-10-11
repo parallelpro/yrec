@@ -9,10 +9,9 @@
 ! absolute derivatives d eps/dln rho, d eps/dln T for the Henyey
 ! Jacobian; the chain shares (pp, Be7 electron/proton branches, CNO,
 ! triple alpha); the alpha-capture energy, thermal neutrino losses and
-! He3 energy rates; and, when ctrl%calc_neutrinos, the solar neutrino
+! He3 energy rates; and, when net_settings%calc_neutrinos, the solar neutrino
 ! fluxes and the Be7 abundance. Everything it computes comes back in
-! the record. It reads only configuration from star (ctrl, the
-! cross-section scales).
+! the record. Its configuration is net_lib's net_settings.
 module nuclear_energy_lib
       use net_lib
       implicit none
@@ -32,7 +31,7 @@ module nuclear_energy_lib
          double precision :: eps_alpha_capture = 0.0d0
          double precision :: eps_neutrino_loss = 0.0d0
          double precision :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
-! set only when ctrl%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
+! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
          double precision :: neutrino_flux(10) = 0.0d0
          double precision :: be7_mass_fraction = 0.0d0
@@ -190,7 +189,7 @@ subroutine nuclear_energy(log_density, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
      o18_fraction, deuterium_fraction, in_surface_cz, turnover_timescale, e)
 
-      use star_info_lib, only: star, i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, &
+      use star_info_lib, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, &
            i_nu_he3he3, i_nu_he3he4
       use phys_const_lib
       use math_lib
@@ -208,7 +207,7 @@ subroutine nuclear_energy(log_density, &
 
 ! neutrino_dsnu_dt/neutrino_dsnu_drho are the absolute derivatives
 ! d snu/dT, d snu/d rho returned by thermal_neutrino_losses (the Itoh
-! 1996 path, selected by star%ctrl%use_itoh_neutrino_loss); they are set
+! 1996 path, selected by net_settings%use_itoh_neutrino_loss); they are set
 ! and consumed only inside thermal_neutrino_loss below.
       double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
 
@@ -242,7 +241,7 @@ subroutine nuclear_energy(log_density, &
 
       call fill_mass_fractions
 ! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) then
+      if (log_temperature.le.net_settings%logT_cutoffs(1)) then
 ! MHP 5/02 DEUTERIUM BURNING
          dgdeut = 0.0d0
          qrtdeut = 0.0d0
@@ -547,8 +546,8 @@ end subroutine chain_energy_shares
 
 subroutine solar_neutrino_fluxes
       use math_lib
-! the solar neutrino fluxes and the Be7 abundance (ctrl%calc_neutrinos)
-      if (star%ctrl%calc_neutrinos) then
+! the solar neutrino fluxes and the Be7 abundance (net_settings%calc_neutrinos)
+      if (net_settings%calc_neutrinos) then
          e%fluxes_set = .true.
 ! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
          if (hydrogen_fraction.le.1.0d-6) then
@@ -575,7 +574,7 @@ subroutine solar_neutrino_fluxes
 !  rate.
          e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*t9_m12* &
               (1.0d0 + 20.d0*t9)*eg(r_pp)
-         e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*star%cross_section_scale(s_pep)/fourpiau2
+         e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(s_pep)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
 ! hep: the screened rate factor from nuclear_reaction_rates
          e%neutrino_flux(i_nu_hep) = nr%hep
@@ -631,7 +630,7 @@ subroutine thermal_neutrino_loss
 ! routines.  See subroutine NEUTR for complete description.
 
 
-      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(5)) return
+      if (log_temperature.le.net_settings%logT_cutoffs(5)) return
 
 
           carbon_fraction_total = c12_fraction+c13_fraction
@@ -643,7 +642,7 @@ subroutine thermal_neutrino_loss
 !**** Itoh 1996 Neutrino loss routines - Grant Newsham 9/06 *****
 
 
-      if (star%ctrl%use_itoh_neutrino_loss) then
+      if (net_settings%use_itoh_neutrino_loss) then
 ! ITOH ET AL. (1996) LOSSES (neutrino/neutrino_losses_for_mixture/sneut IN net_lib).
           call thermal_neutrino_losses(neutrino_temp,neutrino_density,hydrogen_fraction, &
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &

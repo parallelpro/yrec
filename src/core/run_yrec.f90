@@ -21,6 +21,7 @@
 subroutine run_yrec(ierr)
 
       use net_lib
+      use burn_step, only: configure_network
       use star_info_lib, only: star, i_h1, i_metals
       use yrec_output, only: output_run_header
       use luout_lib
@@ -92,6 +93,8 @@ subroutine run_yrec(ierr)
 ! subroutines below, mirroring begin_kind_card/end_kind_card.
       call apply_monte_carlo_parameters(monte_carlo_run_number, &
            age_scale_factor)
+! the network's settings for this run (after the Monte Carlo rate factors)
+      call configure_network()
       call begin_calibration
 
 !**********

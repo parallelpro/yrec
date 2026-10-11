@@ -34,6 +34,61 @@ contains
 
 
 !----------------------------------------------------------------------
+! configure_network
+!----------------------------------------------------------------------
+! Fills net/'s settings (net_lib's net_settings_t) from the run's
+! controls and rate factors, and installs them (net_setup). run_yrec
+! calls it at the start of every run, after the Monte Carlo rate
+! factors are applied; net/ reads no other configuration.
+!   star reads: ctrl%nuclear_logT_cutoffs, ctrl%weak_screening_threshold,
+!     ctrl%calc_neutrinos, ctrl%use_itoh_neutrino_loss,
+!     ctrl%li6_rate_scale, ctrl%li7_rate_scale, ctrl%be9_pg_rate_scale,
+!     ctrl%be9_pd_rate_scale, ctrl%be9_palpha_rate_scale,
+!     cross_section_scale, qs0e_scale, qqs0ee_scale, o16_gamma_scale,
+!     c12_alpha_scale
+!   star writes: none
+subroutine configure_network()
+      use star_info_lib, only: star
+      type(net_settings_t) :: settings
+
+      settings%logT_cutoffs = star%ctrl%nuclear_logT_cutoffs
+      settings%weak_screening_threshold = star%ctrl%weak_screening_threshold
+      settings%cross_section_scale = star%cross_section_scale
+      settings%qs0e_scale = star%qs0e_scale
+      settings%qqs0ee_scale = star%qqs0ee_scale
+      settings%o16_gamma_scale = star%o16_gamma_scale
+      settings%c12_alpha_scale = star%c12_alpha_scale
+      settings%li6_rate_scale = star%ctrl%li6_rate_scale
+      settings%li7_rate_scale = star%ctrl%li7_rate_scale
+      settings%be9_pg_rate_scale = star%ctrl%be9_pg_rate_scale
+      settings%be9_pd_rate_scale = star%ctrl%be9_pd_rate_scale
+      settings%be9_palpha_rate_scale = star%ctrl%be9_palpha_rate_scale
+      settings%calc_neutrinos = star%ctrl%calc_neutrinos
+      settings%use_itoh_neutrino_loss = star%ctrl%use_itoh_neutrino_loss
+      call net_setup(settings)
+end subroutine configure_network
+
+!----------------------------------------------------------------------
+! surface_accretion_now
+!----------------------------------------------------------------------
+! The gas accreted at the surface over a step in which `mass` grams
+! were accreted, as burn_deuterium_region takes it.
+!   star reads: job%use_mass_accretion, ctrl%mass_accretion_rate,
+!     ctrl%accreted_composition
+!   star writes: none
+function surface_accretion_now(mass) result(accretion)
+      use star_info_lib, only: star, i_h2
+      use light_element_lib, only: surface_accretion
+      double precision, intent(in) :: mass
+      type(surface_accretion) :: accretion
+
+      accretion%on = star%job%use_mass_accretion
+      accretion%inflow = star%ctrl%mass_accretion_rate.gt.0.0d0
+      accretion%deuterium_fraction = star%ctrl%accreted_composition(i_h2)
+      accretion%mass = mass
+end function surface_accretion_now
+
+!----------------------------------------------------------------------
 ! compute_zone_energy
 !----------------------------------------------------------------------
 ! compute_zone_energy (formerly engeb)
@@ -1356,7 +1411,8 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
                zone_end = inner_zone_idx
                call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
                     star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                    star%deuterium_burning_rate, star%accreted_mass, min_deuterium_step)
+                    star%deuterium_burning_rate, surface_accretion_now(star%accreted_mass), &
+                    min_deuterium_step)
             end do
          end do
 !
@@ -1368,7 +1424,8 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
                  star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
-                 star%deuterium_burning_rate, star%accreted_mass, min_deuterium_step)
+                 star%deuterium_burning_rate, surface_accretion_now(star%accreted_mass), &
+                    min_deuterium_step)
          end do
 end subroutine burn_deuterium
 

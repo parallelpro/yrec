@@ -17,22 +17,22 @@
 ! one of their callers. See numerics_lib.f90 and GUIDELINES.md's rule
 ! that folder/module placement should track function, not caller.
 ! ---------------------------------------------------------------------
-! MAP OF THE MODULE (2026; updated at the physics-purity split).
-! net_lib now holds ONLY the pure kernels -- functions of
-! (logRho, logT, composition, controls), no model state, the surface
-! test_nuclear pins:
-!     rates      13 reaction rates + branching fractions at one point
-!                (consumes cross_section_scale from setup/map_user_inputs.f90).
-!     sneut      Itoh et al. (1996) neutrino losses (pure fits).
-!     neutrino_losses_for_mixture   azbar + sneut wrapper for a full mixture.
-!     neutrino   legacy interface to the loss rates.
-!     azbar      abar/zbar/molar-abundance bookkeeping.
-!     safe_divide_by_exp division-with-exponent guard.
-!     ifermi12, zfermim12   Fermi-Dirac integral inverses (rates).
-! The BURN DRIVERS (compute_zone_energy/equilibrium_burn_rates, dburn/dburnm/deutrate,
-! burn_li_be/burn_li_be_midpoint/store_li_be_rates) -- everything that reads or writes
-! star_info -- moved to core/burn_lib.f90: they advance the model and
-! are star-layer code (MESA: struct_burn_mix, not net).
+! MAP OF THE MODULE (2026-10). net_lib holds the rate physics -- pure
+! functions of (log rho, log T, composition) and the run's settings:
+!     nuclear_reaction_rates  the one rate evaluation of a zone: 13
+!                    reaction rates, their T/rho derivatives, branchings
+!     network_rate_vector     those rates repacked as the composition
+!                    rate vector (per Gyr per amu) for the network burn
+!     deuterium_proton_capture_rate   the shared d(p,g) fit
+!     net_setup      installs the run's settings (net_settings)
+! and re-exports thermal_neutrino_lib (sneut, azbar, ...). The rest of
+! net/ uses these: network_lib (the reaction table and the implicit and
+! equilibrium burns), nuclear_energy_lib (energy generation),
+! light_element_lib (deuterium, Li/Be). See net/README.md.
+!
+! net/ reads no model state and no star%ctrl: its configuration is the
+! net_settings record, filled at the start of every run by the star
+! layer (configure_network in core/burn_step.f90).
 ! ---------------------------------------------------------------------
 module net_lib
 ! the thermal neutrino losses (Itoh et al. 1996 via Timmes) live in
@@ -44,7 +44,7 @@ module net_lib
 ! ---- named indices for the positional array slots (2026) ----
 ! The 13-reaction arrays of rates (below) and compute_zone_energy (core/burn_lib.f90):
 ! rate/reaction_rate, screening_factor, charge_product, z53/z43/z23/z86,
-! eg, reaction_energy_gen, ... and star%cross_section_scale(1:13).
+! eg, reaction_energy_gen, ... and net_settings%cross_section_scale(1:13).
 ! Slots 9 (O16 + alpha) and 13 (C12 + C12) are carried but never
 ! computed. num_reactions was NRXNS.
       integer, parameter, public :: &
@@ -71,11 +71,11 @@ module net_lib
            rr_c12_alpha = 10, rr_n14_alpha = 11, rr_triple_alpha = 12, &
            rr_zero13 = 13, rr_frac_c12_alpha = 14, &
            rr_frac_be7_electron = 15
-! star%cross_section_scale(14:17) (SSTANDARD) carries four more
+! net_settings%cross_section_scale(14:17) (SSTANDARD) carries four more
 ! cross-section factors that are not rate-array slots.
       integer, parameter, public :: &
            s_pep = 14, s_be7e = 15, s_be7p = 16, s_hep = 17
-! q1..q5(8), star%qs0e_scale(8), star%qqs0ee_scale(8): slot 8 holds the
+! q1..q5(8), net_settings%qs0e_scale(8), net_settings%qqs0ee_scale(8): slot 8 holds the
 ! Be7 + p coefficients (only for these arrays; rate slot 8 is He4+C13).
       integer, parameter, public :: iq_be7p = 8
 ! The 13-isotope mass tables (atomic_mass/atomic_charge) and the local
@@ -140,7 +140,7 @@ module net_lib
 ! its logarithmic derivatives; the Be7 and N15 branchings; the two Be7
 ! channel rates and the screened hep factor (flux diagnostics); and the
 ! zone values the energy and flux consumers reuse. All zero below
-! ctrl%nuclear_logT_cutoffs(1).
+! net_settings%logT_cutoffs(1).
       type, public :: nuclear_rates
          double precision :: rate(num_reactions) = 0.0d0
          double precision :: dlnrate_dlnt(num_reactions) = 0.0d0
@@ -154,7 +154,43 @@ module net_lib
          double precision :: electron_density_na = 0.0d0
       end type nuclear_rates
 
+! ---- the network's settings (2026-10) ----
+! Everything net/ needs from the run's configuration, in one record. The
+! star layer fills it at the start of every run, after the controls are
+! read and the Monte Carlo rate factors applied (configure_network,
+! core/burn_step.f90), by calling net_setup; nothing else writes it.
+      integer, parameter, public :: num_cross_section_scales = s_hep
+      type, public :: net_settings_t
+! log10 T at or below which: (1) nothing burns; (2), (3) parts of the
+! equilibrium burn are off; (4) helium burning is off; (5) the solar
+! neutrino fluxes and thermal neutrino losses are skipped
+         double precision :: logT_cutoffs(5) = 0.0d0
+! the screening parameter below which screening is weak
+         double precision :: weak_screening_threshold = 0.0d0
+! multipliers on the S-factors (r_* slots 1-13, then s_pep..s_hep), on
+! their first and second energy derivatives (slots 1-7 and iq_be7p),
+! and on the two N15 + p branches
+         double precision :: cross_section_scale(num_cross_section_scales) = 1.0d0
+         double precision :: qs0e_scale(iq_be7p) = 1.0d0, qqs0ee_scale(iq_be7p) = 1.0d0
+         double precision :: o16_gamma_scale = 1.0d0, c12_alpha_scale = 1.0d0
+! Li6(p,a), Li7(p,a), Be9(p,g), Be9(p,d), Be9(p,a) rate multipliers
+         double precision :: li6_rate_scale = 1.0d0, li7_rate_scale = 1.0d0, &
+              be9_pg_rate_scale = 1.0d0, be9_pd_rate_scale = 1.0d0, &
+              be9_palpha_rate_scale = 1.0d0
+! compute the solar neutrino fluxes; use the Itoh et al. (1996) thermal
+! neutrino losses
+         logical :: calc_neutrinos = .false., use_itoh_neutrino_loss = .false.
+      end type net_settings_t
+      type(net_settings_t), public, protected :: net_settings
+      public :: net_setup
+
 contains
+
+! net_setup: install the run's settings (net_settings_t above).
+subroutine net_setup(settings)
+      type(net_settings_t), intent(in) :: settings
+      net_settings = settings
+end subroutine net_setup
 
 
 !----------------------------------------------------------------------
@@ -376,7 +412,7 @@ end function deuterium_proton_capture_rate
 ! FORMULA, WHICH INCLUDES A DEGENERACY CORRECTION. THE MORE GENERAL
 ! EXPRESSIONS ARE GIVEN IN TABLE 4 AND EQUATION (19) OF GRABOSKE ET AL.
 ! COMPUTE SCREENING FOR EACH OF THE REACTIONS.
-! star%ctrl%weak_screening_threshold (WEAKSCREENING) IS A NUMERICAL
+! net_settings%weak_screening_threshold (WEAKSCREENING) IS A NUMERICAL
 ! PARAMETER READ FROM THE INPUT. TO OBTAIN THE GRABOSKE ET AL. AND SALPETER STANDARD RESULTS,
 ! USE: WEAKSCREENING = 0.03.  FOR THE STANDARD SOLAR MODEL, THIS IS THE
 ! VALUE THAT SHOULD BE ADOPTED. TO INVESTIGATE THE EFFECT OF ALWAYS USING
@@ -498,7 +534,6 @@ end function deuterium_proton_capture_rate
 ! are always 0 -- see the XEROING block above).
 ! END OF COMPUTATION OF HRK(IU).
 subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
-      use star_info_lib, only: star
       use phys_const_lib
       use math_lib
       implicit none
@@ -535,7 +570,7 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       end do
       nr%electron_density_na = ( exp(ln10*log_density) )* &
            electron_mean_weight_inverse
-      if (log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) return
+      if (log_temperature.le.net_settings%logT_cutoffs(1)) return
 
       density=exp(ln10*log_density)
       t9 = exp(ln10*(log_temperature - 9.0d0))
@@ -582,7 +617,7 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       tm1=xxl*zcurl
       do i=1,num_reactions
          uwk=tm1*screen_zprod(i)
-         if (uwk.le.star%ctrl%weak_screening_threshold) then
+         if (uwk.le.net_settings%weak_screening_threshold) then
             screening_factor(i)=uwk
             dscreen_dlnrho(i)=0.5d0*uwk
             dscreen_dlnt(i)=-1.5d0*uwk
@@ -613,27 +648,27 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       if (hydrogen_fraction.ne.0.0d0) then
          first_zeroed_rxn = r_ac13
          do i=r_pp,r_po16
-            r1=t9_m23+fit_q1(i)*t9_m13+star%qs0e_scale(i)*(fit_q2(i)+fit_q3(i)*t9_p13)+ &
-                 star%qqs0ee_scale(i)*(fit_q4(i)*t9_p23+fit_q5(i)*t9)
+            r1=t9_m23+fit_q1(i)*t9_m13+net_settings%qs0e_scale(i)*(fit_q2(i)+fit_q3(i)*t9_p13)+ &
+                 net_settings%qqs0ee_scale(i)*(fit_q4(i)*t9_p23+fit_q5(i)*t9)
             nr%rate(i)=density*r1*exp(fit_q6(i)*t9_m13+fit_q7(i)+(fit_q8(i)*t9)**2+ &
                  screening_factor(i))
-            nr%rate(i) = nr%rate(i)*star%cross_section_scale(i)
+            nr%rate(i) = nr%rate(i)*net_settings%cross_section_scale(i)
             nr%dlnrate_dlnrho(i)=1.d0+dscreen_dlnrho(i)
 ! the exact derivative of the rate above, scales included (2026-10:
 ! the q3 term lacked qs0e_scale and the q4, q5 terms qqs0ee_scale, so
 ! once those scales were ~1 instead of ~1e-22 it no longer matched)
             nr%dlnrate_dlnt(i)=dscreen_dlnt(i)-(fit_q6(i)*t9_m13+(2.d0*t9_m23+ &
-            fit_q1(i)*t9_m13-star%qs0e_scale(i)*fit_q3(i)*t9_p13- &
-            star%qqs0ee_scale(i)*(2.d0*fit_q4(i)*t9_p23+3.d0*fit_q5(i)*t9))/r1)/3.d0+ &
+            fit_q1(i)*t9_m13-net_settings%qs0e_scale(i)*fit_q3(i)*t9_p13- &
+            net_settings%qqs0ee_scale(i)*(2.d0*fit_q4(i)*t9_p23+3.d0*fit_q5(i)*t9))/r1)/3.d0+ &
             2.d0*(fit_q8(i)*t9)**2
          end do
 ! Be7: electron capture vs proton capture
          nr%be7_electron = (1.752d-10)*t9_m12*(1.0d0 + 0.004d0*(1000.d0*t9 - 16.d0))
-         nr%be7_electron = nr%be7_electron*electron_mean_weight_inverse*star%cross_section_scale(s_be7e)
+         nr%be7_electron = nr%be7_electron*electron_mean_weight_inverse*net_settings%cross_section_scale(s_be7e)
          temp3 = (-10.2625d0*t9_m13)
-         nr%be7_proton = (3.128813d+5)*hydrogen_fraction*star%cross_section_scale(s_be7p)*exp(temp3)
-         qrbe7 = t9_m23 + fit_q1(iq_be7p)*t9_m13 + star%qs0e_scale(iq_be7p)*(fit_q2(iq_be7p)+ fit_q3(iq_be7p)*t9_p13) &
-              + star%qqs0ee_scale(iq_be7p)*(fit_q4(iq_be7p)*t9_p23 + fit_q5(iq_be7p)*t9)
+         nr%be7_proton = (3.128813d+5)*hydrogen_fraction*net_settings%cross_section_scale(s_be7p)*exp(temp3)
+         qrbe7 = t9_m23 + fit_q1(iq_be7p)*t9_m13 + net_settings%qs0e_scale(iq_be7p)*(fit_q2(iq_be7p)+ fit_q3(iq_be7p)*t9_p13) &
+              + net_settings%qqs0ee_scale(iq_be7p)*(fit_q4(iq_be7p)*t9_p23 + fit_q5(iq_be7p)*t9)
          nr%be7_proton = nr%be7_proton*qrbe7
          nr%be7_proton = nr%be7_proton*exp(weak_intermediate_screening(4.0d0, 5.7790d0))
          camube7 = density*8.584981d+22
@@ -644,10 +679,10 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
 ! N15: (p,alpha)C12 vs (p,gamma)O16
          o16gamma = t9_m23 + 0.0273016d0*t9_m13 + 0.14374d0 + 0.027490d0*t9_p13 &
                    + 6.14685d0*t9_p23 + 2.98940d0*t9
-         o16gamma = o16gamma*s0_n15pg_kevb*star%o16_gamma_scale
+         o16gamma = o16gamma*s0_n15pg_kevb*net_settings%o16_gamma_scale
          c12alpha = t9_m23 + 0.0273016d0*t9_m13 + 2.01186d0 + 0.384763d0*t9_p13 &
                    + 17.0579d0*t9_p23 + 8.29580d0*t9
-         c12alpha = c12alpha*s0_n15pa_kevb*star%c12_alpha_scale
+         c12alpha = c12alpha*s0_n15pa_kevb*net_settings%c12_alpha_scale
          nr%frac_n15_pa = c12alpha/(c12alpha + o16gamma)
          nr%frac_n15_pg = 1.0d0 - nr%frac_n15_pa
       end if
@@ -658,7 +693,7 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
       end do
 
 ! alpha captures (Caughlan & Fowler 1988) and triple alpha
-      if (log_temperature.ge.star%ctrl%nuclear_logT_cutoffs(4)) then
+      if (log_temperature.ge.net_settings%logT_cutoffs(4)) then
 ! C13(alpha,n)O16
       r1=t9_m23+0.0129d0*t9_m13+2.04d0+0.184d0*t9_p13
       a1 = 6.77d15*exp(-32.329d0*t9_m13-(t9/1.284d0)**2)
@@ -717,7 +752,7 @@ subroutine nuclear_reaction_rates(log_density, log_temperature, mass_frac, nr)
 ! hep, He3(p,e+ nu)He4: flux only (screened, scaled; times X*X(He3) by
 ! the consumer)
       nr%hep = (1.71724d+11)*density*t9_m23*exp(-6.1399d0*t9_m13)
-      nr%hep = (1.0d0 + 0.067862d0*t9_p13)*star%cross_section_scale(s_hep)*nr%hep
+      nr%hep = (1.0d0 + 0.067862d0*t9_p13)*net_settings%cross_section_scale(s_hep)*nr%hep
       nr%hep = nr%hep*exp(weak_intermediate_screening(2.0d0, 3.08687d0))
 
 contains
@@ -727,7 +762,7 @@ contains
 double precision function weak_intermediate_screening(zprod, z86)
       double precision, intent(in) :: zprod, z86
       uwk = tm1*zprod
-      if (uwk.le.star%ctrl%weak_screening_threshold) then
+      if (uwk.le.net_settings%weak_screening_threshold) then
          weak_intermediate_screening = uwk
       else
          weak_intermediate_screening = 0.38d0*xxl8*xtr*z86/(ion_mean_weight_inverse*z58*z28)

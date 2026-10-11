@@ -8,14 +8,33 @@
 ! a step (burn_deuterium_region, for the main step and the rotation
 ! sub-steps). Li6/Li7/Be9: li_be_rates, the
 ! proton-capture rates (the star-layer store_li_be_rates/burn_li_be store and
-! integrate them). They read configuration from star%job/star%ctrl and
-! nothing else from star.
+! integrate them). Their configuration is net_lib's net_settings; the
+! accreted gas comes in as an argument (surface_accretion).
 module light_element_lib
-      use net_lib, only: deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu
+      use net_lib, only: deuterium_proton_capture_rate, avogadro_dpg, &
+           deuteron_mass_amu, net_settings
       implicit none
       private
       public :: deuterium_rate, burn_deuterium_region, li_be_rates, &
            min_deuterium_step, min_deuterium_substep
+
+! The gas accreted at the surface over a step, as burn_deuterium_region
+! needs it; the caller fills it (core/burn_step's
+! surface_accretion_now) from the controls and wind/mdot.
+      type, public :: surface_accretion
+! accretion is on (job%use_mass_accretion): the accreted gas is blended
+! into the outermost burned region
+         logical :: on = .false.
+! the accretion rate is positive (ctrl%mass_accretion_rate > 0). The
+! burn-or-zero threshold test counts the accreted deuterium only when
+! this is set too; the blend needs only on. (The two tests have always
+! differed.)
+         logical :: inflow = .false.
+! deuterium mass fraction of the accreted gas
+         double precision :: deuterium_fraction = 0.0d0
+! mass accreted over this step, g
+         double precision :: mass = 0.0d0
+      end type surface_accretion
 
 ! burn_deuterium_region's thresholds as its two callers have always used
 ! them: the composition step (min_deuterium_step) and the rotation sub-steps
@@ -112,9 +131,9 @@ end function deuterium_rate
 ! accretion blend and in its accretion-blind threshold test.
 subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, xa_start, rate_start_zone, rate_end_zone, &
-     accreted_mass, min_deuterium)
+     accretion, min_deuterium)
 
-      use star_info_lib, only: star, json, i_h2
+      use star_info_lib, only: json, i_h2
       use math_lib
       implicit none
 
@@ -123,11 +142,11 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: timestep
 ! timestep in Gyr; the start-of-step composition; the deuterium rates
-! per shell at the start and end of the step; the mass accreted over
-! this step, g; the threshold below which deuterium is zeroed
+! per shell at the start and end of the step; the gas accreted over
+! this step; the threshold below which deuterium is zeroed
       double precision, intent(in) :: xa_start(15,json), &
-           rate_start_zone(json), rate_end_zone(json), accreted_mass, &
-           min_deuterium
+           rate_start_zone(json), rate_end_zone(json), min_deuterium
+      type(surface_accretion), intent(in) :: accretion
       double precision :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
       double precision :: total_shell_mass, rate_start_sum, rate_end_sum
@@ -178,11 +197,11 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_fraction = deuterium_fraction/total_shell_mass
          helium3_fraction = helium3_fraction/total_shell_mass
       end if
-      if (star%job%use_mass_accretion .and. zone_end.eq.num_zones .and. &
-           star%ctrl%mass_accretion_rate.gt.0.0d0) then
+      if (accretion%on .and. zone_end.eq.num_zones .and. &
+           accretion%inflow) then
          deuterium_fraction_test = (deuterium_fraction*total_shell_mass + &
-              star%ctrl%accreted_composition(i_h2)*accreted_mass)/ &
-              (total_shell_mass + accreted_mass)
+              accretion%deuterium_fraction*accretion%mass)/ &
+              (total_shell_mass + accretion%mass)
       else
          deuterium_fraction_test = deuterium_fraction
       end if
@@ -213,16 +232,16 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
          rate_accum = rate_accum + rate_increment
       end do
 !     INCLUDE MASS ACCRETION FROM DEUTERIUM BURNING
-      if (star%job%use_mass_accretion .and. zone_end.eq.num_zones) then
+      if (accretion%on .and. zone_end.eq.num_zones) then
 !        ACCRETED MATTER IS EXPOSED TO BURNING FOR, ON
-!        AVERAGE. 1/2 OF THE TIMESTEP.  accreted_mass IS
+!        AVERAGE. 1/2 OF THE TIMESTEP.  accretion%mass IS
 !        DEFINED AS DMDT*DT/ORIGINAL CZ MASS.
 !        BURN BOTH THE ACCRETED D AND THE ORIGINAL D
 !        SEPARATELY AND FIND THE NEW MASS-WEIGHTED
 !        AVERAGE D.  NOTE THAT ACCRETION OF ELEMENTS
 !        1-11 HAS ALREADY BEEN TREATED.
          rate_accum = rate_start
-         accreted_deuterium_fraction = star%ctrl%accreted_composition(i_h2)
+         accreted_deuterium_fraction = accretion%deuterium_fraction
          accreted_deuterium_burned = 0.0d0
          do substep_idx = 1, num_substeps
             burning_rate = rate_accum + 0.5d0*rate_increment
@@ -241,18 +260,18 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
          deuterium_change_original = deuterium_fraction_burned - &
               deuterium_fraction
          deuterium_change_accreted = accreted_deuterium_burned - &
-              star%ctrl%accreted_composition(i_h2)
+              accretion%deuterium_fraction
          deuterium_fraction_new = (deuterium_fraction_burned*total_shell_mass &
-              + accreted_deuterium_burned*accreted_mass)/ &
-              (total_shell_mass + accreted_mass)
+              + accreted_deuterium_burned*accretion%mass)/ &
+              (total_shell_mass + accretion%mass)
          hydrogen_fraction_new = hydrogen_fraction + 0.5d0* &
               (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accreted_mass)/ &
-              (total_shell_mass + accreted_mass)
+              deuterium_change_accreted*accretion%mass)/ &
+              (total_shell_mass + accretion%mass)
          helium3_fraction_new = helium3_fraction - 1.5d0* &
               (deuterium_change_original*total_shell_mass + &
-              deuterium_change_accreted*accreted_mass)/ &
-              (total_shell_mass + accreted_mass)
+              deuterium_change_accreted*accretion%mass)/ &
+              (total_shell_mass + accretion%mass)
       else
 !        INCREMENT H,D,HE3 WITHOUT MASS ACCRETION
          deuterium_change = deuterium_fraction_burned - deuterium_fraction
@@ -278,7 +297,6 @@ end subroutine burn_deuterium_region
 ! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
 ! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
 subroutine li_be_rates(t9, fli6, fli7, fsbe9)
-      use star_info_lib, only: star
       use phys_const_lib
       use math_lib
       double precision, intent(in) :: t9
@@ -335,11 +353,11 @@ subroutine li_be_rates(t9, fli6, fli7, fsbe9)
 !
          fbe93=fx+4.51d+8*ex+6.7d+8/t934*exp(-5.16d0/t9)
 ! G Somers 6/14, SCALE BY THE NEW CROSS SECTIONS
-         fli6=star%ctrl%li6_rate_scale*fli6
-         fli7=star%ctrl%li7_rate_scale*fli7
-         fbe91=star%ctrl%be9_pg_rate_scale*fbe91
-         fbe92=star%ctrl%be9_pd_rate_scale*fbe92
-         fbe93=star%ctrl%be9_palpha_rate_scale*fbe93
+         fli6=net_settings%li6_rate_scale*fli6
+         fli7=net_settings%li7_rate_scale*fli7
+         fbe91=net_settings%be9_pg_rate_scale*fbe91
+         fbe92=net_settings%be9_pd_rate_scale*fbe92
+         fbe93=net_settings%be9_palpha_rate_scale*fbe93
 ! G Somers END
 ! SUM RATES
          fsbe9 = fbe91 + fbe92 + fbe93

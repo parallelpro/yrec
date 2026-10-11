@@ -87,6 +87,7 @@ PUBLIC = {
                 "network_rate_vector",
                 "implicit_burn_step", "nuclear_reaction_rates",
                 "nuclear_energy", "deuterium_proton_capture_rate", "deuterium_rate", "li_be_rates",
+                "net_setup",
                 "equilibrium_burn_rates", "burn_deuterium_region",
                 "ifermi12", "zfermim12"},
     # mixing has no facade module; these are its de-facto public
@@ -167,6 +168,31 @@ def check_star_blind(src_root):
         code = "\n".join(l.split("!")[0] for l in text.splitlines())
         if "star_info_lib" in code or "star%" in code:
             problems.append(f"{rel}: declared star-blind but references star_info")
+    return problems
+
+
+# Physics domains whose code may not touch the star object (2026-10):
+# their state comes in as arguments and their configuration as a
+# settings record (net: net_lib's net_settings, filled by the star
+# layer's configure_network). Index constants from star_info_lib (the
+# composition slots i_*, json, ...) are allowed; `star` itself is not.
+STAR_FREE_DIRS = ["net"]
+
+def check_star_free(src_root):
+    problems = []
+    use_star = re.compile(r"(?im)^\s*use\s+star_info_lib\s*,\s*only\s*:(.*(?:&\s*\n.*)*)")
+    for d in STAR_FREE_DIRS:
+        for f in sorted((src_root / d).rglob("*.f90")):
+            rel = f.relative_to(src_root).as_posix()
+            if "/test/" in rel:
+                continue
+            code = strip_comments(f.read_text(errors="replace"))
+            for m in use_star.finditer(code):
+                names = [n.strip().lower() for n in re.split(r"[,&\n]", m.group(1)) if n.strip()]
+                if "star" in names:
+                    problems.append(f"{rel}: imports the star object (STAR_FREE_DIRS)")
+            if re.search(r"(?i)\bstar%", code):
+                problems.append(f"{rel}: references star% (STAR_FREE_DIRS)")
     return problems
 
 
@@ -263,6 +289,13 @@ def main():
     if blind_problems:
         print("STAR-BLIND CONTRACT VIOLATIONS:")
         for b in blind_problems:
+            print("  " + b)
+        return 1
+
+    free_problems = check_star_free(SRC)
+    if free_problems:
+        print("STAR-FREE CONTRACT VIOLATIONS:")
+        for b in free_problems:
             print("  " + b)
         return 1
 
