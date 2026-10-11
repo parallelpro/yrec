@@ -269,8 +269,9 @@ H-burning shell (three flag points at its base/mid/top), the convective
 boundaries, and — with envelope overshoot on — a finely zoned region below
 the CZ base. Interpolation of all quantities onto the new grid uses
 osculatory (shape-preserving quadratic) splines (`osplin` → `meval` +
-McAllister–Roulier `choose/cases/spline` machinery, all in
-`numerics/numerics_lib.f90`) and cubic splines (`splinc`/`splintd2`).
+McAllister–Roulier `choose/cases/spline` machinery,
+`numerics/quadratic_spline.f90`) and natural cubic splines
+(`natural_spline`/`splint`, `numerics/cubic_spline.f90`).
 
 ## 3. Order of operations within one timestep
 
@@ -471,7 +472,7 @@ interpolated in both directions with edge-validity bookkeeping
   optionally a constant additional D.
 - **Solvers**: each unstable radiative region is mapped to an
   equally-spaced grid (`am_transport_grid` (`rotgrid`)), the AM diffusion
-  equation is solved implicitly — tridiagonal (`am_diffusion_coeffs` (`dcoeft`) + `tridia`)
+  equation is solved implicitly — tridiagonal (`am_diffusion_coeffs` (`dcoeft`) + `solve_angular_momentum_transport` (`tridia`))
   for the pure-diffusion form, or a banded advective-diffusive variant
   (`am_advection_diffusion_coeffs` (`dadcoeft`) + `banded_solver`, with its
   own timestep-cutting loop) — then mapped back (`equal_grid_to_model`
@@ -486,25 +487,28 @@ interpolated in both directions with edge-validity bookkeeping
   torque (`rotation/magnetic_braking.f90`: `brake_convection_zone`/
   `compute_solid_body_braking` (`mwind`/`mcowind`)) applied per sub-step.
 
-## 5. The numerics toolbox (`numerics/numerics_lib.f90`)
+## 5. The numerics toolbox (`numerics/`, through `numerics_lib`)
 
 | Kernel | Method | Used by |
 |---|---|---|
-| `bsstep`/`mmid`/`ratext` | Bulirsch–Stoer with modified midpoint + rational extrapolation | atmosphere & envelope integration |
+| `bsstep` (with `mmid`, `ratext`) | Bulirsch–Stoer with modified midpoint + rational extrapolation, for an `ode_system` | atmosphere & envelope integration (`envelope_equations`) |
 | `henyey_solve` (`hsolve`; in `core/henyey_solve.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
 | `simeqc` | Gauss-Jordan with pivoting | `burn_implicitly`'s Newton systems |
-| `tridia`/`ctridi` | tridiagonal (Thomas) solvers | AM diffusion (`tridia`), rotational composition diffusion (`ctridi`) |
-| `kspline`/`ksplint`, `splinc`/`splintd2`, `spline`(osculatory), `osplin`→`meval`/`choose`/`cases` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
-| `lir` | 4-point Lagrange / linear table interpolation with index memory (`lir1` was removed as dead code) | MHD EOS table lookups |
+| `ludcmp`/`lubksb` | LU with partial pivoting | Thoul diffusion coefficients |
+| `solve_tridiagonal` (`tridiag_gs`, `ctridi`) | tridiagonal (Thomas) solver | gravitational settling, rotational composition diffusion |
+| `solve_angular_momentum_transport` (`tridia`; in `rotation/seculr/secular_transport.f90`) | Thomas solver with the angular-momentum bookkeeping | AM diffusion |
+| `cspline`/`splint`, `natural_spline` (`kspline`, `splinc`), `osplin`→`meval`/`choose`/`cases`/`spline` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
+| `lir` | 4-point Lagrange / linear table interpolation (`lir1` was removed as dead code) | MHD EOS table lookups |
 | `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (`hunt` lives in `kap/conductive/conductive_opacity.f90`) | all table families |
-| `qgauss` | 5-point Gauss–Legendre quadrature | shape integrals |
+| `average_over_equipotential` (`qgauss`; in `rotation/shape/shell_quadrature.f90`) | 10-point Gauss–Legendre quadrature | shape integrals |
 | `intpol` | spline interpolation with derivative | OPAL 1992 and Kurucz 1990 opacity interpolation |
 
-Six of these deliberately retain internal `save` state (algorithm memory:
-step-size history, refinement accumulators, search-index memory). The
-only other routine-local `save`s are in the two driver files
+None of the numerics keeps `save` state (2026-10: the six that did were
+shown not to need it, or given explicit state, such as `ratext`'s
+tableau). The only routine-local `save`s are in the two driver files
 (`core/run_yrec.f90`, `core/evolve_step.f90`) and
-`mixing/burn_mix_extrapolated.f90`.
+`mixing/burn_mix_extrapolated.f90`. `numerics/README.md` describes the
+modules.
 
 ## 6. Calibration modes
 

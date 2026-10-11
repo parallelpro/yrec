@@ -1403,3 +1403,60 @@ and the full battery.
     R/P/T correction is a zero shift. It still rounds the radii through
     exp10/log10. The convection zone's new mean thermal energy is
     computed and never used.
+
+### numerics/ revamp (yrec-next, 2026-10-11)
+
+From an evaluation of numerics/ (~4.5/10). It was one 3012-line
+numerics_lib with 38 procedures. About 1,300 of its lines were comments,
+largely one repeated header. Four procedures carried one caller's
+physics, eight read star_info_lib's json, six kept blanket SAVEs, and
+there were duplicate families: three tridiagonal solvers and five
+spline pairs. It had no test of its own. All bitwise identical (test_numerics,
+test_rotation, test_eos, the domain tests, gate1, the config matrix,
+the testsuite's Allard and Kurucz solar models, the Debye-Hueckel 0.03
+Msun case, and the full battery) except three error messages.
+- **DONE: test_numerics pins every routine** (94536a04), error paths
+  included. Under gcov only unreachable lines go unexecuted.
+- **DONE: single-caller routines move to their domains** (18f2b895,
+  3d809025):
+  - trapzd and qgauss (with the integrand func) become
+    rotation/shape/shell_quadrature;
+  - tridia becomes secular_transport's solve_angular_momentum_transport;
+  - intpt becomes mhd_eos's interpolate_mhd_table.
+
+  test_braking became test_rotation to pin the rotation pair, and
+  test_eos pins intpt.
+- **DONE: five topic modules behind numerics_lib** (b71ea887):
+  cubic_spline, quadratic_spline, table_interpolation, linear_solvers,
+  bulirsch_stoer. numerics is star-free and facade-only.
+  - kspline/splinc became natural_spline; ksplint/splintd2 fold into
+    splint; ctridi and tridiag_gs became solve_tridiagonal.
+  - The saved state of bsstep, ratext, lir and intpol went (ratext's
+    tableau is a record bsstep holds for one step), along with lir's
+    unused resume-the-search option.
+  - integration_parameters moved to state/.
+- **DONE: bsstep integrates an ode_system** (278fa171). The envelope's
+  twelve pass-through values became the kernel's envelope_equations,
+  per the "physics never inside the numerics" principle (TARGET_ARCHITECTURE
+  P2).
+- **DONE: hygiene and a README** (8193b431).
+- **Found, kept as they were (recorded, not fixed):**
+  - bsstep's step-underflow test compares h with the hydrogen fraction
+    (the F77 X+H.EQ.X, where X was the hydrogen-fraction argument, not
+    the independent variable X0). bsstep now takes the reference as an
+    argument, and the envelope passes X.
+  - A step's error is the largest non-NaN scaled error, NaN only when
+    every component is. This came from how the compiler handled
+    max(0, |e|) and a NaN-skipping max, which Fortran leaves
+    processor-dependent. Resizing bsstep's arrays changed the
+    instructions chosen and turned the 0.03 Msun deck's clean stop
+    (its atmosphere integration starts from NaN) into STOP 1. That
+    behaviour is now written out explicitly and pinned. The gate1
+    and config-matrix decks did not catch it; the Debye-Hueckel deck
+    did.
+  - The quadratic spline's knot cases 3 and 4, and its sign-flip
+    guards, cannot be reached through osplin: slopes keeps every slope
+    below twice both adjacent secants.
+- **Open:** the Numerical Recipes routines (cspline, splint, polint,
+  ludcmp/lubksb, bsstep) remain a licensing liability
+  (MODERNIZATION_CHANGES). Replacing them changes results at round-off.

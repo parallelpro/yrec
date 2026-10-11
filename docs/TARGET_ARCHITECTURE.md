@@ -524,6 +524,12 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_opacity.f90` (`read_laol_tables`, `compute_laol_opacity`, `read_pure_z_table`, `compute_pure_z_opacity`) |
 | `readalex06`, `getalex06` | `kap/alex06/alex06_opacity.f90` (`read_alex06_tables`, `compute_alex06_opacity`) |
 | `kurucz`, `condopacpint`, `condopacp` | `kap/kurucz90/kurucz_opacity.f90` (`compute_kurucz_opacity`), `kap/conductive/conductive_opacity.f90` (`compute_conductive_opacity`, `condopacp`) |
+| `trapzd`, `qgauss`, `func` | `rotation/shape/shell_quadrature.f90` (`refine_distortion_integral`, `average_over_equipotential`, `equipotential_integrand`) |
+| `tridia` | `rotation/seculr/secular_transport.f90` (`solve_angular_momentum_transport`) |
+| `intpt` | `eos/mhd/mhd_eos.f90` (`interpolate_mhd_table`) |
+| `tridiag_gs`, `ctridi` | `numerics/linear_solvers.f90` (`solve_tridiagonal`) |
+| `kspline`, `splinc`; `ksplint`, `splintd2` | `numerics/cubic_spline.f90` (`natural_spline`; `splint`) |
+| `bsstep`, `mmid`, `ratext` | `numerics/bulirsch_stoer.f90` (`bsstep` integrates an `ode_system`) |
 | `parmin` | `io/read_controls.f90` |
 | `wrtout` | retired; replaced by `io/yrec_output.f90` |
 
