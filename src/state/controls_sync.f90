@@ -325,7 +325,6 @@ subroutine seed_controls_buffer
       exl = star%ctrl%exl
       expr = star%ctrl%expr
       constfactor = star%ctrl%constfactor
-      structfactor = star%job%structfactor
       excen = star%ctrl%excen
       c_2 = star%ctrl%c_2
       wind_law_omega_exponent = star%ctrl%wind_law_omega_exponent
@@ -698,7 +697,6 @@ subroutine store_controls_to_star
       star%ctrl%exl = exl
       star%ctrl%expr = expr
       star%ctrl%constfactor = constfactor
-      star%job%structfactor = structfactor
       star%ctrl%excen = excen
       star%ctrl%c_2 = c_2
       star%ctrl%wind_law_omega_exponent = wind_law_omega_exponent

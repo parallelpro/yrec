@@ -45,9 +45,9 @@ end function fixed_envint_step
 ! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
 ! L = 4 pi R**2 sigma Teff**4. NOTE the operand order inside the
 ! parenthesis: this is the order the three callers above have always
-! used; observables's log_r_surface_cm (and wind_lib's
-! log10_radius_from_l_teff) evaluate the same identity with the
-! - 4 log Teff term last, which can differ in the last bit. Unifying
+! used; physical_constants's log10_radius_from_l_teff evaluates the
+! same identity with the - 4 log Teff term last, which can differ in
+! the last bit. Unifying
 ! them is a numbers-changing decision (R6), so both forms are kept.
 double precision function surface_log10_radius_cm(log_luminosity_lsun, log_teff)
       use star_info_lib, only: star

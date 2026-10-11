@@ -34,7 +34,6 @@ subroutine run_yrec(ierr)
            check_rotation_initialised
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
-      use observables, only: log_r_surface_cm
       implicit none
       integer :: step_status
 
@@ -224,7 +223,8 @@ subroutine end_of_card_calibration(runs_complete)
 !c MHP 5/96 changed solar calibration to perform solar models in 3 kind cards
          if (star%ctrl%calibrate_solar_model) then
             if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
-               log_r_rsun = log_r_surface_cm(star%log_L,star%log_Teff)-star%log10_solar_radius
+               log_r_rsun = log10_radius_from_l_teff(star%log_L,star%log_Teff, &
+                    star%log10_solar_luminosity)-star%log10_solar_radius
 ! MHP 06/13 Add solar Z/X to observables
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
                call check_solar_calibration(star%log_L,log_r_rsun,star%job%nk,current_zx)

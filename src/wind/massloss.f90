@@ -38,7 +38,6 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
       use physical_constants
       use eos_lib
       use math_lib
-      use wind_lib, only: log10_radius_from_l_teff
       implicit none
 
       double precision, intent(in) :: log_luminosity_lsun
@@ -111,7 +110,8 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
 ! TEFFL IS THE BASE 10 LOG OF THE EFFECTIVE TEMPERATURE
 ! COMPUTE GLOBAL QUANTITIES (RADIUS,MASS) IN CGS UNITS.
 ! RADIUS
-      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
+      log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
+           star%log10_solar_luminosity)
       total_radius_cm = exp10(log10_radius)
 ! MASS
       total_mass_grams = total_mass_msun*star%solar_mass_cgs

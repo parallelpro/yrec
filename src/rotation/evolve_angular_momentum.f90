@@ -30,6 +30,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use rotation_scratch_lib
       use mid_timestep_model
       use secular_transport
+      use magnetic_braking, only: brake_convection_zone
       use star_info_lib, only: star, json
       use physical_constants
       use burn_step, only: store_end_li_be_rates, burn_li_be
@@ -164,7 +165,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
 ! MHP 10/17 timestep average loss rate
             star%fracstep = 0.5
-            call matt_wind(star%log_L,full_timestep,cz_mass_bottom, &
+            call brake_convection_zone(star%log_L,full_timestep,cz_mass_bottom, &
                  cz_mass_top,envelope_boundary_zone,star%nz,wind_loss_active, &
                  omega_surface, &
                  star%star_mass,star%log_Teff,moment_of_inertia_cz, &
@@ -268,7 +269,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 !  WIND CALCULATION WITHOUT INSTABILITIES
          if(fully_convective_flag.or..not.star%job%instability_transport_active) then
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
-            call matt_wind(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
+            call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
                  envelope_boundary_zone,star%nz,wind_loss_active,omega_surface, &
                  star%star_mass,star%log_Teff,moment_of_inertia_cz, &
                  star%j_rot, ierr)

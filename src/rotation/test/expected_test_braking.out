@@ -1,4 +1,4 @@
-# test_braking: matt_wind (j/m of the convection zone after the step)
+# test_braking: brake_convection_zone (j/m of the convection zone after the step)
 cz pmm rossby, unsaturated, 1e17 s  ierr 0
    2.000000000000000E+16   1.866538006500705E+16   2.866538006500705E+16   3.866538006500705E+16
    4.866538006500705E+16   7.000000000000000E+16
@@ -42,7 +42,7 @@ ERROR IN WIND - TAUCZ NOT DEFINED    3.000E+01   5.000E-01STOPPED
 cz kawaler, tau_cz undefined  ierr 1
    2.000000000000000E+16   3.000000000000000E+16   4.000000000000000E+16   5.000000000000000E+16
    6.000000000000000E+16   7.000000000000000E+16
-# test_braking: wind_spindown_matt (d omega at the start and end of the step)
+# test_braking: compute_solid_body_braking (d omega at the start and end of the step)
 case 1 iteration 1 ierr 0   5.907453641210378E-08   4.307887391584093E-08
 case 1 iteration 2 ierr 0   5.907453641210378E-08   4.686803625965847E-08
 case 2 iteration 1 ierr 0   6.392406237752592E-08   4.661528960869795E-08

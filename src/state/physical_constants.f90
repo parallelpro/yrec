@@ -69,5 +69,18 @@ module physical_constants
       character(len=10) :: yrec_version_string
       character(len=20) :: git_hash_string
 
+contains
+
+! log10 of the stellar radius (cm) from log10 L/Lsun and log10 Teff,
+! L = 4 pi R**2 sigma Teff**4 (the star%log_R_surface expression, before
+! the solar-radius offset; formerly wind_lib's and observables's).
+! envelope_integration's surface_log10_radius_cm orders the terms
+! differently and can differ in the last bit.
+pure double precision function log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
+     log10_solar_luminosity)
+      double precision, intent(in) :: log_luminosity_lsun, log_teff, log10_solar_luminosity
+      log10_radius_from_l_teff = 0.5d0*(log_luminosity_lsun + log10_solar_luminosity &
+           - c4pil - csigl - 4.0d0*log_teff)
+end function log10_radius_from_l_teff
 
 end module physical_constants

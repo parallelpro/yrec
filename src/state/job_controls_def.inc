@@ -72,6 +72,5 @@
             double precision :: rsclzm2(50) = -1.0d0
             double precision :: target_teff = 0.0d0
             double precision :: target_radius_rsun = 0.0d0
-            double precision :: structfactor = 0.0d0
             double precision :: wind_saturation_omega = 0.0d0
             logical :: use_wind_torque = .true.

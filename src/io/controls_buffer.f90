@@ -813,10 +813,10 @@ module controls_buffer
 ! moved here since DATA can no longer target a use-associated entity.
 ! wind_law_omega_exponent (originally exw) is not a namelist value --
 ! genuinely used in io/read_controls.f90, renamed in place there.
-! structfactor (former common/cwind/'s remaining member) is unused in
-! io/read_controls.f90, so still declared here for its other users.
+! structfactor (former common/cwind/'s remaining member) is a local of
+! rotation/magnetic_braking now.
       double precision :: exmd, extau, exr, exm, exl, expr, constfactor, &
-           structfactor, excen, c_2, wind_law_omega_exponent
+           excen, c_2, wind_law_omega_exponent
       double precision :: wind_saturation_omega
       logical :: use_wind_torque = .true.
 

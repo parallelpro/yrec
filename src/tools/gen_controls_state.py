@@ -64,7 +64,7 @@ JOB_MEMBERS = {
     "log_L_upper_limit", "log_L_lower_limit", "Teff_upper_limit",
     "Teff_lower_limit", "log_g_upper_limit", "log_g_lower_limit",
     "nu_max_upper_limit", "nu_max_lower_limit",
-    "acfpft", "max_domega_global", "structfactor", "fgrz",
+    "acfpft", "max_domega_global", "fgrz",
     "diffuse_helium_active", "use_mass_accretion", "new_species_value",
     "target_radius_rsun", "target_teff", "pulse_format",
 }

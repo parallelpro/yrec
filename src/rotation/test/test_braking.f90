@@ -4,25 +4,29 @@
 ! Standalone test of magnetic braking, the wind torque on the surface
 ! convection zone. It sets the controls and the model quantities the
 ! braking laws read, then prints what each returns:
-!   matt_wind           the spin-down of the convection zone over a
-!                       step: its j/m afterwards. The Matt (PMM) law
-!                       with and without Rossby scaling, with B-field
-!                       scaling, saturated, sub-stepped; the Kawaler
-!                       law (use_pmm_wind_law false) with and without
-!                       saturation scaled by tau_cz, inactive, and its
-!                       error path (tau_cz undefined)
-!   wind_spindown_matt  the solid-body form: d(omega) at the start and
-!                       end of the step, on a first and a later
-!                       iteration: the Matt law with Rossby scaling,
-!                       with B-field scaling too, with B-field scaling
-!                       alone; the Kawaler law with and without
-!                       saturation scaled by tau_cz
+!   brake_convection_zone       the spin-down of the convection zone
+!                               over a step: its j/m afterwards. The
+!                               Matt (PMM) law with and without Rossby
+!                               scaling, with B-field scaling,
+!                               saturated, sub-stepped; the Kawaler law
+!                               (use_pmm_wind_law false) with and
+!                               without saturation scaled by tau_cz,
+!                               inactive, and its error path (tau_cz
+!                               undefined)
+!   compute_solid_body_braking  the solid-body form: d(omega) at the
+!                               start and end of the step, on a first
+!                               and a later iteration: the Matt law
+!                               with Rossby scaling, with B-field
+!                               scaling too, with B-field scaling
+!                               alone; the Kawaler law with and without
+!                               saturation scaled by tau_cz
 ! The values are plausible solar-like ones, chosen to reach every
 ! branch. Results print for byte-comparison against
 ! expected_test_braking.out.
 program test_braking
       use star_info_lib, only: star, json
       use physical_constants, only: csig, csigl, cgl
+      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
       implicit none
       double precision, parameter :: msun = 1.989d33
       double precision :: j(json), omega, dt, domega_start, domega_end
@@ -57,7 +61,7 @@ program test_braking
       star%pphot0 = 4.95d0
       star%pphot = 5.00d0
 
-      write(*,'(a)') "# test_braking: matt_wind (j/m of the convection zone after the step)"
+      write(*,'(a)') "# test_braking: brake_convection_zone (j/m of the convection zone after the step)"
       star%ctrl%use_pmm_wind_law = .true.
       star%ctrl%scale_by_rossby_number = .true.
       star%ctrl%scale_by_b_field = .false.
@@ -88,7 +92,7 @@ program test_braking
       star%convective_turnover_timescale = 1.1d6
       star%job%wind_saturation_omega = 3.0d-5
 
-      write(*,'(a)') "# test_braking: wind_spindown_matt (d omega at the start and end of the step)"
+      write(*,'(a)') "# test_braking: compute_solid_body_braking (d omega at the start and end of the step)"
       do k = 1, 5
          select case (k)
          case (1)
@@ -109,11 +113,11 @@ program test_braking
          omega = 2.6d-6
          dt = 1.0d16
          domega_end = 0.0d0
-         call wind_spindown_matt(0.0d0, dt, 1.0d54, 1, 0.9d0*omega, 1.0d0, &
+         call compute_solid_body_braking(0.0d0, dt, 1.0d54, 1, 0.9d0*omega, 1.0d0, &
               3.762d0, omega, domega_start, domega_end, ierr)
          write(*,'(a,i2,a,i2,2(1pe24.15))') "case", k, " iteration 1 ierr", ierr, &
               domega_start, domega_end
-         call wind_spindown_matt(0.0d0, dt, 1.0d54, 2, 0.95d0*omega, 1.0d0, &
+         call compute_solid_body_braking(0.0d0, dt, 1.0d54, 2, 0.95d0*omega, 1.0d0, &
               3.762d0, omega, domega_start, domega_end, ierr)
          write(*,'(a,i2,a,i2,2(1pe24.15))') "case", k, " iteration 2 ierr", ierr, &
               domega_start, domega_end
@@ -123,7 +127,8 @@ program test_braking
 contains
 
 ! The convection zone: zones 3-6 of the model, 0.02 Msun with moment of
-! inertia 1e54 g cm^2, rotating at omega; prints its j/m after matt_wind.
+! inertia 1e54 g cm^2, rotating at omega; prints its j/m after the
+! braking.
 subroutine cz_case(label, omega_surface, timestep, wind_flag)
       character(len=*), intent(in) :: label
       double precision, intent(in) :: omega_surface, timestep
@@ -133,7 +138,7 @@ subroutine cz_case(label, omega_surface, timestep, wind_flag)
       do zone = 1, 8
          j(zone) = 1.0d16*zone
       end do
-      call matt_wind(0.0d0, timestep, 0.98d0*msun, 1.0d0*msun, 3, 6, wind_flag, &
+      call brake_convection_zone(0.0d0, timestep, 0.98d0*msun, 1.0d0*msun, 3, 6, wind_flag, &
            omega_surface, 1.0d0, 3.762d0, 1.0d54, j, ierr)
       write(*,'(a,a,a,i2)') "cz ", label, "  ierr", ierr
       write(*,'(4(1pe24.15))') j(2:7)

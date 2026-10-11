@@ -33,8 +33,9 @@
 !  - eq_mass (EM): diffuse_composition_driver.f90 calls it equally_spaced_mass.
 !  - diffusion_converged (LOKAD): check_angular_momentum.f90 calls it
 !    already_converged_flag.
-!  - wind_loss_explicit/wind_loss_implicit (WIND1/WIND2): wind_spindown_matt.f90
-!    calls the same pair domega_start/domega_end.
+!  - wind_loss_explicit/wind_loss_implicit (WIND1/WIND2):
+!    magnetic_braking's compute_solid_body_braking calls the same pair
+!    domega_start/domega_end.
 ! 2026 de-tramp (ROADMAP item 3): 37 arguments -> 15. The midpoint
 ! structure arrays live in rot_scr (rotation_scratch_lib, filled by
 ! mid_timestep_model each sub-step) and the star-model arrays/scalars
@@ -53,6 +54,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
       use rotation_scratch_lib
+      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
       use star_info_lib, only: star, json
       use physical_constants
       use numerics_lib
@@ -253,7 +255,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
             end do
             wind_loss_active = star%job%use_wind_torque
 ! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
-            call matt_wind(star%log_L,sub_timestep,cz_mass_bottom, &
+            call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom, &
                  cz_mass_top,zone_max,star%nz,wind_loss_active,omega_surface, &
                  star%star_mass,star%log_Teff,cz_moment_of_inertia, &
                  star%j_rot, ierr)
@@ -266,7 +268,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
             solid_cz_mass_bottom = 0.0D0
             solid_cz_mass_top = exp(ln10*star%log_total_mass)
             solid_start_zone = 1
-            call matt_wind(star%log_L,sub_timestep,solid_cz_mass_bottom, &
+            call brake_convection_zone(star%log_L,sub_timestep,solid_cz_mass_bottom, &
                  solid_cz_mass_top,solid_start_zone,star%nz,wind_loss_active, &
                  omega_surface,star%star_mass,star%log_Teff,cz_moment_of_inertia, &
                  star%j_rot, ierr)
@@ -365,7 +367,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
                if(star%job%use_wind_torque)then
                   cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
                   omega_surface = rot_scr%omega_mid(star%nz)
-                  call wind_spindown_matt(star%log_L,sub_timestep, &
+                  call compute_solid_body_braking(star%log_L,sub_timestep, &
                        cz_moment_of_inertia,iteration,omega_surface, &
                        star%star_mass,star%log_Teff,omega_surface_start, &
                        wind_loss_explicit,wind_loss_implicit, ierr)
