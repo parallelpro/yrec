@@ -93,9 +93,10 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
 | `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
 | `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step, with the trace-element integrator (log interpolation): radiative shells, then the surface convection zone as one unit on its mass-averaged rates (`average_li_be_over_cz`), then the shells a retreating CZ left. The CZ base at the start and end of the step, overshoot included, comes from `locate_surface_mixing_base` in `core/convection_geometry.f90`. |
-| `burn_li_be_midpoint` | (compiled out) | Single-midpoint variant, used only by the Bulirsch–Stoer path; built only with `-DYREC_BULIRSCH_STOER_BURN`. |
 
 ---
+
+The compiled-out Bulirsch–Stoer path keeps its own single-midpoint Li/Be variant, `burn_li_be_midpoint`, in `mixing/burn_li_be_midpoint.f90` beside the other two files of that path; build with `-DYREC_BULIRSCH_STOER_BURN` to include it.
 
 ## 2. When each piece runs during a timestep
 

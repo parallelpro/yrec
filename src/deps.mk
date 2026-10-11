@@ -141,7 +141,7 @@ atm/tables/altabinit.o: atm_tables.mod io_units.mod math_lib.mod
 atm/tables/surfp.o: atm_tables.mod io_units.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod atm_tables.mod io_units.mod opacity_tables.mod scv_eos_tables.mod star_info_lib.mod
 core/atmosphere_derivs.o: atm_tables.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod t_tau_relations.mod
-core/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+core/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/check_solar_calibration.o: io_units.mod math_lib.mod star_info_lib.mod
 core/check_star_calibration.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/composition_step.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
@@ -262,6 +262,7 @@ kap/opal95/opal95_surface_table.o: numerics_lib.mod opacity_tables.mod
 kap/setupopac.o: eos_lib.mod opacity_tables.mod star_info_lib.mod
 kap/surfopac.o: star_info_lib.mod
 kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod scv_eos_tables.mod star_info_lib.mod
+mixing/burn_li_be_midpoint.o: burn_step.mod convection_geometry.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 mixing/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 mixing/compute_scale_height.o: eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod

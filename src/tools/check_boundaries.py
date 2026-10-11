@@ -93,7 +93,7 @@ PUBLIC = {
     # core (physic/coefft/starin) and atm (qenv) pending the
     # star-layer consolidation.
     "mixing": {"homogenize_convection_zones", "find_convection_zones",
-               "burn_settle_mix", "rotmix", "compute_scale_height",
+               "burn_settle_mix", "burn_li_be_midpoint", "rotmix", "compute_scale_height",
                "overshoot_boundaries", "semiconvection",
                "compute_temperature_gradients"},
     # rotation deliberately has no facade (multi-primitive surface,
