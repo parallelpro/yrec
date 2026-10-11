@@ -1082,3 +1082,32 @@ left for a decision (physics changes):
   in solar noGS and the config matrix (roundoff only: f + (1-f) for the
   branches, and association order).
 
+### Module naming (yrec-next, 2026-10) -- docs/GUIDELINES.md naming rules
+
+- **Sweep -- DONE (382b6055, e2bf236a, 3cafc9eb, c4cb4092, d312e330).**
+  Every file is named after its module; _lib remains only on the domain
+  facades (atm_lib, eos_lib, kap_lib, math_lib, net_lib, numerics_lib,
+  wind_lib); every other module is a noun. Ten modules had carried _lib
+  only because they contained a procedure of their own name; those
+  procedures are now verbs (compute_nuclear_energy, advance_composition,
+  advance_rotation_substep, apply_secular_transport,
+  compute_temperature_gradients, run_microdiff, ...). In net/ every
+  procedure follows the verb rule, and net_lib is a pure facade.
+- **Open: the state modules.** star_info_lib, rotation_scratch_lib and
+  point_scratch_lib keep their names until the Phase 5 state split
+  (docs/TARGET_ARCHITECTURE.md section 4.2) replaces them.
+- **Open: facade-only use for eos, kap, atm, numerics.** Only net/ is in
+  check_boundaries' FACADE_ONLY_DOMAINS. The others are still entered
+  through internal modules, mostly table state: read_controls and
+  read_starting_model set yale_eos_tables, scv_eos_tables,
+  opacity_tables and atm_tables directly; henyey_iteration and
+  rebuild_envelope read yale_eos_tables (Debye-Hueckel); the envelope
+  integrator and stitched_model use atm_tables, atmosphere_structure,
+  envelope_structure and t_tau_relations; envelope_integration_kernel
+  and read_controls use integration_parameters. Each needs its facade
+  to expose an interface (setters for the table paths and flags, the
+  structure profiles as types) before its domain joins the list.
+- **Open: procedure names outside net/.** The verb rule was applied
+  outside net/ only where a module clashed with its routine; the rest
+  follow it as code is touched.
+
