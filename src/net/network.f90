@@ -42,6 +42,7 @@
 ! adding a row to the table; adding a species means adding it to the
 ! species list and to the rows that touch it.
 module network
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use reaction_rates, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap
@@ -54,15 +55,15 @@ module network
 ! the first n_solved species are solved implicitly; the rest are
 ! products updated explicitly after convergence
       integer, parameter, public :: n_solved = 7, n_network = 8
-      double precision, parameter, public :: mass_number(n_network) = &
+      real(dp), parameter, public :: mass_number(n_network) = &
            [1.0d0, 3.0d0, 4.0d0, 12.0d0, 13.0d0, 14.0d0, 16.0d0, 18.0d0]
 ! atomic mass excesses, MeV (AME2020: Wang et al. 2021), of the network
 ! species and of the neutron, the one untracked particle a row emits;
 ! they check the rows' energies (q_from_masses)
-      double precision, parameter :: mass_excess_mev(n_network) = &
+      real(dp), parameter :: mass_excess_mev(n_network) = &
            [7.288971d0, 14.931219d0, 2.424916d0, 0.0d0, 3.125009d0, &
            2.863417d0, -4.737001d0, -0.782816d0]
-      double precision, parameter :: neutron_mass_excess_mev = 8.071318d0
+      real(dp), parameter :: neutron_mass_excess_mev = 8.071318d0
 
 ! branch factor b_j: 1, the N15(p,alpha) fraction f or 1 - f, or the Be7
 ! electron-capture fraction f_e or 1 - f_e
@@ -94,7 +95,7 @@ module network
          integer :: emitted_mass = 0
 ! energy deposited per reaction, MeV (net of neutrino losses), and the
 ! chain it is counted under
-         double precision :: q_mev = 0.0d0
+         real(dp) :: q_mev = 0.0d0
          integer :: chain = 0
       end type reaction_t
 
@@ -151,7 +152,7 @@ contains
 ! Self-check of the table: the number of rows that do not conserve
 ! baryon number, or whose rate law names a species outside the
 ! implicit solve (an explicit product cannot feed back).
-integer function network_table_errors()
+pure integer function network_table_errors()
       integer :: j
 
       network_table_errors = 0
@@ -166,7 +167,7 @@ end function network_table_errors
 ! The energy row j releases, MeV, from the atomic mass excesses of what
 ! it consumes and makes (neutrinos included; positron annihilation
 ! included, through the atomic masses).
-double precision function q_from_masses(j)
+pure real(dp) function q_from_masses(j)
       integer, intent(in) :: j
       integer :: c
 
@@ -180,12 +181,12 @@ end function q_from_masses
 ! The mean neutrino energy per reaction the table implies, MeV: zero,
 ! to the 1 keV the table's Q values are rounded to, for a row with no
 ! beta+ decay or electron capture.
-double precision function neutrino_energy(j)
+pure real(dp) function neutrino_energy(j)
       integer, intent(in) :: j
       neutrino_energy = q_from_masses(j) - reactions(j)%q_mev
 end function neutrino_energy
 
-integer function baryon_imbalance(j)
+pure integer function baryon_imbalance(j)
       integer, intent(in) :: j
       integer :: c
 
@@ -215,9 +216,9 @@ end subroutine write_network_table
 
 ! ---------------------------------------------------------------
 ! Rate of reaction j at abundances x: R_j = b_j g_j prod X(law).
-double precision function reaction_rate(j, rate_vec, x)
+pure real(dp) function reaction_rate(j, rate_vec, x)
       integer, intent(in) :: j
-      double precision, intent(in) :: rate_vec(:), x(n_network)
+      real(dp), intent(in) :: rate_vec(:), x(n_network)
       integer :: m
 
       reaction_rate = branch_factor(j, rate_vec)*rate_vec(reactions(j)%rate_row)
@@ -229,11 +230,11 @@ end function reaction_rate
 
 ! ---------------------------------------------------------------
 ! dR_j/dX_k: the product rule over the factors of the rate law.
-double precision function reaction_rate_derivative(j, k, rate_vec, x)
+pure real(dp) function reaction_rate_derivative(j, k, rate_vec, x)
       integer, intent(in) :: j, k
-      double precision, intent(in) :: rate_vec(:), x(n_network)
+      real(dp), intent(in) :: rate_vec(:), x(n_network)
       integer :: m, m2
-      double precision :: term
+      real(dp) :: term
 
       reaction_rate_derivative = 0.0d0
       do m = 1, max_law
@@ -247,18 +248,18 @@ double precision function reaction_rate_derivative(j, k, rate_vec, x)
       end do
 end function reaction_rate_derivative
 
-double precision function branch_factor(j, rate_vec)
+pure real(dp) function branch_factor(j, rate_vec)
       integer, intent(in) :: j
-      double precision, intent(in) :: rate_vec(:)
+      real(dp), intent(in) :: rate_vec(:)
 
       branch_factor = branch_fraction(j, rate_vec(rv_frac_n15_pa), &
            rate_vec(rv_frac_be7_ecap))
 end function branch_factor
 
 ! b_j from the two branching fractions
-double precision function branch_fraction(j, frac_n15_pa, frac_be7_ecap)
+pure real(dp) function branch_fraction(j, frac_n15_pa, frac_be7_ecap)
       integer, intent(in) :: j
-      double precision, intent(in) :: frac_n15_pa, frac_be7_ecap
+      real(dp), intent(in) :: frac_n15_pa, frac_be7_ecap
 
       select case (reactions(j)%branch)
       case (n15_to_c12)
@@ -280,16 +281,16 @@ end function branch_fraction
 ! the sum over rows of b_j * rate(slot) * prod X(law_j) * q_j, with
 ! rate the per-gram rates of compute_reaction_rates (abundance factors
 ! omitted) and x the network species' mass fractions.
-subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
+pure subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
      energy_by_slot, energy_by_chain)
       use reaction_rates, only: num_reactions
-      double precision, intent(in) :: rate(num_reactions), x(n_network), &
+      real(dp), intent(in) :: rate(num_reactions), x(n_network), &
            frac_n15_pa, frac_be7_ecap
-      double precision, intent(out) :: energy_by_slot(num_reactions), &
+      real(dp), intent(out) :: energy_by_slot(num_reactions), &
            energy_by_chain(n_chains)
 ! MeV to erg
-      double precision, parameter :: erg_per_mev = 1.602177d-6
-      double precision :: e
+      real(dp), parameter :: erg_per_mev = 1.602177d-6
+      real(dp) :: e
       integer :: j, m
 
       energy_by_slot = 0.0d0
@@ -310,11 +311,11 @@ end subroutine compute_reaction_energies
 
 ! ---------------------------------------------------------------
 ! dX_i/dt / A_i = sum_j nu_ij R_j for every network species.
-subroutine compute_abundance_rates(rate_vec, x, dxdt_per_a)
-      double precision, intent(in) :: rate_vec(:), x(n_network)
-      double precision, intent(out) :: dxdt_per_a(n_network)
+pure subroutine compute_abundance_rates(rate_vec, x, dxdt_per_a)
+      real(dp), intent(in) :: rate_vec(:), x(n_network)
+      real(dp), intent(out) :: dxdt_per_a(n_network)
       integer :: j, c
-      double precision :: r
+      real(dp) :: r
 
       dxdt_per_a = 0.0d0
       do j = 1, n_rows
@@ -342,18 +343,18 @@ end subroutine compute_abundance_rates
 subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
       use numerics_lib, only: simeqc
-      double precision, intent(in) :: x_start(n_network), rate_vec(:), dt
-      double precision, intent(in) :: min_abundance, absolute_tolerance, &
+      real(dp), intent(in) :: x_start(n_network), rate_vec(:), dt
+      real(dp), intent(in) :: min_abundance, absolute_tolerance, &
            relative_tolerance
       integer, intent(in) :: max_iterations
-      double precision, intent(inout) :: x(n_network)
+      real(dp), intent(inout) :: x(n_network)
       integer, intent(out) :: ierr
 
 ! system(:, 1:n) is the Jacobian, system(:, n+1) the residual; simeqc
 ! leaves the Newton correction in system(:, n+1)
-      double precision :: system(n_solved, n_solved+1), dt_a(n_network)
-      double precision :: dxdt_per_a(n_network), correction(n_solved)
-      double precision :: max_abs_change, max_rel_change
+      real(dp) :: system(n_solved, n_solved+1), dt_a(n_network)
+      real(dp) :: dxdt_per_a(n_network), correction(n_solved)
+      real(dp) :: max_abs_change, max_rel_change
       integer :: i, k, j, c, iterations
       logical :: off_diagonal
 
@@ -441,44 +442,41 @@ end subroutine burn_implicitly
 ! may be supplemented elsewhere by a fully implicit non-equilibrium
 ! calculation.
 ! compute_equilibrium_burn_rates (formerly eqburn)
-subroutine compute_equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
+pure subroutine compute_equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
-      use star_info_lib, only: json, n_species_extended, i_h1, i_he4, &
+      use star_info_lib, only: i_h1, i_he4, &
            i_metals, i_he3, i_c12, i_c13, i_n14, i_o16
-      use reaction_rates, only: num_rate_rows, net_settings
-      implicit none
+      use reaction_rates, only: net_settings
 
 ! rate_by_zone(r_*/rv_*, zone): the per-zone rate vectors written by
-! reaction_rates' compute_network_rates (2026 W3 -- formerly 9 separate rate_*(json)
-! arguments); rows are the r_*/rv_* slots of net_lib. Only
-! the nine rows named in the use statement are read here.
-      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
+! reaction_rates' compute_network_rates; rows are the r_*/rv_* slots.
+      real(dp), intent(in) :: rate_by_zone(:,:)
 ! xa_start: the start-of-step composition (star%xa_start at every caller;
 ! an argument since the move to net/, 2026-10)
-      double precision, intent(in) :: xa_start(n_species_extended, json)
-      double precision, intent(in) :: shell_mass(json), &
-           shell_temperature(json)
+      real(dp), intent(in) :: xa_start(:,:)
+      real(dp), intent(in) :: shell_mass(:), &
+           shell_temperature(:)
       integer, intent(in) :: zone_begin, zone_end
-      double precision, intent(out) :: dc_dt, do_dt, dx_dt, dy_dt, &
+      real(dp), intent(out) :: dc_dt, do_dt, dx_dt, dy_dt, &
            equilibrium_xc12, equilibrium_xo16, hydrogen_fraction, &
            metal_fraction
 
 
 
-      double precision :: zone_avg_abundance(11)
-      double precision :: total_shell_mass
+      real(dp) :: zone_avg_abundance(11)
+      real(dp) :: total_shell_mass
       integer :: species_idx, zone_idx
-      double precision :: pp_rate, he3_he3_rate, he3_he4_rate, c12_p_rate, &
+      real(dp) :: pp_rate, he3_he3_rate, he3_he4_rate, c12_p_rate, &
            c13_p_rate, n14_p_rate, o16_p_rate, c12_alpha_rate, &
            triple_alpha_rate
-      double precision :: local_xhe3, helium_fraction, local_xc13, &
+      real(dp) :: local_xhe3, helium_fraction, local_xc13, &
            local_xn14
-      double precision :: pp_reaction_term, he3_he4_reaction_term, &
+      real(dp) :: pp_reaction_term, he3_he4_reaction_term, &
            equilibrium_xhe3
-      double precision :: cno_sum, cn_ratio_c12, cn_ratio_c13
-      double precision :: triple_alpha_term, c12_alpha_term
+      real(dp) :: cno_sum, cn_ratio_c12, cn_ratio_c13
+      real(dp) :: triple_alpha_term, c12_alpha_term
 
 !     SKIP BURNING CALCULATIONS IF STARTING SHELL BELOW T CUTOFF FOR REACTIONS.
       dx_dt = 0.0d0

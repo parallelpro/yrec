@@ -16,7 +16,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
       use net_lib, only: nuclear_energy_result
-      use star_info_lib, only: star, json, i_h2, i_metals
+      use star_info_lib, only: star, json, i_he4, i_h2, i_metals
       use controls_buffer, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
       use burn_step, only: compute_zone_energy
@@ -96,7 +96,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
                     (star%solar_mass_cgs/luminosity(shell_zone)))
                if (star%ctrl%atime(itime_dy_shell) .gt. 0.0d0) helium_dt = min(helium_dt, &
                     (he_burn_energy_per_gram/star%solar_luminosity_cgs)*star%ctrl%atime(itime_dy_shell)* &
-                    composition(2,shell_zone)* &
+                    composition(i_he4,shell_zone)* &
                     (enclosed_mass(shell_zone)/luminosity(shell_zone)))
             end if
          endif

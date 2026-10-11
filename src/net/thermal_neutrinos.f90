@@ -10,7 +10,9 @@
 ! compute_mixture_neutrino_losses (formerly nulosses). Moved out of net_lib
 ! 2026-10, bodies unchanged; net_lib re-exports this module.
 module thermal_neutrinos
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
+      private
       integer, parameter, public :: nu_ionmax = 4
       public :: compute_thermal_neutrino_losses, compute_mixture_neutrino_losses, &
            azbar, sneut, ifermi12, zfermim12
@@ -34,10 +36,10 @@ contains
 subroutine compute_thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
       implicit none
 
-      double precision, intent(in) :: temp, den, x, y, zc, zo
-      double precision, intent(out) :: snu, dsnudt, dsnudd
+      real(dp), intent(in) :: temp, den, x, y, zc, zo
+      real(dp), intent(out) :: snu, dsnudt, dsnudd
 
-      double precision :: xmass(nu_ionmax), ymass(nu_ionmax), aion(nu_ionmax), &
+      real(dp) :: xmass(nu_ionmax), ymass(nu_ionmax), aion(nu_ionmax), &
            zion(nu_ionmax)
 
 !..set the mass fractions, z's and a's of the composition
@@ -102,10 +104,10 @@ subroutine compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion, &
 !..aion    = number of nucleons
 !..zion    = number of protons
 
-      double precision, intent(in) :: xmass(nu_ionmax), aion(nu_ionmax), &
+      real(dp), intent(in) :: xmass(nu_ionmax), aion(nu_ionmax), &
                        zion(nu_ionmax), temp, den
-      double precision, intent(out) :: ymass(nu_ionmax), snu, dsnudt, dsnudd
-      double precision abar,zbar,dsnuda,dsnudz
+      real(dp), intent(out) :: ymass(nu_ionmax), snu, dsnudt, dsnudd
+      real(dp) abar,zbar,dsnuda,dsnudz
 
 !..get abar and zbar
       call azbar(xmass,aion,zion,nu_ionmax, &
@@ -120,7 +122,7 @@ end subroutine compute_mixture_neutrino_losses
 
 
 
-subroutine azbar(xmass,aion,zion,ionmax, &
+pure subroutine azbar(xmass,aion,zion,ionmax, &
                  ymass,abar,zbar)
       implicit none
 !..input
@@ -136,10 +138,10 @@ subroutine azbar(xmass,aion,zion,ionmax, &
 
 !..declare
       integer, intent(in) :: ionmax
-      double precision, intent(in) :: xmass(ionmax),aion(ionmax),zion(ionmax)
-      double precision, intent(out) :: ymass(ionmax),abar,zbar
+      real(dp), intent(in) :: xmass(ionmax),aion(ionmax),zion(ionmax)
+      real(dp), intent(out) :: ymass(ionmax),abar,zbar
       integer          i
-      double precision zbarxx,ytot1
+      real(dp) zbarxx,ytot1
 
       zbarxx  = 0.0d0
       ytot1   = 0.0d0
@@ -194,19 +196,19 @@ subroutine sneut(temp,den,abar,zbar, &
 
 
 !..declare the pass
-double precision, intent(in) :: temp,den,abar,zbar
-double precision, intent(out) :: snu,dsnudt,dsnudd,dsnuda,dsnudz
+real(dp), intent(in) :: temp,den,abar,zbar
+real(dp), intent(out) :: snu,dsnudt,dsnudd,dsnuda,dsnudz
 
 
 !..local variables
-double precision spair,spairdt,spairdd,spairda,spairdz, &
+real(dp) spair,spairdt,spairdd,spairda,spairdz, &
                  splas,splasdt,splasdd,splasda,splasdz, &
                  sphot,sphotdt,sphotdd,sphotda,sphotdz, &
                  sbrem,sbremdt,sbremdd,sbremda,sbremdz, &
                  sreco,srecodt,srecodd,srecoda,srecodz
 
 
-double precision t9,xl,xldt,xlp5,xl2,xl3,xl4,xl5,xl6,xl7,xl8,xl9, &
+real(dp) t9,xl,xldt,xlp5,xl2,xl3,xl4,xl5,xl6,xl7,xl8,xl9, &
                  xlmp5,xlm1,xlm2,xlm3,xlm4,xlnt,cc,den6,tfermi, &
                  a0,a1,a2,a3,b1,b2,c00,c01,c02,c03,c04,c05,c06, &
                  c10,c11,c12,c13,c14,c15,c16,c20,c21,c22,c23,c24, &
@@ -219,7 +221,7 @@ double precision t9,xl,xldt,xlp5,xl2,xl3,xl4,xl5,xl6,xl7,xl8,xl9, &
 
 
 !..pair production
-double precision rm,rmdd,rmda,rmdz,rmi,gl,gldt, &
+real(dp) rm,rmdd,rmda,rmdz,rmi,gl,gldt, &
                  zeta,zetadt,zetadd,zetada,zetadz,zeta2,zeta3, &
                  xnum,xnumdt,xnumdd,xnumda,xnumdz, &
                  xden,xdendt,xdendd,xdenda,xdendz, &
@@ -228,20 +230,20 @@ double precision rm,rmdd,rmda,rmdz,rmi,gl,gldt, &
 
 
 !..plasma
-double precision gl2,gl2dt,gl2dd,gl2da,gl2dz,gl12,gl32,gl72,gl6, &
+real(dp) gl2,gl2dt,gl2dd,gl2da,gl2dz,gl12,gl32,gl72,gl6, &
                  ft,ftdt,ftdd,ftda,ftdz,fl,fldt,fldd,flda,fldz, &
                  fxy,fxydt,fxydd,fxyda,fxydz
 
 
 !..photo
-double precision tau,taudt,cos1,cos2,cos3,cos4,cos5,sin1,sin2, &
+real(dp) tau,taudt,cos1,cos2,cos3,cos4,cos5,sin1,sin2, &
                  sin3,sin4,sin5,last,xast, &
                  fphot,fphotdt,fphotdd,fphotda,fphotdz, &
                  qphot,qphotdt,qphotdd,qphotda,qphotdz
 
 
 !..brem
-double precision t8,t812,t832,t82,t83,t85,t86,t8m1,t8m2,t8m3,t8m5, &
+real(dp) t8,t812,t832,t82,t83,t85,t86,t8m1,t8m2,t8m3,t8m5, &
                  t8m6, &
                  eta,etadt,etadd,etada,etadz,etam1,etam2,etam3, &
                  fbrem,fbremdt,fbremdd,fbremda,fbremdz, &
@@ -256,14 +258,14 @@ double precision t8,t812,t832,t82,t83,t85,t86,t8m1,t8m2,t8m3,t8m5, &
 ! since both moved into this module (2026, see net_lib.f90's own
 ! header), declaring their names again as plain locals would shadow
 ! the host-associated module functions rather than resolve to them.
-double precision nu,nudt,nudd,nuda,nudz, &
+real(dp) nu,nudt,nudd,nuda,nudz, &
                  nu2,nu3,bigj,bigjdt,bigjdd,bigjda,bigjdz
 
 
 
 
 !..numerical constants
-double precision pi,fac1,fac2,fac3,oneth,twoth,con1,sixth,iln10
+real(dp) pi,fac1,fac2,fac3,oneth,twoth,con1,sixth,iln10
 parameter        (pi     = 3.1415926535897932384d0, &
                   fac1   = 5.0d0 * pi / 3.0d0, &
                   fac2   = 10.0d0 * pi, &
@@ -284,7 +286,7 @@ parameter        (pi     = 3.1415926535897932384d0, &
 !..from sneut.f); Itoh et al. 1996 eq. 2.2-2.5 / Timmes sneut5 / MESA
 !..mod_neu use cvp**2 - cap**2.
 
-double precision theta,xnufam,cv,ca,cvp,cap,tfac1,tfac2,tfac3, &
+real(dp) theta,xnufam,cv,ca,cvp,cap,tfac1,tfac2,tfac3, &
                  tfac4,tfac5,tfac6
 parameter        (theta  = 0.2319d0, &
                   xnufam = 3.0d0, &
@@ -1540,7 +1542,7 @@ end subroutine sneut
 ! degeneracy parameter eta such that F_{1/2}(eta) = fermi_half_integral)
 ! when it is equal to fermi_half_integral.
 ! Maximum error is 4.19d-9. Reference: Antia, ApJS 84,101 1993.
-double precision function ifermi12(fermi_half_integral)
+real(dp) function ifermi12(fermi_half_integral)
 
       use math_lib
       implicit none
@@ -1548,12 +1550,12 @@ double precision function ifermi12(fermi_half_integral)
 ! fermi_half_integral: value of the order-1/2 Fermi-Dirac integral
 !                       whose inverse (the degeneracy parameter) is
 !                       sought.
-      double precision, intent(in) :: fermi_half_integral
+      real(dp), intent(in) :: fermi_half_integral
 
 !..declare
       integer :: term_idx, deg_num_small, deg_den_small, deg_num_large, &
            deg_den_large
-      double precision :: fd_order, coef_num_small(12), coef_den_small(12), &
+      real(dp) :: fd_order, coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
 !..load the coefficients of the expansion
@@ -1610,19 +1612,19 @@ end function ifermi12
 !..this routine applies a rational function expansion to get the
 !..fermi-dirac integral of order -1/2 evaluated at degeneracy_parameter.
 !..maximum error is 1.23d-12. reference: antia apjs 84,101 1993.
-double precision function zfermim12(degeneracy_parameter)
+real(dp) function zfermim12(degeneracy_parameter)
 
       use math_lib
       implicit none
 
 ! degeneracy_parameter: electron degeneracy parameter eta at which the
 !                        order -1/2 Fermi-Dirac integral is evaluated.
-      double precision, intent(in) :: degeneracy_parameter
+      real(dp), intent(in) :: degeneracy_parameter
 
 !..declare
       integer :: term_idx, deg_num_small, deg_den_small, deg_num_large, &
            deg_den_large
-      double precision :: coef_num_small(12), coef_den_small(12), &
+      real(dp) :: coef_num_small(12), coef_den_small(12), &
            coef_num_large(12), coef_den_large(12), numerator, denominator, &
            scaled_arg
 !..load the coefficients of the expansion

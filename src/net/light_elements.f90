@@ -11,6 +11,7 @@
 ! integrate them). Their configuration is reaction_rates' net_settings; the
 ! accreted gas comes in as an argument (surface_accretion).
 module light_elements
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use reaction_rates, only: deuterium_proton_capture_rate, avogadro_dpg, &
            deuteron_mass_amu, net_settings
       implicit none
@@ -33,16 +34,16 @@ module light_elements
 ! differed.)
          logical :: inflow = .false.
 ! deuterium mass fraction of the accreted gas
-         double precision :: deuterium_fraction = 0.0d0
+         real(dp) :: deuterium_fraction = 0.0d0
 ! mass accreted over this step, g
-         double precision :: mass = 0.0d0
+         real(dp) :: mass = 0.0d0
       end type surface_accretion
 
 ! burn_deuterium_region's thresholds as its two callers have always used
 ! them: the composition step (min_deuterium_step) and the rotation sub-steps
 ! (min_deuterium_substep), deuterium mass fraction.
-      double precision, parameter :: min_deuterium_step = 1.0d-11
-      double precision, parameter :: min_deuterium_substep = 1.0d-14
+      real(dp), parameter :: min_deuterium_step = 1.0d-11
+      real(dp), parameter :: min_deuterium_substep = 1.0d-14
 
 ! ---- burning a trace species over a step (2026-10) ----
 ! A trace species is destroyed at a rate lambda per unit abundance
@@ -64,12 +65,12 @@ contains
 ! burn_exposure: Lambda over the part [0, fraction] of a step of length
 ! dt (s), for rates per s. linear_in_log needs both rates positive; with
 ! either at or below zero it falls back to linear_in_time.
-double precision function burn_exposure(rate_start, rate_end, dt, &
+pure real(dp) function burn_exposure(rate_start, rate_end, dt, &
      interpolation, fraction)
       use math_lib
-      double precision, intent(in) :: rate_start, rate_end, dt, fraction
+      real(dp), intent(in) :: rate_start, rate_end, dt, fraction
       integer, intent(in) :: interpolation
-      double precision :: x
+      real(dp) :: x
       if (interpolation.eq.linear_in_log .and. rate_start.gt.0.0d0 .and. &
            rate_end.gt.0.0d0) then
 ! lambda(f) = lambda_0 (lambda_1/lambda_0)^f
@@ -90,12 +91,12 @@ end function burn_exposure
 !----------------------------------------------------------------------
 ! surviving_fraction: exp(-Lambda) over the whole step (0 once Lambda
 ! exceeds 700, where exp would underflow).
-double precision function surviving_fraction(rate_start, rate_end, dt, &
+pure real(dp) function surviving_fraction(rate_start, rate_end, dt, &
      interpolation)
       use math_lib
-      double precision, intent(in) :: rate_start, rate_end, dt
+      real(dp), intent(in) :: rate_start, rate_end, dt
       integer, intent(in) :: interpolation
-      double precision :: exposure
+      real(dp) :: exposure
       exposure = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
       if (exposure.gt.700.0d0) then
          surviving_fraction = 0.0d0
@@ -111,12 +112,12 @@ end function surviving_fraction
 ! the step cut into intervals that carry a mean exposure of at most 0.1
 ! (relative error below 1e-6, 7e-7 for a rate that falls 200-fold over
 ! the step; net/test/test_net).
-double precision function accreted_survival(rate_start, rate_end, dt, &
+pure real(dp) function accreted_survival(rate_start, rate_end, dt, &
      interpolation)
       use math_lib
-      double precision, intent(in) :: rate_start, rate_end, dt
+      real(dp), intent(in) :: rate_start, rate_end, dt
       integer, intent(in) :: interpolation
-      double precision :: total, f, weight, s
+      real(dp) :: total, f, weight, s
       integer :: n, i
       total = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
       n = 2*(int(min(10.0d0*total, 10000.0d0)) + 1)
@@ -152,23 +153,23 @@ end function accreted_survival
 ! overturn (turnover_timescale, s, when > 1). 2026-10: deutrate
 ! stored the result in star%deuterium_burning_rate(_start) itself; the
 ! caller (mix) stores it now.
-double precision function deuterium_rate(log_density, log_temperature, &
+pure real(dp) function deuterium_rate(log_density, log_temperature, &
      hydrogen_fraction, in_surface_cz, turnover_timescale)
-      use physical_constants
+      use physical_constants, only: amu_cgs, cc13, ln10
       use math_lib
       implicit none
 
-      double precision, intent(in) :: log_density, log_temperature, &
+      real(dp), intent(in) :: log_density, log_temperature, &
            hydrogen_fraction
       logical, intent(in) :: in_surface_cz
-      double precision, intent(in) :: turnover_timescale
+      real(dp), intent(in) :: turnover_timescale
 
 ! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
 !  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
 !  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
 !  CGS UNITS.
-      double precision :: rho, t9, t9p13, t9p23, t9m13, t9m23, t9m1
-      double precision :: rdeut, rdeutmax, rdeut2
+      real(dp) :: rho, t9, t9p13, t9p23, t9m13, t9m23, t9m1
+      real(dp) :: rdeut, rdeutmax, rdeut2
 
       rho=exp(ln10*log_density)
       t9 = exp(ln10*(log_temperature - 9.0d0))
@@ -221,31 +222,31 @@ end function deuterium_rate
 ! accreted mass, min_deuterium = 1e-14) -- formerly dburn and dburnm,
 ! two copies that differed in units, in dburnm's grams-plus-one
 ! accretion blend and in its accretion-blind threshold test.
-subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
+pure subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
      composition, timestep, xa_start, rate_start_zone, rate_end_zone, &
      accretion, min_deuterium)
 
-      use star_info_lib, only: json, i_h2
+      use star_info_lib, only: i_h2
       use math_lib
       implicit none
 
       integer, intent(in) :: zone_begin, zone_end, num_zones
-      double precision, intent(in) :: shell_mass(json)
-      double precision, intent(inout) :: composition(15,json)
-      double precision, intent(in) :: timestep
+      real(dp), intent(in) :: shell_mass(:)
+      real(dp), intent(inout) :: composition(:,:)
+      real(dp), intent(in) :: timestep
 ! timestep in s; the start-of-step composition; the deuterium rates
 ! per shell at the start and end of the step (per s); the gas accreted over
 ! this step; the threshold below which deuterium is zeroed
-      double precision, intent(in) :: xa_start(15,json), &
-           rate_start_zone(json), rate_end_zone(json), min_deuterium
+      real(dp), intent(in) :: xa_start(:,:), &
+           rate_start_zone(:), rate_end_zone(:), min_deuterium
       type(surface_accretion), intent(in) :: accretion
-      double precision :: hydrogen_fraction, deuterium_fraction, &
+      real(dp) :: hydrogen_fraction, deuterium_fraction, &
            helium3_fraction, rate_start, rate_end
-      double precision :: total_shell_mass, rate_start_sum, rate_end_sum
+      real(dp) :: total_shell_mass, rate_start_sum, rate_end_sum
       integer :: zone_idx
-      double precision :: deuterium_fraction_test
-      double precision :: deuterium_fraction_burned, accreted_deuterium_burned
-      double precision :: deuterium_change_original, &
+      real(dp) :: deuterium_fraction_test
+      real(dp) :: deuterium_fraction_burned, accreted_deuterium_burned
+      real(dp) :: deuterium_change_original, &
            deuterium_change_accreted, deuterium_fraction_new, &
            hydrogen_fraction_new, helium3_fraction_new, deuterium_change
 
@@ -357,13 +358,13 @@ end subroutine burn_deuterium_region
 ! the deck's ctrl%li6/li7/be9_*_rate_scale: Li6(p,He3)He4, Li7(p,a)He4,
 ! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
 ! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
-subroutine compute_li_be_rates(t9, fli6, fli7, fsbe9)
-      use physical_constants
+pure subroutine compute_li_be_rates(t9, fli6, fli7, fsbe9)
+      use physical_constants, only: cc13, cc23
       use math_lib
-      double precision, intent(in) :: t9
-      double precision, intent(out) :: fli6, fli7, fsbe9
-      double precision :: t913, t923, t943, t953, t932, t934
-      double precision :: fbe91, fbe92, fbe93, fx, ex, t9a, c56
+      real(dp), intent(in) :: t9
+      real(dp), intent(out) :: fli6, fli7, fsbe9
+      real(dp) :: t913, t923, t943, t953, t932, t934
+      real(dp) :: fbe91, fbe92, fbe93, fx, ex, t9a, c56
 
          t913=pow(t9, cc13)
          t923=t913*t913

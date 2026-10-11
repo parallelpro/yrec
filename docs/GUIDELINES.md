@@ -244,6 +244,31 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    `star` members overwritten on every iteration.
 
 
+## Declarations and interfaces (2026-10)
+
+net/ follows these five rules; other code follows them as it is
+rewritten, each conversion a byte-identical commit.
+
+1. **Modules are `private` by default** and list what they export
+   (`public :: ...`), so the top of a module shows its interface.
+2. **Every `use` names what it takes** (`use net_lib, only: ...`). The
+   exception is `use math_lib`: under `USE_CRMATH` its procedures shadow
+   the intrinsic `exp`, `log`, ..., which an `only:` list cannot express.
+3. **Reals are `real(dp)`**, with
+   `use, intrinsic :: iso_fortran_env, only: dp => real64` at the top
+   of the module. `dp` doesn't come from a project module, because a
+   whole-module `use` of one that exported it would collide with the
+   many locals named `dp` (a pressure difference). Literals keep the
+   `d0` exponent, which is exactly `real64`.
+4. **Array arguments are assumed-shape** (`x(:)`, `xa(:,:)`), not sized
+   by `json` or `15`. Module procedures have explicit interfaces, so
+   callers pass whole arrays as before, and the declaration no longer
+   pretends to know the caller's dimensions.
+5. **Procedures without side effects are `pure`**, and the compiler
+   checks it. In net/ the exceptions are Timmes' neutrino routines
+   (saved tables), `burn_implicitly` (it calls `numerics_lib`'s
+   `simeqc`) and their callers.
+
 ## Verification tiers (2026): match the gate to the blast radius
 
 Running the full battery on every commit is waste; running too little

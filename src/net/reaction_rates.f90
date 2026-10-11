@@ -23,6 +23,7 @@
 ! them.)
 ! ---------------------------------------------------------------------
 module reaction_rates
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
 
@@ -61,13 +62,13 @@ module reaction_rates
 ! N_A<sigma v> into the per-gram rate of both the deuterium depletion and
 ! its energy release, and sets the convective-overturn cap. (The two
 ! former copies differed by 0.68%: one divided by A = 2.)
-      double precision, parameter, public :: avogadro_dpg = 6.023d23
-      double precision, parameter, public :: deuteron_mass_amu = 2.013553d0
+      real(dp), parameter, public :: avogadro_dpg = 6.023d23
+      real(dp), parameter, public :: deuteron_mass_amu = 2.013553d0
 ! S-factor fits of reactions 1-7 and of Be7(p,g) (slot iq_be7p of q1..q5):
 ! FCZ67 eq. 53 / Neutrino Astrophysics eq. 3.14 times T9^(-2/3); q6 the
 ! tau coefficient, q7 the log prefactor, q8 the Harris et al. T9^2 term
 ! (history of the values: the end of this file).
-      double precision, parameter, private :: &
+      real(dp), parameter, private :: &
            fit_q1(iq_be7p) = [0.12317d0, .03392d0, .0325d0, .0304d0, .03035d0, .0273d0, .02494d0, .040572d0], &
            fit_q2(iq_be7p) = [1.08749d0, -.273d0, -.2085d0, .7630d0, -0.4044d0, -1.60d0, -1.224d0, -0.2095d0], &
            fit_q3(iq_be7p) = [.93833d0, -.0648d0, -.0474d0, .1626d0, -.08598d0, -.3064d0, -.2139d0, -0.0595d0], &
@@ -78,7 +79,7 @@ module reaction_rates
            fit_q8(r_po16) = [0.d0, 0.d0, 0.d0, 0.0d0, 0.0d0, 0.0d0, 0.d0]
 ! screening: charge products and the Graboske et al. (1973) table-4
 ! factors of each reaction slot
-      double precision, parameter, private :: &
+      real(dp), parameter, private :: &
            screen_zprod(num_reactions) = [1.d0, 4.d0, 4.d0, 6.d0, 6.d0, 7.d0, 8.d0, 12.d0, 16.d0, 12.d0, 14.d0, 12.d0, 36.d0], &
            screen_z53(num_reactions) = [1.175d0, 3.73d0, 3.73d0, 4.804d0, 4.804d0, 5.385d0, 5.941d0, 9.014d0, 11.24d0, &
                 9.014d0, 10.15d0, 9.104d0, 23.28d0], &
@@ -89,7 +90,7 @@ module reaction_rates
            screen_z86(num_reactions) = [1.630d0, 5.917d0, 5.917d0, 8.302d0, 8.302d0, 9.520d0, 10.716d0, 16.192d0, &
                 20.978d0, 16.192d0, 18.606d0, 16.192d0, 45.6635d0]
 ! bare nuclear masses (amu) and charges of the iso_* isotopes
-      double precision, parameter, public :: &
+      real(dp), parameter, public :: &
            isotope_mass(num_isotopes) = [1.008665d0, 1.007276d0, 2.013553d0, 3.015501d0, 3.014933d0, 4.001506d0, &
                 11.996709d0, 13.000064d0, 13.999233d0, 15.990526d0, 17.994772d0, 19.986954d0, 23.978458d0], &
            isotope_charge(num_isotopes) = [0.d0, 1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 6.d0, 6.d0, 7.d0, 8.d0, 8.d0, 10.d0, 12.d0]
@@ -101,22 +102,22 @@ module reaction_rates
 ! zone values the energy and flux consumers reuse. All zero below
 ! net_settings%logT_cutoffs(1).
       type, public :: nuclear_rates
-         double precision :: rate(num_reactions) = 0.0d0
-         double precision :: dlnrate_dlnt(num_reactions) = 0.0d0
-         double precision :: dlnrate_dlnrho(num_reactions) = 0.0d0
-         double precision :: frac_be7_ecap = 0.0d0, frac_be7_pcap = 0.0d0
-         double precision :: frac_n15_pa = 0.0d0, frac_n15_pg = 0.0d0
-         double precision :: be7_electron = 0.0d0, be7_proton = 0.0d0
-         double precision :: hep = 0.0d0
-         double precision :: density = 0.0d0, t9 = 0.0d0, t9_p13 = 0.0d0, &
+         real(dp) :: rate(num_reactions) = 0.0d0
+         real(dp) :: dlnrate_dlnt(num_reactions) = 0.0d0
+         real(dp) :: dlnrate_dlnrho(num_reactions) = 0.0d0
+         real(dp) :: frac_be7_ecap = 0.0d0, frac_be7_pcap = 0.0d0
+         real(dp) :: frac_n15_pa = 0.0d0, frac_n15_pg = 0.0d0
+         real(dp) :: be7_electron = 0.0d0, be7_proton = 0.0d0
+         real(dp) :: hep = 0.0d0
+         real(dp) :: density = 0.0d0, t9 = 0.0d0, t9_p13 = 0.0d0, &
               t9_p23 = 0.0d0, t9_m13 = 0.0d0, t9_m23 = 0.0d0, t9_m12 = 0.0d0
-         double precision :: electron_density_na = 0.0d0
+         real(dp) :: electron_density_na = 0.0d0
       end type nuclear_rates
 
 ! T9 = T/10^9 K and the powers of it the rate formulas use (p13 = T9^1/3,
 ! m23 = T9^-2/3, m12 = T9^-1/2, ...)
       type :: t9_powers
-         double precision :: t9 = 0.0d0, p13 = 0.0d0, p23 = 0.0d0, &
+         real(dp) :: t9 = 0.0d0, p13 = 0.0d0, p23 = 0.0d0, &
               m13 = 0.0d0, m23 = 0.0d0, m1 = 0.0d0, m2 = 0.0d0, &
               m12 = 0.0d0, m32 = 0.0d0
       end type t9_powers
@@ -127,9 +128,9 @@ module reaction_rates
 ! charge and its powers, and the weak-screening exponent per unit charge
 ! product.
       type :: screening_plasma
-         double precision :: inv_mu_i = 0.0d0, inv_mu_e = 0.0d0, &
+         real(dp) :: inv_mu_i = 0.0d0, inv_mu_e = 0.0d0, &
               charge_moment_158 = 0.0d0, charge_moment_2 = 0.0d0
-         double precision :: lambda0 = 0.0d0, lambda0_23 = 0.0d0, &
+         real(dp) :: lambda0 = 0.0d0, lambda0_23 = 0.0d0, &
               lambda0_086 = 0.0d0, z_tilde = 0.0d0, mean_charge = 0.0d0, &
               z_tilde_058 = 0.0d0, mean_charge_028 = 0.0d0, &
               mean_charge_13 = 0.0d0, weak_unit = 0.0d0
@@ -145,17 +146,17 @@ module reaction_rates
 ! log10 T at or below which: (1) nothing burns; (2), (3) parts of the
 ! equilibrium burn are off; (4) helium burning is off; (5) the solar
 ! neutrino fluxes and thermal neutrino losses are skipped
-         double precision :: logT_cutoffs(5) = 0.0d0
+         real(dp) :: logT_cutoffs(5) = 0.0d0
 ! the screening parameter below which screening is weak
-         double precision :: weak_screening_threshold = 0.0d0
+         real(dp) :: weak_screening_threshold = 0.0d0
 ! multipliers on the S-factors (r_* slots 1-13, then xs_pep..xs_hep), on
 ! their first and second energy derivatives (slots 1-7 and iq_be7p),
 ! and on the two N15 + p branches
-         double precision :: cross_section_scale(num_cross_section_scales) = 1.0d0
-         double precision :: qs0e_scale(iq_be7p) = 1.0d0, qqs0ee_scale(iq_be7p) = 1.0d0
-         double precision :: o16_gamma_scale = 1.0d0, c12_alpha_scale = 1.0d0
+         real(dp) :: cross_section_scale(num_cross_section_scales) = 1.0d0
+         real(dp) :: qs0e_scale(iq_be7p) = 1.0d0, qqs0ee_scale(iq_be7p) = 1.0d0
+         real(dp) :: o16_gamma_scale = 1.0d0, c12_alpha_scale = 1.0d0
 ! Li6(p,a), Li7(p,a), Be9(p,g), Be9(p,d), Be9(p,a) rate multipliers
-         double precision :: li6_rate_scale = 1.0d0, li7_rate_scale = 1.0d0, &
+         real(dp) :: li6_rate_scale = 1.0d0, li7_rate_scale = 1.0d0, &
               be9_pg_rate_scale = 1.0d0, be9_pd_rate_scale = 1.0d0, &
               be9_palpha_rate_scale = 1.0d0
 ! compute the solar neutrino fluxes; use the Itoh et al. (1996) thermal
@@ -183,12 +184,12 @@ end subroutine set_net_settings
 ! m_d (Caughlan & Fowler 1988, the T9**(-2/3) form), for the deuterium
 ! depletion (light_elements) and its energy (nuclear_energy) alike.
 ! Unscreened: the burning temperatures are low.
-double precision function deuterium_proton_capture_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
+pure real(dp) function deuterium_proton_capture_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
       use math_lib
       implicit none
-      double precision, intent(in) :: density, t9, t9_p13, t9_p23, &
+      real(dp), intent(in) :: density, t9, t9_p13, t9_p23, &
            t9_m13, t9_m23
-      double precision :: zz, tfacdeut
+      real(dp) :: zz, tfacdeut
 
       zz = -3.72d0*t9_m13
       tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
@@ -208,16 +209,16 @@ end function deuterium_proton_capture_rate
 ! everything is zero; without hydrogen, reactions 1-7 and the branchings
 ! are; the alpha captures need logT_cutoffs(4). Sources: the end of this
 ! file.
-subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, nr)
+pure subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, nr)
       use physical_constants, only: ln10
       use math_lib
-      double precision, intent(in) :: log_density, log_temperature, &
+      real(dp), intent(in) :: log_density, log_temperature, &
            mass_frac(num_isotopes)
       type(nuclear_rates), intent(out) :: nr
       type(t9_powers) :: t
       type(screening_plasma) :: plasma
 ! the screening exponent of each reaction and its d/d ln rho, d/d ln T
-      double precision :: screen(num_reactions), dscreen_dlnrho(num_reactions), &
+      real(dp) :: screen(num_reactions), dscreen_dlnrho(num_reactions), &
            dscreen_dlnt(num_reactions)
       integer :: i, first_zeroed_rxn
 
@@ -260,11 +261,11 @@ end subroutine compute_reaction_rates
 ! The composition moments the screening needs: 1/mu_i = sum X/A,
 ! 1/mu_e = sum Z X/A, sum Z^1.58 X/A (intermediate screening, Graboske et
 ! al.: the mean of Z^(3b-1)) and sum Z^2 X/A (Salpeter's zeta).
-subroutine compute_composition_moments(mass_frac, plasma)
+pure subroutine compute_composition_moments(mass_frac, plasma)
       use math_lib
-      double precision, intent(in) :: mass_frac(num_isotopes)
+      real(dp), intent(in) :: mass_frac(num_isotopes)
       type(screening_plasma), intent(out) :: plasma
-      double precision :: per_amu
+      real(dp) :: per_amu
       integer :: i
 
       plasma%inv_mu_i = 0.d0
@@ -283,10 +284,10 @@ end subroutine compute_composition_moments
 
 !----------------------------------------------------------------------
 ! T9 = T/10^9 K and the powers of it the rate formulas use.
-function powers_of_t9(log_temperature) result(t)
+pure function powers_of_t9(log_temperature) result(t)
       use physical_constants, only: ln10, cc13
       use math_lib
-      double precision, intent(in) :: log_temperature
+      real(dp), intent(in) :: log_temperature
       type(t9_powers) :: t
 
       t%t9 = exp(ln10*(log_temperature - 9.0d0))
@@ -310,19 +311,19 @@ end function powers_of_t9
 ! smaller (strong always from 5). Also fills the plasma quantities the
 ! single-reaction screening of Be7 + p and hep reuses. (Strong screening
 ! was never checked: it does not occur in the Sun.)
-subroutine compute_screening(density, electron_density_na, t, plasma, &
+pure subroutine compute_screening(density, electron_density_na, t, plasma, &
      screen, dscreen_dlnrho, dscreen_dlnt)
       use physical_constants, only: cc13
       use math_lib
-      double precision, intent(in) :: density, electron_density_na
+      real(dp), intent(in) :: density, electron_density_na
       type(t9_powers), intent(in) :: t
       type(screening_plasma), intent(inout) :: plasma
-      double precision, intent(out) :: screen(num_reactions), &
+      real(dp), intent(out) :: screen(num_reactions), &
            dscreen_dlnrho(num_reactions), dscreen_dlnt(num_reactions)
 ! (p_F/m_e c)^2, E_F/kT, Salpeter's f'/f and log10(E_F/kT)
-      double precision :: fermi_momentum_sq, fermi_energy_over_kt, &
+      real(dp) :: fermi_momentum_sq, fermi_energy_over_kt, &
            degeneracy_factor, log_degeneracy
-      double precision :: weak, intermediate, strong
+      real(dp) :: weak, intermediate, strong
       integer :: i
 
       fermi_momentum_sq=1.017677d-4*pow(electron_density_na, (2.0d0/3.0d0))
@@ -389,10 +390,10 @@ end subroutine compute_screening
 !----------------------------------------------------------------------
 ! Weak screening, or intermediate above the weak threshold, for one
 ! reaction of charge product zprod and Graboske z86 (Be7 + p, hep).
-double precision function weak_intermediate_screening(plasma, zprod, z86)
+pure real(dp) function weak_intermediate_screening(plasma, zprod, z86)
       type(screening_plasma), intent(in) :: plasma
-      double precision, intent(in) :: zprod, z86
-      double precision :: weak
+      real(dp), intent(in) :: zprod, z86
+      real(dp) :: weak
 
       weak = plasma%weak_unit*zprod
       if (weak.le.net_settings%weak_screening_threshold) then
@@ -411,15 +412,15 @@ end function weak_intermediate_screening
 ! the first and second energy derivatives of S, and the exact
 ! T-derivative of that form (2026-10: the q3 term lacked qs0e_scale and
 ! the q4, q5 terms qqs0ee_scale).
-subroutine compute_hydrogen_burning_rates(density, t, screen, dscreen_dlnrho, &
+pure subroutine compute_hydrogen_burning_rates(density, t, screen, dscreen_dlnrho, &
      dscreen_dlnt, nr)
       use math_lib
-      double precision, intent(in) :: density, screen(num_reactions), &
+      real(dp), intent(in) :: density, screen(num_reactions), &
            dscreen_dlnrho(num_reactions), dscreen_dlnt(num_reactions)
       type(t9_powers), intent(in) :: t
       type(nuclear_rates), intent(inout) :: nr
 ! T9^(-2/3) S_eff/S0
-      double precision :: s_ratio
+      real(dp) :: s_ratio
       integer :: i
 
       do i=r_pp,r_po16
@@ -441,13 +442,13 @@ end subroutine compute_hydrogen_burning_rates
 ! proton capture (table 3.2, eq. 3.12, with the S_eff/S0 corrections of
 ! slot iq_be7p and weak/intermediate screening), both per gram (rho over
 ! the bare Be7 mass, JNB 10/14/97), and the fraction burned each way.
-subroutine compute_be7_branching(density, t, hydrogen_fraction, plasma, nr)
+pure subroutine compute_be7_branching(density, t, hydrogen_fraction, plasma, nr)
       use math_lib
-      double precision, intent(in) :: density, hydrogen_fraction
+      real(dp), intent(in) :: density, hydrogen_fraction
       type(t9_powers), intent(in) :: t
       type(screening_plasma), intent(in) :: plasma
       type(nuclear_rates), intent(inout) :: nr
-      double precision :: tau_be7p, s_ratio_be7p, per_gram_be7
+      real(dp) :: tau_be7p, s_ratio_be7p, per_gram_be7
 
       nr%be7_electron = (1.752d-10)*t%m12*(1.0d0 + 0.004d0*(1000.d0*t%t9 - 16.d0))
       nr%be7_electron = nr%be7_electron*plasma%inv_mu_e*net_settings%cross_section_scale(xs_be7e)
@@ -469,10 +470,10 @@ end subroutine compute_be7_branching
 ! their effective S-factors (S0 in keV-b times the S_eff/S0 polynomial;
 ! Neutrino Astrophysics table 3.4, S0(p,alpha) = 67500 keV-b since the
 ! Solar Fusion workshop, JNB 9/25/97), each with its scale (MHP 9/14).
-subroutine compute_n15_branching(t, nr)
+pure subroutine compute_n15_branching(t, nr)
       type(t9_powers), intent(in) :: t
       type(nuclear_rates), intent(inout) :: nr
-      double precision :: pg_strength, pa_strength
+      real(dp) :: pg_strength, pa_strength
 
       pg_strength = t%m23 + 0.0273016d0*t%m13 + 0.14374d0 + 0.027490d0*t%p13 &
                 + 6.14685d0*t%p23 + 2.98940d0*t%t9
@@ -489,15 +490,15 @@ end subroutine compute_n15_branching
 ! triple alpha (Caughlan & Fowler 1988, MHP 3/91; the prefactors from
 ! VandenBerg's notes), with their exact derivatives. In each, a1..a5 are
 ! the terms of the CF88 fit and r1, r2 its polynomial factors.
-subroutine compute_helium_burning_rates(density, t, screen, dscreen_dlnrho, &
+pure subroutine compute_helium_burning_rates(density, t, screen, dscreen_dlnrho, &
      dscreen_dlnt, nr)
       use physical_constants, only: cc13, cc23
       use math_lib
-      double precision, intent(in) :: density, screen(num_reactions), &
+      real(dp), intent(in) :: density, screen(num_reactions), &
            dscreen_dlnrho(num_reactions), dscreen_dlnt(num_reactions)
       type(t9_powers), intent(in) :: t
       type(nuclear_rates), intent(inout) :: nr
-      double precision :: r1, r2, a1, a2, a3, a4, a5, dr1, da1, s_sum
+      real(dp) :: r1, r2, a1, a2, a3, a4, a5, dr1, da1, s_sum
 
 ! C13(alpha,n)O16
       r1=t%m23+0.0129d0*t%m13+2.04d0+0.184d0*t%p13
@@ -557,9 +558,9 @@ end subroutine compute_helium_burning_rates
 !----------------------------------------------------------------------
 ! hep, He3(p,e+ nu)He4, for the neutrino flux only: the screened, scaled
 ! rate factor, which the consumer multiplies by X(H) X(He3).
-subroutine compute_hep_rate(density, t, plasma, nr)
+pure subroutine compute_hep_rate(density, t, plasma, nr)
       use math_lib
-      double precision, intent(in) :: density
+      real(dp), intent(in) :: density
       type(t9_powers), intent(in) :: t
       type(screening_plasma), intent(in) :: plasma
       type(nuclear_rates), intent(inout) :: nr
@@ -575,11 +576,11 @@ end subroutine compute_hep_rate
 ! star%xa layout. The isotopes YREC does not track (n, H3, Ne20, Mg24)
 ! are zero; deuterium is included (2026-10: the composition path used to
 ! leave it out).
-function screening_mass_fractions(xa) result(mass_frac)
+pure function screening_mass_fractions(xa) result(mass_frac)
       use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
            i_n14, i_o16, i_o18
-      double precision, intent(in) :: xa(:)
-      double precision :: mass_frac(num_isotopes)
+      real(dp), intent(in) :: xa(:)
+      real(dp) :: mass_frac(num_isotopes)
 
       mass_frac = 0.0d0
       mass_frac(iso_h1) = xa(i_h1)
@@ -601,12 +602,12 @@ end function screening_mass_fractions
 ! amu_cgs), then the N15(p,alpha) and Be7 electron-capture fractions at
 ! rv_frac_n15_pa and rv_frac_be7_ecap. Slots 9 and 13 are zero. xa is
 ! the zone's composition in the star%xa layout.
-subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec)
+pure subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec)
       use physical_constants, only: amu_cgs
-      double precision, intent(in) :: log_density, log_temperature, xa(:)
-      double precision, intent(out) :: rate_vec(num_rate_rows)
+      real(dp), intent(in) :: log_density, log_temperature, xa(:)
+      real(dp), intent(out) :: rate_vec(num_rate_rows)
 
-      double precision :: mass_frac(num_isotopes)
+      real(dp) :: mass_frac(num_isotopes)
       type(nuclear_rates) :: nr
       integer :: i
 

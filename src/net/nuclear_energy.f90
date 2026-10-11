@@ -16,7 +16,13 @@
 ! compute_reaction_energies); deuterium burning, outside the table, is
 ! added here. Sources and history: the end of this file.
 module nuclear_energy
-      use reaction_rates
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use reaction_rates, only: nuclear_rates, compute_reaction_rates, &
+           net_settings, screening_mass_fractions, &
+           deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu, &
+           num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
+           r_po16, r_ac13, r_ao16_unused, r_ac12, r_an14, r_3alpha, &
+           r_c12c12_unused, xs_pep
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_energies, n_chains, n_network, &
            s_h1, s_he3, s_he4, s_c12, s_c13, s_n14, s_o16, s_o18, chain_pp1, &
@@ -29,30 +35,30 @@ module nuclear_energy
 ! .false. at or below nuclear_logT_cutoffs(1): nothing else is set
          logical :: burning = .false.
 ! erg/g/s; derivatives absolute (d eps/dln rho, d eps/dln T)
-         double precision :: total_energy_gen_rate = 0.0d0
-         double precision :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
-         double precision :: pp_chain_energy_gen = 0.0d0
-         double precision :: he3he4_be7_electron_energy_gen = 0.0d0
-         double precision :: he3he4_be7_proton_energy_gen = 0.0d0
-         double precision :: cno_cycle_energy_gen = 0.0d0
-         double precision :: triple_alpha_energy_gen = 0.0d0
-         double precision :: eps_alpha_capture = 0.0d0
-         double precision :: eps_neutrino_loss = 0.0d0
-         double precision :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
+         real(dp) :: total_energy_gen_rate = 0.0d0
+         real(dp) :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
+         real(dp) :: pp_chain_energy_gen = 0.0d0
+         real(dp) :: he3he4_be7_electron_energy_gen = 0.0d0
+         real(dp) :: he3he4_be7_proton_energy_gen = 0.0d0
+         real(dp) :: cno_cycle_energy_gen = 0.0d0
+         real(dp) :: triple_alpha_energy_gen = 0.0d0
+         real(dp) :: eps_alpha_capture = 0.0d0
+         real(dp) :: eps_neutrino_loss = 0.0d0
+         real(dp) :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
 ! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
-         double precision :: neutrino_flux(10) = 0.0d0
-         double precision :: be7_mass_fraction = 0.0d0
+         real(dp) :: neutrino_flux(10) = 0.0d0
+         real(dp) :: be7_mass_fraction = 0.0d0
       end type nuclear_energy_result
 
       public :: compute_nuclear_energy
 
 ! MeV to erg
-      double precision, parameter :: erg_per_mev = 1.602177d-6
+      real(dp), parameter :: erg_per_mev = 1.602177d-6
 ! deuterium is burned (and its energy counted) above this mass fraction
-      double precision, parameter :: min_deuterium = 1.0d-11
+      real(dp), parameter :: min_deuterium = 1.0d-11
 ! energy released by d(p,g)3He, MeV
-      double precision, parameter :: q_deuterium_mev = 5.494d0
+      real(dp), parameter :: q_deuterium_mev = 5.494d0
 
 contains
 
@@ -64,21 +70,21 @@ contains
 !                       overturn (when turnover_timescale > 1 s)
 subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
      in_surface_cz, turnover_timescale, e)
-      double precision, intent(in) :: log_density, log_temperature, xa(:)
+      real(dp), intent(in) :: log_density, log_temperature, xa(:)
       logical, intent(in) :: in_surface_cz
-      double precision, intent(in) :: turnover_timescale
+      real(dp), intent(in) :: turnover_timescale
       type(nuclear_energy_result), intent(out) :: e
 
       type(nuclear_rates) :: nr
 ! the energy path's rates: reactions 1-7 below 1e-30 are dropped (with
 ! their derivatives) before eps is summed (the composition path drops
 ! rates at or below 1e-5 instead)
-      double precision :: rate(num_reactions), dlnrate_dlnrho(num_reactions), &
+      real(dp) :: rate(num_reactions), dlnrate_dlnrho(num_reactions), &
            dlnrate_dlnt(num_reactions)
 ! each slot's rate times its reactants' mass fractions, per gram per s
-      double precision :: reactions_per_gram(num_reactions)
-      double precision :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
-      double precision :: deuterium_energy, deuterium_dlneps_dlnt
+      real(dp) :: reactions_per_gram(num_reactions)
+      real(dp) :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
+      real(dp) :: deuterium_energy, deuterium_dlneps_dlnt
 
       if (log_temperature.le.net_settings%logT_cutoffs(1)) return
       e%burning = .true.
@@ -105,9 +111,9 @@ end subroutine compute_nuclear_energy
 !----------------------------------------------------------------------
 ! The energy path's copy of the rates: reactions 1-7 below 1e-30 are
 ! set to zero together with their derivatives.
-subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
+pure subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       type(nuclear_rates), intent(in) :: nr
-      double precision, intent(out) :: rate(num_reactions), &
+      real(dp), intent(out) :: rate(num_reactions), &
            dlnrate_dlnrho(num_reactions), dlnrate_dlnt(num_reactions)
       integer :: i
 
@@ -128,15 +134,15 @@ end subroutine energy_path_rates
 ! and d ln eps / d ln T. Unscreened -- reasonable at the low temperatures
 ! involved -- and, in the surface convection zone, no faster than the
 ! convective overturn. Zero at or below min_deuterium.
-subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
+pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
      energy, dlneps_dlnt)
       use star_info_lib, only: i_h1, i_h2
       use physical_constants, only: cc13
       type(nuclear_rates), intent(in) :: nr
-      double precision, intent(in) :: xa(:), turnover_timescale
+      real(dp), intent(in) :: xa(:), turnover_timescale
       logical, intent(in) :: in_surface_cz
-      double precision, intent(out) :: energy, dlneps_dlnt
-      double precision :: rate, max_rate, zz, tfac, tfac_deriv
+      real(dp), intent(out) :: energy, dlneps_dlnt
+      real(dp) :: rate, max_rate, zz, tfac, tfac_deriv
 
       energy = 0.0d0
       dlneps_dlnt = 0.0d0
@@ -161,10 +167,10 @@ end subroutine compute_deuterium_burning
 !----------------------------------------------------------------------
 ! Each slot's rate times its reactants' mass fractions (reactions per
 ! gram per second, the EG(I) of engeb); slots 9 and 13 stay zero.
-function rates_times_reactants(rate, xa) result(eg)
+pure function rates_times_reactants(rate, xa) result(eg)
       use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16
-      double precision, intent(in) :: rate(num_reactions), xa(:)
-      double precision :: eg(num_reactions)
+      real(dp), intent(in) :: rate(num_reactions), xa(:)
+      real(dp) :: eg(num_reactions)
 
       eg = 0.0d0
       eg(r_pp) = rate(r_pp)*xa(i_h1)*xa(i_h1)
@@ -183,10 +189,10 @@ end function rates_times_reactants
 !----------------------------------------------------------------------
 ! The network species' mass fractions (network's s_* order) from a
 ! zone's composition in the star%xa layout.
-function network_mass_fractions(xa) result(x)
+pure function network_mass_fractions(xa) result(x)
       use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18
-      double precision, intent(in) :: xa(:)
-      double precision :: x(n_network)
+      real(dp), intent(in) :: xa(:)
+      real(dp) :: x(n_network)
 
       x = 0.0d0
       x(s_h1) = xa(i_h1)
@@ -206,14 +212,14 @@ end function network_mass_fractions
 ! and so are the reaction counts the neutrino fluxes use. These are
 ! absolute derivatives, not d ln eps: the Henyey Jacobian and the
 ! pulsation output (GYRE's eps*eps_T) both want this form.
-subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
+pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
      deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
-      double precision, intent(in) :: energy_by_slot(num_reactions), &
+      real(dp), intent(in) :: energy_by_slot(num_reactions), &
            deuterium_energy, deuterium_dlneps_dlnt
-      double precision, intent(inout) :: dlnrate_dlnrho(num_reactions), &
+      real(dp), intent(inout) :: dlnrate_dlnrho(num_reactions), &
            dlnrate_dlnt(num_reactions), reactions_per_gram(num_reactions)
       type(nuclear_energy_result), intent(inout) :: e
-      double precision :: sum_rho, sum_t
+      real(dp) :: sum_rho, sum_t
       integer :: i
 
 ! reactions 9 (O16 + alpha) and 13 (C12 + C12) are never computed
@@ -249,8 +255,8 @@ end subroutine sum_energy_generation
 ! and proton-capture branches, each with its share of the He3 + He4
 ! release. (The original Yale routine carried two branching factors on
 ! those two instead of one.) Triple alpha is negligible in the Sun.
-subroutine store_chain_energies(energy_by_chain, deuterium_energy, e)
-      double precision, intent(in) :: energy_by_chain(n_chains), deuterium_energy
+pure subroutine store_chain_energies(energy_by_chain, deuterium_energy, e)
+      real(dp), intent(in) :: energy_by_chain(n_chains), deuterium_energy
       type(nuclear_energy_result), intent(inout) :: e
 
       e%pp_chain_energy_gen = energy_by_chain(chain_pp1) + deuterium_energy
@@ -270,15 +276,15 @@ end subroutine store_chain_energies
 ! equilibrium Be7 mass fraction (Be7 is always in equilibrium with the
 ! slower He3 + He4 production; computed because some applications want
 ! it). Off in hydrogen-exhausted zones (X <= 1e-6, MHP 9/91).
-subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
+pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       use star_info_lib, only: i_h1, i_he3, i_nu_b8, i_nu_be7, i_nu_f17, &
            i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_nu_he3he3, i_nu_he3he4
       type(nuclear_rates), intent(in) :: nr
-      double precision, intent(in) :: xa(:), reactions_per_gram(num_reactions)
+      real(dp), intent(in) :: xa(:), reactions_per_gram(num_reactions)
       type(nuclear_energy_result), intent(inout) :: e
 ! 4 pi (1 AU)^2, cm^2
-      double precision, parameter :: four_pi_au2 = 2.812295d+27
-      double precision :: eg(num_reactions)
+      real(dp), parameter :: four_pi_au2 = 2.812295d+27
+      real(dp) :: eg(num_reactions)
       integer :: k
 
       e%fluxes_set = .true.
@@ -324,18 +330,18 @@ subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
       use star_info_lib, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
       use physical_constants, only: cc13, ln10
       use math_lib
-      double precision, intent(in) :: log_density, log_temperature, t9, xa(:)
+      real(dp), intent(in) :: log_density, log_temperature, t9, xa(:)
       type(nuclear_energy_result), intent(inout) :: e
 ! Beaudet, Petrosian & Salpeter fit coefficients: pair, photo, plasma
-      double precision, parameter :: pair_fit(7) = [6.002d19, 2.084d20, &
+      real(dp), parameter :: pair_fit(7) = [6.002d19, 2.084d20, &
            1.872d21, 9.383d-1, -4.141d-1, 5.829d-2, 5.5924d0]
-      double precision, parameter :: photo_fit(7) = [4.886d10, 7.580d10, &
+      real(dp), parameter :: photo_fit(7) = [4.886d10, 7.580d10, &
            6.023d10, 6.290d-3, 7.483d-3, 3.061d-4, 1.5654d0]
-      double precision, parameter :: plasma_fit(7) = [2.320d-7, 8.449d-8, &
+      real(dp), parameter :: plasma_fit(7) = [2.320d-7, 8.449d-8, &
            1.787d-8, 2.581d-2, 1.734d-2, 6.990d-4, 0.56457d0]
-      double precision :: temperature, density, snu, dsnu_dt, dsnu_drho
-      double precision :: el, eli, ez, ez3, emue, ex1, ex2, ex3, el2
-      double precision :: polx10, polx11, polx12, polx21, polx22, polx31, &
+      real(dp) :: temperature, density, snu, dsnu_dt, dsnu_drho
+      real(dp) :: el, eli, ez, ez3, emue, ex1, ex2, ex3, el2
+      real(dp) :: polx10, polx11, polx12, polx21, polx22, polx31, &
            polx32, qedn, qetn, qetnx, qednx
 
       temperature = exp10(log_temperature)
