@@ -1,20 +1,13 @@
 !----------------------------------------------------------------------
 ! envelope_structure
 !----------------------------------------------------------------------
-! New (2026) as part of the YREC module-modernization project (see
-! docs/GUIDELINES.md). Replaces common/envstruct/: the per-point envelope
-! structure profile (pressure/temperature/mass/density/radius/
-! composition/convective-flag/gradients/velocity/opacity/luminosity in
-! log space, indexed 1..num_env_points), computed by the envelope
-! integrator (core/envelope_integration_kernel.f90, under core/envelope_integration.f90) and
-! read by core/read_starting_model.f90 and other callers that need the
-! just-integrated envelope profile.
-!
-! Per docs/GUIDELINES.md's module-vs-argument test this is case 1b, same as
-! scrtch_lib/mdphy_lib/temp_lib: genuinely evolving per-model state,
-! read from distant, unrelated points in the call graph. Field names
-! are unchanged from the original COMMON member names, matching that
-! same precedent.
+! The envelope of the current model, point by point (1..num_env_points):
+! log P, log T, log m, log rho, log r, X, Z, the convective flag, the
+! gradients, the convective velocity, beta, gamma1, cp, the ionization
+! fractions, the opacity and its derivatives, the luminosity and
+! d ln rho/d ln T. The envelope integration (envelope_integration_kernel)
+! fills it; read_starting_model, envelope_refit, rebuild_envelope and
+! the stitched model (and its pulse files) read it.
 module envelope_structure
       use star_info_lib, only: json
       implicit none
@@ -34,7 +27,7 @@ module envelope_structure
                  env_ion_fraction(3,json)
             double precision :: env_opacity(json), env_luminosity(json), &
                  env_dlnrho_dlnt(json)
-! 2026 (pulse derivatives): the opacity derivatives the envelope
+! the opacity derivatives the envelope
 ! integration computes at every point (envelope_derivs: pt_scr%qqod,
 ! pt_scr%qqot), kept so that the pulse writers can fill the GYRE/GSM
 ! kap_kap_T and kap_kap_rho columns of the envelope points (they were

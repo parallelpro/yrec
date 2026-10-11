@@ -1,16 +1,22 @@
 !----------------------------------------------------------------------
 ! atm_lib
 !----------------------------------------------------------------------
-! Added 2026 as part of the YREC readability refactor's phase two
-! (disentangling the solver from the physics domains -- see
-! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
-! Public facade of the atm domain (same shape as eos_lib/kap_lib):
-! atm_init loads the tabulated-atmosphere surface-pressure tables at
-! startup, and atm_get_surface_pt is the Allard-table surface lookup
-! used from outside the domain. The envelope/atmosphere integrator
-! itself (formerly envint, "atm_get") lives in core/envelope_integration.f90;
-! the table interpolators are in atm/tables/ (surfp, kcsurfp,
-! interpolate_allard_surface) and the T-tau relations in t_tau_relations.f90.
+! The public interface of atm/, the surface boundary condition:
+! everything code outside atm/ may use, here and only here
+! (check_boundaries enforces it).
+!     atm_init             install the settings (atm_settings_t, built
+!                          by the star layer's atmosphere_settings) and
+!                          read the tables they select
+!     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
+!                          Kurucz, Allard or Castelli/Kurucz table
+!     atm_allard_teff_max  the Allard tables' highest log Teff
+!     set_atm_settings     install settings without reading tables
+!     ttau_log10_temperature, ttau_start_log10_temperature,
+!     ttau_photosphere_x_limit, hsra_t_tau_offset
+!                          the analytic T-tau relations (t_tau_relations)
+! The atmosphere integration that uses the T-tau relations, and its
+! results, belong to the star layer (core/envelope_integration_kernel,
+! core/atmosphere_derivs). atm reads no star.
 module atm_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use kurucz_atmosphere, only: read_surface_pressure_table, interpolate_surface_pressure
@@ -30,38 +36,16 @@ contains
 !----------------------------------------------------------------------
 ! atm_init
 !----------------------------------------------------------------------
-! Added 2026 (phase three, docs/ROADMAP.md stage 1): the atm domain's
-! startup-time table-load lifecycle entry, following MESA's
-! <mod>_init convention. Covers, per the atm_choice option in force:
-! the Kurucz surface-pressure table (atm_choice 3 and 4, into
-! const_lib's kurucz_* tables plus atm_table's gmin/gmax edge
-! indices), the Allard NextGen atmosphere tables (atm_choice 4, via
-! tables/read_allard_tables.f90), and the Kurucz/Castelli surface-pressure
-! table (atm_choice 5). All of this previously lived as an inline
-! open/read block in setup/setups.f90 -- moved here verbatim,
-! including the G Somers 5/15 invalid-pressure-edge catches and the
-! table sizes atm_table_nt/ntc x atm_table_ng from atm_tables.
-!
-! 2026 wave 3 (R5): the Kurucz and Kurucz/Castelli tables are the two
-! surface_p_table instances atm_table%kurucz_surface_p (atm_table_nt
-! rows) and castelli_surface_p (atm_table_ntc rows). Each is
-! allocated on first use with exactly the extents the fixed arrays
-! had and zero-filled as they were (allocate_surface_p); the READ
-! statements are unchanged apart from the names; the identical
-! G Somers 5/15 edge scans became the internal find_gravity_edges,
-! its working scalars host-associated.
+! Installs the settings and reads the tables they select: the Kurucz
+! table (atm_choice 3 and 4), the Allard tables (4) or the
+! Castelli/Kurucz table (5). A table that cannot be read returns
+! ierr = 1, with the diagnostic printed.
 subroutine atm_init(settings, atm_table_path, allard_table_path, ierr)
       type(atm_settings_t), intent(in) :: settings
       character(len=*), intent(in) :: atm_table_path
       character(len=*), intent(in) :: allard_table_path
-! 2026 (docs/ROADMAP.md stage 3): ierr-not-stop; table-load failures print
-! their diagnostic at the point of failure and come back as ierr /= 0.
       integer, intent(out) :: ierr
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ierr = 0
       call set_atm_settings(settings)
 

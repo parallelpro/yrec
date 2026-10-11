@@ -25,24 +25,15 @@ contains
 !----------------------------------------------------------------------
 ! interpolate_surface_pressure (formerly surface_p_interp)
 !----------------------------------------------------------------------
-! surfp
-! Interpolates a tabulated surface-pressure table (Kurucz ATMPL or
-! Kurucz/Castelli ATMPLC) to find log(P) at the given log(Teff),
-! log(g): a 4-point Lagrangian interpolation in temperature, and
-! cubic-spline (or 3-point/linear fallback near the table's
-! high-gravity edge) interpolation in gravity.
-!
-! 2026 wave 3 (R5): interpolate_surface_pressure is the interpolation on a
-! surface_p_table; surfp (Kurucz, atm_table%kurucz_surface_p) and
-! kcsurfp (Kurucz/Castelli, atm_table%castelli_surface_p; formerly
-! its own tables/kcsurfp.f90) are the two entries core/envelope_integration_kernel
-! calls. `diff -w surfp.f90 kcsurfp.f90` differed only in the table
-! names, the row count (atm_table_nt vs atm_table_ntc, now
-! tbl%num_teff) and line continuation.
+! log P at (log Teff, log g) from a surface-pressure table: cubic
+! splines through 4 points in log Teff and in log g (3-point Lagrangian
+! or linear in log g near the table's high-gravity edge). The result,
+! with log T = log Teff, goes to atm_table%atm_log10_pressure and
+! atm_log10_temperature. A point more than one table step outside the
+! table returns ierr = 1.
 subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
       integer :: jerr_gate
-! tbl%num_teff AND atm_table_ng FOR TABULATED SURFACE PRESSURES.
 
       type(surface_p_table), intent(inout) :: tbl
       real(dp), intent(in) :: log10_teff, log10_gravity
@@ -55,12 +46,12 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       real(dp) :: fx, interpolated_value
       integer :: row, row_base, node, k, kk, kkk
 
-! INTERPOLATES IN TEMPERATURE WITH A 4-POINT CUBIC SPLINE (kspline/
-! ksplint), AND IN GRAVITY THE SAME WAY IF 4 OR MORE POINTS ARE
-! AVAILABLE (3-POINT LAGRANGIAN OR LINEAR AT THE TABLE EDGE).  IT WILL QUIT IF THE DESIRED DATA POINT
-! HAS TEFF OR LOG G MORE THAN ONE TABLE POINT FROM THE DATA.
+! Interpolates in temperature with a 4-point cubic spline (kspline/
+! ksplint), and in gravity the same way if 4 or more points are
+! available (3-point Lagrangian or linear at the table edge).  It will quit if the desired data point
+! has Teff or log G more than one table point from the data.
 !
-! CHECK TO ENSURE THAT DATA IS WITHIN TABLE.
+! Check to ensure that data is within table.
       integer, intent(out) :: ierr
 
 ! Lower table edge, and the log Teff rows above which only 3 or 2 log g
@@ -75,12 +66,10 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          write(run_log_unit,911) log10_teff, log10_gravity
   911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
               ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
-         ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
-         ! facades stop when their caller passes no ierr.
          ierr = 1
          return
       endif
-! TEMPERATURE INTERPOLATION FACTORS.
+! Temperature interpolation factors.
       do row = 1,tbl%num_teff
          if (log10_teff <= tbl%teff(row)) exit
       end do
@@ -92,14 +81,14 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       do k = 1,4
          teff_nodes(k) = tbl%teff(row_base+k-1)
       end do
-! GRAVITY INTERPOLATION FACTORS.
+! Gravity interpolation factors.
       do row = row_base,row_base+3
          node = row-row_base+1
-! CHECK IF 4 LOG VALUES AVAILABLE - OTHERWISE, USE 3 POINT LAGRANGIAN
-! OR LINEAR INTERPOLATION.
+! Check if 4 log values available - otherwise, use 3 point Lagrangian
+! or linear interpolation.
          if (tbl%teff(row) > logteff_three_point) then
             if (tbl%teff(row) > logteff_two_point) then
-! LINEAR INTERPOLATION
+! Linear interpolation
                fx = (log10_gravity-tbl%logg(atm_table_ng-1))/ &
                     (tbl%logg(atm_table_ng)-tbl%logg(atm_table_ng-1))
                pressure_at_nodes(node) = &
@@ -107,7 +96,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                     fx*(tbl%log10_pressure(row,atm_table_ng) - &
                     tbl%log10_pressure(row,atm_table_ng-1))
             else
-! 3-POINT LAGRANGIAN INTERPOLATION.
+! 3-point Lagrangian interpolation.
                do k = 1,3
                   gravity_nodes_3pt(k) = tbl%logg(atm_table_ng-3+k)
                end do
@@ -121,7 +110,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             cycle
          endif
          if (log10_gravity >= tbl%logg(atm_table_ng-1)) then
-! DESIRED LOG G ABOVE SECOND TO TOP TABLE LOG G - USE TOP 4 LOG G VALUES.
+! Desired log G above second to top table log G - use top 4 log G values.
             do kk = 1,4
                gravity_nodes(kk) = tbl%logg(atm_table_ng-4+kk)
                pressure_table_vals(kk) = &
@@ -140,7 +129,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             pressure_at_nodes(node) = interpolated_value
             cycle
          endif
-! GENERAL CASE - FIND 4 NEAREST POINTS IN GRAVITY THAT ARE IN THE TABLE.
+! General case - find 4 nearest points in gravity that are in the table.
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the
 ! code from using -999 to interpolate in some instances.
          do k = tbl%gmax_index(row)-3,tbl%gmin_index(row),-1
@@ -166,7 +155,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             endif
          end do
          if (k < tbl%gmin_index(row)) then
-! DESIRED LOG G BELOW 2ND TABLE ENTRY -USE FIRST 4 POINTS.
+! Desired log G below 2nd table entry -use first 4 points.
          do k = 1,4
             gravity_nodes(k) = tbl%logg(k+tbl%gmin_index(row)-1)
             pressure_table_vals(k) = &
@@ -182,7 +171,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          pressure_at_nodes(node) = interpolated_value
          end if
       end do
-! INTERPOLATE IN TEMPERATURE TO FIND CORRECT LOG P.
+! Interpolate in temperature to find correct log P.
       call kspline(teff_nodes, pressure_at_nodes, teff_spline_deriv)
       call ksplint(teff_nodes, pressure_at_nodes, teff_spline_deriv, &
            log10_teff, interpolated_value, jerr_gate)
@@ -192,7 +181,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       end if
       atm_table%atm_log10_pressure = interpolated_value
       atm_table%atm_log10_temperature = log10_teff
-! WRITE OUT INFORMATION TO THE MODEL FILE.
+! Write out information to the model file.
       if (print_flag) then
         write(run_log_unit,70)
 70      format('********PRESSURE AT T=TEFF INTERPOLATED FROM TABULATED' &
@@ -222,7 +211,7 @@ subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
 
       ierr = 0
       call allocate_surface_p(tbl, num_teff)
-! OPEN SURFACE PRESSURE TABLE
+! Open surface pressure table
       open(newunit=table_unit, file=table_path, status='OLD', iostat=ierr)
       if (ierr /= 0) then
          write(*,*) 'atm_init: cannot open the atmosphere table ', trim(table_path)
@@ -232,7 +221,7 @@ subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
 ! GET ABUNDANCE:
       read(table_unit,200) kurucz_table_z
   200   format(1x,10x,1pe16.8,/)
-! GET VALUES OF LOG Teff:
+! Get values of log teff:
       if (num_teff == atm_table_nt) then
          read(table_unit,201) (tbl%teff(teff_idx),teff_idx=1,num_teff)
       else
@@ -240,10 +229,10 @@ subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
       end if
   201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
   206   format(1p4e16.8,18(/1p4e16.8),/)
-! GET VALUES OF LOG G:
+! Get values of log G:
       read(table_unit,202) (tbl%logg(logg_idx),logg_idx=1,atm_table_ng)
   202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
-! GET GRID OF LOG PRESSURE VALUES:
+! Get grid of log pressure values:
       do teff_idx=1,num_teff
         read(table_unit,203) (tbl%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
   203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)

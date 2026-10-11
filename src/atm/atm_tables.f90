@@ -1,14 +1,10 @@
 !----------------------------------------------------------------------
 ! atm_tables
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Bundles atmosphere/opacity/EOS lookup-table
-! state -- former common/ccr/, fac/, atmprt/, eeos06/, alatm01/,
-! alatm02/, alatm05/, jtest/ -- into one derived type, following the
-! pulse_diag_lib/run_diag_lib/rotdiff_lib precedent for grouping many
-! small, unrelated, per-model or table-load-time blocks into a single
-! module. None of these touch core/read_input.f90. Every declaring file
-! for a given block used byte-identical member names/order.
+! The settings record of atm/ and its tables (atm_table): the Kurucz and
+! Castelli/Kurucz surface-pressure tables (each a surface_p_table), the
+! Allard tables with their per-row bounds, and the result of the last
+! table lookup.
 module atm_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -33,19 +29,11 @@ module atm_tables
 ! Allard table maximum extents (rows in log Teff, columns in log g).
       integer, parameter :: atm_table_nta = 250, atm_table_nga = 25
 
-! surface_p_table: one tabulated surface-pressure table -- log P at
-! (log Teff row, log g column) -- with the log Teff rows, the
-! atm_table_ng log g columns and the per-row lower/upper log-g edge
-! indices (former common/fac/ gmin/gmax). 2026 wave 3 (R5): the former
-! kurucz_teff_table/kurucz_logg_table/kurucz_log10_pressure_table +
-! atm_table%kurucz_gmin_index/kurucz_gmax_index (atm_table_nt rows)
-! and their kurucz_castelli_*/castelli_* twins (atm_table_ntc rows)
-! became atm_table%kurucz_surface_p / castelli_surface_p so that one
-! interpolator (tables/surfp.f90) serves both. The two tables have
-! different row counts, so the components are allocatable: atm_init
-! allocates each instance once, with exactly the extents the fixed
-! arrays had (num_teff = atm_table_nt or atm_table_ntc, atm_table_ng
-! columns), and zero-fills it as the static arrays were.
+! surface_p_table: one surface-pressure table -- log P at (log Teff row,
+! log g column) -- with its log Teff rows, the atm_table_ng log g
+! columns and each row's lowest and highest valid log g column. The
+! Kurucz and Castelli/Kurucz tables have different row counts, so the
+! arrays are allocated by the reader, zero-filled.
       type :: surface_p_table
            integer :: num_teff = 0
            real(dp), allocatable :: teff(:), logg(:)
@@ -54,26 +42,14 @@ module atm_tables
       end type surface_p_table
 
       type :: atm_table_state
-! (former common/ccr/ -- the degenerate-electron Fermi-Dirac EOS
-! table, fermi_table_* -- lived here through phases one and two
-! purely as an accident of the original COMMON grouping; relocated
-! to yale_eos_tables in 2026, docs/ROADMAP.md stage 1, alongside moving its
-! load from an inline setup/setups.f90 block into eos_lib's
-! eos_init. Consumed only by compute_fully_ionized_eos.)
-! The Kurucz (atm_table_nt rows) and Kurucz/Castelli (atm_table_ntc
-! rows) surface-pressure tables, each with its former common/fac/
-! log-g edge indices. See surface_p_table.
+! the Kurucz (atm_table_nt rows) and Castelli/Kurucz (atm_table_ntc
+! rows) surface-pressure tables
            type(surface_p_table) :: kurucz_surface_p, castelli_surface_p
 ! the result of the last surface-table lookup: log P, and log T (log
 ! Teff, or T at tau = 100 from the Allard tables)
            real(dp) :: atm_log10_pressure, atm_log10_temperature
-! (former common/eeos06/ -- the OPAL 2006 EOS interpolator result,
-! esact + eos_output(10) -- lived here through phase one purely as an
-! accident of the original COMMON grouping; relocated to
-! opal_eos_tables as esact_06/eos_output_06 in 2026, docs/ROADMAP.md stage 1,
-! so eos state lives in eos's state module.)
-! former common/alatm01/: the Allard NextGen/BT-Settl model-atmosphere
-! surface-pressure table.
+! the Allard surface-pressure table: the log Teff, log g, [Fe/H] and
+! [alpha/Fe] grids, log P, and log P and log T at tau = 100
            real(dp) :: allard_teffl_grid(atm_table_nta), &
                 allard_gl_grid(atm_table_nga), allard_feh_grid(atm_table_nga), &
                 allard_alpha_grid(atm_table_nga)
@@ -83,30 +59,18 @@ module atm_tables
            logical :: allard_is_old_nextgen
            integer :: allard_num_teff, allard_num_gl, allard_num_feh, &
                 allard_num_alpha
-! former common/alatm02/: per-row Allard table interpolation bounds.
+! each log Teff row's valid log g range, and the table's ranges
            real(dp) :: allard_gl_row_min(atm_table_nta), &
                 allard_gl_row_max(atm_table_nta)
            integer :: allard_gl_index_min(atm_table_nta), &
                 allard_gl_index_max(atm_table_nta)
            real(dp) :: allard_teffl_min, allard_teffl_max, &
                 allard_gl_min, allard_gl_max
-! former common/alatm05/: Allard alpha-enhanced table Teff range.
+! the log Teff range of the table read
            real(dp) :: allard_al_teffl_min, allard_al_teffl_max
       end type atm_table_state
 
       type(atm_table_state) :: atm_table
-
-
-! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
-! const_lib, where this table/working data had landed during the
-! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/atmos2/: the table abundance kurucz_table_z
-! (originally atmz; written by atm_init for the Kurucz and the
-! Kurucz/Castelli table alike) and atm_table_file_unit (originally
-! ioatm) are spelled identically to their canonical names --
-! use-associated directly. The tables themselves (former
-! common/atmos2/ atmpl/atmtl/atmgl and common/atmos2c/ atmplc/atmtlc/
-! atmglc) are atm_table%kurucz_surface_p / castelli_surface_p above.
 
 contains
 
@@ -114,5 +78,11 @@ subroutine set_atm_settings(settings)
       type(atm_settings_t), intent(in) :: settings
       atm_settings = settings
 end subroutine set_atm_settings
+
+!======================================================================
+! Sources: the surface-pressure tables of Kurucz (1993) and Castelli &
+! Kurucz (2003), and the model atmospheres of Allard & Hauschildt. This
+! state was the COMMON blocks fac, atmprt, alatm01, alatm02, alatm05,
+! atmos2 and atmos2c.
 
 end module atm_tables

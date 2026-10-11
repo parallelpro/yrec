@@ -1,34 +1,22 @@
 !----------------------------------------------------------------------
 ! t_tau_relations
 !----------------------------------------------------------------------
-! The analytic T-tau relations, in ONE place (2026, follow-up to the
-! envint purity split). Everything an atmosphere choice contributes
-! lives here: the relation T(tau; Teff), the tau -> 0 starting
-! temperature for the integration, and the photospheric integration
-! limit -- so adding a relation is one self-contained block instead
-! of three coordinated branches (atmosphere_derivs' dispatch, the
-! kernel's starting guess, the kernel's x_limit).
+! The analytic T-tau relations. Everything an atmosphere choice
+! contributes is here: the relation T(tau; Teff), the starting
+! temperature of the atmosphere integration (tau -> 0) and its
+! photospheric limit, so adding a relation is one block in each of the
+! three functions.
 !
-! Choices (the atm_choice control; 3/4/5 are the TABULATED surface
-! boundaries handled by prepare_surface_boundary, never seen here):
+! Choices (atm_choice; 3, 4 and 5 are the tables, handled by
+! atm_get_surface_pt):
 !   0  Eddington gray
-!   1  Krishna-Swamy (Ap.J. 145, 176, 1966; solar fit)
-!   2  Harvard-Smithsonian reference atmosphere (polynomial fit in
-!      setup/harvard_t_tau.f90; atm_hras is the run's HSRA offset)
+!   1  Krishna-Swamy (ApJ 145, 176, 1966; solar fit)
+!   2  Harvard-Smithsonian reference atmosphere (a polynomial fit;
+!      atm_hras is the run's HSRA offset, hsra_t_tau_offset())
 !
-! Lives in atm/ (2026): pure atmosphere physics, exactly what the
-! domain taxonomy assigns here -- the solver integration that CALLS
-! these stays in core/ (envelope_integration_kernel). The HSRA polynomial fit
-! (formerly setup/harvard_t_tau.f90, a misplaced pure function) is a
-! private module procedure; hsra_t_tau_offset() gives setups the
-! anchor value it stores as star%atm_hras.
-!
-! Star-blind (enforced by check_boundaries' STAR_BLIND_FILES):
-! atm_hras arrives as an argument. Expressions are verbatim from the
-! former atmosphere_derivs statement functions and envint kernel
-! branches -- including the start guess's 0.550d0 literal for
-! Krishna-Swamy, which is NOT rewritten as the relation at tau = 0
-! (1.39d0-0.815d0-0.025d0 need not equal 0.550d0 bitwise).
+! The starting guess for Krishna-Swamy uses the literal 0.550d0, not
+! the relation at tau = 0 (1.39d0-0.815d0-0.025d0 need not equal 0.550d0
+! bitwise).
 module t_tau_relations
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cc23
@@ -93,8 +81,8 @@ end function ttau_photosphere_x_limit
 
 
 ! ---------------------------------------------------------------
-! The HSRA anchor: the fit evaluated at tau = 2/3, stored by setups
-! as the run's atm_hras offset.
+! The HSRA anchor: the fit evaluated at tau = 2/3, which the star layer
+! stores as the run's atm_hras offset.
 pure function hsra_t_tau_offset() result(offset)
       real(dp) :: offset
       offset = harvard_t_tau(cc23)
@@ -102,7 +90,7 @@ end function hsra_t_tau_offset
 
 ! ---------------------------------------------------------------
 ! Polynomial fit to the Harvard-Smithsonian reference atmosphere
-! T-tau relation (formerly setup/harvard_t_tau.f90, verbatim).
+! T-tau relation.
 pure function harvard_t_tau(optical_depth) result(fit_value)
       real(dp), intent(in) :: optical_depth
       real(dp) :: log10_tau, log10_tau2, log10_tau3, log10_tau4, &

@@ -29,7 +29,7 @@ contains
 !----------------------------------------------------------------------
 ! PURPOSE
 ! To obtain the desired properties of stellar and sub-stellar atmospheres from atmospheric
-! tables developed by France Allard, et al. Given Log(Teff) and GL, ASURFP returns Log(P) at
+! tables developed by France Allard, et al. Given Log(Teff) and GL, it returns Log(P) at
 ! this Teff and GL, as well as Log(P) and Log(T) at Tau = 100 for this Teff and GL.
 !
 ! Currently supported input formats include the old Allard, et al, circa 1999 NextGen format,
@@ -42,10 +42,10 @@ contains
 ! of the table. The extended range for GL is from one column's width past the lowest GL on the
 ! left to one column's width past the highest GL on the right for the current row. The extended
 ! range for TeffL is defined in the same manner as for the columns. Note that the limits are on
-! a row by row and column by column basis. If the request TeffL, GL point is outside the table,
-! the progam is terminated with a definitive error message.
+! a row by row and column by column basis. A TeffL, GL point outside the table sets
+! lookup_failed (or ierr, below the table in TeffL), with a diagnostic.
 !
-! ARGUMENTS OF TABLE LOOKUP SUBROUTINE
+! Arguments of table lookup subroutine
 !
 ! log_teff      - Input. Value of TL at which the results are desired.
 ! log_g         - Input. Value of GL at which the results are desired.
@@ -54,8 +54,8 @@ contains
 ! lookup_failed - Output. If .TRUE. the specified TeffL/GL is above the table in
 !              TeffL or outside it in GL and no result was stored; the caller
 !              (atm_lib's atm_get_surface_pt) then reports the failure.
-! ierr          - Output. 1 when TeffL is below the table minimum (formerly a
-!              STOP) or a polint call fails; 0 otherwise.
+! ierr          - Output. 1 when TeffL is below the table minimum or a polint
+!              call fails; 0 otherwise.
 !
 ! RESULTS (stored in atm_table, atm_tables.f90)
 !
@@ -190,8 +190,6 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
         write(run_log_unit,*)
         write(run_log_unit,*)'******** ALSURF: Program Terminated ********'
         write(run_log_unit,*)
-        ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
-        ! facades stop when their caller passes no ierr.
         ierr = 1
         return
       endif
@@ -332,7 +330,7 @@ end subroutine interpolate_allard_surface
 ! table. This new format is more flexible in supporting future needs.
 !
 ! The contents of these files are put into the arrays and elements used by the
-! Allard Atmosphere table lookup routine, interpolate_allard_surface.f90. In addition, we fill any
+! Allard Atmosphere table lookup routine, interpolate_allard_surface. In addition, we fill any
 ! vacant entries in the table with -999.0. A value of -999. in the table
 ! identifies the entry as "invalid." In addition, key auxililiary arrays, as
 ! described below, are created.
@@ -344,7 +342,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
 ! associated max number of GL's is nGL.
 
 
-      character(len=256), intent(in) :: allard_table_path
+      character(len=*), intent(in) :: allard_table_path
       character(len=35) :: first_record
       character(len=256) :: header_line
       real(dp) :: local_teffs(atm_table_nta)
@@ -352,30 +350,15 @@ subroutine read_allard_tables(allard_table_path, ierr)
       integer :: i, j, nhdr, irecno, i1, j1
       real(dp) :: teff_value, gl_value, feh_value, alpha_value
       real(dp) :: pressure_value, pressure_tau100_value, temp_tau100_value
-! (sort_shell, the external subroutine at the end of this file, is
-! only ever CALLed directly, so the EXTERNAL declaration above is a
-! no-op kept for documentation.)
-!
-! NOTE: line ~105 below tests a variable spelled LATMTPTau100, which
-! is NOT the same as the common-block flag LALTPTau100 (allard_use_tau100,
-! common/alatm03/) despite the similar name -- this looks like a typo
-! in the original code that silently declares a second, distinct,
-! never-assigned local logical (implicitly typed, SAVE'd) instead of
-! referencing the intended common flag. Preserved exactly as a
-! separate, always-default-valued local below.
+! latmtptau100 is never set, so the check below that an old NextGen 1
+! file cannot give the tau = 100 point never fires: in the original it
+! was a misspelling of the allard_use_tau100 flag (LALTPTau100), kept
+! as it was (an open item in docs/ROADMAP.md).
       logical :: latmtptau100
 
       integer, intent(out) :: ierr
       integer :: ios, allard_unit
       logical :: found_first
-
-! Control flow restructured 2026 (goto campaign): the label-899/900
-! OPEN check became an iostat test, the 100/200 file-type dispatch an
-! if/else chain, the label-299/300/410 read loops iostat-driven do
-! loops (err= -> ios>0, end= -> ios<0), the search-or-insert scans
-! bounded do+exit loops, and the label-9999 error funnel the internal
-! procedure fail_9999 below. READ/FORMAT statements, comparisons, and
-! all output text are unchanged.
 
       ierr = 0
 
@@ -424,14 +407,14 @@ subroutine read_allard_tables(allard_table_path, ierr)
          ierr = 1
          return
       endif
-!     READ RANGE OF GRAVITIES
+!     Read range of gravities
       atm_table%allard_num_teff = 54
       atm_table%allard_num_gl = 5
       read(allard_unit,905) (atm_table%allard_gl_grid(i),i=1,atm_table%allard_num_gl)
   905  format(5f7.2/)
 !       read(ioatma,*)
 
-!     READ RANGE OF TEMPERATURES
+!     Read range of temperatures
       read(allard_unit,907) (atm_table%allard_teffl_grid(i),i=1,atm_table%allard_num_teff)
   907  format(10(1p5e16.8,/),1p4e16.8,/)
 !       read(ioatma,*)
@@ -701,7 +684,7 @@ end subroutine sort_shell
 ! find_allard_table_bounds (formerly altabinit)
 !----------------------------------------------------------------------
 ! PURPOSE
-! To analyze the internal Allard-format tables provided by read_allard_tables.f90,
+! To analyze the internal Allard-format tables provided by read_allard_tables,
 ! verifying them and creating needed additional tables and elements.
 !
 ! Several steps are taken:
@@ -821,8 +804,6 @@ subroutine find_allard_table_bounds(ierr)
        write(run_log_unit,*)'******** ALTABINIT: Program Terminated ********'
        write(run_log_unit,*)
        call print_allard_tables
-       ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
-       ! facades stop when their caller passes no ierr.
        ierr = 1
 
 end subroutine find_allard_table_bounds
