@@ -40,6 +40,11 @@
 ! estimate of the neutrino energy loss; his notes, vol. 19, pp. 139-141,
 ! document other keV-sized changes, all but the rare 8B. The C12 + p
 ! sequence and C13 + p are broken down separately.)
+! N14(a,g)F18(e+ nu)O18 deposits 5.646 MeV: Q = 6.071 MeV from the masses
+! less the mean neutrino energy of the F18 decay, 0.425 MeV (96.73% beta+
+! with <E_nu> = 633.5 - 249.8 keV, 3.27% electron capture at 1655 keV;
+! ENSDF, Tilley et al. 1995). (2026-10: it was 5.815, implying 0.256 MeV,
+! about the mean positron energy.)
 ! He3(He4,g)Be7 appears twice, once per Be7 branch (electron capture:
 ! pp II; proton capture: pp III): the same change in abundances, with
 ! the two branch fractions and their own energies.
@@ -200,7 +205,7 @@ module network
                       screening=screening_t(12.d0, 16.192d0, 9.014d0, 2.577d0, -0.889d0)), &
            reaction_t('N14(a,g) to O18',     r_an14,    unbranched,           [s_he4, s_n14, 0],        &
                       [s_he4, -1, s_n14, -1, s_o18, 1, 0, 0, 0, 0], &
-                      q_mev=5.815d0, chain=chain_alpha_capture, &
+                      q_mev=5.646d0, chain=chain_alpha_capture, &
                       rate_law=cf88_n14_alpha_gamma, burns_in=helium_burning, &
                       screening=screening_t(14.d0, 18.606d0, 10.15d0, 2.81d0, -0.92d0)), &
            reaction_t('triple alpha',        r_3alpha,  unbranched,           [s_he4, s_he4, s_he4],    &
