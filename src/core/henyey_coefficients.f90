@@ -389,9 +389,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
 ! (the legacy path-length-triggered OPAL pulsation writer's flag), but
-! the GYRE-format pulsation writer (io/write_gyre_pulse.f90) is
-! triggered independently (by model-number interval, checked in
-! write_legacy_output.f90) and needs these populated for every converged model, not
+! the GYRE-format pulsation writer (pulsation_output's write_gyre_pulse)
+! is triggered independently (every pulse_gyre_interval models, checked
+! in yrec_output) and needs these populated for every converged model, not
 ! just ones flagged by the older mechanism. All source locals here
 ! (dlnrho_dlnp, dlnkap_dlnrho/dlnt, zone_deps_dlnrho/dlnt, etc.)
 ! are already computed unconditionally above, so this is just always

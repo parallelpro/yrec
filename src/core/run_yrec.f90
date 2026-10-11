@@ -25,6 +25,7 @@ subroutine run_yrec(ierr)
       use star_info_lib, only: star, i_h1, i_metals
       use yrec_output, only: output_run_header
       use io_units
+      use model_files, only: write_mod_model
       use physical_constants
       use yrec_reset, only: yrec_run_prologue
       use monte_carlo, only: apply_monte_carlo_parameters, &

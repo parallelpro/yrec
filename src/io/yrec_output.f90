@@ -1,47 +1,33 @@
 !----------------------------------------------------------------------
 ! yrec_output
 !----------------------------------------------------------------------
-! Added 2026 (MESA-style output centralization); use_legacy_output
-! retired 2026-08-28 -- there is ONE output path for every run.
-! Split 2026-08-29: this module is the coordinator (job init, the
-! per-model dispatch, the pulse-format dispatch); the column
-! machinery and the per-format tables/writers live in
-!   io/output_columns.f90   parse_columns + the compiled-in defaults
-!   io/history_output.f90   history column tables + row writer
-!   io/profile_output.f90   profile column table + file writer
-!
-! Output per job:
-!   <outdir>/<star_history_name>   MESA history.data layout, one row
-!                                  per converged model; columns
-!                                  selectable via history_columns_file
-!                                  (one name per line, ! comments);
-!                                  the profile_number column maps
-!                                  models to profiles (YREC's
-!                                  replacement for profiles.index).
-!   <outdir>/profile<N>.data       every profile_interval models;
-!                                  MESA profile layout (zone 1 = the
-!                                  surface); columns selectable via
-!                                  profile_columns_file.
-!   CASE.log                       everything the code writes to
-!                                  run_log_unit (diagnostics).
-!   GYRE/FGONG pulse files         every pulse_gyre_interval models,
-!                                  format per pulse_format.
-!
-! Writers are PURE READERS: every quantity is computed by
-! compute_observables (core/observables.f90, after the step's
-! physics) into star_info.
-! Module state below is per-job configuration (output directory, the
-! profile counter), reset by output_init_mesa on every job --
-! re-entrant runs re-enter through it, and it resets the writer
-! modules' per-job state too.
+! The run's output, per job:
+!   <outdir>/<star_history_name>  one row per converged model, MESA's
+!                                 history.data layout (history_output);
+!                                 the profile_number column maps models
+!                                 to profiles.
+!   <outdir>/profile<N>.data      every profile_interval models, MESA's
+!                                 profile layout, zone 1 the surface
+!                                 (profile_output), with the pulsation
+!                                 file in pulse_format beside it
+!                                 (pulsation_output).
+!   the run log                   everything written to run_log_unit.
+!   the .mod model                every model (model_files).
+! Columns are selectable through history_columns_file and
+! profile_columns_file (output_columns). This module opens the job's
+! files, writes the run card's header, and decides each model what is
+! due. The writers only read: compute_observables (core) and the
+! stitched model (core/stitched_model) compute every quantity first.
+! The output directory and the profile counter are per job, reset by
+! output_init_mesa together with the writers' own state.
 module yrec_output
       use physical_constants
-! The stitched full-star model (interior + envelope + atmosphere)
-! is assembled and materialized by core/stitched_model.f90; the
-! writers below are pure readers of its stx_* arrays.
-      use stitched_model, only: n_ext, stx_pulse, n_pulse_cols, ipul_gyre_last
+      use stitched_model, only: n_ext, stx_pulse
       use history_output, only: history_output_init, write_history_row
       use profile_output, only: profile_output_init, write_profile
+      use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, &
+           write_gyre_ext, gsm_supported
+      use model_files, only: write_mod_model
       use math_lib
       implicit none
       private
@@ -59,8 +45,6 @@ subroutine output_init_mesa(log_output_file, ierr)
       use run_log, only: log_reset
       character(len=*), intent(in) :: log_output_file
       integer, intent(out) :: ierr
-      logical :: gsm_supported
-      external gsm_supported
       character(len=256) :: log_path
       integer :: n, islash
 
@@ -108,13 +92,6 @@ subroutine output_init_mesa(log_output_file, ierr)
          end if
       end if
 end subroutine output_init_mesa
-
-! ---------------------------------------------------------------
-subroutine output_run_header(star_mass_msun)
-      double precision, intent(in) :: star_mass_msun
-
-      call write_output_headers(star_mass_msun)
-end subroutine output_run_header
 
 ! ---------------------------------------------------------------
 subroutine output_write_model()
@@ -235,24 +212,40 @@ subroutine write_pulse(iprof)
       end if
 end subroutine write_pulse
 
-! GYRE text (MESA schema 101) over the extended point set. The
-! legacy-path writer io/write_gyre_pulse.f90 keeps its historical
-! interior-only behavior (byte-pinned); this is the MESA-mode writer.
-subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
-      integer, intent(in) :: n
-      double precision, intent(in) :: pts(n_pulse_cols, n)
-      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
-      character(len=*), intent(in) :: path
-      integer, parameter :: gyre_schema = 101
-      integer :: u, j, i
+! ---------------------------------------------------------------
+! At the start of each run card: the card's line on the terminal, and
+! the isochrone file's header.
+subroutine output_run_header(total_mass_msun)
+      use io_units
+      use star_info_lib, only: star
+      double precision, intent(in) :: total_mass_msun
+      double precision :: total_mass_grams
 
-      open(newunit=u, file=path, status='REPLACE', form='FORMATTED')
-      write(u,'(I6,3(1X,1PE26.16),1X,I6)') n, mstar_g, rstar_cm, &
-           lstar_cgs, gyre_schema
-      do j = 1, n
-         write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, ipul_gyre_last)
-      end do
-      close(u)
-end subroutine write_gyre_ext
+      if (star%job%rescale_kind(star%job%nk) .eq. 1) then
+         write(terminal_unit, 47) star%job%nk, &
+              star%mixing_length_alpha, star%job%num_models(star%job%nk)
+      else if (star%job%rescale_kind(star%job%nk) .eq. 2) then
+         write(terminal_unit, 48) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
+              star%mixing_length_alpha, star%job%num_models(star%job%nk)
+      else if (star%job%rescale_kind(star%job%nk) .eq. 3) then
+         write(terminal_unit, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
+              star%mixing_length_alpha, star%job%num_models(star%job%nk)
+      end if
+  47  format(/,1x,'card',i3,' (evolve):  mixing length =',f8.6, &
+             '  models =',i6)
+  48  format(/,1x,'card',i3,' (rescale):         X =',f8.6, &
+             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
+  49  format(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6, &
+             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
+
+      if (star%ctrl%isochrone_output_active) then
+         total_mass_grams = total_mass_msun*star%solar_mass_cgs
+         write(star%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
+              star%job%initial_envelope_x,star%job%initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
+ 1495    format(7X, 1P5E16.8)
+      end if
+
+      return
+end subroutine output_run_header
 
 end module yrec_output

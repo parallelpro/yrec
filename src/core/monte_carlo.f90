@@ -23,6 +23,7 @@
 module monte_carlo
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav, max_mc_runs
       use io_units
+      use model_files, only: write_mod_model
       implicit none
       private
       public :: setup_monte_carlo_runs, apply_monte_carlo_parameters, &

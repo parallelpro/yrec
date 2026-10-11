@@ -152,7 +152,7 @@ HDF5_MODE_STAMP = .hdf5_mode_$(if $(USE_HDF5),on,off)
 $(HDF5_MODE_STAMP):
 	@rm -f .hdf5_mode_on .hdf5_mode_off
 	@touch $@
-io/write_gsm_pulse.o: $(HDF5_MODE_STAMP)
+io/pulsation_output.o: $(HDF5_MODE_STAMP)
 GNU_DEV_FFLAGS = -fcheck=all -ffpe-trap=invalid,zero,overflow
 GNU_DBG_FFLAGS = -g -fsanitize=undefined -fsanitize=address -fstack-protector-strong -O0
 GNU_PROF_FFLAGS = -O3 -g -pg

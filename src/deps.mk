@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/t_tau_relations.f90 atm/tables/allard_atmosphere.f90 atm/tables/kurucz_atmosphere.f90 convection/convection_configuration.f90 convection/convection_lib.f90 convection/convection_zones.f90 convection/semiconvection.f90 convection/temperature_gradients.f90 core/atmosphere_structure.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/envelope_structure.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/mass_change.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/blended_eos.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/eos_results.f90 eos/mhd/mhd_eos.f90 eos/mhd_eos_tables.f90 eos/opal/opal95_eos.f90 eos/opal/opal_eos.f90 eos/opal_eos_tables.f90 eos/scv/scv_eos.f90 eos/scv_eos_tables.f90 eos/yale/yale_eos.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/derived_controls.f90 io/history_output.f90 io/io_units.f90 io/legacy_controls.f90 io/output_columns.f90 io/profile_output.f90 io/read_controls.f90 io/run_cards.f90 io/run_files.f90 io/run_log.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/bulirsch_stoer.f90 numerics/cubic_spline.f90 numerics/linear_solvers.f90 numerics/numerics_lib.f90 numerics/quadratic_spline.f90 numerics/table_interpolation.f90 numerics/test/test_numerics.f90 rotation/magnetic_braking.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/shape/shell_quadrature.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/integration_parameters.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/t_tau_relations.f90 atm/tables/allard_atmosphere.f90 atm/tables/kurucz_atmosphere.f90 convection/convection_configuration.f90 convection/convection_lib.f90 convection/convection_zones.f90 convection/semiconvection.f90 convection/temperature_gradients.f90 core/atmosphere_structure.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/envelope_structure.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/mass_change.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/blended_eos.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/eos_results.f90 eos/mhd/mhd_eos.f90 eos/mhd_eos_tables.f90 eos/opal/opal95_eos.f90 eos/opal/opal_eos.f90 eos/opal_eos_tables.f90 eos/scv/scv_eos.f90 eos/scv_eos_tables.f90 eos/yale/yale_eos.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/derived_controls.f90 io/history_output.f90 io/io_units.f90 io/legacy_controls.f90 io/model_files.f90 io/output_columns.f90 io/profile_output.f90 io/pulsation_output.f90 io/read_controls.f90 io/run_cards.f90 io/run_files.f90 io/run_log.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/bulirsch_stoer.f90 numerics/cubic_spline.f90 numerics/linear_solvers.f90 numerics/numerics_lib.f90 numerics/quadratic_spline.f90 numerics/table_interpolation.f90 numerics/test/test_numerics.f90 rotation/magnetic_braking.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/shape/shell_quadrature.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/integration_parameters.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -116,6 +116,8 @@ microphysics_settings.mod: setup/microphysics_settings.o
 	@true
 mid_timestep_model.mod: rotation/mid_timestep_model.o
 	@true
+model_files.mod: io/model_files.o
+	@true
 monte_carlo.mod: core/monte_carlo.o
 	@true
 net_lib.mod: net/net_lib.o
@@ -149,6 +151,8 @@ physical_constants.mod: state/physical_constants.o
 point_scratch_lib.mod: core/point_scratch_lib.o
 	@true
 profile_output.mod: io/profile_output.o
+	@true
+pulsation_output.mod: io/pulsation_output.o
 	@true
 quadratic_spline.mod: numerics/quadratic_spline.o
 	@true
@@ -231,12 +235,12 @@ core/henyey_elimination.o: physical_constants.mod star_info_lib.mod
 core/henyey_iteration.o: eos_lib.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 core/henyey_solve.o: star_info_lib.mod
 core/mass_change.o: atm_lib.mod atmosphere_structure.mod eos_lib.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
-core/monte_carlo.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/monte_carlo.o: io_units.mod math_lib.mod model_files.mod physical_constants.mod star_info_lib.mod
 core/neutrino_flux_table.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/observables.o: convection_geometry.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-core/read_starting_model.o: controls_buffer.mod convection_lib.mod envelope_integration.mod envelope_refit.mod envelope_structure.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod observables.mod physical_constants.mod star_info_lib.mod stitched_model.mod
+core/read_starting_model.o: controls_buffer.mod convection_lib.mod envelope_integration.mod envelope_refit.mod envelope_structure.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod model_files.mod observables.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/rebuild_envelope.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod envelope_structure.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
-core/run_yrec.o: burn_step.mod controls_check.mod controls_reader.mod convection_lib.mod io_units.mod microphysics_settings.mod monte_carlo.mod net_lib.mod physical_constants.mod run_log.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset.mod
+core/run_yrec.o: burn_step.mod controls_check.mod controls_reader.mod convection_lib.mod io_units.mod microphysics_settings.mod model_files.mod monte_carlo.mod net_lib.mod physical_constants.mod run_log.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset.mod
 core/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 core/star_setup.o: monte_carlo.mod
 core/stitched_model.o: atmosphere_structure.mod envelope_integration.mod envelope_structure.mod math_lib.mod physical_constants.mod star_info_lib.mod
@@ -261,22 +265,16 @@ io/controls_check.o: io_units.mod star_info_lib.mod
 io/derived_controls.o: io_units.mod legacy_controls.mod math_lib.mod physical_constants.mod star_info_lib.mod
 io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod
 io/legacy_controls.o: controls_buffer.mod integration_parameters.mod
+io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
 io/profile_output.o: output_columns.mod star_info_lib.mod stitched_model.mod
+io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 io/read_controls.o: controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod physical_constants.mod run_cards.mod run_files.mod star_info_lib.mod
-io/read_mod_model.o: io_units.mod star_info_lib.mod
-io/read_model2.o: star_info_lib.mod
-io/read_yrec7.o: io_units.mod math_lib.mod star_info_lib.mod
 io/run_cards.o: eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
 io/run_files.o: io_units.mod legacy_controls.mod yrec_output.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_reader.mod integration_parameters.mod io_units.mod star_info_lib.mod
-io/write_fgong_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-io/write_gsm_pulse.o: io_units.mod stitched_model.mod
-io/write_gyre_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod
-io/write_mod_model.o: io_units.mod run_log.mod star_info_lib.mod
-io/write_output_headers.o: io_units.mod star_info_lib.mod
-io/yrec_output.o: history_output.mod io_units.mod math_lib.mod physical_constants.mod profile_output.mod run_log.mod star_info_lib.mod stitched_model.mod
+io/yrec_output.o: history_output.mod io_units.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_log.mod star_info_lib.mod stitched_model.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/conductive/conductive_opacity.o: math_lib.mod

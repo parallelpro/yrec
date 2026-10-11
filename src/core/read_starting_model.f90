@@ -40,6 +40,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use envelope_refit, only: append_envelope_points
       use envelope_structure
       use io_units
+      use model_files, only: read_mod_model, read_yrec7, read_model2
       use physical_constants
       use eos_lib
       use kap_lib
