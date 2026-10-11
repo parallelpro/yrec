@@ -21,6 +21,7 @@ src/test_rotation
 src/test_numerics
 src/test_convection
 src/test_net.short
+src/test_convection.short
 COMMENTS.md
 src/libyrec.dylib
 src/libyrec.so
