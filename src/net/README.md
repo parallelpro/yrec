@@ -84,10 +84,11 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | `configure_network` | `run_yrec`, at the start of every run | Fills `net_settings` from `star%ctrl` and the rate factors (after the Monte Carlo factors are applied) and calls `set_net_settings`. |
 | `network_rates_of_model` | `compute_burn_rates`, `mid_timestep_model` | The composition rate vector of every shell of the model passed in that is hotter than the nuclear cutoff; zero below. |
 | `compute_burn_rates` | `advance_composition` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
-| `burn_network` | `advance_composition` | `burn_network_region` per radiative shell and per mixed region. |
+| `burn_regions` | `burn_network`, `burn_equilibrium`, `burn_deuterium`, `mixing/rotmix`, `mid_timestep_model` | The regions a burn visits, in order: each radiative shell above the nuclear cutoff, then each mixed region as a unit. It takes the temperatures and region tables as arguments, so the rotation sub-steps pass their midpoint model's. |
+| `burn_network` | `advance_composition` | `burn_network_region` for each of the `burn_regions`. |
 | `burn_network_region` | `burn_network`, `mixing/rotmix` | Model bookkeeping around `burn_implicitly`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
-| `burn_equilibrium` | `advance_composition`, predictor pass | `compute_equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
-| `burn_deuterium` | `advance_composition` | `burn_deuterium_region` per shell or region. |
+| `burn_equilibrium` | `advance_composition`, predictor pass | `compute_equilibrium_burn_rates` for each of the `burn_regions`, overwriting X (and Z, C12, O16 under helium burning). |
+| `burn_deuterium` | `advance_composition` | `burn_deuterium_region` for each of the `burn_regions`. |
 | `surface_accretion_now` | `burn_deuterium`, `mid_timestep_model` | The accreted gas over a step (`surface_accretion`: on, inflow, its deuterium fraction, the mass accreted) for `burn_deuterium_region`. |
 | `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
