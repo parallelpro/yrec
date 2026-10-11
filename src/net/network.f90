@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! network_lib
+! network
 !----------------------------------------------------------------------
 ! The hydrogen- and helium-burning network as data, and the one implicit
 ! integrator that reads it (2026-10; replaces the hand-written
@@ -14,7 +14,7 @@
 !
 ! Reactions. Reaction j proceeds at
 !     R_j = b_j * g_j * prod_m X(law_j(m))          [per s per amu]
-! where g_j is row rate_row of the rate vector filled by net_lib's
+! where g_j is row rate_row of the rate vector filled by reaction_rates'
 ! rates (slots r_*, rv_*: N_A<sigma v>, density, screening and the 1/A
 ! factors are already in it), X are mass fractions, and b_j is 1, or
 ! the N15(p,alpha) branching fraction f (or 1-f) carried in row
@@ -26,7 +26,7 @@
 ! Energy. Each row also carries the energy it deposits per reaction,
 ! q_mev, net of the neutrinos it emits (Bahcall & Ulrich 1988, table 21,
 ! as revised by Bahcall 1997), and the chain it belongs to. The nuclear
-! energy generation sums R_j q_j over the table (reaction_energies), so
+! energy generation sums R_j q_j over the table (compute_reaction_energies), so
 ! a reaction's composition change and its energy come from one row.
 ! (JNB 9/25/97 changed the pp energy release by 0.002 MeV, from a better
 ! estimate of the neutrino energy loss; his notes, vol. 19, pp. 139-141,
@@ -41,8 +41,8 @@
 ! by Newton iteration on J_ik = dF_i/dX_k. Adding a reaction means
 ! adding a row to the table; adding a species means adding it to the
 ! species list and to the rows that touch it.
-module network_lib
-      use net_lib, only: r_pp, r_he3he3, r_he3he4, &
+module network
+      use reaction_rates, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap
       implicit none
@@ -132,8 +132,8 @@ module network_lib
                       [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0], &
                       q_mev=7.275d0, chain=chain_triple_alpha) ]
 
-      public :: implicit_burn_step, network_table_errors, write_network_table, &
-           equilibrium_burn_rates, reaction_energies
+      public :: burn_implicitly, network_table_errors, write_network_table, &
+           compute_equilibrium_burn_rates, compute_reaction_energies
 
 contains
 
@@ -243,11 +243,11 @@ end function branch_fraction
 ! The energy generation of the table's reactions (erg/g/s), by rate
 ! slot (energy_by_slot, r_*) and by chain (energy_by_chain, chain_*):
 ! the sum over rows of b_j * rate(slot) * prod X(law_j) * q_j, with
-! rate the per-gram rates of nuclear_reaction_rates (abundance factors
+! rate the per-gram rates of compute_reaction_rates (abundance factors
 ! omitted) and x the network species' mass fractions.
-subroutine reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
+subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
      energy_by_slot, energy_by_chain)
-      use net_lib, only: num_reactions
+      use reaction_rates, only: num_reactions
       double precision, intent(in) :: rate(num_reactions), x(n_network), &
            frac_n15_pa, frac_be7_ecap
       double precision, intent(out) :: energy_by_slot(num_reactions), &
@@ -271,11 +271,11 @@ subroutine reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
          energy_by_chain(reactions(j)%chain) = &
               energy_by_chain(reactions(j)%chain) + e
       end do
-end subroutine reaction_energies
+end subroutine compute_reaction_energies
 
 ! ---------------------------------------------------------------
 ! dX_i/dt / A_i = sum_j nu_ij R_j for every network species.
-subroutine abundance_rates(rate_vec, x, dxdt_per_a)
+subroutine compute_abundance_rates(rate_vec, x, dxdt_per_a)
       double precision, intent(in) :: rate_vec(:), x(n_network)
       double precision, intent(out) :: dxdt_per_a(n_network)
       integer :: j, c
@@ -290,7 +290,7 @@ subroutine abundance_rates(rate_vec, x, dxdt_per_a)
                  reactions(j)%change(c+1)*r
          end do
       end do
-end subroutine abundance_rates
+end subroutine compute_abundance_rates
 
 ! ---------------------------------------------------------------
 ! One implicit (backward-Euler) burning step of length dt (s).
@@ -304,7 +304,7 @@ end subroutine abundance_rates
 ! max_iterations attempts. As in kemcom, Jacobian entries below 1e-8 in
 ! magnitude (off the diagonal) are dropped, and if none remain the
 ! residual itself is taken as the correction.
-subroutine implicit_burn_step(x_start, rate_vec, dt, min_abundance, &
+subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
       use numerics_lib, only: simeqc
       double precision, intent(in) :: x_start(n_network), rate_vec(:), dt
@@ -326,7 +326,7 @@ subroutine implicit_burn_step(x_start, rate_vec, dt, min_abundance, &
       dt_a = mass_number*dt
       iterations = 0
       do
-         call abundance_rates(rate_vec, x, dxdt_per_a)
+         call compute_abundance_rates(rate_vec, x, dxdt_per_a)
          do i = 1, n_solved
             system(i, n_solved+1) = x(i) - x_start(i) - dt_a(i)*dxdt_per_a(i)
          end do
@@ -381,14 +381,14 @@ subroutine implicit_burn_step(x_start, rate_vec, dt, min_abundance, &
       end do
 
 ! explicit products, from the converged abundances
-      call abundance_rates(rate_vec, x, dxdt_per_a)
+      call compute_abundance_rates(rate_vec, x, dxdt_per_a)
       do i = n_solved+1, n_network
          x(i) = x_start(i) + dt_a(i)*dxdt_per_a(i)
       end do
-end subroutine implicit_burn_step
+end subroutine burn_implicitly
 
 !----------------------------------------------------------------------
-! equilibrium_burn_rates
+! compute_equilibrium_burn_rates
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -405,18 +405,18 @@ end subroutine implicit_burn_step
 ! the initial guess for the burning rates at the start of a timestep;
 ! may be supplemented elsewhere by a fully implicit non-equilibrium
 ! calculation.
-! equilibrium_burn_rates (formerly eqburn)
-subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
+! compute_equilibrium_burn_rates (formerly eqburn)
+subroutine compute_equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temperature, zone_begin, &
      zone_end, dc_dt, do_dt, dx_dt, dy_dt, equilibrium_xc12, &
      equilibrium_xo16, hydrogen_fraction, metal_fraction)
 
       use star_info_lib, only: json, n_species_extended, i_h1, i_he4, &
            i_metals, i_he3, i_c12, i_c13, i_n14, i_o16
-      use net_lib, only: num_rate_rows, net_settings
+      use reaction_rates, only: num_rate_rows, net_settings
       implicit none
 
 ! rate_by_zone(r_*/rv_*, zone): the per-zone rate vectors written by
-! net_lib's network_rate_vector (2026 W3 -- formerly 9 separate rate_*(json)
+! reaction_rates' compute_network_rates (2026 W3 -- formerly 9 separate rate_*(json)
 ! arguments); rows are the r_*/rv_* slots of net_lib. Only
 ! the nine rows named in the use statement are read here.
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
@@ -609,6 +609,6 @@ subroutine equilibrium_burn_rates(rate_by_zone, xa_start, shell_mass, shell_temp
          do_dt = 1.6d1*c12_alpha_term
       end if
 
-end subroutine equilibrium_burn_rates
+end subroutine compute_equilibrium_burn_rates
 
-end module network_lib
+end module network

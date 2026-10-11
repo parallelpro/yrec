@@ -26,7 +26,7 @@ module eos_mixture_lib
 ! ix_* / n_mix_species (the star layer fills fxenv in that order in
 ! core/read_starting_model.f90's update_surface_mixture); a copy
 ! because this module must not depend on star_info_lib (physics-purity
-! pass), like net_lib's n_reactions.
+! pass), like reaction_rates' num_reactions.
       integer, parameter, public :: &
            ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &
            ix_c = 6, ix_h = 7, ix_o = 8, ix_n = 9, ix_ar = 10, &

@@ -21,10 +21,13 @@ program test_net
       use luout_lib
       use star_info_lib, only: star, i_h2
       use net_lib
+! the domain's own test: it also reaches net/'s internal modules
+      use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
       use scv_eos_lib, only: use_scv_eos
       use burn_step
-      use network_lib, only: write_network_table
-      use light_element_lib, only: deuterium_rate
+      use network, only: write_network_table
+      use light_elements, only: deuterium_rate
       implicit none
 
       character(len=256) :: yrec_input
@@ -169,7 +172,7 @@ program test_net
       test_xa(9) = 8.0d-3
       test_xa(11) = 2.0d-5
       do ipt = 1, npts
-         call network_rate_vector(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
+         call compute_network_rates(grid_logd(ipt), grid_logt(ipt), test_xa, rate_vec)
          write(*,'(a,i2)') "rates ", ipt
          write(*,'(4(1pe20.12))') rate_vec(r_pp), rate_vec(r_he3he3), &
               rate_vec(r_he3he4), rate_vec(r_pc12)
@@ -201,7 +204,7 @@ program test_net
       write(*,'(1pe20.12)') deuterium_rate(1.5d0, 6.2d0, 0.70d0, &
            1.ge.star%jcz, star%convective_turnover_timescale)
 
-! analytic dln(rate)/dlnT and dln(rate)/dln(rho) of nuclear_reaction_rates
+! analytic dln(rate)/dlnT and dln(rate)/dln(rho) of compute_reaction_rates
 ! against centred differences (step 1e-4 dex), worst relative error per
 ! reaction slot over three (log T, log rho) points; slots that are zero
 ! everywhere print 0. Guards the hand-derived Jacobian terms.
@@ -218,11 +221,11 @@ program test_net
       fd_err_t = 0.0d0
       fd_err_d = 0.0d0
       do ipt = 1, nfd
-         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt), fd_mass, nr0)
-         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt)+fd_h, fd_mass, nr_tp)
-         call nuclear_reaction_rates(fd_logd(ipt), fd_logt(ipt)-fd_h, fd_mass, nr_tm)
-         call nuclear_reaction_rates(fd_logd(ipt)+fd_h, fd_logt(ipt), fd_mass, nr_dp)
-         call nuclear_reaction_rates(fd_logd(ipt)-fd_h, fd_logt(ipt), fd_mass, nr_dm)
+         call compute_reaction_rates(fd_logd(ipt), fd_logt(ipt), fd_mass, nr0)
+         call compute_reaction_rates(fd_logd(ipt), fd_logt(ipt)+fd_h, fd_mass, nr_tp)
+         call compute_reaction_rates(fd_logd(ipt), fd_logt(ipt)-fd_h, fd_mass, nr_tm)
+         call compute_reaction_rates(fd_logd(ipt)+fd_h, fd_logt(ipt), fd_mass, nr_dp)
+         call compute_reaction_rates(fd_logd(ipt)-fd_h, fd_logt(ipt), fd_mass, nr_dm)
          do k = 1, num_reactions
             if (nr0%rate(k) <= 0.0d0 .or. nr_tp%rate(k) <= 0.0d0 .or. nr_tm%rate(k) <= 0.0d0) cycle
             fd_num = (log(nr_tp%rate(k)) - log(nr_tm%rate(k)))/(2.0d0*fd_h*log(10.0d0))

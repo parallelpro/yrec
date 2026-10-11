@@ -37,7 +37,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use net_lib
       use phys_const_lib
       use burn_step
-      use light_element_lib, only: burn_deuterium_region, min_deuterium_substep
+      use net_lib, only: burn_deuterium_region, min_deuterium_substep
       use math_lib
       implicit none
 

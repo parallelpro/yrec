@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! nuclear_energy_lib
+! nuclear_energy
 !----------------------------------------------------------------------
 ! The nuclear energy generation of one zone (2026-10: the physics of
 ! the former engeb, moved here and made free of model-state side
@@ -11,10 +11,11 @@
 ! triple alpha); the alpha-capture energy, thermal neutrino losses and
 ! He3 energy rates; and, when net_settings%calc_neutrinos, the solar neutrino
 ! fluxes and the Be7 abundance. Everything it computes comes back in
-! the record. Its configuration is net_lib's net_settings.
-module nuclear_energy_lib
-      use net_lib
-      use network_lib, only: reaction_energies, n_chains, n_network, &
+! the record. Its configuration is reaction_rates' net_settings.
+module nuclear_energy
+      use reaction_rates
+      use thermal_neutrinos, only: compute_thermal_neutrino_losses
+      use network, only: compute_reaction_energies, n_chains, n_network, &
            s_h1, s_he3, s_he4, s_c12, s_c13, s_n14, s_o16, s_o18, chain_pp1, &
            chain_pp2, chain_pp3, chain_cno, chain_alpha_capture, &
            chain_triple_alpha
@@ -41,7 +42,7 @@ module nuclear_energy_lib
          double precision :: be7_mass_fraction = 0.0d0
       end type nuclear_energy_result
 
-      public :: nuclear_energy
+      public :: compute_nuclear_energy
 
 contains
 
@@ -188,7 +189,7 @@ contains
 !   XHE3 -> he3_fraction               XC12/XC13 -> c12_fraction/c13_fraction
 !   XN14 -> n14_fraction               XO16/XO18 -> o16_fraction/o18_fraction
 !   XH2 -> deuterium_fraction
-subroutine nuclear_energy(log_density, &
+subroutine compute_nuclear_energy(log_density, &
      log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
      c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
      o18_fraction, deuterium_fraction, in_surface_cz, turnover_timescale, e)
@@ -210,13 +211,13 @@ subroutine nuclear_energy(log_density, &
       type(nuclear_energy_result), intent(out) :: e
 
 ! neutrino_dsnu_dt/neutrino_dsnu_drho are the absolute derivatives
-! d snu/dT, d snu/d rho returned by thermal_neutrino_losses (the Itoh
+! d snu/dT, d snu/d rho returned by compute_thermal_neutrino_losses (the Itoh
 ! 1996 path, selected by net_settings%use_itoh_neutrino_loss); they are set
-! and consumed only inside thermal_neutrino_loss below.
+! and consumed only inside add_thermal_neutrino_loss below.
       double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
 
 ! nr: this zone's reaction rates, derivatives and branchings, from
-! net_lib's nuclear_reaction_rates (2026-10: the one copy of the rate
+! reaction_rates' compute_reaction_rates (2026-10: the one copy of the rate
 ! block that compute_zone_energy and rates each used to carry)
       type(nuclear_rates) :: nr
       double precision :: mass_fraction(num_isotopes), &
@@ -261,7 +262,7 @@ subroutine nuclear_energy(log_density, &
       end if
       e%burning = .true.
 ! the rates, their logarithmic derivatives and the branchings
-      call nuclear_reaction_rates(log_density, log_temperature, mass_fraction, nr)
+      call compute_reaction_rates(log_density, log_temperature, mass_fraction, nr)
       density = nr%density
       t9 = nr%t9
       t9_p13 = nr%t9_p13
@@ -344,9 +345,9 @@ subroutine nuclear_energy(log_density, &
 ! ******************************************************************
 ! ****************************************
       call sum_energy_generation
-      call chain_energy_shares
-      call solar_neutrino_fluxes
-      call thermal_neutrino_loss
+      call store_chain_energies
+      call compute_solar_neutrino_fluxes
+      call add_thermal_neutrino_loss
       return
 
 contains
@@ -422,7 +423,7 @@ subroutine sum_energy_generation
 ! DEFINE THE CONSTANT TO CONVERT MEV'S TO ERGS. THE NUMBERS THAT APPEAR
 !  ARE IN MEV SO THEY CAN BE EASILY IDENTIFIED.
       convert = 1.602177d-6
-! THE Q-VALUES (MEV) ARE IN THE NETWORK TABLE, network_lib, WITH THEIR
+! THE Q-VALUES (MEV) ARE IN THE NETWORK TABLE, network, WITH THEIR
 ! HISTORY.
 ! MHP 5/02 ADD DEUTERIUM BURNING
       if (deuterium_fraction.gt.1.0d-11) then
@@ -442,7 +443,7 @@ subroutine sum_energy_generation
       network_x(s_n14) = n14_fraction
       network_x(s_o16) = o16_fraction
       network_x(s_o18) = o18_fraction
-      call reaction_energies(reaction_rate, network_x, frac_n15_pa, &
+      call compute_reaction_energies(reaction_rate, network_x, frac_n15_pa, &
            frac_be7_ecap, reaction_energy_gen, chain_energy)
 ! JVS 10/11 Need to grab He3 energy generation
       e%eps_he3_he3 = reaction_energy_gen(r_he3he3)
@@ -510,10 +511,10 @@ end subroutine sum_energy_generation
 ! summed in sum_energy_generation. (2026-10: the per-amu rate
 ! copies and branchings this routine also produced, once relayed to
 ! kemcom and later stored per shell, had no reader and are gone.)
-subroutine chain_energy_shares
+subroutine store_chain_energies
 ! THE SUMMATION OF THE ENERGIES IS GIVEN IN TABLE 21 OF NEUTRINO
 !  ASTROPHYSICS. EACH NETWORK-TABLE ROW IS COUNTED UNDER ITS CHAIN
-!  (reaction_energies). EPP1 ALSO INCLUDES THE ENERGY OF THE H2 + P
+!  (compute_reaction_energies). EPP1 ALSO INCLUDES THE ENERGY OF THE H2 + P
 !  REACTION (DEUTERIUM IS BURNED OUTSIDE THE TABLE). EPP2 AND EPP3 ARE THE
 !  ELECTRON- AND PROTON-CAPTURE BRANCHES OF BE7 (EACH WITH ITS SHARE OF
 !  THE 1.586 MEV HE3 + HE4 RELEASE). THE ORIGINAL YALE SUBROUTINE
@@ -527,9 +528,9 @@ subroutine chain_energy_shares
       e%triple_alpha_energy_gen = chain_energy(chain_triple_alpha)
 ! ENERGY FROM ALPHA CAPTURE REACTIONS.
       e%eps_alpha_capture = chain_energy(chain_alpha_capture)
-end subroutine chain_energy_shares
+end subroutine store_chain_energies
 
-subroutine solar_neutrino_fluxes
+subroutine compute_solar_neutrino_fluxes
       use math_lib
 ! the solar neutrino fluxes and the Be7 abundance (net_settings%calc_neutrinos)
       if (net_settings%calc_neutrinos) then
@@ -561,7 +562,7 @@ subroutine solar_neutrino_fluxes
               (1.0d0 + 20.d0*t9)*eg(r_pp)
          e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(xs_pep)/fourpiau2
 ! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
-! hep: the screened rate factor from nuclear_reaction_rates
+! hep: the screened rate factor from compute_reaction_rates
          e%neutrino_flux(i_nu_hep) = nr%hep
          e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*hydrogen_fraction*he3_fraction/ &
               fourpiau2
@@ -601,9 +602,9 @@ subroutine solar_neutrino_fluxes
 ! MHP 9/91 ENDIF INSERTED HERE.
          end if
       end if
-end subroutine solar_neutrino_fluxes
+end subroutine compute_solar_neutrino_fluxes
 
-subroutine thermal_neutrino_loss
+subroutine add_thermal_neutrino_loss
       use math_lib
 ! the thermal neutrino losses above nuclear_logT_cutoffs(5), with their
 ! absolute derivatives, added to eps
@@ -628,8 +629,8 @@ subroutine thermal_neutrino_loss
 
 
       if (net_settings%use_itoh_neutrino_loss) then
-! ITOH ET AL. (1996) LOSSES (neutrino/neutrino_losses_for_mixture/sneut IN net_lib).
-          call thermal_neutrino_losses(neutrino_temp,neutrino_density,hydrogen_fraction, &
+! ITOH ET AL. (1996) LOSSES (neutrino/compute_mixture_neutrino_losses/sneut IN net_lib).
+          call compute_thermal_neutrino_losses(neutrino_temp,neutrino_density,hydrogen_fraction, &
                helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
                neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
           e%eps_neutrino_loss = -neutrino_loss_snu
@@ -697,8 +698,8 @@ subroutine thermal_neutrino_loss
          e%deps_dlnrho = e%deps_dlnrho - qednx
       end if
 
-end subroutine thermal_neutrino_loss
+end subroutine add_thermal_neutrino_loss
 
-end subroutine nuclear_energy
+end subroutine compute_nuclear_energy
 
-end module nuclear_energy_lib
+end module nuclear_energy

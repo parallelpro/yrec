@@ -413,7 +413,7 @@ Each phase leaves the code working and producing science. Every phase also does 
 
 ### Phase 1: network
 
-- **Status (2026-10, branch `yrec-next`):** the reaction table and its generic implicit solver, the single rate evaluation behind composition and energy, the exact Jacobian terms with a finite-difference test, and five rate fixes are in (ROADMAP section 13). Each table row also carries its Q-value and chain, and the energy generation is summed from the table; the rate formulas are still in `nuclear_reaction_rates` rather than per-row procedures. Deuterium, the light elements and the equilibrium burn stay special operators for now; the species count moves to Phase 5.
+- **Status (2026-10, branch `yrec-next`):** the reaction table and its generic implicit solver, the single rate evaluation behind composition and energy, the exact Jacobian terms with a finite-difference test, and five rate fixes are in (ROADMAP section 13). Each table row also carries its Q-value and chain, and the energy generation is summed from the table; the rate formulas are still in `compute_reaction_rates` rather than per-row procedures. Deuterium, the light elements and the equilibrium burn stay special operators for now; the species count moves to Phase 5.
 - **Work:**
   - species table and reaction table;
   - `rates` returns derivatives, and `engeb` consumes it, one deliberate reseed (the d(p,g) pair was already merged in Phase 0);
@@ -498,7 +498,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `engeb` | `net/nuclear_energy.f90` (`nuclear_energy`), adapter `compute_zone_energy` in `core/burn_step.f90` |
 | `deutrate`, `dburn`, `dburnm` | `net/light_elements.f90` (`deuterium_rate`, `burn_deuterium_region`) |
 | `liburn`, `lirate88` | `core/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
-| `nrate` (rates) | `net/net_lib.f90` (`network_rate_vector`, `nuclear_reaction_rates`) |
+| `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
 | `mix` | `core/composition_step.f90` (`composition_step`) |
 | `convec` | `mixing/find_convection_zones.f90` |
 | `oversh` | `mixing/overshoot_boundaries.f90` |

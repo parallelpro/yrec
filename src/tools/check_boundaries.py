@@ -76,20 +76,15 @@ PUBLIC = {
             # layer's envelope integrator (core/envint_lib) since the
             # atm split -- clean physics services
             "surfp", "kcsurfp", "alsurfp"},
-    # Every net_lib module procedure is public by construction.
-    # implicit_burn_step is network_lib's one entry: the table-driven
-    # implicit burning step (2026-10, replaced kemcom's equations).
-    # nuclear_reaction_rates is the one rate evaluation behind rates and
-    # burn_step's compute_zone_energy (2026-10, replaced their two copies).
-    # nuclear_energy is the side-effect-free energy generation behind
-    # burn_step's compute_zone_energy adapter; deuterium_proton_capture_rate the shared d(p,g) rate (2026-10).
-    "net": {"thermal_neutrino_losses", "neutrino_losses_for_mixture", "azbar", "sneut",
-                "network_rate_vector",
-                "implicit_burn_step", "nuclear_reaction_rates",
-                "nuclear_energy", "deuterium_proton_capture_rate", "deuterium_rate", "li_be_rates",
-                "net_setup",
-                "equilibrium_burn_rates", "burn_deuterium_region",
-                "ifermi12", "zfermim12"},
+    # net/'s public procedures: what net_lib re-exports (2026-10 names;
+    # Timmes' sneut/azbar/ifermi12/zfermim12 keep theirs).
+    "net": {"compute_thermal_neutrino_losses", "compute_mixture_neutrino_losses",
+            "azbar", "sneut", "ifermi12", "zfermim12",
+            "compute_reaction_rates", "compute_network_rates",
+            "deuterium_proton_capture_rate", "set_net_settings",
+            "burn_implicitly", "compute_equilibrium_burn_rates",
+            "compute_nuclear_energy",
+            "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},
     # mixing has no facade module; these are its de-facto public
     # surface. (Its orchestrator, mix, moved to core as
     # composition_step in 2026-10: it drives burning as well as mixing.)
@@ -196,6 +191,30 @@ def check_star_free(src_root):
     return problems
 
 
+# Domains whose modules only their facade may expose (src/GUIDELINES.md,
+# naming rule 2): outside the domain's directory, `use` may name only
+# <domain>_lib. Add a domain once its users go through its facade.
+FACADE_ONLY_DOMAINS = ["net"]
+
+def check_facade_imports(src_root):
+    problems = []
+    use_re = re.compile(r"(?im)^\s*use\s+(\w+)")
+    mod_re = re.compile(r"(?im)^\s*module\s+(?!procedure)(\w+)")
+    for d in FACADE_ONLY_DOMAINS:
+        internal = set()
+        for f in (src_root / d).rglob("*.f90"):
+            internal |= {m.lower() for m in mod_re.findall(f.read_text(errors="replace"))}
+        internal.discard(f"{d}_lib")
+        for f in sorted(src_root.rglob("*.f90")):
+            rel = f.relative_to(src_root).as_posix()
+            if rel.startswith(d + "/"):
+                continue
+            for m in use_re.findall(strip_comments(f.read_text(errors="replace"))):
+                if m.lower() in internal:
+                    problems.append(f"{rel}: uses {m}, internal to {d}/ (use {d}_lib)")
+    return problems
+
+
 def check_math_lib(src_root):
     """Reproducibility contract (2026): every file calling an elementary
     transcendental must `use math_lib` (so USE_CRMATH builds shadow the
@@ -296,6 +315,13 @@ def main():
     if free_problems:
         print("STAR-FREE CONTRACT VIOLATIONS:")
         for b in free_problems:
+            print("  " + b)
+        return 1
+
+    facade_problems = check_facade_imports(SRC)
+    if facade_problems:
+        print("FACADE CONTRACT VIOLATIONS:")
+        for b in facade_problems:
             print("  " + b)
         return 1
 

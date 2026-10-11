@@ -239,7 +239,7 @@ module star_info_lib
 ! recomputed by setup/map_user_inputs.f90 from the s0_* namelist inputs after
 ! every controls read (never namelist values themselves), and
 ! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
-! apply_monte_carlo_parameters. Consumed by net_lib's network_rate_vector and
+! apply_monte_carlo_parameters. Consumed by net_lib's compute_network_rates and
 ! burn_lib's compute_zone_energy.
             double precision :: cross_section_scale(17), qs0e_scale(8), &
                  qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale

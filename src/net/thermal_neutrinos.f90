@@ -1,23 +1,23 @@
 !----------------------------------------------------------------------
-! thermal_neutrino_lib
+! thermal_neutrinos
 !----------------------------------------------------------------------
 ! Thermal neutrino energy losses (pair, photo, plasma, bremsstrahlung
 ! and recombination) from the fits of Itoh et al. (1996, ApJS 102, 411)
 ! as coded by F. X. Timmes, adapted for YREC by G. Newsham (2006). The
 ! Timmes routines keep their public names (sneut, azbar, ifermi12,
 ! zfermim12) for comparison with his codes and MESA; YREC's two
-! wrappers are thermal_neutrino_losses (formerly neutrino) and
-! neutrino_losses_for_mixture (formerly nulosses). Moved out of net_lib
+! wrappers are compute_thermal_neutrino_losses (formerly neutrino) and
+! compute_mixture_neutrino_losses (formerly nulosses). Moved out of net_lib
 ! 2026-10, bodies unchanged; net_lib re-exports this module.
-module thermal_neutrino_lib
+module thermal_neutrinos
       implicit none
       integer, parameter, public :: nu_ionmax = 4
-      public :: thermal_neutrino_losses, neutrino_losses_for_mixture, &
+      public :: compute_thermal_neutrino_losses, compute_mixture_neutrino_losses, &
            azbar, sneut, ifermi12, zfermim12
 contains
 
 !----------------------------------------------------------------------
-! thermal_neutrino_losses (formerly neutrino)
+! compute_thermal_neutrino_losses (formerly neutrino)
 !----------------------------------------------------------------------
 ! Modernized (free-form) 2026 as part of the YREC readability refactor.
 ! Logic and numerics are unchanged from the original neutrino.f; only
@@ -28,10 +28,10 @@ contains
 ! Added by Grant Newsham 9/06.
 !
 ! Sets up the (currently 4-species: H, He, C, O) composition arrays
-! expected by neutrino_losses_for_mixture/sneut and calls through to them. Returns the
+! expected by compute_mixture_neutrino_losses/sneut and calls through to them. Returns the
 ! neutrino energy-loss rate (snu) and its derivatives with respect to
 ! temperature and density (dsnudt, dsnudd).
-subroutine thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
+subroutine compute_thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
       implicit none
 
       double precision, intent(in) :: temp, den, x, y, zc, zo
@@ -66,14 +66,14 @@ subroutine thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
       xmass(3) = zc
       xmass(4) = zo
 
-      call neutrino_losses_for_mixture(temp,den,snu,xmass,ymass,aion,zion,dsnudt,dsnudd)
+      call compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion,dsnudt,dsnudd)
 
       return
-end subroutine thermal_neutrino_losses
+end subroutine compute_thermal_neutrino_losses
 
 
 !----------------------------------------------------------------------
-! neutrino_losses_for_mixture (formerly nulosses)
+! compute_mixture_neutrino_losses (formerly nulosses)
 !----------------------------------------------------------------------
 ! Modernized (free-form) 2026 as part of the YREC readability refactor.
 ! Logic and numerics are unchanged from the original nulosses.f; only
@@ -91,7 +91,7 @@ end subroutine thermal_neutrino_losses
 ! This is applicable for helium but will need to be amended for
 ! carbon and oxygen white dwarfs and cores of AGB stars.
 
-subroutine neutrino_losses_for_mixture(temp,den,snu,xmass,ymass,aion,zion, &
+subroutine compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion, &
                      dsnudt,dsnudd)
 
       implicit none
@@ -116,7 +116,7 @@ subroutine neutrino_losses_for_mixture(temp,den,snu,xmass,ymass,aion,zion, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
 
       return
-end subroutine neutrino_losses_for_mixture
+end subroutine compute_mixture_neutrino_losses
 
 
 
@@ -1675,4 +1675,4 @@ double precision function zfermim12(degeneracy_parameter)
       return
 end function zfermim12
 
-end module thermal_neutrino_lib
+end module thermal_neutrinos

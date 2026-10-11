@@ -4,19 +4,18 @@
 ! The star-layer side of nuclear burning (2026-10 reorganization): the
 ! code that reads the model, calls the net/ physics, and stores the
 ! results in star. The physics itself lives in net/: the rates
-! (net_lib's nuclear_reaction_rates), the energy generation
-! (nuclear_energy_lib), the network and its implicit and equilibrium
-! burns (network_lib), and the light elements (light_element_lib).
+! (net_lib's compute_reaction_rates), the energy generation
+! (nuclear_energy), the network and its implicit and equilibrium
+! burns (network), and the light elements (light_elements).
 ! Here: compute_zone_energy, which fills in the two energy inputs that
 ! depend on the shell's place in the model; store_li_be_rates, which
 ! stores the Li/Be rates per shell; burn_li_be/burn_li_be_midpoint,
 ! the Li/Be depletion over a step, with the convection-zone base
 ! location (overshoot included) and the CZ averaging they need.
 module burn_step
+! net/'s public interface (net_lib); its nuclear_energy_result is what
+! compute_zone_energy returns, and burn_step's users see it through here
       use net_lib
-! nuclear_energy_result (net/nuclear_energy.f90) is re-exported: it is
-! what compute_zone_energy returns.
-      use nuclear_energy_lib, only: nuclear_energy, nuclear_energy_result
       use convection_geometry, only: locate_surface_mixing_base
       implicit none
       private :: average_li_be_over_cz, store_li_be_rates
@@ -38,7 +37,7 @@ contains
 ! configure_network
 !----------------------------------------------------------------------
 ! Fills net/'s settings (net_lib's net_settings_t) from the run's
-! controls and rate factors, and installs them (net_setup). run_yrec
+! controls and rate factors, and installs them (set_net_settings). run_yrec
 ! calls it at the start of every run, after the Monte Carlo rate
 ! factors are applied; net/ reads no other configuration.
 !   star reads: c12_alpha_scale, cross_section_scale,
@@ -66,7 +65,7 @@ subroutine configure_network()
       settings%be9_palpha_rate_scale = star%ctrl%be9_palpha_rate_scale
       settings%calc_neutrinos = star%ctrl%calc_neutrinos
       settings%use_itoh_neutrino_loss = star%ctrl%use_itoh_neutrino_loss
-      call net_setup(settings)
+      call set_net_settings(settings)
 end subroutine configure_network
 
 !----------------------------------------------------------------------
@@ -79,7 +78,7 @@ end subroutine configure_network
 !   star writes: none
 function surface_accretion_now(mass) result(accretion)
       use star_info_lib, only: star, i_h2
-      use light_element_lib, only: surface_accretion
+      use net_lib, only: surface_accretion
       double precision, intent(in) :: mass
       type(surface_accretion) :: accretion
 
@@ -117,7 +116,7 @@ subroutine compute_zone_energy(log_density, log_temperature, &
       integer, intent(in) :: shell_index
       type(nuclear_energy_result), intent(out) :: e
 
-      call nuclear_energy(log_density, log_temperature, hydrogen_fraction, &
+      call compute_nuclear_energy(log_density, log_temperature, hydrogen_fraction, &
            helium_fraction, he3_fraction, c12_fraction, c13_fraction, &
            n14_fraction, o16_fraction, o18_fraction, deuterium_fraction, &
            shell_index.ge.star%jcz, star%convective_turnover_timescale, e)
@@ -207,7 +206,7 @@ end subroutine average_li_be_over_cz
 ! decays at its proton-capture rate, interpolated in log between the
 ! start- and end-of-step rates (store_start_li_be_rates,
 ! store_end_li_be_rates), with the closed-form survival of
-! light_element_lib (surviving_fraction; 2026-10 -- it replaced
+! light_elements (surviving_fraction; 2026-10 -- it replaced
 ! sub-stepping plus rational extrapolation to zero step, which converged
 ! on the same integral to 1e-6). In order:
 !   1. the base of the surface mixed region (CZ plus envelope overshoot)
@@ -231,7 +230,7 @@ end subroutine average_li_be_over_cz
 subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
-      use light_element_lib, only: surviving_fraction, accreted_survival, &
+      use net_lib, only: surviving_fraction, accreted_survival, &
            linear_in_time, linear_in_log
       use math_lib
       implicit none
@@ -601,7 +600,7 @@ end subroutine burn_li_be_midpoint
 ! start-of-step model) or end (use_current_model = 1: star%rate_*,
 ! from the arguments) of a timestep, for burn_li_be/burn_li_be_midpoint.
 !
-! Burning rates from Caughlin and Fowler (1988): net's li_be_rates
+! Burning rates from Caughlin and Fowler (1988): net's compute_li_be_rates
 ! (2026-10: the formulas moved there; this loop stores them).
 ! Callers: flag 2 at the start of the step (start-of-step model ->
 ! star%rate_*_start), flag 1 at the end (the model passed in ->
@@ -616,7 +615,7 @@ subroutine store_li_be_rates(composition, log_density, log_temperature, num_zone
       use star_info_lib, only: star, json, i_be9
       use phys_const_lib
       use math_lib
-      use light_element_lib, only: li_be_rates
+      use net_lib, only: compute_li_be_rates
       implicit none
 
       double precision, intent(in) :: composition(15,json)
@@ -638,7 +637,7 @@ subroutine store_li_be_rates(composition, log_density, log_temperature, num_zone
             rhox = exp(ln10*star%logRho_start(zone_idx))*star%xa_start(1,zone_idx)
             t9=exp(ln10*(star%logT_start(zone_idx)-9.0d0))
          endif
-         call li_be_rates(t9, fli6, fli7, fsbe9)
+         call compute_li_be_rates(t9, fli6, fli7, fsbe9)
          if(use_current_model.eq.1)then
             star%rate_li6(zone_idx) = fli6*rhox
             star%rate_li7(zone_idx) = fli7*rhox
@@ -693,9 +692,9 @@ end subroutine store_end_li_be_rates
 ! New abundances at the end of the timestep for one radiative shell
 ! (zone_begin = zone_end) or one convection zone (zone_begin < zone_end,
 ! homogenized), by an implicit burning step of the network in
-! net/network_lib.f90. This routine does only the model bookkeeping
+! net/network.f90. This routine does only the model bookkeeping
 ! around it; the reactions, the rate law and the Newton iteration live
-! in network_lib (2026-10: they replaced the hand-written 7-species
+! in network (2026-10: they replaced the hand-written 7-species
 ! equations and Jacobian that stood here).
 !
 !  log_temperature     run of log10 T; shells below
@@ -721,7 +720,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
 
       use star_info_lib, only: star, json, i_h1, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18, n_species_basic
-      use network_lib, only: implicit_burn_step, n_solved, n_network, &
+      use net_lib, only: burn_implicitly, n_solved, n_network, &
            s_h1, s_he3, s_he4
       use luout_lib
       implicit none
@@ -735,7 +734,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
 
-! star%xa slot of each network species (network_lib's s_* order)
+! star%xa slot of each network species (network's s_* order)
       integer, parameter :: xa_slot(n_network) = &
            [i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, i_o16, i_o18]
       double precision :: region_start(n_species_basic), rate_vec(num_rate_rows)
@@ -776,7 +775,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       x(1:n_solved) = composition(xa_slot(1:n_solved), guess_zone)
       x(n_solved+1:) = x_start(n_solved+1:)
 
-      call implicit_burn_step(x_start, rate_vec, timestep, &
+      call burn_implicitly(x_start, rate_vec, timestep, &
            star%ctrl%min_abundance, star%ctrl%absolute_tolerance, &
            star%ctrl%relative_tolerance, star%ctrl%max_burn_iterations, x, ierr)
       if (ierr /= 0) then
@@ -806,7 +805,7 @@ end subroutine burn_network_region
 !----------------------------------------------------------------------
 ! network_rates_of_model
 !----------------------------------------------------------------------
-! The composition rate vector (net_lib's network_rate_vector) of every
+! The composition rate vector (net_lib's compute_network_rates) of every
 ! shell of a model hotter than the nuclear cutoff; zero in the cooler
 ! shells. The model is in the arguments: compute_burn_rates passes the
 ! star's, mid_timestep_model a rotation sub-step's midpoint (rot_scr).
@@ -824,7 +823,7 @@ subroutine network_rates_of_model(log_density, log_temperature, &
       do zone_idx = 1, num_zones
 ! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-         call network_rate_vector(log_density(zone_idx), log_temperature(zone_idx), &
+         call compute_network_rates(log_density(zone_idx), log_temperature(zone_idx), &
               composition(:,zone_idx), rate_by_zone(:, zone_idx))
       end do
 ! ZERO THE RATES BELOW THE CUTOFF (zone_idx = num_zones+1 IF NO SHELL
@@ -839,7 +838,7 @@ end subroutine network_rates_of_model
 !----------------------------------------------------------------------
 ! The composition rate vector of every shell of the star above the
 ! nuclear cutoff (network_rates_of_model) and its deuterium burning rate
-! (light_element_lib's deuterium_rate, stored in
+! (light_elements's deuterium_rate, stored in
 ! star%deuterium_burning_rate and, with store_start_rates, _start).
 ! (2026-10: the rate vectors were also copied to
 ! rot_scr%reaction_rate_by_zone for rotmix, which now computes its own
@@ -851,7 +850,7 @@ end subroutine network_rates_of_model
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       use star_info_lib, only: star, json, i_h1, i_h2
-      use light_element_lib, only: deuterium_rate
+      use net_lib, only: deuterium_rate
 ! store_start_rates: also keep the deuterium rates as the start-of-step
 ! rates (star%deuterium_burning_rate_start; the composition step's
 ! predictor pass)
@@ -890,7 +889,7 @@ end subroutine compute_burn_rates
 ! burn_network
 !----------------------------------------------------------------------
 ! The implicit network burn over the step (burn_network_region, i.e.
-! network_lib's implicit_burn_step): shell by shell in the radiative
+! network's burn_implicitly): shell by shell in the radiative
 ! regions above the nuclear cutoff, and once per mixed region, which it
 ! also homogenizes.
 !   star reads: ctrl%nuclear_logT_cutoffs, dm, logT, mixed_zone_bounds
@@ -943,7 +942,7 @@ end subroutine burn_network
 !----------------------------------------------------------------------
 ! burn_equilibrium
 !----------------------------------------------------------------------
-! The explicit burn of iteration level 1 (network_lib's equilibrium_burn_rates, He3 and
+! The explicit burn of iteration level 1 (network's compute_equilibrium_burn_rates, He3 and
 ! the CN cycle in equilibrium): overwrites X, and under helium burning
 ! Z, C12 and O16, shell by shell in radiative regions and per mixed
 ! region.
@@ -954,7 +953,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep)
       use star_info_lib, only: star, json, max_radiative_zones, i_h1, &
            i_metals, i_c12, i_o16
-      use network_lib, only: equilibrium_burn_rates
+      use net_lib, only: compute_equilibrium_burn_rates
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
@@ -963,7 +962,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx, &
            zone_begin, zone_end, zone_idx
       double precision :: dc_dt, do_dt, dx_dt, dy_dt
-! region abundances returned by equilibrium_burn_rates
+! region abundances returned by compute_equilibrium_burn_rates
       double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
            o16_fraction
 
@@ -989,7 +988,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
                if (star%logT(inner_zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
-               call equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, &
+               call compute_equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, &
                     star%logT, zone_begin, zone_end, dc_dt, do_dt, &
                     dx_dt, dy_dt, c12_fraction, o16_fraction, &
                     hydrogen_fraction, metal_fraction)
@@ -1017,7 +1016,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
          do mixed_zone_idx = 1, num_mixed_zones
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
-            call equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, star%logT, &
+            call compute_equilibrium_burn_rates(rate_by_zone, star%xa_start, star%dm, star%logT, &
                  zone_begin, zone_end, dc_dt, do_dt, dx_dt, dy_dt, &
                  c12_fraction, o16_fraction, hydrogen_fraction, &
                  metal_fraction)
@@ -1046,7 +1045,7 @@ end subroutine burn_equilibrium
 !----------------------------------------------------------------------
 ! burn_deuterium
 !----------------------------------------------------------------------
-! Deuterium over the step (light_element_lib's burn_deuterium_region), shell by shell in
+! Deuterium over the step (light_elements's burn_deuterium_region), shell by shell in
 ! radiative regions above the nuclear cutoff and per mixed region.
 !   star reads: accreted_mass, ctrl%nuclear_logT_cutoffs,
 !     deuterium_burning_rate, deuterium_burning_rate_start, dm, logT,
@@ -1055,7 +1054,7 @@ end subroutine burn_equilibrium
 subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, timestep)
       use star_info_lib, only: star, max_radiative_zones
-      use light_element_lib, only: burn_deuterium_region, min_deuterium_step
+      use net_lib, only: burn_deuterium_region, min_deuterium_step
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
 ! timestep: s

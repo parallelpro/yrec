@@ -1,21 +1,21 @@
 !----------------------------------------------------------------------
-! light_element_lib
+! light_elements
 !----------------------------------------------------------------------
 ! The light elements, operator-split from the implicit network
 ! (2026-10: moved here from core/burn_lib with the model state as
 ! arguments). Deuterium: deuterium_rate, the per-shell rate with the
 ! convective-overturn cap; dburn, the exponential sub-stepped burn over
 ! a step (burn_deuterium_region, for the main step and the rotation
-! sub-steps). Li6/Li7/Be9: li_be_rates, the
+! sub-steps). Li6/Li7/Be9: compute_li_be_rates, the
 ! proton-capture rates (the star-layer store_li_be_rates/burn_li_be store and
-! integrate them). Their configuration is net_lib's net_settings; the
+! integrate them). Their configuration is reaction_rates' net_settings; the
 ! accreted gas comes in as an argument (surface_accretion).
-module light_element_lib
-      use net_lib, only: deuterium_proton_capture_rate, avogadro_dpg, &
+module light_elements
+      use reaction_rates, only: deuterium_proton_capture_rate, avogadro_dpg, &
            deuteron_mass_amu, net_settings
       implicit none
       private
-      public :: deuterium_rate, burn_deuterium_region, li_be_rates, &
+      public :: deuterium_rate, burn_deuterium_region, compute_li_be_rates, &
            burn_exposure, surviving_fraction, accreted_survival, &
            linear_in_time, linear_in_log, &
            min_deuterium_step, min_deuterium_substep
@@ -349,14 +349,14 @@ end subroutine burn_deuterium_region
 
 
 !----------------------------------------------------------------------
-! li_be_rates
+! compute_li_be_rates
 !----------------------------------------------------------------------
 ! The Li6, Li7 and Be9 proton-capture rates at T9, per unit rho*X
 ! (Caughlan & Fowler 1988; no screening, no energy release), scaled by
 ! the deck's ctrl%li6/li7/be9_*_rate_scale: Li6(p,He3)He4, Li7(p,a)He4,
 ! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
 ! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
-subroutine li_be_rates(t9, fli6, fli7, fsbe9)
+subroutine compute_li_be_rates(t9, fli6, fli7, fsbe9)
       use phys_const_lib
       use math_lib
       double precision, intent(in) :: t9
@@ -421,6 +421,6 @@ subroutine li_be_rates(t9, fli6, fli7, fsbe9)
 ! G Somers END
 ! SUM RATES
          fsbe9 = fbe91 + fbe92 + fbe93
-end subroutine li_be_rates
+end subroutine compute_li_be_rates
 
-end module light_element_lib
+end module light_elements
