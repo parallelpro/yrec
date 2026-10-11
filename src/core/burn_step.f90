@@ -804,14 +804,46 @@ end subroutine burn_network_region
 ! =================================================================
 
 !----------------------------------------------------------------------
+! network_rates_of_model
+!----------------------------------------------------------------------
+! The composition rate vector (net_lib's network_rate_vector) of every
+! shell of a model hotter than the nuclear cutoff; zero in the cooler
+! shells. The model is in the arguments: compute_burn_rates passes the
+! star's, mid_timestep_model a rotation sub-step's midpoint (rot_scr).
+!   star reads: ctrl%nuclear_logT_cutoffs
+!   star writes: none
+subroutine network_rates_of_model(log_density, log_temperature, &
+     composition, num_zones, rate_by_zone)
+      use star_info_lib, only: star, json
+      double precision, intent(in) :: log_density(json), &
+           log_temperature(json), composition(15,json)
+      integer, intent(in) :: num_zones
+      double precision, intent(out) :: rate_by_zone(num_rate_rows, json)
+      integer :: zone_idx, clear_idx
+
+      do zone_idx = 1, num_zones
+! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
+         if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
+         call network_rate_vector(log_density(zone_idx), log_temperature(zone_idx), &
+              composition(:,zone_idx), rate_by_zone(:, zone_idx))
+      end do
+! ZERO THE RATES BELOW THE CUTOFF (zone_idx = num_zones+1 IF NO SHELL
+! WAS COLD).
+      do clear_idx = zone_idx, num_zones
+         rate_by_zone(:, clear_idx) = 0.0d0
+      end do
+end subroutine network_rates_of_model
+
+!----------------------------------------------------------------------
 ! compute_burn_rates
 !----------------------------------------------------------------------
-! The composition rate vector of every shell above the nuclear cutoff
-! (net_lib's network_rate_vector; zero in the cooler shells) and its
-! deuterium burning rate (light_element_lib's deuterium_rate, stored in
-! star%deuterium_burning_rate and, with store_start_rates, _start). The
-! rates are also kept in rot_scr%reaction_rate_by_zone for rotmix and
-! rezone.
+! The composition rate vector of every shell of the star above the
+! nuclear cutoff (network_rates_of_model) and its deuterium burning rate
+! (light_element_lib's deuterium_rate, stored in
+! star%deuterium_burning_rate and, with store_start_rates, _start).
+! (2026-10: the rate vectors were also copied to
+! rot_scr%reaction_rate_by_zone for rotmix, which now computes its own
+! on the sub-step's midpoint model.)
 !   star reads: convective_turnover_timescale,
 !     ctrl%accreted_composition, ctrl%mass_accretion_rate,
 !     ctrl%nuclear_logT_cutoffs, jcz, job%use_mass_accretion, logRho,
@@ -819,7 +851,6 @@ end subroutine burn_network_region
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       use star_info_lib, only: star, json, i_h1, i_h2
-      use rotation_scratch_lib
       use light_element_lib, only: deuterium_rate
 ! store_start_rates: also keep the deuterium rates as the start-of-step
 ! rates (star%deuterium_burning_rate_start; the composition step's
@@ -829,7 +860,9 @@ subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       double precision :: deuterium_test
       integer :: zone_idx, clear_idx
 
-! FIND BURNING RATES (HR1- HR13,HF1,HF2).
+      call network_rates_of_model(star%logRho, star%logT, star%xa, star%nz, &
+           rate_by_zone)
+! MHP 5/02 THE DEUTERIUM BURNING RATES
       if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(star%xa(i_h2,star%nz), &
               star%ctrl%accreted_composition(12))
@@ -837,12 +870,7 @@ subroutine compute_burn_rates(store_start_rates, rate_by_zone)
          deuterium_test = star%xa(i_h2,star%nz)
       end if
       do zone_idx = 1, star%nz
-! EXIT LOOP ONCE T DROPS BELOW NUCLEAR REACTION T CUTOFF
          if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-! SETUP NUCLEAR ENERGY TERMS
-         call network_rate_vector(star%logRho(zone_idx), star%logT(zone_idx), &
-              star%xa(:,zone_idx), rate_by_zone(:, zone_idx))
-! MHP 5/02 COMPUTE RATE FOR DEUTERIUM BURNING
          if (deuterium_test.gt.1.0d-11) then
             star%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  star%logRho(zone_idx), star%logT(zone_idx), star%xa(i_h1,zone_idx), &
@@ -853,16 +881,8 @@ subroutine compute_burn_rates(store_start_rates, rate_by_zone)
             star%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
       end do
-! ZERO THE RATES BELOW THE CUTOFF (zone_idx = nz+1 IF NO SHELL WAS COLD).
       do clear_idx = zone_idx, star%nz
-         rate_by_zone(:, clear_idx) = 0.0d0
-! MHP 5/02 ZERO OUT DEUTERIUM BURNING RATE
          star%deuterium_burning_rate(clear_idx) = 0.0d0
-      end do
-! keep the rates for rotmix/rezone (columns 1..nz; the rows are the
-! same rr_* layout, so each column is copied whole).
-      do zone_idx = 1, star%nz
-         rot_scr%reaction_rate_by_zone(:,zone_idx) = rate_by_zone(:,zone_idx)
       end do
 end subroutine compute_burn_rates
 

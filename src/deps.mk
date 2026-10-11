@@ -266,7 +266,7 @@ mixing/compute_scale_height.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_
 mixing/find_convection_zones.o: luout_lib.mod star_info_lib.mod
 mixing/homogenize_convection_zones.o: star_info_lib.mod
 mixing/overshoot_boundaries.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-mixing/rotmix.o: burn_step.mod luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+mixing/rotmix.o: burn_step.mod luout_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
 net/light_elements.o: math_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
@@ -324,7 +324,7 @@ rotation/viscos.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
 setup/locate_shell_boundaries.o: controls_lib.mod star_info_lib.mod
 setup/map_user_inputs.o: controls_lib.mod net_lib.mod star_info_lib.mod
 setup/rescale_model.o: eos_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod net_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
+setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
 setup/rotation_stability_setup.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 setup/setup_solar_calibration.o: controls_lib.mod star_info_lib.mod
 setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod

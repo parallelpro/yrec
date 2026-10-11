@@ -76,6 +76,7 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
       integer :: num_species, species_begin, species_end, num_substeps
       integer :: zone_idx, species_idx, extrap_idx, substep_idx, num_steps
       double precision :: substep_dt
+      double precision :: rate_by_zone(num_rate_rows, json)
       logical :: converged
 
       integer, intent(out) :: ierr
@@ -123,8 +124,10 @@ subroutine burn_settle_mix(diffusion_coeff, timestep, composition, log_density, 
          substep_dt = timestep/dfloat(num_steps)
          do substep_idx = 1, num_steps
 ! PERFORM NUCLEAR BURNING
+            call network_rates_of_model(log_density, log_temperature, &
+                 composition, num_zones, rate_by_zone)
             call rotmix(substep_dt, composition, shell_mass, &
-                 log_temperature, num_zones, radiative_zone_bounds, &
+                 log_temperature, rate_by_zone, num_zones, radiative_zone_bounds, &
                  mixed_zone_bounds, num_radiative_zones, num_zones_mixed, &
                  log_total_mass, log_density, log_mass, log_radius, &
                  log_pressure, convective_flag, enclosed_mass, ierr)

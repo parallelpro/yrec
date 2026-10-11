@@ -1059,4 +1059,14 @@ left for a decision (physics changes):
   and the start-of-step CZ rate average uses that integer zone index (the
   end-of-step one is interpolated within its zone by cz_base_frac).
   Interpolating the start depth the same way would remove most of it.
+- **rotmix burns on the rotation sub-step's own rates -- DONE.** The
+  network burn in each rotation sub-step (mid_timestep_model -> rotmix)
+  took its rates from rot_scr%reaction_rate_by_zone, a copy the last
+  composition step left: the rates of the end-of-step structure from the
+  previous iterate. Deuterium and Li/Be in the same sub-step already used
+  the midpoint model; the network now does too (network_rates_of_model,
+  passed to rotmix as an argument). The relay is gone, with rezone's
+  regridding of it, which covered 7 of its 15 rows. Measured on
+  GS_rot (the only shipped case with rotational mixing): |dlog L| 8.5e-5,
+  |dlog Teff| 6e-6, |dX_c| 2.2e-4 (X_c lower), surface Li7 +1e-4 dex.
 

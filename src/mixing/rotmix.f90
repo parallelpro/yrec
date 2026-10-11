@@ -12,12 +12,13 @@
 ! Then (if diffuse_helium_active) performs gravitational settling of
 ! helium (Bahcall & Loeb method), and finally renormalizes the
 ! composition to guard against small negative/overflowing abundances.
-! The reaction rates are taken from rot_scr%reaction_rate_by_zone, filled
-! by composition_step earlier in the timestep (columns 1..num_zones) and passed
-! to burn_network_region as is (2026 W3 -- it used to be unpacked into
-! twelve per-row local arrays first).
+! rate_by_zone holds the composition rate vectors of the model being
+! burned (network_rates_of_model: mid_timestep_model passes the rotation
+! sub-step's midpoint). (2026-10: they used to come from
+! rot_scr%reaction_rate_by_zone, the rates of the last composition step,
+! i.e. of the end-of-step structure.)
 subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
-     num_zones, radiative_zone_bounds, convective_zone_bounds, &
+     rate_by_zone, num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
@@ -29,11 +30,13 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use phys_const_lib
       use math_lib
       use burn_step, only: burn_network_region
+      use net_lib, only: num_rate_rows
       implicit none
 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: shell_mass(json), log_temperature(json)
+      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
       integer, intent(in) :: num_zones
       integer, intent(in) :: radiative_zone_bounds(13,2), &
            convective_zone_bounds(12,2)
@@ -80,7 +83,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             burn_zone_start = zone_idx
             burn_zone_end = zone_idx
             call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
-                 rot_scr%reaction_rate_by_zone,shell_mass,composition, &
+                 rate_by_zone,shell_mass,composition, &
                  timestep, ierr)
             if (ierr /= 0) return
          end do
@@ -93,7 +96,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          burn_zone_start = convective_zone_bounds(region_idx,1)
          burn_zone_end = convective_zone_bounds(region_idx,2)
          call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
-              rot_scr%reaction_rate_by_zone,shell_mass,composition, &
+              rate_by_zone,shell_mass,composition, &
               timestep, ierr)
          if (ierr /= 0) return
       end do

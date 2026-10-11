@@ -58,6 +58,8 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       integer :: num_species_tracked
       integer :: i, j, k
       double precision :: step_fraction_ratio
+! the composition rate vectors of the midpoint model, for rotmix
+      double precision :: rate_by_zone(num_rate_rows, json)
       double precision :: total_epsilon
       integer :: burn_zone_begin, burn_zone_end
       integer :: solid_zone_start, solid_zone_end
@@ -142,8 +144,12 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
+! the network's rates on the midpoint model (2026-10; the end-of-step
+! structure's, from the last composition step, before)
+      call network_rates_of_model(rot_scr%log_density_mid, &
+           rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
       call rotmix(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
-           star%nz,radiative_zone_bounds,convective_zone_bounds, &
+           rate_by_zone, star%nz,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
            ,star%log_total_mass,rot_scr%log_density_mid,star%log_mass,rot_scr%log_radius_mid, &
            rot_scr%log_pressure_mid,rot_scr%am_transport_convective_flag_mid,star%m, ierr)

@@ -28,8 +28,6 @@ module rotation_scratch_lib
 ! against this capacity -- historical value, see the R2 report).
       integer, parameter, public :: band_nmax = 8000
 
-! rot_scr%reaction_rate_by_zone(15,json) rows: the rr_* indices of
-! net_lib (2026-10: moved there from here).
 
 ! ---- from state/rotdiff_lib.f90 ----
       type, public :: rotation_diffusion_state
@@ -38,8 +36,6 @@ module rotation_scratch_lib
            double precision :: bs_extrapolation_table(11,15,json), &
                 bs_extrapolated_composition(15,json), &
                 bs_extrapolation_increment(15,json)
-! former common/burn/
-           double precision :: reaction_rate_by_zone(15,json)
 ! former common/confac/ bl_* scales flattened to star% (2026:
 ! output observables, not scratch)
 ! former common/difad/

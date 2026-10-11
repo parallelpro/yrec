@@ -76,7 +76,8 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | Routine | Called from | What it does |
 |---|---|---|
 | `configure_network` | `run_yrec`, at the start of every run | Fills `net_settings` from `star%ctrl` and the rate factors (after the Monte Carlo factors are applied) and calls `net_setup`. |
-| `compute_burn_rates` | `composition_step` | Each shell's rate vector (`network_rate_vector`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass) and `rot_scr%reaction_rate_by_zone`. |
+| `network_rates_of_model` | `compute_burn_rates`, `mid_timestep_model` | The composition rate vector of every shell of the model passed in that is hotter than the nuclear cutoff; zero below. |
+| `compute_burn_rates` | `composition_step` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
 | `burn_network` | `composition_step` | `burn_network_region` per radiative shell and per mixed region. |
 | `burn_network_region` | `burn_network`, `mixing/rotmix` | Model bookkeeping around `implicit_burn_step`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
 | `burn_equilibrium` | `composition_step`, predictor pass | `equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
@@ -118,7 +119,8 @@ evolve_step
  converge_with_rotation
    level 4 (solve_level again)
    evolve_angular_momentum (rotating runs), per sub-step:
-     mid_timestep_model -> rotmix -> burn_network_region; burn_deuterium_region (the sub-step's accreted mass)
+     mid_timestep_model: network_rates_of_model (midpoint model) -> rotmix -> burn_network_region;
+                         burn_deuterium_region (the sub-step's accreted mass)
      store_end_li_be_rates (midpoint model), burn_li_be
  burn_light_elements                             non-rotating, or no rotational mixing
    store_end_li_be_rates (converged model), burn_li_be

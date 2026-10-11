@@ -18,8 +18,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
-      use net_lib, only: rr_pp, rr_he3_he3, rr_c12_p, &
-           rr_c13_p, rr_n14_p, rr_o16_p, rr_zero9
       use controls_lib, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
@@ -48,14 +46,6 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       logical :: flag_overflow_warned
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
-! reaction_rate_by_zone rows carried across the rezone. The rows are
-! reaction rates (rr_* in rotation_scratch_lib), not species: the
-! original loop regridded HCOMPM rows 1,2,4,5,6,7,9 as if they were the
-! H1/He4/He3/C12/C13/N14/O16 composition slots, so rows 3 (He3+He4),
-! 8 and 10-15 are NOT regridded (historical behaviour, kept).
-      integer, parameter :: reaction_rate_species_index(7) = &
-           [rr_pp, rr_he3_he3, rr_c12_p, rr_c13_p, rr_n14_p, rr_o16_p, &
-           rr_zero9]
       double precision :: z_new(json), x_new(json)
 ! MHP 6/00 added dummy vector
 ! MHP 7/02 added chi vector - a running total of the normalized
@@ -622,12 +612,6 @@ subroutine interpolate_onto_new_grid
 !  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
 !  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
          call regrid_in_place(star%xa_start(i,:))
-      end do
-!  reaction_rate_by_zone (originally HCOMPM) HOLDS THE PER-ZONE REACTION
-!  RATES FROM composition_step; rotmix.f90 READS THEM BACK IN ROTATING MODELS.
-!  ONLY THE ROWS LISTED IN reaction_rate_species_index ARE REGRIDDED.
-      do i = 1,size(reaction_rate_species_index)
-         call regrid_in_place(rot_scr%reaction_rate_by_zone(reaction_rate_species_index(i),:))
       end do
 ! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
 ! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
