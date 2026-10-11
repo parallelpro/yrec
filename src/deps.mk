@@ -248,9 +248,7 @@ eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod 
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
-io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
 io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod
-io/model_to_equal.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
 io/profile_output.o: output_columns.mod star_info_lib.mod stitched_model.mod
 io/read_controls.o: controls_buffer.mod controls_sync.mod eos_lib.mod integration_parameters.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod yrec_output.mod
@@ -294,6 +292,7 @@ rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod 
 rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod convection_lib.mod magnetic_braking.mod math_lib.mod mid_timestep_model.mod physical_constants.mod rotation_scratch_lib.mod secular_transport.mod star_info_lib.mod
 rotation/magnetic_braking.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/microdiff/bahcall_loeb_units.o: physical_constants.mod star_info_lib.mod
+rotation/microdiff/equal_to_model.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling.o: io_units.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/microdiff/gravitational_settling_setup.o: bahcall_loeb_units.mod io_units.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod species_table.mod star_info_lib.mod
 rotation/microdiff/implicit_diffusion_coeffs.o: star_info_lib.mod
@@ -305,6 +304,7 @@ rotation/microdiff/microdiff_etm.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_run.o: io_units.mod microdiff_coefficients.mod microdiff_mte.mod numerics_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 rotation/microdiff/microdiff_setup.o: bahcall_loeb_units.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
+rotation/microdiff/model_to_equal.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
 rotation/mid_timestep_model.o: burn_step.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/omega_from_j.o: star_info_lib.mod
