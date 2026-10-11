@@ -411,7 +411,7 @@ Each phase leaves the code working and producing science. Every phase also does 
 
 ### Phase 1: network
 
-- **Status (2026-10, branch `yrec-next`):** the reaction table and its generic implicit solver, the single rate evaluation behind composition and energy, the exact Jacobian terms with a finite-difference test, and five rate fixes are in (ROADMAP section 13). Each table row also carries its Q-value and chain, and the energy generation is summed from the table; the rate formulas are still in `compute_reaction_rates` rather than per-row procedures. Deuterium, the light elements and the equilibrium burn stay special operators for now; the species count moves to Phase 5.
+- **Status: complete (2026-10-11, branch `yrec-next`; ROADMAP section 13).** The reaction table and its generic implicit solver; the single rate evaluation behind composition and energy; the exact Jacobian terms with a finite-difference test; each row's Q-value, chain and rate (rate law, S-factor fit, scale slot, screening), so a reaction is added as one row; the equilibrium burn removed. net/ is star-free and reached only through net_lib. Rate laws are dispatched by an integer rather than a procedure pointer (the table stays a compile-time constant). Deuterium and the light elements stay special operators; the species count moves to Phase 5.
 - **Work:**
   - species table and reaction table;
   - `rates` returns derivatives, and `engeb` consumes it, one deliberate reseed (the d(p,g) pair was already merged in Phase 0);
