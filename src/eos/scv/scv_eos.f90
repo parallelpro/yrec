@@ -27,11 +27,12 @@ module scv_eos
            tlogx
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, kspline, ksplint
+      use io_units, only: run_log_unit
       use eos_mixture, only: eos_mix
       use math_lib
       implicit none
       private
-      public :: compute_scv_envelope_eos, build_scv_envelope_table
+      public :: compute_scv_envelope_eos, build_scv_envelope_table, read_scv_tables
 
 contains
 
@@ -1084,5 +1085,63 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       end do
 
 end subroutine build_scv_envelope_table
+
+!----------------------------------------------------------------------
+! read_scv_tables
+!----------------------------------------------------------------------
+! Reads the SCV tables (columns 1-11 of the pure-H and pure-He tables,
+! 1-13 of the pure-metal one, computed with the Prather EOS) into
+! tablex, tabley and tablez. The He and Z tables share the H table's
+! T grid (tlogx) and P(T) point counts (nptsx).
+subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path, &
+     ierr)
+      character(len=*), intent(in) :: scv_h_table_path, scv_he_table_path, &
+           scv_z_table_path
+      integer, intent(out) :: ierr
+      integer :: scv_h_unit, scv_he_unit, scv_z_unit
+      integer :: t_idx, p_idx, col_idx
+      real(dp) :: scvhe_dummy_val, scvz_dummy_val
+      integer :: scvhe_dummy_npts, scvz_dummy_npts
+
+      call open_scv_table(scv_h_table_path, scv_h_unit, ierr)
+      if (ierr /= 0) return
+      call open_scv_table(scv_he_table_path, scv_he_unit, ierr)
+      if (ierr /= 0) return
+      call open_scv_table(scv_z_table_path, scv_z_unit, ierr)
+      if (ierr /= 0) return
+!  READ IN EQUATION OF STATE TABLES FOR HYDROGEN AND HELIUM
+      do t_idx = 1, scv_nt
+         read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
+         read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
+         read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
+    1       format(f5.2,i4)
+! The He and Z tables share the H table's T grid and P(T) point
+! counts; their copies are read into dummies.
+         do p_idx = 1, nptsx(t_idx)
+            read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+            read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+    2          format(f6.2,1p2e13.5,0p,8f9.4)
+         end do
+!  READ IN METAL EQUATION OF STATE TABLE; COMPUTED USING THE PRATHER
+! EQUATION OF STATE IN THE OLD YALE CODE.
+         do p_idx = nptsx(t_idx),1,-1
+            read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+ 3             format(f6.2,12f9.4)
+         end do
+      end do
+      close(scv_h_unit)
+      close(scv_he_unit)
+      close(scv_z_unit)
+end subroutine read_scv_tables
+
+subroutine open_scv_table(path, table_unit, ierr)
+      character(len=*), intent(in) :: path
+      integer, intent(out) :: table_unit, ierr
+      open(newunit=table_unit, file=path, status='OLD', iostat=ierr)
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'eos_init: cannot open the SCV table ', trim(path)
+         ierr = 1
+      end if
+end subroutine open_scv_table
 
 end module scv_eos

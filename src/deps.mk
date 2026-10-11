@@ -205,16 +205,17 @@ core/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod
 core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 eos/blended_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod opal2001_eos.mod opal2006_eos.mod opal95_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod
-eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod mhd_eos.mod opal2006_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod scv_eos_tables.mod yale_eos_tables.mod
+eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod math_lib.mod mhd_eos.mod opal2006_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_mixture.o: composition_layout.mod physical_constants.mod
 eos/mhd/mhd_eos.o: eos_mixture.mod io_units.mod math_lib.mod mhd_eos_tables.mod numerics_lib.mod
 eos/opal/opal2001_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
 eos/opal/opal2006_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
 eos/opal/opal95_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
-eos/opal_eos_tables.o: math_lib.mod
-eos/scv/scv_eos.o: eos_mixture.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
+eos/opal_eos_tables.o: io_units.mod math_lib.mod
+eos/scv/scv_eos.o: eos_mixture.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
 eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod opal2006_eos.mod opal_eos_tables.mod star_info_lib.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
+eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
 io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
 io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod

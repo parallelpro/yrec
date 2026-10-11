@@ -42,10 +42,11 @@
 ! dimensions and member order exactly as they were laid out before.
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use io_units, only: run_log_unit
       use math_lib
       implicit none
       private
-      public :: find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
+      public :: open_opal_eos_table, find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
            i_opal01_cv, i_opal01_e, i_opal01_gamma1, i_opal01_gamma2_ratio, &
            i_opal01_gamma3m1, i_opal01_p, i_opal01_s, i_opal_chi_rho, &
            i_opal_chi_t, i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
@@ -638,5 +639,29 @@ real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
       end do
 
 end function gmass01
+
+!----------------------------------------------------------------------
+! open_opal_eos_table
+!----------------------------------------------------------------------
+! Opens the OPAL EOS table the settings select on a new unit
+! (opal_eos%table_unit), closing one left open by an earlier
+! eos_init. The vintage's reader reads it on first use.
+subroutine open_opal_eos_table(opal_eos_table_path, ierr)
+      character(len=*), intent(in) :: opal_eos_table_path
+      integer, intent(out) :: ierr
+      logical :: is_open
+
+      if (opal_eos%table_unit /= 0) then
+         inquire(unit=opal_eos%table_unit, opened=is_open)
+         if (is_open) close(opal_eos%table_unit)
+      end if
+      open(newunit=opal_eos%table_unit, file=opal_eos_table_path, status='OLD', &
+           iostat=ierr)
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'eos_init: cannot open the OPAL EOS table ', &
+              trim(opal_eos_table_path)
+         ierr = 1
+      end if
+end subroutine open_opal_eos_table
 
 end module opal_eos_tables

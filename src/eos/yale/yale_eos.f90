@@ -24,7 +24,7 @@ module yale_eos
       use math_lib
       implicit none
       private
-      public :: compute_saha_eos, compute_fully_ionized_eos
+      public :: compute_saha_eos, compute_fully_ionized_eos, read_fermi_table
 
 contains
 
@@ -802,5 +802,58 @@ subroutine compute_fully_ionized_eos(log10_temperature, temperature, log10_press
            cl2*yale%fermi_table_eta(id2) + cl3*yale%fermi_table_eta(id3)
 
 end subroutine compute_fully_ionized_eos
+
+!----------------------------------------------------------------------
+! read_fermi_table
+!----------------------------------------------------------------------
+! Reads the Fermi-Dirac integral table of the degenerate electron gas
+! (FERMI.TAB: 43 abscissas, 43 degeneracies, 860 cards of 5 values)
+! into yale, and bins the abscissas into fermi_table_x_lookup, the
+! interval index compute_fully_ionized_eos looks up. A non-increasing
+! abscissa is a corrupt table: ierr = 1.
+subroutine read_fermi_table(fermi_table_path, ierr)
+      character(len=*), intent(in) :: fermi_table_path
+      integer, intent(out) :: ierr
+      integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx
+      integer :: bin_start, bin_width, bin_end
+
+      ierr = 0
+      open(newunit=fermi_unit, file=fermi_table_path, form='FORMATTED', status='OLD', &
+           iostat=ierr)
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'eos_init: cannot open the Fermi-Dirac table ', &
+              trim(fermi_table_path)
+         ierr = 1
+         return
+      end if
+      read(fermi_unit,150)  (yale%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,150)  (yale%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,160) (grid_idx,iden_idx,(yale%fermi_table_data(col_idx,grid_idx,iden_idx), &
+           col_idx=1,5),card_idx=1,860)
+  150 format(8x,9f8.4)
+  160 format(2i5,5f12.7)
+      bin_start = 1
+      do grid_idx=1,41
+! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
+       if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
+!       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
+          write(run_log_unit,1000) grid_idx
+ 1000       format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
+           ' does not increase')
+          close(fermi_unit)
+          ierr = 1
+          return
+       endif
+       bin_width = int((yale%fermi_table_x_grid(grid_idx+1) - yale%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
+       bin_end = bin_start + bin_width - 1
+       if (grid_idx == 41)  bin_end = 261
+       do iden_idx=bin_start,bin_end
+          yale%fermi_table_x_lookup(iden_idx) = grid_idx
+       end do
+       bin_start = bin_end + 1
+      end do
+
+      close(fermi_unit)
+end subroutine read_fermi_table
 
 end module yale_eos
