@@ -508,8 +508,8 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `rotgrid` | `rotation/seculr/am_transport_grid.f90` |
 | `dcoeft`, `dadcoeft` | `rotation/seculr/am_diffusion_coeffs.f90`, `am_advection_diffusion_coeffs.f90` |
 | `checkj`, `checkc` | `rotation/seculr/check_angular_momentum.f90`, `check_composition.f90` |
-| `mwind`, `mcowind` | `wind/matt_wind.f90`, `wind/wind_spindown_matt.f90` |
-| `massloss` | `wind/massloss.f90` |
+| `mwind`, `wind`, `mcowind`, `cowind`, `amcalc` | `rotation/magnetic_braking.f90` (`brake_convection_zone` for mwind/wind, `compute_solid_body_braking` for mcowind/cowind) |
+| `massloss`, `mdot` | `core/mass_change.f90` (`change_mass`, `apply_mass_change`) |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
 | `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`, `read_mhd_tables`) |
 | `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three; `find_opal_edge_ramp` over `find_opal95_ramp` (`opal95_eos.f90`), `find_opal2001_ramp`, `find_opal2006_ramp`) |

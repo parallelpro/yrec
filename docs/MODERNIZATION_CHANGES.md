@@ -204,7 +204,9 @@ frequencies computed from them, but not the evolution itself.
 - **Now:** 234 free-form `.f90` files (54,387 lines), 55 modules, zero COMMON
   blocks, `implicit none` in every file, organized by domain
   (`atm`, `core`, `eos`, `io`, `kap`, `math`, `mixing`, `net`, `numerics`,
-  `rotation`, `setup`, `state`, `util`, `wind`) plus `defaults/` and `tools/`.
+  `rotation`, `setup`, `state`, `util`) plus `defaults/` and `tools/`; the
+  `wind` directory of the first reorganization was dissolved into
+  `rotation` and `core` in 2026-10.
 - **One derived type** `star` in `src/state/star_info_lib.f90`, with
   `star%job` (per-card state) and `star%ctrl` (controls, immutable after
   read). Named index constants for every species, energy channel, and
@@ -359,9 +361,11 @@ frequencies computed from them, but not the evolution itself.
 These are known defects or oddities kept on purpose so the regression pins
 stay valid. Each is annotated in the source.
 
-- `wind_spindown_matt.f90`: the centrifugal normalization uses a
-  never-assigned local `gl` (reads 0) where the sibling routines use `cgl`.
-  Sharpened by the sweep as a ~1.5e7 factor. Marked PRESERVED BUG.
+- `rotation/magnetic_braking.f90` (formerly `wind_spindown_matt.f90`): the
+  solid-body centrifugal normalization omits 1/G, where the
+  convection-zone form divides by it. The original divided by
+  exp(ln10*gl) with `gl` a never-assigned local (reads 0, so by exactly
+  1). Sharpened by the sweep as a ~1.5e7 factor.
 - `opal_eos_lib.f90`, `esac01/06`, `radsub01`, `rhoofp*`,
   `microdiff_coefficients.f90`: single-precision literals (`83.14511`, the
   OPAL x-grid, `0.5`, `2.2`) parsed as single then widened, kept verbatim.
@@ -414,7 +418,8 @@ to users:
   its `radsub` applies the unit revision to P and S but not E and cv.
 - **`eqstat`** ionization-cutoff blend adds raw Saha derivatives instead of
   the differenced form.
-- **`kawaler_wind` vs `wind_spindown`** disagree on the saturation gate.
+- **The Kawaler law's two forms** (`magnetic_braking`'s `set_kawaler_law`)
+  disagree on the saturation gate.
 - **Settling substep ceiling** in `mix` and `rotmix` has `mod` arguments
   reversed (divide by zero when `max_settling_dt` is an exact multiple).
 - **`setups.f90`:** Avogadro digit transposition 6.0222137e23, affecting only

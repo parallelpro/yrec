@@ -281,7 +281,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
  0. reload_model_if_diverged: if the last attempt
       diverged, stop the run (ierr = 1); no Δt cut   read_starting_model (starin)
  1. advance_composition_and_age (model being aged):
-      mass loss / accretion (flags step 7)           massloss -> mdot (wind/)
+      mass loss / accretion (flags step 7)           change_mass (massloss, mdot)
       save start-of-step composition -> star%xa_start
       COMPOSITION HALF-STEP (predictor pass)         advance_composition (mix)
         locate CZs (Schwarzschild), overshoot        find_convection_zones (convec)
@@ -312,7 +312,8 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
       level-4 structure pass                         solve_level (as in 3)
       re-homogenize convection zones                 homogenize_convection_zones (mixcz)
       AM evolution over sub-steps (rotation on)      evolve_angular_momentum (getw)
-        wind torque (Kawaler/PMM; disk locking)      matt_wind, wind_spindown_matt
+        wind torque (Kawaler/PMM; disk locking)      brake_convection_zone,
+                                                       compute_solid_body_braking
                                                        (mwind, mcowind)
         rotation law / solid body in CZs             enforce_rotation_profile (wczimp),
                                                        solid_body_omega (solid)
@@ -482,8 +483,8 @@ interpolated in both directions with edge-validity bookkeeping
   `check_composition` (`checkc`) validates and can force timestep cuts.
 - **Sub-stepping**: AM evolution (`evolve_angular_momentum` (`getw`)) runs
   on sub-timesteps (`dtdif` fraction of the diffusion time), with the wind
-  torque (`matt_wind`/`wind_spindown_matt` (`mwind`/`mcowind`), `wind/`)
-  applied per sub-step.
+  torque (`rotation/magnetic_braking.f90`: `brake_convection_zone`/
+  `compute_solid_body_braking` (`mwind`/`mcowind`)) applied per sub-step.
 
 ## 5. The numerics toolbox (`numerics/numerics_lib.f90`)
 

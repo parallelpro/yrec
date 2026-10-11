@@ -248,7 +248,7 @@ physics	pdisk	real	0.0*	disk_omega_rad_s	canonical		Disk co-rotation ANGULAR VEL
 physics	wmax	real	0.0*	wind_saturation_omega	canonical		
 physics	lsolid	logical	.false.*	force_solid_body_rotation	canonical		former common/sbrot/: force_solid_body_rotation/solid_body_mode_flag (originally lsolid/impjmod) are NAMELIST values with different canonical spellings, kept local in cor
 physics	impjmod	integer	0*	solid_body_mode_flag	canonical		
-physics	dmdt0	real	0.0*	mass_change	canonical	mesa: mass_change	former common/masschg/: mass-accretion/Reimers-wind parameters, all NAMELIST /physics/ values. use_mass_accretion can be flipped off mid-run by wind/mdot.f90 (if a circum
+physics	dmdt0	real	0.0*	mass_change	canonical	mesa: mass_change	former common/masschg/: mass-accretion/Reimers-wind parameters, all NAMELIST /physics/ values. use_mass_accretion can be flipped off mid-run by core/mass_change (if a circum
 physics	fczdmdt	real	0.0*	accretion_cz_fraction	verified		mdot: accreted-mass fraction deposited in the CZ
 physics	ftotdmdt	real	0.0*	accretion_total_fraction	verified		mdot: total accreted-mass fraction parameter
 physics	compacc	real(15)	0.0*	accreted_composition	canonical		

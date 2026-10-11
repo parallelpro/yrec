@@ -25,7 +25,7 @@ import collections
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
-DOMAINS = ["eos", "kap", "atm", "net", "wind", "mixing",
+DOMAINS = ["eos", "kap", "atm", "net", "mixing",
            "rotation", "numerics"]
 
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
@@ -106,7 +106,6 @@ PUBLIC = {
                  "microdiff", "diffuse_composition_driver",
                  "diffuse_composition", "composition_grid",
                  "equipotential_integrand", "solid_body_omega"},
-    "wind": {"massloss", "matt_wind", "wind_spindown_matt"},
     # numerics is the shared numerics library: all-public by design.
     "numerics": None,
 }

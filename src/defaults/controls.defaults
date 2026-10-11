@@ -485,7 +485,7 @@
       ! (legacy name: impjmod)
       solid_body_mode_flag = 0   ! (implicit)
 
-      ! former common/masschg/: mass-accretion/Reimers-wind parameters, all NAMELIST /physics/ values. use_mass_accretion can be flipped off mid-run by wind/mdot.f90 (if a circum
+      ! former common/masschg/: mass-accretion/Reimers-wind parameters, all NAMELIST /physics/ values. use_mass_accretion can be flipped off mid-run by core/mass_change (if a circum
       ! (legacy name: dmdt0)
       mass_change = 0.0   ! (implicit)
 

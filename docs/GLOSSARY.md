@@ -143,8 +143,8 @@ below record their real units, and renames follow as code is touched.
 | log₁₀ ρ | dex (g cm⁻³) | `star%logRho` | `HD` → `log_density` | core/henyey_coefficients.f90 | Density returned by the EOS at (P, T). |
 | L | L☉ (linear) | `star%luminosity_lsun` | `HL` | core/henyey_iteration.f90 | Luminosity through the point. |
 | — | logical | `star%convective_flag` | `LC` | core/henyey_coefficients.f90, core/shell_physics.f90 | Point is convective according to `temperature_gradients`. |
-| log₁₀ M | dex (g) | `star%log_total_mass`, `star%stotal` | `HSTOT`, `STOTAL` | core/read_starting_model.f90:312, wind/mdot.f90:249-250 | Total stellar mass. Two copies, kept equal by hand (trap 17). |
-| M | M☉ | `star%star_mass` | `SMASS` → `total_mass_msun` | core/read_starting_model.f90 (model read), setup/rescale_model.f90, wind/mdot.f90:242 | Total stellar mass in solar units. |
+| log₁₀ M | dex (g) | `star%log_total_mass`, `star%stotal` | `HSTOT`, `STOTAL` | core/read_starting_model.f90:312, core/mass_change.f90:430-431 | Total stellar mass. Two copies, kept equal by hand (trap 17). |
+| M | M☉ | `star%star_mass` | `SMASS` → `total_mass_msun` | core/read_starting_model.f90 (model read), setup/rescale_model.f90, core/mass_change.f90:423 | Total stellar mass in solar units. |
 | log₁₀ L | dex (L☉) | `star%log_L` | `BL` → `log10_luminosity` | core/henyey_iteration.f90 | log₁₀ `luminosity_lsun(nz)`, the surface luminosity. |
 | log₁₀ T_eff | dex (K) | `star%log_Teff` | `TEFFL` → `log_teff` | core/henyey_iteration.f90 | Effective temperature, from `envelope_fit_coeffs(7:9)`. |
 | log₁₀(m_fit/M) | dex | `star%senv` | `SENV` | core/henyey_iteration.f90:86 | `log_mass(nz) − log_total_mass`: mass fraction inside the fitting point. |
@@ -252,7 +252,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/observables.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
 | X(⁷Be) | mass fraction | `burn%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); per zone core/neutrino_flux_table.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
 | r_D | per s | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
-| ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | wind/mdot.f90:272; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
+| ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | core/mass_change.f90:451; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
 | r_Li6, r_Li7, r_Be9 | s⁻¹ (N_A⟨σv⟩·ρX_H, taking A_H = 1) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/burn_step.f90 (`store_li_be_rates`) | Light-element burning rates at end and start of step; `burn_li_be` multiplies them by the step in seconds. |
 | — | — | `star%cross_section_scale(17)`; `qs0e_scale(8)`, `qqs0ee_scale(8)`, `o16_gamma_scale`, `c12_alpha_scale` | `SSTANDARD`; `QS0E`, `QQS0EE`, `FO16`, `FC12` (`/CROSS/`) | setup/map_user_inputs.f90, core/monte_carlo.f90 (`apply_monte_carlo_parameters`) | Multipliers on the S-factors (Monte-Carlo runs overwrite 1–3 and 16), their first- and second-derivative scales, and the ¹⁶O(α,γ)/¹²C(α,γ) multipliers. |
 
@@ -461,7 +461,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 | — | logical; dex | `calibrate_solar_model` (sj), `luminosity_tolerance`, `radius_tolerance` (sj); code `ctrl%` same names | `LCALS`, `TOLL`, `TOLR` | ctrl | Automatic solar calibration and its L and R tolerances. |
 | — | logical; Gyr; rad s⁻¹ | `disk_locking_active`, `disk_locking_age_gyr`, `disk_omega_rad_s`; code `job%` same names | `LDISK`, `TDISK`, `PDISK` | job | Disk locking: surface CZ held at `disk_omega_rad_s` while age ≤ `disk_locking_age_gyr`. Old deck comments give wrong units. |
 | Ω_sat | rad s⁻¹ or Ω_sat·τ_cz | `wind_saturation_omega`; code `job%wind_saturation_omega` | `WMAX` | job | Wind saturation threshold. Its meaning depends on its magnitude (trap 25). |
-| η_R | M☉ yr⁻¹ per (L R/M) in solar units | `use_reimers_wind`, `reimers_scaling_factor`; code `ctrl%use_reimers_wind`, `ctrl%reimers_scaling_factor` | `LREIMER`, `CREIM` | ctrl | Reimers mass loss Ṁ = η_R (L/L☉)(R/R☉)/(M/M☉) (`wind/massloss.f90:121-128`). |
+| η_R | M☉ yr⁻¹ per (L R/M) in solar units | `use_reimers_wind`, `reimers_scaling_factor`; code `ctrl%use_reimers_wind`, `ctrl%reimers_scaling_factor` | `LREIMER`, `CREIM` | ctrl | Reimers mass loss Ṁ = η_R (L/L☉)(R/R☉)/(M/M☉) (`core/mass_change.f90:103-107`). |
 
 ---
 
@@ -527,7 +527,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - `fit_point_pressure/temperature/radius` hold **log₁₀** P, T, r (`vtx_logp/logt/logr`).
 17. **`stotal` duplicates `log_total_mass`.**
     - Both are log₁₀ M in g.
-    - Mass loss updates the two separately (`wind/mdot.f90:249-250`). The envelope code reads `stotal`, and the structure code reads `log_total_mass`.
+    - Mass loss updates the two separately (`core/mass_change.f90:430-431`). The envelope code reads `stotal`, and the structure code reads `log_total_mass`.
 18. **Several quantities have two copies with different fill times or definitions.**
     - c_P: `scp` (Henyey pass) and `cp` (`shell_physics`).
     - μ: `star%mu` (full-ionization estimate, `core/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `henyey_coefficients.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
@@ -555,7 +555,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - `check_angular_momentum.f90:168-178` loosens and restores it at run time, which is why it lives in `job`.
 25. **`wind_saturation_omega` (`WMAX`) changes meaning with its value.**
     - With instability transport on and a value > 1, it is read as Ω_sat·τ_cz(☉), and Ω_sat = value/τ_cz.
-    - Otherwise it is Ω_sat in rad s⁻¹ (`wind/kawaler_wind.f90:51-62`).
+    - Otherwise it is Ω_sat in rad s⁻¹ (the Kawaler law, `rotation/magnetic_braking.f90:242-263`; the solid-body form skips the instability-transport test).
 26. **The structure `_start` arrays are written by `rezone`, not at a single "start of step" point.**
     - `setup/rezone.f90` stores `logP_start`, `luminosity_lsun_start`, `log_Teff_start` and `nz_start` while regridding (`:345-355`), and `convective_flag_start` after regridding.
     - `xa_start` is stored later, after mass loss.

@@ -180,11 +180,10 @@ module rotation_scratch_lib
                 deps_dlnt(json), neutrino_loss_fraction(json)
 ! former common/roten/
            double precision :: rotational_energy_term(json)
-! former common/masschg2/: massloss.f90 declared delta_log_pressure/
-! delta_log_temperature in swapped order relative to henyey_coefficients.f90/
-! mdot.f90 (a self-documented, harmless pre-existing bug there since
-! both are unused placeholders in massloss.f90) -- uses the majority
-! (henyey_coefficients.f90/mdot.f90) order here.
+! former common/masschg2/: the F77 massloss declared delta_log_pressure/
+! delta_log_temperature in swapped order relative to henyey_coefficients
+! and mdot (harmless: both were unused placeholders in massloss) -- uses
+! the majority order here. core/mass_change sets them.
            double precision :: accretion_specific_entropy, &
                 envelope_specific_entropy, updated_mass_msun, &
                 delta_log_pressure, delta_log_temperature

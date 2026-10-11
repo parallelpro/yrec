@@ -1309,8 +1309,8 @@ config matrix, the testsuite's Allard and Kurucz solar models).
   of the allard_use_tau100 flag, so that misconfiguration reads unset
   tau = 100 tables instead of stopping. Fixing it changes no pinned
   output but is a behaviour change. The accretion branch of
-  wind/massloss reads the shared atmosphere point after an Allard
-  lookup that may have failed (kept as it was). The atm_table_file_unit
+  change_mass (formerly wind/massloss) reads the shared atmosphere point
+  after an Allard lookup that may have failed (kept as it was). The atm_table_file_unit
   and allard_table_unit controls are no longer read.
 
 ### eos/ follow-up: interface, derivatives, solvers, OPAL (yrec-next, 2026-10-11)
@@ -1354,3 +1354,52 @@ Debye-Hueckel 0.03 Msun case) except where noted.
 - **Open:** the derivative findings above; the MHD path is still
   unpinned (it compiles against the new record); beta14's two
   definitions.
+
+### wind/ dissolved: braking into rotation, mass change into core (yrec-next, 2026-10-11)
+
+From an evaluation of wind/ (~4.5/10). Four files repeated one
+sub-stepped loop and two solid-body forms. The structure factor
+travelled through star%job. massloss and mdot took 21 and 25 star
+fields as arguments, and the two halves of the domain shared nothing.
+All bitwise identical: test_braking, domain tests, gate1, the config
+matrix (cm_rot_kawaler and the two mass-loss decks among them), two
+accreting variants of cm_massloss_const against the previous commit,
+and the full battery.
+- **DONE: test_braking pins every braking path** (8ac25953). It covers
+  the convection-zone form, with:
+  - the Matt law with and without Rossby or B-field scaling, saturated
+    and sub-stepped;
+  - the Kawaler law with and without tau_cz scaling, inactive, and on
+    its error path.
+
+  It also covers the solid-body form for both laws.
+- **DONE: magnetic_braking** (be9f634d). rotation/magnetic_braking.f90
+  replaces matt_wind, kawaler_wind, wind_spindown_matt, wind_spindown,
+  matt_structure_factor and wind_lib with two entry points:
+  - brake_convection_zone, one loop over a law-dependent domega;
+  - compute_solid_body_braking, where the Kawaler form is the Matt one
+    with f_cen = 1.
+
+  The structure factor is a function result, so the
+  star%job%structfactor control is gone. log10_radius_from_l_teff
+  moves to physical_constants and also replaces observables's
+  log_r_surface_cm, which was the same expression.
+- **DONE: mass_change** (5e46b707). core/mass_change.f90's change_mass
+  and apply_mass_change (formerly massloss and mdot) read the model
+  from star, so they take 3 and 8 arguments. mdot's mu output, always
+  overwritten before use, is a local.
+- **DONE: the wind domain is gone.** wind/ and libwind.a are removed,
+  and check_boundaries drops the domain.
+- **Open (kept as they were, now each in one place):**
+  - the solid-body Matt f_sun lacks 1/G (the gl item above);
+  - the Matt law ignores wind_loss_active;
+  - with B-field scaling but no Rossby scaling, the Matt convection-zone
+    iteration scales Omega by a tau_cz that is only set with Rossby
+    scaling. The torque is then zero, and test_braking shows the step
+    removes no angular momentum. The 2026-08-31 sweep noted the read;
+    the original read a stale SAVEd value instead. The solid-body form
+    ignores B-field scaling without Rossby scaling;
+  - change_mass resets the envelope entropy to zero, so accretion's
+    R/P/T correction is a zero shift. It still rounds the radii through
+    exp10/log10. The convection zone's new mean thermal energy is
+    computed and never used.

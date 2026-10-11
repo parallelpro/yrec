@@ -177,7 +177,7 @@ which replaces them).
    `network.f90` in the domain's directory. A legacy file holding a
    single bare subroutine is named after that subroutine.
 2. **`<domain>_lib` is a physics or numerics domain's one public
-   module** -- `eos_lib`, `kap_lib`, `atm_lib`, `net_lib`, `wind_lib`,
+   module** -- `eos_lib`, `kap_lib`, `atm_lib`, `net_lib`,
    `numerics_lib`, `math_lib` (MESA's convention). Code outside the
    domain uses only that module; it re-exports what the rest of the code
    may see, so reading it shows the domain's whole interface.
@@ -707,6 +707,17 @@ duplication of the same choice. `amcalc.f90`, `cowind.f90`/
 all genuine wind-domain physics (magnetic-wind angular-momentum loss,
 mass loss/accretion), correctly filed even though their consumers are
 in `rotation/`/`core/` -- physics feeding a solver isn't misplacement.
+
+**The wind domain dissolved (2026-10-11).** Once the loose files became
+modules, the two halves of wind/ had nothing in common but the name:
+the braking laws are the boundary condition of rotation's angular
+momentum equation, called only from rotation, and massloss/mdot are a
+stage of the timestep that changes the grid and the total mass, called
+only from evolve_step. Each moved to its one consumer:
+`rotation/magnetic_braking.f90` and `core/mass_change.f90` (step 2 of
+docs/TARGET_ARCHITECTURE.md's stage list). The radius-from-(L, Teff)
+identity both used is `physical_constants`'s
+`log10_radius_from_l_teff`.
 
 Three files were, though, found and relocated by the same
 zero-domain-content/callers-elsewhere test used for `meval.f90`/

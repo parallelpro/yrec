@@ -171,7 +171,7 @@ module controls_buffer
 
 ! former common/masschg/: mass-accretion/Reimers-wind parameters, all
 ! NAMELIST /physics/ values. use_mass_accretion can be flipped off
-! mid-run by wind/mdot.f90 (if a circumstellar disk is exhausted) --
+! mid-run by core/mass_change (if a circumstellar disk is exhausted) --
 ! still a shared global flag touched from one distant point, same
 ! character as walpcz's startup clamp, just possibly more than once.
       double precision :: mass_accretion_rate = -1.0d-14
