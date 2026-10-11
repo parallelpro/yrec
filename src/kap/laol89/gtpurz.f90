@@ -13,7 +13,7 @@ subroutine gtpurz(log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       use star_info_lib, only: star
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       use numerics_lib
       use math_lib

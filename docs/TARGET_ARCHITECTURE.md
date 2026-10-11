@@ -20,8 +20,6 @@ The proposal **does not change the method**. Henyey relaxation with an envelope 
 
 The work proceeds one subsystem at a time inside the running code, in the order network → structure → microphysics → rotation. Each replacement is checked against the code it replaces and against independent physics references.
 
-Section 7 lists the decisions this asks of the group.
-
 ---
 
 ## 1. Why the organization needs to change
@@ -466,16 +464,6 @@ Each phase leaves the code working and producing science. Every phase also does 
 
 ---
 
-## 7. Decisions for the YREC group
-
-1. **Governance.** Does `yrec-modern` become YREC, or a separately named fork with YREC as its reference? Every later step depends on the answer.
-2. **Tier S.** Will the group accept small, measured, documented changes in results when a subsystem is replaced? If so, what tolerances, and who signs off on each phase?
-3. **Domain reviewers.** Someone from the group who knows each domain (network, structure, microphysics, rotation) reviews the physics of that phase.
-4. **Rotation reference.** Which published result counts as the benchmark for phase 4?
-5. **Language level and compilers.** Fortran 2008 or 2018? Is support for gfortran and ifx enough?
-6. **Legacy interfaces.** How long do the legacy inlist reader and the four legacy solar deck pairs stay?
-
----
 
 ## Appendix A: legacy routine names and current files
 

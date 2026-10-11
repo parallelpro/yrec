@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! opal_eos_lib
+! opal_eos_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Bundles the OPAL 1995/2001/2006 equation-of-
@@ -40,7 +40,7 @@
 ! happens to follow t6_grid. Re-dimensioning the 1995 arrays would
 ! therefore change 1995 results, so opal_eos_vintage95 keeps the 1995
 ! dimensions and member order exactly as they were laid out before.
-module opal_eos_lib
+module opal_eos_tables
       implicit none
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
@@ -184,7 +184,7 @@ module opal_eos_lib
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
                 t6_index_4, t6_interp_order, density_interp_order
 ! former common/eeos/ and eeos06/ -- the latter relocated here from
-! atm_table_lib in 2026 (ROADMAP.md stage 1); its former non-eos reader
+! atm_tables in 2026 (ROADMAP.md stage 1); its former non-eos reader
 ! (a direct eos_output(8)/(9) read in the turnover-timescale code,
 ! since removed) was replaced by eos_lib's eos_get_gamma1.
            double precision :: esact, eos_output(n_eos_mv)
@@ -266,4 +266,4 @@ module opal_eos_lib
       type(opal_eos_vintage95), public :: opal95
       type(opal_eos_vintage), public :: opal01, opal06
 
-end module opal_eos_lib
+end module opal_eos_tables

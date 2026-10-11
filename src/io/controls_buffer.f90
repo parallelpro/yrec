@@ -689,7 +689,7 @@ module controls_buffer
            molecular_opacity_logt_min, molecular_opacity_logt_max
       logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, use_opal95_tables, use_kurucz90_tables, use_alex95_tables
 
-! former common/nwlaol/ (moved here from kap/opacity_table_lib.f90,
+! former common/nwlaol/ (moved here from kap/opacity_tables.f90,
 ! 2026 wave 2): tollaol is a NAMELIST /physics/ value spelled
 ! identically to its canonical name (use-associated directly in
 ! io/read_controls.f90; the LAOL89 interpolators allow linear
@@ -872,7 +872,7 @@ module controls_buffer
 ! value with a different canonical spelling, kept local in
 ! io/read_controls.f90 and copy-assigned.
 ! (the SCV table declarations that followed this comment moved to
-! state/scv_eos_lib.f90 -- phase six, step 3)
+! state/scv_eos_tables.f90 -- phase six, step 3)
 
 
 end module controls_buffer

@@ -21,9 +21,9 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use envelope_refit_lib, only: append_envelope_points
       use star_info_lib
       use controls_buffer, only: ichi_dp_env_max
-      use envstruct_lib
+      use envelope_structure
       use physical_constants
-      use yale_eos_lib
+      use yale_eos_tables
       use math_lib
       implicit none
       integer, intent(out) :: ierr

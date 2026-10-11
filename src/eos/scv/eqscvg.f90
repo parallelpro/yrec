@@ -20,7 +20,7 @@ subroutine eqscvg(log10_temperature, temperature, pressure, &
 
       use physical_constants
       use numerics_lib
-      use scv_eos_lib
+      use scv_eos_tables
       use math_lib
       implicit none
 

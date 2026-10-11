@@ -29,7 +29,7 @@
 !    4 columns.
 subroutine altabinit(ierr)
 
-      use atm_table_lib
+      use atm_tables
       use io_units
       use math_lib
       implicit none

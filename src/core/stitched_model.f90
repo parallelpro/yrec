@@ -103,8 +103,8 @@ contains
 ! same fixed output step sizes).
 subroutine build_stitched_model
       use star_info_lib, only: star, i_h1, i_metals
-      use envstruct_lib
-      use atmstruct_lib
+      use envelope_structure
+      use atmosphere_structure
       use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm
       integer :: j, i, jerr
@@ -300,8 +300,8 @@ end subroutine compute_seismic_columns
 double precision function ext_profile_value(icol, j)
       use math_lib
       use star_info_lib, only: star, i_h1, i_metals
-      use envstruct_lib
-      use atmstruct_lib
+      use envelope_structure
+      use atmosphere_structure
       integer, intent(in) :: icol, j
       integer :: i
 
@@ -424,7 +424,7 @@ end function convective_indicator
 ! the total mass).
 double precision function envelope_mass_g(i)
       use star_info_lib, only: star
-      use envstruct_lib
+      use envelope_structure
       integer, intent(in) :: i
       envelope_mass_g = exp(ln10*(env_struct%env_log10_mass(i) + star%log_total_mass))
 end function envelope_mass_g
@@ -432,7 +432,7 @@ end function envelope_mass_g
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
 double precision function atmosphere_radius_cm(i)
-      use envstruct_lib
+      use envelope_structure
       integer, intent(in) :: i
       atmosphere_radius_cm = exp(ln10* &
            env_struct%env_log10_radius(env_struct%num_env_points)) + atm_height(i)
@@ -546,8 +546,8 @@ end function profile_value
 subroutine build_pulse_points(pts)
       use math_lib
       use star_info_lib, only: star, i_eps_grav, i_h1, i_metals
-      use envstruct_lib
-      use atmstruct_lib
+      use envelope_structure
+      use atmosphere_structure
       double precision, intent(out) :: pts(n_pulse_cols, n_ext)
       integer :: j, i, k
       double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav

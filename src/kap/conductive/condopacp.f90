@@ -38,7 +38,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
       use star_info_lib, only: star
 
-      use conductive_table_lib, only: cond_table, cond_n_temp, cond_n_rho, cond_n_z, cond_table_loaded_marker
+      use conductive_opacity_table, only: cond_table, cond_n_temp, cond_n_rho, cond_n_z, cond_table_loaded_marker
       use math_lib
       implicit none
 
@@ -48,7 +48,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
            dlnkappa_dlnrho, dlnkappa_dlnt
       integer, intent(out) :: ierr
 ! (the grid sizes cond_n_* and the table itself, cond_table, live in
-! kap/conductive_table_lib.f90 and must be consistent with "condall.d")
+! kap/conductive_opacity_table.f90 and must be consistent with "condall.d")
       integer :: file_unit, z_index, t_index, r_index
       double precision :: z_grid_value, log10_ion_charge
       integer :: t_index_lo, t_index_hi, r_index_lo, r_index_hi

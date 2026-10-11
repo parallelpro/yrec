@@ -14,7 +14,7 @@
 double precision function rhoofp01(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
-      use opal_eos_lib
+      use opal_eos_tables
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v
@@ -27,7 +27,7 @@ double precision function rhoofp01(v, hydrogen_fraction, t6_temperature, &
 
 ! density_index_edge(t6_idx): highest valid density-grid index for
 ! temperature-grid row t6_idx (a local copy, DATA-initialized here;
-! NOTE its values differ from opal_eos_lib's
+! NOTE its values differ from opal_eos_tables's
 ! v%density_index_edge_at_t in the 115/113 runs -- preserved
 ! verbatim).
       integer :: density_index_edge(nt)

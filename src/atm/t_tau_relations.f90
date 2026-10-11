@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! ttau_lib
+! t_tau_relations
 !----------------------------------------------------------------------
 ! The analytic T-tau relations, in ONE place (2026, follow-up to the
 ! envint purity split). Everything an atmosphere choice contributes
@@ -29,7 +29,7 @@
 ! branches -- including the start guess's 0.550d0 literal for
 ! Krishna-Swamy, which is NOT rewritten as the relation at tau = 0
 ! (1.39d0-0.815d0-0.025d0 need not equal 0.550d0 bitwise).
-module ttau_lib
+module t_tau_relations
       use math_lib
       use physical_constants, only: cc23
       implicit none
@@ -128,4 +128,4 @@ function harvard_t_tau(optical_depth) result(fit_value)
       fit_value = fit_value + 1.58685112637d-6*log10_tau9
 end function harvard_t_tau
 
-end module ttau_lib
+end module t_tau_relations

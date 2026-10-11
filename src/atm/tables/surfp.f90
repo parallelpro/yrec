@@ -22,7 +22,7 @@
 ! tbl%num_teff) and line continuation.
 subroutine surface_p_interp(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
-      use atm_table_lib
+      use atm_tables
       use io_units
       use numerics_lib
       implicit none
@@ -190,7 +190,7 @@ end subroutine surface_p_interp
 
 ! surfp: log P from the Kurucz (1993) table, atm_choice 3.
 subroutine surfp(log10_teff, log10_gravity, print_flag, ierr)
-      use atm_table_lib
+      use atm_tables
       implicit none
       double precision, intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag
@@ -202,7 +202,7 @@ end subroutine surfp
 ! kcsurfp: JNT 06/2014, same interpolation on the newer Kurucz/
 ! Castelli table, atm_choice 5.
 subroutine kcsurfp(log10_teff, log10_gravity, print_flag, ierr)
-      use atm_table_lib
+      use atm_tables
       implicit none
       double precision, intent(in) :: log10_teff, log10_gravity
       logical, intent(in) :: print_flag

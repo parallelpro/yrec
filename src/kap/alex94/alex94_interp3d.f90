@@ -12,7 +12,7 @@
 subroutine alex94_interp3d(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
-      use opacity_table_lib
+      use opacity_tables
       use physical_constants
       use numerics_lib
       use math_lib

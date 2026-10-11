@@ -14,7 +14,7 @@
 ! calling this routine.
 subroutine alex06tab(ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       implicit none
       integer, intent(out) :: ierr

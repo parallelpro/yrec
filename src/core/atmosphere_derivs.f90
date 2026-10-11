@@ -19,8 +19,8 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
 
       use eos_lib
       use kap_lib
-      use atm_table_lib
-      use ttau_lib
+      use atm_tables
+      use t_tau_relations
       use star_info_lib, only: star, json
       use point_scratch_lib
       use physical_constants
@@ -52,7 +52,7 @@ subroutine atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
       atm_table%atm_tau = log10_optical_depth
       optical_depth = exp(ln10*atm_table%atm_tau)
 ! T(tau) from the ONE home of the analytic relations (2026: the
-! former statement-function dispatch lives in core/ttau_lib.f90)
+! former statement-function dispatch lives in core/t_tau_relations.f90)
       log10_temperature = ttau_log10_temperature(optical_depth, &
            log10_teff, star%job%atm_choice, star%atm_hras)
       log10_pressure = y(1)

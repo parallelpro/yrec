@@ -14,7 +14,7 @@
 ! thermodynamic variable at (slt, slr) = (T6, density).
 subroutine t6rinterp(v, slr, slt, ierr)
 
-      use opal_eos_lib
+      use opal_eos_tables
       use io_units
       implicit none
 

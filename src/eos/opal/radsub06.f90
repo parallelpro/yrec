@@ -26,7 +26,7 @@
 subroutine radsub06(v, rad_flag, t6_temperature, density, total_moles, &
      mean_molecular_weight)
 
-      use opal_eos_lib
+      use opal_eos_tables
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v

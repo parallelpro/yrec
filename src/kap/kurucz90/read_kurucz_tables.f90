@@ -21,7 +21,7 @@
 subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       use math_lib
       implicit none
 

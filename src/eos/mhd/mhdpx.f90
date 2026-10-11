@@ -28,7 +28,7 @@
 ! variable-X interpolation in mhdpx1, then returns log10(density).
 subroutine mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
      log10_density, ierr)
-      use mhd_eos_lib
+      use mhd_eos_tables
       implicit none
 
       double precision, intent(in) :: log10_pressure, log10_temperature, &

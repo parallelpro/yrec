@@ -36,7 +36,7 @@
 ! ierr          - Output. 1 when TeffL is below the table minimum (formerly a
 !              STOP) or a polint call fails; 0 otherwise.
 !
-! RESULTS (stored in atm_table, atm_table_lib.f90)
+! RESULTS (stored in atm_table, atm_tables.f90)
 !
 ! atm_log10_pressure    - Log(Pressure) for the input TeffL and GL. If
 !              star%ctrl%allard_use_tau100 is .FALSE. it is PL at TEFFL,GL;
@@ -91,7 +91,7 @@
 subroutine alsurfp(log_teff, log_g, print_to_files, lookup_failed, ierr)
       use star_info_lib, only: star
 
-      use atm_table_lib
+      use atm_tables
       use io_units
       use numerics_lib
       implicit none

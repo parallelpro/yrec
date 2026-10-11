@@ -19,7 +19,7 @@ subroutine oeqos(log10_temperature, temperature, log10_pressure, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, dlnrho_dlnt, &
      dlnrho_dlnp, specific_heat_cp, adiabatic_gradient, ierr, *)
 
-      use opal_eos_lib
+      use opal_eos_tables
       use physical_constants
       use io_units
       use math_lib

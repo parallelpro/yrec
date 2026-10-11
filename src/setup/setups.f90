@@ -21,12 +21,12 @@ subroutine setups(ierr)
       use eos_lib
       use kap_lib
       use atm_lib
-      use atm_table_lib
+      use atm_tables
       use star_info_lib, only: star
       use physical_constants
-      use yale_eos_lib
+      use yale_eos_tables
       use math_lib
-      use ttau_lib, only: hsra_t_tau_offset
+      use t_tau_relations, only: hsra_t_tau_offset
       implicit none
       integer, intent(out) :: ierr
 
@@ -151,8 +151,8 @@ subroutine setups(ierr)
 !
 ! (The F-tables read for the degenerate equation of state that lived
 ! here moved into eos_lib's eos_init above -- 2026, ROADMAP.md
-! stage 1 -- along with its state's relocation from atm_table_lib to
-! yale_eos_lib.)
+! stage 1 -- along with its state's relocation from atm_tables to
+! yale_eos_tables.)
 ! JMH 8/18/91
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS

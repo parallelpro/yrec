@@ -15,7 +15,7 @@
 ! hosting a real callable subroutine." kap_eval's body, dispatch logic,
 ! and argument list are otherwise unchanged from getopac.
 module kap_lib
-      use opacity_table_lib
+      use opacity_tables
       use math_lib
       implicit none
 ! Everything is private unless exported below (2026: kap_get is the
@@ -68,7 +68,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      ion_fraction, ierr)
       use star_info_lib, only: star
       use io_units
-      use opacity_table_lib
+      use opacity_tables
       implicit none
 
       double precision, intent(in) :: log10_density, log10_temperature, &
@@ -397,7 +397,7 @@ subroutine kap_init(envelope_hydrogen_fraction, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction, &
@@ -441,7 +441,7 @@ end subroutine kap_init
 ! legitimate lifecycle operation that simply had no facade name.
 subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       implicit none
 
       double precision, intent(in) :: hydrogen_fraction

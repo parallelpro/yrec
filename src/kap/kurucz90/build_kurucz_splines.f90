@@ -18,7 +18,7 @@
 ! per table set in the same order. The two stdout diagnostics that
 ! said "kurucz table" / "second kurucz table" are now generic.
 subroutine build_kurucz_splines(tbl, ierr)
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       use math_lib
       implicit none

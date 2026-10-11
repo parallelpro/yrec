@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! scv_eos_lib
+! scv_eos_tables
 !----------------------------------------------------------------------
 ! Added 2026 (phase six, step 3 -- ROADMAP.md). The SCV
 ! (Saumon-Chabrier-Van Horn) EOS table state, evicted from const_lib
@@ -8,7 +8,7 @@
 ! eos_init; the envelope-mixture table tablenv is built from them by
 ! eos/scv/scv_envelope_table.f90 (called from core/read_starting_model);
 ! read by eos/scv/eqscve and eqscvg.
-module scv_eos_lib
+module scv_eos_tables
       implicit none
 
 ! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
@@ -81,4 +81,4 @@ double precision function scv_weighted_sum4(w, y)
       scv_weighted_sum4 = w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
 end function scv_weighted_sum4
 
-end module scv_eos_lib
+end module scv_eos_tables

@@ -33,7 +33,7 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
      log_mass, log_temperature, convective_flag, num_zones, ierr)
       use star_info_lib, only: star, json, n_species_extended, &
            i_h1, i_he4, i_metals, i_he3
-      use envstruct_lib
+      use envelope_structure
       logical, intent(in) :: accept_point_at_fit_mass
       integer, intent(in) :: species_end_index
       double precision, intent(inout) :: composition(n_species_extended,json), &

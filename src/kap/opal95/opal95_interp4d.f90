@@ -21,7 +21,7 @@ subroutine opal95_interp4d(index_z, weight_z, index_x, weight_x, &
      logr, logr_lo_edge, logr_hi_edge, extrap_lo, extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib, only: lagrange4
       use math_lib
       implicit none

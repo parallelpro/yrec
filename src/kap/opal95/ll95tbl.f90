@@ -16,7 +16,7 @@
 subroutine ll95tbl(opal95_table_path, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       implicit none
       integer, intent(out) :: ierr
@@ -25,7 +25,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
 
 ! opal95_table_start_index/opal95_num_x_at_z/opal95_grid_x/
 ! opal95_grid_z/opal95_index_z/opal95_index_x/opal95_index_t/
-! opal95_index_rho defaults live in opacity_table_lib.f90.
+! opal95_index_rho defaults live in opacity_tables.f90.
 ! LOCAL VECTOR, USED TO SKIP LONG HEADER.
       character(len=132) :: header_line
 

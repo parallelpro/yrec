@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! eos_mixture_lib
+! eos_mixture
 !----------------------------------------------------------------------
 ! Added 2026 (physics-purity pass -- see ROADMAP.md "Decoupling the
 ! physics domains from the model"). The envelope mixture the eos
@@ -16,7 +16,7 @@
 ! its own state -- same pattern as every other physics-domain state
 ! module. MESA-equivalently: composition is an INPUT of the eos,
 ! owned on the physics side of the boundary.
-module eos_mixture_lib
+module eos_mixture
       implicit none
       private
 
@@ -87,4 +87,4 @@ subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
       end if
 end subroutine ion_mean_weight_excess
 
-end module eos_mixture_lib
+end module eos_mixture

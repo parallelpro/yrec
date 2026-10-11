@@ -39,10 +39,10 @@ program test_eos
       use io_units
       use star_info_lib, only: star
       use eos_lib
-      use opacity_table_lib
-      use yale_eos_lib
-      use scv_eos_lib
-      use opal_eos_lib, only: opal06
+      use opacity_tables
+      use yale_eos_tables
+      use scv_eos_tables
+      use opal_eos_tables, only: opal06
       implicit none
       integer :: gerr
 

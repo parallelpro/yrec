@@ -24,7 +24,7 @@ subroutine rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
       use star_info_lib, only: star, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       implicit none
       integer, intent(out) :: ierr

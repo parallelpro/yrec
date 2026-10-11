@@ -21,7 +21,7 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
                   log10t_down,log10t_up,table_vars_centroid,table_vars_down,table_vars_up, &
                   atomic_weight_down,atomic_weight_up, &
                   number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-      use mhd_eos_lib, only: i_mhd_log10_p, i_mhd_log10_u, i_mhd_grad_ad, &
+      use mhd_eos_tables, only: i_mhd_log10_p, i_mhd_log10_u, i_mhd_grad_ad, &
            i_mhd_log10_cp, i_mhd_dlog10p_dx, i_mhd_dlog10u_dx, &
            i_mhd_dgrad_ad_dx, i_mhd_dlog10cp_dx, i_mhd_placeholder
       implicit none

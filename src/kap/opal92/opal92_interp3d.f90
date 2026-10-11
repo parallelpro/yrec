@@ -24,7 +24,7 @@
 ! line was only continued differently) and is deleted.
 subroutine opal92_interp3d(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       use math_lib
       implicit none
@@ -38,7 +38,7 @@ subroutine opal92_interp3d(tbl, log10_density, log10_temperature, hydrogen_fract
            dlnkap_dlnrho, dlnkap_dlnt
 
 ! tbl%index_x/index_t/index_rho (the warm-start cursors) default to
-! 1 in opacity_table_lib.f90 (opal92_table_set).
+! 1 in opacity_tables.f90 (opal92_table_set).
       logical :: single_x_table
       double precision :: t6, rhot3
       integer :: im1

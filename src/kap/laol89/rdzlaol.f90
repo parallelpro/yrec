@@ -12,7 +12,7 @@
 ! MHP 10/02 vector v not used
 subroutine rdzlaol(pure_z_table_path, ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       implicit none
       integer, intent(out) :: ierr

@@ -38,14 +38,14 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit_lib, only: append_envelope_points
-      use envstruct_lib
+      use envelope_structure
       use io_units
       use physical_constants
       use eos_lib
       use kap_lib
-      use opacity_table_lib
-      use yale_eos_lib
-      use scv_eos_lib
+      use opacity_tables
+      use yale_eos_tables
+      use scv_eos_tables
       use stitched_model_lib, only: build_stitched_model
       implicit none
       integer :: jerr_atm

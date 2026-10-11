@@ -46,7 +46,7 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
      stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, &
            i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
-      use yale_eos_lib
+      use yale_eos_tables
       implicit none
 
       integer, intent(in) :: iteration_level

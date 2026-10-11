@@ -43,7 +43,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
       use envint_lib, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
-      use atm_table_lib
+      use atm_tables
       use star_info_lib
       use io_units
       use run_log, only: solver_diagnostics

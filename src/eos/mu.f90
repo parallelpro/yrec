@@ -19,7 +19,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
      electron_mean_weight_inverse, beta)
 
       use physical_constants
-      use eos_mixture_lib, only: ion_mean_weight_excess
+      use eos_mixture, only: ion_mean_weight_excess
       implicit none
 
       double precision, intent(in) :: temperature, pressure, density, &

@@ -48,14 +48,14 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 
       use eos_lib
       use kap_lib
-      use atm_table_lib
+      use atm_tables
       use point_scratch_lib
-      use atmstruct_lib
-      use envstruct_lib
-      use ttau_lib
+      use atmosphere_structure
+      use envelope_structure
+      use t_tau_relations
       use io_units
       use physical_constants
-      use intpar_lib
+      use integration_parameters
       use numerics_lib
       use run_log, only: solver_diagnostics
       implicit none
@@ -349,7 +349,7 @@ subroutine integrate_atmosphere
 ! SET NUMERICAL PARAMETERS UP.
       num_eqs = 1
       tolerance = cfg%atm_error_tol
-! photospheric integration limit for the chosen relation (ttau_lib)
+! photospheric integration limit for the chosen relation (t_tau_relations)
       x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
 
       if  (indep_var .gt. x_limit) then ! Check that starting point is before endpoint

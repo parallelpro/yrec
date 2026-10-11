@@ -80,12 +80,12 @@ subroutine read_input(ierr)
       use physical_constants
       use controls_buffer
       use io_units
-      use intpar_lib
+      use integration_parameters
       use yrec_output, only: output_init_mesa
-      use atm_table_lib
-      use opacity_table_lib
-      use yale_eos_lib
-      use scv_eos_lib
+      use atm_tables
+      use opacity_tables
+      use yale_eos_tables
+      use scv_eos_tables
       use eos_lib, only: eos_set_mixture
       implicit none
 
@@ -302,8 +302,8 @@ subroutine read_input(ierr)
 
 ! stolr0/imax/nuse: NAMELIST /physics/ members (must keep this exact
 ! spelling, see this file's naming note at the top). Former common
-! /intpar/; copied into intpar_lib's canonically-named variables after
-! the namelist read below, since intpar_lib's names differ from these
+! /intpar/; copied into integration_parameters's canonically-named variables after
+! the namelist read below, since integration_parameters's names differ from these
 ! namelist-fixed ones.
       double precision :: stolr0
       integer :: imax, nuse
@@ -1492,7 +1492,7 @@ end subroutine read_namelist_files
 ! module variables and is assigned here after the read).
 subroutine adopt_canonical_names
 ! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
-! (see this file's naming note at the top), so intpar_lib's
+! (see this file's naming note at the top), so integration_parameters's
 ! canonically-named variables are set by copying from them here,
 ! after the namelist read, rather than by renaming in place.
       tolerance_fraction = stolr0
@@ -2432,10 +2432,10 @@ end subroutine read_input
 ! that environment variable is not set).
 subroutine expand_value(path_value)
 
-      use atm_table_lib
-      use opacity_table_lib
-      use yale_eos_lib
-      use scv_eos_lib
+      use atm_tables
+      use opacity_tables
+      use yale_eos_tables
+      use scv_eos_tables
       implicit none
 
       integer, parameter :: n_env_vars = 3  ! Number of possible env. vars.

@@ -10,7 +10,7 @@
 ! readability refactor. Logic and numerics are unchanged from the
 ! original mhdpx2.f; only variable names, source form, and comment
 ! style were updated. The ZAMS-type and centre-type tables live in
-! mhd_eos_lib's mhd_eos (loaded by mhdst.f90).
+! mhd_eos_tables's mhd_eos (loaded by mhdst.f90).
 !
 ! Interpolates one table (selected by table_selector: -1/-2/-3 lower
 ! ZAMS A/B/C, 1/2/3 upper ZAMS A/B/C, 4..8 centre 1..5) at
@@ -18,10 +18,10 @@
 ! (ZAMS) or table_selector (centre) of table_vars, with that table's
 ! hydrogen mass fraction in table_hfrac. The tables are the
 ! composition-indexed arrays of mhd_eos (imhd_zams_a..c,
-! imhd_centre_1..5 in mhd_eos_lib).
+! imhd_centre_1..5 in mhd_eos_tables).
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
      table_vars, table_hfrac, ndimt)
-      use mhd_eos_lib
+      use mhd_eos_tables
       use numerics_lib
       implicit none
       integer, parameter :: ivarc = mhd_ivarc

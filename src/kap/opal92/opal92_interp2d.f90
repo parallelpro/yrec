@@ -20,7 +20,7 @@
 subroutine opal92_interp2d(tbl, temperature, density, abund_index, temp_index, &
      dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       use math_lib
       implicit none

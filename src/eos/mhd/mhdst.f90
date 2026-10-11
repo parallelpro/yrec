@@ -10,7 +10,7 @@
 !
 ! Reads the 8 MHD equation-of-state table files (3 ZAMS-type unit
 ! numbers covering compositions A, B, C, plus up to 5 optional
-! centre-type unit numbers) into mhd_eos_lib's mhd_eos state and sets
+! centre-type unit numbers) into mhd_eos_tables's mhd_eos state and sets
 ! the table temperature limits used by mhdpx1.
 subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
      unit_centre2, unit_centre3, unit_centre4, unit_centre5, ierr)
@@ -18,7 +18,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
 ! reaches a const_lib symbol), and its dummy arguments above now share
 ! names with the const_lib lunum members, which would otherwise be an
 ! ambiguous reference.
-      use mhd_eos_lib
+      use mhd_eos_tables
       implicit none
 
       integer, parameter :: ivarc = mhd_ivarc

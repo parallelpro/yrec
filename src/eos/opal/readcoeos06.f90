@@ -6,7 +6,7 @@
 ! original readcoeos06.f; only variable names, source form, and
 ! comment style were updated.
 !
-! Reads the OPAL 2006 EOS data tables into opal_eos_lib's opal_eos state
+! Reads the OPAL 2006 EOS data tables into opal_eos_tables's opal_eos state
 ! and derives the auxiliary grid-spacing arrays used by esac06.f90/
 ! t6rinteos06.f90 for interpolation. Called once from esac06.f90
 ! (guarded by opal_eos%table_loaded_flag).
@@ -26,7 +26,7 @@
 subroutine readcoeos06(v, ierr)
       use star_info_lib, only: star
 
-      use opal_eos_lib
+      use opal_eos_tables
       use io_units
       implicit none
 

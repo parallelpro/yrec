@@ -24,7 +24,7 @@ program test_net
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
-      use scv_eos_lib, only: use_scv_eos
+      use scv_eos_tables, only: use_scv_eos
       use burn_step
       use network, only: write_network_table
       use light_elements, only: deuterium_rate

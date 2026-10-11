@@ -7,7 +7,7 @@
 ! style were updated.
 !
 ! Fully-ionized-gas equation of state ("relativistic" electron gas via
-! the tabulated Fermi-Dirac integrals in yale_eos_lib's
+! the tabulated Fermi-Dirac integrals in yale_eos_tables's
 ! yale_eos%fermi_table_data, following Prather's thesis). Given log10(T), log10(P), and the mean molecular
 ! weights, iterates on density until the electron+ion+radiation
 ! pressure sum matches the given P, then returns density and (if
@@ -31,7 +31,7 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnt_dt, dlnrho_dlnp_dt, adiabatic_gradient_dt, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
-      use yale_eos_lib
+      use yale_eos_tables
       use physical_constants
       use io_units
       use math_lib

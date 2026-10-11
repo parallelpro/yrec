@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! opacity_table_lib
+! opacity_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Bundles the low/high-temperature opacity
@@ -9,8 +9,8 @@
 ! gkrz/, krz/, kipm/, intpl2/, gkrz2/, krz2/, kipm2/, intpl22/
 ! (Kurucz), slaol/, slaol2/, nwlaol2/, zlaol/, zslaol/ (LAOL89) -- into
 ! one derived type. These are Category 1 (loaded once at startup, read
-! broadly thereafter), kept in their own module (like mhd_eos_lib and
-! atm_table_lib) rather than folded into const_lib to keep large table
+! broadly thereafter), kept in their own module (like mhd_eos_tables and
+! atm_tables) rather than folded into const_lib to keep large table
 ! arrays out of the globally-`use`d const_lib.
 !
 ! DATA-statement defaults (kipmll/kipm/kipm2's cached-index scalars,
@@ -20,7 +20,7 @@
 ! kap/alex06/readalex06.f90, kap/kurucz90/kurucz.f90 (and its former
 ! kurucz2.f90 clone) and kap/opal92/opal92_interp3d.f90 (see
 ! opal92_table_set for the former kipmll2 asymmetry).
-module opacity_table_lib
+module opacity_tables
       implicit none
 ! OPAL92 (Livermore) table dimensions
       integer, parameter :: n_opal92_t = 50, n_opal92_d = 17, &
@@ -376,4 +376,4 @@ integer function alex_x_stencil_start(hydrogen_fraction)
       endif
 end function alex_x_stencil_start
 
-end module opacity_table_lib
+end module opacity_tables

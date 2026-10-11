@@ -18,7 +18,7 @@
 subroutine eqbound(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
-      use opal_eos_lib
+      use opal_eos_tables
       implicit none
 
       integer, parameter :: nt = n_eos95_nt, nr = n_eos95_nr

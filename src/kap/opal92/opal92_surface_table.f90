@@ -23,7 +23,7 @@
 subroutine opal92_surface_table(hydrogen_fraction, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       use math_lib
       implicit none

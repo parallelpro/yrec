@@ -33,7 +33,7 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
      new_atmosphere_fit_needed, ierr)
       use rotation_scratch_lib
       use atm_lib
-      use atm_table_lib
+      use atm_tables
       use star_info_lib, only: star, json
       use physical_constants
       use eos_lib

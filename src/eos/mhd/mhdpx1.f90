@@ -21,7 +21,7 @@
 !     An out-of-range TL returns silently with ierr = 0 and
 !     mhd_eos%mhd_output untouched (historical behaviour, preserved).
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
-      use mhd_eos_lib
+      use mhd_eos_tables
       use io_units
       use numerics_lib
       implicit none

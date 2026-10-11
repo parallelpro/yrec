@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! conductive_table_lib
+! conductive_opacity_table
 !----------------------------------------------------------------------
 ! Added 2026 (save-migration campaign): the Potekhin conductive-
 ! opacity table, promoted from SAVEd locals of
@@ -8,7 +8,7 @@
 ! save was removed. Now it is named, resettable domain state like
 ! every other opacity table. The grid dimensions must stay consistent
 ! with the condall06.d table file (see condopacp.f90).
-module conductive_table_lib
+module conductive_opacity_table
       implicit none
       private
       integer, parameter, public :: cond_n_temp = 19, cond_n_rho = 64, &
@@ -27,4 +27,4 @@ module conductive_table_lib
 
       type(conductive_table_state), public, save :: cond_table
 
-end module conductive_table_lib
+end module conductive_opacity_table

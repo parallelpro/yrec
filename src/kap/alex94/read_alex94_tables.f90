@@ -26,7 +26,7 @@
 subroutine read_alex94_tables(alex95_table_paths, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       implicit none
       integer, intent(out) :: ierr
@@ -37,7 +37,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       double precision :: row_opacity_temp(n_alex94_d)
 ! alex94_grid_x/alex94_grid_z/alex94_grid_logt/alex94_grid_logr/
 ! alex94_cached_x/alex94_cached_z/alex94_index_x/alex94_index_t/
-! alex94_index_r defaults moved to opacity_table_lib.f90: DATA can no
+! alex94_index_r defaults moved to opacity_tables.f90: DATA can no
 ! longer target them here now that they're use-associated.
       integer :: table_index, i, ii, j, k, row_density_count
       double precision :: header_x, header_z, row_temp, row_logr0

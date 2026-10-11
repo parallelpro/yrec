@@ -300,11 +300,11 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
      in_atmosphere, saha_state, ierr)
       use star_info_lib, only: star
 
-      use eos_mixture_lib, only: eos_mix, ion_mean_weight_excess, &
+      use eos_mixture, only: eos_mix, ion_mean_weight_excess, &
            n_mix_species, ix_na, ix_c, ix_h, ix_o, ix_ne, ix_he
       use io_units
       use physical_constants
-      use scv_eos_lib
+      use scv_eos_tables
       use math_lib
       implicit none
 

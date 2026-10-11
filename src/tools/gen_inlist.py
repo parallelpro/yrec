@@ -69,8 +69,8 @@ def main():
     parmin = (SRC / "io" / "read_controls.f90").read_text()
     decls = joined_decl_lines(parmin)
     for extra in ("io/controls_buffer.f90", "state/physical_constants.f90",
-                  "numerics/intpar_lib.f90",
-                  "kap/opacity_table_lib.f90"):
+                  "numerics/integration_parameters.f90",
+                  "kap/opacity_tables.f90"):
         decls += joined_decl_lines((SRC / extra).read_text())
     # canonical names = simple post-read copies canon = legacy
     canon = {}

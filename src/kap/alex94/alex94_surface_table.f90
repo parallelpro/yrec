@@ -12,7 +12,7 @@
 ! opacity_table%alex94_full_opacity.
 subroutine alex94_surface_table(hydrogen_fraction)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       implicit none
 

@@ -21,7 +21,7 @@
 ! "second".
 subroutine opal92_table_prep(ierr)
       use star_info_lib, only: star
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       implicit none
       integer, intent(out) :: ierr

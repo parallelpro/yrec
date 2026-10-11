@@ -17,7 +17,7 @@
 subroutine eqbound06(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
 
-      use opal_eos_lib
+      use opal_eos_tables
       use math_lib
       implicit none
 

@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! atm_table_lib
+! atm_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Bundles atmosphere/opacity/EOS lookup-table
@@ -9,7 +9,7 @@
 ! small, unrelated, per-model or table-load-time blocks into a single
 ! module. None of these touch core/read_input.f90. Every declaring file
 ! for a given block used byte-identical member names/order.
-module atm_table_lib
+module atm_tables
       implicit none
 ! Kurucz (nt) and Kurucz-Castelli (ntc) atmosphere tables: rows in
 ! log Teff, atm_table_ng columns in log g.
@@ -42,7 +42,7 @@ module atm_table_lib
 ! (former common/ccr/ -- the degenerate-electron Fermi-Dirac EOS
 ! table, fermi_table_* -- lived here through phases one and two
 ! purely as an accident of the original COMMON grouping; relocated
-! to yale_eos_lib in 2026, ROADMAP.md stage 1, alongside moving its
+! to yale_eos_tables in 2026, ROADMAP.md stage 1, alongside moving its
 ! load from an inline setup/setups.f90 block into eos_lib's
 ! eos_init. Consumed only by eos/yale/fully_ionized_eos.f90.)
 ! The Kurucz (atm_table_nt rows) and Kurucz/Castelli (atm_table_ntc
@@ -56,7 +56,7 @@ module atm_table_lib
 ! (former common/eeos06/ -- the OPAL 2006 EOS interpolator result,
 ! esact + eos_output(10) -- lived here through phase one purely as an
 ! accident of the original COMMON grouping; relocated to
-! opal_eos_lib as esact_06/eos_output_06 in 2026, ROADMAP.md stage 1,
+! opal_eos_tables as esact_06/eos_output_06 in 2026, ROADMAP.md stage 1,
 ! so eos state lives in eos's state module.)
 ! former common/alatm01/: the Allard NextGen/BT-Settl model-atmosphere
 ! surface-pressure table.
@@ -97,4 +97,4 @@ module atm_table_lib
       integer :: atm_table_file_unit
 
 
-end module atm_table_lib
+end module atm_tables

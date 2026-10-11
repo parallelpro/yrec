@@ -10,7 +10,7 @@
 ! used from outside the domain. The envelope/atmosphere integrator
 ! itself (formerly envint, "atm_get") lives in core/envint_lib.f90;
 ! the table interpolators are in atm/tables/ (surfp, kcsurfp,
-! alsurfp) and the T-tau relations in ttau_lib.f90.
+! alsurfp) and the T-tau relations in t_tau_relations.f90.
 module atm_lib
       implicit none
 contains
@@ -28,7 +28,7 @@ contains
 ! table (atm_choice 5). All of this previously lived as an inline
 ! open/read block in setup/setups.f90 -- moved here verbatim,
 ! including the G Somers 5/15 invalid-pressure-edge catches and the
-! table sizes atm_table_nt/ntc x atm_table_ng from atm_table_lib.
+! table sizes atm_table_nt/ntc x atm_table_ng from atm_tables.
 !
 ! 2026 wave 3 (R5): the Kurucz and Kurucz/Castelli tables are the two
 ! surface_p_table instances atm_table%kurucz_surface_p (atm_table_nt
@@ -41,7 +41,7 @@ contains
 subroutine atm_init(atm_table_path, allard_table_path, ierr)
       use star_info_lib, only: star
 
-      use atm_table_lib
+      use atm_tables
       implicit none
       character(len=256), intent(in) :: atm_table_path
       character(len=256), intent(in) :: allard_table_path

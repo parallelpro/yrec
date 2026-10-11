@@ -7,14 +7,14 @@
 ! style were updated.
 !
 ! Reads the OPAL 1995 EOS data tables (one block per tabulated X
-! value) into opal_eos_lib's opal_eos state and derives the auxiliary
+! value) into opal_eos_tables's opal_eos state and derives the auxiliary
 ! grid-spacing arrays used by esac.f90/t6rinterp.f90 for
 ! interpolation. Called once from esac.f90 (guarded by
 ! opal_eos%table_loaded_flag).
 subroutine readco(v, ierr)
       use star_info_lib, only: star
 
-      use opal_eos_lib
+      use opal_eos_tables
       use io_units
       implicit none
 

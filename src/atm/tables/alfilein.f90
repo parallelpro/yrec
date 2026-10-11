@@ -39,7 +39,7 @@ subroutine alfilein(allard_table_path, ierr)
 ! The maximum nuber of Teff's in the current table is nTeff, and the
 ! associated max number of GL's is nGL.
 
-      use atm_table_lib
+      use atm_tables
       use io_units
       use math_lib
       implicit none

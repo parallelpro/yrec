@@ -26,7 +26,7 @@
 double precision function quad(cache, recompute_flag, cache_slot, eval_point, &
      y1, y2, y3, x1, x2, x3)
 
-      use opal_eos_lib
+      use opal_eos_tables
       implicit none
 
       type(opal_quad_cache), intent(inout) :: cache

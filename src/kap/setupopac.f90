@@ -17,7 +17,7 @@ subroutine setupopac(envelope_hydrogen_fraction, laol_work_array, &
      alex95_table_paths, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       use eos_lib, only: eos_set_debye_huckel_z
       implicit none
 

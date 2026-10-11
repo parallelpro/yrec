@@ -1171,7 +1171,7 @@ subroutine bsstep(y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      want_derivatives, conductive_opacity_flag, log10_radius, &
      log10_teff, hydrogen_fraction, metal_fraction, saha_state, &
      step_err, ierr)
-      use intpar_lib
+      use integration_parameters
       use math_lib
       implicit none
 

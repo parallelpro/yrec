@@ -15,8 +15,8 @@ program test_kap
       use io_units
       use star_info_lib, only: star
       use kap_lib
-      use opacity_table_lib
-      use scv_eos_lib
+      use opacity_tables
+      use scv_eos_tables
       implicit none
       integer :: gerr
 

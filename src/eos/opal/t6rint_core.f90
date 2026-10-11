@@ -16,7 +16,7 @@
 ! v%esact against the out-of-range sentinel.
 subroutine t6rint_core(v, slr, slt)
 
-      use opal_eos_lib
+      use opal_eos_tables
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v

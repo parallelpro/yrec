@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! yale_eos_lib
+! yale_eos_tables
 !----------------------------------------------------------------------
 ! New (2026, phase three -- ROADMAP.md stage 1). Holds the Yale/
 ! Prather EOS's tabulated state: the degenerate-electron (Fermi-Dirac)
@@ -7,11 +7,11 @@
 ! eos_init; historically by an inline block in setup/setups.f90) and
 ! consumed only by eos/yale/fully_ionized_eos.f90's fully-ionized-gas solve.
 !
-! These members lived in atm_table_lib through phases one and two
+! These members lived in atm_tables through phases one and two
 ! purely as an accident of the original COMMON grouping -- eos-domain
 ! state in atm's state module, the same misplacement pattern as the
-! OPAL-2006 common/eeos06/ members relocated to opal_eos_lib earlier
-! in stage 1. Member names are unchanged from their atm_table_lib
+! OPAL-2006 common/eeos06/ members relocated to opal_eos_tables earlier
+! in stage 1. Member names are unchanged from their atm_tables
 ! spelling (fermi_table_*); only the instance prefix changed
 ! (atm_table% -> yale_eos%).
 !
@@ -20,7 +20,7 @@
 ! solutions. fermi_table_x_lookup(261): the binned index built at
 ! load time mapping a scaled abscissa to its table interval (see
 ! eos_init's bin-construction loop).
-module yale_eos_lib
+module yale_eos_tables
       implicit none
 
       type, public :: yale_eos_state
@@ -59,4 +59,4 @@ module yale_eos_lib
       logical :: use_debye_huckel_correction
 
 
-end module yale_eos_lib
+end module yale_eos_tables

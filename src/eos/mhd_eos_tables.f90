@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! mhd_eos_lib
+! mhd_eos_tables
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Bundles the MHD equation-of-state ZAMS-type
@@ -22,7 +22,7 @@
 ! over imhd_zams_a..c / imhd_centre_1..5 instead of copies. Each
 ! composition's slice (:,:,:,ic) has the same shape and element order
 ! as the member it replaces.
-module mhd_eos_lib
+module mhd_eos_tables
       implicit none
       integer, parameter :: mhd_ivarc = 20
       integer, parameter :: mhd_ivarx = 25
@@ -108,4 +108,4 @@ module mhd_eos_lib
 
       type(mhd_eos_state), public :: mhd_eos
 
-end module mhd_eos_lib
+end module mhd_eos_tables

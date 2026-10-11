@@ -11,7 +11,7 @@
 ! run log (run_log_unit).
 subroutine print_allard_tables
 
-      use atm_table_lib
+      use atm_tables
       use io_units
       use math_lib
       implicit none

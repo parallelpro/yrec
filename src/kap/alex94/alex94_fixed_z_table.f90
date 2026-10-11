@@ -11,7 +11,7 @@
 ! by 4-point Lagrangian interpolation in Z.
 subroutine alex94_fixed_z_table(metal_fraction)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       implicit none
 

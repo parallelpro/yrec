@@ -23,9 +23,9 @@ subroutine eqscve(log10_temperature, temperature, pressure, &
      adiabatic_gradient, valid_table_point, ierr)
 
       use physical_constants
-      use eos_mixture_lib, only: eos_mix
+      use eos_mixture, only: eos_mix
       use numerics_lib
-      use scv_eos_lib
+      use scv_eos_tables
       use math_lib
       implicit none
       integer, intent(out) :: ierr

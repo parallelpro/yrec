@@ -53,8 +53,8 @@ module eos_lib
 ! i_dlnrho_dlnt/p, i_cp, i_grada) carry their previous-call values in
 ! exactly as the old per-caller locals did; eos_eval itself is called
 ! unchanged, so results are byte-identical.
-      use scv_eos_lib
-      use yale_eos_lib
+      use scv_eos_tables
+      use yale_eos_tables
       implicit none
 ! Everything is private unless exported below (2026: eos_get is the
 ! single public query -- the named-index result-array form; the
@@ -215,15 +215,15 @@ end subroutine eos_eval
 ! which eos configuration requires which tables -- a no-op when MHD
 ! is off, exactly as the gated call was) and the Yale EOS's
 ! Fermi-Dirac degenerate-electron table (read unconditionally, into
-! yale_eos_lib; this block previously lived inline in
-! setup/setups.f90, writing into atm_table_lib -- moved here
+! yale_eos_tables; this block previously lived inline in
+! setup/setups.f90, writing into atm_tables -- moved here
 ! verbatim, including its bin-construction loop, its glitch check,
 ! and that check's `stop`, which ROADMAP.md stage 3 will convert to
 ! ierr). The OPAL 1995/2001/2006 EOS tables are not loaded here:
 ! they are lazily read on first use inside esac/esac01/esac06 via
 ! their table_loaded_flag guards. The SCV (Saumon-Chabrier-Van Horn)
 ! EOS tables are also read here (gated on use_scv_eos, into
-! scv_eos_lib's state consumed by eos/scv/eqscve+eqscvg and the io
+! scv_eos_tables's state consumed by eos/scv/eqscve+eqscvg and the io
 ! writers) -- another inline setups.f90 block moved in verbatim; its
 ! read is provably independent of the atm tables read later in
 ! startup (separate file units, disjoint state), so absorbing it here
@@ -235,10 +235,10 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
      centre5_table_path, ierr)
       use star_info_lib, only: star
 
-      use yale_eos_lib
+      use yale_eos_tables
       use io_units
       use physical_constants
-      use scv_eos_lib
+      use scv_eos_tables
       implicit none
       integer, parameter :: nts = scv_nt
 
@@ -360,7 +360,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      saha_state, ierr)
       use star_info_lib, only: star
 
-      use opal_eos_lib
+      use opal_eos_tables
       use physical_constants
       use math_lib
       implicit none
@@ -451,12 +451,12 @@ end subroutine eos_get_gamma1
 ! Added 2026 (physics-purity pass): the star layer pushes the envelope
 ! mixture here whenever it recomputes the envelope composition
 ! (starin's mixture blocks, rscale's rescale); the eos internals read
-! only eos_mixture_lib's eos_mix. This removed the eos domain's last
+! only eos_mixture's eos_mix. This removed the eos domain's last
 ! reads of star_info.
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
 
-      use eos_mixture_lib, only: eos_mix, n_mix_species
+      use eos_mixture, only: eos_mix, n_mix_species
       implicit none
 
       double precision, intent(in) :: envelope_hydrogen_fraction, &
@@ -478,7 +478,7 @@ end subroutine eos_set_mixture
 ! 18-element metal mixture (C,N,O,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,Ca,Ti,Cr,
 ! Mn,Fe,Ni, scaled to sum to ZHIT) that the Debye-Huckel correction
 ! weights with debye_huckel_nu; kap/setupopac.f90 pushes it here
-! right after rdlaol reads it (formerly rdlaol wrote yale_eos_lib's
+! right after rdlaol reads it (formerly rdlaol wrote yale_eos_tables's
 ! debye_huckel_z directly). Elements 1-3 are recomputed per shell by
 ! the star layer (core/henyey_iterate.f90 etc.); 4-18 come only from
 ! here.

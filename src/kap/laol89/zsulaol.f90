@@ -12,7 +12,7 @@
 ! rdzlaol.f90, for use by gtpurz.f90.
 subroutine zsulaol
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       use math_lib
       implicit none

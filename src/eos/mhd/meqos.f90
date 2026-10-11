@@ -21,7 +21,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, ierr)
 
-      use mhd_eos_lib
+      use mhd_eos_tables
       use io_units
       use math_lib
       implicit none

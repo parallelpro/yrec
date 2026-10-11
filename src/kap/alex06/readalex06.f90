@@ -28,7 +28,7 @@
 subroutine readalex06(alex06_table_path, ierr)
       use star_info_lib, only: star
 
-      use opacity_table_lib
+      use opacity_tables
       implicit none
       integer, intent(out) :: ierr
 
@@ -38,7 +38,7 @@ subroutine readalex06(alex06_table_path, ierr)
       double precision :: row_logr_check(n_alex06_d), header_x, header_z, row_temp
 ! alex06_grid_x/alex06_grid_z/alex06_grid_logt/alex06_grid_logr/
 ! alex06_cached_x/alex06_cached_z/alex06_index_x/alex06_index_t/
-! alex06_index_r defaults moved to opacity_table_lib.f90: DATA can no
+! alex06_index_r defaults moved to opacity_tables.f90: DATA can no
 ! longer target them here now that they're use-associated.
       integer :: i, ii, j, jj, k, kk
 

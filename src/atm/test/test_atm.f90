@@ -22,10 +22,10 @@
 program test_atm
       use star_info_lib, only: star
       use io_units
-      use atm_table_lib
+      use atm_tables
       use atm_lib
-      use opacity_table_lib
-      use scv_eos_lib
+      use opacity_tables
+      use scv_eos_tables
       implicit none
       integer :: gerr
 

@@ -29,7 +29,7 @@ subroutine kurucz(tbl, log10_density, log10_temperature, opacity, &
 !     DERIVATIVE; THOSE ARE THEN INTERPOLATED IN LOG T (intpol) TO GIVE
 !     log10_opacity, dlnkap_dlnt AND dlnkap_dlnrho.
 
-      use opacity_table_lib
+      use opacity_tables
       use io_units
       use numerics_lib
       use math_lib

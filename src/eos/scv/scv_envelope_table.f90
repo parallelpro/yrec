@@ -21,7 +21,7 @@ subroutine build_scv_envelope_table
       use star_info_lib, only: star
       use physical_constants
       use numerics_lib
-      use scv_eos_lib
+      use scv_eos_tables
       use math_lib
       implicit none
       integer, parameter :: nts = scv_nt

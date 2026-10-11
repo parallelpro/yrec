@@ -12,7 +12,7 @@
 ! (opacity_table%opal95_full_opacity, filled by ll95tbl).
 subroutine opal95_fixed_z_table(metal_fraction, ierr)
 
-      use opacity_table_lib
+      use opacity_tables
       use numerics_lib
       implicit none
       integer, intent(out) :: ierr

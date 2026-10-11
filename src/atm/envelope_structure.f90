@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! envstruct_lib
+! envelope_structure
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/envstruct/: the per-point envelope
@@ -15,7 +15,7 @@
 ! read from distant, unrelated points in the call graph. Field names
 ! are unchanged from the original COMMON member names, matching that
 ! same precedent.
-module envstruct_lib
+module envelope_structure
       use star_info_lib, only: json
       implicit none
       private
@@ -46,4 +46,4 @@ module envstruct_lib
 
       type(envelope_structure_state), public :: env_struct
 
-end module envstruct_lib
+end module envelope_structure
