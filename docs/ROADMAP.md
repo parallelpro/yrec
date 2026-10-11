@@ -1123,8 +1123,8 @@ left for a decision (physics changes):
   closed forms and quadrature, eps at three reference points with
   derivative checks, and each table row's Q against AME2020 mass
   excesses.
-- **Open (found by the table check): N14(a,g) -> O18 deposits too
-  much.** q_mev = 5.815 implies a mean neutrino energy of 0.256 MeV.
+- **FIXED (664c2fbc; see the 2026-10-11 follow-ups below): N14(a,g) ->
+  O18 deposited too much.** q_mev = 5.815 implies a mean neutrino energy of 0.256 MeV.
   The F18 beta+ decay (endpoint 0.634 MeV, mean positron energy
   0.250 MeV) gives about 0.38 MeV, about 0.42 with the 3% electron
   capture branch. The inherited value looks like the mean positron
@@ -1155,11 +1155,40 @@ All bitwise identical (test_net pins, gate1, config matrix, full run).
 - **DONE: comments in current terms** (ff9b569b): no ALL-CAPS or
   "logic unchanged" boilerplate left in net/'s code, and one comparison
   style throughout.
-- **Open: whether to keep the level-1 equilibrium burn.** It only
-  sets the starting point of the Newton iterations; levels 3 and up
-  redo the composition implicitly from xa_start. Removing it would
-  change converged models at the iteration-path level, so it needs a
-  measured commit and the user's decision.
+- **DONE (ccd1918c, below): the level-1 equilibrium burn is dropped.**
 - **Left as is: Timmes' sneut** (1,357 lines of external code with
   saved tables). It is why compute_nuclear_energy cannot be pure.
+
+### net/ to 9 (yrec-next, 2026-10-11)
+
+- **DONE, bitwise identical: simeqc and burn_implicitly are pure**
+  (ef4c50f1); in net/ only Timmes' neutrino routines and their callers
+  are not.
+- **DONE, bitwise identical: net/ uses no star_info_lib** (d06db92b). The
+  slot constants live in the constants-only modules composition_layout
+  and neutrino_flux_layout (state/), which star_info_lib re-exports;
+  check_boundaries forbids star_info_lib in net/. They cannot live in
+  net/: numerics uses star_info_lib.
+- **DONE, bitwise identical: each reaction's rate lives in its table
+  row** (c2955bdd): rate law, S-factor fit, scale slot, screening
+  constants, burning regime. Adding a reaction is one row plus its slot
+  name. Two departures from TARGET_ARCHITECTURE 4.5(b): rate laws are
+  integers dispatched in compute_screened_rate, not procedure pointers
+  (the table stays a compile-time constant and everything stays pure);
+  and each law applies the screening exponent inside its own formula,
+  not the driver after a bare fit, because exp(a + b) and
+  exp(a)*exp(b) differ in the last bit. Rate scale factors are still
+  referred to by slot (scale_slot), not by name.
+- **DONE, measured: the level-1 equilibrium burn is dropped** (ccd1918c).
+  The predictor pass ran the implicit network and then overwrote X (and
+  Z, C12, O16 in helium burning) with an explicit equilibrium-He3/CN
+  estimate; both passes now burn the same way and the second copy of
+  the burning equations is gone. The hydrogen-shell timestep limiter
+  reads dX/dt from the table (compute_abundance_rates). Drift: solar
+  track |dlog L| 1e-6, |dX_c| 2e-6; config matrix byte-identical.
+  logT_cutoffs(2) and (3) are now read and unused.
+- **DONE, measured: N14(a,g) deposits 5.646 MeV** (664c2fbc; was 5.815,
+  which implied the mean positron energy as the neutrino loss). No
+  pinned case reaches helium burning; a horizontal-branch run moves by
+  |dlog L| <= 4.2e-8 (its seed has already burned its N14).
 
