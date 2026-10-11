@@ -277,12 +277,16 @@ test_reentry: FFLAGS += $(REL_FFLAGS)
 test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+test_braking: FFLAGS += $(REL_FFLAGS)
+test_braking: rotation/test/test_braking.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+
 test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 .PHONY: tests
-tests: test_eos test_kap test_atm test_net test_reentry
+tests: test_eos test_kap test_atm test_net test_reentry test_braking
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
@@ -333,7 +337,7 @@ clean:
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
-	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_braking
 
 install:
 	install -d $(PREFIX)
