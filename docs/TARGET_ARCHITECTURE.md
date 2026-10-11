@@ -439,7 +439,7 @@ Each phase leaves the code working and producing science. Every phase also does 
   - opacity and EOS source lists with the generic blend drivers;
   - table loading moved into the sources;
   - eos, kap, atm and net import nothing from the star layer, enforced by `check_boundaries`.
-- **Exit criteria:** tier S, including the currently unpinned OPAL95 and MHD EOS paths, which get pins first.
+- **Exit criteria:** tier S, including the MHD EOS path, which gets a pin first (test_eos pins every other EOS configuration; it runs MHD only when `YREC_MHD_TABLES` points at the tables, which the repository does not ship).
 
 ### Phase 4: rotation
 
@@ -510,7 +510,12 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `checkj`, `checkc` | `rotation/seculr/check_angular_momentum.f90`, `check_composition.f90` |
 | `mwind`, `mcowind` | `wind/matt_wind.f90`, `wind/wind_spindown_matt.f90` |
 | `massloss` | `wind/massloss.f90` |
-| `eqstat`, `eqstat2`, `meqos` | `eos/eqstat.f90` (both), `eos/mhd/meqos.f90` |
+| `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
+| `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`, `read_mhd_tables`) |
+| `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal95_eos.f90`, `opal2001_eos.f90`, `opal2006_eos.f90` (`compute_opal95_eos`, ...; `find_opal95_ramp`, ...) |
+| `eqscve`, `eqscvg`, `setscv` | `eos/scv/scv_eos.f90` (`compute_scv_envelope_eos`, `compute_scv_eos`, `build_scv_envelope_table`) |
+| `eqsaha`, `eqrelv` | `eos/yale/yale_eos.f90` (`compute_saha_eos`, `compute_fully_ionized_eos`) |
+| `mu` | `eos/eos_mixture.f90` (`compute_mean_weights`) |
 | `getopac` (`kap_eval`), `setupopac` (`load_opacity_tables`), `surfopac` (`refresh_surface_tables`) | `kap/kap_lib.f90` (all three) |
 | `ll95tbl`, `getopal95` | `kap/opal95/opal95_opacity.f90` (`read_opal95_tables`, `compute_opal95_opacity`) |
 | `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_opacity.f90` (`read_laol_tables`, `compute_laol_opacity`, `read_pure_z_table`, `compute_pure_z_opacity`) |
@@ -547,6 +552,6 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - It is inherited: in the original F77 only `dadcoeft.f` referenced `/DIFAD4/`, `/EGRIDCHI/`, `FGEOM`, `ECOD5/6` and the `EV*` arrays.
    - The flag takes effect only in rotating runs with instability transport. 16 legacy decks and 316 inlists set it, but none of them rotate, so for them it is inert.
    - Fixed (2026-10): `secular_transport` now stops with an error when the flag would take effect.
-5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`eqstat.f90:478` vs `:706`).
+5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`blended_eos.f90:462` vs `:684`).
 6. **Opacity ramp derivatives are inconsistent** (*reported, not yet checked*). The ramp blends κ linearly but averages the dln κ derivatives without weighting them and drops the dw/dln T term (`kap_lib.f90:312–317`).
 7. **`max_delta_j_by_iter(16)` can overflow** (*reported, not yet checked*). It overflows when `max_diffusion_iters > 16` (`check_angular_momentum.f90:91`).

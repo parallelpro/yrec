@@ -1,0 +1,43 @@
+# eos/ — the equation of state
+
+This directory computes the density of a zone and its thermodynamic quantities (beta, the ionization fractions, the mean molecular weights, cp, the adiabatic gradient) and their derivatives, from (log T, log P, X, Z). Code outside eos/ uses it only through `eos_lib` (enforced by `tools/check_boundaries.py`). eos/ reads nothing from `star`: its configuration is one settings record, installed at the start of every run.
+
+---
+
+## 1. What lives where
+
+| Module (file) | What it holds |
+|---|---|
+| `eos_lib` (`eos_lib.f90`) | **The public interface.** `eos_init` installs the settings and loads the tables they select. `eos_get` (a result array) and `eos_eval` (separate outputs) evaluate a zone. `eos_set_mixture`, `eos_set_debye_huckel_z`, `eos_set_debye_huckel_composition` and `eos_update_envelope_tables` take the compositions the star layer owns. `eos_get_gamma1` returns gamma1 and the adiabatic gradient at (T, rho), for test_eos. |
+| `eos_configuration` | The settings record (`eos_settings_t`, `eos_settings`). |
+| `eos_mixture` | The envelope mixture (`eos_mix`), `ion_mean_weight_excess` and `compute_mean_weights`. |
+| `blended_eos` (`blended_eos.f90`) | The EOS of every run without MHD (section 2): `blend_eos` evaluates one point; `compute_blended_eos` adds the numerical derivatives. |
+| `yale_eos` (`yale/`) | The Yale EOS of Prather (1976): `compute_saha_eos` (partial ionization), `compute_fully_ionized_eos` (degenerate, relativistic electrons, optional Debye-Hückel correction) and `read_fermi_table`. |
+| `scv_eos` (`scv/`) | The Saumon-Chabrier-Van Horn EOS: `read_scv_tables`, `build_scv_envelope_table` (the H, He and metal tables combined at the envelope composition), `compute_scv_envelope_eos` and `compute_scv_eos`. |
+| `opal95_eos`, `opal2001_eos`, `opal2006_eos` (`opal/`) | The three OPAL vintages, one module each: `compute_opal*_eos` (density and derivatives at P) and `find_opal*_ramp` (whether the table covers the point, and its weight near the edge). OPAL's own routines keep their names (`esac`, `rhoofp`, `readco`, `radsub`, ...). |
+| `mhd_eos` (`mhd/`) | The Mihalas-Hummer-Däppen EOS: `read_mhd_tables` and `compute_mhd_eos`. Däppen's routines keep their names (`mhdst`, `mhdpx`, ...). |
+| `opal_eos_tables`, `mhd_eos_tables`, `scv_eos_tables`, `yale_eos_tables` | Each family's tables and state. `opal_eos_tables` also holds the helpers the OPAL vintages share (`interpolate_opal_t6_rho`, `find_opal_ramp`, `quad`, `gmass01`, `open_opal_eos_table`). |
+
+## 2. What eos_eval does
+
+With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blended_eos`, which calls `blend_eos` once, or four more times for finite-difference derivatives when `use_numerical_derivatives` is set. For one (log T, log P, X, Z), `blend_eos`:
+1. **Below the ionization cutoff** (`saha_log10t_cutoff`): solves the Saha equations (`compute_saha_eos`), or, with `use_scv_eos`, looks the point up in the SCV tables and takes from Saha only what SCV lacks.
+2. **Above it**: treats the gas as fully ionized (`compute_fully_ionized_eos`). Near the cutoff the two results are interpolated.
+3. **OPAL**: if an OPAL vintage is selected and its table covers the point, adopts the OPAL result, or blends it in with the weight `find_opal*_ramp` returns near the table's edge.
+
+## 3. Conventions
+
+- **Units** are cgs: T in K, P in dyn/cm², rho in g/cm³, cp in erg/(g K). The OPAL routines work internally in T6 = T/10⁶ and P in units of 10¹² dyn/cm².
+- **Derivatives are logarithmic**: `dlnrho_dlnt`, `dlnrho_dlnp` and their T and P derivatives.
+- **beta** is P_gas/P. `beta14` is 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (an open item in docs/TARGET_ARCHITECTURE.md).
+- **Inout results**: `eos_get`'s result slots for density, beta, the ionization fractions, 1/mu_ion, the two density derivatives, cp and the adiabatic gradient carry the caller's previous values in. `saha_state` carries the Saha solver's state between calls.
+
+## 4. Configuration
+
+`eos_settings_t` (in `eos_configuration`) is everything eos reads: which EOS (MHD; the OPAL vintage; SCV), numerical derivatives, diffusion of Z, the Debye-Hückel correction and its degeneracy range, and the Saha cutoff. The star layer fills it from the controls (`equation_of_state_settings` in `setup/microphysics_settings.f90`) and passes it to `eos_init`, together with the table paths from `star%job`. eos opens every table itself with `newunit`. The OPAL tables are read by their vintage's reader on first use; the others are read at `eos_init`.
+
+## 5. Tests and extending
+
+`test_eos` (`make tests` in `src/`, then `pytest test_eos.py` from the repository root) pins the production EOS (SCV and OPAL 2006) on a (log T, log P) grid, `eos_get_gamma1` on both branches, the error paths, and every configuration a deck can choose: OPAL 1995 and 2001, SCV only, Yale only, numerical derivatives, diffusion of Z and the Debye-Hückel correction. The MHD tables are not shipped; with `YREC_MHD_TABLES` set to their directory, test_eos also evaluates the MHD path. A deliberate change to its output means regenerating `eos/test/expected_test_eos.out`.
+
+**Add an EOS family:** a module in its own directory with `read_*_tables` (called from `eos_init`) and `compute_*_eos`; its state in a `*_tables` module; a `use_*` flag in `eos_settings_t` (and in `equation_of_state_settings`); a branch in `eos_eval` or `blend_eos`; and a `check_configurations` section in `test_eos`.

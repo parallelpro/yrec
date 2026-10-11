@@ -1232,3 +1232,45 @@ All bitwise identical (test_kap, gate1, test_net, config matrix).
   bare routine kap calls without an interface; the unit-number controls
   (opal95_table_unit, icondopacp, ...) are still set by read_controls
   but read by nothing.
+
+### Phase 3: eos/ (yrec-next, 2026-10-11)
+
+All bitwise identical (test_eos, test_kap, test_atm, test_net, gate1,
+config matrix) except where noted.
+- **DONE: each OPAL vintage has its own table-loaded flag** (85f74924):
+  the three readers shared one flag, so loading one vintage kept the
+  next from reading its own table in the same process (a latent bug;
+  no run loads two vintages).
+- **DONE: test_eos pins every configuration** (8cd2d244): OPAL 1995 and
+  2001, SCV only, Yale only, numerical derivatives, diffusion of Z and
+  the Debye-Hueckel correction, besides the production SCV + OPAL 2006.
+- **DONE: eos reads no star and is reached only through eos_lib**
+  (c00a9a20): eos_settings_t, filled by the star layer's
+  equation_of_state_settings and installed by eos_init; the OPAL table
+  path comes from star%job%opal_eos_table_path and eos opens it; the
+  Debye-Hueckel composition and the SCV envelope table are set through
+  eos_lib.
+- **DONE: alternate returns become in_table** (afbec93f): esac* and
+  oeqos* report an OPAL miss through a logical, with identical control
+  flow.
+- **DONE: one module per family** (1ab2dc75): 42 bare routines become
+  opal95_eos, opal2001_eos, opal2006_eos, mhd_eos, scv_eos, yale_eos and
+  blended_eos; OPAL's and Daeppen's routines keep their names (legacy
+  names in TARGET_ARCHITECTURE appendix A).
+- **DONE: hygiene** (02edee58, a15d1dc7): real(dp), private by default,
+  explicit imports, one comparison style, assumed-shape arrays (not in
+  the vendored MHD readers), constants as parameters, seven procedures
+  pure.
+- **DONE: eos_init is a list of steps** (5cbfb7a0): each family reads its
+  own tables; the Debye-Hueckel constants are parameters (bit-identical
+  to the run-time values); a missing Fermi or SCV table returns ierr
+  instead of crashing.
+- **DONE: comments in current terms** (778208e2); eos/README.md.
+- **Open:** the MHD path has no pin (its tables are not shipped).
+  rhoofp01's density-edge table differs from opal01_density_index_edge
+  at rows 78-80 (113 against 115), as in OPAL's code; making them one
+  table would be a measured change. The three OPAL vintages are near
+  copies of each other (esac*, rhoofp*, radsub*). beta14 still means
+  different things on different paths (TARGET_ARCHITECTURE appendix B).
+  The unit-number controls iopale, fermi_unit, iscvh/iscvhe/iscvz and
+  unit_zams_*/unit_centre* are set by read_controls but read by nothing.
