@@ -1274,3 +1274,41 @@ config matrix) except where noted.
   different things on different paths (TARGET_ARCHITECTURE appendix B).
   The unit-number controls iopale, fermi_unit, iscvh/iscvhe/iscvz and
   unit_zams_*/unit_centre* are set by read_controls but read by nothing.
+- **Fixed after the full battery** (841ff500): the module merge had
+  renamed eqstat2 inside a message string too, so the 0.03 Msun
+  dbl-to-ZAMS pin's log read "blend_eos: BETA is negative" where it
+  read "EQSTAT2: ..." (numbers identical). The message keeps its text;
+  merge_family no longer renames inside strings. The kap merge
+  (fe63ec5c) renamed seven 2026-written error messages the same way;
+  no pin reaches them and they now name the routine that prints them.
+
+### Phase 3: atm/ (yrec-next, 2026-10-11)
+
+All bitwise identical (test_atm, test_eos, test_kap, test_net, gate1,
+config matrix, the testsuite's Allard and Kurucz solar models).
+- **DONE: test_atm pins every path** (ecea0ce0): besides the Kurucz,
+  Castelli/Kurucz and Allard NextGen 2 lookups, the Allard tables at
+  tau = 100, the old NextGen 1 layout, a lookup outside the Allard
+  tables, and the three T-tau relations. read_allard_tables now closes
+  its unit, so the tables can be read twice in one process.
+- **DONE: atm reads no star and is reached only through atm_lib**
+  (85575e1b): atm_settings_t, built by the star layer's
+  atmosphere_settings; tables opened with newunit; atm_get_surface_pt
+  dispatches the tables itself and returns P and T as arguments, with
+  the caller's current atm_choice (surfbc switches it); the atmosphere
+  integration point and the envelope/atmosphere structure profiles
+  move to core, which computes them.
+- **DONE: one module per table family** (d9909c9f): kurucz_atmosphere
+  and allard_atmosphere replace five bare-procedure files; atm_init is
+  three steps.
+- **DONE: hygiene and comments** (249b7a03, 3e5479cb): real(dp),
+  private by default, explicit imports, one comparison style, eight
+  procedures pure, comments in current terms; atm/README.md.
+- **Open:** read_allard_tables's check that an old NextGen 1 file cannot
+  give the tau = 100 point tests latmtptau100, a never-set misspelling
+  of the allard_use_tau100 flag, so that misconfiguration reads unset
+  tau = 100 tables instead of stopping. Fixing it changes no pinned
+  output but is a behaviour change. The accretion branch of
+  wind/massloss reads the shared atmosphere point after an Allard
+  lookup that may have failed (kept as it was). The atm_table_file_unit
+  and allard_table_unit controls are no longer read.
