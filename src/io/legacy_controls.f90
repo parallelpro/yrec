@@ -22,7 +22,7 @@ module legacy_controls
 ! defaults/controls_registry.tsv maps every legacy name to its
 ! canonical and new-inlist names. hpttol, ies and imu are read and then
 ! unused. version_fmt, element_id, the mixture tables, the inlist file
-! names and the loop variables are the reader's own working variables.
+! names are the reader's own working variables.
       character(len=256) :: version_fmt
       character(len=256) :: flaol, fpurez
       character(len=256) :: flaol2, fopal2, fkur2
@@ -52,11 +52,6 @@ module legacy_controls
       double precision :: zx_mix_table(4), frac_c_table(4), &
            frac_n_table(4), frac_o_table(4)
       character(len=256) :: control_nml_file, physics_nml_file
-      character(len=256) :: shell_cmd
-      integer :: i, last_slash_idx
-      double precision :: one_third, two_thirds
-      double precision :: sum_frac
-      integer :: nkind
 
       character(len=256) :: fmonte1, fmonte2
 
@@ -647,13 +642,6 @@ subroutine set_legacy_defaults
       lpmm = .false.
       control_nml_file = repeat(achar(0), len(control_nml_file))
       physics_nml_file = repeat(achar(0), len(physics_nml_file))
-      shell_cmd = repeat(achar(0), len(shell_cmd))
-      i = 0
-      last_slash_idx = 0
-      one_third = 0
-      two_thirds = 0
-      sum_frac = 0
-      nkind = 0
       fmonte1 = repeat(achar(0), len(fmonte1))
       fmonte2 = repeat(achar(0), len(fmonte2))
       descrip = repeat(achar(0), len(descrip))

@@ -11,7 +11,7 @@
 ! Warnings go to the TERMINAL ONLY (the run log stays byte-pinnable),
 ! and never abort the run: an inert control is a probable mistake,
 ! not a certain one. Genuine conflicts that must abort stay where
-! they are (e.g. the LSEMIC+LOVSTC stop in star_setup).
+! they are (e.g. semiconvection with overshoot, in derive_controls).
 !
 ! Called from run_yrec once, after star_setup -- all controls are
 ! adopted and final by then.

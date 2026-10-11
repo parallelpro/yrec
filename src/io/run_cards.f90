@@ -6,7 +6,7 @@
 ! targets and starting-model flags, echoed to the terminal and the run
 ! log (formerly part of parmin).
 module run_cards
-      use star_info_lib, only: star, control_nml_override, physics_nml_override
+      use star_info_lib, only: star
       use io_units
       use eos_lib, only: eos_set_mixture
       use legacy_controls
@@ -20,7 +20,7 @@ contains
 ! Interpret the per-run "kind" cards: stop conditions, rescale
 ! parameters, and the rescaled envelope mixture for each run.
 subroutine interpret_kind_cards
-!     INTERPRET RUN FROM SEQUENCE OF "KIND" CARDS
+      integer :: i, nkind
 
       write(run_log_unit,200)
       200 format(/1x,'run plan',/)

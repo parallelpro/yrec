@@ -1,33 +1,21 @@
 !----------------------------------------------------------------------
 ! read_controls
 !----------------------------------------------------------------------
-! Added 2026 (phase five): the controls-read step of the former
-! program main, as its own star-layer routine. parmin reads the
-! control and physics namelists into the controls_buffer BUFFER and
-! fills the job-level file paths (star%job). Errors return via ierr.
-!
-! 2026 controls->star% campaign, phase B: star%ctrl is the
-! authoritative post-read home. The four-step sequence below
-! guarantees parmin always reads over pristine defaults (a namelist
-! read only overwrites what the input file provides) -- it replaces
-! the retired controls_reset_lib snapshot machinery structurally:
-!   1. star%ctrl = controls_state()   pristine defaults (component
-!                                     initializers, generated from
-!                                     the buffer's declarations)
-!   2. seed_controls_buffer           buffer <- star%ctrl
-!   3. parmin                         namelist reads over the buffer
-!   4. store_controls_to_star         star%ctrl <- buffer
-! Until phase C migrates them, consumers still read the buffer's
-! bare names; star%ctrl is written here but not yet read broadly.
+! Reads a deck into star%ctrl and star%job. Each read starts from the
+! pristine defaults: star%ctrl = controls_state() (generated from
+! controls_buffer's declarations), seeded into the buffer
+! (seed_controls_buffer); read_input reads the deck over the buffer,
+! and store_controls_to_star copies the result back. The read's steps
+! live in legacy_controls (the namelist variables and their defaults),
+! run_files, derived_controls and run_cards. Errors return via ierr.
 module controls_reader
       use star_info_lib, only: star, control_nml_override, physics_nml_override
       use controls_sync, only: store_controls_to_star
       use physical_constants
       use io_units
       use legacy_controls
-      use run_files, only: assign_unit_numbers, resolve_output_mode_and_paths, &
-           derive_options_and_open_files
-      use derived_controls, only: echo_settings
+      use run_files, only: assign_unit_numbers, expand_paths, open_run_files
+      use derived_controls, only: derive_controls
       use run_cards, only: interpret_kind_cards
       implicit none
       private
@@ -47,8 +35,6 @@ subroutine read_controls(ierr)
       ierr = 0
       star%ctrl = controls_state()
       call seed_controls_buffer
-! read in user parameters (read_input fills star%job's table paths
-! itself -- see its load/store_table_paths pair below)
       call read_input(ierr)
       if (ierr /= 0) return
       call store_controls_to_star
@@ -75,27 +61,15 @@ subroutine read_input(ierr)
       print *,''
       print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
 
-! JVS 02/11 Altered the yrec8 input format so that files can be entered
-! on the command line, with the *.nml1 as the first argument, and *.nml2 as
-! the second. Defaults to yrec8.nml1 and yrec8.nml2 if none are provided.
-!      OPEN(UNIT=ISTAND, FILE='yrec8.nml1', STATUS='OLD')
-!      OPEN(UNIT=IRUN, FILE='yrec8.nml2', STATUS='OLD')
-!      READ(UNIT=ISTAND, NML=CONTROL)
-!      READ(UNIT=IRUN, NML=PHYSICS)
-!      CLOSE(ISTAND)
-!      CLOSE(IRUN)
-
-! Dynamically create format string so version info is nicely spaced
-! max(1,...): a zero width (A00) is illegal -- belt and braces on top
-! of setversion's empty-hash guard
+! the run log banner's format, fitted to the version strings (a zero
+! width is illegal)
       write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
            max(1, len_trim(git_hash_string))
       315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
            &        ', '')'')')
 
-! 2026 (libyrec): when embedded (pyyrec), argv belongs to the host
-! process, so the C API injects the paths via star_job_lib overrides;
-! blank overrides preserve the CLI getarg behavior exactly.
+! The deck: the first command-line argument (default yrec8.nml1), or
+! the override an embedding host (pyyrec) sets, since argv is the host's.
       if (control_nml_override .ne. ' ') then
          control_nml_file = control_nml_override
       else
@@ -105,22 +79,24 @@ subroutine read_input(ierr)
       print *, ' '
       call read_namelist_files
       call adopt_canonical_names
-      call resolve_output_mode_and_paths
-      call derive_options_and_open_files(ierr)
+      call map_user_inputs
+! open_run_files' output_init_mesa reads its controls from star%ctrl
+      call store_controls_to_star
+      call expand_paths
+      call open_run_files(ierr)
       call store_table_paths
       if (ierr /= 0) return
-      call echo_settings
+      call derive_controls(ierr)
+      if (ierr /= 0) return
       call interpret_kind_cards
-      return
 
 end subroutine read_input
 
 
 ! ---------------------------------------------------------------
-! star%job <-> local NAMELIST-spelled table-path buffers. Load runs
-! first so a re-entrant run starts from the previous run's stored
-! paths (exactly what the former argument association gave); store
-! runs after the reads and expand_value resolution.
+! The table paths between star%job and their namelist variables. The
+! load comes first, so a deck that names no table keeps the previous
+! read's path; the store follows the read and the path expansion.
 subroutine load_table_paths
       falex06 = star%job%alex06_table_path
       fallard = star%job%allard_table_path
@@ -177,15 +153,10 @@ subroutine store_table_paths
 end subroutine store_table_paths
 
 ! ---------------------------------------------------------------
-! Pick the CONTROL/PHYSICS namelist files (CLI override aware) and
-! read them -- through the new-style &star_job/&controls reader when
-! the control file carries a star_job group, else the legacy
-! NAMELIST /control/ + /physics/ pair.
+! Read the deck: a file with a &star_job group is a new-style inlist
+! (&controls in the same file or the second), read by the generated
+! inlist_new_read.inc; anything else is a legacy CONTROL/PHYSICS pair.
 subroutine read_namelist_files
-! 2026: detect the inlist style BEFORE printing the banner, so a
-! single-inlist run announces its one file instead of a phantom
-! legacy PHYSICS namelist (the getarg(2) default used to print
-! 'yrec8.nml2' even though the new-style dispatch never reads it).
       logical :: new_style, single_inlist
 
       new_style = nml_file_has_group(control_nml_file, 'star_job')
@@ -199,8 +170,7 @@ subroutine read_namelist_files
       call getarg(2, physics_nml_file)
       if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
       end if
-! single-inlist style: both groups live in the one file; point the
-! physics slot at it too (copy_inlists_used then dedupes it).
+! a single-file inlist is both files (copy_inlists_used copies it once)
       if (single_inlist) physics_nml_file = control_nml_file
 
       if (single_inlist) then
@@ -210,9 +180,6 @@ subroutine read_namelist_files
       write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
       end if
 
-! 2026 inlist revamp: dispatch on inlist style. New-style files carry
-! &star_job (+ &controls, same file or the second); everything else
-! takes the legacy reader path.
       if (new_style) then
       include 'inlist_new_read.inc'
       else
@@ -226,30 +193,16 @@ subroutine read_namelist_files
 end subroutine read_namelist_files
 
 ! ---------------------------------------------------------------
-! Copy the namelist-spelled locals into their canonical const_lib
-! homes (see the NAMING NOTE in the header: NAMELIST members must
-! keep their original spelling, so renamed configuration lives in
-! module variables and is assigned here after the read).
+! Copy each control read under a legacy name into its canonical home
+! (controls_buffer, integration_parameters or star). map_user_inputs,
+! which runs next, reads use_new_nuclear_rates and the s0_* values.
 subroutine adopt_canonical_names
-! stolr0/imax/nuse must keep their exact NAMELIST /physics/ spelling
-! (see this file's naming note at the top), so integration_parameters's
-! canonically-named variables are set by copying from them here,
-! after the namelist read, rather than by renaming in place.
       tolerance_fraction = stolr0
       max_stage_index = imax
       extrap_order = nuse
-! tscut must likewise keep its NAMELIST spelling; copy into const_lib's
-! saha_log10t_cutoff here.
       saha_log10t_cutoff = tscut
-! use_new_nuclear_rates/weak_screening_threshold: same reasoning,
-! copied from their NAMELIST-spelled locals before remap runs, since
-! map_user_inputs.f90 reads use_new_nuclear_rates to decide how to compute
-! const_lib's cross-section-scale members.
       use_new_nuclear_rates = lnewnuc
       weak_screening_threshold = weakscreening
-! 2026 phase-C rename campaign: copy the NAMELIST-spelled locals
-! into their canonically-named controls_buffer buffers (see the local
-! declaration block above).
       overshoot_alpha_core = alphac
       overshoot_alpha_envelope = alphae
       diffusion_timestep_factor = dtdif
@@ -277,33 +230,17 @@ subroutine adopt_canonical_names
       use_reimers_wind = lreimer
       constant_mixing_coeff = cstmixing
       constant_settling_reduction = cstdiffmix
-! envelope_overshoot_active/rotation_active/instability_transport_
-! active/mass_accretion_rate/accreted_composition/use_mass_accretion:
-! same reasoning, copied from their NAMELIST-spelled locals. Order
-! relative to `call remap` doesn't matter for these -- map_user_inputs.f90
-! doesn't read any of them.
       envelope_overshoot_active = lovste
       rotation_active = lrot
       instability_transport_active = linstb
       mass_accretion_rate = dmdt0
       accreted_composition = compacc
       use_mass_accretion = lmdot
-! use_itoh_neutrino_loss/calc_envelope_flag: same reasoning, copied
-! from their NAMELIST-spelled locals.
       use_itoh_neutrino_loss = lnulos1
       calc_envelope_flag = lcalcenv
-! clsun/crsun must likewise keep their NAMELIST spelling; copy into
-! const_lib's solar_luminosity_cgs/solar_radius_cgs here (before
-! setup/setups.f90 computes the rest of former common/const/ from
-! these two).
       star%solar_luminosity_cgs = clsun
       star%solar_radius_cgs = crsun
-! lexcom must likewise keep its NAMELIST spelling; copy into
-! const_lib's use_extended_composition here.
       use_extended_composition = lexcom
-! spotf/spotx/lsdepth, tdisk/pdisk/ldisk, endage/setdt/end_dcen/
-! end_xcen/end_ycen, lmhd, and optol must likewise keep their NAMELIST
-! spelling; copy into const_lib's canonical names here.
       spot_filling_factor = spotf
       spot_temp_contrast = spotx
       spot_depth_varies = lsdepth
@@ -483,40 +420,14 @@ subroutine adopt_canonical_names
       s0p_be7_p = s0p_1_be7p
       s0pp_be7_p = s0pp_1_be7p
       use_scv_eos = lscv
-! LNEWNUC = .false.: the cross sections are the SSTANDARD ratios (to
-! Bahcall & Ulrich 1988), as in the F77 code's COMMON /CROSS/;
-! map_user_inputs replaces them from the s0_* inputs when LNEWNUC is
-! set. (2026-10: the 2026 rename campaign dropped this copy as "never
-! referenced", which left every pp/CNO rate zero -- and the Be7
-! branching 0/0 -- whenever LNEWNUC was .false.; every shipped deck
-! sets it .true., so no pin saw it. SSTANDARD is settable from the
-! legacy namelist; &controls inlists get the default ratios.)
+! lnewnuc = .false. takes the cross sections from sstandard (ratios to
+! Bahcall & Ulrich 1988); map_user_inputs sets them from the s0_* inputs
+! otherwise. A &controls inlist gets the default ratios.
       if (.not. lnewnuc) star%cross_section_scale = sstandard
-! MHP 8/14 SUBROUTINE TO CONVERT MORE USER-FRIENDLY INPUT VARIABLES
-! INTO THE VECTORS USED IN THE CODE (SUPERCEDES OLDER INPUTS)
-! (2026 phase C: remap is read-path like this routine -- it reads
-! AND writes the controls BUFFER; the stores below/in read_controls
-! carry its results into star%ctrl.)
-      call map_user_inputs
-! 2026 phase C: output_init_mesa (called from
-! derive_options_and_open_files below) reads its output controls
-! from star%ctrl, but read_controls' final store has not happened
-! yet at that point -- store the buffer into star%ctrl here, after
-! the namelist reads, the local->canonical copies, and remap.
-! read_controls' final store after parmin returns then also captures
-! echo_settings' clamps (walpcz etc.); each store is an idempotent
-! buffer copy.
-      call store_controls_to_star
-! MHP 06/13 Added memory of whether the choice of atmospheres has
-! been changed during the run, and what the original setting was
+! the atmosphere choice as read; the run may change star%job%atm_choice
       star%atm_choice_initial = kttau
       star%use_ttau_relation = .false.
 end subroutine adopt_canonical_names
-
-
-
-
-
 
 ! Does this namelist file contain the group &<gname>? Used to detect
 ! new-style inlists (and whether &controls shares the &star_job file).

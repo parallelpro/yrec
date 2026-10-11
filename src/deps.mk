@@ -268,7 +268,7 @@ io/read_mod_model.o: io_units.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
 io/read_yrec7.o: io_units.mod math_lib.mod star_info_lib.mod
 io/run_cards.o: eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
-io/run_files.o: io_units.mod legacy_controls.mod star_info_lib.mod yrec_output.mod
+io/run_files.o: io_units.mod legacy_controls.mod yrec_output.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_reader.mod integration_parameters.mod io_units.mod star_info_lib.mod
 io/write_fgong_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
