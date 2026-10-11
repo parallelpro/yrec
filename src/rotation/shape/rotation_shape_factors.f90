@@ -13,10 +13,10 @@
 ! centrifugal flattening (the Kippenhahn-Thomas / Endal-Sofia "shape"
 ! formalism): first calls shape (shape.f90) to get the run of the
 ! reference equipotential radius r0 and the distortion parameter eta2,
-! then for each shell integrates the distorted potential (via
-! trapzd/polint Richardson extrapolation) and averages the resulting
-! local effective gravity over the shell (via qgauss with
-! equipotential_integrand) to get mean_gravity, from which FP/FT and
+! then for each shell integrates the distorted potential (by
+! refine_distortion_integral with polint Richardson extrapolation) and
+! averages the resulting local effective gravity over the shell
+! (average_over_equipotential) to get mean_gravity, from which FP/FT and
 ! the diagnostic potential terms rot_scr%phisp/phirot/phidis are built.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
@@ -25,11 +25,10 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 
       use star_info_lib, only: json
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: polint
+      use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
       use math_lib
       implicit none
-! the shape integrand passed to numerics' qgauss
-      external equipotential_integrand
 
       double precision, intent(in) :: log_density(json), log_radius(json), &
            log_mass(json)
@@ -86,7 +85,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
          extrap_step(1) = 1.0d0
          do j = 1,jmax
 ! EVALUATE THE INTEGRAL AINT FROM 0 TO R0 USING THE TRAPEZOIDAL RULE
-            call trapzd(prev_r0, r0(i), aint0(j), j, density, &
+            call refine_distortion_integral(prev_r0, r0(i), aint0(j), j, density, &
                  prev_density, shell_mass, previous_shell_mass, omega_sq, &
                  prev_omega_sq, eta22, prev_eta22, q, prev_q)
             if (j.ge.k) then
@@ -105,8 +104,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
          end do
          aint = prev_aint + aint1
 ! FIND <G> AND <G-1> ACROSS THE SHELL BY GAUSSIAN QUADRATURE
-! (func is passed as the integrand -- 2026, phase four step 2)
-         call qgauss(equipotential_integrand, g0, ginv0, sphi, b_coefficient, r0, log_mass, &
+         call average_over_equipotential(g0, ginv0, sphi, b_coefficient, r0, log_mass, &
               aint, q, omega_sq, distortion_a, i)
          mean_gravity(i) = g0/sphi
          ginv = log10(ginv0)

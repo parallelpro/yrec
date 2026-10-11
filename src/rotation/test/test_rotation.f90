@@ -32,7 +32,8 @@ program test_rotation
       use star_info_lib, only: star, json
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
-      use numerics_lib, only: trapzd, qgauss, tridia
+      use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
+      use secular_transport, only: solve_angular_momentum_transport
       implicit none
       double precision, parameter :: msun = 1.989d33
       double precision :: j(json), omega, dt, domega_start, domega_end
@@ -156,18 +157,17 @@ end subroutine cz_case
 ! (n = 1..4) and the next (n restarts), then the Gauss-Legendre
 ! averages of g, 1/g and the area over the equipotential of shell 3.
 subroutine shape_quadrature_check()
-      external equipotential_integrand
       double precision :: s, q, qp, r0(json), log_mass(json), g0g, ginvg, sphig
       integer :: n
       write(*,'(a)') "# shape quadratures (trapezoid refinement, equipotential average)"
       qp = 0.02d0
       do n = 1, 4
-         call trapzd(0.4d10, 0.6d10, s, n, 1.5d0, 2.0d0, 0.8d33, 0.6d33, 1.0d-11, &
+         call refine_distortion_integral(0.4d10, 0.6d10, s, n, 1.5d0, 2.0d0, 0.8d33, 0.6d33, 1.0d-11, &
               1.2d-11, 2.3d0, 2.25d0, q, qp)
          write(*,'(a,i2,2(1pe24.15))') "trapezoid n s q", n, s, q
       end do
       do n = 1, 2
-         call trapzd(0.6d10, 0.7d10, s, n, 1.2d0, 1.5d0, 0.9d33, 0.8d33, 0.9d-11, &
+         call refine_distortion_integral(0.6d10, 0.7d10, s, n, 1.2d0, 1.5d0, 0.9d33, 0.8d33, 0.9d-11, &
               1.0d-11, 2.35d0, 2.3d0, q, qp)
          write(*,'(a,i2,2(1pe24.15))') "trapezoid shell 2 n s q", n, s, q
       end do
@@ -175,7 +175,7 @@ subroutine shape_quadrature_check()
       log_mass = 0.0d0
       r0(3) = 0.5d10
       log_mass(3) = 32.9d0
-      call qgauss(equipotential_integrand, g0g, ginvg, sphig, 0.125d0*4.0d0*3.1415926535898d0, &
+      call average_over_equipotential(g0g, ginvg, sphig, 0.125d0*4.0d0*3.1415926535898d0, &
            r0, log_mass, 1.0d33*s, q, 1.0d-11, 1.0d-3, 3)
       write(*,'(a,3(1pe24.15))') "equipotential g0g ginvg sphig", g0g, ginvg, sphig
 end subroutine shape_quadrature_check
@@ -201,14 +201,14 @@ subroutine angular_momentum_solve_check()
          rhs(i) = 1.0d0 + i*(7.0d0 - i)
          inertia(i) = 0.2d0*i
       end do
-      call tridia(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
+      call solve_angular_momentum_transport(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
       write(*,'(a)') "omega"
       write(*,'(3(1pe24.15))') solution(1:n)
       write(*,'(a)') "dj"
       write(*,'(3(1pe24.15))') dj(1:n)
       write(*,'(a,1pe24.15,i3)') "sumdj ierr", sumdj, ierr
       diag(2) = sub(2)*sup(1)/diag(1)
-      call tridia(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
+      call solve_angular_momentum_transport(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
       write(*,'(a,i3)') "singular: ierr", ierr
 end subroutine angular_momentum_solve_check
 

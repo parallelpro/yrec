@@ -92,10 +92,9 @@ PUBLIC = {
                "overshoot_boundaries", "semiconvection",
                "compute_temperature_gradients"},
     # rotation deliberately has no facade (multi-primitive surface,
-    # user decision during the phase-two sweep). "func" was here
-    # because numerics' qgauss hard-coded a call to it; phase four's
-    # step 2 made it a procedure argument, but func stays public since
-    # fpft passes it across the module boundary into numerics.
+    # user decision during the phase-two sweep). (equipotential_integrand,
+    # the former func, left the list in 2026-10: the shape quadrature
+    # that calls it moved from numerics into rotation/shape.)
     # rotation_shape_factors (the former solid) joined when step 1
     # moved it here from misc/ (rotation geometry, legitimately called
     # from core and setup/rezone).
@@ -105,7 +104,7 @@ PUBLIC = {
                  "enforce_rotation_profile", "gravitational_settling",
                  "microdiff", "diffuse_composition_driver",
                  "diffuse_composition", "composition_grid",
-                 "equipotential_integrand", "solid_body_omega"},
+                 "solid_body_omega"},
     # numerics is the shared numerics library: all-public by design.
     "numerics": None,
 }

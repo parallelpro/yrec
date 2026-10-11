@@ -50,7 +50,7 @@ program test_eos
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
       use opal_eos, only: esac06
-      use numerics_lib, only: intpt
+      use mhd_eos, only: interpolate_mhd_table
       implicit none
       type(eos_settings_t) :: settings
       integer :: gerr
@@ -577,7 +577,7 @@ subroutine check_mhd_table_lookup()
          w1 = 0.0d0
          w2 = 0.0d0
          yw = 0.0d0
-         call intpt(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, out)
+         call interpolate_mhd_table(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, out)
          write(*,'(a,2f6.2,a,3(1pe24.15))') "lookup at", log_p(i), log_t(i), " =", out
       end do
 end subroutine check_mhd_table_lookup

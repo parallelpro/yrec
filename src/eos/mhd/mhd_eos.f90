@@ -25,12 +25,12 @@ module mhd_eos
            mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, mhd_nt2m, &
            mhd_ntxm
       use io_units, only: run_log_unit, terminal_unit
-      use numerics_lib, only: intpt, lir, quint
+      use numerics_lib, only: lir, quint
       use eos_mixture, only: compute_mean_weights
       use math_lib
       implicit none
       private
-      public :: compute_mhd_eos, read_mhd_tables
+      public :: compute_mhd_eos, read_mhd_tables, interpolate_mhd_table
 
 contains
 
@@ -722,7 +722,7 @@ subroutine interpolate_and_store(table_data, table_dim_t, table_dim_r, &
       real(dp), intent(in) :: table_log10t(table_dim_t)
       real(dp), intent(in) :: hydrogen_mass_fraction
 
-      call intpt (log10_pressure, log10_temperature, table_data, &
+      call interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
            table_dim_t, table_dim_r, num_vars, table_log10t, num_t, &
            num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars)
       do i=1,num_vars
@@ -732,5 +732,110 @@ subroutine interpolate_and_store(table_data, table_dim_t, table_dim_r, &
 end subroutine interpolate_and_store
 
 end subroutine mhdpx2
+
+!----------------------------------------------------------------------
+! interpolate_mhd_table (formerly intpt, numerics_lib)
+!----------------------------------------------------------------------
+! Bicubic interpolation in one MHD table at (log10_pressure,
+! log10_temperature): table_data(table_dim_t,table_dim_r,num_vars) on
+! the table_log10t rows, with column 2 holding log P. Two passes of
+! numerics' 4-point lir: at each of the 4 bracketing T rows, in log P
+! (work1 -> work2); then across the 4 rows in log T (work2 ->
+! interp_vars). Above the highest log P of a row it returns with
+! interp_vars unset.
+subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
+     table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
+     work1, work2, y_work, interp_vars)
+      integer, intent(in) :: table_dim_t, table_dim_r, num_vars
+      real(dp), intent(in) :: log10_pressure, log10_temperature
+      real(dp), intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
+      real(dp), intent(in) :: table_log10t(table_dim_t)
+      integer, intent(in) :: num_t, num_r
+      real(dp), intent(inout) :: work1(num_vars,4), work2(num_vars,4)
+      real(dp), intent(inout) :: y_work(num_vars)
+      real(dp), intent(out) :: interp_vars(num_vars)
+
+      integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
+      real(dp) :: x_nodes(4)
+! lir_order is lir's continue_search argument (1 = fresh scan).
+      integer :: lir_order
+
+      integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
+      real(dp) :: p_min, p_max
+      integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
+
+! Bracket the temperature: the original's GOTO 101 out of this scan
+! is an EXIT, not a RETURN (a RETURN left every output unset for any
+! in-range temperature).  t_indices(1) starts at 1 so a temperature
+! below the first table row clamps to the bottom stencil instead of
+! reading a stale/zero index.
+      t_indices(1)=1
+      do n=1,num_t
+         if (table_log10t(n).ge.log10_temperature) exit
+         t_indices(1)=n
+      end do
+      if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
+      t_idx_max=num_t-3
+      if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
+      do i=2,4
+         t_indices(i)=t_indices(1)+i-1
+      end do
+      do i=1,4
+         r_lo_guess(i)=1
+         t_idx=t_indices(i)
+         p_min=table_data(t_idx, 1,2)
+         p_max=table_data(t_idx,num_r,2)
+         if(log10_pressure.gt.p_max) then
+            return
+         end if
+         do m=1,num_r
+            if(table_data(t_idx,m,2).ge.log10_pressure) exit
+            r_lo_guess(i)=m
+         end do
+         if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
+         r_idx_max=num_r-3
+         if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
+      end do
+      do i=1,4
+         do j=1,4
+            r_indices(j,i)=r_lo_guess(i)+j-1
+         end do
+      end do
+! lir call settings, shared by both interpolation passes
+      lir_num_vars=num_vars
+      lir_leading_dim=num_vars
+      lir_num_points=4
+      lir_order=1
+      lir_interp_mode=1
+      do t_col=1,4
+         t_idx=t_indices(t_col)
+         do i=1,4
+            r_idx=r_indices(i,t_col)
+            x_nodes(i)=table_data(t_idx,r_idx,2)
+         end do
+         do i=1,4
+            r_idx=r_indices(i,t_col)
+            do iv=1,num_vars
+               work1(iv,i)=table_data(t_idx,r_idx,iv)
+            end do
+         end do
+
+         call lir(log10_pressure, x_nodes, y_work, work1, lir_num_vars, &
+              lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+         do iv=1,num_vars
+            work2(iv,t_col) = y_work(iv)
+         end do
+
+      end do
+      do i=1,4
+         t_idx=t_indices(i)
+         x_nodes(i) = table_log10t(t_idx)
+      end do
+
+      call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
+           lir_leading_dim, lir_num_points, lir_order, lir_interp_mode)
+
+      return
+end subroutine interpolate_mhd_table
 
 end module mhd_eos

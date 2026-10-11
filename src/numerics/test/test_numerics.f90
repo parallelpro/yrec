@@ -13,11 +13,9 @@
 !   interpolation     inter3, interp, intrp2, lagrange4, quint, polint,
 !                     lir (cubic, linear, on a node, extrapolated)
 !   search            findex, locate
-!   linear algebra    ludcmp/lubksb, simeqc, tridiag_gs, ctridi, tridia
+!   linear algebra    ludcmp/lubksb, simeqc, tridiag_gs, ctridi
 !   ODE               bsstep (with mmid and ratext), its integrand
 !                     failure and its step underflow
-!   quadrature        trapzd (refinement sequence), qgauss
-!   table             intpt (the MHD (log P, log T) table lookup)
 module test_numerics_callbacks
       implicit none
 contains
@@ -51,19 +49,6 @@ subroutine harmonic_deriv(x, y, dydx, luminosity_linear, &
       dydx(3) = -luminosity_linear*y(3)
 end subroutine harmonic_deriv
 
-! the shell integrand qgauss averages: g and s polynomial in the
-! colatitude, with the pass-through values entering linearly
-subroutine shell_integrand(colatitude, local_gravity, area_element, &
-     r0, log_mass, aint, q, w2, a, i)
-      double precision, intent(in) :: colatitude
-      double precision, intent(out) :: local_gravity, area_element
-      double precision, intent(in) :: r0(*), log_mass(*)
-      double precision, intent(in) :: aint, q, w2, a
-      integer, intent(in) :: i
-      local_gravity = 1.0d0 + a*colatitude + r0(i)*colatitude**2 + aint
-      area_element = w2*colatitude*(2.0d0 - colatitude) + q + log_mass(i)
-end subroutine shell_integrand
-
 end module test_numerics_callbacks
 
 program test_numerics
@@ -74,12 +59,11 @@ program test_numerics
       use test_numerics_callbacks
       implicit none
       double precision :: jx(json), jy(json), jy2(json), jval(json), jout(json)
-      double precision :: ja(json), jb(json), jc(json), jr(json), jsol(json), &
-           jei(json), jdj(json)
+      double precision :: ja(json), jb(json), jc(json), jr(json), jsol(json)
       double precision :: x6(6), y6(6), y26(6), v, dv, d
       double precision :: x4(4), y4(4), y24(4), w4(4), dw4(4), w3(3), dw3(3)
       double precision :: x20(20), y20(20)
-      double precision :: a5(5,5), b5(5), sm(15), sumdj
+      double precision :: a5(5,5), b5(5), sm(15)
       integer :: indx(5), i, idx, klo, khi, ierr, flag, guesses(7)
       double precision :: pts(10), pts2(10)
 
@@ -267,13 +251,6 @@ program test_numerics
 ! ---------------- ODE
       call bsstep_check()
 
-! ---------------- quadrature
-      call trapzd_check()
-      call qgauss_check()
-
-! ---------------- table
-      call intpt_check()
-
       write(*,'(a)') "test_numerics: done"
 
 contains
@@ -342,10 +319,10 @@ subroutine lir_check()
 end subroutine lir_check
 
 ! tridiag_gs and ctridi on one system (ctridi twice: no carried
-! state), tridia's angular-momentum form, and a singular system
+! state), and a singular system
 subroutine tridiagonal_check()
       integer, parameter :: n = 6
-      write(*,'(a)') "# tridiag_gs/ctridi/tridia"
+      write(*,'(a)') "# tridiag_gs/ctridi"
       ja = 0.0d0
       jb = 0.0d0
       jc = 0.0d0
@@ -355,7 +332,6 @@ subroutine tridiagonal_check()
          jb(i) = 4.0d0 + 0.5d0*i
          jc(i) = -1.5d0 + 0.05d0*i*i
          jr(i) = 1.0d0 + i*(7.0d0 - i)
-         jei(i) = 0.2d0*i
       end do
       call tridiag_gs(ja, jb, jc, jr, n, jsol, ierr)
       call show("tridiag_gs", jsol(1:n))
@@ -363,17 +339,11 @@ subroutine tridiagonal_check()
       call show("ctridi", jsol(1:n))
       call ctridi(n - 2, ja, jb, jc, jr, jsol, ierr)
       call show("ctridi n-2", jsol(1:n-2))
-      call tridia(n, jei, jdj, sumdj, ja, jb, jc, jr, jsol, 0.125d0, ierr)
-      call show("tridia solution", jsol(1:n))
-      call show("tridia dj", jdj(1:n))
-      write(*,'(a,1pe24.15,i3)') "tridia sumdj ierr", sumdj, ierr
       jb(2) = ja(2)*jc(1)/jb(1)
       call tridiag_gs(ja, jb, jc, jr, n, jsol, ierr)
       write(*,'(a,i3)') "tridiag_gs singular: ierr", ierr
       call ctridi(n, ja, jb, jc, jr, jsol, ierr)
       write(*,'(a,i3)') "ctridi singular: ierr", ierr
-      call tridia(n, jei, jdj, sumdj, ja, jb, jc, jr, jsol, 0.125d0, ierr)
-      write(*,'(a,i3)') "tridia singular: ierr", ierr
 end subroutine tridiagonal_check
 
 ! bsstep: four accepted steps of the harmonic system from x = 0; large
@@ -433,67 +403,5 @@ subroutine bsstep_check()
            lum, fp, ft, gl, latmo, lderiv, locond, rl, teffl, xh, z, ksaha, err, ierr)
       write(*,'(a,i3,a,i8)') "bsstep, step underflow: ierr", ierr, " deriv calls", ksaha
 end subroutine bsstep_check
-
-! trapzd: the refinement sequence n = 1..5 for one shell, then a new
-! shell (n restarts at 1)
-subroutine trapzd_check()
-      double precision :: s, q, qp
-      integer :: n
-      write(*,'(a)') "# trapzd"
-      qp = 0.02d0
-      do n = 1, 5
-         call trapzd(0.4d0, 0.6d0, s, n, 1.5d0, 2.0d0, 0.8d0, 0.6d0, 1.0d-4, &
-              1.2d-4, 0.3d0, 0.25d0, q, qp)
-         write(*,'(a,i2,2(1pe24.15))') "trapzd n s q", n, s, q
-      end do
-      do n = 1, 3
-         call trapzd(0.6d0, 0.7d0, s, n, 1.2d0, 1.5d0, 0.9d0, 0.8d0, 0.9d-4, &
-              1.0d-4, 0.35d0, 0.3d0, q, qp)
-         write(*,'(a,i2,2(1pe24.15))') "trapzd shell 2 n s q", n, s, q
-      end do
-end subroutine trapzd_check
-
-subroutine qgauss_check()
-      double precision :: g0g, ginvg, sphig
-      write(*,'(a)') "# qgauss"
-      jx = 0.0d0
-      jy = 0.0d0
-      jx(3) = 0.25d0
-      jy(3) = 0.5d0
-      call qgauss(shell_integrand, g0g, ginvg, sphig, 1.5707963267949d0, jx, jy, &
-           0.1d0, 0.2d0, 0.3d0, 0.4d0, 3)
-      write(*,'(a,3(1pe24.15))') "qgauss g0g ginvg sphig", g0g, ginvg, sphig
-end subroutine qgauss_check
-
-! intpt on a 7 (T) x 6 (rho) x 3 table whose column 2 is log P: inside,
-! at the table corners (the stencils clamp), and above the highest
-! pressure (returns with the output unchanged)
-subroutine intpt_check()
-      integer, parameter :: nt = 7, nr = 6, nv = 3
-      double precision :: table(nt,nr,nv), tlog(nt), w1(nv,4), w2(nv,4), yw(nv), &
-           out(nv)
-      integer :: it, ir
-      write(*,'(a)') "# intpt"
-      do it = 1, nt
-         tlog(it) = 3.5d0 + 0.25d0*it
-         do ir = 1, nr
-            table(it,ir,1) = -8.0d0 + ir
-            table(it,ir,2) = 2.0d0*tlog(it) + 0.8d0*ir
-            table(it,ir,3) = tlog(it)*ir - 0.1d0*ir*ir
-         end do
-      end do
-      pts(1:4) = [11.3d0, 9.0d0, 13.7d0, 30.0d0]
-      pts2(1:4) = [4.6d0, 3.6d0, 5.3d0, 4.6d0]
-      do i = 1, 4
-         v = pts(i)
-         d = pts2(i)
-         out = -9.0d0
-         w1 = 0.0d0
-         w2 = 0.0d0
-         yw = 0.0d0
-         call intpt(v, d, table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, out)
-         write(*,'(a,2f6.2,a,3(1pe24.15))') "intpt at", v, d, " =", out
-      end do
-end subroutine intpt_check
 
 end program test_numerics
