@@ -33,6 +33,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use yrec_output, only: output_write_model
       use observables, only: compute_observables
       use stitched_model, only: build_stitched_model
+      use mass_change, only: change_mass
       use stop_conditions
       implicit none
 
@@ -236,9 +237,7 @@ subroutine advance_composition_and_age
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! ADD MASS LOSS CALCULATION
-               call massloss(star%log_L,star%dt,star%xa,star%logRho,star%j_rot,star%logP,star%logR, &
-                             star%log_mass,star%m,star%dm,star%log_total_mass,star%logT,star%envelope_cz_bottom_index,star%recompute_envelope_triangle, &
-                             star%nz,star%omega,star%star_mass,star%log_Teff,target_envelope_mass,new_atmosphere_fit_needed, ierr)
+               call change_mass(target_envelope_mass, new_atmosphere_fit_needed, ierr)
                if (ierr /= 0) return
 ! STORE COMPOSITION MATRIX AT THE BEGINNING OF THE TIMESTEP.
                num_species = n_species_basic
