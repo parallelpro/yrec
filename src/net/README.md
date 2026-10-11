@@ -20,7 +20,7 @@ The domain's public entry point. It also re-exports `thermal_neutrino_lib`.
 | Routine | What it does |
 |---|---|
 | `nuclear_reaction_rates` | **The one rate evaluation.** For one zone (log ρ, log T, composition), it returns a `nuclear_rates` record: the rate of each reaction slot `r_*`, per gram per second with the abundance factors omitted (screened and scaled); dln rate/dlnT and dln rate/dln ρ; the Be7 and N15 branchings; the two Be7 channel rates and the screened hep factor. Covers screening (Salpeter weak, Graboske et al. intermediate and strong), the S-factor fits of reactions 1–7, the Caughlan & Fowler α captures and triple-α. |
-| `network_rate_vector` | Calls `nuclear_reaction_rates`, zeroes any rate at or below 10⁻⁵, and repacks the result as the **composition rate vector** `rate_vec(rr_*)`, per Gyr per amu. This is what the composition solve uses. |
+| `network_rate_vector` | Calls `nuclear_reaction_rates`, zeroes any rate at or below 10⁻⁵, and repacks the result as the **composition rate vector** `rate_vec(rr_*)`, per s per amu. This is what the composition solve uses. |
 | `deuterium_proton_capture_rate` | The d(p,γ)³He fit, shared by the energy and deuterium code. |
 | `net_setup` | Installs the run's settings (`net_settings_t`: temperature cutoffs, screening threshold, cross-section and S-factor scales, Li/Be rate scales, neutrino switches). Called once per run by `configure_network`. |
 
@@ -60,7 +60,7 @@ Light elements are burned in the trace approximation, separately from the networ
 
 | Routine | What it does |
 |---|---|
-| `deuterium_rate` | The deuterium burning rate per shell, per Gyr, with the cap that keeps deuterium in the surface convection zone from burning faster than the convective overturn. |
+| `deuterium_rate` | The deuterium burning rate per shell, per s, with the cap that keeps deuterium in the surface convection zone from burning faster than the convective overturn. |
 | `burn_deuterium_region` | Deuterium over a step for one shell or one convection zone: exponential sub-steps with the rate interpolated between its start- and end-of-step values, the D → He3 bookkeeping, and mass-weighted blending of accreted gas. |
 | `li_be_rates` | The Li6, Li7 and Be9 proton-capture rates at T9 (Caughlan & Fowler 1988), scaled by the controls `li6_rate_scale`, `li7_rate_scale` and `be9_*_rate_scale`. |
 
@@ -117,7 +117,7 @@ evolve_step
  converge_with_rotation
    level 4 (solve_level again)
    evolve_angular_momentum (rotating runs), per sub-step:
-     mid_timestep_model -> rotmix -> burn_network_region; burn_deuterium_region (dt in Gyr, sub-step's accreted mass)
+     mid_timestep_model -> rotmix -> burn_network_region; burn_deuterium_region (the sub-step's accreted mass)
      store_end_li_be_rates (midpoint model), burn_li_be
  burn_light_elements                             non-rotating, or no rotational mixing
    store_end_li_be_rates (converged model), burn_li_be
@@ -130,14 +130,14 @@ evolve_step
 
 Two things often surprise newcomers:
 - **Composition and structure are operator-split.** Burning runs at fixed structure in `composition_step`, then the structure is solved with the new composition. At iteration levels ≥ 3, `solve_level` runs the composition step again (the corrector pass) to re-burn with the updated structure, between the surface boundary condition and the Newton loop.
-- **There are two rate paths from one evaluation.** The composition path uses `network_rate_vector`: per Gyr per amu, no derivatives, rates at or below 10⁻⁵ dropped. The energy path uses `nuclear_energy`: erg/g/s with derivatives, and only reactions 1–7 below 10⁻³⁰ dropped before ε is summed. Both call `nuclear_reaction_rates`, so a rate is defined in exactly one place.
+- **There are two rate paths from one evaluation.** The composition path uses `network_rate_vector`: per s per amu, no derivatives, rates at or below 10⁻⁵ dropped. The energy path uses `nuclear_energy`: erg/g/s with derivatives, and only reactions 1–7 below 10⁻³⁰ dropped before ε is summed. Both call `nuclear_reaction_rates`, so a rate is defined in exactly one place.
 
 ---
 
 ## 3. Units and conventions
 
 - **Composition.** `star%xa(i, k)` holds mass fractions in the slots `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
-- **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is per Gyr per amu; the composition step works in Gyr and integer mass numbers. These are older non-CGS units. The project rule is CGS unless a name carries a unit suffix (`docs/TARGET_ARCHITECTURE.md` §4.7), and these will be converted or renamed as the code is restructured.
+- **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is that times the atomic mass unit in grams, per s per amu: with Y = X/A, dY/dt = Σ ν R. Every time in the burning code is in seconds (2026-10; it used to mix years and Gyr, with a year length that differed by 4.7×10⁻⁶ between the timestep and the rates). Integer mass numbers convert X to Y.
 - **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/henyey_eliminate.f90`).
 - **Temperature cutoffs.** `net_settings%logT_cutoffs` (from `ctrl%nuclear_logT_cutoffs`): `(1)` gates all burning, `(2)` and `(3)` gate parts of `equilibrium_burn_rates`, `(4)` gates helium burning, and `(5)` the solar neutrino fluxes and thermal neutrino losses.
 

@@ -438,7 +438,7 @@ The routines, their call order and how to extend them are described in
   `nuclear_energy` (`net/nuclear_energy.f90`) assembles ε per shell and
   its T, ρ derivatives for the Henyey Jacobian, and `compute_zone_energy`
   returns everything it computes in its result record; the composition
-  solve takes the same rates repacked per Gyr per amu by
+  solve takes the same rates repacked per s per amu by
   `network_rate_vector` (called from `compute_burn_rates` in `composition_step`).
 
 ### 4.5 Atmospheres (`atm/`)

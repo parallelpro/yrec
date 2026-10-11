@@ -1101,12 +1101,12 @@ end subroutine store_end_li_be_rates
 !
 !  log_temperature     run of log10 T; shells below
 !                      ctrl%nuclear_logT_cutoffs(1) are only mixed
-!  rate_by_zone(rr_*,k) net_lib's rate vectors, per Gyr per amu
+!  rate_by_zone(rr_*,k) net_lib's rate vectors, per s per amu
 !  shell_mass          the mass weights for a convection zone
 !  composition         out: the new abundances (star%xa layout); the
 !                      solved shell's previous neighbour is the first
 !                      guess, so shells are solved in increasing order
-!  timestep_years      the step
+!  timestep            the step, s
 ! The start-of-step abundances are star%xa_start. Z changes only once
 ! hydrogen is exhausted (X < 5e-7 at the top of the region), as
 ! 1 - X - Y - He3.
@@ -1118,7 +1118,7 @@ end subroutine store_end_li_be_rates
 !     ctrl%relative_tolerance, xa_start
 !   star writes: none
 subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
-     rate_by_zone, shell_mass, composition, timestep_years, ierr)
+     rate_by_zone, shell_mass, composition, timestep, ierr)
 
       use star_info_lib, only: star, json, i_h1, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18, n_species_basic
@@ -1132,7 +1132,8 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(inout) :: composition(15,json)
-      double precision, intent(in) :: timestep_years
+! timestep: s
+      double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
 
 ! star%xa slot of each network species (network_lib's s_* order)
@@ -1176,7 +1177,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       x(1:n_solved) = composition(xa_slot(1:n_solved), guess_zone)
       x(n_solved+1:) = x_start(n_solved+1:)
 
-      call implicit_burn_step(x_start, rate_vec, timestep_years*1.0d-9, &
+      call implicit_burn_step(x_start, rate_vec, timestep, &
            star%ctrl%min_abundance, star%ctrl%absolute_tolerance, &
            star%ctrl%relative_tolerance, star%ctrl%max_burn_iterations, x, ierr)
       if (ierr /= 0) then
@@ -1276,12 +1277,13 @@ end subroutine compute_burn_rates
 !   star reads: ctrl%nuclear_logT_cutoffs, dm, logT, mixed_zone_bounds
 !   star writes: xa
 subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
-     num_mixed_zones, rate_by_zone, timestep_years, ierr)
+     num_mixed_zones, rate_by_zone, timestep, ierr)
       use star_info_lib, only: star, json, max_radiative_zones
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
-      double precision, intent(in) :: timestep_years
+! timestep: s
+      double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx, &
            zone_begin, zone_end
@@ -1302,7 +1304,7 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
             zone_begin = inner_zone_idx
             zone_end = inner_zone_idx
             call burn_network_region(star%logT, zone_begin, zone_end, &
-                 rate_by_zone, star%dm, star%xa, timestep_years, ierr)
+                 rate_by_zone, star%dm, star%xa, timestep, ierr)
             if (ierr /= 0) return
          end do
       end do
@@ -1314,7 +1316,7 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
          zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
          zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
          call burn_network_region(star%logT, zone_begin, zone_end, &
-              rate_by_zone, star%dm, star%xa, timestep_years, ierr)
+              rate_by_zone, star%dm, star%xa, timestep, ierr)
          if (ierr /= 0) return
       end do
 end subroutine burn_network
@@ -1330,17 +1332,18 @@ end subroutine burn_network
 !     xa_start
 !   star writes: xa
 subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
-     num_mixed_zones, rate_by_zone, timestep_years)
+     num_mixed_zones, rate_by_zone, timestep)
       use star_info_lib, only: star, json, max_radiative_zones, i_h1, &
            i_metals, i_c12, i_o16
       use network_lib, only: equilibrium_burn_rates
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
-      double precision, intent(in) :: timestep_years
+! timestep: s
+      double precision, intent(in) :: timestep
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx, &
            zone_begin, zone_end, zone_idx
-      double precision :: dt_gyr, dc_dt, do_dt, dx_dt, dy_dt
+      double precision :: dc_dt, do_dt, dx_dt, dy_dt
 ! region abundances returned by equilibrium_burn_rates
       double precision :: hydrogen_fraction, metal_fraction, c12_fraction, &
            o16_fraction
@@ -1359,7 +1362,6 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
 !
 ! RADIATIVE ZONES.
 !
-         dt_gyr = timestep_years*1.0d-9
          do radiative_region_idx = 1, num_radiative_zones
             do inner_zone_idx = &
                  radiative_zone_bounds(radiative_region_idx,1), &
@@ -1375,17 +1377,17 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
 !  USE THE EXPLICIT HYDROGEN BURNING RATE.
                if (dx_dt.ne.0.0d0) then
                   star%xa(i_h1,inner_zone_idx) = hydrogen_fraction + &
-                       dx_dt*dt_gyr
+                       dx_dt*timestep
                end if
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
 !  BURNING RATE
                if (dy_dt.ne.0.0d0) then
                   star%xa(i_metals,inner_zone_idx) = metal_fraction - &
-                       dy_dt*dt_gyr
+                       dy_dt*timestep
                   star%xa(i_c12,inner_zone_idx) = c12_fraction + &
-                       dc_dt*dt_gyr
+                       dc_dt*timestep
                   star%xa(i_o16,inner_zone_idx) = o16_fraction + &
-                       do_dt*dt_gyr
+                       do_dt*timestep
                end if
             end do
          end do
@@ -1402,7 +1404,7 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
                  metal_fraction)
 !  USE THE EXPLICIT HYDROGEN BURNING RATE.
             if (dx_dt.ne.0.0d0) then
-               hydrogen_fraction = hydrogen_fraction + dx_dt*dt_gyr
+               hydrogen_fraction = hydrogen_fraction + dx_dt*timestep
                do zone_idx = zone_begin, zone_end
                   star%xa(i_h1,zone_idx) = hydrogen_fraction
                end do
@@ -1410,9 +1412,9 @@ subroutine burn_equilibrium(radiative_zone_bounds, num_radiative_zones, &
 !  USE THE HELIUM BURNING RATE FROM EQBURN AND THE CARBON,ALPHA
 !  BURNING RATE
             if (dy_dt.ne.0.0d0) then
-               metal_fraction = metal_fraction - dy_dt*dt_gyr
-               c12_fraction = c12_fraction + dc_dt*dt_gyr
-               o16_fraction = o16_fraction + do_dt*dt_gyr
+               metal_fraction = metal_fraction - dy_dt*timestep
+               c12_fraction = c12_fraction + dc_dt*timestep
+               o16_fraction = o16_fraction + do_dt*timestep
                do zone_idx = zone_begin, zone_end
                   star%xa(i_metals,zone_idx) = metal_fraction
                   star%xa(i_c12,zone_idx) = c12_fraction
@@ -1432,20 +1434,19 @@ end subroutine burn_equilibrium
 !     mixed_zone_bounds, nz, xa_start
 !   star writes: xa
 subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
-     num_mixed_zones, timestep_years)
+     num_mixed_zones, timestep)
       use star_info_lib, only: star, max_radiative_zones
       use light_element_lib, only: burn_deuterium_region, min_deuterium_step
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
-      double precision, intent(in) :: timestep_years
+! timestep: s
+      double precision, intent(in) :: timestep
       integer :: radiative_region_idx, inner_zone_idx, mixed_zone_idx, &
            zone_begin, zone_end
-      double precision :: dt_gyr
 
 ! MHP 5/02 ADDED DEUTERIUM BURNING
 ! RADIATIVE ZONES.
 !
-         dt_gyr = timestep_years*1.0d-9
          do radiative_region_idx = 1, num_radiative_zones
             do inner_zone_idx = &
                  radiative_zone_bounds(radiative_region_idx,1), &
@@ -1455,7 +1456,7 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
                zone_begin = inner_zone_idx
                zone_end = inner_zone_idx
                call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
-                    star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
+                    star%xa, timestep, star%xa_start, star%deuterium_burning_rate_start, &
                     star%deuterium_burning_rate, surface_accretion_now(star%accreted_mass), &
                     min_deuterium_step)
             end do
@@ -1468,7 +1469,7 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
             zone_begin = star%mixed_zone_bounds(mixed_zone_idx,1)
             zone_end = star%mixed_zone_bounds(mixed_zone_idx,2)
             call burn_deuterium_region(zone_begin, zone_end, star%nz, star%dm, &
-                 star%xa, dt_gyr, star%xa_start, star%deuterium_burning_rate_start, &
+                 star%xa, timestep, star%xa_start, star%deuterium_burning_rate_start, &
                  star%deuterium_burning_rate, surface_accretion_now(star%accreted_mass), &
                     min_deuterium_step)
          end do

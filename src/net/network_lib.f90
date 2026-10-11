@@ -13,7 +13,7 @@
 ! do not appear; deuterium and the light elements are burned elsewhere.
 !
 ! Reactions. Reaction j proceeds at
-!     R_j = b_j * g_j * prod_m X(law_j(m))          [per Gyr per amu]
+!     R_j = b_j * g_j * prod_m X(law_j(m))          [per s per amu]
 ! where g_j is row rate_row of the rate vector filled by net_lib's
 ! rates (rows rr_*: N_A<sigma v>, density, screening and the 1/A
 ! factors are already in it), X are mass fractions, and b_j is 1, or
@@ -205,7 +205,7 @@ subroutine abundance_rates(rate_vec, x, dxdt_per_a)
 end subroutine abundance_rates
 
 ! ---------------------------------------------------------------
-! One implicit (backward-Euler) burning step of length dt_gyr.
+! One implicit (backward-Euler) burning step of length dt (s).
 !   x_start   abundances at the start of the step (all network species)
 !   rate_vec  the rate vector (rows rr_*) for this zone or zone average
 !   x         in: the first guess for the solved species; out: the
@@ -216,10 +216,10 @@ end subroutine abundance_rates
 ! max_iterations attempts. As in kemcom, Jacobian entries below 1e-8 in
 ! magnitude (off the diagonal) are dropped, and if none remain the
 ! residual itself is taken as the correction.
-subroutine implicit_burn_step(x_start, rate_vec, dt_gyr, min_abundance, &
+subroutine implicit_burn_step(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
       use numerics_lib, only: simeqc
-      double precision, intent(in) :: x_start(n_network), rate_vec(:), dt_gyr
+      double precision, intent(in) :: x_start(n_network), rate_vec(:), dt
       double precision, intent(in) :: min_abundance, absolute_tolerance, &
            relative_tolerance
       integer, intent(in) :: max_iterations
@@ -235,7 +235,7 @@ subroutine implicit_burn_step(x_start, rate_vec, dt_gyr, min_abundance, &
       logical :: off_diagonal
 
       ierr = 0
-      dt_a = mass_number*dt_gyr
+      dt_a = mass_number*dt
       iterations = 0
       do
          call abundance_rates(rate_vec, x, dxdt_per_a)

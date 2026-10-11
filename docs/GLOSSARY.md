@@ -122,8 +122,8 @@ Internal variables are CGS unless their name carries a unit suffix:
 erg/s, `luminosity_lsun` L☉; `age` s, `age_gyr` Gyr; `rate` per s,
 `rate_per_gyr` per Gyr. `log_x` is log₁₀ of x in the unit its name
 implies. Output columns keep their MESA names. Many current names
-predate the rule (the solar-unit masses and luminosity channels, `dage`,
-the per-Gyr rate arrays); the tables
+predate the rule (the solar-unit masses and luminosity channels,
+`dage`); the tables
 below record their real units, and renames follow as code is touched.
 
 ## 2. Quantities by domain
@@ -248,11 +248,11 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | E_rot | erg (per point) | `star%kinetic_energy_rot` | `HKEROT` | core/henyey_iterate.f90:320, rotation/* | ½ Ω j Δm of the point. |
 | E_rot at step start | erg | `star%kinetic_energy_rot_old` | `HKEROTO` | core/evolve_step.f90:297 | Start-of-step copy (an `_old`, not `_start`, name). |
 | r_j (mixing) | as above | `rot_scr%reaction_rate_by_zone(15,k)` (rows `rr_*`) | `HCOMPM` (`/BURN/`) | core/burn_step.f90 (`compute_burn_rates`, from `network_rate_vector`) | Rates and branchings packed for the network burn. Rows 9 and 13 are zero placeholders. |
-| — | Gyr⁻¹ amu⁻¹ | `gyr_amu_per_sec_gram` (parameter) | `C21` | state/phys_const_lib.f90 | Converts a rate per s per g into the units of `reaction_rate`. |
+| m_u | g | `amu_cgs` (parameter) | `C21` (as 10⁹ sidereal yr × m_u) | state/phys_const_lib.f90 | Atomic mass unit; turns a rate per s per g into the per-s-per-amu units of the composition rate vector and the deuterium rate. |
 | Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `burn%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total(10)`; `neutrino_flux_zone(10,k)` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`solar_neutrino_fluxes`); totals in core/henyey_coefficients.f90 | Solar-neutrino source rates: one shell's record, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/observables_lib.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
 | X(⁷Be) | mass fraction | `burn%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`solar_neutrino_fluxes`); per zone core/neutrino_flux_table.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
-| r_D | per Gyr per amu | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
+| r_D | per s | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
 | ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | wind/mdot.f90:272; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
 | r_Li6, r_Li7, r_Be9 | s⁻¹ (N_A⟨σv⟩·ρX_H, taking A_H = 1) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/burn_step.f90 (`store_li_be_rates`) | Light-element burning rates at end and start of step; `burn_li_be` multiplies them by the step in seconds. |
 | — | — | `star%cross_section_scale(17)`; `qs0e_scale(8)`, `qqs0ee_scale(8)`, `o16_gamma_scale`, `c12_alpha_scale` | `SSTANDARD`; `QS0E`, `QQS0EE`, `FO16`, `FC12` (`/CROSS/`) | setup/map_user_inputs.f90, core/monte_carlo.f90 (`apply_monte_carlo_parameters`) | Multipliers on the S-factors (Monte-Carlo runs overwrite 1–3 and 16), their first- and second-derivative scales, and the ¹⁶O(α,γ)/¹²C(α,γ) multipliers. |
@@ -584,7 +584,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 
 | Symbol | Units | Current name | Legacy name | Owning file | Definition |
 |---|---|---|---|---|---|
-| R_j | per Gyr per amu | `reaction_rate(j, ...)` in network_lib | — | net/network_lib.f90 | Rate of table reaction j: b_j g_j prod X(law_j). |
-| g_j | per Gyr per amu per (X_i X_k) | `rate_vec(rr_*)`, `rate_by_zone(rr_*, k)` | `HR1..HR13` | net/net_lib.f90 (`network_rate_vector`) | Composition rate rows; abundance factors omitted. |
+| R_j | per s per amu | `reaction_rate(j, ...)` in network_lib | — | net/network_lib.f90 | Rate of table reaction j: b_j g_j prod X(law_j). |
+| g_j | per s per amu per (X_i X_k) | `rate_vec(rr_*)`, `rate_by_zone(rr_*, k)` | `HR1..HR13` | net/net_lib.f90 (`network_rate_vector`) | Composition rate rows; abundance factors omitted. |
 | λ, dlnλ/dlnT, dlnλ/dlnρ | g⁻¹ s⁻¹ per (X_i X_k); — | `nuclear_rates%rate`, `%dlnrate_dlnt`, `%dlnrate_dlnrho` | `RATE`, `PET`-terms | net/net_lib.f90 (`nuclear_reaction_rates`) | The one per-zone rate evaluation (screened, scaled), with logarithmic derivatives. |
 | f(N15→C12), f(Be7 e-capture) | — | `nuclear_rates%frac_n15_pa`, `%frac_be7_ecap` | `F3`, `F1` | net/net_lib.f90 | Branching fractions. |

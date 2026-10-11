@@ -91,7 +91,6 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
 ! rate_by_zone(rr_*, zone): the composition rate vector of every shell,
 ! from compute_burn_rates
       double precision :: rate_by_zone(num_rate_rows, json)
-      double precision :: timestep_years
       integer :: radiative_zone_bounds(max_radiative_zones,2)
       logical :: deep_mix_flag(json)
       integer :: num_species
@@ -106,7 +105,6 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
       else
          num_species = 11
       end if
-      timestep_years = timestep/seconds_per_year
 
 ! 1. MIXED REGIONS: CONVECTION ZONES WITH AND WITHOUT OVERSHOOT
       call set_deep_mix_flags
@@ -121,10 +119,10 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
 ! 2-4. BURNING: RATES, THE IMPLICIT NETWORK, THE EQUILIBRIUM BURN
       call compute_burn_rates(opts%store_start_rates, rate_by_zone)
       call burn_network(radiative_zone_bounds, num_radiative_zones, &
-           num_mixed_zones, rate_by_zone, timestep_years, ierr)
+           num_mixed_zones, rate_by_zone, timestep, ierr)
       if (ierr /= 0) return
       if (opts%equilibrium_burn) call burn_equilibrium(radiative_zone_bounds, &
-           num_radiative_zones, num_mixed_zones, rate_by_zone, timestep_years)
+           num_radiative_zones, num_mixed_zones, rate_by_zone, timestep)
 
 ! 5. SEMICONVECTION
       if (star%job%use_semiconvection) then
@@ -170,7 +168,7 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
 ! 10. DEUTERIUM BURNING OVER THE STEP
       if (star%job%use_extended_composition) call burn_deuterium( &
            radiative_zone_bounds, num_radiative_zones, num_mixed_zones, &
-           timestep_years)
+           timestep)
 
 contains
 

@@ -504,7 +504,7 @@ end subroutine sum_energy_generation
 ! ---------------------------------------------------------------
 ! The energy of each chain (pp, the two Be7 branches, CNO, triple
 ! alpha) and of the alpha captures, from the per-reaction energies
-! summed in sum_energy_generation. (2026-10: the per-Gyr-per-amu rate
+! summed in sum_energy_generation. (2026-10: the per-amu rate
 ! copies and branchings this routine also produced, once relayed to
 ! kemcom and later stored per shell, had no reader and are gone.)
 subroutine chain_energy_shares

@@ -384,9 +384,9 @@ module star_info_lib
             double precision :: cz_base_radius_prev, log_rate_li6_prev, &
                  log_rate_li7_prev, log_rate_be9_prev
             integer :: envelope_cz_base_zone_prev
-! former common/deuter/: deuterium burning rate (current/start of
-! timestep), accreted mass fraction, and the convection-zone base zone
-! index used by the deuterium-burning routines.
+! former common/deuter/: deuterium burning rate per s (current/start
+! of timestep; per Gyr until 2026-10), and the convection-zone base
+! zone index used by the deuterium-burning routines.
             double precision :: deuterium_burning_rate(json), &
                  deuterium_burning_rate_start(json)
 ! accreted_mass: the mass accreted during the step, g (wind/mdot;

@@ -22,7 +22,7 @@
 !     nuclear_reaction_rates  the one rate evaluation of a zone: 13
 !                    reaction rates, their T/rho derivatives, branchings
 !     network_rate_vector     those rates repacked as the composition
-!                    rate vector (per Gyr per amu) for the network burn
+!                    rate vector (per s per amu) for the network burn
 !     deuterium_proton_capture_rate   the shared d(p,g) fit
 !     net_setup      installs the run's settings (net_settings)
 ! and re-exports thermal_neutrino_lib (sneut, azbar, ...). The rest of
@@ -53,15 +53,15 @@ module net_lib
            r_ac12 = 10, r_an14 = 11, r_3alpha = 12, r_c12c12_unused = 13, &
            num_reactions = 13
 ! num_rate_rows: length of the one-zone rate vector written by rates
-! (rows 1..13 are the reactions above in r_* order, times
-! gyr_amu_per_sec_gram; rows 14 and 15 are the C12+alpha and Be7
+! (rows 1..13 are the reactions above in r_* order, times amu_cgs, per s
+! per amu; rows 14 and 15 are the C12+alpha and Be7
 ! electron-capture branching fractions). The row indices are the rr_*
 ! parameters of rotation_scratch_lib, and num_rate_rows must equal the
 ! leading extent of rot_scr%reaction_rate_by_zone(15,json).
       integer, parameter, public :: num_rate_rows = 15
 ! rows of the composition rate vector filled by rates (rate_vec,
 ! rate_by_zone(:,k), rot_scr%reaction_rate_by_zone): the rates of the
-! table reactions per Gyr per amu (originally HR1-HR13) and the two
+! table reactions per s per amu (originally HR1-HR13) and the two
 ! branching fractions (HF1, HF2). Rows rr_zero9 and rr_zero13 are
 ! zero placeholders (reactions 9 and 13 are never computed). (2026-10:
 ! moved here from rotation_scratch_lib -- they are the network's.)
@@ -86,7 +86,7 @@ module net_lib
            iso_o16 = 10, iso_o18 = 11, iso_ne20 = 12, iso_mg24 = 13, &
            num_isotopes = 13
 ! Species count of the H/He/C/O mixture handed to neutrino_losses_for_mixture/sneut.
-! gyr_amu_per_sec_gram (the C21 of compute_zone_energy/rates/deutrate) lives in
+! amu_cgs (which replaced the C21 of engeb/rates/deutrate) lives in
 ! phys_const_lib.
 ! S0 in keV-b of the two N15 + p branches, multiplying the S_eff/S0
 ! polynomials o16_gamma_rate / c12_alpha_n15p_rate (and o16gamma /
@@ -522,14 +522,12 @@ end function deuterium_proton_capture_rate
 ! source (~0.5% of the rate at T9 = 0.15).
 ! TRIPLE ALPHA
 ! END OF XEROING OUT OF REACTIONS 9 AND 13.
-! RATES PER 10^9 YEARS PER ATOMIC MASS UNIT: HRK(IU)
+! RATES PER SECOND PER ATOMIC MASS UNIT (2026-10; per 10^9 sidereal
+! years per amu, the C21 factor, before): HRK(IU)
 ! HR1, ..., HR13 ARE THE RATES OF THE INDIVIDUAL REACTIONS.
 ! THE INTERPRETATION OF WHICH REACTION GOES WITH WHICH SYMBOL CAN BE
 ! MADE EASILY BY LOOKING AT THE DEFINITIONS OF THE EG(I)'S.
-! THE ABUNDANCES ARE UPDATED IN SUBROUTINE KEMCOM USING THESE MATRICES.
-! gyr_amu_per_sec_gram (C21) IS THE PRODUCT OF (10^9 YEARS/1 SECOND)*
-! (1 ATOMIC MASS UNIT/1 GRAM). I HAVE USED HERE SIDEREAL YEAR IN
-! CONVERTING TO SECONDS.
+! THE ABUNDANCES ARE UPDATED BY THE NETWORK BURN USING THESE.
 ! rows rr_zero9/rr_zero13: zero-filled placeholders (rate(9), rate(13)
 ! are always 0 -- see the XEROING block above).
 ! END OF COMPUTATION OF HRK(IU).
@@ -888,20 +886,20 @@ subroutine network_rate_vector(log_density, log_temperature, xa, rate_vec)
       do i=1,num_reactions
          if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0
       end do
-! per 10^9 yr per amu (gyr_amu_per_sec_gram, sidereal year)
-      rate_vec(rr_pp)=nr%rate(r_pp)*gyr_amu_per_sec_gram
-      rate_vec(rr_he3_he3)=nr%rate(r_he3he3)*gyr_amu_per_sec_gram
-      rate_vec(rr_he3_he4)=nr%rate(r_he3he4)*gyr_amu_per_sec_gram
-      rate_vec(rr_c12_p)=nr%rate(r_pc12)*gyr_amu_per_sec_gram
-      rate_vec(rr_c13_p)=nr%rate(r_pc13)*gyr_amu_per_sec_gram
-      rate_vec(rr_n14_p)=nr%rate(r_pn14)*gyr_amu_per_sec_gram
-      rate_vec(rr_o16_p)=nr%rate(r_po16)*gyr_amu_per_sec_gram
-      rate_vec(rr_c13_alpha)=nr%rate(r_ac13)*gyr_amu_per_sec_gram
-      rate_vec(rr_zero9)=nr%rate(r_ao16_unused)*gyr_amu_per_sec_gram
-      rate_vec(rr_c12_alpha)=nr%rate(r_ac12)*gyr_amu_per_sec_gram
-      rate_vec(rr_n14_alpha)=nr%rate(r_an14)*gyr_amu_per_sec_gram
-      rate_vec(rr_triple_alpha)=nr%rate(r_3alpha)*gyr_amu_per_sec_gram
-      rate_vec(rr_zero13)=nr%rate(r_c12c12_unused)*gyr_amu_per_sec_gram
+! per s per amu (amu_cgs)
+      rate_vec(rr_pp)=nr%rate(r_pp)*amu_cgs
+      rate_vec(rr_he3_he3)=nr%rate(r_he3he3)*amu_cgs
+      rate_vec(rr_he3_he4)=nr%rate(r_he3he4)*amu_cgs
+      rate_vec(rr_c12_p)=nr%rate(r_pc12)*amu_cgs
+      rate_vec(rr_c13_p)=nr%rate(r_pc13)*amu_cgs
+      rate_vec(rr_n14_p)=nr%rate(r_pn14)*amu_cgs
+      rate_vec(rr_o16_p)=nr%rate(r_po16)*amu_cgs
+      rate_vec(rr_c13_alpha)=nr%rate(r_ac13)*amu_cgs
+      rate_vec(rr_zero9)=nr%rate(r_ao16_unused)*amu_cgs
+      rate_vec(rr_c12_alpha)=nr%rate(r_ac12)*amu_cgs
+      rate_vec(rr_n14_alpha)=nr%rate(r_an14)*amu_cgs
+      rate_vec(rr_triple_alpha)=nr%rate(r_3alpha)*amu_cgs
+      rate_vec(rr_zero13)=nr%rate(r_c12c12_unused)*amu_cgs
       rate_vec(rr_frac_c12_alpha)=nr%frac_n15_pa
       rate_vec(rr_frac_be7_electron)=nr%frac_be7_ecap
 end subroutine network_rate_vector

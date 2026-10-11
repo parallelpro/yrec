@@ -85,7 +85,7 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
            log_temperature,zone_begin,zone_end,dc_dt,do_dt,dx_dt,dy_dt, &
            c12_fraction,o16_fraction,hydrogen_fraction,metal_fraction)
       if(dx_dt.lt.0.0d0 .and. star%ctrl%atime(itime_dx_shell).gt.0.0d0) then
-         shell_dt_x_depletion = abs(seconds_per_year*1.0d9*star%ctrl%atime(itime_dx_shell)/dx_dt)
+         shell_dt_x_depletion = abs(star%ctrl%atime(itime_dx_shell)/dx_dt)
          hydrogen_dt = min(hydrogen_dt,shell_dt_x_depletion)
       endif
       return

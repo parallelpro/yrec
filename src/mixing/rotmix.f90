@@ -45,7 +45,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       double precision, intent(in) :: enclosed_mass(json)
 
       integer :: num_species
-      double precision :: timestep_years
       double precision :: dlnp_dr_settling(json)
       logical :: am_transport_convective_flag(json)
       double precision :: total_mass
@@ -66,7 +65,6 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          num_species = 11
       end if
 !  DDAGE IS THE TIMESTEP IN YEARS.
-      timestep_years = timestep/seconds_per_year
 !
 !  NOW IMPLICITLY SOLVE FOR THE NEW ABUNDANCES AT THE END OF THE
 !  TIMESTEP.  THIS IS DONE SHELL BY SHELL FOR RADIATIVE REGIONS,
@@ -83,7 +81,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             burn_zone_end = zone_idx
             call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
                  rot_scr%reaction_rate_by_zone,shell_mass,composition, &
-                 timestep_years, ierr)
+                 timestep, ierr)
             if (ierr /= 0) return
          end do
       end do
@@ -96,7 +94,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
          burn_zone_end = convective_zone_bounds(region_idx,2)
          call burn_network_region(log_temperature,burn_zone_start,burn_zone_end, &
               rot_scr%reaction_rate_by_zone,shell_mass,composition, &
-              timestep_years, ierr)
+              timestep, ierr)
          if (ierr /= 0) return
       end do
 !

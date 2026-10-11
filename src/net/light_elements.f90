@@ -53,7 +53,7 @@ contains
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model).
 !
-! The rate of nonequilibrium deuterium burning at one shell, per Gyr
+! The rate of nonequilibrium deuterium burning at one shell, per s
 ! (X * N_A<sigma v> rho / m_d, excluding the deuterium abundance), for
 ! dburn/dburnm. In the surface convection zone (in_surface_cz) it is
 ! capped so that deuterium cannot burn faster than the convective
@@ -107,25 +107,25 @@ double precision function deuterium_rate(log_density, log_temperature, &
             endif
          endif
       endif
-      deuterium_rate = hydrogen_fraction*rdeut*gyr_amu_per_sec_gram
+      deuterium_rate = hydrogen_fraction*rdeut*amu_cgs
 end function deuterium_rate
 
 !----------------------------------------------------------------------
 ! burn_deuterium_region (formerly dburn and dburnm)
 !----------------------------------------------------------------------
-! Deuterium burning over a step dt_gyr in one radiative shell
+! Deuterium burning over a step (s) in one radiative shell
 ! (zone_begin = zone_end) or one convection zone (homogenized), by
 ! exponential sub-steps with the rate interpolated linearly between its
 ! start- and end-of-step values (rate_start_zone, rate_end_zone, per
-! Gyr, from deuterium_rate). D + p -> He3: X changes by D/2 and He3 by
+! s, from deuterium_rate). D + p -> He3: X changes by D/2 and He3 by
 ! -3D/2 of the deuterium burned. Under mass accretion the outermost
-! region blends in accreted_mass_step grams of gas of composition
-! ctrl%accreted_composition, mass-weighted. Below min_deuterium (after
+! region blends in the gas accreted over the step (accretion),
+! mass-weighted. Below min_deuterium (after
 ! that blend) the region's deuterium is set to zero.
 !
-! 2026-10: one routine for the main step (burn_deuterium, dt in
-! Gyr, min_deuterium = 1e-11) and the rotation sub-steps
-! (mid_timestep_model, dt converted from s, the sub-step's share of the
+! 2026-10: one routine for the main step (burn_deuterium,
+! min_deuterium = 1e-11) and the rotation sub-steps
+! (mid_timestep_model, the sub-step's share of the
 ! accreted mass, min_deuterium = 1e-14) -- formerly dburn and dburnm,
 ! two copies that differed in units, in dburnm's grams-plus-one
 ! accretion blend and in its accretion-blind threshold test.
@@ -141,8 +141,8 @@ subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, shell_mass, &
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: timestep
-! timestep in Gyr; the start-of-step composition; the deuterium rates
-! per shell at the start and end of the step; the gas accreted over
+! timestep in s; the start-of-step composition; the deuterium rates
+! per shell at the start and end of the step (per s); the gas accreted over
 ! this step; the threshold below which deuterium is zeroed
       double precision, intent(in) :: xa_start(15,json), &
            rate_start_zone(json), rate_end_zone(json), min_deuterium
