@@ -190,7 +190,7 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net"]
+FACADE_ONLY_DOMAINS = ["net", "kap"]
 
 def check_facade_imports(src_root):
     problems = []

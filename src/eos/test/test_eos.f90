@@ -39,7 +39,6 @@ program test_eos
       use io_units
       use star_info_lib, only: star
       use eos_lib
-      use opacity_tables
       use yale_eos_tables
       use scv_eos_tables
       use opal_eos_tables, only: opal06

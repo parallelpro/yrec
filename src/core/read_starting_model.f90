@@ -43,7 +43,6 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use physical_constants
       use eos_lib
       use kap_lib
-      use opacity_tables
       use yale_eos_tables
       use scv_eos_tables
       use stitched_model, only: build_stitched_model
@@ -871,16 +870,13 @@ subroutine update_surface_mixture
       if (run_index.le.1) then
 ! SET UP MASS FRACTIONS AND NUMBER FRACTIONS OF ELEMENTS IN
 ! ENVELOPE.
-! DBG 1/96 V (ENVELOPE MASS FRACTIONS WAS NORMALLY READ IN VIA
-! RDLAOL. NOW THAT THESE OPACITIES ARE OBSOLETE VNEW IS INTRODUCED
-! HOLD THE RELATIVE MASS FRACTIONS OF THE ELEMENTS (SEE PARMIN).
-! TO MAINTAIN BACKWARD COMPATIBILITY IF LLAOL=T THEN USE V READ IN
-! VIA RDLAOL OTHERWISE USE VNEW.
-      if (.not.llaol) then
-         do i=1, n_mix_species
-            species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
-         end do
-      end if
+! The relative mass fractions of the metals come from the controls
+! (mixture_weights_seed). (DBG 1/96: they used to be read with the
+! LAOL opacity tables; 2026-10: the llaol switch that kept that path,
+! never set, is gone.)
+      do i=1, n_mix_species
+         species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
+      end do
 
 ! COMPUTE SURFACE MIX VALUES.
 ! ZENVM = Z OTHER THAN CNO CYCLE ELEMENTS;

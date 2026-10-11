@@ -83,7 +83,6 @@ subroutine read_input(ierr)
       use integration_parameters
       use yrec_output, only: output_init_mesa
       use atm_tables
-      use opacity_tables
       use yale_eos_tables
       use scv_eos_tables
       use eos_lib, only: eos_set_mixture
@@ -2433,7 +2432,6 @@ end subroutine read_input
 subroutine expand_value(path_value)
 
       use atm_tables
-      use opacity_tables
       use yale_eos_tables
       use scv_eos_tables
       implicit none

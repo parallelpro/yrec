@@ -143,7 +143,7 @@ atm/tables/alfilein.o: atm_tables.mod io_units.mod math_lib.mod star_info_lib.mo
 atm/tables/alsurfp.o: atm_tables.mod io_units.mod numerics_lib.mod star_info_lib.mod
 atm/tables/altabinit.o: atm_tables.mod io_units.mod math_lib.mod
 atm/tables/surfp.o: atm_tables.mod io_units.mod numerics_lib.mod
-atm/test/test_atm.o: atm_lib.mod atm_tables.mod io_units.mod opacity_tables.mod scv_eos_tables.mod star_info_lib.mod
+atm/test/test_atm.o: atm_lib.mod atm_tables.mod io_units.mod scv_eos_tables.mod star_info_lib.mod
 core/atmosphere_derivs.o: atm_tables.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod t_tau_relations.mod
 core/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/check_solar_calibration.o: io_units.mod math_lib.mod star_info_lib.mod
@@ -162,7 +162,7 @@ core/henyey_solve.o: star_info_lib.mod
 core/monte_carlo.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/neutrino_flux_table.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/observables.o: convection_geometry.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-core/read_starting_model.o: controls_buffer.mod envelope_integration.mod envelope_refit.mod envelope_structure.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod observables.mod opacity_tables.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod stitched_model.mod temperature_gradients.mod yale_eos_tables.mod
+core/read_starting_model.o: controls_buffer.mod envelope_integration.mod envelope_refit.mod envelope_structure.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod observables.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod stitched_model.mod temperature_gradients.mod yale_eos_tables.mod
 core/rebuild_envelope.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod envelope_structure.mod math_lib.mod physical_constants.mod star_info_lib.mod yale_eos_tables.mod
 core/run_yrec.o: burn_step.mod controls_check.mod io_units.mod monte_carlo.mod net_lib.mod observables.mod physical_constants.mod run_log.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset.mod
 core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients.mod
@@ -211,7 +211,7 @@ eos/opal/t6rinterp.o: io_units.mod opal_eos_tables.mod
 eos/scv/eqscve.o: eos_mixture.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
 eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
 eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod
-eos/test/test_eos.o: eos_lib.mod io_units.mod opacity_tables.mod opal_eos_tables.mod scv_eos_tables.mod star_info_lib.mod yale_eos_tables.mod
+eos/test/test_eos.o: eos_lib.mod io_units.mod opal_eos_tables.mod scv_eos_tables.mod star_info_lib.mod yale_eos_tables.mod
 eos/yale/fully_ionized_eos.o: io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale/saha_eos.o: eos_mixture.mod io_units.mod math_lib.mod physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
@@ -221,7 +221,7 @@ io/model_to_equal.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
 io/print_allard_tables.o: atm_tables.mod io_units.mod math_lib.mod
 io/profile_output.o: output_columns.mod star_info_lib.mod stitched_model.mod
-io/read_controls.o: atm_tables.mod controls_buffer.mod controls_sync.mod eos_lib.mod integration_parameters.mod io_units.mod math_lib.mod opacity_tables.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod yale_eos_tables.mod yrec_output.mod
+io/read_controls.o: atm_tables.mod controls_buffer.mod controls_sync.mod eos_lib.mod integration_parameters.mod io_units.mod math_lib.mod physical_constants.mod scv_eos_tables.mod star_info_lib.mod yale_eos_tables.mod yrec_output.mod
 io/read_mod_model.o: io_units.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
 io/read_yrec7.o: io_units.mod math_lib.mod star_info_lib.mod

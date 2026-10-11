@@ -262,21 +262,6 @@ module opacity_tables
 
       type(opacity_table_state), public :: opacity_table
 
-
-! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from
-! const_lib, where this table/working data had landed during the
-! phase-one COMMON conversion; it belongs with this domain's state.
-! former common/nwlaol/'s one remaining member (the table arrays are
-! opacity_table%laol_*; the namelist controls tollaol/use_pure_z_table
-! are star%ctrl members since 2026 wave 2; the table unit numbers are
-! newunit locals of kap/laol89/rdlaol.f90/rdzlaol.f90). llaol is not a
-! namelist value and nothing in src/ assigns it: it stays at its
-! compile-time .false., so core/read_starting_model.f90's
-! `if (.not.llaol)` guard (use the LAOL-table metal mix instead of
-! mixture_weights_seed) is never skipped.
-      logical :: llaol = .false.
-
-
 contains
 
 ! stencil4_locate

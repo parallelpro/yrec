@@ -24,7 +24,6 @@ program test_atm
       use io_units
       use atm_tables
       use atm_lib
-      use opacity_tables
       use scv_eos_tables
       implicit none
       integer :: gerr
