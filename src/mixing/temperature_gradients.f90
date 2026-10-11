@@ -37,11 +37,11 @@
 ! It is optional only because core/read_starting_model.f90 still
 ! passes it through star%iovim = -1 (see the W2 sidechan report,
 ! Deferred); when absent, star%iovim is read exactly as before.
-module temperature_gradients_lib
+module temperature_gradients
       implicit none
 contains
 
-subroutine temperature_gradients(log_temperature, log_pressure, &
+subroutine compute_temperature_gradients(log_temperature, log_pressure, &
      eos_res, kap_res, log_radius, log_mass, luminosity_lsun, &
      actual_gradient, radiative_gradient, dgrad_dt_component, &
      dgrad_dp_component, dgrad_dr_component, convective_velocity, &
@@ -280,6 +280,6 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       endif
 
       return
-end subroutine temperature_gradients
+end subroutine compute_temperature_gradients
 
-end module temperature_gradients_lib
+end module temperature_gradients

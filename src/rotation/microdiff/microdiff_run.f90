@@ -20,16 +20,16 @@
 ! tridiag_gs for the implicit second-derivative term.
 ! 2026 de-tramp (ROADMAP item 3): 27 arguments -> 13; the two
 ! equally-spaced grids are microdiff_grid records (eq, eq_mid).
-module microdiff_run_lib
+module microdiff_run
       implicit none
 contains
 
-subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
+subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
      eq, species_fraction, hydrogen_dlnc_dr, &
      eq_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
-      use microdiff_mte_lib, only: microdiff_grid
-      use microdiff_coefficients_lib
+      use microdiff_mte, only: microdiff_grid
+      use microdiff_coefficients
       use star_info_lib, only: star, json
       use io_units
       use run_log, only: solver_diagnostics
@@ -95,7 +95,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! METHOD OF THE THOUL ROUTINE. MUCH OF THE FOLLOWING CODE WAS TAKEN FROM
 ! SETUP_LISETT.F.
 !
-      call microdiff_coefficients(num_eq_points, species_fraction, eq, &
+      call compute_microdiff_coefficients(num_eq_points, species_fraction, eq, &
            diffusion_coeff1, diffusion_coeff2, hydrogen_dlnc_dr, &
            atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
       if (ierr /= 0) return
@@ -122,7 +122,7 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
 ! MIDPOINTS HAVE ONE LESS GRID ELEMENT.
 !
       num_mid_points = num_eq_points-1
-      call microdiff_coefficients(num_mid_points, species_fraction_mid, eq_mid, &
+      call compute_microdiff_coefficients(num_mid_points, species_fraction_mid, eq_mid, &
            diffusion_coeff1_mid, diffusion_coeff2_mid, &
            hydrogen_dlnc_dr_mid, atomic_weight_diffused, &
            atomic_charge_diffused, species_col, ierr)
@@ -219,6 +219,6 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
               diffused_abundance_orig(i)
       enddo
       return
-end subroutine microdiff_run
+end subroutine run_microdiff
 
-end module microdiff_run_lib
+end module microdiff_run

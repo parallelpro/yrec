@@ -61,10 +61,10 @@
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
      convective_flag, num_zones, total_mass, ierr)
-      use microdiff_mte_lib
-      use microdiff_run_lib
+      use microdiff_mte
+      use microdiff_run
       use star_info_lib, only: star, json
-      use species_table_lib, only: thoul_fe, thoul_col_h, thoul_col_he, &
+      use species_table, only: thoul_fe, thoul_col_h, thoul_col_he, &
            thoul_col_metal, num_light_diffused, light_diffused, light_diffused_row
       implicit none
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
@@ -84,7 +84,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       double precision :: radius_bl(json), temperature_bl(json)
       double precision :: density_orig(json), temperature_orig(json)
 ! the equally spaced grids at zone centers (eq) and zone midpoints
-! (eq_mid), built by microdiff_mte -- see microdiff_mte_lib
+! (eq_mid), built by microdiff_mte -- see microdiff_mte
       type(microdiff_grid) :: eq, eq_mid
       double precision :: species_fraction(3,json), &
            hydrogen_dlnc_dr(json)
@@ -93,7 +93,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
            eq_delta_metal(json), eq_delta_light(num_light,json)
 !
 !     THE LIGHT ELEMENTS DIFFUSED (ROW, WEIGHT, CHARGE) ARE
-!     light_diffused_row / light_diffused OF species_table_lib.
+!     light_diffused_row / light_diffused OF species_table.
       integer :: i, ii, zone_begin, zone_end, num_eq_points, species_col
       logical :: settling_skipped_flag
       double precision :: grid_spacing, atomic_weight_diffused, &
@@ -116,7 +116,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
 !         SPACED GRID POINTS.(BOTH ARE NEEDED FOR THE DIFFUSION TECHNIQUE).
 !
-      call microdiff_mte(num_light, light_diffused_row, composition, &
+      call map_microdiff_to_equal_grid(num_light, light_diffused_row, composition, &
            dlnp_dr, radius_bl, enclosed_mass, del_grad, zone_begin, zone_end, &
            num_zones, grid_spacing, num_eq_points, density_orig, &
            temperature_orig, eq, eq_mid)
@@ -154,7 +154,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call microdiff_run(grid_spacing, timestep, total_mass, &
+         call run_microdiff(grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
@@ -186,7 +186,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call microdiff_run(grid_spacing, timestep, total_mass, &
+         call run_microdiff(grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
@@ -216,7 +216,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
             enddo
             species_fraction(thoul_col_metal,num_eq_points) = eq%light(ii,num_eq_points)
 !           PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-            call microdiff_run(grid_spacing, timestep, total_mass, &
+            call run_microdiff(grid_spacing, timestep, total_mass, &
                  num_eq_points, eq, species_fraction, &
                  hydrogen_dlnc_dr, eq_mid, &
                  species_fraction_mid, hydrogen_dlnc_dr_mid, &

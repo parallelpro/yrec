@@ -28,8 +28,8 @@
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use rotation_scratch_lib
-      use mid_timestep_model_lib
-      use secular_transport_lib
+      use mid_timestep_model
+      use secular_transport
       use star_info_lib, only: star, json
       use net_lib
       use physical_constants
@@ -255,7 +255,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! INTERPOLATE LINEARLY IN TIME FOR THE MODEL STRUCTURE BETWEEN THE
 ! START AND END OF THE TIMESTEP.
 ! JVS
-      call mid_timestep_model(full_timestep, sub_timestep, fx, first_call, &
+      call advance_rotation_substep(full_timestep, sub_timestep, fx, first_call, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            core_boundary_zone, envelope_boundary_zone, &
            fully_convective_flag, surface_cz_active, &
@@ -294,7 +294,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          end do
 ! MHP 6/00 ADDED COD2,HV TO LIST RETURNED FROM SECULR
 ! FOR THE BUR-ST MIXING ROUTINES
-         call secular_transport(sub_timestep, specific_angular_momentum_saved, &
+         call apply_secular_transport(sub_timestep, specific_angular_momentum_saved, &
               core_boundary_zone, envelope_boundary_zone, &
               redo_needed_flag, redo_count, &
               moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &

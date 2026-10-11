@@ -21,7 +21,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
       use rotation_scratch_lib
-      use equal_grid_lib
+      use equal_grid
       use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib

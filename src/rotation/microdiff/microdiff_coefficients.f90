@@ -26,17 +26,17 @@
 ! 2026 de-tramp (ROADMAP item 3): the five equally-spaced-grid arrays
 ! are one microdiff_grid record (grid) -- this routine is called once
 ! for the zone-center grid and once for the zone-midpoint grid.
-module microdiff_coefficients_lib
+module microdiff_coefficients
       implicit none
 contains
 
-subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
+subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid, &
      diffusion_coeff1, &
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col, ierr)
-      use microdiff_mte_lib, only: microdiff_grid
+      use microdiff_mte, only: microdiff_grid
       use star_info_lib, only: star, json
-      use species_table_lib, only: thoul_h1, thoul_he4, thoul_electron, &
+      use species_table, only: thoul_h1, thoul_he4, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
       use physical_constants
       use math_lib
@@ -229,6 +229,6 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
          diffusion_coeff2(i) = fac*ad
       end do
       return
-end subroutine microdiff_coefficients
+end subroutine compute_microdiff_coefficients
 
-end module microdiff_coefficients_lib
+end module microdiff_coefficients

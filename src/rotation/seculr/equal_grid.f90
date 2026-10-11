@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! equal_grid_lib
+! equal_grid
 !----------------------------------------------------------------------
 ! 2026 readability sweep (W3, rotation): the blocks that am_transport_grid
 ! (rotgrid.f) and composition_grid (mixgrid.f) carried as verbatim copies,
@@ -15,7 +15,7 @@
 ! of inertia and angular momentum with the mass in the same loops) and
 ! the two es_advective/es_diffusive interpolations under
 ! use_diffusion_advection_transport (a scale factor on each table entry).
-module equal_grid_lib
+module equal_grid
       implicit none
       private
       public :: edge_grid_abscissae, interp_edge_coeff, dchi_dr_jacobian, &
@@ -146,4 +146,4 @@ subroutine multiply_by_exp10(coeff, log_factor, ntot)
       end do
 end subroutine multiply_by_exp10
 
-end module equal_grid_lib
+end module equal_grid

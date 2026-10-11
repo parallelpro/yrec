@@ -155,7 +155,7 @@ At each interior shell `henyey_coefficients` (`coefft`,
 `core/henyey_coefficients.f90`) evaluates the four residuals and
 their analytic partial derivatives with respect to the corrections
 (δlogP, δlogT, δlogR, δL) at the shell and its neighbor — the EOS
-(`eos_get`), opacity (`kap_get`), gradient (`temperature_gradients`
+(`eos_get`), opacity (`kap_get`), gradient (`compute_temperature_gradients`
 (`tpgrad`)), and energy generation (`compute_zone_energy`) derivatives feed the chain
 rule, e.g. the radiative
 branch of equation 3 carries
@@ -316,7 +316,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
                                                        (mwind, mcowind)
         rotation law / solid body in CZs             enforce_rotation_profile (wczimp),
                                                        solid_body_omega (solid)
-        instability diffusion + rotational mixing    secular_transport (seculr) and the
+        instability diffusion + rotational mixing    apply_secular_transport (seculr) and the
                                                        rotation/seculr/ solvers (see 4.6)
         Li/Be burning (with rotational mixing)       store_end_li_be_rates, burn_li_be
       new fp/ft from new ω                           rotation_shape_factors (fpft)
@@ -392,7 +392,7 @@ Rosseland-mean κ blended from:
 Derivatives ∂lnκ/∂lnρ and ∂lnκ/∂lnT are returned from the interpolants
 (quadratic/cubic interpolation with stored weights per table family).
 
-### 4.3 Convection (`temperature_gradients` (`tpgrad`), `mixing/temperature_gradients.f90`)
+### 4.3 Convection (`compute_temperature_gradients` (`tpgrad`), `mixing/temperature_gradients.f90`)
 
 Schwarzschild criterion (∇_rad vs ∇_ad; Ledoux/semiconvection is a
 separate flag treatment, mutually exclusive with core overshoot).
@@ -458,7 +458,7 @@ interpolated in both directions with edge-validity bookkeeping
   equation integrated over the model; `rotation/shape/`, entry point
   `rotation_shape_factors` (`fpft`)), surface-average gravity
   corrections.
-- **Instability diffusion coefficients** (`secular_transport` (`seculr`)
+- **Instability diffusion coefficients** (`apply_secular_transport` (`seculr`)
   and `diffusion_velocity_scales` (`codiff`) in `rotation/seculr/`, from the
   Pinsonneault et al. 1989 formulation): dynamical instabilities
   (checked/enforced instantaneously) and secular ones providing D(r) —

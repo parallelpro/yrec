@@ -37,7 +37,7 @@
 subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, &
      mixed_zone_bounds, num_zones_mixed, log_teff, ierr)
-      use temperature_gradients_lib
+      use temperature_gradients
       use star_info_lib, only: star, json
 
       use io_units
@@ -172,7 +172,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
 ! is_convective, convective_velocity or dgrad_* -- only
 ! radiative_gradient, which the gate cannot touch -- so -1 (no
 ! overshoot gating) gives the same result as any stale value did.
-            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
+            call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -204,7 +204,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                  hydrogen_fraction, metal_fraction, kap_res, &
                  eos_res(i_fxion:i_fxion+2), ierr=ierr)
             if (ierr /= 0) return
-            call temperature_gradients(log_temperature_zone, log_pressure_zone, &
+            call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                  eos_res, kap_res, log_radius_zone, log_mass_zone, &
                  luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                  dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
@@ -275,7 +275,7 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2), ierr=ierr)
                if (ierr /= 0) return
-               call temperature_gradients(log_temperature_zone, log_pressure_zone, &
+               call compute_temperature_gradients(log_temperature_zone, log_pressure_zone, &
                     eos_res, kap_res, log_radius_zone, log_mass_zone, &
                     luminosity_lsun_zone, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &

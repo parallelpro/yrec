@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! species_table_lib
+! species_table
 !----------------------------------------------------------------------
 ! 2026 readability sweep (W3, rotation): the species descriptors that
 ! the microscopic-diffusion routines used to carry as private
@@ -19,7 +19,7 @@
 ! mean-weight table (H1 1.007825, He4 4.002603, C12 12.0, He3 3.01603).
 !
 ! Rotation-internal; not a public rotation entry.
-module species_table_lib
+module species_table
       use star_info_lib, only: i_li6, i_li7, i_be9
       use physical_constants, only: m_electron_amu
       implicit none
@@ -55,4 +55,4 @@ module species_table_lib
       integer, parameter, public :: &
            light_diffused_row(num_light_diffused) = [i_li6, i_li7, i_be9]
 
-end module species_table_lib
+end module species_table

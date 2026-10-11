@@ -24,7 +24,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 ! Kinetic-theory weights and charges for composition rows 1..11
 ! (i_h1..i_o18 of star_info_lib); row i_metals is the lumped Z, skipped
 ! in the molecular-viscosity sums below.  These values differ from the
-! Thoul-solver descriptors in species_table_lib and stay local.
+! Thoul-solver descriptors in species_table and stay local.
       double precision :: weight(11), z(11)
       data amu/amu_cgs_legacy/
       data weight/1.007825d0,4.0026d0,1.0d0,3.01603d0,12.0d0, &

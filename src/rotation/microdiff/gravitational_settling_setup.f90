@@ -26,9 +26,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
-      use species_table_lib, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
+      use species_table, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
-      use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
+      use bahcall_loeb_units, only: set_bahcall_loeb_scales
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -55,7 +55,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
-! NEEDED FOR FULL THOUL COEFFICIENTS (VALUES FROM species_table_lib)
+! NEEDED FOR FULL THOUL COEFFICIENTS (VALUES FROM species_table)
       double precision :: atomic_weight(4), atomic_charge(4), &
            settling_ap(4), settling_at(4), settling_ac(4,4), &
            coulomb_log(4,4), species_mass_fraction(4)

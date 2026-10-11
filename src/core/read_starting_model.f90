@@ -30,7 +30,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
-      use temperature_gradients_lib
+      use temperature_gradients
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
@@ -687,7 +687,7 @@ subroutine rescale_and_refit_envelope
                if (ierr /= 0) return
 ! 2026 W3: zone_index=-1 (no overshoot zone) is passed directly; this
 ! was the last writer of the star%iovim side channel.
-               call temperature_gradients(log10_temperature, log10_pressure, &
+               call compute_temperature_gradients(log10_temperature, log10_pressure, &
                     eos_res, kap_res, log10_radius, log10_mass, &
                     shell_luminosity_lsun, actual_gradient, radiative_gradient, &
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &

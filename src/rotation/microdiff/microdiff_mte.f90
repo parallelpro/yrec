@@ -21,7 +21,7 @@
 ! (zone centers, eq; zone midpoints, eq_mid), defined here and
 ! threaded through microdiff_run/microdiff_coefficients, which are
 ! called once per grid instance.
-module microdiff_mte_lib
+module microdiff_mte
       use star_info_lib, only: json
       implicit none
 
@@ -37,7 +37,7 @@ module microdiff_mte_lib
       end type microdiff_grid
 contains
 
-subroutine microdiff_mte(num_light, light_element_id, composition, &
+subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition, &
      dlnp_dr, radius_bl, enclosed_mass, del_grad, zone_begin, zone_end, &
      num_zones, grid_spacing, num_eq_points, density_orig, &
      temperature_orig, eq, eq_mid)
@@ -257,6 +257,6 @@ subroutine microdiff_mte(num_light, light_element_id, composition, &
          end do
       endif
       return
-end subroutine microdiff_mte
+end subroutine map_microdiff_to_equal_grid
 
-end module microdiff_mte_lib
+end module microdiff_mte

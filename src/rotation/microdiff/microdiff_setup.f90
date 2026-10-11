@@ -41,7 +41,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      zone_end, settling_skipped_flag, density_orig, temperature_orig)
 
       use star_info_lib, only: star, json, i_h1, i_he4
-      use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
+      use bahcall_loeb_units, only: set_bahcall_loeb_scales
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants

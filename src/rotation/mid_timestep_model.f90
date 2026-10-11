@@ -22,11 +22,11 @@
 ! midmod pipeline's shared per-sub-step workspace, not per-call data.
 ! The remaining arguments are genuine per-call scalars/bounds. Wrapped
 ! as a module procedure so the compiler enforces the call.
-module mid_timestep_model_lib
+module mid_timestep_model
       implicit none
 contains
 
-subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_call, &
+subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, first_call, &
      moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
      core_boundary_zone, envelope_boundary_zone, fully_convective_flag, &
      surface_cz_active, &
@@ -290,6 +290,6 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
          endif
       endif
       return
-end subroutine mid_timestep_model
+end subroutine advance_rotation_substep
 
-end module mid_timestep_model_lib
+end module mid_timestep_model

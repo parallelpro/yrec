@@ -43,11 +43,11 @@
 ! the sub-step, the saved-at-substep-start angular momentum, the
 ! unstable-domain bounds, the surface-CZ terms, and the outputs.
 ! Wrapped as a module procedure so the compiler enforces the call.
-module secular_transport_lib
+module secular_transport
       implicit none
 contains
 
-subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
+subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved, &
      zone_min, zone_max, redo_flag, cut_count, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
@@ -134,7 +134,7 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
 ! decks that set it run fine; here, where it would take effect, the run
 ! stops instead.
       if (star%ctrl%use_diffusion_advection_transport) then
-         write(*,'(a)') 'secular_transport: use_diffusion_advection_transport' &
+         write(*,'(a)') 'apply_secular_transport: use_diffusion_advection_transport' &
               //' (LDIFAD) is not functional -- its advective transport' &
               //' coefficients are never computed. Set it .false.'
          ierr = 1
@@ -471,6 +471,6 @@ subroutine secular_transport(sub_timestep, specific_angular_momentum_saved, &
       rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
       rot_scr%am_transport_convective_flag_mid(star%nz) = lcz_last_zone
       return
-end subroutine secular_transport
+end subroutine apply_secular_transport
 
-end module secular_transport_lib
+end module secular_transport
