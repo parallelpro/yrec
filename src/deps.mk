@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/henyey_iterate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/check_controls.f90 io/controls_lib.f90 io/history_output.f90 io/luout_lib.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid_lib.f90 rotation/seculr/secular_transport.f90 rotation/species_table_lib.f90 state/controls_sync_lib.f90 state/phys_const_lib.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_table_lib.f90 atm/atmstruct_lib.f90 atm/envstruct_lib.f90 atm/ttau_lib.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_refit_lib.f90 core/envint_kernel.f90 core/envint_lib.f90 core/henyey_eliminate.f90 core/henyey_iterate.f90 core/monte_carlo.f90 core/observables_lib.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_lib.f90 eos/eos_mixture_lib.f90 eos/mhd_eos_lib.f90 eos/opal_eos_lib.f90 eos/scv_eos_lib.f90 eos/yale_eos_lib.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/conductive_table_lib.f90 kap/kap_lib.f90 kap/opacity_table_lib.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/intpar_lib.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid_lib.f90 rotation/seculr/secular_transport.f90 rotation/species_table_lib.f90 state/controls_sync.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -22,11 +22,11 @@ composition_step_lib.mod: core/composition_step.o
 	@true
 conductive_table_lib.mod: kap/conductive_table_lib.o
 	@true
-controls_check_lib.mod: io/check_controls.o
+controls_buffer.mod: io/controls_buffer.o
 	@true
-controls_lib.mod: io/controls_lib.o
+controls_check.mod: io/controls_check.o
 	@true
-controls_sync_lib.mod: state/controls_sync_lib.o
+controls_sync.mod: state/controls_sync.o
 	@true
 convection_geometry.mod: core/convection_geometry.o
 	@true
@@ -52,11 +52,11 @@ history_output.mod: io/history_output.o
 	@true
 intpar_lib.mod: numerics/intpar_lib.o
 	@true
+io_units.mod: io/io_units.o
+	@true
 kap_lib.mod: kap/kap_lib.o
 	@true
 light_elements.mod: net/light_elements.o
-	@true
-luout_lib.mod: io/luout_lib.o
 	@true
 math_lib.mod: math/math_lib.o
 	@true
@@ -86,9 +86,9 @@ opacity_table_lib.mod: kap/opacity_table_lib.o
 	@true
 opal_eos_lib.mod: eos/opal_eos_lib.o
 	@true
-output_columns_lib.mod: io/output_columns.o
+output_columns.mod: io/output_columns.o
 	@true
-phys_const_lib.mod: state/phys_const_lib.o
+physical_constants.mod: state/physical_constants.o
 	@true
 point_scratch_lib.mod: core/point_scratch_lib.o
 	@true
@@ -98,7 +98,7 @@ reaction_rates.mod: net/reaction_rates.o
 	@true
 rotation_scratch_lib.mod: rotation/rotation_scratch_lib.o
 	@true
-run_log_lib.mod: io/run_log.o
+run_log.mod: io/run_log.o
 	@true
 scv_eos_lib.mod: eos/scv_eos_lib.o
 	@true
@@ -134,117 +134,117 @@ yrec_reset_lib.mod: core/yrec_reset.o
 atm/atm_lib.o: atm_table_lib.mod star_info_lib.mod
 atm/atmstruct_lib.o: star_info_lib.mod
 atm/envstruct_lib.o: star_info_lib.mod
-atm/tables/alfilein.o: atm_table_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
-atm/tables/alsurfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod star_info_lib.mod
-atm/tables/altabinit.o: atm_table_lib.mod luout_lib.mod math_lib.mod
-atm/tables/surfp.o: atm_table_lib.mod luout_lib.mod numerics_lib.mod
-atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
-atm/ttau_lib.o: math_lib.mod phys_const_lib.mod
-core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod ttau_lib.mod
-core/burn_step.o: convection_geometry.mod luout_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-core/check_solar_calibration.o: luout_lib.mod math_lib.mod star_info_lib.mod
-core/check_star_calibration.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/composition_step.o: burn_step.mod luout_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
-core/convection_geometry.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod point_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
+atm/tables/alfilein.o: atm_table_lib.mod io_units.mod math_lib.mod star_info_lib.mod
+atm/tables/alsurfp.o: atm_table_lib.mod io_units.mod numerics_lib.mod star_info_lib.mod
+atm/tables/altabinit.o: atm_table_lib.mod io_units.mod math_lib.mod
+atm/tables/surfp.o: atm_table_lib.mod io_units.mod numerics_lib.mod
+atm/test/test_atm.o: atm_lib.mod atm_table_lib.mod io_units.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
+atm/ttau_lib.o: math_lib.mod physical_constants.mod
+core/atmosphere_derivs.o: atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod ttau_lib.mod
+core/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+core/check_solar_calibration.o: io_units.mod math_lib.mod star_info_lib.mod
+core/check_star_calibration.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/composition_step.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
+core/convection_geometry.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+core/envelope_derivs.o: eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/envelope_refit_lib.o: envstruct_lib.mod star_info_lib.mod
-core/envint_kernel.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod point_scratch_lib.mod run_log_lib.mod ttau_lib.mod
-core/envint_lib.o: envint_kernel.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/evolve_step.o: burn_step.mod composition_step_lib.mod convection_geometry.mod henyey_iterate_lib.mod luout_lib.mod math_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
-core/henyey_coefficients.o: burn_step.mod eos_lib.mod henyey_eliminate_lib.mod kap_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
-core/henyey_eliminate.o: phys_const_lib.mod star_info_lib.mod
-core/henyey_iterate.o: luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod yale_eos_lib.mod
+core/envint_kernel.o: atm_table_lib.mod atmstruct_lib.mod envstruct_lib.mod eos_lib.mod intpar_lib.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod point_scratch_lib.mod run_log.mod ttau_lib.mod
+core/envint_lib.o: envint_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/evolve_step.o: burn_step.mod composition_step_lib.mod convection_geometry.mod henyey_iterate_lib.mod io_units.mod math_lib.mod net_lib.mod observables_lib.mod physical_constants.mod star_info_lib.mod stitched_model_lib.mod stop_conditions.mod yrec_output.mod
+core/henyey_coefficients.o: burn_step.mod eos_lib.mod henyey_eliminate_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
+core/henyey_eliminate.o: physical_constants.mod star_info_lib.mod
+core/henyey_iterate.o: io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod yale_eos_lib.mod
 core/henyey_solve.o: star_info_lib.mod
-core/monte_carlo.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/neutrino_flux_table.o: burn_step.mod luout_lib.mod math_lib.mod observables_lib.mod phys_const_lib.mod star_info_lib.mod
-core/observables_lib.o: convection_geometry.mod eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
-core/read_starting_model.o: controls_lib.mod envelope_refit_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
-core/rebuild_envelope.o: controls_lib.mod envelope_refit_lib.mod envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod yale_eos_lib.mod
-core/run_yrec.o: burn_step.mod controls_check_lib.mod luout_lib.mod monte_carlo_lib.mod net_lib.mod observables_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
-core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
+core/monte_carlo.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/neutrino_flux_table.o: burn_step.mod io_units.mod math_lib.mod observables_lib.mod physical_constants.mod star_info_lib.mod
+core/observables_lib.o: convection_geometry.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model_lib.mod
+core/read_starting_model.o: controls_buffer.mod envelope_refit_lib.mod envint_lib.mod envstruct_lib.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod observables_lib.mod opacity_table_lib.mod physical_constants.mod scv_eos_lib.mod star_info_lib.mod stitched_model_lib.mod temperature_gradients_lib.mod yale_eos_lib.mod
+core/rebuild_envelope.o: controls_buffer.mod envelope_refit_lib.mod envint_kernel.mod envint_lib.mod envstruct_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod yale_eos_lib.mod
+core/run_yrec.o: burn_step.mod controls_check.mod io_units.mod monte_carlo_lib.mod net_lib.mod observables_lib.mod physical_constants.mod run_log.mod star_info_lib.mod stop_conditions.mod yrec_output.mod yrec_reset_lib.mod
+core/shell_physics.o: eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod temperature_gradients_lib.mod
 core/star_setup.o: monte_carlo_lib.mod
-core/stitched_model.o: atmstruct_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-core/stop_conditions.o: luout_lib.mod math_lib.mod star_info_lib.mod
-core/surfbc.o: atm_table_lib.mod envint_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+core/stitched_model.o: atmstruct_lib.mod envint_lib.mod envstruct_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/stop_conditions.o: io_units.mod math_lib.mod star_info_lib.mod
+core/surfbc.o: atm_table_lib.mod envint_lib.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 core/test/test_reentry.o: star_info_lib.mod
-core/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
+core/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model_lib.mod
 core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-eos/eos_lib.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
-eos/eqstat.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
-eos/mhd/meqos.o: luout_lib.mod math_lib.mod mhd_eos_lib.mod
+eos/eos_lib.o: eos_mixture_lib.mod io_units.mod math_lib.mod opal_eos_lib.mod physical_constants.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
+eos/eqstat.o: eos_mixture_lib.mod io_units.mod math_lib.mod physical_constants.mod scv_eos_lib.mod star_info_lib.mod
+eos/mhd/meqos.o: io_units.mod math_lib.mod mhd_eos_lib.mod
 eos/mhd/mhdpx.o: mhd_eos_lib.mod
-eos/mhd/mhdpx1.o: luout_lib.mod mhd_eos_lib.mod numerics_lib.mod
+eos/mhd/mhdpx1.o: io_units.mod mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdpx2.o: mhd_eos_lib.mod numerics_lib.mod
 eos/mhd/mhdst.o: mhd_eos_lib.mod
 eos/mhd/mhdst1.o: mhd_eos_lib.mod
 eos/mhd/mhdtbl.o: star_info_lib.mod
-eos/mu.o: eos_mixture_lib.mod phys_const_lib.mod
+eos/mu.o: eos_mixture_lib.mod physical_constants.mod
 eos/opal/eqbound.o: opal_eos_lib.mod
 eos/opal/eqbound01.o: opal_eos_lib.mod
 eos/opal/eqbound06.o: math_lib.mod opal_eos_lib.mod
 eos/opal/eqbound_core.o: math_lib.mod
-eos/opal/esac.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/esac01.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/esac06.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/oeqos.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
-eos/opal/oeqos01.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
-eos/opal/oeqos06.o: luout_lib.mod math_lib.mod opal_eos_lib.mod phys_const_lib.mod
+eos/opal/esac.o: io_units.mod opal_eos_lib.mod
+eos/opal/esac01.o: io_units.mod opal_eos_lib.mod
+eos/opal/esac06.o: io_units.mod opal_eos_lib.mod
+eos/opal/oeqos.o: io_units.mod math_lib.mod opal_eos_lib.mod physical_constants.mod
+eos/opal/oeqos01.o: io_units.mod math_lib.mod opal_eos_lib.mod physical_constants.mod
+eos/opal/oeqos06.o: io_units.mod math_lib.mod opal_eos_lib.mod physical_constants.mod
 eos/opal/quad.o: opal_eos_lib.mod
 eos/opal/radsub.o: opal_eos_lib.mod
 eos/opal/radsub01.o: opal_eos_lib.mod
 eos/opal/radsub06.o: opal_eos_lib.mod
-eos/opal/readco.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
-eos/opal/readcoeos01.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
-eos/opal/readcoeos06.o: luout_lib.mod opal_eos_lib.mod star_info_lib.mod
+eos/opal/readco.o: io_units.mod opal_eos_lib.mod star_info_lib.mod
+eos/opal/readcoeos01.o: io_units.mod opal_eos_lib.mod star_info_lib.mod
+eos/opal/readcoeos06.o: io_units.mod opal_eos_lib.mod star_info_lib.mod
 eos/opal/rhoofp.o: opal_eos_lib.mod
 eos/opal/rhoofp01.o: opal_eos_lib.mod
-eos/opal/rhoofp06.o: luout_lib.mod opal_eos_lib.mod
+eos/opal/rhoofp06.o: io_units.mod opal_eos_lib.mod
 eos/opal/t6rint_core.o: opal_eos_lib.mod
-eos/opal/t6rinteos01.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/t6rinteos06.o: luout_lib.mod opal_eos_lib.mod
-eos/opal/t6rinterp.o: luout_lib.mod opal_eos_lib.mod
-eos/scv/eqscve.o: eos_mixture_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
-eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod
-eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod
-eos/test/test_eos.o: eos_lib.mod luout_lib.mod opacity_table_lib.mod opal_eos_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
-eos/yale/fully_ionized_eos.o: luout_lib.mod math_lib.mod phys_const_lib.mod yale_eos_lib.mod
-eos/yale/saha_eos.o: eos_mixture_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod
-io/check_controls.o: luout_lib.mod star_info_lib.mod
+eos/opal/t6rinteos01.o: io_units.mod opal_eos_lib.mod
+eos/opal/t6rinteos06.o: io_units.mod opal_eos_lib.mod
+eos/opal/t6rinterp.o: io_units.mod opal_eos_lib.mod
+eos/scv/eqscve.o: eos_mixture_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_lib.mod
+eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_lib.mod
+eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_lib.mod star_info_lib.mod
+eos/test/test_eos.o: eos_lib.mod io_units.mod opacity_table_lib.mod opal_eos_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod
+eos/yale/fully_ionized_eos.o: io_units.mod math_lib.mod physical_constants.mod yale_eos_lib.mod
+eos/yale/saha_eos.o: eos_mixture_lib.mod io_units.mod math_lib.mod physical_constants.mod
+io/controls_check.o: io_units.mod star_info_lib.mod
 io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
-io/history_output.o: output_columns_lib.mod phys_const_lib.mod star_info_lib.mod
+io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod
 io/model_to_equal.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-io/output_columns.o: luout_lib.mod
-io/print_allard_tables.o: atm_table_lib.mod luout_lib.mod math_lib.mod
-io/profile_output.o: output_columns_lib.mod star_info_lib.mod stitched_model_lib.mod
-io/read_controls.o: atm_table_lib.mod controls_lib.mod controls_sync_lib.mod eos_lib.mod intpar_lib.mod luout_lib.mod math_lib.mod opacity_table_lib.mod phys_const_lib.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod yrec_output.mod
-io/read_mod_model.o: luout_lib.mod star_info_lib.mod
+io/output_columns.o: io_units.mod
+io/print_allard_tables.o: atm_table_lib.mod io_units.mod math_lib.mod
+io/profile_output.o: output_columns.mod star_info_lib.mod stitched_model_lib.mod
+io/read_controls.o: atm_table_lib.mod controls_buffer.mod controls_sync.mod eos_lib.mod intpar_lib.mod io_units.mod math_lib.mod opacity_table_lib.mod physical_constants.mod scv_eos_lib.mod star_info_lib.mod yale_eos_lib.mod yrec_output.mod
+io/read_mod_model.o: io_units.mod star_info_lib.mod
 io/read_model2.o: star_info_lib.mod
-io/read_yrec7.o: luout_lib.mod math_lib.mod star_info_lib.mod
-io/run_log.o: luout_lib.mod star_info_lib.mod
-io/write_fgong_pulse.o: math_lib.mod phys_const_lib.mod star_info_lib.mod stitched_model_lib.mod
-io/write_gsm_pulse.o: luout_lib.mod stitched_model_lib.mod
-io/write_gyre_pulse.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-io/write_mod_model.o: luout_lib.mod run_log_lib.mod star_info_lib.mod
-io/write_output_headers.o: luout_lib.mod star_info_lib.mod
-io/yrec_output.o: history_output.mod luout_lib.mod math_lib.mod phys_const_lib.mod profile_output.mod run_log_lib.mod star_info_lib.mod stitched_model_lib.mod
+io/read_yrec7.o: io_units.mod math_lib.mod star_info_lib.mod
+io/run_log.o: io_units.mod star_info_lib.mod
+io/write_fgong_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod stitched_model_lib.mod
+io/write_gsm_pulse.o: io_units.mod stitched_model_lib.mod
+io/write_gyre_pulse.o: math_lib.mod physical_constants.mod star_info_lib.mod
+io/write_mod_model.o: io_units.mod run_log.mod star_info_lib.mod
+io/write_output_headers.o: io_units.mod star_info_lib.mod
+io/yrec_output.o: history_output.mod io_units.mod math_lib.mod physical_constants.mod profile_output.mod run_log.mod star_info_lib.mod stitched_model_lib.mod
 kap/alex06/alex06tab.o: numerics_lib.mod opacity_table_lib.mod
-kap/alex06/getalex06.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod phys_const_lib.mod
+kap/alex06/getalex06.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod physical_constants.mod
 kap/alex06/readalex06.o: opacity_table_lib.mod star_info_lib.mod
 kap/alex94/alex94_fixed_z_table.o: numerics_lib.mod opacity_table_lib.mod
-kap/alex94/alex94_interp3d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod phys_const_lib.mod
+kap/alex94/alex94_interp3d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod physical_constants.mod
 kap/alex94/alex94_surface_table.o: numerics_lib.mod opacity_table_lib.mod
-kap/alex94/read_alex94_tables.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/alex94/read_alex94_tables.o: io_units.mod opacity_table_lib.mod star_info_lib.mod
 kap/conductive/condopacp.o: conductive_table_lib.mod math_lib.mod star_info_lib.mod
 kap/conductive/condopacpint.o: math_lib.mod
-kap/kap_lib.o: luout_lib.mod math_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/kap_lib.o: io_units.mod math_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/kurucz90/build_kurucz_splines.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
-kap/kurucz90/kurucz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
+kap/kurucz90/kurucz.o: io_units.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/kurucz90/read_kurucz_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/gtlaol.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/gtpurz.o: luout_lib.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/rdlaol.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
-kap/laol89/rdzlaol.o: luout_lib.mod opacity_table_lib.mod
+kap/laol89/gtlaol.o: io_units.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/laol89/gtpurz.o: io_units.mod math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/laol89/rdlaol.o: io_units.mod opacity_table_lib.mod star_info_lib.mod
+kap/laol89/rdzlaol.o: io_units.mod opacity_table_lib.mod
 kap/laol89/sulaol.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/laol89/zsulaol.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/opal92/opal92_interp2d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
@@ -253,7 +253,7 @@ kap/opal92/opal92_surface_table.o: math_lib.mod numerics_lib.mod opacity_table_l
 kap/opal92/opal92_table_prep.o: numerics_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal92/read_opal92_tables.o: math_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal95/getopal95.o: numerics_lib.mod opacity_table_lib.mod
-kap/opal95/ll95tbl.o: luout_lib.mod opacity_table_lib.mod star_info_lib.mod
+kap/opal95/ll95tbl.o: io_units.mod opacity_table_lib.mod star_info_lib.mod
 kap/opal95/opal95_fixed_z_table.o: numerics_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_interp2d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
 kap/opal95/opal95_interp3d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mod
@@ -261,93 +261,93 @@ kap/opal95/opal95_interp4d.o: math_lib.mod numerics_lib.mod opacity_table_lib.mo
 kap/opal95/opal95_surface_table.o: numerics_lib.mod opacity_table_lib.mod
 kap/setupopac.o: eos_lib.mod opacity_table_lib.mod star_info_lib.mod
 kap/surfopac.o: star_info_lib.mod
-kap/test/test_kap.o: kap_lib.mod luout_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
+kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_table_lib.mod scv_eos_lib.mod star_info_lib.mod
 mixing/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 mixing/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
-mixing/compute_scale_height.o: eos_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-mixing/find_convection_zones.o: luout_lib.mod star_info_lib.mod
+mixing/compute_scale_height.o: eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
+mixing/find_convection_zones.o: io_units.mod star_info_lib.mod
 mixing/homogenize_convection_zones.o: star_info_lib.mod
-mixing/overshoot_boundaries.o: luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-mixing/rotmix.o: burn_step.mod luout_lib.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
-mixing/semiconvection.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod temperature_gradients_lib.mod
-mixing/temperature_gradients.o: eos_lib.mod kap_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-net/light_elements.o: math_lib.mod phys_const_lib.mod reaction_rates.mod star_info_lib.mod
+mixing/overshoot_boundaries.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+mixing/rotmix.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
+mixing/semiconvection.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod temperature_gradients_lib.mod
+mixing/temperature_gradients.o: eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod
+net/light_elements.o: math_lib.mod physical_constants.mod reaction_rates.mod star_info_lib.mod
 net/net_lib.o: light_elements.mod network.mod nuclear_energy.mod reaction_rates.mod thermal_neutrinos.mod
 net/network.o: numerics_lib.mod reaction_rates.mod star_info_lib.mod
-net/nuclear_energy.o: math_lib.mod network.mod phys_const_lib.mod reaction_rates.mod star_info_lib.mod thermal_neutrinos.mod
-net/reaction_rates.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-net/test/test_net.o: burn_step.mod controls_lib.mod light_elements.mod luout_lib.mod net_lib.mod network.mod reaction_rates.mod scv_eos_lib.mod star_info_lib.mod
+net/nuclear_energy.o: math_lib.mod network.mod physical_constants.mod reaction_rates.mod star_info_lib.mod thermal_neutrinos.mod
+net/reaction_rates.o: math_lib.mod physical_constants.mod star_info_lib.mod
+net/test/test_net.o: burn_step.mod controls_buffer.mod io_units.mod light_elements.mod net_lib.mod network.mod reaction_rates.mod scv_eos_lib.mod star_info_lib.mod
 net/thermal_neutrinos.o: math_lib.mod
-numerics/numerics_lib.o: intpar_lib.mod luout_lib.mod math_lib.mod star_info_lib.mod
+numerics/numerics_lib.o: intpar_lib.mod io_units.mod math_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: star_info_lib.mod
-rotation/enforce_rotation_profile.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/equal_spaced_grid.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
-rotation/microdiff/bahcall_loeb_units.o: phys_const_lib.mod star_info_lib.mod
-rotation/microdiff/gravitational_settling.o: luout_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
-rotation/microdiff/gravitational_settling_setup.o: bahcall_loeb_units_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod species_table_lib.mod star_info_lib.mod
+rotation/enforce_rotation_profile.o: math_lib.mod physical_constants.mod star_info_lib.mod
+rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod math_lib.mod mid_timestep_model_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod secular_transport_lib.mod star_info_lib.mod
+rotation/microdiff/bahcall_loeb_units.o: physical_constants.mod star_info_lib.mod
+rotation/microdiff/gravitational_settling.o: io_units.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
+rotation/microdiff/gravitational_settling_setup.o: bahcall_loeb_units_lib.mod io_units.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod species_table_lib.mod star_info_lib.mod
 rotation/microdiff/implicit_diffusion_coeffs.o: star_info_lib.mod
-rotation/microdiff/lax_wendroff_step1.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/microdiff/lax_wendroff_step2.o: phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/microdiff/lax_wendroff_step1.o: physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/microdiff/lax_wendroff_step2.o: physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff.o: microdiff_mte_lib.mod microdiff_run_lib.mod species_table_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_coefficients.o: math_lib.mod microdiff_mte_lib.mod phys_const_lib.mod species_table_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_coefficients.o: math_lib.mod microdiff_mte_lib.mod physical_constants.mod species_table_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_etm.o: numerics_lib.mod star_info_lib.mod
 rotation/microdiff/microdiff_mte.o: numerics_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_run.o: luout_lib.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
-rotation/microdiff/microdiff_setup.o: bahcall_loeb_units_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod run_log_lib.mod star_info_lib.mod
+rotation/microdiff/microdiff_run.o: io_units.mod microdiff_coefficients_lib.mod microdiff_mte_lib.mod numerics_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
+rotation/microdiff/microdiff_setup.o: bahcall_loeb_units_lib.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 rotation/microdiff/thoul_diffusion.o: numerics_lib.mod
-rotation/mid_timestep_model.o: burn_step.mod math_lib.mod net_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/mid_timestep_model.o: burn_step.mod math_lib.mod net_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/omega_from_j.o: star_info_lib.mod
 rotation/rotation_scratch_lib.o: star_info_lib.mod
 rotation/seculr/am_advection_diffusion_coeffs.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_diffusion_coeffs.o: rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/am_transport_grid.o: equal_grid_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/am_transport_grid.o: equal_grid_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/banded_solver.o: rotation_scratch_lib.mod
-rotation/seculr/check_angular_momentum.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/check_composition.o: luout_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/circulation_velocities.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/check_angular_momentum.o: io_units.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/check_composition.o: io_units.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/circulation_velocities.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/composition_diffusion_coeffs.o: star_info_lib.mod
-rotation/seculr/composition_grid.o: equal_grid_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/compute_quadrupole.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/composition_grid.o: equal_grid_lib.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/compute_quadrupole.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/diffuse_composition_driver.o: star_info_lib.mod
-rotation/seculr/diffusion_velocity_scales.o: phys_const_lib.mod star_info_lib.mod
-rotation/seculr/equal_grid_lib.o: controls_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod star_info_lib.mod
+rotation/seculr/diffusion_velocity_scales.o: physical_constants.mod star_info_lib.mod
+rotation/seculr/equal_grid_lib.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod
 rotation/seculr/equal_grid_to_model.o: numerics_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/secular_transport.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/zahn_coupling_factor.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/shape/equipotential_integrand.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/shape/rotation_shape_factors.o: math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/shape/shape.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-rotation/shape/shell_inertia_integral.o: math_lib.mod phys_const_lib.mod
-rotation/shape/zone_moments_of_inertia.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
+rotation/seculr/secular_transport.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/zahn_coupling_factor.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/shape/equipotential_integrand.o: math_lib.mod physical_constants.mod star_info_lib.mod
+rotation/shape/rotation_shape_factors.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/shape/shape.o: math_lib.mod physical_constants.mod star_info_lib.mod
+rotation/shape/shell_inertia_integral.o: math_lib.mod physical_constants.mod
+rotation/shape/zone_moments_of_inertia.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/solid_body_omega.o: rotation_scratch_lib.mod star_info_lib.mod
-rotation/species_table_lib.o: phys_const_lib.mod star_info_lib.mod
-rotation/viscos.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/locate_shell_boundaries.o: controls_lib.mod star_info_lib.mod
-setup/map_user_inputs.o: controls_lib.mod net_lib.mod star_info_lib.mod
-setup/rescale_model.o: eos_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/rezone.o: controls_lib.mod kap_lib.mod luout_lib.mod math_lib.mod numerics_lib.mod phys_const_lib.mod rotation_scratch_lib.mod run_log_lib.mod star_info_lib.mod
-setup/rotation_stability_setup.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-setup/setup_solar_calibration.o: controls_lib.mod star_info_lib.mod
-setup/setup_star_calibration.o: controls_lib.mod luout_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod
-setup/setups.o: atm_lib.mod atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod phys_const_lib.mod star_info_lib.mod ttau_lib.mod yale_eos_lib.mod
-state/controls_sync_lib.o: controls_lib.mod star_info_lib.mod
-util/compute_timestep.o: controls_lib.mod phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_hburn.o: burn_step.mod controls_lib.mod net_lib.mod phys_const_lib.mod star_info_lib.mod
-util/timestep_limit_heburn.o: burn_step.mod controls_lib.mod net_lib.mod star_info_lib.mod
-util/timestep_limit_hr.o: controls_lib.mod math_lib.mod star_info_lib.mod
-util/timestep_limit_omega.o: controls_lib.mod star_info_lib.mod
-util/timestep_limit_structure.o: controls_lib.mod star_info_lib.mod
-util/version.o: phys_const_lib.mod
-wind/kawaler_wind.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
-wind/massloss.o: atm_lib.mod atm_table_lib.mod eos_lib.mod math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod wind_lib.mod
-wind/matt_structure_factor.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
-wind/matt_wind.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
-wind/mdot.o: math_lib.mod phys_const_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-wind/wind_lib.o: math_lib.mod phys_const_lib.mod star_info_lib.mod
-wind/wind_spindown.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
-wind/wind_spindown_matt.o: math_lib.mod phys_const_lib.mod star_info_lib.mod wind_lib.mod
+rotation/species_table_lib.o: physical_constants.mod star_info_lib.mod
+rotation/viscos.o: math_lib.mod physical_constants.mod star_info_lib.mod
+setup/locate_shell_boundaries.o: controls_buffer.mod star_info_lib.mod
+setup/map_user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
+setup/rescale_model.o: eos_lib.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+setup/rezone.o: controls_buffer.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
+setup/rotation_stability_setup.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+setup/setup_solar_calibration.o: controls_buffer.mod star_info_lib.mod
+setup/setup_star_calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
+setup/setups.o: atm_lib.mod atm_table_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod ttau_lib.mod yale_eos_lib.mod
+state/controls_sync.o: controls_buffer.mod star_info_lib.mod
+util/compute_timestep.o: controls_buffer.mod physical_constants.mod star_info_lib.mod
+util/timestep_limit_hburn.o: burn_step.mod controls_buffer.mod net_lib.mod physical_constants.mod star_info_lib.mod
+util/timestep_limit_heburn.o: burn_step.mod controls_buffer.mod net_lib.mod star_info_lib.mod
+util/timestep_limit_hr.o: controls_buffer.mod math_lib.mod star_info_lib.mod
+util/timestep_limit_omega.o: controls_buffer.mod star_info_lib.mod
+util/timestep_limit_structure.o: controls_buffer.mod star_info_lib.mod
+util/version.o: physical_constants.mod
+wind/kawaler_wind.o: math_lib.mod physical_constants.mod star_info_lib.mod wind_lib.mod
+wind/massloss.o: atm_lib.mod atm_table_lib.mod eos_lib.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod wind_lib.mod
+wind/matt_structure_factor.o: math_lib.mod physical_constants.mod star_info_lib.mod wind_lib.mod
+wind/matt_wind.o: math_lib.mod physical_constants.mod star_info_lib.mod wind_lib.mod
+wind/mdot.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+wind/wind_lib.o: math_lib.mod physical_constants.mod star_info_lib.mod
+wind/wind_spindown.o: math_lib.mod physical_constants.mod star_info_lib.mod wind_lib.mod
+wind/wind_spindown_matt.o: math_lib.mod physical_constants.mod star_info_lib.mod wind_lib.mod
 
 # real prerequisites: include files
 io/output_columns.o: io/default_columns.inc

@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! controls_check_lib
+! controls_check
 !----------------------------------------------------------------------
 ! New (2026, audit section 8): a startup sanity pass over the adopted
 ! controls, warning about combinations that are silently inert or
@@ -15,7 +15,7 @@
 !
 ! Called from run_yrec once, after star_setup -- all controls are
 ! adopted and final by then.
-module controls_check_lib
+module controls_check
       implicit none
       private
       public :: warn_inconsistent_controls
@@ -24,7 +24,7 @@ contains
 
 subroutine warn_inconsistent_controls
       use star_info_lib, only: star
-      use luout_lib
+      use io_units
 
 ! overshoot extents are consumed only inside the active-flag gates
 ! (mixing/overshoot_boundaries.f90: core cycle at "SKIP IF NO CORE
@@ -72,9 +72,9 @@ subroutine warn_inconsistent_controls
 end subroutine warn_inconsistent_controls
 
 subroutine warn(text)
-      use luout_lib
+      use io_units
       character(len=*), intent(in) :: text
       write(terminal_unit,'(2a)') ' WARNING (controls): ', text
 end subroutine warn
 
-end module controls_check_lib
+end module controls_check

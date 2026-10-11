@@ -27,7 +27,7 @@ subroutine mdot(timestep, composition, log_density, specific_angular_momentum, &
      disk_exhausted, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

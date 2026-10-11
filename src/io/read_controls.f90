@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Added 2026 (phase five): the controls-read step of the former
 ! program main, as its own star-layer routine. parmin reads the
-! control and physics namelists into the controls_lib BUFFER and
+! control and physics namelists into the controls_buffer BUFFER and
 ! fills the job-level file paths (star%job). Errors return via ierr.
 !
 ! 2026 controls->star% campaign, phase B: star%ctrl is the
@@ -22,7 +22,7 @@
 subroutine read_controls(ierr)
 
       use star_info_lib, only: star, controls_state
-      use controls_sync_lib, only: seed_controls_buffer, &
+      use controls_sync, only: seed_controls_buffer, &
            store_controls_to_star
       implicit none
 
@@ -76,10 +76,10 @@ end subroutine read_controls
 subroutine read_input(ierr)
 
       use star_info_lib, only: star, control_nml_override, physics_nml_override
-      use controls_sync_lib, only: store_controls_to_star
-      use phys_const_lib
-      use controls_lib
-      use luout_lib
+      use controls_sync, only: store_controls_to_star
+      use physical_constants
+      use controls_buffer
+      use io_units
       use intpar_lib
       use yrec_output, only: output_init_mesa
       use atm_table_lib
@@ -501,7 +501,7 @@ subroutine read_input(ierr)
       double precision :: fcore
 
 ! nwlaol: tollaol is a NAMELIST /physics/ member spelled identically
-! to its canonical controls_lib name -- use-associated directly (the
+! to its canonical controls_buffer name -- use-associated directly (the
 ! table arrays are opacity_table%laol_* now; the unit numbers are
 ! newunit locals of the readers). lpurez is a NAMELIST /physics/ member with a
 ! different canonical spelling (use_pure_z_table), so kept local under
@@ -650,7 +650,7 @@ subroutine read_input(ierr)
 
 ! 2026 phase-C rename campaign: these NAMELIST-spelled locals carry
 ! the legacy /control//physics spellings for controls whose
-! controls_lib buffers now bear their canonical names (copied into
+! controls_buffer buffers now bear their canonical names (copied into
 ! them in adopt_canonical_names below). Their defaults duplicate the
 ! buffer defaults exactly so both read paths agree, and are assigned
 ! at entry (see the reset block at the top of the executable part)
@@ -945,7 +945,7 @@ subroutine read_input(ierr)
 !
 ! The DATA cards that once set every run parameter's default here are
 ! gone: defaults now live on the buffer declarations in
-! io/controls_lib.f90 (a use-associated variable cannot be a DATA
+! io/controls_buffer.f90 (a use-associated variable cannot be a DATA
 ! target), and the working mixing length's default (1.4d0) sits on
 ! its star%mixing_length_alpha component. The historical per-author
 ! DATA-card commentary is in git history (pre-2026 parmin.f).
@@ -967,7 +967,7 @@ subroutine read_input(ierr)
 ! DBG 1/96 THE ARRAY V, READ IN VIA RDLAOL, CONTAINED THE MASS FRACTIONS
 ! OF THE ENVELOPE ELEMENTS. IT WAS USED IN STARIN TO DEFINE FXENV,
 ! WHICH ARE THE NUMBER FRACTION OF THE ENVELOPE ELEMENTS. FXENV WAS
-! THEN UPDATED IN EQSTAT AND EQSAHA. VNEW (now a controls_lib member)
+! THEN UPDATED IN EQSTAT AND EQSAHA. VNEW (now a controls_buffer member)
 ! IS IDENTICAL TO V EXCEPT THAT THE NUMBERS ARE DEFINED EXPLICITLY
 ! FOR A G&N93 SOLAR MIXTURE. YOU CAN CHANGE THEM VIA THE PHYSICS
 ! NAMELIST. V IS SET EQUAL TO VNEW IN STARIN EXCEPT WHEN LLAOL=T
@@ -1304,7 +1304,7 @@ subroutine read_input(ierr)
 !     INPUT:
 ! DBG 8/95 SECOND OPOACITY TABLES FOR ZRAMP AND Z DIFFUSION
 ! (2026: the second LAOL/OPAL92 table units are runtime-allocated
-! locals of their readers now, not fixed luout_lib units.)
+! locals of their readers now, not fixed io_units units.)
       kurucz_table2_unit = 65
 ! MHP 6/97 ADDED OPTION FOR ALLARD MODEL ATMOSPHERES
       allard_table_unit = 66
@@ -1508,7 +1508,7 @@ subroutine adopt_canonical_names
       use_new_nuclear_rates = lnewnuc
       weak_screening_threshold = weakscreening
 ! 2026 phase-C rename campaign: copy the NAMELIST-spelled locals
-! into their canonically-named controls_lib buffers (see the local
+! into their canonically-named controls_buffer buffers (see the local
 ! declaration block above).
       overshoot_alpha_core = alphac
       overshoot_alpha_envelope = alphae

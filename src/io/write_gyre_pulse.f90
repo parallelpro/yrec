@@ -24,7 +24,7 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega, pulse_path)
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

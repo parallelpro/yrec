@@ -25,7 +25,7 @@ subroutine compute_turnover_timescale(radius_at_bcz, ierr)
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
            ip_grada, ip_conv_vel
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

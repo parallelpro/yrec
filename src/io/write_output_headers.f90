@@ -9,7 +9,7 @@
 ! Write the headers for all the appropriate output files.
 subroutine write_output_headers(total_mass_msun)
 
-      use luout_lib
+      use io_units
       use star_info_lib, only: star
       implicit none
 

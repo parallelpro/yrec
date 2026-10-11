@@ -35,7 +35,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
-      use luout_lib
+      use io_units
       implicit none
 
       double precision, intent(inout) :: composition(15,json)

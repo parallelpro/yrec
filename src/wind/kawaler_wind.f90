@@ -20,7 +20,7 @@ subroutine kawaler_wind(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
      specific_angular_momentum, ierr)
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use wind_lib, only: log10_radius_from_l_teff
       implicit none

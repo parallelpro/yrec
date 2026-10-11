@@ -26,8 +26,8 @@ subroutine write_mod_model(iwrite)
       use star_info_lib, only: star, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
            i_li6, i_li7, i_be9
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
+      use io_units
+      use run_log, only: solver_diagnostics
       implicit none
 
       integer, intent(in) :: iwrite
@@ -67,7 +67,7 @@ subroutine write_mod_model(iwrite)
       flush(iwrite)
 
 ! 2026 log redesign: the per-model terminal echo is replaced by the
-! run-log progress line (run_log_lib); the "DUMPED MODEL" bookkeeping
+! run-log progress line (run_log); the "DUMPED MODEL" bookkeeping
 ! is solver forensics behind the diagnostics flag.
       if (solver_diagnostics()) then
          if (iwrite .eq. last_model_unit) then

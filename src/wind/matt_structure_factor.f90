@@ -16,7 +16,7 @@
 ! scaling, each raised to its own calibrated exponent.
 subroutine matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use wind_lib, only: log10_radius_from_l_teff
       implicit none

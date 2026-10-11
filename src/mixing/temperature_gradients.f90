@@ -55,8 +55,8 @@ subroutine temperature_gradients(log_temperature, log_pressure, &
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
       use star_info_lib, only: star
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use math_lib
       implicit none
 

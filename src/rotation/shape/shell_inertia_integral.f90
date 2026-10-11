@@ -17,7 +17,7 @@
 ! eta_squared (originally ETA2X). Called once per zone by zone_moments_of_inertia.f90.
 subroutine shell_inertia_integral(rotation_param, eta_squared, dlnr0_dlnr, r0_geom_factor, &
      moment_of_inertia_per_mass, di_domega_per_mass)
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

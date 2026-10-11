@@ -13,7 +13,7 @@
 subroutine rdzlaol(pure_z_table_path, ierr)
 
       use opacity_table_lib
-      use luout_lib
+      use io_units
       implicit none
       integer, intent(out) :: ierr
       character(len=256), intent(in) :: pure_z_table_path

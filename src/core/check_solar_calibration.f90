@@ -16,7 +16,7 @@
 subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx)
 
       use star_info_lib, only: star
-      use luout_lib
+      use io_units
       use math_lib
       implicit none
 

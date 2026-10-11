@@ -37,7 +37,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !  Update (Input and Output) Arguments: saha_state
 !
 
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 
@@ -302,8 +302,8 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
       use eos_mixture_lib, only: eos_mix, ion_mean_weight_excess, &
            n_mix_species, ix_na, ix_c, ix_h, ix_o, ix_ne, ix_he
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use scv_eos_lib
       use math_lib
       implicit none

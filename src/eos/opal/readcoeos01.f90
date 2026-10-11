@@ -14,7 +14,7 @@ subroutine readcoeos01(v, ierr)
       use star_info_lib, only: star
 
       use opal_eos_lib
-      use luout_lib
+      use io_units
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v

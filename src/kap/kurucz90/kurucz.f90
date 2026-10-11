@@ -30,7 +30,7 @@ subroutine kurucz(tbl, log10_density, log10_temperature, opacity, &
 !     log10_opacity, dlnkap_dlnt AND dlnkap_dlnrho.
 
       use opacity_table_lib
-      use luout_lib
+      use io_units
       use numerics_lib
       use math_lib
       implicit none

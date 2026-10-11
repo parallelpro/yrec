@@ -31,9 +31,9 @@ subroutine microdiff_run(grid_spacing, timestep, total_mass, num_eq_points, &
       use microdiff_mte_lib, only: microdiff_grid
       use microdiff_coefficients_lib
       use star_info_lib, only: star, json
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use numerics_lib
       implicit none
       double precision, intent(in) :: grid_spacing

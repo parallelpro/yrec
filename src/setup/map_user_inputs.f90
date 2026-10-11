@@ -12,7 +12,7 @@
 ! onto existing code parameters.
 subroutine map_user_inputs
       use star_info_lib, only: star
-      use controls_lib
+      use controls_buffer
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
       implicit none

@@ -394,7 +394,7 @@ subroutine burn_li_be_midpoint(timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json, i_li6, i_li7, i_be9
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 
@@ -613,7 +613,7 @@ end subroutine burn_li_be_midpoint
 subroutine store_li_be_rates(composition, log_density, log_temperature, num_zones, &
      use_current_model)
       use star_info_lib, only: star, json, i_be9
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use net_lib, only: compute_li_be_rates
       implicit none
@@ -722,7 +722,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
            i_c12, i_c13, i_n14, i_o16, i_o18, n_species_basic
       use net_lib, only: burn_implicitly, n_solved, n_network, &
            s_h1, s_he3, s_he4
-      use luout_lib
+      use io_units
       implicit none
 
       double precision, intent(in) :: log_temperature(json)

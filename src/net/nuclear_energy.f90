@@ -196,7 +196,7 @@ subroutine compute_nuclear_energy(log_density, &
 
       use star_info_lib, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, &
            i_nu_he3he3, i_nu_he3he4
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

@@ -45,9 +45,9 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
       use envint_lib, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use atm_table_lib
       use star_info_lib
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use math_lib
       implicit none
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &

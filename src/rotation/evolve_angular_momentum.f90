@@ -32,7 +32,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use secular_transport_lib
       use star_info_lib, only: star, json
       use net_lib
-      use phys_const_lib
+      use physical_constants
       use burn_step
       use convection_geometry, only: pressure_scale_height
       use math_lib

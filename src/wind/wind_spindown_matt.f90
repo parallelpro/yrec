@@ -11,7 +11,7 @@
 ! SUMMARY.md): the FSUN centrifugal-normalization line below uses the
 ! bare local variable "gl" where matt_wind.f90's equivalent line (and
 ! wind_lib's matt_centrifugal_factor, called immediately after) use the
-! phys_const_lib gravitational constant "cgl". "gl" is never assigned,
+! physical_constants gravitational constant "cgl". "gl" is never assigned,
 ! so under -finit-local-zero it reads 0 and exp(ln10*gl) = 1 -- a
 ! pre-existing defect in mcowind.f, reproduced exactly rather than
 ! silently corrected to cgl (which would change numbers).
@@ -47,7 +47,7 @@ subroutine wind_spindown_matt(log_luminosity_lsun, full_timestep, cz_moment_of_i
      iteration_number, omega_surface, total_mass_msun, log_teff, &
      omega_old, domega_start, domega_end, ierr)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use wind_lib, only: log10_radius_from_l_teff, matt_centrifugal_factor
       implicit none

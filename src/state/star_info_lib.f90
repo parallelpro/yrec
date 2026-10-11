@@ -118,7 +118,7 @@ module star_info_lib
 ! ---- from state/star_job_lib.f90 ----
 ! 2026 controls->star% campaign, phase B: the authoritative home of
 ! every namelist control. Component list GENERATED from the read
-! buffer's declarations (io/controls_lib.f90) by
+! buffer's declarations (io/controls_buffer.f90) by
 ! tools/gen_controls_state.py -- regenerate on any member change.
 ! Every component is default-initialized, so
 !   star%ctrl = controls_state()
@@ -225,7 +225,7 @@ module star_info_lib
             double precision :: log_total_mass, star_mass
             double precision :: log_Teff, log_L
 ! 2026 controls->star% campaign, phase A: computed/working state
-! evicted from controls_lib (they were never namelist values). Per
+! evicted from controls_buffer (they were never namelist values). Per
 ! the agreed shape these land FLAT on star%. atm_hras is set once by
 ! setups (Krishna-Swamy T(tau) at tau=2/3); tenv once by parmin
 ! (0.5*(tenv0+tenv1)); atm_choice_initial once by parmin (from
@@ -244,7 +244,7 @@ module star_info_lib
             double precision :: cross_section_scale(17), qs0e_scale(8), &
                  qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
 ! phase A batch 4: the working mixing length (former CMIXL, the one
-! mutable member phys_const_lib carried) -- copied from the per-card
+! mutable member physical_constants carried) -- copied from the per-card
 ! control mixing_length_array(nk) at every kind-card start
 ! (run_yrec's begin_kind_card) and rewritten by solar calibration.
 ! MESA name; the 1.4d0 declaration default reproduces the historical
@@ -296,7 +296,7 @@ module star_info_lib
                  log_l_prev_model, log_r_prev_model
 ! run-log bookkeeping: why the (last) kind card ended -- the default
 ! set per card by init_stop_conditions, overridden by whichever stop
-! fires; read by run_log_lib's end-of-run summary.
+! fires; read by run_log's end-of-run summary.
             character(len=96) :: termination_reason = 'model budget exhausted'
 ! run-log bookkeeping: the "fully convective - no settling" message
 ! prints once per suspension (per-model repeats only under

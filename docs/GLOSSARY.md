@@ -247,7 +247,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | ε_rot | erg g⁻¹ s⁻¹ | `rot_scr%rotational_energy_term` | `DEROT` (`/ROTEN/`) | core/henyey_coefficients.f90:302 | (E_rot − E_rot,old)/(Δt Δm), subtracted from ε in q_L. |
 | E_rot | erg (per point) | `star%kinetic_energy_rot` | `HKEROT` | core/henyey_iterate.f90:320, rotation/* | ½ Ω j Δm of the point. |
 | E_rot at step start | erg | `star%kinetic_energy_rot_old` | `HKEROTO` | core/evolve_step.f90:297 | Start-of-step copy (an `_old`, not `_start`, name). |
-| m_u | g | `amu_cgs` (parameter) | `C21` (as 10⁹ sidereal yr × m_u) | state/phys_const_lib.f90 | Atomic mass unit; turns a rate per s per g into the per-s-per-amu units of the composition rate vector and the deuterium rate. |
+| m_u | g | `amu_cgs` (parameter) | `C21` (as 10⁹ sidereal yr × m_u) | state/physical_constants.f90 | Atomic mass unit; turns a rate per s per g into the per-s-per-amu units of the composition rate vector and the deuterium rate. |
 | Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `burn%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total(10)`; `neutrino_flux_zone(10,k)` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); totals in core/henyey_coefficients.f90 | Solar-neutrino source rates: one shell's record, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/observables_lib.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
 | X(⁷Be) | mass fraction | `burn%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); per zone core/neutrino_flux_table.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
@@ -408,7 +408,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 | log₁₀ G | dex (cgs) | `cgl` | `CGL` | setup/setups.f90:78-80 | From control `G_cgs` if > 0, else −7.17571. |
 | R_gas | erg mol⁻¹ K⁻¹ | `gas_constant` | `CGAS` | setup/setups.f90:73 | 8.314510×10⁷. |
 | a/3 | erg cm⁻³ K⁻⁴ | `radiation_constant_over_3`, `ca3l` (log₁₀) | `CA3`, `CA3L` | setup/setups.f90:70-71 | Radiation constant over 3 (4σ/3c). |
-| σ | erg cm⁻² s⁻¹ K⁻⁴ | `csig`, `csigl`; `sigma_sb_cgs_legacy` (5.669×10⁻⁵, viscos only) | `CSIG`, `CSIGL` | setup/setups.f90:67-68, state/phys_const_lib.f90 | Stefan–Boltzmann constant (two values coexist). |
+| σ | erg cm⁻² s⁻¹ K⁻⁴ | `csig`, `csigl`; `sigma_sb_cgs_legacy` (5.669×10⁻⁵, viscos only) | `CSIG`, `CSIGL` | setup/setups.f90:67-68, state/physical_constants.f90 | Stefan–Boltzmann constant (two values coexist). |
 | — | — | `cmixl2`, `cmixl3`, `cdelrl` | `CMIXL2`, `CMIXL3`, `CDELRL` | setup/setups.f90:91-93 | MLT constants (1/3, 16√2 σ) and the ∇_rad constant. Not powers of the mixing length. |
 | yr | s | `seconds_per_year` | `CSECYR` | setup/setups.f90:57 | 3.1558×10⁷. |
 | L☉ | erg s⁻¹ | `star%solar_luminosity_cgs`, `log10_solar_luminosity` | `CLSUN`, `CLSUNL` (`/CONST/`) | setup/setups.f90 | Solar luminosity (namelist `clsun`; rescaled per Monte-Carlo run). |
@@ -452,7 +452,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/henyey_coefficients.f90` 
 | — | logical | `use_extended_composition`; code `job%use_extended_composition` | `LEXCOM` | job | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
 | log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `henyey_coefficients`. |
 | — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `fcorr`. |
-| — | — | `timestep_factors`; code `ctrl%atime(14)` (slots `itime_*` in `io/controls_lib.f90:113-126`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
+| — | — | `timestep_factors`; code `ctrl%atime(14)` (slots `itime_*` in `io/controls_buffer.f90:113-126`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
 | — | logical | `improved_first_guess_flag`; code `ctrl%improved_first_guess_flag` | `LNEWS` | ctrl | Extrapolate the next first guess from `*_entropy_term` rates. |
 | — | logical | `use_new_rate_variables`; code `ctrl%lnewvars` | `LNEWVARS` | ctrl | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `ctrl%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `atime`. Not a nuclear-rate switch (trap 23). |
 | t_end | yr | `max_age` (sj, per card); code `job%target_end_age(50)` | `ENDAGE` | job | Stop age per kind card. |

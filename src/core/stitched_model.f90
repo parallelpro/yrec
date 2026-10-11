@@ -19,7 +19,7 @@
 ! output path integrates or stitches anything. compute_observables
 ! themes may read them too (profile-based observables).
 module stitched_model_lib
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use star_info_lib, only: json
       implicit none
@@ -443,7 +443,7 @@ end function atmosphere_radius_cm
 ! when the inputs cannot support it.
 double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
       use math_lib
-      use phys_const_lib, only: gas_constant
+      use physical_constants, only: gas_constant
       double precision, intent(in) :: log10_p, log10_t, log10_rho, beta
       if (beta > 0.0d0) then
          ideal_gas_mu = gas_constant*exp(ln10*(log10_rho + log10_t - log10_p))/beta

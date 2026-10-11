@@ -5,15 +5,15 @@
 ! the column name/value tables -- the part that grows with every new
 ! column -- and the row writer. One row per converged model; columns
 ! selectable via the history_columns_file control (default selection
-! from defaults/history_columns.list -- see output_columns_lib).
+! from defaults/history_columns.list -- see output_columns).
 !
 ! Writers are PURE READERS: every quantity is computed by
 ! compute_observables (core/observables_lib.f90, after the step's
 ! physics) into star_info. Module state below is per-job (path,
 ! parsed selection), reset by history_output_init on every job.
 module history_output
-      use phys_const_lib
-      use output_columns_lib, only: max_cols, parse_columns, &
+      use physical_constants
+      use output_columns, only: max_cols, parse_columns, &
            hist_default_names, n_hist_default
       implicit none
       private

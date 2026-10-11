@@ -33,7 +33,7 @@ double precision function rhoofp06(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
       use opal_eos_lib
-      use luout_lib, only: run_log_unit
+      use io_units, only: run_log_unit
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v

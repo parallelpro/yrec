@@ -42,7 +42,7 @@
 subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       implicit none
       double precision, intent(in) :: radius_mid_prev(json)
       integer, intent(in) :: num_zones

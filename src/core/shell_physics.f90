@@ -18,7 +18,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
-      use phys_const_lib
+      use physical_constants
       use eos_lib
       use kap_lib
       use numerics_lib

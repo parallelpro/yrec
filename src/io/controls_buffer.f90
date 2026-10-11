@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! controls_lib
+! controls_buffer
 !----------------------------------------------------------------------
 ! Added 2026 (phase six, step 3 -- ROADMAP.md). The run controls split
 ! out of const_lib: essentially every NAMELIST /control/ and /physics/
@@ -8,10 +8,10 @@
 ! 2026 phase D: RELOCATED to io/ and PARMIN-PRIVATE. The only
 ! legitimate users are the read path -- io/read_controls.f90 (namelist
 ! targets), setup/map_user_inputs.f90 (reads+writes the buffer), the generated
-! state/controls_sync_lib.f90 (seed/store), and net/test/test_net.f90
+! state/controls_sync.f90 (seed/store), and net/test/test_net.f90
 ! (sets remap inputs). Everything else reads star%ctrl / star%job.
 ! ENFORCED (2026): tools/check_boundaries.py fails on any other
-! `use controls_lib` (see its CONTROLS_BUFFER_IMPORTERS list).
+! `use controls_buffer` (see its CONTROLS_BUFFER_IMPORTERS list).
 ! The const_lib umbrella is gone.
 !
 ! Contract: read-only after read_controls/parmin. Phase A of the
@@ -24,11 +24,11 @@
 ! read_controls re-seeds it from pristine star%ctrl defaults before
 ! every parmin read and stores it back into star%ctrl (the
 ! authoritative home) afterwards -- see io/read_controls.f90 and the
-! generated state/controls_state_def.inc / controls_sync_lib.f90
+! generated state/controls_state_def.inc / controls_sync.f90
 ! (tools/gen_controls_state.py; regenerate on any member change
 ! here). Consumers migrate to star%ctrl%... in phase C.
 
-module controls_lib
+module controls_buffer
       implicit none
 
 ! Maximum number of runs (kind cards) in one job: the dimension of
@@ -38,7 +38,7 @@ module controls_lib
 ! literal value into the generated star%ctrl / star%job type bodies,
 ! which star_info_lib includes without seeing this module. A named
 ! constant, not buffer state -- tools/check_boundaries.py lets any
-! file `use controls_lib, only: max_runs`.
+! file `use controls_buffer, only: max_runs`.
       integer, parameter, public :: max_runs = 50
 
 ! 2026 MESA-style output: .true. -> the historical per-model streams
@@ -342,7 +342,7 @@ module controls_lib
 ! fills it from the like-named tol_*/flag_* namelist inputs when
 ! lnewvars is set; readers subscript with these names. Named
 ! constants, not buffer state -- any file may
-! `use controls_lib, only: ichi_...` (tools/check_boundaries.py).
+! `use controls_buffer, only: ichi_...` (tools/check_boundaries.py).
       integer, parameter, public :: &
            ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing
            ichi_dm_max = 2, &            ! tol_dm_max: max log-m spacing
@@ -875,4 +875,4 @@ module controls_lib
 ! state/scv_eos_lib.f90 -- phase six, step 3)
 
 
-end module controls_lib
+end module controls_buffer

@@ -19,7 +19,7 @@ subroutine equipotential_integrand(colatitude, local_gravity, area_element, r0, 
      aint, q, w2, a, i)
       use star_info_lib, only: json
 
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

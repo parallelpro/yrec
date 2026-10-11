@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! phys_const_lib
+! physical_constants
 !----------------------------------------------------------------------
 ! Added 2026 (phase six, step 3 -- ROADMAP.md). The genuinely physical
 ! and derived constants split out of const_lib: former common/const1/,
@@ -9,7 +9,7 @@
 ! star%mixing_length_alpha in the 2026 phase-A eviction. (cmixl2/
 ! cmixl3, despite the names, are MLT formula constants -- cc13 and
 ! 16*sqrt(2)*sigma -- not powers of the mixing length.)
-module phys_const_lib
+module physical_constants
       implicit none
 
 ! former common/const1/
@@ -63,4 +63,4 @@ module phys_const_lib
       character(len=20) :: git_hash_string
 
 
-end module phys_const_lib
+end module physical_constants

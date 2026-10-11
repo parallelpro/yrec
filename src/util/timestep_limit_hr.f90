@@ -15,7 +15,7 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_max_dt_frac
+      use controls_buffer, only: itime_max_dt_frac
       use math_lib
       implicit none
 

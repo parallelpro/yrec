@@ -28,7 +28,7 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 DOMAINS = ["eos", "kap", "atm", "net", "wind", "mixing",
            "rotation", "numerics"]
 
-# The controls-read BUFFER (io/controls_lib.f90) is reader-internal:
+# The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
 # star%ctrl / star%job are the authoritative post-read home, and every
 # consumer reads them. Only the read pipeline itself may import the
 # buffer's bare names -- read_controls (the reader), controls_sync
@@ -38,13 +38,13 @@ DOMAINS = ["eos", "kap", "atm", "net", "wind", "mixing",
 # regression, not an allowlist entry.
 CONTROLS_BUFFER_IMPORTERS = {
     "io/read_controls.f90",
-    "state/controls_sync_lib.f90",
+    "state/controls_sync.f90",
     "setup/map_user_inputs.f90",
     "net/test/test_net.f90",
 }
 
-# Named constants in controls_lib that are not buffer state: any file
-# may `use controls_lib, only: <these>` (an only-list drawn entirely
+# Named constants in controls_buffer that are not buffer state: any file
+# may `use controls_buffer, only: <these>` (an only-list drawn entirely
 # from these is not a buffer import). max_runs dimensions the per-run
 # arrays; ichi_*/itime_* name the chi_grid_scale/atime slots.
 CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
@@ -270,16 +270,16 @@ def main():
     buffer_violations = []
     for path in SRC.rglob("*.f90"):
         rel = path.relative_to(SRC).as_posix()
-        if rel in CONTROLS_BUFFER_IMPORTERS or rel == "io/controls_lib.f90":
+        if rel in CONTROLS_BUFFER_IMPORTERS or rel == "io/controls_buffer.f90":
             continue
         code_lines = strip_comments(path.read_text()).splitlines()
         for i, line in enumerate(code_lines):
-            if line.strip().lower().startswith("use controls_lib"):
+            if line.strip().lower().startswith("use controls_buffer"):
                 stmt = line
                 while stmt.rstrip().endswith("&") and i + 1 < len(code_lines):
                     i += 1
                     stmt = stmt.rstrip()[:-1] + code_lines[i].lstrip().lstrip("&")
-                m = re.match(r"^\s*use\s+controls_lib\s*,\s*only\s*:\s*(.*)$",
+                m = re.match(r"^\s*use\s+controls_buffer\s*,\s*only\s*:\s*(.*)$",
                              stmt, re.IGNORECASE)
                 if m and all(CONTROLS_LIB_CONSTANT_RE.match(x.strip())
                              for x in m.group(1).split(",")):
@@ -287,7 +287,7 @@ def main():
                 buffer_violations.append(rel)
                 break
     if buffer_violations:
-        print("controls_lib buffer imported outside the read pipeline "
+        print("controls_buffer buffer imported outside the read pipeline "
               "(read star%ctrl / star%job instead):")
         for rel in sorted(buffer_violations):
             print(f"  {rel}")

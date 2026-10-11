@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! luout_lib
+! io_units
 !----------------------------------------------------------------------
 ! New (2026) as part of the YREC module-modernization project (see
 ! GUIDELINES.md). Replaces common/luout/: I/O logical unit numbers,
@@ -20,9 +20,9 @@
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
 !                      because ~20 files write through it)
 !   last_model_unit -- the final .mod model (last_model_file)
-module luout_lib
+module io_units
       implicit none
 
       integer :: last_model_unit, run_log_unit, terminal_unit
 
-end module luout_lib
+end module io_units

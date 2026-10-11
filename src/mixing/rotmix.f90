@@ -25,9 +25,9 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use math_lib
       use burn_step, only: burn_network_region
       use net_lib, only: num_rate_rows

@@ -65,7 +65,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use luout_lib
+      use io_units
       implicit none
 
       double precision, intent(inout) :: log_density(json)

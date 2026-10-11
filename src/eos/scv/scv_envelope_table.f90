@@ -19,7 +19,7 @@
 subroutine build_scv_envelope_table
 
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use numerics_lib
       use scv_eos_lib
       use math_lib

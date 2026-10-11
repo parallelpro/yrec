@@ -32,8 +32,8 @@ subroutine fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
      adiabatic_gradient_dp, specific_heat_cp_dt, specific_heat_cp_dp)
 
       use yale_eos_lib
-      use phys_const_lib
-      use luout_lib
+      use physical_constants
+      use io_units
       use math_lib
       implicit none
 

@@ -22,7 +22,7 @@
 !     mhd_eos%mhd_output untouched (historical behaviour, preserved).
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       use mhd_eos_lib
-      use luout_lib
+      use io_units
       use numerics_lib
       implicit none
       integer, parameter :: ivarx = mhd_ivarx

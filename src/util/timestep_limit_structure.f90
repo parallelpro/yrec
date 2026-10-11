@@ -15,7 +15,7 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
      log_temperature, num_points, struct_dt)
 
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
+      use controls_buffer, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
       implicit none
 
 ! previous_timestep: previous model timestep.

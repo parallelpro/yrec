@@ -43,8 +43,8 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
      log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
      log_teff, disable_structure_dt_limits)
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_max_dt_frac
-      use phys_const_lib
+      use controls_buffer, only: itime_max_dt_frac
+      use physical_constants
       implicit none
 
       double precision, intent(inout) :: previous_timestep

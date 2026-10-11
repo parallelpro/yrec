@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! run_log_lib
+! run_log
 !----------------------------------------------------------------------
 ! Added 2026 (run-log redesign): the compact MESA-style progress
 ! line and the verbosity gate for the solver forensics.
@@ -11,7 +11,7 @@
 ! deleted outright) or is solver forensics (Henyey iteration trace,
 ! envelope/atmosphere integration statistics, triangle/rezoning
 ! bookkeeping) now gated behind report_solver_diagnostics.
-module run_log_lib
+module run_log
       implicit none
       private
       public :: solver_diagnostics, log_model_line, log_final_model_line, log_reset
@@ -55,7 +55,7 @@ end subroutine log_final_model_line
 
 subroutine write_model_line()
       use star_info_lib, only: star, i_h1
-      use luout_lib
+      use io_units
       character(len=*), parameter :: header = &
            '   model  zones         age_Gyr        dt_yr   log_Teff' // &
            '      log_L      log_R center_h1  iters'
@@ -83,7 +83,7 @@ end subroutine write_model_line
 ! log byte-pinnable.
 subroutine log_run_summary(wall_seconds)
       use star_info_lib, only: star
-      use luout_lib
+      use io_units
       double precision, intent(in) :: wall_seconds
       write(terminal_unit,'(a)') ''
       write(run_log_unit,'(a)') ''
@@ -97,4 +97,4 @@ subroutine log_run_summary(wall_seconds)
    30 format(3x,'wall-clock ',f9.1,' s')
 end subroutine log_run_summary
 
-end module run_log_lib
+end module run_log

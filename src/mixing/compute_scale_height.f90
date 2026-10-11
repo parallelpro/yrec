@@ -16,7 +16,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
      log_radius, log_mass, log_temperature, edge_zone, pscahe, ierr)
       use star_info_lib, only: json
 
-      use phys_const_lib
+      use physical_constants
       use eos_lib
       use math_lib
       implicit none

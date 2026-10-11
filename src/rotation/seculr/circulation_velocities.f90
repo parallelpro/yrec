@@ -28,7 +28,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

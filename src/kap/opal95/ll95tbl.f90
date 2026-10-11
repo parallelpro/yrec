@@ -17,7 +17,7 @@ subroutine ll95tbl(opal95_table_path, ierr)
       use star_info_lib, only: star
 
       use opacity_table_lib
-      use luout_lib
+      use io_units
       implicit none
       integer, intent(out) :: ierr
 

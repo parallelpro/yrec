@@ -21,7 +21,7 @@
 ! Rotation-internal; not a public rotation entry.
 module species_table_lib
       use star_info_lib, only: i_li6, i_li7, i_be9
-      use phys_const_lib, only: m_electron_amu
+      use physical_constants, only: m_electron_amu
       implicit none
       private
 

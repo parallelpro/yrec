@@ -26,13 +26,13 @@
 ! their registry rows -- not as new public entries.
 !
 ! The three threshold arrays stay separate namelist-bound variables
-! in controls_lib (central_deuterium_stop / central_hydrogen_stop /
+! in controls_buffer (central_deuterium_stop / central_hydrogen_stop /
 ! central_helium_stop); stop_value/set_stop_value select by row. A
 ! stop is configured when its threshold is positive; disarming
 ! negates it (the historical convention -- every check tests .gt.0).
 module stop_conditions
       use star_info_lib, only: star, i_h1, i_h2, i_he4
-      use luout_lib
+      use io_units
       use math_lib
       implicit none
       private
@@ -256,7 +256,7 @@ subroutine init_stop_conditions(nk)
       integer, intent(in) :: nk
       integer :: k
 ! default end-of-card reason; overridden by whichever stop fires
-! (read by run_log_lib's end-of-run summary)
+! (read by run_log's end-of-run summary)
       star%termination_reason = 'model budget exhausted'
       if (.not. star%job%end_age_stop_active(nk)) return
       do k = 1, nstops

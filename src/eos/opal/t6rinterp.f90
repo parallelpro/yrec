@@ -15,7 +15,7 @@
 subroutine t6rinterp(v, slr, slt, ierr)
 
       use opal_eos_lib
-      use luout_lib
+      use io_units
       implicit none
 
       type(opal_eos_vintage95), intent(inout) :: v

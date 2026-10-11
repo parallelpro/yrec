@@ -29,7 +29,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
       use rotation_scratch_lib
       use equal_grid_lib
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use numerics_lib
       use math_lib
       implicit none

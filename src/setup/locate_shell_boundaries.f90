@@ -46,7 +46,7 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_core_min
+      use controls_buffer, only: itime_core_min
       implicit none
 
       double precision, intent(in) :: composition(15,json), luminosity(json)

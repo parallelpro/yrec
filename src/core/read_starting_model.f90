@@ -34,13 +34,13 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
-      use controls_lib, only: ichi_dm_max, ichi_dp_env_max
+      use controls_buffer, only: ichi_dm_max, ichi_dp_env_max
       use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit_lib, only: append_envelope_points
       use envstruct_lib
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use eos_lib
       use kap_lib
       use opacity_table_lib

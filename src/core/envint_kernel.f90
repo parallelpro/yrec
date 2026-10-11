@@ -53,11 +53,11 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use atmstruct_lib
       use envstruct_lib
       use ttau_lib
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use intpar_lib
       use numerics_lib
-      use run_log_lib, only: solver_diagnostics
+      use run_log, only: solver_diagnostics
       implicit none
 
 ! luminosity_linear/pressure_rotation_factor/temperature_rotation_factor/

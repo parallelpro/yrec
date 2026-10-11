@@ -22,7 +22,7 @@ subroutine meqos(log10_temperature, temperature, log10_pressure, &
      specific_heat_cp_dt, specific_heat_cp_dp, ierr)
 
       use mhd_eos_lib
-      use luout_lib
+      use io_units
       use math_lib
       implicit none
 

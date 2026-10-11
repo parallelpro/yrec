@@ -18,7 +18,7 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

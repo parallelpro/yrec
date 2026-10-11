@@ -35,7 +35,7 @@ subroutine mid_timestep_model(full_timestep, sub_timestep, time_fraction, first_
       use rotation_scratch_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, json
       use net_lib
-      use phys_const_lib
+      use physical_constants
       use burn_step
       use net_lib, only: burn_deuterium_region, min_deuterium_substep
       use math_lib

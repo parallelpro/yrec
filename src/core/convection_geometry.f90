@@ -40,7 +40,7 @@ end function cz_base_fraction
 ! r, rho and m.
 double precision function pressure_scale_height(log_pressure, log_radius, &
      log_density, log_mass)
-      use phys_const_lib, only: clndp, cgl
+      use physical_constants, only: clndp, cgl
       use math_lib
       double precision, intent(in) :: log_pressure, log_radius, &
            log_density, log_mass
@@ -54,7 +54,7 @@ end function pressure_scale_height
 ! limit; 1 if every zone down to the centre lies above it.
 integer function first_zone_above(log_radius, start_zone, radius_limit)
       use star_info_lib, only: json
-      use phys_const_lib, only: ln10
+      use physical_constants, only: ln10
       use math_lib
       double precision, intent(in) :: log_radius(json), radius_limit
       integer, intent(in) :: start_zone
@@ -88,7 +88,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
      cz_base_zone, cz_base_zone_old, cz_base_frac)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

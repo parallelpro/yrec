@@ -23,7 +23,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
       use rotation_scratch_lib
       use equal_grid_lib
       use star_info_lib, only: json
-      use phys_const_lib, only: ln10
+      use physical_constants, only: ln10
       use math_lib
       implicit none
 

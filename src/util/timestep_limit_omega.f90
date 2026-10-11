@@ -13,7 +13,7 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
      max_domega_frac)
 
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_max_dt_frac
+      use controls_buffer, only: itime_max_dt_frac
       implicit none
 
 ! previous_timestep: previous model timestep.

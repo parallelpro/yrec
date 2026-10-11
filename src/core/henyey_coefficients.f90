@@ -41,7 +41,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
            i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9, &
            i_lum_he_c, n_lum_channels, n_nu_fluxes
       use point_scratch_lib
-      use phys_const_lib
+      use physical_constants
       use eos_lib
       use kap_lib
       use burn_step

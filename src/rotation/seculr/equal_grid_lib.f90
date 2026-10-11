@@ -89,8 +89,8 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
      enclosed_mass, epsm, surface_luminosity_lsun, zone_begin, ntab, ntot, &
      chi, xval, xtab, ytab, yval)
       use star_info_lib, only: star, json
-      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
-      use phys_const_lib
+      use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
+      use physical_constants
       use numerics_lib, only: osplin
       use math_lib
       implicit none
@@ -133,7 +133,7 @@ end subroutine dchi_dr_jacobian
 ! points (the multiplicative Jacobian factor on a diffusion coefficient).
 subroutine multiply_by_exp10(coeff, log_factor, ntot)
       use star_info_lib, only: json
-      use phys_const_lib, only: ln10
+      use physical_constants, only: ln10
       use math_lib
       implicit none
       double precision, intent(inout) :: coeff(json)

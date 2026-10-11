@@ -12,8 +12,8 @@
 subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 
       use star_info_lib, only: star
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use math_lib
       implicit none
 

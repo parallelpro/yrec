@@ -20,9 +20,9 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       use envint_kernel, only: senv_thin_envelope
       use envelope_refit_lib, only: append_envelope_points
       use star_info_lib
-      use controls_lib, only: ichi_dp_env_max
+      use controls_buffer, only: ichi_dp_env_max
       use envstruct_lib
-      use phys_const_lib
+      use physical_constants
       use yale_eos_lib
       use math_lib
       implicit none

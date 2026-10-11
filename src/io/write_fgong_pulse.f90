@@ -21,7 +21,7 @@
 subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use math_lib
       use stitched_model_lib, only: n_pulse_cols, ipul_r, ipul_m, &
            ipul_L, ipul_P, ipul_T, ipul_rho, ipul_grad, ipul_N2, &

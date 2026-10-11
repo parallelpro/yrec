@@ -12,7 +12,7 @@
 ! rotational-mixing/instability diffusion routines.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: star, json, i_metals
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

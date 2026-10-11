@@ -52,7 +52,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
      mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
      num_radiative_zones, num_mixed_zones, num_mixed_zones_no_overshoot, ierr)
       use star_info_lib, only: star, json, max_convective_zones, max_radiative_zones
-      use luout_lib
+      use io_units
       implicit none
 
       double precision, intent(in) :: composition(15,json), &

@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! neutrino_flux_table
 !----------------------------------------------------------------------
-! Resurrected 2026 as an opt-in diagnostic (controls_lib's
+! Resurrected 2026 as an opt-in diagnostic (controls_buffer's
 ! compute_neutrino_fluxes, default .false.). This is the former
 ! LNUTAB neutrino-table block of program main (MHP 2/04), which had
 ! been hardcoded off since 2004 and had bit-rotted while dead: the
@@ -29,8 +29,8 @@ subroutine neutrino_flux_table
            i_c12, i_c13, i_n14, i_o16, i_o18, &
            i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17, n_nu_fluxes
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use burn_step
       use math_lib
       use observables_lib, only: shell_masses_from_log_mass

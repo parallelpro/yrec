@@ -153,7 +153,7 @@ end function accreted_survival
 ! caller (mix) stores it now.
 double precision function deuterium_rate(log_density, log_temperature, &
      hydrogen_fraction, in_surface_cz, turnover_timescale)
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 
@@ -357,7 +357,7 @@ end subroutine burn_deuterium_region
 ! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
 ! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
 subroutine compute_li_be_rates(t9, fli6, fli7, fsbe9)
-      use phys_const_lib
+      use physical_constants
       use math_lib
       double precision, intent(in) :: t9
       double precision, intent(out) :: fli6, fli7, fsbe9

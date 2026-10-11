@@ -44,9 +44,9 @@ subroutine yrec_run_prologue
 
 ! 2026 phase B (controls->star% campaign): the controls_capture/
 ! controls_restore snapshot pair is gone. The namelist BUFFER
-! (controls_lib) no longer needs restoring here because
+! (controls_buffer) no longer needs restoring here because
 ! read_controls re-seeds it from pristine star%ctrl defaults before
-! every read; phys_const_lib needs no restoring because, with cmixl
+! every read; physical_constants needs no restoring because, with cmixl
 ! evicted to star%, every member is recomputed by setups each run.
       if (first_entry) then
          star0 = star

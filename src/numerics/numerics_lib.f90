@@ -1290,7 +1290,7 @@ end subroutine bsstep
 ! y_eval  ; the value we want
 ! dy_eval ; the derivative value at x_eval
 subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
-      use luout_lib
+      use io_units
       implicit none
       integer, parameter :: np=100
 
@@ -1374,7 +1374,7 @@ end subroutine intpol
 ! cspline above, and given a value of x, this routine returns a
 ! cubic-spline interpolated value y.
 subroutine splint(xa, ya, n, y2a, x, y, klo, khi, ierr)
-      use luout_lib
+      use io_units
       implicit none
 
       integer, intent(in) :: n

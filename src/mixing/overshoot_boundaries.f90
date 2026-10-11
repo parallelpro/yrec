@@ -14,8 +14,8 @@ subroutine overshoot_boundaries(composition, log_density, log_pressure, log_radi
      log_mass, log_temperature, num_zones, mixed_zone_bounds, &
      mixed_zone_bounds_no_overshoot, num_mixed_zones, ierr)
       use star_info_lib, only: star, json
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use math_lib
       implicit none
 

@@ -21,9 +21,9 @@
 ! target core value (star%job%rsclzc/rsclzm1/rsclzm2).
 subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
-      use phys_const_lib
+      use physical_constants
       use star_info_lib, only: star, json
-      use luout_lib
+      use io_units
       use eos_lib, only: eos_set_mixture
       use math_lib
       implicit none

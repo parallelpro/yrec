@@ -20,13 +20,13 @@
 subroutine setup_solar_calibration(age_scale_factor)
 
       use star_info_lib, only: star
-      use controls_lib, only: max_runs
+      use controls_buffer, only: max_runs
       implicit none
 
       double precision, intent(in) :: age_scale_factor
 ! --- locals ---
       integer :: i, j
-! 16 three-run calibration cycles (the run arrays in controls_lib are
+! 16 three-run calibration cycles (the run arrays in controls_buffer are
 ! dimensioned max_runs = 50).
       integer, parameter :: num_calibration_runs = max_runs-2
 

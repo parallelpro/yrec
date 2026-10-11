@@ -23,7 +23,7 @@ subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       implicit none
 
       double precision, intent(in) :: timestep

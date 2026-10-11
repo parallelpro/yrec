@@ -25,7 +25,7 @@ subroutine rdlaol(laol_work_array, laol_debye_huckel_z, laol_table_path, &
            ix_o, ix_n, ix_ar, ix_ne
 
       use opacity_table_lib
-      use luout_lib
+      use io_units
       implicit none
       integer, intent(out) :: ierr
 ! the 18-element metal mixture from the table header (see the read
@@ -67,7 +67,7 @@ subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
       double precision, intent(out) :: debye_huckel_z(18)
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
 ! runtime-allocated unit for the table (formerly the fixed iolaol =
-! 61 for table 1, luout_lib's fixed iolaol2 = 63 for table 2)
+! 61 for table 1, io_units's fixed iolaol2 = 63 for table 2)
       integer :: laol_unit
 !     zlot/zhit ARE READ-LIST TARGETS THAT ARE NEVER USED AFTERWARDS.
       double precision :: zlot, zhit

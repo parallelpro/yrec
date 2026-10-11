@@ -16,7 +16,7 @@ contains
 ! L = 4 pi R**2 sigma Teff**4.
 double precision function log10_radius_from_l_teff(log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       implicit none
       double precision, intent(in) :: log_luminosity_lsun, log_teff
       log10_radius_from_l_teff = 0.5d0*(log_luminosity_lsun+star%log10_solar_luminosity-c4pil- &
@@ -33,7 +33,7 @@ end function log10_radius_from_l_teff
 double precision function matt_centrifugal_factor(omega, fsun, log10_radius, &
      total_mass_msun)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
       double precision, intent(in) :: omega, fsun, log10_radius, total_mass_msun

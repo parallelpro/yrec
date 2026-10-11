@@ -38,7 +38,7 @@ subroutine microdiff_coefficients(num_eq_points, species_fraction, grid, &
       use star_info_lib, only: star, json
       use species_table_lib, only: thoul_h1, thoul_he4, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
       integer, intent(in) :: num_eq_points

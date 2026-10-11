@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! output_columns_lib
+! output_columns
 !----------------------------------------------------------------------
 ! Column-selection machinery shared by the history and profile
 ! writers (split out of yrec_output, 2026). Format-blind: callers
@@ -12,7 +12,7 @@
 ! authoritative defaults/{history,profile}_columns.list (uncommented
 ! names, file order) by tools/gen_default_columns.py -- edit a .list
 ! and rebuild (make reruns the generator) to change the defaults.
-module output_columns_lib
+module output_columns
       implicit none
       private
       public :: max_cols, parse_columns
@@ -27,7 +27,7 @@ contains
 ! ---------------------------------------------------------------
 subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
            sel, nsel, label, ierr)
-      use luout_lib
+      use io_units
       character(len=*), intent(in) :: fname, label
       integer, intent(out) :: ierr
       integer, intent(in) :: ncol, ndefault
@@ -86,7 +86,7 @@ end subroutine parse_columns
 ! to the selection; unknown names are fatal, with the valid list
 ! written to the run log.
 subroutine append_column(name, names, ncol, sel, nsel, label, ierr)
-      use luout_lib
+      use io_units
       character(len=*), intent(in) :: name, label
       integer, intent(in) :: ncol
       character(len=24), intent(in) :: names(ncol)
@@ -112,4 +112,4 @@ subroutine append_column(name, names, ncol, sel, nsel, label, ierr)
       ierr = 1
 end subroutine append_column
 
-end module output_columns_lib
+end module output_columns

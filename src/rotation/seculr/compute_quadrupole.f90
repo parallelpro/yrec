@@ -26,7 +26,7 @@
 subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

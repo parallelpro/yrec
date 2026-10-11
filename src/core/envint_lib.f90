@@ -51,7 +51,7 @@ end function fixed_envint_step
 ! them is a numbers-changing decision (R6), so both forms are kept.
 double precision function surface_log10_radius_cm(log_luminosity_lsun, log_teff)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       double precision, intent(in) :: log_luminosity_lsun, log_teff
       surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity &
            - 4.0d0*log_teff - c4pil - csigl)

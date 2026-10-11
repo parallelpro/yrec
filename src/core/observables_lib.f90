@@ -30,7 +30,7 @@
 module observables_lib
       use star_info_lib
       use eos_lib
-      use phys_const_lib
+      use physical_constants
       implicit none
       private
       public :: compute_observables

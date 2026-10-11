@@ -24,16 +24,16 @@ subroutine run_yrec(ierr)
       use burn_step, only: configure_network
       use star_info_lib, only: star, i_h1, i_metals
       use yrec_output, only: output_run_header
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use yrec_reset_lib, only: yrec_run_prologue
       use monte_carlo_lib, only: apply_monte_carlo_parameters, &
            write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions, &
            check_rotation_initialised
-      use run_log_lib, only: log_run_summary
-      use controls_check_lib, only: warn_inconsistent_controls
+      use run_log, only: log_run_summary
+      use controls_check, only: warn_inconsistent_controls
       use observables_lib, only: log_r_surface_cm
       implicit none
       integer :: step_status
@@ -359,7 +359,7 @@ end subroutine begin_kind_card
 ! Finish one kind card: store the last model to the .store stream
 ! when configured (putstore) and clear the punch flag.
 subroutine end_kind_card
-      use run_log_lib, only: log_final_model_line
+      use run_log, only: log_final_model_line
 ! 2026 retire-legacy: the end-of-card putstore call is deleted with
 ! the .store file (punch_pending_flag keeps its helium-flash reload
 ! role above).

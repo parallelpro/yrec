@@ -31,7 +31,7 @@
 ! (1.39d0-0.815d0-0.025d0 need not equal 0.550d0 bitwise).
 module ttau_lib
       use math_lib
-      use phys_const_lib, only: cc23
+      use physical_constants, only: cc23
       implicit none
       private
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &

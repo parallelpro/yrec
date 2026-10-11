@@ -11,7 +11,7 @@ contains
 
 subroutine set_bahcall_loeb_scales()
       use star_info_lib, only: star
-      use phys_const_lib, only: rsun_cgs_legacy
+      use physical_constants, only: rsun_cgs_legacy
       implicit none
 !     solar_radius_bl = SOLAR RADIUS (CM)
 !     seconds_per_year_bl = NUMBER OF SECONDS IN A YEAR.

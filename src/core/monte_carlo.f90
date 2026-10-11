@@ -22,7 +22,7 @@
 ! byte-identical; the MC path is compile-verified only.
 module monte_carlo_lib
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav, max_mc_runs
-      use luout_lib
+      use io_units
       implicit none
       private
       public :: setup_monte_carlo_runs, apply_monte_carlo_parameters, &
@@ -68,7 +68,7 @@ end subroutine setup_monte_carlo_runs
 subroutine apply_monte_carlo_parameters(monte_carlo_run_number, &
      age_scale_factor)
       use math_lib
-      use phys_const_lib
+      use physical_constants
       integer, intent(in) :: monte_carlo_run_number
       double precision, intent(out) :: age_scale_factor
 ! latest values (Bahcall and Pinsonneault 1996). NOTE: the literals

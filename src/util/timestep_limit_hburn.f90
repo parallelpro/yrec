@@ -19,9 +19,9 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
      convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
      hydrogen_dt)
       use star_info_lib, only: star, json
-      use controls_lib, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
+      use controls_buffer, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
            itime_dx_shell, itime_dx_total
-      use phys_const_lib
+      use physical_constants
       use net_lib
       use burn_step
       use net_lib, only: compute_equilibrium_burn_rates

@@ -73,9 +73,9 @@ subroutine composition_step(timestep, opts, core_cz_edge, &
       use rotation_scratch_lib
       use star_info_lib, only: star, i_h1, i_he3, i_he4, i_metals, json, &
            max_convective_zones, max_radiative_zones
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use net_lib
       use burn_step
       use math_lib

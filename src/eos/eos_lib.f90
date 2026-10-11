@@ -236,8 +236,8 @@ subroutine eos_init(fermi_table_path, scv_h_table_path, &
       use star_info_lib, only: star
 
       use yale_eos_lib
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use scv_eos_lib
       implicit none
       integer, parameter :: nts = scv_nt
@@ -361,7 +361,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       use star_info_lib, only: star
 
       use opal_eos_lib
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

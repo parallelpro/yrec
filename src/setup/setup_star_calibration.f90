@@ -17,9 +17,9 @@
 subroutine setup_star_calibration
 
       use star_info_lib, only: star
-      use controls_lib, only: max_runs
-      use luout_lib
-      use phys_const_lib
+      use controls_buffer, only: max_runs
+      use io_units
+      use physical_constants
       use math_lib
       implicit none
 ! --- locals ---

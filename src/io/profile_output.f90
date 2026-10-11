@@ -5,7 +5,7 @@
 ! the column name table and the writer for <outdir>/profile<N>.data
 ! (zone 1 = the surface); columns selectable via the
 ! profile_columns_file control (default selection from
-! defaults/profile_columns.list -- see output_columns_lib).
+! defaults/profile_columns.list -- see output_columns).
 !
 ! Writers are PURE READERS of the stitched full-star model
 ! (interior + envelope + atmosphere), assembled every step by
@@ -14,7 +14,7 @@
 ! profile_output_init on every job.
 module profile_output
       use stitched_model_lib, only: n_ext, stx_prof, n_prof_cols
-      use output_columns_lib, only: max_cols, parse_columns, &
+      use output_columns, only: max_cols, parse_columns, &
            prof_default_names, n_prof_default
       implicit none
       private

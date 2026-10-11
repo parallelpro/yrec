@@ -17,8 +17,8 @@ subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin
      zone_end, num_zones)
       use rotation_scratch_lib
       use star_info_lib, only: star, json
-      use controls_lib, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
-      use phys_const_lib
+      use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
+      use physical_constants
       use numerics_lib
       use math_lib
       implicit none

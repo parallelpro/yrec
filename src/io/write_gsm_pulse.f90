@@ -81,7 +81,7 @@ end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
-      use luout_lib
+      use io_units
       use stitched_model_lib, only: n_pulse_cols, ipul_gyre_last
       implicit none
       integer, intent(in) :: n

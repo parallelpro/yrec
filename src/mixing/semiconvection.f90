@@ -40,8 +40,8 @@ subroutine semiconvection(timestep, composition, log_density, luminosity_lsun, &
       use temperature_gradients_lib
       use star_info_lib, only: star, json
 
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use eos_lib
       use kap_lib
       use math_lib

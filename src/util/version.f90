@@ -9,7 +9,7 @@
 
 subroutine setversion()
 
-      use phys_const_lib
+      use physical_constants
       implicit none
 ! former common/version/: yrec_version_string (released version tag)
 ! and git_hash_string (short git commit hash + indicator if working

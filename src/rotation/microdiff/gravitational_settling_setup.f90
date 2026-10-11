@@ -29,9 +29,9 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       use species_table_lib, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
       use bahcall_loeb_units_lib, only: set_bahcall_loeb_scales
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use math_lib
       implicit none
 

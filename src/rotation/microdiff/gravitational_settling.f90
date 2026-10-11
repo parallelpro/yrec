@@ -60,9 +60,9 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use numerics_lib
       implicit none
 

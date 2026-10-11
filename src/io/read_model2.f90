@@ -32,7 +32,7 @@ subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
 ! Several of this subroutine's own dummy arguments below (values read
 ! from the model file -- rotation_active, envelope_overshoot_active,
 ! instability_transport_active, core_overshoot_active,
-! use_semiconvection, etc.) share names with controls_lib buffer
+! use_semiconvection, etc.) share names with controls_buffer buffer
 ! members, so this file must never blanket-`use` that module. Same
 ! treatment as io/read_yrec7.f90, this file's sibling reader.
 ! (solar_luminosity_cgs comes from star%.)

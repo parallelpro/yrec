@@ -18,13 +18,13 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
-      use controls_lib, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
+      use controls_buffer, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use kap_lib
-      use luout_lib
-      use run_log_lib, only: solver_diagnostics
-      use phys_const_lib
+      use io_units
+      use run_log, only: solver_diagnostics
+      use physical_constants
       use numerics_lib
 
       implicit none

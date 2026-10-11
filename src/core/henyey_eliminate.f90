@@ -73,7 +73,7 @@ contains
 
 subroutine henyey_eliminate(zone_index, prev, cur)
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       implicit none
 
       integer, intent(in) :: zone_index

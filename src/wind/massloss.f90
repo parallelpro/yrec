@@ -35,7 +35,7 @@ subroutine massloss(log_luminosity_lsun, timestep, composition, &
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use eos_lib
       use math_lib
       use wind_lib, only: log10_radius_from_l_teff

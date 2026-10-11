@@ -35,7 +35,7 @@
 ! re-entrant runs re-enter through it, and it resets the writer
 ! modules' per-job state too.
 module yrec_output
-      use phys_const_lib
+      use physical_constants
 ! The stitched full-star model (interior + envelope + atmosphere)
 ! is assembled and materialized by core/stitched_model.f90; the
 ! writers below are pure readers of its stx_* arrays.
@@ -55,8 +55,8 @@ contains
 ! ---------------------------------------------------------------
 subroutine output_init_mesa(log_output_file, ierr)
       use star_info_lib, only: star
-      use luout_lib
-      use run_log_lib, only: log_reset
+      use io_units
+      use run_log, only: log_reset
       character(len=*), intent(in) :: log_output_file
       integer, intent(out) :: ierr
       logical :: gsm_supported
@@ -124,8 +124,8 @@ subroutine output_write_model()
 ! row, the .mod restart model, and the interval GYRE pulse. The
 ! remnants of the deleted write_legacy_output (wrtout) live here.
       use star_info_lib, only: star, i_he4
-      use luout_lib
-      use run_log_lib, only: log_model_line
+      use io_units
+      use run_log, only: log_model_line
       integer :: iprof
       double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams

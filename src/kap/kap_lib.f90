@@ -67,7 +67,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
       use star_info_lib, only: star
-      use luout_lib
+      use io_units
       use opacity_table_lib
       implicit none
 

@@ -20,7 +20,7 @@ subroutine gtlaol(tbl, log10_density, log10_temperature, hydrogen_fraction, &
 
       use star_info_lib, only: star
       use opacity_table_lib
-      use luout_lib
+      use io_units
       use numerics_lib
       use math_lib
       implicit none

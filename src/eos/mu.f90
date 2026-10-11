@@ -18,7 +18,7 @@ subroutine mu(temperature, pressure, density, hydrogen_fraction, &
      metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)
 
-      use phys_const_lib
+      use physical_constants
       use eos_mixture_lib, only: ion_mean_weight_excess
       implicit none
 

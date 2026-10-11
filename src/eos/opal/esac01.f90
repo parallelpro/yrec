@@ -28,7 +28,7 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, *)
 
       use opal_eos_lib
-      use luout_lib
+      use io_units
       implicit none
 
       type(opal_eos_vintage), intent(inout) :: v

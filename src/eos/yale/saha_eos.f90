@@ -23,8 +23,8 @@ subroutine saha_eos(saha_mass_fractions, log10_temperature, temperature, &
      dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
      specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
 
-      use luout_lib
-      use phys_const_lib
+      use io_units
+      use physical_constants
       use math_lib
       use eos_mixture_lib, only: n_mix_species, ix_he
       implicit none

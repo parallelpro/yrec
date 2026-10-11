@@ -24,7 +24,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
      envelope_overshoot_active, lovstm, use_pure_z_table, &
      use_semiconvection, disk_pressure, disk_temperature, &
      wind_saturation_omega, ierr)
-      use luout_lib
+      use io_units
       use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
 ! First three lines above are YREC7 inputs
 ! Last two lines are MODEL2 add-ons
@@ -33,7 +33,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 ! from the old model-file format -- rotation_active,
 ! envelope_overshoot_active, instability_transport_active,
 ! core_overshoot_active, use_semiconvection) share names with
-! controls_lib buffer members, so this file must never blanket-`use`
+! controls_buffer buffer members, so this file must never blanket-`use`
 ! that module. (solar_luminosity_cgs comes from star%.)
       use math_lib
       implicit none

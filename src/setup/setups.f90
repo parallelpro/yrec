@@ -12,7 +12,7 @@
 !
 ! One-time model-independent setup performed at program start:
 ! defines the physical/mathematical constants used throughout the
-! code (phys_const_lib and star%), loads the opacity tables (setupopac/mhdtbl), the degenerate-electron
+! code (physical_constants and star%), loads the opacity tables (setupopac/mhdtbl), the degenerate-electron
 ! (Fermi-Dirac) equation-of-state table used by fully_ionized_eos.f90, the
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
@@ -23,7 +23,7 @@ subroutine setups(ierr)
       use atm_lib
       use atm_table_lib
       use star_info_lib, only: star
-      use phys_const_lib
+      use physical_constants
       use yale_eos_lib
       use math_lib
       use ttau_lib, only: hsra_t_tau_offset

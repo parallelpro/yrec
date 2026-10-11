@@ -17,7 +17,7 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

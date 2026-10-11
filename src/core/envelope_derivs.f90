@@ -34,7 +34,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
       use kap_lib
       use star_info_lib, only: star, json
       use point_scratch_lib
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
 

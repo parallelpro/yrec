@@ -63,7 +63,7 @@ module reaction_rates
            num_isotopes = 13
 ! Species count of the H/He/C/O mixture handed to compute_mixture_neutrino_losses/sneut.
 ! amu_cgs (which replaced the C21 of engeb/rates/deutrate) lives in
-! phys_const_lib.
+! physical_constants.
 ! S0 in keV-b of the two N15 + p branches, multiplying the S_eff/S0
 ! polynomials o16_gamma_rate / c12_alpha_n15p_rate (and o16gamma /
 ! c12alpha in compute_zone_energy). Kept as integers, the kind of the original
@@ -508,7 +508,7 @@ end function deuterium_proton_capture_rate
 ! are always 0 -- see the XEROING block above).
 ! END OF COMPUTATION OF HRK(IU).
 subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, nr)
-      use phys_const_lib
+      use physical_constants
       use math_lib
       implicit none
       double precision, intent(in) :: log_density, log_temperature, &
@@ -834,7 +834,7 @@ end subroutine compute_reaction_rates
 subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec)
       use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
            i_n14, i_o16, i_o18
-      use phys_const_lib
+      use physical_constants
       implicit none
 
 ! xa: the zone's composition in the star%xa layout (i_* slots)
