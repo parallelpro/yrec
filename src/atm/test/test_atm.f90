@@ -11,7 +11,11 @@
 !     (kcsurfp reads the choice-5 table loaded by atm_init);
 !   atm_choice=4 -- Allard NextGen solar table (loaded together with
 !     the Kurucz table, as in production), looked up through the
-!     public facade entry atm_get_surface_pt.
+!     public facade entry atm_get_surface_pt: NextGen 2, NextGen 2 at
+!     tau = 100, the old NextGen 1 format, and a lookup outside the
+!     tables;
+!   atm_choice=0/1/2 -- the analytic T-tau relations (Eddington,
+!     Krishna-Swamy, HSRA) on a grid of optical depths.
 ! surfp/kcsurfp are atm-internal, called directly here because this
 ! test lives inside the atm domain -- the same intra-domain access
 ! the domain's own code has. The full envelope integration
@@ -24,17 +28,21 @@ program test_atm
       use io_units
       use atm_tables
       use atm_lib
+      use t_tau_relations
       implicit none
       integer :: gerr
 
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, kurucz_atm_path, castelli_path, &
-           allard_path, dummy_path
+           allard_path, allard_old_path, dummy_path
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
       integer :: setups_ierr, ipt, atm_ierr
-      double precision :: teffl, gl
+      double precision :: teffl, gl, hras, tau
+      integer :: choice, itau
+      double precision, parameter :: grid_tau(6) = [1.0d-4, 1.0d-2, 0.312d0, &
+           2.0d0/3.0d0, 1.0d0, 10.0d0]
       logical :: failed
 
       integer, parameter :: npts = 4
@@ -51,6 +59,7 @@ program test_atm
       kurucz_atm_path = trim(yrec_input)//"/atmos/kurucz/atmk1990p00.tab"
       castelli_path   = trim(yrec_input)//"/atmos/CastelliKurucz/atmk2004p00.tab"
       allard_path     = trim(yrec_input)//"/atmos/allard/Nextgen2.all"
+      allard_old_path = trim(yrec_input)//"/atmos/allard/Nextgen.p00"
       dummy_path = ""
       dummy_paths7 = ""
       laol_work = 0.0d0
@@ -158,6 +167,51 @@ program test_atm
          if (gerr /= 0) stop 1
          write(*,'(a,i2,l2,2(1pe24.15))') "al  ", ipt, failed, &
               atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+      end do
+
+! --- Allard NextGen 2 with P and T at tau = 100 (allard_use_tau100) ---
+      star%ctrl%allard_use_tau100 = .true.
+      call atm_init(kurucz_atm_path, allard_path, gerr)
+      if (gerr /= 0) stop 1
+      write(*,'(a)') "# test_atm: Allard at tau = 100, atm_get_surface_pt lookups"
+      do ipt = 1, npts
+         call atm_get_surface_pt(grid_teffl(ipt), grid_gl(ipt), .false., failed, gerr)
+         if (gerr /= 0) stop 1
+         write(*,'(a,i2,l2,2(1pe24.15))') "a100", ipt, failed, &
+              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+      end do
+      star%ctrl%allard_use_tau100 = .false.
+
+! --- Allard NextGen 1, the old table format ---
+      call atm_init(kurucz_atm_path, allard_old_path, gerr)
+      if (gerr /= 0) stop 1
+      write(*,'(a)') "# test_atm: Allard NextGen 1 (old format), atm_get_surface_pt lookups"
+      do ipt = 1, npts
+         call atm_get_surface_pt(grid_teffl(ipt), grid_gl(ipt), .false., failed, gerr)
+         if (gerr /= 0) stop 1
+         write(*,'(a,i2,l2,2(1pe24.15))') "al1 ", ipt, failed, &
+              atm_table%atm_log10_pressure, atm_table%atm_log10_temperature
+      end do
+! a hot star is outside the Allard tables: the lookup fails (the caller
+! falls back to a gray atmosphere)
+      call atm_get_surface_pt(4.5d0, 4.0d0, .false., failed, gerr)
+      write(*,'(a,l2,i4)') "al1 out of range: failed, ierr =", failed, gerr
+
+! --- the analytic T-tau relations (atm_choice 0 Eddington, 1
+! Krishna-Swamy, 2 HSRA): log T at a grid of optical depths, the
+! starting temperature and the photospheric limit, at log Teff 3.762
+      write(*,'(a)') "# test_atm: T-tau relations at log Teff = 3.762"
+      hras = hsra_t_tau_offset()
+      write(*,'(a,1pe24.15)') "hsra offset ", hras
+      do choice = 0, 2
+         write(*,'(a,i2,2(1pe24.15))') "ttau start, x_limit", choice, &
+              ttau_start_log10_temperature(3.762d0, choice, hras), &
+              ttau_photosphere_x_limit(choice)
+         do itau = 1, size(grid_tau)
+            tau = grid_tau(itau)
+            write(*,'(a,i2,2(1pe24.15))') "ttau", choice, tau, &
+                 ttau_log10_temperature(tau, 3.762d0, choice, hras)
+         end do
       end do
 
 ! Error paths (2026, docs/ROADMAP.md stage 3): surfp's out-of-table check

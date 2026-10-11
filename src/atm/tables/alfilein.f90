@@ -321,6 +321,7 @@ subroutine alfilein(allard_table_path, ierr)
       end if
       end if
       end do   ! Back to process the next record
+      close(star%ctrl%allard_table_unit)
 
       else
 !     If we get here, the input file is invalid
