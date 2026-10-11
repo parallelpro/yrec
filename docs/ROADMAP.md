@@ -1137,3 +1137,29 @@ left for a decision (physics changes):
   its own set changes surface Li slightly (measured earlier), so it
   needs a measured commit.
 
+### net/ re-evaluation follow-ups (yrec-next, 2026-10-11)
+
+All bitwise identical (test_net pins, gate1, config matrix, full run).
+- **DONE: the mathematical constants are parameters** (529d3fb3). ln10,
+  cc13, cc23, cpi and the rest were assigned by setups at run time, so
+  net/ silently computed with zeros unless setups had run. Each
+  compile-time value is bit-identical to the run-time one.
+- **DONE: net_lib exports 35 names, not 62** (ad723f2a): only what the
+  rest of the code uses. The individual rates, the table and the
+  thermal-neutrino routines stay internal.
+- **DONE: test_net pins the remaining pieces** (deaf3c55): the
+  equilibrium burn, burn_deuterium_region (accretion included),
+  compute_li_be_rates, the deuterium cap and the solar neutrino fluxes.
+- **DONE: the equilibrium burn (eqburn) rewritten**, 201 lines to 90
+  (6101fe95), and burn_deuterium_region in named steps (772c8220).
+- **DONE: comments in current terms** (ff9b569b): no ALL-CAPS or
+  "logic unchanged" boilerplate left in net/'s code, and one comparison
+  style throughout.
+- **Open: whether to keep the level-1 equilibrium burn.** It only
+  sets the starting point of the Newton iterations; levels 3 and up
+  redo the composition implicitly from xa_start. Removing it would
+  change converged models at the iteration-path level, so it needs a
+  measured commit and the user's decision.
+- **Left as is: Timmes' sneut** (1,357 lines of external code with
+  saved tables). It is why compute_nuclear_energy cannot be pure.
+
