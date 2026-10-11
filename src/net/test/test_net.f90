@@ -19,7 +19,12 @@
 !   * the trace integrator (surviving_fraction, accreted_survival)
 !     against closed forms and an independent quadrature,
 !   * compute_nuclear_energy at three reference points, and its
-!     derivatives against centred differences.
+!     derivatives against centred differences,
+!   * compute_equilibrium_burn_rates (shell, mixed region, helium
+!     burning, below the cutoff), burn_deuterium_region (shell, region,
+!     accreting surface region, below the threshold), compute_li_be_rates,
+!     the deuterium-rate cap in the surface convection zone, and the
+!     solar neutrino fluxes.
 ! Results print for byte-comparison against expected_test_net.out;
 ! the checks print ok or FAIL.
 program test_net
@@ -32,7 +37,8 @@ program test_net
            r_po16, r_pp, burn_implicitly, n_network, s_h1, s_he3, s_he4, &
            surviving_fraction, accreted_survival, linear_in_time, &
            linear_in_log, compute_nuclear_energy, nuclear_energy_result, &
-           net_settings_t, set_net_settings
+           net_settings_t, set_net_settings, compute_equilibrium_burn_rates, &
+           burn_deuterium_region, surface_accretion, compute_li_be_rates
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, compute_reaction_rates, &
@@ -259,6 +265,9 @@ program test_net
       call check_burn_implicitly()
       call check_trace_integrator()
       call check_nuclear_energy()
+      call check_equilibrium_burn()
+      call check_light_elements()
+      call check_solar_neutrino_fluxes()
 
       close(run_log_unit)
       write(*,'(a)') "test_net: done"
@@ -399,18 +408,12 @@ contains
          double precision, parameter :: h = 1.0d-4
          double precision, parameter :: logt(npoint) = [7.196d0, 7.35d0, 8.10d0], &
               logd(npoint) = [2.176d0, 1.75d0, 4.0d0]
-         type(net_settings_t) :: s
          type(nuclear_energy_result) :: e, ep, em
          double precision :: xa(15, npoint), fd
          double precision :: err_t, err_d
          integer :: k
 
-         s = net_settings
-         s%logT_cutoffs = [6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0]
-         s%weak_screening_threshold = 0.03d0
-         s%calc_neutrinos = .true.
-         s%use_itoh_neutrino_loss = .true.
-         call set_net_settings(s)
+         call install_production_settings()
          xa = 0.0d0
          xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18], 1) = &
               [0.34d0, 0.64d0, 0.02d0, 8.0d-6, 2.5d-5, 1.5d-6, 5.5d-3, 8.0d-3, 1.5d-5]
@@ -437,4 +440,147 @@ contains
             write(*,'(2es10.2)') err_t, err_d
          end do
       end subroutine check_nuclear_energy
+
+! The production settings of a run (the namelist defaults: cutoffs,
+! weak-screening threshold, solar neutrino fluxes and Itoh losses on,
+! light-element rate scales 1), keeping the cross-section scales.
+      subroutine install_production_settings()
+         type(net_settings_t) :: s
+         s = net_settings
+         s%logT_cutoffs = [6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0]
+         s%weak_screening_threshold = 0.03d0
+         s%calc_neutrinos = .true.
+         s%use_itoh_neutrino_loss = .true.
+         s%li6_rate_scale = 1.0d0
+         s%li7_rate_scale = 1.0d0
+         s%be9_pg_rate_scale = 1.0d0
+         s%be9_pd_rate_scale = 1.0d0
+         s%be9_palpha_rate_scale = 1.0d0
+         call set_net_settings(s)
+      end subroutine install_production_settings
+
+! compute_equilibrium_burn_rates on three hydrogen-burning shells
+! (log T 7.30, 7.25, 7.20) one at a time and as one mixed region, on a
+! helium-burning shell, and on a shell below the cutoff (rates only:
+! nothing else is set there). Each prints dX/dt dY/dt dC/dt dO/dt, then
+! the returned C12, O16, X and Z.
+      subroutine check_equilibrium_burn()
+         integer, parameter :: nz = 3
+         double precision :: rates(num_rate_rows, nz), xa(15, nz), &
+              mass(nz), logt(nz), logd(nz)
+         double precision :: dc, do, dx, dy, c12, o16, x, z
+         integer :: k
+
+         call install_production_settings()
+         write(*,'(a)') "# test_net: compute_equilibrium_burn_rates"
+         logt = [7.30d0, 7.25d0, 7.20d0]
+         logd = [2.0d0, 1.9d0, 1.8d0]
+         mass = [1.0d30, 2.0d30, 3.0d30]
+         xa = 0.0d0
+         do k = 1, nz
+            xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18], k) = &
+                 [0.70d0 - 0.05d0*k, 0.28d0 + 0.05d0*k, 0.02d0, 3.0d-5*k, &
+                 3.5d-3/k, 4.0d-5*k, 1.0d-3*k, 8.0d-3, 2.0d-5]
+            call compute_network_rates(logd(k), logt(k), xa(:,k), rates(:,k))
+         end do
+         call equilibrium_case("shell 1", rates, xa, mass, logt, 1, 1)
+         call equilibrium_case("region 1-3", rates, xa, mass, logt, 1, 3)
+         xa(:,1) = 0.0d0
+         xa([i_he4, i_metals, i_c12, i_o16], 1) = [0.97d0, 0.03d0, 1.0d-2, 1.0d-2]
+         logt(1) = 8.1d0
+         call compute_network_rates(4.0d0, logt(1), xa(:,1), rates(:,1))
+         call equilibrium_case("helium shell", rates, xa, mass, logt, 1, 1)
+         logt(1) = 6.4d0
+         call compute_equilibrium_burn_rates(rates, xa, mass, logt, 1, 1, &
+              dc, do, dx, dy, c12, o16, x, z)
+         write(*,'(a)') "below cutoff"
+         write(*,'(4(1pe20.12))') dx, dy, dc, do
+      end subroutine check_equilibrium_burn
+
+      subroutine equilibrium_case(label, rates, xa, mass, logt, first, last)
+         character(len=*), intent(in) :: label
+         double precision, intent(in) :: rates(:,:), xa(:,:), mass(:), logt(:)
+         integer, intent(in) :: first, last
+         double precision :: dc, do, dx, dy, c12, o16, x, z
+         call compute_equilibrium_burn_rates(rates, xa, mass, logt, first, last, &
+              dc, do, dx, dy, c12, o16, x, z)
+         write(*,'(a)') label
+         write(*,'(4(1pe20.12))') dx, dy, dc, do
+         write(*,'(4(1pe20.12))') c12, o16, x, z
+      end subroutine equilibrium_case
+
+! The light elements. burn_deuterium_region over 3e11 s on three shells
+! with rates rising through the step: shell 1 alone, the three as one
+! region, the three as the accreting surface region, and a region below
+! the threshold; each prints the region's new X, He3 and D.
+! compute_li_be_rates at three temperatures; deuterium_rate inside and
+! outside the surface convection zone where the turnover cap binds.
+      subroutine check_light_elements()
+         integer, parameter :: nz = 3
+         double precision, parameter :: t9(3) = [3.0d-3, 5.0d-3, 1.0d-2]
+         double precision :: xa_start(15, nz), mass(nz), rate0(nz), &
+              rate1(nz), li6, li7, be9
+         type(surface_accretion) :: none, accreting
+         integer :: k
+
+         call install_production_settings()
+         write(*,'(a)') "# test_net: burn_deuterium_region: X, He3, D"
+         mass = [1.0d30, 2.0d30, 3.0d30]
+         rate0 = [1.0d-12, 2.0d-12, 4.0d-12]
+         rate1 = [2.0d-12, 3.0d-12, 5.0d-12]
+         xa_start = 0.0d0
+         do k = 1, nz
+            xa_start([i_h1, i_he4, i_he3, i_h2], k) = [0.70d0, 0.28d0, 3.0d-5, 1.0d-5*(k+1)]
+         end do
+         accreting%on = .true.
+         accreting%inflow = .true.
+         accreting%deuterium_fraction = 3.0d-5
+         accreting%mass = 1.0d28
+         call deuterium_case("shell 1", 1, 1, none, 1.0d-11, xa_start, mass, rate0, rate1)
+         call deuterium_case("region 1-3", 1, 3, none, 1.0d-11, xa_start, mass, rate0, rate1)
+         call deuterium_case("accreting surface region 1-3", 1, 3, accreting, 1.0d-11, xa_start, mass, rate0, rate1)
+         call deuterium_case("below threshold", 1, 3, none, 1.0d-4, xa_start, mass, rate0, rate1)
+
+
+         write(*,'(a)') "# test_net: compute_li_be_rates (T9 0.003, 0.005, 0.01): Li6, Li7, Be9"
+         do k = 1, 3
+            call compute_li_be_rates(t9(k), li6, li7, be9)
+            write(*,'(3(1pe20.12))') li6, li7, be9
+         end do
+
+         write(*,'(a)') "# test_net: deuterium_rate, log T 6.5, log rho 1.5: outside, inside the surface CZ (turnover 1e6 s)"
+         write(*,'(2(1pe20.12))') deuterium_rate(1.5d0, 6.5d0, 0.70d0, .false., 1.0d6), &
+              deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6)
+      end subroutine check_light_elements
+
+      subroutine deuterium_case(label, first, last, accretion, threshold, &
+           xa_start, mass, rate0, rate1)
+         character(len=*), intent(in) :: label
+         integer, intent(in) :: first, last
+         type(surface_accretion), intent(in) :: accretion
+         double precision, intent(in) :: threshold, xa_start(:,:), mass(:), &
+              rate0(:), rate1(:)
+         double precision :: comp(size(xa_start,1), size(xa_start,2))
+         comp = xa_start
+         call burn_deuterium_region(first, last, size(mass), mass, comp, 3.0d11, &
+              xa_start, rate0, rate1, accretion, threshold)
+         write(*,'(a)') label
+         write(*,'(3(1pe20.12))') comp(i_h1, first), comp(i_he3, first), comp(i_h2, first)
+      end subroutine deuterium_case
+
+! The solar neutrino fluxes and the Be7 abundance at the solar centre
+! (compute_nuclear_energy, neutrino fluxes on).
+      subroutine check_solar_neutrino_fluxes()
+         type(nuclear_energy_result) :: e
+         double precision :: xa(15)
+
+         call install_production_settings()
+         xa = 0.0d0
+         xa([i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18]) = &
+              [0.34d0, 0.64d0, 0.02d0, 8.0d-6, 2.5d-5, 1.5d-6, 5.5d-3, 8.0d-3, 1.5d-5]
+         call compute_nuclear_energy(2.176d0, 7.196d0, xa, .false., 0.0d0, e)
+         write(*,'(a)') "# test_net: solar neutrino fluxes at the solar centre, then the Be7 mass fraction"
+         write(*,'(5(1pe20.12))') e%neutrino_flux
+         write(*,'(1pe20.12)') e%be7_mass_fraction
+      end subroutine check_solar_neutrino_fluxes
 end program test_net

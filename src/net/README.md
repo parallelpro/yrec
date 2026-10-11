@@ -165,7 +165,10 @@ Run `test_net` after any change (`make tests` in `src/`, then `pytest test_net.p
 - the reaction table, with its baryon balance and each row's Q against the atomic mass excesses (the difference is the row's mean neutrino energy);
 - `burn_implicitly` against backward Euler's closed form with only pp on, then with only C12(α,γ) on, and its mass conservation with every rate on;
 - `surviving_fraction` and `accreted_survival` against closed forms and an independent quadrature;
-- `compute_nuclear_energy` at the solar centre, a CNO core and a helium core, with a finite-difference check of its derivatives.
+- `compute_nuclear_energy` at the solar centre, a CNO core and a helium core, with a finite-difference check of its derivatives;
+- `compute_equilibrium_burn_rates` on a shell, a mixed region, a helium-burning shell and a shell below the cutoff;
+- `burn_deuterium_region` on a shell, a region, an accreting surface region and a region below the threshold;
+- `compute_li_be_rates`, the deuterium-rate cap in the surface convection zone, and the solar neutrino fluxes.
 
 The checks print `ok` or `FAIL`.
 
