@@ -29,7 +29,7 @@
 !  - eq_angular_momentum (EJ): equal_grid_to_model.f90 calls it angular_momentum.
 !  - eq_am_diffusion_coeff (ECOD): am_diffusion_coeffs.f90 calls it diffusion_coeff.
 !  - eq_delta_angular_momentum (DJ): equal_grid_to_model.f90 calls it
-!    delta_angular_momentum; tridia calls it dj.
+!    delta_angular_momentum; solve_angular_momentum_transport calls it dj.
 !  - eq_mass (EM): diffuse_composition_driver.f90 calls it equally_spaced_mass.
 !  - diffusion_converged (LOKAD): check_angular_momentum.f90 calls it
 !    already_converged_flag.
@@ -85,12 +85,12 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
            eq_omega(json)
 
 ! Tridiagonal-solve work arrays (Thomas algorithm) threaded from
-! am_diffusion_coeffs (fills them) to tridia (solves). tridia's
-! solution(:) (the new omega distribution) is never read back here --
+! am_diffusion_coeffs (fills them) to solve_angular_momentum_transport
+! (solves). Its solution(:) (the new omega distribution) is never read back here --
 ! this call site only uses eq_delta_angular_momentum/
 ! sum_delta_angular_momentum -- so it is captured in an unused local.
 ! surface_wind_loss_term is am_diffusion_coeffs' surface wind
-! angular-momentum-loss term, consumed by tridia.
+! angular-momentum-loss term, consumed by solve_angular_momentum_transport.
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), unused_tridia_solution(json), surface_wind_loss_term
 
@@ -526,7 +526,7 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
          if (bet.eq.0) then
 ! 2026 audit (section 7): library stop -> ierr (numerics must not
 ! kill the process; the drivers decide).
-            write(*,*) 'tridia: singular matrix'
+            write(*,*) 'solve_angular_momentum_transport: singular matrix'
             ierr = 1
             return
          end if

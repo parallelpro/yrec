@@ -69,6 +69,6 @@ dj
   -8.636833902091570E-01  -3.002172766815456E+00  -5.802658165087650E+00
   -8.218842543270915E+00  -9.055229870634587E+00  -6.941644333986372E+00
 sumdj ierr  -3.388423107000413E+01  0
- tridia: singular matrix
+ solve_angular_momentum_transport: singular matrix
 singular: ierr  1
 test_rotation: done

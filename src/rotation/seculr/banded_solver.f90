@@ -13,7 +13,7 @@
 ! d(omega)/dr, d3(omega)/dr3) with a fixed bandwidth stored 10 columns
 ! wide per row in coeff_matrix, column 5 being the diagonal (columns
 ! 1-4 sub-diagonal, 6-10 super-diagonal). This is NOT a standard
-! textbook band-diagonal solve (c.f. tridia.f90/tridiag_gs.f90's plain
+! textbook band-diagonal solve (c.f. numerics' solve_tridiagonal, the plain
 ! tridiagonal Thomas algorithm) -- it is a hand-built Gaussian
 ! elimination exploiting the specific sparsity pattern that the 4-
 ! variables-per-shell formulation produces, with special-cased

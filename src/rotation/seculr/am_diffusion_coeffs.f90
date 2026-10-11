@@ -35,9 +35,9 @@
 !  rhs(I) : THE ANGULAR VELOCITY TERMS AT THE BEGINNING OF THE TIMESTEP.
 !  *NOTE: ANGULAR MOMENTUM LOSS FROM A SURFACE C.Z. IS SUBTRACTED FROM
 !     THE LAST ELEMENT OF ARRAY rhs IF APPLICABLE, AND ALSO RETURNED
-!     VIA surface_wind_loss_term FOR tridia.f90 TO SEED dj(n) WITH
-!     (SEE tridia.f90'S HEADER NOTE -- THIS WAS PREVIOUSLY SMUGGLED
-!     THROUGH common/tridi/'s gamma_elim(num_eq_points) SLOT).
+!     VIA surface_wind_loss_term FOR solve_angular_momentum_transport
+!     (secular_transport) TO SEED dj(n) WITH (THIS WAS PREVIOUSLY
+!     SMUGGLED THROUGH common/tridi/'s gamma_elim(num_eq_points) SLOT).
 !
 !  THE DIFFUSION EQUATION WE ARE SOLVING IS
 !  dW/dT = 1/(4pi*RHO*R**2) 1/(I/M) d/dR(D*dW/dR)
@@ -56,14 +56,14 @@
 ! and analogue of composition_diffusion_coeffs.f90 (the composition-transport version of the
 ! same tridiagonal setup).
 ! sub_diag/diag/super_diag/rhs/surface_wind_loss_term were originally
-! shared with tridia.f90 (via secular_transport.f90, which calls both) through
-! common/tridi/ (positional storage; surface_wind_loss_term was
+! shared with the solver (formerly tridia; secular_transport calls both)
+! through common/tridi/ (positional storage; surface_wind_loss_term was
 ! smuggled through the gamma_elim(num_eq_points) slot specifically so
-! tridia.f90's first statement could read it before overwriting
+! the solver's first statement could read it before overwriting
 ! gamma_elim as pure solver scratch). Converted (2026, docs/GUIDELINES.md)
 ! to explicit output arguments since this is real per-call data flow,
-! not global configuration -- see tridia.f90's matching dj_n_seed
-! input argument.
+! not global configuration -- see solve_angular_momentum_transport's
+! matching dj_n_seed input argument.
 subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &

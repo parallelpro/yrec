@@ -46,8 +46,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       real(dp) :: fx, interpolated_value
       integer :: row, row_base, node, k, kk, kkk
 
-! Interpolates in temperature with a 4-point cubic spline (kspline/
-! ksplint), and in gravity the same way if 4 or more points are
+! Interpolates in temperature with a 4-point natural cubic spline
+! (natural_spline/splint), and in gravity the same way if 4 or more points are
 ! available (3-point Lagrangian or linear at the table edge).  It will quit if the desired data point
 ! has Teff or log G more than one table point from the data.
 !

@@ -79,7 +79,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 ! --- locals ---
 ! Names below are chosen to match the dummy-argument names of the
 ! callees (gravitational_settling_setup/model_to_equal/lax_wendroff_step1/
-! lax_wendroff_step2/implicit_diffusion_coeffs/tridiag_gs/
+! lax_wendroff_step2/implicit_diffusion_coeffs/solve_tridiagonal/
 ! equal_to_model) at each corresponding call site.
       double precision :: equal_mass(json), equal_radius(json), &
            sub_diag(json), diag(json), super_diag(json), &

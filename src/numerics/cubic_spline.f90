@@ -29,7 +29,7 @@ contains
 ! x(1) < ... < x(n) of the cubic spline through y with first
 ! derivatives yp1 and ypn at the ends. yp1 or ypn of 0.99d30 or more
 ! makes that end natural (zero second derivative).
-subroutine cspline(x, y, n, yp1, ypn, y2)
+pure subroutine cspline(x, y, n, yp1, ypn, y2)
       integer, intent(in) :: n
       real(dp), intent(in) :: x(n), y(n), yp1, ypn
       real(dp), intent(out) :: y2(n)
@@ -38,7 +38,7 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
       integer :: i, k
       real(dp) :: sig, p, qn, un
 
-      if (yp1 .gt. 0.99d30) then
+      if (yp1 > 0.99d30) then
          y2(1) = 0.0d0
          u(1) = 0.0d0
       else
@@ -52,7 +52,7 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
          u(i) = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1)) &
               /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
       end do
-      if (ypn .gt. 0.99d30) then
+      if (ypn > 0.99d30) then
          qn = 0.0d0
          un = 0.0d0
       else
@@ -63,7 +63,6 @@ subroutine cspline(x, y, n, yp1, ypn, y2)
       do k = n-1, 1, -1
          y2(k) = y2(k)*y2(k+1)+u(k)
       end do
-      return
 end subroutine cspline
 
 !----------------------------------------------------------------------
@@ -71,7 +70,7 @@ end subroutine cspline
 !----------------------------------------------------------------------
 ! cspline with natural boundary conditions at both ends (formerly
 ! kspline, its four-point form, and splinc).
-subroutine natural_spline(x, y, n, y2)
+pure subroutine natural_spline(x, y, n, y2)
       integer, intent(in) :: n
       real(dp), intent(in) :: x(n), y(n)
       real(dp), intent(out) :: y2(n)
@@ -102,9 +101,9 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi)
       ierr = 0
       lo = 1
       hi = n
-      do while (hi-lo .gt. 1)
+      do while (hi-lo > 1)
          k = (hi+lo)/2
-         if (xa(k) .gt. x) then
+         if (xa(k) > x) then
             hi = k
          else
             lo = k
@@ -113,8 +112,8 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi)
       if (present(klo)) klo = lo
       if (present(khi)) khi = hi
       h = xa(hi) - xa(lo)
-      if (h .eq. 0d0) then
-           write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+      if (h == 0d0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ierr = 1
          return
       end if
@@ -122,7 +121,6 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi)
       b = (x - xa(lo))/h
       y = a*ya(lo)+b*ya(hi)+ &
            ((a**3-a)*y2a(lo)+(b**3-b)*y2a(hi))*(h**2)/6.0d0
-      return
 end subroutine splint
 
 !----------------------------------------------------------------------
@@ -132,12 +130,12 @@ end subroutine splint
 ! form. On entry c(1,i) holds the values; on exit c(2,i), c(3,i) and
 ! c(4,i) hold the first-, second- and third-order coefficients of the
 ! cubic on [xi(i), xi(i+1)].
-subroutine ysplin(xi, c, n)
+pure subroutine ysplin(xi, c, n)
       integer, parameter :: np = 100
 
+      integer, intent(in) :: n
       real(dp), intent(in) :: xi(n)
       real(dp), intent(inout) :: c(4,np)
-      integer, intent(in) :: n
 
       real(dp) :: f(np), h(np), d(np), g, d3
       real(dp) :: const1, const2, const3, const4
@@ -197,8 +195,6 @@ subroutine ysplin(xi, c, n)
          c(4,i) = d3/(h(i+1)*h(i+1))
       end do
 !!!   now, we have complete set of coefficients for each sub-interval.
-
-      return
 end subroutine ysplin
 
 !----------------------------------------------------------------------
@@ -210,16 +206,15 @@ end subroutine ysplin
 subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       integer, parameter :: np=100
 
-      real(dp), intent(in) :: x_grid(n_grid), y_grid(n_grid)
       integer, intent(in) :: n_grid
+      real(dp), intent(in) :: x_grid(n_grid), y_grid(n_grid)
       real(dp), intent(in) :: x_eval
       real(dp), intent(out) :: y_eval, dy_eval
+      integer, intent(out) :: ierr
 
       real(dp) :: spline_coeff(4,np), dx_local, x_eval_copy
       real(dp) :: interp_value, interp_deriv
       integer :: i, k_lo, k_hi, k_mid
-
-      integer, intent(out) :: ierr
 
       ierr = 0
 ! the coefficients for the zero-th order term
@@ -231,24 +226,24 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
       x_eval_copy=x_eval
 ! find the grid point,  k_lo, such that x_grid(k_lo)<=x_eval_copy, and
 ! abs(x_grid(k_lo)-x_eval_copy)<1.
-      if(x_grid(1).gt.x_eval)then
+      if(x_grid(1) > x_eval)then
          k_lo=1
          k_hi=2
-      else if(x_grid(n_grid).lt.x_eval)then
+      else if(x_grid(n_grid) < x_eval)then
          k_lo=n_grid-1
          k_hi=n_grid
       else
       k_lo=1
       k_hi=n_grid
-    do while ((k_hi-k_lo).gt.1)
+      do while ((k_hi-k_lo) > 1)
          k_mid = (k_hi+k_lo)/2
-         if(x_grid(k_mid).gt.x_eval_copy)then
+         if(x_grid(k_mid) > x_eval_copy)then
             k_hi=k_mid
          else
             k_lo=k_mid
          endif
-    end do
-      if((k_hi-k_lo).le.0)then
+      end do
+      if((k_hi-k_lo) <= 0)then
          write(terminal_unit, *) 'ERROR COX OP: INTERPOLATION'
          write(run_log_unit, *) 'ERROR COX OP: INTERPOLATION'
          ierr = 1
@@ -266,8 +261,6 @@ subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
 ! return the results from the spline routine
       y_eval=interp_value
       dy_eval=interp_deriv
-
-      return
 end subroutine intpol
 
 end module cubic_spline

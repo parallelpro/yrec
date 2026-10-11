@@ -58,7 +58,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       integer, intent(out) :: ierr
 
 ! Tridiagonal-solve work arrays (Thomas algorithm): filled in by
-! composition_diffusion_coeffs, then consumed by ctridi (solution is
+! composition_diffusion_coeffs, then consumed by solve_tridiagonal (solution is
 ! read back afterward).
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json)

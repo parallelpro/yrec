@@ -25,7 +25,7 @@ contains
 ! The spline through xtab/ytab(1:n) at the k nondecreasing points
 ! xval, into yval; outside the table it extrapolates the end
 ! intervals' quadratics.
-subroutine osplin(xval, yval, xtab, ytab, n, k)
+pure subroutine osplin(xval, yval, xtab, ytab, n, k)
       integer, intent(in) :: n, k
       real(dp), intent(in) :: xval(k)
       real(dp), intent(out) :: yval(k)
@@ -41,8 +41,6 @@ subroutine osplin(xval, yval, xtab, ytab, n, k)
 
 ! call meval to evaluate the spline at the run of points xval.
       call meval(xval, yval, xtab, ytab, first_derivs, n, k, eps, err)
-
-      return
 end subroutine osplin
 
 !----------------------------------------------------------------------
@@ -56,7 +54,7 @@ end subroutine osplin
 ! adjacent secants (zero where they differ in sign or one is zero); the
 ! end points extrapolate from their neighbour. (KC 2025-05-31:
 ! safedivide guards two divisions by zero.)
-subroutine slopes(table_x, table_y, first_derivs, num_points)
+pure subroutine slopes(table_x, table_y, first_derivs, num_points)
       integer, intent(in) :: num_points
       real(dp), intent(in) :: table_x(num_points), table_y(num_points)
       real(dp), intent(out) :: first_derivs(num_points)
@@ -84,9 +82,9 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
 ! IF ONE OF THE PRECEDING SLOPES IS ZERO OR IF THEY HAVE OPPOSITE SIGN,
 ! ASSIGN THE VALUE ZERO TO THE DERIVATIVE AT THE MIDDLE POINT.
       do
-      if (slope1.eq.0.d0 .or. slope2.eq.0.d0 .or. (slope1*slope2).le.0.d0) then
+      if (slope1 == 0.d0 .or. slope2 == 0.d0 .or. (slope1*slope2) <= 0.d0) then
          first_derivs(idx)= 0.d0
-      else if (abs(slope1) .gt. abs(slope2)) then
+      else if (abs(slope1) > abs(slope2)) then
 !
 ! CALCULATE THE SLOPE BY EXTENDING THE LINE WITH SLOPE M1.
          x_bar=(y_diff2/slope1) + table_x(idx)
@@ -104,7 +102,7 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       prev_idx=idx
       idx=next_idx
       next_idx=next_idx+1
-      if (idx .gt. num_points_m1) exit
+      if (idx > num_points_m1) exit
 !
 ! CALCULATE THE SLOPES OF THE TWO LINES JOINING THREE CONSECUTIVE DATA
 ! POINTS.
@@ -117,7 +115,7 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
       end do
 !
 ! CALCULATE THE SLOPE AT THE LAST POINT, XTAB(NUM).
-      if ((slope1*slope2) .lt. 0.d0) then
+      if ((slope1*slope2) < 0.d0) then
          first_derivs(num_points)=2.d0*slope2
       else
          x_mid= (table_x(num_points_m1)+table_x(num_points))/2.d0
@@ -127,20 +125,20 @@ subroutine slopes(table_x, table_y, first_derivs, num_points)
 !       MTAB(NUM)=(YTAB(NUM)-YXMID)/(XTAB(NUM)-XMID)
          call safedivide((table_y(num_points)-y_x_mid), &
               (table_x(num_points)-x_mid), first_derivs(num_points))
-         if ((first_derivs(num_points)*slope2) .lt. 0.d0) then
+         if ((first_derivs(num_points)*slope2) < 0.d0) then
             first_derivs(num_points)=0.d0
          end if
       end if
 !
 ! CALCULATE THE SLOPE AT THE FIRST POINT, XTAB(1).
-      if ((slope1_saved*slope2_saved) .lt. 0.d0) then
+      if ((slope1_saved*slope2_saved) < 0.d0) then
          first_derivs(1)=2.d0*slope1_saved
          return
       end if
       x_mid=(table_x(1) + table_x(2))/2.d0
       y_x_mid=first_derivs(2)*(x_mid - table_x(2)) + table_y(2)
       first_derivs(1)=(y_x_mid - table_y(1))/(x_mid - table_x(1))
-      if ((first_derivs(1) * slope1_saved) .lt. 0.d0) then
+      if ((first_derivs(1) * slope1_saved) < 0.d0) then
          first_derivs(1)=0.d0
       end if
       return
@@ -151,16 +149,14 @@ end subroutine slopes
 ! safedivide
 !----------------------------------------------------------------------
 ! numerator/denominator, or zero when either is zero (KC 2025-05-31).
-subroutine safedivide(numerator, denominator, quotient)
+pure subroutine safedivide(numerator, denominator, quotient)
       real(dp), intent(in) :: numerator, denominator
       real(dp), intent(out) :: quotient
 
       quotient = 0.d0
-      if (numerator .ne. 0.d0 .and. denominator .ne. 0.d0) then
+      if (numerator /= 0.d0 .and. denominator /= 0.d0) then
          quotient = numerator / denominator
       end if
-
-      return
 end subroutine safedivide
 
 !----------------------------------------------------------------------
@@ -171,7 +167,7 @@ end subroutine safedivide
 ! The knots and spline parameters on (x_left, x_right) for knot case
 ! spline_case: (v, z, w) for cases 1-3; case 4 adds the second knot y
 ! and e.
-subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
+pure subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
      y_right, knot_e_x, knot_e_y, knot_v_x, knot_v_y, knot_w_x, &
      knot_w_y, knot_z_x, knot_z_y, knot_y_x, knot_y_y, spline_case)
       real(dp), intent(in) :: x_left, y_left, slope_left, slope_right, &
@@ -181,8 +177,8 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
            knot_w_x, knot_w_y, knot_z_x, knot_z_y, knot_y_x, knot_y_y
       real(dp) :: mbar1, mbar2, mbar3, c1, d1, h1, j1, k1, ztwo
 
-      if (spline_case .ne. 3 .and. spline_case .ne. 4) then
-      if (spline_case .ne. 2) then
+      if (spline_case /= 3 .and. spline_case /= 4) then
+      if (spline_case /= 2) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 1.
       knot_z_x=(y_left-y_right+slope_right*x_right-slope_left*x_left)/ &
@@ -215,11 +211,11 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       mbar1=(y_right-y_left)/(h1-x_left)
       mbar2=(y_left-y_right)/(j1-x_right)
 
-      if (spline_case .ne. 4) then
+      if (spline_case /= 4) then
 
 ! CALCULATE THE PARAMETERS FOR CASE 3.
       k1=(y_left-y_right+x_right*mbar2-x_left*mbar1)/(mbar2-mbar1)
-      if (abs(slope_left) .le. abs(slope_right)) then
+      if (abs(slope_left) <= abs(slope_right)) then
       knot_z_x=(k1+x_right)/2.d0
       knot_v_x=(x_left+knot_z_x)/2.d0
       knot_v_y=y_left+slope_left*(knot_v_x-x_left)
@@ -251,8 +247,6 @@ subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
       knot_z_y=mbar3*(knot_z_x-knot_v_x) + knot_v_y
       knot_e_x=(knot_y_x+knot_z_x)/2.d0
       knot_e_y=mbar3*(knot_e_x-knot_v_x) + knot_v_y
-      return
-
 end subroutine cases
 
 !----------------------------------------------------------------------
@@ -266,7 +260,7 @@ end subroutine cases
 ! division by zero in cases), 3 or 4 when an end slope exceeds twice
 ! the secant (one or two knots). eps_tol separates slopes close to the
 ! secant or twice it.
-subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
+pure subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
      y_right, eps_tol, spline_case)
       real(dp), intent(in) :: x_left, y_left, slope_left, slope_right, &
            x_right, y_right, eps_tol
@@ -279,13 +273,13 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! CHECK WHETHER OR NOT spq IS 0.
 ! ******MODIFICATION BY MARC PINSONNEAULT TO AVOID DIVISION BY ZERO
 ! ******IN SR CASES
-      if (slope_left.eq.0.0d0 .or. slope_right.eq.0.0d0) then
+      if (slope_left == 0.0d0 .or. slope_right == 0.0d0) then
          spline_case=2
          return
       end if
 ! ******
-      if (spq .eq. 0.d0) then
-         if ((slope_left*slope_right) .ge. 0.d0) then
+      if (spq == 0.d0) then
+         if ((slope_left*slope_right) >= 0.d0) then
             spline_case=2
          else
             spline_case=1
@@ -303,20 +297,20 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! THE SIGN OF AT LEAST ONE OF THE SLOPES slope_left,slope_right DOES NOT
 ! AGREE WITH THE SIGN OF THE SLOPE spq.
-      if ((prod1 .lt. 0.d0) .or. (prod2 .lt. 0.d0)) then
-         if ((prod1 .lt. 0.d0) .and. (prod2 .lt. 0.d0)) then
+      if ((prod1 < 0.d0) .or. (prod2 < 0.d0)) then
+         if ((prod1 < 0.d0) .and. (prod2 < 0.d0)) then
             spline_case=2
             return
          end if
-         if (prod1 .ge. 0.d0) then
-            if (mref1 .gt. ((1.d0+eps_tol)*mref)) then
+         if (prod1 >= 0.d0) then
+            if (mref1 > ((1.d0+eps_tol)*mref)) then
                spline_case=1
             else
                spline_case=2
             end if
             return
          end if
-         if (mref2 .gt. ((1.d0+eps_tol)*mref)) then
+         if (mref2 > ((1.d0+eps_tol)*mref)) then
             spline_case=1
          else
             spline_case=2
@@ -326,9 +320,9 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 
 ! IF THE RELATIVE DEVIATION OF slope_left OR slope_right FROM spq IS LESS THAN
 ! eps_tol, THEN CHOOSE CASE 2 OR CASE 3.
-      if (abs(spq-slope_left).gt.eps_tol*mref .and. abs(spq-slope_right).gt.eps_tol*mref) then
+      if (abs(spq-slope_left) > eps_tol*mref .and. abs(spq-slope_right) > eps_tol*mref) then
          prod=(mref-mref1)*(mref-mref2)
-         if (prod .lt. 0.d0) then
+         if (prod < 0.d0) then
 
 ! L1, THE LINE THROUGH (x_left,y_left) WITH SLOPE slope_left, AND L2, THE LINE
 ! THROUGH (x_right,y_right) WITH SLOPE slope_right, INTERSECT AT A POINT WHOSE
@@ -343,16 +337,16 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! CHOOSE CASE 4 IF THE OTHER SLOPE IS GREATER THAN (2.-eps_tol)*mref
 ! (NEITHER L1 NOR L2 CROSSES THE MIDLINE: TWO KNOTS); OTHERWISE CASE 3
 ! (EITHER L1 OR L2 CROSSES THE MIDLINE, BUT NOT BOTH).
-      if (mref1 .gt. (2.d0*mref)) then
-         if (mref2 .gt. (2.d0-eps_tol)*mref) then
+      if (mref1 > (2.d0*mref)) then
+         if (mref2 > (2.d0-eps_tol)*mref) then
             spline_case=4
          else
             spline_case=3
          end if
          return
       end if
-      if (mref2 .gt. (2.d0*mref)) then
-         if (mref1 .gt. (2.d0-eps_tol)*mref) then
+      if (mref2 > (2.d0*mref)) then
+         if (mref1 > (2.d0-eps_tol)*mref) then
             spline_case=4
          else
             spline_case=3
@@ -370,8 +364,6 @@ subroutine choose(x_left, y_left, slope_left, slope_right, x_right, &
 ! (Restructured 2026 from the original goto decision tree; two
 ! unreachable branches at old labels 60/110 were dropped.)
       spline_case=2
-      return
-
 end subroutine choose
 
 !----------------------------------------------------------------------
@@ -382,7 +374,7 @@ end subroutine choose
 ! Binary search for eval_point in table_x(1:num_table_points), which
 ! it lies within: table_idx is the last point below it, found_flag 1
 ! if it equals a point.
-subroutine search(table_x, num_table_points, eval_point, table_idx, &
+pure subroutine search(table_x, num_table_points, eval_point, table_idx, &
      found_flag)
       integer, intent(in) :: num_table_points
       real(dp), intent(in) :: table_x(num_table_points), eval_point
@@ -395,12 +387,12 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
 !
 ! (Restructured 2026 from the original goto binary search at labels
 ! 10-60; comparisons are unchanged.)
-      if (table_x(1) .eq. eval_point) then
+      if (table_x(1) == eval_point) then
          table_idx=1
          found_flag=1
          return
       end if
-      if (table_x(num_table_points) .eq. eval_point) then
+      if (table_x(num_table_points) == eval_point) then
          table_idx=num_table_points
          found_flag=1
          return
@@ -410,7 +402,7 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
 !
 ! IF (LAST-FIRST) .EQ. 1, S IS NOT IN XTAB.  SET POSITION EQUAL TO
 ! FIRST.
-      if ((last_idx-first_idx) .eq. 1) then
+      if ((last_idx-first_idx) == 1) then
          table_idx=first_idx
          return
       end if
@@ -419,9 +411,9 @@ subroutine search(table_x, num_table_points, eval_point, table_idx, &
 !
 ! CHECK IF S .EQ. XTAB(MIDDLE). IF NOT, CONTINUE THE SEARCH IN THE
 ! APPROPRIATE HALF OF THE VECTOR XTAB.
-      if (table_x(middle_idx) .lt. eval_point) then
+      if (table_x(middle_idx) < eval_point) then
          first_idx=middle_idx
-      else if (table_x(middle_idx) .eq. eval_point) then
+      else if (table_x(middle_idx) == eval_point) then
          table_idx=middle_idx
          found_flag =1
          return
@@ -439,7 +431,7 @@ end subroutine search
 ! The spline's value at eval_point in (x_left, x_right) from cases'
 ! parameters; one knot (z) for cases 1-3, two (y, z) for case 4. MHP
 ! 6/87: linear interpolation where a knot coincides with an end.
-function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
+pure function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
      y1, y2, e2, w2, v2, spline_case)
       real(dp) :: spline
       real(dp), intent(in) :: eval_point, z1, z2, x_left, y_left, &
@@ -449,23 +441,23 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
 
 ! (Restructured 2026 from the original arithmetic-IF goto fans at
 ! labels 10-100; arithmetic is unchanged.)
-      if (spline_case .ne. 4) then
+      if (spline_case /= 4) then
 !
 ! CASES 1,2, OR 3.
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE KNOT.
-      if (z1 .lt. eval_point) then
-         if(x_right.ne.z1)then
+      if (z1 < eval_point) then
+         if(x_right /= z1)then
          spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
                  +y_right*(eval_point-z1)**2)/(x_right-z1)**2
          else
           linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
           spline = y_left + linear_interp_frac*(y_right - y_left)
          end if
-      else if (z1 .eq. eval_point) then
+      else if (z1 == eval_point) then
          spline=z2
       else
-         if(z1.ne.x_left)then
+         if(z1 /= x_left)then
          spline=(y_left*(z1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(z1-eval_point)+ &
                  z2*(eval_point-x_left)**2)/(z1-x_left)**2
          else
@@ -479,21 +471,21 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
 ! CASE 4.
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE FIRST KNOT.
-      if (y1 .lt. eval_point) then
+      if (y1 < eval_point) then
 !
 ! DETERMINE THE LOCATION OF XVALS RELATIVE TO THE SECOND KNOT.
-         if (z1 .lt. eval_point) then
-            if(x_right.ne.z1)then
+         if (z1 < eval_point) then
+            if(x_right /= z1)then
             spline=(z2*(x_right-eval_point)**2+w2*2.d0*(eval_point-z1)*(x_right-eval_point) &
                     +y_right*(eval_point-z1)**2)/(x_right-z1)**2
             else
              linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
              spline = y_left + linear_interp_frac*(y_right - y_left)
             end if
-         else if (z1 .eq. eval_point) then
+         else if (z1 == eval_point) then
             spline=z2
          else
-            if(z1.ne.y1)then
+            if(z1 /= y1)then
             spline=(y2*(z1-eval_point)**2+e2*2.d0*(eval_point-y1)*(z1-eval_point)+z2*(eval_point &
                     -y1)**2)/(z1-y1)**2
             else
@@ -501,10 +493,10 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
              spline = y_left + linear_interp_frac*(y_right - y_left)
             end if
          end if
-      else if (y1 .eq. eval_point) then
+      else if (y1 == eval_point) then
          spline=y2
       else
-         if(y1.ne.x_left)then
+         if(y1 /= x_left)then
          spline=(y_left*(y1-eval_point)**2+v2*2.d0*(eval_point-x_left)*(y1-eval_point)+ &
                  y2*(eval_point-x_left)**2)/(y1-x_left)**2
          else
@@ -512,7 +504,6 @@ function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
           spline = y_left + linear_interp_frac*(y_right - y_left)
          end if
       end if
-      return
 end function spline
 
 !----------------------------------------------------------------------
@@ -525,7 +516,7 @@ end function spline
 ! 1 some points lie outside the table (the end quadratics are
 ! extrapolated); 2 eval_x decreases somewhere (nothing evaluated).
 ! llp 8/19/08: the tail uses num_table_points - 1, never 0.
-subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
+pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
      num_table_points, num_eval_points, eps_tol, err_code)
       integer, intent(in) :: num_table_points, num_eval_points
       real(dp), intent(in) :: eval_x(num_eval_points), &
@@ -543,12 +534,12 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       start_idx = 1
       end_idx = num_eval_points
       err_code = 0
-      if (num_eval_points .ne. 1) then
+      if (num_eval_points /= 1) then
 
 ! Determine if eval_x is nondecreasing.
       loop_bound = num_eval_points - 1
       do i = 1, loop_bound
-        if (eval_x(i+1) .ge. eval_x(i)) cycle
+        if (eval_x(i+1) >= eval_x(i)) cycle
         err_code = 2
         return
       end do
@@ -561,7 +552,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! of the first data point.
       end if
       do i = 1, num_eval_points
-        if (eval_x(i) .ge. table_x(1)) exit
+        if (eval_x(i) >= table_x(1)) exit
         start_idx = i + 1
       end do
 
@@ -571,13 +562,13 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! abscissa of the last data point.
       do i = 1, num_eval_points
         ind = loop_bound - i
-        if (eval_x(ind) .le. table_x(num_table_points)) exit
+        if (eval_x(ind) <= table_x(num_table_points)) exit
         end_idx = ind - 1
       end do
 
 ! Calculate the images of points of evaluation whose abscissas are
 ! less than the abscissa of the first data point.
-      if (start_idx .ne. 1) then
+      if (start_idx /= 1) then
 ! Set the error parameter to indicate that extrapolation has occurred.
       err_code = 1
       call choose(table_x(1), table_y(1), table_slope(1), table_slope(2), &
@@ -592,7 +583,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
             table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
             spline_e2, spline_w2, spline_v2, spline_case)
       end do
-      if (num_eval_points .eq. 1) then
+      if (num_eval_points == 1) then
          return
       end if
       end if
@@ -601,7 +592,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! evaluation lies. The single-out-of-range-high case skips straight
 ! to the high-extrapolation tail.
       recompute_tail_params = .true.
-      if (num_eval_points .ne. 1 .or. end_idx .eq. num_eval_points) then
+      if (num_eval_points /= 1 .or. end_idx == num_eval_points) then
       call search(table_x, num_table_points, eval_x(start_idx), &
            table_idx, found_flag)
 
@@ -611,15 +602,15 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! data points, assign the appropriate value from table_y. Continue
 ! until a point of evaluation is found which is not equal to a data
 ! point.
-      if (found_flag .ne. 0) then
+      if (found_flag /= 0) then
       do
          eval_y(start_idx) = table_y(table_idx)
       start_idx1 = start_idx
       start_idx = start_idx + 1
-      if (start_idx .gt. num_eval_points) then
+      if (start_idx > num_eval_points) then
          return
       end if
-      if (eval_x(start_idx1) .ne. eval_x(start_idx)) exit
+      if (eval_x(start_idx1) /= eval_x(start_idx)) exit
       end do
 
 ! Advance the table pointers until the next point of evaluation lies
@@ -628,16 +619,16 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! (Restructured 2026 from the original arithmetic-IF web at labels
 ! 100/110/120; comparisons and order of assignment are unchanged.)
       do
-         if (eval_x(start_idx) .lt. table_x(table_idx1)) exit
-         if (eval_x(start_idx) .eq. table_x(table_idx1)) then
+         if (eval_x(start_idx) < table_x(table_idx1)) exit
+         if (eval_x(start_idx) == table_x(table_idx1)) then
             do
                eval_y(start_idx) = table_y(table_idx1)
                start_idx1 = start_idx
                start_idx = start_idx + 1
-               if (start_idx .gt. num_eval_points) then
+               if (start_idx > num_eval_points) then
                   return
                end if
-               if (eval_x(start_idx) .ne. eval_x(start_idx1)) exit
+               if (eval_x(start_idx) /= eval_x(start_idx1)) exit
             end do
          end if
          table_idx = table_idx1
@@ -647,7 +638,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! Calculate the images of all the points which lie within range of
 ! the data.
       end if
-      if (table_idx .ne. 1 .or. err_code .ne. 1) then
+      if (table_idx /= 1 .or. err_code /= 1) then
       call choose(table_x(table_idx), table_y(table_idx), &
            table_slope(table_idx), table_slope(table_idx1), &
            table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
@@ -665,13 +656,13 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! data point, its image is known; otherwise evaluate the spline.
 ! (Restructured 2026 from the original arithmetic-IF web at labels
 ! 150/160/170/180; comparisons and evaluation order are unchanged.)
-      if (eval_x(i) .gt. table_x(table_idx1)) then
+      if (eval_x(i) > table_x(table_idx1)) then
          do
             table_idx = table_idx1
             table_idx1 = table_idx + 1
-            if (eval_x(i) .le. table_x(table_idx1)) exit
+            if (eval_x(i) <= table_x(table_idx1)) exit
          end do
-         if (eval_x(i) .lt. table_x(table_idx1)) then
+         if (eval_x(i) < table_x(table_idx1)) then
 ! Call choose to determine the appropriate case and then call cases
 ! to compute the parameters of the spline.
             call choose(table_x(table_idx), table_y(table_idx), &
@@ -684,7 +675,7 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
                  spline_z2, spline_y1, spline_y2, spline_case)
          end if
       end if
-      if (eval_x(i) .eq. table_x(table_idx1)) then
+      if (eval_x(i) == table_x(table_idx1)) then
 ! If eval_x(i) is a data point, its image is known.
          eval_y(i) = table_y(table_idx1)
          cycle
@@ -697,10 +688,10 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 
 ! Calculate the images of the points of evaluation whose abscissas
 ! are greater than the abscissa of the last data point.
-      if (end_idx .eq. num_eval_points) then
+      if (end_idx == num_eval_points) then
          return
       end if
-      if ((table_idx1 .eq. num_table_points) .and. (eval_x(end_idx) .ne. table_x(num_table_points))) then
+      if ((table_idx1 == num_table_points) .and. (eval_x(end_idx) /= table_x(num_table_points))) then
          recompute_tail_params = .false.
       end if
       end if
@@ -732,8 +723,6 @@ subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
             spline_y1, spline_y2, spline_e2, spline_w2, spline_v2, &
             spline_case)
       end do
-
-      return
 end subroutine meval
 
 end module quadratic_spline

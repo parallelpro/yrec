@@ -42,10 +42,10 @@
 !
 ! Composition-transport analogue of am_diffusion_coeffs.f90's angular-momentum-
 ! transport tridiagonal setup; called by diffuse_composition.f90, which passes the
-! output matrix straight on to ctridi.f90.
+! output matrix straight on to numerics' solve_tridiagonal.
 !
 ! sub_diag/diag/super_diag/rhs were originally shared with diffuse_composition.f90/
-! ctridi.f90 via common/tridi/ (positional storage); converted (2026,
+! ctridi.f90 (now solve_tridiagonal) via common/tridi/ (positional storage); converted (2026,
 ! docs/GUIDELINES.md) to explicit output arguments since this is real
 ! per-call data flow, not global configuration.
 subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, eq_composition, &

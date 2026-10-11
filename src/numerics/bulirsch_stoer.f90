@@ -104,7 +104,7 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
        x_est = (h/substep_sequence(i))**2
        call ratext(tableau, i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
        do j = 1,num_eqs
-          step_err(j) = dabs(y_err(j)/y_scale(j))
+          step_err(j) = abs(y_err(j)/y_scale(j))
        end do
 ! The largest scaled error among the components that are not NaN, and
 ! NaN only when every component is (then no stage is accepted and the
@@ -118,12 +118,12 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
           if (step_err(j) > err_max .or. ieee_is_nan(err_max)) err_max = step_err(j)
        end do
        err_max = err_max/tolerance
-       if(err_max.lt.one) then
+       if(err_max < one) then
           indep_var = indep_var + h
           h_did = h
-          if(i.eq.extrap_order) then
+          if(i == extrap_order) then
              h_next = h*shrink_factor
-          else if (i.eq.extrap_order-1) then
+          else if (i == extrap_order-1) then
              h_next = h*grow_factor
           else
              h_next = h*dfloat(substep_sequence(extrap_order-1))/ &
@@ -134,7 +134,7 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
       end do
       h = 0.25d0*h/pow(2.0d0, int((max_stage_index-extrap_order)/2))
 !      H = 0.25D0*H/2**((IMAX-NUSE)/2)
-      if(underflow_reference+h.eq.underflow_reference) then
+      if(underflow_reference+h == underflow_reference) then
          write(*,*) 'ERROR IN BSSTEP'
        ierr = 1
        return
@@ -164,7 +164,7 @@ subroutine mmid(system, y, dydx, n_var, x_start, h_total, n_step, y_out, ierr)
       integer :: i, step_index
 
       ierr = 0
-      h_sub = h_total/dfloat(n_step)
+      h_sub = h_total/real(n_step, dp)
 ! first step
       do i = 1,n_var
        y_mid(i) = y(i)
@@ -190,7 +190,6 @@ subroutine mmid(system, y, dydx, n_var, x_start, h_total, n_step, y_out, ierr)
       do i = 1,n_var
        y_out(i) = 0.5d0*(y_mid(i) + y_new(i) + h_sub*y_out(i))
       end do
-      return
 end subroutine mmid
 
 !----------------------------------------------------------------------
@@ -202,7 +201,7 @@ end subroutine mmid
 ! max_use stages, and returns the extrapolated y_extrap and its error
 ! y_err. Stage 1 starts a new tableau; the caller keeps tab between the
 ! stages of one step.
-subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, &
+pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, &
      max_use)
       type(rational_tableau), intent(inout) :: tab
       integer, intent(in) :: est_index, num_vars, max_use
@@ -215,7 +214,7 @@ subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, &
 
 ! SAVE CURRENT INDEPENDENT VARIABLE.
       tab%x_hist(est_index) = x_est
-      if (est_index.eq.1) then
+      if (est_index == 1) then
          do var_idx = 1, num_vars
             y_extrap(var_idx) = y_est(var_idx)
             tab%tableau(var_idx,1) = y_est(var_idx)
@@ -237,7 +236,7 @@ subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, &
                b1 = fx(k2)*v
                b = b1 - c
 !              CARE NEEDED TO AVOID DIVISION BY ZERO.
-               if (b.ne.0d0) then
+               if (b /= 0d0) then
                   b = (c - v)/b
                   ddy = c*b
                   c = b1*b
@@ -252,7 +251,6 @@ subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, &
             y_extrap(var_idx) = yy
          end do
       end if
-      return
 end subroutine ratext
 
 end module bulirsch_stoer

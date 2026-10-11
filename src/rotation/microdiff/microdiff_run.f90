@@ -17,7 +17,7 @@
 ! element in turn), calling microdiff_coefficients.f90 for the diffusion
 ! coefficients, lax_wendroff_step1.f90/lax_wendroff_step2.f90 for the
 ! explicit first-derivative term, and implicit_diffusion_coeffs.f90 +
-! tridiag_gs for the implicit second-derivative term.
+! solve_tridiagonal for the implicit second-derivative term.
 ! 2026 de-tramp (ROADMAP item 3): 27 arguments -> 13; the two
 ! equally-spaced grids are microdiff_grid records (eq, eq_mid).
 module microdiff_run

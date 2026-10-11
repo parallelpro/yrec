@@ -24,7 +24,7 @@ contains
 ! The 3-point Lagrange weights at x_eval for the nodes x_nodes, and
 ! their derivatives in x_eval: f(x_eval) = sum(weight*f(x_nodes)). For
 ! density in the Livermore opacity tables.
-subroutine inter3(x_nodes, weight, dweight, x_eval)
+pure subroutine inter3(x_nodes, weight, dweight, x_eval)
       real(dp), intent(in) :: x_nodes(3)
       real(dp), intent(out) :: weight(3), dweight(3)
       real(dp), intent(in) :: x_eval
@@ -48,8 +48,6 @@ subroutine inter3(x_nodes, weight, dweight, x_eval)
       dweight(1) = (dx2 + dx3)/denom1
       dweight(2) = (dx1 + dx3)/denom2
       dweight(3) = (dx1 + dx2)/denom3
-
-      return
 end subroutine inter3
 
 !----------------------------------------------------------------------
@@ -57,7 +55,7 @@ end subroutine inter3
 !----------------------------------------------------------------------
 ! The 4-point Lagrange weights at x_eval and their derivatives in
 ! x_eval, as inter3. For the VandenBerg opacity tables (CAPPA).
-subroutine interp(x_nodes, weight, dweight, x_eval)
+pure subroutine interp(x_nodes, weight, dweight, x_eval)
       real(dp), intent(in) :: x_nodes(4)
       real(dp), intent(out) :: weight(4), dweight(4)
       real(dp), intent(in) :: x_eval
@@ -88,15 +86,13 @@ subroutine interp(x_nodes, weight, dweight, x_eval)
       dweight(2) = (dx3*dx4 + dx1*dx4 + dx1*dx3)/denom2
       dweight(3) = (dx2*dx4 + dx1*dx4 + dx1*dx2)/denom3
       dweight(4) = (dx2*dx3 + dx1*dx3 + dx1*dx2)/denom4
-
-      return
 end subroutine interp
 
 !----------------------------------------------------------------------
 ! intrp2
 !----------------------------------------------------------------------
 ! interp without the derivatives.
-subroutine intrp2(x_nodes, weight, x_eval)
+pure subroutine intrp2(x_nodes, weight, x_eval)
       real(dp), intent(in) :: x_nodes(4)
       real(dp), intent(out) :: weight(4)
       real(dp), intent(in) :: x_eval
@@ -123,7 +119,6 @@ subroutine intrp2(x_nodes, weight, x_eval)
       weight(2) = (dx1*dx3*dx4)/denom2
       weight(3) = (dx1*dx2*dx4)/denom3
       weight(4) = (dx1*dx2*dx3)/denom4
-      return
 end subroutine intrp2
 
 !----------------------------------------------------------------------
@@ -143,7 +138,7 @@ end function lagrange4
 !----------------------------------------------------------------------
 ! Quadratic interpolation at equidistant points: y(x) from y0 = y(x0),
 ! y1 = y(x0+h), y2 = y(x0+2h).
-subroutine quint(x, x0, h, y0, y1, y2, y)
+pure subroutine quint(x, x0, h, y0, y1, y2, y)
       real(dp), intent(in) :: x, x0, h, y0, y1, y2
       real(dp), intent(out) :: y
 
@@ -153,7 +148,6 @@ subroutine quint(x, x0, h, y0, y1, y2, y)
       d2 = y2 - 2.d0*y1 + y0
       t = (x - x0)/h
       y = y0 + t*d1 + 0.5d0*t*(t-1.d0)*d2
-      return
 end subroutine quint
 
 !----------------------------------------------------------------------
@@ -175,10 +169,10 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
 
       ierr = 0
       ns = 1
-      dif = dabs(x-xa(1))
+      dif = abs(x-xa(1))
       do i = 1, n
-       dift = dabs(x-xa(i))
-       if (dift.lt.dif) then
+       dift = abs(x-xa(i))
+       if (dift < dif) then
           ns = i
           dif = dift
        end if
@@ -193,7 +187,7 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
           hp = xa(i+j)-x
           w = c(i+1) - d(i)
           den = ho - hp
-          if (dabs(den).lt.1.0d-20) then
+          if (abs(den) < 1.0d-20) then
              write(*,*) 'polint: repeated abscissa (den ~ 0)'
              ierr = 1
              return
@@ -202,7 +196,7 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
           d(i) = hp*den
           c(i) = ho*den
        end do
-       if (2*ns.lt.n-j) then
+       if (2*ns < n-j) then
           dy = c(ns+1)
        else
           dy = d(ns)
@@ -210,7 +204,6 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
        end if
        y = y + dy
       end do
-      return
 end subroutine polint
 
 !----------------------------------------------------------------------
@@ -226,7 +219,7 @@ end subroutine polint
 ! unset. (Formerly lir_impl behind lir, and once in net_lib; a SAVEd
 ! search index served a resume-the-search option no caller used, and
 ! went in 2026-10.)
-subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
+pure subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
      num_points,interp_flag)
       real(dp), intent(in) :: target_z
       real(dp), intent(in) :: table_z(*)
@@ -248,10 +241,10 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       linear_mode=0
       stride=1
 ! CHECK NT AND RESET IL IF NECESSARY
-      if (num_points.lt.2) then
+      if (num_points < 2) then
          return
       end if
-      if(num_points.lt.4) linear_mode=1
+      if(num_points < 4) linear_mode=1
 ! ADDRESSING CONSTANTS
       interp_flag=1
       stride_m1=stride-1
@@ -263,41 +256,41 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       search_idx=1
 ! DETERMINE POSITION OF target_z WITHIN table_z
       do
-         if(search_idx.gt.table_end) then
+         if(search_idx > table_end) then
             interp_flag=0
             exit
          end if
-         if (diff .eq. 0.0) then
+         if (diff == 0.0) then
             return
          end if
-         if (diff .lt. 0.0) then
-            if (table_z(search_idx) .lt. target_z) exit
+         if (diff < 0.0) then
+            if (table_z(search_idx) < target_z) exit
          else
-            if (table_z(search_idx) .gt. target_z) exit
+            if (table_z(search_idx) > target_z) exit
          end if
-         if (table_z(search_idx) .eq. target_z) then
+         if (table_z(search_idx) == target_z) then
 ! SET Y WHEN Z LIES ON A MESH POINT
             base_idx=(search_idx-1)*y_stride
             do y_idx=1,num_y_strided
                result_y(y_idx)=table_y(y_idx+base_idx)
-               if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
+               if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
             end do
             return
          end if
          search_idx=search_idx+stride
       end do
 ! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
-      if(search_idx.le.1) interp_flag=0
-      if (linear_mode.ne.1) then
+      if(search_idx <= 1) interp_flag=0
+      if (linear_mode /= 1) then
 ! CUBIC INTERPOLATION/EXTRAPOLATION
 ! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
       pivot=search_idx
       closest=3
-      if (search_idx.le.1+stride) then
+      if (search_idx <= 1+stride) then
       pivot=1+stride+stride
       closest=search_idx
       end if
-      if (search_idx.ge.table_end) then
+      if (search_idx >= table_end) then
       pivot=table_end-stride
       closest=4
       end if
@@ -331,13 +324,13 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
             yy=yy+weight(j)*diff
          end do
          result_y(y_idx)=yy
-         if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
+         if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
       end do
       return
 ! LINEAR INTERPOLATION/EXTRAPOLATION
       end if
-      if(search_idx.eq.1) search_idx=1+stride
-      if(search_idx.gt.table_end) search_idx=table_end
+      if(search_idx == 1) search_idx=1+stride
+      if(search_idx > table_end) search_idx=table_end
       z1=table_z(search_idx)
       y1=(z1-target_z)/(z1-table_z(search_idx-stride))
       y2=1.0d0-y1
@@ -345,9 +338,8 @@ subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
       pivot=base_idx-y_strided
       do y_idx=1,num_y_strided,stride
          result_y(y_idx)=y1*table_y(y_idx+pivot)+y2*table_y(y_idx+base_idx)
-         if(result_y(y_idx).eq.0.d0) result_y(y_idx+stride_m1)=0.d0
+         if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
       end do
-      return
 end subroutine lir
 
 !----------------------------------------------------------------------
@@ -357,7 +349,7 @@ end subroutine lir
 ! grid_x(index) <= x_eval < grid_x(index+1), searching outward from the
 ! incoming index (reset to 1 when outside [1, n_grid]). Below the grid
 ! it returns -1, at or above its last point -n_grid.
-subroutine findex(grid_x, n_grid, x_eval, index)
+pure subroutine findex(grid_x, n_grid, x_eval, index)
       integer, intent(in) :: n_grid
       real(dp), intent(in) :: grid_x(n_grid)
       real(dp), intent(in) :: x_eval
@@ -366,11 +358,11 @@ subroutine findex(grid_x, n_grid, x_eval, index)
       integer :: found_index, j
 
 ! find the 'index'
-      if(index.lt.1.or.index.gt.n_grid)index=1
+      if(index < 1.or.index > n_grid)index=1
       found_index=index
-      if(x_eval.lt.grid_x(found_index))then
+      if(x_eval < grid_x(found_index))then
          do j=found_index-1,1,-1
-            if(grid_x(j).le.x_eval)then
+            if(grid_x(j) <= x_eval)then
                found_index=j
                index=found_index
                
@@ -380,7 +372,7 @@ subroutine findex(grid_x, n_grid, x_eval, index)
          found_index=-1
       else
          do j=found_index,n_grid-1
-            if(grid_x(j+1).gt.x_eval)then
+            if(grid_x(j+1) > x_eval)then
                found_index=j
                index=found_index
                
@@ -390,8 +382,6 @@ subroutine findex(grid_x, n_grid, x_eval, index)
          found_index = -n_grid
       endif
       index=found_index
-
-      return
 end subroutine findex
 
 !----------------------------------------------------------------------
@@ -400,7 +390,7 @@ end subroutine findex
 ! The j with x between xx(j) and xx(j+1), by bisection, for xx
 ! increasing or decreasing; j = 0 or n when outside, except within 1%
 ! of an end, which clamps to the end interval.
-subroutine locate(xx, n, x, j)
+pure subroutine locate(xx, n, x, j)
       integer, intent(in) :: n
       real(dp), intent(in) :: xx(n), x
       integer, intent(out) :: j
@@ -413,22 +403,21 @@ subroutine locate(xx, n, x, j)
 
       jl = 0
       ju = n+1
-   do while (ju-jl.gt.1)
+   do while (ju-jl > 1)
          jm = (ju+jl)/2
-         if ((xx(n).gt.xx(1)).eqv.(x.gt.xx(jm))) then
+         if ((xx(n) > xx(1)).eqv.(x > xx(jm))) then
             jl = jm
          else
             ju = jm
          end if
    end do
       j = jl
-      if ((j .eq. 0) .and. (x .gt. below_table_slack*xx(1))) then
+      if ((j == 0) .and. (x > below_table_slack*xx(1))) then
          j = 1
       end if
-      if ((j .eq. n) .and. (x .lt. above_table_slack*xx(n))) then
+      if ((j == n) .and. (x < above_table_slack*xx(n))) then
          j = n-1
       end if
-      return
 end subroutine locate
 
 end module table_interpolation

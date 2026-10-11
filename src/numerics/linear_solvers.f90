@@ -43,9 +43,9 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
       do i = 1, n
           aamax = 0.d0
           do j = 1, n
-              if (abs(a(i,j)).gt.aamax) aamax = abs(a(i,j))
+              if (abs(a(i,j)) > aamax) aamax = abs(a(i,j))
           end do
-          if (aamax.eq.0d0) then
+          if (aamax == 0d0) then
              write(*,*) 'ludcmp: singular matrix'
              ierr = 1
              return
@@ -53,10 +53,10 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           vv(i) = 1.d0/aamax
       end do
       do j = 1, n
-          if (j.gt.1) then
+          if (j > 1) then
               do i = 1, j - 1
                   sum = a(i,j)
-                  if (i.gt.1) then
+                  if (i > 1) then
                       do k = 1, i - 1
                           sum = sum - a(i,k)*a(k,j)
                       end do
@@ -69,7 +69,7 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           aamax = 0.d0
           do i = j, n
               sum = a(i,j)
-              if (j.gt.1) then
+              if (j > 1) then
                   do k = 1, j - 1
                       sum = sum - a(i,k)*a(k,j)
                   end do
@@ -77,13 +77,13 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
               end if
 
               dum = vv(i)*abs(sum)
-              if (dum.ge.aamax) then
+              if (dum >= aamax) then
                   imax = i
                   aamax = dum
               end if
 
           end do
-          if (j.ne.imax) then
+          if (j /= imax) then
               do k = 1, n
                   dum = a(imax,k)
                   a(imax,k) = a(j,k)
@@ -94,8 +94,8 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           end if
 
           indx(j) = imax
-          if (j.ne.n) then
-              if (a(j,j).eq.0d0) a(j,j) = tiny
+          if (j /= n) then
+              if (a(j,j) == 0d0) a(j,j) = tiny
               dum = 1.d0/a(j,j)
               do i = j + 1, n
                   a(i,j) = a(i,j)*dum
@@ -103,9 +103,7 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           end if
 
       end do
-      if (a(n,n).eq.0d0) a(n,n) = tiny
-      return
-
+      if (a(n,n) == 0d0) a(n,n) = tiny
 end subroutine ludcmp
 
 !----------------------------------------------------------------------
@@ -113,7 +111,7 @@ end subroutine ludcmp
 !----------------------------------------------------------------------
 ! Numerical Recipes' lubksb: solves a x = b with ludcmp's LU form of a
 ! and its indx; b is overwritten with x.
-subroutine lubksb(a, n, np, indx, b)
+pure subroutine lubksb(a, n, np, indx, b)
       integer, intent(in) :: n, np
       real(dp), intent(in) :: a(np,np)
       integer, intent(in) :: indx(n)
@@ -126,12 +124,12 @@ subroutine lubksb(a, n, np, indx, b)
           ll = indx(i)
           sum = b(ll)
           b(ll) = b(i)
-          if (ii.ne.0) then
+          if (ii /= 0) then
               do j = ii, i - 1
                   sum = sum - a(i,j)*b(j)
               end do
 
-          else if (sum.ne.0d0) then
+          else if (sum /= 0d0) then
               ii = i
           end if
 
@@ -139,7 +137,7 @@ subroutine lubksb(a, n, np, indx, b)
       end do
       do i = n, 1, -1
           sum = b(i)
-          if (i.lt.n) then
+          if (i < n) then
               do j = i + 1, n
                   sum = sum - a(i,j)*b(j)
               end do
@@ -147,8 +145,6 @@ subroutine lubksb(a, n, np, indx, b)
 
           b(i) = sum/a(i,i)
       end do
-      return
-
 end subroutine lubksb
 
 !----------------------------------------------------------------------
@@ -180,11 +176,11 @@ pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       it=jj-j
       do i=j,num_unknowns
       ij=it+i
-      if(dabs(biga).ge.dabs(system_matrix(ij))) cycle
+      if(abs(biga) >= abs(system_matrix(ij))) cycle
       biga=system_matrix(ij)
       imax=i
       end do
-      if (dabs(biga).eq.0.0d0) then
+      if (abs(biga) == 0.0d0) then
       ierr = 1
       return
       end if
@@ -198,7 +194,7 @@ pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       system_matrix(ib)=swap_val
       system_matrix(ia)=system_matrix(ia)/biga
       end do
-      if(j.eq.num_unknowns) exit
+      if(j == num_unknowns) exit
       ia=num_unknowns*(j-1)
       do ix=jy,num_unknowns
       ib=ia+ix
@@ -222,7 +218,7 @@ pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       ig=ib
       ih=ic
       do
-      if(n1.le.num_unknowns) exit
+      if(n1 <= num_unknowns) exit
       ig=ig-num_unknowns
       ih=ih-num_unknowns
       system_matrix(ig)=system_matrix(ig)-system_matrix(ia)*system_matrix(ih)
@@ -232,7 +228,6 @@ pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       ic=ic-1
       end do
       end do
-      return
 end subroutine simeqc
 
 !----------------------------------------------------------------------
@@ -258,7 +253,7 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       do j = 2, npt
          gama(j) = c(j-1)/bet
          bet = b(j) - a(j)*gama(j)
-         if (bet.eq.0) then
+         if (bet == 0) then
             write(*,*) 'solve_tridiagonal: singular matrix'
             ierr = 1
             return
@@ -268,7 +263,6 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       do j = npt-1, 1, -1
          ex(j) = ex(j) - gama(j+1)*ex(j+1)
       end do
-      return
 end subroutine solve_tridiagonal
 
 end module linear_solvers
