@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! profile_output
 !----------------------------------------------------------------------
-! The MESA-layout profile files (split out of yrec_output, 2026):
+! The MESA-layout profile files:
 ! the column name table and the writer for <outdir>/profile<N>.data
 ! (zone 1 = the surface); columns selectable via the
 ! profile_columns_file control (default selection from

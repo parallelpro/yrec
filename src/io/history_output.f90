@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! history_output
 !----------------------------------------------------------------------
-! The MESA-layout history file (split out of yrec_output, 2026):
+! The MESA-layout history file:
 ! the column name/value tables -- the part that grows with every new
 ! column -- and the row writer. One row per converged model; columns
 ! selectable via the history_columns_file control (default selection

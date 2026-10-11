@@ -2,7 +2,7 @@
 ! output_columns
 !----------------------------------------------------------------------
 ! Column-selection machinery shared by the history and profile
-! writers (split out of yrec_output, 2026). Format-blind: callers
+! writers. Format-blind: callers
 ! hand parse_columns their own name table and default selection.
 !
 ! A columns file has one column name per line, '!' comments, blank

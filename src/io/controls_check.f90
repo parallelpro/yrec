@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------
 ! controls_check
 !----------------------------------------------------------------------
-! New (2026, audit section 8): a startup sanity pass over the adopted
-! controls, warning about combinations that are silently inert or
+! A startup sanity pass over the adopted controls, warning about
+! combinations that are silently inert or
 ! self-cancelling -- the class of mistake that shipped a template
 ! with overshoot_alpha_envelope = 0.5 and envelope_overshoot_active
 ! unset for years. Every rule below is verified against the actual

@@ -1,16 +1,13 @@
 !----------------------------------------------------------------------
 ! run_log
 !----------------------------------------------------------------------
-! Added 2026 (run-log redesign): the compact MESA-style progress
-! line and the verbosity gate for the solver forensics.
-!
-! The default run log is small: a run header, warnings/events, and
-! one progress line per terminal_interval models (the final model of
-! a card always prints). Everything the old .short printed per model
-! beyond that either lives in history.data (the physical summary --
-! deleted outright) or is solver forensics (Henyey iteration trace,
+! The compact MESA-style progress line and the gate for the solver
+! diagnostics. The run log holds a run header, warnings and events,
+! and one progress line every terminal_interval models (the final
+! model of a card always prints); the physical summary is in the
+! history file, and the solver diagnostics (Henyey iteration trace,
 ! envelope/atmosphere integration statistics, triangle/rezoning
-! bookkeeping) now gated behind report_solver_diagnostics.
+! bookkeeping) print only with report_solver_diagnostics.
 module run_log
       implicit none
       private
