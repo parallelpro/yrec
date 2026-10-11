@@ -12,7 +12,10 @@
 ! atm_table%castelli_surface_p).
 module kurucz_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use atm_tables
+      use atm_tables, only: atm_table, atm_table_ng, atm_table_nt, &
+           surface_p_table
+      use io_units, only: run_log_unit, terminal_unit
+      use numerics_lib, only: inter3, kspline, ksplint
       implicit none
       private
       public :: read_surface_pressure_table, interpolate_surface_pressure
@@ -38,8 +41,6 @@ contains
 ! tbl%num_teff) and line continuation.
 subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
-      use io_units
-      use numerics_lib
       integer :: jerr_gate
 ! tbl%num_teff AND atm_table_ng FOR TABULATED SURFACE PRESSURES.
 
@@ -69,7 +70,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
 
       ierr = 0
 
-      if (log10_teff.lt.table_logteff_min .or. log10_gravity.lt.table_logg_min) then
+      if (log10_teff < table_logteff_min .or. log10_gravity < table_logg_min) then
          write(terminal_unit,911) log10_teff, log10_gravity
          write(run_log_unit,911) log10_teff, log10_gravity
   911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
@@ -81,7 +82,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       endif
 ! TEMPERATURE INTERPOLATION FACTORS.
       do row = 1,tbl%num_teff
-         if (log10_teff.le.tbl%teff(row)) exit
+         if (log10_teff <= tbl%teff(row)) exit
       end do
       if (row > tbl%num_teff) then
       row = tbl%num_teff
@@ -96,8 +97,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          node = row-row_base+1
 ! CHECK IF 4 LOG VALUES AVAILABLE - OTHERWISE, USE 3 POINT LAGRANGIAN
 ! OR LINEAR INTERPOLATION.
-         if (tbl%teff(row).gt.logteff_three_point) then
-            if (tbl%teff(row).gt.logteff_two_point) then
+         if (tbl%teff(row) > logteff_three_point) then
+            if (tbl%teff(row) > logteff_two_point) then
 ! LINEAR INTERPOLATION
                fx = (log10_gravity-tbl%logg(atm_table_ng-1))/ &
                     (tbl%logg(atm_table_ng)-tbl%logg(atm_table_ng-1))
@@ -119,7 +120,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             endif
             cycle
          endif
-         if (log10_gravity.ge.tbl%logg(atm_table_ng-1)) then
+         if (log10_gravity >= tbl%logg(atm_table_ng-1)) then
 ! DESIRED LOG G ABOVE SECOND TO TOP TABLE LOG G - USE TOP 4 LOG G VALUES.
             do kk = 1,4
                gravity_nodes(kk) = tbl%logg(atm_table_ng-4+kk)
@@ -143,8 +144,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the
 ! code from using -999 to interpolate in some instances.
          do k = tbl%gmax_index(row)-3,tbl%gmin_index(row),-1
-            if (log10_gravity.lt.tbl%logg(k+2) .and. &
-                 log10_gravity.ge.tbl%logg(k+1)) then
+            if (log10_gravity < tbl%logg(k+2) .and. &
+                 log10_gravity >= tbl%logg(k+1)) then
                kk = max(tbl%gmin_index(row),k)
                kk = min(atm_table_ng-3,kk)
                do kkk = 1,4
@@ -164,7 +165,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                exit
             endif
          end do
-         if (k .lt. tbl%gmin_index(row)) then
+         if (k < tbl%gmin_index(row)) then
 ! DESIRED LOG G BELOW 2ND TABLE ENTRY -USE FIRST 4 POINTS.
          do k = 1,4
             gravity_nodes(k) = tbl%logg(k+tbl%gmin_index(row)-1)
@@ -199,7 +200,6 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
         write(run_log_unit,71) log10_teff, atm_table%atm_log10_pressure
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
-      return
 end subroutine interpolate_surface_pressure
 
 
@@ -218,7 +218,7 @@ subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
       integer, intent(out) :: ierr
       integer :: table_unit, teff_idx, logg_idx
       logical :: found_valid_pressure
-      double precision :: kurucz_table_z
+      real(dp) :: kurucz_table_z
 
       ierr = 0
       call allocate_surface_p(tbl, num_teff)
@@ -262,7 +262,7 @@ contains
 ! replaces (an all -999 row leaves gmax_index untouched, so it must
 ! read 0 as before). Later calls (a re-read of the same table) reuse
 ! the storage as the static arrays did.
-subroutine allocate_surface_p(tbl, num_teff)
+pure subroutine allocate_surface_p(tbl, num_teff)
       type(surface_p_table), intent(inout) :: tbl
       integer, intent(in) :: num_teff
       if (allocated(tbl%teff)) return
@@ -286,7 +286,7 @@ subroutine find_gravity_edges(tbl)
          do teff_idx = 1,tbl%num_teff
             found_valid_pressure = .false.
             do logg_idx = atm_table_ng,1,-1
-               if(tbl%log10_pressure(teff_idx,logg_idx).le.0.0d0)then
+               if(tbl%log10_pressure(teff_idx,logg_idx) <= 0.0d0)then
 !                 check if the first non-999 value has been reached.
 !                 if so, set IMIN.
                   if(found_valid_pressure)then
@@ -301,7 +301,7 @@ subroutine find_gravity_edges(tbl)
                   found_valid_pressure = .true.
                endif
             end do
-            if (logg_idx .lt. 1) tbl%gmin_index(teff_idx) = 1
+            if (logg_idx < 1) tbl%gmin_index(teff_idx) = 1
 !           if all of the P values at a given T are -999, set IMIN
 !           to the number of gravity terms. in responce, the code
 !           should break when trying to find surface P.

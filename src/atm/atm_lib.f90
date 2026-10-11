@@ -12,12 +12,13 @@
 ! the table interpolators are in atm/tables/ (surfp, kcsurfp,
 ! interpolate_allard_surface) and the T-tau relations in t_tau_relations.f90.
 module atm_lib
-      use atm_tables, only: atm_settings_t, set_atm_settings, atm_table, &
-           atm_table_nt, atm_table_ntc
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use kurucz_atmosphere, only: read_surface_pressure_table, interpolate_surface_pressure
       use allard_atmosphere, only: read_allard_tables, interpolate_allard_surface
       use t_tau_relations, only: ttau_log10_temperature, &
            ttau_start_log10_temperature, ttau_photosphere_x_limit, hsra_t_tau_offset
+      use atm_tables, only: atm_settings_t, atm_table, atm_table_nt, &
+           atm_table_ntc, set_atm_settings
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
@@ -96,8 +97,8 @@ end subroutine atm_init
 subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
      log10_temperature, lookup_failed, ierr)
       integer, intent(in) :: atm_choice
-      double precision, intent(in) :: log_teff, log_g
-      double precision, intent(inout) :: log10_pressure, log10_temperature
+      real(dp), intent(in) :: log_teff, log_g
+      real(dp), intent(inout) :: log10_pressure, log10_temperature
       logical, intent(out) :: lookup_failed
       integer, intent(out) :: ierr
 
@@ -122,8 +123,8 @@ end subroutine atm_get_surface_pt
 !----------------------------------------------------------------------
 ! The highest log Teff of the Allard tables read (the star layer
 ! switches to a gray atmosphere above it).
-function atm_allard_teff_max() result(log_teff_max)
-      double precision :: log_teff_max
+pure function atm_allard_teff_max() result(log_teff_max)
+      real(dp) :: log_teff_max
       log_teff_max = atm_table%allard_al_teffl_max
 end function atm_allard_teff_max
 

@@ -30,8 +30,9 @@
 ! Krishna-Swamy, which is NOT rewritten as the relation at tau = 0
 ! (1.39d0-0.815d0-0.025d0 need not equal 0.550d0 bitwise).
 module t_tau_relations
-      use math_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cc23
+      use math_lib
       implicit none
       private
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
@@ -41,11 +42,11 @@ contains
 
 ! ---------------------------------------------------------------
 ! log10 T at optical depth tau for the chosen relation.
-function ttau_log10_temperature(tau, log10_teff, atm_choice, atm_hras) &
+pure function ttau_log10_temperature(tau, log10_teff, atm_choice, atm_hras) &
      result(log10_t)
-      double precision, intent(in) :: tau, log10_teff, atm_hras
+      real(dp), intent(in) :: tau, log10_teff, atm_hras
       integer, intent(in) :: atm_choice
-      double precision :: log10_t
+      real(dp) :: log10_t
 
       if (atm_choice == 0) then
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + cc23)
@@ -60,11 +61,11 @@ end function ttau_log10_temperature
 ! ---------------------------------------------------------------
 ! Starting log10 T for the atmosphere integration (tau near zero;
 ! the HSRA fit is evaluated at tau = 2/3, its historical anchor).
-function ttau_start_log10_temperature(log10_teff, atm_choice, atm_hras) &
+pure function ttau_start_log10_temperature(log10_teff, atm_choice, atm_hras) &
      result(log10_t)
-      double precision, intent(in) :: log10_teff, atm_hras
+      real(dp), intent(in) :: log10_teff, atm_hras
       integer, intent(in) :: atm_choice
-      double precision :: log10_t
+      real(dp) :: log10_t
 
       if (atm_choice == 0) then
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(cc23)
@@ -79,9 +80,9 @@ end function ttau_start_log10_temperature
 ! End of the atmosphere integration in x = log10 tau (+ opacity
 ! terms): tau = 2/3 at Teff for Eddington/HSRA, 0.312 for
 ! Krishna-Swamy.
-function ttau_photosphere_x_limit(atm_choice) result(x_limit)
+pure function ttau_photosphere_x_limit(atm_choice) result(x_limit)
       integer, intent(in) :: atm_choice
-      double precision :: x_limit
+      real(dp) :: x_limit
 
       if (atm_choice == 1) then
          x_limit = -0.505627854d0
@@ -94,19 +95,19 @@ end function ttau_photosphere_x_limit
 ! ---------------------------------------------------------------
 ! The HSRA anchor: the fit evaluated at tau = 2/3, stored by setups
 ! as the run's atm_hras offset.
-function hsra_t_tau_offset() result(offset)
-      double precision :: offset
+pure function hsra_t_tau_offset() result(offset)
+      real(dp) :: offset
       offset = harvard_t_tau(cc23)
 end function hsra_t_tau_offset
 
 ! ---------------------------------------------------------------
 ! Polynomial fit to the Harvard-Smithsonian reference atmosphere
 ! T-tau relation (formerly setup/harvard_t_tau.f90, verbatim).
-function harvard_t_tau(optical_depth) result(fit_value)
-      double precision, intent(in) :: optical_depth
-      double precision :: log10_tau, log10_tau2, log10_tau3, log10_tau4, &
+pure function harvard_t_tau(optical_depth) result(fit_value)
+      real(dp), intent(in) :: optical_depth
+      real(dp) :: log10_tau, log10_tau2, log10_tau3, log10_tau4, &
            log10_tau5, log10_tau6, log10_tau7, log10_tau8, log10_tau9
-      double precision :: fit_value
+      real(dp) :: fit_value
       log10_tau = log10(optical_depth)
       fit_value = 3.81152046471d0
       fit_value = fit_value + 0.146133736471d0*log10_tau

@@ -13,7 +13,11 @@
 ! The tables live in atm_tables (atm_table%allard_*).
 module allard_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use atm_tables
+      use atm_tables, only: atm_settings, atm_table, atm_table_nga, &
+           atm_table_nta
+      use io_units, only: run_log_unit
+      use numerics_lib, only: locate, polint
+      use math_lib
       implicit none
       private
       public :: interpolate_allard_surface, read_allard_tables
@@ -107,8 +111,6 @@ contains
 !       If LPRT  is .TRUE. print Log(P) at the associated Log(Teff) to ISHORT and IMODPT.
 subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_failed, ierr)
 
-      use io_units
-      use numerics_lib
 
       real(dp), intent(in) :: log_teff, log_g
       logical, intent(in) :: print_to_files
@@ -136,7 +138,7 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
 
       bad_point = .false.       ! presume we have started at a good point
 
-      if (log_teff .ge. atm_table%allard_teffl_max) then
+      if (log_teff >= atm_table%allard_teffl_max) then
          bad_point = .true.
          write(run_log_unit,*)
          write(run_log_unit,*)'ALSURFP: TEFFL greater than TeffLmax: '
@@ -149,7 +151,7 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
       endif
 
 
-      if ((log_g .ge. atm_table%allard_gl_max) .or. (log_g .le. atm_table%allard_gl_min)) then
+      if ((log_g >= atm_table%allard_gl_max) .or. (log_g <= atm_table%allard_gl_min)) then
          bad_point = .true.
          write(run_log_unit,*)
          write(*,*)
@@ -172,7 +174,7 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
 !    If TeffL is less than TeffLmin, the program has failed.  We write a diagnostic message and go
 !    to the error exit.
 
-      if (log_teff .le. atm_table%allard_teffl_min) then
+      if (log_teff <= atm_table%allard_teffl_min) then
          write(run_log_unit,*)
          write(run_log_unit,*)'ALSURFP: TEFFL less than TEFFLmin: '
          write(run_log_unit,*)'    TEFFLmin,TEFFL,TEFFLmax; ', &
@@ -204,8 +206,8 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
 !     First locate TEFFL
       call locate(atm_table%allard_teffl_grid,atm_table%allard_num_teff,log_teff,teffl_index) ! returns row 2 in Teffs for 4x4 Lagrange
       teffl_index = teffl_index-1  ! Change to row 1 of 4x4 square in TEFFLs
-      if (teffl_index .lt. 1) teffl_index = 1                ! Be sure it is safe to do 4-point Lagrange interpolation
-      if (teffl_index .gt. (atm_table%allard_num_teff - 3)) teffl_index = atm_table%allard_num_teff - 3
+      if (teffl_index < 1) teffl_index = 1                ! Be sure it is safe to do 4-point Lagrange interpolation
+      if (teffl_index > (atm_table%allard_num_teff - 3)) teffl_index = atm_table%allard_num_teff - 3
 
 !     Now find the right index for each row.
       do i = 1, 4      ! Start with iTEFFL and go up to iTEFFL=3
@@ -218,11 +220,11 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
          gl_index(i) = j1+j3-1      ! Save the offset
          gl_index(i) = gl_index(i)-1  ! Change from col 2 to column 1 in GLs direction of 4x4 square
 !        FIrst make sure it is safe to do 4-point Lagrange interpolaltion
-         if (gl_index(i) .lt. j1) gl_index(i) = j1
-         if (gl_index(i) .gt. (j2 - 3)) gl_index(i) = j2 - 3
+         if (gl_index(i) < j1) gl_index(i) = j1
+         if (gl_index(i) > (j2 - 3)) gl_index(i) = j2 - 3
 
 !        Next, make sue that GL is in range in the current row.  If not, set out of table flag
-         if ((log_g .lt. atm_table%allard_gl_row_min(i1)) .or. (log_g .gt. atm_table%allard_gl_row_max(i1))) then      ! and exit
+         if ((log_g < atm_table%allard_gl_row_min(i1)) .or. (log_g > atm_table%allard_gl_row_max(i1))) then      ! and exit
             write(run_log_unit,*)
             write(run_log_unit,*)'ALSURFP: GL out of extended range: '
             write(run_log_unit,*)'    GLmin,GL,GLmax; ', &
@@ -305,7 +307,6 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
              ', LOG(T) =',f10.5,', Log(P) =',f10.5)
       endif
 
-      return
 
 end subroutine interpolate_allard_surface
 
@@ -342,8 +343,6 @@ subroutine read_allard_tables(allard_table_path, ierr)
 ! The maximum nuber of Teff's in the current table is nTeff, and the
 ! associated max number of GL's is nGL.
 
-      use io_units
-      use math_lib
 
       character(len=256), intent(in) :: allard_table_path
       character(len=35) :: first_record
@@ -392,7 +391,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
       enddo
 !     the input file name is in FALLARD and its unit number is IOATMA
       open(newunit=allard_unit,file=allard_table_path,status='OLD',iostat=ios)
-      if (ios .ne. 0) then
+      if (ios /= 0) then
        write(*,*)
        write(*,*) 'ALFILEIN: Allard File OPEN Failure'
        write(*,*) '     File name: ', trim(allard_table_path)
@@ -405,7 +404,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
       read(allard_unit,901) first_record
   901  format(a)
       rewind(allard_unit)
-      if (first_record(4:7) .eq. '3.50') then
+      if (first_record(4:7) == '3.50') then
 
 !     Process old-stype nextgen input file.
        atm_table%allard_is_old_nextgen = .true.
@@ -441,7 +440,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
       close(allard_unit)
 !     Old Nextgen input file has been read an put into the proper arrays
 
-      else if (first_record(4:9) .eq. 'ALLARD') then
+      else if (first_record(4:9) == 'ALLARD') then
 
 !     Process new-style Allard Atmosphere file
        atm_table%allard_is_old_nextgen = .false.
@@ -450,7 +449,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
        write(run_log_unit,912) 'ALFilein: New Allard Atm: File Description: ',header_line(1:47)
   912  format(2a)
 !     Skip over rest of header, if any
-      if (nhdr .gt. 1) then
+      if (nhdr > 1) then
         do i = 2, nhdr
           read(allard_unit,*)
         enddo
@@ -467,7 +466,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
       do
       read(allard_unit,915,iostat=ios) teff_value,gl_value,feh_value,alpha_value
   915      format(f6.0,3f6.2)
-      if (ios .gt. 0) then
+      if (ios > 0) then
 !     File Read error exit
        write(*,*)
        write(*,*)'AtTabInit Pass 1 File Error '
@@ -476,12 +475,12 @@ subroutine read_allard_tables(allard_table_path, ierr)
        ierr = 1
        return
       end if
-      if (ios .lt. 0) exit
+      if (ios < 0) exit
       irecno=irecno+1
 
 !     If the record does not have the correct FeH and Alpha, we skip it
-      if ((dabs(feh_value-atm_settings%allard_target_feh).gt.1d-5) .or. &
-             (dabs(alpha_value-atm_settings%allard_target_alpha).gt.0d0)) then
+      if ((abs(feh_value-atm_settings%allard_target_feh) > 1d-5) .or. &
+             (abs(alpha_value-atm_settings%allard_target_alpha) > 0d0)) then
          cycle  ! On to next record. Stay in this part until we get an acceptable record
       endif
       if (.not. found_first) then
@@ -499,18 +498,18 @@ subroutine read_allard_tables(allard_table_path, ierr)
 
 !      Now check Teffs, increase counter if needed
        do i = 1,atm_table%allard_num_teff  ! Skip out if any old Teff is a match
-        if (dabs(teff_value-local_teffs(i)) .lt.1d-6) exit
+        if (abs(teff_value-local_teffs(i)) < 1d-6) exit
       enddo
-      if (i .gt. atm_table%allard_num_teff) then
+      if (i > atm_table%allard_num_teff) then
         atm_table%allard_num_teff = atm_table%allard_num_teff+1      ! count the nextTeff's
         local_teffs(atm_table%allard_num_teff) = teff_value  ! save the new Teff in array Teffs
       end if
 
 !     Now check GLs, increase counter if needed
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old GL is a match
-        if (dabs(gl_value-atm_table%allard_gl_grid(i)) .lt.1d-6) exit
+        if (abs(gl_value-atm_table%allard_gl_grid(i)) < 1d-6) exit
       enddo
-      if (i .gt. atm_table%allard_num_gl) then
+      if (i > atm_table%allard_num_gl) then
         atm_table%allard_num_gl = atm_table%allard_num_gl+1      ! count the next GL
         atm_table%allard_gl_grid(atm_table%allard_num_gl) = gl_value  ! save the new GL in array GLs
       end if
@@ -519,18 +518,18 @@ subroutine read_allard_tables(allard_table_path, ierr)
 !     (NOTE: these two scans are bounded by allard_num_gl in the
 !     original; preserved as-is.)
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old FeH is a match
-        if (dabs(feh_value-atm_table%allard_feh_grid(i)) .lt.1d-6) exit
+        if (abs(feh_value-atm_table%allard_feh_grid(i)) < 1d-6) exit
       enddo
-      if (i .gt. atm_table%allard_num_gl) then
+      if (i > atm_table%allard_num_gl) then
         atm_table%allard_num_feh = atm_table%allard_num_feh+1      ! count the next FeH
         atm_table%allard_feh_grid(atm_table%allard_num_feh) = feh_value  ! save the new FeH in array FeHs
       end if
 
 !     Now check ALPHAs, increase counter if needed
       do i = 1,atm_table%allard_num_gl  ! Skip out if any old ALPHA is a match
-        if (dabs(alpha_value-atm_table%allard_alpha_grid(i)) .lt.1d-6) exit
+        if (abs(alpha_value-atm_table%allard_alpha_grid(i)) < 1d-6) exit
       enddo
-      if (i .gt. atm_table%allard_num_gl) then
+      if (i > atm_table%allard_num_gl) then
         atm_table%allard_num_alpha = atm_table%allard_num_alpha+1      ! count the next ALPHA
         atm_table%allard_alpha_grid(atm_table%allard_num_alpha) = alpha_value  ! save the new ALPHA in array ALPHAs
       end if
@@ -558,7 +557,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
       read(allard_unit,920,iostat=ios) teff_value,gl_value,feh_value,alpha_value, &
               pressure_value,pressure_tau100_value,temp_tau100_value
   920      format(f6.0,3f6.2,1p4d16.8)
-      if (ios .gt. 0) then
+      if (ios > 0) then
        write(*,*)
        write(*,*)'AtTabInit File Read error'
        write(*,*)
@@ -566,21 +565,21 @@ subroutine read_allard_tables(allard_table_path, ierr)
        ierr = 1
        return
       end if
-      if (ios .lt. 0) exit  ! We heve finished with the input file and entered all inputs
+      if (ios < 0) exit  ! We heve finished with the input file and entered all inputs
 
 !     If the record does not have the correct FeH and Alpha, we skip it
-      if ((dabs(feh_value-atm_settings%allard_target_feh).gt.1d-5) .or. &
-             (dabs(alpha_value-atm_settings%allard_target_alpha).gt.0d0)) then
+      if ((abs(feh_value-atm_settings%allard_target_feh) > 1d-5) .or. &
+             (abs(alpha_value-atm_settings%allard_target_alpha) > 0d0)) then
          cycle  ! On to next record
       endif
 
       do i = 1,atm_table%allard_num_teff  ! Skip out when we find the matching Teff
-        if (dabs(teff_value-local_teffs(i)) .lt.1d-6) then
+        if (abs(teff_value-local_teffs(i)) < 1d-6) then
            i1 = i
            exit
         endif
       enddo
-      if (i .gt. atm_table%allard_num_teff) then
+      if (i > atm_table%allard_num_teff) then
       write(*,*) 'ALFilein: Impossible failure #1'
       write(*,*) 'Teff of ', teff_value, ' not in Teff table.'
       call fail_9999
@@ -589,12 +588,12 @@ subroutine read_allard_tables(allard_table_path, ierr)
       end if
 
       do j = 1,atm_table%allard_num_gl  ! Skip out when we find the a matching GL
-        if (dabs(gl_value-atm_table%allard_gl_grid(j)) .lt.1d-6) then
+        if (abs(gl_value-atm_table%allard_gl_grid(j)) < 1d-6) then
            j1 = j
            exit
         endif
       enddo
-      if (j .gt. atm_table%allard_num_gl) then
+      if (j > atm_table%allard_num_gl) then
       write(*,*) 'ALFilein: Impossible failure #2'
       write(*,*) 'GL of ', gl_value, ' not in GL table.'
       call fail_9999
@@ -604,8 +603,8 @@ subroutine read_allard_tables(allard_table_path, ierr)
 
 !     we now verify that we have the correct FeH and Alpha
 
-      if (dabs(feh_value -atm_settings%allard_target_feh) .lt. 1d-6) then
-      if (dabs(alpha_value -atm_settings%allard_target_alpha) .lt. 1d-6) then
+      if (abs(feh_value -atm_settings%allard_target_feh) < 1d-6) then
+      if (abs(alpha_value -atm_settings%allard_target_alpha) < 1d-6) then
 
 
 !     We now have the correct indices for our tables, i1 for the Teff-direction
@@ -664,37 +663,36 @@ end subroutine read_allard_tables      ! END OF ALINITTAB
 
 ! Numerical Recipes Shell sort
 
-subroutine sort_shell(num_elements, values)
+pure subroutine sort_shell(num_elements, values)
 
       integer, intent(in) :: num_elements
-      real(dp), intent(inout) :: values(num_elements)
+      real(dp), intent(inout) :: values(:)
 ! Sorts an array A(1:nn) into ascending numerical order by Shell's method (diminishing
 ! incremental sort) nn is input. A is replaced on output by its sorted arrangement
       integer :: n, inc, i, j
       real(dp) :: v
 
-      if (num_elements .eq. 1) return                  ! Exit if only one element
+      if (num_elements == 1) return                  ! Exit if only one element
       n=num_elements
       inc=1
       do
          inc=3*inc+1                         ! Determin starting increment
-      if (inc .gt. n) exit
+      if (inc > n) exit
       end do
       do
          inc=inc/3                        ! Loop over the partial sorts
          do i=inc+1,n
             v=values(i)                        ! Outer loop of straight insertion
             j=i
-    do while (values(j-inc) .gt. v)
+    do while (values(j-inc) > v)
                values(j)=values(j-inc)
                j=j-inc
-               if (j .le. inc) exit
+               if (j <= inc) exit
     end do
             values(j)=v
          enddo
-      if (inc .le. 1) exit
+      if (inc <= 1) exit
       end do
-      return
 end subroutine sort_shell
 
 ! ************* End of sort_shell *************************
@@ -725,8 +723,6 @@ end subroutine sort_shell
 !    4 columns.
 subroutine find_allard_table_bounds(ierr)
 
-      use io_units
-      use math_lib
 
       integer, intent(out) :: ierr
       integer :: i, j, j1, j2
@@ -748,13 +744,13 @@ subroutine find_allard_table_bounds(ierr)
 !        largest element (iGLmax). There is one pair of these for each TEFFL.
       do i = 1, atm_table%allard_num_teff
          do j = 1, atm_table%allard_num_gl
-            if (atm_table%allard_log10_pressure(i,j) .gt. -998d0) then
+            if (atm_table%allard_log10_pressure(i,j) > -998d0) then
                atm_table%allard_gl_index_min(i) = j
                exit
             endif
          enddo
          do j = atm_table%allard_num_gl, 1, -1
-            if (atm_table%allard_log10_pressure(i,j) .gt. -998d0) then
+            if (atm_table%allard_log10_pressure(i,j) > -998d0) then
                atm_table%allard_gl_index_max(i) = j
                exit
             endif
@@ -772,9 +768,9 @@ subroutine find_allard_table_bounds(ierr)
          j1 = atm_table%allard_gl_index_min(i)
          j2 = atm_table%allard_gl_index_max(i)
          atm_table%allard_gl_row_min(i) = atm_table%allard_gl_grid(j1) - 4d0*(atm_table%allard_gl_grid(j1+1) - atm_table%allard_gl_grid(j1))
-         if (atm_table%allard_gl_row_min(i) .lt. atm_table%allard_gl_min) atm_table%allard_gl_min = atm_table%allard_gl_row_min(i)
+         if (atm_table%allard_gl_row_min(i) < atm_table%allard_gl_min) atm_table%allard_gl_min = atm_table%allard_gl_row_min(i)
          atm_table%allard_gl_row_max(i) = atm_table%allard_gl_grid(j2) + (atm_table%allard_gl_grid(j2) - atm_table%allard_gl_grid(j2-1))
-         if (atm_table%allard_gl_row_max(i) .gt. atm_table%allard_gl_max) atm_table%allard_gl_max = atm_table%allard_gl_row_max(i)
+         if (atm_table%allard_gl_row_max(i) > atm_table%allard_gl_max) atm_table%allard_gl_max = atm_table%allard_gl_row_max(i)
       enddo
 
 !     4. Validate the table. (a) Ensure that there are no invalid elements inside the table, i.e.,
@@ -785,7 +781,7 @@ subroutine find_allard_table_bounds(ierr)
          j1 = atm_table%allard_gl_index_min(i)
          j2 = atm_table%allard_gl_index_max(i)
          do j = j1, j2
-            if (atm_table%allard_log10_pressure(i,j) .lt. -998d0) then
+            if (atm_table%allard_log10_pressure(i,j) < -998d0) then
               table_is_bad = .true.
               write(run_log_unit,900) 'ALTABINIT: Bad input Allard Table: ', &
                  'TEFF, GL: ', pow(10d0, atm_table%allard_teffl_grid(i)), atm_table%allard_gl_grid(j)
@@ -795,7 +791,7 @@ subroutine find_allard_table_bounds(ierr)
       enddo
 
 !        (b) Ensure that every row has at least 4 valid entries and that there are at least 4 columns.
-      if (atm_table%allard_num_teff .lt. 4) then
+      if (atm_table%allard_num_teff < 4) then
          table_is_bad = .true.
          write(run_log_unit,910) 'ALTABINIT: Bad input Allard Table: ', &
             'Less than 4 rows: nTeff = ',atm_table%allard_num_teff
@@ -804,7 +800,7 @@ subroutine find_allard_table_bounds(ierr)
       do i = 1, atm_table%allard_num_teff
          j1 = atm_table%allard_gl_index_min(i)
          j2 = atm_table%allard_gl_index_max(i)
-         if ((j2 - j1 + 1) .lt. 4) then
+         if ((j2 - j1 + 1) < 4) then
             table_is_bad = .true.
             write(run_log_unit,920) 'ALTABINIT: Bad input Allard Table: ', &
               'Row with less that 4 elements: i,#,Teff,GLMin,GLmax: ', &
@@ -828,7 +824,6 @@ subroutine find_allard_table_bounds(ierr)
        ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the atm_lib
        ! facades stop when their caller passes no ierr.
        ierr = 1
-       return
 
 end subroutine find_allard_table_bounds
 
@@ -840,8 +835,6 @@ end subroutine find_allard_table_bounds
 ! run log (run_log_unit).
 subroutine print_allard_tables
 
-      use io_units
-      use math_lib
       integer :: i, j
 
       atm_table%allard_teffl_min = atm_table%allard_teffl_grid(1) - &
