@@ -253,9 +253,11 @@ module opal_eos_tables
 ! instances so that those (48 MB apiece) stay initializer-free and
 ! zero-filled at load rather than becoming initialized data.
       type, public :: opal_eos_state
-! former common/lreadco/: shared by COMMON block name across all three
-! years' readers/interpolators in the original.
-           integer :: table_loaded_flag
+! whether each vintage's table is loaded, indexed by iv_opal95/01/06
+! (2026-10: one flag shared by all three, from the original common
+! /lreadco/, so loading one vintage kept the next from reading its own
+! table in the same process)
+           integer :: table_loaded_flag(n_opal_vintages) = 0
 ! save-migration campaign (2026): lazy-load guards and first-load
 ! table-Z memory, promoted from SAVEd locals; indexed by iv_opal95/01/06.
             integer :: readco_init_flag(n_opal_vintages) = 0

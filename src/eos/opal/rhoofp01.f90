@@ -66,7 +66,7 @@ double precision function rhoofp01(v, hydrogen_fraction, t6_temperature, &
       radiation_pressure = 0.0d0
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (opal_eos%table_loaded_flag.ne.opal_flag_set) then
+      if (opal_eos%table_loaded_flag(iv_opal01).ne.opal_flag_set) then
          hydrogen_fraction_dbg = 0.5d0
          t6_dbg = 1.0d0
          density_dbg = 0.001d0

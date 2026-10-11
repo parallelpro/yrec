@@ -85,8 +85,8 @@ subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
       t6_value = t6_temperature
       density_value = density
 !
-      if (opal_eos%table_loaded_flag.ne.opal_flag_set) then
-         opal_eos%table_loaded_flag = opal_flag_set
+      if (opal_eos%table_loaded_flag(iv_opal01).ne.opal_flag_set) then
+         opal_eos%table_loaded_flag(iv_opal01) = opal_flag_set
          do index_idx = 1, 10
             do species_idx = 1, 10
                if (opal_eos_var_order(index_idx).eq.species_idx) &
