@@ -158,7 +158,7 @@ module reaction_rates
          logical :: calc_neutrinos = .false., use_itoh_neutrino_loss = .false.
       end type net_settings_t
       type(net_settings_t), public, protected :: net_settings
-      public :: set_net_settings
+      public :: set_net_settings, screening_mass_fractions
 
 contains
 
@@ -746,6 +746,31 @@ end function weak_intermediate_screening
 end subroutine compute_reaction_rates
 
 !----------------------------------------------------------------------
+! screening_mass_fractions: the isotope mass fractions (iso_* slots) that
+! compute_reaction_rates screens with, from a zone's composition in the
+! star%xa layout. The isotopes YREC does not track (n, H3, Ne20, Mg24)
+! are zero; deuterium is included (2026-10: the composition path used to
+! leave it out).
+function screening_mass_fractions(xa) result(mass_frac)
+      use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
+           i_n14, i_o16, i_o18
+      double precision, intent(in) :: xa(:)
+      double precision :: mass_frac(num_isotopes)
+
+      mass_frac = 0.0d0
+      mass_frac(iso_h1) = xa(i_h1)
+      mass_frac(iso_h2) = xa(i_h2)
+      mass_frac(iso_he3) = xa(i_he3)
+      mass_frac(iso_he4) = xa(i_he4)
+      mass_frac(iso_c12) = xa(i_c12)
+      mass_frac(iso_c13) = xa(i_c13)
+      mass_frac(iso_n14) = xa(i_n14)
+      mass_frac(iso_o16) = xa(i_o16)
+      mass_frac(iso_o18) = xa(i_o18)
+end function screening_mass_fractions
+
+
+!----------------------------------------------------------------------
 ! compute_network_rates (formerly rates)
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -832,8 +857,6 @@ end subroutine compute_reaction_rates
 ! array. Rows r_ao16_unused and r_c12c12_unused are zero-filled placeholders
 ! (reactions 9 and 13 are never computed).
 subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec)
-      use star_info_lib, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
-           i_n14, i_o16, i_o18
       use physical_constants
       implicit none
 
@@ -845,19 +868,7 @@ subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec)
       type(nuclear_rates) :: nr
       integer :: i
 
-! the same screening composition as compute_zone_energy's, deuterium included
-! (2026-10; this path used to leave it out, a ~1e-5 effect while
-! deuterium survives)
-      mass_frac = 0.0d0
-      mass_frac(iso_h1) = xa(i_h1)
-      mass_frac(iso_h2) = xa(i_h2)
-      mass_frac(iso_he3) = xa(i_he3)
-      mass_frac(iso_he4) = xa(i_he4)
-      mass_frac(iso_c12) = xa(i_c12)
-      mass_frac(iso_c13) = xa(i_c13)
-      mass_frac(iso_n14) = xa(i_n14)
-      mass_frac(iso_o16) = xa(i_o16)
-      mass_frac(iso_o18) = xa(i_o18)
+      mass_frac = screening_mass_fractions(xa)
       call compute_reaction_rates(log_density, log_temperature, mass_frac, nr)
       do i=1,num_reactions
          if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0

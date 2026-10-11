@@ -37,7 +37,7 @@ It also holds the index families and data the network uses:
 
 | Routine | What it does |
 |---|---|
-| `nuclear_energy` | Energy generation of one zone, returned as a `nuclear_energy_result`. It contains ε (erg/g/s) and its **absolute** derivatives dε/dln ρ and dε/dln T for the Henyey Jacobian, plus the shares of the pp chain, Be7 branches, CNO and triple-α. It also holds the α-capture and thermal-neutrino terms, the He3 energy rates, and (when `ctrl%calc_neutrinos`) the solar neutrino fluxes and Be7 abundance. Internal steps: `fill_mass_fractions` → `compute_reaction_rates` → the deuterium term → `sum_energy_generation` → `store_chain_energies` → `compute_solar_neutrino_fluxes` → `add_thermal_neutrino_loss`. |
+| `nuclear_energy` | Energy generation of one zone, returned as a `nuclear_energy_result`. It contains ε (erg/g/s) and its **absolute** derivatives dε/dln ρ and dε/dln T for the Henyey Jacobian, plus the shares of the pp chain, Be7 branches, CNO and triple-α. It also holds the α-capture and thermal-neutrino terms, the He3 energy rates, and (when `ctrl%calc_neutrinos`) the solar neutrino fluxes and Be7 abundance. It takes the zone's composition as one array (the `star%xa` layout) and is a short sequence of steps with explicit arguments: `compute_reaction_rates` → `energy_path_rates` → `compute_deuterium_burning` → `compute_reaction_energies` (the table) → `sum_energy_generation` → `store_chain_energies` → `compute_solar_neutrino_fluxes` → `add_thermal_neutrino_loss`. |
 
 ### `net/network.f90` (module `network`)
 

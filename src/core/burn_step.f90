@@ -103,22 +103,16 @@ end function surface_accretion_now
 ! branchings that nothing read.)
 !   star reads: convective_turnover_timescale, jcz
 !   star writes: none
-subroutine compute_zone_energy(log_density, log_temperature, &
-     hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
-     c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
-     deuterium_fraction, shell_index, e)
+subroutine compute_zone_energy(log_density, log_temperature, xa, &
+     shell_index, e)
       use star_info_lib, only: star
       implicit none
-      double precision, intent(in) :: log_density, log_temperature, &
-           hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
-           c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
-           deuterium_fraction
+! xa: the shell's composition, star%xa layout
+      double precision, intent(in) :: log_density, log_temperature, xa(:)
       integer, intent(in) :: shell_index
       type(nuclear_energy_result), intent(out) :: e
 
-      call compute_nuclear_energy(log_density, log_temperature, hydrogen_fraction, &
-           helium_fraction, he3_fraction, c12_fraction, c13_fraction, &
-           n14_fraction, o16_fraction, o18_fraction, deuterium_fraction, &
+      call compute_nuclear_energy(log_density, log_temperature, xa, &
            shell_index.ge.star%jcz, star%convective_turnover_timescale, e)
 end subroutine compute_zone_energy
 

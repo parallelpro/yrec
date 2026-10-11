@@ -213,10 +213,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
 ! SET UP NUCLEAR ENERGY TERMS
             call compute_zone_energy(zone_log10_density, &
-                 zone_log_temperature, hydrogen_fraction, helium_fraction, &
-                 he3_fraction, c12_fraction, c13_fraction, n14_fraction, &
-                 o16_fraction, o18_fraction, deuterium_fraction, &
-                 shell_index, burn)
+                 zone_log_temperature, star%xa(:,im), shell_index, burn)
             zone_deps_dlnrho = burn%deps_dlnrho
             zone_deps_dlnt = burn%deps_dlnt
             energy_gen_rate = burn%total_energy_gen_rate

@@ -1,17 +1,20 @@
 !----------------------------------------------------------------------
 ! nuclear_energy
 !----------------------------------------------------------------------
-! The nuclear energy generation of one zone (2026-10: the physics of
-! the former engeb, moved here and made free of model-state side
-! effects; core/burn_step's compute_zone_energy is now the star-layer
-! adapter that stores the results).
-! nuclear_energy returns, in a nuclear_energy_result: eps and its
-! absolute derivatives d eps/dln rho, d eps/dln T for the Henyey
-! Jacobian; the chain shares (pp, Be7 electron/proton branches, CNO,
-! triple alpha); the alpha-capture energy, thermal neutrino losses and
-! He3 energy rates; and, when net_settings%calc_neutrinos, the solar neutrino
-! fluxes and the Be7 abundance. Everything it computes comes back in
-! the record. Its configuration is reaction_rates' net_settings.
+! The nuclear energy generation of one zone. compute_nuclear_energy
+! returns, in a nuclear_energy_result:
+!   - eps (erg/g/s) and its absolute derivatives d eps/d ln rho and
+!     d eps/d ln T, for the Henyey Jacobian;
+!   - the energy of each chain (pp I with d(p,g), the two Be7 branches,
+!     CNO, triple alpha) and of the alpha captures;
+!   - the thermal neutrino loss (included in eps) and the He3 energy
+!     diagnostics;
+!   - when net_settings%calc_neutrinos, the solar neutrino fluxes and the
+!     equilibrium Be7 abundance.
+! It reads no model state; its configuration is net_settings. The energy
+! of each network reaction comes from the reaction table (network's
+! compute_reaction_energies); deuterium burning, outside the table, is
+! added here. Sources and history: the end of this file.
 module nuclear_energy
       use reaction_rates
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
@@ -44,12 +47,371 @@ module nuclear_energy
 
       public :: compute_nuclear_energy
 
+! MeV to erg
+      double precision, parameter :: erg_per_mev = 1.602177d-6
+! deuterium is burned (and its energy counted) above this mass fraction
+      double precision, parameter :: min_deuterium = 1.0d-11
+! energy released by d(p,g)3He, MeV
+      double precision, parameter :: q_deuterium_mev = 5.494d0
+
 contains
 
 !----------------------------------------------------------------------
-! nuclear_energy -- history and sources (the header of engeb.f, kept
-! with the physics it describes)
+! compute_nuclear_energy: the energy generation of one zone.
+!   xa                  the zone's composition, star%xa layout (i_* slots)
+!   in_surface_cz       the zone lies in the surface convection zone: there
+!   turnover_timescale  deuterium burns no faster than the convective
+!                       overturn (when turnover_timescale > 1 s)
+subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
+     in_surface_cz, turnover_timescale, e)
+      double precision, intent(in) :: log_density, log_temperature, xa(:)
+      logical, intent(in) :: in_surface_cz
+      double precision, intent(in) :: turnover_timescale
+      type(nuclear_energy_result), intent(out) :: e
+
+      type(nuclear_rates) :: nr
+! the energy path's rates: reactions 1-7 below 1e-30 are dropped (with
+! their derivatives) before eps is summed (the composition path drops
+! rates at or below 1e-5 instead)
+      double precision :: rate(num_reactions), dlnrate_dlnrho(num_reactions), &
+           dlnrate_dlnt(num_reactions)
+! each slot's rate times its reactants' mass fractions, per gram per s
+      double precision :: reactions_per_gram(num_reactions)
+      double precision :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
+      double precision :: deuterium_energy, deuterium_dlneps_dlnt
+
+      if (log_temperature.le.net_settings%logT_cutoffs(1)) return
+      e%burning = .true.
+
+      call compute_reaction_rates(log_density, log_temperature, &
+           screening_mass_fractions(xa), nr)
+      call energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
+      call compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
+           deuterium_energy, deuterium_dlneps_dlnt)
+      reactions_per_gram = rates_times_reactants(rate, xa)
+      call compute_reaction_energies(rate, network_mass_fractions(xa), &
+           nr%frac_n15_pa, nr%frac_be7_ecap, energy_by_slot, energy_by_chain)
+      e%eps_he3_he3 = energy_by_slot(r_he3he3)
+      e%eps_he3_burning = energy_by_slot(r_he3he3)+energy_by_slot(r_he3he4)
+      call sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
+           deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
+      call store_chain_energies(energy_by_chain, deuterium_energy, e)
+      if (net_settings%calc_neutrinos) &
+           call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
+      if (log_temperature.gt.net_settings%logT_cutoffs(5)) &
+           call add_thermal_neutrino_loss(log_density, log_temperature, nr%t9, xa, e)
+end subroutine compute_nuclear_energy
+
 !----------------------------------------------------------------------
+! The energy path's copy of the rates: reactions 1-7 below 1e-30 are
+! set to zero together with their derivatives.
+subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
+      type(nuclear_rates), intent(in) :: nr
+      double precision, intent(out) :: rate(num_reactions), &
+           dlnrate_dlnrho(num_reactions), dlnrate_dlnt(num_reactions)
+      integer :: i
+
+      rate = nr%rate
+      dlnrate_dlnrho = nr%dlnrate_dlnrho
+      dlnrate_dlnt = nr%dlnrate_dlnt
+      do i = r_pp, r_po16
+         if (rate(i).lt.1.d-30) then
+            rate(i) = 0.d0
+            dlnrate_dlnrho(i) = 0.d0
+            dlnrate_dlnt(i) = 0.d0
+         end if
+      end do
+end subroutine energy_path_rates
+
+!----------------------------------------------------------------------
+! Deuterium burning, d(p,g)3He (MHP 5/02): its energy generation (erg/g/s)
+! and d ln eps / d ln T. Unscreened -- reasonable at the low temperatures
+! involved -- and, in the surface convection zone, no faster than the
+! convective overturn. Zero at or below min_deuterium.
+subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
+     energy, dlneps_dlnt)
+      use star_info_lib, only: i_h1, i_h2
+      use physical_constants, only: cc13
+      type(nuclear_rates), intent(in) :: nr
+      double precision, intent(in) :: xa(:), turnover_timescale
+      logical, intent(in) :: in_surface_cz
+      double precision, intent(out) :: energy, dlneps_dlnt
+      double precision :: rate, max_rate, zz, tfac, tfac_deriv
+
+      energy = 0.0d0
+      dlneps_dlnt = 0.0d0
+      if (xa(i_h2).le.min_deuterium) return
+! CF88's fit; zz and tfac are its exponent and polynomial, for the
+! T-derivative (2026 bugsweep Batch 2: T9**(-2/3), as in CF88)
+      zz = -3.72d0*nr%t9_m13
+      tfac = 1.0d0+0.112d0*nr%t9_p13+3.38d0*nr%t9_p23+2.65d0*nr%t9
+      rate = deuterium_proton_capture_rate(nr%density, nr%t9, nr%t9_p13, &
+           nr%t9_p23, nr%t9_m13, nr%t9_m23)
+      tfac_deriv = 0.112d0*nr%t9_p13+6.76d0*nr%t9_p23+7.95d0*nr%t9
+      dlneps_dlnt = cc13*((tfac_deriv/tfac) -2.0d0 - zz)
+      if (in_surface_cz .and. turnover_timescale.gt.1.0d0) then
+         max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
+         if (rate*xa(i_h1).gt.max_rate) then
+            if (xa(i_h1).gt.1.0d-6) rate = max_rate/xa(i_h1)
+         end if
+      end if
+      energy = rate*xa(i_h1)*xa(i_h2)*q_deuterium_mev*erg_per_mev
+end subroutine compute_deuterium_burning
+
+!----------------------------------------------------------------------
+! Each slot's rate times its reactants' mass fractions (reactions per
+! gram per second, the EG(I) of engeb); slots 9 and 13 stay zero.
+function rates_times_reactants(rate, xa) result(eg)
+      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16
+      double precision, intent(in) :: rate(num_reactions), xa(:)
+      double precision :: eg(num_reactions)
+
+      eg = 0.0d0
+      eg(r_pp) = rate(r_pp)*xa(i_h1)*xa(i_h1)
+      eg(r_he3he3) = rate(r_he3he3)*xa(i_he3)*xa(i_he3)
+      eg(r_he3he4) = rate(r_he3he4)*xa(i_he3)*xa(i_he4)
+      eg(r_pc12) = rate(r_pc12)*xa(i_h1)*xa(i_c12)
+      eg(r_pc13) = rate(r_pc13)*xa(i_h1)*xa(i_c13)
+      eg(r_pn14) = rate(r_pn14)*xa(i_h1)*xa(i_n14)
+      eg(r_po16) = rate(r_po16)*xa(i_h1)*xa(i_o16)
+      eg(r_ac13) = rate(r_ac13)*xa(i_he4)*xa(i_c13)
+      eg(r_ac12) = rate(r_ac12)*xa(i_he4)*xa(i_c12)
+      eg(r_an14) = rate(r_an14)*xa(i_he4)*xa(i_n14)
+      eg(r_3alpha) = rate(r_3alpha)*xa(i_he4)**3
+end function rates_times_reactants
+
+!----------------------------------------------------------------------
+! The network species' mass fractions (network's s_* order) from a
+! zone's composition in the star%xa layout.
+function network_mass_fractions(xa) result(x)
+      use star_info_lib, only: i_h1, i_he4, i_he3, i_c12, i_c13, i_n14, i_o16, i_o18
+      double precision, intent(in) :: xa(:)
+      double precision :: x(n_network)
+
+      x = 0.0d0
+      x(s_h1) = xa(i_h1)
+      x(s_he3) = xa(i_he3)
+      x(s_he4) = xa(i_he4)
+      x(s_c12) = xa(i_c12)
+      x(s_c13) = xa(i_c13)
+      x(s_n14) = xa(i_n14)
+      x(s_o16) = xa(i_o16)
+      x(s_o18) = xa(i_o18)
+end function network_mass_fractions
+
+!----------------------------------------------------------------------
+! eps and its absolute derivatives: the sum over reactions of eps_j and
+! eps_j * d ln rate_j / d ln (rho, T), plus deuterium burning (whose rate
+! depends on rho linearly). Below eps = 1e-12 the derivatives are zero,
+! and so are the reaction counts the neutrino fluxes use. These are
+! absolute derivatives, not d ln eps: the Henyey Jacobian and the
+! pulsation output (GYRE's eps*eps_T) both want this form.
+subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
+     deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
+      double precision, intent(in) :: energy_by_slot(num_reactions), &
+           deuterium_energy, deuterium_dlneps_dlnt
+      double precision, intent(inout) :: dlnrate_dlnrho(num_reactions), &
+           dlnrate_dlnt(num_reactions), reactions_per_gram(num_reactions)
+      type(nuclear_energy_result), intent(inout) :: e
+      double precision :: sum_rho, sum_t
+      integer :: i
+
+! reactions 9 (O16 + alpha) and 13 (C12 + C12) are never computed
+      dlnrate_dlnrho(r_ao16_unused) = 0.0d0
+      dlnrate_dlnt(r_ao16_unused) = 0.0d0
+      dlnrate_dlnrho(r_c12c12_unused) = 0.0d0
+      dlnrate_dlnt(r_c12c12_unused) = 0.0d0
+      e%total_energy_gen_rate = 0.0d0
+      sum_rho = 0.0d0
+      sum_t = 0.0d0
+      do i = 1, num_reactions
+         e%total_energy_gen_rate = e%total_energy_gen_rate+energy_by_slot(i)
+         sum_rho = sum_rho+energy_by_slot(i)*dlnrate_dlnrho(i)
+         sum_t = sum_t+energy_by_slot(i)*dlnrate_dlnt(i)
+      end do
+      e%total_energy_gen_rate = e%total_energy_gen_rate + deuterium_energy
+      sum_rho = sum_rho + deuterium_energy
+      sum_t = sum_t + deuterium_energy*deuterium_dlneps_dlnt
+      if (e%total_energy_gen_rate.le.1.d-12) then
+         e%deps_dlnrho = 0.d0
+         e%deps_dlnt = 0.d0
+         reactions_per_gram = 0.d0
+      else
+         e%deps_dlnrho = sum_rho
+         e%deps_dlnt = sum_t
+      end if
+end subroutine sum_energy_generation
+
+!----------------------------------------------------------------------
+! The energy of each chain (Neutrino Astrophysics, table 21): each table
+! row counts under its chain; pp I also gets the d(p,g) energy (deuterium
+! is burned outside the table). pp II and pp III are the Be7 electron-
+! and proton-capture branches, each with its share of the He3 + He4
+! release. (The original Yale routine carried two branching factors on
+! those two instead of one.) Triple alpha is negligible in the Sun.
+subroutine store_chain_energies(energy_by_chain, deuterium_energy, e)
+      double precision, intent(in) :: energy_by_chain(n_chains), deuterium_energy
+      type(nuclear_energy_result), intent(inout) :: e
+
+      e%pp_chain_energy_gen = energy_by_chain(chain_pp1) + deuterium_energy
+      e%he3he4_be7_electron_energy_gen = energy_by_chain(chain_pp2)
+      e%he3he4_be7_proton_energy_gen = energy_by_chain(chain_pp3)
+      e%cno_cycle_energy_gen = energy_by_chain(chain_cno)
+      e%triple_alpha_energy_gen = energy_by_chain(chain_triple_alpha)
+      e%eps_alpha_capture = energy_by_chain(chain_alpha_capture)
+end subroutine store_chain_energies
+
+!----------------------------------------------------------------------
+! The solar neutrino fluxes at the Earth from one gram of this zone, in
+! 10^10 per cm^2 per s per g (Neutrino Astrophysics, tables 3.1 and 3.3,
+! eqs. 6.1-6.8), assuming nothing happens to the neutrinos after they are
+! made; slots i_nu_he3he3/he3he4 hold the He3+He3 and He3+He4 reaction
+! counts in the same units (diagnostic "fictional" fluxes). Also the
+! equilibrium Be7 mass fraction (Be7 is always in equilibrium with the
+! slower He3 + He4 production; computed because some applications want
+! it). Off in hydrogen-exhausted zones (X <= 1e-6, MHP 9/91).
+subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
+      use star_info_lib, only: i_h1, i_he3, i_nu_b8, i_nu_be7, i_nu_f17, &
+           i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_nu_he3he3, i_nu_he3he4
+      type(nuclear_rates), intent(in) :: nr
+      double precision, intent(in) :: xa(:), reactions_per_gram(num_reactions)
+      type(nuclear_energy_result), intent(inout) :: e
+! 4 pi (1 AU)^2, cm^2
+      double precision, parameter :: four_pi_au2 = 2.812295d+27
+      double precision :: eg(num_reactions)
+      integer :: k
+
+      e%fluxes_set = .true.
+      if (xa(i_h1).le.1.0d-6) then
+         e%neutrino_flux = 0.0d0
+         return
+      end if
+      eg = reactions_per_gram
+      e%neutrino_flux(i_nu_pp) = eg(r_pp)/four_pi_au2
+! pep from pp (Neutrino Astrophysics eq. 3.17); xs_pep scales the pep/pp
+! ratio, so leave it at 1 unless that ratio is meant to change
+      e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*nr%t9_m12* &
+           (1.0d0 + 20.d0*nr%t9)*eg(r_pp)
+      e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(xs_pep)/four_pi_au2
+! hep (eq. 3.12), from the screened rate factor of compute_reaction_rates
+      e%neutrino_flux(i_nu_hep) = nr%hep
+      e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &
+           four_pi_au2
+      e%be7_set = .true.
+      e%be7_mass_fraction = eg(r_he3he4)/(nr%be7_proton + nr%be7_electron)
+      e%neutrino_flux(i_nu_be7) = eg(r_he3he4)*nr%frac_be7_ecap/four_pi_au2
+      e%neutrino_flux(i_nu_b8) = eg(r_he3he4)*nr%frac_be7_pcap/four_pi_au2
+      e%neutrino_flux(i_nu_n13) = eg(r_pc12)/four_pi_au2
+      e%neutrino_flux(i_nu_o15) = eg(r_pn14)/four_pi_au2
+      e%neutrino_flux(i_nu_f17) = eg(r_po16)/four_pi_au2
+      e%neutrino_flux(i_nu_he3he3) = eg(r_he3he3)/four_pi_au2
+      e%neutrino_flux(i_nu_he3he4) = eg(r_he3he4)/four_pi_au2
+! to 10^10 per cm^2 per s per g; non-positive values to zero (KC
+! 2025-05-30: was a 1e-50 floor, which underflowed)
+      do k = 1,10
+         e%neutrino_flux(k) = (1.0d-10)*e%neutrino_flux(k)
+         if (e%neutrino_flux(k).le.0.0d0) e%neutrino_flux(k) = 0.0d0
+      end do
+end subroutine compute_solar_neutrino_fluxes
+
+!----------------------------------------------------------------------
+! The thermal neutrino losses (MHP 5/91; for neutrino-cooled cores of
+! evolved stars), subtracted from eps with their absolute derivatives:
+! Itoh et al. (1996) when net_settings%use_itoh_neutrino_loss (Grant
+! Newsham 9/06), otherwise the Beaudet, Petrosian & Salpeter (1967) fits
+! for the pair, photo and plasma losses.
+subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
+      use star_info_lib, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
+      use physical_constants, only: cc13, ln10
+      use math_lib
+      double precision, intent(in) :: log_density, log_temperature, t9, xa(:)
+      type(nuclear_energy_result), intent(inout) :: e
+! Beaudet, Petrosian & Salpeter fit coefficients: pair, photo, plasma
+      double precision, parameter :: pair_fit(7) = [6.002d19, 2.084d20, &
+           1.872d21, 9.383d-1, -4.141d-1, 5.829d-2, 5.5924d0]
+      double precision, parameter :: photo_fit(7) = [4.886d10, 7.580d10, &
+           6.023d10, 6.290d-3, 7.483d-3, 3.061d-4, 1.5654d0]
+      double precision, parameter :: plasma_fit(7) = [2.320d-7, 8.449d-8, &
+           1.787d-8, 2.581d-2, 1.734d-2, 6.990d-4, 0.56457d0]
+      double precision :: temperature, density, snu, dsnu_dt, dsnu_drho
+      double precision :: el, eli, ez, ez3, emue, ex1, ex2, ex3, el2
+      double precision :: polx10, polx11, polx12, polx21, polx22, polx31, &
+           polx32, qedn, qetn, qetnx, qednx
+
+      temperature = exp10(log_temperature)
+      density = exp10(log_density)
+      if (net_settings%use_itoh_neutrino_loss) then
+! snu >= 0 and its ABSOLUTE derivatives d snu/dT, d snu/d rho, so the
+! loss contributes d(-snu)/d ln T = -T d snu/dT (2026 bugsweep Batch 2:
+! the original converted to log-derivatives, the wrong units here, and
+! built the T line from the updated rho line)
+         call compute_thermal_neutrino_losses(temperature, density, xa(i_h1), &
+              xa(i_he4), xa(i_c12)+xa(i_c13), xa(i_o16)+xa(i_o18), &
+              snu, dsnu_dt, dsnu_drho)
+         e%eps_neutrino_loss = -snu
+         e%total_energy_gen_rate = e%total_energy_gen_rate + e%eps_neutrino_loss
+         e%deps_dlnrho = e%deps_dlnrho - density*dsnu_drho
+         e%deps_dlnt = e%deps_dlnt - temperature*dsnu_dt
+         return
+      end if
+      el = t9/5.9302d0
+      eli = 1.0d0/el
+      ez = exp(cc13*ln10*(log_density-9.0d0))*eli*(0.7937d0+0.2063d0*xa(i_h1))
+      ez3 = ez**3
+      emue = 0.5d0*(1.0d0+xa(i_h1))
+      ex1 = 0.0d0
+      if (t9.ge.0.2d0) then
+! pair neutrinos
+         el2 = el*el
+         polx10=(1.d0+el2*(-13.04d0+el2*(133.5d0+el2*(1534.d0+el2*918.6d0))))
+         polx11 = pair_fit(1) + ez*(pair_fit(2) + ez*pair_fit(3))
+         polx12 = ez3 + eli*(pair_fit(4) + eli*(pair_fit(5) + eli*pair_fit(6)))
+         ex1 = exp(-ez*pair_fit(7)-eli-eli-ln10*log_density)*polx10*polx11/polx12
+      end if
+! photo neutrinos
+      polx21 = photo_fit(1) + ez*(photo_fit(2) + ez*photo_fit(3))
+      polx22 = ez3 + eli*(photo_fit(4) + eli*(photo_fit(5) + eli*photo_fit(6)))
+      ex2 = emue*el**5*exp(-ez*photo_fit(7))*polx21/polx22
+! plasma neutrinos
+      polx31 = plasma_fit(1) + ez*(plasma_fit(2) + ez*plasma_fit(3))
+      polx32 = ez3 + eli*(plasma_fit(4) + eli*(plasma_fit(5) + eli*plasma_fit(6)))
+      ex3 = emue**3*exp(-ez*plasma_fit(7)+ln10*(log_density+log_density))*polx31/polx32
+      e%eps_neutrino_loss = -(ex1 + ex2 + ex3)
+      e%total_energy_gen_rate = e%total_energy_gen_rate + e%eps_neutrino_loss
+! their d/d ln T (qetnx) and d/d ln rho (qednx)
+      qetnx = 0.0d0
+      qednx = 0.0d0
+      if (t9.ge.0.2d0) then
+         qedn= ez*(pair_fit(2)+2.d0*ez*pair_fit(3))/polx11 - ez*pair_fit(7) &
+               - 3.0d0*ez3/polx12
+         qetn= -qedn+ eli*(pair_fit(4)+eli*(2.d0*pair_fit(5)+3.d0*eli*pair_fit(6)))/polx12
+         qetnx= el2*(-26.08d0+el2*(534.d0+el2*(9204.d0+el2*7348.8d0)))/polx10
+         qetnx = (qetnx + qetn + eli+eli)*ex1
+         qednx = (-1.0d0 +cc13*qedn)*ex1
+      end if
+      qedn= ez*(photo_fit(2)+2.d0*ez*photo_fit(3))/polx21 - ez*photo_fit(7) - 3.d0*ez3/polx22
+      qetn= -qedn+ eli*(photo_fit(4)+eli*(2.d0*photo_fit(5)+3.d0*eli*photo_fit(6)))/polx22
+      qetnx = qetnx + (5.0d0 + qetn)*ex2
+      qednx = qednx +cc13*qedn*ex2
+      qedn= ez*(plasma_fit(2)+2.d0*ez*plasma_fit(3))/polx31 - ez*plasma_fit(7) - 3.d0*ez3/polx32
+      qetn=-qedn + eli*(plasma_fit(4)+eli*(2.d0*plasma_fit(5)+3.d0*eli*plasma_fit(6)))/polx32
+      qetnx = qetnx + qetn*ex3
+      qednx = qednx + (2.0d0 +cc13*qedn)*ex3
+      e%deps_dlnt = e%deps_dlnt - qetnx
+      e%deps_dlnrho = e%deps_dlnrho - qednx
+end subroutine add_thermal_neutrino_loss
+
+end module nuclear_energy
+
+!======================================================================
+! Sources and history (the header of engeb.f, kept with the physics it
+! describes). Legacy names: EPP1/EPP2/EPP3/ECN/E3AL -> the chain energies
+! (pp_chain_energy_gen, he3he4_be7_electron_energy_gen,
+! he3he4_be7_proton_energy_gen, cno_cycle_energy_gen,
+! triple_alpha_energy_gen); PEP/PET -> deps_dlnrho/deps_dlnt; SUM1 ->
+! total_energy_gen_rate; EG(I) -> rates_times_reactants; X, Y, XHE3, ...
+! -> the xa slots.
+!======================================================================
 ! 3/92 DBG Added new neutrino loss calculation routines
 ! NOVEMBER 6, 1990 (JNB)
 ! THE FOLLOWING SUBROUTINE CALCULATES THE NUCLEAR REACTION RATES WITH
@@ -178,528 +540,3 @@ contains
 !  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
 !  FOR OTHER ARRAYS IN THE PROGRAM.
 !  IU IS THE SHELL NUMBER.
-!
-! Legacy names (engeb.f) of the result components and arguments:
-!   EPP1 -> pp_chain_energy_gen        EPP2 -> he3he4_be7_electron_energy_gen
-!   EPP3 -> he3he4_be7_proton_energy_gen   ECN -> cno_cycle_energy_gen
-!   E3AL -> triple_alpha_energy_gen    PEP -> deps_dlnrho
-!   PET -> deps_dlnt                   SUM1 -> total_energy_gen_rate
-!   DL -> log_density                  TL -> log_temperature
-!   X -> hydrogen_fraction             Y -> helium_fraction
-!   XHE3 -> he3_fraction               XC12/XC13 -> c12_fraction/c13_fraction
-!   XN14 -> n14_fraction               XO16/XO18 -> o16_fraction/o18_fraction
-!   XH2 -> deuterium_fraction
-subroutine compute_nuclear_energy(log_density, &
-     log_temperature, hydrogen_fraction, helium_fraction, he3_fraction, &
-     c12_fraction, c13_fraction, n14_fraction, o16_fraction, &
-     o18_fraction, deuterium_fraction, in_surface_cz, turnover_timescale, e)
-
-      use star_info_lib, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, &
-           i_nu_he3he3, i_nu_he3he4
-      use physical_constants
-      use math_lib
-      implicit none
-
-      double precision, intent(in) :: log_density, log_temperature, &
-           hydrogen_fraction, helium_fraction, he3_fraction, c12_fraction, &
-           c13_fraction, n14_fraction, o16_fraction, o18_fraction, &
-           deuterium_fraction
-! the zone lies in the surface convection zone (deuterium burning is
-! capped at the overturn rate there when turnover_timescale > 1 s)
-      logical, intent(in) :: in_surface_cz
-      double precision, intent(in) :: turnover_timescale
-      type(nuclear_energy_result), intent(out) :: e
-
-! neutrino_dsnu_dt/neutrino_dsnu_drho are the absolute derivatives
-! d snu/dT, d snu/d rho returned by compute_thermal_neutrino_losses (the Itoh
-! 1996 path, selected by net_settings%use_itoh_neutrino_loss); they are set
-! and consumed only inside add_thermal_neutrino_loss below.
-      double precision :: neutrino_dsnu_dt, neutrino_dsnu_drho
-
-! nr: this zone's reaction rates, derivatives and branchings, from
-! reaction_rates' compute_reaction_rates (2026-10: the one copy of the rate
-! block that compute_zone_energy and rates each used to carry)
-      type(nuclear_rates) :: nr
-      double precision :: mass_fraction(num_isotopes), &
-           reaction_rate(num_reactions), dlnrate_dlnrho(num_reactions), &
-           dlnrate_dlnt(num_reactions), reaction_energy_gen(num_reactions), &
-           chain_energy(n_chains), network_x(n_network), &
-           eg(num_reactions)
-      double precision :: v1(7), v2(7), v3(7)
-      data v1,v2,v3/ &
-           6.002d19,2.084d20,1.872d21,9.383d-1,-4.141d-1,5.829d-2,5.5924d0, &
-           4.886d10,7.580d10,6.023d10,6.290d-3,7.483d-3,3.061d-4,1.5654d0, &
-           2.320d-7,8.449d-8,1.787d-8,2.581d-2,1.734d-2,6.990d-4,0.56457d0/
-      double precision :: dd, density, t9, t9_p13, t9_p23, t9_m13, t9_m23, t9_m12
-      double precision :: dgdeut, qrtdeut, rdeut, qdeut, zz, &
-           tfacdeut, tfacdeut2, rdeutmax, rdeut2
-      double precision :: frac_be7_ecap, frac_be7_pcap, frac_n15_pa, frac_n15_pg
-      double precision :: convert, egdeut
-      double precision :: sum2, sum3
-      double precision :: fourpiau2
-      double precision :: flux_value
-      double precision :: carbon_fraction_total, oxygen_fraction_total, &
-           neutrino_temp, neutrino_density, neutrino_loss_snu
-      double precision :: el, eli, ez, ez3, emue, ex1, ex2, ex3, el2
-      double precision :: polx10, polx11, polx12, polx21, polx22, polx31, &
-           polx32, qedn, qetn, qetnx, qednx
-      integer :: i, k
-
-      call fill_mass_fractions
-! SET RATES EQUAL TO ZERO FOR THE LOG_10(T) < TCUT(1)
-      if (log_temperature.le.net_settings%logT_cutoffs(1)) then
-! MHP 5/02 DEUTERIUM BURNING
-         dgdeut = 0.0d0
-         qrtdeut = 0.0d0
-         e%deps_dlnrho = 0.d0
-         e%deps_dlnt = 0.d0
-         do i = 1,num_reactions
-            eg(i) = 0.d0
-            reaction_rate(i) = 0.d0
-            reaction_energy_gen(i) = 0.d0
-         end do
-         return
-      end if
-      e%burning = .true.
-! the rates, their logarithmic derivatives and the branchings
-      call compute_reaction_rates(log_density, log_temperature, mass_fraction, nr)
-      density = nr%density
-      t9 = nr%t9
-      t9_p13 = nr%t9_p13
-      t9_p23 = nr%t9_p23
-      t9_m13 = nr%t9_m13
-      t9_m23 = nr%t9_m23
-      t9_m12 = nr%t9_m12
-! MHP 5/02 ADD DEUTERIUM BURNING TERM TO THE CODE
-! IF DEUTERIUM IS ABOVE A MINIMUM THRESHOLD VALUE.
-! RDEUT IS THE RATE (EXCLUDING FACTORS OF THE
-! ABUNDANCES) AND QRTDEUT IS THE DERIVATIVE W/R/T T.
-! NOTE THAT SCREENING IS EXCLUDED - REASONABLE GIVEN
-! THE LOW TEMPERATURES INVOLVED.
-      if (deuterium_fraction.le.1.0d-11) then
-         rdeut = 0.0d0
-         qrtdeut = 0.0d0
-      else
-! ENERGY YIELD FOR DEUTERIUM BURNING
-        qdeut = 5.494d0
-        zz = -3.72d0*t9_m13
-        tfacdeut = 1.0d0+0.112d0*t9_p13+3.38d0*t9_p23+2.65d0*t9
-! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit and
-! in qrtdeut below (which already differentiates the -2/3 form); was
-! T9**(+2/3) (engeb.f). 2026-10: the rate itself is deuterium_proton_capture_rate, shared
-! with deutrate; zz and tfacdeut stay for qrtdeut.
-        rdeut = deuterium_proton_capture_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
-        tfacdeut2 = 0.112d0*t9_p13+6.76d0*t9_p23+7.95d0*t9
-        qrtdeut = cc13*((tfacdeut2/tfacdeut) -2.0d0 - zz)
-! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
-! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-        if (in_surface_cz .and. turnover_timescale.gt.1.0d0) then
-           rdeutmax = avogadro_dpg/deuteron_mass_amu/turnover_timescale
-           rdeut2 = rdeut*hydrogen_fraction
-           if (rdeut2.gt.rdeutmax) then
-              if (hydrogen_fraction.gt.1.0d-6) then
-                 rdeut = rdeutmax/hydrogen_fraction
-              end if
-           end if
-         end if
-      end if
-! the energy path drops reactions 1-7 below 1e-30 (with their
-! derivatives) before summing eps; rates floors at 1e-5 instead
-      reaction_rate = nr%rate
-      dlnrate_dlnrho = nr%dlnrate_dlnrho
-      dlnrate_dlnt = nr%dlnrate_dlnt
-      do i=r_pp,r_po16
-         if (reaction_rate(i).lt.1.d-30) then
-            reaction_rate(i)=0.d0
-            dlnrate_dlnrho(i)=0.d0
-            dlnrate_dlnt(i)=0.d0
-         end if
-      end do
-      frac_be7_ecap = nr%frac_be7_ecap
-      frac_be7_pcap = nr%frac_be7_pcap
-      frac_n15_pa = nr%frac_n15_pa
-      frac_n15_pg = nr%frac_n15_pg
-! *****************************************************************
-! EG(I) = rate times the reactant mass fractions; then energies, the
-! derivatives for the Henyey Jacobian, and the neutrino fluxes.
-! *****************************************************************
-      eg(r_pp)=reaction_rate(r_pp)*hydrogen_fraction*hydrogen_fraction
-! MHP 5/02 ADD DEUTERIUM BURNING IF RELEVANT
-      if (deuterium_fraction.gt.1.0d-11) then
-         egdeut = rdeut*hydrogen_fraction*deuterium_fraction
-      else
-         egdeut = 0.0d0
-      end if
-      eg(r_he3he3)=reaction_rate(r_he3he3)*he3_fraction*he3_fraction
-      eg(r_he3he4)=reaction_rate(r_he3he4)*he3_fraction*helium_fraction
-      eg(r_pc12)=reaction_rate(r_pc12)*hydrogen_fraction*c12_fraction
-      eg(r_pc13)=reaction_rate(r_pc13)*hydrogen_fraction*c13_fraction
-      eg(r_pn14)=reaction_rate(r_pn14)*hydrogen_fraction*n14_fraction
-      eg(r_po16)=reaction_rate(r_po16)*hydrogen_fraction*o16_fraction
-      eg(r_ac13)=reaction_rate(r_ac13)*helium_fraction*c13_fraction
-!     EG(9)=RATE(9)*Y*X016
-      eg(r_ac12)=reaction_rate(r_ac12)*helium_fraction*c12_fraction
-      eg(r_an14)=reaction_rate(r_an14)*helium_fraction*n14_fraction
-      eg(r_3alpha)=reaction_rate(r_3alpha)*helium_fraction**3
-!     EG(13)=RATE(13)*XC12*XC12
-! ******************************************************************
-! ****************************************
-      call sum_energy_generation
-      call store_chain_energies
-      call compute_solar_neutrino_fluxes
-      call add_thermal_neutrino_loss
-      return
-
-contains
-
-
-! ---------------------------------------------------------------
-! Zero the neutrino/alpha-capture yields, form the fractional
-! abundances of the burning species, the ion and electron mean
-! molecular weights, and the screening precursors (xtr, zet).
-subroutine fill_mass_fractions
-      use math_lib
-! ZERO OUT THE ENERGY YIELDS FROM NEUTRINOS(ENU) AND ALPHA CAPTURE
-! REACTIONS (EALPCA).
-! DEFINE NEXT THE FRACTIONAL ABUNDANCES BY MASS OF THE IMPORTANT
-!  ISOTOPES.
-! X, Y, Z, XHE3,..., XBE9 ARE THE MASS FRACTIONS OF THE ISOTOPES.
-!  THE ABUNDANCES OF NEUTRONS, H2, H3, NE20,AND MG24, WHICH ARE,
-!  RESPECTIVELY, XFRAC(I) FOR I = 1,3,4,12,13, ARE NO LONGER USED.
-      mass_fraction(iso_n) = 0.0d0
-      mass_fraction(iso_h1) = hydrogen_fraction
-! MHP 5/02 ADDED DEUTERIUM
-!      XFRAC(3) = 0.0
-      mass_fraction(iso_h2) = deuterium_fraction
-      mass_fraction(iso_h3) = 0.0d0
-      mass_fraction(iso_he3) = he3_fraction
-      mass_fraction(iso_he4) = helium_fraction
-      mass_fraction(iso_c12) = c12_fraction
-      mass_fraction(iso_c13) = c13_fraction
-      mass_fraction(iso_n14) = n14_fraction
-      mass_fraction(iso_o16) = o16_fraction
-      mass_fraction(iso_o18) = o18_fraction
-      mass_fraction(iso_ne20) = 0.0d0
-      mass_fraction(iso_mg24) = 0.0d0
-! *******************************************************************
-! BEGIN CALCULATION OF SCREENING CORRECTION.
-! *******************************************************************
-!  THE BASIC REFERENCES ARE SALPETER, AUSTRALIAN JOURNAL OF PHYSICS,
-!  VOL. 7, 373 (1954). THE FORMULA FOR WEAK SCREENING THAT IS BEING
-!  PROGRAMMED IS EQUATION (25) OF THIS PAPER. THE OTHER IMPORTANT
-!  REFERENCES ARE: DEWITT, GRABOSKE, AND COOPER, AP. J. 181, 439 (1973)
-!  AND GRABOSKE ET AL., AP. J. 181, 457 (1973). THE VALUES OF EMU AND
-!  ZET ARE ESSENTIAL FOR COMPUTING WEAK SCREENING; THE VALUE OF AMU IS
-!  USED IN AN NON-ESSENTIAL WAY IN THIS COMPUTATION. XTR IS USED IN
-!  COMPUTING INTERMEDIATE SCREENING.
-! AMU IS ONE OVER THE MEAN MOLECULAR WEIGHT OF THE IONS, MU SUB I .
-! EMU IS ONE OVER THE ELECTRON MEAN MOLECULAR WEIGHT, MU SUB E.
-!  EMU IS USED HERE AS THE NAME FOR THE SECOND PART OF THE ZETA FUNCTION
-!  IN THE SALPETER EXPRESSION FOR WEAK SCREENING.
-! XTR IS USED LATER IN THE INTERMEDIATE SCREENING CALCULATION.  THE AVERAGE
-!  OF THE QUANTITY Z**(3B -1) IS EQUAL TO XTR/AMU.
-! ZET IS THE FIRST PART OF THE SALPETER SCREENING ZETA VARIABLE.
-! MU = SUM OVER I OF [X(I)/A(I)].
-! MU SUB E = SUM OVER I [ Z(I)*X(I)/A(I)].
-      dd = log_density
-end subroutine fill_mass_fractions
-
-! ---------------------------------------------------------------
-! Energy release per reaction (MeV -> erg), reactions 9 and 13
-! zeroed as in the original Yale code, the total energy generation
-! with d ln eps / d ln rho and d ln eps / d ln T, and the global
-! outputs returned to the caller.
-subroutine sum_energy_generation
-! ENERGY GENERATION.
-! ****************************************
-! CALCULATE ENERGY GENERATION BY MULTIPLYING RATES PER GRAM PER SEC BY
-!  THE ENERGY RELEASE.  THE ENERGIES ARE TAKEN FROM TABLE 21 OF BAHCALL AND
-!  ULRICH (1988), REV. MOD. PHYS. 60, 297. THIS TABLE IS BASED UPON A CAREFUL
-!  CALCULATION OF THE AVERAGE AMOUNT OF ENERGY LOSS BY NEUTRINOS FOR
-!  EACH REACTION. THE NUMBERS FOR THE C12 + P REACTION SEQUENCE AND THE
-!  C13 + P REACTION ARE BROKEN DOWN SEPARATELY FOR THIS
-!  SUBROUTINE.
-! THE FINAL NUMBERS ARE IN ERG PER GM PER SECOND.
-! DEFINE THE CONSTANT TO CONVERT MEV'S TO ERGS. THE NUMBERS THAT APPEAR
-!  ARE IN MEV SO THEY CAN BE EASILY IDENTIFIED.
-      convert = 1.602177d-6
-! THE Q-VALUES (MEV) ARE IN THE NETWORK TABLE, network, WITH THEIR
-! HISTORY.
-! MHP 5/02 ADD DEUTERIUM BURNING
-      if (deuterium_fraction.gt.1.0d-11) then
-         dgdeut = egdeut*qdeut*convert
-      else
-         dgdeut = 0.0d0
-      end if
-! THE ENERGY OF EACH REACTION FROM THE NETWORK TABLE: RATE TIMES BRANCH
-! TIMES Q (2026-10; the Q-values used to be written out here, apart from
-! the table that gives the same reactions' composition changes)
-      network_x = 0.0d0
-      network_x(s_h1) = hydrogen_fraction
-      network_x(s_he3) = he3_fraction
-      network_x(s_he4) = helium_fraction
-      network_x(s_c12) = c12_fraction
-      network_x(s_c13) = c13_fraction
-      network_x(s_n14) = n14_fraction
-      network_x(s_o16) = o16_fraction
-      network_x(s_o18) = o18_fraction
-      call compute_reaction_energies(reaction_rate, network_x, frac_n15_pa, &
-           frac_be7_ecap, reaction_energy_gen, chain_energy)
-! JVS 10/11 Need to grab He3 energy generation
-      e%eps_he3_he3 = reaction_energy_gen(r_he3he3)
-      e%eps_he3_burning = reaction_energy_gen(r_he3he3)+reaction_energy_gen(r_he3he4)
-! JVS end
-
-! *******************************************************************
-! END OF CALCULATION OF ENERGY RELEASE.
-! *******************************************************************
-! SET TO ZERO O16+ALPHA AND C12+C12 RATES.
-      dlnrate_dlnrho(r_ao16_unused) = 0.0d0
-      dlnrate_dlnt(r_ao16_unused) = 0.0d0
-      reaction_energy_gen(r_ao16_unused) = 0.0d0
-      dlnrate_dlnrho(r_c12c12_unused) = 0.0d0
-      dlnrate_dlnt(r_c12c12_unused) = 0.0d0
-      reaction_energy_gen(r_c12c12_unused) = 0.0d0
-! END OF XEROING OUT OF REACTIONS 9 AND 13.
-      e%total_energy_gen_rate=0.0d0
-      sum2=0.0d0
-      sum3=0.0d0
-      do i=1,num_reactions
-! *******************************************************************
-! SUM OF THE TOTAL ENERGY GENERATION IN ERGS PER GRM PER SECOND WITH
-! DERIVATIVES WITH RESPECT TO DENSITY AND TO TEMPERATURE.
-! *******************************************************************
-! SUM1 = SUM OF ALL ENERGY GENERATION RATES. NOTE THAT THE BURNING OF
-!  BE7 IS INCLUDED IN DG(3) ABOVE.
-! SUM2 = SUM OVER I OF DG(I)* [D LOG RATE(I) / D LOG RHO ].
-! SUM3 = SUM OVER I OF DG(I)* [D LOG RATE(I) / D LOG T ].
-         e%total_energy_gen_rate=e%total_energy_gen_rate+reaction_energy_gen(i)
-         sum2=sum2+reaction_energy_gen(i)*dlnrate_dlnrho(i)
-         sum3=sum3+reaction_energy_gen(i)*dlnrate_dlnt(i)
-      end do
-! MHP 5/02 ADD DEUTERIUM BURNING
-      e%total_energy_gen_rate = e%total_energy_gen_rate + dgdeut
-      sum2 = sum2 + dgdeut
-      sum3 = sum3 + dgdeut*qrtdeut
-      if (e%total_energy_gen_rate.le.1.d-12) then
-         e%deps_dlnrho=0.d0
-         e%deps_dlnt=0.d0
-         do i=1,num_reactions
-            eg(i)=0.d0
-         end do
-      else
-! ******************************************************
-! GLOBAL QUANTITIES THAT ARE RETURNED BY THE SUBROUTINE.
-! ******************************************************
-! PEP AND PET ARE THE DERIVATIVES OF THE TOTAL ENERGY GENERATION RATE
-!  WITH RESPECT TO DENSITY AND TEMPERATURE: THE ABSOLUTE
-!  D EPS / D LN RHO AND D EPS / D LN T (ERG/G/S, NATURAL LOG), I.E.
-!  SUM OVER I OF EPS(I) * D LN RATE(I) / D LN (RHO OR T) -- NOT THE
-!  LOGARITHMIC D LN EPS. NO CALLER DIVIDES BY EPS: THE HENYEY JACOBIAN
-!  AND THE PULSATION OUTPUT (GYRE'S EPS*EPS_T) BOTH WANT THIS FORM.
-         e%deps_dlnrho = sum2
-         e%deps_dlnt = sum3
-      end if
-! *****************************************************
-! END OF COMPUTATION OF THE GLOBAL QUANTITIES.
-! *****************************************************
-end subroutine sum_energy_generation
-
-! ---------------------------------------------------------------
-! The energy of each chain (pp, the two Be7 branches, CNO, triple
-! alpha) and of the alpha captures, from the per-reaction energies
-! summed in sum_energy_generation. (2026-10: the per-amu rate
-! copies and branchings this routine also produced, once relayed to
-! kemcom and later stored per shell, had no reader and are gone.)
-subroutine store_chain_energies
-! THE SUMMATION OF THE ENERGIES IS GIVEN IN TABLE 21 OF NEUTRINO
-!  ASTROPHYSICS. EACH NETWORK-TABLE ROW IS COUNTED UNDER ITS CHAIN
-!  (compute_reaction_energies). EPP1 ALSO INCLUDES THE ENERGY OF THE H2 + P
-!  REACTION (DEUTERIUM IS BURNED OUTSIDE THE TABLE). EPP2 AND EPP3 ARE THE
-!  ELECTRON- AND PROTON-CAPTURE BRANCHES OF BE7 (EACH WITH ITS SHARE OF
-!  THE 1.586 MEV HE3 + HE4 RELEASE). THE ORIGINAL YALE SUBROUTINE
-!  CONTAINED SERIOUS ERRORS: THE ENERGY THROUGH EPP2 AND EPP3 CARRIED TWO
-!  FACTORS OF BRANCHING RATIOS RATHER THAN ONE.
-      e%pp_chain_energy_gen = chain_energy(chain_pp1) + dgdeut
-      e%he3he4_be7_electron_energy_gen = chain_energy(chain_pp2)
-      e%he3he4_be7_proton_energy_gen = chain_energy(chain_pp3)
-      e%cno_cycle_energy_gen = chain_energy(chain_cno)
-! E3AL IS NEGLIGIBLE FOR THE SUN.
-      e%triple_alpha_energy_gen = chain_energy(chain_triple_alpha)
-! ENERGY FROM ALPHA CAPTURE REACTIONS.
-      e%eps_alpha_capture = chain_energy(chain_alpha_capture)
-end subroutine store_chain_energies
-
-subroutine compute_solar_neutrino_fluxes
-      use math_lib
-! the solar neutrino fluxes and the Be7 abundance (net_settings%calc_neutrinos)
-      if (net_settings%calc_neutrinos) then
-         e%fluxes_set = .true.
-! MHP 9/91 CHANGE TO TURN OFF NEUTRINO CALC FOR HYDROGEN-EXHAUSTED CORE.
-         if (hydrogen_fraction.le.1.0d-6) then
-            do i=1,10
-               e%neutrino_flux(i)=0.0d0
-            end do
-         else
-! ****************************************************************
-! CALCULATION OF NEUTRINO FLUXES
-! ****************************************************************
-! THIS PART OF THE SUBROUTINE CALCULATES THE NEUTRINOS FLUXES IN
-!  NUMBER PER GRAM PER SQUARE CENTIMETER PER SECOND AT THE EARTH'S SURFACE
-!  (ASSUMING NOTHING HAPPENS TO THE NEUTRINOS AFTER THEY ARE CREATED).
-! SEE TABLES 3.1 AND 3.3 OF NEUTRINOS ASTROPHYSICS OR EQUATIONS 6.1-6.8
-!  FOR THE REACTIONS. THE ORDER OF THE REACTIONS IS THE SAME AS IN
-!  EQUATIONS 6.1-6.8 .
-! DEFINE 4*PI*(AU)**2 .
-         fourpiau2 = 2.812295d+27
-! FLUX OF PP NEUTRINOS.
-         e%neutrino_flux(i_nu_pp) = eg(r_pp)/fourpiau2
-! FLUX OF PEP NEUTRINOS. USE EQUATION 3.17 OF NEUTRINO ASTROPHYSICS.
-! Note that should not change SStandard(14) unless the ratio of pep to pp
-!  is changed.  Pep rate is explicitly scaled here with respect to the pp
-!  rate.
-         e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*t9_m12* &
-              (1.0d0 + 20.d0*t9)*eg(r_pp)
-         e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(xs_pep)/fourpiau2
-! FLUX OF HEP NEUTRINOS.  USE EQUATION 3.12 DIRECTLY.
-! hep: the screened rate factor from compute_reaction_rates
-         e%neutrino_flux(i_nu_hep) = nr%hep
-         e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*hydrogen_fraction*he3_fraction/ &
-              fourpiau2
-! COMPUTE BE7MASSFRACTION. THIS IS NOT REQUIRED FOR THE NEUTRINO
-!  FLUXES SINCE BE7 IS ALWAYS IN EQUILIBRIUM WITH THE SLOWER PRODUCTION
-!  RATE OF HE3 + HE4.  HOWEVER, IT IS OF INTEREST IN SOME APPLICATIONS
-!  TO KNOW THE BE7 MASS FRACTION, SO I COMPUTE IT HERE AND STORE IT
-!  IN e%be7_mass_fraction.
-         e%be7_set = .true.
-         e%be7_mass_fraction = eg(r_he3he4)/(nr%be7_proton + nr%be7_electron)
-! END OF NOVEMBER 6, 1990  ADDITION.
-! FLUX OF BE7 NEUTRINOS.
-         e%neutrino_flux(i_nu_be7) = eg(r_he3he4)*frac_be7_ecap/fourpiau2
-! FLUX OF B8 NEUTRINOS.
-         e%neutrino_flux(i_nu_b8) = eg(r_he3he4)*frac_be7_pcap/fourpiau2
-! FLUX OF N13 NEUTRINOS.
-         e%neutrino_flux(i_nu_n13) = eg(r_pc12)/fourpiau2
-! FLUX OF O15 NEUTRINOS.
-         e%neutrino_flux(i_nu_o15) = eg(r_pn14)/fourpiau2
-! FLUX OF F17 NEUTRINOS.
-         e%neutrino_flux(i_nu_f17) = eg(r_po16)/fourpiau2
-! FLUX OF FICTIONAL HE3 + HE3 NEUTRINOS.
-         e%neutrino_flux(i_nu_he3he3) = eg(r_he3he3)/fourpiau2
-! FLUX OF FICTIONAL HE3 + HE4 NEUTRINOS.
-         e%neutrino_flux(i_nu_he3he4) = eg(r_he3he4)/fourpiau2
-! SET UNITS OF NEUTRINO FLUXES TO BE 10**10 PER CM^2 PER SEC PER GM AT THE
-!  EARTH. MULTIPLY BY 10**-10.
-!  IF THE VALUE FOR THIS SHELL IS NEGLIGIBLY SMALL, SET EQUAL TO ZERO.
-         do k = 1,10
-            e%neutrino_flux(k) = (1.0d-10)*e%neutrino_flux(k)
-            flux_value = e%neutrino_flux(k)
-! KC 2025-05-30 CHANGED 1.E-50 TO 0.0 TO AVOID UNDERFLOW
-            if (flux_value.le.0.0d0) then
-              e%neutrino_flux(k) = 0.0d0
-            end if
-         end do
-! MHP 9/91 ENDIF INSERTED HERE.
-         end if
-      end if
-end subroutine compute_solar_neutrino_fluxes
-
-subroutine add_thermal_neutrino_loss
-      use math_lib
-! the thermal neutrino losses above nuclear_logT_cutoffs(5), with their
-! absolute derivatives, added to eps
-! END OF NEUTRINO FLUX ROUTINE.
-!
-! ***MHP 5/91
-!C CALCULATE NEUTRINO LOSSES FOR NEUTRINO-COOLED CORES OF EVOLVED STARS.
-! 3/92 DBG Added option to use new (more sophisticated) neutrino loss
-! routines.  See subroutine NEUTR for complete description.
-
-
-      if (log_temperature.le.net_settings%logT_cutoffs(5)) return
-
-
-          carbon_fraction_total = c12_fraction+c13_fraction
-          oxygen_fraction_total = o16_fraction+o18_fraction
-          neutrino_temp=exp10(log_temperature)
-          neutrino_density=exp10(log_density)
-
-
-!**** Itoh 1996 Neutrino loss routines - Grant Newsham 9/06 *****
-
-
-      if (net_settings%use_itoh_neutrino_loss) then
-! ITOH ET AL. (1996) LOSSES (neutrino/compute_mixture_neutrino_losses/sneut IN net_lib).
-          call compute_thermal_neutrino_losses(neutrino_temp,neutrino_density,hydrogen_fraction, &
-               helium_fraction,carbon_fraction_total,oxygen_fraction_total, &
-               neutrino_loss_snu,neutrino_dsnu_dt,neutrino_dsnu_drho)
-          e%eps_neutrino_loss = -neutrino_loss_snu
-          e%total_energy_gen_rate = e%total_energy_gen_rate + e%eps_neutrino_loss
-
-! 2026 (bugsweep Batch 2): neutrino() returns snu >= 0 and the
-! ABSOLUTE derivatives d snu/dT, d snu/d rho. deps_dlnt/dlnrho
-! are the absolute d eps/d ln T, d eps/d ln rho accumulated in
-! sum2/sum3 (see the qetnx/qednx terms of the Beaudet branch below),
-! so the loss contributes d(-snu)/d ln T = -T d snu/dT. The original
-! (engeb.f) first converted to dimensionless log-derivatives -- the
-! wrong units for these sums -- and then built the T line from the
-! already-updated rho line (PET = PEP + DSNUDT), discarding the
-! nuclear sum3 altogether.
-          e%deps_dlnrho = e%deps_dlnrho - neutrino_density*neutrino_dsnu_drho
-          e%deps_dlnt = e%deps_dlnt - neutrino_temp*neutrino_dsnu_dt
-      else
-! LEGACY BEAUDET, PETROSIAN & SALPETER (1967) FITS FOR THE PAIR, PHOTO
-!  AND PLASMA NEUTRINO LOSSES (COEFFICIENTS v1, v2, v3 ABOVE), WITH
-!  THEIR D/D LN T AND D/D LN RHO ACCUMULATED IN qetnx/qednx.
-         el = t9/5.9302d0
-         eli = 1.0d0/el
-         ez = exp(cc13*ln10*(dd-9.0d0))*eli*(0.7937d0+0.2063d0*hydrogen_fraction)
-         ez3 = ez**3
-         emue = 0.5d0*(1.0d0+hydrogen_fraction)
-         ex1 = 0.0d0
-         if (t9.ge.0.2d0) then
-!C PAIR NEUTRINOS
-            el2 = el*el
-            polx10=(1.d0+el2*(-13.04d0+el2*(133.5d0+el2*(1534.d0+el2*918.6d0))))
-            polx11 = v1(1) + ez*(v1(2) + ez*v1(3))
-            polx12 = ez3 + eli*(v1(4) + eli*(v1(5) + eli*v1(6)))
-            ex1 = exp(-ez*v1(7)-eli-eli-ln10*dd)*polx10*polx11/polx12
-         end if
-!C PHOTO NEUTRINOS
-         polx21 = v2(1) + ez*(v2(2) + ez*v2(3))
-         polx22 = ez3 + eli*(v2(4) + eli*(v2(5) + eli*v2(6)))
-         ex2 = emue*el**5*exp(-ez*v2(7))*polx21/polx22
-!C PLASMA NEUTRINOS
-         polx31 = v3(1) + ez*(v3(2) + ez*v3(3))
-         polx32 = ez3 + eli*(v3(4) + eli*(v3(5) + eli*v3(6)))
-         ex3 = emue**3*exp(-ez*v3(7)+ln10*(dd+dd))*polx31/polx32
-         e%eps_neutrino_loss = -(ex1 + ex2 + ex3)
-         e%total_energy_gen_rate = e%total_energy_gen_rate + e%eps_neutrino_loss
-         qetnx = 0.0d0
-         qednx = 0.0d0
-         if (t9.ge.0.2d0) then
-! MHP 10/02 fixed column 72 problem
-            qedn= ez*(v1(2)+2.d0*ez*v1(3))/polx11 - ez*v1(7) &
-                  - 3.0d0*ez3/polx12
-            qetn= -qedn+ eli*(v1(4)+eli*(2.d0*v1(5)+3.d0*eli*v1(6)))/polx12
-            qetnx= el2*(-26.08d0+el2*(534.d0+el2*(9204.d0+el2*7348.8d0)))/polx10
-            qetnx = (qetnx + qetn + eli+eli)*ex1
-            qednx = (-1.0d0 +cc13*qedn)*ex1
-         end if
-         qedn= ez*(v2(2)+2.d0*ez*v2(3))/polx21 - ez*v2(7) - 3.d0*ez3/polx22
-         qetn= -qedn+ eli*(v2(4)+eli*(2.d0*v2(5)+3.d0*eli*v2(6)))/polx22
-         qetnx = qetnx + (5.0d0 + qetn)*ex2
-         qednx = qednx +cc13*qedn*ex2
-         qedn= ez*(v3(2)+2.d0*ez*v3(3))/polx31 - ez*v3(7) - 3.d0*ez3/polx32
-         qetn=-qedn + eli*(v3(4)+eli*(2.d0*v3(5)+3.d0*eli*v3(6)))/polx32
-         qetnx = qetnx + qetn*ex3
-         qednx = qednx + (2.0d0 +cc13*qedn)*ex3
-         e%deps_dlnt = e%deps_dlnt - qetnx
-         e%deps_dlnrho = e%deps_dlnrho - qednx
-      end if
-
-end subroutine add_thermal_neutrino_loss
-
-end subroutine compute_nuclear_energy
-
-end module nuclear_energy

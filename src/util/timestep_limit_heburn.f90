@@ -16,7 +16,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
       use net_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star, json, i_h2, i_metals
       use controls_buffer, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
       use burn_step
@@ -32,9 +32,9 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       integer, intent(in) :: h_shell_zone_begin
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, shell_zone
-      double precision :: hydrogen_fraction, helium_fraction, &
-           he3_fraction, c12_fraction, c13_fraction, &
-           n14_fraction, o16_fraction, o18_fraction, h2_fraction
+! the hottest zone's composition (deuterium counted only with the
+! extended composition, as it always has been here)
+      double precision :: zone_xa(15)
 ! only the helium-burning term (burn%triple_alpha_energy_gen) of the
 ! shell's energy record is used here.
       type(nuclear_energy_result) :: burn
@@ -58,24 +58,10 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
 !     calculate helium burning rate at tmax
        local_log_density = log_density(max_temp_zone)
        local_log_temperature = log_temperature(max_temp_zone)
-       hydrogen_fraction = composition(1,max_temp_zone)
-       helium_fraction = composition(2,max_temp_zone)
-       he3_fraction = composition(4,max_temp_zone)
-       c12_fraction = composition(5,max_temp_zone)
-       c13_fraction = composition(6,max_temp_zone)
-       n14_fraction = composition(7,max_temp_zone)
-       o16_fraction = composition(9,max_temp_zone)
-       o18_fraction = composition(11,max_temp_zone)
-! h2_fraction is left at its -finit-local-zero value (0) when the
-! extended composition is off, as in the original.
-       if(star%job%use_extended_composition) then
-          h2_fraction = composition(12,max_temp_zone)
-       endif
-         call compute_zone_energy( &
-              local_log_density,local_log_temperature,hydrogen_fraction, &
-              helium_fraction,he3_fraction,c12_fraction,c13_fraction, &
-              n14_fraction,o16_fraction,o18_fraction,h2_fraction, &
-              max_temp_zone, burn)
+       zone_xa = composition(:,max_temp_zone)
+       if (.not.star%job%use_extended_composition) zone_xa(i_h2) = 0.0d0
+       call compute_zone_energy(local_log_density, local_log_temperature, &
+            zone_xa, max_temp_zone, burn)
          helium_energy_gen = burn%triple_alpha_energy_gen
        if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
        helium_dt=1.0d15/helium_energy_gen
@@ -83,7 +69,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
 !  set limits on he burning for non-helium flash stars
 !  core_helium_fraction: computed as 1 - Z(core); in a He-burning core
 !  X is normally negligible there, so this approximates the core Y.
-       core_helium_fraction = 1d0 - composition(3,convective_core_edge_zone)
+       core_helium_fraction = 1d0 - composition(i_metals,convective_core_edge_zone)
        if(core_helium_fraction.ge.star%ctrl%atime(itime_core_min)) then
             helium_dt = min(star%ctrl%atime(itime_dy_core_tot),star%ctrl%atime(itime_dy_core_frac)*core_helium_fraction)
             helium_dt = (he_burn_energy_per_gram/star%solar_luminosity_cgs)*helium_dt* &

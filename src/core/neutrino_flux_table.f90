@@ -37,10 +37,7 @@ subroutine neutrino_flux_table
       implicit none
 
       double precision :: shell_center_mass(json), shell_mass(json)
-      double precision :: shell_log_density, shell_log_temperature, &
-           hydrogen_fraction, helium_fraction, he3_fraction, &
-           c12_fraction, c13_fraction, n14_fraction, &
-           o16_fraction, o18_fraction
+      double precision :: shell_log_density, shell_log_temperature
 ! burn: the shell's energy record; only its solar neutrino fluxes and
 ! Be7 abundance are used here.
       type(nuclear_energy_result) :: burn
@@ -70,18 +67,8 @@ subroutine neutrino_flux_table
 ! below the nuclear cutoff, where nothing burns.
          if (shell_log_temperature.lt.6.0d0 .or. &
               shell_log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-         hydrogen_fraction = star%xa(i_h1,i)
-         helium_fraction = star%xa(i_he4,i)
-         he3_fraction = star%xa(i_he3,i)
-         c12_fraction = star%xa(i_c12,i)
-         c13_fraction = star%xa(i_c13,i)
-         n14_fraction = star%xa(i_n14,i)
-         o16_fraction = star%xa(i_o16,i)
-         o18_fraction = star%xa(i_o18,i)
          call compute_zone_energy(shell_log_density, &
-              shell_log_temperature,hydrogen_fraction,helium_fraction, &
-              he3_fraction,c12_fraction,c13_fraction,n14_fraction, &
-              o16_fraction,o18_fraction,star%xa(i_h2,i),i,burn)
+              shell_log_temperature, star%xa(:,i), i, burn)
 ! BE7 MASS FRACTION (2026-10: zero where X <= 1e-6, where none is
 ! computed; this used to repeat the last shell's value that had one)
          star%be7_mass_fraction_zone(i) = burn%be7_mass_fraction
