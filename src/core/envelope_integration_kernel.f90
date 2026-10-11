@@ -276,7 +276,7 @@ subroutine integrate_atmosphere
 
 ! NOW FIND THE OPTICAL DEPTH(X0) WHERE THE ATMOSPHERE INTEGRATION BEGINS.
 ! prepack every result slot from its host scalar, call, unpack every
-! one back: identity for slots eqstat leaves alone, and the host
+! one back: identity for slots compute_blended_eos leaves alone, and the host
 ! scalars keep carrying the historical inout guesses across calls.
       eos_res(i_temperature) = temperature
       eos_res(i_pressure) = pressure
@@ -329,7 +329,7 @@ subroutine integrate_atmosphere
       adiabatic_gradient_dp = eos_res(i_grada_dp)
       specific_heat_cp_dt = eos_res(i_cp_dt)
       specific_heat_cp_dp = eos_res(i_cp_dp)
-! DBG 12/95 GET OPACITY (log10_density just unpacked = eqstat's
+! DBG 12/95 GET OPACITY (log10_density just unpacked = compute_blended_eos's
 ! returned density, the historical inout dataflow)
       call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
            metal_fraction, kap_res, ion_fraction, ierr=jerr)

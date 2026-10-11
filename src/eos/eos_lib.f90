@@ -6,13 +6,13 @@
 ! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
 !
 ! eos_eval is the first facade of this phase: a single explicit-
-! interface entry point that replaces the `if (use_mhd_eos) call meqos
-! else call eqstat` dispatch that used to be duplicated at every call
+! interface entry point that replaces the `if (use_mhd_eos) call compute_mhd_eos
+! else call compute_blended_eos` dispatch that used to be duplicated at every call
 ! site, and additionally centralizes the Debye-Huckel composition
-! setup (debye_huckel_x/y/z_total/z(3), read only by eos/yale/fully_ionized_eos.f90
+! setup (debye_huckel_x/y/z_total/z(3), read only by compute_fully_ionized_eos
 ! on the non-MHD path) that 6 of those call sites also used to
-! duplicate verbatim. eos/eqstat.f90 (which also hosts eqstat2, its
-! co-located pair), eos/yale/fully_ionized_eos.f90, and eos/mhd/meqos.f90 are all
+! duplicate verbatim. compute_blended_eos (which also hosts blend_eos, its
+! co-located pair), compute_fully_ionized_eos, and compute_mhd_eos are all
 ! unchanged; this is a pure dispatch/setup wrapper.
 !
 ! composition_at_zone is OPTIONAL: callers that carry full per-species
@@ -26,12 +26,12 @@
 !
 ! core/read_starting_model.f90 previously had a bug here (confirmed against the
 ! original F77 source via git history): a missing ELSE meant it called
-! *both* meqos and eqstat when MHD was on, and *neither* when MHD was
+! *both* compute_mhd_eos and compute_blended_eos when MHD was on, and *neither* when MHD was
 ! off. eos_eval's if/else has the structurally-correct form, so
 ! migrating that call site fixes the bug by construction.
 !
 ! mixing/compute_scale_height.f90, mixing/semiconvection.f90, and wind/massloss.f90
-! previously called eqstat unconditionally, with no LMHD check at all
+! previously called compute_blended_eos unconditionally, with no LMHD check at all
 ! -- confirmed authentic original YREC behavior (unchanged since the
 ! very first commit, not a modernization artifact). Migrating them to
 ! eos_eval extends real MHD support to these three secondary/diagnostic
@@ -56,6 +56,10 @@ module eos_lib
       use scv_eos_tables
       use yale_eos_tables
       use eos_configuration, only: eos_settings_t, eos_settings, set_eos_settings
+      use blended_eos, only: compute_blended_eos, blend_eos
+      use mhd_eos, only: compute_mhd_eos, read_mhd_tables
+      use opal2006_eos, only: esac06
+      use scv_eos, only: build_scv_envelope_table
       implicit none
 ! Everything is private unless exported below (2026: eos_get is the
 ! single public query -- the named-index result-array form; the
@@ -166,7 +170,7 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
       jerr = 0
 
       if (eos_settings%use_mhd_eos) then
-         call meqos(log10_temperature, temperature, log10_pressure, &
+         call compute_mhd_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -189,7 +193,7 @@ subroutine eos_eval(log10_temperature, temperature, log10_pressure, &
             debye_huckel_z(3) = composition_at_zone(9)+composition_at_zone(10)+ &
                  composition_at_zone(11)
          end if
-         call eqstat(log10_temperature, temperature, log10_pressure, &
+         call compute_blended_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -227,7 +231,7 @@ end subroutine eos_eval
 ! they are lazily read on first use inside esac/esac01/esac06 via
 ! their table_loaded_flag guards. The SCV (Saumon-Chabrier-Van Horn)
 ! EOS tables are also read here (gated on use_scv_eos, into
-! scv_eos_tables's state consumed by eos/scv/eqscve+eqscvg and the io
+! scv_eos_tables's state consumed by eos/scv/compute_scv_envelope_eos+compute_scv_eos and the io
 ! writers) -- another inline setups.f90 block moved in verbatim; its
 ! read is provably independent of the atm tables read later in
 ! startup (separate file units, disjoint state), so absorbing it here
@@ -303,7 +307,7 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
          end if
       end if
       if (settings%use_mhd_eos) then
-         call mhdtbl(zams_a_table_path, zams_b_table_path, &
+         call read_mhd_tables(zams_a_table_path, zams_b_table_path, &
               zams_c_table_path, centre1_table_path, centre2_table_path, &
               centre3_table_path, centre4_table_path, centre5_table_path, &
               jerr)
@@ -316,9 +320,9 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
 !  INPUT F-TABLES FOR DEGENERATE EQUATION OF STATE
 !  OPEN DATA FILES
       open(newunit=fermi_unit,file=fermi_table_path,form='FORMATTED',status='OLD')
-      read(fermi_unit,150)  (yale_eos%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (yale_eos%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(yale_eos%fermi_table_data(col_idx,grid_idx,iden_idx), &
+      read(fermi_unit,150)  (yale%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,150)  (yale%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      read(fermi_unit,160) (grid_idx,iden_idx,(yale%fermi_table_data(col_idx,grid_idx,iden_idx), &
            col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
@@ -326,7 +330,7 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
       bin_start = 1
       do grid_idx=1,41
 ! MHP 10/02 SHOULD BE INT(DVAL,ETC.)
-       if (yale_eos%fermi_table_x_grid(grid_idx+1).le.yale_eos%fermi_table_x_grid(grid_idx)) then
+       if (yale%fermi_table_x_grid(grid_idx+1).le.yale%fermi_table_x_grid(grid_idx)) then
 !       IF (INT(DVAL(I+1)).LE.INT(DVAL(I))) THEN
           write(run_log_unit,1000) grid_idx
  1000       format(1x,39('>'),40('<')/1x,'ERROR IN SUBROUTINE SETUPS'/ &
@@ -336,11 +340,11 @@ subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
           ierr = jerr
           return
        endif
-       bin_width = int((yale_eos%fermi_table_x_grid(grid_idx+1) - yale_eos%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
+       bin_width = int((yale%fermi_table_x_grid(grid_idx+1) - yale%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
        bin_end = bin_start + bin_width - 1
        if (grid_idx.eq.41)  bin_end = 261
        do iden_idx=bin_start,bin_end
-          yale_eos%fermi_table_x_lookup(iden_idx) = grid_idx
+          yale%fermi_table_x_lookup(iden_idx) = grid_idx
        end do
        bin_start = bin_end + 1
       end do
@@ -392,7 +396,7 @@ end subroutine eos_init
 ! table (via esac06, density-basis, radiation correction on, 9
 ! variables; a failed table lookup falls through with whatever the
 ! previous point left behind, as calcad did) when enabled, otherwise the
-! Yale/SCV path (via eqstat2, pressure-basis) with gamma1 built from
+! Yale/SCV path (via blend_eos, pressure-basis) with gamma1 built from
 ! chi_rho/chi_T/cv per Cox & Giuli ch. 9.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
@@ -414,7 +418,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 
       integer :: jerr
 
-! --- locals (per-call copies: esac06/eqstat2 write into several of
+! --- locals (per-call copies: esac06/blend_eos write into several of
 !     the positions the inputs occupy) ---
       integer :: eos_interp_order, eos_rad_flag
       double precision :: x_local, t6_local, d_local
@@ -456,7 +460,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          log10_pressure = log10(pressure_local)
          eos_deriv_flag = .false.
          eos_atmosphere_flag = .true.
-         call eqstat2(log10_temperature, temperature_local, &
+         call blend_eos(log10_temperature, temperature_local, &
               log10_pressure, pressure_local, log10_density, d_local, &
               x_local, metal_fraction, beta_local, beta_inverse_local, &
               beta14_local, ion_fraction_local, &

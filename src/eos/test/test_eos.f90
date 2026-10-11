@@ -20,7 +20,7 @@
 !  * constants + eos table loads: the real setup/setups.f90 +
 !    eos_lib's eos_init, with real Fermi/SCV table paths and dummy
 !    paths for everything gated off.
-!  * env_comp (the envelope-composition state eqstat2 consumes):
+!  * env_comp (the envelope-composition state blend_eos consumes):
 !    core/read_starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
 !    mixture_weights_seed defaults (the G&N93 12-species mixture) and starin's
@@ -46,6 +46,7 @@ program test_eos
       use eos_lib
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
+      use opal2006_eos, only: esac06
       implicit none
       type(eos_settings_t) :: settings
       integer :: gerr
@@ -242,7 +243,7 @@ program test_eos
 
 ! Only the two hotter points here: at the two low-T points the
 ! Yale/SCV branch's Cox & Guili gamma1 reconstruction consumes
-! quantities eqstat2 leaves undefined under the branch's historical
+! quantities blend_eos leaves undefined under the branch's historical
 ! lderiv=.false. setting (inherited verbatim from calcad's original
 ! formulation; NaN/uninitialized in practice) -- a pre-existing
 ! property of that code path, unreachable in production configs
@@ -307,7 +308,7 @@ program test_eos
 ! design here -- in_table flags and sentinels -- unlike kap), so
 ! with healthy tables the facade cannot be driven to ierr /= 0. The
 ! first check asserts the success path threads ierr = 0 end to end
-! through eqstat/eqstat2/oeqos06/esac06. The second drives esac06 (a
+! through compute_blended_eos/blend_eos/compute_opal2006_eos/esac06. The second drives esac06 (a
 ! domain internal -- this test is in-domain, white-box by design)
 ! with an invalid rad_flag, the same class of internal error the
 ! converted stops guarded, and asserts ierr = 1 with no crash; its

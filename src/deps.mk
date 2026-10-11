@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd_eos_tables.f90 eos/opal_eos_tables.f90 eos/scv_eos_tables.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/atmosphere_structure.f90 atm/envelope_structure.f90 atm/t_tau_relations.f90 core/burn_step.f90 core/composition_step.f90 core/convection_geometry.f90 core/envelope_integration.f90 core/envelope_integration_kernel.f90 core/envelope_refit.f90 core/henyey_elimination.f90 core/henyey_iteration.f90 core/monte_carlo.f90 core/observables.f90 core/point_scratch_lib.f90 core/stitched_model.f90 core/stop_conditions.f90 core/yrec_capi.f90 core/yrec_reset.f90 eos/blended_eos.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_mixture.f90 eos/mhd/mhd_eos.f90 eos/mhd_eos_tables.f90 eos/opal/opal2001_eos.f90 eos/opal/opal2006_eos.f90 eos/opal/opal95_eos.f90 eos/opal_eos_tables.f90 eos/scv/scv_eos.f90 eos/scv_eos_tables.f90 eos/yale/yale_eos.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/history_output.f90 io/io_units.f90 io/output_columns.f90 io/profile_output.f90 io/run_log.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 mixing/temperature_gradients.f90 net/light_elements.f90 net/net_lib.f90 net/network.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/thermal_neutrinos.f90 numerics/integration_parameters.f90 numerics/numerics_lib.f90 rotation/microdiff/bahcall_loeb_units.f90 rotation/microdiff/microdiff_coefficients.f90 rotation/microdiff/microdiff_mte.f90 rotation/microdiff/microdiff_run.f90 rotation/mid_timestep_model.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/equal_grid.f90 rotation/seculr/secular_transport.f90 rotation/species_table.f90 setup/microphysics_settings.f90 state/composition_layout.f90 state/controls_sync.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/star_info_lib.f90 wind/wind_lib.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -19,6 +19,8 @@ atm_tables.mod: atm/atm_tables.o
 atmosphere_structure.mod: atm/atmosphere_structure.o
 	@true
 bahcall_loeb_units.mod: rotation/microdiff/bahcall_loeb_units.o
+	@true
+blended_eos.mod: eos/blended_eos.o
 	@true
 burn_step.mod: core/burn_step.o
 	@true
@@ -72,6 +74,8 @@ light_elements.mod: net/light_elements.o
 	@true
 math_lib.mod: math/math_lib.o
 	@true
+mhd_eos.mod: eos/mhd/mhd_eos.o
+	@true
 mhd_eos_tables.mod: eos/mhd_eos_tables.o
 	@true
 microdiff_coefficients.mod: rotation/microdiff/microdiff_coefficients.o
@@ -100,7 +104,13 @@ observables.mod: core/observables.o
 	@true
 opacity_tables.mod: kap/opacity_tables.o
 	@true
+opal2001_eos.mod: eos/opal/opal2001_eos.o
+	@true
+opal2006_eos.mod: eos/opal/opal2006_eos.o
+	@true
 opal92_opacity.mod: kap/opal92/opal92_opacity.o
+	@true
+opal95_eos.mod: eos/opal/opal95_eos.o
 	@true
 opal95_opacity.mod: kap/opal95/opal95_opacity.o
 	@true
@@ -119,6 +129,8 @@ reaction_rates.mod: net/reaction_rates.o
 rotation_scratch_lib.mod: rotation/rotation_scratch_lib.o
 	@true
 run_log.mod: io/run_log.o
+	@true
+scv_eos.mod: eos/scv/scv_eos.o
 	@true
 scv_eos_tables.mod: eos/scv_eos_tables.o
 	@true
@@ -139,6 +151,8 @@ temperature_gradients.mod: mixing/temperature_gradients.o
 thermal_neutrinos.mod: net/thermal_neutrinos.o
 	@true
 wind_lib.mod: wind/wind_lib.o
+	@true
+yale_eos.mod: eos/yale/yale_eos.o
 	@true
 yale_eos_tables.mod: eos/yale_eos_tables.o
 	@true
@@ -190,46 +204,17 @@ core/test/test_reentry.o: star_info_lib.mod
 core/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/yrec_capi.o: star_info_lib.mod
 core/yrec_reset.o: point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-eos/eos_lib.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod scv_eos_tables.mod yale_eos_tables.mod
-eos/eos_mixture.o: composition_layout.mod
-eos/eqstat.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/mhd/meqos.o: io_units.mod math_lib.mod mhd_eos_tables.mod
-eos/mhd/mhdpx.o: mhd_eos_tables.mod
-eos/mhd/mhdpx1.o: io_units.mod mhd_eos_tables.mod numerics_lib.mod
-eos/mhd/mhdpx2.o: mhd_eos_tables.mod numerics_lib.mod
-eos/mhd/mhdst.o: mhd_eos_tables.mod
-eos/mhd/mhdst1.o: mhd_eos_tables.mod
-eos/mu.o: eos_mixture.mod physical_constants.mod
-eos/opal/eqbound.o: opal_eos_tables.mod
-eos/opal/eqbound01.o: opal_eos_tables.mod
-eos/opal/eqbound06.o: math_lib.mod opal_eos_tables.mod
-eos/opal/eqbound_core.o: math_lib.mod
-eos/opal/esac.o: io_units.mod opal_eos_tables.mod
-eos/opal/esac01.o: io_units.mod opal_eos_tables.mod
-eos/opal/esac06.o: io_units.mod opal_eos_tables.mod
-eos/opal/oeqos.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
-eos/opal/oeqos01.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
-eos/opal/oeqos06.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
-eos/opal/quad.o: opal_eos_tables.mod
-eos/opal/radsub.o: opal_eos_tables.mod
-eos/opal/radsub01.o: opal_eos_tables.mod
-eos/opal/radsub06.o: opal_eos_tables.mod
-eos/opal/readco.o: io_units.mod opal_eos_tables.mod
-eos/opal/readcoeos01.o: io_units.mod opal_eos_tables.mod
-eos/opal/readcoeos06.o: io_units.mod opal_eos_tables.mod
-eos/opal/rhoofp.o: opal_eos_tables.mod
-eos/opal/rhoofp01.o: opal_eos_tables.mod
-eos/opal/rhoofp06.o: io_units.mod opal_eos_tables.mod
-eos/opal/t6rint_core.o: opal_eos_tables.mod
-eos/opal/t6rinteos01.o: io_units.mod opal_eos_tables.mod
-eos/opal/t6rinteos06.o: io_units.mod opal_eos_tables.mod
-eos/opal/t6rinterp.o: io_units.mod opal_eos_tables.mod
-eos/scv/eqscve.o: eos_mixture.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/scv/eqscvg.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/scv/scv_envelope_table.o: math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod opal_eos_tables.mod star_info_lib.mod
-eos/yale/fully_ionized_eos.o: eos_configuration.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
-eos/yale/saha_eos.o: eos_mixture.mod io_units.mod math_lib.mod physical_constants.mod
+eos/blended_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod opal2001_eos.mod opal2006_eos.mod opal95_eos.mod physical_constants.mod scv_eos.mod scv_eos_tables.mod yale_eos.mod
+eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod mhd_eos.mod opal2006_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod scv_eos_tables.mod yale_eos_tables.mod
+eos/eos_mixture.o: composition_layout.mod physical_constants.mod
+eos/mhd/mhd_eos.o: eos_mixture.mod io_units.mod math_lib.mod mhd_eos_tables.mod numerics_lib.mod
+eos/opal/opal2001_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
+eos/opal/opal2006_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
+eos/opal/opal95_eos.o: eos_mixture.mod io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
+eos/opal_eos_tables.o: math_lib.mod
+eos/scv/scv_eos.o: eos_mixture.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
+eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod opal2006_eos.mod opal_eos_tables.mod star_info_lib.mod
+eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
 io/equal_to_model.o: numerics_lib.mod star_info_lib.mod
 io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod

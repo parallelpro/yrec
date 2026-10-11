@@ -44,7 +44,7 @@ module atm_tables
 ! purely as an accident of the original COMMON grouping; relocated
 ! to yale_eos_tables in 2026, docs/ROADMAP.md stage 1, alongside moving its
 ! load from an inline setup/setups.f90 block into eos_lib's
-! eos_init. Consumed only by eos/yale/fully_ionized_eos.f90.)
+! eos_init. Consumed only by compute_fully_ionized_eos.)
 ! The Kurucz (atm_table_nt rows) and Kurucz/Castelli (atm_table_ntc
 ! rows) surface-pressure tables, each with its former common/fac/
 ! log-g edge indices. See surface_p_table.

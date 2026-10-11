@@ -52,7 +52,7 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
 ! (log10_density mode input, the gradient/cp guesses, the ionization
 ! fractions) persist across shells in the arrays exactly as the old
 ! locals did. NOTE: kap_get receives eos_res(i_log10_density) --
-! the density eqstat just RETURNED -- matching the historical inout
+! the density compute_blended_eos just RETURNED -- matching the historical inout
 ! dataflow (passing the model's log_density instead drifts rotating
 ! runs, caught by the byte gate).
       double precision :: eos_res(num_eos_results), kap_res(num_kap_results)

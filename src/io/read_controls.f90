@@ -964,7 +964,7 @@ subroutine read_input(ierr)
 ! DBG 1/96 THE ARRAY V, READ IN VIA read_laol_tables, CONTAINED THE MASS FRACTIONS
 ! OF THE ENVELOPE ELEMENTS. IT WAS USED IN STARIN TO DEFINE FXENV,
 ! WHICH ARE THE NUMBER FRACTION OF THE ENVELOPE ELEMENTS. FXENV WAS
-! THEN UPDATED IN EQSTAT AND EQSAHA. VNEW (now a controls_buffer member)
+! THEN UPDATED IN compute_blended_eos AND EQSAHA. VNEW (now a controls_buffer member)
 ! IS IDENTICAL TO V EXCEPT THAT THE NUMBERS ARE DEFINED EXPLICITLY
 ! FOR A G&N93 SOLAR MIXTURE. YOU CAN CHANGE THEM VIA THE PHYSICS
 ! NAMELIST. V IS SET EQUAL TO VNEW IN STARIN EXCEPT WHEN LLAOL=T
@@ -1282,7 +1282,7 @@ subroutine read_input(ierr)
       alex94_table_unit = 39
 ! INPUT: MHD EQU. OF STATE TABLES (2026 wave 2: these eight stay
 ! assigned here -- the star%ctrl members have no declaration-time
-! default, so they would seed as 0, and eos/mhd/mhdst.f90 treats a
+! default, so they would seed as 0, and mhdst treats a
 ! unit .le. 0 as "table absent")
       unit_zams_a = 40
       unit_zams_b = 41

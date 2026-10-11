@@ -11,7 +11,7 @@
 ! thereafter), matching const_lib's treatment, but are kept in their
 ! own module rather than folded into const_lib to keep the (large)
 ! MHD table arrays out of the globally-`use`d const_lib. Only two files
-! address the tables (eos/mhd/mhdpx2.f90, eos/mhd/mhdst.f90); no DATA
+! address the tables (mhdpx2, mhdst); no DATA
 ! statements target any member.
 !
 ! Readability W3 (2026): the per-composition members (former
@@ -42,11 +42,11 @@ module mhd_eos_tables
       integer, parameter :: imhd_zams_a = 1, imhd_zams_b = 2, imhd_zams_c = 3
       integer, parameter :: imhd_centre_1 = 1, imhd_centre_2 = 2, &
            imhd_centre_3 = 3, imhd_centre_4 = 4, imhd_centre_5 = 5
-! Slots of mhd_output (the interpolated MHD table row) that meqos.f90
+! Slots of mhd_output (the interpolated MHD table row) that compute_mhd_eos
 ! reads. The MHD table documentation is not part of this repository;
-! these meanings follow from how meqos consumes each slot. Slots 21-24
+! these meanings follow from how compute_mhd_eos consumes each slot. Slots 21-24
 ! are the numerical X-derivatives of slots 2, 3, 8 and 9 built by
-! mhdst1.f90 (named i_mhd_*_dx below, from that writer); slot 25 is a
+! mhdst1 (named i_mhd_*_dx below, from that writer); slot 25 is a
 ! placeholder. Slot 3 is named only through mhdst1's derivative
 ! comment (log10 U); nothing reads it directly.
       integer, parameter :: i_mhd_log10_rho = 1     ! log10 density
@@ -106,6 +106,6 @@ module mhd_eos_tables
                 centre_mean_molecular_weight(mhd_n_centre)
       end type mhd_eos_state
 
-      type(mhd_eos_state), public :: mhd_eos
+      type(mhd_eos_state), public :: mhd
 
 end module mhd_eos_tables

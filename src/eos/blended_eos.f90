@@ -1,19 +1,42 @@
 !----------------------------------------------------------------------
-! eqstat
+! blended_eos
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original eqstat.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
+! The equation of state of every run that does not use MHD: the
+! Yale EOS, with the SCV table at low temperature and an OPAL table
+! blended in where it covers the point.
+!     blend_eos            one evaluation at (log T, log P, X, Z):
+!                          Saha (or SCV) below the ionization cutoff,
+!                          fully ionized above it, interpolated across
+!                          it, then the OPAL result adopted inside the
+!                          table or blended in near its edge
+!     compute_blended_eos  blend_eos, with the T and P derivatives of
+!                          the gradients taken numerically (four more
+!                          evaluations) when use_numerical_derivatives
+!                          is set
+module blended_eos
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
+      use scv_eos, only: compute_scv_envelope_eos
+      use opal95_eos, only: compute_opal95_eos, find_opal95_ramp
+      use opal2001_eos, only: compute_opal2001_eos, find_opal2001_ramp
+      use opal2006_eos, only: compute_opal2006_eos, find_opal2006_ramp
+
+      implicit none
+      private
+      public :: compute_blended_eos, blend_eos
+
+contains
+
+!----------------------------------------------------------------------
+! compute_blended_eos (formerly eqstat)
+!----------------------------------------------------------------------
 ! New front end to equation of state routines. Provided to allow
-! numerical differentiation of the EOS (via eqstat2, below) by calling
+! numerical differentiation of the EOS (via blend_eos, below) by calling
 ! it at adjacent P and T points, when use_numerical_derivatives is
-! set, instead of relying on eqstat2's own (analytic/table)
+! set, instead of relying on blend_eos's own (analytic/table)
 ! derivatives.
 !                                                                 LLP  10-22-06
-subroutine eqstat(log10_temperature, temperature, log10_pressure, &
+subroutine compute_blended_eos(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -39,25 +62,24 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       use physical_constants
       use math_lib
       use eos_configuration, only: eos_settings
-      implicit none
 
-      double precision, intent(inout) :: log10_temperature
-      double precision, intent(out) :: temperature
-      double precision, intent(inout) :: log10_pressure
-      double precision, intent(out) :: pressure
-      double precision, intent(inout) :: log10_density
-      double precision, intent(out) :: density
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: beta
-      double precision, intent(out) :: beta_inverse, beta14
-      double precision, intent(inout) :: ion_fraction(3)
-      double precision, intent(out) :: specific_gas_constant
-      double precision, intent(inout) :: ion_mean_weight_inverse
-      double precision, intent(out) :: electron_mean_weight_inverse, &
+      real(dp), intent(inout) :: log10_temperature
+      real(dp), intent(out) :: temperature
+      real(dp), intent(inout) :: log10_pressure
+      real(dp), intent(out) :: pressure
+      real(dp), intent(inout) :: log10_density
+      real(dp), intent(out) :: density
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(inout) :: beta
+      real(dp), intent(out) :: beta_inverse, beta14
+      real(dp), intent(inout) :: ion_fraction(3)
+      real(dp), intent(out) :: specific_gas_constant
+      real(dp), intent(inout) :: ion_mean_weight_inverse
+      real(dp), intent(out) :: electron_mean_weight_inverse, &
            electron_degeneracy_parameter
-      double precision, intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
+      real(dp), intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
-      double precision, intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
+      real(dp), intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
@@ -69,21 +91,21 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 !  use_numerical_derivatives - if true derivatives are calculated
 !  numerically, else get them the old way using Yale EOS.
 
-      double precision :: log10_pressure_orig, log10_temperature_orig
+      real(dp) :: log10_pressure_orig, log10_temperature_orig
       logical :: in_atmosphere_local
       integer :: saha_state_local
       logical :: want_derivatives_2
-      double precision :: dpl, dtl, dpl2, dtl2
-      double precision :: log10_density_1, density_1
-      double precision :: ttl, ppl
-      double precision :: dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
+      real(dp) :: dpl, dtl, dpl2, dtl2
+      real(dp) :: log10_density_1, density_1
+      real(dp) :: ttl, ppl
+      real(dp) :: dlnrho_dlnt_1, dlnrho_dlnp_1, specific_heat_cp_1, &
            adiabatic_gradient_1
-      double precision :: dlnrho_dlnt_2, dlnrho_dlnp_2, specific_heat_cp_2, &
+      real(dp) :: dlnrho_dlnt_2, dlnrho_dlnp_2, specific_heat_cp_2, &
            adiabatic_gradient_2
-      double precision :: dlnrho_dlnt_dt_1, dlnrho_dlnp_dt_1, &
+      real(dp) :: dlnrho_dlnt_dt_1, dlnrho_dlnp_dt_1, &
            adiabatic_gradient_dt_1, adiabatic_gradient_dp_1, &
            specific_heat_cp_dt_1, specific_heat_cp_dp_1
-      double precision :: dlnrho_dlnt_dt_throwaway, dlnrho_dlnp_dt_throwaway, &
+      real(dp) :: dlnrho_dlnt_dt_throwaway, dlnrho_dlnp_dt_throwaway, &
            adiabatic_gradient_dt_throwaway, adiabatic_gradient_dp_throwaway, &
            specific_heat_cp_dt_throwaway, specific_heat_cp_dp_throwaway
 
@@ -121,7 +143,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          ttl = log10_temperature + dtl   ! Get derivatives wrt T.
          temperature = exp10(ttl)
          want_derivatives_2 = .false.
-         call eqstat2(ttl, temperature, log10_pressure, pressure, &
+         call blend_eos(ttl, temperature, log10_pressure, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -137,7 +159,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          ttl = log10_temperature - dtl
          temperature = exp10(ttl)
          want_derivatives_2 = .false.
-         call eqstat2(ttl, temperature, log10_pressure, pressure, &
+         call blend_eos(ttl, temperature, log10_pressure, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -160,7 +182,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          ppl = log10_pressure + dpl
          pressure = exp10(ppl)
          want_derivatives_2 = .false.
-         call eqstat2(log10_temperature, temperature, ppl, pressure, &
+         call blend_eos(log10_temperature, temperature, ppl, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -175,7 +197,7 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
          ppl = log10_pressure - dpl
          pressure = exp10(ppl)
          want_derivatives_2 = .false.
-         call eqstat2(log10_temperature, temperature, ppl, pressure, &
+         call blend_eos(log10_temperature, temperature, ppl, pressure, &
               log10_density_1, density_1, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -208,8 +230,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
 
       if (want_derivatives .and. .not.eos_settings%use_numerical_derivatives) then
          want_derivatives_2 = .true.   ! Need derivatives and have no numerical ones.
-                          ! Call eqstat2 and request derivatives
-         call eqstat2(log10_temperature, temperature, log10_pressure, &
+                          ! Call blend_eos and request derivatives
+         call blend_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -223,8 +245,8 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       else
          want_derivatives_2 = .false.  ! We either already have numerical derivatives
                         ! or do not need any derivatives.
-                          ! Call eqstat2 and request no derivatives
-         call eqstat2(log10_temperature, temperature, log10_pressure, &
+                          ! Call blend_eos and request no derivatives
+         call blend_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, hydrogen_fraction, &
               metal_fraction, beta, beta_inverse, beta14, ion_fraction, &
               specific_gas_constant, ion_mean_weight_inverse, &
@@ -242,54 +264,21 @@ subroutine eqstat(log10_temperature, temperature, log10_pressure, &
       end if
 
       return
-end subroutine eqstat
+end subroutine compute_blended_eos
 
 !----------------------------------------------------------------------
-! eqstat2
+! blend_eos (formerly eqstat2)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original eqstat2.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Co-located in this file (2026, phase-two reorg) since eqstat is a
-! pure numerical-differentiation wrapper around this routine and the
-! two have always been a matched pair; both remain plain external
-! subroutines (not module procedures), so this is a purely
-! organizational move -- callers (eos_lib.f90's eos_eval for eqstat;
-! eos_lib.f90's eos_get_gamma1, which calls eqstat2 directly) are
-! unaffected.
-!
-! Co-locating the two surfaced a genuine (harmless) interface bug:
-! gfortran checks call-site argument intents against a callee's actual
-! dummy-argument intents when both are visible in the same
-! compilation unit, and eqstat passes its own intent(in)
-! metal_fraction into what was eqstat2's intent(inout) metal_fraction
-! dummy -- illegal by the Fortran standard, previously undetectable
-! since eqstat/eqstat2 were separate translation units with no visible
-! interface. Traced to confirm it's provably harmless: the ONLY write
-! to metal_fraction in this subroutine's body was a save-then-restore
-! pair (originally "original_metal_fraction = metal_fraction" at
-! entry, "metal_fraction = original_metal_fraction" at exit) that
-! restored the value unchanged -- a defensive pattern presumably
-! carried over from the original F77, where no callee this subroutine
-! passes metal_fraction to (opal/oeqos*.f90, scv/eqscve.f90) actually
-! mutates it (all declare their own metal_fraction dummy intent(in)).
-! Removed the dead save/restore and changed the dummy to intent(in),
-! matching both its true read-only usage here and eqstat's usage --
-! zero behavior change, verified byte-identical against Stage 0.
-!
-! Core equation-of-state dispatcher. Given log10(T), log10(P), X, Z:
-! decides whether the gas needs a Saha ionization solve (via
-! yale/saha_eos.f90, optionally backed by the SCV table lookup in
-! scv/eqscve.f90) or can be treated as fully ionized (via
-! yale/fully_ionized_eos.f90), interpolates between the two regimes near the
-! ionization-cutoff temperature, and finally checks whether an OPAL
-! table (1995/2001/2006) covers the point and, if so, blends its
-! result in (via opal/oeqos*.f90 and the matching opal/eqbound*.f90
-! ramp logic).
-subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
+! One evaluation of the EOS at (log T, log P, X, Z). Below the
+! ionization cutoff the gas is solved with the Saha equations
+! (compute_saha_eos), or looked up in the SCV table
+! (compute_scv_envelope_eos) with Saha supplying what SCV lacks; above
+! it, it is fully ionized (compute_fully_ionized_eos); near the cutoff
+! the two are interpolated. Then, if an OPAL table (1995, 2001 or
+! 2006) covers the point, its result is adopted, or blended in with
+! the weight find_opal*_ramp returns near the table's edge.
+! metal_fraction is intent(in): no callee writes it.
+subroutine blend_eos(log10_temperature, temperature, log10_pressure, &
      pressure, log10_density, density, hydrogen_fraction, metal_fraction, &
      beta, beta_inverse, beta14, ion_fraction, specific_gas_constant, &
      ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -305,34 +294,33 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       use scv_eos_tables
       use math_lib
       use eos_configuration, only: eos_settings
-      implicit none
 
-      double precision, intent(inout) :: log10_temperature
-      double precision, intent(out) :: temperature
-      double precision, intent(inout) :: log10_pressure
-      double precision, intent(out) :: pressure
-      double precision, intent(inout) :: log10_density
-      double precision, intent(out) :: density
-      double precision, intent(in) :: hydrogen_fraction
-      double precision, intent(in) :: metal_fraction
-      double precision, intent(inout) :: beta
-      double precision, intent(out) :: beta_inverse, beta14
-      double precision, intent(inout) :: ion_fraction(3)
-      double precision, intent(out) :: specific_gas_constant
-      double precision, intent(inout) :: ion_mean_weight_inverse
-      double precision, intent(out) :: electron_mean_weight_inverse, &
+      real(dp), intent(inout) :: log10_temperature
+      real(dp), intent(out) :: temperature
+      real(dp), intent(inout) :: log10_pressure
+      real(dp), intent(out) :: pressure
+      real(dp), intent(inout) :: log10_density
+      real(dp), intent(out) :: density
+      real(dp), intent(in) :: hydrogen_fraction
+      real(dp), intent(in) :: metal_fraction
+      real(dp), intent(inout) :: beta
+      real(dp), intent(out) :: beta_inverse, beta14
+      real(dp), intent(inout) :: ion_fraction(3)
+      real(dp), intent(out) :: specific_gas_constant
+      real(dp), intent(inout) :: ion_mean_weight_inverse
+      real(dp), intent(out) :: electron_mean_weight_inverse, &
            electron_degeneracy_parameter
-      double precision, intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
+      real(dp), intent(inout) :: dlnrho_dlnt, dlnrho_dlnp, &
            specific_heat_cp, adiabatic_gradient
-      double precision, intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
+      real(dp), intent(out) :: dlnrho_dlnt_dt, dlnrho_dlnp_dt, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_state
 ! --- locals ---
       integer :: num_species, species_idx
-      double precision :: inverse_atomic_weights(4), atomic_weights_full(n_mix_species)
-      double precision :: saha_ramp_width, saha_ramp_scale
+      real(dp) :: inverse_atomic_weights(4), atomic_weights_full(n_mix_species)
+      real(dp) :: saha_ramp_width, saha_ramp_scale
       data num_species/12/
       data inverse_atomic_weights/0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0/
       data saha_ramp_width, saha_ramp_scale/0.500d0, 2.000d0/
@@ -342,44 +330,44 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
            12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0/
 
       logical :: need_saha_solution, skip_relativistic_eos
-      double precision :: saha_mass_fractions(n_mix_species)
-      double precision :: metal_ratio, amu_correction, h_excess, y_excess
-      double precision :: envelope_amu_over_amu
-      double precision :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
+      real(dp) :: saha_mass_fractions(n_mix_species)
+      real(dp) :: metal_ratio, amu_correction, h_excess, y_excess
+      real(dp) :: envelope_amu_over_amu
+      real(dp) :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
       logical :: use_envelope_mixture
       logical :: valid_table_point
-      double precision :: opal_log10_density, opal_density, opal_beta, &
+      real(dp) :: opal_log10_density, opal_density, opal_beta, &
            opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
            opal_ion_mean_weight_inverse, opal_electron_mean_weight_inverse, &
            opal_dlnrho_dlnt, opal_dlnrho_dlnp, opal_specific_heat_cp, &
            opal_adiabatic_gradient
-      double precision :: ramp_factor
+      real(dp) :: ramp_factor
       logical :: in_opal_table, needs_ramp
       logical :: opal_covers_point
 ! (T, rho) window inside which each OPAL vintage is consulted at all
-! (the table edge itself is then handled by eqbound/eqbound01/
-! eqbound06). The three gates are not the same test: 1995 bounds
+! (the table edge itself is then handled by find_opal95_ramp/find_opal2001_ramp/
+! find_opal2006_ramp). The three gates are not the same test: 1995 bounds
 ! log10 T by 8.0 where 2001/2006 bound T by 100e6 / 200e6 K, and 1995
 ! caps log10 rho at 5.0 against 7.0 for the other two -- the values
 ! are the original literals, kept as written.
-      double precision, parameter :: opal95_t_min = 5.0d3, &
+      real(dp), parameter :: opal95_t_min = 5.0d3, &
            opal95_log10_t_max = 8.0d0, opal95_log10_rho_max = 5.0d0
-      double precision, parameter :: opal01_t_min = 2.0d3, &
+      real(dp), parameter :: opal01_t_min = 2.0d3, &
            opal01_t_max = 100d6, opal01_log10_rho_max = 7.0d0
-      double precision, parameter :: opal06_t_min = 1.870d3, &
+      real(dp), parameter :: opal06_t_min = 1.870d3, &
            opal06_t_max = 200d6, opal06_log10_rho_max = 7.0d0
 
-! values saved across the saha_eos/fully_ionized_eos interpolation
+! values saved across the compute_saha_eos/compute_fully_ionized_eos interpolation
 ! near the ionization cutoff
-      double precision :: saha_log10_density, saha_dlnrho_dlnt, &
+      real(dp) :: saha_log10_density, saha_dlnrho_dlnt, &
            saha_dlnrho_dlnp, saha_specific_heat_cp, saha_adiabatic_gradient
-      double precision :: saha_dlnrho_dlnt_dt, saha_dlnrho_dlnp_dt, &
+      real(dp) :: saha_dlnrho_dlnt_dt, saha_dlnrho_dlnp_dt, &
            saha_specific_heat_cp_dt, saha_specific_heat_cp_dp, &
            saha_adiabatic_gradient_dt, saha_adiabatic_gradient_dp
-      double precision :: ramp_weight, ramp_weight_sq
+      real(dp) :: ramp_weight, ramp_weight_sq
 
 !     need_saha_solution = T if T low enough to require a call to
-!     saha_eos to solve the Saha ionization equation; if F, a fully
+!     compute_saha_eos to solve the Saha ionization equation; if F, a fully
 !     ionized gas is assumed. skip_relativistic_eos = T if the Saha
 !     equation must be solved but the fully-ionized (relativistic)
 !     equation of state is not needed.
@@ -434,7 +422,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          end if
       else
 !        ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL
-!        EXCESS (SHARED WITH eos/mu.f90), THEN THE SAHA NUMBER FRACTIONS
+!        EXCESS (SHARED WITH compute_mean_weights), THEN THE SAHA NUMBER FRACTIONS
          call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
               ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
          if (use_envelope_mixture) then
@@ -470,7 +458,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 
       if (beta.lt.0d0) then
          write(run_log_unit,*) &
-              'EQSTAT2: BETA is negative: TL,PL,BETA,1-BETA', &
+              'blend_eos: BETA is negative: TL,PL,BETA,1-BETA', &
               log10_temperature, log10_pressure, beta, 1d0 - beta
       end if
 
@@ -486,7 +474,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          ion_fraction(1) = 1.0d0
          ion_fraction(2) = 0.0d0
          ion_fraction(3) = 1.0d0
-         call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
+         call compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
               pressure, log10_density, density, beta, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
               electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -495,9 +483,9 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp_dt, specific_heat_cp_dp)
       else
 !     CHECK IF SAUMON, CHABRIER, AND VAN HORN EQUATION OF STATE NEEDED.
-!     THIS EOS REPLACES THE CALL TO saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
+!     THIS EOS REPLACES THE CALL TO compute_saha_eos, EXCEPT FOR DERIVATIVE PURPOSES.
       if (eos_settings%use_scv_eos) then
-         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
+         call compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -505,7 +493,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               specific_heat_cp, adiabatic_gradient, dlnrho_dlnt_dt, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
-         call eqscve(log10_temperature, temperature, pressure, &
+         call compute_scv_envelope_eos(log10_temperature, temperature, pressure, &
               log10_density, density, hydrogen_fraction, metal_fraction, &
               beta, ion_fraction, dlnrho_dlnt, dlnrho_dlnp, &
               specific_heat_cp, adiabatic_gradient, valid_table_point, ierr)
@@ -514,14 +502,14 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
 ! 2026 audit fix: the do_scv_derivatives numerical-derivative branch
 ! (unreachable -- its flag was hardcoded .false. -- AND broken: it
 ! read specific_heat_cp_2/adiabatic_gradient_2 that its "-dtl" calls
-! never assigned) is deleted. The SCV path keeps saha_eos's
+! never assigned) is deleted. The SCV path keeps compute_saha_eos's
 ! analytic derivatives, exactly as every run has always done. See
 ! git history for the preserved transliteration.
 
       else
 !        CALL TO PRATHER EOS - Either because SCV was not requested or
 !        it has failed.
-         call saha_eos(saha_mass_fractions, log10_temperature, temperature, &
+         call compute_saha_eos(saha_mass_fractions, log10_temperature, temperature, &
               log10_pressure, pressure, log10_density, density, beta, &
               beta_inverse, beta14, ion_fraction, specific_gas_constant, &
               ion_mean_weight_inverse, electron_mean_weight_inverse, &
@@ -530,7 +518,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               dlnrho_dlnp_dt, adiabatic_gradient_dt, adiabatic_gradient_dp, &
               specific_heat_cp_dt, specific_heat_cp_dp, saha_state)
       end if
-!     STORE saha_eos VALUES FOR INTERPOLATION WITH fully_ionized_eos VALUES
+!     STORE compute_saha_eos VALUES FOR INTERPOLATION WITH compute_fully_ionized_eos VALUES
       saha_log10_density = log10_density
       saha_dlnrho_dlnt = dlnrho_dlnt
       saha_dlnrho_dlnp = dlnrho_dlnp
@@ -544,7 +532,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
          saha_adiabatic_gradient_dt = adiabatic_gradient_dt
          saha_adiabatic_gradient_dp = adiabatic_gradient_dp
       end if
-!     Bypass relativistic EOS (fully_ionized_eos) if in low temperature region
+!     Bypass relativistic EOS (compute_fully_ionized_eos) if in low temperature region
       if (.not. skip_relativistic_eos) then
 !     COMPUTE VALUES FOR FULLY IONIZED GAS
       electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) + &
@@ -554,7 +542,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       ion_fraction(1) = 1.0d0
       ion_fraction(2) = 0.0d0
       ion_fraction(3) = 1.0d0
-      call fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
+      call compute_fully_ionized_eos(log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density, beta, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter, dlnrho_dlnt, dlnrho_dlnp, &
@@ -608,7 +596,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       if (temperature.ge.opal95_t_min .and. log10_temperature.le.opal95_log10_t_max .and. &
            log10_density.le.opal95_log10_rho_max) then
 
-         call oeqos(log10_temperature, temperature, log10_pressure, &
+         call compute_opal95_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
               opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
@@ -618,7 +606,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_adiabatic_gradient, ierr, opal_covers_point)
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call eqbound(temperature, opal_log10_density, ramp_factor, &
+         call find_opal95_ramp(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
 
@@ -632,7 +620,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       if (eos_settings%use_opal2001_eos) then
       if (temperature.ge.opal01_t_min .and. temperature.le.opal01_t_max .and. &
            log10_density.le.opal01_log10_rho_max) then
-         call oeqos01(log10_temperature, temperature, log10_pressure, &
+         call compute_opal2001_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
               opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
@@ -642,10 +630,10 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_adiabatic_gradient, ierr, opal_covers_point)
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call eqbound01(temperature, opal_log10_density, ramp_factor, &
+         call find_opal2001_ramp(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
          if (ierr /= 0) return
-!        eqbound01 determines whether or not the point is in the OPAL
+!        find_opal2001_ramp determines whether or not the point is in the OPAL
 !        2001 EOS table
 
          if (.not.in_opal_table) return
@@ -658,7 +646,7 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
       if (eos_settings%use_opal2006_eos) then
       if (temperature.ge.opal06_t_min .and. temperature.le.opal06_t_max .and. &
            log10_density.le.opal06_log10_rho_max) then
-         call oeqos06(log10_temperature, temperature, log10_pressure, &
+         call compute_opal2006_eos(log10_temperature, temperature, log10_pressure, &
               pressure, opal_log10_density, opal_density, &
               hydrogen_fraction, metal_fraction, opal_beta, &
               opal_beta_inverse, opal_beta14, opal_specific_gas_constant, &
@@ -668,9 +656,9 @@ subroutine eqstat2(log10_temperature, temperature, log10_pressure, &
               opal_adiabatic_gradient, ierr, opal_covers_point)
          if (ierr /= 0 .or. .not. opal_covers_point) return
 
-         call eqbound06(temperature, opal_log10_density, ramp_factor, &
+         call find_opal2006_ramp(temperature, opal_log10_density, ramp_factor, &
               in_opal_table, needs_ramp)
-!        eqbound06 determines whether or not the point is in the OPAL
+!        find_opal2006_ramp determines whether or not the point is in the OPAL
 !        2006 EOS table.
 !        If in_opal_table is true, point is in Opal 2006 table.
 !        If needs_ramp is true, point is in ramp area, and ramping is
@@ -695,7 +683,7 @@ contains
 ! table (needs_ramp false), or blend it into the Yale/SCV result with
 ! weight ramp_factor when the point lies in the ramp zone at the table
 ! edge. Shared by the 1995, 2001 and 2006 branches above; every
-! variable is host-associated from eqstat2.
+! variable is host-associated from blend_eos.
 subroutine adopt_or_blend_opal_result()
          if (.not.needs_ramp) then
             log10_density = opal_log10_density
@@ -734,4 +722,6 @@ subroutine adopt_or_blend_opal_result()
          end if
 end subroutine adopt_or_blend_opal_result
 
-end subroutine eqstat2
+end subroutine blend_eos
+
+end module blended_eos

@@ -340,7 +340,7 @@ double precision function ext_profile_value(icol, j)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
 ! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
-! R/mu = beta*P/(rho*T) -- the same identity eqstat uses for its
+! R/mu = beta*P/(rho*T) -- the same identity compute_blended_eos uses for its
 ! specific gas constant -- so the Ledoux column below sees a
 ! continuous mu across the interior/envelope junction instead of 0.
          case (52); ext_profile_value = ideal_gas_mu( &
@@ -439,7 +439,7 @@ double precision function atmosphere_radius_cm(i)
 end function atmosphere_radius_cm
 
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
-! gas pressure (eqstat's own specific-gas-constant identity). Zero
+! gas pressure (compute_blended_eos's own specific-gas-constant identity). Zero
 ! when the inputs cannot support it.
 double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
       use math_lib

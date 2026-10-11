@@ -5,7 +5,7 @@
 ! physics domains from the model"). The envelope mixture the eos
 ! domain evaluates with: surface hydrogen/metal fractions, the mean
 ! atomic mass, and the 12-species number fractions consumed by the
-! Yale (eqrelv/eqsaha) and SCV branches of eqstat2 and by eos/mu.f90.
+! Yale (eqrelv/eqsaha) and SCV branches of blend_eos and by compute_mean_weights.
 !
 ! Previously the eos internals read this straight from the model
 ! (star%...), the one place the eos domain touched
@@ -23,9 +23,9 @@ module eos_mixture
       private
 
 ! The 12-species surface mixture layout (composition_layout's ix_*,
-! re-exported): element per slot of fxenv, eqstat2's
+! re-exported): element per slot of fxenv, blend_eos's
 ! atomic_weights_full table and the saha_mass_fractions vector handed
-! to eos/yale/saha_eos.
+! to eos/yale/compute_saha_eos.
       public :: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, &
            ix_ar, ix_ne, ix_he, n_mix_species
 
@@ -42,7 +42,7 @@ module eos_mixture
 
       type(eos_mixture_state), public, save :: eos_mix
 
-      public :: ion_mean_weight_excess
+      public :: ion_mean_weight_excess, compute_mean_weights
 
 contains
 
@@ -53,10 +53,9 @@ contains
 ! use_envelope is .true. when x and z are within 1e-5 of the envelope
 ! values: then mu_ion_inv = amuenv and dfx1/dfx12 hold the raw
 ! (unweighted) differences; otherwise dfx1/dfx12/dfx4 are the
-! weighted H/metal/He excesses that eqstat also needs for its Saha
+! weighted H/metal/He excesses that compute_blended_eos also needs for its Saha
 ! number fractions (dfx4 is defined only in that branch).  Shared by
-! eos/mu.f90 and eos/eqstat.f90 since 2026 W2; statement order is
-! that of mu.f90.
+! compute_mean_weights and compute_blended_eos.
 subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
      use_envelope)
       implicit none
@@ -83,5 +82,40 @@ subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
          mu_ion_inv = eos_mix%amuenv + dfx1 + dfx4 + dfx12
       end if
 end subroutine ion_mean_weight_excess
+
+! compute_mean_weights: the ion and electron inverse mean molecular
+! weights and the specific gas constant R*(1/mu_ion + 1/mu_e) of a
+! zone, as a cross-check on an EOS table's own bookkeeping (the OPAL
+! and MHD paths call it). 1/mu_ion comes from ion_mean_weight_excess;
+! 1/mu_e is backed out of the ideal-gas law with the given beta (the
+! gas-pressure fraction).
+subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
+     metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
+     electron_mean_weight_inverse, beta)
+
+      use physical_constants, only: gas_constant
+      implicit none
+
+      double precision, intent(in) :: temperature, pressure, density, &
+           hydrogen_fraction, metal_fraction, beta
+      double precision, intent(out) :: specific_gas_constant, &
+           ion_mean_weight_inverse, electron_mean_weight_inverse
+
+! dfx1/dfx12/dfx4: per-species excesses returned by
+! ion_mean_weight_excess; only ion_mean_weight_inverse is needed here.
+      double precision :: dfx1, dfx12, dfx4, ee
+      logical :: use_envelope
+
+! ION MEAN WEIGHT FROM THE ENVELOPE MIXTURE PLUS THE H/He/METAL EXCESS
+      call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
+           ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope)
+      ee = ((beta*pressure)/(density*temperature*gas_constant* &
+           ion_mean_weight_inverse)) - 1.0d0
+      electron_mean_weight_inverse = ee*ion_mean_weight_inverse
+      specific_gas_constant = gas_constant*(ion_mean_weight_inverse + &
+           electron_mean_weight_inverse)
+
+      return
+end subroutine compute_mean_weights
 
 end module eos_mixture

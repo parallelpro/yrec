@@ -677,7 +677,7 @@ subroutine rescale_and_refit_envelope
                     want_derivatives, in_atmosphere, saha_state, &
                     composition_at_zone=star%xa(:,star%nz), ierr=ierr)
                if (ierr /= 0) return
-! kap at eqstat's returned density -- the historical inout dataflow
+! kap at compute_blended_eos's returned density -- the historical inout dataflow
                call kap_get(eos_res(i_log10_density), log10_temperature, &
                     hydrogen_fraction, metal_fraction, kap_res, &
                     eos_res(i_fxion:i_fxion+2), ierr=ierr)
@@ -900,7 +900,7 @@ subroutine update_surface_mixture
       star%amuenv = mixture_weight_sum
       mixture_scale_factor = 1.0d0/star%amuenv
 ! DBG 1/96 FXENV ARE NUMBER FRACTIONS OF ELEMENTS REQURIED
-! BY EOS ROUTINES (SEE EQSTAT AND EQSAHA)
+! BY EOS ROUTINES (SEE compute_blended_eos AND EQSAHA)
       do i = 1,n_mix_species
        star%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
       end do

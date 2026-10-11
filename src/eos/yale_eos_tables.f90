@@ -5,7 +5,7 @@
 ! Prather EOS's tabulated state: the degenerate-electron (Fermi-Dirac)
 ! table, former common/ccr/, read once at startup (now by eos_lib's
 ! eos_init; historically by an inline block in setup/setups.f90) and
-! consumed only by eos/yale/fully_ionized_eos.f90's fully-ionized-gas solve.
+! consumed only by compute_fully_ionized_eos's fully-ionized-gas solve.
 !
 ! These members lived in atm_tables through phases one and two
 ! purely as an accident of the original COMMON grouping -- eos-domain
@@ -13,7 +13,7 @@
 ! OPAL-2006 common/eeos06/ members relocated to opal_eos_tables earlier
 ! in stage 1. Member names are unchanged from their atm_tables
 ! spelling (fermi_table_*); only the instance prefix changed
-! (atm_table% -> yale_eos%).
+! (atm_table% -> yale%).
 !
 ! fermi_table_x_grid/fermi_table_eta: the 43-point table abscissas.
 ! fermi_table_data(5,43,20): the tabulated Fermi-Dirac integral
@@ -29,7 +29,7 @@ module yale_eos_tables
            integer :: fermi_table_x_lookup(261)
       end type yale_eos_state
 
-      type(yale_eos_state), public :: yale_eos
+      type(yale_eos_state), public :: yale
 
 
 ! 2026 (phase six, step 3 -- docs/ROADMAP.md): evicted here from

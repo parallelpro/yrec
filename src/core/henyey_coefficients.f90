@@ -162,10 +162,10 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
          if (ierr /= 0) return
          dlnrho_dlnt = eos_res(i_dlnrho_dlnt)
          dlnrho_dlnp = eos_res(i_dlnrho_dlnp)
-! eqstat historically updated zone_log10_density in place; the tail
+! compute_blended_eos historically updated zone_log10_density in place; the tail
 ! (cur%qr, energy generation, star%elim_rhs) reads the updated value.
          zone_log10_density = eos_res(i_log10_density)
-! DBG 12/95 GET OPACITY (at eqstat's returned density -- the
+! DBG 12/95 GET OPACITY (at compute_blended_eos's returned density -- the
 ! historical inout dataflow)
          call kap_get(eos_res(i_log10_density), zone_log_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &

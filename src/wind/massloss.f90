@@ -19,7 +19,7 @@
 ! envelope and of the accreted matter (needed by mdot.f90's radius/
 ! pressure/temperature adjustment), and the specific entropy of
 ! accreted matter (via an Allard-atmosphere surface-pressure/
-! temperature solve, ALSURFP+EQSTAT), then calls mdot.f90 to actually
+! temperature solve, ALSURFP+compute_blended_eos), then calls mdot.f90 to actually
 ! apply the mass change.
 !
 ! The call to mdot below matches mdot.f90's 23-dummy list 1:1 (the

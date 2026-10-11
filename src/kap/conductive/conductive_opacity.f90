@@ -78,7 +78,7 @@ end subroutine read_conductive_table
 ! Combines the fully-ionized-species Potekhin conductive opacity
 ! (condopacp.f90, called for pure H, He, and a Z=8 metal proxy) into a
 ! single mixture value, weighted by each species' actual ionization
-! fraction (ion_fraction, from the eos/yale/saha_eos.f90/fully_ionized_eos.f90 solve
+! fraction (ion_fraction, from the compute_fully_ionized_eos solve
 ! upstream). Called from kap_lib.f90's kap_get whenever conductive
 ! opacity is enabled.
 subroutine compute_conductive_opacity(log10_density, log10_temperature, &

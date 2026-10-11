@@ -1620,7 +1620,7 @@ end subroutine qgauss
 ! original intpt.f; only variable names, source form, and comment
 ! style were updated. Validated against the Stage 0 regression suite
 ! (examples/run_standard_solar_model). NOT exercised by that suite
-! (only called from mhdpx2.f90, the MHD equation-of-state path, which
+! (only called from mhdpx2, the MHD equation-of-state path, which
 ! the suite's 4 test cases do not select) -- verified by build +
 ! code review only.
 !
@@ -1630,7 +1630,7 @@ end subroutine qgauss
 ! t_indices columns to interpolate in pressure (work1 -> work2), then
 ! across the 4 selected t_indices to interpolate in temperature
 ! (work2 -> interp_vars). Dummy-argument names match the actual
-! arguments used at the intpt call sites in mhdpx2.f90.
+! arguments used at the intpt call sites in mhdpx2.
 subroutine intpt(log10_pressure, log10_temperature, table_data, &
      table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
      work1, work2, y_work, interp_vars)
@@ -1738,7 +1738,7 @@ end subroutine intpt
 !
 ! Moved here (2026) from net_lib.f90: a generic table-lookup
 ! interpolation/extrapolation routine with no nuclear-physics content
-! -- called by this module's own intpt above, and by eos/mhd/mhdpx1.f90;
+! -- called by this module's own intpt above, and by mhdpx1;
 ! it was mis-homed in net_lib purely because its own burn_li_be
 ! also happens to use it (see ratext below, which shares that
 ! history). Naming/module placement follows docs/GUIDELINES.md's rule that

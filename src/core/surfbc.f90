@@ -22,7 +22,7 @@
 ! atm_get's own header documents as intent(inout) because they flow
 ! through to bsstep/mmid's callback machinery. Declaring them
 ! intent(in) here was a pre-existing bug of the same shape documented
-! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
+! in atm_get's header (and compute_blended_eos's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
 ! envelope_integration gave it one. core/henyey_iteration.f90 (this routine's only

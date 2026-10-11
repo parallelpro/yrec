@@ -73,7 +73,7 @@ subroutine envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_state, ierr=ierr)
       if (ierr /= 0) return
-! kap at eqstat's returned density -- the historical inout dataflow
+! kap at compute_blended_eos's returned density -- the historical inout dataflow
       call kap_get(eos_res(i_log10_density), log10_temperature, &
            hydrogen_fraction, metal_fraction, kap_res, &
            eos_res(i_fxion:i_fxion+2), ierr=ierr)

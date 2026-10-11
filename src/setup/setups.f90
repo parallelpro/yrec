@@ -12,8 +12,8 @@
 !
 ! One-time model-independent setup performed at program start:
 ! defines the physical/mathematical constants used throughout the
-! code (physical_constants and star%), loads the opacity tables (setupopac/mhdtbl), the degenerate-electron
-! (Fermi-Dirac) equation-of-state table used by fully_ionized_eos.f90, the
+! code (physical_constants and star%), loads the opacity tables (setupopac/read_mhd_tables), the degenerate-electron
+! (Fermi-Dirac) equation-of-state table used by compute_fully_ionized_eos, the
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
 ! equation-of-state tables.

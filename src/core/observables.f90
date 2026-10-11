@@ -21,7 +21,7 @@
 ! Statement-level content is verbatim from the original; only the
 ! decomposition is new. One local of the old blanket-`save` version
 ! is genuinely cross-call state and lives at module level:
-! ksaha_center, eqstat's saha-table state continuity across calls.
+! ksaha_center, compute_blended_eos's saha-table state continuity across calls.
 ! All other former SAVEd locals are assigned before use on every path
 ! that reads them, so they are plain locals of their theme routine.
 ! (The original wrtout also carried a core-boundary radius computed
@@ -180,7 +180,7 @@ subroutine compute_central_conditions(ierr)
       metal_fraction_center = star%xa(i_metals,1)
       is_atmosphere_point = .true.
       compute_derivatives = .false.
-!  CALL EQSTAT TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
+!  CALL compute_blended_eos TO GET TRUE CENTRAL DENSITY, BETA, AND ETA.
       call eos_get(log_temperature_center, log_pressure_center, &
            hydrogen_fraction_center, metal_fraction_center, eos_res, &
            compute_derivatives, is_atmosphere_point, ksaha_center, &

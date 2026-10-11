@@ -6,15 +6,15 @@
 ! where it had landed as former common/scveos/ during the phase-one
 ! COMMON conversion. The pure-species tables are loaded by eos_lib's
 ! eos_init; the envelope-mixture table tablenv is built from them by
-! eos/scv/scv_envelope_table.f90 (called from core/read_starting_model);
-! read by eos/scv/eqscve and eqscvg.
+! build_scv_envelope_table (called from core/read_starting_model);
+! read by eos/scv/compute_scv_envelope_eos and compute_scv_eos.
 module scv_eos_tables
       implicit none
 
 ! former common/scveos/: the SCV EOS tables. tlogx/tablex/tabley/smix/
 ! tablez/tablenv/nptsx/idtt/idp are spelled identically to their
 ! canonical names in the majority of files that declare this block
-! (eos/scv/eqscve.f90 and eos/scv/eqscvg.f90 used a distinct,
+! (compute_scv_envelope_eos and compute_scv_eos used a distinct,
 ! more-descriptive naming scheme -- table_log10_temperature/
 ! hydrogen_table/helium_table/entropy_of_mixing_table/metal_table/
 ! envelope_table/num_pressure_points/scv_temp_index/scv_pressure_index
@@ -34,8 +34,8 @@ module scv_eos_tables
       integer :: nptsx(scv_nt), idtt, idp
 ! Readability W3 (2026): named table columns. Only the columns some
 ! reader or writer in eos/ addresses are named; their meanings follow
-! from those uses (eos/scv/eqscvg.f90, eqscve.f90,
-! scv_envelope_table.f90). eos_init reads columns 1..11 of the H and
+! from those uses (compute_scv_eos, compute_scv_envelope_eos,
+! build_scv_envelope_table). eos_init reads columns 1..11 of the H and
 ! He tables and 1..13 of the Z table from the files verbatim.
 !
 ! H and He tables (tablex, tabley), same layout:
@@ -47,14 +47,14 @@ module scv_eos_tables
       integer, parameter :: iscv_dlnrho_dlnt = 7    ! dln(rho)/dln(T) at constant P
       integer, parameter :: iscv_dlnrho_dlnp = 8    ! dln(rho)/dln(P) at constant T
       integer, parameter :: iscv_dlns_dlnt = 9      ! dln(S)/dln(T) at constant P
-      integer, parameter :: iscv_du_dt = 12         ! du/dT, built by scv_envelope_table (not read)
+      integer, parameter :: iscv_du_dt = 12         ! du/dT, built by build_scv_envelope_table (not read)
 ! Z (metal) table (tablez):
       integer, parameter :: iscvz_log10_rho = 4     ! log10 density
       integer, parameter :: iscvz_log10_du_dt = 7   ! log10 du/dT
       integer, parameter :: iscvz_dlnrho_dlnt = 10  ! dln(rho)/dln(T) at constant P
       integer, parameter :: iscvz_dlnrho_dlnp = 13  ! dln(rho)/dln(P) at constant T
-! Envelope-mixture table (tablenv), built by scv_envelope_table and
-! read by eqscve (columns 2..6 as its five interpolated quantities, in
+! Envelope-mixture table (tablenv), built by build_scv_envelope_table and
+! read by compute_scv_envelope_eos (columns 2..6 as its five interpolated quantities, in
 ! this order):
       integer, parameter :: iscvenv_log10_p = 1       ! log10 gas pressure (copied from tablex)
       integer, parameter :: iscvenv_log10_rho = 2     ! log10 mixture density
@@ -71,7 +71,7 @@ module scv_eos_tables
 
 contains
 
-! Four-point Lagrange sum used by eqscve/eqscvg to interpolate a table
+! Four-point Lagrange sum used by compute_scv_envelope_eos/compute_scv_eos to interpolate a table
 ! column along one axis: w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4),
 ! evaluated left to right exactly as the former inline expressions.
 double precision function scv_weighted_sum4(w, y)
