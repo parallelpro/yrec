@@ -331,6 +331,7 @@ program test_eos
       write(*,'(a,i4)') "err bad-rad-flag   ierr = ", eos_ierr
 
       call check_configurations()
+      call check_derivatives()
 
       close(run_log_unit)
       write(*,'(a)') "test_eos: done"
@@ -434,4 +435,91 @@ contains
             end if
          end do
       end subroutine evaluate_grid
+
+! The derivative check: at points in each regime, every configuration's
+! analytic derivatives against centred finite differences of its own
+! values (a step of 1e-4 in log T and in log P). Each row prints the
+! analytic value, the finite difference and their relative difference.
+! The second-derivative outputs are checked as
+!   dlnrho_dlnt_dt   d(dln rho/dln T)/dln T
+!   dlnrho_dlnp_dt   d(dln rho/dln T)/dln P
+!   adiabatic_gradient_dt, _dp   dln grad_ad/dln T, dln grad_ad/dln P
+!   specific_heat_cp_dt, _dp     dln cp/dln T, dln cp/dln P
+! Table interpolation adds noise to finite differences, so agreement is
+! expected only where the values are analytic; the numbers are pinned
+! either way.
+      subroutine check_derivatives()
+         character(len=256) :: legacy
+         legacy = trim(yrec_input)//"/eos/legacy/"
+         write(*,'(a)') "# test_eos: derivative check (analytic, finite difference, relative difference)"
+         call configure_eos("yale_only")
+         call derivative_points("yale_only")
+         call configure_eos("scv_only", scv=.true.)
+         call derivative_points("scv_only")
+         call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
+         call derivative_points("production")
+         call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
+         call derivative_points("opal95")
+         call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
+         call derivative_points("opal2001")
+         call configure_eos("numerical", opal2006=.true., scv=.true., numerical=.true., file=opal06_path)
+         call derivative_points("numerical")
+         call configure_eos("debye_huckel", debye_huckel=.true.)
+         call derivative_points("debye_huckel")
+      end subroutine check_derivatives
+
+         subroutine derivative_points(label)
+            character(len=*), intent(in) :: label
+            integer, parameter :: nd = 5
+            double precision, parameter :: dlogt(nd) = [3.90d0, 4.50d0, 5.50d0, 6.90d0, 7.161d0]
+            double precision, parameter :: dlogp(nd) = [6.0d0, 8.0d0, 11.5d0, 16.0d0, 17.35d0]
+            double precision, parameter :: h = 1.0d-4, ln10 = 2.302585092994045684d0
+            double precision :: c(11), tp(11), tm(11), pp(11), pm(11)
+            integer :: k
+            do k = 1, nd
+               call eval_point(dlogt(k), dlogp(k), .true., c)
+               call eval_point(dlogt(k) + h, dlogp(k), .false., tp)
+               call eval_point(dlogt(k) - h, dlogp(k), .false., tm)
+               call eval_point(dlogt(k), dlogp(k) + h, .false., pp)
+               call eval_point(dlogt(k), dlogp(k) - h, .false., pm)
+               write(*,'(a,1x,a,2f7.3)') "deriv", trim(label), dlogt(k), dlogp(k)
+! slots of c: 1 log rho, 2 dlnrho_dlnt, 3 dlnrho_dlnp, 4 cp, 5 grad_ad,
+! 6-11 the six second derivatives
+               call row("dlnrho_dlnt", c(2), (tp(1) - tm(1))/(2.0d0*h))
+               call row("dlnrho_dlnp", c(3), (pp(1) - pm(1))/(2.0d0*h))
+               call row("dlnrho_dlnt_dt", c(6), (tp(2) - tm(2))/(2.0d0*h*ln10))
+               call row("dlnrho_dlnp_dt", c(7), (pp(2) - pm(2))/(2.0d0*h*ln10))
+               call row("grad_ad_dt", c(8), (log10(tp(5)) - log10(tm(5)))/(2.0d0*h))
+               call row("grad_ad_dp", c(9), (log10(pp(5)) - log10(pm(5)))/(2.0d0*h))
+               call row("cp_dt", c(10), (log10(tp(4)) - log10(tm(4)))/(2.0d0*h))
+               call row("cp_dp", c(11), (log10(pp(4)) - log10(pm(4)))/(2.0d0*h))
+            end do
+         end subroutine derivative_points
+
+         subroutine eval_point(lt, lp, want, v)
+            double precision, intent(in) :: lt, lp
+            logical, intent(in) :: want
+            double precision, intent(out) :: v(11)
+            integer :: ierr
+            logt = lt
+            logp = lp
+            logd = 0.0d0
+            d = 0.0d0
+            ksaha = 0
+            fxion = 0.0d0
+            call eos_eval(logt, t, logp, p, logd, d, 0.70d0, 0.016492d0, &
+                 beta, betai, beta14, fxion, rmu, amu, emu, eta, &
+                 qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp, &
+                 want, .false., ksaha, ierr=ierr)
+            if (ierr /= 0) write(*,'(a,2f8.4,a,i0)') "eos logT logP", lt, lp, " ierr ", ierr
+            v = [logd, qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp]
+         end subroutine eval_point
+
+         subroutine row(name, analytic, fd)
+            character(len=*), intent(in) :: name
+            double precision, intent(in) :: analytic, fd
+            double precision :: rel
+            rel = (analytic - fd)/max(abs(fd), 1.0d-30)
+            write(*,'(2x,a16,3(1pe13.4))') name, analytic, fd, rel
+         end subroutine row
 end program test_eos

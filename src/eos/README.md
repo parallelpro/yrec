@@ -28,9 +28,18 @@ With `use_mhd_eos` it calls `compute_mhd_eos`. Otherwise it calls `compute_blend
 ## 3. Conventions
 
 - **Units** are cgs: T in K, P in dyn/cm², rho in g/cm³, cp in erg/(g K). The OPAL routines work internally in T6 = T/10⁶ and P in units of 10¹² dyn/cm².
-- **Derivatives are logarithmic**: `dlnrho_dlnt`, `dlnrho_dlnp` and their T and P derivatives.
+- **Derivatives are logarithmic.** The first derivatives are ∂lnρ/∂lnT at constant P and ∂lnρ/∂lnP at constant T. The six second derivatives are (test_eos's derivative check confirms each against finite differences on the Yale paths):
+
+  | Output | Definition |
+  |---|---|
+  | `dlnrho_dlnt_dt` | ∂(∂lnρ/∂lnT)/∂lnT |
+  | `dlnrho_dlnp_dt` | ∂(∂lnρ/∂lnT)/∂lnP (not a derivative of ∂lnρ/∂lnP, despite the name) |
+  | `adiabatic_gradient_dt`, `_dp` | ∂ln∇ad/∂lnT, ∂ln∇ad/∂lnP |
+  | `specific_heat_cp_dt`, `_dp` | ∂ln cp/∂lnT, ∂ln cp/∂lnP |
+
+  They are set only with `want_derivatives`; otherwise they keep the caller's values. Inside an OPAL table they are the Yale solution's, not OPAL's: OPAL supplies density and the first derivatives only, so the second derivatives can be far from those of the EOS actually used (up to the wrong sign). `use_numerical_derivatives` makes them consistent.
 - **beta** is P_gas/P. `beta14` is 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (an open item in docs/TARGET_ARCHITECTURE.md).
-- **Inout results**: `eos_get`'s result slots for density, beta, the ionization fractions, 1/mu_ion, the two density derivatives, cp and the adiabatic gradient carry the caller's previous values in. `saha_state` carries the Saha solver's state between calls.
+- **Inputs carried in the results**: the density is the starting guess of the fully ionized density iteration, so a result depends on the previous call's density within the iteration's tolerance (relative changes up to ~1e-4 in test_eos). `saha_state` carries the Saha solver's state. Every other result is overwritten; log T and log P come back unchanged.
 
 ## 4. Configuration
 
