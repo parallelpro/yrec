@@ -251,7 +251,7 @@ subroutine read_input(ierr)
 ! (this file's own diagnostic writes read chi_grid_scale directly,
 ! after `call remap`, not hpttol, to reflect that). fcorr (former
 ! common/ctol/'s remaining member) is unused in this file --
-! core/henyey_iterate.f90/core/main.f90 compute it at runtime -- so it's
+! core/henyey_iteration.f90/core/main.f90 compute it at runtime -- so it's
 ! dropped entirely.
       double precision :: hpttol(12)
 

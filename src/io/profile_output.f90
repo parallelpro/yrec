@@ -13,7 +13,7 @@
 ! is per-job (output directory, parsed selection), reset by
 ! profile_output_init on every job.
 module profile_output
-      use stitched_model_lib, only: n_ext, stx_prof, n_prof_cols
+      use stitched_model, only: n_ext, stx_prof, n_prof_cols
       use output_columns, only: max_cols, parse_columns, &
            prof_default_names, n_prof_default
       implicit none
@@ -145,7 +145,7 @@ subroutine write_profile(iprof)
       write(u, '(999(1x,a40))') &
            (adjustr(trim(names(prof_sel(k)))), k = 1, prof_nsel)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
-! model (interior + envelope + atmosphere, from stitched_model_lib)
+! model (interior + envelope + atmosphere, from stitched_model)
 ! is stored inward-to-outward, so walk it in reverse.
       do k = 1, n_ext
          kz = n_ext - k + 1

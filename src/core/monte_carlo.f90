@@ -20,7 +20,7 @@
 ! module is everything the loop body calls. No Stage-0 deck sets
 ! monte_carlo_active, so the regression suite verifies the non-MC path is
 ! byte-identical; the MC path is compile-verified only.
-module monte_carlo_lib
+module monte_carlo
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_lum_grav, max_mc_runs
       use io_units
       implicit none
@@ -203,4 +203,4 @@ subroutine write_monte_carlo_model(local_log_radius, &
  70   format(1P5E10.3)
 end subroutine write_monte_carlo_model
 
-end module monte_carlo_lib
+end module monte_carlo

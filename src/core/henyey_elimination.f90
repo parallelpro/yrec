@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! henyey_eliminate_lib (was reduce)
+! henyey_elimination (was reduce)
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
 ! readability refactor. Logic and numerics are unchanged from the
@@ -55,7 +55,7 @@
 !  - Only the partials listed in henyey_shell_terms exist; there is no
 !    ql_dr or ql_dl, so an energy term that depends on R or L cannot be
 !    linearized without extending the type and the pivots below.
-module henyey_eliminate_lib
+module henyey_elimination
       implicit none
 
 ! Structure-equation terms at one mesh shell: for each of the four
@@ -186,4 +186,4 @@ subroutine henyey_eliminate(zone_index, prev, cur)
       return
 end subroutine henyey_eliminate
 
-end module henyey_eliminate_lib
+end module henyey_elimination

@@ -11,7 +11,7 @@
 ! solution (P, T, R at the fitting point) around the current model's
 ! (TEFFL, BL): checks whether the requested point still lies inside
 ! the existing triangle, re-triangulates and recomputes any envelope
-! vertices as needed via envint_lib's atm_get, and rebuilds the bilinear
+! vertices as needed via envelope_integration's atm_get, and rebuilds the bilinear
 ! interpolation coefficients CFENV. Also handles the automatic
 ! gray-atmosphere fallback when Teff moves outside the range of a
 ! tabulated (Kurucz/Allard) T-tau relation.
@@ -25,7 +25,7 @@
 ! in atm_get's header (and eos/eqstat.f90's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
-! envint_lib gave it one. core/henyey_iterate.f90 (this routine's only
+! envelope_integration gave it one. core/henyey_iteration.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
 subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
@@ -42,7 +42,7 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
 ! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
 ! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
 ! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
-      use envint_lib, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
+      use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use atm_tables
       use star_info_lib
       use io_units

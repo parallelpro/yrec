@@ -480,7 +480,7 @@ end subroutine eos_set_mixture
 ! weights with debye_huckel_nu; kap/setupopac.f90 pushes it here
 ! right after rdlaol reads it (formerly rdlaol wrote yale_eos_tables's
 ! debye_huckel_z directly). Elements 1-3 are recomputed per shell by
-! the star layer (core/henyey_iterate.f90 etc.); 4-18 come only from
+! the star layer (core/henyey_iteration.f90 etc.); 4-18 come only from
 ! here.
 subroutine eos_set_debye_huckel_z(metal_mixture)
       implicit none

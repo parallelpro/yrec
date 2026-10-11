@@ -85,7 +85,7 @@ Composition evolves by:
   (`burn_deuterium_region`, `net/light_elements.f90`). `src/net/README.md`
   walks through these routines and their call order;
 - **instantaneous convective mixing** — convective zones (plus overshoot
-  extensions) are homogenized every step (inside `composition_step`,
+  extensions) are homogenized every step (inside `advance_composition`,
   `core/composition_step.f90`, and again after the structure converges by
   `homogenize_convection_zones` (`mixcz`));
 - **light elements** (Li6, Li7, Be9, H2) — burned in the trace
@@ -162,7 +162,7 @@ branch of equation 3 carries
 ∂qt/∂logT = qt·(−4 + ∂lnκ/∂lnT + ∂lnκ/∂lnρ·∂lnρ/∂lnT).
 
 The 4-equation, 4-unknown per-shell-pair system is **reduced on the fly**:
-`henyey_eliminate` (`reduce`, `core/henyey_eliminate.f90`; called inside
+`henyey_eliminate` (`reduce`, `core/henyey_elimination.f90`; called inside
 `henyey_coefficients`' shell loop) builds the trapezoidal
 residuals, Gauss-Jordan-eliminates the local 4×4 (pivoting the L, R, T, P
 rows in turn) while carrying the coupling to the previous shell, and so
@@ -185,7 +185,7 @@ the singular ODE forms).
 
 ### 2.4 The four iteration levels
 
-`henyey_iterate` (`core/henyey_iterate.f90`) is called up to four times
+`henyey_iterate` (`core/henyey_iteration.f90`) is called up to four times
 per timestep by `evolve_step` (through its `solve_level` wrapper), with
 different boundary-condition policies (`star%ctrl%max_iter_level1..4`
 control the iteration budget). The surface BC is refreshed (`surfbc`) at
@@ -197,7 +197,7 @@ most once per call, before the Newton loop:
 2. **Level 2** — BC recomputation forced on: the triangle is re-checked
    (and walked) at the level-1 solution before iterating,
 3. **Level 3** — BC frozen; the composition is re-mixed from the
-   start-of-step abundances at the current structure (`composition_step`,
+   start-of-step abundances at the current structure (`advance_composition`,
    the corrector pass, called from `solve_level`), then the interior is converged at fixed envelope,
 4. **Level 4** — the high-precision pass inside the structure⇄rotation
    loop, also re-mixing first, repeating after composition/rotation
@@ -214,8 +214,8 @@ the timestep and retry.
 
 ### 2.5 Envelope/atmosphere integrators
 
-`atm_get` (`envint`; driver in `core/envint_lib.f90`, star-blind kernel in
-`core/envint_kernel.f90`, integrands in `core/atmosphere_derivs.f90` and
+`atm_get` (`envint`; driver in `core/envelope_integration.f90`, star-blind kernel in
+`core/envelope_integration_kernel.f90`, integrands in `core/atmosphere_derivs.f90` and
 `core/envelope_derivs.f90`) integrates:
 
 - **Atmosphere**: from τ near 0 to the photospheric pressure, in the
@@ -283,7 +283,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
  1. advance_composition_and_age (model being aged):
       mass loss / accretion (flags step 7)           massloss -> mdot (wind/)
       save start-of-step composition -> star%xa_start
-      COMPOSITION HALF-STEP (predictor pass)         composition_step (mix)
+      COMPOSITION HALF-STEP (predictor pass)         advance_composition (mix)
         locate CZs (Schwarzschild), overshoot        find_convection_zones (convec)
                                                        -> overshoot_boundaries (oversh)
         rates of every shell                         compute_burn_rates
@@ -301,7 +301,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
  3. solve_structure: STRUCTURE SOLVE, levels 1-3     solve_level, per level:
       surface boundary condition                     refresh_surface_bc -> surfbc
       levels >= 3: composition step again from
-        star%xa_start (corrector pass)               composition_step
+        star%xa_start (corrector pass)               advance_composition
       Newton loop                                    henyey_iterate (crrect) ->
                                                        henyey_coefficients (coefft),
                                                        henyey_eliminate (reduce),
@@ -338,7 +338,7 @@ McAllister–Roulier `choose/cases/spline` machinery, all in
 
 Convergence-of-splitting: because composition moved before structure,
 levels 3 and 4 re-do the mixing from the start-of-step composition at the
-current structure before iterating (`composition_step`, the corrector pass, run by `solve_level` between the surface boundary condition and `henyey_iterate`), and the
+current structure before iterating (`advance_composition`, the corrector pass, run by `solve_level` between the surface boundary condition and `henyey_iterate`), and the
 level-4 loop runs `num_rotation_structure_iters` (`itdif1`) passes — the
 recommended configuration for solar models.
 
@@ -441,7 +441,7 @@ The routines, their call order and how to extend them are described in
   its T, ρ derivatives for the Henyey Jacobian, and `compute_zone_energy`
   returns everything it computes in its result record; the composition
   solve takes the same rates repacked per s per amu by
-  `compute_network_rates` (called from `compute_burn_rates` in `composition_step`).
+  `compute_network_rates` (called from `compute_burn_rates` in `advance_composition`).
 
 ### 4.5 Atmospheres (`atm/`)
 
@@ -540,7 +540,7 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
                                                     │
      star layer (owns type(star_info) star): read_starting_model (starin),
        henyey_iterate (crrect), henyey_coefficients (coefft),
-       henyey_eliminate (reduce), henyey_solve (hsolve), envint_lib,
+       henyey_eliminate (reduce), henyey_solve (hsolve), envelope_integration,
        surfbc, burn_step, composition_step, rezone (hpoint), evolve_angular_momentum
        (getw), wind
                                                     │
@@ -566,7 +566,7 @@ scratch lives in `rotation/rotation_scratch_lib.f90` and
 **The physics boundary today.** Per-point evaluation takes explicit
 inputs: `eos_get`, `kap_get` and `net_lib`'s `compute_reaction_rates` receive T, P or ρ and
 the composition as arguments, and the envelope kernel
-`core/envint_kernel.f90` is star-blind (enforced by
+`core/envelope_integration_kernel.f90` is star-blind (enforced by
 `tools/check_boundaries.py`). Configuration is still read from `star`: 26
 files under `eos/`, `kap/`, `atm/` and `net/` `use star_info_lib, only:
 star` and read about 60 distinct members — 54 `star%ctrl`/`star%job`

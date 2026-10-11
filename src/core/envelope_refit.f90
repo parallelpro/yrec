@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! envelope_refit_lib
+! envelope_refit
 !----------------------------------------------------------------------
 ! The per-shell fill that the two envelope refits share (2026 W3).
 ! After atm_get has integrated a fresh envelope from the surface down
@@ -21,7 +21,7 @@
 ! .lt.) -- carried by accept_point_at_fit_mass. Each caller prints
 ! its own message when ierr comes back nonzero (degenerate mass
 ! interval).
-module envelope_refit_lib
+module envelope_refit
       implicit none
       private
       public :: append_envelope_points
@@ -158,4 +158,4 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
       end if
 end subroutine append_envelope_points
 
-end module envelope_refit_lib
+end module envelope_refit

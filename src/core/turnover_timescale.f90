@@ -21,7 +21,7 @@
 ! values, which is what the *_old/pphot0 lag bookkeeping always
 ! assumed.
 subroutine compute_turnover_timescale(radius_at_bcz, ierr)
-      use stitched_model_lib, only: stx_prof, n_ie, &
+      use stitched_model, only: stx_prof, n_ie, &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
            ip_grada, ip_conv_vel
       use star_info_lib, only: star, json

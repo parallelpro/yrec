@@ -33,7 +33,7 @@ subroutine neutrino_flux_table
       use physical_constants
       use burn_step
       use math_lib
-      use observables_lib, only: shell_masses_from_log_mass
+      use observables, only: shell_masses_from_log_mass
       implicit none
 
       double precision :: shell_center_mass(json), shell_mass(json)

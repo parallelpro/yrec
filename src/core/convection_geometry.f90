@@ -12,7 +12,7 @@
 !                              (convection zone plus envelope overshoot)
 !                              at the start and end of the step, for the
 !                              Li/Be burn
-! Users: observables_lib (the surface CZ's mass, radius, T, rho, P, kappa),
+! Users: observables (the surface CZ's mass, radius, T, rho, P, kappa),
 ! turnover_timescale (the CZ-base radius), evolve_step and
 ! evolve_angular_momentum (the envelope overshoot depth, alpha * H_P),
 ! burn_step (burn_li_be, burn_li_be_midpoint). Each caller keeps its own

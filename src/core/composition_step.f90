@@ -31,10 +31,10 @@
 !   9. dpenv: recompute the zone bounds with the ordinary flags (deep_mixing)
 !  10. deuterium burning (extended composition)
 ! Li/Be are burned later, after the structure converges (burn_li_be).
-module composition_step_lib
+module composition_step
       implicit none
       private
-      public :: composition_step
+      public :: advance_composition
 
 ! What a pass does beyond the operations every pass runs.
       type, public :: composition_step_options
@@ -68,7 +68,7 @@ contains
 !     log_Teff, log_total_mass, logP, logR, logT, luminosity_lsun, nz
 !   star writes: convective_flag, job%diffuse_helium_active, logRho, m,
 !     mixed_zone_bounds, xa
-subroutine composition_step(timestep, opts, core_cz_edge, &
+subroutine advance_composition(timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: star, i_h1, i_he3, i_he4, i_metals, json, &
@@ -306,6 +306,6 @@ subroutine clip_and_renormalize
       end do
 end subroutine clip_and_renormalize
 
-end subroutine composition_step
+end subroutine advance_composition
 
-end module composition_step_lib
+end module composition_step

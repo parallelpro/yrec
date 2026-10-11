@@ -15,7 +15,7 @@
 ! surfp/kcsurfp are atm-internal, called directly here because this
 ! test lives inside the atm domain -- the same intra-domain access
 ! the domain's own code has. The full envelope integration
-! (core/envint_lib.f90) is
+! (core/envelope_integration.f90) is
 ! NOT exercised here: it needs the entire eos+kap+solver state booted
 ! (a full-model concern, covered by Stage-0); noted in docs/ROADMAP.md.
 ! Results print for byte-comparison against expected_test_atm.out.

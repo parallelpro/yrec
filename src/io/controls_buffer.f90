@@ -331,7 +331,7 @@ module controls_buffer
 ! a local hpttol and copy-assigns (no declaration-time default here,
 ! since it's always set that way before first use). fcorr (former
 ! common/ctol/'s remaining member) is not a namelist value --
-! core/henyey_iterate.f90/core/main.f90 compute it at runtime -- so it has no
+! core/henyey_iteration.f90/core/main.f90 compute it at runtime -- so it has no
 ! declaration-time default either.
       double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))

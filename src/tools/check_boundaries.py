@@ -73,7 +73,7 @@ PUBLIC = {
             "ttau_log10_temperature", "ttau_start_log10_temperature",
             "ttau_photosphere_x_limit", "hsra_t_tau_offset",
             # pure surface-pressure lookups, called by the star
-            # layer's envelope integrator (core/envint_lib) since the
+            # layer's envelope integrator (core/envelope_integration) since the
             # atm split -- clean physics services
             "surfp", "kcsurfp", "alsurfp"},
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
@@ -152,7 +152,7 @@ def mask_strings(line):
 STAR_BLIND_FILES = [
     # envint purity split (2026): the integration kernel takes its
     # configuration explicitly and must never touch the star layer
-    "core/envint_kernel.f90",
+    "core/envelope_integration_kernel.f90",
     "atm/t_tau_relations.f90",
 ]
 

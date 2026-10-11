@@ -8,7 +8,7 @@
 ! via ierr.
 subroutine star_setup(ierr)
 
-      use monte_carlo_lib, only: setup_monte_carlo_runs
+      use monte_carlo, only: setup_monte_carlo_runs
       implicit none
 
       integer, intent(out) :: ierr

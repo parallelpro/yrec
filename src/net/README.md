@@ -83,11 +83,11 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 |---|---|---|
 | `configure_network` | `run_yrec`, at the start of every run | Fills `net_settings` from `star%ctrl` and the rate factors (after the Monte Carlo factors are applied) and calls `set_net_settings`. |
 | `network_rates_of_model` | `compute_burn_rates`, `mid_timestep_model` | The composition rate vector of every shell of the model passed in that is hotter than the nuclear cutoff; zero below. |
-| `compute_burn_rates` | `composition_step` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
-| `burn_network` | `composition_step` | `burn_network_region` per radiative shell and per mixed region. |
+| `compute_burn_rates` | `advance_composition` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
+| `burn_network` | `advance_composition` | `burn_network_region` per radiative shell and per mixed region. |
 | `burn_network_region` | `burn_network`, `mixing/rotmix` | Model bookkeeping around `burn_implicitly`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
-| `burn_equilibrium` | `composition_step`, predictor pass | `compute_equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
-| `burn_deuterium` | `composition_step` | `burn_deuterium_region` per shell or region. |
+| `burn_equilibrium` | `advance_composition`, predictor pass | `compute_equilibrium_burn_rates` per shell or region, overwriting X (and Z, C12, O16 under helium burning). |
+| `burn_deuterium` | `advance_composition` | `burn_deuterium_region` per shell or region. |
 | `surface_accretion_now` | `burn_deuterium`, `mid_timestep_model` | The accreted gas over a step (`surface_accretion`: on, inflow, its deuterium fraction, the mass accreted) for `burn_deuterium_region`. |
 | `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
@@ -105,7 +105,7 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 evolve_step
  advance_composition_and_age
    star%xa_start := star%xa                      start-of-step composition
-   composition_step(predictor_pass)              core/composition_step.f90
+   advance_composition(predictor_pass)           core/composition_step.f90
      find_convection_zones                       radiative shells and mixed regions
      compute_burn_rates      [burn_step]         per shell: compute_network_rates, deuterium_rate
      burn_network            [burn_step]         per region: burn_network_region -> burn_implicitly
@@ -116,7 +116,7 @@ evolve_step
    store_start_li_be_rates   [burn_step]         if extended composition
  solve_structure, levels 1-3: solve_level, each level
    refresh_surface_bc                            surface boundary condition
-   (levels >= 3) star%xa := star%xa_start; composition_step(corrector_pass)
+   (levels >= 3) star%xa := star%xa_start; advance_composition(corrector_pass)
                                                  re-burn with the updated structure
    henyey_iterate, the Newton loop
      henyey_coefficients, every shell, every Newton iteration:
@@ -138,7 +138,7 @@ evolve_step
 ```
 
 Two things often surprise newcomers:
-- **Composition and structure are operator-split.** Burning runs at fixed structure in `composition_step`, then the structure is solved with the new composition. At iteration levels ≥ 3, `solve_level` runs the composition step again (the corrector pass) to re-burn with the updated structure, between the surface boundary condition and the Newton loop.
+- **Composition and structure are operator-split.** Burning runs at fixed structure in the composition step (`advance_composition`), then the structure is solved with the new composition. At iteration levels ≥ 3, `solve_level` runs the composition step again (the corrector pass) to re-burn with the updated structure, between the surface boundary condition and the Newton loop.
 - **There are two rate paths from one evaluation.** The composition path uses `compute_network_rates`: per s per amu, no derivatives, rates at or below 10⁻⁵ dropped. The energy path uses `nuclear_energy`: erg/g/s with derivatives, and only reactions 1–7 below 10⁻³⁰ dropped before ε is summed. Both call `compute_reaction_rates`, so a rate is defined in exactly one place.
 
 ---
@@ -147,7 +147,7 @@ Two things often surprise newcomers:
 
 - **Composition.** `star%xa(i, k)` holds mass fractions in the slots `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
 - **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is that times the atomic mass unit in grams, per s per amu: with Y = X/A, dY/dt = Σ ν R. Every time in the burning code is in seconds (2026-10; it used to mix years and Gyr, with a year length that differed by 4.7×10⁻⁶ between the timestep and the rates). Integer mass numbers convert X to Y.
-- **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/henyey_eliminate.f90`).
+- **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/henyey_elimination.f90`).
 - **Temperature cutoffs.** `net_settings%logT_cutoffs` (from `ctrl%nuclear_logT_cutoffs`): `(1)` gates all burning, `(2)` and `(3)` gate parts of `compute_equilibrium_burn_rates`, `(4)` gates helium burning, and `(5)` the solar neutrino fluxes and thermal neutrino losses.
 
 ---
@@ -179,7 +179,7 @@ The rate formula itself still lives in `compute_reaction_rates`; TARGET_ARCHITEC
 
 **Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments), driven per region from `burn_step`.
 
-**Add an energy source that is not nuclear** (tidal or magnetic heating, for example). That belongs to the structure equations, not here. Phase 2 of `docs/TARGET_ARCHITECTURE.md` adds an energy-source list with a user hook. Until then the energy term is assembled in `core/henyey_coefficients.f90`; see the conventions in `core/henyey_eliminate.f90` before touching it.
+**Add an energy source that is not nuclear** (tidal or magnetic heating, for example). That belongs to the structure equations, not here. Phase 2 of `docs/TARGET_ARCHITECTURE.md` adds an energy-source list with a user hook. Until then the energy term is assembled in `core/henyey_coefficients.f90`; see the conventions in `core/henyey_elimination.f90` before touching it.
 
 ---
 

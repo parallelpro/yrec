@@ -419,7 +419,7 @@ module star_info_lib
 ! hence the _rho suffix); delta_nu [uHz], the asymptotic p-mode
 ! large separation, from the sound-travel-time integral; delta_Pg
 ! [s], the asymptotic l=1 g-mode period spacing, from the
-! Brunt-Vaisala integral -- computed by observables_lib's seismic
+! Brunt-Vaisala integral -- computed by observables's seismic
 ! theme, consumed by the stop conditions and the optional history
 ! columns
            double precision :: nu_max, delta_nu_rho
@@ -447,7 +447,7 @@ module star_info_lib
                 central_log10_density, envelope_mass, envelope_radius
 ! 2026 (phase four, step 5): observables formerly computed as
 ! locals inside the retired write_legacy_output, now filled by the star layer
-! (core/observables_lib.f90) and only READ by the writers.
+! (core/observables.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &

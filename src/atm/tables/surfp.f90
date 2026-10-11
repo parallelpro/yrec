@@ -16,7 +16,7 @@
 ! 2026 wave 3 (R5): surface_p_interp is the interpolation on a
 ! surface_p_table; surfp (Kurucz, atm_table%kurucz_surface_p) and
 ! kcsurfp (Kurucz/Castelli, atm_table%castelli_surface_p; formerly
-! its own tables/kcsurfp.f90) are the two entries core/envint_kernel
+! its own tables/kcsurfp.f90) are the two entries core/envelope_integration_kernel
 ! calls. `diff -w surfp.f90 kcsurfp.f90` differed only in the table
 ! names, the row count (atm_table_nt vs atm_table_ntc, now
 ! tbl%num_teff) and line continuation.

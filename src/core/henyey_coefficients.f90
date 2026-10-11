@@ -16,7 +16,7 @@
 ! grada, star%adiabatic_index_gamma1, rotation scratch, ...).
 !
 ! The units, log bases and derivative conventions every cur%q* term
-! must follow are stated once, in the header of henyey_eliminate.f90.
+! must follow are stated once, in the header of henyey_elimination.f90.
 ! In short: q* = d(variable)/dlog10(m); partials are with respect to
 ! lnP, lnT, lnR (natural log) and to L divided by ln10; the luminosity
 ! term takes the ABSOLUTE d eps/dlnT and d eps/dln rho.
@@ -33,7 +33,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
      saha_state, envelope_zone_index, ierr)
       use temperature_gradients
       use rotation_scratch_lib
-      use henyey_eliminate_lib
+      use henyey_elimination
 
       use net_lib
       use star_info_lib, only: star, i_eps_grav, i_eps_neu, &

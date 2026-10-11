@@ -18,7 +18,7 @@
 !
 ! Lives in atm/ (2026): pure atmosphere physics, exactly what the
 ! domain taxonomy assigns here -- the solver integration that CALLS
-! these stays in core/ (envint_kernel). The HSRA polynomial fit
+! these stays in core/ (envelope_integration_kernel). The HSRA polynomial fit
 ! (formerly setup/harvard_t_tau.f90, a misplaced pure function) is a
 ! private module procedure; hsra_t_tau_offset() gives setups the
 ! anchor value it stores as star%atm_hras.

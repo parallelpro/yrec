@@ -35,9 +35,9 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
       use controls_buffer, only: ichi_dm_max, ichi_dp_env_max
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+      use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
-      use envelope_refit_lib, only: append_envelope_points
+      use envelope_refit, only: append_envelope_points
       use envelope_structure
       use io_units
       use physical_constants
@@ -46,7 +46,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use opacity_tables
       use yale_eos_tables
       use scv_eos_tables
-      use stitched_model_lib, only: build_stitched_model
+      use stitched_model, only: build_stitched_model
       implicit none
       integer :: jerr_atm
 
@@ -782,7 +782,7 @@ subroutine rescale_and_refit_envelope
             env_struct%num_env_points = env_struct%num_env_points - 1
 ! Append the envelope points below the new fitting mass as shells,
 ! interpolating the last one onto it (2026 W3: the loop shared with
-! rebuild_envelope lives in envelope_refit_lib; a point exactly at the
+! rebuild_envelope lives in envelope_refit; a point exactly at the
 ! fitting mass is taken as a shell here, .le.).
             call append_envelope_points(.true., num_species, star%xa, &
                  star%logRho, star%luminosity_lsun, star%logP, star%logR, &
@@ -823,7 +823,7 @@ end subroutine rescale_and_refit_envelope
 ! Shell masses (unlogged) and per-shell dm from the (possibly
 ! refitted) log-mass grid.
 subroutine build_shell_masses
-      use observables_lib, only: shell_masses_from_log_mass
+      use observables, only: shell_masses_from_log_mass
       call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
            star%nz, star%m, star%dm)
 end subroutine build_shell_masses

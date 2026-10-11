@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! stitched_model_lib
+! stitched_model
 !----------------------------------------------------------------------
 ! Added 2026 (stitched-model restructure): the one place that
 ! assembles the FULL converged star -- interior (center -> fitting
@@ -18,7 +18,7 @@
 ! The io writers are pure readers of these arrays; nothing in the
 ! output path integrates or stitches anything. compute_observables
 ! themes may read them too (profile-based observables).
-module stitched_model_lib
+module stitched_model
       use physical_constants
       use math_lib
       use star_info_lib, only: json
@@ -105,7 +105,7 @@ subroutine build_stitched_model
       use star_info_lib, only: star, i_h1, i_metals
       use envelope_structure
       use atmosphere_structure
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+      use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
@@ -721,4 +721,4 @@ subroutine fill_stitched_arrays
       call build_pulse_points(stx_pulse)
 end subroutine fill_stitched_arrays
 
-end module stitched_model_lib
+end module stitched_model

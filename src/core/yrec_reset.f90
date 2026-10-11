@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! yrec_reset_lib
+! yrec_reset
 !----------------------------------------------------------------------
 ! Added 2026 (phase five, step C -- docs/ROADMAP.md): the re-entrancy
 ! prologue. Fresh-process semantics for repeated run_yrec calls in
@@ -17,7 +17,7 @@
 ! keep already-loaded tables, which is correct while both calls use
 ! the same table configuration -- the acceptance test
 ! (test_reentry.py) verifies the end-to-end equivalence.
-module yrec_reset_lib
+module yrec_reset
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
            observables_reset_pending
       use rotation_scratch_lib
@@ -71,4 +71,4 @@ subroutine yrec_run_prologue
       return
 end subroutine yrec_run_prologue
 
-end module yrec_reset_lib
+end module yrec_reset

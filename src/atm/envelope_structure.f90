@@ -6,7 +6,7 @@
 ! structure profile (pressure/temperature/mass/density/radius/
 ! composition/convective-flag/gradients/velocity/opacity/luminosity in
 ! log space, indexed 1..num_env_points), computed by the envelope
-! integrator (core/envint_kernel.f90, under core/envint_lib.f90) and
+! integrator (core/envelope_integration_kernel.f90, under core/envelope_integration.f90) and
 ! read by core/read_starting_model.f90 and other callers that need the
 ! just-integrated envelope profile.
 !

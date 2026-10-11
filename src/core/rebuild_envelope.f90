@@ -15,10 +15,10 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
-      use envint_lib, only: atm_get, envint_step_config, fixed_envint_step, &
+      use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff
-      use envint_kernel, only: senv_thin_envelope
-      use envelope_refit_lib, only: append_envelope_points
+      use envelope_integration_kernel, only: senv_thin_envelope
+      use envelope_refit, only: append_envelope_points
       use star_info_lib
       use controls_buffer, only: ichi_dp_env_max
       use envelope_structure
@@ -179,7 +179,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       env_struct%num_env_points = num_new_env_points
 ! ASSIGN NEW POINTS: append the envelope points below the new fitting
 ! mass as shells, interpolating the last one onto it (2026 W3: the
-! loop shared with read_starting_model lives in envelope_refit_lib;
+! loop shared with read_starting_model lives in envelope_refit;
 ! a point exactly at the fitting mass is interpolated here, .lt.).
       call append_envelope_points(.false., species_end_index, composition, &
            log_density, log_luminosity, log_pressure, log_radius, log_mass, &

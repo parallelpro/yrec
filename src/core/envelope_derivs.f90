@@ -19,7 +19,7 @@
 ! log10_radius/log10_teff/hydrogen_fraction/metal_fraction match the
 ! sibling routine atmosphere_derivs.f90's naming at the equivalent call-site
 ! positions (both are passed as EXTERNAL procedures to numerics_lib's
-! bsstep by core/envint_kernel.f90).
+! bsstep by core/envelope_integration_kernel.f90).
 ! pressure_rotation_factor/temperature_rotation_factor (FPL/FTL) match
 ! temperature_gradients.f90's naming, discovered from that file's own analysis of the
 ! DELR formula.

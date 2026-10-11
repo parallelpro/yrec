@@ -26,15 +26,15 @@ subroutine run_yrec(ierr)
       use yrec_output, only: output_run_header
       use io_units
       use physical_constants
-      use yrec_reset_lib, only: yrec_run_prologue
-      use monte_carlo_lib, only: apply_monte_carlo_parameters, &
+      use yrec_reset, only: yrec_run_prologue
+      use monte_carlo, only: apply_monte_carlo_parameters, &
            write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions, &
            check_rotation_initialised
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
-      use observables_lib, only: log_r_surface_cm
+      use observables, only: log_r_surface_cm
       implicit none
       integer :: step_status
 

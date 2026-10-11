@@ -27,12 +27,12 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use io_units
       use physical_constants
       use burn_step
-      use composition_step_lib, only: composition_step, predictor_pass, corrector_pass
-      use henyey_iterate_lib, only: refresh_surface_bc, henyey_iterate
+      use composition_step, only: advance_composition, predictor_pass, corrector_pass
+      use henyey_iteration, only: refresh_surface_bc, henyey_iterate
       use convection_geometry, only: pressure_scale_height
       use yrec_output, only: output_write_model
-      use observables_lib, only: compute_observables
-      use stitched_model_lib, only: build_stitched_model
+      use observables, only: compute_observables
+      use stitched_model, only: build_stitched_model
       use stop_conditions
       implicit none
 
@@ -63,7 +63,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 
 ! 2026 (phase five, step C): on a repeated run_yrec call, put this
 ! routine's SAVEd locals back to process-start state (static zero).
-! Set by yrec_reset_lib's prologue; a fresh
+! Set by yrec_reset's prologue; a fresh
 ! process never sees the flag, so call 1 is untouched.
       if (evolve_step_reset_pending) then
          delta_lum_step = 0.0d0
@@ -173,7 +173,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! the star layer (fills star%*, star%luminosity_breakdown
 ! renormalization, star% via gettau); wrtout below only
 ! reads. One theme subroutine per quantity family -- see
-! core/observables_lib.f90.
+! core/observables.f90.
        call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
@@ -253,7 +253,7 @@ subroutine advance_composition_and_age
 ! are arguments (not star% inside it) because the later re-runs at
 ! levels >= 3 pass their own local storage, deliberately separate
 ! from these star copies.
-               call composition_step(star%dt, predictor_pass, &
+               call advance_composition(star%dt, predictor_pass, &
                     star%core_cz_top_index, star%envelope_cz_bottom_index, &
                     star%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
@@ -562,7 +562,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
                star%xa(j,i) = star%xa_start(j,i)
             end do
          end do
-         call composition_step(star%dt, corrector_pass, &
+         call advance_composition(star%dt, corrector_pass, &
               core_cz_edge_rerun, envelope_zone_index, &
               mixed_zone_bounds_rerun, ierr)
          if (ierr /= 0) return

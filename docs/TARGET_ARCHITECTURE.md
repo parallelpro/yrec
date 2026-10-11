@@ -229,7 +229,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
 - **Variables and coordinate.** The dependent variables are log₁₀ P, log₁₀ T, log₁₀ R and L in L☉. The coordinate is log₁₀ m.
 - **The difference equation.** For equation k at shell i:
   `rhs_k = ½ Δlog₁₀m · (q_k(i−1) + q_k(i)) − (y_k(i) − y_k(i−1))`
-  (`henyey_eliminate.f90`, top of the routine).
+  (`henyey_elimination.f90`, top of the routine).
 - **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `henyey_coefficients.f90`).
 - **The luminosity term.** `ql = (ln 10 · m / L☉) · ε`, where ε is the total specific energy rate in erg g⁻¹ s⁻¹. So `ql_dT` and `ql_dP` take the **absolute** derivatives dε/dln T and dε/dln ρ, which is what `engeb` returns.
 - **The envelope.** The envelope integration (`envelope_derivs`) carries m, T and R against log P at constant L. Any energy source above the fitting mass is excluded. This must be stated in the energy-source interface, and checked: a source that is nonzero above the fitting point should cause a warning.
@@ -472,12 +472,12 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | Legacy | Current file |
 |---|---|
 | `starin` | `core/read_starting_model.f90` |
-| `crrect` | `core/henyey_iterate.f90` (`refresh_surface_bc`, `henyey_iterate`) |
+| `crrect` | `core/henyey_iteration.f90` (`refresh_surface_bc`, `henyey_iterate`) |
 | `coefft` | `core/henyey_coefficients.f90` |
-| `reduce` | `core/henyey_eliminate.f90` |
+| `reduce` | `core/henyey_elimination.f90` |
 | `hsolve` | `core/henyey_solve.f90` |
 | `surfbc` | `core/surfbc.f90` |
-| `envint` | `core/envint_lib.f90`, `core/envint_kernel.f90` |
+| `envint` | `core/envelope_integration.f90`, `core/envelope_integration_kernel.f90` |
 | `qatm`, `qenv` | `core/atmosphere_derivs.f90`, `core/envelope_derivs.f90` |
 | `physic` | `core/shell_physics.f90` |
 | `gettau` | `core/turnover_timescale.f90` |
@@ -487,7 +487,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `deutrate`, `dburn`, `dburnm` | `net/light_elements.f90` (`deuterium_rate`, `burn_deuterium_region`) |
 | `liburn`, `lirate88` | `core/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
 | `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
-| `mix` | `core/composition_step.f90` (`composition_step`) |
+| `mix` | `core/composition_step.f90` (`advance_composition`) |
 | `convec` | `mixing/find_convection_zones.f90` |
 | `oversh` | `mixing/overshoot_boundaries.f90` |
 | `sconvec` | `mixing/semiconvection.f90` |
@@ -534,7 +534,7 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - The two differ by 0.68%.
    - Fixed (2026-10): one shared `dpg_rate` in `burn_lib`, using the deuteron mass. Its arithmetic is `engeb`'s, bit for bit (checked at 16,441 (T, ρ) points), so only deuterium depletion moves: at the solar age |Δ log L| ≤ 4.4×10⁻⁵ and |ΔX_c| ≤ 1.2×10⁻⁴; during pre-main-sequence deuterium burning |Δ log L| ≈ 4×10⁻⁴.
 3. **`star%am_transport_convective_flag` is never assigned.**
-   - It is read at `henyey_iterate.f90:311` by `omega_from_j`, so with rotation on, every zone is treated as radiative in the Ω(j) inversion during Newton iterations.
+   - It is read at `henyey_iteration.f90:311` by `omega_from_j`, so with rotation on, every zone is treated as radiative in the Ω(j) inversion during Newton iterations.
    - Every assignment in the code goes to a local array of the same name.
    - Origin: inherited. In the F77 code, `main.f`'s `LCZ(JSON)` was a local passed only to `CRRECT` → `GETROT` and never set. `rezone` computed the right flags but stored them in the write-only `star%cz_flag_start`; `read_starting_model` computed them and discarded them.
    - Fixed (2026-10): both now write `star%am_transport_convective_flag`, and `cz_flag_start` is removed. Only rotating runs change: at the solar age |Δ log L| ≤ 3×10⁻⁵, |Δ log R| ≤ 1.2×10⁻⁵, |ΔX_c| ≤ 7×10⁻⁵; along the pre-main-sequence tracks |Δ log L| ≤ 0.002.

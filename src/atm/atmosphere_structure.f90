@@ -7,7 +7,7 @@
 ! ionization/opacity/specific heat in log space, indexed
 ! 1..num_atm_points), the atmosphere-region counterpart of
 ! envelope_structure's envelope profile. Computed by the atmosphere
-! integrator (core/envint_kernel.f90, under core/envint_lib.f90) and
+! integrator (core/envelope_integration_kernel.f90, under core/envelope_integration.f90) and
 ! read by the stitched-model/profile writers (core/stitched_model.f90
 ! and its callers) needing the current atmosphere structure.
 !

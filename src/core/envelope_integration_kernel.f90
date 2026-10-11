@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! envint_kernel
+! envelope_integration_kernel
 !----------------------------------------------------------------------
 ! The STAR-BLIND envelope/atmosphere integration kernel (2026, envint
 ! purity split phase B; the driver/kernel pattern of burn_lib). One
@@ -12,11 +12,11 @@
 !
 ! NO use of star_info anywhere in this file -- enforced by
 ! tools/check_boundaries.py (STAR_BLIND_FILES). All configuration
-! arrives in the envint_config value the driver (core/envint_lib's
+! arrives in the envint_config value the driver (core/envelope_integration's
 ! atm_get) builds from star%job / star%ctrl; the only star-state
 ! consequences (pphot, the Allard gray-atmosphere fallback switching
 ! atm_choice/use_ttau_relation) return as outputs the driver applies.
-module envint_kernel
+module envelope_integration_kernel
       implicit none
 
       type, public :: envint_config
@@ -757,4 +757,4 @@ end subroutine integrate_envelope
 
 end subroutine integrate_envelope_atmosphere
 
-end module envint_kernel
+end module envelope_integration_kernel

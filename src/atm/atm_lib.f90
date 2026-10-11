@@ -8,7 +8,7 @@
 ! atm_init loads the tabulated-atmosphere surface-pressure tables at
 ! startup, and atm_get_surface_pt is the Allard-table surface lookup
 ! used from outside the domain. The envelope/atmosphere integrator
-! itself (formerly envint, "atm_get") lives in core/envint_lib.f90;
+! itself (formerly envint, "atm_get") lives in core/envelope_integration.f90;
 ! the table interpolators are in atm/tables/ (surfp, kcsurfp,
 ! alsurfp) and the T-tau relations in t_tau_relations.f90.
 module atm_lib

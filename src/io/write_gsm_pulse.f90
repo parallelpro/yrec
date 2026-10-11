@@ -26,7 +26,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use hdf5
       use h5lt
-      use stitched_model_lib, only: n_pulse_cols, ipul_gyre_last
+      use stitched_model, only: n_pulse_cols, ipul_gyre_last
       implicit none
 
       integer, intent(in) :: n
@@ -82,7 +82,7 @@ end subroutine write_gsm_pulse
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path)
       use io_units
-      use stitched_model_lib, only: n_pulse_cols, ipul_gyre_last
+      use stitched_model, only: n_pulse_cols, ipul_gyre_last
       implicit none
       integer, intent(in) :: n
       double precision, intent(in) :: pts(n_pulse_cols, n)

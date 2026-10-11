@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! observables_lib
+! observables
 !----------------------------------------------------------------------
 ! 2026: the former core/update_output_diagnostics.f90 (phase four,
 ! step 5 -- the state-computing blocks that historically lived inside
@@ -27,7 +27,7 @@
 ! (The original wrtout also carried a core-boundary radius computed
 ! from the previous call's surface-CZ interpolation fraction -- the
 ! FX/FX2 typo; that block was never consumed and is deleted.)
-module observables_lib
+module observables
       use star_info_lib
       use eos_lib
       use physical_constants
@@ -267,7 +267,7 @@ end subroutine refresh_turnover_timescale
 ! L = 4 pi R**2 sigma Teff**4 -- the star%log_R_surface expression
 ! (before the solar-radius offset), also used by run_yrec's solar
 ! calibration check. 2026 W3: NOTE the operand order (- 4 log Teff
-! last); envint_lib's surface_log10_radius_cm, used by the envelope
+! last); envelope_integration's surface_log10_radius_cm, used by the envelope
 ! integrator's callers, has it before the constants and can differ
 ! in the last bit. wind_lib's log10_radius_from_l_teff is this
 ! order. Folding them together is an R6 decision.
@@ -294,7 +294,7 @@ end subroutine compute_surface_globals
 ! Monte-Carlo-scaled solar values stay self-consistent.
 subroutine compute_seismic_observables
       use math_lib
-      use stitched_model_lib, only: n_ie, stx_prof, ip_logR, &
+      use stitched_model, only: n_ie, stx_prof, ip_logR, &
            ip_brunt_N2, ip_csound
       double precision :: log_g_solar
       double precision :: acoustic_radius, buoyancy_radius, n2, dr, &
@@ -465,4 +465,4 @@ subroutine compute_h_shell_boundaries
       end if
 end subroutine compute_h_shell_boundaries
 
-end module observables_lib
+end module observables

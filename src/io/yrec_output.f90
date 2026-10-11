@@ -28,7 +28,7 @@
 !                                  format per pulse_format.
 !
 ! Writers are PURE READERS: every quantity is computed by
-! compute_observables (core/observables_lib.f90, after the step's
+! compute_observables (core/observables.f90, after the step's
 ! physics) into star_info.
 ! Module state below is per-job configuration (output directory, the
 ! profile counter), reset by output_init_mesa on every job --
@@ -39,7 +39,7 @@ module yrec_output
 ! The stitched full-star model (interior + envelope + atmosphere)
 ! is assembled and materialized by core/stitched_model.f90; the
 ! writers below are pure readers of its stx_* arrays.
-      use stitched_model_lib, only: n_ext, stx_pulse, n_pulse_cols, ipul_gyre_last
+      use stitched_model, only: n_ext, stx_pulse, n_pulse_cols, ipul_gyre_last
       use history_output, only: history_output_init, write_history_row
       use profile_output, only: profile_output_init, write_profile
       use math_lib

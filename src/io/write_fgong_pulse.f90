@@ -23,7 +23,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       use star_info_lib, only: star
       use physical_constants
       use math_lib
-      use stitched_model_lib, only: n_pulse_cols, ipul_r, ipul_m, &
+      use stitched_model, only: n_pulse_cols, ipul_r, ipul_m, &
            ipul_L, ipul_P, ipul_T, ipul_rho, ipul_grad, ipul_N2, &
            ipul_gamma1, ipul_grada, ipul_delta, ipul_kap, ipul_eps, &
            ipul_cp, ipul_mu_e_inv, ipul_h1, ipul_z, &

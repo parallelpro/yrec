@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! henyey_iterate_lib (formerly crrect)
+! henyey_iteration (formerly crrect)
 !----------------------------------------------------------------------
 ! YREC's Newton-Raphson relaxation driver: the Henyey structure solve
 ! for one iteration level, in two calls that evolve_step's solve_level
@@ -29,7 +29,7 @@
 !
 ! Non-zero ierr propagates a callee failure to evolve_step.
 ! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
-module henyey_iterate_lib
+module henyey_iteration
       implicit none
       private
       public :: refresh_surface_bc, henyey_iterate
@@ -186,7 +186,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        end if
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
-! (per-iteration twin of observables_lib's renormalize_luminosity_breakdown;
+! (per-iteration twin of observables's renormalize_luminosity_breakdown;
 ! this one also guards total > 0 -- kept separate on purpose, see
 ! reports/henyey-wave2.md item 6)
        total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
@@ -346,4 +346,4 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       return
 end subroutine henyey_iterate
 
-end module henyey_iterate_lib
+end module henyey_iteration

@@ -15,7 +15,7 @@
 ! happens the name used here is the one shared by the most callees (or
 ! the more descriptive of the two), and the alternate name(s) are
 ! noted alongside the declaration, following the convention set by
-! henyey_iterate.f90:
+! henyey_iteration.f90:
 !  - dynamical_shear_omega_limit (QWRMAX): circulation_velocities.f90 calls the same
 !    quantity dlnomega_dlnr_max.
 !  - radius_unlogged (HRU): circulation_velocities.f90/zahn_coupling_factor.f90/compute_quadrupole.f90/am_transport_grid.f90

@@ -1,12 +1,12 @@
 !----------------------------------------------------------------------
-! envint_lib
+! envelope_integration
 !----------------------------------------------------------------------
 ! Added 2026 (physics-purity pass, atm split -- docs/ROADMAP.md): the
 ! envelope/atmosphere INTEGRATION, moved out of atm_lib. atm_get is
 ! the star solver's outer-boundary integrator: it integrates the
 ! atmosphere and envelope down to the fit point, driving the
 ! atmosphere_derivs/envelope_derivs integrands (which call the eos/
-! kap facades) through numerics' bsstep in core/envint_kernel.f90,
+! kap facades) through numerics' bsstep in core/envelope_integration_kernel.f90,
 ! consuming the pure atm surface lookups (surfp/kcsurfp/alsurfp --
 ! still atm-domain physics) and writing model state (star%pphot,
 ! the pt_scr pulse scratch, the envelope/atmosphere structure
@@ -15,7 +15,7 @@
 ! lives in core/ with the derivative routines, surfbc and the
 ! turnover diagnostics. atm/ keeps what MESA's atm has: tables,
 ! their init, and pure surface lookups.
-module envint_lib
+module envelope_integration
       implicit none
 
 ! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
@@ -45,7 +45,7 @@ end function fixed_envint_step
 ! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
 ! L = 4 pi R**2 sigma Teff**4. NOTE the operand order inside the
 ! parenthesis: this is the order the three callers above have always
-! used; observables_lib's log_r_surface_cm (and wind_lib's
+! used; observables's log_r_surface_cm (and wind_lib's
 ! log10_radius_from_l_teff) evaluate the same identity with the
 ! - 4 log Teff term last, which can differ in the last bit. Unifying
 ! them is a numbers-changing decision (R6), so both forms are kept.
@@ -82,7 +82,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! 2026 envint purity split phase B: atm_get is now the thin star-layer
 ! DRIVER. It snapshots the configuration out of star%job / star%ctrl
 ! into an envint_config, calls the star-blind kernel
-! (core/envint_kernel.f90), and applies the star-state consequences:
+! (core/envelope_integration_kernel.f90), and applies the star-state consequences:
 ! star%pphot from the integrated photosphere, and the Allard
 ! gray-fallback switch (atm_choice -> 0, use_ttau_relation) when the
 ! kernel reports it.
@@ -96,7 +96,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! zero-valued scratch here. atm_steps/env_steps, when present,
 ! replace the star%job%{atm,env}_step_* triples for this call only
 ! (the drivers that used to overwrite and restore star%job).
-      use envint_kernel
+      use envelope_integration_kernel
       use star_info_lib, only: star
       implicit none
 
@@ -198,4 +198,4 @@ contains
 
 end subroutine atm_get
 
-end module envint_lib
+end module envelope_integration
