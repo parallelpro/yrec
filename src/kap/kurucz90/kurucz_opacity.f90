@@ -122,7 +122,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
       end do table_read
 
       tbl%num_temps = num_read
-!     CLOSE THE TABLE WE HAVE READ
+!     Close the table we have read
       close(unit,err=99)
       return
    99 continue
@@ -209,12 +209,12 @@ end subroutine build_kurucz_splines
 subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, in_table, ierr)
 
-!     TWO DIMENSIONAL INTERPOLATION FOR OPACITY.
+!     Two dimensional interpolation for opacity.
 !     tbl%ix_t / tbl%ix_rho ARE THE WARM-START
-!     CURSORS (NEAREST TEMPERATURE ROW AND DENSITY KNOT) LEFT BY THE
-!     PREVIOUS CALL.  FOR UP TO SIX TEMPERATURE ROWS AROUND THE POINT
-!     THE ROW'S CUBIC SPLINE IN LOG RHO GIVES LOG OPACITY AND ITS RHO
-!     DERIVATIVE; THOSE ARE THEN INTERPOLATED IN LOG T (intpol) TO GIVE
+!     cursors (nearest temperature row and density knot) left by the
+!     previous call.  For up to six temperature rows around the point
+!     the row's cubic spline in log rho gives log opacity and its rho
+!     derivative; those are then interpolated in log T (intpol) to give
 !     log10_opacity, dlnkap_dlnt AND dlnkap_dlnrho.
 
       integer :: jerr_gate
@@ -253,7 +253,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
            log10_temperature <= kurucz_logt_max)) return
       end if
       search_full_range = .true.
-!     FOR SIX GRID POINTS OF TEMPERATURE
+!     For six grid points of temperature
       temp_index_start = tbl%ix_t-2
       if (temp_index_start <= 0) temp_index_start = 1
       temp_index_end = tbl%ix_t+3
@@ -299,15 +299,15 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          tbl%ix_rho = density_pointer
          knot_index = tbl%ix_rho - row_density_start + 1
          coeff_base_index = 4*(knot_index-1)
-!        NOW, (KNOT,KNOT+1) IS SUB-RANGE OF RHO WHICH CONTAINS D.
+!        Now, (knot,knot+1) is sub-range of rho which contains d.
          delta_logrho = log10_density - tbl%log10_rho(temp_index, tbl%ix_rho)
          c1 = tbl%spline_coeffs(temp_index, coeff_base_index+1)
          c2 = tbl%spline_coeffs(temp_index, coeff_base_index+2)
          c3 = tbl%spline_coeffs(temp_index, coeff_base_index+3)
          c4 = tbl%spline_coeffs(temp_index, coeff_base_index+4)
-!        INTERPOLATION FOR OPACITY(OL) IN THE ENTRY D AND THE EACH T-GRID
-!        ESTIMATES THE PARTIAL DERIVATIVE OF OL WRT D
-!        EVALUATES THE INTERPOLATION VALUE IN THE SUB-RANGE WE DETERMINED.
+!        Interpolation for opacity(ol) in the entry d and the each T-grid
+!        estimates the partial derivative of ol wrt d
+!        evaluates the interpolation value in the sub-range we determined.
          log10_opacity_at_rho = ((c4*delta_logrho+c3)*delta_logrho+c2)* &
               delta_logrho+c1
          dlnkap_dlnrho_at_rho = (3.0d0*c4*delta_logrho+2.0d0*c3)*delta_logrho+c2
@@ -334,8 +334,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       if (temp_subset_logt(1) > log10_temperature .or. &
            temp_subset_logt(num_valid_temps) < log10_temperature) return
       in_table = .true.
-!     INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
-!     GET THE PARTIAL DERIVATIVE OF OL WRT T.
+!     Interpolation for the opacity in the entry T and d.
+!     Get the partial derivative of ol wrt T.
       call intpol(temp_subset_logt, temp_subset_log10_opacity, &
            num_valid_temps, log10_temperature, log10_opacity_interp, dlnkap_dlnt, jerr_gate)
       ! 2026 numerics-gate opt-in: interpolation failure returns via
@@ -347,7 +347,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       log10_opacity = log10_opacity_interp
       opacity = exp10(log10_opacity)
 !     QOTF = D LN(O)/D LN(T)
-!     FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
+!     find the partial derivative value of ol wrt d in the given T and d
       call intpol(temp_subset_logt, temp_subset_dlnkap_dlnrho, &
            num_valid_temps, log10_temperature, dlnkap_dlnrho, dlnkap_dlnrho_unused, jerr_gate)
       if (jerr_gate /= 0) then

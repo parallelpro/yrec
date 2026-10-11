@@ -1,19 +1,25 @@
 !----------------------------------------------------------------------
 ! kap_lib
 !----------------------------------------------------------------------
-! Added 2026 as part of the YREC readability refactor's phase two
-! (disentangling the solver from the physics domains -- see
-! docs/GUIDELINES.md's "Physics domains still entangled with the solver").
-! Unlike eos_lib.f90's eos_get, this is not a new dispatch consolidation:
-! getopac (renamed kap_eval) was already the single, clean, explicit-
-! interface entry point every external caller used uniformly -- no
-! duplicated dispatch logic existed at any of its 8 call sites. This
-! rename/module-wrap is purely to give kap/ the same public-facade
-! shape as eos_lib (a module named `<domain>_lib`, matching
-! docs/GUIDELINES.md's naming rule, which already anticipated `kap_lib` by
-! name) and the same numerics_lib/eos_lib precedent for "a module
-! hosting a real callable subroutine." kap_eval's body, dispatch logic,
-! and argument list are otherwise unchanged from getopac.
+! The public interface of kap/, the opacities: everything code outside
+! kap/ may use, here and only here (check_boundaries enforces it).
+!     kap_init        install the settings (kap_settings_t, built by the
+!                     star layer's opacity_settings) and load the tables
+!                     they select
+!     kap_get         the opacity of a zone and its log derivatives, in
+!                     a result array (i_kap, i_log10_kap,
+!                     i_dlnkap_dlnrho, i_dlnkap_dlnt)
+!     kap_eval        the same with separate outputs (formerly getopac)
+!     kap_update_surface_tables   rebuild the surface-composition tables
+!                     when the envelope X changes
+!     set_kap_settings   install settings without reloading tables
+! kap_eval blends the molecular tables (Alexander 2006 or 1994/95, or
+! Kurucz 1990) into the interior ones (OPAL95-format, OPAL92 or LAOL89)
+! over molecular_opacity_logt_min..max, blends two Z tables linearly or
+! moves toward the pure-Z table in helium-burning cores, and adds the
+! conductive opacity harmonically (Potekhin, else Hubbard & Lampe). The
+! table families are one module each (opal95_opacity, ...); kap reads
+! no star.
 module kap_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings, kap_settings_t, opacity_table, &
@@ -111,12 +117,12 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
            radiative_dlnkap_dlnt
       integer :: jerr
 
-!     THIS SUBROUTINE CALCULATES THE OPACITY FOR A GIVEN X AND Z.
-!     IF LDIFZ=T OR LZRAMP=T THEN INTERPOLATE BETWEEN TWO Z TABLES.
-!     IN A SMALL T RANGE THE ATMOSPHERE AND INTERIOR OPACITY ARE
-!     RAMPED FROM ONE TO THE OTHER.
+!     This subroutine calculates the opacity for a given X and Z.
+!     If ldifz=T or lzramp=T then interpolate between two Z tables.
+!     In a small T range the atmosphere and interior opacity are
+!     ramped from one to the other.
 
-!     GET ATMOSPHERE OPACITY
+!     Get atmosphere opacity
 
       ierr = 0
       jerr = 0
@@ -169,11 +175,11 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          end if
       end if
 
-!     GET INTERIOR OPACITY IF NEEDED
+!     Get interior opacity if needed
 
       if (.not. (log10_temperature < kap_settings%molecular_opacity_logt_min .and. got_atmosphere_opacity)) then
 
-!     HELIUM BURNING REGION (HB EVOLUTION) USE PURE Z TABLE
+!     Helium burning region (HB evolution) use pure Z table
 !     mhp 7/12 Altered logic of the opacities in the He burnng
 !     regime.  Switched to exclusive usage of OPAL below 50 million K
 !     and switched the ramp to above Z = 0.1.
@@ -247,9 +253,9 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          jerr = 1
          ierr = jerr
          return
-!     NOT HELIUM BURNING REGION (HB EVOLUTION) OR L2Z=T AND
-!     Z STILL NOT TOO LARGE IN CORE (<=0.12 above) SO CAN USE
-!     SECOND Z TABLE RATHER THAN PURE Z TABLE
+!     Not helium burning region (HB evolution) or l2z=T and
+!     Z still not too large in core (<=0.12 above) so can use
+!     second Z table rather than pure Z table
 
       else if (kap_settings%use_opal95_tables) then
          call compute_opal95_opacity(log10_density, log10_temperature, &
@@ -317,7 +323,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       end if
 
       end if
-!     DO A RAMP BETWEEN SURFACE AND INTERIOR OPACITY
+!     Do a ramp between surface and interior opacity
 
       if (got_atmosphere_opacity .and. &
            log10_temperature <= kap_settings%molecular_opacity_logt_max) then
@@ -338,7 +344,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          end if
       end if
 
-!     DO CONDUCTIVE OPACITY CORRECTION
+!     Do conductive opacity correction
       if (kap_settings%use_conductive_opacity) then
 !        Get Potekhin conductive opacity
          call compute_conductive_opacity(log10_density, log10_temperature, &

@@ -169,7 +169,7 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
            mix_log10_cond = -log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
 !           CONDL = LOG10( (X + 1D0) / 2D0 ) -
-!     *             LOG10( X*CONDX + .5D0*Y*CONDY + .5D0*z*CONDZ)
+!     *             LOG10( X*condx + .5d0*Y*condy + .5d0*z*condz)
 
 ! 2026 (bugsweep Batch 2): with mix = -log10(sum_i w_i 10^-K_i) the
 ! derivative is the conductivity-weighted mean of the per-species
@@ -183,13 +183,13 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
                 + weight_he4*cond_he4*dlnkap_dlnrho_he4 + weight_ox*cond_ox*dlnkap_dlnrho_ox) &
                 / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
 !           QODC = 2D0 * CONDL / ( 1D0 + X ) *
-!     *          (X*CONDX*QODCX +.5D0*Y*CONDY*QODCY +.5D0*Z*COBDZ*QODCZ)
+!     *          (X*condx*qodcx +.5d0*Y*condy*qodcy +.5d0*Z*cobdz*qodcz)
 
            conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnt_h1 &
                 + weight_he4*cond_he4*dlnkap_dlnt_he4 + weight_ox*cond_ox*dlnkap_dlnt_ox) &
                 / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
 !           QOTC = 2D0 * CONDL / ( 1D0 + X ) *
-!     *          (X*CONDX*QOTCX +.5D0*Y*CONDY*QOTCY +.5D0*Z*CONDZ*QOTCZ)
+!     *          (X*condx*qotcx +.5d0*Y*condy*qotcy +.5d0*Z*condz*qotcz)
 
          conductive_log10_opacity = -3.5194D0+3.0D0*log10_temperature-log10_density-mix_log10_cond
            conductive_dlnkap_dlnrho = -1.0D0-conductive_dlnkap_dlnrho
@@ -216,7 +216,7 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
            mix_log10_cond = log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
 !           CONDL = LOG10( (X + 1D0) / 2D0 ) -
-!     *            LOG10( X*CONDX + .5D0*Y*CONDY + .5D0*Z*CONDZ)
+!     *            LOG10( X*condx + .5d0*Y*condy + .5d0*Z*condz)
 
            conductive_log10_opacity = -3.5194D0+3.0D0*log10_temperature+6.0D0-mix_log10_cond
            conductive_dlnkap_dlnrho = -1.0D0-conductive_dlnkap_dlnrho

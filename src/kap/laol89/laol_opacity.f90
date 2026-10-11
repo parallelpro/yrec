@@ -54,7 +54,7 @@ subroutine read_laol_tables(laol_work_array, laol_debye_huckel_z, laol_table_pat
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
 !     THE work_array2/zdh2 TWINS OF laol_work_array/laol_debye_huckel_z
-!     ARE READ-LIST TARGETS FOR THE SECOND TABLE THAT ARE NEVER USED
+!     are read-list targets for the second table that are never used
 !     AFTERWARDS.
       real(dp) :: work_array2(12), zdh2(18)
       integer :: ii, ix, ir, it
@@ -88,12 +88,12 @@ subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
 ! runtime-allocated unit for the table (formerly the fixed iolaol =
 ! 61 for table 1, io_units's fixed iolaol2 = 63 for table 2)
       integer :: laol_unit
-!     zlot/zhit ARE READ-LIST TARGETS THAT ARE NEVER USED AFTERWARDS.
+!     Zlot/zhit are read-list targets that are never used afterwards.
       real(dp) :: zlot, zhit
 
       open(newunit=laol_unit,file=path, form='FORMATTED', &
            status='OLD')
-!     READ IN ARRAY SIZES
+!     Read in array sizes
       read(laol_unit,100) tbl%num_x,tbl%num_rho,tbl%num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (tbl%num_x > n_laol_x-1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
@@ -106,32 +106,32 @@ subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
          ierr = 1
          return
       end if
-!     READ IN RELATIVE ABUNDANCES BY WEIGTH OF THE METALS C,N,O,NE,NA,
-!     MG,SI,AR,FE (THE COX&STEWART MIX).  MIXTURE IS FOR THE ZLOT PART
-!     OF THE OPACITY TABLE WITH LAOL RELATIVE ABUNDANCES SCALED
+!     Read in relative abundances by weigth of the metals c,n,o,ne,na,
+!     mg,si,ar,fe (the cox&stewart mix).  Mixture is for the zlot part
+!     of the opacity table with LAOL relative abundances scaled
 !     TO SUM TO ZLOT.
       read(laol_unit,120) zlot, work_array(ix_c), work_array(ix_n), &
            work_array(ix_o), work_array(ix_ne), work_array(ix_na), &
            work_array(ix_mg), work_array(ix_al), work_array(ix_si), &
            work_array(ix_ar), work_array(ix_fe)
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
-!     READ ZHIT THE METAL ABUNDANCE FOR THE HIT PART OF TABLE.
-! DBG 7/92 NEED RELATIVE ABUNDANCES OF METALS FOR DEBYE-HUCKEL
-!     CORRECTION. 18 ELEMENTS, C,N,O,Ne,Na,Mg,Al,Si,P,
+!     Read zhit the metal abundance for the hit part of table.
+! DBG 7/92 need relative abundances of metals for debye-huckel
+!     correction. 18 elements, c,n,o,ne,na,mg,al,si,p,
 !     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
       read(laol_unit,130) zhit, debye_huckel_z
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
-!     READ IN H MASS FRACTIONS OF TABLE
+!     Read in h mass fractions of table
       read(laol_unit,140) (tbl%grid_x(ii),ii=1,tbl%num_x)
   140 format(/,(1p6e12.5))
-!     READ IN DENSITY GRID OF TABLE
+!     Read in density grid of table
       read(laol_unit,150) (tbl%grid_rho(ii),ii=1,tbl%num_rho)
   150 format(/,(1p6e12.5))
-!     READ IN TEMPERATURE GRID OF TABLE
+!     Read in temperature grid of table
       read(laol_unit,160) (tbl%grid_t(ii),ii=1,tbl%num_t)
   160 format(/,(1p6e12.5))
-!     READ IN OPACITIES
+!     Read in opacities
       read(laol_unit,170)
   170 format(1x)
       do ix=1,tbl%num_x
@@ -254,12 +254,12 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
            num_valid_rho, rho_loop_index, spline_index_lo, spline_index_hi
       real(dp) :: log10_opacity_value, slope
 
-!     1. CUBIC SPLINE INTERPOLATE IN DENSITY
-!     2. CUBIC SPLINE INTERPOLATE IN TEMPERATURE
-!     3. LINEAR INTERPOLATE IN COMPOSITION
-!     IF WITHIN TOLLAOL OF EDGE THEN LINEAR EXTRAPOLATE
+!     1. Cubic spline interpolate in density
+!     2. Cubic spline interpolate in temperature
+!     3. Linear interpolate in composition
+!     if within tollaol of edge then linear extrapolate
 !
-!     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
+!     Tollaol permits some extraploation beyond table edge.
       ierr = 0
       log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
       call locate(tbl%grid_t, tbl%num_t, log10_temperature, t_locate_guess)
@@ -274,7 +274,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
       x_grid_index_hi = x_grid_index + 1
       do x_loop_index=x_grid_index, x_grid_index_hi
          num_valid_t = 0
-!        GET RANGE OF FOUR TT SURROUNDING T
+!        Get range of four tt surrounding T
          call xrng4(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
          do t_index=t_range_lo, t_range_hi
             num_valid_rho = tbl%slaol_num_points(x_loop_index,t_index)
@@ -306,7 +306,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                        (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
                else if (log10_density > row_log_rho(1)-log_extrap_tolerance .and. &
                     log10_density <= row_log_rho(1)) then
-!                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
+!                 Put linear extrapolation routines here
                   slope = (row_log10_opacity(2)-row_log10_opacity(1))/ &
                        (row_log_rho(2)-row_log_rho(1))
                   log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))
@@ -316,7 +316,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
                else if (log10_density >= row_log_rho(num_valid_rho) .and. &
                     log10_density < row_log_rho(num_valid_rho)+log_extrap_tolerance) then
-!                 PUT LINEAR EXTRAPOLATION ROUTINES HERE
+!                 Put linear extrapolation routines here
                   slope = (row_log10_opacity(num_valid_rho-1)-row_log10_opacity(num_valid_rho))/ &
                        (row_log_rho(num_valid_rho-1)-row_log_rho(num_valid_rho))
                   log10_opacity_value = row_log10_opacity(num_valid_rho)+ &
@@ -376,7 +376,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
             return
          end if
       end do
-!     BOTH X COLUMNS SUCCEEDED (EACH ITERATION ABOVE EITHER ADDS ONE OR
+!     Both X columns succeeded (each iteration above either adds one or
 !     RETURNS WITH ierr), SO num_valid_x IS 2 HERE.
       slope = (opacity_by_x(2)-opacity_by_x(1))/(x_values(2)-x_values(1))
       log10_opacity_value = opacity_by_x(1)+slope*(hydrogen_fraction-x_values(1))
@@ -411,7 +411,7 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
       ierr = 0
       open(newunit=pure_z_unit, file=pure_z_table_path,form='FORMATTED', &
               status='OLD')
-!     READ IN ARRAY SIZES
+!     Read in array sizes
       read(pure_z_unit,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n /= 1.or.opacity_table%zlaol_num_rho > n_laol_rho.or.opacity_table%zlaol_num_t > n_laol_t) then
@@ -424,16 +424,16 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
       read(pure_z_unit,131) dummy(1)
   131 format(54x,f8.5,///////)
-!     READ IN H MASS FRACTIONS OF TABLE
+!     Read in h mass fractions of table
       read(pure_z_unit,140) dummy(1)
   140 format(/,(1p6e12.5))
-!     READ IN DENSITY GRID OF TABLE
+!     Read in density grid of table
       read(pure_z_unit,150) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
   150 format(/,(1p6e12.5))
-!     READ IN TEMPERATURE GRID OF TABLE
+!     Read in temperature grid of table
       read(pure_z_unit,160) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
   160 format(/,(1p6e12.5))
-!     READ IN PURE Z OPACITIES
+!     Read in pure Z opacities
       read(pure_z_unit,170)
   170 format(1x)
       do ir=1,opacity_table%zlaol_num_rho
@@ -513,16 +513,16 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
            spline_index_hi
       real(dp) :: log10_opacity_value, slope
 
-!     1. CUBIC SPLINE INTERPOLATE IN DENSITY
-!     2. CUBIC SPLINE INTERPOLATE IN TEMPERATURE
-!     IF WITHIN TOLLAOL OF EDGE THEN LINEAR EXTRAPOLATE
+!     1. Cubic spline interpolate in density
+!     2. Cubic spline interpolate in temperature
+!     if within tollaol of edge then linear extrapolate
 !
-!     TOLLAOL PERMITS SOME EXTRAPLOATION BEYOND TABLE EDGE.
+!     Tollaol permits some extraploation beyond table edge.
       ierr = 0
       log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
       call locate(opacity_table%zlaol_logt_grid, opacity_table%zlaol_num_t, log10_temperature, t_locate_guess)
       num_valid_t = 0
-!     GET RANGE OF FOUR TT SURROUNDING T
+!     Get range of four tt surrounding T
       call xrng4(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
       do t_index=t_range_lo, t_range_hi
          num_valid_rho = opacity_table%zslaol_num_points(t_index)
@@ -551,7 +551,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                     (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
             else if (log10_density > row_log_rho(1)-log_extrap_tolerance .and. &
                  log10_density <= row_log_rho(1)) then
-!              PUT LINEAR EXTRAPOLATION ROUTINES HERE
+!              Put linear extrapolation routines here
                slope = (row_log10_opacity(2)-row_log10_opacity(1))/ &
                     (row_log_rho(2)-row_log_rho(1))
                log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))
@@ -561,7 +561,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             else if (log10_density >= row_log_rho(num_valid_rho) .and. &
                  log10_density < row_log_rho(num_valid_rho)+log_extrap_tolerance) then
-!              PUT LINEAR EXTRAPOLATION ROUTINES HERE
+!              Put linear extrapolation routines here
                slope = (row_log10_opacity(num_valid_rho-1)-row_log10_opacity(num_valid_rho))/ &
                     (row_log_rho(num_valid_rho-1)-row_log_rho(num_valid_rho))
                log10_opacity_value = row_log10_opacity(num_valid_rho)+ &

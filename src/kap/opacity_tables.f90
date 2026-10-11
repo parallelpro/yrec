@@ -1,25 +1,16 @@
 !----------------------------------------------------------------------
 ! opacity_tables
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Bundles the low/high-temperature opacity
-! lookup tables -- former common/gllot/, llot/, lintpl/, gllot2/,
-! llot2/, lintpl2/ (OPAL92/Livermore), galot/, alot/, alotall/
-! (Alexander 1994/95), galot06/, alot06/, alot06all/ (Alexander 2006),
-! gkrz/, krz/, kipm/, intpl2/, gkrz2/, krz2/, kipm2/, intpl22/
-! (Kurucz), slaol/, slaol2/, nwlaol2/, zlaol/, zslaol/ (LAOL89) -- into
-! one derived type. These are Category 1 (loaded once at startup, read
-! broadly thereafter), kept in their own module (like mhd_eos_tables and
-! atm_tables) rather than folded into const_lib to keep large table
-! arrays out of the globally-`use`d const_lib.
+! The state of kap/: the opacity tables of every family (one derived
+! type, opacity_table: the former common blocks of the OPAL92, Alexander
+! 1994/95 and 2006, Kurucz and LAOL89 readers), the table dimensions,
+! the composition-cache tolerances, the shared four-point locators, and
+! the settings record (kap_settings_t, kap_settings). Loaded once per
+! run by kap_init; read by the family modules.
 !
-! DATA-statement defaults (kipmll/kipm/kipm2's cached-index scalars,
-! and the Alexander 94/06 table-grid arrays) are preserved here as
-! declaration-time initializers, transcribed verbatim from the
-! original DATA statements in kap/alex94/alex94_opacity.f90,
-! kap/alex06/alex06_opacity.f90, kap/kurucz90/kurucz_opacity.f90 (and its former
-! kurucz2.f90 clone) and kap/opal92/opal92_opacity.f90 (see
-! opal92_table_set for the former kipmll2 asymmetry).
+! The cached-index scalars and the Alexander table grids start from
+! their original DATA-statement values, as declaration initializers
+! (see opal92_table_set for the former kipmll2 asymmetry).
 module opacity_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none

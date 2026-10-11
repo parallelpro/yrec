@@ -28,21 +28,21 @@ contains
 ! read_alex94_tables
 !----------------------------------------------------------------------
 ! alxtbl
-! ALEXANDER OPACITIES   APJ,437,879,1994
-! IN EACH 7 FILE FOR X = 0.0, 0.1, 0.2, 0.35, 0.5, 0.7, 0.8
-! DESCENDING ORDER OF Z = 0.0, 0.00001, 0.00003, 0.0001, 0.0003,
+! Alexander opacities   apj,437,879,1994
+! in each 7 file for X = 0.0, 0.1, 0.2, 0.35, 0.5, 0.7, 0.8
+! descending order of Z = 0.0, 0.00001, 0.00003, 0.0001, 0.0003,
 !     (15)               0.001, 0.002, 0.004, 0.01, 0.02, 0.03,
 !                        0.04, 0.06, 0.08, 0.10
-! DESCENDING ORDER OF LOGT  4.10 4.05 4.00 3.95 3.90 3.85 3.80 3.75
+! descending order of logt  4.10 4.05 4.00 3.95 3.90 3.85 3.80 3.75
 !     (23)                 3.70 3.65 3.60 3.55 3.50 3.45 3.40 3.35
 !                          3.30 3.25 3.20 3.15 3.10 3.05 3.00
-! ASCENDING ORDER OF  LOGR -7.0 -6.5 -6.0 -5.5 -5.0 -4.5 -4.0 -3.5
+! ascending order of  logr -7.0 -6.5 -6.0 -5.5 -5.0 -4.5 -4.0 -3.5
 !     (17)                -3.0 -2.5 -2.0 -1.5 -1.0 -0.5  0.0  0.5  1.0
 ! WHERE R = RHO/T_6**3
-! READ IN ALL Z VALUES AT FIXED X AND GENERATE OPACITY ENTRIES AT
-! EITHER ONE OR TWO FIXED VALUES OF Z.  THEN GENERATE SURFACE X TABLE
-! IF MODEL HAS NO DIFFUSION.  INTERPOLATION BETWEEN COMPOSITIONS IS
-! 4-POINT LAGRANGIAN.
+! read in all Z values at fixed X and generate opacity entries at
+! either one or two fixed values of Z.  Then generate surface X table
+! if model has no diffusion.  Interpolation between compositions is
+! 4-point lagrangian.
 !
 ! MHP 8/25 Added file name to subroutine call
 subroutine read_alex94_tables(alex95_table_paths, ierr)
@@ -63,16 +63,16 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       real(dp) :: target_z
 
       do table_index=1,n_alex94_x
-!        OPEN EACH OF THE TABLES AT FIXED X WITH A RANGE OF Z.
+!        Open each of the tables at fixed X with a range of Z.
          open(newunit=table_unit,file=alex95_table_paths(table_index), &
               status='OLD', form='FORMATTED')
-!        READ IN INITIAL X AND Z; ENSURE THAT THEY HAVE THE EXPECTED VALUES.
+!        Read in initial X and Z; ensure that they have the expected values.
          do i = n_alex94_z,1,-1
-!           INDEX FOR STORING TABLES : 15 SETS OF METAL ABUNDANCE WITH 7 SETS
-!           OF HYDROGEN FOR EACH.  THESE ARE STORED IN THE ORDER (X,Z) OF
+!           Index for storing tables : 15 sets of metal abundance with 7 sets
+!           of hydrogen for each.  These are stored in the order (X,Z) of
 !           (0,0),(0.1,0),...(0.8,0),(0,0.00001),...
             ii = table_index + 7*(i-1)
-!           HEADER INFORMATION: X AND Z
+!           Header information: X and Z
             read(table_unit,10) header_x, header_z
    10       format(18x,f6.2,2x,f7.2)
             if (header_x /= opacity_table%alex94_grid_x(table_index) .or. &
@@ -85,8 +85,8 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                ierr = 1
                return
             endif
-!           OPACITY INFORMATION AT EACH SHELL: CHECK FOR CONSISTENCY WITH T,
-!           STARTING R.  STORE IN A NUMZ*NUMT*NUMR ARRAY.
+!           Opacity information at each shell: Check for consistency with T,
+!           starting R.  Store in a numz*numt*numr array.
             do j = n_alex94_t,1,-1
                read(table_unit,30) opacity_table%alex94_index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,n_alex94_d)
@@ -129,7 +129,7 @@ subroutine build_alex94_fixed_z_table(metal_fraction)
       real(dp) :: interp_z(4), weight_z(4)
       integer :: i, jj, kk, idz, ii1, ii2, ii3, ii4
 
-!     LOCATE FOUR NEAREST TABLES IN Z
+!     Locate four nearest tables in Z
       do i=3,n_alex94_z-1
          if (metal_fraction < opacity_table%alex94_grid_z(i)) then
             idz = i - 2
@@ -142,11 +142,11 @@ subroutine build_alex94_fixed_z_table(metal_fraction)
       do i = 1,4
          interp_z(i) = opacity_table%alex94_grid_z(idz+i-1)
       end do
-!     GET INTERPOLATION FACTORS FOR Z.
+!     Get interpolation factors for Z.
       call intrp2(interp_z, weight_z, metal_fraction)
-!     INTERPOLATE IN Z AT FIXED X.
+!     Interpolate in Z at fixed X.
       do i = 1,n_alex94_x
-!        INDICES FOR TABLES: SETS OF 7 X AT FIXED Z, STARTING FROM
+!        Indices for tables: Sets of 7 X at fixed Z, starting from
 !        Z= 0 AND GOING TO Z = 0.1.
          ii1 = i + n_alex94_x*(idz-1)
          ii2 = ii1 + n_alex94_x
@@ -181,7 +181,7 @@ subroutine build_alex94_surface_table(hydrogen_fraction)
       integer :: i, j
 
       opacity_table%alex94_cached_x = hydrogen_fraction
-!     FIND 4 NEAREST TABLES IN X.
+!     Find 4 nearest tables in X.
       opacity_table%alex94_index_x = alex_x_stencil_start(hydrogen_fraction)
       do i = 1,4
          interp_x(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
@@ -222,26 +222,26 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
       integer :: i, j, jj, ii
 
       delta_z = abs(metal_fraction-opacity_table%alex94_cached_z)
-!     ENSURE THAT OPACITY TABLE HAS THE SAME Z VALUE AS THE ENVELOPE.
+!     Ensure that opacity table has the same Z value as the envelope.
       if (delta_z > alex_composition_tol) then
          call build_alex94_fixed_z_table(metal_fraction)
          call build_alex94_surface_table(hydrogen_fraction)
       endif
-!     COMPUTE R FOR GRID POINT
+!     Compute R for grid point
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
-!     FIND NEAREST GRID POINTS IN T.
+!     Find nearest grid points in T.
 !     Insure that index IT is within the required array bounds  llp  8/19/08
       if (opacity_table%alex94_index_t < 1) opacity_table%alex94_index_t=1
       if ((opacity_table%alex94_index_t+2) > n_alex94_t) opacity_table%alex94_index_t=n_alex94_t-2
       call stencil4_locate(opacity_table%alex94_grid_logt, n_alex94_t, log10_temperature, opacity_table%alex94_index_t)
-!     INTERPOLATION FACTORS IN LOG T
+!     Interpolation factors in log T
       do i = 1,4
          interp_nodes(i) = opacity_table%alex94_grid_logt(opacity_table%alex94_index_t+i-1)
       end do
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
-!     FIND NEAREST GRID POINTS IN R = RHO/T6**3
+!     Find nearest grid points in R = rho/T6**3
       call stencil4_locate(opacity_table%alex94_grid_logr, n_alex94_d, logr, opacity_table%alex94_index_r)
-!     INTERPOLATION FACTORS IN LOG R
+!     Interpolation factors in log R
       if (logr > opacity_table%alex94_grid_logr(n_alex94_d).and. &
            abs(hydrogen_fraction-opacity_table%alex94_cached_x) < alex_composition_tol) then
          extrapolate_linear = .true.
@@ -254,11 +254,11 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
          interp_nodes(i) = opacity_table%alex94_grid_logr(opacity_table%alex94_index_r+i-1)
       end do
       call interp(interp_nodes, weight_r, dweight_r, logr)
-!     NOW EITHER INTERPOLATE IN SURFACE X TABLE OR CALCULATE OPACITY AT
-!     4 DIFFERENT VALUES OF X AND INTERPOLATE IN X.
+!     Now either interpolate in surface X table or calculate opacity at
+!     4 different values of X and interpolate in X.
       if (abs(hydrogen_fraction-opacity_table%alex94_cached_x) < alex_composition_tol) then
-!        SURFACE ABUNDANCE TABLE
-!        INTERPOLATE IN LOG R AT FIXED T
+!        Surface abundance table
+!        interpolate in log R at fixed T
          do i = 1,4
             ii = opacity_table%alex94_index_t+i - 1
             opacity_row(i) = weight_r(1)*opacity_table%alex94_opacity(8,ii,opacity_table%alex94_index_r) + &
@@ -279,23 +279,23 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
             end do
             logr = saved_r
          endif
-!        INTERPOLATE IN T
+!        Interpolate in T
          log10_opacity = lagrange4(weight_t, opacity_row)
-!        D LN CAPPA/D LN T AT FIXED R
+!        D ln cappa/d ln T at fixed R
          dlnkap_dlnt = lagrange4(dweight_t, opacity_row)
-!        INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
+!        Interpolate in d ln cappa/ d ln R at fixed T
          dlnkap_dlnrho = lagrange4(weight_t, dlnkap_dlnr_row)
-!        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
+!        Correct from derivative at fixed R to derivative at fixed rho
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
       else
-!        FIND 4 NEAREST TABLES IN X.
+!        Find 4 nearest tables in X.
          opacity_table%alex94_index_x = alex_x_stencil_start(hydrogen_fraction)
          do i = 1,4
             interp_nodes(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
          end do
          call intrp2(interp_nodes, weight_x, hydrogen_fraction)
-!        INTERPOLATE IN LOG R AT FIXED T
+!        Interpolate in log R at fixed T
          do j = 1,4
             jj = opacity_table%alex94_index_x+j-1
             do i = 1,4
@@ -309,18 +309,18 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
                     dweight_r(3)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+2) + &
                     dweight_r(4)*opacity_table%alex94_opacity(jj,ii,opacity_table%alex94_index_r+3)
             end do
-!           INTERPOLATE IN T
+!           Interpolate in T
             opacity_x(j) = lagrange4(weight_t, opacity_row)
-!           D LN CAPPA/D LN T AT FIXED R
+!           D ln cappa/d ln T at fixed R
             dlnkap_dlnt_x(j) = lagrange4(dweight_t, opacity_row)
-!           INTERPOLATE IN D LN CAPPA/ D LN R AT FIXED T
+!           Interpolate in d ln cappa/ d ln R at fixed T
             dlnkap_dlnr_x(j) = lagrange4(weight_t, dlnkap_dlnr_row)
          end do
-!        INTERPOLATE IN X
+!        Interpolate in X
          log10_opacity = lagrange4(weight_x, opacity_x)
          dlnkap_dlnt = lagrange4(weight_x, dlnkap_dlnt_x)
          dlnkap_dlnrho = lagrange4(weight_x, dlnkap_dlnr_x)
-!        CORRECT FROM DERIVATIVE AT FIXED R TO DERIVATIVE AT FIXED RHO
+!        Correct from derivative at fixed R to derivative at fixed rho
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
       endif

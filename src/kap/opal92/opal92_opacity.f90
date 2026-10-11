@@ -48,7 +48,7 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       integer, intent(out) :: ierr
 ! the table file's unit
       integer :: opal92a_unit
-!     local_grid_z IS A READ-LIST TARGET THAT IS NEVER USED AFTERWARDS.
+!     Local_grid_z is a read-list target that is never used afterwards.
       real(dp) :: local_grid_z(n_opal92_x)
       integer :: i, k, density_index, num_temps_read
       real(dp) :: grid_temp_k
@@ -80,15 +80,15 @@ subroutine read_opal92_table(unit, tbl, ierr)
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
 
       do i=1,n_opal92_x
-!        READ GRID POINT FOR ABUNDANCE
-!        READ NUMBER OF GRIDS FOR DENSITY, AND TEMPERATURE
+!        Read grid point for abundance
+!        read number of grids for density, and temperature
         read(unit,190,end=97) tbl%grid_x(i), local_grid_z(i)
   190   format(33x,f7.4,2x,f7.4)
          read(unit,'()')
-!        READ  LOG(DENSITY/TEMPERATURE**3)
+!        Read  log(density/temperature**3)
             read(unit, 200) (tbl%grid_logr(density_index), density_index=1, n_opal92_d)
   200   format (6x, 17f7.1)
-!        READ GRID VALUES FOR TEMPERATURE, AND OPACITY TABLE
+!        Read grid values for temperature, and opacity table
          do k=1, n_opal92_t
          read(unit,196,end=93) grid_temp_k, &
               (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
@@ -98,7 +98,7 @@ subroutine read_opal92_table(unit, tbl, ierr)
   196    format(18f7.3)
 !
       end do
-!     CLOSE THE TABLE WE HAVE READ
+!     Close the table we have read
    97 close(unit,err=99)
       tbl%num_temps = num_temps_read
       tbl%num_x=i-1
@@ -161,7 +161,7 @@ subroutine prep_table(tbl, ierr)
         do id = 1,n_opal92_d
           chkd = tbl%grid_logr(id)
           chko = tbl%log10_opacity(it+n_opal92_t*(ix-1),id)
-!>>>> CHECK THE EMPTY REGION
+!>>>> Check the empty region
           if (chko <= opal92_missing_opacity) cycle
           if (jd <= 0) then
              tbl%density_start_index(index1) = id
@@ -173,7 +173,7 @@ subroutine prep_table(tbl, ierr)
           endif
           jd = jd + 1
           density_nodes(jd) = chkd
-!>>>> CHECK THE OPACITY VALUE IN THE TABLE
+!>>>> Check the opacity value in the table
           spline_work(1,jd) = chko
         end do
         tbl%density_count(index1) = jd
@@ -194,11 +194,11 @@ end subroutine prepare_opal92_tables
 !----------------------------------------------------------------------
 ! build_opal92_surface_table (formerly opal92_surface_table)
 !----------------------------------------------------------------------
-! THIS IS THE 4TH TABLE OF THE LAWRENCE LIVERMORE OPACITY TABLES.
-! IT CONTAINS THE OPACITIES FOR THE SURFACE ABUNDANCES OF X AND Z, AND
-! IS USED TO AVOID MANY INTERPOLATIONS TO THE SAME X. ONLY THE
+! this is the 4th table of the lawrence Livermore opacity tables.
+! It contains the opacities for the surface abundances of X and Z, and
+! is used to avoid many interpolations to the same X. Only the
 ! LOG OPACITY IS KEPT; THE DERIVATIVES RETURNED BY interpolate_opal92_2d
-! ARE NOT USED HERE.
+! are not used here.
 !
 ! 2026 wave 3 (R5): the verbatim second-Z half (on opacity_table%
 ! opal92(2), Z = opal_table_z2, through the former
@@ -240,7 +240,7 @@ subroutine build_surface_table(tbl, table_z, ierr)
       real(dp), intent(in) :: table_z
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
 
-!     KEEP THE COMPOSITION OF THE 4TH TABLE.
+!     Keep the composition of the 4th table.
       tbl%surface_x=hydrogen_fraction
       tbl%surface_z=table_z
       call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, x_index)
@@ -292,7 +292,7 @@ end subroutine build_opal92_surface_table
 !----------------------------------------------------------------------
 ! compute_opal92_opacity (formerly opal92_interp3d)
 !----------------------------------------------------------------------
-! THIS IS THE INTERPOLATION FACILITY FOR THE LIVERMORE (OPAL92)
+! this is the interpolation facility for the Livermore (OPAL92)
 ! OPACITY TABLES USING CUBIC SPLINE INTERPOLATION. Companion routines
 ! in this directory: read_opal92_tables (read), prepare_opal92_tables
 ! (spline coefficients), build_opal92_surface_table (surface X,Z table),
@@ -329,7 +329,7 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
 
       ierr = 0
       single_x_table = .false.
-! INDEPENDENT PARAMETER IN LIVERMORE OPACITY TABLE;
+! Independent parameter in Livermore opacity table;
 ! T6 = LOG10(T/10E6)
       t6 = log10_temperature - 6.0d0
 ! RHOT3 = LOG10(RHO/(T/10E6)**3)
@@ -369,13 +369,13 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       call interpolate_opal92_2d(tbl, t6, rhot3, tbl%index_x, tbl%index_t, tbl%index_rho, o0, ol0, qod0, qot0, ierr)
       if (ierr /= 0) return
       if (single_x_table) then
-! USE ONLY ONE X TABLE
+! Use only one X table
          log10_opacity = ol0
          opacity = o0
          qodi = qod0
          qoti = qot0
       else
-! LINEAR EXTRAPOLATION IN X
+! Linear extrapolation in X
          call interpolate_opal92_2d(tbl, t6, rhot3, tbl%index_x+1, tbl%index_t, tbl%index_rho, o1, ol1, qod1, qot1, ierr)
       if (ierr /= 0) return
          grdnt = (hydrogen_fraction-tbl%grid_x(tbl%index_x))/(tbl%grid_x(tbl%index_x+1)-tbl%grid_x(tbl%index_x))
@@ -384,7 +384,7 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
          qoti = (qot1-qot0)*grdnt + qot0
          opacity = exp10(log10_opacity)
       endif
-! CONVERSION FROM THE DERIVATIVE WITH CONSTANT RHOT3 TO CONSTANT RHO
+! Conversion from the derivative with constant RHOT3 to constant rho
       dlnkap_dlnrho = qodi
       dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho
 
@@ -393,7 +393,7 @@ end subroutine compute_opal92_opacity
 !----------------------------------------------------------------------
 ! interpolate_opal92_2d (formerly opal92_interp2d)
 !----------------------------------------------------------------------
-! TWO DIMENSIONAL INTERPOLATION FOR OPACITY AND THE DERIVATIVES
+! two dimensional interpolation for opacity and the derivatives
 ! (OPAL92 tables). abund_index, temp_index, and dens_index are the
 ! nearest grid point of abundance, temperature, and density found by
 ! compute_opal92_opacity. opacity is opacity, log10_opacity is log(opacity),
@@ -426,7 +426,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       real(dp) :: ol00, unused_ddensity_dtemp
 
       ierr = 0
-! FOR SIX GRID POINTS OF TEMPERATURE
+! For six grid points of temperature
       its = temp_index - 2
       if (its <= 0) its = 1
       itf = temp_index + 3
@@ -448,7 +448,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          ndf = ndss + tbl%density_count(index1) - 1
          call findex(tbl%grid_logr, ndf, density, dens_index)
          if (dens_index < 0) then
-! OUT SIDE THEN  LINEAR EXTRAPOLATION
+! Out side then  linear extrapolation
             dens_index = -dens_index
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
@@ -463,7 +463,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
             ol0 = c2*dx + c1
             qodi = c2
          else
-! IN SIDE THEN  SPLINE INTERPOLATION
+! In side then  spline interpolation
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
             dx = density - tbl%grid_logr(dens_index)
@@ -478,9 +478,9 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
                c3 = tbl%surface_spline_coeffs(it,index2+3)
                c4 = tbl%surface_spline_coeffs(it,index2+4)
             endif
-! INTERPOLATION FOR OPACITY(OL) IN THE ENTRY D AND THE EACH T-GRID
-! ESTIMATES THE PARTIAL DERIVATIVE OF OL WRT D
-! EVALUATES THE INTERPOLATION VALUE IN THE SUB-RANGE WE DETERMINED.
+! Interpolation for opacity(ol) in the entry d and the each T-grid
+! estimates the partial derivative of ol wrt d
+! evaluates the interpolation value in the sub-range we determined.
             ol0 = ((c4*dx+c3)*dx+c2)*dx + c1
             qodi = (3.0d0*c4*dx+2.0d0*c3)*dx + c2
          endif
@@ -495,14 +495,14 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          ierr = 1
          return
       end if
-!! INTERPOLATION FOR THE OPACITY IN THE ENTRY T AND D.
-!! GET THE PARTIAL DERIVATIVE OF OL WRT T.
+!! Interpolation for the opacity in the entry T and d.
+!! Get the partial derivative of ol wrt T.
       call intpol(xt, yto, jt, temperature, ol00, dlnkap_dlnt, ierr)
       if (ierr /= 0) return
       log10_opacity = ol00
       opacity = exp10(log10_opacity)
 ! QOTF = D LN(O)/D LN(T)
-!! FIND THE PARTIAL DERIVATIVE VALUE OF OL WRT D IN THE GIVEN T AND D
+!! find the partial derivative value of ol wrt d in the given T and d
       call intpol(xt, aqod, jt, temperature, dlnkap_dlnrho, unused_ddensity_dtemp, ierr)
       if (ierr /= 0) return
 ! QODF = D LN(O)/D LN(D)
