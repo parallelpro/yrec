@@ -7,8 +7,9 @@
 ! Timmes routines keep their public names (sneut, azbar, ifermi12,
 ! zfermim12) for comparison with his codes and MESA; YREC's two
 ! wrappers are compute_thermal_neutrino_losses (formerly neutrino) and
-! compute_mixture_neutrino_losses (formerly nulosses). Moved out of net_lib
-! 2026-10, bodies unchanged; net_lib re-exports this module.
+! compute_mixture_neutrino_losses (formerly nulosses). nuclear_energy is
+! the only user, so net_lib exports none of it. The routines are as
+! their authors wrote them, apart from free source form and real(dp).
 module thermal_neutrinos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -21,12 +22,6 @@ contains
 !----------------------------------------------------------------------
 ! compute_thermal_neutrino_losses (formerly neutrino)
 !----------------------------------------------------------------------
-! Modernized (free-form) 2026 as part of the YREC readability refactor.
-! Logic and numerics are unchanged from the original neutrino.f; only
-! the source form, explicit typing, and header/comment style were
-! updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Added by Grant Newsham 9/06.
 !
 ! Sets up the (currently 4-species: H, He, C, O) composition arrays
@@ -34,7 +29,6 @@ contains
 ! neutrino energy-loss rate (snu) and its derivatives with respect to
 ! temperature and density (dsnudt, dsnudd).
 subroutine compute_thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
-      implicit none
 
       real(dp), intent(in) :: temp, den, x, y, zc, zo
       real(dp), intent(out) :: snu, dsnudt, dsnudd
@@ -70,20 +64,12 @@ subroutine compute_thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
 
       call compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion,dsnudt,dsnudd)
 
-      return
 end subroutine compute_thermal_neutrino_losses
 
 
 !----------------------------------------------------------------------
 ! compute_mixture_neutrino_losses (formerly nulosses)
 !----------------------------------------------------------------------
-! Modernized (free-form) 2026 as part of the YREC readability refactor.
-! Logic and numerics are unchanged from the original nulosses.f; only
-! the source form and header/comment style were updated -- this file's
-! variable names were already lowercase and descriptive and were left
-! as-is. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Neutrino loss subroutine modified by G. Newsham from codes of
 ! N. Itoh & F. Timmes (9/06).
 !
@@ -96,7 +82,6 @@ end subroutine compute_thermal_neutrino_losses
 subroutine compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion, &
                      dsnudt,dsnudd)
 
-      implicit none
 
 !..ionmax  = number of isotopes in the network
 !..xmass   = mass fractions
@@ -117,14 +102,12 @@ subroutine compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion, &
       call sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
 
-      return
 end subroutine compute_mixture_neutrino_losses
 
 
 
 pure subroutine azbar(xmass,aion,zion,ionmax, &
                  ymass,abar,zbar)
-      implicit none
 !..input
 !..mass fractions     = xmass(1:ionmax)
 !..number of nucleons = aion(1:ionmax)
@@ -152,21 +135,12 @@ pure subroutine azbar(xmass,aion,zion,ionmax, &
       enddo
       abar   = 1.0d0/ytot1
       zbar   = zbarxx * abar
-      return
 end subroutine azbar
 
 
 !----------------------------------------------------------------------
 ! sneut
 !----------------------------------------------------------------------
-! Modernized (free-form) 2026 as part of the YREC readability refactor.
-! Logic and numerics are unchanged from the original sneut.f; only the
-! source form and header/comment style were updated -- this file's
-! variable names were already lowercase and physically descriptive
-! (matching the notation of Itoh et al. 1996, ApJS 102, 411) and were
-! left as-is. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Computes neutrino energy-loss rates (erg/g/s) and their derivatives
 ! with respect to temperature, density, mean atomic weight, and mean
 ! charge, from the analytic fits of Itoh et al. (1996) to the pair,
@@ -174,7 +148,6 @@ end subroutine azbar
 subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
       use math_lib
-      implicit none
 !..this routine computes neutrino losses from the analytic fits of
 !..itoh et al. apjs 102, 411, 1996, and also returns their derivatives.
 
@@ -351,7 +324,7 @@ dsnuda  = 0.0d0
 dsnudz  = 0.0d0
 
 
-if (temp .lt. 1.0d7) return
+if (temp < 1.0d7) return
 
 
 
@@ -430,7 +403,7 @@ a1     = 6.002d19 + 2.084d20*zeta + 1.872d21*zeta2
 a2     = 2.084d20 + 2.0d0*1.872d21*zeta
 
 
-if (t9 .lt. 10.0d0) then
+if (t9 < 10.0d0) then
  b1     = exp(-5.5924d0*zeta)
  b2     = -b1*5.5924d0
 else
@@ -446,7 +419,7 @@ xnumda = c*zetada
 xnumdz = c*zetadz
 
 
-if (t9 .lt. 10.0d0) then
+if (t9 < 10.0d0) then
  a1   = 9.383d-1*xlm1 - 4.141d-1*xlm2 + 5.829d-2*xlm3
  a2   = -9.383d-1*xlm2 + 2.0d0*4.141d-1*xlm3 - 3.0d0*5.829d-2*xlm4
 else
@@ -632,7 +605,7 @@ xdendz = a2*rmdz
 
 
 !..equation 4.11
-if (abs(xnum) .gt. 0.7d0  .or.  xden .lt. 0.0d0) then
+if (abs(xnum) > 0.7d0  .or.  xden < 0.0d0) then
  fxy   = 1.0d0
  fxydt = 0.0d0
  fxydd = 0.0d0
@@ -652,7 +625,7 @@ else
 
 
  c   = min(0.0d0, xden - 1.6d0 + 1.25d0*xnum)
- if (c .eq. 0.0d0) then
+ if (c == 0.0d0) then
   dumdt = 0.0d0
   dumdd = 0.0d0
   dumda = 0.0d0
@@ -742,7 +715,7 @@ splasdz = a2*splasdz
 !..                   e+ + gamma => e+ + nu_e + nubar_e
 !..equation 3.8 for tau, equation 3.6 for cc,
 !..and table 2 written out for speed
-if (temp .ge. 1.0d7  .and. temp .lt. 1.0d8) then
+if (temp >= 1.0d7  .and. temp < 1.0d8) then
  tau  =  log10(temp * 1.0d-7)
  cc   =  0.5654d0 + tau
  c00  =  1.008d11
@@ -783,7 +756,7 @@ if (temp .ge. 1.0d7  .and. temp .lt. 1.0d8) then
  dd25 = -1.560d9
 
 
-else if (temp .ge. 1.0d8  .and. temp .lt. 1.0d9) then
+else if (temp >= 1.0d8  .and. temp < 1.0d9) then
  tau   =  log10(temp * 1.0d-8)
  cc   =  1.5654d0
  c00  =  9.889d10
@@ -824,7 +797,7 @@ else if (temp .ge. 1.0d8  .and. temp .lt. 1.0d9) then
  dd25 = -1.598d9
 
 
-else if (temp .ge. 1.0d9) then
+else if (temp >= 1.0d9) then
  tau  =  log10(t9)
  cc   =  1.5654d0
  c00  =  9.581d10
@@ -1018,7 +991,7 @@ sphotda = a1*sphotda + a2*qphotda*a3
 sphotdz = a1*sphotdz + a2*qphotdz*a3
 
 
-if (sphot .le. 0.0d0) then
+if (sphot <= 0.0d0) then
  sphot   = 0.0d0
  sphotdt = 0.0d0
  sphotdd = 0.0d0
@@ -1061,7 +1034,7 @@ tfermi = 5.9302d9*(sqrt(1.0d0+1.018d0*pow((den6*ye), twoth))-1.0d0)
 
 
 
-if (temp .gt. 0.01d0 * tfermi) then
+if (temp > 0.01d0 * tfermi) then
 
 
 !..equation 5.3
@@ -1384,7 +1357,7 @@ nu3  = nu2 * nu
 
 
 !..table 12
-if (nu .ge. -20.0d0  .and. nu .lt. 0.0d0) then
+if (nu >= -20.0d0  .and. nu < 0.0d0) then
  a1 = 1.51d-2
  a2 = 2.42d-1
  a3 = 1.21d0
@@ -1394,7 +1367,7 @@ if (nu .ge. -20.0d0  .and. nu .lt. 0.0d0) then
  f1 = 0.0d0
  f2 = 0.0d0
  f3 = 0.0d0
-else if (nu .ge. 0.0d0  .and. nu .le. 10.0d0) then
+else if (nu >= 0.0d0  .and. nu <= 10.0d0) then
  a1 = 1.23d-2
  a2 = 2.66d-1
  a3 = 1.30d0
@@ -1409,7 +1382,7 @@ end if
 
 
 !..equation 6.7, 6.13 and 6.14
-if (nu .ge. -20.0d0  .and.  nu .le. 10.0d0) then
+if (nu >= -20.0d0  .and.  nu <= 10.0d0) then
 
 
  zeta   = 1.579d5*zbar*zbar*tempi
@@ -1526,17 +1499,11 @@ dsnudz =  splasdz + spairdz + sphotdz + sbremdz + srecodz
 
 
 
-return
 end subroutine sneut
 
 !----------------------------------------------------------------------
 ! ifermi12
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ifermi12.f; only variable names, source form, and comment
-! style were updated.
-!
 ! This routine applies a rational function expansion to get the
 ! inverse Fermi-Dirac integral of order 1/2 (i.e. the electron
 ! degeneracy parameter eta such that F_{1/2}(eta) = fermi_half_integral)
@@ -1545,7 +1512,6 @@ end subroutine sneut
 real(dp) function ifermi12(fermi_half_integral)
 
       use math_lib
-      implicit none
 
 ! fermi_half_integral: value of the order-1/2 Fermi-Dirac integral
 !                       whose inverse (the degeneracy parameter) is
@@ -1574,7 +1540,7 @@ real(dp) function ifermi12(fermi_half_integral)
            -3.299466243260d-1,  4.077841975923d-1, &
            -1.145531476975d0,  -6.067091689181d-2/
 
-      if (fermi_half_integral .lt. 4.0d0) then
+      if (fermi_half_integral < 4.0d0) then
        numerator  = fermi_half_integral + coef_num_small(deg_num_small)
        do term_idx=deg_num_small-1,1,-1
         numerator  = numerator*fermi_half_integral + coef_num_small(term_idx)
@@ -1597,25 +1563,18 @@ real(dp) function ifermi12(fermi_half_integral)
        enddo
        ifermi12 = numerator/(denominator*scaled_arg)
       end if
-      return
 end function ifermi12
 
 
 !----------------------------------------------------------------------
 ! zfermim12
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original zfermim12.f; only variable names, source form, and comment
-! style were updated.
-!
 !..this routine applies a rational function expansion to get the
 !..fermi-dirac integral of order -1/2 evaluated at degeneracy_parameter.
 !..maximum error is 1.23d-12. reference: antia apjs 84,101 1993.
 real(dp) function zfermim12(degeneracy_parameter)
 
       use math_lib
-      implicit none
 
 ! degeneracy_parameter: electron degeneracy parameter eta at which the
 !                        order -1/2 Fermi-Dirac integral is evaluated.
@@ -1650,7 +1609,7 @@ real(dp) function zfermim12(degeneracy_parameter)
            -4.78770844009440d-1,  -4.99759250374148d-1, &
            1.86795964993052d0,    4.16485970495288d-1/
 
-      if (degeneracy_parameter .lt. 2.0d0) then
+      if (degeneracy_parameter < 2.0d0) then
        scaled_arg = exp(degeneracy_parameter)
        numerator = scaled_arg + coef_num_small(deg_num_small)
        do term_idx=deg_num_small-1,1,-1
@@ -1674,7 +1633,6 @@ real(dp) function zfermim12(degeneracy_parameter)
        enddo
        zfermim12 = sqrt(degeneracy_parameter)*numerator/denominator
       end if
-      return
 end function zfermim12
 
 end module thermal_neutrinos

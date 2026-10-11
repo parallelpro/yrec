@@ -186,7 +186,6 @@ end subroutine set_net_settings
 ! Unscreened: the burning temperatures are low.
 pure real(dp) function deuterium_proton_capture_rate(density, t9, t9_p13, t9_p23, t9_m13, t9_m23)
       use math_lib
-      implicit none
       real(dp), intent(in) :: density, t9, t9_p13, t9_p23, &
            t9_m13, t9_m23
       real(dp) :: zz, tfacdeut
@@ -224,7 +223,7 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, 
 
       call compute_composition_moments(mass_frac, plasma)
       nr%electron_density_na = ( exp(ln10*log_density) )*plasma%inv_mu_e
-      if (log_temperature.le.net_settings%logT_cutoffs(1)) return
+      if (log_temperature <= net_settings%logT_cutoffs(1)) return
       nr%density = exp(ln10*log_density)
       t = powers_of_t9(log_temperature)
       nr%t9 = t%t9
@@ -239,7 +238,7 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, 
 ! first_zeroed_rxn on are zeroed (only the alpha captures when hydrogen
 ! burns, all 13 when it is gone)
       first_zeroed_rxn = r_pp
-      if (mass_frac(iso_h1).ne.0.0d0) then
+      if (mass_frac(iso_h1) /= 0.0d0) then
          first_zeroed_rxn = r_ac13
          call compute_hydrogen_burning_rates(nr%density, t, screen, &
               dscreen_dlnrho, dscreen_dlnt, nr)
@@ -251,7 +250,7 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, mass_frac, 
          nr%dlnrate_dlnrho(i)=0.d0
          nr%dlnrate_dlnt(i)=0.d0
       end do
-      if (log_temperature.ge.net_settings%logT_cutoffs(4)) &
+      if (log_temperature >= net_settings%logT_cutoffs(4)) &
            call compute_helium_burning_rates(nr%density, t, screen, &
            dscreen_dlnrho, dscreen_dlnt, nr)
       call compute_hep_rate(nr%density, t, plasma, nr)
@@ -328,12 +327,12 @@ pure subroutine compute_screening(density, electron_density_na, t, plasma, &
 
       fermi_momentum_sq=1.017677d-4*pow(electron_density_na, (2.0d0/3.0d0))
       fermi_energy_over_kt=5.92986d0*t%m1*(sqrt(1.d0+fermi_momentum_sq)-1.d0)
-      if (fermi_energy_over_kt.le.1.d-2) then
+      if (fermi_energy_over_kt <= 1.d-2) then
          degeneracy_factor=1.0d0
       else
 ! Salpeter's figure 1, as a function of the degeneracy
          log_degeneracy=log10(fermi_energy_over_kt)
-         if (log_degeneracy.ge.1.5d0) then
+         if (log_degeneracy >= 1.5d0) then
             degeneracy_factor=0.0d0
          else
             degeneracy_factor=0.75793d0-0.54621d0*log_degeneracy-0.30964d0*log_degeneracy**2+ &
@@ -357,14 +356,14 @@ pure subroutine compute_screening(density, electron_density_na, t, plasma, &
       plasma%weak_unit=plasma%lambda0*plasma%z_tilde
       do i=1,num_reactions
          weak=plasma%weak_unit*screen_zprod(i)
-         if (weak.le.net_settings%weak_screening_threshold) then
+         if (weak <= net_settings%weak_screening_threshold) then
             screen(i)=weak
             dscreen_dlnrho(i)=0.5d0*weak
             dscreen_dlnt(i)=-1.5d0*weak
          else
             intermediate=0.38d0*plasma%lambda0_086*plasma%charge_moment_158*screen_z86(i)/ &
                  (plasma%inv_mu_i*plasma%z_tilde_058*plasma%mean_charge_028)
-            if (weak.le.2.d0) then
+            if (weak <= 2.d0) then
                screen(i)=intermediate
                dscreen_dlnrho(i)=0.43d0*intermediate
                dscreen_dlnt(i)=-1.29d0*intermediate
@@ -372,7 +371,7 @@ pure subroutine compute_screening(density, electron_density_na, t, plasma, &
                strong=0.624d0*plasma%mean_charge_13*plasma%lambda0_23*(screen_z53(i)+ &
                     0.316d0*plasma%mean_charge_13*screen_z43(i)+0.737d0* &
                     screen_z23(i)/(plasma%mean_charge*plasma%lambda0_23))
-               if (strong.lt.intermediate.or.weak.ge.5.d0) then
+               if (strong < intermediate.or.weak >= 5.d0) then
                   screen(i)=strong
                   dscreen_dlnrho(i)=0.208d0*plasma%mean_charge_13*(screen_z53(i)+ &
                        0.316d0*plasma%mean_charge_13*screen_z43(i))*plasma%lambda0_23
@@ -396,7 +395,7 @@ pure real(dp) function weak_intermediate_screening(plasma, zprod, z86)
       real(dp) :: weak
 
       weak = plasma%weak_unit*zprod
-      if (weak.le.net_settings%weak_screening_threshold) then
+      if (weak <= net_settings%weak_screening_threshold) then
          weak_intermediate_screening = weak
       else
          weak_intermediate_screening = 0.38d0*plasma%lambda0_086*plasma%charge_moment_158*z86/ &
@@ -614,7 +613,7 @@ pure subroutine compute_network_rates(log_density, log_temperature, xa, rate_vec
       mass_frac = screening_mass_fractions(xa)
       call compute_reaction_rates(log_density, log_temperature, mass_frac, nr)
       do i=1,num_reactions
-         if(nr%rate(i).le.1.d-5) nr%rate(i) = 0.0d0
+         if(nr%rate(i) <= 1.d-5) nr%rate(i) = 0.0d0
       end do
 ! per s per amu (amu_cgs)
       rate_vec(r_pp)=nr%rate(r_pp)*amu_cgs

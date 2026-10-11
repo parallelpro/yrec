@@ -71,11 +71,11 @@ pure real(dp) function burn_exposure(rate_start, rate_end, dt, &
       real(dp), intent(in) :: rate_start, rate_end, dt, fraction
       integer, intent(in) :: interpolation
       real(dp) :: x
-      if (interpolation.eq.linear_in_log .and. rate_start.gt.0.0d0 .and. &
-           rate_end.gt.0.0d0) then
+      if (interpolation == linear_in_log .and. rate_start > 0.0d0 .and. &
+           rate_end > 0.0d0) then
 ! lambda(f) = lambda_0 (lambda_1/lambda_0)^f
          x = fraction*log(rate_end/rate_start)
-         if (abs(x).lt.1.0d-4) then
+         if (abs(x) < 1.0d-4) then
             burn_exposure = dt*rate_start*fraction* &
                  (1.0d0 + x*(0.5d0 + x*(1.0d0/6.0d0 + x/24.0d0)))
          else
@@ -98,7 +98,7 @@ pure real(dp) function surviving_fraction(rate_start, rate_end, dt, &
       integer, intent(in) :: interpolation
       real(dp) :: exposure
       exposure = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
-      if (exposure.gt.700.0d0) then
+      if (exposure > 700.0d0) then
          surviving_fraction = 0.0d0
       else
          surviving_fraction = exp(-exposure)
@@ -124,9 +124,9 @@ pure real(dp) function accreted_survival(rate_start, rate_end, dt, &
       s = 0.0d0
       do i = 0, n
          f = dble(i)/dble(n)
-         if (i.eq.0 .or. i.eq.n) then
+         if (i == 0 .or. i == n) then
             weight = 1.0d0
-         else if (mod(i, 2).eq.1) then
+         else if (mod(i, 2) == 1) then
             weight = 4.0d0
          else
             weight = 2.0d0
@@ -140,67 +140,43 @@ end function accreted_survival
 !----------------------------------------------------------------------
 ! deuterium_rate (formerly deutrate)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original deutrate.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! The rate of nonequilibrium deuterium burning at one shell, per s
-! (X * N_A<sigma v> rho / m_d, excluding the deuterium abundance), for
-! dburn/dburnm. In the surface convection zone (in_surface_cz) it is
-! capped so that deuterium cannot burn faster than the convective
-! overturn (turnover_timescale, s, when > 1). 2026-10: deutrate
-! stored the result in star%deuterium_burning_rate(_start) itself; the
-! caller (mix) stores it now.
+! The deuterium burning rate of one shell, per s per amu: X times the
+! D(p,g)He3 rate of deuterium_proton_capture_rate (Caughlan & Fowler
+! 1988, unscreened -- the temperatures are low) times amu_cgs. In the
+! surface convection zone (in_surface_cz), when the turnover time is
+! above 1 s and X above 1e-6, the rate is capped so that deuterium burns
+! no faster than the convection overturns. burn_deuterium_region uses
+! it; the caller stores it.
+! (2026: T9^(-2/3) as in CF88's fit, was T9^(+2/3). 2026-10: one rate
+! with the energy generation, where this copy had divided N_A by 2
+! instead of by the deuteron mass, 0.68% apart.)
 pure real(dp) function deuterium_rate(log_density, log_temperature, &
      hydrogen_fraction, in_surface_cz, turnover_timescale)
       use physical_constants, only: amu_cgs, cc13, ln10
       use math_lib
-      implicit none
-
       real(dp), intent(in) :: log_density, log_temperature, &
            hydrogen_fraction
       logical, intent(in) :: in_surface_cz
+! turnover_timescale: s
       real(dp), intent(in) :: turnover_timescale
+! rho (g/cm^3), T9 (T/1e9 K) and its powers
+      real(dp) :: rho, t9, t9p13, t9p23, t9m13, t9m23
+      real(dp) :: rate, max_rate
 
-! T9P13 IS THE TEMPERATURE IN UNITS OF 10^9 DEGREES K TO THE PLUS 1/3
-!  POWER.  MINUS IS DENOTED BY M.  HERE T9 IS THE TEMPERATURE IN UNITS
-!  OF 10^9 K, CONVERTED FROM THE LOG_10 (T) AND RHO IS THE DENSITY IN
-!  CGS UNITS.
-      real(dp) :: rho, t9, t9p13, t9p23, t9m13, t9m23, t9m1
-      real(dp) :: rdeut, rdeutmax, rdeut2
-
-      rho=exp(ln10*log_density)
+      rho = exp(ln10*log_density)
       t9 = exp(ln10*(log_temperature - 9.0d0))
       t9p13 = pow(t9, cc13)
       t9p23 = t9p13**2
-      t9m13=1.0d0/t9p13
-      t9m23=t9m13**2
-      t9m1=1.0d0/t9
-! MHP 5/02 ADD DEUTERIUM BURNING TERM TO THE CODE
-! IF DEUTERIUM IS ABOVE A MINIMUM THRESHOLD VALUE.
-! RDEUT IS THE RATE (EXCLUDING FACTORS OF THE
-! ABUNDANCES) AND QRTDEUT IS THE DERIVATIVE W/R/T T.
-! NOTE THAT SCREENING IS EXCLUDED - REASONABLE GIVEN
-! THE LOW TEMPERATURES INVOLVED.
-! 2026 (bugsweep Batch 2): T9**(-2/3), as in CF88's d(p,g)3He fit;
-! was T9**(+2/3) (deutrate.f). 2026-10: the rate is deuterium_proton_capture_rate, shared
-! with compute_zone_energy; this copy used to divide N_A by A = 2 (3.0115D23) where
-! compute_zone_energy divides by the deuteron mass, 0.68% apart.
-      rdeut = deuterium_proton_capture_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
-! NOW LIMIT DEUTERIUM BURNING IN A SURFACE CZ TO BE ON A TIME SCALE
-! NO SHORTER THAN THE CONVECTIVE OVERTURN TIMESCALE.
-      if(in_surface_cz .and. turnover_timescale.gt.1.0d0)then
-         rdeutmax = avogadro_dpg/deuteron_mass_amu/turnover_timescale
-         rdeut2 = rdeut*hydrogen_fraction
-         if(rdeut2.gt.rdeutmax)then
-            if(hydrogen_fraction.gt.1.0d-6)then
-               rdeut = rdeutmax/hydrogen_fraction
-            endif
-         endif
-      endif
-      deuterium_rate = hydrogen_fraction*rdeut*amu_cgs
+      t9m13 = 1.0d0/t9p13
+      t9m23 = t9m13**2
+      rate = deuterium_proton_capture_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
+! in the surface convection zone, no faster than the turnover
+      if (in_surface_cz .and. turnover_timescale > 1.0d0) then
+         max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
+         if (rate*hydrogen_fraction > max_rate .and. hydrogen_fraction > 1.0d-6) &
+              rate = max_rate/hydrogen_fraction
+      end if
+      deuterium_rate = hydrogen_fraction*rate*amu_cgs
 end function deuterium_rate
 
 !----------------------------------------------------------------------
@@ -327,75 +303,57 @@ end subroutine burn_deuterium_region
 ! compute_li_be_rates
 !----------------------------------------------------------------------
 ! The Li6, Li7 and Be9 proton-capture rates at T9, per unit rho*X
-! (Caughlan & Fowler 1988; no screening, no energy release), scaled by
-! the deck's ctrl%li6/li7/be9_*_rate_scale: Li6(p,He3)He4, Li7(p,a)He4,
-! and the sum of Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. Moved from
-! burn_lib's store_li_be_rates (2026-10), formulas unchanged.
-pure subroutine compute_li_be_rates(t9, fli6, fli7, fsbe9)
+! (Caughlan & Fowler 1988; unscreened), each times its rate scale from
+! net_settings: Li6(p,He3)He4, Li7(p,a)He4, and for Be9 the sum of
+! Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. store_li_be_rates
+! (core/burn_step) multiplies by rho*X and stores them per shell.
+pure subroutine compute_li_be_rates(t9, li6_rate, li7_rate, be9_rate)
       use physical_constants, only: cc13, cc23
       use math_lib
       real(dp), intent(in) :: t9
-      real(dp), intent(out) :: fli6, fli7, fsbe9
+      real(dp), intent(out) :: li6_rate, li7_rate, be9_rate
+! powers of T9 (t913 = T9^(1/3), ...)
       real(dp) :: t913, t923, t943, t953, t932, t934
-      real(dp) :: fbe91, fbe92, fbe93, fx, ex, t9a, c56
+      real(dp) :: be9_pg, be9_pd, be9_pa, be9_nonresonant, resonance, &
+           t9a, c56
 
-         t913=pow(t9, cc13)
-         t923=t913*t913
-         t943=t923*t923
-! MHP 10/91 ADDED DEFINITION
-         t953 = t943*t913
-         t932=pow(t9, 1.5d0)
-         t934=pow(t9, 7.5d-1)
-!
-! LI6(P,HE3)ALPHA
-!
-!           FLI6=3.73D10/T923*EXP(-8.413/T913-(T9/5.50)**2)*
-!    1      (1.+%TYPO%0.50*T913-0.061*T923-0.021*T9+0.006*T943+0.006*T953)
-!    2      +1.33D10/T932*EXP(-17.763/T9)+1.29D9/T9*EXP(-21.820/T9)
-! ***TYPO IN OLD RATE***
-         fli6=3.73d10/t923*exp(-8.413d0/t913-(t9/5.50d0)**2)* &
-         (1.d0+0.050d0*t913-0.061d0*t923-0.021d0*t9+0.006d0*t943 &
-          +0.005d0*t953)+1.33d10/t932*exp(-17.763d0/t9) &
-          +1.29d9/t9*exp(-21.820d0/t9)
-!
-! LI7(P,ALFA)HE4
-!
-!           FLI7=8.04D08/T923*EXP(-8.471/T913-(T9/30.068)**2)*
-!    1      (1.+0.049*T913+0.230*T923+0.079*T9-0.027*T943-0.023*T953)
-!    2      +1.54D06/T932*EXP(-4.479/T9)+1.07D10/T932*EXP(-30.443/T9)
-         t9a = t9/(1.0d0+0.759d0*t9)
-         c56 = 1.25d0*cc23
-         fli7=1.096d9/t923*exp(-8.472d0/t913)-4.830d8*pow(t9a, c56)/ &
-         t932*exp(-8.472d0/pow(t9a, cc13))+1.06d10/t932*exp(-30.442d0/t9)
-!
-! BE9(P,GAMMA)B10
-!
-         fbe91=1.33d+07/t923*exp(-10.359d0/t913-(t9/0.846d0)**2) &
-         *(1.0d0+4.0d-2*t913+1.52d0*t923+4.28d-1*t9+2.15d0*t943+ &
-         1.54d0*t953) + 9.64d+4/t932*exp(-3.445d0/t9) + &
-         2.72d+6/t932*exp(-10.62d0/t9)
-!    3      2.76D+6/T932*EXP(-10.62D0/T9) %OLD LAST LINE%
-!
-! BE9(P,D)2HE4 - UNCHANGED.
-!
-         fx=2.11d+11/t923*exp(-10.359d0/t913-(t9/5.2d-1)**2) &
-         *(1.0d0+4.0d-2*t913+1.09d0*t923+3.07d-1*t9+3.21d0*t943 &
-         +2.3d0*t953)
-         ex = exp(-3.046d0/t9)/t9
-         fbe92=fx+5.79d+8*ex+8.5d+8/t934*exp(-5.8d0/t9)
-!
-! BE9(P,ALPHA)LI6
-!
-         fbe93=fx+4.51d+8*ex+6.7d+8/t934*exp(-5.16d0/t9)
-! G Somers 6/14, SCALE BY THE NEW CROSS SECTIONS
-         fli6=net_settings%li6_rate_scale*fli6
-         fli7=net_settings%li7_rate_scale*fli7
-         fbe91=net_settings%be9_pg_rate_scale*fbe91
-         fbe92=net_settings%be9_pd_rate_scale*fbe92
-         fbe93=net_settings%be9_palpha_rate_scale*fbe93
-! G Somers END
-! SUM RATES
-         fsbe9 = fbe91 + fbe92 + fbe93
+      t913 = pow(t9, cc13)
+      t923 = t913*t913
+      t943 = t923*t923
+      t953 = t943*t913
+      t932 = pow(t9, 1.5d0)
+      t934 = pow(t9, 7.5d-1)
+! Li6(p,He3)He4. (The older rate had 0.50 for 0.050 in the T9^(1/3)
+! term, a typo, and 0.006 for 0.005 in the T9^(5/3) term.)
+      li6_rate = 3.73d10/t923*exp(-8.413d0/t913-(t9/5.50d0)**2)* &
+           (1.d0+0.050d0*t913-0.061d0*t923-0.021d0*t9+0.006d0*t943 &
+           +0.005d0*t953)+1.33d10/t932*exp(-17.763d0/t9) &
+           +1.29d9/t9*exp(-21.820d0/t9)
+! Li7(p,a)He4, in T9A = T9/(1 + 0.759 T9). (It replaced the older fit
+! 8.04e8/T9^(2/3) exp(-8.471/T9^(1/3) - (T9/30.068)^2)(...).)
+      t9a = t9/(1.0d0+0.759d0*t9)
+      c56 = 1.25d0*cc23
+      li7_rate = 1.096d9/t923*exp(-8.472d0/t913)-4.830d8*pow(t9a, c56)/ &
+           t932*exp(-8.472d0/pow(t9a, cc13))+1.06d10/t932*exp(-30.442d0/t9)
+! Be9(p,g)B10 (the last term was 2.76e6)
+      be9_pg = 1.33d+07/t923*exp(-10.359d0/t913-(t9/0.846d0)**2) &
+           *(1.0d0+4.0d-2*t913+1.52d0*t923+4.28d-1*t9+2.15d0*t943+ &
+           1.54d0*t953) + 9.64d+4/t932*exp(-3.445d0/t9) + &
+           2.72d+6/t932*exp(-10.62d0/t9)
+! Be9(p,d)2He4 and Be9(p,a)Li6 share their non-resonant part
+      be9_nonresonant = 2.11d+11/t923*exp(-10.359d0/t913-(t9/5.2d-1)**2) &
+           *(1.0d0+4.0d-2*t913+1.09d0*t923+3.07d-1*t9+3.21d0*t943 &
+           +2.3d0*t953)
+      resonance = exp(-3.046d0/t9)/t9
+      be9_pd = be9_nonresonant+5.79d+8*resonance+8.5d+8/t934*exp(-5.8d0/t9)
+      be9_pa = be9_nonresonant+4.51d+8*resonance+6.7d+8/t934*exp(-5.16d0/t9)
+! the run's rate scales (G. Somers, 2014)
+      li6_rate = net_settings%li6_rate_scale*li6_rate
+      li7_rate = net_settings%li7_rate_scale*li7_rate
+      be9_pg = net_settings%be9_pg_rate_scale*be9_pg
+      be9_pd = net_settings%be9_pd_rate_scale*be9_pd
+      be9_pa = net_settings%be9_palpha_rate_scale*be9_pa
+      be9_rate = be9_pg + be9_pd + be9_pa
 end subroutine compute_li_be_rates
 
 end module light_elements

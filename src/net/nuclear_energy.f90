@@ -86,7 +86,7 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       real(dp) :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
       real(dp) :: deuterium_energy, deuterium_dlneps_dlnt
 
-      if (log_temperature.le.net_settings%logT_cutoffs(1)) return
+      if (log_temperature <= net_settings%logT_cutoffs(1)) return
       e%burning = .true.
 
       call compute_reaction_rates(log_density, log_temperature, &
@@ -104,7 +104,7 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       call store_chain_energies(energy_by_chain, deuterium_energy, e)
       if (net_settings%calc_neutrinos) &
            call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
-      if (log_temperature.gt.net_settings%logT_cutoffs(5)) &
+      if (log_temperature > net_settings%logT_cutoffs(5)) &
            call add_thermal_neutrino_loss(log_density, log_temperature, nr%t9, xa, e)
 end subroutine compute_nuclear_energy
 
@@ -121,7 +121,7 @@ pure subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       dlnrate_dlnrho = nr%dlnrate_dlnrho
       dlnrate_dlnt = nr%dlnrate_dlnt
       do i = r_pp, r_po16
-         if (rate(i).lt.1.d-30) then
+         if (rate(i) < 1.d-30) then
             rate(i) = 0.d0
             dlnrate_dlnrho(i) = 0.d0
             dlnrate_dlnt(i) = 0.d0
@@ -146,7 +146,7 @@ pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timesc
 
       energy = 0.0d0
       dlneps_dlnt = 0.0d0
-      if (xa(i_h2).le.min_deuterium) return
+      if (xa(i_h2) <= min_deuterium) return
 ! CF88's fit; zz and tfac are its exponent and polynomial, for the
 ! T-derivative (2026 bugsweep Batch 2: T9**(-2/3), as in CF88)
       zz = -3.72d0*nr%t9_m13
@@ -155,10 +155,10 @@ pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timesc
            nr%t9_p23, nr%t9_m13, nr%t9_m23)
       tfac_deriv = 0.112d0*nr%t9_p13+6.76d0*nr%t9_p23+7.95d0*nr%t9
       dlneps_dlnt = cc13*((tfac_deriv/tfac) -2.0d0 - zz)
-      if (in_surface_cz .and. turnover_timescale.gt.1.0d0) then
+      if (in_surface_cz .and. turnover_timescale > 1.0d0) then
          max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
-         if (rate*xa(i_h1).gt.max_rate) then
-            if (xa(i_h1).gt.1.0d-6) rate = max_rate/xa(i_h1)
+         if (rate*xa(i_h1) > max_rate) then
+            if (xa(i_h1) > 1.0d-6) rate = max_rate/xa(i_h1)
          end if
       end if
       energy = rate*xa(i_h1)*xa(i_h2)*q_deuterium_mev*erg_per_mev
@@ -238,7 +238,7 @@ pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dl
       e%total_energy_gen_rate = e%total_energy_gen_rate + deuterium_energy
       sum_rho = sum_rho + deuterium_energy
       sum_t = sum_t + deuterium_energy*deuterium_dlneps_dlnt
-      if (e%total_energy_gen_rate.le.1.d-12) then
+      if (e%total_energy_gen_rate <= 1.d-12) then
          e%deps_dlnrho = 0.d0
          e%deps_dlnt = 0.d0
          reactions_per_gram = 0.d0
@@ -288,7 +288,7 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       integer :: k
 
       e%fluxes_set = .true.
-      if (xa(i_h1).le.1.0d-6) then
+      if (xa(i_h1) <= 1.0d-6) then
          e%neutrino_flux = 0.0d0
          return
       end if
@@ -316,7 +316,7 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
 ! 2025-05-30: was a 1e-50 floor, which underflowed)
       do k = 1,10
          e%neutrino_flux(k) = (1.0d-10)*e%neutrino_flux(k)
-         if (e%neutrino_flux(k).le.0.0d0) e%neutrino_flux(k) = 0.0d0
+         if (e%neutrino_flux(k) <= 0.0d0) e%neutrino_flux(k) = 0.0d0
       end do
 end subroutine compute_solar_neutrino_fluxes
 
@@ -366,7 +366,7 @@ subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
       ez3 = ez**3
       emue = 0.5d0*(1.0d0+xa(i_h1))
       ex1 = 0.0d0
-      if (t9.ge.0.2d0) then
+      if (t9 >= 0.2d0) then
 ! pair neutrinos
          el2 = el*el
          polx10=(1.d0+el2*(-13.04d0+el2*(133.5d0+el2*(1534.d0+el2*918.6d0))))
@@ -387,7 +387,7 @@ subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
 ! their d/d ln T (qetnx) and d/d ln rho (qednx)
       qetnx = 0.0d0
       qednx = 0.0d0
-      if (t9.ge.0.2d0) then
+      if (t9 >= 0.2d0) then
          qedn= ez*(pair_fit(2)+2.d0*ez*pair_fit(3))/polx11 - ez*pair_fit(7) &
                - 3.0d0*ez3/polx12
          qetn= -qedn+ eli*(pair_fit(4)+eli*(2.d0*pair_fit(5)+3.d0*eli*pair_fit(6)))/polx12
