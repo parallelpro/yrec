@@ -1,9 +1,14 @@
 !----------------------------------------------------------------------
 ! rotational_mixing
 !----------------------------------------------------------------------
-! The rotational mixing of the composition: the equally spaced grid
-! (composition_grid), the diffusion coefficients and the implicit solve
-! (diffuse_composition), driven by diffuse_composition_driver.
+! The rotational mixing of the composition. Each transport region (a
+! run of model interfaces with positive circulation velocity) is mapped
+! onto an equally spaced grid in chi (composition_grid, with the shared
+! pieces in equal_grid); each species that varies over the region is
+! diffused there by a fully implicit difference scheme
+! (composition_diffusion_coeffs, solved by solve_tridiagonal), and the
+! change is mapped back to the model (diffuse_composition).
+! diffuse_composition_driver finds the regions and runs these steps.
 module rotational_mixing
       implicit none
       private
@@ -12,61 +17,44 @@ module rotational_mixing
 contains
 
 ! ---------------------------------------------------------------
-! Dummy-argument names for the quantities passed straight through to
-! composition_grid.f90 (log_density/luminosity_lsun/log_pressure/log_radius/
-! log_mass/enclosed_mass/log_total_mass) match that already-converted
-! callee's own parameter names, and the whole argument list matches the
-! already-converted caller burn_settle_mix.f90's call to ndifcom.
+! The rotational mixing of species species_begin..species_end over a
+! sub-step of length timestep (s); composition is updated in place.
+! Two modes, chosen by final_iteration_flag (the caller's
+! diffusion_solve_ok):
+!  - false, during the angular momentum iterations: mix the region
+!    zone_begin..zone_end on the grid that am_transport_grid has just
+!    built for it (rot_scr's chi grid, equally_spaced_diffusion_coeff
+!    and equally_spaced_mass). The caller passes species 1..4 here (X,
+!    Z, He3, with He4 set from them), the species that set the
+!    gradient of the mean molecular weight.
+!  - true, once the iterations are done: scan the interfaces from
+!    zone_min outward for every transport region, build its grid with
+!    composition_grid, and mix it. The caller passes the remaining
+!    species (5 on) here.
 !
-!  DIFCOM CALCULATES THE DIFFUSION OF COMPOSITION DUE TO ANGULAR MOMENTUM
-!  TRANSPORT.  THIS IS DONE BY TRANSFORMING TO AN EQUALLY SPACED GRID IN
-!  RADIUS, SOLVING A DIFFUSION EQUATION, AND TRANSFORMING BACK.
-!
-!  INPUT VARIABLES:
-!  timestep (DT) : DIFFUSION TIMESTEP(SEC).
-!  diffusion_coeff (COD2) : DIFFUSION COEFFICIENTS FOR COMPOSITION
-!     TRANSPORT AT THE ORIGINAL MODEL POINTS. Passed straight through
-!     to mixgrid.
-!  equally_spaced_diffusion_coeff (ECOD2) : DIFFUSION COEFFICIENTS FOR
-!     COMPOSITION TRANSPORT AT THE EQUALLY SPACED GRID POINTS.
-!  equally_spaced_mass (EM) : MASSES OF THE EQUALLY SPACED GRID
-!     POINTS(GM).
-!     NOTE: FOR CONVECTIVE BOUNDARIES THE MASS OF THE LAST GRID POINT IS
-!           THE MASS OF THE ENTIRE CONVECTION ZONE.
-!  composition (HCOMP) : ARRAY OF MASS FRACTION OF ALL OF THE SPECIES AT
-!     THE ORIGINAL MODEL POINTS.
-!  enclosed_mass (HS1) : LOCATION IN MASS(UNLOGGED) OF THE ORIGINAL MODEL
-!     POINTS.
-!  shell_mass (HS2) : MASSES OF THE ORIGINAL MODEL POINTS(UNLOGGED).
-!  velocity (HV) : RUN OF DIFFUSION VELOCITIES.
-!  zone_begin,zone_end (IBEG,IEND) :THE FIRST/LAST UNSTABLE POINTS IN
-!     THE REGION.
-!     NOTE: FOR CONVECTIVE BOUNDARIES THESE ARE ONLY THE FIRST CONVECTIVE
-!           POINTS ADJACENT TO AN UNSTABLE RADIATIVE REGION.
-!  zone_min (IMIN) : THE INNERMOST RADIATIVE ZONE OUTSIDE OF ZONE 1.
-!  zone_max (IMAX) : the outermost radiative zone.
-!  convective_flag (LCZ) : FLAG WHICH TELLS WHICH OF THE ORIGINAL MODEL
-!     POINTS ARE CONVECTIVE FOR ANGULAR MOMENTUM TRANSPORT PURPOSES
-!     (I.E. INCLUDES OVERSHOOT REGIONS). convective_flag=T IF
-!     CONVECTIVE.
-!  final_iteration_flag (LOK) : FLAG SET T WHEN FINAL ITERATION IS
-!     BEING PERFORMED.
-!  num_zones (M) : NUMBER OF MODEL POINTS.
-!
-!  OUTPUT VARIABLES:
-!  composition IS UPDATED IN DIFCOM TO GIVE THE NEW RUN OF COMPOSITION
-!  AFTER ANGULAR MOMENTUM TRANSPORT.
-!
-!  BEFORE THE LAST ITERATION(LOK=F),ONLY DIFFUSION OF H,HE4,HE3 CALCULATED
-!  TO CALCULATE CHANGE IN MU GRADIENTS CAUSED BY DIFFUSION.
-!
-!  WHEN LOK IS T, ONLY DIFFUSION OF SPECIES HEAVIER THAN HE4 IS PERFORMED
-!  (AS DIFFUSION OF LIGHTER SPECIES HAS ALREADY BEEN DONE).
-!  THE EQUALLY SPACED GRID POINTS FROM THE LAST UNSTABLE REGION SOLVED
-!  ARE USED INITIALLY, AND THEN THE PROGRAM CHECKS FOR ADDITIONAL UNSTABLE
-!  REGIONS INTERIOR TO THAT.
-! CALL diffuse_composition FOR THE PREVIOUSLY IDENTIFIED UNSTABLE REGION IF THIS IS NOT
-! THE CONVERGED CALL
+! diffusion_coeff: the mixing coefficient 4 pi D_mix at the model
+!    interfaces (from diffusion_velocity_scales; legacy COD2).
+! equally_spaced_diffusion_coeff, equally_spaced_mass: the coefficient
+!    at the grid edges (with the Jacobian factor; legacy ECOD2) and the
+!    grid's zone masses (g; legacy EM). Inputs in the first mode,
+!    rebuilt for each region in the second. At a convective boundary
+!    the end point's mass includes the adjacent convection zone.
+! log_density, luminosity_lsun, log_pressure, log_radius, log_mass,
+!    enclosed_mass (g), shell_mass (g), log_total_mass: the model, for
+!    composition_grid.
+! velocity: the total circulation velocity (cm/s) at the interfaces,
+!    element k between zones k-1 and k; transport regions are where it
+!    is positive.
+! zone_begin, zone_end: the zone below a region's first unstable
+!    interface and the zone above its last (set here in the second
+!    mode).
+! zone_min, zone_max: the first and last interfaces scanned (the
+!    innermost radiative zone outside zone 1 and the outermost
+!    radiative zone).
+! convective_flag: true where a zone is convective for angular
+!    momentum transport (overshoot regions included).
+! num_zones: the number of model zones.
+! composition(15,:): the mass fractions (legacy HCOMP).
 subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, log_density, luminosity_lsun, log_pressure, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
@@ -102,12 +90,10 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
               species_begin, species_end, ierr)
          if (ierr /= 0) return
       else
-! FIND UNSTABLE REGIONS IN ORDER, AND CALL composition_grid TO SET UP THE
-! EQUALLY SPACED GRID AND diffuse_composition TO MIX THEM IN ORDER
-!  EACH UNSTABLE REGION IS SOLVED SEPARATELY STARTING HERE.
-!  unstable_zone_found IS SET T IF A NON-ZERO VELOCITY IS ENCOUNTERED.
-!  zone_begin IS THE ZONE BELOW THE FIRST NON-ZERO V;zone_end IS THE
-!  ZONE ABOVE THE LAST NON-ZERO V.
+! Scan the interfaces from zone_min outward and mix each transport
+! region in turn. unstable_zone_found is set when the scan meets a
+! positive velocity; zone_begin is the zone below the region's first
+! positive velocity, zone_end the zone above its last.
          unstable_region_active = .false.
          search_start = zone_min
          region_loop: do
@@ -116,12 +102,12 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
             if (velocity(zone_idx).gt.0.0d0) then
                unstable_zone_found = .true.
                if (.not.unstable_region_active) then
-!  START OF UNSTABLE REGION
+! The start of a region.
                   unstable_region_active = .true.
                   zone_begin = zone_idx - 1
                end if
             else if (unstable_region_active) then
-!  END OF UNSTABLE REGION
+! The end of a region.
                zone_end = zone_idx - 1
                unstable_region_active = .false.
                search_start = zone_idx + 1
@@ -129,21 +115,19 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
             end if
          end do
          if (zone_idx > zone_max) then
-!  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT zone_end
-!  IS SET PROPERLY.
+! The scan reached zone_max: a region still open ends there.
          if (unstable_region_active) zone_end = zone_max
          search_start = zone_max + 1
          end if
-!  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
+! Stop when the scan finds no further positive velocity.
          if (unstable_zone_found) then
-!  TRANSFORM TO EQUAL GRID SPACING IN R FOR THE REGION.
+! The equally spaced chi grid of the region.
          call composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
               log_total_mass, zone_begin, zone_end, convective_flag, &
               num_zones, equally_spaced_diffusion_coeff, equally_spaced_mass, &
               two_zone_region)
-!  two_zone_region=T IF TWO ZONES IN UNSTABLE REGION;
-!  SKIP IF THIS OCCURS.
+! A region of two zones (a single unstable interface) is skipped.
          if (two_zone_region) then
             if (search_start.le.zone_max) then
                cycle region_loop
@@ -151,16 +135,13 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
                exit region_loop
             end if
          end if
-!  PERFORM COMPOSITION DIFFUSION.
-!  UNTIL THE FINAL ITERATION, ONLY COMPOSITION DIFFUSION OF SPECIES WHICH
-!  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
-!  ON THE FINAL ITERATION, DIFFUSION OF ALL SPECIES IS PERFORMED.
+! Mix species species_begin..species_end over the region.
          call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
          if (ierr /= 0) return
-!  RETURN FOR NEXT REGION IF APPLICABLE
+! On to the next region, unless the scan has reached zone_max.
          if (search_start.gt.zone_max) exit region_loop
          else
          exit region_loop
@@ -171,37 +152,32 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 end subroutine diffuse_composition_driver
 
 ! ---------------------------------------------------------------
-! DIFCOM (this routine's original header name) calculates the
-! diffusion of composition due to angular momentum transport. This is
-! done by transforming to an equally spaced grid which was previously
-! defined (by composition_grid.f90) and then transforming back.
+! Mixes species species_begin..species_end over one transport region
+! (zone_begin..zone_end) for a time timestep (s), on the equally spaced
+! chi grid already in rot_scr (built by am_transport_grid or
+! composition_grid). For each species that varies over the region:
+!  1. interpolate X from the model points to the grid points;
+!  2. solve the implicit diffusion equation on the grid
+!     (composition_diffusion_coeffs, solve_tridiagonal);
+!  3. interpolate the change X_new - X_old back to the model points and
+!     add it to composition, then give the convection zones adjacent to
+!     the region the new composition of the region's end zones.
+! Before the last iteration (final_iteration_flag false) the caller
+! passes species 1..4; He4 is not solved for but reset to
+! 1 - X - Z - He3.
 !
-! INPUT VARIABLES:
-! timestep : diffusion timestep (sec).
-! equally_spaced_diffusion_coeff : diffusion coefficients for
-!    composition transport at the equally spaced grid points.
-! equally_spaced_mass : masses of the equally spaced grid points (gm).
-!    NOTE: for convective boundaries the mass of the last grid point is
-!          the mass of the entire convection zone.
-! composition : array of mass fraction of all of the species at the
-!    original model points.
-! zone_begin,zone_end : the first/last unstable points in the region.
-!    NOTE: for convective boundaries these are only the first
-!          convective points adjacent to an unstable radiative region.
-! convective_flag : flag which tells which of the original model
-!    points are convective for angular momentum transport purposes
-!    (i.e. includes overshoot regions). true if convective.
-! num_zones : number of model points.
-!
-! OUTPUT VARIABLES:
-! composition is updated in this routine to give the new run of
-! composition after angular momentum transport.
-!
-! Before the last iteration (final_iteration_flag=false), only
-! diffusion of H,He4,He3 calculated to calculate change in mu
-! gradients caused by diffusion. This routine will therefore be called
-! either to mix the other species or just the first 4 depending on
-! final_iteration_flag.
+! equally_spaced_diffusion_coeff: the coefficient at the grid edges,
+!    element i at the edge between grid points i-1 and i (g/s, the
+!    Jacobian factor included).
+! equally_spaced_mass: the grid's zone masses (g). At a convective
+!    boundary the end point's mass includes the adjacent convection
+!    zone.
+! zone_begin, zone_end: the zone below the region's first unstable
+!    interface and the zone above its last.
+! convective_flag: true where a zone is convective for angular
+!    momentum transport (overshoot regions included).
+! num_zones: the number of model zones.
+! composition(15,:): the mass fractions, updated in place.
 subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
@@ -221,14 +197,13 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       integer, intent(in) :: species_begin, species_end
       integer, intent(out) :: ierr
 
-! Tridiagonal-solve work arrays (Thomas algorithm): filled in by
-! composition_diffusion_coeffs, then consumed by solve_tridiagonal (solution is
-! read back afterward).
+! The tridiagonal system (filled by composition_diffusion_coeffs) and
+! its solution (by solve_tridiagonal, the Thomas algorithm).
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json)
 
       double precision :: equally_spaced_composition(json)
-! the splines' tables and evaluation points (model points and grid, both ways)
+! The splines' tables and evaluation points (model to grid and back).
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
       integer :: varying_species_id(15)
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
@@ -237,15 +212,12 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 
       ierr = 0
 
-! BEFORE THE LAST ITERATION(LOK=F),ONLY DIFFUSION OF H,HE4,HE3 CALCULATED
-! TO CALCULATE CHANGE IN MU GRADIENTS CAUSED BY DIFFUSION.
-! THIS ROUTINE WILL THEREFORE BE CALLED EITHER TO MIX THE OTHER SPECIES
-! OR JUST THE FIRST 4 DEPENDING ON LOK.
-! DETERMINE WHICH SPECIES VARY OVER THE UNSTABLE REGION.
+! Find the species whose mass fraction varies over the region by more
+! than 1e-14.
       num_varying_species = 0
       do j_idx = species_begin, species_end
          test_value = composition(j_idx,zone_begin)
-! ABUNDANCE 2(HE4) IS DEFINED AS 1-X-Z-HE3 SO IT IS NOT SOLVED FOR.
+! He4 (slot 2) is 1 - X - Z - He3, so it is not solved for.
          if (j_idx.ne.2) then
             do zone_idx = zone_begin+1, zone_end
                if (dabs(composition(j_idx,zone_idx)-test_value).gt.1.0d-14) &
@@ -258,12 +230,10 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
          end if
       end do
       if (num_varying_species.ne.0) then
-! NOW SOLVE FOR DIFFUSION OF ALL SPECIES THAT VARY OVER THE
-! UNSTABLE REGION USING THE SAME DIFFUSION COEFFICIENTS.
+! Diffuse each varying species, all with the same coefficients.
       ntab = zone_end - zone_begin + 1
-! FIND RUN OF COMPOSITION AT THE EQUALLY SPACED GRID POINTS AT THE
-! START OF THE DIFFUSION TIMESTEP.  THIS IS DONE USING AN OSCULATORY
-! SPLINE.
+! X at the grid points at the start of the sub-step, interpolated from
+! the model points with the osculatory spline osplin.
       do species_num = 1, num_varying_species
          do zone_idx = 1, ntab
             orig_zone_idx = zone_idx + zone_begin - 1
@@ -273,20 +243,17 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
          end do
          call osplin(rot_scr%eq_chi, equally_spaced_composition, table_x, table_y, ntab, &
               rot_scr%num_eq_points)
-! SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR COMP AT END OF TSTEP
+! The implicit difference equations for X at the end of the sub-step.
          call composition_diffusion_coeffs(equally_spaced_diffusion_coeff, rot_scr%eq_chi_spacing, timestep, &
               equally_spaced_composition, equally_spaced_mass, rot_scr%num_eq_points, &
               sub_diag, diag, super_diag, rhs)
-! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
+! Solve for X at the end of the sub-step on the grid.
          call solve_tridiagonal(sub_diag, diag, super_diag, rhs, rot_scr%num_eq_points, solution, ierr)
          if (ierr /= 0) return
-! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
-! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
-! EQUALLY SPACED GRID POINTS.
-! FOR THE BOUNDARY POINTS IN THE MODEL,EXTRAPOLATING U PAST THE
-! LAST EQUALLY SPACED GRID POINTS CAN LEAD TO SERIOUS ERRORS.
-! THEREFORE ADD THE *CHANGE* IN COMPOSITION AT THE EQUALLY SPACED GRID
-! POINTS TO HCOMP AND DO NOT REPLACE HCOMP WITH U.
+! Map back to the model points. Extrapolating the new X past the end
+! grid points can give large errors at the region's boundary points, so
+! the change X_new - X_old at the grid points is interpolated and added
+! to composition, rather than composition being replaced by X_new.
          do zone_idx = 1, rot_scr%num_eq_points
             table_x(zone_idx) = rot_scr%eq_chi(zone_idx)
             table_y(zone_idx) = solution(zone_idx) - &
@@ -295,10 +262,10 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
          do zone_idx = 1, ntab
             eval_x(zone_idx) = rot_scr%chi(zone_idx)
          end do
-! USE YVAL AS DUMMY ARRAY FOR THE NEW RUN OF COMP AT THE ORIGINAL
-! POINT GRID.
+! eval_y: the change in X at the model points of the region.
          call osplin(eval_x, eval_y, table_x, table_y, rot_scr%num_eq_points, ntab)
-! CHECK FOR LOWER CONVECTION ZONE
+! i0: the bottom of the convection zone that contains zone_begin
+! (zone_begin itself when it is radiative or zone 1).
          if (convective_flag(zone_begin).and.zone_begin.gt.1) then
             do zone_idx = zone_begin-1, 1, -1
                if (.not.convective_flag(zone_idx)) then
@@ -310,7 +277,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
          else
             i0 = zone_begin
          end if
-! CHECK FOR UPPER CONVECTION ZONE.
+! i1: the top of the convection zone that contains zone_end (zone_end
+! itself when it is radiative or the surface zone).
          if (convective_flag(zone_end).and.zone_end.lt.num_zones) then
             do zone_idx = zone_end+1, num_zones
                if (.not.convective_flag(zone_idx)) then
@@ -320,28 +288,25 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
             end do
             if (zone_idx .gt. num_zones) i1 = num_zones
          else
-! The original (mixcom.f) never set I1 on
-! this branch, so when the diffused region's top is radiative or is
-! the surface, the species-mass sum and the He4 renormalisation loop
-! below ran over 1..0 (i1 was zero via -finit-local-zero; whatever
-! the previous call left in F77). Mirror the i0 branch.
+! (The F77 mixcom.f left i1 unset on this branch, so the He4 reset
+! below covered no zones there.)
             i1 = zone_end
          end if
-! UPDATE COMPOSITION ARRAY.
+! Add the change to the model points of the region.
          do zone_idx = 1, ntab
             j_idx = zone_begin + zone_idx - 1
             composition(varying_species_id(species_num),j_idx) = &
                  composition(varying_species_id(species_num),j_idx) + &
                  eval_y(zone_idx)
          end do
-! UPDATE INNER CZ COMPOSITION IF APPLICABLE.
+! Give the convection zone below the region the new X of zone_begin.
          if (i0.lt.zone_begin) then
             do zone_idx = zone_begin-1, i0, -1
                composition(varying_species_id(species_num),zone_idx) = &
                     composition(varying_species_id(species_num),zone_begin)
             end do
          end if
-! UPDATE OUTER CZ COMPOSITION IF APPLICABLE.
+! Give the convection zone above the region the new X of zone_end.
          if (zone_end.lt.i1) then
             do zone_idx = zone_end+1, i1
                composition(varying_species_id(species_num),zone_idx) = &
@@ -349,7 +314,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
             end do
          end if
       end do
-! ADJUST HE4 FOR CHANGES IN X, Z, AND HE3.
+! He4 = 1 - X - Z - He3 wherever X, Z and He3 were mixed.
       if (.not.final_iteration_flag) then
          do zone_idx = i0, i1
             composition(i_he4,zone_idx) = 1.0d0 - composition(i_h1,zone_idx) - &
@@ -361,45 +326,29 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 end subroutine diffuse_composition
 
 ! ---------------------------------------------------------------
-!  SET UP COEFFICIENTS OF DIFFUSION DIFFERENCE EQUATIONS FOR COMPOSITION
-!  TRANSPORT DUE TO ROTATIONALLY INDUCED MIXING.
+! The implicit difference equations for the rotational mixing of one
+! species on the equally spaced chi grid. The diffusion equation
+!   dX/dt = (1/(4 pi r^2 rho)) d/dr (4 pi r^2 rho D dX/dr),
+! with X the mass fraction and D the mixing coefficient, becomes, with
+! the grid zone masses m_i = 4 pi r^2 rho dr and the edge coefficient
+! C = 4 pi r^2 rho D d chi/dr (diffusion_coeff, g/s),
+!   X_i(n+1) - X_i(n) = dt/(dchi m_i) [ C_{i+1/2} (X_{i+1} - X_i)
+!                                     - C_{i-1/2} (X_i - X_{i-1}) ](n+1),
+! where n and n+1 are the start and end of the sub-step, dchi is the
+! grid spacing, C_{i-1/2} = diffusion_coeff(i) and C_{i+1/2} =
+! diffusion_coeff(i+1). No material crosses the bottom of the first
+! point or the top of the last. The equations form the tridiagonal
+! system
+!   sub_diag(i) X_{i-1} + diag(i) X_i + super_diag(i) X_{i+1} = rhs(i),
+! rhs = X(n), which diffuse_composition solves with solve_tridiagonal.
+! am_diffusion_coeffs sets up the angular momentum analogue.
 !
-!  INPUT VARIABLES:
-!  diffusion_coeff (COD) : RUN OF DIFFUSION COEFFICIENTS (COMPUTED IN
-!     SR COEFFT).
-!  grid_spacing (DR) : GRID SPACING IN RADIUS(CM).
-!  timestep (DT) : DIFFUSION TIMESTEP (SEC).
-!  eq_composition (ECOMP) : STARTING ARRAY OF COMPOSITION MASS FRACTION
-!     AT THE EQUALLY SPACED GRID.
-!  eq_mass (EM) : RUN OF MASSES OF THE EQUALLY SPACED GRID POINTS (GM).
-!  num_eq_points (NTOT) : NUMBER OF POINTS IN THE EQUALLY SPACED GRID
-!     USED TO SOLVE THE DIFFUSION EQUATION.
-!  OUTPUT VARIABLES (sub_diag/diag/super_diag/rhs dummy arguments) :
-!  THE ABUNDANCE OF SHELL I AT TIME N+1 (COMP(I,N+1)) IS A FUNCTION OF
-!  COMP(I-1),COMP(I),AND COMP(I+1) AS DISCUSSED BELOW.  THIS CAN BE EXPRESSED
-!  AS A TRIDIAGONAL MATRIX.  TERMS WHICH DEPEND ON COMP(I-1) ARE STORED IN
-!  ARRAY sub_diag; THOSE WHICH DEPEND ON COMP(I) ARE STORED IN ARRAY diag;
-!  THOSE WHICH DEPEND ON COMP(I+1) ARE STORED IN ARRAY super_diag; AND THE
-!  STARTING RUN OF COMPOSITION IS STORED IN ARRAY rhs.
-!
-!  THE DIFFUSION EQUATION WE ARE SOLVING IS
-!  dX/dT = 1/(4pi*RHO*R**2)d/dR(D*dX/dR)
-!  WHERE D IS OUR DIFFUSION COEFFICIENT,X IS THE MASS FRACTION OF THE
-!  SPECIES IN QUESTION,T IS TIME,R IS RADIUS, AND RHO IS DENSITY.
-!  USING M = 4pi*RHO*R**2*DR THIS IS DIFFERENCED FOR SHELL I AS
-!  X(I,N+1)-X(I,N)=(DT/DR)*(1/M)*(D(I+1/2)*(X(I+1,N+1)-X(I,N+1)) -
-!  D(I-1/2)*(X(I,N+1)-X(I-1,N+1)))
-!  WHERE M IS THE MASS OF SHELL , INDEX N+1 REFERS TO VALUES AT THE
-!  END OF THE TIMESTEP, INDEX N REFERS TO VALUES AT THE BEGINNING OF
-!  THE TIMESTEP.
-!  THIS SYSTEM IS SUPPLEMENTED WITH APPROPRIATE BOUNDARY CONDITIONS.
-!
-! Composition-transport analogue of am_diffusion_coeffs.f90's angular-momentum-
-! transport tridiagonal setup; called by diffuse_composition.f90, which passes the
-! output matrix straight on to numerics' solve_tridiagonal.
-!
-! sub_diag/diag/super_diag/rhs: the tridiagonal system diffuse_composition
-! solves (solve_tridiagonal).
+! diffusion_coeff: C at the grid edges (g/s).
+! grid_spacing: the chi spacing of the grid, dchi (dimensionless).
+! timestep: the sub-step (s).
+! eq_composition: X at the grid points at the start of the sub-step.
+! eq_mass: the grid's zone masses m_i (g).
+! num_eq_points: the number of grid points.
 subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
       use star_info_lib, only: json
@@ -414,13 +363,11 @@ subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep,
       integer :: i
       double precision :: fact0, fact
 
-!  STORE THE RUN OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP IN ARRAY rhs.
+! The right-hand side: X at the start of the sub-step.
       do i = 1,num_eq_points
          rhs(i) = eq_composition(i)
       end do
-!  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
-!  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
-!  DEPEND ON THE SHELLS BELOW IT.(SAME USED FOR LAST SHELL B.C.)
+! First point: no flux through its lower boundary.
       fact0 = timestep/grid_spacing
       fact = fact0/eq_mass(1)
       sub_diag(1) = 0.0d0
@@ -432,7 +379,7 @@ subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep,
          diag(i) = 1.0d0 + fact*(diffusion_coeff(i)+diffusion_coeff(i+1))
          super_diag(i) = -fact*diffusion_coeff(i+1)
       end do
-!  LAST SHELL BOUNDARY CONDITIONS.
+! Last point: no flux through its upper boundary.
       fact = fact0/eq_mass(num_eq_points)
       sub_diag(num_eq_points) = -fact*diffusion_coeff(num_eq_points)
       diag(num_eq_points) = 1.0d0 + fact*diffusion_coeff(num_eq_points)
@@ -442,14 +389,16 @@ subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep,
 end subroutine composition_diffusion_coeffs
 
 ! ---------------------------------------------------------------
-! Builds the equally-spaced-grid quantities needed by diffuse_composition.f90's
-! diffusive composition solve: given the first/last unstable zones of
-! a region (zone_begin/zone_end), calls equal_spaced_grid to lay down the
-! equally spaced coordinate rot_scr%chi, then computes the equally spaced grid
-! masses (equally_spaced_mass) and the geometrically weighted
-! diffusion coefficients (equally_spaced_diffusion_coeff) at the zone
-! edges, including the Jacobian factor for the transformation from
-! radius to the rot_scr%chi coordinate.
+! The equally spaced chi grid of one transport region for
+! diffuse_composition. Calls equal_spaced_grid for the grid itself (in
+! rot_scr), then forms the grid's zone masses (equally_spaced_mass, g)
+! and the mixing coefficient at the grid edges,
+!   equally_spaced_diffusion_coeff = diffusion_coeff rho r^2 d chi/dr,
+! with diffusion_coeff = 4 pi D at the model interfaces (from
+! diffusion_velocity_scales), so that the edge coefficient is
+! 4 pi r^2 rho D d chi/dr (g/s). When the region has only two zones (a
+! single unstable interface) it sets single_interface_flag and does
+! nothing else. am_transport_grid is the angular momentum counterpart.
 subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
@@ -478,30 +427,27 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! the spline's table (the model points) and evaluation points (the grid)
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
 
-! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
+! A region with a single unstable interface is flagged and skipped.
       if (zone_end - zone_begin.le.1) then
          single_interface_flag = .true.
          return
       else
          single_interface_flag = .false.
       end if
-! DEFINE A GRID OF EQUALLY SPACED POINTS.
+! The equally spaced grid: chi, eq_chi and eq_enclosed_mass.
       call equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
            zone_end, num_zones)
-! EQUAL_SPACED_GRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY
-! SPACED MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
-! CENTERS:
-! TOTAL ZONE MASSES
-! INTERMEDIATE POINTS
+! The zone mass of each grid point. An interior point's zone runs from
+! halfway to the point below to halfway to the point above.
       do idx = 2, rot_scr%num_eq_points-1
          equally_spaced_mass(idx) = 0.5d0*(rot_scr%eq_enclosed_mass(idx+1) - rot_scr%eq_enclosed_mass(idx-1))
       end do
-! SPECIAL TREATMENT OF THE BOUNDARIES; CAN BE CONVECTIVE.
-! IF CONVECTIVE SUM OVER ALL SHELLS.  CARE IS NEEDED TO DO BOOK-KEEPING
-! PROPERLY AT THE EDGES - TOP IS HALFWAY TO EQUALLY SPACED POINT, NOT
-! HALFWAY TO EDGE OF UNEQUALLY SPACED ORIGINAL SET OF POINTS.
+! An end point's zone runs from halfway to its neighbouring grid point
+! out to the model zone boundary beyond the region (halfway in enclosed
+! mass between the end zone and the next model zone, or the centre or
+! the surface), and takes in any convection zone directly beyond.
 !
-! CENTER
+! The bottom point.
       em_top = 0.5d0*(rot_scr%eq_enclosed_mass(2) + rot_scr%eq_enclosed_mass(1))
       if (zone_begin.gt.1) then
          em_bot = 0.5d0*(enclosed_mass(zone_begin) + &
@@ -510,7 +456,8 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
          em_bot = 0.0d0
       end if
       equally_spaced_mass(1) = em_top - em_bot
-! (INCLUDE EVERY CONVECTIVE SHELL BELOW ZONE_BEGIN.)
+! Add the convective shells directly below zone_begin, down to the first
+! radiative one.
       if (zone_begin.gt.1) then
          do search_idx = zone_begin-1, 1, -1
             if (.not.convective_flag(search_idx)) exit
@@ -518,7 +465,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
                  shell_mass(search_idx)
          end do
       end if
-! SURFACE
+! The top point.
       em_bot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%num_eq_points) + rot_scr%eq_enclosed_mass(rot_scr%num_eq_points-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
@@ -527,7 +474,8 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
          em_top = exp(ln10*log_total_mass)
       end if
       equally_spaced_mass(rot_scr%num_eq_points) = em_top - em_bot
-! (INCLUDE EVERY CONVECTIVE SHELL ABOVE ZONE_END.)
+! Add the convective shells directly above zone_end, up to the first
+! radiative one.
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) exit
@@ -535,24 +483,23 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
                  shell_mass(search_idx)
          end do
       end if
-! NOW SOLVE FOR QUANTITIES NEEDED AT THE ZONE EDGES.  THESE ARE
-! RELATED TO THE DIFFUSION COEFFICIENTS.  UNLIKE THE EQUALLY SPACED
-! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
-! OF VARIABLES.
+! The mixing coefficient at the grid edges. The grid is equally spaced
+! in chi, not in radius, so the coefficient carries the Jacobian factor
+! of that change of variable.
       ntab = zone_end - zone_begin + 1
       call edge_grid_abscissae(rot_scr%chi, rot_scr%eq_chi, rot_scr%eq_chi_spacing, ntab, &
            rot_scr%num_eq_points, table_x, eval_x, ntabb)
-! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
-! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
+! The model coefficient at the edges, held constant below the bottom
+! unstable interface and above the top one.
       call interp_edge_coeff(diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
            rot_scr%num_eq_points, eval_x, table_x, table_y, &
            equally_spaced_diffusion_coeff)
-! PRODUCT OF RHO R^2 BY D CHI/DR (LOG10, ON THE EQUAL GRID IN YVAL)
+! log10(rho r^2 d chi/dr) at the edges, in eval_y.
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
            enclosed_mass, mid_scr%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
            ntab, rot_scr%num_eq_points, rot_scr%chi, eval_x, table_x, &
            table_y, eval_y)
-! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
+! Apply the factor (diffusion_coeff already carries the 4 pi).
       call multiply_by_exp10(equally_spaced_diffusion_coeff, eval_y, rot_scr%num_eq_points)
       return
 end subroutine composition_grid

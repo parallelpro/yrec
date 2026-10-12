@@ -1,11 +1,16 @@
 !----------------------------------------------------------------------
-! shell_physics (formerly physic)
+! shell_physics (legacy physic)
 !----------------------------------------------------------------------
-! For every shell, calls the equation of state (eos_get), the opacity
-! (kap_get), and temperature_gradients to find the actual/adiabatic
-! temperature gradients, opacity, and mean molecular weight, then
-! calls viscos to find the thermometric diffusivity and kinematic
-! viscosity.
+! The local physics of every zone, for the rotation code and the
+! convection-zone edges: the equation of state (eos_get), the opacity
+! (kap_get) and the temperature gradients (compute_temperature_gradients,
+! with the rotation factors fp and ft and the adiabatic-overshoot region
+! star%iov1..iov2). Sets convective_flag and stores in star% the
+! gradients grad_rad, grad and grad_ad (gradr, gradT, grada), the mean
+! molecular weight mu, the opacity, c_P, dlnrho/dlnT (qdt) and the
+! convective velocity; then viscos gives the kinematic viscosity and the
+! thermal diffusivity. log_luminosity holds L/Lsun, not its log (the
+! callers pass star%luminosity_lsun).
 subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
@@ -31,7 +36,7 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
       integer, intent(out) :: ierr
 
       double precision :: atomic_weight(4)
-! indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3)
+! Indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3).
       data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
@@ -40,14 +45,13 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
            metal_fraction, log10_density, pressure_rotation_factor, &
            temperature_rotation_factor
-! 2026 named-index results: the eos/kap relay soup is two arrays
-! (see eos_lib/kap_lib index constants). Loop-carried inout slots
-! (log10_density mode input, the gradient/cp guesses, the ionization
-! fractions) persist across shells in the arrays exactly as the old
-! locals did. NOTE: kap_get receives eos_res%log10_density --
-! the density compute_blended_eos just RETURNED -- matching the historical inout
-! dataflow (passing the model's log_density instead drifts rotating
-! runs, caught by the byte gate).
+! eos_res and kap_res hold the EOS and opacity results (index constants
+! in eos_lib and kap_lib). Some slots are inputs too: the density, set
+! from the model before each eos_get, and the gradient and c_P guesses
+! and ionization fractions, which carry over from zone to zone.
+! kap_get takes eos_res%log10_density, the density eos_get just
+! returned, not the model's log_density; passing log_density instead
+! changes rotating runs (the byte gate catches it).
       type(eos_result) :: eos_res
       double precision :: kap_res(num_kap_results)
       integer :: saha_state
@@ -59,12 +63,11 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
 
       ierr = 0
 
-!  FIND ACTUAL AND ADIABATIC TEMPERATURE GRADIENTS,OPACITY,AND
-!  MEAN MOLECULAR WEIGHT FOR ALL RADIATIVE SHELLS.
+! The temperature gradients, opacity and mean molecular weight of every
+! zone, without derivatives, with the interior (not atmosphere) EOS.
       want_derivatives = .false.
       in_atmosphere = .false.
-! (was never assigned before the first eos_get; -finit-local-zero
-! supplied the 0 that is now explicit)
+! The Saha solver state starts at 0 and carries over from zone to zone.
       saha_state = 0
       do im = 1,num_zones
          log10_mass = log_mass(im)
@@ -101,8 +104,12 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
          star%gradr(im) = radiative_gradient
          star%gradT(im) = actual_gradient
          star%grada(im) = eos_res%adiabatic_gradient
-!  FIND NEW RUN OF MEAN MOLECULAR WEIGHT ASSUMING FULLY IONIZED GAS.
-!  AMUENV IS(1/MEAN MOLECULAR WEIGHT PER ION OF THE SURFACE MIXTURE.)
+! The mean molecular weight of a fully ionized gas,
+! mu = mu_ion mu_e / (mu_ion + mu_e) (amu2 = mu_ion, emu2 = mu_e):
+!   1/mu_ion = amuenv + sum_k (X_k - X_k,env)/A_k over H, He4, Z (as C12)
+!              and He3, where star%amuenv is 1/mu_ion of the surface
+!              mixture and X_k,env its abundances;
+!   1/mu_e = X/A_H + 2 (X_He3/A_He3 + Y/A_He4) + Z/2.
          dfx1 = composition(i_h1,im) - star%envelope_hydrogen_fraction
          dfx2 = composition(i_he4,im) - star%envelope_helium_fraction
          dfx3 = composition(i_metals,im) - star%envelope_metal_fraction
@@ -121,6 +128,6 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
          star%qdt(im) = eos_res%dlnrho_dlnt
          star%conv_vel(im) = convective_velocity
       end do
-!  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
+! The thermal diffusivity and kinematic viscosity.
       call viscos(composition, log_density, log_temperature, num_zones)
 end subroutine shell_physics

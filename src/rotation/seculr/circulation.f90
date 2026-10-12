@@ -2,9 +2,10 @@
 ! circulation
 !----------------------------------------------------------------------
 ! The velocities that drive rotational mixing: the circulation and
-! instability velocities (circulation_velocities), their scales
-! (diffusion_velocity_scales), the Zahn coupling factor and the
-! quadrupole moment of the distorted star.
+! instability velocities (circulation_velocities), the diffusion
+! coefficients formed from them (diffusion_velocity_scales), the Zahn
+! (1992) coupling factor (zahn_coupling_factor) and the quadrupole
+! moment of the distorted star (compute_quadrupole).
 module circulation
       use rotation_configuration, only: rotation_settings
       implicit none
@@ -14,20 +15,29 @@ module circulation
 contains
 
 ! ---------------------------------------------------------------
-!   SKIPPING CONVECTIVE REGIONS, CHECK FOR INSTABILITY AGAINST EACH
-!   SECULAR MECHANISM.IF UNSTABLE,COMPUTE A CIRCULATION VELOCITY.
-!   THE PROCEDURE FOR CALCULATING STABILITY IS AS FOLLOWS:
-!      STABILITY IS CALCULATED FOR THE I/I-1 INTERFACE.
-!      EACH STABILITY CRITERION IS EXPRESSED AS FOLLOWS:
-!       A COMBINATION OF VARIABLES(RHO,P,ETC.)STORED AT EACH SHELL
-!       MULTIPLIED BY A GRADIENT BETWEEN THE SHELLS MUST BE LESS THAN
-!       SOME CRITICAL NUMBER.
-! Computes, at each unstable interface, the Eddington-Sweet meridional
-! circulation velocity (star%es_circulation_velocity, Zahn 1991/1992, with
-! a quadrupole correction), the GSF-instability circulation velocity
-! (star%gsf_circulation_velocity, Kippenhahn 1980 estimate), and the
-! diffusive/dynamical shear velocity (star%secular_shear_velocity), then
-! combines them into total_circulation_velocity (HV).
+! The circulation and instability velocities at each interface
+! zone_min..zone_max of the transport region (interface i lies between
+! zones i-1 and i). Each stability criterion is a structural coefficient
+! (rotation_stability_setup, stability_coefficients) times a gradient
+! across the interface, compared with a critical value; where the
+! interface is unstable the mechanism gets a velocity:
+!  - star%es_circulation_velocity, the Eddington-Sweet circulation (Zahn
+!    1991, 1992), corrected for the quadrupole moment and reduced by the
+!    mu gradient (Maeder & Zahn 1998);
+!  - star%gsf_circulation_velocity, the GSF instability (Kippenhahn
+!    1980), optionally inhibited by viscosity and mu gradients;
+!  - star%secular_shear_velocity, the secular shear instability, or the
+!    dynamical one where Ri < 1/4 (Endal & Sofia 1978).
+! The Eddington-Sweet and GSF velocities are skipped at interfaces with
+! convective zones on both sides. From the second iteration on, each
+! velocity is averaged with the previous iteration's. Their sum is
+! total_circulation_velocity (legacy HV); any_transport_active is set if
+! it is positive anywhere. With no_am_transport_in_core the velocities
+! are zeroed inside the energy-generating core (zero_transport_in_core).
+! dlnomega_dlnr is d omega/d ln r (not
+! d ln omega/d ln r) and dlnomega_dlnr_max its dynamical-shear limit.
+! Each velocity is later multiplied by r (diffusion_velocity_scales) to
+! give a diffusion coefficient.
 subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
@@ -78,9 +88,8 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
 contains
 
 ! ---------------------------------------------------------------
-! The previous iteration's velocities, for the averaging.
+! Keep the previous iteration's velocities for average_with_previous.
 subroutine store_previous_velocities()
-!  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
       do i = zone_min,zone_max
          circ_scr%gsf_circulation_velocity_prev(i) = star%gsf_circulation_velocity(i)
          circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
@@ -95,13 +104,13 @@ subroutine store_previous_velocities()
 end subroutine store_previous_velocities
 
 ! ---------------------------------------------------------------
+! The mean molecular weight (and what depends on it) and omega change
+! during a diffusion sub-step, so their values at the interfaces, where
+! stability is evaluated, are found again each iteration. The kinematic
+! viscosity and thermal diffusivity use 4-point Lagrange interpolation
+! in ln (log_lagrange4) from zones i-2..i+1.
 subroutine interpolate_to_interfaces()
-!  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
-!  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
-!  FIND THE NEW VALUES AT THE MIDPOINT IN RADIUS BETWEEN MASS SHELLS
-!  WHERE STABILITY IS EVALUATED.  4 POINT LAGRANGIAN INTERPOLATION IS USED
-!  FOR THE KINEMATIC VISCOSITY AND THERMAL DIFFUSIVITY.
-!  TREATMENT OF FIRST INTERFACE.
+! The first interface (2) uses zones 1-4.
       if (zone_min.lt.3) then
          rot_scr%kinematic_viscosity_interface(2)=log_lagrange4(mid_scr%visc, 1, 2)
          rot_scr%thermal_diffusivity_interface(2)=log_lagrange4(mid_scr%thdif, 1, 2)
@@ -109,7 +118,7 @@ subroutine interpolate_to_interfaces()
       else
          i0=zone_min
       end if
-!  TREATMENT OF LAST INTERFACE.
+! The last interface (num_zones) uses the last four zones.
       if (zone_max.eq.num_zones) then
          rot_scr%kinematic_viscosity_interface(num_zones)= &
               log_lagrange4(mid_scr%visc, num_zones-3, num_zones)
@@ -119,12 +128,12 @@ subroutine interpolate_to_interfaces()
       else
          i1=zone_max
       end if
-!  GENERAL CASE.
+! The other interfaces.
       do i = i0,i1
          rot_scr%kinematic_viscosity_interface(i)=log_lagrange4(mid_scr%visc, i-2, i)
          rot_scr%thermal_diffusivity_interface(i)=log_lagrange4(mid_scr%thdif, i-2, i)
       end do
-! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
+! mu and omega: the mean of the two neighbouring zones.
       do i = 2,num_zones
          rot_scr%mean_molecular_weight_interface(i) = 0.5d0*(mid_scr%mu(i)+mid_scr%mu(i-1))
          rot_scr%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
@@ -132,24 +141,27 @@ subroutine interpolate_to_interfaces()
 end subroutine interpolate_to_interfaces
 
 ! ---------------------------------------------------------------
+! The Eddington-Sweet circulation velocity, Zahn (1991) estimate, with
+! the coefficients from rotation_stability_setup. (The older KM1974
+! meridional circulation estimate is no longer offered; MHP 8/03.)
 subroutine eddington_sweet_velocity()
-! MHP 8/03 OMITTED OLD KM1974 MERIDIONAL CIRCULATION VELOCITY ESTIMATE.
-! EDDINGTON CIRCULATION, ZAHN (1991) VELOCITY ESTIMATE (COEFFICIENTS
-! DEFINED IN rotation_stability_setup).
       do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) cycle
-! ORIGINAL ESTIMATE,USING DG/G = W**2 R**3 / GM.
+! The uncorrected estimate, with dg/g = omega^2 r^3/(G m):
+!   U_ES = omega^2 (es_velocity_coeff1 + omega^2 es_velocity_coeff2).
          star%es_circulation_velocity(i) = rot_scr%omega_interface(i)**2* &
               (rot_scr%es_velocity_coeff1(i)+rot_scr%omega_interface(i)**2*rot_scr%es_velocity_coeff2(i))
-! QUADRUPOLE TERM ADDED, DG/G COMPUTED AS PER ZAHN 1992.
-! THE VARIATION IN GRAVITY ON A LEVEL SURFACE CAN BE EXPRESSED IN
-! GENERAL AS 1/3 OMEGA**2 *D/DR((R**2 - PHI)/G), WHERE G IS THE
-! LOCAL AVERAGE GRAVITY (~GM/R**2) AND PHI IS THE QUADRUPOLE MOMENT.
-! THE CLASSICAL EXPRESSION NEGLECTS THE QUADRUPOLE AND THE SPATIAL
-! DERIVATIVE OF THE MASS (PHISTD).  THE VELOCITY ESTIMATE FOR
-! MERIDIONAL CIRCULATION IS THEREFORE MULTIPLED BY THE RATIO OF
-! THE CORRECTED EXPRESSION TO THE CLASSICAL ONE (RAT).
+! The quadrupole correction, with dg/g as in Zahn (1992). The variation
+! of gravity on a level surface is d/dr[(omega^2 r^2/3 - Phi)/g], with
+! g the local mean gravity (~G m/r^2) and Phi the quadrupole moment
+! (compute_quadrupole; it already contains omega^2). The classical
+! expression neglects Phi and dm/dr:
+!   phistd = (4/3) omega^2 r/g.
+! U_ES is multiplied by the ratio of the full expression to it,
+!   circulation_correction_ratio = (phis2 + phi2)/phistd,
+!   phis2 = (omega^2/3) d(r^2/g)/dr,  phi2 = -d(Phi/g)/dr,
+! and qw = omega d omega/dr. A negative ratio is reported.
          dr = radius(i) - radius(i-1)
          gmid = 0.5d0*(rot_scr%local_gravity(i)+rot_scr%local_gravity(i-1))
          phistd = 2.0d0*cc23*rot_scr%omega_interface(i)**2*rot_scr%radius_interface(i)/gmid
@@ -168,12 +180,27 @@ subroutine eddington_sweet_velocity()
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
          if (.not.rotation_settings%use_diffusion_advection_transport) then
+! U_ES = |circulation_correction_ratio U_ES - es_shear_coeff qw|.
             star%es_circulation_velocity(i) = &
                  abs(rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)- &
                  rot_scr%es_shear_coeff(i)*qw)
          else
-! MHP 05/02 ADD FACTOR OF 1/5 HERE
-! MHP 06/02 ADDED D THETA/DT TERM
+! The advection-diffusion transport (Maeder & Zahn 1998; not functional,
+! see secular_transport). theta_new is the d theta/dt term (MHP 6/02),
+!   theta_new = es_relaxation_factor (theta_mean qw - theta_prev)/timestep.
+! With ratio = circulation_correction_ratio, the advective part is
+!   es_advective_velocity = (1/5) (ratio U_ES + theta_new)
+! and the diffusive part, a diffusion coefficient (cm^2/s) for
+! d omega/dr,
+!   es_diffusive_velocity = (1/5) [(es_shear_coeff + difad_shear_coeff1)
+!                                  omega^2 + difad_shear_coeff2 qw],
+! both with the factor 1/5 (MHP 5/02). The total used for the transport
+! regions is
+!   U_ES = ratio U_ES + theta_new + (es_shear_coeff + difad_shear_coeff1) qw
+!          + difad_shear_coeff2 (d omega/dr)^2,
+! where the es_shear_coeff term has the opposite sign to the branch
+! above. second_deriv_geom_factor_eqgrid is second_deriv_geom_factor
+! times omega.
             rot_scr%theta_new(i) = rot_scr%es_relaxation_factor(i)*(rot_scr%theta_mean(i)*qw- &
                  rot_scr%theta_prev(i))/timestep
             rot_scr%es_advective_velocity(i) = 0.2d0* &
@@ -195,10 +222,16 @@ subroutine eddington_sweet_velocity()
 end subroutine eddington_sweet_velocity
 
 ! ---------------------------------------------------------------
+! The inhibition of the circulation by the mu gradient (Maeder & Zahn
+! 1998): Delta = grad_ad - grad in the denominator of U_ES becomes
+! Delta + grad_mu, with grad_mu = d ln mu/d ln P = qmu/qp, so the
+! velocities are multiplied by
+!   qqq = max(del_grad_diff_interface, 1e-3)
+!         / max(del_grad_diff_interface + grad_mu, 1e-3).
+! Without the advection-diffusion transport, del_grad_diff_interface
+! already contains grad_mu (rotation_stability_setup), so grad_mu
+! enters this factor twice.
 subroutine inhibit_by_mu_gradient()
-! INHIBITION CAUSED BY GRADIENTS IN MEAN MOLECULAR WEIGHT.
-! INCLUDE ONLY THE ZAHN & MAEDER 1998 TREATMENT, WHERE (DEL - DEL AD) IS
-! REPLACED BY (DEL + DEL MU - DEL AD).
        do i = zone_min,zone_max
           qmu = log(mid_scr%mu(i))-log(mid_scr%mu(i-1))
           qp = ln10*(log_pressure(i)-log_pressure(i-1))
@@ -211,31 +244,34 @@ subroutine inhibit_by_mu_gradient()
              rot_scr%es_advective_velocity(i) = rot_scr%es_advective_velocity(i)*qqq
              rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)*qqq
           end if
-! ADD MU GRADIENTS TO VELOCITY ESTIMATES
+! The same factor on the advection-diffusion coefficients that contain
+! 1/Delta. They are set once per sub-step (rotation_stability_setup),
+! so each iteration multiplies them by qqq again.
           rot_scr%es_relaxation_factor(i) = rot_scr%es_relaxation_factor(i)*qqq
           rot_scr%velocity_coeff0(i) = rot_scr%velocity_coeff0(i)*qqq
        end do
 end subroutine inhibit_by_mu_gradient
 
 ! ---------------------------------------------------------------
+! The GSF instability velocity, Kippenhahn (1980) estimate, with the
+! coefficient gsf_kippenhahn_coeff from rotation_stability_setup.
+! gsf_inhibition_mode (legacy IGSF) sets what may inhibit it:
+!   0: viscosity and mu gradients;
+!   1: neither;
+!   2: viscosity only.
+! The related ABCD instability would not be inhibited by viscosity or mu
+! gradients, so including it is equivalent to mode 1 (the original
+! Kippenhahn 1980 estimate). The inhibition factors come from later work
+! by Spruit.
 subroutine gsf_velocity()
-!  GSF INSTABILITY.  VELOCITY DEFINED IN rotation_stability_setup.
-! OMIT ALL BUT THE KIPPENHAHN 1980 ESTIMATE.
-! IGSF IS RETAINED, AND THE VALUE DETERMINES WHAT IS PERMITTED TO
-! INHIBIT IT.
-! IGSF = 0: INHIBITED BY VISCOSITY AND MU GRADIENTS
-! IGSF = 1: NEITHER VISCOSITY NOR MU GRADIENTS INHIBIT
-! IGSF = 2: INHIBITED BY VISCOSITY ONLY
-! NOTE THAT THE ABCD INSTABILITY - RELATED TO THE GSF INSTABILITY -
-! WOULD NOT BE INHIBITED BY VISCOSITY/MU GRADIENTS, SO INCLUDING IT
-! IS EQUIVALENT TO SETTING IGSF=1 (THE ORIGINAL K1980 ESTIMATE).
-! THE INHIBITION FACTORS COME FROM SUBSEQUENT WORK BY SPRUIT.
-! KIPPENHAHN (1980) ESTIMATE
       do i = zone_min,zone_max
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) cycle
-! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
-! MU GRADIENTS.
+! Viscous inhibition (modes 0 and 2; MHP 8/93, mu gradients neglected):
+! stable while |d omega/d ln r| < q_nu = 2 sqrt(nu/K) dlnomega_dlnr_max,
+! with nu the kinematic viscosity and K the thermal diffusivity. Above
+! it the velocity is multiplied by fxx = sqrt((|d omega/d ln r| - q_nu)
+! /q_nu); without viscous inhibition fxx = 1.
          if (rotation_settings%gsf_inhibition_mode.eq.2 .or. rotation_settings%gsf_inhibition_mode.eq.0) then
             qwrmx = 2.0d0*sqrt(rot_scr%kinematic_viscosity_interface(i)/ &
                  rot_scr%thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
@@ -249,6 +285,11 @@ subroutine gsf_velocity()
             fxx = 1.0d0
          end if
          dr = radius(i)-radius(i-1)
+! mu-gradient inhibition (mode 0): stable while |d omega/d ln r| < q_mu
+! = 2 sqrt(g |d mu/dr|/mu). Above it the factor is
+! sqrt((|d omega/d ln r| - q_mu)/q_mu), or 1 when q_mu is below 1% of
+! |d omega/d ln r| or below 1e-20 (which avoids dividing by zero;
+! MHP 5/02), and fxx becomes the smaller of the two factors.
          if (rotation_settings%gsf_inhibition_mode.eq.0) then
             qwrmx=2.0d0*sqrt(rot_scr%gravity_factor_interface(i)* &
                  abs(mid_scr%mu(i)-mid_scr%mu(i-1)) &
@@ -257,7 +298,6 @@ subroutine gsf_velocity()
                star%gsf_circulation_velocity(i) = 0.0d0
                cycle
             else
-! MHP 05/02 ADDED TESTS TO AVOID DIVIDE BY ZERO
                qwrmx2 = 1.0d-2*dlnomega_dlnr(i)
                if (abs(qwrmx).lt.abs(qwrmx2)) then
                   qwrmx2 = 1.0d0
@@ -273,17 +313,21 @@ subroutine gsf_velocity()
          end if
          rmid = 0.5d0*(radius(i)+radius(i-1))
          dlnwdr = abs(log(omega(i))-log(omega(i-1)))/dr
-! GSF IS TRIGGERED BY D OMEGA/DZ NONZERO (I.E. ROTATION NOT
-! ON CYLINDERS,WHICH IS TRUE IN GENERAL IN OUR MODELS), OR
-! BY D LN(J/M)/DR < 0, WHICH SOMETIMES OCCURS.
-! IF D LN(J/M)/DR < 0, CHECK SECOND CRITERIA AND USE THE LARGEST
-! VELOCITY; OTHERWISE,USE ONLY D OMEGA/DZ NON-ZERO CRITERION.
+! The GSF instability is triggered by d omega/dz /= 0 (rotation not on
+! cylinders, true in general in these models) or by d ln j/dr < 0, with
+! j = omega r^2 the specific angular momentum (legacy J/M), which
+! sometimes occurs. Where j decreases outward both criteria are used
+! and the larger wins; otherwise only the d omega/dz one:
+!   U_GSF = gsf_kippenhahn_coeff K omega^2 max(2 |d ln j/dr|, dlnwdr/4)/r
+! or
+!   U_GSF = gsf_kippenhahn_coeff K omega^2 (dlnwdr/4)/r,
+! with dlnwdr = |d ln omega/dr|, then multiplied by fxx. The 1/r is
+! there because every circulation velocity is later multiplied by r (the
+! length scale).
          if (omega(i)*radius(i)**2 .lt. omega(i-1)*radius(i-1)**2) then
             dlnjmdr = abs(2.0d0/rmid+(log(omega(i))- &
                       log(omega(i-1)))/dr)
             fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
-! FACTOR OF R IN THE DENOMINATOR OCCURS BECAUSE ALL THE CIRCULATION
-! VELOCITIES ARE LATER MULTIPLIED BY R (THE "LENGTH SCALE").
             star%gsf_circulation_velocity(i) = rot_scr%gsf_kippenhahn_coeff(i)*fx* &
                  rot_scr%thermal_diffusivity_interface(i)*rot_scr%omega_interface(i)**2/rmid
          else
@@ -296,18 +340,23 @@ subroutine gsf_velocity()
 end subroutine gsf_velocity
 
 ! ---------------------------------------------------------------
+! The secular (diffusive) and dynamical shear instabilities (Endal &
+! Sofia 1978, ApJ 220, 279, paper II), giving star%secular_shear_velocity.
 subroutine shear_velocities()
-!  DIFFUSIVE AND DYNAMICAL SHEAR INSTABILITIES - REF. ENDAL&SOFIA PAPER II.
       do i = zone_min,zone_max
-!  CHECK FOR OPERATION OF DYNAMICAL SHEAR.
-!  IF DYNAMICAL SHEAR IS OPERATING,SET SECULAR SHEAR VELOCITY TO MAXIMUM
-!  VALUE AND COMPUTE (LARGE) DYNAMICAL SHEAR VELOCITY.
+! Dynamical shear operates where |d omega/d ln r| > dlnomega_dlnr_max
+! (Ri < 1/4). The shear velocity is then the large dynamical value,
+!   U_SS = (8/45) K (|d omega/d ln r|/dlnomega_dlnr_max)^2/r.
          if (abs(dlnomega_dlnr(i)).gt.dlnomega_dlnr_max(i)) then
             qwr = abs(dlnomega_dlnr(i))
             star%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  rot_scr%thermal_diffusivity_interface(i)* &
                  (qwr/dlnomega_dlnr_max(i))**2/rot_scr%radius_interface(i)
-!  CORRECT GSF VELOCITY AS WELL.
+! Correct the GSF velocity for the shear the dynamical instability
+! leaves behind: wmin is the omega of zone i-1 that puts
+! |d omega/d ln r| exactly at the limit, and U_GSF is scaled by its
+! gradient term (Kippenhahn 1980) evaluated with wmin over the same
+! term evaluated with omega(i-1). Each such interface is reported.
             dr = radius(i)-radius(i-1)
             rmid = 0.5d0*(radius(i)+radius(i-1))
             if (omega(i).lt.omega(i-1)) then
@@ -322,7 +371,6 @@ subroutine shear_velocities()
                          log(omega(i-1)))/dr)
             dlnjmdr = abs(2.0d0/rmid+(log(omega(i))-log(wmin))/dr)
             dlnwdr = abs(log(omega(i))-log(wmin))/dr
-! KIPPENHAHN (1980) ESTIMATE
             if (omega(i)*radius(i)**2 .lt. wmin*radius(i-1)**2) then
                fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
                qwrmx_dyn = max(2.0d0*dlnjmdr0,0.25d0*dlnwdr0)
@@ -337,18 +385,21 @@ subroutine shear_velocities()
                  ' WBOT',e11.3,' LIMIT',e11.3)
             cycle
          end if
-!   FIND MAXIMUM GRADIENT IN OMEGA ALLOWED BY SECULAR SHEAR.
-!   THE RUN OF QWRMAX INPUT IS THAT ALLOWED BY THE DYNAMICAL SHEAR;
-!   THE SECULAR SHEAR RICHARDSON # IS RELATED BY
-!   RICHNO(SECULAR) = PRANDTL# * CRITICAL REYNOLDS#/8 * RICHNO(DYNAMICAL)
-!   PRANDTL # = KINEMATIC VISCOSITY/THERMOMETRIC DIFFUSIVITY.
-! MHP 3/92 SQUARE ROOT OF PR# NEEDED, NOT PR # - ERROR CORRECTED!
-! THE VELOCITY ESTIMATE HERE IS FROM ZAHN 1991.
+! The largest |d omega/d ln r| stable against secular shear.
+! dlnomega_dlnr_max (legacy QWRMAX) is the dynamical-shear limit. With
+! thermal diffusion the secular shear Richardson number is
+! (Pr Re_c/8) Ri, with Pr = nu/K the Prandtl number and Re_c the critical
+! Reynolds number (critical_reynolds), and the interface is unstable
+! where it falls below 1/4, i.e. where |d omega/d ln r| exceeds
+!   qwrmx = sqrt(Pr Re_c/8) dlnomega_dlnr_max
+! (the square root of Pr, not Pr; MHP 3/92). The velocity estimate is
+! from Zahn (1991):
+!   U_SS = (8/45) K ((|d omega/d ln r| - qwrmx)/dlnomega_dlnr_max)^2/r.
          qwrmx = sqrt(rot_scr%kinematic_viscosity_interface(i)/ &
               rot_scr%thermal_diffusivity_interface(i)*1.25d-1*rotation_settings%critical_reynolds)* &
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
-!  UNSTABLE; CHECK FOR MU GRADIENTS.
+! Unstable. Without a mu gradient (|Delta mu/mu| < 1e-10), U_SS as above.
             if (abs((mid_scr%mu(i)-mid_scr%mu(i-1))/rot_scr%mean_molecular_weight_interface(i)) &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
@@ -357,17 +408,20 @@ subroutine shear_velocities()
                     rot_scr%thermal_diffusivity_interface(i)* &
                     (qwr/dlnomega_dlnr_max(i))**2/rot_scr%radius_interface(i)
             else
-!  CHECK FOR EFFECTS OF MU GRADIENT.
-!  RICHNO = RHO/P*(-d lnT/d lnMU)*(del MU)/(del P)*(G/QWLNR)**2
-!  WHERE -d lnT/d lnMU = (CON-1)/(1+3CON),CON=(a/3)T**4/P
-!  GIVEN (1 - CON)P = CGAS*RHO*T/MU
+! With a mu gradient, its Richardson number
+!   Ri_mu = (rho/P) (-d ln T/d ln mu) (d ln mu/d ln P) g^2
+!           /(d omega/d ln r)^2,
+! with -d ln T/d ln mu = (b - 1)/(1 + 3b), b = a T^4/(3P), from
+! (1 - b) P = (R/mu) rho T. It reaches the dynamical criterion's 1/4
+! (no Prandtl-number factor) at
+!   qwrmx2 = 2 sqrt(mu_gradient_richardson_coeff |Delta mu/mu|).
                qwrmx2 = 2.0d0*sqrt(max(1.0d-20,rot_scr%mu_gradient_richardson_coeff(i)* &
                         abs((mid_scr%mu(i)-mid_scr%mu(i-1))/ &
                         rot_scr%mean_molecular_weight_interface(i))))
                if (abs(dlnomega_dlnr(i)).gt.qwrmx2) then
-!  INTERFACE UNSTABLE WITH RESPECT TO BOTH CONDITIONS; CHOOSE THE
-!  MAXIMUM GRADIENT IMPLIED BY THE SECOND CONDITION IF IT'S LARGER
-!  THAN THE FIRST(I.E. IF A MU GRADIENT IS SLOWING J TRANSPORT).
+! Unstable against both: U_SS from the excess over the larger limit (the
+! mu limit where the mu gradient slows the transport of j). Stable
+! against the mu gradient: U_SS stays zero.
                   qwrmx = max(qwrmx2,qwrmx)
                   qwr = abs(dlnomega_dlnr(i)) - qwrmx
             star%secular_shear_velocity(i)=8.0d0/4.5d1* &
@@ -380,9 +434,10 @@ subroutine shear_velocities()
 end subroutine shear_velocities
 
 ! ---------------------------------------------------------------
+! Multiply the velocities by the user's efficiency factors
+! (es_velocity_scale, gsf_velocity_scale, secular_shear_velocity_scale;
+! legacy FES, FGSF, FSS). The mu-gradient inhibition is already applied.
 subroutine apply_velocity_scales()
-!  MULTIPLY THE VELOCITY ESTIMATES BY THE USER-DEFINED SCALE FACTORS
-!  (MU-GRADIENT INHIBITION IS ALREADY INCLUDED ABOVE).
       do i = zone_min,zone_max
          star%es_circulation_velocity(i)=abs(rotation_settings%es_velocity_scale* &
               star%es_circulation_velocity(i))
@@ -391,8 +446,7 @@ subroutine apply_velocity_scales()
          star%secular_shear_velocity(i)= rotation_settings%secular_shear_velocity_scale* &
               star%secular_shear_velocity(i)
       end do
-! MHP 11/94
-! REPEAT FOR DIF+AD
+! The same for the advection-diffusion parts (MHP 11/94).
       if (rotation_settings%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
                rot_scr%es_diffusive_velocity(i)=abs(rotation_settings%es_velocity_scale* &
@@ -402,15 +456,16 @@ subroutine apply_velocity_scales()
          end do
       end if
       if (rotation_settings%use_diffusion_advection_transport) then
-! MHP 05/02
-! CHANGED TO REFLECT THE DIFFERENT TREATMENT OF THE GSF INSTABILITY.
-! THE ENDAL AND SOFIA VARIANT HAD V=THDIF*DLNWDR*W**2/R WHICH WAS
-! THEN ADDED TO A DIFFUSION EQUATION D/DR(CON*V*R*DW/DR).
-! IN THE ZAHN FORMULISM, WE ARE SOLVING AN EQUATION OF THE FORM
-! D/DR(CON*V*W).  BECAUSE THE VELOCITY ESTIMATE ITSELF INCLUDES
-! DW/DR THIS IS IN EFFECT A DIFFUSION TERM.  SO...WE NEED TO
-! MULTIPLY THE ORIGINAL VELOCITY BY W AND DIVIDE BY DW/DR TO CAST
-! IT AS AN ENTRY IN THE DIFFUSION EQUATION.
+! In the advection-diffusion transport (MHP 5/02) the GSF and shear
+! instabilities act as diffusion. In the Endal & Sofia form a velocity
+! U (e.g. U_GSF ~ K dlnwdr omega^2/r) enters d/dr(con U r d omega/dr),
+! so its diffusion coefficient is r U. In the Zahn form the equation is
+! d/dr(con U omega), and a velocity proportional to d omega/dr is in
+! effect diffusion with coefficient U omega/(d omega/dr), which is how
+! es_diffusive_velocity is formed. For the GSF and shear the code uses
+! the Endal & Sofia coefficient: r |U| of each is added to
+! es_diffusive_velocity and kept in shear_diffusion_coeff and
+! gsf_diffusion_coeff.
          do i = zone_min,zone_max
             rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
                  rot_scr%radius_interface(i)*(abs(star%gsf_circulation_velocity(i))+ &
@@ -424,8 +479,9 @@ subroutine apply_velocity_scales()
 end subroutine apply_velocity_scales
 
 ! ---------------------------------------------------------------
+! From the second iteration on, the mean of the new velocities and the
+! previous iteration's (the advection-diffusion parts too; MHP 11/94).
 subroutine average_with_previous()
-!  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.
       do i = zone_min,zone_max
          star%gsf_circulation_velocity(i) = 0.5d0*(star%gsf_circulation_velocity(i) &
               + circ_scr%gsf_circulation_velocity_prev(i))
@@ -434,7 +490,6 @@ subroutine average_with_previous()
          star%secular_shear_velocity(i) = 0.5d0*(star%secular_shear_velocity(i) &
               + circ_scr%secular_shear_velocity_prev(i))
       end do
-! MHP 11/94
       if (rotation_settings%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
             rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
@@ -446,8 +501,8 @@ subroutine average_with_previous()
 end subroutine average_with_previous
 
 ! ---------------------------------------------------------------
-! The total velocity at each interface (below 1e-20, zero) and whether any
-! transport acts.
+! total_circulation_velocity = U_GSF + U_ES + U_SS at each interface,
+! zeroed below 1e-20 cm/s; any_transport_active if any is positive.
 subroutine sum_velocities()
       do i =zone_min,zone_max
          total_circulation_velocity(i) = star%gsf_circulation_velocity(i) + &
@@ -459,10 +514,11 @@ subroutine sum_velocities()
 end subroutine sum_velocities
 
 ! ---------------------------------------------------------------
+! With no_am_transport_in_core (mixing without angular momentum
+! transport; 9/93): zero every velocity from zone_min outward up to the
+! first interface where L reaches 99% of the total luminosity, to avoid
+! numerical problems in the hydrogen-burning shell.
 subroutine zero_transport_in_core()
-! 9/93 MIXING WITHOUT TRANSPORT ADDED.
-! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
-! THE H-BURNING SHELL.
       do i = zone_min,zone_max
          dell = rot_scr%luminosity_interface(i)/total_luminosity
          if (dell.lt.9.9d-1) then
@@ -470,7 +526,6 @@ subroutine zero_transport_in_core()
             star%gsf_circulation_velocity(i) = 0.0d0
             star%es_circulation_velocity(i) = 0.0d0
             star%secular_shear_velocity(i) = 0.0d0
-! MHP 11/94
             rot_scr%es_advective_velocity(i) = 0.0d0
             rot_scr%es_diffusive_velocity(i) = 0.0d0
          else
@@ -480,9 +535,9 @@ subroutine zero_transport_in_core()
 end subroutine zero_transport_in_core
 
 
-! 4-point Lagrangian interpolation in log(a) of a(k..k+3) to interface
-! i, using the weights rot_scr%lagrange_interp_weights(1:4,i) set up
-! by am_transport_grid. Token-identical to the former inline forms.
+! 4-point Lagrange interpolation of a(k..k+3) to interface i in ln a,
+! with the weights rot_scr%lagrange_interp_weights(1:4,i) set by
+! rotation_stability_setup (stability_coefficients).
       function log_lagrange4(a, k, i)
       double precision, intent(in) :: a(*)
       integer, intent(in) :: k, i
@@ -497,38 +552,27 @@ end subroutine zero_transport_in_core
 end subroutine circulation_velocities
 
 ! ---------------------------------------------------------------
-! 2/91 SUBROUTINE ALTERED TO ALLOW DIFFERENT FC'S FOR DIFFERENT
-!      MECHANISMS (rotation_settings%es_mixing_scale etc.)
-!
-!  THIS SR DETERMINES THE RUN OF DIFFUSION COEFFICIENTS (VELOCITY
-!  TIMES LENGTH SCALE) FOR THE DIFFUSION EQUATIONS.
-!
-!  INPUT VARIABLES
-!
-!       DECLARED:
-!  radius_mid_prev (HRU) : RUN OF RADIUS (UNLOGGED) OF THE MIDPOINTS OF
-!     THE SHELLS.
-!  num_zones (M) : NUMBER OF SHELLS.
-!  FC,FO,FW : USER PARAMETERS.  THE DIFFUSION COEFFICIENTS
-!  CAN BE MODIFIED BY THESE THREE PARAMETERS.
-!  VELM : RUN OF CONVECTIVE VELOCITIES.
-!
-!  OUTPUT VARIABLES
-!
-!       DECLARED
-!  am_diffusion_coeff (COD) : RUN OF DIFFUSION COEFFICENTS FOR ANGULAR
-!     MOMENTUM TRANSPORT.
-!  mixing_diffusion_coeff (COD2) : SAME, WITH RESPECT TO COMPOSITION
-!     TRANSPORT.
-!  radius_mid (RMID) : radius_mid(I) IS DEFINED AS THE AVERAGE OF
-!     radius_mid_prev(I) AND radius_mid_prev(I-1).
-!
-!  NOTE ON STORAGE: COD AND V ARE CALCULATED AT THE MIDPOINT
-!  BETWEEN MASS POINTS. ELEMENT I CONTAINS THE INFORMATION FOR THE
-!  (I,I-1) INTERFACE.
-!
-! radius_mid_prev is the run of (unlogged) shell-midpoint radii,
-! matching circulation_velocities.f90's radius(json).
+! The diffusion coefficients (velocity times the length scale r) of the
+! angular momentum and composition equations, at the interfaces
+! 2..num_zones; element i is the interface between zones i-1 and i.
+! Inputs: radius_mid_prev, the unlogged zone radii (radius in
+! circulation_velocities; legacy HRU), and the velocities in star%.
+! Outputs:
+!   radius_mid(i) = (radius_mid_prev(i) + radius_mid_prev(i-1))/2,
+!     the interface radius r (radius_mid(1) = 0);
+!   am_diffusion_coeff (legacy COD)
+!     = 4 pi difad_velocity_scale (U_ES + U_GSF + U_SS) r;
+!   mixing_diffusion_coeff (legacy COD2)
+!     = 4 pi difad_velocity_scale mixing_velocity_scale
+!       (es_mixing_scale U_ES + gsf_mixing_scale U_GSF
+!        + secular_shear_mixing_scale U_SS) r,
+!     each mechanism with its own mixing efficiency (2/91), or, with
+!     use_zahn_coupling_factor, am_diffusion_coeff times star%vfc.
+! difad_velocity_scale and mixing_velocity_scale are legacy FW and FC.
+! With use_constant_background_diffusion, 4 pi difad_velocity_scale
+! constant_background_diffusion_coeff is added to am_diffusion_coeff
+! only (MHP 9/14, 8/13). With no_am_transport_in_core,
+! am_diffusion_coeff is zero everywhere and only the mixing remains.
 subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
      am_diffusion_coeff, mixing_diffusion_coeff)
       use star_info_lib, only: star, json
@@ -546,7 +590,6 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
       do i = 2,num_zones
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
-! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
       con1 = c4pi*rotation_settings%difad_velocity_scale
       if (.not.rotation_settings%use_constant_background_diffusion) then
          if (.not.rotation_settings%use_zahn_coupling_factor) then
@@ -586,13 +629,14 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
                     star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
-! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED
+! The background coefficient is added after the mixing coefficient is
+! formed, so it does not mix (MHP 8/13).
                am_diffusion_coeff(i) = am_diffusion_coeff(i)+ &
                     con1*rotation_settings%constant_background_diffusion_coeff
             end do
          end if
       end if
-! OPTION TO SUPPRESS ANGULAR MOMENTUM TRANSPORT (BUT PERMIT MIXING).
+! Suppress angular momentum transport but keep the mixing.
       if (rotation_settings%no_am_transport_in_core) then
          do i = 2,num_zones
             am_diffusion_coeff(i) = 0.0d0
@@ -602,11 +646,15 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
 end subroutine diffusion_velocity_scales
 
 ! ---------------------------------------------------------------
-! This subroutine solves for the variable FC using the prescription
-! of Zahn (1992). FC = MIN(1, C/30*U/(2V-ALPHA*U)), where
-! ALPHA = 1/2 D(LN J/M)/D LN R and
-! V = 1/(6*RHO*R) *D/DR(RHO* R**2 * U) (U = diffusion velocity).
-! If FC = 0, skip calculation (no mixing).
+! The coupling factor star%vfc between the angular momentum and the
+! composition diffusion coefficients, with the prescription of Zahn
+! (1992), at the interfaces zone_min..zone_max:
+!   vfc = min(1, f_c U/|2V - alpha U|),
+! where U is the total circulation velocity (diffusion_velocity),
+!   V = (1/(6 rho r)) d(rho r^2 U)/dr,
+!   alpha = (1/2) d ln(r^2 omega)/d ln r,
+! and f_c = mixing_velocity_scale (legacy FC) plays the role of C/30.
+! vfc = 0 where U <= 0, and everywhere if f_c <= 0 (no mixing).
 subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity)
       use rotation_scratch_lib
@@ -616,12 +664,11 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       use math_lib
       implicit none
 
-! INPUT VARIABLES :
-! log_density - LOG10 OF DENSITY(GM/CM**3) AT ZONE CENTERS.
-! radius - UNLOGGED RUN OF RADII AT ZONE CENTERS.
-! diffusion_velocity - UNLOGGED RUN OF DIFFUSION VELOCITIES AT ZONE EDGES.
-! zone_min,zone_max - STARTING AND ENDING SHELLS.
-! angular_velocity - RUN OF ANGULAR VELOCITIES AT ZONE CENTERS.
+! log_density: log10 rho (g/cm^3) at the zone centres.
+! radius: the unlogged radius (cm) at the zone centres.
+! diffusion_velocity: the total velocity U at the interfaces (zone edges).
+! zone_min, zone_max: the first and last interface.
+! angular_velocity: omega at the zone centres.
       double precision, intent(in) :: log_density(json), radius(json), &
            diffusion_velocity(json)
       integer, intent(in) :: zone_min, zone_max
@@ -636,7 +683,7 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       double precision :: density_radius, d_density_r2, du_dr
       double precision :: denom_test
 
-! IF FC = 0, SKIP CALCULATION (NO MIXING).
+! f_c <= 0: no mixing.
 
       if (rotation_settings%mixing_velocity_scale.le.0.0D0) then
          do zone_index = zone_min, zone_max
@@ -644,21 +691,23 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
          end do
          return
       endif
-! DETERMINE ALPHA.
+! alpha = (1/2) d ln(r^2 omega)/d ln r
+!       = (1/2) d(omega r^2)/dr/(omega r)
+! at each interface, with omega the mean of the two zones. (The F77 code
+! lacked the 1/2; corrected in 2026.)
       do zone_index = zone_min, zone_max
          omega_mid = 0.5D0*(angular_velocity(zone_index)+ &
               angular_velocity(zone_index-1))
-! (Fixed in the 2026 bug sweep:) the header defines alpha = 1/2 dln(r^2 Omega)/
-! dln r (Zahn 1992) and the consumer forms |2V - alpha U| with
-! circ_velocity already holding 2V; the inherited expression lacked
-! the 1/2.
          half_dlnj_dlnr(zone_index) = 0.5D0*(angular_velocity(zone_index)* &
               radius(zone_index)**2-angular_velocity(zone_index-1)* &
               radius(zone_index-1)**2)/ &
               (radius(zone_index)-radius(zone_index-1))/ &
               (omega_mid*rot_scr%radius_interface(zone_index))
       end do
-! DETERMINE 2V.
+! 2V = (1/(3 rho r)) d(rho r^2 U)/dr at interface i, from rho r^2 U at
+! the zone centres i-1 and i, with U at a zone centre interpolated
+! linearly between the interfaces on either side; rho and r at the
+! interface are rot_scr's.
       interp_weight = (radius(zone_min)-rot_scr%radius_interface(zone_min))/ &
            (rot_scr%radius_interface(zone_min+1)-rot_scr%radius_interface(zone_min))
       v_minus = diffusion_velocity(zone_min)+interp_weight* &
@@ -677,8 +726,10 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
               density_radius/(radius(zone_index)-radius(zone_index-1))
          density_r2_v_minus = density_r2_v_plus
       end do
-! FOR FIRST AND LAST SHELLS, CALCULATE U*D/DR(RHO*R**2) AND ASSUME
-! DU/DR = VALUE DERIVED FROM THE LAST NEIGHBOR SHELL WITH NONZERO V.
+! At the first and last interfaces,
+!   2V = (1/3) [U d(rho r^2)/dr/(rho r) + r dU/dr],
+! with d(rho r^2)/dr across the interface and dU/dr the one-sided
+! difference to the neighbouring interface.
       density_radius = rot_scr%density_interface(zone_min)*rot_scr%radius_interface(zone_min)
       d_density_r2 = (exp(ln10*log_density(zone_min))*radius(zone_min)**2 - &
            exp(ln10*log_density(zone_min-1))*radius(zone_min-1)**2)/ &
@@ -695,8 +746,8 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
            (rot_scr%radius_interface(zone_max)-rot_scr%radius_interface(zone_max-1))
       circ_velocity(zone_max) = cc13*(diffusion_velocity(zone_max)*d_density_r2/ &
            density_radius + rot_scr%radius_interface(zone_max)*du_dr)
-! NOW COMPUTE RUN OF FC; THIS ASSUMES THAT FC = SAME FOR ALL
-! MECHANISMS AND IS LIMITED TO A MAXIMUM OF 1.
+! vfc, the same for all mechanisms and at most 1:
+!   vfc = f_c/max(|2V - alpha U|/U, f_c).
       do zone_index = zone_min, zone_max
          if (diffusion_velocity(zone_index).le.0.0D0) then
             star%vfc(zone_index) = 0.0D0
@@ -712,22 +763,22 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
 end subroutine zahn_coupling_factor
 
 ! ---------------------------------------------------------------
-! Solves for the quadrupole moment of a rotating star, using the
-! Sweet (1950) formulation as given in Zahn (1992). We are solving
-! the equation
-! 1/R D**2/DR2 (R*QUAD) -6*QUAD/R**2 - 4*PI*G*RHO*D(RHO)/DP * QUAD =
-!  -4/3*PI*G*R**2/(GM/R**2) * D/DR (RHO*OMEGA**2)
-! This can be expressed as D**2/DR2(QUAD) + 2/R DQUAD/DR -6*QUAD/R**2
-! +4*PI*G*RHO*QUAD = 4*PI*G*RHO*R**2 *(OMEGA**2 - 2*OMEGA/G *DOMEGA/DR)
-! using hydrostatic equilibrium and the ideal gas law
-! D RHO/DR = DP/DR = -RHO*G.
-! This defines a tridiagonal matrix system of the form
-! A*QUAD(I-1)+B*QUAD(I)+C*QUAD(I+1) = D, which can be solved in
-! the standard way for the run of QUAD(I) with appropriate boundary
-! conditions. The central B.C. is that QUAD(0)=0; the surface B.C.
-! is that there is no contribution to the quadrupole from outside the
-! final shell, such that QUAD(I) varies as 1/R**3 (the exterior l=2
-! solution).
+! The quadrupole moment Phi of the rotating star at the zone centres
+! (rot_scr%quadrupole_moment, legacy QUAD), with the Sweet (1950)
+! formulation as given in Zahn (1992). Phi solves
+!   (1/r) d^2(r Phi)/dr^2 - 6 Phi/r^2 + 4 pi G rho (d rho/dP) Phi
+!     = -(4/3) pi G (r^2/g) d(rho omega^2)/dr,
+! with g the local mean gravity (gravity, ~G m/r^2). With dP/dr =
+! -rho g this is
+!   Phi'' + (2/r) Phi' - 6 Phi/r^2 - 4 pi G (d rho/dr/g) Phi
+!     = -(4/3) pi G (r^2/g) d(rho omega^2)/dr,
+! which the code differences on the zone radii into the tridiagonal
+! system
+!   sub_diag Phi(i-1) + diag Phi(i) + super_diag Phi(i+1) = rhs.
+! Boundary conditions: Phi = 0 at the centre; at the surface no mass
+! lies outside, so Phi varies as 1/r^3 (the exterior l = 2 solution).
+! gravity is copied to rot_scr%local_gravity for circulation_velocities.
+! ierr = 1 if a pivot of the elimination is zero.
 subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib
       use star_info_lib, only: json
@@ -740,8 +791,8 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       integer, intent(in) :: num_zones
       integer, intent(out) :: ierr
 
-! Tridiagonal-solve work arrays (Thomas algorithm) for the inline
-! solve below.
+! The tridiagonal system and the work arrays of its solution (Thomas
+! algorithm).
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json), gamma_elim(json)
 
@@ -760,14 +811,20 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
               angular_velocity(zone_index)**2
       end do
       four_pi_g = exp(ln10*(c4pil+cgl))
-! CENTER NUMERICAL DERIVATIVES, USING THE SMALLER OF THE LEFT AND
-! RIGHT HANDED INTERVALS.
+! The derivatives are centred, with dr the smaller of the left and right
+! intervals dr_minus, dr_plus and weights w_plus = dr/dr_plus,
+! w_minus = dr/dr_minus:
+!   Phi''  = [(Phi(i+1) - Phi(i))/dr_plus - (Phi(i) - Phi(i-1))/dr_minus]/dr,
+!   Phi'   = [(Phi(i+1) - Phi(i))/dr_plus + (Phi(i) - Phi(i-1))/dr_minus]/2,
+! and d rho/dr and d(rho omega^2)/dr likewise.
+! Zone 1: the inner neighbour is the centre, r = 0, where Phi = 0, so it
+! drops out (sub_diag(1) = 0). There d rho/dr = (rho(2) - rho(1))/dr and
+! d(rho omega^2)/dr is taken as omega^2 d rho/dr.
       dr = min(radius(1),radius(2)-radius(1))
       weight_plus = dr/(radius(2)-radius(1))
       weight_minus = dr/radius(1)
       inv_dr2 = 1.0D0/dr**2
       dr_inv_r = 1.0D0/dr/radius(1)
-! CENTRAL BOUNDARY CONDITION : QUADRUPOLE GOES TO ZERO.
       sub_diag(1) = 0.0D0
       drho_dr = (exp(ln10*log_density(2))-exp(ln10*log_density(1)))/dr
       diag(1) = -inv_dr2*(weight_plus+weight_minus)+dr_inv_r* &
@@ -776,8 +833,8 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
       super_diag(1) = weight_plus*(inv_dr2+dr_inv_r)
       rhs(1) = -four_pi_g*drho_dr*(radius(1)*angular_velocity(1))**2/3.0D0/ &
            gravity(1)
-! GENERAL CASE : SECOND DERIVATIVE BY A THREE-POINT DIFFERENCE ON THE
-! (UNEQUAL) DR_MINUS/DR_PLUS SPACING, WEIGHTED BY THE SMALLER OF THE TWO.
+! The interior zones. The Phi'' difference divides by min(dr_minus,
+! dr_plus) rather than their mean, so it is exact only on a uniform grid.
       do zone_index = 2,num_zones-1
          dr_plus = radius(zone_index+1)-radius(zone_index)
          dr_minus = radius(zone_index)-radius(zone_index-1)
@@ -801,9 +858,10 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
          rhs(zone_index) = -d_density_omega2*four_pi_g* &
               radius(zone_index)**2/3.0D0/gravity(zone_index)
       end do
-! SURFACE B.C. D PHI/DR + 3 PHI/R = 0
-! THE SECOND AND THIRD TERMS IN THE EXPRESSION CANCEL IN THIS CASE.
-! OUTSIDE THE STAR PHI(R) = PHI(RSTAR)*(RSTAR/R)**3.
+! The surface: Phi' + 3 Phi/r = 0, and outside the star Phi(r) =
+! Phi(R) (R/r)^3. Phi'' uses a ghost point at R + dr with that value;
+! (2/r) Phi' - 6 Phi/r^2 becomes -12 Phi/r^2; the density and forcing
+! terms are dropped (rhs = 0).
       dr = radius(num_zones) - radius(num_zones-1)
       radius_plus = radius(num_zones)+dr
       outer_boundary_ratio = (radius(num_zones)/radius_plus)**3
@@ -813,7 +871,8 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
            radius(num_zones)**2
       super_diag(num_zones) = 0.0D0
       rhs(num_zones) = 0.0D0
-! SOLUTION OF SYSTEM FROM NUMERICAL RECIPES.
+! Solve by forward elimination and back substitution (the Thomas
+! algorithm, tridag of Numerical Recipes).
       if (diag(1).eq.0.0D0) then
          write(*,*) 'compute_quadrupole: singular first pivot'
          ierr = 1
@@ -832,7 +891,7 @@ subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, nu
          solution(matrix_row) = (rhs(matrix_row) - &
               sub_diag(matrix_row)*solution(matrix_row-1))/pivot
       end do
-! BACKSUBSTITUTION.
+! Back substitution.
       do matrix_row = num_zones-1,1,-1
          solution(matrix_row) = solution(matrix_row) - &
               gamma_elim(matrix_row+1)*solution(matrix_row+1)

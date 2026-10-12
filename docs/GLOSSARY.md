@@ -109,7 +109,7 @@ The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`
 | `old_*` (rotation: `old_omega`, ...) | Previous model's rotation state on the new grid, stored by `rezone` (`setup/rezone.f90:789-797`). Legacy `/OLDROT/`. |
 | `orig_*` | Start-of-step copies kept across the structure⇄rotation iterations (`evolve_step.f90:414-431`). Legacy `/ORIGSTART/`. |
 | `*_prev` | Previous iteration, sub-step or model, depending on the routine. Read the declaration. |
-| `rot_scr%*_mid` | Structure interpolated to the middle of the current rotation sub-step (`rotation/mid_timestep_model.f90`). |
+| `rot_scr%*_mid` | Structure interpolated in time to the current rotation sub-step, at the fraction of the step elapsed when the sub-step ends (`rotation/mid_timestep_model.f90`; "mid" is the legacy midpoint model's name). |
 | `eq_*`, `*_eqgrid` | Values on the equally spaced χ grid of the rotation solver. |
 
 ---
@@ -209,7 +209,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | K | cm² s⁻¹ | `star%thdif` | `THDIF` | rotation/viscos.f90 | Radiative thermal diffusivity 16σT³/(3κρ²c_P). |
 | EOS outputs | mixed | `eos_res(i_*)`: `i_log10_density`, `i_beta`, `i_fxion`(3), `i_gas_constant` (R/μ), `i_mu_ion_inv`, `i_mu_e_inv`, `i_eta`, `i_dlnrho_dlnt`, `i_dlnrho_dlnp`, `i_cp`, `i_grada`, and the second derivatives `i_*_dt`, `i_*_dp` | positional `eqstat` arguments | eos/eos_lib.f90:71-80 | Named slots of the 24-element `eos_get` result. `i_gas_constant` is R/μ, not μ. |
 | opacity outputs | mixed | `kap_res(i_kap)`, `i_log10_kap`, `i_dlnkap_dlnrho`, `i_dlnkap_dlnt` | `O`, `OL`, `QOD`, `QOT` | kap/kap_lib.f90:36-38 | κ, log₁₀ κ and the **logarithmic** derivatives κ_ρ and κ_T. |
-| mid-step copies | as base | `mid_scr%mu`, `cp`, `gradT`, `grada`, `gradr`, `eps_total`, `opacity`, `qdt`, `thdif`, `conv_vel`, `visc`, `eps_plus_neu_grav` (the `star%` names they interpolate; `rot_scr%old_*` holds the previous model's) | `AMUM`, `CPM`, `DELM`, `DELAM`, `DELRM`, `ESUMM`, `OM`, `QDTM`, `THDIFM`, `VELM`, `VISCM`, `EPSM` (`/MDPHY/`) | rotation/mid_timestep_model.f90 | μ, c_P, ∇, ∇_ad, ∇_rad, ε_nuc, κ, ∂lnρ/∂lnT, K, v_conv, ν interpolated to mid-sub-step. `eps_plus_neu_grav` is ε_nuc+ε_ν+ε_grav; `eps_total` is ε_nuc only. Named `mix_scr%amum` etc. until 2026-10. |
+| mid-step copies | as base | `mid_scr%mu`, `cp`, `gradT`, `grada`, `gradr`, `eps_total`, `opacity`, `qdt`, `thdif`, `conv_vel`, `visc`, `eps_plus_neu_grav` (the `star%` names they interpolate; `rot_scr%old_*` holds the previous model's) | `AMUM`, `CPM`, `DELM`, `DELAM`, `DELRM`, `ESUMM`, `OM`, `QDTM`, `THDIFM`, `VELM`, `VISCM`, `EPSM` (`/MDPHY/`) | rotation/mid_timestep_model.f90 | μ, c_P, ∇, ∇_ad, ∇_rad, ε_nuc, κ, ∂lnρ/∂lnT, K, v_conv, ν interpolated to the sub-step (its end; see `rot_scr%*_mid`). `eps_plus_neu_grav` is ε_nuc+ε_ν+ε_grav; `eps_total` is ε_nuc only. Named `mix_scr%amum` etc. until 2026-10. |
 
 ### 2.4 Composition
 
@@ -219,7 +219,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | — | — | `n_species_basic` (11), `n_species_extended` (15) | `NSPEC` (local) | state/star_info_lib.f90:54-55 | Species counts of the two layouts. |
 | X_i at step start | mass fraction | `star%xa_start` | `HCOMPP` (`/OLDMOD/`) | core/evolve_step.f90:245 | Start-of-step composition. Burning and mixing start from it, and Newton levels > 2 reset `xa` to it (`henyey_iteration.f90:136`). Also a rotation sub-step checkpoint (trap 9). |
 | X_i at step start (kept) | mass fraction | `star%orig_composition` | `HCOMPP0` (`/ORIGSTART/`) | core/evolve_step.f90:420 | Restores `xa_start` on structure⇄rotation passes after the first. |
-| X_i snapshot | mass fraction | `rot_scr%composition_snapshot` | `HCOMPS` (`/OLDAB/`) | rotation/* | Composition saved before a rotational-diffusion iteration; restored between iterations. |
+| X_i snapshot | mass fraction | `rot_scr%composition_snapshot` | `HCOMPS` (`/OLDAB/`) | rotation/* | The sub-step's burned and settled composition; secular_transport restores slots 1–4 from it at each later iteration. |
 | X_env | mass fraction | `star%envelope_hydrogen_fraction` | `XENV` | core/read_starting_model.f90 | Surface X used for the envelope and atmosphere. |
 | Y_env | mass fraction | `star%envelope_helium_fraction` | `YENV` (`/COMP2/`) | core/read_starting_model.f90 | 1 − X_env − Z_env − X(³He). |
 | Z_env | mass fraction | `star%envelope_metal_fraction` | `ZENV` | core/read_starting_model.f90 | Surface Z. |
@@ -296,7 +296,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | max ΔΩ/Ω | — | `star%max_domega_frac` | `DWMAX` | util/timestep_limit_omega.f90 | Largest fractional change of Ω since the previous model; drives the rotation timestep. |
 | — | Gyr | `star%disk_gate_age_gyr` | `SAGE` (`/DISK/`) | core/evolve_step.f90:457 | Age compared with `disk_locking_age_gyr` by `disk_locking_engaged()`. |
 | Ω at sub-step start | rad s⁻¹ | `rot_scr%omega_substep_start` | `WMST` (`/OLDROT2/`) | rotation/evolve_angular_momentum.f90 | Ω at the start of the current diffusion sub-step; read at the surface for the wind torque. |
-| mid-sub-step structure | as base | `rot_scr%log_density_mid`, `log_pressure_mid`, `log_temperature_mid`, `log_radius_mid`, `luminosity_lsun_mid` (linear), `omega_mid`, `mean_gravity_mid`, `eta_squared_mid`, `moment_of_inertia_mid`, `mean_radius_mid`, `di_domega_mid` (dI/dΩ), `convective_flag_mid`, `am_transport_convective_flag_mid` | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to mid-sub-step for `secular_transport`. |
+| mid-sub-step structure | as base | `rot_scr%log_density_mid`, `log_pressure_mid`, `log_temperature_mid`, `log_radius_mid`, `luminosity_lsun_mid` (linear), `omega_mid`, `mean_gravity_mid`, `eta_squared_mid`, `moment_of_inertia_mid`, `mean_radius_mid`, `di_domega_mid` ((Ω/2) dI/dΩ), `convective_flag_mid`, `am_transport_convective_flag_mid` | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to the sub-step (its end) for `secular_transport`. |
 
 ### 2.8 Rotational transport (`secular_transport` pipeline)
 

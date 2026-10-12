@@ -2,16 +2,16 @@
 ! shell_quadrature
 !----------------------------------------------------------------------
 ! The two quadratures of the rotational shape factors
-! (rotation_shape_factors), formerly in numerics_lib:
-!   refine_distortion_integral (formerly trapzd): one refinement of the
-!       trapezoid rule for the distortion integral
-!       aint = int_0^r0 (rho/m) r0'**7 omega**2 (3+eta2+2)/(eta2+2) dr0'
-!       across a shell, with rho, m, omega**2 and eta2+2 interpolated
-!       linearly between the shell's two edges;
-!   average_over_equipotential (formerly qgauss): the 10-point
-!       Gauss-Legendre integrals of g*s, s/g and s over the colatitude
-!       on a shell's equipotential, g and s from equipotential_integrand
-!       (formerly func).
+! (rotation_shape_factors):
+!   refine_distortion_integral (legacy trapzd): one refinement of the
+!       trapezoid rule for a shell's part of the distortion integral
+!       aint = int_0^r0 (rho/m) omega^2 r0'^7 (5 + eta_2)/(2 + eta_2) dr0',
+!       with rho, omega^2 and eta_2 + 2 linear in r0' across the shell
+!       and m linear in r0'^2;
+!   average_over_equipotential (legacy qgauss): the 10-point
+!       Gauss-Legendre integrals of g, 1/g and 1 over a shell's level
+!       surface, with the effective gravity g and the area element from
+!       equipotential_integrand (legacy func).
 module shell_quadrature
       use star_info_lib, only: json
       use physical_constants
@@ -23,14 +23,16 @@ module shell_quadrature
 contains
 
 !----------------------------------------------------------------------
-! refine_distortion_integral (formerly trapzd)
+! refine_distortion_integral (legacy trapzd)
 !----------------------------------------------------------------------
-! Numerical Recipes' trapzd for the distortion integral over [b1,b2]:
-! n = 1 evaluates the integrand q at r0 = b2 and returns the
-! two-point estimate s; each later n (called in sequence 2, 3, ...)
-! adds the 2**(n-2) new midpoints to s, with rho/sm/w2/eta22 linearly
-! interpolated between their values at b1 (rhop, smp, w2p, eta22p) and
-! at b2. (The number of midpoints was a SAVEd counter.)
+! Numerical Recipes' trapzd for the distortion integral over the shell
+! [b1, b2] = [r0(i-1), r0(i)], called with n = 1, 2, ... in turn.
+! n = 1 evaluates the integrand q at b2 and returns the one-panel sum
+! s = (b2 - b1)(qp + q)/2, qp being the integrand at b1 (from the
+! previous shell). Each later n adds the 2^(n-2) new midpoints to s.
+! Between the edges, rho, omega^2 (w2) and eta_2 + 2 (eta22) are linear
+! in r0 and the enclosed mass sm is linear in r0^2, from their values at
+! b1 (rhop, w2p, eta22p, smp) and at b2.
 subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p, eta22, &
      eta22p, q, qp)
       double precision, intent(in) :: b1, b2
@@ -41,7 +43,7 @@ subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p,
       double precision, intent(inout) :: q
       double precision, intent(in) :: qp
 
-! the number of midpoints added at refinement n
+! The number of midpoints added at refinement n.
       integer :: it
 
       double precision :: r0, r03, tnm, dr, del, y, sum, drho, dm, &
@@ -51,14 +53,15 @@ subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p,
       r0 = b2
       r03 = r0**3
       if (n.eq.1) then
-!  aint = int(0=>r0) (rho/m)*r0'**7*omega**2*(5+eta2)/(2+eta2) dr0'
-!  q is the integrand (ro'**7,etc.) evaluated at r0(i)
-!  aint and its derivatives w/r/to r and theta are needed to find <g>
+! The integrand at r0 = b2,
+!   q = rho omega^2 r0^7 (5 + eta_2) / (m (2 + eta_2)),
+! with eta22 = eta_2 + 2. q is also d(aint)/dr0 at b2, which
+! equipotential_integrand needs, and the next shell's qp.
        q = (rho*w2*r03*(3.0d0+eta22)/(sm*eta22))*r03*r0
-!        q(i) = exp(cln*(hd(i)-hs(i)))*omega(i)**2*r0(i)**6
-!    *   *(5.0d0+eta2(i))/(2.0d0+eta2(i))
        s = 0.5d0*(b2-b1)*(qp+q)
       else
+! it = 2^(n-2) new midpoints, del apart, the first at b1 + del/2; the
+! interpolation slopes are per unit r0 (per unit r0^2 for the mass).
        it = ishft(1, n-2)
        tnm = dfloat(it)
        dr = b2 - b1
@@ -71,20 +74,18 @@ subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p,
        dw2 = (w2 - w2p)/dr
        do j = 1, it
           r03t = y**3
-! interpolate rho,m,omega,eta2+2 between shell i and shell i-1
-! (Fixed in the 2026 bug sweep:) the linear interpolants must be evaluated
-! at the offset (y - b1) of the current abscissa, as smt already is;
-! the inherited `*del` used the constant sub-interval width instead.
+! rho, m, omega^2 and eta_2 + 2 at the midpoint y. (Fixed in 2026: the
+! legacy code used the sub-interval width del in place of y - b1.)
           rhot = rhop+drho*(y - b1)
           smt = smp+dm*(y**2 - b1**2)
           w2t = w2p + dw2*(y - b1)
           eta22t = eta22p + deta2*(y - b1)
-! calculate q between shells
+! The integrand at y.
           q0 = (rhot*w2t*r03t*(3.0d0+eta22t)/(smt*eta22t))*r03t*y
-! q0 = rho*w2*r07t*(3.0d0+eta22)/(sm*eta22)
           sum = sum + q0
           y = y+del
        end do
+! The refined sum s_n = (s_(n-1) + del * sum of the new values) / 2.
        s = 0.5d0*(s+del*sum)
       end if
 
@@ -92,13 +93,17 @@ subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p,
 end subroutine refine_distortion_integral
 
 !----------------------------------------------------------------------
-! average_over_equipotential (formerly qgauss)
+! average_over_equipotential (legacy qgauss)
 !----------------------------------------------------------------------
-! 10-point (5-point-symmetric) Gauss-Legendre quadrature over [0,b]:
-! g0g = integral of g*s, ginvg = integral of s/g and sphig = integral
-! of s, with g and s from equipotential_integrand at the two abscissas
-! symmetric about the midpoint. r0, hs, aint, q, w2, a and i go to the
-! integrand unchanged.
+! 10-point Gauss-Legendre quadrature over colatitude [0, b] on the level
+! surface of shell i, evaluating the integrand at the pairs of nodes
+! symmetric about b/2:
+!   g0g = int g s dtheta,  ginvg = int s/g dtheta,  sphig = int s dtheta,
+! with the effective gravity g and area element s from
+! equipotential_integrand. With b = pi/2 (s covers both hemispheres)
+! these are int g dS, int dS/g and the area S. r0, hs (log10 m), aint,
+! q, w2 (omega^2), a (the distortion amplitude A) and i pass through to
+! the integrand.
 subroutine average_over_equipotential(g0g, ginvg, sphig, b, r0, hs, aint, q, w2, a, i)
       double precision, intent(out) :: g0g, ginvg, sphig
       double precision, intent(in) :: b
@@ -106,7 +111,7 @@ subroutine average_over_equipotential(g0g, ginvg, sphig, b, r0, hs, aint, q, w2,
       double precision, intent(in) :: aint, q, w2, a
       integer, intent(in) :: i
 
-! the positive nodes on [-1,1] and their weights
+! The positive nodes on [-1,1] and their weights.
       double precision, parameter :: x(5) = [.14887433898163d0, .43339539412925d0, &
            .67940956829902d0, .86506336668899d0, .97390652851717d0]
       double precision, parameter :: w(5) = [.29552422471475d0, .26926671931d0, &
@@ -135,13 +140,16 @@ subroutine average_over_equipotential(g0g, ginvg, sphig, b, r0, hs, aint, q, w2,
 end subroutine average_over_equipotential
 
 !----------------------------------------------------------------------
-! equipotential_integrand (formerly func)
+! equipotential_integrand (legacy func)
 !----------------------------------------------------------------------
-! At colatitude x on the distorted equipotential of shell i,
-! r = r0(i)*(1 - a*P2(cos x)) (the Roche/centrifugal-distortion
-! approximation of the shape formalism): the effective gravity
-! g = |grad(phi)| (local_gravity) and the area-element factor s
-! (area_element).
+! At colatitude theta on the level surface of shell i,
+! r = r0(i) (1 - a P2(cos theta)), the effective gravity g = |grad Psi|
+! (local_gravity) and the area element s = dS/dtheta (area_element), for
+!   Psi = -G m/r + (4 pi/3) aint(r0) P2/r^3 - omega^2 r^2 sin^2(theta)/2:
+! the enclosed mass, the quadrupole of the distorted interior and the
+! centrifugal potential (the shells outside r0 do not enter). aint
+! depends on r0 with d(aint)/dr0 = q, and r0 on (r, theta) through the
+! shape, with a proportional to r0^3.
 subroutine equipotential_integrand(colatitude, local_gravity, area_element, r0, log_mass, &
      aint, q, w2, a, i)
       double precision, intent(in) :: colatitude
@@ -153,23 +161,30 @@ subroutine equipotential_integrand(colatitude, local_gravity, area_element, r0, 
 
       cs = dcos(colatitude)*dsin(colatitude)
       ss = dsin(colatitude)**2
-! P2 = .5*(3COS(X)**2 - 1) = .5(3*(1-SIN(X)**2) - 1) = 1 - 1.5*SIN(X)**2
+! P2 = (3 cos^2(theta) - 1)/2 = 1 - 1.5 sin^2(theta).
       p2 = 1.0d0 - 1.5d0*ss
-! DERIVATIVES OF R0 WITH RESPECT TO R AND THETA
+! The derivatives of r0: qr0r = dr0/dr = 1/(1 - 4 a P2) at fixed theta,
+! and qr0t = -(1/r) dr0/dtheta = 3 a cos(theta) sin(theta) qr0r/(1 - a P2)
+! at fixed r.
       qr0r = 1.0d0/(1.0d0 - 4.0d0*a*p2)
       qr0t = 3.0d0*cs*a*qr0r/(1.0d0 - a*p2)
-! USE THE RELATION FOR R ON AN EQUIPOTENTIAL
+! r on the level surface, and const = (4 pi/3)/r^4.
       r = r0(i)*(1.0d0 - a*p2)
       r2 = r**2
       const = c4pi*cc13/(r2*r2)
-! CALCULATE THE DERIVATIVES OF PHI WITH RESPECT TO R AND THETA
-! D(PHI)/DR = GM/R2 + 12PI*G*P2*AINT/5R**4 -4PI*G*P2*Q*(DR0/DR)/5R**3
-! -OMEGA**2*R*SIN(THETA)**2 - ASSUME DR0/DR = 1
+! dPsi/dr = G m/r^2 - (4 pi/3) P2 (3 aint - r q qr0r)/r^4
+!           - omega^2 r sin^2(theta).
       qphir = exp(ln10*(cgl+log_mass(i)))/r2 - const*p2*(3.0d0*aint &
            - r*q*qr0r) - w2*r*ss
-! D(PHI)/D(THETA) = 4PI*G*3DCOS(THETA)DSIN(THETA)*AINT/5R**4 -
-! 4PI*G*P2*Q*DR0/D(THETA)/5R**4 - OMEGA**2*R*DCOS(THETA)SIN(THETA)
+! (1/r) dPsi/dtheta = (4 pi/3)(P2 q qr0t - 3 aint cos(theta) sin(theta))/r^4
+!                     - omega^2 r cos(theta) sin(theta).
+! Unlike the radial r q qr0r term, the P2 q qr0t term carries no factor
+! r (and (1/r) d/dtheta of aint(r0) would give -r P2 q qr0t).
       qphith = const*(p2*q*qr0t-3.0d0*aint*cs) - w2*r*cs
+! g = |grad Psi|, and s = 4 pi r sin(theta) r0 sqrt((1 - a P2)^2
+! + (3 a cos(theta) sin(theta))^2): the area per unit colatitude of the
+! band at theta and its mirror below the equator, with
+! dr/dtheta = 3 a r0 cos(theta) sin(theta) at fixed a.
       local_gravity = dsqrt(qphir**2 + qphith**2)
       area_element = c4pi*r*dsin(colatitude)*r0(i)* &
            dsqrt((1.0d0-a*p2)**2 + (3.0d0*cs*a)**2)

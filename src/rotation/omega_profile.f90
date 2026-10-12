@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! omega_profile
 !----------------------------------------------------------------------
-! The rotation curve from the angular momentum: omega_from_j over the
-! whole star, convection zones as solid bodies (enforce_rotation_profile)
-! and radiative shells one at a time (solid_body_omega).
+! The rotation curve omega(r) from the specific angular momentum j.
+! omega_from_j walks the star from the center out: each radiative zone
+! is solved alone (solid_body_omega), and each convection zone as a
+! whole under the imposed rotation law (enforce_rotation_profile).
 module omega_profile
       use rotation_configuration, only: rotation_settings
       implicit none
@@ -13,9 +14,15 @@ module omega_profile
 contains
 
 ! ---------------------------------------------------------------
-! GETROT takes the angular momentum distribution and finds the
-! rotation curve that corresponds to it. Convective regions have
-! solid body rotation enforced on them.
+! omega_from_j (legacy getrot): the rotation curve for a given
+! distribution of specific angular momentum j (cm^2/s).
+! Each radiative zone (am_transport_convective_flag false) gets the
+! omega at which I(omega) omega = j dm (solid_body_omega). Each run of
+! convective zones (overshoot included) goes to enforce_rotation_profile,
+! which imposes the convection-zone rotation law on the run as a whole.
+! Updates omega (rad/s), j, and each zone's shape and inertia:
+! eta_squared (Radau's eta_2), mean_radius (r0), moment_of_inertia (I)
+! and qiw (di_domega of zone_moments_of_inertia).
 subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, am_transport_convective_flag, num_zones, &
      eta_squared, moment_of_inertia, omega, qiw, mean_radius)
@@ -37,26 +44,25 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
       do zone_index = 1,num_zones
          if (.not.in_convection_zone) then
             if (.not.am_transport_convective_flag(zone_index)) then
-! RADIATIVE SHELL
+! A radiative zone: solve it alone.
                zone_start = zone_index
                zone_end = zone_index
                call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                     log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                     moment_of_inertia,omega,qiw,mean_radius,num_zones)
             else
-! CONVECTION ZONE START - SET LCONVZ TO T
+! The first zone of a convection zone: note where it starts.
                in_convection_zone = .true.
                zone_start = zone_index
             endif
          else if (.not.am_transport_convective_flag(zone_index)) then
-! THE PREVIOUS SHELL WAS CONVECTIVE.  IF THIS ONE IS RADIATIVE, ENFORCE
-! THE APPROPRIATE ROTATION LAW IN THE ENTIRE CONVECTION ZONE PRECEDING IT.
+! The convection zone ended at the zone below: impose the rotation law
+! on all of it.
             zone_end = zone_index - 1
-! JNT 09/25 FOR 05/15 CALL WCZIMP INSTEAD OF WCZ
             call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
-! NOW FIND OMEGA IN THE CURRENT SHELL
+! Then solve the current, radiative, zone alone.
             zone_start = zone_index
             zone_end = zone_index
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
@@ -64,10 +70,11 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
             in_convection_zone = .false.
          else if (zone_index.eq.num_zones) then
-! SPECIAL CASE OF LAST SHELL CONVECTIVE - ENFORCE SOLID-BODY ROTATION
-! IN CZ AS ABOVE.
+! The convection zone reaches the surface: impose the rotation law on
+! it as above. (A convection zone made of the surface zone alone starts
+! at zone_index = num_zones and never reaches this branch, so that
+! zone's omega is left as it was.)
             zone_end = num_zones
-! JNT 09/25 FOR 05/15 CALL WCZIMP INSTEAD OF WCZ
             call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
@@ -77,11 +84,19 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
 end subroutine omega_from_j
 
 ! ---------------------------------------------------------------
-! Given the angular momentum per unit mass of zones zone_start..zone_end,
-! returns the single (solid-body) rotation rate omega that carries the
-! same total angular momentum, iterating on omega with shape (r0, eta2)
-! and zone_moments_of_inertia (I, dI/domega) at each guess. r0 and eta2
-! are later needed by rotation_shape_factors.
+! solid_body_omega: the single rotation rate omega of zones
+! zone_start..zone_end that carries their total angular momentum
+! J = sum_i dm_i j_i. Newton iteration on J(omega) = omega I(omega):
+! at each guess, shape gives the zones' r0 (mean_radius) and eta_2
+! (eta_squared), and zone_moments_of_inertia their I and di_domega.
+! The iteration stops when |J - omega sum_i I_i| <= J times
+! rot_scr%moment_of_inertia_tolerance, or after 20 corrections (then
+! the last guess is kept). On return omega, I, di_domega, r0 and eta_2
+! belong to the last guess, and j_i = I_i omega / dm_i.
+! Disk locking (MHP 9/94): while disk_locking_engaged(), a surface
+! convection zone of more than one zone is held at
+! rotation_settings%disk_omega_rad_s with no iteration, and its j is
+! reset to match; the disk takes up the difference in J.
 subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
@@ -116,15 +131,15 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       total_angular_momentum = 0.0d0
       omega_sum = 0.0d0
       iteration_count = 0
-!  FIND THE TOTAL ANGULAR MOMENTUM OF SHELLS JSTART TO JEND.
-!  ALSO MAKE A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES.
+! The total angular momentum J of the zones, and the mean of their
+! current omega as the first guess.
       do zone_idx = zone_start,zone_end
          total_angular_momentum = total_angular_momentum + &
               shell_mass(zone_idx)*specific_angular_momentum(zone_idx)
          omega_sum = omega_sum + omega(zone_idx)
       end do
-!  MHP 9/94 OPTION ADDED TO ENFORCE DISK LOCKING UP TO A GIVEN AGE IN
-!  THE SURFACE C.Z. ONLY.
+! Disk locking (MHP 9/94) applies to the surface convection zone only:
+! a run of more than one zone that ends at the surface.
       disk_locked = .false.
       if(zone_end.eq.num_zones .and. zone_start.ne.zone_end .and. &
            disk_locking_engaged())disk_locked = .true.
@@ -137,23 +152,25 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       do zone_idx = zone_start,zone_end
          omega(zone_idx) = omega_guess
       end do
-!  DETERMINE THE MOMENTS OF INERTIA OF SHELLS JSTART TO JEND WITH OMEGA
-!  EQUAL TO WGUESS.
+! The shape and the moments of inertia of the zones at omega_guess.
       call shape(log_density,log_radius,log_mass,zone_start,zone_end,omega, &
            eta_squared,mean_radius)
       call zone_moments_of_inertia(eta_squared,log_radius,log_mass,shell_mass,zone_start, &
            zone_end,omega,mean_radius,moment_of_inertia,di_domega)
       total_moment_of_inertia = 0.0d0
       total_di_domega = 0.0d0
-!  FIND TOTAL MOMENT OF INERTIA(CZI) AND TOTAL DI/DOMEGA (CZQIW)
+! Their totals, sum I and sum di_domega.
       do zone_idx = zone_start,zone_end
          total_moment_of_inertia = total_moment_of_inertia + &
               moment_of_inertia(zone_idx)
          total_di_domega = total_di_domega + di_domega(zone_idx)
       end do
       new_angular_momentum = omega_guess*total_moment_of_inertia
-!  CHECK IF THE TOTAL ANGULAR MOMENTUM FOUND WITH OMEGA = WGUESS IS CLOS
-!  ENOUGH.  IF NOT, CALCULATE DELTA OMEGA AND TRY AGAIN WITH A NEW WGUES
+! If omega_guess misses J by more than the tolerance, take a Newton step
+!   delta_omega = (J - omega I) / (I + omega di_domega)
+! with I and di_domega the totals. (di_domega is (omega/2) dI/domega,
+! not dI/domega; see zone_moments_of_inertia. For stellar omega the
+! second term is negligible and the step is in effect (J - omega I)/I.)
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
       if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
@@ -169,6 +186,7 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       end if
       exit omega_iter
       end do omega_iter
+! Make j consistent with the final omega and I.
       do zone_idx = zone_start,zone_end
          specific_angular_momentum(zone_idx) = &
               moment_of_inertia(zone_idx)*omega(zone_idx)/shell_mass(zone_idx)
@@ -178,13 +196,28 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
 end subroutine solid_body_omega
 
 ! ---------------------------------------------------------------
-! JNT 2025/09/03 copy of 2025/05/14 to make the code enforce specific
-! rotation profiles. Extends the original wcz.f (base solid-body/
-! constant-J-per-mass/power-law behaviour, now the mode-0 branches
-! below) with three additional,
-! explicitly-selected imposed-rotation-profile modes (solid_body_mode_flag,
-! originally IMPJMOD = 1, 2, or 3) used by evolve_angular_momentum.f90/omega_from_j.f90 in place
-! of wcz.
+! enforce_rotation_profile (legacy wczimp; JNT 2025/09 from the 2015/05
+! version): imposes the rotation law on the convection zone
+! istart..iend, conserving its angular momentum J_cz (in mode 3, the
+! star's). With alpha = rotation_settings%cz_rotation_law_exponent:
+!   - a solid body (solid_body_omega over the zone) if alpha >= 0,
+!     force_solid_body_rotation is set, solid_body_mode_flag = 1, or the
+!     zone does not reach the surface (iend < num_zones);
+!   - otherwise (the surface convection zone, alpha < 0):
+!     solid_body_mode_flag = 2: omega = C r^alpha in the zone, and the
+!       interior (zones 1..istart-1) a separate solid body with its own
+!       angular momentum;
+!     solid_body_mode_flag = 3: omega = C r^alpha in the zone, and the
+!       interior a solid body at the rate of the zone's base, with C set
+!       by the angular momentum of the whole star;
+!     alpha <= -2 and solid_body_mode_flag = 0: constant specific
+!       angular momentum, j = J_cz / M_cz;
+!     else: omega = C r^alpha, C = J_cz / sum_i r_i^alpha I_i.
+! The imposed laws use the I of the previous call for C, and then
+! re-solve each zone's omega alone at fixed j (solid_body_omega), as I
+! depends on omega; omega follows the law up to that change in I.
+! (solid_body_mode_flag is legacy IMPJMOD; legacy wcz lacked modes 2
+! and 3.)
 subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones)
@@ -204,26 +237,24 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
            mean_radius(json)
       integer, intent(in) :: num_zones
 ! --- locals ---
+! In the power-law branches cz_total_mass accumulates sum r^alpha I,
+! the normalization of omega = C r^alpha; only in the constant-j branch
+! is it the mass of the zone. power_law_norm is C (or j there).
       double precision :: cz_total_am, cz_total_mass, power_law_norm
       integer :: zone_idx, zone_start, zone_end
 
-! JNT 2025/09/03 copy of 2025/05/14 TO MAKE THE CODE ENFORCE
-! SPECIFIC ROTATION PROFILES
-
-! JNT 2025/09/03 COPY OF 2015/05/07 ADD IEND.LT.M TO ENFORCE SB
-! ROTATION IN CONVECTIVE ZONES THAT ARE NOT THE SURFACE CONVECTIVE
-! ZONE EVEN IF WALPCZ IS TURNED ON (I.E. WALPCZ NOW ONLY AFFECTS
-! SURFACE CONVECTION ZONES)
-! JVS 2026/02/13: REVERTED GT TO GE
+! Solid body. alpha >= 0 rather than > 0 (JVS 2026/02/13), so alpha = 0
+! takes this branch. A convection zone below the surface always rotates
+! as a solid body (JNT 2015/05/07): the imposed law and modes 2 and 3
+! act on the surface convection zone only.
       if((rotation_settings%cz_rotation_law_exponent.ge.0.0d0) .or. (rotation_settings%force_solid_body_rotation) .or. &
            (rotation_settings%solid_body_mode_flag.eq.1) .or. (iend.lt.num_zones)) then
-!  SOLID BODY ROTATION IN CONVECTIVE REGIONS.
          call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
               moment_of_inertia,omega,qiw,mean_radius,num_zones)
-! JNT 2025/09/03 COPY OF 2015/05/14 ADD OPTION TO MAKE EVERYTHING
-! BELOW THE SURFACE CONVECTION ZONE ROTATE AS A SOLID BODY,
-! DETACHED FROM WHAT IS HAPPENING IN THE CONVECTION ZONE
+! Mode 2: omega = C r^alpha in the convection zone,
+! C = J_cz / sum_i r_i^alpha I_i, and everything below it a solid body
+! detached from the convection zone.
       else if(rotation_settings%solid_body_mode_flag.eq.2)then
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = exp(ln10*rotation_settings%cz_rotation_law_exponent*log_radius(istart))* &
@@ -236,7 +267,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  moment_of_inertia(zone_idx)
          end do
 
-!  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
+! Impose omega = C r^alpha and j = omega I / dm, then re-solve each
+! zone's omega at fixed j.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
             omega(zone_idx) = power_law_norm*exp(ln10*rotation_settings%cz_rotation_law_exponent* &
@@ -249,14 +281,18 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
+! The interior rotates as one solid body with its own angular momentum.
          if (istart.gt.1) then
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,1,istart-1,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          endif
-! JNT 2025/09/04 REPLICATING 2015/05/14 ADD OPTION TO MAKE
-! EVERYTHING BELOW THE SURFACE CONVECTION ZONE ROTATE AS A
-! SOLID BODY AT THE RATE OF THE BASE OF THE CONVECTION ZONE.
+! Mode 3: the whole star (zones 1..iend) shares its angular momentum
+! between the convection zone, omega = C r^alpha, and the interior
+! (zones 1..istart), held at the rate of the zone's base,
+! C r(istart)^alpha:
+!   C = J / (r(istart)^alpha sum_{i<=istart} I_i
+!            + sum_{istart<i<=iend} r_i^alpha I_i).
       else if(rotation_settings%solid_body_mode_flag.eq.3) then
          cz_total_am = specific_angular_momentum(1)*shell_mass(1)
          cz_total_mass = exp(ln10*rotation_settings%cz_rotation_law_exponent*log_radius(istart))* &
@@ -277,7 +313,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  exp(ln10*rotation_settings%cz_rotation_law_exponent*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
-!  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
+! Impose omega = C r^alpha and j = omega I / dm in the convection zone,
+! then re-solve each zone's omega at fixed j.
 
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
@@ -291,6 +328,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
+! Set the interior to the rate of the zone's base and re-solve it as one
+! solid body.
          if (istart.gt.1) then
             do zone_idx = 1,(istart-1)
                omega(zone_idx) = omega(istart)
@@ -303,8 +342,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
          endif
 
       else if((rotation_settings%cz_rotation_law_exponent.le.-2.0d0) .and. (rotation_settings%solid_body_mode_flag.eq.0))then
-!  CONSTANT SPECIFIC ANGULAR MOMENTUM PER UNIT MASS IN THE C.Z.
-!  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
+! Constant specific angular momentum in the convection zone: sum the
+! zone's angular momentum J_cz and mass M_cz.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = shell_mass(istart)
          do zone_idx = istart+1,iend
@@ -312,7 +351,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  specific_angular_momentum(zone_idx)*shell_mass(zone_idx)
             cz_total_mass = cz_total_mass + shell_mass(zone_idx)
          end do
-!  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
+! Set j = J_cz / M_cz and omega = j dm / I, then re-solve each zone's
+! omega at fixed j.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
             specific_angular_momentum(zone_idx) = power_law_norm
@@ -325,12 +365,10 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
       else
-!  GENERAL LAW FOR OMEGA IN C.Z.: OMEGA = C*R**WALPCZ,WHERE C IS A CONSTANT
-!  FOR THE ENTIRE C.Z. IF THIS HOLDS, THE RUN OF J/M CAN BE FOUND BY
-!  SOLVING FOR THE CONSTANT BY REQUIRING THAT THE TOTAL J OF THE C.Z. BE
-!  CONSERVED AND THEN USING J/M=C*R**WALPCZ*(MOMENT OF INERTIA PER UNIT
-!  MASS).
-!  FIND TOTAL MASS AND ANGULAR MOMENTUM OF C.Z.
+! The general law omega = C r^alpha, C constant over the convection
+! zone. Conserving the zone's angular momentum,
+!   C = J_cz / sum_i r_i^alpha I_i,
+! and then j_i = C r_i^alpha I_i / dm_i.
          cz_total_am = specific_angular_momentum(istart)*shell_mass(istart)
          cz_total_mass = exp(ln10*rotation_settings%cz_rotation_law_exponent*log_radius(istart))* &
               moment_of_inertia(istart)
@@ -341,7 +379,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
                  exp(ln10*rotation_settings%cz_rotation_law_exponent*log_radius(zone_idx))* &
                  moment_of_inertia(zone_idx)
          end do
-!  ASSIGN NEW RUN OF J/M IN THE C.Z. AND FIND THE NEW RUN OF OMEGA.
+! Impose omega = C r^alpha and j = omega I / dm, then re-solve each
+! zone's omega at fixed j.
          power_law_norm = cz_total_am/cz_total_mass
          do zone_idx = istart,iend
             omega(zone_idx) = power_law_norm*exp(ln10*rotation_settings%cz_rotation_law_exponent* &

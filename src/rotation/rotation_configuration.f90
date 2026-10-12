@@ -35,8 +35,10 @@ module rotation_configuration
 ! for exponents between -2 and 0, solid body at 0 and above, constant
 ! specific angular momentum at -2 and below (the former walpcz); the
 ! whole star a solid body (force_solid_body_rotation, or
-! solid_body_mode_flag = 1); solid_body_mode_flag = 2 rotates the
-! interior as a solid body detached from the surface convection zone
+! solid_body_mode_flag = 1). With a negative exponent, the surface
+! convection zone follows the law and solid_body_mode_flag = 2 rotates
+! the interior as a separate solid body, 3 as a solid body at the
+! zone's base rate (see enforce_rotation_profile)
          real(dp) :: cz_rotation_law_exponent = 0.0d0
          logical :: force_solid_body_rotation = .false.
          integer :: solid_body_mode_flag = 0

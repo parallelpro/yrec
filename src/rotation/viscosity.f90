@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------
 ! viscosity
 !----------------------------------------------------------------------
-! The microscopic viscosity (radiative and molecular) and the thermal
-! diffusivity of each shell (viscos).
+! The microscopic kinematic viscosity (radiative plus ionic) and the
+! radiative thermal diffusivity of each zone (viscos).
 module viscosity
       implicit none
       private
@@ -11,9 +11,11 @@ module viscosity
 contains
 
 ! ---------------------------------------------------------------
-! Computes the kinematic microscopic viscosity (radiative + molecular)
-! and the radiative thermal diffusivity at every zone, for use by the
-! rotational-mixing/instability diffusion routines.
+! viscos: for every zone, convective ones included, the kinematic
+! viscosity star%visc = nu_rad + nu_ion and the radiative thermal
+! diffusivity star%thdif = K (both cm^2/s), for the rotational
+! instability and mixing coefficients. Uses the opacity and c_P that
+! shell_physics stored in star%opacity_zone and star%cp.
 subroutine viscos(composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: star, json, i_metals
       use physical_constants
@@ -25,9 +27,10 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
       integer, intent(in) :: num_zones
 
       double precision :: amu
-! Kinetic-theory weights and charges for composition rows 1..11
-! (i_h1..i_o18 of star_info_lib); row i_metals is the lumped Z, skipped
-! in the molecular-viscosity sums below.  These values differ from the
+! Atomic weights and charges for composition rows 1..11 (i_h1..i_o18 of
+! star_info_lib). Row i_metals is the lumped Z (weight 1, charge 0): it
+! is skipped in the ion-viscosity sums below, but it does enter the
+! mean charge, as a neutral particle. These values differ from the
 ! Thoul-solver descriptors in species_table and stay local.
       double precision :: weight(11), z(11)
       data amu/amu_cgs_legacy/
@@ -49,10 +52,11 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
            viscosity_molecular
       double precision :: species_coeff, species_sum
 
-!  LOOP OVER ALL ZONES (CONVECTIVE ZONES INCLUDED)
       do shell_idx = 1,num_zones
-!  COMPUTE THE KINEMATIC MICROSCOPIC VISCOSITY DUE TO RADIATION AND IONS
-!  CONVERT TO NUMBER DENSITIES AND FIND MEAN CHARGE PER ION(ZF) AND NE.
+! Abundances by number, n_i = X_i/A_i (per unit mass, in units of
+! 1/m_u), the mean ion charge Z_bar = sum n_i Z_i / sum n_i, and
+! electron_number_density = Z_bar rho/m_u. (The electron density is
+! Z_bar (rho/m_u) sum n_i; the two agree only when sum n_i = 1.)
          opacity_local = star%opacity_zone(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
@@ -67,21 +71,29 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          temperature_sq = temperature_cgs**2
          density_cgs = exp(ln10*log_density(shell_idx))
          electron_number_density = mean_charge*density_cgs/amu
-!  RADIATIVE DYNAMIC VISCOSITY (ELECTRON SCATTERING ONLY):
-!  METHOD USED IS FROM LEDOUX,1958,HANDBUCH DER PHYSIK VOL.LI,P.445
-!  (THE ORIGINAL ALSO EVALUATED THE ENDAL-SOFIA / THOMAS 1930 FORMULAE
-!  FOR COMPARISON; THOSE VALUES WERE NEVER USED AND ARE NOT COMPUTED.)
+! The radiative viscosity, after Ledoux (1958, Handbuch der Physik,
+! vol. 51, p. 445):
+!   nu_rad = 4 a T^4 / (15 c kappa rho^2)   (kinematic),
+! with the zone's opacity kappa (star%opacity_zone). The alternative
+! forms of Endal & Sofia and of Thomas (1930) are not computed.
          viscosity_radiative = rad_viscosity_coeff_cgs*temperature_sq*temperature_sq/ &
               (opacity_local*density_cgs**2)
-!  MOLECULAR DYNAMIC VISCOSITY
-!  REF. SPITZER,1962,PHYSICS OF FULLY IONIZED GASES
+! The ion (molecular) viscosity, after Spitzer (1962, Physics of Fully
+! Ionized Gases). The dynamic viscosity of species i is
+!   eta_i = 3.125e-15 T^(5/2) n_i sqrt(A_i)
+!           / (Z_i^2 lnL_i sum_j n_j Z_j^2 sqrt((A_i + A_j)/A_j))
+! (for one species, 2.21e-15 T^(5/2) sqrt(A) / (Z^4 lnL) g/(cm s)),
+! with the Coulomb logarithm
+!   lnL_i = 9.4245 + 0.5 ln(T^3 min(1, 4.2e5/T) / (n_e Z_bar^2)) - ln Z_i,
+! where min(1, 4.2e5/T) is the quantum correction above 4.2e5 K.
          mfp_temperature_factor = dmin1(1.0d0,4.2d5/temperature_cgs)
          coulomb_log_factor = 9.424536845d0+0.5d0*log(temperature_sq* &
               temperature_cgs*mfp_temperature_factor/ &
               (electron_number_density*mean_charge**2))
          molecular_coeff = 3.125d-15*dsqrt(temperature_cgs)*temperature_sq
          viscosity_molecular = 0.0d0
-!  VISCX(I) IS THE MOLECULAR VISCOSITY OF SPECIES I.
+! viscosity_molecular_species(i) is eta_i. A species without collision
+! partners, or with eta_i <= 0 (lnL_i <= 0), adds nothing.
          do species_idx = 1,11
             if(species_idx.eq.i_metals) cycle
             species_coeff = molecular_coeff*number_density(species_idx)* &
@@ -101,11 +113,11 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
                  viscosity_molecular = viscosity_molecular+ &
                  viscosity_molecular_species(species_idx)
          end do
+! nu_ion = sum_i eta_i / rho.
          viscosity_molecular = viscosity_molecular/density_cgs
          star%visc(shell_idx) = viscosity_radiative+viscosity_molecular
-!  THERMAL DIFFUSIVITY(THDIF) DUE TO RADIATION IS CALCULATED
-!  COMPONENT DUE TO THERMAL CONDUCTION OF MATTER IS NEGLECTED
-!  RADIATIVE DIFFUSIVITY = K*T**3/(O*RHO**2*CP)
+! The radiative thermal diffusivity (conduction neglected):
+!   K = 16 sigma T^3 / (3 kappa rho^2 c_P).
          star%thdif(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
               temperature_sq/(opacity_local*density_cgs**2*star%cp(shell_idx))
       end do

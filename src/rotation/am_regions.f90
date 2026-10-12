@@ -11,12 +11,13 @@ module am_regions
 contains
 
 ! ---------------------------------------------------------------
-! Isolates convective regions including overshoot (via CONVEC) and
-! builds am_transport_convective_flag, the convective flag used for
-! angular-momentum-transport/mixing purposes -- i.e. extended to
-! include overshoot regions, as opposed to the plain convective_flag
-! used elsewhere (see homogenize_convection_zones.f90). Set .false. over each radiative
-! region and .true. over each (overshoot-extended) convective region.
+! am_convective_regions: the regions for angular momentum transport and
+! mixing. find_convection_zones gives the convection zones extended by
+! overshoot (convective_zone_bounds) and the radiative regions between
+! them (radiative_zone_bounds); am_transport_convective_flag is set
+! .true. in the former and .false. in the latter. Unlike convective_flag
+! without overshoot, which homogenize_convection_zones uses, it includes
+! the overshoot regions.
 subroutine am_convective_regions(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, &
      am_transport_convective_flag, radiative_zone_bounds, &
@@ -36,7 +37,7 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
       integer, intent(out) :: radiative_zone_bounds(13,2), &
            convective_zone_bounds(12,2)
       integer, intent(out) :: num_radiative_zones, num_convective_zones
-! the overshoot region below the envelope (find_convection_zones)
+! The overshoot region below the envelope (find_convection_zones).
       integer, intent(inout) :: overshoot_bottom, overshoot_top
       integer, intent(out) :: ierr
 
@@ -44,7 +45,8 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
       integer :: i, j, core_zone_boundary, envelope_zone_boundary, &
            num_convective_zones_raw
 
-! ISOLATE CONVECTIVE REGIONS INCLUDING OVERSHOOT.
+! The convection zones with and without overshoot, and the radiative
+! regions.
       call find_convection_zones(composition,log_density,log_pressure,log_radius, &
            log_mass,log_temperature,convective_flag,num_zones, &
            radiative_zone_bounds,convective_zone_bounds, &
@@ -54,7 +56,8 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
       if (ierr /= 0) return
       do j = 1,num_radiative_zones
          do i = radiative_zone_bounds(j,1),radiative_zone_bounds(j,2)
-! KC 2025-05-30 ADDED IF CHECK TO AVOID RUNTIME ERROR.
+! Skip a non-positive zone index, which would write out of bounds
+! (KC 2025-05-30).
             if (i .gt. 0) am_transport_convective_flag(i) = .false.
          end do
       end do

@@ -2,9 +2,9 @@
 ! rotation_scratch_lib
 !----------------------------------------------------------------------
 ! The rotation solver's working state: the coefficient arrays, grids,
-! iteration state and the structure at the middle of the current
-! sub-step (rot_scr); the physics interpolated to the sub-step
-! (mid_scr); the previous iterates of the circulation velocities
+! iteration state and the structure interpolated to the current
+! sub-step (rot_scr); the physics interpolated to it (mid_scr); the
+! previous iterates of the circulation velocities
 ! (circ_scr). These are working arrays, not properties of the star (what
 ! the output or other domains read lives on star%). One module-level
 ! instance each; yrec_reset snapshots and restores them, so an
@@ -114,7 +114,8 @@ module rotation_scratch_lib
                 thermal_diffusivity_interface(json), &
                 kinematic_viscosity_interface(json), &
                 omega_interface(json)
-! the composition at the start of the step
+! the sub-step's burned and settled composition, which
+! secular_transport restores (slots 1-4) at each later iteration
            double precision :: composition_snapshot(15,json)
 ! the previous model's physics on the new mesh (setup/rezone), for the
 ! interpolation in time to the sub-step: the old values of mid_scr's
@@ -156,13 +157,15 @@ module rotation_scratch_lib
 ! absolute d eps/d ln T (erg/g/s).
            double precision :: dlnkappa_dlnt(json), &
                 deps_dlnt(json), neutrino_loss_fraction(json)
-! The structure interpolated to the middle of the current sub-step:
-! filled by mid_timestep_model, read by secular_transport and the rest of
-! the sub-step. Reads follow a write in the same step (the later
+! The structure interpolated in time to the current sub-step, at the
+! fraction of the step elapsed when the sub-step ends (the "_mid" names
+! are the legacy midpoint model's): filled by mid_timestep_model, read
+! by secular_transport and the rest of the sub-step. Reads follow a write in the same step (the later
 ! sub-steps' seeding reads the previous sub-step's values).
 ! luminosity_lsun_mid is linear L/Lsun (interpolated from
 ! star%luminosity_lsun), not a log, unlike its log_* neighbours.
-! mean_gravity_mid is star%mean_gravity's; di_domega_mid is dI/d omega.
+! mean_gravity_mid is star%mean_gravity's; di_domega_mid is
+! zone_moments_of_inertia's di_domega, (omega/2) dI/d omega.
            double precision :: eta_squared_mid(json), &
                 log_density_mid(json), mean_gravity_mid(json), &
                 moment_of_inertia_mid(json), luminosity_lsun_mid(json), &
@@ -178,7 +181,7 @@ module rotation_scratch_lib
                 deuterium_rate_mid_start(json)
       end type rotation_diffusion_state
 ! The physics interpolated in time to the current sub-step (by
-! mid_timestep_model): each field has the name of the star% field it
+! mid_timestep_model, to the same time as rot_scr's *_mid): each field has the name of the star% field it
 ! comes from (opacity is star%opacity_zone's). eps_plus_neu_grav is
 ! eps_total plus the neutrino and gravothermal channels as stored.
       type, public :: midstep_physics_state

@@ -1,10 +1,12 @@
 !----------------------------------------------------------------------
 ! rotating_shape
 !----------------------------------------------------------------------
-! The shape of a rotating star (the Kippenhahn & Thomas / Endal & Sofia
-! formalism): rotation_shape_factors gives each shell's fp and ft, its
-! distortion eta2, mean radius and mean gravity; shape, the distortion
-! integral itself.
+! The shape of a rotating star in the Kippenhahn & Thomas (1970) /
+! Endal & Sofia (1976) formalism. Each level surface is
+! r = r0 (1 - A P2(cos theta)); shape finds r0 and Radau's eta_2 zone by
+! zone, and rotation_shape_factors averages the effective gravity over
+! each surface to give the structure-equation factors fp and ft and the
+! mean gravity <g>.
 module rotating_shape
       use rotation_configuration, only: rotation_settings
       implicit none
@@ -14,17 +16,24 @@ module rotating_shape
 contains
 
 ! ---------------------------------------------------------------
-! Computes the rotational distortion correction factors pressure_
-! rotation_factor/temperature_rotation_factor (FP/FT) applied to the
-! hydrostatic/thermal structure equations in henyey_coefficients.f90 to account for
-! centrifugal flattening (the Kippenhahn-Thomas / Endal-Sofia "shape"
-! formalism): first calls shape (shape.f90) to get the run of the
-! reference equipotential radius r0 and the distortion parameter eta2,
-! then for each shell integrates the distorted potential (by
-! refine_distortion_integral with polint Richardson extrapolation) and
-! averages the resulting local effective gravity over the shell
-! (average_over_equipotential) to get mean_gravity, from which FP/FT are
-! built.
+! rotation_shape_factors: the rotational corrections fp
+! (pressure_rotation_factor) and ft (temperature_rotation_factor) to the
+! hydrostatic and radiative-transfer equations (henyey_coefficients),
+! for zones 1..num_points.
+!   1. shape gives each zone's r0 and eta_2 (eta2).
+!   2. The distortion integral
+!        aint(r0) = int_0^r0 (rho/m) omega^2 r0'^7 (5+eta_2)/(2+eta_2) dr0'
+!      is summed shell by shell. Across a shell it is Simpson's rule:
+!      Richardson extrapolation (polint) of the one- and two-panel
+!      trapezoid sums of refine_distortion_integral.
+!   3. average_over_equipotential integrates g, 1/g and 1 over the
+!      shell's level surface.
+!   4. With r_psi = 10**log_radius (the radius of the sphere of the same
+!      volume), S the area of the level surface and <x> = (1/S) int x dS,
+!        fp = 4 pi r_psi^4 / (G m S <1/g>),
+!        ft = (4 pi r_psi^2 / S)^2 / (<g> <1/g>),
+!      and mean_gravity = <g> (cm/s^2).
+! Also returns eta2 and r0 (cm); ierr comes from polint.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0, ierr)
@@ -59,18 +68,24 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision :: g0, ginv0, sphi, ginv, f0, q
 
       ierr = 0
-! FIND THE RUN OF R0 AND ETA2 FOR THE MODEL
+! r0 and eta_2 of every zone.
       call shape(log_density, log_radius, log_mass, 1, num_points, omega, &
            eta2, r0)
+! The surface integrals run over colatitude 0 to b_coefficient = pi/2.
+! The distortion integral takes jmax = 2 trapezoid refinements and a
+! k = 2 point extrapolation, with relative tolerance eps. Because
+! jmax = k, the result is always the j = 2 extrapolation (Simpson's
+! rule); the eps test cannot change it.
       b_coefficient = 0.125d0*c4pi
       newton_g = exp(ln10*cgl)
       eps = 1.0d-6
       jmax = 2
       k = 2
       km = k-1
-! THE VALUES OF THE PREVIOUS SHELL MPHI,ETA2+2,OMEGA**2,RHO, AND R0 ARE
-! NEEDED FOR THE EVALUATION OF THE DISTORTED POTENTIAL.
-! THE BELOW VALUES ARE THE CENTRAL VALUES OF THE ABOVE IN ORDER.
+! The values at the inner edge of each shell (the previous zone), which
+! refine_distortion_integral interpolates across the shell: m, eta_2 + 2,
+! omega^2, rho, r0, aint and the integrand q. At the center: m = 0,
+! eta_2 = 0, omega and rho of zone 1, r0 = 0, aint = 0 and q = 0.
       previous_shell_mass = 0.0d0
       prev_eta22 = 2.0d0
       prev_omega_sq = omega(1)**2
@@ -78,10 +93,12 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       prev_r0 = 0.0d0
       prev_aint = 0.0d0
       prev_q = 0.0d0
-! NOW CALCULATE FP AND FT USING THE ETA2 AND R0 VALUES
+! fp and ft zone by zone, from eta_2 and r0.
       do i = 1,num_points
          density = exp(ln10*log_density(i))
          g_times_mass = newton_g*exp(ln10*log_mass(i))
+! The distortion amplitude A = 5 omega^2 r0^3 / (3 G m (2 + eta_2))
+! (distortion_a); centrifugal_factor is A / r0^3.
          centrifugal_factor = 5.0d0*cc13*omega(i)**2/ &
               (g_times_mass*(2.0d0+eta2(i)))
          r0_cubed = r0(i)**3
@@ -91,7 +108,9 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
          omega_sq = omega(i)**2
          extrap_step(1) = 1.0d0
          do j = 1,jmax
-! EVALUATE THE INTEGRAL AINT FROM 0 TO R0 USING THE TRAPEZOIDAL RULE
+! Trapezoid estimate j of the integral from r0(i-1) to r0(i); from
+! j = k on, extrapolate the last k estimates to zero step (extrap_step
+! is the squared step, quartered at each refinement).
             call refine_distortion_integral(prev_r0, r0(i), aint0(j), j, density, &
                  prev_density, shell_mass, previous_shell_mass, omega_sq, &
                  prev_omega_sq, eta22, prev_eta22, q, prev_q)
@@ -109,15 +128,19 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
             aint0(j+1) = aint0(j)
             extrap_step(j+1) = 0.25d0*extrap_step(j)
          end do
+! aint from the center to r0(i).
          aint = prev_aint + aint1
-! FIND <G> AND <G-1> ACROSS THE SHELL BY GAUSSIAN QUADRATURE
+! Gauss-Legendre integrals over the level surface: g0 = int g dS,
+! ginv0 = int dS/g and sphi = S.
          call average_over_equipotential(g0, ginv0, sphi, b_coefficient, r0, log_mass, &
               aint, q, omega_sq, distortion_a, i)
          mean_gravity(i) = g0/sphi
+! f0 = log10(4 pi r_psi^4 / (S <1/g>)); fp and ft as in the header.
          ginv = log10(ginv0)
          f0 = c4pil + 4.0d0*log_radius(i) - ginv
          pressure_rotation_factor(i) = exp(ln10*(f0 - cgl - log_mass(i)))
          temperature_rotation_factor(i) = exp(ln10*(f0 + c4pil))/g0
+! This zone becomes the inner edge of the next shell.
          prev_aint = aint
          prev_q = q
          previous_shell_mass = shell_mass
@@ -131,12 +154,23 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 end subroutine rotation_shape_factors
 
 ! ---------------------------------------------------------------
-! SHAPE FINDS THE DISTORTION OF A GIVEN SHELL FROM SPHERICAL SYMMETRY;
-! IT CALCULATES THE CHARACTERISTIC RADIUS R0 AND ASSOCIATED PARAMETER
-! ETA2.  IN POLAR CO-ORDINATES THE RADIUS OF A SHELL IS
-! R = R0*(1 - A*P2), WHERE A IS A FUNCTION OF ROTATION RATE AND P2 IS
-! THE SECOND LEGENDRE POLYNOMIAL.  FOR MORE INFORMATION SEE ENDAL AND
-! SOFIA.
+! shape: the distortion of the level surfaces of zones
+! zone_start..zone_end (Endal & Sofia). A level surface is
+!   r = r0 (1 - A P2(cos theta)),  A = 5 omega^2 r0^3 / (3 G m (2 + eta_2)),
+! with P2 the second Legendre polynomial. eta_2 (eta2; Radau's eta_2,
+! not a square) solves Radau's equation
+!   r d(eta_2)/dr + 6 (rho/rho_bar)(eta_2 + 1) + eta_2 (eta_2 - 1) = 6,
+!   eta_2(0) = 0,  rho_bar = 3 m / (4 pi r^3),
+! integrated outward by fourth-order Runge-Kutta (radau_rk4_step). r0
+! makes the level surface enclose the volume of the sphere of radius
+! r_psi = 10**log_radius,
+!   r_psi^3 = r0^3 (1 + (3/5) A^2 - (2/35) A^3),
+! solved by Newton's method in r0^3. As eta_2 depends on r0, the two
+! are iterated in turn, at most rotation_settings%shape_outer_iterations
+! times, each r0 solve taking at most shape_inner_iterations Newton
+! steps; shape_tolerance is the relative tolerance on r0^3, and its cube
+! root that on r0 and eta_2. For zone_start > 1 the integration starts
+! from zone zone_start - 1, using its eta2 and r0 from an earlier call.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
       use star_info_lib, only: json
@@ -160,6 +194,9 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision :: r0_estimate, acc_tol, err, eta2_temp
       double precision :: a_param
 
+! G; c1 = 3/5 and c2 = 2/35 are the coefficients of the volume relation
+! r_psi^3 = r0^3 (1 + c1 A^2 - c2 A^3), and c3 = 3 c1, c4 = 4 c2 those of
+! its derivative with respect to r0^3, 1 + c3 A^2 - c4 A^3.
       cg = exp(ln10*cgl)
       c1 = 0.6d0
       c2 = 2.0d0/3.5d1
@@ -167,17 +204,15 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       c4 = 4.0d0*c2
       j_begin = zone_start
       if (zone_start.eq.1) then
-!  CALCULATE FIRST POINT ETA2 USING CENTRAL B.C.
-!  NOTE THAT THE SUFFIX 'P' DENOTES A QUANTITY FROM THE PREVIOUS SHELL.
-!  E.G. RHOP IS THE DENSITY OF THE LAST SHELL AND RHO IS THE DENSITY OF
-!  THE CURRENT ONE.
+! Zone 1, from the center: eta_2 = 6 (1 - rho/rho_bar) there. Below,
+! the suffix _prev marks a value at the previous zone.
          rho_bar = exp(ln10*(log_mass(1) - c4pi3l - 3.0d0*log_radius(1)))
          r_phi = exp(ln10*log_radius(1))
          density = exp(ln10*log_density(1))
          eta2(1) = 6.d0*(1.0d0 - density/rho_bar)
-! ITERATE FOR R0 GIVEN RPHI AND ETA2
-! (Same Newton step as the per-zone loop below, but this one exits on
-! .le. acfpft and that one on .lt. acfpft -- kept as in the original.)
+! Newton iteration for r0^3 at fixed r_psi and eta_2, as in the zone
+! loop below. This one stops on a change <= shape_tolerance, the zone
+! loop's on < shape_tolerance (as in the original).
          gm = cg*exp(ln10*log_mass(1))
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
@@ -196,23 +231,22 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          rho_prev = density
          j_begin = 2
       else
+! Start from the zone below zone_start.
          rho_bar_prev = exp(ln10*(log_mass(zone_start-1) - c4pi3l - &
               3.0d0*log_radius(zone_start-1)))
          r_phi_prev = exp(ln10*log_radius(zone_start-1))
          rho_prev = exp(ln10*log_density(zone_start-1))
       end if
-!  CALCULATE ETA2 AND R0 FOR REMAINING POINTS
+! eta_2 and r0 of the remaining zones.
       do i = j_begin,zone_end
          rho_bar = exp(ln10*(log_mass(i) - c4pi3l - 3.0d0*log_radius(i)))
          density = exp(ln10*log_density(i))
          r_phi = exp(ln10*log_radius(i))
          gm = cg*exp(ln10*log_mass(i))
          dr = r_phi - r_phi_prev
-! FIND ETA2 USING 4-POINT RUNGE-KUTTE TECHNIQUE
-! D(ETA2)/D(R0) IS COMPUTED USING RADAU'S EQUATION:
-! R*(DETA2/DR)+6*RHO*(ETA2+1)/RHOBAR+ETA2*(ETA2-1) = 6 ,AND ETA2(0) = 0
-! FOR A FIRST GUESS,R0 = RPHI IS ASSUMED.
-! RHOA AND RHOBA ARE AVERAGES OF THE RHO,RHOBAR OF OLD AND NEW SHELLS
+! First guess for eta_2: integrate Radau's equation in r_psi from the
+! previous zone, i.e. take r0 = r_psi. rho and rho_bar at the midpoint
+! of the step are the means of their values at its two ends.
          rho_avg = 0.5d0*(density+rho_prev)
          rho_bar_avg = 0.5d0*(rho_bar+rho_bar_prev)
          eta2(i) = radau_rk4_step(dr, eta2(i-1), rho_prev, rho_bar_prev, &
@@ -221,14 +255,13 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r0_cubed = r_phi_cubed
          r0_estimate = r_phi
          acc_tol = pow(rotation_settings%shape_tolerance, cc13)
-! ITERATE BETWEEN SOLUTION FOR ETA2 AND SOLUTION FOR R0 ITFP1 TIMES.
+! Alternate between r0 at fixed eta_2 and eta_2 at the new r0.
          do k = 1,rotation_settings%shape_outer_iterations
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
-! NOW ITERATE FOR R0 GIVEN RPHI AND ETA2, USING THE RELATION
-! RPHI**3 = R0**3(1.0 + 3/5A**2 - 2/35A**3)
-! WHERE A = OMEGA**2*R0**3*5/3GM(2+ETA2))
-! (Same Newton step as the center loop above, but exits on .lt. acfpft
-! where that one uses .le. -- kept as in the original.)
+! Newton iteration on x = r0^3 at fixed r_psi and eta_2:
+!   x <- x + (r_psi^3 - x (1 + c1 A^2 - c2 A^3)) / (1 + c3 A^2 - c4 A^3),
+! with A = fact x. (This one stops on < shape_tolerance, the zone-1
+! loop above on <=, as in the original.)
             do j = 1,rotation_settings%shape_inner_iterations
                a_param = fact*r0_cubed
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
@@ -238,11 +271,11 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             end do
             r0(i) = pow(r0_cubed, cc13)
             err = r0(i) - r0_estimate
-!  ETA2 IS A FUNCTION OF R0, AND R0=RPHI WAS USED TO CALCULATE ETA2
-!  CORRECT ETA2 HERE IF DR/R0 > CUBE ROOT OF ACFPFT
+! Done if r0 differs from the radius eta_2 was found at by no more than
+! acc_tol = shape_tolerance^(1/3), relative.
             if(dabs(err)/r0(i).le.acc_tol) exit
-! FIND ETA2 USING 4-POINT RUNGE-KUTTE TECHNIQUE AGAIN,BUT FINDING
-! ETA2 AT R0(I) RATHER THAN ASSUMING R0 = RPHI.
+! Otherwise integrate Radau's equation again, now in r0 from r0(i-1) to
+! r0(i), and stop once eta_2 changes by no more than acc_tol.
             eta2_temp = eta2(i)
             dr = r0(i) - r0(i-1)
             eta2(i) = radau_rk4_step(dr, eta2(i-1), rho_prev, rho_bar_prev, &
@@ -259,37 +292,36 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 
 contains
 
-! One 4th-order Runge-Kutta step of Radau's equation
-!   R*(DETA2/DR) + 6*RHO*(ETA2+1)/RHOBAR + ETA2*(ETA2-1) = 6
-! from (r_prev, eta_prev) to r = r_prev + dr, with rho/rho_bar given
-! at the start, midpoint (rho_avg/rho_bar_avg) and end of the step.
-! Body is token-identical to the two former inline copies.
+! One fourth-order Runge-Kutta step of Radau's equation,
+!   d(eta)/dr = (6 - 6 (rho/rho_bar)(eta + 1) - eta (eta - 1)) / r,
+! from (r_prev, eta_prev) to r = r_prev + dr, with rho and rho_bar given
+! at the start, the midpoint (rho_avg, rho_bar_avg) and the end of the
+! step.
       pure function radau_rk4_step(dr, eta_prev, rho_prev, rho_bar_prev, &
            r_prev, rho_avg, rho_bar_avg, rho, rho_bar, r) result(eta_new)
       double precision, intent(in) :: dr, eta_prev, rho_prev, rho_bar_prev, &
            r_prev, rho_avg, rho_bar_avg, rho, rho_bar, r
       double precision :: eta_new
       double precision :: deta1, deta2, deta3, deta4, eta_avg, r_avg
-!    FIRST EVALUATE DETA/DR AT THE BEGINNING OF THE INTERVAL
+! The increment from the slope at the start of the step.
       deta1 = dr*(6.0d0 - 6.0d0*rho_prev*(eta_prev + 1.0d0)/rho_bar_prev &
       - eta_prev*(eta_prev - 1.0d0))/r_prev
       eta_avg = eta_prev + 0.5d0*deta1
       r_avg = r_prev + 0.5d0*dr
-!    USING THE ESTIMATED ETA2 AT THE MIDPOINT,FIND DETA/DR AT THE
-!    MIDPOINT.
+! The increment from the slope at the midpoint, at the eta of the first
+! half step.
       deta2 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
       - eta_avg*(eta_avg - 1.0d0))/r_avg
       eta_avg = eta_prev + 0.5d0*deta2
-!    USING THIS REFINED DERIVATIVE TO ESTIMATE ETA2 AT MIDPOINT,
-!    FIND DETA/DR AT THE MIDPOINT AGAIN.
+! The midpoint again, at the eta of the refined half step.
       deta3 = dr*(6.0d0 - 6.0d0*rho_avg*(eta_avg + 1.0d0)/rho_bar_avg &
       - eta_avg*(eta_avg - 1.0d0))/r_avg
       eta_avg = eta_prev + deta3
-!    USING DETA/DR AT THE MIDPOINT TO ESTIMATE ETA2 AT THE END OF
-!    THE INTERVAL,GET DETA/DR AT THE END OF THE INTERVAL.
+! The end of the step, at the eta of a full step with the second
+! midpoint slope.
       deta4 = dr*(6.0d0 - 6.0d0*rho*(eta_avg + 1.0d0)/rho_bar &
       - eta_avg*(eta_avg - 1.0d0))/r
-!    PERFORM 4TH ORDER RUNGE-KUTTE INTEGRATION USING ABOVE 4 DERIVS.
+! eta_new = eta_prev + (deta1 + 2 deta2 + 2 deta3 + deta4) / 6.
       eta_new = eta_prev+cc13*(0.5d0*deta1+deta2+deta3+0.5d0*deta4)
       end function radau_rk4_step
 
