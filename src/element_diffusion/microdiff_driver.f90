@@ -12,18 +12,9 @@ module microdiff_driver
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! microdiff
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 !  GARRETT SOMERS - 05/2015
 !  MICRODIFF IS AN UPDATED HELIUM, METAL, AND LIGHT ELEMENT DIFFUSION
-!  ROUTINE. MUCH IS ADAPTED FROM gravitational_settling.f90, WHICH IS
+!  ROUTINE. MUCH IS ADAPTED FROM gravitational_settling, WHICH IS
 !  RETAINED FOR BACKWARDS COMPATABILITY. FOLLOWS THE FORMULISM OF
 !  BAHCALL AND LOEB 1989.
 !
@@ -52,9 +43,8 @@ contains
 !  log_radius (HR) - LOG RADIUS (CM)
 !  enclosed_mass (HS1) - MASS (GM), UNLOGGED
 !  log_temperature (HT) - LOG TEMPERATURE (K)
-!  del_grad - DEL (=DLNT/DLNP) per zone (2026 W2: an explicit argument;
-!     mix passes star%gradT, rotmix passes mix_scr%delm, which it used
-!     to copy into star%gradT around this call)
+!  del_grad - DEL (=DLNT/DLNP) per zone (core passes star%gradT, rotmix
+!     its mid-step gradient)
 !  convective_flag (LC) - FLAG T/F FOR CONVECTION
 !  num_zones (M) - NUMBER OF MODEL POINTS
 !
@@ -66,12 +56,12 @@ contains
 !  BOUNDARIES OF CONVECTIVE CORE AND ENVELOPE IF APPLICABLE;
 !  COLLECT PHYSICAL VARIABLES FOR DIFFCO CALCULATION.
 !
-! Dispatcher for the microdiff.f90 element-settling pipeline: calls
-! microdiff_setup.f90 (locate diffusion region, unit conversion),
-! microdiff_mte.f90 (build the equally spaced grid), then
-! microdiff_run.f90 (via microdiff_coefficients.f90) once each for hydrogen,
-! heavy metals, and each light element in turn, and finally
-! microdiff_etm.f90 (transform back to the model grid).
+! The pipeline: microdiff_setup (the diffusion region, the unit
+! conversion), map_microdiff_to_equal_grid (microdiff_mapping: the
+! equally spaced grid), run_microdiff (microdiff_run, with the
+! coefficients from microdiff_coefficients) once each for hydrogen, the
+! metals and each light element, and microdiff_etm (microdiff_mapping:
+! back to the model grid).
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
      convective_flag, num_zones, total_mass, ierr)
@@ -256,18 +246,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 end subroutine microdiff
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! microdiff_setup
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff_setup.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
-! First stage of the microdiff.f90 element-settling pipeline (see also
-! microdiff_mte.f90, microdiff_coefficients.f90, microdiff_run.f90,
-! microdiff_etm.f90): locates the diffusion region (between any central
+! The first stage of microdiff: locates the diffusion region (between any central
 ! convective core and any surface convection zone, and bounded by
 ! hydrogen/helium exhaustion), and converts the needed model quantities
 ! to Bahcall & Loeb (1990) natural units.
@@ -290,9 +269,8 @@ end subroutine microdiff
 !     CRSUN_BAH = SOLAR RADIUS (CM)
 !     CSECYR_BAH = NUMBER OF SECONDS IN A YEAR.
 !
-! Note: enclosed_mass (originally HS1) is the run of enclosed mass at
-! the original model points, unlogged -- naming matches diffuse_composition_driver.f90/
-! burn_settle_mix.f90's HS1, not the per-shell mass (HS2 there).
+! enclosed_mass (HS1) is the enclosed mass at the model points,
+! unlogged, not the per-shell mass.
 subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      enclosed_mass, log_temperature, convective_flag, num_zones, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
@@ -334,7 +312,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          settling_skipped_flag=.true.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
          if (solver_diagnostics() .or. &
               .not. diff_scr%settling_suspended_reported) then
             write(run_log_unit,15)
@@ -355,7 +333,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
       if (solver_diagnostics() .or. &
            .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
@@ -384,7 +362,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       if (i < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
       if (solver_diagnostics() .or. &
            .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,17)star%ctrl%helium_diffusion_min

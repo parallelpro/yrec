@@ -1,9 +1,8 @@
 !----------------------------------------------------------------------
 ! species_table
 !----------------------------------------------------------------------
-! 2026 readability sweep (W3, rotation): the species descriptors that
-! the microscopic-diffusion routines used to carry as private
-! (weight, charge) lists.  Values are exactly the former literals.
+! The species descriptors (atomic weight, charge) of the settling
+! routines.
 !
 ! The Thoul et al. (1994) solver works on four species in fixed
 ! columns: 1 = hydrogen, 2 = helium, 3 = the diffused heavy species
@@ -18,7 +17,7 @@
 ! He4 4.0026, Z 1.0/0, ...) and check_composition.f90's four-entry
 ! mean-weight table (H1 1.007825, He4 4.002603, C12 12.0, He3 3.01603).
 !
-! Rotation-internal; not a public rotation entry.
+! Internal to element_diffusion.
 module species_table
       use star_info_lib, only: i_li6, i_li7, i_be9
       use physical_constants, only: m_electron_amu

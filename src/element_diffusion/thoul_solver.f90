@@ -11,15 +11,6 @@ module thoul_solver
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! thdiff
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original thdiff.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 !*************************************************************
 ! This routine was written by Anne A. Thoul, at the Institute
 ! for Advanced Study, Princeton, NJ 08540.

@@ -13,15 +13,6 @@ module diffusion_scheme
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! lax_wendrof1
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original lax_wendrof1.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0
-! regression suite (examples/run_standard_solar_model).
-!
 ! First step of the two-step Lax-Wendroff diffusion method. Computes
 ! new abundances at zone midpoints using the Lax scheme:
 ! X(n+1/2,j+1/2) = 1/2(X(n,j+1/2) - 1/2(dt/dr)(cod1(n,j+1)-cod1(n,j))
@@ -31,8 +22,6 @@ contains
 ! eq_mass is the run of masses, and diffused_abundance_mid is the run
 ! of changes in the diffused species' abundance at the zone midpoints.
 ! MHP 3/94 added metal diffusion.
-! Dummy-argument names match the actual arguments used at the call
-! site in microdiff_run.f90.
 subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 
@@ -86,22 +75,11 @@ subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points
 end subroutine lax_wendroff_step1
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! lax_wendrof2
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original lax_wendrof2.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0
-! regression suite (examples/run_standard_solar_model).
-!
 ! Second (corrector) step of the two-step Lax-Wendroff diffusion
 ! method. Using the zone-midpoint diffusion coefficients from
 ! lax_wendroff_step1's provisional solution, updates diffused_abundance in
 ! place with the full-step change in the diffused species' abundance.
 ! MHP 3/94 added metal diffusion.
-! Dummy-argument names match the actual arguments used at the call
-! site in microdiff_run.f90.
 subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
@@ -156,20 +134,11 @@ subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
 end subroutine lax_wendroff_step2
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! get_imp_diffco
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original get_imp_diffco.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
 ! Rebuilds the tridiagonal-matrix coefficients for the implicit
 ! (second-derivative) term of the microscopic-diffusion equation
-! solved in microdiff_run.f90, correcting the zone-midpoint diffusion
-! coefficient for the change in abundance found on the previous
-! iteration. Also called by gravitational_settling.f90.
+! (microdiff_run and gravitational_settling), correcting the midpoint
+! diffusion coefficient for the change in abundance found on the
+! previous iteration.
 subroutine implicit_diffusion_coeffs(alpha, diffusion_coeff_mid, delta_abundance_mid, &
      diffusion_coeff_deriv_mid, sub_diag, diag, super_diag, npt)
       use star_info_lib, only: json

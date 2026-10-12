@@ -1,25 +1,15 @@
 !----------------------------------------------------------------------
 ! microdiff_run
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff_run.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
 ! THIS PROGRAM EXECUTES THE DIFFUSING OF ELEMENTS. ALL OF THE RELEVANT
 ! PARAMETERS ARE DEFINED AT BOTH THE GRID POINTS AND MIDPOINTS.
 !
-! Part of the microdiff.f90 pipeline (see also microdiff_setup.f90,
-! microdiff_mte.f90, microdiff_coefficients.f90, microdiff_etm.f90): performs
-! the actual two-step Lax-Wendroff + implicit-second-derivative
-! diffusion solve for one species (hydrogen, metals, or a light
-! element in turn), calling microdiff_coefficients.f90 for the diffusion
-! coefficients, lax_wendroff_step1.f90/lax_wendroff_step2.f90 for the
-! explicit first-derivative term, and implicit_diffusion_coeffs.f90 +
-! solve_tridiagonal for the implicit second-derivative term.
-! 2026 de-tramp (ROADMAP item 3): 27 arguments -> 13; the two
-! equally-spaced grids are microdiff_grid records (eq, eq_mid).
+! microdiff's solve for one species (hydrogen, the metals, or one light
+! element): the coefficients from microdiff_coefficients, the explicit
+! first-derivative term by the two Lax-Wendroff steps, and the implicit
+! second-derivative term by implicit_diffusion_coeffs and
+! solve_tridiagonal (diffusion_scheme, numerics_lib), on the two equally
+! spaced grids (eq, eq_mid).
 module microdiff_run
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       implicit none
@@ -197,7 +187,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
                max_change_zone = i
             endif
          enddo
-! solver forensics (2026 run-log verbosity sweep)
+! solver forensics
          if (solver_diagnostics()) &
               write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)

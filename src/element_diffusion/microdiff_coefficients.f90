@@ -1,17 +1,11 @@
 !----------------------------------------------------------------------
-! microdiff_cod
+! microdiff_coefficients
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff_cod.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
 ! CRITICAL: several numeric literals below (0.0, 1.0, 0.5, 2.2) are
 ! written WITHOUT a D0/D-3 exponent suffix in the original, meaning
 ! Fortran parses them as single precision before widening to double --
-! numerically different from a D0-suffixed literal. These are copied
-! character-for-character from microdiff_cod.f; do not "fix" them.
+! numerically different from a D0-suffixed literal. They are the
+! original code's; do not "fix" them.
 !
 ! G Somers 5/15: THIS IS A SUBROUTINE WRITEN TO CALCULATE THE DIFFUSION
 ! COEFFICIENT ON THE EQUALLY-SPACED GRID USED FOR LIGHT ELEMENT DIFFUSION.
@@ -19,13 +13,9 @@
 ! HCOMP(1,I), HCOMP(2,I), HCOMP(13-15,I), DENSITY, TEMPERATURE, HQPR,
 ! AND DELR(2,I)
 !
-! Part of the microdiff.f90 pipeline (see also microdiff_setup.f90,
-! microdiff_mte.f90, microdiff_run.f90, microdiff_etm.f90); calls
-! thoul_diffusion.f90 (the Thoul et al. 1994 Burgers-equation solver) once per
-! equally spaced grid point.
-! 2026 de-tramp (ROADMAP item 3): the five equally-spaced-grid arrays
-! are one microdiff_grid record (grid) -- this routine is called once
-! for the zone-center grid and once for the zone-midpoint grid.
+! Calls thoul_diffusion (Thoul et al. 1994) at each point of the grid;
+! microdiff_run calls it once for the zone centers and once for the
+! midpoints.
 module microdiff_coefficients
       use thoul_solver, only: thoul_diffusion
       implicit none

@@ -529,6 +529,9 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `tridiag_gs`, `ctridi` | `numerics/linear_solvers.f90` (`solve_tridiagonal`) |
 | `kspline`, `splinc`; `ksplint`, `splintd2` | `numerics/cubic_spline.f90` (`natural_spline`; `splint`) |
 | `bsstep`, `mmid`, `ratext` | `numerics/bulirsch_stoer.f90` (`bsstep` integrates an `ode_system`) |
+| `grsett`, `setup_grsett` | `element_diffusion/original_settling.f90` (`gravitational_settling`, `gravitational_settling_setup`) |
+| `microdiff`, `microdiff_setup`, `microdiff_mte`, `microdiff_etm` | `element_diffusion/microdiff_driver.f90`, `microdiff_mapping.f90`; the entry for both is `element_diffusion_lib`'s `diffuse_elements` |
+| `thdiff`, `lax_wendrof1`, `lax_wendrof2`, `get_imp_diffco` | `element_diffusion/thoul_solver.f90` (`thoul_diffusion`), `diffusion_scheme.f90` |
 | `parmin` | `io/read_controls.f90` (`read_controls`), with its steps in `io/legacy_controls.f90`, `run_files.f90`, `derived_controls.f90` and `run_cards.f90` |
 | `getyrec7`, `getmodel2`, `wrtlst` | `io/model_files.f90` (`read_yrec7`, `read_model2`; the `.mod` format's `write_mod_model` and `read_mod_model` replaced `wrtlst`) |
 | `wrthead` | `io/yrec_output.f90` (`output_run_header`) |

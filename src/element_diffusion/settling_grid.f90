@@ -12,15 +12,6 @@ module settling_grid
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! model_to_equal
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original model_to_equal.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
 ! MHP 3/94 added metal diffusion.
 subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      radius, enclosed_mass, &
@@ -133,11 +124,9 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          diff_scr%eq_metal_diffusion_coeff2_mid(1)=diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
               interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
               diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
-! 2026 (bugsweep Batch 2): the metal abundance carried to the equal
-! grid is Z (slot i_metals = 3); the inherited code read slot 8 (N15)
-! here and at the four sibling sites below. equal_to_model applies
-! the change back to slot 3, so this was an N15-for-Z mismatch on the
-! old (use_new_diffusion_routines = F) settling path.
+! The metal abundance carried to the equal grid is Z (slot i_metals),
+! which equal_to_model changes; the inherited code read N15 (slot 8)
+! here and at the four sites below (fixed in the 2026 bug sweep).
          diff_scr%metal_abundance_change_mid(1) = composition(i_metals,interp_search_index-1)+ &
               interp_fraction*(composition(i_metals,interp_search_index)- &
               composition(i_metals,interp_search_index-1))
@@ -289,14 +278,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 end subroutine model_to_equal
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! equal_to_model
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original equal_to_model.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
 subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
@@ -313,9 +294,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! here (parallel to radius), its physical meaning is not otherwise
 ! exercised in this file.
       double precision, intent(inout) :: aux_radial_quantity(json)
-! radius: the caller's Bahcall-Loeb radius copy; read only (until 2026
-! W2 it and a temperature copy were divided back out of BL units here,
-! which nothing read afterwards).
+! radius: the caller's Bahcall-Loeb radius copy, read only
       double precision, intent(in) :: radius(json)
       double precision, intent(inout) :: enclosed_mass(json)
       integer, intent(in) :: num_zones

@@ -15,15 +15,6 @@ module original_settling
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! grsett
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original grsett.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! GRSETT SOLVES FOR THE GRAVITATIONAL SETTLING OF HELIUM USING THE
 ! FORMULISM OF BAHCALL AND LOEB 1989.  METAL SETTLING (MHP 3/94) IS
 ! CARRIED ALONGSIDE IN diff_scr%metal_abundance_change WHEN
@@ -56,9 +47,8 @@ contains
 ! log_radius - LOG RADIUS (CM)
 ! mass_grams - MASS (GM), UNLOGGED
 ! log_temperature - LOG TEMPERATURE (K)
-! del_grad - DEL (=DLNT/DLNP) per zone (2026 W2: an explicit argument;
-!     mix passes star%gradT, rotmix passes mix_scr%delm, which it used
-!     to copy into star%gradT around this call)
+! del_grad - DEL (=DLNT/DLNP) per zone (core passes star%gradT, rotmix
+!     its mid-step gradient)
 ! convective_flag - FLAG T/F FOR CONVECTION
 ! num_zones - NUMBER OF MODEL POINTS
 !
@@ -265,7 +255,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
                max_delta_x_zone = eq_idx
             endif
          end do
-! solver forensics (2026 run-log verbosity sweep)
+! solver forensics
          if (solver_diagnostics()) &
               write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
@@ -303,17 +293,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 end subroutine gravitational_settling
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! setup_grsett
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original setup_grsett.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
-! Prepares a model for the gravitational-settling solve done by
-! gravitational_settling.f90: locates the diffusion zone boundaries (excluding any
+! Prepares a model for gravitational_settling's solve: locates the diffusion zone boundaries (excluding any
 ! convective core/envelope and any hydrogen- or helium-exhausted
 ! region), converts the model to Bahcall & Loeb (1990) natural units,
 ! and computes the helium (and, if enabled, iron) settling diffusion
@@ -419,7 +399,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
          settling_skipped_flag=.true.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
          if (solver_diagnostics() .or. &
               .not. diff_scr%settling_suspended_reported) then
             write(run_log_unit,15)
@@ -440,7 +420,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
       if (solver_diagnostics() .or. &
            .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
@@ -469,7 +449,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       if (zone_idx < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
-! report_solver_diagnostics (2026 run-log verbosity sweep)
+! report_solver_diagnostics
       if (solver_diagnostics() .or. &
            .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,17)star%ctrl%helium_diffusion_min

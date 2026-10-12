@@ -1,10 +1,9 @@
-! bahcall_loeb_units: the Bahcall & Loeb (1990) unit scales used by
-! the diffusion/settling routines.  set_bahcall_loeb_scales stores them
-! in diff_scr%bl_radius_scale / bl_mass_scale / bl_temp_scale / bl_time_scale.
-! Written once per settling call from microdiff_setup and
-! gravitational_settling_setup (which carried two copies of the same
-! statements before 2026 W2); read back by microdiff_etm and
-! equal_to_model to undo the in-place conversion of the callers' arrays.
+! bahcall_loeb_units: the Bahcall & Loeb (1990) unit scales of the
+! settling routines. set_bahcall_loeb_scales stores them in diff_scr
+! (bl_radius_scale, bl_mass_scale, bl_temp_scale, bl_time_scale) once per
+! settling call, from microdiff_setup and gravitational_settling_setup;
+! microdiff_etm and equal_to_model read them back to undo the in-place
+! conversion of the callers' arrays.
 module bahcall_loeb_units
       use element_diffusion_scratch, only: diff_scr
       implicit none

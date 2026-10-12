@@ -1556,3 +1556,33 @@ test_mesa_output and the full battery compare the runs.
     relative startmodels/ directory, and four testsuite decks start from
     another run's output. They now stop with "cannot open the starting
     model"; test_controls records that.
+
+### rotation/ series: element diffusion split out (yrec-next, 2026-10-12)
+
+The first part of the rotation series. All bitwise identical (the new
+tests, test_reentry, the quick check, the solar GS decks rotating and
+not, and the full battery).
+- **DONE: pins first** (491adc36, 94c33ff4): test_diffusion (now
+  test_element_diffusion) runs both settling routines on a synthetic
+  solar-like model. No deck used the original gravitational_settling,
+  which a deck gets whenever it turns on settling without LNEWDIF.
+  test_rotation gains the rotating structure (moments of inertia,
+  omega from j, the shape factors, viscos).
+- **DONE: element_diffusion/ is its own domain** (f2d05f1e, bc215a7b,
+  fb0aa9d6): settling is not rotation physics (core settles
+  non-rotating models through it). Topic modules behind
+  element_diffusion_lib, whose diffuse_elements makes the
+  original-or-newer choice both callers used to make; its own scratch,
+  reset through the facade.
+- Found: use_thoul_fit and use_thoul_diffusion act only in the original
+  routines. rotmix declared the enclosed mass intent(in) although
+  settling converts it in place (now inout).
+- **Open:**
+  - Settling converts star%m to Bahcall & Loeb units and back in
+    place; the round trip can change its last bit every step. Working
+    on a copy would fix it but changes results at round-off; it needs
+    a measured commit.
+  - rotation itself: modules for its 41 external-procedure files, the
+    evolve_angular_momentum steps, rotmix's name, comments. Whether
+    rotation gets a facade is the author's call (an earlier decision
+    kept it without one).

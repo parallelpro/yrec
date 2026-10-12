@@ -1,26 +1,11 @@
 !----------------------------------------------------------------------
-! microdiff_mte
+! microdiff_mapping
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff_mte.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
-! "MTE" = model-to-equally-spaced-grid transform: builds the equally
-! spaced radial grid (at both zone centers and zone midpoints, in
-! Bahcall & Loeb units) used by microdiff_run.f90/microdiff_coefficients.f90,
-! and interpolates density, temperature, dlnP/dr, the "del" temperature
-! gradient, and the H/He/metal/light-element mass fractions onto it via
-! 4-point Lagrangian interpolation (interp, numerics_lib). Part of
-! the microdiff.f90 pipeline (see also
-! microdiff_setup.f90, microdiff_coefficients.f90, microdiff_run.f90,
-! microdiff_etm.f90).
-! 2026 de-tramp (ROADMAP item 3): 33 arguments -> 15. The 22
-! equally-spaced-grid output arrays are two microdiff_grid records
-! (zone centers, eq; zone midpoints, eq_mid), defined here and
-! threaded through microdiff_run/microdiff_coefficients, which are
-! called once per grid instance.
+! microdiff's grids. map_microdiff_to_equal_grid builds the equally
+! spaced radial grids (zone centers, eq; midpoints, eq_mid; Bahcall &
+! Loeb units) and interpolates the structure and the mass fractions
+! onto them (4-point Lagrange, numerics_lib). microdiff_etm carries the
+! abundance changes back to the model grid.
 module microdiff_mapping
       use element_diffusion_scratch, only: diff_scr
       use star_info_lib, only: json
@@ -29,7 +14,7 @@ module microdiff_mapping
 ! One equally spaced radial grid of the microdiff settling pipeline
 ! (Bahcall & Loeb units): structure plus interpolated composition.
 ! light is dimensioned for the pipeline's three light elements
-! (Li6/Li7/Be9; num_light in microdiff.f90).
+! (Li6/Li7/Be9; num_light in microdiff).
       type :: microdiff_grid
          double precision :: mass(json), radius(json), density(json), &
               temperature(json), dlnp_dr(json), del_grad(json), &
@@ -261,27 +246,12 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
 end subroutine map_microdiff_to_equal_grid
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! microdiff_etm
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original microdiff_etm.f; only variable names, source form, and
-! comment style were updated. Validated against the Stage 0 regression
-! suite (examples/run_standard_solar_model).
-!
-! "ETM" = equally-spaced-to-model-grid transform, the reverse of
-! microdiff_mte.f90: interpolates the changes in hydrogen/metal/light-
-! element abundance computed by microdiff_run.f90 (on the equally
-! spaced grid) back onto the original model grid, applies the standard
-! floor/ceiling failsafes, renormalizes helium via X+Y+Z=1, and
-! converts DT/STOT/HS1/HQPR back out of Bahcall & Loeb units (the
-! caller's radius_bl copy is not converted back: nothing reads it after
-! this call, and its temperature_bl partner was dropped for the same
-! reason in 2026 W2).
-! Last stage of the microdiff.f90 pipeline (see also
-! microdiff_setup.f90, microdiff_mte.f90, microdiff_coefficients.f90,
-! microdiff_run.f90).
+! The reverse of map_microdiff_to_equal_grid: interpolates the changes
+! in hydrogen, metal and light-element abundance from the equally spaced
+! grid back onto the model grid, applies the floors and ceilings,
+! renormalizes helium by X+Y+Z=1, and converts DT/STOT/HS1/HQPR back out
+! of Bahcall & Loeb units (radius_bl is not converted back; nothing
+! reads it afterwards).
 !  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 !  SPACED GRID.
 subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
