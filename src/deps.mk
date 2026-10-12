@@ -343,6 +343,7 @@ rotation/shape/shell_quadrature.o: math_lib.mod physical_constants.mod star_info
 rotation/shape/zone_moments_of_inertia.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/solid_body_omega.o: rotation_scratch_lib.mod star_info_lib.mod
 rotation/species_table.o: physical_constants.mod star_info_lib.mod
+rotation/test/test_diffusion.o: io_units.mod star_info_lib.mod
 rotation/test/test_rotation.o: magnetic_braking.mod physical_constants.mod secular_transport.mod shell_quadrature.mod star_info_lib.mod
 rotation/viscos.o: math_lib.mod physical_constants.mod star_info_lib.mod
 setup/locate_shell_boundaries.o: controls_buffer.mod star_info_lib.mod
