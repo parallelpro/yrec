@@ -557,17 +557,33 @@ subroutine build_pulse_points(pts)
          pts(:,j) = 0.0d0
          select case (ext_region(j))
          case (1)
-            r = exp(ln10*star%logR(i))
-            m = star%m(i)
-            P = exp(ln10*star%logP(i))
-            T = exp(ln10*star%logT(i))
-            rho = exp(ln10*star%logRho(i))
-            delta = -star%pulse_dlnrho_dlnt(i)
-            nab = star%gradT(i)
-            nab_ad = star%grada(i)
-            pts(ipul_L,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
-            pts(ipul_gamma1,j) = star%adiabatic_index_gamma1(i)
-            pts(ipul_kap,j) = star%opacity_zone(i)
+            call gather_interior_point()
+         case (2)
+            call gather_envelope_point()
+         case default   ! atmosphere
+            call gather_atmosphere_point()
+         end select
+         call store_common_columns()
+      end do
+      call difference_brunt_n2()
+
+contains
+
+! ---------------------------------------------------------------
+! Interior point i: its structure, and the pulse columns the converged
+! interior model holds.
+subroutine gather_interior_point()
+      r = exp(ln10*star%logR(i))
+      m = star%m(i)
+      P = exp(ln10*star%logP(i))
+      T = exp(ln10*star%logT(i))
+      rho = exp(ln10*star%logRho(i))
+      delta = -star%pulse_dlnrho_dlnt(i)
+      nab = star%gradT(i)
+      nab_ad = star%grada(i)
+      pts(ipul_L,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
+      pts(ipul_gamma1,j) = star%adiabatic_index_gamma1(i)
+      pts(ipul_kap,j) = star%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
 ! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
@@ -577,29 +593,34 @@ subroutine build_pulse_points(pts)
 ! are: multiplying them by eps as well (2ed398ca, misled by their former
 ! pulse_dlneps_* names) made these columns wrong by a factor eps until
 ! the 2026-10 audit.
-            pts(ipul_kap_kap_T,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
-            pts(ipul_kap_kap_rho,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
-            pts(ipul_eps,j) = star%eps_total(i)
-            pts(ipul_eps_eps_T,j) = star%pulse_deps_dlnt(i)
-            pts(ipul_eps_eps_rho,j) = star%pulse_deps_dlnrho(i)
-            pts(ipul_omega,j) = star%omega(i)
-            pts(ipul_cp,j) = star%pulse_specific_heat(i)
+      pts(ipul_kap_kap_T,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
+      pts(ipul_eps,j) = star%eps_total(i)
+      pts(ipul_eps_eps_T,j) = star%pulse_deps_dlnt(i)
+      pts(ipul_eps_eps_rho,j) = star%pulse_deps_dlnrho(i)
+      pts(ipul_omega,j) = star%omega(i)
+      pts(ipul_cp,j) = star%pulse_specific_heat(i)
 ! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG
 ! var(14) wants exactly that (it used to be inverted a second time).
-            pts(ipul_mu_e_inv,j) = star%pulse_electron_mean_weight_inverse(i)
-            pts(ipul_h1,j) = star%xa(i_h1,i)
-            pts(ipul_z,j) = star%xa(i_metals,i)
-            do k = 1, 11
-               pts(ipul_species_base+k,j) = star%xa(species_slot(k),i)
-            end do
-            pts(ipul_eps_grav,j) = star%eps_channels(i_eps_grav,i)
-         case (2)
-            r = exp(ln10*env_struct%env_log10_radius(i))
-            m = envelope_mass_g(i)
-            P = exp(ln10*env_struct%env_log10_pressure(i))
-            T = exp(ln10*env_struct%env_log10_temperature(i))
-            rho = exp(ln10*env_struct%env_log10_density(i))
-            delta = -env_struct%env_dlnrho_dlnt(i)
+      pts(ipul_mu_e_inv,j) = star%pulse_electron_mean_weight_inverse(i)
+      pts(ipul_h1,j) = star%xa(i_h1,i)
+      pts(ipul_z,j) = star%xa(i_metals,i)
+      do k = 1, 11
+         pts(ipul_species_base+k,j) = star%xa(species_slot(k),i)
+      end do
+      pts(ipul_eps_grav,j) = star%eps_channels(i_eps_grav,i)
+end subroutine gather_interior_point
+
+! ---------------------------------------------------------------
+! Envelope point i: its structure and the columns env_struct holds; the
+! rotation and composition are the surface's.
+subroutine gather_envelope_point()
+      r = exp(ln10*env_struct%env_log10_radius(i))
+      m = envelope_mass_g(i)
+      P = exp(ln10*env_struct%env_log10_pressure(i))
+      T = exp(ln10*env_struct%env_log10_temperature(i))
+      rho = exp(ln10*env_struct%env_log10_density(i))
+      delta = -env_struct%env_dlnrho_dlnt(i)
 ! 2026 sweep fix: env_gradients order is (1) radiative, (2) ADIABATIC,
 ! (3) ACTUAL (see the profile-column mapping above and
 ! envelope_derivs' current_gradients stores) -- unlike atmo_gradients,
@@ -607,58 +628,72 @@ subroutine build_pulse_points(pts)
 ! slots swapped (the pulse-side twin of the pre-2026 profile-column
 ! swap), flipping the thermal N^2 sign across the envelope region of
 ! every pulse file and swapping the grad/grad_ad pulse columns there.
-            nab = env_struct%env_gradients(3,i)
-            nab_ad = env_struct%env_gradients(2,i)
-            pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
-            pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
-            pts(ipul_kap,j) = env_struct%env_opacity(i)
+      nab = env_struct%env_gradients(3,i)
+      nab_ad = env_struct%env_gradients(2,i)
+      pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
+      pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
+      pts(ipul_kap,j) = env_struct%env_opacity(i)
 ! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
 ! used for the interior above
-            pts(ipul_kap_kap_T,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnt(i)
-            pts(ipul_kap_kap_rho,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnrho(i)
-            pts(ipul_omega,j) = star%omega(star%nz)
-            pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
-            pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
-            pts(ipul_z,j) = env_struct%env_metal_fraction(i)
-            do k = 1, 11
-               pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
-            end do
-         case default   ! atmosphere
-            r = atmosphere_radius_cm(i)
-            m = exp(ln10*star%log_total_mass)
-            P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
-            T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
-            rho = exp(ln10*atmo_struct%atmo_log10_density(i))
-            delta = -atmo_struct%atmo_dlnrho_dlnt(i)
-            nab = atmo_struct%atmo_gradients(2,i)
-            nab_ad = atmo_struct%atmo_gradients(3,i)
-            pts(ipul_L,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
-            pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
-            pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
-            pts(ipul_kap_kap_T,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnt(i)
-            pts(ipul_kap_kap_rho,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnrho(i)
-            pts(ipul_omega,j) = star%omega(star%nz)
-            pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
-            pts(ipul_h1,j) = star%xa(i_h1,star%nz)
-            pts(ipul_z,j) = star%xa(i_metals,star%nz)
-            do k = 1, 11
-               pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
-            end do
-         end select
-         pts(ipul_r,j) = r
-         pts(ipul_m,j) = m
-         pts(ipul_P,j) = P
-         pts(ipul_T,j) = T
-         pts(ipul_rho,j) = rho
-         pts(ipul_grad,j) = nab
-         pts(ipul_grada,j) = nab_ad
-         pts(ipul_delta,j) = delta
-         if (r > 0.0d0) then
-            grav = local_gravity_cgs(m, r)
-            pts(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
-         end if
+      pts(ipul_kap_kap_T,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnrho(i)
+      pts(ipul_omega,j) = star%omega(star%nz)
+      pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
+      pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
+      pts(ipul_z,j) = env_struct%env_metal_fraction(i)
+      do k = 1, 11
+         pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
       end do
+end subroutine gather_envelope_point
 
+! ---------------------------------------------------------------
+! Atmosphere point i: its structure and the columns atmo_struct holds;
+! the luminosity, rotation and composition are the surface's.
+subroutine gather_atmosphere_point()
+      r = atmosphere_radius_cm(i)
+      m = exp(ln10*star%log_total_mass)
+      P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
+      T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
+      rho = exp(ln10*atmo_struct%atmo_log10_density(i))
+      delta = -atmo_struct%atmo_dlnrho_dlnt(i)
+      nab = atmo_struct%atmo_gradients(2,i)
+      nab_ad = atmo_struct%atmo_gradients(3,i)
+      pts(ipul_L,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
+      pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
+      pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
+      pts(ipul_kap_kap_T,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnrho(i)
+      pts(ipul_omega,j) = star%omega(star%nz)
+      pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
+      pts(ipul_h1,j) = star%xa(i_h1,star%nz)
+      pts(ipul_z,j) = star%xa(i_metals,star%nz)
+      do k = 1, 11
+         pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
+      end do
+end subroutine gather_atmosphere_point
+
+! ---------------------------------------------------------------
+! The columns every region fills alike: r, m, P, T, rho, the gradients,
+! delta, and the pointwise thermal N^2.
+subroutine store_common_columns()
+      pts(ipul_r,j) = r
+      pts(ipul_m,j) = m
+      pts(ipul_P,j) = P
+      pts(ipul_T,j) = T
+      pts(ipul_rho,j) = rho
+      pts(ipul_grad,j) = nab
+      pts(ipul_grada,j) = nab_ad
+      pts(ipul_delta,j) = delta
+      if (r > 0.0d0) then
+         grav = local_gravity_cgs(m, r)
+         pts(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
+      end if
+end subroutine store_common_columns
+
+! ---------------------------------------------------------------
+! The second pass over N^2: the gradient form by centered differences
+! outside convective zones (see below).
+subroutine difference_brunt_n2()
 ! Brunt-Vaisala N^2 (column 8), second pass: overwrite the pointwise
 ! thermal-only value computed above with the exact gradient form
 !     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
@@ -696,6 +731,8 @@ subroutine build_pulse_points(pts)
          pts(ipul_N2,1) = pts(ipul_N2,2)
          pts(ipul_N2,n_ext) = pts(ipul_N2,n_ext-1)
       end if
+end subroutine difference_brunt_n2
+
 end subroutine build_pulse_points
 
 ! star%xa slot for pulse column 22+k (k = 1..11), in FGONG species
