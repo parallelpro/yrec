@@ -20,6 +20,7 @@
 ! of the previous step); the reset block below (evolve_step_reset_pending)
 ! covers them alongside evolve_state.
 subroutine evolve_step(model_iteration, step_status, ierr)
+      use rotating_shape, only: rotation_shape_factors
 
       use star_info_lib, only: star, evolve_step_reset_pending, i_h1, i_h2, i_he4, &
            n_species_basic, n_species_extended

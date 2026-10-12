@@ -33,6 +33,8 @@
 ! The values are plausible solar-like ones, chosen to reach every
 ! branch.
 program test_rotation
+      use moments_of_inertia, only: zone_moments_of_inertia
+      use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: star, json
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking

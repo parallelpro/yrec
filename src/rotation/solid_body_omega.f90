@@ -14,6 +14,8 @@
 subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
      moment_of_inertia, omega, di_domega, mean_radius, num_zones)
+      use moments_of_inertia, only: zone_moments_of_inertia
+      use rotating_shape, only: shape
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json

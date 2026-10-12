@@ -30,6 +30,7 @@
 ! Non-zero ierr propagates a callee failure to evolve_step.
 ! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
 module henyey_iteration
+      use rotating_shape, only: rotation_shape_factors
       implicit none
       private
       public :: refresh_surface_bc, henyey_iterate
