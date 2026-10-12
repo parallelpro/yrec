@@ -19,7 +19,7 @@ module equal_grid
       implicit none
       private
       public :: edge_grid_abscissae, interp_edge_coeff, dchi_dr_jacobian, &
-           multiply_by_exp10
+           multiply_by_exp10, equal_spaced_grid
 contains
 
 !----------------------------------------------------------------------
@@ -145,5 +145,82 @@ subroutine multiply_by_exp10(coeff, log_factor, ntot)
          coeff(i) = coeff(i)*exp(ln10*log_factor(i))
       end do
 end subroutine multiply_by_exp10
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! getgrid
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original getgrid.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! This routine forms the sum of rot_scr%chi, defined as
+! rot_scr%chi = log(M)/dm + L/(Ltot*dl) - log(P)/dp, where dm, dp, and dl are
+! the point spacings for log mass, luminosity, and pressure
+! respectively. This routine transforms these variables to an equally
+! spaced grid from the first point to the last point. It returns a
+! set of equally spaced rot_scr%chi values and their location in mass.
+subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
+     zone_end, num_zones)
+      use rotation_scratch_lib
+      use star_info_lib, only: star, json
+      use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
+      use physical_constants
+      use numerics_lib
+      use math_lib
+      implicit none
+
+! luminosity_lsun (originally HL) is the LINEAR luminosity in solar
+! units, not a log: both callers (composition_grid.f90,
+! am_transport_grid.f90) pass rot_scr%luminosity_lsun_mid, the
+! mid-sub-step interpolate of star%luminosity_lsun, and the chi term
+! below is L/(LTOT*DL) (unlike the LOG(M) and LOG(P) terms).
+      double precision, intent(in) :: luminosity_lsun(json), log_pressure(json), &
+           log_mass(json)
+      integer, intent(in) :: zone_begin, zone_end, num_zones
+
+      double precision :: log_mass_table(json)
+      integer :: num_points_in_range, zone_index, range_index
+      double precision :: mass_scale, luminosity_scale, pressure_scale
+
+! USE THE MODEL CRITERIA FOR ASSIGNING THE SPACING BETWEEN GRID POINTS.
+      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
+      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)
+      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
+      num_points_in_range = zone_end - zone_begin + 1
+      do range_index = 1, num_points_in_range
+         zone_index = zone_begin + range_index - 1
+         rot_scr%chi(range_index) = log_mass(zone_index)/mass_scale + &
+              luminosity_lsun(zone_index)/luminosity_scale - &
+              log_pressure(zone_index)/pressure_scale
+      end do
+! NUMBER OF EQUALLY SPACED POINTS = NUMBER OF MODEL POINTS IN RANGE
+! (THE ORIGINAL INT(CHI(NTAB)-CHI(1))+1 RULE IS NOT USED).
+      rot_scr%ntot = num_points_in_range
+! FOR ROTATION PURPOSES, DEFINE THE MINIMUM NUMBER OF
+! EQUALLY SPACED SHELLS AS 3.
+      rot_scr%ntot = max(rot_scr%ntot,3)
+! EQUALLY SPACED INCREMENT IN CHI
+      rot_scr%dchi = (rot_scr%chi(num_points_in_range)-rot_scr%chi(1))/dfloat(rot_scr%ntot-1)
+! ASSIGN VECTOR OF EQUALLY SPACED CHI
+      rot_scr%echi(1) = rot_scr%chi(1)
+      do zone_index = 2, rot_scr%ntot
+         rot_scr%echi(zone_index) = rot_scr%echi(zone_index-1)+rot_scr%dchi
+      end do
+! NOW ASSIGN MASSES TO THE NEW EQUALLY SPACED GRID POINTS.
+! PERFORM INTERPOLATION IN LOG MASS - CONSISTENT WITH CHI DEFINED
+! IN LOG M, LOG P, ETC.
+      do zone_index = 1, num_points_in_range
+         log_mass_table(zone_index) = log_mass(zone_begin+zone_index-1)
+      end do
+      call osplin(rot_scr%echi,rot_scr%eq_enclosed_mass,rot_scr%chi,log_mass_table,num_points_in_range,rot_scr%ntot)
+! TRANSFORM TO PHYSICAL MASS (GM)
+      do zone_index = 1, rot_scr%ntot
+         rot_scr%eq_enclosed_mass(zone_index) = exp(ln10*rot_scr%eq_enclosed_mass(zone_index))
+      end do
+      return
+end subroutine equal_spaced_grid
 
 end module equal_grid

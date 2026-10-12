@@ -33,6 +33,8 @@
 ! The values are plausible solar-like ones, chosen to reach every
 ! branch.
 program test_rotation
+      use omega_profile, only: omega_from_j
+      use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: star, json

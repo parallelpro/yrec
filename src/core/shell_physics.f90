@@ -14,6 +14,7 @@
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
+      use viscosity, only: viscos
       use convection_lib, only: compute_temperature_gradients
       use rotation_scratch_lib
 

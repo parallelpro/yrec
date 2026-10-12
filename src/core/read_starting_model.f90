@@ -30,6 +30,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
+      use am_regions, only: am_convective_regions
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use convection_lib, only: compute_temperature_gradients, set_convection_envelope_metals

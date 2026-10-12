@@ -62,6 +62,8 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
      converged_flag, redo_flag, omega, &
      qiw, mean_radius, &
      already_converged_flag, ierr)
+      use omega_profile, only: solid_body_omega
+      use omega_profile, only: omega_from_j
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json

@@ -15,6 +15,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      moment_of_inertia, specific_angular_momentum, qiw, mean_radius, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
+      use omega_profile, only: omega_from_j
       use eos_lib, only: eos_set_debye_huckel_composition
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff

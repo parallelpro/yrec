@@ -1,4 +1,17 @@
 !----------------------------------------------------------------------
+! am_regions
+!----------------------------------------------------------------------
+! The convective and radiative regions for angular momentum transport
+! (am_convective_regions): the convection zones with their overshoot.
+module am_regions
+      implicit none
+      private
+      public :: am_convective_regions
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! ovrot
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -62,3 +75,5 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
 
       return
 end subroutine am_convective_regions
+
+end module am_regions

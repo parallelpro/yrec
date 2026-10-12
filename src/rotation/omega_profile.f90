@@ -1,4 +1,200 @@
 !----------------------------------------------------------------------
+! omega_profile
+!----------------------------------------------------------------------
+! The rotation curve from the angular momentum: omega_from_j over the
+! whole star, convection zones as solid bodies (enforce_rotation_profile)
+! and radiative shells one at a time (solid_body_omega).
+module omega_profile
+      implicit none
+      private
+      public :: omega_from_j, solid_body_omega, enforce_rotation_profile
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! getrot
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original getrot.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! GETROT takes the angular momentum distribution and finds the
+! rotation curve that corresponds to it. Convective regions have
+! solid body rotation enforced on them.
+subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
+     log_mass, shell_mass, am_transport_convective_flag, num_zones, &
+     eta_squared, moment_of_inertia, omega, qiw, mean_radius)
+      use star_info_lib, only: json
+
+      implicit none
+
+      double precision, intent(inout) :: log_density(json), &
+           specific_angular_momentum(json), log_radius(json), log_mass(json), &
+           shell_mass(json)
+      logical, intent(in) :: am_transport_convective_flag(json)
+      integer, intent(in) :: num_zones
+      double precision, intent(inout) :: eta_squared(json), &
+           moment_of_inertia(json), omega(json), qiw(json), mean_radius(json)
+      logical :: in_convection_zone
+      integer :: zone_index, zone_start, zone_end
+
+      in_convection_zone = .false.
+      do zone_index = 1,num_zones
+         if (.not.in_convection_zone) then
+            if (.not.am_transport_convective_flag(zone_index)) then
+! RADIATIVE SHELL
+               zone_start = zone_index
+               zone_end = zone_index
+               call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
+                    log_mass,shell_mass,zone_start,zone_end,eta_squared, &
+                    moment_of_inertia,omega,qiw,mean_radius,num_zones)
+            else
+! CONVECTION ZONE START - SET LCONVZ TO T
+               in_convection_zone = .true.
+               zone_start = zone_index
+            endif
+         else if (.not.am_transport_convective_flag(zone_index)) then
+! THE PREVIOUS SHELL WAS CONVECTIVE.  IF THIS ONE IS RADIATIVE, ENFORCE
+! THE APPROPRIATE ROTATION LAW IN THE ENTIRE CONVECTION ZONE PRECEDING IT.
+            zone_end = zone_index - 1
+! JNT 09/25 FOR 05/15 CALL WCZIMP INSTEAD OF WCZ
+            call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
+                 log_mass,shell_mass,zone_start,zone_end,eta_squared, &
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+! NOW FIND OMEGA IN THE CURRENT SHELL
+            zone_start = zone_index
+            zone_end = zone_index
+            call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
+                 log_mass,shell_mass,zone_start,zone_end,eta_squared, &
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+            in_convection_zone = .false.
+         else if (zone_index.eq.num_zones) then
+! SPECIAL CASE OF LAST SHELL CONVECTIVE - ENFORCE SOLID-BODY ROTATION
+! IN CZ AS ABOVE.
+            zone_end = num_zones
+! JNT 09/25 FOR 05/15 CALL WCZIMP INSTEAD OF WCZ
+            call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
+                 log_mass,shell_mass,zone_start,zone_end,eta_squared, &
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+         endif
+      end do
+      return
+end subroutine omega_from_j
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! solid
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original solid.f; only variable names, source form, and comment
+! style were updated.
+!
+! Given the angular momentum per unit mass of zones zone_start..zone_end,
+! returns the single (solid-body) rotation rate omega that carries the
+! same total angular momentum, iterating on omega with shape (r0, eta2)
+! and zone_moments_of_inertia (I, dI/domega) at each guess. r0 and eta2
+! are later needed by rotation_shape_factors.
+subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
+     log_mass, shell_mass, zone_start, zone_end, eta_squared, &
+     moment_of_inertia, omega, di_domega, mean_radius, num_zones)
+      use moments_of_inertia, only: zone_moments_of_inertia
+      use rotating_shape, only: shape
+      use rotation_scratch_lib
+
+      use star_info_lib, only: star, json
+      implicit none
+
+      double precision, intent(in) :: log_density(json)
+      double precision, intent(inout) :: specific_angular_momentum(json)
+      double precision, intent(in) :: log_radius(json), log_mass(json), &
+           shell_mass(json)
+      integer, intent(in) :: zone_start, zone_end
+      double precision, intent(inout) :: eta_squared(json)
+      double precision, intent(out) :: moment_of_inertia(json)
+      double precision, intent(inout) :: omega(json)
+      double precision, intent(out) :: di_domega(json)
+      double precision, intent(out) :: mean_radius(json)
+      integer, intent(in) :: num_zones
+! --- locals ---
+      double precision :: total_angular_momentum, omega_sum
+      integer :: iteration_count
+      logical :: disk_locked
+      double precision :: omega_guess
+      double precision :: total_moment_of_inertia, total_di_domega
+      double precision :: new_angular_momentum, delta_angular_momentum, &
+           delta_omega
+      integer :: zone_idx
+
+      total_angular_momentum = 0.0d0
+      omega_sum = 0.0d0
+      iteration_count = 0
+!  FIND THE TOTAL ANGULAR MOMENTUM OF SHELLS JSTART TO JEND.
+!  ALSO MAKE A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES.
+      do zone_idx = zone_start,zone_end
+         total_angular_momentum = total_angular_momentum + &
+              shell_mass(zone_idx)*specific_angular_momentum(zone_idx)
+         omega_sum = omega_sum + omega(zone_idx)
+      end do
+!  MHP 9/94 OPTION ADDED TO ENFORCE DISK LOCKING UP TO A GIVEN AGE IN
+!  THE SURFACE C.Z. ONLY.
+      disk_locked = .false.
+      if(zone_end.eq.num_zones .and. zone_start.ne.zone_end .and. &
+           disk_locking_engaged())disk_locked = .true.
+      if(.not.disk_locked)then
+         omega_guess = omega_sum/dfloat(zone_end - zone_start + 1)
+      else
+         omega_guess = star%job%disk_omega_rad_s
+      end if
+      omega_iter: do
+      do zone_idx = zone_start,zone_end
+         omega(zone_idx) = omega_guess
+      end do
+!  DETERMINE THE MOMENTS OF INERTIA OF SHELLS JSTART TO JEND WITH OMEGA
+!  EQUAL TO WGUESS.
+      call shape(log_density,log_radius,log_mass,zone_start,zone_end,omega, &
+           eta_squared,mean_radius)
+      call zone_moments_of_inertia(eta_squared,log_radius,log_mass,shell_mass,zone_start, &
+           zone_end,omega,mean_radius,moment_of_inertia,di_domega)
+      total_moment_of_inertia = 0.0d0
+      total_di_domega = 0.0d0
+!  FIND TOTAL MOMENT OF INERTIA(CZI) AND TOTAL DI/DOMEGA (CZQIW)
+      do zone_idx = zone_start,zone_end
+         total_moment_of_inertia = total_moment_of_inertia + &
+              moment_of_inertia(zone_idx)
+         total_di_domega = total_di_domega + di_domega(zone_idx)
+      end do
+      new_angular_momentum = omega_guess*total_moment_of_inertia
+!  CHECK IF THE TOTAL ANGULAR MOMENTUM FOUND WITH OMEGA = WGUESS IS CLOS
+!  ENOUGH.  IF NOT, CALCULATE DELTA OMEGA AND TRY AGAIN WITH A NEW WGUES
+      delta_angular_momentum = total_angular_momentum - new_angular_momentum
+      if(.not.disk_locked)then
+      if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
+           rot_scr%moment_of_inertia_tolerance) then
+         if(iteration_count.lt.20) then
+            iteration_count = iteration_count + 1
+            delta_omega = delta_angular_momentum/ &
+                 (total_moment_of_inertia + omega_guess*total_di_domega)
+            omega_guess = omega_guess + delta_omega
+            cycle omega_iter
+         end if
+      end if
+      end if
+      exit omega_iter
+      end do omega_iter
+      do zone_idx = zone_start,zone_end
+         specific_angular_momentum(zone_idx) = &
+              moment_of_inertia(zone_idx)*omega(zone_idx)/shell_mass(zone_idx)
+      end do
+
+      return
+end subroutine solid_body_omega
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! wczimp
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -186,3 +382,5 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
       endif
       return
 end subroutine enforce_rotation_profile
+
+end module omega_profile

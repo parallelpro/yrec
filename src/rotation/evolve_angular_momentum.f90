@@ -27,6 +27,9 @@
 ! solver) is called is gated by instability_transport_active (LINSTB).
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
+      use am_regions, only: am_convective_regions
+      use omega_profile, only: enforce_rotation_profile
+      use omega_profile, only: omega_from_j
       use rotation_scratch_lib
       use mid_timestep_model
       use secular_transport

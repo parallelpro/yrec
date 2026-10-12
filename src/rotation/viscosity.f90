@@ -1,4 +1,17 @@
 !----------------------------------------------------------------------
+! viscosity
+!----------------------------------------------------------------------
+! The microscopic viscosity (radiative and molecular) and the thermal
+! diffusivity of each shell (viscos).
+module viscosity
+      implicit none
+      private
+      public :: viscos
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! viscos
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -108,3 +121,5 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 
       return
 end subroutine viscos
+
+end module viscosity

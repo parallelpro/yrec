@@ -23,6 +23,9 @@
 ! The remaining arguments are genuine per-call scalars/bounds. Wrapped
 ! as a module procedure so the compiler enforces the call.
 module mid_timestep_model
+      use am_regions, only: am_convective_regions
+      use omega_profile, only: solid_body_omega
+      use omega_profile, only: omega_from_j
       implicit none
 contains
 

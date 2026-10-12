@@ -45,6 +45,7 @@
 ! unstable-domain bounds, the surface-CZ terms, and the outputs.
 ! Wrapped as a module procedure so the compiler enforces the call.
 module secular_transport
+      use omega_profile, only: solid_body_omega
       implicit none
 contains
 
