@@ -450,11 +450,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       rot_scr%theta_prev = 0.0d0
       rot_scr%es_diffusive_velocity_prev = 0.0d0
       rot_scr%es_advective_velocity_prev = 0.0d0
-      rot_scr%mu_gradient_velocity_prev = 0.0d0
       circ_scr%es_circulation_velocity_prev = 0.0d0
       circ_scr%secular_shear_velocity_prev = 0.0d0
       circ_scr%gsf_circulation_velocity_prev = 0.0d0
-      circ_scr%mu_gradient_velocity = 0.0d0
       star%vfc = 0.0d0
       call rotation_stability_setup(log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n, &
            radius, shear_limit)

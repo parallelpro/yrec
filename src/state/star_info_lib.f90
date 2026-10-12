@@ -278,6 +278,16 @@ module star_info_lib
 ! set per card by init_stop_conditions, overridden by whichever stop
 ! fires; read by run_log's end-of-run summary.
             character(len=96) :: termination_reason = 'model budget exhausted'
+! the mass change's state (core/mass_change; henyey_coefficients reads
+! the structure shifts): the envelope's mean specific entropy, and the
+! shifts of log P and log T accretion makes at the surface
+            double precision :: envelope_specific_entropy, &
+                 delta_log_pressure, delta_log_temperature
+! the rotation-scaled solar wind of mass_change: nothing sets these, so
+! that branch never runs
+            double precision :: solar_wind_mass_loss_rate_msun_yr, &
+                 wind_reference_omega, wind_max_omega
+            logical :: use_rotation_scaled_solar_wind
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.

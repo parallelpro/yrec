@@ -63,7 +63,6 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
          star%es_circulation_velocity(i) = 0.0d0
          star%gsf_circulation_velocity(i) = 0.0d0
          star%secular_shear_velocity(i) = 0.0d0
-         circ_scr%mu_gradient_velocity(i) = 0.0d0
       end do
       call interpolate_to_interfaces()
       call eddington_sweet_velocity()
@@ -82,7 +81,6 @@ contains
 subroutine store_previous_velocities()
 !  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
       do i = zone_min,zone_max
-         rot_scr%mu_gradient_velocity_prev(i) = circ_scr%mu_gradient_velocity(i)
          circ_scr%gsf_circulation_velocity_prev(i) = star%gsf_circulation_velocity(i)
          circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
          circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)

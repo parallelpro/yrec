@@ -26,10 +26,11 @@ module rotation_scratch_lib
 
 
       type, public :: rotation_diffusion_state
-! the commented-out Bulirsch-Stoer burn-and-mix path's tables (unused)
-           double precision :: bs_extrapolation_table(11,15,json), &
-                bs_extrapolated_composition(15,json), &
-                bs_extrapolation_increment(15,json)
+! the commented-out Bulirsch-Stoer burn-and-mix path's tables, commented
+! out with it:
+!          double precision :: bs_extrapolation_table(11,15,json), &
+!               bs_extrapolated_composition(15,json), &
+!               bs_extrapolation_increment(15,json)
 ! angular momentum transport: the advective and diffusive coefficients
            double precision :: am_advective_coeff(json), &
                 am_diffusive_coeff(json)
@@ -111,16 +112,13 @@ module rotation_scratch_lib
 ! theta (the Maeder & Zahn term) and omega across sub-steps.
 ! omega_substep_start (WMST): omega at the start of the current
 ! sub-step (star%old_omega on the first, star%omega afterwards), read at
-! the surface by secular_transport for the wind torque. tho and qwrst
-! are written by setup/rezone (the theta term and d omega/dr on the new
-! mesh); nothing reads qwrst.
+! the surface by secular_transport for the wind torque. tho is written
+! by setup/rezone (the theta term on the new mesh).
            double precision :: tho(json), theta_new(json), &
                 theta_mean(json), &
                 del_grad_diff_interface(json), &
                 es_relaxation_factor(json), theta_prev(json), &
-                qwrst(json), omega_substep_start(json)
-! the mu-gradient velocity at the previous iteration
-           double precision :: mu_gradient_velocity_prev(json)
+                omega_substep_start(json)
 ! the potential terms of the quadrupole
            double precision :: phisp(json), phirot(json), &
                 phidis(json), circulation_correction_ratio(json)
@@ -141,9 +139,6 @@ module rotation_scratch_lib
                 fact3(json), fact4(json), &
                 mu_gradient_richardson_coeff(json), &
                 difad_shear_coeff1(json), difad_shear_coeff2(json)
-! the largest stable d omega/dr, now and at the previous model
-           double precision :: max_domega_dr(json), &
-                max_domega_dr_old(json)
 ! the convective flags at the previous sub-step
            logical :: convective_flag_prev(json)
 ! the opacity and energy-generation derivatives, filled by
@@ -154,15 +149,6 @@ module rotation_scratch_lib
                 deps_dlnt(json), neutrino_loss_fraction(json)
 ! the rotational energy term
            double precision :: rotational_energy_term(json)
-! core's mass change (core/mass_change sets them): the entropy and the
-! structure shifts of accretion
-           double precision :: accretion_specific_entropy, &
-                envelope_specific_entropy, updated_mass_msun, &
-                delta_log_pressure, delta_log_temperature
-! core's mass change: the rotation-scaled solar wind
-           double precision :: solar_wind_mass_loss_rate_msun_yr, &
-                wind_reference_omega, wind_max_omega
-           logical :: use_rotation_scaled_solar_wind
 ! The structure interpolated to the middle of the current sub-step:
 ! filled by mid_timestep_model, read by secular_transport and the rest of
 ! the sub-step. Reads follow a write in the same step (the later
@@ -198,7 +184,6 @@ module rotation_scratch_lib
             double precision :: es_circulation_velocity_prev(json)
             double precision :: secular_shear_velocity_prev(json)
             double precision :: gsf_circulation_velocity_prev(json)
-            double precision :: mu_gradient_velocity(json)
       end type circulation_velocity_state
 
       type(rotation_diffusion_state), save :: rot_scr

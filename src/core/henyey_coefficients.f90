@@ -265,9 +265,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             if (star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
                if (im.ge.envelope_zone_index) then
                   zone_log_temperature_delta = star%log_temperature_delta(im)+ &
-                       rot_scr%delta_log_temperature
+                       star%delta_log_temperature
                   zone_log_pressure_delta = star%log_pressure_delta(im)+ &
-                       rot_scr%delta_log_pressure
+                       star%delta_log_pressure
                else
                   zone_log_temperature_delta = star%log_temperature_delta(im)
                   zone_log_pressure_delta = star%log_pressure_delta(im)

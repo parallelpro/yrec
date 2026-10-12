@@ -820,7 +820,6 @@ subroutine interpolate_onto_new_grid
                  rot_scr%old_del_adiabatic_mix(zone_index) - rot_scr%old_delm(zone_index)
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
-            rot_scr%max_domega_dr_old(zone_index) = rot_scr%max_domega_dr(zone_index)
          end do
 ! MHP 06/02 ADDED TERM FOR THE TIME EVOLUTION
 ! OF THE ANGULAR VELOCITY DISTRIBUTION
@@ -831,7 +830,6 @@ subroutine interpolate_onto_new_grid
             log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
      (star%log_mass(i)+star%log_mass(i-1))-cgl
             rot_scr%tho(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
-            rot_scr%qwrst(i) = delta_omega/delta_radius
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.

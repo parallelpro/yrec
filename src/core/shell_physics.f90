@@ -5,12 +5,7 @@
 ! (kap_get), and temperature_gradients to find the actual/adiabatic
 ! temperature gradients, opacity, and mean molecular weight, then
 ! calls viscos to find the thermometric diffusivity and kinematic
-! viscosity. Finally,
-! for every interface, finds the maximum allowable and actual
-! d(omega)/d(ln r) for the shear instability of Endal & Sofia, ApJ
-! 220:279 (1978): if the gradient of omega exceeds the critical value,
-! a short-timescale instability occurs and adjacent unstable zones are
-! mixed to a marginally stable state (elsewhere, not in this routine).
+! viscosity.
 subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
@@ -38,12 +33,11 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       integer, intent(out) :: ierr
 
       double precision :: atomic_weight(4)
-      double precision :: log_mass_nodes(4), interp_weights(4)
 ! indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3)
       data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
-      integer :: i, im, k
+      integer :: im
       double precision :: log10_mass, log10_temperature, log10_pressure, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
            metal_fraction, log10_density, pressure_rotation_factor, &
@@ -64,8 +58,6 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
            convective_velocity
       logical :: is_convective
       double precision :: dfx1, dfx2, dfx3, dfx4, temp_scratch, amu2, emu2
-      double precision :: log_mass_mid, pressure_mid, density_mid, &
-           actual_grad_mid, adiabatic_grad_mid, gravity_mid
 
       ierr = 0
 
@@ -133,58 +125,4 @@ subroutine shell_physics(fp, ft, composition, log_density, hg, log_luminosity, &
       end do
 !  FIND THE THERMOMETRIC DIFFUSIVITY AND KINEMATIC VISCOSITY.
       call viscos(composition, log_density, log_temperature, num_zones)
-!  FIND THE RUN OF MAXIMUM ALLOWABLE D OMEGA/D LNR AND THE RUN OF ACTUAL
-!  D OMEGA/D LN R FOR ALL RADIATIVE ZONES.
-!  IF THE GRADIENT OF OMEGA EXCEEDS THE CRITICAL VALUE FOR THE SHEAR
-!  INSTABILITY, A SHORT TIMESCALE INSTABILITY OCCURS.  MIX ALL ADJACENT
-!  UNSTABLE ZONES TO A MARGINALLY STABLE STATE.
-      do im = 2,num_zones
-!  SKIP CONVECTIVE REGIONS
-         if (convective_flag(im).and.convective_flag(im-1)) then
-            rot_scr%max_domega_dr(im) = 0.0d0
-            cycle
-         end if
-!  NOW CHECK FOR SHEAR INSTABILITY -REF.ENDAL&SOFIA APJ 220:279(1978)
-!  THERMODYNAMIC QUANTITIES ARE CALCULATED AT THE SHELL MIDPOINT BY
-!  4-POINT LAGRANGIAN INTERPOLATION.
-         if (im.eq.2) then
-            k = 1
-         else if (im.eq.num_zones) then
-            k = num_zones - 3
-         else
-            k = im - 2
-         end if
-         do i = 1, 4
-            log_mass_nodes(i) = log_mass(i+k-1)
-         end do
-!  USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND PHYSICAL VARIABLES
-!  AT THE INTERFACE BEING TESTED.
-         log_mass_mid = 0.5d0*(log_mass(im) + log_mass(im-1))
-         call intrp2(log_mass_nodes, interp_weights, log_mass_mid)
-         pressure_mid = log_pressure(k)*interp_weights(1) + &
-              log_pressure(k+1)*interp_weights(2) + &
-              log_pressure(k+2)*interp_weights(3) + &
-              log_pressure(k+3)*interp_weights(4)
-         density_mid = log_density(k)*interp_weights(1) + &
-              log_density(k+1)*interp_weights(2) + &
-              log_density(k+2)*interp_weights(3) + &
-              log_density(k+3)*interp_weights(4)
-         actual_grad_mid = star%gradT(k)*interp_weights(1) + &
-              star%gradT(k+1)*interp_weights(2) + &
-              star%gradT(k+2)*interp_weights(3) + &
-              star%gradT(k+3)*interp_weights(4)
-         adiabatic_grad_mid = star%grada(k)*interp_weights(1) + &
-              star%grada(k+1)*interp_weights(2) + &
-              star%grada(k+2)*interp_weights(3) + &
-              star%grada(k+3)*interp_weights(4)
-         gravity_mid = hg(k)*interp_weights(1) + hg(k+1)*interp_weights(2) + &
-              hg(k+2)*interp_weights(3) + hg(k+3)*interp_weights(4)
-         temp_scratch = exp(ln10*(density_mid - pressure_mid))* &
-              (adiabatic_grad_mid - actual_grad_mid)*gravity_mid**2
-         if (temp_scratch.gt.0.0d0) then
-            rot_scr%max_domega_dr(im) = 2.0d0*dsqrt(temp_scratch)
-         else
-            rot_scr%max_domega_dr(im) = 0.0d0
-         end if
-      end do
 end subroutine shell_physics

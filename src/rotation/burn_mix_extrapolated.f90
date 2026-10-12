@@ -18,9 +18,10 @@
 ! mixing-plus-burning path (burn_settle_mix -> burn_mix_extrapolated,
 ! burn_li_be_midpoint). A hard-coded switch kept it off and no control
 ! could enable it, so it never ran in the modernized code. The code is
-! kept below for reference. To revive it, uncomment the three files and
-! the two commented-out call sites in evolve_angular_momentum; it has
-! not been compiled since 2026-10 and may need updating.
+! kept below for reference. To revive it, uncomment the three files, the
+! two commented-out call sites in evolve_angular_momentum and its tables
+! in rotation_scratch_lib; it has not been compiled since 2026-10 and may
+! need updating.
 ! ---------------------------------------------------------------
 !subroutine burn_mix_extrapolated(timestep, composition, extrapolation_order, num_zones, &
 !     species_begin, species_end, substep_counts, converged, ierr)
