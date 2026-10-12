@@ -71,6 +71,17 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 ! DEFINE A GRID OF EQUALLY SPACED POINTS.
       call equal_spaced_grid(luminosity_lsun,log_pressure,log_mass,zone_begin, &
            zone_end,num_zones)
+      call interpolate_to_grid_centers()
+      call sum_zone_contents()
+      call edge_coefficients()
+      call apply_jacobians()
+! REDEFINE DR AS DCHI
+      grid_spacing = rot_scr%dchi
+
+contains
+
+! ---------------------------------------------------------------
+subroutine interpolate_to_grid_centers()
 ! EQUAL_SPACED_GRID HAS DEFINED A SET OF CO-ORDINATES (CHI) AND EQUALLY
 ! SPACED MASS POINTS.  NOW FIND THE OTHER QUANTITIES OF INTEREST AT ZONE
 ! CENTERS:
@@ -109,6 +120,10 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
          rot_scr%ytab(i) = omega(ii)
       end do
       call osplin(rot_scr%xval,eq_omega,rot_scr%xtab,rot_scr%ytab,ntab,rot_scr%ntot)
+end subroutine interpolate_to_grid_centers
+
+! ---------------------------------------------------------------
+subroutine sum_zone_contents()
 ! CONVERT TO TOTAL I AND TOTAL J OF THE ZONES.
 ! INTERMEDIATE POINTS
       do i = 2, rot_scr%ntot-1
@@ -172,6 +187,10 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
                  specific_angular_momentum(ii)*shell_mass(ii)
          end do
       end if
+end subroutine sum_zone_contents
+
+! ---------------------------------------------------------------
+subroutine edge_coefficients()
 ! NOW SOLVE FOR QUANTITIES NEEDED AT THE ZONE EDGES.  THESE ARE
 ! RELATED TO THE DIFFUSION COEFFICIENTS.  UNLIKE THE EQUALLY SPACED
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
@@ -214,6 +233,10 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
                  eq_mixing_diffusion_coeff(i)
          end do
       end if
+end subroutine edge_coefficients
+
+! ---------------------------------------------------------------
+subroutine apply_jacobians()
 ! PRODUCT OF RHO R^2 BY D CHI/DR (LOG10, ON THE EQUAL GRID IN YVAL;
 ! THE MODEL-POINT TABLE STAYS IN YTAB FOR THE RHO R^4 STEP BELOW)
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
@@ -238,9 +261,8 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
          call multiply_by_exp10(rot_scr%am_advective_coeff, rot_scr%yval, rot_scr%ntot)
          call multiply_by_exp10(rot_scr%am_diffusive_coeff, rot_scr%yval, rot_scr%ntot)
       end if
-! REDEFINE DR AS DCHI
-      grid_spacing = rot_scr%dchi
-      return
+end subroutine apply_jacobians
+
 end subroutine am_transport_grid
 
 ! ---------------------------------------------------------------

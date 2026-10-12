@@ -110,6 +110,19 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
          converged_flag = .true.
          redo_flag = .false.
       endif
+      call reject_negative_j()
+      if (ierr /= 0 .or. redo_flag) return
+      call measure_convergence()
+      call update_omega()
+      call smooth_gradient_reversals()
+      if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag) &
+           call report_largest_change()
+
+contains
+
+! ---------------------------------------------------------------
+! A negative j/m stops the run (ierr = 1).
+subroutine reject_negative_j()
 !  CHECK FOR NEGATIVE J/M.
       do zone_index = 1,num_zones
          if(specific_angular_momentum(zone_index).le.0.0d0) then
@@ -137,6 +150,10 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
             endif
          endif
       end do
+end subroutine reject_negative_j
+
+! ---------------------------------------------------------------
+subroutine measure_convergence()
 !  CHECK IF THE FRACTIONAL CHANGE IN OMEGA RELATIVE TO THE PREVIOUS
 !  ITERATION IS SMALL ENOUGH TO BE CONSIDERED CONVERGED.
 !  ALSO LOCATE THE ZONE WHERE THE MAXIMUM CHANGE OCCURS FOR I/O.
@@ -162,6 +179,10 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
            star%ctrl%convergence_tolerance) then
          converged_flag = .true.
       endif
+end subroutine measure_convergence
+
+! ---------------------------------------------------------------
+subroutine update_omega()
 !  FIND THE RUN OF OMEGA THAT CORRESPONDS TO THE NEW RUN OF J/M.
 !  THE MOMENT OF INERTIA IS A FUNCTION OF OMEGA WHICH IS SOLVED
 !  ITERATIVELY.  BECAUSE THE ERROR IN THE DIFFUSION IS OF ORDER DJOK,
@@ -179,6 +200,15 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
            moment_of_inertia,omega,qiw,mean_radius)
       rot_scr%moment_of_inertia_tolerance = saved_tolerance
       star%job%acfpft = saved_acc_tolerance
+end subroutine update_omega
+
+! ---------------------------------------------------------------
+! Where omega's gradient has turned positive (and was not before), the
+! offending zones and any adjacent convection zone are forced to rotate
+! as a solid body, widening until no new reversal appears at the edges.
+! The entry test is d omega > 1 rad/s, as in the F77 checkj.f, so this
+! practically never acts; the edge tests use 1e-15.
+subroutine smooth_gradient_reversals()
 !  SEARCH FOR REVERSAL OF OMEGA GRADIENTS.  IF ONE EXISTS, ENFORCE
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
       zone_index = num_zones
@@ -267,31 +297,34 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       zone_bottom = zone_index
       if(zone_index.le.1) exit zone_scan
       end do zone_scan
+end subroutine smooth_gradient_reversals
+
+! ---------------------------------------------------------------
+subroutine report_largest_change()
 !  I/O FOR END OF DIFFUSION STEP.
-      if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag)then
 !  FIND MAXIMUM FRACTIONAL CHANGE IN J/M OVER TIMESTEP.
-         max_fractional_dj = 0.0d0
-         max_dj_zone = 0
-         do zone_index = 1,num_zones
-            delta_j_fraction = &
-                 (specific_angular_momentum(zone_index)- &
-                 specific_angular_momentum_start(zone_index))/ &
-                 specific_angular_momentum_start(zone_index)
-            if(abs(delta_j_fraction).gt.abs(max_fractional_dj)) then
-               max_fractional_dj = delta_j_fraction
-               max_dj_zone = zone_index
-            endif
-         end do
-         if(.not.already_converged_flag)then
-            write(*,160)max_fractional_dj,max_dj_zone, &
-                 (max_delta_j_by_iter(scan_index), &
-                 max_delta_j_zone_by_iter(scan_index),scan_index=1, &
-                 iteration_number)
-  160       format(' MAX D(J/M)/(J/M)',1pe12.3,' AT PT.',i5, &
-                    ' BY ITERATION'/5(1x,e11.3,i4))
+      max_fractional_dj = 0.0d0
+      max_dj_zone = 0
+      do zone_index = 1,num_zones
+         delta_j_fraction = &
+              (specific_angular_momentum(zone_index)- &
+              specific_angular_momentum_start(zone_index))/ &
+              specific_angular_momentum_start(zone_index)
+         if(abs(delta_j_fraction).gt.abs(max_fractional_dj)) then
+            max_fractional_dj = delta_j_fraction
+            max_dj_zone = zone_index
          endif
+      end do
+      if(.not.already_converged_flag)then
+         write(*,160)max_fractional_dj,max_dj_zone, &
+              (max_delta_j_by_iter(scan_index), &
+              max_delta_j_zone_by_iter(scan_index),scan_index=1, &
+              iteration_number)
+  160       format(' MAX D(J/M)/(J/M)',1pe12.3,' AT PT.',i5, &
+                 ' BY ITERATION'/5(1x,e11.3,i4))
       endif
-      return
+end subroutine report_largest_change
+
 end subroutine check_angular_momentum
 
 ! ---------------------------------------------------------------

@@ -60,6 +60,43 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 
       num_species_tracked = 11
       if (star%job%use_extended_composition) num_species_tracked = 15
+      call start_substep_composition()
+      call interpolate_structure()
+      call settle_convective_state()
+! (THE ORIGINAL'S MHP 06/02 RE-DISTRIBUTION OF J FOR SHELLS THAT
+!  DROPPED OUT OF A RECEDING CONVECTION ZONE WAS HARDWIRED OFF AND IS
+!  NOT COMPUTED.)
+!  CONVECTIVE OVERSHOOT APPLIED TO NORMAL CONVECTION ZONES.
+      call am_convective_regions(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
+           star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
+           rot_scr%am_transport_convective_flag_mid,radiative_zone_bounds, &
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
+      if (ierr /= 0) return
+!  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
+! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
+! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
+! the network's rates on the midpoint model
+      call network_rates_of_model(rot_scr%log_density_mid, &
+           rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
+      call burn_and_settle(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
+           rate_by_zone, star%nz,radiative_zone_bounds,convective_zone_bounds, &
+           num_radiative_zones,num_convective_zones &
+           ,star%log_total_mass,rot_scr%log_density_mid,star%log_mass,rot_scr%log_radius_mid, &
+           rot_scr%log_pressure_mid,rot_scr%am_transport_convective_flag_mid,star%m, ierr)
+      if (ierr /= 0) return
+      do i = 1,star%nz
+         do j = 1,num_species_tracked
+            rot_scr%composition_snapshot(j,i) = star%xa(j,i)
+         end do
+      end do
+      if (star%xa_start(i_h2,star%nz).gt.1.0D-14) call burn_deuterium_over_substep()
+      call locate_convection_zones()
+      call rotate_midpoint_model()
+
+contains
+
+! ---------------------------------------------------------------
+subroutine start_substep_composition()
 !  INITIALIZE COMPOSITION ARRAY THE FIRST TIME THROUGH (RESET star%xa
 !  TO THE START-OF-TIMESTEP COMPOSITION star%xa_start).
 ! MHP 06/02 SAVE THE CONVECTIVE STATE FROM THE PRIOR STEP.
@@ -76,6 +113,13 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
             rot_scr%convective_flag_prev(j) = rot_scr%convective_flag_mid(j)
          end do
       endif
+end subroutine start_substep_composition
+
+! ---------------------------------------------------------------
+! The structure and the auxiliary physics interpolated linearly in time
+! between the start and the end of the step (mean molecular weight by
+! the sub-step's share of its change).
+subroutine interpolate_structure()
 !  INTERPOLATE IN THE MODEL VARIABLES AND AUXILLARY PHYSICS.
       step_fraction_ratio = sub_timestep/full_timestep
       do j = 1,star%nz
@@ -106,6 +150,10 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
          total_epsilon = star%eps_total(j)+star%eps_channels(i_eps_neu,j)+star%eps_channels(i_eps_grav,j)
          mix_scr%epsm(j) = rot_scr%old_eps(j)+time_fraction*(total_epsilon-rot_scr%old_eps(j))
       end do
+end subroutine interpolate_structure
+
+! ---------------------------------------------------------------
+subroutine settle_convective_state()
 !  CHECK FOR ADVANCING OR RECEDING CONVECTIVE REGIONS.USE INTERPOLATED
 !  RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS TO DETERMINE WHETHER
 !  OR NOT A ZONE IS CONVECTIVE IF IT CHANGES STATE OVER THE COURSE OF A
@@ -124,62 +172,42 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
             endif
          endif
       end do
-! (THE ORIGINAL'S MHP 06/02 RE-DISTRIBUTION OF J FOR SHELLS THAT
-!  DROPPED OUT OF A RECEDING CONVECTION ZONE WAS HARDWIRED OFF AND IS
-!  NOT COMPUTED.)
-!  CONVECTIVE OVERSHOOT APPLIED TO NORMAL CONVECTION ZONES.
-      call am_convective_regions(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
-           star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
-           rot_scr%am_transport_convective_flag_mid,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
-      if (ierr /= 0) return
-!  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
-! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
-! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
-! the network's rates on the midpoint model
-      call network_rates_of_model(rot_scr%log_density_mid, &
-           rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
-      call burn_and_settle(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
-           rate_by_zone, star%nz,radiative_zone_bounds,convective_zone_bounds, &
-           num_radiative_zones,num_convective_zones &
-           ,star%log_total_mass,rot_scr%log_density_mid,star%log_mass,rot_scr%log_radius_mid, &
-           rot_scr%log_pressure_mid,rot_scr%am_transport_convective_flag_mid,star%m, ierr)
-      if (ierr /= 0) return
-      do i = 1,star%nz
-         do j = 1,num_species_tracked
-            rot_scr%composition_snapshot(j,i) = star%xa(j,i)
-         end do
-      end do
+end subroutine settle_convective_state
+
+! ---------------------------------------------------------------
+subroutine burn_deuterium_over_substep()
 ! MHP 05/02 ADDED DEUTERIUM BURNING
-      if (star%xa_start(i_h2,star%nz).gt.1.0D-14) then
 ! INCREMENT THE TIMESTEP
-         if (first_call) then
-            do i = 1,star%nz
-               rot_scr%deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
-                    step_fraction_ratio*(star%deuterium_burning_rate(i)- &
-                    star%deuterium_burning_rate_start(i))
-               rot_scr%deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
-            end do
-         else
-            do i = 1,star%nz
-               rot_scr%deuterium_rate_mid_start(i) = rot_scr%deuterium_rate_mid(i)
-               rot_scr%deuterium_rate_mid(i) = rot_scr%deuterium_rate_mid(i)+ &
-                    step_fraction_ratio*(star%deuterium_burning_rate(i)- &
-                    star%deuterium_burning_rate_start(i))
-            end do
-         endif
-! EACH BURN REGION OF THE MIDPOINT MODEL (burn_regions).
-         regions = burn_regions(rot_scr%log_temperature_mid, &
-              radiative_zone_bounds, num_radiative_zones, &
-              convective_zone_bounds, num_convective_zones)
-         do k = 1, size(regions,2)
-            call burn_deuterium_region(regions(1,k), regions(2,k), star%nz, &
-                 star%dm, star%xa, sub_timestep, star%xa_start, &
-                 rot_scr%deuterium_rate_mid_start, rot_scr%deuterium_rate_mid, &
-                 surface_accretion_now(step_fraction_ratio*star%accreted_mass), &
-                 min_deuterium_substep)
+      if (first_call) then
+         do i = 1,star%nz
+            rot_scr%deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
+                 step_fraction_ratio*(star%deuterium_burning_rate(i)- &
+                 star%deuterium_burning_rate_start(i))
+            rot_scr%deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
+         end do
+      else
+         do i = 1,star%nz
+            rot_scr%deuterium_rate_mid_start(i) = rot_scr%deuterium_rate_mid(i)
+            rot_scr%deuterium_rate_mid(i) = rot_scr%deuterium_rate_mid(i)+ &
+                 step_fraction_ratio*(star%deuterium_burning_rate(i)- &
+                 star%deuterium_burning_rate_start(i))
          end do
       endif
+! EACH BURN REGION OF THE MIDPOINT MODEL (burn_regions).
+      regions = burn_regions(rot_scr%log_temperature_mid, &
+           radiative_zone_bounds, num_radiative_zones, &
+           convective_zone_bounds, num_convective_zones)
+      do k = 1, size(regions,2)
+         call burn_deuterium_region(regions(1,k), regions(2,k), star%nz, &
+              star%dm, star%xa, sub_timestep, star%xa_start, &
+              rot_scr%deuterium_rate_mid_start, rot_scr%deuterium_rate_mid, &
+              surface_accretion_now(step_fraction_ratio*star%accreted_mass), &
+              min_deuterium_substep)
+      end do
+end subroutine burn_deuterium_over_substep
+
+! ---------------------------------------------------------------
+subroutine locate_convection_zones()
 !  DETERMINE EXTENT OF CENTRAL CONVECTION ZONE.
 !  IMIN IS THE FIRST ZONE ABOVE A CENTRAL CONVECTION ZONE, AND THUS THE
 !  FIRST ZONE CONSIDERED FOR STABILITY AGAINST ROTATIONAL INSTABILITIES.
@@ -222,6 +250,10 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
          envelope_boundary_zone = star%nz
          surface_cz_active = .false.
       endif
+end subroutine locate_convection_zones
+
+! ---------------------------------------------------------------
+subroutine rotate_midpoint_model()
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
       if (.not.star%ctrl%force_solid_body_rotation .and. (star%ctrl%solid_body_mode_flag.ne.1)) then
 !  NOW FIND THE RUN OF ROTATION VARIABLES THAT ARE CONSISTENT WITH THE
@@ -263,7 +295,8 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
             end do
          endif
       endif
-      return
+end subroutine rotate_midpoint_model
+
 end subroutine advance_rotation_substep
 
 ! ---------------------------------------------------------------
@@ -337,6 +370,21 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
               timestep, ierr)
          if (ierr /= 0) return
       end do
+      if (star%job%diffuse_helium_active) then
+         call settle_helium()
+         if (ierr /= 0) return
+      end if
+      call renormalize_composition()
+
+contains
+
+! ---------------------------------------------------------------
+! Helium settling over the sub-step (Bahcall & Loeb), in sub-steps no
+! longer than settling_timestep_fraction of the settling timescale at
+! the outer boundary (Michaud et al. 1984). Settling stops for good once
+! the central X drops below its floor; with no surface convection zone
+! the run stops (ierr = 1).
+subroutine settle_helium()
 !
 ! MICROSCOPIC DIFFUSION OF HELIUM.
 !
@@ -345,7 +393,6 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
 ! FIRST DEFINE VARIABLES NEEDED FOR SETTLING -
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
-      if (star%job%diffuse_helium_active) then
       settling: do
          if (composition(1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
             star%job%diffuse_helium_active=.false.
@@ -436,9 +483,10 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
          end if
       exit settling
       end do settling
-      end if
-! END OF GRAVITATIONAL SETTLING
-!
+end subroutine settle_helium
+
+! ---------------------------------------------------------------
+subroutine renormalize_composition()
 ! RENORMALIZE COMPOSITION TO GUARD AGAINST ANOMALIES (I.E. SMALL NEGATIVE
 ! ABUNDANCES...).
       do zone_idx = 1,num_zones
@@ -453,7 +501,8 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
          composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
               composition(3,zone_idx) - composition(4,zone_idx)
       end do
-      return
+end subroutine renormalize_composition
+
 end subroutine burn_and_settle
 
 end module mid_timestep_model
