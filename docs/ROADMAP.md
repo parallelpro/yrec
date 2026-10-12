@@ -1591,16 +1591,82 @@ rotating-mixing decks, and the full battery).
 - Found: use_thoul_fit and use_thoul_diffusion act only in the original
   settling routines. rotmix declared the enclosed mass intent(in)
   although settling converts it in place (now inout).
-- **Open:**
+
+Round two (2026-10-12), after a rating of rotation/ at 5.5/10; all
+bitwise identical (the rotating solar deck, the three testsuite
+rotating-mixing decks, the quick check with the config matrix at every
+commit, and the full battery at 43f852c1):
+- **DONE: the secular transport is pinned** (19f8ba45): test_rotation
+  runs am_transport_grid -> am_diffusion_coeffs -> the solve -> the map
+  back -> the composition mixing on a synthetic model, through the
+  first and second iterations, the secular and dynamical shear bands, a
+  mu-gradient band, the GSF modes, lvfc, constant background diffusion
+  and no transport in the core.
+- **DONE: the long routines read as their steps** (db16932a, f8efd576,
+  2bcdc80a, 4f939ca0): apply_secular_transport, circulation_velocities,
+  advance_rotation_substep, burn_and_settle, check_angular_momentum and
+  am_transport_grid are hosts whose internal procedures are named steps;
+  no two rotation procedures share a name.
+- **DONE: the scratch holds only what rotation shares** (27d6e05a,
+  58702a54): what nobody read went (the max_domega_dr loop, the
+  always-zero mu-gradient velocity, fact1-6, fgsfj, the potential
+  terms, two derivative copies), core's mass-change state moved to
+  star, and the spline tables are the routines' locals. Names say what
+  they hold: the interface structure (density_interface, ... for dm,
+  pm, tm, hs3, delami, delmi, epsilm, qdtmi), mid_scr with the star%
+  names it interpolates, the chi grid (eq_chi, num_eq_points).
+- **DONE: layering** (65768aed): rotation_stability_setup left setup
+  for rotation/seculr/stability_coefficients, its header giving the
+  coefficients' equations; core imports rotation's scratch only where
+  it uses it. shell_physics stays in core: every run calls it at the
+  start, and rezone for envelope overshoot.
+- **DONE: a settings record** (43f852c1): rotation_settings
+  (rotation_configuration) holds the 54 controls rotation reads, named
+  for what they do (walpcz is cz_rotation_law_exponent, constfactor
+  wind_constant, ...); setup/rotation_settings_setup builds it and
+  run_yrec installs it each run card. check_boundaries'
+  CONTROLS_FREE_DIRS keeps rotation off star%ctrl/star%job.
+- **DONE: comments** (7dabe3f8): the ALL-CAPS F77 comments became
+  descriptions with equations and references; comments that
+  contradicted the code now describe it (the mixing grid is in chi;
+  convergence is on j; di_domega is (omega/2) dI/d omega; the "_mid"
+  structure is at the sub-step's end, not its middle).
+- Found:
+  - mu_gradient_scale (fmu) has had no effect since the always-zero
+    mu-gradient velocity went; the record leaves it out.
+  - The reversal safeguard in check_angular_momentum enters only where
+    omega exceeds 1 rad/s (as F77 checkj.f), so it practically never
+    acts. checkj.f's authors made the first negative j stop the run
+    (IREDO.GT.0 replacing .GT.3); the message's "3 attempts" is stale.
+- **Open (behaviour; each needs a decision and a measured commit):**
+  - The mu gradient is counted twice in the Eddington-Sweet inhibition
+    (circulation's inhibit_by_mu_gradient adds d ln mu/d ln P to a
+    margin that already includes it), so mu gradients cut U_ES by at
+    most a half. Inherited from F77 (setupv.f, vcirc.f).
+  - apply_secular_transport returns without setting redo_flag when the
+    model is stable on the first iteration; after a redo, the stale
+    flag would rewind the clock again. One line fixes it.
+  - At a transport region's ends, the equal-grid zone sums take in a
+    convection zone below (above) whenever the neighbouring zone is
+    convective, but the change goes back into it only when the end
+    zone itself is (am_grid and rotational_mixing alike).
+  - check_composition checks species 5-11 on the last iteration,
+    before secular_transport mixes them; 12-15 are never checked.
+  - max_delta_j_by_iter has 16 slots; nothing caps max_diffusion_iters.
+- **Open (structure):**
+  - The advection-diffusion path (use_diffusion_advection_transport,
+    LDIFAD) stops the run where it would act; it reads arrays nothing
+    fills. am_advection_diffusion_coeffs, about 20 scratch arrays and
+    henyey's derivative copies serve only it: comment it out like the
+    Bulirsch-Stoer path, or rebuild it.
+  - mass_change's rotation-scaled solar wind cannot run (nothing sets
+    use_rotation_scaled_solar_wind).
   - Settling converts star%m to Bahcall & Loeb units and back in
     place; the round trip can change its last bit every step. Working
     on a copy would fix it but changes results at round-off; it needs
     a measured commit.
-  - Rotation calls back into core (shell_physics, the light-element
-    burn) and setup (rotation_stability_setup): the layering runs both
-    ways.
-  - rotation_scratch_lib holds core's mass-change state (masschg2/3)
-    and the commented-out path's tables; they belong elsewhere.
+  - Rotation calls core's shell_physics and the light-element burn;
+    core's convection_geometry reads mid_scr.
   - burn_and_settle and core's composition_step each size the settling
     sub-steps from the helium settling timescale with near-identical
     code; element_diffusion could own it.
