@@ -1672,3 +1672,78 @@ commit, and the full battery at 43f852c1):
   - burn_and_settle and core's composition_step each size the settling
     sub-steps from the helium settling timescale with near-identical
     code; element_diffusion could own it.
+
+### core/ Stage A: modules, layout, named steps, comments (yrec-next, 2026-10-12)
+
+Readability without changing results: every commit byte-identical on the
+quick check with the config matrix, the rotating solar and testsuite
+decks, and three "core extras" no pinned deck covers (a TAHB deck that
+rescales its model and burns helium, a solar deck writing the
+neutrino-flux table, the accreting cm_massloss_const variant), compared
+with a frozen 66d7788f binary; the step splits also on pulse output
+(GYRE and FGONG, 84 files).
+- **DONE: yrec_libs links again** (23779e3b): the per-domain archives
+  missed math/ and element_diffusion/.
+- **DONE: util/ dissolved** (91011457): core/step/timestep_control,
+  core/run/yrec_version; xrng4 into kap's LAOL89, zero into the MHD EOS.
+- **DONE: every procedure a module procedure** (8c9a69d3): the 23
+  external procedures of core/ and setup/ in 16 topic modules; noun
+  routine names became verbs (compute_surface_boundary for surfbc,
+  compute_henyey_coefficients, prepare_run, set_up_constants_and_tables,
+  ...). The compiler now checks every call; none needed a change.
+- **DONE: core/ by stage** (f7789ad4): run/, step/, structure/,
+  envelope/, model/ (with setup's rescaling, rezoning, shell
+  boundaries), diagnostics/; setup/ keeps the settings builders.
+- **DONE: the long routines in named steps** (442ea9b2, fef25296,
+  aab69ed9, 5d7fbd0e, 102e7713): compute_henyey_coefficients,
+  henyey_iterate, compute_surface_boundary, the envelope integrations,
+  rebuild_envelope, read_starting_model's steps, rescale_model,
+  map_user_inputs, rezone's steps, compute_timestep, the mass change,
+  the turnover walker, the pulse points.
+- **DONE: the math-lib contract per scope** (2ae7ee15): check_boundaries
+  walks the scopes; refresh_surface_bc lacked math_lib (crmath builds
+  only).
+- **DONE: comments and core/README.md** (9337e932): 688 ALL-CAPS lines
+  became descriptions with equations; henyey_solve's rows derived.
+- **FIXED (behaviour, one path): the shallower envelope refit**
+  (4f34e95f): read_starting_model's log R added Lsun in erg/s for log
+  Lsun since the 2026-08 modernization (6e31b68d), so moving the
+  fitting point outward failed in the envelope integration. No pinned
+  deck takes the path.
+- **Found (reported by the split and comment passes; spot-check before
+  fixing; each changes results):**
+  - Out-of-bounds risks: rezone's X/Z jump insertion has no json check;
+    extend_core_toward_center prints RUN TERMINATED and keeps writing;
+    update_total_mass reads m(0) when the surface convection zone
+    reaches the centre; convection_geometry reads logR_start(0) for a
+    fully convective start; turnover's spline stencil can pass
+    num_points, and core_cz_top_index can be read unset.
+  - rescale_model runs twice for a model reused from memory (as in
+    starin.f): the Z ramp is applied twice and a species target given
+    relative to H converted twice. The Z ramp's CNO factor is
+    (Z_old - Z_new)/Z_old (Z_new/Z_old intended?), and rescale_z = 0
+    (the default) sets Z to zero.
+  - The mass change: the wind's angular momentum looks double-counted
+    (j scaled, then the zone's mass shrunk); mass_change and
+    envelope_rebuild extrapolate the convection zone's rotation law with
+    the exponent's sign inverted relative to omega_profile; a zero
+    accretion rate divides by zero in the timestep limits; a debug
+    write every step.
+  - Structure: below the burning cutoff zone_deps_* are not reset, so
+    the pulse dε/dln rho, dε/dln T of cool shells repeat the last
+    burning shell's; the eps_grav Jacobian seems to miss a 1/chi_T
+    (Newton convergence only); compute_surface_boundary leaves
+    star%log_Teff at the last vertex until the corrections are applied;
+    switching back from gray to a table does not restart the triangle.
+  - Envelope: the integrand reads star%job%atm_choice while the kernel
+    has fallen back to gray (one call after a failed Allard lookup); the
+    envelope shifts move every array but the convective flag (also in
+    starting_model); the first atmosphere step's derivative omits f_P;
+    at senv exactly -1e-12 the envelope is integrated but not reversed.
+  - Composition step and rotation's burn_and_settle size the settling
+    sub-steps with mod(max_settling_dt, timestep) (arguments reversed;
+    zero sub-steps when the limit is a multiple of the step).
+  - The end-age floor max(dt_saved, 1e-3 dage[Gyr] yr) is 1e-12 of the
+    age; the HR-motion limit reads luminosity_lsun_start at the
+    pre-rezone nz; the solar calibration gives up after 14 cycles while
+    its message says 15.

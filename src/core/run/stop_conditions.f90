@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! New (2026, core/ readability phase 2). The single home for the
 ! driver-level stop machinery that was previously duplicated between
-! run_yrec.f90 and evolve_step.f90:
+! run_driver (run_yrec) and step_driver (evolve_step):
 !
 !  * the step_status protocol constants (evolve_step's contract with
 !    run_yrec's model loop);

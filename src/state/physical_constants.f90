@@ -31,7 +31,7 @@ module physical_constants
 
 ! ---- named physical constants (2026 readability sweep) ----
 ! Each keeps exactly the literal value of the site it replaced; the
-! *_legacy names mark values that differ from the ones setups.f90
+! *_legacy names mark values that differ from the ones run_setup's set_up_constants_and_tables
 ! computes into the variables above (csig) or from the namelist
 ! defaults (solar_radius_cgs), so the two deliberately coexist.
 !

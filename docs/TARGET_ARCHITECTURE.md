@@ -230,7 +230,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
 - **The difference equation.** For equation k at shell i:
   `rhs_k = ½ Δlog₁₀m · (q_k(i−1) + q_k(i)) − (y_k(i) − y_k(i−1))`
   (`henyey_elimination.f90`, top of the routine).
-- **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `henyey_coefficients.f90`).
+- **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `core/structure/structure_equations.f90`).
 - **The luminosity term.** `ql = (ln 10 · m / L☉) · ε`, where ε is the total specific energy rate in erg g⁻¹ s⁻¹. So `ql_dT` and `ql_dP` take the **absolute** derivatives dε/dln T and dε/dln ρ, which is what `engeb` returns.
 - **The envelope.** The envelope integration (`compute_envelope_derivs`) carries m, T and R against log P at constant L. Any energy source above the fitting mass is excluded. This must be stated in the energy-source interface, and checked: a source that is nonzero above the fitting point should cause a warning.
 
@@ -546,7 +546,7 @@ The first four were confirmed by reading the code; none has been run or fixed ye
 
 1. **Pulse ε-derivative columns wrong by a factor of ε.**
    - `engeb` returns the absolute dε/dln T = Σ εᵢ·dln rᵢ/dln T (`burn_lib.f90:1772`).
-   - The structure Jacobian uses it correctly as that (`henyey_coefficients.f90:253`).
+   - The structure Jacobian uses it correctly as that (`core/structure/structure_equations.f90`).
    - The same value is stored in `star%pulse_dlneps_dlnt`, a log-derivative name.
    - Both pulse writers then multiply it by ε again (`stitched_model.f90:579–580`, `write_gyre_pulse.f90:112–113`).
    - `ROADMAP.md` closed this as "not a bug" on the premise that the field holds a log derivative.

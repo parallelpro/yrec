@@ -73,7 +73,7 @@ The authoritative statement is the header of `core/structure/henyey_elimination.
   - the improved-first-guess test in `evolve_step`;
   - the rotation step (`evolve_angular_momentum`), which also does arithmetic on dt;
   - `compute_timestep`, whose header says it exits on a negative dt (`evolve_step` makes dt positive before its call).
-- **Reset:** dt is made positive again before `compute_timestep` (`evolve_step.f90:141`).
+- **Reset:** dt is made positive again before `compute_timestep` (`core/step/step_driver.f90`).
 - **Target:** the flag `s%step%aging` replaces the sign (`TARGET_ARCHITECTURE.md` 4.2).
 
 ### 1.5 Species index constants
@@ -105,9 +105,9 @@ The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`
 | Pattern | Meaning today |
 |---|---|
 | `*_start` (structure: `logP_start`, ...) | The previous converged model, written by `rezone` onto the new grid (or by `evolve_step`'s `rezone_or_snapshot` when rezoning is skipped). |
-| `xa_start` | Composition at the start of the step, stored after mass loss (`evolve_step.f90:245`). The rotation sub-steps overwrite it (trap 9). |
+| `xa_start` | Composition at the start of the step, stored after mass loss (`core/step/step_driver.f90`). The rotation sub-steps overwrite it (trap 9). |
 | `old_*` (rotation: `old_omega`, ...) | Previous model's rotation state on the new grid, stored by `rezone` (`core/model/rezoning.f90:789-797`). Legacy `/OLDROT/`. |
-| `orig_*` | Start-of-step copies kept across the structure⇄rotation iterations (`evolve_step.f90:414-431`). Legacy `/ORIGSTART/`. |
+| `orig_*` | Start-of-step copies kept across the structure⇄rotation iterations (`core/step/step_driver.f90`). Legacy `/ORIGSTART/`. |
 | `*_prev` | Previous iteration, sub-step or model, depending on the routine. Read the declaration. |
 | `rot_scr%*_mid` | Structure interpolated in time to the current rotation sub-step, at the fraction of the step elapsed when the sub-step ends (`rotation/mid_timestep_model.f90`; "mid" is the legacy midpoint model's name). |
 | `eq_*`, `*_eqgrid` | Values on the equally spaced χ grid of the rotation solver. |
@@ -254,7 +254,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | r_D | per s | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/step/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
 | ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | core/step/mass_change.f90:451; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
 | r_Li6, r_Li7, r_Be9 | s⁻¹ (N_A⟨σv⟩·ρX_H, taking A_H = 1) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/step/burn_step.f90 (`store_li_be_rates`) | Light-element burning rates at end and start of step; `burn_li_be` multiplies them by the step in seconds. |
-| — | — | `star%cross_section_scale(17)`; `qs0e_scale(8)`, `qqs0ee_scale(8)`, `o16_gamma_scale`, `c12_alpha_scale` | `SSTANDARD`; `QS0E`, `QQS0EE`, `FO16`, `FC12` (`/CROSS/`) | setup/user_inputs.f90, core/run/monte_carlo.f90 (`apply_monte_carlo_parameters`) | Multipliers on the S-factors (Monte-Carlo runs overwrite 1–3 and 16), their first- and second-derivative scales, and the ¹⁶O(α,γ)/¹²C(α,γ) multipliers. |
+| — | — | `star%cross_section_scale(17)`; `qs0e_scale(8)`, `qqs0ee_scale(8)`, `o16_gamma_scale`, `c12_alpha_scale` | `SSTANDARD`; `QS0E`, `QQS0EE`, `FO16`, `FC12` (`/CROSS/`) | setup/user_inputs.f90, core/run/monte_carlo.f90 (`apply_monte_carlo_parameters`) | Multipliers on the S-factors (Monte-Carlo runs overwrite 1–3 and 16), their first- and second-derivative scales, and the scales of the ¹⁵N branches: `o16_gamma_scale` multiplies ¹⁵N(p,γ)¹⁶O and `c12_alpha_scale` ¹⁵N(p,α)¹²C (`net/reaction_rates.f90`), despite their names. |
 
 ### 2.6 Envelope, atmosphere and surface fit
 
@@ -502,7 +502,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 9. **`xa_start` has two meanings.**
    - It is the start-of-step composition (`core/step/step_driver.f90:245`). Burning starts from it, and Newton levels > 2 reset `xa` to it (`core/structure/henyey_iteration.f90:136`).
    - Inside the rotation step it is also the **sub-step checkpoint**. It is restored on a redo (`rotation/evolve_angular_momentum.f90:310`) and overwritten with the current composition after each accepted sub-step (`:324`, `:388`, `:394`).
-   - `orig_composition` exists only to undo that overwriting between structure⇄rotation passes (`evolve_step.f90:420`, `:430`).
+   - `orig_composition` exists only to undo that overwriting between structure⇄rotation passes (`core/step/step_driver.f90`).
 10. **`max_residual(4)` holds three quantities within one Newton iteration.**
     - Zeroed at `core/structure/henyey_iteration.f90:155-158`.
     - Max |residual| per equation, accumulated in `henyey_elimination.f90:90-99` and tested against `htoler(5,*)` (`henyey_iteration.f90:186-189`).
@@ -529,7 +529,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - Mass loss updates the two separately (`core/step/mass_change.f90:430-431`). The envelope code reads `stotal`, and the structure code reads `log_total_mass`.
 18. **Several quantities have two copies with different fill times or definitions.**
     - c_P: `scp` (Henyey pass) and `cp` (`shell_physics`).
-    - μ: `star%mu` (full-ionization estimate, `core/step/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `henyey_coefficients.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
+    - μ: `star%mu` (full-ionization estimate, `core/step/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `core/structure/structure_equations.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
 19. **The 3-row gradient carriers use two row orders, and the named constants document the wrong one.**
     - `i_grad_rad=1, i_grad_actual=2, i_grad_ad=3` (`state/star_info_lib.f90:83-87`) give the order (rad, actual, ad), the order of the former `DEL_GRAD`. Their comment says they apply to `current_gradients` and `env_gradients`, but no code uses them.
     - `pt_scr%current_gradients` and `env_struct%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).

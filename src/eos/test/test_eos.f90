@@ -62,7 +62,7 @@ program test_eos
       character(len=256) :: dummy_paths7(7)
       double precision :: laol_work(12)
 
-! read_starting_model.f90's atomic_weight data (12-species set, same order as mixture_weights_seed)
+! core/model/starting_model.f90's atomic_weight data (12-species set, same order as mixture_weights_seed)
       double precision :: atomic_weight(12)
       data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
            1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
@@ -140,7 +140,7 @@ program test_eos
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
 
-! envelope composition state, per read_starting_model.f90's mixture algorithm
+! envelope composition state, per core/model/starting_model.f90's mixture algorithm
       star%xnew = 0.70d0
       star%znew = 0.016492d0
       star%envelope_hydrogen_fraction = star%xnew

@@ -243,7 +243,7 @@ error-budget failure.
 `compute_timestep` (`htimer`, `core/step/timestep_control.f90`, with the
 per-criterion limiters `timestep_limit_structure`/`_omega`/`_hburn`/
 `_heburn`/`_hr` (`ptime`/`wtime`/`xtime`/`ytime`/`entime`) in
-`util/timestep_limit_*.f90`) selects Δt for the next model from the most
+`core/step/timestep_control.f90`) selects Δt for the next model from the most
 restrictive of a set of governors (all namelist-controlled `time_*`
 factors): fractional changes in L, R, P, T per shell, central and total
 hydrogen/helium depletion, CZ-base migration, ω changes (global and in the
