@@ -372,7 +372,6 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  specific_heat_cv
 
          if (star%job%rotation_active) then
-            rot_scr%dlnkappa_dlnrho(im) = kap_res(i_dlnkap_dlnrho)
             rot_scr%dlnkappa_dlnt(im) = kap_res(i_dlnkap_dlnt)
 ! MHP 10/02 variable index error
             if (star%eps_total(im).gt.0.0d0) then
@@ -383,7 +382,6 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             else
                rot_scr%neutrino_loss_fraction(im) = 0.0d0
             end if
-            rot_scr%deps_dlnrho(im) = zone_deps_dlnrho
             rot_scr%deps_dlnt(im) = zone_deps_dlnt
          end if
 ! DBG PULSE

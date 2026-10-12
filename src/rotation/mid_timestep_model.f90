@@ -103,7 +103,7 @@ subroutine start_substep_composition()
       if (first_call) then
          do j = 1,star%nz
             rot_scr%convective_flag_prev(j) = star%convective_flag_start(j)
-            mix_scr%amum(j) = rot_scr%old_amu(j)
+            mid_scr%mu(j) = rot_scr%old_mu(j)
             do i = 1,num_species_tracked
                star%xa(i,j) = star%xa_start(i,j)
             end do
@@ -133,22 +133,22 @@ subroutine interpolate_structure()
               time_fraction*(star%logR(j)-star%logR_start(j))
          rot_scr%log_temperature_mid(j) = star%logT_start(j) + &
               time_fraction*(star%logT(j)-star%logT_start(j))
-         rot_scr%hg_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
-         mix_scr%del_adiabatic_mix(j) = rot_scr%old_del_adiabatic_mix(j) + &
-              time_fraction*(star%grada(j)-rot_scr%old_del_adiabatic_mix(j))
-         mix_scr%delm(j) = rot_scr%old_delm(j) + time_fraction*(star%gradT(j) - rot_scr%old_delm(j))
-         mix_scr%del_radiative_mix(j) = rot_scr%old_del_radiative_mix(j) + &
-              time_fraction*(star%gradr(j) - rot_scr%old_del_radiative_mix(j))
-         mix_scr%esumm(j) = rot_scr%old_esum(j) + time_fraction*(star%eps_total(j) - rot_scr%old_esum(j))
-         mix_scr%viscm(j) = rot_scr%old_visc(j) + time_fraction*(star%visc(j) - rot_scr%old_visc(j))
-         mix_scr%thdifm(j) = rot_scr%old_thdif(j) + time_fraction*(star%thdif(j) - rot_scr%old_thdif(j))
-         mix_scr%cpm(j) = rot_scr%old_cp(j) + time_fraction*(star%cp(j) - rot_scr%old_cp(j))
-         mix_scr%qdtm(j) = rot_scr%old_qdt(j) + time_fraction*(star%qdt(j) - rot_scr%old_qdt(j))
-         mix_scr%om(j) = rot_scr%old_om(j) + time_fraction*(star%opacity_zone(j) - rot_scr%old_om(j))
-         mix_scr%amum(j) = mix_scr%amum(j) + step_fraction_ratio*(star%mu(j) - rot_scr%old_amu(j))
+         rot_scr%mean_gravity_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
+         mid_scr%grada(j) = rot_scr%old_grada(j) + &
+              time_fraction*(star%grada(j)-rot_scr%old_grada(j))
+         mid_scr%gradT(j) = rot_scr%old_gradT(j) + time_fraction*(star%gradT(j) - rot_scr%old_gradT(j))
+         mid_scr%gradr(j) = rot_scr%old_gradr(j) + &
+              time_fraction*(star%gradr(j) - rot_scr%old_gradr(j))
+         mid_scr%eps_total(j) = rot_scr%old_eps_total(j) + time_fraction*(star%eps_total(j) - rot_scr%old_eps_total(j))
+         mid_scr%visc(j) = rot_scr%old_visc(j) + time_fraction*(star%visc(j) - rot_scr%old_visc(j))
+         mid_scr%thdif(j) = rot_scr%old_thdif(j) + time_fraction*(star%thdif(j) - rot_scr%old_thdif(j))
+         mid_scr%cp(j) = rot_scr%old_cp(j) + time_fraction*(star%cp(j) - rot_scr%old_cp(j))
+         mid_scr%qdt(j) = rot_scr%old_qdt(j) + time_fraction*(star%qdt(j) - rot_scr%old_qdt(j))
+         mid_scr%opacity(j) = rot_scr%old_opacity(j) + time_fraction*(star%opacity_zone(j) - rot_scr%old_opacity(j))
+         mid_scr%mu(j) = mid_scr%mu(j) + step_fraction_ratio*(star%mu(j) - rot_scr%old_mu(j))
 ! MHP 6/00 ADDED TOTAL ENERGY GENERATION
          total_epsilon = star%eps_total(j)+star%eps_channels(i_eps_neu,j)+star%eps_channels(i_eps_grav,j)
-         mix_scr%epsm(j) = rot_scr%old_eps(j)+time_fraction*(total_epsilon-rot_scr%old_eps(j))
+         mid_scr%eps_plus_neu_grav(j) = rot_scr%old_eps_plus_neu_grav(j)+time_fraction*(total_epsilon-rot_scr%old_eps_plus_neu_grav(j))
       end do
 end subroutine interpolate_structure
 
@@ -161,14 +161,14 @@ subroutine settle_convective_state()
       do i = 1,star%nz
          if (star%convective_flag(i).eqv.rot_scr%convective_flag_prev(i)) then
             rot_scr%convective_flag_mid(i) = star%convective_flag(i)
-            mix_scr%velm(i) = rot_scr%old_vel(i) + time_fraction*(star%conv_vel(i)-rot_scr%old_vel(i))
+            mid_scr%conv_vel(i) = rot_scr%old_conv_vel(i) + time_fraction*(star%conv_vel(i)-rot_scr%old_conv_vel(i))
          else
-            if (mix_scr%del_adiabatic_mix(i).lt.mix_scr%del_radiative_mix(i)) then
+            if (mid_scr%grada(i).lt.mid_scr%gradr(i)) then
                rot_scr%convective_flag_mid(i) = .true.
-               mix_scr%velm(i) = max(rot_scr%old_vel(i),star%conv_vel(i))
+               mid_scr%conv_vel(i) = max(rot_scr%old_conv_vel(i),star%conv_vel(i))
             else
                rot_scr%convective_flag_mid(i) = .false.
-               mix_scr%velm(i) = 0.0D0
+               mid_scr%conv_vel(i) = 0.0D0
             endif
          endif
       end do
@@ -271,7 +271,7 @@ subroutine rotate_midpoint_model()
 !  AND MOMENT OF INERTIA (HIM).
          call omega_from_j(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid, &
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%di_domega_mid, &
               rot_scr%mean_radius_mid)
 !  FIND TOTAL MOMENT OF INERTIA OF THE SURFACE C.Z. IF APPLICABLE.
          if (surface_cz_active) then
@@ -286,7 +286,7 @@ subroutine rotate_midpoint_model()
          solid_zone_end = star%nz
          call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,solid_zone_start,solid_zone_end, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid, &
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%di_domega_mid, &
               rot_scr%mean_radius_mid,star%nz)
          if (surface_cz_active) then
             moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(1)
@@ -476,7 +476,7 @@ subroutine settle_helium()
 ! gravitational settling, with the mid-step temperature gradient
             call diffuse_elements(settling_dt,composition,dlnp_dr_settling, &
                  log_radius,log_density,enclosed_mass,log_temperature, &
-                 mix_scr%delm,am_transport_convective_flag,num_zones, &
+                 mid_scr%gradT,am_transport_convective_flag,num_zones, &
                  total_mass, ierr)
             if (ierr /= 0) return
          end do

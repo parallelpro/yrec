@@ -102,8 +102,8 @@ subroutine interpolate_to_interfaces()
 !  FOR THE KINEMATIC VISCOSITY AND THERMAL DIFFUSIVITY.
 !  TREATMENT OF FIRST INTERFACE.
       if (zone_min.lt.3) then
-         rot_scr%kinematic_viscosity_interface(2)=log_lagrange4(mix_scr%viscm, 1, 2)
-         rot_scr%thermal_diffusivity_interface(2)=log_lagrange4(mix_scr%thdifm, 1, 2)
+         rot_scr%kinematic_viscosity_interface(2)=log_lagrange4(mid_scr%visc, 1, 2)
+         rot_scr%thermal_diffusivity_interface(2)=log_lagrange4(mid_scr%thdif, 1, 2)
          i0=3
       else
          i0=zone_min
@@ -111,21 +111,21 @@ subroutine interpolate_to_interfaces()
 !  TREATMENT OF LAST INTERFACE.
       if (zone_max.eq.num_zones) then
          rot_scr%kinematic_viscosity_interface(num_zones)= &
-              log_lagrange4(mix_scr%viscm, num_zones-3, num_zones)
+              log_lagrange4(mid_scr%visc, num_zones-3, num_zones)
          rot_scr%thermal_diffusivity_interface(num_zones)= &
-              log_lagrange4(mix_scr%thdifm, num_zones-3, num_zones)
+              log_lagrange4(mid_scr%thdif, num_zones-3, num_zones)
          i1=num_zones-1
       else
          i1=zone_max
       end if
 !  GENERAL CASE.
       do i = i0,i1
-         rot_scr%kinematic_viscosity_interface(i)=log_lagrange4(mix_scr%viscm, i-2, i)
-         rot_scr%thermal_diffusivity_interface(i)=log_lagrange4(mix_scr%thdifm, i-2, i)
+         rot_scr%kinematic_viscosity_interface(i)=log_lagrange4(mid_scr%visc, i-2, i)
+         rot_scr%thermal_diffusivity_interface(i)=log_lagrange4(mid_scr%thdif, i-2, i)
       end do
 ! USE LINEAR INTERPOLATION FOR OMEGA AND MU.
       do i = 2,num_zones
-         rot_scr%mean_molecular_weight_interface(i) = 0.5d0*(mix_scr%amum(i)+mix_scr%amum(i-1))
+         rot_scr%mean_molecular_weight_interface(i) = 0.5d0*(mid_scr%mu(i)+mid_scr%mu(i-1))
          rot_scr%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
       end do
 end subroutine interpolate_to_interfaces
@@ -151,7 +151,7 @@ subroutine eddington_sweet_velocity()
 ! THE CORRECTED EXPRESSION TO THE CLASSICAL ONE (RAT).
          dr = radius(i) - radius(i-1)
          gmid = 0.5d0*(rot_scr%local_gravity(i)+rot_scr%local_gravity(i-1))
-         phistd = 2.0d0*cc23*rot_scr%omega_interface(i)**2*rot_scr%interface_radius(i)/gmid
+         phistd = 2.0d0*cc23*rot_scr%omega_interface(i)**2*rot_scr%radius_interface(i)/gmid
          phis2 = cc13*rot_scr%omega_interface(i)**2*(radius(i)**2/rot_scr%local_gravity(i)- &
                  radius(i-1)**2/rot_scr%local_gravity(i-1))/dr
          phi2 = (rot_scr%quadrupole_moment(i-1)/rot_scr%local_gravity(i-1)- &
@@ -199,7 +199,7 @@ subroutine inhibit_by_mu_gradient()
 ! INCLUDE ONLY THE ZAHN & MAEDER 1998 TREATMENT, WHERE (DEL - DEL AD) IS
 ! REPLACED BY (DEL + DEL MU - DEL AD).
        do i = zone_min,zone_max
-          qmu = log(mix_scr%amum(i))-log(mix_scr%amum(i-1))
+          qmu = log(mid_scr%mu(i))-log(mid_scr%mu(i-1))
           qp = ln10*(log_pressure(i)-log_pressure(i-1))
           ddel=rot_scr%del_grad_diff_interface(i)+ qmu/qp
           ddtest = max(rot_scr%del_grad_diff_interface(i),1.0d-3)
@@ -249,8 +249,8 @@ subroutine gsf_velocity()
          end if
          dr = radius(i)-radius(i-1)
          if (star%ctrl%gsf_inhibition_mode.eq.0) then
-            qwrmx=2.0d0*sqrt(rot_scr%interface_gravity_factor(i)* &
-                 abs(mix_scr%amum(i)-mix_scr%amum(i-1)) &
+            qwrmx=2.0d0*sqrt(rot_scr%gravity_factor_interface(i)* &
+                 abs(mid_scr%mu(i)-mid_scr%mu(i-1)) &
                  /dr/rot_scr%mean_molecular_weight_interface(i))
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
                star%gsf_circulation_velocity(i) = 0.0d0
@@ -305,7 +305,7 @@ subroutine shear_velocities()
             qwr = abs(dlnomega_dlnr(i))
             star%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  rot_scr%thermal_diffusivity_interface(i)* &
-                 (qwr/dlnomega_dlnr_max(i))**2/rot_scr%interface_radius(i)
+                 (qwr/dlnomega_dlnr_max(i))**2/rot_scr%radius_interface(i)
 !  CORRECT GSF VELOCITY AS WELL.
             dr = radius(i)-radius(i-1)
             rmid = 0.5d0*(radius(i)+radius(i-1))
@@ -348,20 +348,20 @@ subroutine shear_velocities()
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
 !  UNSTABLE; CHECK FOR MU GRADIENTS.
-            if (abs((mix_scr%amum(i)-mix_scr%amum(i-1))/rot_scr%mean_molecular_weight_interface(i)) &
+            if (abs((mid_scr%mu(i)-mid_scr%mu(i-1))/rot_scr%mean_molecular_weight_interface(i)) &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
                qwr = abs(dlnomega_dlnr(i)) - qwrmx
                star%secular_shear_velocity(i)=8.0d0/4.5d1* &
                     rot_scr%thermal_diffusivity_interface(i)* &
-                    (qwr/dlnomega_dlnr_max(i))**2/rot_scr%interface_radius(i)
+                    (qwr/dlnomega_dlnr_max(i))**2/rot_scr%radius_interface(i)
             else
 !  CHECK FOR EFFECTS OF MU GRADIENT.
 !  RICHNO = RHO/P*(-d lnT/d lnMU)*(del MU)/(del P)*(G/QWLNR)**2
 !  WHERE -d lnT/d lnMU = (CON-1)/(1+3CON),CON=(a/3)T**4/P
 !  GIVEN (1 - CON)P = CGAS*RHO*T/MU
                qwrmx2 = 2.0d0*sqrt(max(1.0d-20,rot_scr%mu_gradient_richardson_coeff(i)* &
-                        abs((mix_scr%amum(i)-mix_scr%amum(i-1))/ &
+                        abs((mid_scr%mu(i)-mid_scr%mu(i-1))/ &
                         rot_scr%mean_molecular_weight_interface(i))))
                if (abs(dlnomega_dlnr(i)).gt.qwrmx2) then
 !  INTERFACE UNSTABLE WITH RESPECT TO BOTH CONDITIONS; CHOOSE THE
@@ -371,7 +371,7 @@ subroutine shear_velocities()
                   qwr = abs(dlnomega_dlnr(i)) - qwrmx
             star%secular_shear_velocity(i)=8.0d0/4.5d1* &
                  rot_scr%thermal_diffusivity_interface(i)* &
-                 (qwr/dlnomega_dlnr_max(i))**2/rot_scr%interface_radius(i)
+                 (qwr/dlnomega_dlnr_max(i))**2/rot_scr%radius_interface(i)
                end if
             end if
          end if
@@ -412,11 +412,11 @@ subroutine apply_velocity_scales()
 ! IT AS AN ENTRY IN THE DIFFUSION EQUATION.
          do i = zone_min,zone_max
             rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
-                 rot_scr%interface_radius(i)*(abs(star%gsf_circulation_velocity(i))+ &
+                 rot_scr%radius_interface(i)*(abs(star%gsf_circulation_velocity(i))+ &
                  abs(star%secular_shear_velocity(i)))
-            rot_scr%shear_diffusion_coeff(i) = rot_scr%interface_radius(i)* &
+            rot_scr%shear_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
                  abs(star%secular_shear_velocity(i))
-            rot_scr%gsf_diffusion_coeff(i) = rot_scr%interface_radius(i)* &
+            rot_scr%gsf_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
                  abs(star%gsf_circulation_velocity(i))
          end do
       end if
@@ -463,7 +463,7 @@ subroutine zero_transport_in_core()
 ! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
 ! THE H-BURNING SHELL.
       do i = zone_min,zone_max
-         dell = rot_scr%interface_luminosity(i)/total_luminosity
+         dell = rot_scr%luminosity_interface(i)/total_luminosity
          if (dell.lt.9.9d-1) then
             total_circulation_velocity(i) = 0.0d0
             star%gsf_circulation_velocity(i) = 0.0d0
@@ -655,45 +655,45 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
               radius(zone_index)**2-angular_velocity(zone_index-1)* &
               radius(zone_index-1)**2)/ &
               (radius(zone_index)-radius(zone_index-1))/ &
-              (omega_mid*rot_scr%interface_radius(zone_index))
+              (omega_mid*rot_scr%radius_interface(zone_index))
       end do
 ! DETERMINE 2V.
-      interp_weight = (radius(zone_min)-rot_scr%interface_radius(zone_min))/ &
-           (rot_scr%interface_radius(zone_min+1)-rot_scr%interface_radius(zone_min))
+      interp_weight = (radius(zone_min)-rot_scr%radius_interface(zone_min))/ &
+           (rot_scr%radius_interface(zone_min+1)-rot_scr%radius_interface(zone_min))
       v_minus = diffusion_velocity(zone_min)+interp_weight* &
            (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))
       density_r2_v_minus = exp(ln10*log_density(zone_min))* &
            radius(zone_min)**2*v_minus
       do zone_index = zone_min + 1, zone_max - 1
-         interp_weight = (radius(zone_index)-rot_scr%interface_radius(zone_index))/ &
-              (rot_scr%interface_radius(zone_index+1)-rot_scr%interface_radius(zone_index))
+         interp_weight = (radius(zone_index)-rot_scr%radius_interface(zone_index))/ &
+              (rot_scr%radius_interface(zone_index+1)-rot_scr%radius_interface(zone_index))
          v_plus = diffusion_velocity(zone_index)+interp_weight* &
               (diffusion_velocity(zone_index+1)-diffusion_velocity(zone_index))
          density_r2_v_plus = exp(ln10*log_density(zone_index))* &
               radius(zone_index)**2*v_plus
-         density_radius = rot_scr%dm(zone_index)*rot_scr%interface_radius(zone_index)
+         density_radius = rot_scr%density_interface(zone_index)*rot_scr%radius_interface(zone_index)
          circ_velocity(zone_index) = cc13*(density_r2_v_plus-density_r2_v_minus)/ &
               density_radius/(radius(zone_index)-radius(zone_index-1))
          density_r2_v_minus = density_r2_v_plus
       end do
 ! FOR FIRST AND LAST SHELLS, CALCULATE U*D/DR(RHO*R**2) AND ASSUME
 ! DU/DR = VALUE DERIVED FROM THE LAST NEIGHBOR SHELL WITH NONZERO V.
-      density_radius = rot_scr%dm(zone_min)*rot_scr%interface_radius(zone_min)
+      density_radius = rot_scr%density_interface(zone_min)*rot_scr%radius_interface(zone_min)
       d_density_r2 = (exp(ln10*log_density(zone_min))*radius(zone_min)**2 - &
            exp(ln10*log_density(zone_min-1))*radius(zone_min-1)**2)/ &
            (radius(zone_min) - radius(zone_min-1))
       du_dr = (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))/ &
-           (rot_scr%interface_radius(zone_min+1)-rot_scr%interface_radius(zone_min))
+           (rot_scr%radius_interface(zone_min+1)-rot_scr%radius_interface(zone_min))
       circ_velocity(zone_min) = cc13*(diffusion_velocity(zone_min)*d_density_r2/ &
-           density_radius + rot_scr%interface_radius(zone_min)*du_dr)
-      density_radius = rot_scr%dm(zone_max)*rot_scr%interface_radius(zone_max)
+           density_radius + rot_scr%radius_interface(zone_min)*du_dr)
+      density_radius = rot_scr%density_interface(zone_max)*rot_scr%radius_interface(zone_max)
       d_density_r2 = (exp(ln10*log_density(zone_max))*radius(zone_max)**2 - &
            exp(ln10*log_density(zone_max-1))*radius(zone_max-1)**2)/ &
            (radius(zone_max) - radius(zone_max-1))
       du_dr = (diffusion_velocity(zone_max)-diffusion_velocity(zone_max-1))/ &
-           (rot_scr%interface_radius(zone_max)-rot_scr%interface_radius(zone_max-1))
+           (rot_scr%radius_interface(zone_max)-rot_scr%radius_interface(zone_max-1))
       circ_velocity(zone_max) = cc13*(diffusion_velocity(zone_max)*d_density_r2/ &
-           density_radius + rot_scr%interface_radius(zone_max)*du_dr)
+           density_radius + rot_scr%radius_interface(zone_max)*du_dr)
 ! NOW COMPUTE RUN OF FC; THIS ASSUMES THAT FC = SAME FOR ALL
 ! MECHANISMS AND IS LIMITED TO A MAXIMUM OF 1.
       do zone_index = zone_min, zone_max

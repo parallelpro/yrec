@@ -275,10 +275,10 @@ end subroutine advance_substep_clock
 ! values on the first sub-step, recomputed from omega on the others.
 subroutine carry_theta_forward()
       if(first_call)then
-         rot_scr%theta_prev(1) = rot_scr%tho(1)
+         rot_scr%theta_prev(1) = rot_scr%theta_rezoned(1)
          rot_scr%omega_substep_start(1) = star%old_omega(1)
          do zone_index = 2,star%nz
-            rot_scr%theta_prev(zone_index) = rot_scr%tho(zone_index)
+            rot_scr%theta_prev(zone_index) = rot_scr%theta_rezoned(zone_index)
             rot_scr%omega_substep_start(zone_index) = star%old_omega(zone_index)
          end do
       else
@@ -308,7 +308,7 @@ subroutine brake_surface_convection_zone()
          iend = star%nz
          call enforce_rotation_profile(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,envelope_boundary_zone,iend,rot_scr%eta_squared_mid, &
-              rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,star%nz)
+              rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
       endif
 end subroutine brake_surface_convection_zone
 
@@ -335,7 +335,7 @@ subroutine apply_instability_transport()
          elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
          do zone_index = 1,star%nz
             star%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-            mix_scr%amum(zone_index) = mix_scr%amum(zone_index) - fx*(star%mu(zone_index)-rot_scr%old_amu(zone_index))
+            mid_scr%mu(zone_index) = mid_scr%mu(zone_index) - fx*(star%mu(zone_index)-rot_scr%old_mu(zone_index))
             do species_index = 1,num_species_tracked
                star%xa(species_index,zone_index) = star%xa_start(species_index,zone_index)
             end do

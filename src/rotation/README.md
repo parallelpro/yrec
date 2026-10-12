@@ -21,7 +21,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 | `am_regions` | `am_convective_regions`: the convection zones, with their overshoot, for angular momentum transport. |
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
 | `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
-| `rotation_scratch_lib` | The working state: `rot_scr` (coefficients, grids, the structure at the middle of the sub-step), `mix_scr` and `circ_scr`. |
+| `rotation_scratch_lib` | The working state: `rot_scr` (coefficients, grids, the structure at the middle of the sub-step), `mid_scr` (the physics interpolated to the sub-step) and `circ_scr`. |
 | **shape/** | |
 | `rotating_shape` | `rotation_shape_factors`: each shell's fp, ft, distortion, mean radius and mean gravity (Kippenhahn & Thomas / Endal & Sofia). |
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |

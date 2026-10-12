@@ -46,7 +46,7 @@ In October 2026, four common tasks were traced through the code from start to fi
    - In rotation, `secular_transport` (legacy `seculr`) mixes physics, wind torques, grid mapping, linear solves and convergence logic in one loop. The convergence checks halve the timestep and change controls as a side effect.
 3. **Contracts that live only in people's heads.**
    - The structure solver's own header says its partial derivatives are "inferred from their use, not from surviving documentation".
-   - Several variables mean different things at different times: `xa_start` (start of step, or a sub-step checkpoint), `max_residual` (three meanings in one iteration), a negative `dt` meaning "do not age", and `rot_scr%dm` (an interface density) versus `star%dm` (a shell mass).
+   - Several variables mean different things at different times: `xa_start` (start of step, or a sub-step checkpoint), `max_residual` (three meanings in one iteration), a negative `dt` meaning "do not age", and `rot_scr%dm` (an interface density, renamed `density_interface` in 2026-10) versus `star%dm` (a shell mass).
    - Scratch modules carry data between routines, so results depend on call order.
 4. **Duplication frozen in place.** Byte-identical verification was the right tool for the line-by-line conversion. It also forbade merging duplicates, since merging changes the last bits; `burn_lib.f90:1166` says so explicitly. The duplicates have since drifted apart: the two d(p,g) copies differ by 0.68%.
 
@@ -118,7 +118,7 @@ evolve_step
 
 The order is fine. The problems lie in how these stages communicate:
 
-- **Through the global object.** The stages exchange data through roughly 265 fields of `star`, plus the scratch modules `rot_scr`, `mix_scr` and `pt_scr`. No stage states its inputs or outputs.
+- **Through the global object.** The stages exchange data through roughly 265 fields of `star`, plus the scratch modules `rot_scr`, `mid_scr` and `pt_scr`. No stage states its inputs or outputs.
 - **Stages nest inside one another.** Mixing, envelope integration and rotation shape updates run inside the Newton driver. The splitting iteration between composition and structure exists, but only as "`mix` is called again when `iteration_level > 2`" inside `henyey_iterate`. (Fixed for the composition step on `yrec-next`, 2026-10: `solve_level` in `evolve_step` now runs the surface boundary condition, the composition step and the Newton loop as three calls.)
 - **Flags are encoded in data.** "Do not age this model" is a negative `star%dt`, and four routines read its sign.
 - **Snapshots are scattered.** There are three separate snapshot families in `star`: `*_start` (start of step), `orig_*` (for the structure⇄rotation iteration) and `old_*` (rotation). A fourth, `rot_scr%old_*`, holds the rezone snapshot. Each is copied with hand-written loops.

@@ -672,13 +672,13 @@ subroutine interpolate_onto_new_grid
 ! It now runs with the other old->new interpolations.
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-         call osplin(new_log_mass,rot_scr%old_esum,star%log_mass,star%eps_total, &
+         call osplin(new_log_mass,rot_scr%old_eps_total,star%log_mass,star%eps_total, &
               old_point_count,new_point_count)
          do zone_index = 1,star%nz
             spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
                  star%eps_channels(i_eps_grav,zone_index)
          end do
-         call osplin(new_log_mass,rot_scr%old_eps,star%log_mass,spline_y, &
+         call osplin(new_log_mass,rot_scr%old_eps_plus_neu_grav,star%log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
 ! TRANSFER NEW POINTS.
@@ -805,19 +805,19 @@ subroutine interpolate_onto_new_grid
 !   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
 !   ONE LARGE EVOLUTIONARY TIMESTEP.
          do zone_index = 1,star%nz
-            rot_scr%old_del_radiative_mix(zone_index) = star%gradr(zone_index)
-            rot_scr%old_delm(zone_index) = star%gradT(zone_index)
-            rot_scr%old_del_adiabatic_mix(zone_index) = star%grada(zone_index)
-            rot_scr%old_amu(zone_index) = star%mu(zone_index)
-            rot_scr%old_om(zone_index) = star%opacity_zone(zone_index)
+            rot_scr%old_gradr(zone_index) = star%gradr(zone_index)
+            rot_scr%old_gradT(zone_index) = star%gradT(zone_index)
+            rot_scr%old_grada(zone_index) = star%grada(zone_index)
+            rot_scr%old_mu(zone_index) = star%mu(zone_index)
+            rot_scr%old_opacity(zone_index) = star%opacity_zone(zone_index)
             rot_scr%old_cp(zone_index) = star%cp(zone_index)
             rot_scr%old_qdt(zone_index) = star%qdt(zone_index)
-            rot_scr%old_vel(zone_index) = star%conv_vel(zone_index)
+            rot_scr%old_conv_vel(zone_index) = star%conv_vel(zone_index)
             rot_scr%old_visc(zone_index) = star%visc(zone_index)
             rot_scr%old_thdif(zone_index) = star%thdif(zone_index)
 ! MHP 06/02
             rot_scr%del_grad_diff_interface(zone_index) = &
-                 rot_scr%old_del_adiabatic_mix(zone_index) - rot_scr%old_delm(zone_index)
+                 rot_scr%old_grada(zone_index) - rot_scr%old_gradT(zone_index)
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
          end do
@@ -829,7 +829,7 @@ subroutine interpolate_onto_new_grid
             omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
             log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
      (star%log_mass(i)+star%log_mass(i-1))-cgl
-            rot_scr%tho(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
+            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
          end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.

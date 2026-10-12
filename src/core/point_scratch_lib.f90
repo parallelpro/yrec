@@ -11,7 +11,7 @@
 ! Formerly star%pulse (the pulsation_diagnostics_state q* scratch,
 ! ex common/pulse1/pulse2) and the flat star%current_* members --
 ! solver working state that never belonged in star_info (same
-! taxonomy call as rotation_scratch_lib: rot_scr/mix_scr/circ_scr).
+! taxonomy call as rotation_scratch_lib: rot_scr/mid_scr/circ_scr).
 ! yrec_reset snapshots pt_scr alongside those for in-process
 ! re-entrancy.
 module point_scratch_lib

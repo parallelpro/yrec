@@ -22,8 +22,8 @@ contains
 ! then for each shell integrates the distorted potential (by
 ! refine_distortion_integral with polint Richardson extrapolation) and
 ! averages the resulting local effective gravity over the shell
-! (average_over_equipotential) to get mean_gravity, from which FP/FT and
-! the diagnostic potential terms rot_scr%phisp/phirot/phidis are built.
+! (average_over_equipotential) to get mean_gravity, from which FP/FT are
+! built.
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0, ierr)
@@ -55,7 +55,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       double precision :: density, g_times_mass, centrifugal_factor, &
            r0_cubed, distortion_a, shell_mass, eta22, omega_sq
       double precision :: aint1, dint, aint
-      double precision :: g0, ginv0, sphi, ginv, f0, q, rphi, rphi3
+      double precision :: g0, ginv0, sphi, ginv, f0, q
 
       ierr = 0
 ! FIND THE RUN OF R0 AND ETA2 FOR THE MODEL
@@ -117,12 +117,6 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
          f0 = c4pil + 4.0d0*log_radius(i) - ginv
          pressure_rotation_factor(i) = exp(ln10*(f0 - cgl - log_mass(i)))
          temperature_rotation_factor(i) = exp(ln10*(f0 + c4pil))/g0
-! OUTPUT DATA
-         rphi = exp(ln10*log_radius(i))
-         rphi3 = rphi**3
-         rot_scr%phisp(i) = g_times_mass/rphi
-         rot_scr%phirot(i) =  omega_sq*rphi**2
-         rot_scr%phidis(i) = c4pi*cc13*aint/rphi3
          prev_aint = aint
          prev_q = q
          previous_shell_mass = shell_mass

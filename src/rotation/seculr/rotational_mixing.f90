@@ -228,6 +228,8 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
            rhs(json), solution(json)
 
       double precision :: equally_spaced_composition(json)
+! the splines' tables and evaluation points (model points and grid, both ways)
+      double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
       integer :: varying_species_id(15)
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
@@ -265,18 +267,18 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
       do species_num = 1, num_varying_species
          do zone_idx = 1, ntab
             orig_zone_idx = zone_idx + zone_begin - 1
-            rot_scr%xtab(zone_idx) = rot_scr%chi(zone_idx)
-            rot_scr%ytab(zone_idx) = composition(varying_species_id(species_num), &
+            table_x(zone_idx) = rot_scr%chi(zone_idx)
+            table_y(zone_idx) = composition(varying_species_id(species_num), &
                  orig_zone_idx)
          end do
-         call osplin(rot_scr%echi, equally_spaced_composition, rot_scr%xtab, rot_scr%ytab, ntab, &
-              rot_scr%ntot)
+         call osplin(rot_scr%eq_chi, equally_spaced_composition, table_x, table_y, ntab, &
+              rot_scr%num_eq_points)
 ! SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR COMP AT END OF TSTEP
-         call composition_diffusion_coeffs(equally_spaced_diffusion_coeff, rot_scr%dchi, timestep, &
-              equally_spaced_composition, equally_spaced_mass, rot_scr%ntot, &
+         call composition_diffusion_coeffs(equally_spaced_diffusion_coeff, rot_scr%eq_chi_spacing, timestep, &
+              equally_spaced_composition, equally_spaced_mass, rot_scr%num_eq_points, &
               sub_diag, diag, super_diag, rhs)
 ! SOLVE MATRIX FOR THE RUN OF COMP AT TIME N+1 AT THE NEW GRID.
-         call solve_tridiagonal(sub_diag, diag, super_diag, rhs, rot_scr%ntot, solution, ierr)
+         call solve_tridiagonal(sub_diag, diag, super_diag, rhs, rot_scr%num_eq_points, solution, ierr)
          if (ierr /= 0) return
 ! TRANSFORM BACK TO THE ORIGINAL GRID AND UPDATE HCOMP IN THE
 ! DIFFUSED REGION. U IS THE NEW RUN OF COMPOSITION IN THE REGION AT THE
@@ -285,17 +287,17 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 ! LAST EQUALLY SPACED GRID POINTS CAN LEAD TO SERIOUS ERRORS.
 ! THEREFORE ADD THE *CHANGE* IN COMPOSITION AT THE EQUALLY SPACED GRID
 ! POINTS TO HCOMP AND DO NOT REPLACE HCOMP WITH U.
-         do zone_idx = 1, rot_scr%ntot
-            rot_scr%xtab(zone_idx) = rot_scr%echi(zone_idx)
-            rot_scr%ytab(zone_idx) = solution(zone_idx) - &
+         do zone_idx = 1, rot_scr%num_eq_points
+            table_x(zone_idx) = rot_scr%eq_chi(zone_idx)
+            table_y(zone_idx) = solution(zone_idx) - &
                  equally_spaced_composition(zone_idx)
          end do
          do zone_idx = 1, ntab
-            rot_scr%xval(zone_idx) = rot_scr%chi(zone_idx)
+            eval_x(zone_idx) = rot_scr%chi(zone_idx)
          end do
 ! USE YVAL AS DUMMY ARRAY FOR THE NEW RUN OF COMP AT THE ORIGINAL
 ! POINT GRID.
-         call osplin(rot_scr%xval, rot_scr%yval, rot_scr%xtab, rot_scr%ytab, rot_scr%ntot, ntab)
+         call osplin(eval_x, eval_y, table_x, table_y, rot_scr%num_eq_points, ntab)
 ! CHECK FOR LOWER CONVECTION ZONE
          if (convective_flag(zone_begin).and.zone_begin.gt.1) then
             do zone_idx = zone_begin-1, 1, -1
@@ -330,7 +332,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
             j_idx = zone_begin + zone_idx - 1
             composition(varying_species_id(species_num),j_idx) = &
                  composition(varying_species_id(species_num),j_idx) + &
-                 rot_scr%yval(zone_idx)
+                 eval_y(zone_idx)
          end do
 ! UPDATE INNER CZ COMPOSITION IF APPLICABLE.
          if (i0.lt.zone_begin) then
@@ -473,6 +475,8 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
       logical, intent(out) :: single_interface_flag
       integer :: idx, search_idx, ntab, ntabb
       double precision :: em_top, em_bot
+! the spline's table (the model points) and evaluation points (the grid)
+      double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
 
 ! FLAG THE SPECIAL CASE OF A SINGLE UNSTABLE INTERFACE AND EXIT
       if (zone_end - zone_begin.le.1) then
@@ -489,7 +493,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! CENTERS:
 ! TOTAL ZONE MASSES
 ! INTERMEDIATE POINTS
-      do idx = 2, rot_scr%ntot-1
+      do idx = 2, rot_scr%num_eq_points-1
          equally_spaced_mass(idx) = 0.5d0*(rot_scr%eq_enclosed_mass(idx+1) - rot_scr%eq_enclosed_mass(idx-1))
       end do
 ! SPECIAL TREATMENT OF THE BOUNDARIES; CAN BE CONVECTIVE.
@@ -515,19 +519,19 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
          end do
       end if
 ! SURFACE
-      em_bot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%ntot) + rot_scr%eq_enclosed_mass(rot_scr%ntot-1))
+      em_bot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%num_eq_points) + rot_scr%eq_enclosed_mass(rot_scr%num_eq_points-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
               enclosed_mass(zone_end+1))
       else
          em_top = exp(ln10*log_total_mass)
       end if
-      equally_spaced_mass(rot_scr%ntot) = em_top - em_bot
+      equally_spaced_mass(rot_scr%num_eq_points) = em_top - em_bot
 ! (INCLUDE EVERY CONVECTIVE SHELL ABOVE ZONE_END.)
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) exit
-            equally_spaced_mass(rot_scr%ntot) = equally_spaced_mass(rot_scr%ntot) + &
+            equally_spaced_mass(rot_scr%num_eq_points) = equally_spaced_mass(rot_scr%num_eq_points) + &
                  shell_mass(search_idx)
          end do
       end if
@@ -536,20 +540,20 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
 ! GRID IN R, WE NEED TO INCLUDE A JACOBIAN TERM FOR THE TRANSFORMATION
 ! OF VARIABLES.
       ntab = zone_end - zone_begin + 1
-      call edge_grid_abscissae(rot_scr%chi, rot_scr%echi, rot_scr%dchi, ntab, &
-           rot_scr%ntot, rot_scr%xtab, rot_scr%xval, ntabb)
+      call edge_grid_abscissae(rot_scr%chi, rot_scr%eq_chi, rot_scr%eq_chi_spacing, ntab, &
+           rot_scr%num_eq_points, table_x, eval_x, ntabb)
 ! DIFFUSION COEFFICIENT FOR MIXING - ASSUME CONSTANT BELOW
 ! BOTTOM INTERFACE OR ABOVE TOP INTERFACE
       call interp_edge_coeff(diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
-           rot_scr%ntot, rot_scr%xval, rot_scr%xtab, rot_scr%ytab, &
+           rot_scr%num_eq_points, eval_x, table_x, table_y, &
            equally_spaced_diffusion_coeff)
 ! PRODUCT OF RHO R^2 BY D CHI/DR (LOG10, ON THE EQUAL GRID IN YVAL)
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
-           enclosed_mass, mix_scr%epsm, luminosity_lsun(num_zones), zone_begin, &
-           ntab, rot_scr%ntot, rot_scr%chi, rot_scr%xval, rot_scr%xtab, &
-           rot_scr%ytab, rot_scr%yval)
+           enclosed_mass, mid_scr%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
+           ntab, rot_scr%num_eq_points, rot_scr%chi, eval_x, table_x, &
+           table_y, eval_y)
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
-      call multiply_by_exp10(equally_spaced_diffusion_coeff, rot_scr%yval, rot_scr%ntot)
+      call multiply_by_exp10(equally_spaced_diffusion_coeff, eval_y, rot_scr%num_eq_points)
       return
 end subroutine composition_grid
 

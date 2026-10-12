@@ -347,7 +347,7 @@ end subroutine check_angular_momentum
 ! OUTPUT VARIABLES:
 ! dt : DIFFUSION TIMESTEP, WHICH CAN BE CUT IF ERRORS IN THE
 !    COMPOSITION DIFFUSION ARE DISCOVERED.
-! mix_scr%amum (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
+! mid_scr%mu (former common/mdphy/) : NEW RUN OF MEAN MOLECULAR WEIGHT.
 ! cut_count : NUMBER OF TIMES DIFFUSION TIMESTEP HAS BEEN CUT.
 ! converged_flag : SET F IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
 ! redo_flag : SET T IF ERRORS IN COMPOSITION DIFFUSION DISCOVERED.
@@ -465,7 +465,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
                  + composition(i_he4,zone_index)/atomic_weight(2)) + &
                  0.5d0*composition(i_metals,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            mix_scr%amum(zone_index) = ion_mean_weight_inverse* &
+            mid_scr%mu(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
          end do

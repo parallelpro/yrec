@@ -5,7 +5,7 @@ This file is the authority on names in YREC (see `TARGET_ARCHITECTURE.md` sectio
 **Ways to use it**
 
 - **You know the F77 name** (`HL`, `HCOMP`, `DELTS`, `SESUM`, ...): search this file for it. Legacy names appear in upper case.
-- **You know the current name**: search for it, e.g. `luminosity_lsun` or `rot_scr%dm`.
+- **You know the current name**: search for it, e.g. `luminosity_lsun` or `rot_scr%density_interface`.
 - **You are adding physics**: read section 1 (conventions) and section 3 (naming traps) first.
 
 **Columns**
@@ -16,7 +16,7 @@ This file is the authority on names in YREC (see `TARGET_ARCHITECTURE.md` sectio
 | Units | cgs unless stated. "dex" means a log₁₀ quantity. "—" means dimensionless or a flag. "unconfirmed" means the units could not be settled from the code. |
 | Current name(s) | Name in the code today. Several names separated by commas are copies or aliases of the same quantity. "also" lists the name a different routine uses for it. |
 | Legacy | F77 name before the 2026 modernization: a COMMON member, a `main.f` array, or a namelist variable. An arrow (`A → B`) records an intermediate 2026 name. "—" means the quantity is new since 2026. |
-| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mix_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`, and `pt_scr` in `core/point_scratch_lib.f90`. Controls are declared in the generated `state/controls_state_def.inc` (`ctrl`) and `state/job_controls_def.inc` (`job`). |
+| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mid_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`, and `pt_scr` in `core/point_scratch_lib.f90`. Controls are declared in the generated `state/controls_state_def.inc` (`ctrl`) and `state/job_controls_def.inc` (`job`). |
 
 **Naming rules** (from `TARGET_ARCHITECTURE.md` 4.7, plus what the code already practises):
 
@@ -38,7 +38,7 @@ Line numbers cited here are for the working tree of 2026-10-10. `src/` is being 
 | Quantity | Convention |
 |---|---|
 | General | cgs: g, cm, s, K, erg, dyn cm⁻². |
-| Luminosity in the structure | `luminosity_lsun` is **linear** L/L☉. The interface copies used by rotation (`rot_scr%interface_luminosity`) and the pulse files are in erg s⁻¹. |
+| Luminosity in the structure | `luminosity_lsun` is **linear** L/L☉. The interface copies used by rotation (`rot_scr%luminosity_interface`) and the pulse files are in erg s⁻¹. |
 | Mass | `m`, `dm` in g; `log_mass`, `log_total_mass` in log₁₀ g. Observables (`star_mass`, `core_cz_mass`, `envelope_mass`, `h_shell_*_mass`) are in M☉. |
 | Radius | `logR` in log₁₀ cm. `log_R_surface` and `envelope_cz_log_radius` are log₁₀(*r*/R☉). `envelope_radius` is in R☉, and `h_shell_*_radius` is *r*/R. |
 | Time | `star%dt` in s, `timestep_yr` in yr, the age `dage` in Gyr. `seconds_per_year` = 3.1558×10⁷ (`setup/setups.f90:57`). |
@@ -209,7 +209,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | K | cm² s⁻¹ | `star%thdif` | `THDIF` | rotation/viscos.f90 | Radiative thermal diffusivity 16σT³/(3κρ²c_P). |
 | EOS outputs | mixed | `eos_res(i_*)`: `i_log10_density`, `i_beta`, `i_fxion`(3), `i_gas_constant` (R/μ), `i_mu_ion_inv`, `i_mu_e_inv`, `i_eta`, `i_dlnrho_dlnt`, `i_dlnrho_dlnp`, `i_cp`, `i_grada`, and the second derivatives `i_*_dt`, `i_*_dp` | positional `eqstat` arguments | eos/eos_lib.f90:71-80 | Named slots of the 24-element `eos_get` result. `i_gas_constant` is R/μ, not μ. |
 | opacity outputs | mixed | `kap_res(i_kap)`, `i_log10_kap`, `i_dlnkap_dlnrho`, `i_dlnkap_dlnt` | `O`, `OL`, `QOD`, `QOT` | kap/kap_lib.f90:36-38 | κ, log₁₀ κ and the **logarithmic** derivatives κ_ρ and κ_T. |
-| mid-step copies | as base | `mix_scr%amum`, `cpm`, `delm`, `del_adiabatic_mix`, `del_radiative_mix`, `esumm`, `om`, `qdtm`, `thdifm`, `velm`, `viscm`, `epsm` | `AMUM`, `CPM`, `DELM`, `DELAM`, `DELRM`, `ESUMM`, `OM`, `QDTM`, `THDIFM`, `VELM`, `VISCM`, `EPSM` (`/MDPHY/`) | rotation/mid_timestep_model.f90 | μ, c_P, ∇, ∇_ad, ∇_rad, ε_nuc, κ, ∂lnρ/∂lnT, K, v_conv, ν interpolated to mid-sub-step. `epsm` is ε_nuc+ε_ν+ε_grav; `esumm` is ε_nuc only. |
+| mid-step copies | as base | `mid_scr%mu`, `cp`, `gradT`, `grada`, `gradr`, `eps_total`, `opacity`, `qdt`, `thdif`, `conv_vel`, `visc`, `eps_plus_neu_grav` (the `star%` names they interpolate; `rot_scr%old_*` holds the previous model's) | `AMUM`, `CPM`, `DELM`, `DELAM`, `DELRM`, `ESUMM`, `OM`, `QDTM`, `THDIFM`, `VELM`, `VISCM`, `EPSM` (`/MDPHY/`) | rotation/mid_timestep_model.f90 | μ, c_P, ∇, ∇_ad, ∇_rad, ε_nuc, κ, ∂lnρ/∂lnT, K, v_conv, ν interpolated to mid-sub-step. `eps_plus_neu_grav` is ε_nuc+ε_ν+ε_grav; `eps_total` is ε_nuc only. Named `mix_scr%amum` etc. until 2026-10. |
 
 ### 2.4 Composition
 
@@ -240,7 +240,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%gravitational_luminosity(k)` | `SEG(7)`, `HHC` | core/henyey_coefficients.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `gravitational_luminosity` is a specific rate, not a luminosity (trap 7). |
 | ε | erg g⁻¹ s⁻¹ | `burn%total_energy_gen_rate` (local `energy_gen_rate`) | `SUM1` (`engeb`), `E` (`coefft`) | net/nuclear_energy.f90 (`sum_energy_generation`) | Total nuclear rate including deuterium burning and (negative) ν losses; the ε in q_L. |
 | ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%pp_chain_energy_gen`, `he3he4_be7_electron_energy_gen`, `he3he4_be7_proton_energy_gen`, `cno_cycle_energy_gen`, `triple_alpha_energy_gen` | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | net/nuclear_energy.f90:423-437 | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
-| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho`, `rot_scr%deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | net/nuclear_energy.f90:356 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
+| dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | net/nuclear_energy.f90:356 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
 | dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_deps_dlnt`, `star%pulse_deps_dlnt`, `rot_scr%deps_dlnt` | `PET`; `QET`, `PQET`, `SQET` | net/nuclear_energy.f90:357 | **Absolute** dε/dlnT (trap 1). |
 | ε_αcap | erg g⁻¹ s⁻¹ | `burn%eps_alpha_capture` | `EALPCA` (`/NEWEPS/`) | net/nuclear_energy.f90 (`store_chain_energies`) | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
 | L_channel | L☉ | `star%luminosity_breakdown(8)` (`i_lum_pp1`, `i_lum_pp2`, `i_lum_pp3`, `i_lum_cno`, `i_lum_3alpha`, `i_lum_neu`, `i_lum_grav`, `i_lum_he_c`) | `TLUMX` | core/henyey_coefficients.f90; renormalized in core/henyey_iteration.f90:173-182 | Integrated luminosity per channel. Rescaled each iteration so the sum equals L(nz) (trap 15). |
@@ -296,7 +296,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/henyey_el
 | max ΔΩ/Ω | — | `star%max_domega_frac` | `DWMAX` | util/timestep_limit_omega.f90 | Largest fractional change of Ω since the previous model; drives the rotation timestep. |
 | — | Gyr | `star%disk_gate_age_gyr` | `SAGE` (`/DISK/`) | core/evolve_step.f90:457 | Age compared with `disk_locking_age_gyr` by `disk_locking_engaged()`. |
 | Ω at sub-step start | rad s⁻¹ | `rot_scr%omega_substep_start` | `WMST` (`/OLDROT2/`) | rotation/evolve_angular_momentum.f90 | Ω at the start of the current diffusion sub-step; read at the surface for the wind torque. |
-| mid-sub-step structure | as base | `rot_scr%log_density_mid`, `log_pressure_mid`, `log_temperature_mid`, `log_radius_mid`, `luminosity_lsun_mid` (linear), `omega_mid`, `hg_mid`, `eta_squared_mid`, `moment_of_inertia_mid`, `mean_radius_mid`, `qiw_mid`, `convective_flag_mid`, `am_transport_convective_flag_mid` | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to mid-sub-step for `secular_transport`. |
+| mid-sub-step structure | as base | `rot_scr%log_density_mid`, `log_pressure_mid`, `log_temperature_mid`, `log_radius_mid`, `luminosity_lsun_mid` (linear), `omega_mid`, `mean_gravity_mid`, `eta_squared_mid`, `moment_of_inertia_mid`, `mean_radius_mid`, `di_domega_mid` (dI/dΩ), `convective_flag_mid`, `am_transport_convective_flag_mid` | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to mid-sub-step for `secular_transport`. |
 
 ### 2.8 Rotational transport (`secular_transport` pipeline)
 
@@ -307,21 +307,21 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | U_ES | cm s⁻¹ | `star%es_circulation_velocity`; `circ_scr%es_circulation_velocity_prev` | `VES`; `VES0` (`/TEMP2/`) | rotation/seculr/circulation_velocities.f90 | Eddington–Sweet circulation velocity (current and previous iteration). |
 | U_SS | cm s⁻¹ | `star%secular_shear_velocity`; `..._prev` | `VSS`; `VSS0` | rotation/seculr/circulation_velocities.f90 | Secular-shear velocity (set to the dynamical-shear value where that operates). |
 | U_GSF | cm s⁻¹ | `star%gsf_circulation_velocity`; `..._prev` | `VGSF`; `VGSF0` | rotation/seculr/circulation_velocities.f90 | Goldreich–Schubert–Fricke velocity. |
-| U_μ | cm s⁻¹ | `circ_scr%mu_gradient_velocity` | `VMU` | rotation/seculr/circulation_velocities.f90 | μ-gradient (inhibiting) velocity. |
+| U_μ | cm s⁻¹ | — (was `circ_scr%mu_gradient_velocity`) | `VMU` | rotation/seculr/circulation.f90 | μ-gradient (inhibiting) velocity. It was always zero and was removed in 2026-10; μ-gradients act through `gsf_inhibition_mode` and the Richardson criterion. |
 | U | cm s⁻¹ | `diffusion_velocity` (`secular_transport` argument); also `total_circulation_velocity` | `HV` | rotation/seculr/circulation_velocities.f90 | Total circulation velocity at interfaces; transport regions are where U > 0. |
 | D_Ω | cm² s⁻¹ | `star%am_diffusion_coeff` (profile `D_omega`); local `am_diffusion_coeff` | `COD` | rotation/seculr/diffusion_velocity_scales.f90; copied at secular_transport.f90:295 | AM diffusion coefficient on the model grid; `star` keeps the last sub-step. |
 | D_mix | cm² s⁻¹ | `star%mixing_diffusion_coeff` (profile `D_mix_rot`); argument `mixing_diffusion_coeff`; also `diffusion_coeff` | `COD2` | as above | Rotational mixing coefficient for composition. |
 | f_c | — | `star%vfc` | `VFC` (`/VARFC/`) | rotation/seculr/zahn_coupling_factor.f90:112 | Zahn (1992) coupling factor min(1, ...), applied when `lvfc` is set. |
-| (dΩ/dln r)_max | rad s⁻¹ | `rot_scr%max_domega_dr` (shell_physics); local `dynamical_shear_omega_limit` (secular_transport); also `dlnomega_dlnr_max` | `QWRMAX` (`/DWMAX/`); `QWRMX0` → `max_domega_dr_old` | core/shell_physics.f90:182, setup/rotation_stability_setup.f90:201 | Largest absolute dΩ/dln r stable against dynamical shear (Ri = ¼). Absolute and per ln r, despite `dr`/`dln` in the names (trap 3). |
+| (dΩ/dln r)_max | rad s⁻¹ | local `dynamical_shear_omega_limit` (rotation_stability_setup, secular_transport); also `dlnomega_dlnr_max`. shell_physics's copy (`rot_scr%max_domega_dr`, and `max_domega_dr_old`) was never read and was removed in 2026-10 | `QWRMAX` (`/DWMAX/`); `QWRMX0` | setup/rotation_stability_setup.f90 | Largest absolute dΩ/dln r stable against dynamical shear (Ri = ¼). Absolute and per ln r, despite `dr`/`dln` in the names (trap 3). |
 | dΩ/dln r | rad s⁻¹ | `dlnomega_dlnr` (local) | `QWLNR` | rotation/seculr/secular_transport.f90:163 | **Absolute** dΩ/dln r at interfaces (trap 3). |
 | r | cm | `radius_unlogged`; also `radius`, `radius_mid_prev` | `HRU` | setup/rotation_stability_setup.f90 | Unlogged radius at zone centres. |
 | equal-grid set | as base | `eq_mixing_diffusion_coeff`, `eq_angular_momentum`, `eq_am_diffusion_coeff`, `eq_delta_angular_momentum`, `eq_mass`, `eq_moment_of_inertia`, `eq_omega`; aliases `equally_spaced_diffusion_coeff`, `angular_momentum`, `diffusion_coeff`, `delta_angular_momentum`/`dj`, `equally_spaced_mass` | `ECOD2`, `EJ`, `ECOD`, `DJ`, `EM`, `EI`, `EW` | rotation/seculr/am_transport_grid.f90, equal_grid_to_model.f90 | The same quantities on the equally spaced χ grid. |
 | m on χ grid | g | `rot_scr%eq_enclosed_mass` | `ES1` (`/EGRID/`) | rotation/equal_spaced_grid.f90 | Enclosed mass at the χ points. |
-| P, T, ρ, m, r at interface | cgs | `rot_scr%pm`, `tm`, **`dm`**, `hs3`, `interface_radius` | `PM`, `TM`, `DM`, `HS3`, `RM` (`/INTVAR/`) | setup/rotation_stability_setup.f90:57, 311-325 | Interface (cell-edge) values. `rot_scr%dm` is a **density**, not a mass (trap 8). |
-| L, ε, g at interface | erg s⁻¹; erg g⁻¹ s⁻¹; cgs | `rot_scr%interface_luminosity`, `epsilm`, `interface_gravity_factor` | `ALM`, `EPSILM`, `HGM` | setup/rotation_stability_setup.f90 | Interface luminosity (cgs), ε_nuc (from `esumm`) and local gravity. |
-| ∇, ∇_ad, ∂lnρ/∂lnT at interface | — | `rot_scr%delmi`, `delami`, `qdtmi` | `DELMI`, `DELAMI`, `QDTMI` | setup/rotation_stability_setup.f90:91, 319-323 | `delmi` holds interpolated ∇_rad until line 91 replaces it with min(∇_rad, ∇_ad). |
+| P, T, ρ, m, r at interface | cgs | `rot_scr%pressure_interface`, `temperature_interface`, `density_interface`, `mass_interface`, `radius_interface` | `PM`, `TM`, `DM`, `HS3`, `RM` (`/INTVAR/`) | setup/rotation_stability_setup.f90 | Interface (cell-edge) values; element i is the interface between zones i−1 and i. Named `pm`, `tm`, `dm`, `hs3` until 2026-10 (trap 8). |
+| L, ε, g at interface | erg s⁻¹; erg g⁻¹ s⁻¹; cgs | `rot_scr%luminosity_interface`, `eps_total_interface`, `gravity_factor_interface` | `ALM`, `EPSILM`, `HGM` | setup/rotation_stability_setup.f90 | Interface luminosity (cgs), ε_nuc (from `mid_scr%eps_total`) and local gravity. |
+| ∇, ∇_ad, ∂lnρ/∂lnT at interface | — | `rot_scr%gradT_interface`, `grada_interface`, `qdt_interface` | `DELMI`, `DELAMI`, `QDTMI` | setup/rotation_stability_setup.f90 | `gradT_interface` holds the interpolated ∇_rad until the setup replaces it with min(∇_rad, ∇_ad). |
 | μ, K, ν, Ω at interface | —, cm² s⁻¹, cm² s⁻¹, rad s⁻¹ | `rot_scr%mean_molecular_weight_interface`, `thermal_diffusivity_interface`, `kinematic_viscosity_interface`, `omega_interface` | `AMUMI`, `THDIFMI`, `VISCMI`, `WM` (`/INTVR2/`) | setup/rotation_stability_setup.f90 | Interface transport properties. |
-| κ_ρ, κ_T | — | `rot_scr%dlnkappa_dlnrho`, `dlnkappa_dlnt` | `SQOD`, `SQOT` (`/ROTDER/`) | core/henyey_coefficients.f90 | Logarithmic opacity derivatives (genuinely logarithmic). |
+| κ_T | — | `rot_scr%dlnkappa_dlnt` | `SQOT` (`/ROTDER/`) | core/henyey_coefficients.f90 | Logarithmic opacity derivative (genuinely logarithmic). The κ_ρ copy (`SQOD`) was never read and was removed in 2026-10. |
 | — | — | `rot_scr%neutrino_loss_fraction` | `FRACNUC` | core/henyey_coefficients.f90:382 | (ε_nuc − ε_ν − ε_grav)/ε_nuc with the stored signs; not a neutrino fraction (trap 14). |
 
 ### 2.9 Mixing, convection and zone bookkeeping
@@ -481,7 +481,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - `qrmu` is R/μ, not μ.
 3. **`dlnomega_dlnr` is the absolute dΩ/d ln r, and `max_domega_dr` is per ln r.**
    - `secular_transport.f90:163` forms ¼ΔΩ·(Σ 1/Δln r), which has units of rad s⁻¹.
-   - `rot_scr%max_domega_dr`, the local `dynamical_shear_omega_limit` and `dlnomega_dlnr_max` (all legacy `QWRMAX`) are the limiting |dΩ/d ln r|, not dΩ/dr (`core/shell_physics.f90:182`, `setup/rotation_stability_setup.f90:198-203`).
+   - The local `dynamical_shear_omega_limit` and `dlnomega_dlnr_max` (legacy `QWRMAX`) are the limiting |dΩ/d ln r|, not dΩ/dr (`setup/rotation_stability_setup.f90`).
 4. **`eps_channels(1:5,:)` are fractions, but slots 6 and 7 are rates.**
    - The `star_info` comment says "[erg/g/s]" (`state/star_info_lib.f90:89`).
    - `henyey_coefficients` stores `energy_gen_component(j)/eps_total` in slots 1–5 (`:346-354`), and erg g⁻¹ s⁻¹ in slots 6 (ν) and 7 (grav).
@@ -496,10 +496,9 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 7. **`gravitational_luminosity` is a specific rate (erg g⁻¹ s⁻¹), not a luminosity.**
    - It is ε_grav (`core/henyey_coefficients.f90:289-290`), legacy `HHC`.
    - The luminosity is `luminosity_breakdown(i_lum_grav)`.
-8. **`rot_scr%dm` is the interface DENSITY, not a shell mass.**
-   - `setup/rotation_stability_setup.f90:315` interpolates log ρ to the interface and unlogs it.
-   - `star%dm` is the point mass weight in g.
-   - Its siblings `rot_scr%pm`, `tm` and `hs3` are P, T and m at the interface.
+8. **Until 2026-10, `rot_scr%dm` was the interface DENSITY, not a shell mass.**
+   - It is now `rot_scr%density_interface`; `star%dm` is the point mass weight in g.
+   - Its siblings `pm`, `tm` and `hs3` (P, T and m at the interface) are now `pressure_interface`, `temperature_interface` and `mass_interface`.
 9. **`xa_start` has two meanings.**
    - It is the start-of-step composition (`core/evolve_step.f90:245`). Burning starts from it, and Newton levels > 2 reset `xa` to it (`core/henyey_iteration.f90:136`).
    - Inside the rotation step it is also the **sub-step checkpoint**. It is restored on a redo (`rotation/evolve_angular_momentum.f90:310`) and overwritten with the current composition after each accepted sub-step (`:324`, `:388`, `:394`).

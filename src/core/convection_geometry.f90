@@ -103,10 +103,10 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
 
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
          if(star%job%rotation_active.and.star%job%instability_transport_active)then
-            del_diff = mix_scr%del_adiabatic_mix(env_cz_zone) - &
-                 mix_scr%del_radiative_mix(env_cz_zone)
-            del_diff_below = mix_scr%del_adiabatic_mix(env_cz_zone-1) - &
-                 mix_scr%del_radiative_mix(env_cz_zone-1)
+            del_diff = mid_scr%grada(env_cz_zone) - &
+                 mid_scr%gradr(env_cz_zone)
+            del_diff_below = mid_scr%grada(env_cz_zone-1) - &
+                 mid_scr%gradr(env_cz_zone-1)
          else
 ! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
 ! BELOW IT.

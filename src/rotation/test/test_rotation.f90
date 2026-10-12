@@ -368,7 +368,7 @@ end subroutine secular_check
 ! One case of secular_check: the model (with a band of steep shear if
 ! steep = 1), then the transport pieces, printed.
 subroutine secular_case(label, iterations, steep, zahn, chain)
-      use rotation_scratch_lib, only: rot_scr, mix_scr, circ_scr
+      use rotation_scratch_lib, only: rot_scr, mid_scr, circ_scr
       use circulation, only: circulation_velocities, diffusion_velocity_scales, &
            zahn_coupling_factor, compute_quadrupole
       use am_grid, only: am_transport_grid, equal_grid_to_model
@@ -406,15 +406,15 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          convective(i) = f > 0.71d0
          lum(i) = 1.0d0 - exp(-(f/0.1d0)**2)
          w(i) = 2.9d-6*(1.0d0 + 0.5d0*(1.0d0 - f)**2)
-         mix_scr%amum(i) = 0.62d0 + 0.25d0*exp(-(f/0.12d0)**2)
-         mix_scr%cpm(i) = 3.0d8*(1.0d0 + f)
-         mix_scr%del_adiabatic_mix(i) = 0.4d0
-         mix_scr%delm(i) = merge(0.4d0, 0.25d0 + 0.1d0*f, convective(i))
-         mix_scr%del_radiative_mix(i) = mix_scr%delm(i)
-         mix_scr%esumm(i) = 20.0d0*exp(-(f/0.1d0)**2)
-         mix_scr%qdtm(i) = 1.0d0
-         mix_scr%viscm(i) = 10.0d0*(1.0d0 + 3.0d0*f)
-         mix_scr%thdifm(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
+         mid_scr%mu(i) = 0.62d0 + 0.25d0*exp(-(f/0.12d0)**2)
+         mid_scr%cp(i) = 3.0d8*(1.0d0 + f)
+         mid_scr%grada(i) = 0.4d0
+         mid_scr%gradT(i) = merge(0.4d0, 0.25d0 + 0.1d0*f, convective(i))
+         mid_scr%gradr(i) = mid_scr%gradT(i)
+         mid_scr%eps_total(i) = 20.0d0*exp(-(f/0.1d0)**2)
+         mid_scr%qdt(i) = 1.0d0
+         mid_scr%visc(i) = 10.0d0*(1.0d0 + 3.0d0*f)
+         mid_scr%thdif(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
          rot_scr%dlnkappa_dlnt(i) = -3.0d0
          rot_scr%deps_dlnt(i) = 4.0d0
          rot_scr%neutrino_loss_fraction(i) = 0.02d0
@@ -427,8 +427,8 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          w(26:n) = 0.8d0*w(26:n)
       case (2)
          w(1:n) = 30.0d0*w(1:n)
-         mix_scr%delm(36:42) = 0.3999d0
-         mix_scr%del_radiative_mix(36:42) = 0.3999d0
+         mid_scr%gradT(36:42) = 0.3999d0
+         mid_scr%gradr(36:42) = 0.3999d0
          w(39) = 0.75d0*w(39)
          w(40:n) = 0.5d0*w(40:n)
       case (3)
@@ -457,7 +457,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       call rotation_stability_setup(log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n, &
            radius, shear_limit)
       do i = zmin, zmax
-         log_rc = log10(rot_scr%interface_radius(i))
+         log_rc = log10(rot_scr%radius_interface(i))
          weight = 1.0d0/log(10.0d0)/(log_r(i) - log_rc) + 1.0d0/log(10.0d0)/(log_rc - log_r(i-1))
          dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
       end do
@@ -468,7 +468,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          if (it > 1) then
             w(2:zmax) = 1.03d0*w(2:zmax)
             do i = zmin, zmax
-               log_rc = log10(rot_scr%interface_radius(i))
+               log_rc = log10(rot_scr%radius_interface(i))
                weight = 1.0d0/log(10.0d0)/(log_r(i) - log_rc) + 1.0d0/log(10.0d0)/(log_rc - log_r(i-1))
                dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
             end do
@@ -525,16 +525,16 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          call am_transport_grid(d_am, d_mix, log_rho, inertia, jm, lum, log_p, log_r, radius, &
               log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w, grid_spacing, &
               eq_d_am, eq_d_mix, eq_i, eq_j, eq_m, eq_w, single_interface)
-         call am_diffusion_coeffs(eq_d_am, grid_spacing, 3.0d13, eq_i, eq_j, eq_w, rot_scr%ntot, &
+         call am_diffusion_coeffs(eq_d_am, grid_spacing, 3.0d13, eq_i, eq_j, eq_w, rot_scr%num_eq_points, &
               0.0d0, 0.0d0, .false., sub_diag, diag, super_diag, rhs, wind_term)
-         call solve_angular_momentum_transport(rot_scr%ntot, eq_i, dj, sum_dj, sub_diag, diag, &
+         call solve_angular_momentum_transport(rot_scr%num_eq_points, eq_i, dj, sum_dj, sub_diag, diag, &
               super_diag, rhs, solution, wind_term, ierr)
          call equal_grid_to_model(dj, eq_j, dm, zbeg, zend, convective, n, sum_dj, jm)
          mixed_ok = .false.
          call diffuse_composition_driver(3.0d13, d_mix, eq_d_mix, eq_m, log_rho, lum, log_p, &
               log_r, log_m, m, dm, log10(m(n)), v_total, zbeg, zend, zmax, zmin, convective, &
               mixed_ok, n, xa, 1, 4, ierr)
-         write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", rot_scr%ntot, &
+         write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", rot_scr%num_eq_points, &
               "  one interface", single_interface, "  ierr", ierr
          write(*,'(a,1pe24.15)') "sum dJ", sum_dj
          write(*,'(a)') "zone  d(j/m)/(j/m) dX dHe4"
