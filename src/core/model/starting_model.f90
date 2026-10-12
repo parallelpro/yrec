@@ -258,8 +258,34 @@ subroutine acquire_starting_model
 ! The reading and processing of an input model file is skipped
 ! (the else branch below).
       else
+         call read_starting_model_file
+         if (ierr /= 0) return
+         call check_model_against_controls
+         call reset_state_after_read
+         call set_starting_rotation_curve
+! KEEP IREAD OPEN
+         rewind iread
+! End of the reading and processing of an input model file.
+         if (star%job%first_call_flag(run_index)) then
+!      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
+!     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
+!     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
+! CHEMICALLY HOMOGENEOUS MODEL. IT CAN OVER-WRITE MASS FRACTIONS 4-15 WITH USER-SPECIFIED VALUES
+! ISETMIX=1 -> CAN ADJUST CNO FRACTIONS ISETISO=1-> CHANGE ISOTOPE RATIOS
+            call check_mixture_homogeneity
+            if (mixture_ok) then
+               call rescale_cno_mixture
+               call set_isotope_ratios
+            end if
+         end if
+      endif
+end subroutine acquire_starting_model
 
-
+! ---------------------------------------------------------------
+! Read the input model file on unit iread, its layout (.mod, YREC7
+! or MODEL2) told by its keyword, and set the timestep and the total
+! mass from it. Sets ierr on an unknown layout or a failed read.
+subroutine read_starting_model_file
 !     Read in the starting model from LU IFIRST and process it.
 
 !  Get file format of input model
@@ -328,7 +354,12 @@ subroutine acquire_starting_model
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
       star%stotal = star%log_total_mass
+end subroutine read_starting_model_file
 
+! ---------------------------------------------------------------
+! Warn when an evolved model's mixing length or extended-composition
+! flag differs from the controls (the run goes on).
+subroutine check_model_against_controls
 ! CHECK TO ENSURE THAT MIX LENGTH, SURFACE B.C. AND CONVECTION ZONE
 ! THEORY OF THE MODEL ARE THE SAME AS USER PARAMETERS
 ! CHECKED ONLY FOR EVOLVED MODELS(MODEL NUMBER > 0)
@@ -354,7 +385,12 @@ subroutine acquire_starting_model
 ! (the run is not stopped: only this warning is issued)
        endif
       endif
+end subroutine check_model_against_controls
 
+! ---------------------------------------------------------------
+! Reset the store and trial-sign flags, require a fresh envelope, and
+! take the surface X and Z from the outermost interior point.
+subroutine reset_state_after_read
       istore_flag = 0
       trial_sign_flag = 1.0d0
 ! Require recompute of envelope. No assurance of reliable
@@ -366,7 +402,12 @@ subroutine acquire_starting_model
 
       star%xnew = star%xa(i_h1,star%nz)
       star%znew = star%xa(i_metals,star%nz)
+end subroutine reset_state_after_read
 
+! ---------------------------------------------------------------
+! Set the solid-body rotation curve when asked (rotating runs), or
+! unit rotation factors fp and ft (non-rotating runs).
+subroutine set_starting_rotation_curve
 ! FOURTH PART:  - LOG J/M STORED
 
       if (star%job%rotation_active) then
@@ -383,15 +424,12 @@ subroutine acquire_starting_model
             star%ft_rot(i) = 1.0d0
          end do
       endif
-! KEEP IREAD OPEN
-      rewind iread
-! End of the reading and processing of an input model file.
-      if (star%job%first_call_flag(run_index)) then
-!      IF(.NOT.LFIRST(NK).OR.NK.GT.1)GOTO 3000
-!     MHP 10/24 MACHINERY TO ALTER THE HEAVY ELEMENT MIXTURE
-!     THIS IS ONLY DONE if the first MODEL IS being READ IN, AND ONLY FOR A
-! CHEMICALLY HOMOGENEOUS MODEL. IT CAN OVER-WRITE MASS FRACTIONS 4-15 WITH USER-SPECIFIED VALUES
-! ISETMIX=1 -> CAN ADJUST CNO FRACTIONS ISETISO=1-> CHANGE ISOTOPE RATIOS
+end subroutine set_starting_rotation_curve
+
+! ---------------------------------------------------------------
+! Check that the starting model is chemically homogeneous (species
+! 1-15 within 1e-6 of the centre) before its mixture is altered.
+subroutine check_mixture_homogeneity
       mixture_ok = .true.
       if (star%ctrl%change_cno_mixture_active .or. star%ctrl%change_isotope_ratios_active) then
 ! ENSURE STARTING MODEL IS HOMOGENEOUS BEFORE EITHER IS CHANGED
@@ -413,7 +451,12 @@ subroutine acquire_starting_model
             end do
          end do homogeneity
       endif
-      if (mixture_ok) then
+end subroutine check_mixture_homogeneity
+
+! ---------------------------------------------------------------
+! Scale the C, N and O isotopes to the requested C, N and O fractions
+! of the metals.
+subroutine rescale_cno_mixture
 ! LOOP FOR CHANGING CNO MIX
       if (star%ctrl%change_cno_mixture_active) then
 !     INFER CURRENT TOTAL CNO FRACTIONS AND SCALE ALL ISOTOPES BY THE RATIO BETWEEN
@@ -454,6 +497,12 @@ subroutine acquire_starting_model
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
       endif
+end subroutine rescale_cno_mixture
+
+! ---------------------------------------------------------------
+! Set the requested isotope ratios and light-element abundances in
+! every shell.
+subroutine set_isotope_ratios
 ! DESIRED ISOTOPE RATIOS AND LIGHT ELEMENT ABUNDANCES ASSIGNED.
 !     AT PRESENT B10,B11,N15,O17 ARE NOT USED AND THUS NOT ALTERED.
 !     START WITH LIGHT ELEMENTS
@@ -484,10 +533,7 @@ subroutine acquire_starting_model
              4x,'new (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
              12es12.4)
       endif
-      end if
-      end if
-      endif
-end subroutine acquire_starting_model
+end subroutine set_isotope_ratios
 
 ! ---------------------------------------------------------------
 ! If extend_core_inward is set, add central points inward of the
@@ -621,24 +667,13 @@ subroutine rescale_and_refit_envelope
 ! IS ASSUMED EQUAL TO THAT OF THE LAST OLD POINT.
       if (star%job%change_envelope_mass_flag) then
       envelope_rescale: do
-       if (star%job%requested_envelope_mass.gt.0.0d0) star%job%requested_envelope_mass = &
-            -star%job%requested_envelope_mass
-! DBG 2/92 CHANGED MINIMUM FROM 1.0D-10 TO 1.0D-12
-! RESTRICT MIMIMUM ENVELOPE MASS;1.0D-12 CORRESPONDS TO TAU=2/3
-! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
-       if (star%job%requested_envelope_mass.gt.-1.0d-12) star%job%requested_envelope_mass = &
-            -1.d-12
-       star%senv = star%log_mass(star%nz) - star%log_total_mass
-       old_senv = star%senv
+       call clamp_requested_envelope_mass
        if (star%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
        num_species = n_species_basic
        if (star%job%use_extended_composition) num_species = n_species_extended
        if (star%job%requested_envelope_mass.lt.star%senv) then
 ! NEW ENVELOPE DEEPER THAN THE OLD ONE
-          target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
-          do i = star%nz-1,1,-1
-             if (star%log_mass(i).lt.target_log_mass_at_fit) exit
-          end do
+          call find_shell_below_new_fit
           if (i < (1)) then
 ! ENVELOPE MASS DESIRED WITHIN FIRST POINT;PRINT NASTY MESSAGE
 ! AND ABORT.
@@ -648,6 +683,55 @@ subroutine rescale_and_refit_envelope
               ' MASS NOT CHANGED')
           exit envelope_rescale
           end if
+          call interpolate_new_fitting_point
+          call set_new_last_shell_convection
+          if (ierr /= 0) return
+       else
+! DESIRED ENVELOPE MASS LESS THAN CURRENT VALUE.
+          call integrate_envelope_to_new_fit
+          if (ierr /= 0) return
+          call append_envelope_as_shells
+          if (ierr /= 0) return
+       endif
+       envelope_recomputed_flag = .true.
+       write(run_log_unit,597)old_senv,star%senv
+ 597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
+              'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
+      exit envelope_rescale
+      end do envelope_rescale
+      endif
+
+end subroutine rescale_and_refit_envelope
+
+! ---------------------------------------------------------------
+! Make the requested envelope mass (log M_fit/M) negative and no
+! shallower than -1e-12, and record the current one.
+subroutine clamp_requested_envelope_mass
+       if (star%job%requested_envelope_mass.gt.0.0d0) star%job%requested_envelope_mass = &
+            -star%job%requested_envelope_mass
+! DBG 2/92 CHANGED MINIMUM FROM 1.0D-10 TO 1.0D-12
+! RESTRICT MIMIMUM ENVELOPE MASS;1.0D-12 CORRESPONDS TO TAU=2/3
+! FOR THIS PURPOSE(BASE OF ATMOSPHERE).
+       if (star%job%requested_envelope_mass.gt.-1.0d-12) star%job%requested_envelope_mass = &
+            -1.d-12
+       star%senv = star%log_mass(star%nz) - star%log_total_mass
+       old_senv = star%senv
+end subroutine clamp_requested_envelope_mass
+
+! ---------------------------------------------------------------
+! Find the outermost shell i below the new (deeper) fitting mass;
+! i = 0 when the fitting mass lies within the first shell.
+subroutine find_shell_below_new_fit
+          target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
+          do i = star%nz-1,1,-1
+             if (star%log_mass(i).lt.target_log_mass_at_fit) exit
+          end do
+end subroutine find_shell_below_new_fit
+
+! ---------------------------------------------------------------
+! Make shell i+1 the new last interior shell, at the fitting mass:
+! structure (and omega) linear between shells i and i+1, composition of i.
+subroutine interpolate_new_fitting_point
             star%nz = i + 1
           star%senv = star%job%requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
@@ -672,6 +756,12 @@ subroutine rescale_and_refit_envelope
           star%znew = star%xa(i_metals,star%nz)
           if (star%job%rotation_active) star%omega(star%nz) = star%omega(i) + &
                interior_interp_fraction*(star%omega(i+1)-star%omega(i))
+end subroutine interpolate_new_fitting_point
+
+! ---------------------------------------------------------------
+! Decide whether the new last shell is convective: as its neighbours
+! when they agree, else from the gradients at the point (via eos, kap).
+subroutine set_new_last_shell_convection
           if (star%convective_flag(i).and.star%convective_flag(i+1)) then
              star%convective_flag(star%nz) = .true.
           else if (.not.star%convective_flag(i).and. .not.star%convective_flag(i+1)) &
@@ -720,8 +810,13 @@ subroutine rescale_and_refit_envelope
                star%logRho(star%nz) = log10_density
                star%convective_flag(star%nz) = is_convective
           endif
-       else
-! DESIRED ENVELOPE MASS LESS THAN CURRENT VALUE.
+end subroutine set_new_last_shell_convection
+
+! ---------------------------------------------------------------
+! Integrate an envelope with the model's Teff and L from the surface
+! down to the new (shallower) fitting mass. Sets ierr on failure.
+subroutine integrate_envelope_to_new_fit
+      use math_lib
             old_last_shell = star%nz
 ! fixed envelope integration step for this atm_get call (2026 W2:
 ! passed in instead of overwriting and restoring star%job%env_step_*)
@@ -763,6 +858,13 @@ subroutine rescale_and_refit_envelope
           end if
 ! G Somers END
           star%senv = star%job%requested_envelope_mass
+end subroutine integrate_envelope_to_new_fit
+
+! ---------------------------------------------------------------
+! Shift the envelope onto the last interior point and append its points
+! below the fitting mass as shells, then echo them. Sets ierr on failure.
+subroutine append_envelope_as_shells
+      use math_lib
 ! 2026 io/driver stops -> ierr (was: stop 9999)
             if (star%nz+env_struct%num_env_points.ge.json) then
                write(*,*) 'read_starting_model: grid overflow (json too small)'
@@ -816,16 +918,7 @@ subroutine rescale_and_refit_envelope
                    star%logR(j),star%log_mass(j)-star%stotal, &
                    star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
  911  format(i5,1p6e16.8,l2)
-       endif
-       envelope_recomputed_flag = .true.
-       write(run_log_unit,597)old_senv,star%senv
- 597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
-              'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
-      exit envelope_rescale
-      end do envelope_rescale
-      endif
-
-end subroutine rescale_and_refit_envelope
+end subroutine append_envelope_as_shells
 
 ! ---------------------------------------------------------------
 ! Shell masses (unlogged) and per-shell dm from the (possibly

@@ -98,6 +98,26 @@ subroutine map_user_inputs
 ! and updates should instead use different functional forms (e.g. NACRE II).
 ! IF THE LNEWNUC FLAG IS SET TRUE THE SSTANDARD VECTOR IS NORMALIZED TO UNITY
 ! AND THE INDIVIDUAL CROSS-SECTION VALUES AND THEIR DERIVATIVES ARE USED INSTEAD.
+      call reset_rate_scale_defaults
+      if (use_new_nuclear_rates) then
+         call set_cross_section_scales
+         call set_first_derivative_scales
+         call set_second_derivative_scales
+      end if
+! OPTION TO OVERWRITE SPATIAL AND TEMPORAL TOLERANCES WITH MORE INTUITIVE VARIABLE NAMES.
+! NOTE: THIS OVERWRITES THE HPTTOL AND ATIME VECTORS.
+      if (lnewvars) then
+         call map_zoning_tolerances
+         call map_timestep_tolerances
+      end if
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Default the rate-derivative scales and the N15+p branching scales
+! to unity.
+subroutine reset_rate_scale_defaults
       do i = 1,8
          star%qs0e_scale(i) = 1.0d0
          star%qqs0ee_scale(i) = 1.0d0
@@ -107,7 +127,12 @@ subroutine map_user_inputs
 !      WRITE(*,911)(QS0E(I),I=1,8),(QQS0EE(I),I=1,8),
 !     * (SSTANDARD(I),I=1,17),LNEWNUC
 ! 911  FORMAT(8E12.3/8E12.3/8E12.3/9E12.3/L5)
-      if (use_new_nuclear_rates) then
+end subroutine reset_rate_scale_defaults
+
+! ---------------------------------------------------------------
+! Set each reaction's cross-section scale from its S0 over the
+! reference S0, and the N15+p branching scales.
+subroutine set_cross_section_scales
          do i = 1,17
             star%cross_section_scale(i) = 1.0d0
          end do
@@ -139,6 +164,12 @@ subroutine map_user_inputs
 ! ABILITY TO CHANGE THE HARD-CODED BRANCHING RATIOS FOR THE OUTCOME OF N15+P
          star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
          star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
+end subroutine set_cross_section_scales
+
+! ---------------------------------------------------------------
+! Set the first-derivative (S'/S) scales relative to Solar Fusion I,
+! zero where a reaction's S0 is not positive.
+subroutine set_first_derivative_scales
 ! NUCLEAR REACTION DERIVATIVES ARE USED IN THE VECTORS Q2-Q5 IN ENGEB AND NRATES.
 ! THE Q2 AND Q3 FACTORS ARE DEFINED PROPORTIONAL TO S'/S (REFERENCE: SOLAR FUSION I IN 1998)
 ! THE Q4 AND Q5 FACTORS ARE DEFINTED PROPORTIONAL TO S''/S (SAME REFERENCE)
@@ -186,6 +217,12 @@ subroutine map_user_inputs
          else
             star%qs0e_scale(iq_be7p) = 0.0d0
          end if
+end subroutine set_first_derivative_scales
+
+! ---------------------------------------------------------------
+! Set the second-derivative (S''/S) scales relative to Solar Fusion I,
+! zero where a reaction's S0 is not positive.
+subroutine set_second_derivative_scales
 ! SECOND DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q4 AND Q5 TERMS IN ENGEB
 !         QQS0EE(1) = (S0PP_1_1/S0_1_1)/(QQS0EE_1_1_A98/S0_1_1_A98) ZEROED OUT IN 2003 VERSION
 !         QQS0EE(2) = (S0PP_3_3/S0_3_3)/(QQS0EE_3_3_A98/S0_3_3_A98) ZEROED OUT IN 2003 VERSION
@@ -215,10 +252,11 @@ subroutine map_user_inputs
          else
             star%qqs0ee_scale(iq_be7p) = 0.0d0
          end if
-      end if
-! OPTION TO OVERWRITE SPATIAL AND TEMPORAL TOLERANCES WITH MORE INTUITIVE VARIABLE NAMES.
-! NOTE: THIS OVERWRITES THE HPTTOL AND ATIME VECTORS.
-      if (lnewvars) then
+end subroutine set_second_derivative_scales
+
+! ---------------------------------------------------------------
+! Copy the named zoning tolerances into chi_grid_scale.
+subroutine map_zoning_tolerances
 ! MINIMUM LOG MASS SPACING BETWEEN SHELLS
          chi_grid_scale(ichi_dm_min) = tol_dm_min
 ! MAXIMUM LOG MASS SPACING BETWEEN SHELLS
@@ -243,6 +281,12 @@ subroutine map_user_inputs
          chi_grid_scale(ichi_flag_dz) = flag_dz
 ! MAXIMUM LOG OMEGA SPACING BETWEEN SHELLS (ROTATING MODELS ONLY)
          chi_grid_scale(ichi_flag_dw) = flag_dw
+end subroutine map_zoning_tolerances
+
+! ---------------------------------------------------------------
+! Copy the named timestep tolerances into atime and the other
+! timestep controls.
+subroutine map_timestep_tolerances
 ! MINIMUM CENTRAL ABUNDANCE TO USE CORE BURNING DT CRITERION
          atime(itime_core_min) = time_core_min
 ! MAX PERMITTED ABSOLUTE DELTA X BURNED IN CORE IN TIMESTEP
@@ -278,8 +322,8 @@ subroutine map_user_inputs
 ! MORE THAN THIS SCALE FACTOR
 !          ATIME(13) = TIME_MAX_DT_FAC
          atime(itime_max_dt_frac) = time_max_dt_frac
-      end if
-      return
+end subroutine map_timestep_tolerances
+
 end subroutine map_user_inputs
 
 end module user_inputs

@@ -69,6 +69,36 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
 
       ierr = 0
 
+      call rescale_surface_x
+      call rescale_interior_z
+      if(composition(1,1).gt.1.0d-10) then
+!  MAIN SEQUENCE RESCALING - MASS AND SINGLE ELEMENT.
+         call rescale_one_species
+         call rescale_main_sequence_mass
+      else
+!  HORIZONTAL BRANCH RESCALING;CORE MASS AND TOTAL MASS.
+!  FOR TOTAL MASS,TREAT AS MAIN SEQUENCE BUT ONLY CHANGE
+!  THE MASS POINTS OUTSIDE THE H-BURNING SHELL;
+!  FOR CORE MASS CHANGE THE POINTS INSIDE THE H-BURNING
+!  SHELL AND CORRESPONDINGLY REDUCE/INCREASE THE MASS OUTSIDE
+!  THE SHELL.
+         call measure_hb_masses
+         call rescale_hb_total_mass
+         if (ierr /= 0) return
+         call rescale_hb_core_mass
+         if (ierr /= 0) return
+         call report_hb_masses
+      endif
+      call set_helium_from_x_and_z
+      call ramp_interior_z
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Scale every shell's X by the ratio of the requested to the old
+! surface X (a requested X above 1 is refused with a message).
+subroutine rescale_surface_x
       if(star%job%rescale_params(2,run_index).gt.0.0d0) then
 !  RESCALE X BY MULTIPLYING ALL SHELL X VALUES BY THE RATIO (XNEW/XOLD)
 !  WHERE XOLD = OLD SURFACE X VALUE
@@ -97,6 +127,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            'GREATER THAN UNITY.  X NOT RESCALED')
          endif
       endif
+end subroutine rescale_surface_x
+
+! ---------------------------------------------------------------
+! Shift every shell's Z by the requested minus the old surface Z,
+! scaling the CNO isotopes (species 5-11) with it (Z above 1 refused).
+subroutine rescale_interior_z
       if(star%job%rescale_params(3,run_index).ge.0.0d0) then
 !  RESCALE Z BY ADDING (RESCAL(3,NK)-OLD Z) TO EACH Z VALUE IN THE STAR
 !  THE CNO CYCLE ELEMENTS AND HE3 ARE MULTIPLIED BY THE RATIO OF THE
@@ -130,8 +166,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
          endif
       endif
-      if(composition(1,1).gt.1.0d-10) then
-!  MAIN SEQUENCE RESCALING - MASS AND SINGLE ELEMENT.
+end subroutine rescale_interior_z
+
+! ---------------------------------------------------------------
+! Set one species (new_species_index) to the requested abundance in
+! every shell (main-sequence models).
+subroutine rescale_one_species
          if(star%ctrl%rescale_species_active.and.star%job%new_species_value.ge.0.0d0) then
 !  RESCALE THE ABUNDANCE OF ONE ELEMENT OTHER THAN X,Y,Z
 !  JNEWCP = INDEX OF ELEMENT TO BE CHANGED IN MATRIX HCOMP
@@ -152,6 +192,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
             endif
          endif
+end subroutine rescale_one_species
+
+! ---------------------------------------------------------------
+! Scale the total mass and every shell mass by the requested over the
+! old total mass (main-sequence models).
+subroutine rescale_main_sequence_mass
 !  RESCALE STAR MASS BY MULTIPLYING ALL MASS POINTS IN THE STAR BY
 !  A SCALE FACTOR(MNEW/MOLD) WHILE LEAVING ALL OTHER LOCAL VARIABLES
 !  UNCHANGED.
@@ -164,13 +210,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
             end do
          endif
-      else
-!  HORIZONTAL BRANCH RESCALING;CORE MASS AND TOTAL MASS.
-!  FOR TOTAL MASS,TREAT AS MAIN SEQUENCE BUT ONLY CHANGE
-!  THE MASS POINTS OUTSIDE THE H-BURNING SHELL;
-!  FOR CORE MASS CHANGE THE POINTS INSIDE THE H-BURNING
-!  SHELL AND CORRESPONDINGLY REDUCE/INCREASE THE MASS OUTSIDE
-!  THE SHELL.
+end subroutine rescale_main_sequence_mass
+
+! ---------------------------------------------------------------
+! Find the H-burning shell and the old core, shell and envelope masses
+! of a horizontal-branch model when its mass or core mass is rescaled.
+subroutine measure_hb_masses
          if(star%job%rescale_params(1,run_index).gt.0.0d0.or.star%job%rescale_params(4,run_index).gt.0.0d0) then
 !  RESCALE MASS AND/OR CORE MASS
 !  FIND H-BURNING SHELL (gn - 10/05).
@@ -188,7 +233,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
    63       format(1x,'HB-OLD MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL',f9.6)
          endif
+end subroutine measure_hb_masses
 
+! ---------------------------------------------------------------
+! Rescale a horizontal-branch model's total mass by stretching the mass
+! outside the H shell (or outside the core). Sets ierr on failure.
+subroutine rescale_hb_total_mass
          if(star%job%rescale_params(1,run_index).gt.0.0d0) then
 
 ! MASS RESCALING : ADD OR SUBTRACT MASS FROM THE ENVELOPE OUTSIDE
@@ -264,7 +314,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
          endif
          endif
+end subroutine rescale_hb_total_mass
 
+! ---------------------------------------------------------------
+! Rescale a horizontal-branch model's core mass at fixed H-shell and
+! total mass, moving mass to or from the envelope. Sets ierr on failure.
+subroutine rescale_hb_core_mass
          if(star%job%rescale_params(4,run_index).gt.0.0d0) then
 
 ! RESCALE CORE MASS.
@@ -308,7 +363,12 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
             end do
 
          endif
+end subroutine rescale_hb_core_mass
 
+! ---------------------------------------------------------------
+! Echo the rescaled horizontal-branch core, shell, envelope and total
+! masses.
+subroutine report_hb_masses
          if(star%job%rescale_params(1,run_index).gt.0.0d0.or.star%job%rescale_params(4,run_index).gt.0.0d0)then
             core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
             env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
@@ -318,11 +378,21 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL ',f9.6)
 
          endif
-      endif
+end subroutine report_hb_masses
+
+! ---------------------------------------------------------------
+! Set every shell's Y from its new X, Z and He3.
+subroutine set_helium_from_x_and_z
 !  CHANGE Y TO REFLECT NEW X,Z, AND HE3 VALUES.
       do zone_idx = 1,num_zones
          composition(2,zone_idx) = 1.0d0-composition(1,zone_idx)-composition(3,zone_idx)-composition(4,zone_idx)
       end do
+end subroutine set_helium_from_x_and_z
+
+! ---------------------------------------------------------------
+! With use_z_ramp, set Z to rsclzc inside mass fraction rsclzm1 and ramp
+! it linearly to the surface Z at rsclzm2, compensating with X.
+subroutine ramp_interior_z
 !
 ! DBG 5/94 rescale interior Z if LZRAMP flag is T.
 ! Z is linearly adjusted from RSCLZC at the center to surface Z at
@@ -350,7 +420,8 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
                end if
             enddo
       end if
-      return
+end subroutine ramp_interior_z
+
 end subroutine rescale_model
 
 end module model_rescaling
