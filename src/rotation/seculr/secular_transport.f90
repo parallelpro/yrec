@@ -43,6 +43,7 @@ module secular_transport
       use circulation, only: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
       use am_transport_coefficients, only: am_diffusion_coeffs, am_advection_diffusion_coeffs
       use omega_profile, only: solid_body_omega
+      use stability_coefficients, only: rotation_stability_setup
       implicit none
 contains
 

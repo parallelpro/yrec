@@ -43,7 +43,8 @@ module rotation_scratch_lib
                 es_diffusive_velocity_prev(json)
 ! the advection-diffusion (Maeder & Zahn) coefficients on the model and
 ! equal grids, and the shear and GSF diffusion coefficients. facd2/facd3
-! are filled by setup/rotation_stability_setup and read by nothing.
+! are filled by rotation_stability_setup (stability_coefficients) and
+! read by nothing.
            double precision :: facd2(json), facd3(json), &
                 am_2nd_deriv_coeff(json), &
                 am_3rd_deriv_coeff(json), &
@@ -154,8 +155,6 @@ module rotation_scratch_lib
 ! absolute d eps/d ln T (erg/g/s).
            double precision :: dlnkappa_dlnt(json), &
                 deps_dlnt(json), neutrino_loss_fraction(json)
-! the rotational energy term
-           double precision :: rotational_energy_term(json)
 ! The structure interpolated to the middle of the current sub-step:
 ! filled by mid_timestep_model, read by secular_transport and the rest of
 ! the sub-step. Reads follow a write in the same step (the later

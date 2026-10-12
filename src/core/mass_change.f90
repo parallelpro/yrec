@@ -20,7 +20,6 @@
 ! experimental and valid for Allard atmospheres only (llp 06/15/2009).
 ! The model is read from and written to star; the timestep is star%dt.
 module mass_change
-      use rotation_scratch_lib
       use atm_lib, only: atm_get_surface_pt
       use atmosphere_structure, only: atm_point
       use star_info_lib, only: star, json

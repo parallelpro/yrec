@@ -187,7 +187,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       call snapshot_step_start
       if (ierr /= 0) return
       call shell_physics(star%fp_rot,star%ft_rot, &
-           star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun,star%logP, &
+           star%xa,star%logRho,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
            star%log_Teff, jerr)
       if (jerr /= 0) then

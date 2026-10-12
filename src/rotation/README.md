@@ -32,6 +32,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 | `circulation` | The circulation and instability velocities, their scales, the Zahn coupling factor, the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
+| `stability_coefficients` | `rotation_stability_setup`: the structure at the zone interfaces and the coefficients of the circulation and instability velocities, once per sub-step. |
 | `transport_checks` | The angular momentum and composition checks, which can ask for a redo. |
 
 `burn_settle_mix.f90`, `burn_mix_extrapolated.f90` and `burn_li_be_midpoint.f90` hold the Bulirsch–Stoer burn-and-mix path. It is commented out by the author's decision; each file's header says how to revive it.
@@ -42,7 +43,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 1. Finds the regions for angular momentum transport.
 2. **Without instability transport** (`instability_transport_active` false): the rotation curve, plus the wind on the surface convection zone over the whole step.
 3. **With it:**
-   - computes the rotation curve, the number of sub-steps (the ω-change limit) and the shell physics (`shell_physics` in core);
+   - computes the rotation curve, the number of sub-steps (the ω-change limit) and the shell physics (core's `shell_physics`);
    - then, for each sub-step:
      - carry θ forward;
      - advance the mid-sub-step model;
@@ -51,7 +52,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
      - store the composition at the sub-step's end, and burn the light elements;
    - finally sets ω from the new angular momentum.
 
-Rotation calls back into core (`shell_physics`, burn_step's light-element burn) and setup (`rotation_stability_setup`). Element diffusion is its own domain, reached through `element_diffusion_lib`.
+Rotation calls back into core for two services: `shell_physics` (the per-shell EOS, opacity, gradients and viscosity, which every run also needs at its start and at rezoning) and burn_step's light-element burn. Element diffusion is its own domain, reached through `element_diffusion_lib`.
 
 ## 3. Conventions
 

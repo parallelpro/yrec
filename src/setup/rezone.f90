@@ -792,7 +792,7 @@ subroutine interpolate_onto_new_grid
 !   THIS IS NEEDED EVEN IN THE ABSENCE OF DIFFUSION TO ACCURATELY LOCATE
 !   THE EDGES OF CONVECTION ZONES.
 !        CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
-       call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%mean_gravity,star%luminosity_lsun, &
+       call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun, &
             star%logP,star%logR,star%log_mass,star%logT, &
             star%convective_flag,star%nz,star%log_Teff, jerr)
        if (jerr /= 0) then

@@ -66,7 +66,6 @@ contains
 !     logRho, m, mixed_zone_bounds, xa
 subroutine advance_composition(timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
-      use rotation_scratch_lib
       use star_info_lib, only: star, i_h1, i_he3, i_he4, i_metals, json, &
            max_convective_zones, max_radiative_zones
       use io_units

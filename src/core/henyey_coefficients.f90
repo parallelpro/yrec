@@ -92,6 +92,8 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 ! energy_gen_component and zone_deps_dlnrho/dlnt.
       type(nuclear_energy_result) :: burn
       double precision :: zone_deps_dlnrho, zone_deps_dlnt
+! the change of the rotational kinetic energy per unit mass and time
+      double precision :: rotational_energy_term
       double precision :: energy_gen_rate, alpha_capture_energy_zone
       double precision :: zone_dt, entropy_term1, entropy_term2, &
            entropy_term, entropy_term3, egrav
@@ -298,9 +300,9 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  eos_res%adiabatic_gradient_dt)
 ! 7/92 INCLUDE CHANGE IN ROTATIONAL KINETIC ENERGY IN ENERGY EQUATION.
             if (star%job%rotation_active) then
-               rot_scr%rotational_energy_term(im) = zone_dt*(star%kinetic_energy_rot(im)- &
+               rotational_energy_term = zone_dt*(star%kinetic_energy_rot(im)- &
                     star%kinetic_energy_rot_old(im))/star%dm(im)
-               cur%ql = cur%ql - rot_scr%rotational_energy_term(im)
+               cur%ql = cur%ql - rotational_energy_term
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
