@@ -829,12 +829,11 @@ subroutine integrate_envelope_to_new_fit
           saha_state = 0
 ! Surface radius and gravity from L = 4 pi R^2 sigma Teff^4 and
 ! g = G M/R^2:
-!   log R = (log L/Lsun + log Lsun - 4 log Teff - log(4 pi) - log sigma)/2.
-! Note: the code adds star%solar_luminosity_cgs (Lsun in erg/s) where
-! the equation needs log Lsun (star%log10_solar_luminosity, the CLSUNL
-! that starin used).
+!   log R = (log L/Lsun + log Lsun - 4 log Teff - log(4 pi) - log sigma)/2,
+! with log Lsun = star%log10_solar_luminosity (starin's CLSUNL; the
+! 2026-08 modernization had put Lsun in erg/s there, fixed 2026-10-12).
           shell_luminosity_lsun = exp(ln10*star%log_L)
-          log10_radius = 0.5d0*(star%log_L + star%solar_luminosity_cgs - &
+          log10_radius = 0.5d0*(star%log_L + star%log10_solar_luminosity - &
                4.0d0*star%log_Teff - c4pil - csigl)
           log10_gravity = cgl + star%stotal - log10_radius - log10_radius
           hydrogen_fraction = star%xa(i_h1,star%nz)
