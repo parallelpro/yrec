@@ -87,8 +87,8 @@ end subroutine expand_paths
 ! and the Monte Carlo and isochrone files when those are on.
 subroutine open_run_files(ierr)
       integer, intent(inout) :: ierr
-      character(len=256) :: shell_cmd
-      integer :: i, last_slash_idx
+      character(len=256) :: shell_cmd, msg
+      integer :: i, last_slash_idx, ios
 
       last_slash_idx = 0
       do i = len_trim(fshort), 1, -1
@@ -102,35 +102,52 @@ subroutine open_run_files(ierr)
       print *,"OUTPUT placed in :  ",fshort(1:last_slash_idx)
       print *, ''
       call system(shell_cmd)
-      call copy_inlists_used(trim(inlist_used_file))
+      call copy_inlists_used(trim(inlist_used_file), ierr)
+      if (ierr /= 0) return
 
-      open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD')
-      open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN')
+      open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the starting model', ffirst, ierr)
+      if (ierr /= 0) return
+      open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the final model file', flast, ierr)
+      if (ierr /= 0) return
       call output_init_mesa(fshort, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
-         open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD')
-         open(monte_carlo_unit1, file=fmonte1,status='UNKNOWN',form='FORMATTED')
-         open(monte_carlo_unit2, file=fmonte2,status='UNKNOWN',form='FORMATTED')
+         open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the Monte Carlo dynamics file', fdyn, ierr)
+         if (ierr /= 0) return
+         open(monte_carlo_unit1, file=fmonte1,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the Monte Carlo summary file', fmonte1, ierr)
+         if (ierr /= 0) return
+         open(monte_carlo_unit2, file=fmonte2,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the Monte Carlo model file', fmonte2, ierr)
+         if (ierr /= 0) return
       endif
       if (isochrone_output_active) then
-         open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED')
+         open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED', iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the isochrone file', fiso, ierr)
+         if (ierr /= 0) return
       endif
 end subroutine open_run_files
 
 ! ---------------------------------------------------------------
 ! A verbatim copy of the deck's file(s) in the output directory: the
 ! run's record of its settings.
-subroutine copy_inlists_used(dest)
+subroutine copy_inlists_used(dest, ierr)
       character(len=*), intent(in) :: dest
+      integer, intent(inout) :: ierr
       integer :: src_unit, dst_unit
       character(len=4096) :: line
+      character(len=256) :: msg
       integer :: ios, nfile
       character(len=256) :: sources(2)
       sources(1) = control_nml_file
       sources(2) = physics_nml_file
       open(newunit=dst_unit, file=dest, &
-           form='FORMATTED', status='UNKNOWN')
+           form='FORMATTED', status='UNKNOWN', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write the copy of the inlist', dest, ierr)
+      if (ierr /= 0) return
       do nfile = 1, 2
          if (nfile == 2 .and. trim(sources(2)) == trim(sources(1))) exit
          open(newunit=src_unit, file=sources(nfile), form='FORMATTED', &

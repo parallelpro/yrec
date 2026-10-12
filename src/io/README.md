@@ -22,7 +22,7 @@ The physics never reads a deck or writes a file itself. It reads its controls fr
 | `derived_controls` | `derive_controls`: the controls computed from the ones read (rate scales, which EOS and opacity tables, the wind law's exponents, the mixture changes, the diffusion switches), the semiconvection-with-overshoot stop, and the run log's header. |
 | `run_cards` | `interpret_kind_cards`: the run plan from the kind cards (evolve, rescale, rescale and evolve). |
 | `controls_check` | Warnings about controls that are set but inert. run_yrec calls it once, after `star_setup`. |
-| `io_units` | The three fixed units written from everywhere: the run log, the terminal and the final model. |
+| `io_units` | The three fixed units written from everywhere (the run log, the terminal and the final model), and `check_io`, the report for a failed open, read or write. |
 
 **The output and the models**
 
@@ -52,6 +52,8 @@ A deck is either a single-file inlist (`&star_job` and `&controls`) or a legacy 
 4. `store_controls_to_star`: `star%ctrl` and `star%job` ← buffer.
 
 Every read starts from the same state, so an in-process rerun (pyyrec, `test_reentry`) reads exactly as a fresh run does.
+
+**Errors.** Every open and namelist read in io/, and every output writer's open, checks its status. `check_io` (`io_units`) reports `cannot <action> <path>: <reason>` on the terminal, and in the run log once it is open, and returns ierr = 1, which stops the run with exit status 1. A misspelled control, for example, gives `cannot read &star_job from deck.inlist: Cannot match namelist object name ...`.
 
 **A control's three names.** A namelist matches a deck's entries by variable name, so the legacy decks fix the legacy spellings (`KTTAU`). Inside the code a control has its canonical name (`atm_choice`, in `controls_buffer` and `star%ctrl`). Its new-format name is usually the canonical one. `defaults/controls_registry.tsv` maps all three and documents each control. Derived code works on the canonical names; only the reader sees the legacy ones.
 

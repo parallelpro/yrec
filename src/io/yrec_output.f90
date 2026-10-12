@@ -45,9 +45,10 @@ subroutine output_init_mesa(log_output_file, ierr)
       use run_log, only: log_reset
       character(len=*), intent(in) :: log_output_file
       integer, intent(out) :: ierr
-      character(len=256) :: log_path
-      integer :: n, islash
+      character(len=256) :: log_path, msg
+      integer :: n, islash, ios
 
+      ierr = 0
 ! run-log name: keep an explicit .log name as-is, swap a legacy
 ! .short name to .log, append .log otherwise (so the default
 ! run.log stays run.log, not run.log.log).
@@ -63,7 +64,9 @@ subroutine output_init_mesa(log_output_file, ierr)
          end if
       end if
       open(run_log_unit, file=log_path, form='FORMATTED', &
-           status='REPLACE')
+           status='REPLACE', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the run log', log_path, ierr)
+      if (ierr /= 0) return
       call log_reset()
 
       islash = index(log_output_file, '/', back=.true.)
@@ -94,7 +97,7 @@ subroutine output_init_mesa(log_output_file, ierr)
 end subroutine output_init_mesa
 
 ! ---------------------------------------------------------------
-subroutine output_write_model()
+subroutine output_write_model(ierr)
 ! 2026 use_legacy_output retirement: ONE output path for every run.
 ! Per converged model: the run-log progress line, the isochrone
 ! record (if enabled), profiles/pulse files when due, the history
@@ -103,6 +106,7 @@ subroutine output_write_model()
       use star_info_lib, only: star, i_he4
       use io_units
       use run_log, only: log_model_line
+      integer, intent(inout) :: ierr
       integer :: iprof
       double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams
@@ -144,10 +148,13 @@ subroutine output_write_model()
       if (profile_write_due()) then
          profile_counter = profile_counter + 1
          iprof = profile_counter
-         if (star%ctrl%write_profile_flag) call write_profile(iprof)
-         if (star%ctrl%write_pulse_flag) call write_pulse(iprof)
+         if (star%ctrl%write_profile_flag) call write_profile(iprof, ierr)
+         if (ierr /= 0) return
+         if (star%ctrl%write_pulse_flag) call write_pulse(iprof, ierr)
+         if (ierr /= 0) return
       end if
-      call write_history_row(iprof)
+      call write_history_row(iprof, ierr)
+      if (ierr /= 0) return
 ! The .mod model file: restart + in-run divergence recovery.
       call write_mod_model(last_model_unit)
 
@@ -160,7 +167,7 @@ subroutine output_write_model()
          gyre_path = trim(out_dir)//trim(star%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
          call write_gyre_pulse(star%nz,star%m, &
               star%logRho,star%luminosity_lsun,star%logP,star%logR, &
-              star%logT,star%omega, gyre_path)
+              star%logT,star%omega, gyre_path, ierr)
       endif
 end subroutine output_write_model
 
@@ -182,10 +189,11 @@ end function profile_write_due
 ! extended model. Global M_star/R_star/L_star refer to the
 ! photosphere (atmosphere points extend above R_star, as in MESA's
 ! add_atmosphere).
-subroutine write_pulse(iprof)
+subroutine write_pulse(iprof, ierr)
       use math_lib
       use star_info_lib, only: star
       integer, intent(in) :: iprof
+      integer, intent(inout) :: ierr
       character(len=256) :: path
       character(len=12) :: numstr
       double precision :: mstar_g, rstar_cm, lstar_cgs
@@ -199,16 +207,16 @@ subroutine write_pulse(iprof)
           star%job%pulse_format(1:5) == 'fgong') then
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
          call write_fgong_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path)
+              lstar_cgs, path, ierr)
       else if (star%job%pulse_format(1:3) == 'GSM' .or. &
                star%job%pulse_format(1:3) == 'gsm') then
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
          call write_gsm_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path)
+              lstar_cgs, path, ierr)
       else
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
          call write_gyre_ext(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path)
+              lstar_cgs, path, ierr)
       end if
 end subroutine write_pulse
 

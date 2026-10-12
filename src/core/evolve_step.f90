@@ -179,7 +179,8 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE
-       call output_write_model()
+       call output_write_model(ierr)
+       if (ierr /= 0) return
 
 ! MHP 10/24 GENERALIZED STOP CONDITIONS
 ! (2026: one entry in stop_conditions -- end-age stop, the D/X/Y

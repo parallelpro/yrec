@@ -223,19 +223,24 @@ subroutine history_values(vals, iprof)
       vals(88) = star%delta_Pg
 end subroutine history_values
 
-subroutine write_history_row(iprof)
+subroutine write_history_row(iprof, ierr)
       use star_info_lib, only: star, i_metals
+      use io_units, only: check_io
       integer, intent(in) :: iprof
+      integer, intent(inout) :: ierr
       character(len=24) :: names(n_hist_cols)
       double precision :: vals(n_hist_cols)
-      integer :: hist_unit, i, k
+      integer :: hist_unit, i, k, ios
+      character(len=256) :: msg
       logical :: hist_open
 
       call history_values(vals, iprof)
       inquire(file=hist_path, opened=hist_open, number=hist_unit)
       if (.not. hist_open) then
          open(newunit=hist_unit, file=hist_path, status='REPLACE', &
-              action='WRITE')
+              action='WRITE', iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'write', hist_path, ierr)
+         if (ierr /= 0) return
          call history_column_names(names)
 ! Global block: run metadata, matching what the legacy .track header
 ! carried (initial composition + mixing length). The initial_* values

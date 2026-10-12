@@ -1535,6 +1535,11 @@ test_mesa_output and the full battery compare the runs.
 - **DONE: io/README.md and comments** (7ebca0e3, 064ca119): the COMMON-block
   history in controls_buffer and legacy_controls (about 900 lines) gave
   way to short headings.
+- **DONE: I/O errors stop the run cleanly** (2026-10-11, after the
+  entries above): every open and namelist read in io/ and every output
+  writer's open checks its status; check_io reports "cannot <action>
+  <path>: <reason>" and returns ierr. A missing starting model or a
+  misspelled control used to end in a Fortran runtime error.
 - **Open:**
   - A control's default still lives in set_legacy_defaults when it has
     a legacy spelling, else in controls_buffer, and the registry's
@@ -1546,6 +1551,7 @@ test_mesa_output and the full battery compare the runs.
     caller discards; a header record would shorten both.
   - monte_carlo_file1_path and monte_carlo_file2_path are NUL-filled when
     a deck leaves them unset (pinned by test_controls).
-  - Ten decks stop inside read_controls by design or by setup: six class
-    exercises name a relative startmodels/ directory, and four testsuite
-    decks start from another run's output. test_controls records that.
+  - Ten decks cannot start on their own: six class exercises name a
+    relative startmodels/ directory, and four testsuite decks start from
+    another run's output. They now stop with "cannot open the starting
+    model"; test_controls records that.

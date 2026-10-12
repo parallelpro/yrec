@@ -263,11 +263,11 @@ eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_un
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
 io/derived_controls.o: io_units.mod legacy_controls.mod math_lib.mod physical_constants.mod star_info_lib.mod
-io/history_output.o: output_columns.mod physical_constants.mod star_info_lib.mod
+io/history_output.o: io_units.mod output_columns.mod physical_constants.mod star_info_lib.mod
 io/legacy_controls.o: controls_buffer.mod integration_parameters.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
-io/profile_output.o: output_columns.mod star_info_lib.mod stitched_model.mod
+io/profile_output.o: io_units.mod output_columns.mod star_info_lib.mod stitched_model.mod
 io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 io/read_controls.o: controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod physical_constants.mod run_cards.mod run_files.mod star_info_lib.mod
 io/run_cards.o: eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod

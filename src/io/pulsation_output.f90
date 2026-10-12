@@ -13,6 +13,7 @@
 ! models. GSM output needs HDF5 (make USE_HDF5=1); without it,
 ! write_gsm_pulse is a stub and gsm_supported is .false.
 module pulsation_output
+      use io_units, only: check_io
       implicit none
       private
       public :: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, write_gyre_ext, &
@@ -28,7 +29,7 @@ contains
 ! several of them. var(18) = R_star - r is negative for atmosphere
 ! points.
 subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
-     pulse_path)
+     pulse_path, ierr)
       use star_info_lib, only: star
       use physical_constants
       use math_lib
@@ -43,14 +44,18 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
+      integer, intent(inout) :: ierr
 
       integer, parameter :: iconst = 15, ivar = 40, ivers = 1300
       double precision :: glob(iconst), var(ivar)
-      integer :: u, j, k, i
+      integer :: u, j, k, i, ios
+      character(len=256) :: msg
       double precision :: radius_cm, mass_g, grav
       double precision :: grav_const_cgs
 
-      open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED')
+      open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', pulse_path, ierr)
+      if (ierr /= 0) return
 
       grav_const_cgs = exp(ln10*cgl)
       glob = 0.0d0
@@ -138,7 +143,7 @@ end subroutine write_fgong_pulse
 ! coefficients fill for every shell.
 subroutine write_gyre_pulse(num_shells, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
-     log_temperature, omega, pulse_path)
+     log_temperature, omega, pulse_path, ierr)
       use star_info_lib, only: star, json
       use physical_constants
       use math_lib
@@ -151,7 +156,9 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
 
 
       character(len=*), intent(in) :: pulse_path
-      integer :: gyre_unit, i
+      integer, intent(inout) :: ierr
+      integer :: gyre_unit, i, ios
+      character(len=256) :: msg
       integer, parameter :: gyre_schema = 101
       double precision :: radius_cm, mass_g, luminosity_erg_s, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
@@ -159,7 +166,9 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
       double precision :: brunt_n2(json), dr
       double precision :: grav_const_cgs
 
-      open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED')
+      open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', pulse_path, ierr)
+      if (ierr /= 0) return
 
       global_data(1) = mass_coordinate(num_shells)
       global_data(2) = exp(ln10*log_radius(num_shells))
@@ -243,7 +252,7 @@ end subroutine write_gyre_pulse
 ! the same 18 columns as the GYRE text file from the same point set.
 #ifdef YREC_USE_HDF5
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
-     pulse_path)
+     pulse_path, ierr)
       use hdf5
       use h5lt
       use stitched_model, only: n_pulse_cols, ipul_gyre_last
@@ -253,6 +262,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
+      integer, intent(inout) :: ierr
 
       ! GSM schema version, stamped in the root 'version' attribute.
       ! 110 = GSM v1.10, the schema whose 18-column layout (kap_kap_T,
@@ -272,10 +282,8 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
 
       call h5open_f(herr)
       call h5fcreate_f(trim(pulse_path), H5F_ACC_TRUNC_F, file_id, herr)
-      if (herr /= 0) then
-         write(*,*) 'write_gsm_pulse: cannot create ', trim(pulse_path)
-         return
-      end if
+      call check_io(herr, 'HDF5 could not create the file', 'write', pulse_path, ierr)
+      if (ierr /= 0) return
 
       call h5ltset_attribute_int_f(file_id, '/', 'n', &
            [n], 1_size_t, herr)
@@ -300,7 +308,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
 end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
-     pulse_path)
+     pulse_path, ierr)
       use io_units
       use stitched_model, only: n_pulse_cols, ipul_gyre_last
       implicit none
@@ -308,6 +316,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
+      integer, intent(inout) :: ierr
 
       write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
       write(*,*) '  make clean && make USE_HDF5=1'
@@ -334,16 +343,20 @@ end function gsm_supported
 ! ---------------------------------------------------------------
 ! GYRE text format (schema 101) over the extended point set: the file
 ! written with each profile when pulse_format is 'GYRE'.
-subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path)
+subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
       use stitched_model, only: n_pulse_cols, ipul_gyre_last
       integer, intent(in) :: n
       double precision, intent(in) :: pts(n_pulse_cols, n)
       double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: path
+      integer, intent(inout) :: ierr
       integer, parameter :: gyre_schema = 101
-      integer :: u, j, i
+      integer :: u, j, i, ios
+      character(len=256) :: msg
 
-      open(newunit=u, file=path, status='REPLACE', form='FORMATTED')
+      open(newunit=u, file=path, status='REPLACE', form='FORMATTED', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', path, ierr)
+      if (ierr /= 0) return
       write(u,'(I6,3(1X,1PE26.16),1X,I6)') n, mstar_g, rstar_cm, &
            lstar_cgs, gyre_schema
       do j = 1, n

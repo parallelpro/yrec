@@ -113,19 +113,23 @@ subroutine profile_column_names(names)
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------
-subroutine write_profile(iprof)
+subroutine write_profile(iprof, ierr)
       use star_info_lib, only: star
+      use io_units, only: check_io
       integer, intent(in) :: iprof
+      integer, intent(inout) :: ierr
       character(len=24) :: names(n_prof_cols)
-      character(len=256) :: path
+      character(len=256) :: path, msg
       character(len=12) :: numstr
-      integer :: u, i, k, kz
+      integer :: u, i, k, kz, ios
       double precision :: v
 
       call profile_column_names(names)
       write(numstr, '(i0)') iprof
       path = trim(prof_out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data'
-      open(newunit=u, file=path, status='REPLACE', action='WRITE')
+      open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', path, ierr)
+      if (ierr /= 0) return
 ! global block (MESA profile shape: numbers / names / values)
       write(u, '(8(1x,i40))') 1, 2, 3, 4, 5, 6, 7, 8
       write(u, '(8(1x,a40))') adjustr('model_number'), &

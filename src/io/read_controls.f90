@@ -77,7 +77,8 @@ subroutine read_input(ierr)
       if (control_nml_file(1:2) .eq. ' ') control_nml_file = 'yrec8.nml1'
       end if
       print *, ' '
-      call read_namelist_files
+      call read_namelist_files(ierr)
+      if (ierr /= 0) return
       call adopt_canonical_names
       call map_user_inputs
 ! open_run_files' output_init_mesa reads its controls from star%ctrl
@@ -156,8 +157,11 @@ end subroutine store_table_paths
 ! Read the deck: a file with a &star_job group is a new-style inlist
 ! (&controls in the same file or the second), read by the generated
 ! inlist_new_read.inc; anything else is a legacy CONTROL/PHYSICS pair.
-subroutine read_namelist_files
+subroutine read_namelist_files(ierr)
+      integer, intent(inout) :: ierr
       logical :: new_style, single_inlist
+      integer :: ios
+      character(len=256) :: msg
 
       new_style = nml_file_has_group(control_nml_file, 'star_job')
       single_inlist = .false.
@@ -183,11 +187,19 @@ subroutine read_namelist_files
       if (new_style) then
       include 'inlist_new_read.inc'
       else
-      open(unit=standard_unit, file=control_nml_file, status='OLD')
-      open(unit=run_unit, file=physics_nml_file, status='OLD')
-      read(unit=standard_unit, nml=control)
-      read(unit=run_unit, nml=physics)
+      open(unit=standard_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the CONTROL namelist file', control_nml_file, ierr)
+      if (ierr /= 0) return
+      read(unit=standard_unit, nml=control, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read the CONTROL namelist from', control_nml_file, ierr, standard_unit)
+      if (ierr /= 0) return
       close(standard_unit)
+      open(unit=run_unit, file=physics_nml_file, status='OLD', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the PHYSICS namelist file', physics_nml_file, ierr)
+      if (ierr /= 0) return
+      read(unit=run_unit, nml=physics, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read the PHYSICS namelist from', physics_nml_file, ierr, run_unit)
+      if (ierr /= 0) return
       close(run_unit)
       end if
 end subroutine read_namelist_files
