@@ -350,6 +350,21 @@ end subroutine append_flag_point
 ! requested point count exceeds json.
 subroutine assign_new_points
       use math_lib
+      call seed_new_point_run
+      call accumulate_chi_spacing
+      call place_points_along_chi
+      if (ierr /= 0) return
+      call add_points_for_x_jumps
+      if (ierr /= 0) return
+      call add_points_for_z_jumps
+      if (ierr /= 0) return
+      call drop_crowded_points
+end subroutine assign_new_points
+
+! ---------------------------------------------------------------
+! Start the new run of points at the centre, save the start-of-step
+! Teff and point count, and set the maximum spacings in P, L, X and Z.
+subroutine seed_new_point_run
 ! BEGIN REFLOATING OF POINTS
       new_log_mass(1) = star%log_mass(1)
       star%logP_start(1) = star%logP(1)
@@ -370,6 +385,12 @@ subroutine assign_new_points
       point_spacing_max(2) = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_max
       point_spacing_max(3) = star%ctrl%chi_grid_scale(ichi_dx_max)
       point_spacing_max(4) = star%ctrl%chi_grid_scale(ichi_dz_max)
+end subroutine seed_new_point_run
+
+! ---------------------------------------------------------------
+! Accumulate chi, the running sum of the normalized differences in M,
+! L and P between shells, with the P scale set by the region.
+subroutine accumulate_chi_spacing
 ! CHI IS THE NORMALIZED VECTOR OF DIFFERENCES IN M,L,P:
 ! CHI = HS/DELTA M + HL/DELTA L - HP/DELTA P
       mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
@@ -397,6 +418,12 @@ subroutine assign_new_points
          endif
          chi(j) = chi(j-1)+dchi
       end do
+end subroutine accumulate_chi_spacing
+
+! ---------------------------------------------------------------
+! Place the new points evenly in chi between successive flagged points,
+! splining log mass against chi; ierr past json points or on a spline failure.
+subroutine place_points_along_chi
       do j = 1,star%nz
          spline_x(j) = chi(j)
          spline_y(j) = star%log_mass(j)
@@ -437,6 +464,12 @@ subroutine assign_new_points
          new_num_zones = new_num_zones + segment_point_count
          point_prev_index = new_num_zones
       end do
+end subroutine place_points_along_chi
+
+! ---------------------------------------------------------------
+! Interpolate X onto the new points and insert points where X rises by
+! more than its maximum spacing; ierr on a spline failure.
+subroutine add_points_for_x_jumps
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN X.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
@@ -486,6 +519,12 @@ subroutine assign_new_points
       new_num_zones = working_num_zones
       end if
       end if
+end subroutine add_points_for_x_jumps
+
+! ---------------------------------------------------------------
+! Interpolate Z onto the new points and insert points where Z falls by
+! more than its maximum spacing; ierr on a spline failure.
+subroutine add_points_for_z_jumps
 ! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
@@ -534,6 +573,11 @@ subroutine assign_new_points
       new_num_zones = working_num_zones
       end if
       end if
+end subroutine add_points_for_z_jumps
+
+! ---------------------------------------------------------------
+! Delete the new points that lie closer in log mass than the minimum spacing.
+subroutine drop_crowded_points
 ! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER (compacted through
 ! compact_log_mass, then copied back).
       j = 1
@@ -550,7 +594,7 @@ subroutine assign_new_points
       do j = 2,new_num_zones
        new_log_mass(j) = compact_log_mass(j)
       end do
-end subroutine assign_new_points
+end subroutine drop_crowded_points
 
 ! ---------------------------------------------------------------
 ! Locate the convective-core outer edge and convective-envelope
@@ -606,6 +650,27 @@ end subroutine locate_new_cz_edges
 subroutine interpolate_onto_new_grid
       use math_lib
       use rotation_scratch_lib
+      call regrid_composition_terms
+      call regrid_structure_variables
+      call regrid_rotation_variables
+      call regrid_start_of_step_eps
+      call transfer_new_points
+      call set_new_shell_masses
+      if (star%job%rotation_active) then
+       call respin_on_new_grid
+       if (ierr /= 0) return
+       call retally_angular_momentum
+      endif
+      call rerun_physics_on_new_grid
+      if (ierr /= 0) return
+      call refresh_surface_opacity
+end subroutine interpolate_onto_new_grid
+
+! ---------------------------------------------------------------
+! Set the old and new point counts, and spline the entropy terms, every
+! species (now and at the start of the step) and, above threshold, the
+! deuterium burning rate onto the new points.
+subroutine regrid_composition_terms
 !  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
 !  AT THE NEW RUN OF MASS POINTS.
       old_point_count = star%nz
@@ -638,6 +703,11 @@ subroutine interpolate_onto_new_grid
            star%xa(i_h2,star%nz).ge.1.0D-14) then
          call regrid_in_place(star%deuterium_burning_rate_start)
       endif
+end subroutine regrid_composition_terms
+
+! ---------------------------------------------------------------
+! Spline P, R, L, T and rho onto the new points, into the start-of-step arrays.
+subroutine regrid_structure_variables
 ! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
 ! The results land in star%*_start: after the transfer loop below
 ! copies them into star%logP etc., the *_start arrays hold the
@@ -655,7 +725,12 @@ subroutine interpolate_onto_new_grid
            old_point_count,new_point_count)
       call osplin(new_log_mass,star%logRho_start,star%log_mass,star%logRho, &
            old_point_count,new_point_count)
+end subroutine regrid_structure_variables
 
+! ---------------------------------------------------------------
+! For rotating models, spline omega, j, fp, ft, r0 and eta2 onto the
+! new points.
+subroutine regrid_rotation_variables
 ! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
       if (star%job%rotation_active) then
          call osplin(new_log_mass,star%old_omega,star%log_mass,star%omega, &
@@ -677,8 +752,13 @@ subroutine interpolate_onto_new_grid
 ! printed here is retired with the .debug stream -- per-zone
 ! structure lives in the MESA profile files, and the rezone
 ! bookkeeping is in the run log under report_solver_diagnostics.)
+end subroutine regrid_rotation_variables
 
-
+! ---------------------------------------------------------------
+! For rotating models (or extended composition with overshoot), spline
+! the start-of-step energy generation onto the new points.
+subroutine regrid_start_of_step_eps
+      use rotation_scratch_lib
 ! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
 ! 2026 (bugsweep sec-11): this block sat AFTER the transfer loop
 ! below, so its x-table star%log_mass had already been overwritten
@@ -697,6 +777,12 @@ subroutine interpolate_onto_new_grid
          call osplin(new_log_mass,rot_scr%old_eps_plus_neu_grav,star%log_mass,spline_y, &
               old_point_count,new_point_count)
       endif
+end subroutine regrid_start_of_step_eps
+
+! ---------------------------------------------------------------
+! Adopt the new points: the new mass grid and the splined structure and
+! rotation variables become the model, with the new point count.
+subroutine transfer_new_points
 ! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
        star%log_mass(j) = new_log_mass(j)
@@ -721,6 +807,12 @@ subroutine interpolate_onto_new_grid
       end if
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       star%nz = new_num_zones
+end subroutine transfer_new_points
+
+! ---------------------------------------------------------------
+! Set the masses and mass weights of the new shells.
+subroutine set_new_shell_masses
+      use math_lib
 ! SET UP WEIGHTS AND MASSES
       mass_curr = exp(clndp*star%log_mass(1))
       mass_prev = - mass_curr
@@ -734,7 +826,14 @@ subroutine interpolate_onto_new_grid
       star%m(star%nz) = mass_curr
       star%dm(star%nz) = exp(ln10*star%log_total_mass) - &
            0.5D0*(mass_prev+mass_curr)
-      if (star%job%rotation_active) then
+end subroutine set_new_shell_masses
+
+! ---------------------------------------------------------------
+! Rotating models: rebuild the moments of inertia, the convection regions
+! for angular momentum, omega from j and the shape factors on the new
+! points; ierr from the regions or the shape factors.
+subroutine respin_on_new_grid
+      use math_lib
 !  FIRST GUESS AT MOMENT OF INERTIA(HI)
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
@@ -767,6 +866,12 @@ subroutine interpolate_onto_new_grid
 !        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
             star%omega,star%mean_radius,star%i_rot,star%qiw)
+end subroutine respin_on_new_grid
+
+! ---------------------------------------------------------------
+! Rotating models: re-total the angular momentum and rotational kinetic
+! energy, and store the rotation state as the start of the step.
+subroutine retally_angular_momentum
 !  FIND NEW TOTAL ANGULAR MOMENTUM
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
@@ -797,10 +902,17 @@ subroutine interpolate_onto_new_grid
 ! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
             star%old_specific_angular_momentum(i) = star%j_rot(i)
        end do
+end subroutine retally_angular_momentum
+
+! ---------------------------------------------------------------
+! Rotating models (or extended composition with overshoot): re-run the
+! shell physics on the new points and store what diffusion needs; ierr
+! if the physics fails.
+subroutine rerun_physics_on_new_grid
+      use rotation_scratch_lib
 ! MHP 9/91 CHANGE : T GRADIENTS STORED IF LEXCOM=T AND LOVSTE=T; OR FOR
 ! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR
 ! PRE-MS MODELS CAN BE ACCURATELY LOCATED.
-      endif
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
 ! END OF 9/91 CHANGE
@@ -848,6 +960,11 @@ subroutine interpolate_onto_new_grid
 !            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
 !         end do
       endif
+end subroutine rerun_physics_on_new_grid
+
+! ---------------------------------------------------------------
+! Rebuild the surface opacity tables if the surface X has changed.
+subroutine refresh_surface_opacity
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
       if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
                star%xnew = star%xa(i_h1,star%nz)
@@ -856,7 +973,7 @@ subroutine interpolate_onto_new_grid
                if (ierr /= 0) return
 
       end if
-end subroutine interpolate_onto_new_grid
+end subroutine refresh_surface_opacity
 
 !----------------------------------------------------------------------
 ! regrid_in_place

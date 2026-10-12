@@ -104,6 +104,26 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
        chosen_dt = star%job%timestep_override(kind_card_index)*seconds_per_year
        previous_timestep = chosen_dt
       else
+       call decide_structure_limits()
+       call limit_by_structure_change()
+       call limit_by_omega_change()
+       call limit_by_hydrogen_burning()
+       call limit_by_helium_burning()
+       call limit_by_hr_motion()
+       call take_tightest_limit()
+      end if
+      end if
+      previous_timestep = abs(previous_timestep)
+      timestep_years = previous_timestep/seconds_per_year
+      call clip_to_end_age()
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Whether the structure-based limits apply to this step: they are switched
+! off once log Tc passes 7.1 with L_grav < 0.
+subroutine decide_structure_limits()
 ! mhp 9/01  turn off structure-based timestep setting above a critical
 !           temperature; this is done when
       structure_limits_active = star%job%use_structure_dt_limits
@@ -116,6 +136,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
             disable_structure_dt_limits = .true.
          endif
       endif
+end subroutine decide_structure_limits
+
+! ---------------------------------------------------------------
+! The limit from the change of the structure variables (ptime), unlimited
+! when the structure-based limits are off.
+subroutine limit_by_structure_change()
 !  find timestep based on changes in structure variables from
 !       one model to the next.
 !  note that this returns the timestep stored in the model on the
@@ -128,6 +154,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 !  mhp 6/90 a zero timestep in the model will fritz out the code, so
 !  avoid this by setting the structure timestep arbitrarily large.
       if(structure_dt.lt.1.0d0) structure_dt=dt_unlimited
+end subroutine limit_by_structure_change
+
+! ---------------------------------------------------------------
+! The limit from the change of omega (wtime), rotating models only; it also
+! returns the largest fractional change of omega.
+subroutine limit_by_omega_change()
 !  find timestep for rotating models based on changes in angular velocity
 !       from one model to the next.
 !  this sr also returns the maximum change in omega from the previous
@@ -143,6 +175,11 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
 !  mhp 6/90 a zero timestep in the model will fritz out the code, so
 !  avoid this by setting the rotation timestep arbitrarily large.
       if(rotation_dt.lt.1.0d0) rotation_dt=dt_unlimited
+end subroutine limit_by_omega_change
+
+! ---------------------------------------------------------------
+! The limit from hydrogen burning (xtime), for stars that burn hydrogen.
+subroutine limit_by_hydrogen_burning()
 !  find the timestep based on hydrogen burning.
 !  determine the total luminosity due to hydrogen burning (in solar units).
       hydrogen_luminosity = luminosity_components(1) + luminosity_components(2) + &
@@ -155,6 +192,11 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       else
        hydrogen_dt = dt_unlimited
       endif
+end subroutine limit_by_hydrogen_burning
+
+! ---------------------------------------------------------------
+! The limit from helium burning (ytime), for stars that burn helium.
+subroutine limit_by_helium_burning()
 !  find the timestep based on helium burning.
 !  skip for stars without he burning.
       if(luminosity_components(5).gt.1.0d-34) then
@@ -164,7 +206,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       else
        helium_dt = dt_unlimited
       endif
+end subroutine limit_by_helium_burning
 
+! ---------------------------------------------------------------
+! The limit from the motion in the HR diagram (the envelope triangle), when
+! it is on and the structure-based limits are off.
+subroutine limit_by_hr_motion()
 !  04/14 jvs added timestep governor based on the size of the envelope
 !  triangle. timesteps are restricted such that the model does not move
 !  more than tri_delta_logl or tri_delta_teffl
@@ -173,7 +220,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       else
        envelope_dt = dt_unlimited
       endif
+end subroutine limit_by_hr_motion
 
+! ---------------------------------------------------------------
+! The timestep: the smallest of the limits and, for a non-zero previous
+! timestep, of its allowed growth.
+subroutine take_tightest_limit()
 !     limit increase in time step from one model to the next for models
 !     with a non-zero timestep.
       if(previous_timestep.gt.1.0d0) then
@@ -189,10 +241,12 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
          previous_timestep = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       endif
       chosen_dt = previous_timestep
-      end if
-      end if
-      previous_timestep = abs(previous_timestep)
-      timestep_years = previous_timestep/seconds_per_year
+end subroutine take_tightest_limit
+
+! ---------------------------------------------------------------
+! When evolving to a given age, shorten the timestep so the model does not
+! pass it.
+subroutine clip_to_end_age()
 !     mhp 10/24 flag includes other stop conditions,
 !  so only do this if there is a true stop age.
 !     if evolving to a given age, ensure age not exceeded
@@ -205,7 +259,8 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
          previous_timestep = chosen_dt
        endif
       endif
-      return
+end subroutine clip_to_end_age
+
 end subroutine compute_timestep
 
 ! ---------------------------------------------------------------
