@@ -1,4 +1,181 @@
 !----------------------------------------------------------------------
+! am_transport_coefficients
+!----------------------------------------------------------------------
+! The coefficients of angular momentum transport: diffusion
+! (am_diffusion_coeffs) and advection-diffusion, assembled into a banded
+! system and eliminated (am_advection_diffusion_coeffs, banded_solver).
+module am_transport_coefficients
+      implicit none
+      private
+      public :: am_diffusion_coeffs, am_advection_diffusion_coeffs
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! dcoeft
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original dcoeft.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+!  DCOEFT SETS UP THE COEFFICIENTS FOR THE DIFFUSION DIFFERENCE EQUATION.
+!
+!  INPUT VARIABLES:
+!  diffusion_coeff (ECOD) : DIFFUSION COEFFICIENTS AT THE EQUALLY SPACED
+!     GRID POINTS.
+!  grid_spacing (DR) : GRID SPACING.
+!  timestep (DT) : TIMESTEP.
+!  eq_moment_of_inertia (EI) : RUN OF MOMENTS OF INERTIA OF EQUALLY
+!     SPACED GRID POINTS.
+!  eq_angular_momentum (EJ) : RUN OF ANGULAR MOMENTUM OF EQUALLY SPACED
+!     GRID POINTS (see am_transport_grid.f90's eq_angular_momentum).
+!  eq_omega (EW) : RUN OF ANGULAR VELOCITY OF EQUALLY SPACED GRID POINTS.
+!  num_eq_points (NTOT) : NUMBER OF EQUALLY SPACED GRID POINTS.
+!  wind_loss_explicit (WIND1) : THE ANGULAR MOMENTUM LOSS FROM A
+!     SURFACE C.Z. COMPUTED EXPLICITILY.
+!  wind_loss_implicit (WIND2) : AS WIND1, BUT COMPUTED IMPLICITLY.
+!  *NOTE: IF NOT APPLICABLE, WIND1 AND WIND2 ARE ZEROED OUT.
+!
+!  OUTPUT VARIABLES (sub_diag/diag/super_diag/rhs dummy arguments) :
+!  THE ANGULAR VELOCITY OF SHELL I AT TIME N+1 (W(I,N+1)) IS A FUNCTION OF
+!  W(I-1),W(I),AND W(I+1) AS DISCUSSED BELOW.  THIS CAN BE EXPRESSED
+!  AS A TRIDIAGONAL MATRIX.
+!  sub_diag(I) : CONTAINS ALL TERMS INVOLVING OMEGA(I-1).
+!  diag(I) : CONTAINS ALL TERMS INVOLVING OMEGA(I).
+!  super_diag(I) : CONTAINS ALL TERMS INVOLVING OMEGA(I+1)
+!  rhs(I) : THE ANGULAR VELOCITY TERMS AT THE BEGINNING OF THE TIMESTEP.
+!  *NOTE: ANGULAR MOMENTUM LOSS FROM A SURFACE C.Z. IS SUBTRACTED FROM
+!     THE LAST ELEMENT OF ARRAY rhs IF APPLICABLE, AND ALSO RETURNED
+!     VIA surface_wind_loss_term FOR solve_angular_momentum_transport
+!     (secular_transport) TO SEED dj(n) WITH (THIS WAS PREVIOUSLY
+!     SMUGGLED THROUGH common/tridi/'s gamma_elim(num_eq_points) SLOT).
+!
+!  THE DIFFUSION EQUATION WE ARE SOLVING IS
+!  dW/dT = 1/(4pi*RHO*R**2) 1/(I/M) d/dR(D*dW/dR)
+!  WHERE D IS OUR DIFFUSION COEFFICIENT,W IS THE ANGULAR VELOCITY,
+!  I IS THE MOMENT OF INERTIA,M IS MASS,T IS TIME,R IS RADIUS,
+!  AND RHO IS DENSITY.
+!  USING M = 4pi*RHO*R**2*DR THIS IS DIFFERENCED FOR SHELL I AS
+!  W(I,N+1)-W(I,N)=(DT/DR)*(1/I)*(D(I+1/2)*(W(I+1,N+1)-W(I,N+1)) -
+!  D(I-1/2)*(W(I,N+1)-W(I-1,N+1)))
+!  WHERE INDEX N+1 REFERS TO VALUES AT THE END OF THE TIMESTEP,AND
+!  INDEX N REFERS TO VALUES AT THE BEGINNING OF THE TIMESTEP.
+!  THIS SYSTEM IS SUPPLEMENTED WITH APPROPRIATE BOUNDARY CONDITIONS.
+!
+! Simpler (single diffusion coefficient, no third/fourth-order terms)
+! companion to am_advection_diffusion_coeffs.f90's 4-band angular-momentum-transport solve,
+! and analogue of composition_diffusion_coeffs.f90 (the composition-transport version of the
+! same tridiagonal setup).
+! sub_diag/diag/super_diag/rhs/surface_wind_loss_term were originally
+! shared with the solver (formerly tridia; secular_transport calls both)
+! through common/tridi/ (positional storage; surface_wind_loss_term was
+! smuggled through the gamma_elim(num_eq_points) slot specifically so
+! the solver's first statement could read it before overwriting
+! gamma_elim as pure solver scratch). Converted (2026, docs/GUIDELINES.md)
+! to explicit output arguments since this is real per-call data flow,
+! not global configuration -- see solve_angular_momentum_transport's
+! matching dj_n_seed input argument.
+subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
+     eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
+     wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
+     sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
+      use rotation_scratch_lib
+      use star_info_lib, only: star, json
+      implicit none
+
+      double precision, intent(in) :: diffusion_coeff(json)
+      double precision, intent(in) :: grid_spacing, timestep
+      double precision, intent(in) :: eq_moment_of_inertia(json), &
+           eq_angular_momentum(json), eq_omega(json)
+      integer, intent(in) :: num_eq_points
+      double precision, intent(in) :: wind_loss_explicit, wind_loss_implicit
+      double precision, intent(out) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: surface_wind_loss_term
+      logical, intent(in) :: fix_omega_at_surface
+      integer :: i
+      double precision :: fact0, fact, facta
+
+      fact0 = timestep/grid_spacing
+      do i = 1,num_eq_points
+         rhs(i) = eq_omega(i)
+      end do
+      surface_wind_loss_term = -0.5d0*(wind_loss_explicit+ &
+           wind_loss_implicit)*eq_moment_of_inertia(num_eq_points)
+      rhs(num_eq_points) = rhs(num_eq_points)*(1.0d0+ &
+           surface_wind_loss_term/eq_angular_momentum(num_eq_points))
+      if (.not.star%ctrl%use_diffusion_advection_transport) then
+!  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
+!  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
+!  DEPEND ON THE SHELLS BELOW IT.
+         fact = fact0/eq_moment_of_inertia(1)
+         sub_diag(1) = 0.0d0
+         diag(1) = 1.0d0 + fact*diffusion_coeff(2)
+         super_diag(1) = -fact*diffusion_coeff(2)
+         do i = 2,num_eq_points-1
+            fact = fact0/eq_moment_of_inertia(i)
+            sub_diag(i) = -fact*diffusion_coeff(i)
+            diag(i) = 1.0d0 + fact*(diffusion_coeff(i)+diffusion_coeff(i+1))
+            super_diag(i) = -fact*diffusion_coeff(i+1)
+         end do
+!  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
+         fact = fact0/eq_moment_of_inertia(num_eq_points)
+         if (.not.fix_omega_at_surface) then
+            sub_diag(num_eq_points) = -fact*diffusion_coeff(num_eq_points)
+            diag(num_eq_points) = 1.0d0 + fact*diffusion_coeff(num_eq_points)
+         else
+            sub_diag(num_eq_points) = 0.0d0
+            diag(num_eq_points) = 1.0d0
+         end if
+         super_diag(num_eq_points) = 0.0d0
+      else
+! IF LDIFAD=T, WE ARE SOLVING A COMBINED DIFFUSION/ADVECTION EQUATION.
+! THIS ADDS A TERM D/DR(RHO*R**4*V*W) TO THE ORIGINAL D/DR(RHO*R**4*
+! V*R*DW/DR) EQUATION.
+!  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
+!  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
+!  DEPEND ON THE SHELLS BELOW IT.
+         fact = fact0/eq_moment_of_inertia(1)
+         facta = 0.5d0*timestep/eq_moment_of_inertia(1)
+         sub_diag(1) = 0.0d0
+         diag(1) = 1.0d0 + fact*rot_scr%am_diffusive_coeff(2) - &
+              facta*rot_scr%am_advective_coeff(2)
+         super_diag(1) = -fact*rot_scr%am_diffusive_coeff(2) - &
+              facta*rot_scr%am_advective_coeff(2)
+         do i = 2,num_eq_points-1
+            fact = fact0/eq_moment_of_inertia(i)
+            facta = 0.5d0*timestep/eq_moment_of_inertia(i)
+            sub_diag(i) = -fact*rot_scr%am_diffusive_coeff(i) + &
+                 facta*rot_scr%am_advective_coeff(i)
+            diag(i) = 1.0d0 + fact*(rot_scr%am_diffusive_coeff(i)+ &
+                 rot_scr%am_diffusive_coeff(i+1)) + &
+                 facta*(rot_scr%am_advective_coeff(i)-rot_scr%am_advective_coeff(i+1))
+            super_diag(i) = -fact*rot_scr%am_diffusive_coeff(i+1) - &
+                 facta*rot_scr%am_advective_coeff(i+1)
+         end do
+!  LAST SHELL B.C. : SAME AS FIRST SHELL B.C.
+         fact = fact0/eq_moment_of_inertia(num_eq_points)
+         facta = 0.5d0*timestep/eq_moment_of_inertia(num_eq_points)
+         if (.not.fix_omega_at_surface) then
+            sub_diag(num_eq_points) = -fact*rot_scr%am_diffusive_coeff(num_eq_points) &
+                 + facta*rot_scr%am_advective_coeff(num_eq_points)
+            diag(num_eq_points) = 1.0d0 + fact*rot_scr%am_diffusive_coeff(num_eq_points) &
+                 + facta*rot_scr%am_advective_coeff(num_eq_points)
+         else
+            sub_diag(num_eq_points) = 0.0d0
+            diag(num_eq_points) = 1.0d0
+         end if
+         super_diag(num_eq_points) = 0.0d0
+      end if
+
+      return
+end subroutine am_diffusion_coeffs
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! dadcoeft
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -509,3 +686,118 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       write(*,*) sum_delta_angular_momentum,wind_loss_delta_full_step
       return
 end subroutine am_advection_diffusion_coeffs
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! bandw
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original bandw.f; only variable names, source form, and comment
+! style were updated. Validated against the Stage 0 regression suite
+! (examples/run_standard_solar_model).
+!
+! Custom fixed-10-column banded-matrix eliminator for the angular-
+! momentum-transport diffusion system built by am_advection_diffusion_coeffs.f90: a system
+! of NM = 4*NTOT-2 equations (4 per shell: omega, d2(omega)/dr2,
+! d(omega)/dr, d3(omega)/dr3) with a fixed bandwidth stored 10 columns
+! wide per row in coeff_matrix, column 5 being the diagonal (columns
+! 1-4 sub-diagonal, 6-10 super-diagonal). This is NOT a standard
+! textbook band-diagonal solve (c.f. numerics' solve_tridiagonal, the plain
+! tridiagonal Thomas algorithm) -- it is a hand-built Gaussian
+! elimination exploiting the specific sparsity pattern that the 4-
+! variables-per-shell formulation produces, with special-cased
+! treatment of the first/last few rows where the band is truncated by
+! the domain boundary. Transliterated as directly as possible from the
+! original; the elimination structure itself is not independently
+! re-derived here. (The original's commented-out older version of the
+! elimination was removed in the 2026 readability sweep.)
+subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
+      use rotation_scratch_lib, only: band_nmax
+      implicit none
+
+      integer, intent(in) :: nm
+      double precision, intent(inout) :: coeff_matrix(band_nmax,10), rhs(band_nmax)
+      integer, intent(out) :: ierr
+
+      double precision, parameter :: tiny = 1.d-20
+
+      integer :: i, j, k, imj, imj5, ii, jj
+
+      ierr = 0
+! FORWARD ELIMINATION: DIAGONALIZE THE TERMS INVOLVING OMEGA(1)
+! AND THEN STEP THROUGH ITS FIRST THROUGH THIRD DERIVATIVES.  THEN
+! PROCEED TO THE SECOND SHELL AND REPEAT, GOING TO THE BOTTOM.  THE
+! REMAINDER OF THE TERMS ARE THEN REMOVED THROUGH BACKSUBSTITUTION.
+      do i = 1,nm-5
+         if (abs(coeff_matrix(i,5)).lt.tiny) then
+            write(*,911) i,(coeff_matrix(i,j),j=1,10)
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
+         end if
+ 911     format(i5,1p10e12.3)
+         rhs(i) = rhs(i)/coeff_matrix(i,5)
+         do j = 6,10
+            coeff_matrix(i,j) = coeff_matrix(i,j)/coeff_matrix(i,5)
+         end do
+         do j = i+1,i+4
+            imj = i - j
+            imj5 = 5 + imj
+            rhs(j) = rhs(j) - coeff_matrix(j,imj5)*rhs(i)
+            do k = imj5+1,10+imj
+               coeff_matrix(j,k) = coeff_matrix(j,k)- &
+                    coeff_matrix(j,imj5)*coeff_matrix(i,k+j-i)
+            end do
+         end do
+      end do
+      do i = nm-4,nm-1
+         ii = nm-i
+         if (abs(coeff_matrix(i,5)).lt.tiny) then
+            write(*,911) i,(coeff_matrix(i,j),j=1,10)
+            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
+            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
+            ! preserve the historical stop on a nonzero return.
+            ierr = 1
+            return
+         end if
+         rhs(i) = rhs(i)/coeff_matrix(i,5)
+         do j = 6,5+ii
+            coeff_matrix(i,j) = coeff_matrix(i,j)/coeff_matrix(i,5)
+         end do
+         do j = i+1,nm
+            imj = i - j
+            imj5 = 5 + imj
+            rhs(j) = rhs(j) - coeff_matrix(j,imj5)*rhs(i)
+            do k = imj5+1,imj5+ii
+               coeff_matrix(j,k) = coeff_matrix(j,k)- &
+                    coeff_matrix(j,imj5)*coeff_matrix(i,k+j-i)
+            end do
+         end do
+      end do
+      if (abs(coeff_matrix(nm,5)).lt.tiny) then
+         write(*,*) 'banded_solver: singular final pivot'
+         ierr = 1
+         return
+      end if
+      rhs(nm) = rhs(nm)/coeff_matrix(nm,5)
+
+! BACKSUBSTITUTION: EACH SOLVED ROW I REMOVES ITS CONTRIBUTION FROM
+! THE (UP TO) FIVE ROWS ABOVE IT.
+      do i = nm,6,-1
+         do j = -1,-5,-1
+            rhs(i+j) = rhs(i+j) - rhs(i)*coeff_matrix(i+j,5-j)
+         end do
+      end do
+      do i = 5,2,-1
+         jj = -(i-1)
+         do j = -1,jj,-1
+            rhs(i+j) = rhs(i+j) - rhs(i)*coeff_matrix(i+j,5-j)
+         end do
+      end do
+      return
+end subroutine banded_solver
+
+end module am_transport_coefficients

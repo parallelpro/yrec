@@ -45,6 +45,11 @@
 ! unstable-domain bounds, the surface-CZ terms, and the outputs.
 ! Wrapped as a module procedure so the compiler enforces the call.
 module secular_transport
+      use transport_checks, only: check_angular_momentum, check_composition
+      use am_grid, only: am_transport_grid, equal_grid_to_model
+      use rotational_mixing, only: diffuse_composition_driver
+      use circulation, only: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
+      use am_transport_coefficients, only: am_diffusion_coeffs, am_advection_diffusion_coeffs
       use omega_profile, only: solid_body_omega
       implicit none
 contains
