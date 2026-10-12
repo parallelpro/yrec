@@ -78,7 +78,6 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
       double precision, intent(in) :: x, y(:)
       double precision, intent(out) :: dydx(:)
       integer, intent(out) :: ierr
-      external atmosphere_derivs, envelope_derivs
       if (self%atmosphere) then
          call compute_atmosphere_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
@@ -166,7 +165,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       integer, parameter :: maxstp = 2000
       logical :: tabulated_bc
       double precision, parameter :: tiny = 1.0d-30
-      external atmosphere_derivs, envelope_derivs
 
       double precision :: ion_fraction(3)
 ! --- locals ---
