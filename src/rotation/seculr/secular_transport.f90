@@ -235,7 +235,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
          if(.not.star%ctrl%force_solid_body_rotation .and. &
               (star%ctrl%solid_body_mode_flag.ne.1))then
-            call transport_angular_momentum()
+            call transport_angular_momentum_in_region()
             if (ierr /= 0) return
          endif
 !  PERFORM COMPOSITION DIFFUSION.
@@ -414,7 +414,7 @@ end subroutine find_unstable_region
 ! grid and its solve (the advection-diffusion branch is the never
 ! functional ldifad path), and the change of angular momentum mapped
 ! back to the model.
-subroutine transport_angular_momentum()
+subroutine transport_angular_momentum_in_region()
 !  CHECK IF SURFACE C.Z. IS PART OF THE UNSTABLE REGION.
 !  IF SO,CALCULATE TERMS FOR DIFFUSION.
       if(surface_cz_active.and.zone_end.eq.zone_max)then
@@ -470,7 +470,7 @@ subroutine transport_angular_momentum()
       call equal_grid_to_model(eq_delta_angular_momentum,eq_angular_momentum, &
            star%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
            star%nz,sum_delta_angular_momentum,star%j_rot)
-end subroutine transport_angular_momentum
+end subroutine transport_angular_momentum_in_region
 
 ! ---------------------------------------------------------------
 ! The rotational mixing of species species_begin..species_end across the

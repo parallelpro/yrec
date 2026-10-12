@@ -149,7 +149,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          if (ierr /= 0) return
       endif
       if(star%job%instability_transport_active.and..not.fully_convective_flag) then
-         call transport_angular_momentum()
+         call apply_instability_transport()
          if (ierr /= 0) return
          if (redo_needed_flag) cycle retry
       endif
@@ -162,7 +162,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       end do
       first_call = .false.
       if(star%job%use_extended_composition)then
-         call burn_light_elements()
+         call burn_light_elements_over_substep()
          if (ierr /= 0) return
       endif
 ! The commented-out Bulirsch-Stoer path (MHP 6/00) extrapolated mixing
@@ -318,7 +318,7 @@ end subroutine brake_surface_convection_zone
 ! the solve asks for a redo (redo_needed_flag), the angular momentum,
 ! mean molecular weight and composition go back to the sub-step's start
 ! and the clock back two sub-steps.
-subroutine transport_angular_momentum()
+subroutine apply_instability_transport()
       call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
       do zone_index = 1,star%nz
          specific_angular_momentum_saved(zone_index) = star%j_rot(zone_index)
@@ -341,14 +341,14 @@ subroutine transport_angular_momentum()
             end do
          end do
       endif
-end subroutine transport_angular_momentum
+end subroutine apply_instability_transport
 
 ! ---------------------------------------------------------------
 ! Light-element burning over the sub-step: the surface convection zone
 ! at its end (with envelope overshoot under lovstm), the end rates from
 ! the mid-sub-step model, the burn, then the convection zones mixed, the
 ! tiny abundances zeroed and the start of the next sub-step stored.
-subroutine burn_light_elements()
+subroutine burn_light_elements_over_substep()
       call find_convection_zones(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
            star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
            radiative_zone_bounds,convective_zone_bounds, &
@@ -393,7 +393,7 @@ subroutine burn_light_elements()
             star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
          end do
       end do
-end subroutine burn_light_elements
+end subroutine burn_light_elements_over_substep
 
 end subroutine evolve_angular_momentum
 

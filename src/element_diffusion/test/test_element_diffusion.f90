@@ -47,45 +47,45 @@ program test_element_diffusion
 
       call reset_controls()
       star%job%diffuse_helium_active = .true.
-      call settle('old: helium', .false.)
+      call settle_case('old: helium', .false.)
       star%job%use_diffusion_z = .true.
-      call settle('old: helium and metals', .false.)
+      call settle_case('old: helium and metals', .false.)
       star%ctrl%coulomb_log_choice = 2
-      call settle('old: Coulomb logarithm choice 2', .false.)
+      call settle_case('old: Coulomb logarithm choice 2', .false.)
       star%ctrl%coulomb_log_choice = 3
-      call settle('old: Coulomb logarithm choice 3', .false.)
+      call settle_case('old: Coulomb logarithm choice 3', .false.)
       star%ctrl%coulomb_log_choice = 4
-      call settle('old: Coulomb logarithm choice 4', .false.)
+      call settle_case('old: Coulomb logarithm choice 4', .false.)
       star%ctrl%coulomb_log_choice = 1
       star%ctrl%constant_mixing_coeff = 0.5d0
       star%ctrl%constant_settling_reduction = 0.8d0
-      call settle('old: constant mixing 0.5, settling reduction 0.8', .false.)
+      call settle_case('old: constant mixing 0.5, settling reduction 0.8', .false.)
       star%ctrl%constant_mixing_coeff = 1.0d0
       star%ctrl%constant_settling_reduction = 1.0d0
       star%ctrl%fgry = 0.7d0
       star%job%fgrz = 0.9d0
-      call settle('old: helium factor 0.7, metal factor 0.9', .false.)
+      call settle_case('old: helium factor 0.7, metal factor 0.9', .false.)
       star%ctrl%fgry = 1.0d0
       star%job%fgrz = 1.0d0
       star%ctrl%use_thoul_fit = .true.
-      call settle('old: the Thoul et al. fit for metals', .false.)
+      call settle_case('old: the Thoul et al. fit for metals', .false.)
       star%ctrl%use_thoul_fit = .false.
       star%ctrl%use_thoul_diffusion = .false.
-      call settle('old: without the Thoul et al. coefficients', .false.)
+      call settle_case('old: without the Thoul et al. coefficients', .false.)
       star%ctrl%use_thoul_diffusion = .true.
       star%ctrl%settling_num_iterations = 1
-      call settle('old: one iteration, short of convergence', .false.)
+      call settle_case('old: one iteration, short of convergence', .false.)
       star%ctrl%settling_num_iterations = 10
       call floors(.false.)
 
       call reset_controls()
       star%job%diffuse_helium_active = .true.
-      call settle('new: helium', .true.)
+      call settle_case('new: helium', .true.)
       star%job%use_diffusion_z = .true.
-      call settle('new: helium and metals', .true.)
+      call settle_case('new: helium and metals', .true.)
       star%ctrl%diffuse_lithium = .true.
       star%ctrl%coulomb_log_choice = 4
-      call settle('new: helium, metals and light elements', .true.)
+      call settle_case('new: helium, metals and light elements', .true.)
       call floors(.true.)
 
 contains
@@ -171,19 +171,19 @@ subroutine floors(new_routines)
       character(len=4) :: tag
       tag = merge('new:', 'old:', new_routines)
       star%ctrl%helium_diffusion_min = 0.5d0
-      call settle(tag//' outer edge where Y > 0.5', new_routines)
+      call settle_case(tag//' outer edge where Y > 0.5', new_routines)
       star%ctrl%helium_diffusion_min = 0.99d0
       diff_scr%settling_suspended_reported = .false.
-      call settle(tag//' Y below its floor everywhere', new_routines)
+      call settle_case(tag//' Y below its floor everywhere', new_routines)
       star%ctrl%helium_diffusion_min = 1.0d-3
       star%ctrl%hydrogen_diffusion_floor = 0.9d0
       diff_scr%settling_suspended_reported = .false.
-      call settle(tag//' X below its floor everywhere', new_routines)
+      call settle_case(tag//' X below its floor everywhere', new_routines)
       star%ctrl%hydrogen_diffusion_floor = 1.0d-3
 end subroutine floors
 
 ! One settling step from the pristine model; prints the changes.
-subroutine settle(label, new_routines)
+subroutine settle_case(label, new_routines)
       character(len=*), intent(in) :: label
       logical, intent(in) :: new_routines
       double precision :: step, mass, local_dlnp_dr(json), local_m(json)
@@ -211,6 +211,6 @@ subroutine settle(label, new_routines)
       do s = 1, 15
          write(*,'(i5,es25.16e3)') s, sum((xa(s,1:nz) - xa0(s,1:nz))*dm(1:nz))/total_mass
       end do
-end subroutine settle
+end subroutine settle_case
 
 end program test_element_diffusion
