@@ -4,6 +4,7 @@
 ! The newer settling routines (use_new_diffusion_routines true): microdiff
 ! and its setup.
 module microdiff_driver
+      use element_diffusion_scratch, only: diff_scr
       implicit none
       private
       public :: microdiff
@@ -335,10 +336,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
          if (solver_diagnostics() .or. &
-              .not. star%settling_suspended_reported) then
+              .not. diff_scr%settling_suspended_reported) then
             write(run_log_unit,15)
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            star%settling_suspended_reported = .true.
+            diff_scr%settling_suspended_reported = .true.
          end if
          return
          end if
@@ -356,10 +357,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
+           .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
    16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         diff_scr%settling_suspended_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
@@ -385,33 +386,33 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics (2026 run-log verbosity sweep)
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
+           .not. diff_scr%settling_suspended_reported) then
          write(run_log_unit,17)star%ctrl%helium_diffusion_min
    17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         diff_scr%settling_suspended_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
       end if
       zone_end = i
 ! all suspension checks passed: settling proceeds this model
-      if (star%settling_suspended_reported) then
+      if (diff_scr%settling_suspended_reported) then
          write(run_log_unit,916)
   916    format(1x,' SETTLING RESUMED')
-         star%settling_suspended_reported = .false.
+         diff_scr%settling_suspended_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
       call set_bahcall_loeb_scales()
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do i=1,num_zones
-         radius_bl(i)=exp(ln10*log_radius(i))*star%bl_radius_scale
-         temperature_bl(i)=exp(ln10*log_temperature(i))*star%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)*star%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)/star%bl_radius_scale
+         radius_bl(i)=exp(ln10*log_radius(i))*diff_scr%bl_radius_scale
+         temperature_bl(i)=exp(ln10*log_temperature(i))*diff_scr%bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)*diff_scr%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)/diff_scr%bl_radius_scale
       end do
-      timestep=timestep/star%bl_time_scale
-      total_mass=total_mass*star%bl_mass_scale
+      timestep=timestep/diff_scr%bl_time_scale
+      total_mass=total_mass*diff_scr%bl_mass_scale
 !
 ! COLLECT THE NECESSARY QUANTITIES (NAMELY RHO AND T) FOR LATER
 ! TRANSFORMATION TO THE EQUALLY SPACED GRID.

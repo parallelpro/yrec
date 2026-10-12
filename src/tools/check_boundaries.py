@@ -107,7 +107,7 @@ PUBLIC = {
     # original routines and the newer ones, chosen by
     # use_new_diffusion_routines; diffuse_elements, the facade's one
     # entry, chooses.
-    "element_diffusion": {"diffuse_elements"},
+    "element_diffusion": {"diffuse_elements", "reset_element_diffusion"},
     # numerics is the shared numerics library: everything numerics_lib
     # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
     # modules behind it).

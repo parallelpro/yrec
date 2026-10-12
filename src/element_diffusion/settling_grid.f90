@@ -4,6 +4,7 @@
 ! The original settling routines' grid mapping: the model onto an equally
 ! spaced grid in radius and back.
 module settling_grid
+      use element_diffusion_scratch, only: diff_scr
       implicit none
       private
       public :: model_to_equal, equal_to_model
@@ -30,7 +31,6 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
-      use rotation_scratch_lib
       use star_info_lib, only: star, json, i_metals
       use numerics_lib
       implicit none
@@ -121,24 +121,24 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
            interp_fraction*(composition(1,interp_search_index)- &
            composition(1,interp_search_index-1))
       if(star%job%use_diffusion_z)then
-         rot_scr%metal_diffusion_coeff1_mid(1)=rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
-              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index)- &
-              rot_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1))
-         rot_scr%metal_diffusion_coeff2_mid(1)=rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1)+ &
-              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index)- &
-              rot_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1))
-         rot_scr%eq_metal_diffusion_coeff1_mid(1)=rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1)+ &
-              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index)- &
-              rot_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1))
-         rot_scr%eq_metal_diffusion_coeff2_mid(1)=rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
-              interp_fraction*(rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
-              rot_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
+         diff_scr%metal_diffusion_coeff1_mid(1)=diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
+              interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index)- &
+              diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1))
+         diff_scr%metal_diffusion_coeff2_mid(1)=diff_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1)+ &
+              interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff2(interp_search_index)- &
+              diff_scr%src_grid_metal_diffusion_coeff2(interp_search_index-1))
+         diff_scr%eq_metal_diffusion_coeff1_mid(1)=diff_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1)+ &
+              interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index)- &
+              diff_scr%src_grid_metal_diffusion_coeff1_dz(interp_search_index-1))
+         diff_scr%eq_metal_diffusion_coeff2_mid(1)=diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1)+ &
+              interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index)- &
+              diff_scr%src_grid_metal_diffusion_coeff2_dz(interp_search_index-1))
 ! 2026 (bugsweep Batch 2): the metal abundance carried to the equal
 ! grid is Z (slot i_metals = 3); the inherited code read slot 8 (N15)
 ! here and at the four sibling sites below. equal_to_model applies
 ! the change back to slot 3, so this was an N15-for-Z mismatch on the
 ! old (use_new_diffusion_routines = F) settling path.
-         rot_scr%metal_abundance_change_mid(1) = composition(i_metals,interp_search_index-1)+ &
+         diff_scr%metal_abundance_change_mid(1) = composition(i_metals,interp_search_index-1)+ &
               interp_fraction*(composition(i_metals,interp_search_index)- &
               composition(i_metals,interp_search_index-1))
       endif
@@ -191,19 +191,19 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
          if(star%job%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
-         rot_scr%metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
+         diff_scr%metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
+              diff_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
 ! D2
-         rot_scr%metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
-              rot_scr%src_grid_metal_diffusion_coeff2(k0:k0+3))
+         diff_scr%metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
+              diff_scr%src_grid_metal_diffusion_coeff2(k0:k0+3))
 ! DERIVATIVE OF D1 WRT Z
-         rot_scr%eq_metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
-              rot_scr%src_grid_metal_diffusion_coeff1_dz(k0:k0+3))
+         diff_scr%eq_metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
+              diff_scr%src_grid_metal_diffusion_coeff1_dz(k0:k0+3))
 ! DERIVATIVE OF D2 WRT Z
-         rot_scr%eq_metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
-              rot_scr%src_grid_metal_diffusion_coeff2_dz(k0:k0+3))
+         diff_scr%eq_metal_diffusion_coeff2_mid(zone_index) = lagrange4(interp_factors, &
+              diff_scr%src_grid_metal_diffusion_coeff2_dz(k0:k0+3))
 ! MASS FRACTION OF METALS
-         rot_scr%metal_abundance_change_mid(zone_index) = lagrange4(interp_factors, &
+         diff_scr%metal_abundance_change_mid(zone_index) = lagrange4(interp_factors, &
               composition(i_metals,k0:k0+3))
          endif
       end do
@@ -223,8 +223,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction(1) = composition(1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
       if(star%job%use_diffusion_z)then
-         star%metal_abundance_change(1) = composition(i_metals,zone_begin)
-         rot_scr%metal_diffusion_coeff1(1) = rot_scr%src_grid_metal_diffusion_coeff1(zone_begin)
+         diff_scr%metal_abundance_change(1) = composition(i_metals,zone_begin)
+         diff_scr%metal_diffusion_coeff1(1) = diff_scr%src_grid_metal_diffusion_coeff1(zone_begin)
       endif
 ! FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
 ! AND THEN FIND LAGRANGIAN INTERPOLATION FACTORS. APPLY THEM TO FIND
@@ -268,10 +268,10 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 ! METAL DIFFUSION
          if(star%job%use_diffusion_z)then
 ! D1
-         rot_scr%metal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, &
-              rot_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
+         diff_scr%metal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, &
+              diff_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
 ! MASS FRACTION OF METALS
-         star%metal_abundance_change(zone_index) = lagrange4(interp_factors, &
+         diff_scr%metal_abundance_change(zone_index) = lagrange4(interp_factors, &
               composition(i_metals,k0:k0+3))
          endif
       end do
@@ -282,8 +282,8 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
       if(star%job%use_diffusion_z)then
-         star%metal_abundance_change(num_equal_points) = composition(i_metals,zone_end)
-         rot_scr%metal_diffusion_coeff1(num_equal_points)=rot_scr%src_grid_metal_diffusion_coeff1(zone_end)
+         diff_scr%metal_abundance_change(num_equal_points) = composition(i_metals,zone_end)
+         diff_scr%metal_diffusion_coeff1(num_equal_points)=diff_scr%src_grid_metal_diffusion_coeff1(zone_end)
       endif
       return
 end subroutine model_to_equal
@@ -309,7 +309,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
            equal_hydrogen_fraction(json)
       integer, intent(in) :: zone_begin, zone_end, num_equal_points
       double precision, intent(inout) :: composition(15,json)
-! aux_radial_quantity (originally HQPR): only scaled by star%bl_radius_scale
+! aux_radial_quantity (originally HQPR): only scaled by diff_scr%bl_radius_scale
 ! here (parallel to radius), its physical meaning is not otherwise
 ! exercised in this file.
       double precision, intent(inout) :: aux_radial_quantity(json)
@@ -346,7 +346,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       if(star%job%use_diffusion_z)then
          do zone_index = zone_begin,1,-1
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            metal_new=min(composition(3,zone_index)+star%metal_abundance_change(1),metal_max)
+            metal_new=min(composition(3,zone_index)+diff_scr%metal_abundance_change(1),metal_max)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index) = metal_new
             do j = 5,11
@@ -397,7 +397,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(star%job%use_diffusion_z)then
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            delta_z = lagrange4(interp_factors, star%metal_abundance_change(k0:k0+3))
+            delta_z = lagrange4(interp_factors, diff_scr%metal_abundance_change(k0:k0+3))
             metal_new = min(composition(3,zone_index)+delta_z,metal_max)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index)=metal_new
@@ -421,7 +421,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          metal_floor = 0.0D0
          do zone_index = zone_end,num_zones
             metal_new = max(composition(3,zone_index)+ &
-                 star%metal_abundance_change(num_equal_points),metal_floor)
+                 diff_scr%metal_abundance_change(num_equal_points),metal_floor)
             metal_scale_ratio = metal_new/composition(3,zone_index)
             composition(3,zone_index) = metal_new
             do j = 5,11
@@ -438,11 +438,11 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
       endif
       do zone_index=1,num_zones
 
-         enclosed_mass(zone_index)=enclosed_mass(zone_index)/star%bl_mass_scale
-         aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*star%bl_radius_scale
+         enclosed_mass(zone_index)=enclosed_mass(zone_index)/diff_scr%bl_mass_scale
+         aux_radial_quantity(zone_index)=aux_radial_quantity(zone_index)*diff_scr%bl_radius_scale
       end do
-      timestep=timestep*star%bl_time_scale
-      total_mass=total_mass/star%bl_mass_scale
+      timestep=timestep*diff_scr%bl_time_scale
+      total_mass=total_mass/diff_scr%bl_mass_scale
       return
 end subroutine equal_to_model
 

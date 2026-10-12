@@ -22,6 +22,7 @@
 ! threaded through microdiff_run/microdiff_coefficients, which are
 ! called once per grid instance.
 module microdiff_mapping
+      use element_diffusion_scratch, only: diff_scr
       use star_info_lib, only: json
       implicit none
 
@@ -431,11 +432,11 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
       endif
 !
       do i=1,num_zones
-         enclosed_mass(i)=enclosed_mass(i)/star%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)*star%bl_radius_scale
+         enclosed_mass(i)=enclosed_mass(i)/diff_scr%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)*diff_scr%bl_radius_scale
       end do
-      timestep=timestep*star%bl_time_scale
-      total_mass=total_mass/star%bl_mass_scale
+      timestep=timestep*diff_scr%bl_time_scale
+      total_mass=total_mass/diff_scr%bl_mass_scale
       return
 end subroutine microdiff_etm
 

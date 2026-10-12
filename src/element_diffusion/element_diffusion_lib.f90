@@ -5,13 +5,18 @@
 ! the microscopic diffusion of helium, the metals and the light
 ! elements over one timestep. diffuse_elements runs the newer routines
 ! (microdiff) when use_new_diffusion_routines is set, else the original
-! ones (gravitational_settling).
+! ones (gravitational_settling). reset_element_diffusion restores the
+! domain's working state at the start of each run.
 module element_diffusion_lib
       use original_settling, only: gravitational_settling
       use microdiff_driver, only: microdiff
+      use element_diffusion_scratch, only: diffusion_scratch, diff_scr
       implicit none
       private
-      public :: diffuse_elements
+      public :: diffuse_elements, reset_element_diffusion
+
+      type(diffusion_scratch), save :: pristine_scratch
+      logical, save :: have_pristine_scratch = .false.
 
 contains
 
@@ -47,5 +52,18 @@ subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
               convective_flag, num_zones, total_mass, ierr)
       end if
 end subroutine diffuse_elements
+
+! ---------------------------------------------------------------
+! At the start of every run (yrec_reset): the first time, record the
+! pristine working state; afterwards, restore it, so an in-process
+! rerun settles exactly as a fresh run does.
+subroutine reset_element_diffusion()
+      if (.not. have_pristine_scratch) then
+         pristine_scratch = diff_scr
+         have_pristine_scratch = .true.
+      else
+         diff_scr = pristine_scratch
+      end if
+end subroutine reset_element_diffusion
 
 end module element_diffusion_lib

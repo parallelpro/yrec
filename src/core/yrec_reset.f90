@@ -22,6 +22,7 @@ module yrec_reset
            observables_reset_pending
       use rotation_scratch_lib
       use point_scratch_lib
+      use element_diffusion_lib, only: reset_element_diffusion
       implicit none
 
       logical, save :: first_entry = .true.
@@ -48,6 +49,7 @@ subroutine yrec_run_prologue
 ! read_controls re-seeds it from pristine star%ctrl defaults before
 ! every read; physical_constants needs no restoring because, with cmixl
 ! evicted to star%, every member is recomputed by setups each run.
+      call reset_element_diffusion()
       if (first_entry) then
          star0 = star
          rot_scr0 = rot_scr

@@ -30,6 +30,7 @@ program test_element_diffusion
            i_li7, i_be9
       use io_units, only: run_log_unit, terminal_unit
       use element_diffusion_lib, only: diffuse_elements
+      use element_diffusion_scratch, only: diff_scr
       implicit none
       integer, parameter :: nz = 200
       double precision, parameter :: msun = 1.989d33, rsun = 6.9598d10, &
@@ -159,7 +160,7 @@ subroutine reset_controls()
       star%ctrl%constant_settling_reduction = 1.0d0
       star%ctrl%fgry = 1.0d0
       star%job%fgrz = 1.0d0
-      star%settling_suspended_reported = .false.
+      diff_scr%settling_suspended_reported = .false.
 end subroutine reset_controls
 
 ! The abundance floors: settling only below the outermost zone with
@@ -172,11 +173,11 @@ subroutine floors(new_routines)
       star%ctrl%helium_diffusion_min = 0.5d0
       call settle(tag//' outer edge where Y > 0.5', new_routines)
       star%ctrl%helium_diffusion_min = 0.99d0
-      star%settling_suspended_reported = .false.
+      diff_scr%settling_suspended_reported = .false.
       call settle(tag//' Y below its floor everywhere', new_routines)
       star%ctrl%helium_diffusion_min = 1.0d-3
       star%ctrl%hydrogen_diffusion_floor = 0.9d0
-      star%settling_suspended_reported = .false.
+      diff_scr%settling_suspended_reported = .false.
       call settle(tag//' X below its floor everywhere', new_routines)
       star%ctrl%hydrogen_diffusion_floor = 1.0d-3
 end subroutine floors

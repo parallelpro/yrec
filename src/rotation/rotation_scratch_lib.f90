@@ -92,13 +92,6 @@ module rotation_scratch_lib
                 third_deriv_geom_factor(json)
 ! former common/errmom/
            double precision :: moment_of_inertia_tolerance
-! former common/gravez/
-           double precision :: metal_diffusion_coeff1(json), &
-                metal_diffusion_coeff1_mid(json), &
-                metal_diffusion_coeff2_mid(json), &
-                eq_metal_diffusion_coeff1_mid(json), &
-                eq_metal_diffusion_coeff2_mid(json), &
-                metal_abundance_change_mid(json)
 ! former common/gscof/ -- dead-everywhere placeholder in both its
 ! declaring files, kept lowercased pending a confirmed source.
 ! former common/intfac/
@@ -164,11 +157,6 @@ module rotation_scratch_lib
 ! former common/dwmax/
            double precision :: max_domega_dr(json), &
                 max_domega_dr_old(json)
-! former common/gravsz/
-           double precision :: src_grid_metal_diffusion_coeff1(json), &
-                src_grid_metal_diffusion_coeff2(json), &
-                src_grid_metal_diffusion_coeff1_dz(json), &
-                src_grid_metal_diffusion_coeff2_dz(json)
 ! former common/prevmid/
            logical :: convective_flag_prev(json)
 ! former common/rotder/

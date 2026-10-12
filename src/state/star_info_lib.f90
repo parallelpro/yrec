@@ -257,9 +257,6 @@ module star_info_lib
 ! evidence (read by the output writers or across domains) flatten
 ! here; the true solver workspace moved to
 ! rotation/rotation_scratch_lib.f90.
-            double precision :: bl_radius_scale, bl_mass_scale, &
-                 bl_temp_scale, bl_time_scale
-            double precision :: metal_abundance_change(json)
             double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
             double precision :: es_circulation_velocity(json), &
                  secular_shear_velocity(json), gsf_circulation_velocity(json)
@@ -281,10 +278,6 @@ module star_info_lib
 ! set per card by init_stop_conditions, overridden by whichever stop
 ! fires; read by run_log's end-of-run summary.
             character(len=96) :: termination_reason = 'model budget exhausted'
-! run-log bookkeeping: the "fully convective - no settling" message
-! prints once per suspension (per-model repeats only under
-! report_solver_diagnostics); this latch remembers it was reported.
-            logical :: settling_suspended_reported = .false.
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.

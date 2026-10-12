@@ -5,6 +5,7 @@
 ! Lax-Wendroff advection of the first term and the coefficients of the
 ! implicit solve of the second.
 module diffusion_scheme
+      use element_diffusion_scratch, only: diff_scr
       implicit none
       private
       public :: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
@@ -34,7 +35,6 @@ contains
 ! site in microdiff_run.f90.
 subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
-      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use physical_constants
@@ -69,18 +69,18 @@ subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points
       if(star%job%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
 ! central boundary condition
          zone_mass = eq_mass(2)
-         delta_metal_abundance_mid = dt_half*rot_scr%metal_diffusion_coeff1(2)/zone_mass
-         rot_scr%metal_abundance_change_mid(1) = delta_metal_abundance_mid
+         delta_metal_abundance_mid = dt_half*diff_scr%metal_diffusion_coeff1(2)/zone_mass
+         diff_scr%metal_abundance_change_mid(1) = delta_metal_abundance_mid
 ! general case
          do i = 2,num_eq_points-2
             zone_mass = eq_mass(i+1)-eq_mass(i)
-            delta_metal_abundance_mid = dt_half*(rot_scr%metal_diffusion_coeff1(i+1)-rot_scr%metal_diffusion_coeff1(i))/zone_mass
-            rot_scr%metal_abundance_change_mid(i) = delta_metal_abundance_mid
+            delta_metal_abundance_mid = dt_half*(diff_scr%metal_diffusion_coeff1(i+1)-diff_scr%metal_diffusion_coeff1(i))/zone_mass
+            diff_scr%metal_abundance_change_mid(i) = delta_metal_abundance_mid
          end do
 ! surface boundary condition.
          zone_mass = total_mass-eq_mass(num_eq_points-1)
-         delta_metal_abundance_mid = -dt_half*rot_scr%metal_diffusion_coeff1(num_eq_points-1)/zone_mass
-         rot_scr%metal_abundance_change_mid(num_eq_points-1) = delta_metal_abundance_mid
+         delta_metal_abundance_mid = -dt_half*diff_scr%metal_diffusion_coeff1(num_eq_points-1)/zone_mass
+         diff_scr%metal_abundance_change_mid(num_eq_points-1) = delta_metal_abundance_mid
       endif
       return
 end subroutine lax_wendroff_step1
@@ -105,7 +105,6 @@ end subroutine lax_wendroff_step1
 subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
-      use rotation_scratch_lib
 
       use star_info_lib, only: star, json
       use physical_constants
@@ -140,18 +139,18 @@ subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
 ! mhp 3/94 added metal diffusion.
       if(star%job%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
          zone_mass = eq_mass_mid(1)
-         delta_metal_abundance = dt_full*rot_scr%metal_diffusion_coeff1_mid(1)/zone_mass
-         star%metal_abundance_change(1) = star%metal_abundance_change(1)+delta_metal_abundance
+         delta_metal_abundance = dt_full*diff_scr%metal_diffusion_coeff1_mid(1)/zone_mass
+         diff_scr%metal_abundance_change(1) = diff_scr%metal_abundance_change(1)+delta_metal_abundance
 ! general case
          do i = 2,num_eq_points-1
             zone_mass = eq_mass_mid(i)-eq_mass_mid(i-1)
-            delta_metal_abundance = dt_full*(rot_scr%metal_diffusion_coeff1_mid(i)-rot_scr%metal_diffusion_coeff1_mid(i-1))/zone_mass
-            star%metal_abundance_change(i) = star%metal_abundance_change(i)+delta_metal_abundance
+            delta_metal_abundance = dt_full*(diff_scr%metal_diffusion_coeff1_mid(i)-diff_scr%metal_diffusion_coeff1_mid(i-1))/zone_mass
+            diff_scr%metal_abundance_change(i) = diff_scr%metal_abundance_change(i)+delta_metal_abundance
          end do
 ! surface boundary condition.
          zone_mass = total_mass-eq_mass_mid(num_eq_points-1)
-         delta_metal_abundance = -dt_full*rot_scr%metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
-         star%metal_abundance_change(num_eq_points) = star%metal_abundance_change(num_eq_points)+delta_metal_abundance
+         delta_metal_abundance = -dt_full*diff_scr%metal_diffusion_coeff1_mid(num_eq_points-1)/zone_mass
+         diff_scr%metal_abundance_change(num_eq_points) = diff_scr%metal_abundance_change(num_eq_points)+delta_metal_abundance
       endif
       return
 end subroutine lax_wendroff_step2
