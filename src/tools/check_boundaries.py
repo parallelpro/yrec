@@ -260,9 +260,39 @@ def check_math_lib(src_root):
             continue
         raw = f.read_text(errors="replace")
         code_lines = [mask_strings(l) for l in raw.splitlines()]
-        code = "\n".join(without_parameter_decls(code_lines))
-        if ref.search(code) and "use math_lib" not in raw:
-            problems.append(f"{rel}: calls elementary math without `use math_lib`")
+        code_kept = without_parameter_decls(code_lines)
+        # Scope by scope: a procedure that calls elementary math must see
+        # math_lib through its own use or a host's (module, host
+        # procedure). A sibling internal procedure does not see another
+        # sibling's use, so a file-level test would miss it.
+        stack = []
+        for i, cl in enumerate(code_kept, 1):
+            line = cl.split("!")[0]
+            low = line.strip().lower()
+            if not low:
+                continue
+            if _re.match(r"end(\s*(subroutine|function|module|program)\b.*)?$", low):
+                if stack:
+                    stack.pop()
+                continue
+            if _re.match(r"(module|program)\s+\w+\s*$", low) and \
+                    not low.startswith("module procedure"):
+                stack.append([low.split()[1], False])
+                continue
+            m = _re.match(r"(?:(?:recursive|pure|elemental|impure)\s+)*"
+                          r"(?:(?:double\s+precision|integer|logical|real|"
+                          r"complex|character)(?:\s*\([^)]*\))?\s+)?"
+                          r"(subroutine|function)\s+(\w+)", low)
+            if m:
+                stack.append([m.group(2), False])
+                continue
+            if _re.match(r"use\s+math_lib\b", low):
+                if stack:
+                    stack[-1][1] = True
+                continue
+            if ref.search(line) and stack and not any(s[1] for s in stack):
+                problems.append(f"{rel}:{i}: elementary math in {stack[-1][0]} "
+                                "without `use math_lib` in scope")
         for i, cl in enumerate(code_lines, 1):
             for m in _re.finditer(r"\*\*\s*(\(?\s*[+-]?\s*)([A-Za-z0-9_.]+)", cl):
                 tok = m.group(2)

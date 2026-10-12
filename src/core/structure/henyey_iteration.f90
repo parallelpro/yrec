@@ -50,6 +50,7 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
      stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
       use eos_lib, only: eos_set_debye_huckel_composition
+      use math_lib
       use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, &
            i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
       implicit none
