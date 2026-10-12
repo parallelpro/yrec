@@ -1541,12 +1541,13 @@ test_mesa_output and the full battery compare the runs.
   <path>: <reason>" and returns ierr. A missing starting model or a
   misspelled control used to end in a Fortran runtime error.
 - **Open:**
-  - A control's default still lives in set_legacy_defaults when it has
-    a legacy spelling, else in controls_buffer, and the registry's
-    default column is now only a fallback that can drift. Generating
-    set_legacy_defaults and adopt_canonical_names from the registry
-    would leave one place per default; it needs a decision on the
-    registry's format.
+  - DONE 2026-10-11 (the author chose "code is the source"): each
+    control's default is written once. 50 legacy defaults that repeated
+    their canonical twin's controls_buffer initializer now mirror it
+    (alphac = overshoot_alpha_core), the registry's default column is
+    gone, and gen_inlist stops if a live control has no default in the
+    code. The legacy namelists are frozen: new controls are new-format
+    only. Doing this found tscut's lost F77 default of 6.0 (restored).
   - read_yrec7 and read_model2 return 26 header values, most of which the
     caller discards; a header record would shorten both.
   - monte_carlo_file1_path and monte_carlo_file2_path are NUL-filled when

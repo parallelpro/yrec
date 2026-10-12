@@ -24,9 +24,10 @@ REG = SRC / "defaults" / "controls_registry.tsv"
 def load_registry():
     ren = {"control": {}, "physics": {}}
     dead = {"control": set(), "physics": set()}
-    for l in REG.read_text().splitlines()[1:]:
-        parts = l.split("\t")
-        grp, legacy, new, status = parts[0], parts[1], parts[4], parts[5]
+    header, *body = REG.read_text().splitlines()
+    for l in body:
+        r = dict(zip(header.split("\t"), l.split("\t")))
+        grp, legacy, new, status = r["group"], r["legacy"], r["proposed_name"], r["status"]
         if status in ("unused", "legacy"):
             dead[grp].add(legacy)
         else:

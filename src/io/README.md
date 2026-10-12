@@ -62,7 +62,7 @@ Every read starts from the same state, so an in-process rerun (pyyrec, `test_ree
 | File | Generator | From |
 |---|---|---|
 | `state/controls_state_def.inc`, `state/job_controls_def.inc`, `state/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` |
-| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/star_job.defaults`, `defaults/controls.defaults` | `tools/gen_inlist.py` | the registry, and the reader's defaults for the `.defaults` docs |
+| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/star_job.defaults`, `defaults/controls.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
 | `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` declarations |
 | `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` |
 
@@ -89,12 +89,12 @@ The interior-only GYRE file is written every `pulse_gyre_interval` models. The w
 ## 5. Extending
 
 **Add a control:**
-1. Declare it in `controls_buffer.f90`, with its default as the initializer.
-2. Add its row to `defaults/controls_registry.tsv`.
+1. Declare it in `controls_buffer.f90`, with its default as the initializer. That is the only place its default is written; `controls.defaults` documents it from there.
+2. Add its row to `defaults/controls_registry.tsv` (its names, type, status and description).
 3. Run `tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
 4. Read it from `star%ctrl` (or `star%job`) where it is used.
 5. Regenerate the expected controls (`YREC_REGEN_CONTROLS=1 pytest test_controls.py`) and check that only the new control changed.
 
-A control that only the new format reads needs nothing in `legacy_controls`.
+The legacy CONTROL/PHYSICS namelists are frozen: a new control is read only by the new format, so it needs nothing in `legacy_controls`. Each existing control's default is written once, in `controls_buffer` or, for a control read under a legacy name with no default there, in `set_legacy_defaults`; a legacy variable whose canonical twin has a default mirrors it (`alphac = overshoot_alpha_core`). `gen_inlist` stops if a control has no default in the code.
 
 **Add an output column:** add its name and value to the table in `history_output` or `profile_output`, and list it in `defaults/*_columns.list` if it belongs in the default selection.

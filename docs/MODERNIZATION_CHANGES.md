@@ -228,10 +228,12 @@ frequencies computed from them, but not the evolution itself.
 - **Single inlist** with `&star_job` and `&controls`, readable names, run as
   `yrec CASE.inlist`. The reader auto-detects style, so legacy `.nml1`/`.nml2`
   pairs still run unchanged.
-- **Controls registry** `src/defaults/controls_registry.tsv` (384 rows) is the
-  source of truth, mapping every legacy name to a canonical one with type,
-  default, status, and MESA equivalent. Generated `star_job.defaults` and
-  `controls.defaults` document every control.
+- **Controls registry** `src/defaults/controls_registry.tsv` (383 rows) maps
+  every legacy name to its new-format name, with type, status, MESA
+  equivalent and description. The defaults live in the code
+  (`controls_buffer`, `set_legacy_defaults`); the generated
+  `star_job.defaults` and `controls.defaults` document every control with
+  the default the reader uses.
 - **Representative renames:** `cmixla` to `mixing_length_alpha`, `endage` to
   `max_age`, `nmodls` to `max_model_number`, `lrot` to `rotation_flag`,
   `lcals` to `calibrate_solar_model`, `kttau` to `atm_choice`,

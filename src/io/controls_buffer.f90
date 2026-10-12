@@ -11,8 +11,11 @@
 ! generates star%ctrl's type and the two copies (state/controls_sync.f90)
 ! from them, so regenerate after changing a member, and add the control
 ! to defaults/controls_registry.tsv, which maps it to its legacy and
-! new-inlist names. A member without an initializer takes its default
-! from the reader. Only the controls reader, map_user_inputs,
+! new-inlist names. Each control's default is stated once in the code:
+! here, or, for a control read under a legacy name with no default here,
+! in set_legacy_defaults (io/legacy_controls.f90). The legacy namelists
+! are frozen: a new control is read only by the new format. Only the
+! controls reader, map_user_inputs,
 ! controls_sync and test_net use this module; any file may import its
 ! named constants (max_runs, itime_*, ichi_*). tools/check_boundaries.py
 ! enforces both.
@@ -192,7 +195,7 @@ module controls_buffer
       double precision :: zsi = 0.0d0
 
 ! Envelope profile print count.
-      integer :: npenv
+      integer :: npenv = 0
 
 
 ! Unit numbers, set by the reader. opal92_table_unit is the unit

@@ -16,6 +16,8 @@ module legacy_controls
       implicit none
 
 ! The legacy namelists' binding targets, under their original spellings.
+! The legacy namelists are frozen: new controls go only into the new
+! format (controls_buffer and the registry), so nothing is added here.
 ! After the read, adopt_canonical_names copies each into its canonical
 ! home (a controls_buffer variable or star%job); a control spelled the
 ! same in both reads straight into controls_buffer and needs no copy.
@@ -333,41 +335,42 @@ contains
 ! ---------------------------------------------------------------
 ! Every variable above, set at the start of each read: a namelist read
 ! changes only what the deck sets, and an in-process rerun (pyyrec,
-! test_reentry) must start from the same state. A variable without a
-! default starts at zero, .false. or NUL bytes, as when these were the
-! reader's locals under -finit-local-zero.
+! test_reentry) must start from the same state. Each default is stated
+! once: a variable copied to a canonical control that has its default
+! in controls_buffer takes it from there (alphac = overshoot_alpha_core;
+! the buffer holds the pristine star%ctrl at this point), the others
+! have theirs here. A variable without a default starts at zero,
+! .false. or NUL bytes, as when these were the reader's locals under
+! -finit-local-zero.
 subroutine set_legacy_defaults
-      alphac = 0.0d0
-      alphae = 0.0d0
-      dtdif = 1.0d-2
-      wnew = 0.0d0
-      creim = -4.0d-13
-      cstmixing = 1.0d0
-      cstdiffmix = 1.0d0
-      tcut = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
-      tscut = 6.0d0
-! vnew: the metal mixture, mass fractions of Na, Al, Mg, Fe, Si, C, H, O,
-! N, Ar, Ne and He (Grevesse & Noels 1993 solar)
-      vnew = (/ 0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, &
-           0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0 /)
-      itdif1 = 1
-      itdif2 = 1
-      niter1 = 2
-      niter2 = 20
-      niter3 = 2
-      niter4 = 0
-      ldifli = .false.
-      lsnu = .false.
-      lovstc = .false.
-      lwnew = .false.
-      ljdot0 = .true.
-      lthoul = .false.
-      lsemic = .false.
-      lnews = .false.
-      lmonte = .false.
-      lreimer = .false.
-      imbeg = 1
-      imend = 1
+      alphac = overshoot_alpha_core
+      alphae = overshoot_alpha_envelope
+      dtdif = diffusion_timestep_factor
+      wnew = initial_omega
+      creim = reimers_scaling_factor
+      cstmixing = constant_mixing_coeff
+      cstdiffmix = constant_settling_reduction
+      tcut = nuclear_logT_cutoffs
+      tscut = saha_log10t_cutoff
+      vnew = mixture_weights_seed
+      itdif1 = num_rotation_structure_iters
+      itdif2 = max_diffusion_iters
+      niter1 = max_iter_level1
+      niter2 = max_iter_level2
+      niter3 = max_iter_level3
+      niter4 = max_iter_level4
+      ldifli = diffuse_lithium
+      lsnu = calc_neutrinos
+      lovstc = core_overshoot_active
+      lwnew = set_initial_omega
+      ljdot0 = use_wind_torque
+      lthoul = use_thoul_diffusion
+      lsemic = use_semiconvection
+      lnews = improved_first_guess_flag
+      lmonte = monte_carlo_active
+      lreimer = use_reimers_wind
+      imbeg = mc_run_start
+      imend = mc_run_end
       weakscreening = 0.03d0
 ! sstandard: the cross sections relative to Bahcall & Ulrich 1988, used
 ! when lnewnuc is .false.
@@ -375,9 +378,9 @@ subroutine set_legacy_defaults
            1.0, 1.0, 1.0108, 0.7819, 0.2875 /)
       ldifad = .false.
       lnoj = .false.
-      tdisk = 0.0d0
-      pdisk = 7.2722d-6
-      ldisk = .false.
+      tdisk = disk_locking_age_gyr
+      pdisk = disk_omega_rad_s
+      ldisk = disk_locking_active
       lsenv0a = .false.
       senv0a = 1.26d-4
       lenvg = .false.
@@ -387,15 +390,15 @@ subroutine set_legacy_defaults
       kindrn = 1
       lfirst = .true.
       nmodls = 0
-      endage = 0.0
-      setdt = 0.0
+      endage = target_end_age
+      setdt = timestep_override
       rsclm = 0.0
       rsclx = 0.0
       rsclz = 0.0
       rsclcm = 0.0
-      end_dcen = 0.0
-      end_xcen = 0.0
-      end_ycen = 0.0
+      end_dcen = central_deuterium_stop
+      end_xcen = central_hydrogen_stop
+      end_ycen = central_helium_stop
       element_id = (/ 'HE3', 'C12', 'C13', 'N14', 'N15', 'O16', 'O17', 'O18', 'H2 ', 'LI6', 'LI7', 'BE9' /)
       optol = 1.0d-8
       atmerr = 3.0d-4
@@ -454,10 +457,10 @@ subroutine set_legacy_defaults
       lptime = .true.
       ltrist = .false.
       lkuthe = .false.
-      lovste = .false.
-      lexcom = .false.
-      lrot = .false.
-      linstb = .false.
+      lovste = envelope_overshoot_active
+      lexcom = use_extended_composition
+      lrot = rotation_active
+      linstb = instability_transport_active
       alfa = 1.5d0
       fk = 1.0d0
       fw = 1.0d0
@@ -475,7 +478,7 @@ subroutine set_legacy_defaults
       lcore = .false.
       mcore = 0
       fcore = 1.0
-      lmhd = .false.
+      lmhd = use_mhd_eos
       grtol = 1.0d-8
       ilambda = 1
       niter_gs = 10
@@ -497,10 +500,10 @@ subroutine set_legacy_defaults
       fssc = 1.0d0
       fgsfc = 1.0d0
       igsf = 1
-      lpurez = .false.
+      lpurez = use_pure_z_table
       lrwsh = .false.
       liso = .false.
-      lnulos1 = .false.
+      lnulos1 = use_itoh_neutrino_loss
       toll = 1.0d-5
       tolr = 1.0d-4
       tolz = 1.0d-3
@@ -519,10 +522,9 @@ subroutine set_legacy_defaults
       lscv = .false.
       lsolid = .false.
       impjmod = 0
-      dmdt0 = -1.0d-14
-      compacc = (/ 0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, &
-           8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11 /)
-      lmdot = .false.
+      dmdt0 = mass_accretion_rate
+      compacc = accreted_composition
+      lmdot = use_mass_accretion
       lsolwind = .false.
       tmolmin = 4.0d0
       tmolmax = 4.1d0
@@ -562,9 +564,9 @@ subroutine set_legacy_defaults
       sbe91 = 1.0d0
       sbe92 = 1.0d0
       sbe93 = 1.0d0
-      spotf = 0.00
-      spotx = 1.00
-      lsdepth = .false.
+      spotf = spot_filling_factor
+      spotx = spot_temp_contrast
+      lsdepth = spot_depth_varies
 ! S-factors (keV b) and their first and second derivatives (b), from
 ! Solar Fusion II (Adelberger et al. 2011). pep is relative to pp, and
 ! Be7+e- is the constant of the linear term; the code uses T9, so a
@@ -593,7 +595,7 @@ subroutine set_legacy_defaults
       s0pp_1_16 = 0.0d0
       s0pp_1_be7p = -2.288d-7
       lnewnuc = .false.
-      lcalcenv = .true.
+      lcalcenv = calc_envelope_flag
 ! the final model and the run log, whose directory is the output
 ! directory ({YREC_OUTPUT} is $YREC_OUTPUT, or output when unset)
       flast = '{YREC_OUTPUT}/final.mod'
