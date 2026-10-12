@@ -21,7 +21,7 @@
 ! (zone centers, eq; zone midpoints, eq_mid), defined here and
 ! threaded through microdiff_run/microdiff_coefficients, which are
 ! called once per grid instance.
-module microdiff_mte
+module microdiff_mapping
       use star_info_lib, only: json
       implicit none
 
@@ -259,4 +259,184 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
       return
 end subroutine map_microdiff_to_equal_grid
 
-end module microdiff_mte
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! microdiff_etm
+!----------------------------------------------------------------------
+! Modernized (free-form, readable names) 2026 as part of the YREC
+! readability refactor. Logic and numerics are unchanged from the
+! original microdiff_etm.f; only variable names, source form, and
+! comment style were updated. Validated against the Stage 0 regression
+! suite (examples/run_standard_solar_model).
+!
+! "ETM" = equally-spaced-to-model-grid transform, the reverse of
+! microdiff_mte.f90: interpolates the changes in hydrogen/metal/light-
+! element abundance computed by microdiff_run.f90 (on the equally
+! spaced grid) back onto the original model grid, applies the standard
+! floor/ceiling failsafes, renormalizes helium via X+Y+Z=1, and
+! converts DT/STOT/HS1/HQPR back out of Bahcall & Loeb units (the
+! caller's radius_bl copy is not converted back: nothing reads it after
+! this call, and its temperature_bl partner was dropped for the same
+! reason in 2026 W2).
+! Last stage of the microdiff.f90 pipeline (see also
+! microdiff_setup.f90, microdiff_mte.f90, microdiff_coefficients.f90,
+! microdiff_run.f90).
+!  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
+!  SPACED GRID.
+subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
+     eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
+     composition, dlnp_dr, radius_bl, enclosed_mass, &
+     num_zones, total_mass, num_light, light_element_id)
+      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_o18
+      use numerics_lib, only: intrp2, lagrange4
+      implicit none
+
+      double precision, intent(inout) :: timestep
+      double precision, intent(in) :: eq_radius(json), &
+           eq_delta_hydrogen(json), eq_delta_metal(json)
+      integer, intent(in) :: num_light
+      double precision, intent(in) :: eq_delta_light(num_light,json)
+      integer, intent(in) :: zone_begin, zone_end, num_eq_points
+      double precision, intent(inout) :: composition(15,json)
+      double precision, intent(in) :: radius_bl(json)
+      double precision, intent(inout) :: dlnp_dr(json), enclosed_mass(json)
+      integer, intent(in) :: num_zones
+      double precision, intent(inout) :: total_mass
+      integer, intent(in) :: light_element_id(num_light)
+! --- locals ---
+      double precision :: tabler(4), facinterp(4)
+      integer :: i, ii, j, jmin, k, k0, kk
+      double precision :: x_min_floor, z_max, zz, zz2, radmod, dxmod, &
+           x_max, dzmod
+
+!  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
+!  SPACED GRID.
+      x_min_floor = 0.0d0
+      do i = zone_begin,1,-1
+         composition(i_h1,i)=max(composition(i_h1,i) + eq_delta_hydrogen(1),x_min_floor)
+      end do
+! MHP 3/94 ADDED METAL DIFFUSION
+! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
+! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
+      if(star%job%use_diffusion_z)then
+         do i = zone_begin,1,-1
+            z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
+            zz=min(composition(i_metals,i)+eq_delta_metal(1),z_max)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i) = zz
+            do j = i_c12,i_o18
+               composition(j,i) = zz2*composition(j,i)
+            end do
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         end do
+      else
+         do i = zone_begin,1,-1
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         end do
+      endif
+! G SOMERS 5/15; ADD LIGHT ELEMENT DIFFUSION
+      if(star%ctrl%diffuse_lithium)then
+         do kk = 1,num_light
+            x_min_floor = 0.0d0
+            do i = zone_begin,1,-1
+               ii = light_element_id(kk)
+               composition(ii,i)=max(composition(ii,i) + eq_delta_light(kk,1),x_min_floor)
+            end do
+         end do
+      endif
+!
+      jmin=2
+      do i=zone_begin+1,zone_end-1
+         do j=jmin,num_eq_points
+!  FIND EQUALLY SPACED GRID POINTS CLOSEST TO THE MODEL POINT.
+            if(eq_radius(j).ge.radius_bl(i))then
+!  ENSURE THAT FIRST INTERP. POINT NO LESS THAN FIRST EQUALLY SPACED POINT.
+               k0 = max(j-2,1)
+!  ENSURE THAT LAST INTERP. POINT NO GREATER THAN LAST EQUALLY SPACED POINT.
+               k0 = min(k0,num_eq_points-3)
+! JVS fix for NPT = 3?
+               if (k0 .eq. 0) k0=1
+               jmin=j
+               exit
+            endif
+         end do
+         if (j > num_eq_points) then
+         k0 = num_eq_points-3
+         jmin=num_eq_points
+         end if
+
+         do k=1,4
+            tabler(k)=eq_radius(k0+k-1)
+         end do
+         radmod=radius_bl(i)
+!  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
+         call intrp2(tabler,facinterp,radmod)
+!  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
+         dxmod = lagrange4(facinterp, eq_delta_hydrogen(k0:k0+3))
+         x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)
+         composition(i_h1,i)=min(composition(i_h1,i) + dxmod,x_max)
+! MHP 3/94 ADDED METAL DIFFUSION
+         if(star%job%use_diffusion_z)then
+            z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
+            dzmod = lagrange4(facinterp, eq_delta_metal(k0:k0+3))
+            zz = min(composition(i_metals,i)+dzmod,z_max)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i)=zz
+            do j = i_c12,i_o18
+               composition(j,i) = zz2*composition(j,i)
+            enddo
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         else
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         endif
+! GES 5/15 ADDED LIGHT ELEMENT DIFFUSION
+         if(star%ctrl%diffuse_lithium)then
+            do kk = 1,num_light
+               ii = light_element_id(kk)
+               dxmod = lagrange4(facinterp, eq_delta_light(kk,k0:k0+3))
+               composition(ii,i) = composition(ii,i) + dxmod
+            enddo
+         endif
+      end do
+!
+      do i = zone_end,num_zones
+         x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)
+         composition(i_h1,i)=min(composition(i_h1,i) + eq_delta_hydrogen(num_eq_points),x_max)
+      end do
+! MHP 3/94 ADDED METAL DIFFUSION
+      if(star%job%use_diffusion_z)then
+         do i = zone_end,num_zones
+            zz = max(composition(i_metals,i)+eq_delta_metal(num_eq_points),0.0d0)
+            zz2 = zz/composition(i_metals,i)
+            composition(i_metals,i) = zz
+            do j = i_c12,i_o18
+               composition(j,i) = zz2*composition(j,i)
+            end do
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         end do
+      else
+         do i = zone_end,num_zones
+            composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
+         end do
+      endif
+! GES 5/15 LIGHT ELEMENT DIFFUSION
+      if(star%ctrl%diffuse_lithium)then
+         do kk = 1,num_light
+            do i = zone_end,num_zones
+               ii = light_element_id(kk)
+               composition(ii,i)=composition(ii,i) + eq_delta_light(kk,num_eq_points)
+            end do
+         enddo
+      endif
+!
+      do i=1,num_zones
+         enclosed_mass(i)=enclosed_mass(i)/star%bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)*star%bl_radius_scale
+      end do
+      timestep=timestep*star%bl_time_scale
+      total_mass=total_mass/star%bl_mass_scale
+      return
+end subroutine microdiff_etm
+
+end module microdiff_mapping

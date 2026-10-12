@@ -59,9 +59,9 @@ contains
 
 !   star reads: ctrl%dpenv, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%settling_timestep_fraction,
-!     ctrl%use_new_diffusion_routines, dm, gradT,
-!     job%use_extended_composition, job%use_semiconvection, log_mass,
-!     log_Teff, log_total_mass, logP, logR, logT, luminosity_lsun, nz
+!     dm, gradT, job%use_extended_composition, job%use_semiconvection,
+!     log_mass, log_Teff, log_total_mass, logP, logR, logT,
+!     luminosity_lsun, nz
 !   star writes: convective_flag, iov1, iov2, job%diffuse_helium_active,
 !     logRho, m, mixed_zone_bounds, xa
 subroutine advance_composition(timestep, opts, core_cz_edge, &
@@ -76,6 +76,7 @@ subroutine advance_composition(timestep, opts, core_cz_edge, &
       use burn_step, only: compute_burn_rates, burn_network, &
            burn_deuterium
       use convection_lib, only: find_convection_zones, extend_by_semiconvection
+      use element_diffusion_lib, only: diffuse_elements
       use math_lib
       implicit none
 
@@ -270,19 +271,10 @@ subroutine settle
            num_settling_steps + 1
       settling_dt = timestep/dfloat(num_settling_steps)
       do substep_idx = 1, num_settling_steps
-! LNEWDIF = TRUE: THE NEW ROUTINES IN MICRODIFF; ELSE THE OLD GRSETT
-         if (star%ctrl%use_new_diffusion_routines) then
-            call microdiff(settling_dt, star%xa, dlnp_dr, &
-                 star%logR, star%logRho, star%m, &
-                 star%logT, star%gradT, deep_mix_flag, star%nz, &
-                 total_mass_unlogged, ierr)
-            if (ierr /= 0) return
-         else
-            call gravitational_settling(settling_dt, star%xa, dlnp_dr, star%logR, &
-                 star%logRho, star%m, star%logT, star%gradT, &
-                 deep_mix_flag, star%nz, total_mass_unlogged, ierr)
-            if (ierr /= 0) return
-         end if
+         call diffuse_elements(settling_dt, star%xa, dlnp_dr, star%logR, &
+              star%logRho, star%m, star%logT, star%gradT, deep_mix_flag, &
+              star%nz, total_mass_unlogged, ierr)
+         if (ierr /= 0) return
       end do
 end subroutine settle
 

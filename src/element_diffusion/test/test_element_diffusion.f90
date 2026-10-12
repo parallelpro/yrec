@@ -29,6 +29,7 @@ program test_element_diffusion
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
            i_li7, i_be9
       use io_units, only: run_log_unit, terminal_unit
+      use element_diffusion_lib, only: diffuse_elements
       implicit none
       integer, parameter :: nz = 200
       double precision, parameter :: msun = 1.989d33, rsun = 6.9598d10, &
@@ -195,13 +196,9 @@ subroutine settle(label, new_routines)
       local_dlnp_dr = dlnp_dr
       local_m = m
       ierr = 0
-      if (new_routines) then
-         call microdiff(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
-              log_t, del, convective, nz, mass, ierr)
-      else
-         call gravitational_settling(step, xa, local_dlnp_dr, log_r, log_rho, &
-              local_m, log_t, del, convective, nz, mass, ierr)
-      end if
+      star%ctrl%use_new_diffusion_routines = new_routines
+      call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
+           log_t, del, convective, nz, mass, ierr)
       write(*,'(/,a)') '# '//label
       write(*,'(a,i0)') 'ierr = ', ierr
       write(*,'(a)') ' zone   dX  dY  dZ  dLi7  dBe9'

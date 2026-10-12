@@ -105,8 +105,9 @@ PUBLIC = {
     # element diffusion (gravitational settling and microscopic
     # diffusion of the elements), split out of rotation in 2026-10: the
     # original routines and the newer ones, chosen by
-    # use_new_diffusion_routines.
-    "element_diffusion": {"gravitational_settling", "microdiff"},
+    # use_new_diffusion_routines; diffuse_elements, the facade's one
+    # entry, chooses.
+    "element_diffusion": {"diffuse_elements"},
     # numerics is the shared numerics library: everything numerics_lib
     # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
     # modules behind it).
@@ -190,7 +191,8 @@ def check_star_free(src_root):
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
-FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm", "numerics", "convection"]
+FACADE_ONLY_DOMAINS = ["net", "kap", "eos", "atm", "numerics", "convection",
+                       "element_diffusion"]
 
 def check_facade_imports(src_root):
     problems = []

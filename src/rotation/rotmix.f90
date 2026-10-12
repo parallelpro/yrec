@@ -30,6 +30,7 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       use physical_constants
       use math_lib
       use burn_step, only: burn_network_region, burn_regions
+      use element_diffusion_lib, only: diffuse_elements
       use net_lib, only: num_rate_rows
       implicit none
 
@@ -45,7 +46,9 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
       double precision, intent(in) :: log_density(json), log_mass(json), &
            log_radius(json), log_pressure(json)
       logical, intent(in) :: convective_flag(json)
-      double precision, intent(in) :: enclosed_mass(json)
+! inout: the settling routines convert it to Bahcall & Loeb units in
+! place and back, which can change its last bit
+      double precision, intent(inout) :: enclosed_mass(json)
 
       integer :: num_species
       double precision :: dlnp_dr_settling(json)
@@ -170,23 +173,12 @@ subroutine rotmix(timestep, composition, shell_mass, log_temperature, &
             end do
          end do
          do substep_idx = 1,num_settling_substeps
-! PERFORM GRAVITATIONAL SETTLING. IF LNEWDIF = TRUE, USE THE NEW ROUTINES
-! IN MICRODIFF. ELSE, USE THE OLD ROUTINES IN GRSETT. The mid-step
-! gradient mix_scr%delm is passed explicitly (before 2026 W2 it was
-! copied into star%gradT around these calls and restored afterwards).
-            if (star%ctrl%use_new_diffusion_routines) then
-               call microdiff(settling_dt,composition,dlnp_dr_settling, &
-                    log_radius,log_density,enclosed_mass,log_temperature, &
-                    mix_scr%delm,am_transport_convective_flag,num_zones, &
-                    total_mass, ierr)
-               if (ierr /= 0) return
-            else
-               call gravitational_settling(settling_dt,composition,dlnp_dr_settling, &
-                    log_radius,log_density,enclosed_mass,log_temperature, &
-                    mix_scr%delm,am_transport_convective_flag,num_zones, &
-                    total_mass, ierr)
-               if (ierr /= 0) return
-            end if
+! gravitational settling, with the mid-step temperature gradient
+            call diffuse_elements(settling_dt,composition,dlnp_dr_settling, &
+                 log_radius,log_density,enclosed_mass,log_temperature, &
+                 mix_scr%delm,am_transport_convective_flag,num_zones, &
+                 total_mass, ierr)
+            if (ierr /= 0) return
          end do
          end if
       exit settling

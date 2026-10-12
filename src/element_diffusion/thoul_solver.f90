@@ -1,4 +1,17 @@
 !----------------------------------------------------------------------
+! thoul_solver
+!----------------------------------------------------------------------
+! The Thoul, Bahcall & Loeb (1994) solution of the Burgers equations for
+! the diffusion coefficients.
+module thoul_solver
+      implicit none
+      private
+      public :: thoul_diffusion
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! thdiff
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -317,3 +330,5 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
       return
 
 end subroutine thoul_diffusion
+
+end module thoul_solver

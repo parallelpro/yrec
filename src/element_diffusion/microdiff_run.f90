@@ -21,6 +21,7 @@
 ! 2026 de-tramp (ROADMAP item 3): 27 arguments -> 13; the two
 ! equally-spaced grids are microdiff_grid records (eq, eq_mid).
 module microdiff_run
+      use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       implicit none
 contains
 
@@ -28,7 +29,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
      eq, species_fraction, hydrogen_dlnc_dr, &
      eq_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
-      use microdiff_mte, only: microdiff_grid
+      use microdiff_mapping, only: microdiff_grid
       use microdiff_coefficients
       use star_info_lib, only: star, json
       use io_units
