@@ -275,7 +275,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
       do x_loop_index=x_grid_index, x_grid_index_hi
          num_valid_t = 0
 !        Get range of four tt surrounding T
-         call xrng4(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
+         call select_four_point_window(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
          do t_index=t_range_lo, t_range_hi
             num_valid_rho = tbl%slaol_num_points(x_loop_index,t_index)
             if (num_valid_rho >= 4) then
@@ -523,7 +523,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
       call locate(opacity_table%zlaol_logt_grid, opacity_table%zlaol_num_t, log10_temperature, t_locate_guess)
       num_valid_t = 0
 !     Get range of four tt surrounding T
-      call xrng4(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
+      call select_four_point_window(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
       do t_index=t_range_lo, t_range_hi
          num_valid_rho = opacity_table%zslaol_num_points(t_index)
          if (num_valid_rho >= 4) then
@@ -612,5 +612,27 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
          log10_opacity = log10_opacity_value
       end if
 end subroutine compute_pure_z_opacity
+
+!----------------------------------------------------------------------
+! select_four_point_window (formerly util/xrng4)
+!----------------------------------------------------------------------
+! The four table points window_start..window_end around grid point
+! grid_index of a grid of grid_size points, for a 4-point interpolation:
+! the first or last four points near the ends, else grid_index-1 ..
+! grid_index+2.
+subroutine select_four_point_window(grid_index, grid_size, window_start, window_end)
+      integer, intent(in) :: grid_index, grid_size
+      integer, intent(out) :: window_start, window_end
+      if (grid_index.le.2) then
+         window_start = 1
+         window_end = 4
+      else if (grid_index.ge.grid_size-2) then
+         window_start = grid_size-3
+         window_end = grid_size
+      else
+         window_start = grid_index - 1
+         window_end = grid_index + 2
+      end if
+end subroutine select_four_point_window
 
 end module laol_opacity

@@ -19,6 +19,8 @@
 ! numerics_termination (the historical "diverged" stop, exit 0).
 !
 subroutine run_yrec(ierr)
+      use timestep_control, only: compute_timestep
+      use yrec_version, only: set_version_strings
 
       use net_lib
       use burn_step, only: configure_network
@@ -75,7 +77,7 @@ subroutine run_yrec(ierr)
 ! calls -- see core/yrec_reset.f90.
       call yrec_run_prologue
 
-      call setversion()
+      call set_version_strings()
 
 ! LPUNCH is TRUE once first model is calculated
       star%punch_pending_flag = .false.

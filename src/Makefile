@@ -226,7 +226,7 @@ endif
 # object list (the transition to library-based linking can go domain
 # by domain). Standalone per-domain test programs link against these.
 DOMAIN_DIRS := eos kap atm net convection rotation element_diffusion \
-	numerics math state setup io core util
+	numerics math state setup io core
 
 define LIB_template
 lib$(1).a: $$(filter $(1)/%,$$(OBJS))
@@ -250,7 +250,7 @@ libs: $(LIBS)
 # object order); CI builds this target as the layout check.
 YREC_LIBS_ORDER := libstate.a libio.a libmath.a libnumerics.a libeos.a libkap.a \
 	libatm.a libnet.a libconvection.a librotation.a libelement_diffusion.a \
-	libsetup.a libutil.a libcore.a
+	libsetup.a libcore.a
 yrec_libs: core/main.o $(LIBS)
 	$(FC) $(LDFLAGS) -o $@ core/main.o \
 	$(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) $(YREC_LIBS_ORDER) \

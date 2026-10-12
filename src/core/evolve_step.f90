@@ -20,6 +20,7 @@
 ! of the previous step); the reset block below (evolve_step_reset_pending)
 ! covers them alongside evolve_state.
 subroutine evolve_step(model_iteration, step_status, ierr)
+      use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
       use rotating_shape, only: rotation_shape_factors
 

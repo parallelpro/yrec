@@ -678,7 +678,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
 
       integer :: i, ic
 
-      call zero(interpolated_vars, ivarx)
+      interpolated_vars = 0.0d0
 !     Main selection of tables
 !     selector -ic is lower ZAMS composition ic (row ic), +ic is upper
 !     ZAMS composition ic (row ic), and mhd_n_zams+ic is centre
