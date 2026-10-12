@@ -5,6 +5,7 @@
 ! (am_diffusion_coeffs) and advection-diffusion, assembled into a banded
 ! system and eliminated (am_advection_diffusion_coeffs, banded_solver).
 module am_transport_coefficients
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: am_diffusion_coeffs, am_advection_diffusion_coeffs
@@ -71,7 +72,7 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json)
@@ -95,7 +96,7 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
            wind_loss_implicit)*eq_moment_of_inertia(num_eq_points)
       rhs(num_eq_points) = rhs(num_eq_points)*(1.0d0+ &
            surface_wind_loss_term/eq_angular_momentum(num_eq_points))
-      if (.not.star%ctrl%use_diffusion_advection_transport) then
+      if (.not.rotation_settings%use_diffusion_advection_transport) then
 !  FIRST SHELL BOUNDARY CONDITIONS: NO FLOW BELOW THE BOUNDARY
 !  I.E. THE ANGULAR MOMENTUM TRANSPORT AT THE FIRST SHELL DOES NOT
 !  DEPEND ON THE SHELLS BELOW IT.
@@ -218,11 +219,11 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
      eq_delta_angular_momentum, eq_mixing_diffusion_coeff, &
      sum_delta_angular_momentum, fix_omega_at_surface, diffusion_converged, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use math_lib
       implicit none
 ! length of the per-coefficient-iteration convergence history printed
-! on failure (bounded by star%ctrl%max_diffusion_iters)
+! on failure (bounded by rotation_settings%max_diffusion_iters)
       integer, parameter :: iter_history_max = 50
       double precision, parameter :: tiny = 1.0d-30
 
@@ -302,7 +303,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          substep_frac = substep_timestep/timestep
 ! LOOP FOR ITERATION ON THE D THETA/DT TERM;
 ! COEFFICIENTS UPDATED ONCE PER NNN
-      do theta_iter_idx = 1,star%ctrl%max_diffusion_iters
+      do theta_iter_idx = 1,rotation_settings%max_diffusion_iters
 ! LOOP FOR ITERATION ON THE OTHER COEFFICIENTS
 ! THAT ARE FUNCTIONS OF OMEGA; UPDATED ONCE PER
 ! NN.
@@ -313,17 +314,17 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! saturation threshold here, but LROSSBY/PMMSOLTAU were plain
 ! never-assigned locals (not wired to COMMON/PMMWIND/), so the branch
 ! never executed; the plain threshold is the only behaviour.
-            wind_saturation_threshold = star%job%wind_saturation_omega
+            wind_saturation_threshold = rotation_settings%wind_saturation_omega
             omega_capped = min(eq_omega(num_eq_points), &
                  wind_saturation_threshold)
             omega_prev_capped = min(omega_working(num_eq_points), &
                  wind_saturation_threshold)
             wind_loss_implicit_iter = wind_loss_implicit* &
                  pow(omega_prev_capped/omega_capped, &
-                 star%ctrl%wind_law_omega_exponent-1.0d0)* &
+                 rotation_settings%wind_law_omega_exponent-1.0d0)* &
                  (omega_working(num_eq_points)/eq_omega(num_eq_points))
          end if
-      do coeff_iter_idx = 1,star%ctrl%max_diffusion_iters
+      do coeff_iter_idx = 1,rotation_settings%max_diffusion_iters
 ! COMPUTE THE DIFFUSION COEFFICIENTS FOR
 ! THE FIRST AND SECOND ORDER TERMS.
       omega_curvature(1) = 0.0d0
@@ -343,7 +344,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
             rot_scr%gsf_diffusion_coeff_eqgrid(i) = rot_scr%gsf_diffusion_coeff_eqgrid(i)* &
                  (domega_dr_prev_substep/domega_dr(i))**2
          end if
-         advective_term1 = star%ctrl%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
+         advective_term1 = rotation_settings%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(rot_scr%eq_velocity_coeff1a(i)+ &
               omega_mid(i)**2*rot_scr%eq_velocity_coeff1b(i))
 ! THE D THETA/DT TERMS (VTHN/VTHP IN THE ORIGINAL) ARE DISABLED: BOTH
@@ -351,7 +352,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 ! KEPT AS WRITTEN.
          theta_term_n = 0.0d0
          theta_term_p = 0.0d0
-         diffusive_term2 = star%ctrl%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
+         diffusive_term2 = rotation_settings%difad_velocity_scale*rot_scr%eq_velocity_coeff0(i)* &
               omega_mid(i)**2*(rot_scr%eq_velocity_coeff2a(i)+ &
               rot_scr%eq_velocity_coeff2b(i))+theta_term_n
          advective_term1 = advective_term1 + theta_term_p
@@ -576,7 +577,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       max_omega_change_history(coeff_iter_idx) = max_omega_change
       max_omega_change_zone_history(coeff_iter_idx) = max_omega_change_zone
 ! DETERMINE IF RUN HAS CONVERGED
-      if (abs(max_omega_change).lt.star%ctrl%convergence_tolerance) then
+      if (abs(max_omega_change).lt.rotation_settings%convergence_tolerance) then
          diffusion_converged = .true.
          exit
       end if
@@ -590,7 +591,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
       do k = 1,num_eq_points
          omega_prev_medium_iter(k) = omega_working(k)
       end do
-      if (abs(max_omega_change_medium_iter).le.star%ctrl%convergence_tolerance .and. &
+      if (abs(max_omega_change_medium_iter).le.rotation_settings%convergence_tolerance .and. &
            theta_iter_idx.ge.2) then
          exit
       else
@@ -627,7 +628,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          advective_velocity_term = rot_scr%am_advective_coeff(i)/rot_scr%geometric_factor(i)
          domega_dr_velocity_term = rot_scr%am_diffusive_coeff(i)/rot_scr%geometric_factor(i)* &
               rhs(ii-2)*rot_scr%dchi_dr_edge(i)/omega_mid_new
-         domega_dr_velocity_term_alt = 0.2d0*star%ctrl%difad_velocity_scale* &
+         domega_dr_velocity_term_alt = 0.2d0*rotation_settings%difad_velocity_scale* &
               rot_scr%eq_velocity_coeff0(i)*omega_mid_new*rot_scr%dchi_dr_edge(i)* &
               (rot_scr%eq_velocity_coeff2a(i)+rot_scr%eq_velocity_coeff2b(i))*rhs(ii-2)
          if (rot_scr%am_diffusive_coeff(i).le.0.0d0) domega_dr_velocity_term_alt = 0.0d0
@@ -646,12 +647,12 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
               third_deriv_velocity_term,total_velocity, &
               rhs(ii+1),rhs(ii+2),rhs(ii+3)
          end if
-         rot_scr%mixing_velocity_estimate(i) = 5.0d0*abs(star%ctrl%mixing_velocity_scale* &
-              star%ctrl%es_mixing_scale*total_velocity_alt*rot_scr%equatorial_radius(i))
+         rot_scr%mixing_velocity_estimate(i) = 5.0d0*abs(rotation_settings%mixing_velocity_scale* &
+              rotation_settings%es_mixing_scale*total_velocity_alt*rot_scr%equatorial_radius(i))
          mixing_diffusion_raw = (rot_scr%mixing_velocity_estimate(i)+ &
-              star%ctrl%mixing_velocity_scale*star%ctrl%secular_shear_mixing_scale* &
-              rot_scr%shear_diffusion_coeff_eqgrid(i)+star%ctrl%mixing_velocity_scale* &
-              star%ctrl%gsf_mixing_scale*rot_scr%gsf_diffusion_coeff_eqgrid(i))
+              rotation_settings%mixing_velocity_scale*rotation_settings%secular_shear_mixing_scale* &
+              rot_scr%shear_diffusion_coeff_eqgrid(i)+rotation_settings%mixing_velocity_scale* &
+              rotation_settings%gsf_mixing_scale*rot_scr%gsf_diffusion_coeff_eqgrid(i))
          eq_mixing_diffusion_coeff(i) = mixing_diffusion_raw* &
               rot_scr%mixing_geometric_factor(i)
  911  format(1p10e12.3)

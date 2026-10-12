@@ -6,6 +6,7 @@
 ! distortion eta2, mean radius and mean gravity; shape, the distortion
 ! integral itself.
 module rotating_shape
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: rotation_shape_factors, shape
@@ -138,7 +139,7 @@ end subroutine rotation_shape_factors
 ! SOFIA.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
@@ -181,12 +182,12 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          fact = 5.0d0*cc13*omega(1)**2/(gm*(2.0d0+eta2(1)))
-         do j = 1,star%ctrl%itfp2
+         do j = 1,rotation_settings%shape_inner_iterations
             a_param = fact*r0_cubed
             delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
             r0_cubed = r0_cubed + delta_r0_cubed
-            if(dabs(delta_r0_cubed/r0_cubed).le.star%job%acfpft)exit
+            if(dabs(delta_r0_cubed/r0_cubed).le.rotation_settings%shape_tolerance)exit
          end do
          r0(1) = pow(r0_cubed, cc13)
          if (zone_end.eq.1) return
@@ -219,21 +220,21 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          r0_estimate = r_phi
-         acc_tol = pow(star%job%acfpft, cc13)
+         acc_tol = pow(rotation_settings%shape_tolerance, cc13)
 ! ITERATE BETWEEN SOLUTION FOR ETA2 AND SOLUTION FOR R0 ITFP1 TIMES.
-         do k = 1,star%ctrl%itfp1
+         do k = 1,rotation_settings%shape_outer_iterations
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
 ! NOW ITERATE FOR R0 GIVEN RPHI AND ETA2, USING THE RELATION
 ! RPHI**3 = R0**3(1.0 + 3/5A**2 - 2/35A**3)
 ! WHERE A = OMEGA**2*R0**3*5/3GM(2+ETA2))
 ! (Same Newton step as the center loop above, but exits on .lt. acfpft
 ! where that one uses .le. -- kept as in the original.)
-            do j = 1,star%ctrl%itfp2
+            do j = 1,rotation_settings%shape_inner_iterations
                a_param = fact*r0_cubed
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)
                r0_cubed = r0_cubed + delta_r0_cubed
-               if(dabs(delta_r0_cubed/r0_cubed).lt.star%job%acfpft)exit
+               if(dabs(delta_r0_cubed/r0_cubed).lt.rotation_settings%shape_tolerance)exit
             end do
             r0(i) = pow(r0_cubed, cc13)
             err = r0(i) - r0_estimate

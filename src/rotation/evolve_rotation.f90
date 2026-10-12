@@ -5,6 +5,7 @@
 ! sub-steps the transport of angular momentum and the mixing it drives,
 ! with the wind torque, and updates omega.
 module evolve_rotation
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: evolve_angular_momentum
@@ -96,7 +97,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 
       ierr = 0
       num_species_tracked = 11
-      if(star%job%use_extended_composition) num_species_tracked = 15
+      if(rotation_settings%use_extended_composition) num_species_tracked = 15
 ! The regions for angular momentum transport: the convection zones with
 ! their overshoot (am_convective_regions). With instability transport
 ! on, the overshoot region needs at least one shell, to couple the
@@ -108,7 +109,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       if (ierr /= 0) return
       disk_lock_engaged = .false.
       if(disk_locking_engaged()) disk_lock_engaged = .true.
-      if(.not.star%job%instability_transport_active)then
+      if(.not.rotation_settings%instability_transport_active)then
          call spin_down_without_transport()
          return
       end if
@@ -148,7 +149,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          call brake_surface_convection_zone()
          if (ierr /= 0) return
       endif
-      if(star%job%instability_transport_active.and..not.fully_convective_flag) then
+      if(rotation_settings%instability_transport_active.and..not.fully_convective_flag) then
          call apply_instability_transport()
          if (ierr /= 0) return
          if (redo_needed_flag) cycle retry
@@ -161,7 +162,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          end do
       end do
       first_call = .false.
-      if(star%job%use_extended_composition)then
+      if(rotation_settings%use_extended_composition)then
          call burn_light_elements_over_substep()
          if (ierr /= 0) return
       endif
@@ -169,7 +170,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! plus burning to zero timestep here, when instability transport was on
 ! and the model not fully convective; while it was on, the xa_start
 ! updates above were skipped:
-!     if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
+!     if(rotation_settings%instability_transport_active .and. .not.fully_convective_flag)then
 !       call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
 !            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
 !            rot_scr%log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
@@ -199,7 +200,7 @@ contains
 subroutine spin_down_without_transport()
       omega_surface = star%omega(star%nz)
 ! solid_body_mode_flag = 1 acts like force_solid_body_rotation
-      if(star%ctrl%force_solid_body_rotation .or. (star%ctrl%solid_body_mode_flag.eq.1))then
+      if(rotation_settings%force_solid_body_rotation .or. (rotation_settings%solid_body_mode_flag.eq.1))then
          do zone_index = 1,star%nz
             am_transport_convective_flag(zone_index) = .true.
          end do
@@ -207,11 +208,11 @@ subroutine spin_down_without_transport()
       call omega_from_j(star%logRho,star%j_rot,star%logR, &
            star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
            star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
-      if(.not.disk_lock_engaged .and. star%job%use_wind_torque .and. star%convective_flag(star%nz)) then
+      if(.not.disk_lock_engaged .and. rotation_settings%use_wind_torque .and. star%convective_flag(star%nz)) then
 ! the moment of inertia of the surface convection zone (the whole star
 ! under solid-body rotation), and the masses at its bottom and top
          moment_of_inertia_cz = 0.0D0
-         if(star%ctrl%force_solid_body_rotation.or. (star%ctrl%solid_body_mode_flag.eq.1))then
+         if(rotation_settings%force_solid_body_rotation.or. (rotation_settings%solid_body_mode_flag.eq.1))then
            envelope_boundary_zone = 1
          else
            envelope_boundary_zone = convective_zone_bounds(num_convective_zones,1)
@@ -226,7 +227,7 @@ subroutine spin_down_without_transport()
          else
             cz_mass_bottom = 0.0D0
          endif
-         wind_loss_active = star%job%use_wind_torque
+         wind_loss_active = rotation_settings%use_wind_torque
 ! the loss rate averaged over the step
          star%fracstep = 0.5
          call brake_convection_zone(star%log_L,full_timestep,cz_mass_bottom, &
@@ -247,11 +248,11 @@ end subroutine spin_down_without_transport
 ! The number of sub-steps: enough that omega changes by at most
 ! max_domega_step (max_domega_global if unset) per diffusion_timestep_factor.
 subroutine count_substeps()
-      if(max_domega_step.eq.0.0D0) max_domega_step = star%job%max_domega_global
-      num_diffusion_steps = int(max_domega_step/star%job%diffusion_timestep_factor)
-      if (mod(max_domega_step,star%job%diffusion_timestep_factor).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
-      num_wind_diffusion_steps = int(star%job%max_domega_global/star%job%diffusion_timestep_factor)
-      if (mod(star%job%max_domega_global,star%job%diffusion_timestep_factor).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
+      if(max_domega_step.eq.0.0D0) max_domega_step = rotation_settings%max_domega_global
+      num_diffusion_steps = int(max_domega_step/rotation_settings%diffusion_timestep_factor)
+      if (mod(max_domega_step,rotation_settings%diffusion_timestep_factor).ne.0.0D0) num_diffusion_steps = num_diffusion_steps + 1
+      num_wind_diffusion_steps = int(rotation_settings%max_domega_global/rotation_settings%diffusion_timestep_factor)
+      if (mod(rotation_settings%max_domega_global,rotation_settings%diffusion_timestep_factor).ne.0.0D0) num_wind_diffusion_steps = num_wind_diffusion_steps + 1
       num_diffusion_steps = min(num_diffusion_steps,num_wind_diffusion_steps)
       sub_timestep = full_timestep/dfloat(num_diffusion_steps)
 end subroutine count_substeps
@@ -299,7 +300,7 @@ end subroutine carry_theta_forward
 ! (Weber-Davis magnetic wind), when transport is not doing it.
 subroutine brake_surface_convection_zone()
       omega_surface = rot_scr%omega_mid(star%nz)
-      if(fully_convective_flag.or..not.star%job%instability_transport_active) then
+      if(fully_convective_flag.or..not.rotation_settings%instability_transport_active) then
          call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
               envelope_boundary_zone,star%nz,wind_loss_active,omega_surface, &
               star%star_mass,star%log_Teff,moment_of_inertia_cz, &
@@ -356,8 +357,8 @@ subroutine burn_light_elements_over_substep()
            envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
            num_convective_zones_burn, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
-      if(star%job%lovstm .and. rot_scr%convective_flag_mid(star%nz))then
-         star%pressure_scale_height_end = star%ctrl%overshoot_alpha_envelope* &
+      if(rotation_settings%intermediate_overshoot .and. rot_scr%convective_flag_mid(star%nz))then
+         star%pressure_scale_height_end = rotation_settings%overshoot_alpha_envelope* &
               pressure_scale_height(rot_scr%log_pressure_mid(envelope_boundary_zone_cur), &
               rot_scr%log_radius_mid(envelope_boundary_zone_cur), &
               rot_scr%log_density_mid(envelope_boundary_zone_cur), &

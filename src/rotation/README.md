@@ -7,7 +7,9 @@ This directory evolves a star's rotation over each timestep:
 - the mixing of the composition that transport drives;
 - the wind's spin-down of the surface convection zone (magnetic braking).
 
-Rotation has no facade: by the author's decision, core and setup use its modules by name. `tools/check_boundaries.py` lists the six procedures they may call: `evolve_angular_momentum`, `omega_from_j`, `rotation_shape_factors`, `zone_moments_of_inertia`, `am_convective_regions` and `viscos`.
+Rotation has no facade: by the author's decision, core and setup use its modules by name. `tools/check_boundaries.py` lists the seven procedures they may call: `evolve_angular_momentum`, `omega_from_j`, `rotation_shape_factors`, `zone_moments_of_inertia`, `am_convective_regions`, `viscos` and `set_rotation_settings`.
+
+Rotation reads its controls from a settings record, `rotation_settings` (module `rotation_configuration`), never from `star%ctrl` or `star%job` (the checker enforces this). The star layer builds the record from the controls (`setup/rotation_settings_setup`), and `run_yrec` installs it at the start of every run card. The star's state (ω, J, the structure) is still read from `star%`.
 
 ---
 
@@ -21,6 +23,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 | `am_regions` | `am_convective_regions`: the convection zones, with their overshoot, for angular momentum transport. |
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
 | `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
+| `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`cz_rotation_law_exponent` for `walpcz`, `wind_constant` for `constfactor`, ...). |
 | `rotation_scratch_lib` | The working state: `rot_scr` (coefficients, grids, the structure at the middle of the sub-step), `mid_scr` (the physics interpolated to the sub-step) and `circ_scr`. |
 | **shape/** | |
 | `rotating_shape` | `rotation_shape_factors`: each shell's fp, ft, distortion, mean radius and mean gravity (Kippenhahn & Thomas / Endal & Sofia). |
@@ -57,7 +60,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 ## 3. Conventions
 
 - CGS, and log is log₁₀. ω is in rad/s, and `j_rot` is the specific angular momentum. Zones run from the center out.
-- Convection zones rotate as solid bodies unless an imposed law (`walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one.
+- Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one.
 - Failures (a singular solve, a step cut too often) return `ierr`.
 
 ## 4. Tests and extending
@@ -70,4 +73,6 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 
 The decks pin the full step: the rotating solar deck, the five rotating configuration-matrix decks, and the three testsuite rotating-mixing decks (differential and solid body). A deliberate change means regenerating `rotation/test/expected_test_rotation.out`.
 
-**Add a braking law:** give it a control, set its coefficients in `magnetic_braking`'s law setup, and add its cases to `test_rotation`'s braking checks.
+**Add a control:** add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
+
+**Add a braking law:** give it a control (as above), set its coefficients in `magnetic_braking`'s law setup, and add its cases to `test_rotation`'s braking checks (which set `rotation_settings` directly).

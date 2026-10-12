@@ -4,6 +4,7 @@
 ! Each zone's moment of inertia and dI/d(omega), from the spherical value
 ! and a power-series correction in omega**2 r**3/(GM) (Law 1980).
 module moments_of_inertia
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: zone_moments_of_inertia
@@ -24,7 +25,7 @@ contains
 ! log_radius(1) and log_radius(2).
 subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
@@ -41,7 +42,7 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
            di_domega_per_mass
 
       rotation_param_const = cc13*5.0d0/exp(ln10*cgl)
-      if (star%ctrl%walpcz.ne.0.0d0) then
+      if (rotation_settings%cz_rotation_law_exponent.ne.0.0d0) then
          do zone_idx = zone_start,zone_end
             moment_of_inertia(zone_idx) = cc23*shell_mass(zone_idx)* &
                  exp(ln10*2.0d0*log_radius(zone_idx))

@@ -36,6 +36,8 @@ subroutine run_yrec(ierr)
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
       use convection_lib, only: set_convection_settings
+      use rotation_configuration, only: set_rotation_settings
+      use rotation_settings_setup, only: rotation_settings_from_star
       use controls_reader, only: read_controls
       use microphysics_settings, only: convection_settings_from_star
       implicit none
@@ -277,6 +279,8 @@ subroutine begin_kind_card
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
 ! the convection domain's settings for this card (its mixing length)
          call set_convection_settings(convection_settings_from_star())
+! and the rotation domain's
+         call set_rotation_settings(rotation_settings_from_star())
        star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
        star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%reset_triangle = .false.

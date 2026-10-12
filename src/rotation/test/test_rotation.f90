@@ -35,6 +35,8 @@
 ! The values are plausible solar-like ones, chosen to reach every
 ! branch.
 program test_rotation
+      use rotation_configuration, only: rotation_settings
+      use rotation_settings_setup, only: rotation_settings_from_star
       use omega_profile, only: omega_from_j
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
@@ -57,22 +59,25 @@ program test_rotation
       star%solar_mass_cgs = msun
       star%solar_radius_cgs = 6.957d10
       star%log10_solar_luminosity = log10(3.828d33)
+! the settings record from the controls' defaults (as each run card
+! installs it); the cases below set what they vary
+      rotation_settings = rotation_settings_from_star()
 ! a Matt-type law: tau_cz and P_phot at their solar values, exponents
 ! of order unity
-      star%ctrl%constfactor = 3.4d47
-      star%ctrl%wind_law_omega_exponent = 3.0d0
-      star%ctrl%exm = -0.5d0
-      star%ctrl%exr = 3.1d0
-      star%ctrl%exl = 0.0d0
-      star%ctrl%expr = 0.44d0
-      star%ctrl%extau = 0.0d0
-      star%ctrl%exmd = 0.5d0
-      star%ctrl%excen = 0.5d0
-      star%ctrl%c_2 = 0.0506d0
-      star%ctrl%pmm_solar_omega = 2.6d-6
-      star%ctrl%pmm_solar_pressure = 4.9752d0
-      star%ctrl%pmm_solar_turnover_timescale = 9.6132d5
-      star%job%wind_saturation_omega = 3.0d-5
+      rotation_settings%wind_constant = 3.4d47
+      rotation_settings%wind_law_omega_exponent = 3.0d0
+      rotation_settings%wind_mass_exponent = -0.5d0
+      rotation_settings%wind_radius_exponent = 3.1d0
+      rotation_settings%wind_luminosity_exponent = 0.0d0
+      rotation_settings%wind_pressure_exponent = 0.44d0
+      rotation_settings%wind_turnover_exponent = 0.0d0
+      rotation_settings%wind_mass_loss_exponent = 0.5d0
+      rotation_settings%wind_centrifugal_exponent = 0.5d0
+      rotation_settings%wind_centrifugal_constant = 0.0506d0
+      rotation_settings%pmm_solar_omega = 2.6d-6
+      rotation_settings%pmm_solar_pressure = 4.9752d0
+      rotation_settings%pmm_solar_turnover_timescale = 9.6132d5
+      rotation_settings%wind_saturation_omega = 3.0d-5
       star%convective_turnover_timescale_old = 9.0d5
       star%convective_turnover_timescale = 1.1d6
       star%fracstep = 0.5d0
@@ -80,53 +85,53 @@ program test_rotation
       star%pphot = 5.00d0
 
       write(*,'(a)') "# brake_convection_zone (j/m of the convection zone after the step)"
-      star%ctrl%use_pmm_wind_law = .true.
-      star%ctrl%scale_by_rossby_number = .true.
-      star%ctrl%scale_by_b_field = .false.
+      rotation_settings%use_pmm_wind_law = .true.
+      rotation_settings%scale_by_rossby_number = .true.
+      rotation_settings%scale_by_b_field = .false.
       call cz_case("pmm rossby, unsaturated, 1e17 s", 2.6d-6, 1.0d17, .true.)
       call cz_case("pmm rossby, saturated, 1e15 s", 1.0d-4, 1.0d15, .true.)
       call cz_case("pmm rossby, sub-stepped, 1e18 s", 2.6d-6, 1.0d18, .true.)
-      star%ctrl%scale_by_b_field = .true.
+      rotation_settings%scale_by_b_field = .true.
       call cz_case("pmm rossby + B field, 1e17 s", 2.6d-6, 1.0d17, .true.)
       call cz_case("pmm rossby + B field, saturated", 1.0d-4, 1.0d15, .true.)
 ! B-field scaling alone: the iteration scales omega by a tau_cz that
 ! is only set with Rossby scaling (zero), the first guess does not
-      star%ctrl%scale_by_rossby_number = .false.
+      rotation_settings%scale_by_rossby_number = .false.
       call cz_case("pmm B field, no rossby, 1e17 s", 2.6d-6, 1.0d17, .true.)
-      star%ctrl%scale_by_b_field = .false.
+      rotation_settings%scale_by_b_field = .false.
       call cz_case("pmm, no scaling, 1e17 s", 2.6d-6, 1.0d17, .true.)
       call cz_case("pmm, no scaling, wind flag off", 2.6d-6, 1.0d17, .false.)
-      star%ctrl%use_pmm_wind_law = .false.
-      star%job%instability_transport_active = .false.
+      rotation_settings%use_pmm_wind_law = .false.
+      rotation_settings%instability_transport_active = .false.
       call cz_case("kawaler, 1e17 s", 2.6d-6, 1.0d17, .true.)
       call cz_case("kawaler, saturated, 1e15 s", 1.0d-4, 1.0d15, .true.)
       call cz_case("kawaler, sub-stepped, 1e18 s", 2.6d-6, 1.0d18, .true.)
       call cz_case("kawaler, wind flag off", 2.6d-6, 1.0d17, .false.)
-      star%job%instability_transport_active = .true.
-      star%job%wind_saturation_omega = 30.0d0
+      rotation_settings%instability_transport_active = .true.
+      rotation_settings%wind_saturation_omega = 30.0d0
       call cz_case("kawaler, w_sat/tau_cz, 1e17 s", 2.6d-6, 1.0d17, .true.)
       star%convective_turnover_timescale = 0.5d0
       call cz_case("kawaler, tau_cz undefined", 2.6d-6, 1.0d17, .true.)
       star%convective_turnover_timescale = 1.1d6
-      star%job%wind_saturation_omega = 3.0d-5
+      rotation_settings%wind_saturation_omega = 3.0d-5
 
       write(*,'(a)') "# compute_solid_body_braking (d omega at the start and end of the step)"
       do k = 1, 5
          select case (k)
          case (1)
-            star%ctrl%use_pmm_wind_law = .true.
-            star%ctrl%scale_by_rossby_number = .true.
-            star%ctrl%scale_by_b_field = .false.
+            rotation_settings%use_pmm_wind_law = .true.
+            rotation_settings%scale_by_rossby_number = .true.
+            rotation_settings%scale_by_b_field = .false.
          case (2)
-            star%ctrl%scale_by_b_field = .true.
+            rotation_settings%scale_by_b_field = .true.
          case (3)
-            star%ctrl%use_pmm_wind_law = .false.
-            star%job%wind_saturation_omega = 30.0d0
+            rotation_settings%use_pmm_wind_law = .false.
+            rotation_settings%wind_saturation_omega = 30.0d0
          case (4)
-            star%job%wind_saturation_omega = 3.0d-5
+            rotation_settings%wind_saturation_omega = 3.0d-5
          case (5)
-            star%ctrl%use_pmm_wind_law = .true.
-            star%ctrl%scale_by_rossby_number = .false.
+            rotation_settings%use_pmm_wind_law = .true.
+            rotation_settings%scale_by_rossby_number = .false.
          end select
          omega = 2.6d-6
          dt = 1.0d16
@@ -270,7 +275,7 @@ subroutine structure_check()
       eta2 = 0.0d0
       r0 = r
       qiw = 0.0d0
-      star%ctrl%walpcz = 0.0d0
+      rotation_settings%cz_rotation_law_exponent = 0.0d0
       call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
       jm(1:n) = inertia(1:n)*w(1:n)/dm(1:n)
       call omega_from_j(log_rho, jm, log_r, log_m, dm, convective, n, eta2, inertia, w, qiw, r0)
@@ -288,13 +293,13 @@ subroutine structure_check()
       do s = 1, size(shown)
          write(*,'(i4,2(1pe24.15))') shown(s), inertia(shown(s)), di_dw(shown(s))
       end do
-      star%ctrl%walpcz = -1.0d0
+      rotation_settings%cz_rotation_law_exponent = -1.0d0
       call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
       write(*,'(a)') "walpcz = -1: zone  I dI/domega"
       do s = 1, size(shown)
          write(*,'(i4,2(1pe24.15))') shown(s), inertia(shown(s)), di_dw(shown(s))
       end do
-      star%ctrl%walpcz = 0.0d0
+      rotation_settings%cz_rotation_law_exponent = 0.0d0
       do i = 1, n
          star%cp(i) = 3.0d8*(1.0d0 + dble(i)/dble(n))
          star%opacity_zone(i) = 1.0d0 + 100.0d0*(dble(i)/dble(n))**4
@@ -326,43 +331,43 @@ end subroutine structure_check
 subroutine secular_check()
       write(*,'(a)') "# secular transport"
 ! the reader's defaults (the pristine star%ctrl leaves them zero)
-      star%ctrl%difad_velocity_scale = 1.0d0
-      star%ctrl%mixing_velocity_scale = 1.0d0
-      star%ctrl%es_velocity_scale = 1.0d0
-      star%ctrl%gsf_velocity_scale = 1.0d0
+      rotation_settings%difad_velocity_scale = 1.0d0
+      rotation_settings%mixing_velocity_scale = 1.0d0
+      rotation_settings%es_velocity_scale = 1.0d0
+      rotation_settings%gsf_velocity_scale = 1.0d0
       star%ctrl%mu_gradient_scale = 1.0d0
-      star%ctrl%secular_shear_velocity_scale = 1.0d0
-      star%ctrl%critical_reynolds = 1.0d3
-      star%ctrl%es_mixing_scale = 1.0d0
-      star%ctrl%secular_shear_mixing_scale = 1.0d0
-      star%ctrl%gsf_mixing_scale = 1.0d0
-      star%ctrl%gsf_inhibition_mode = 1
-      star%ctrl%constant_background_diffusion_coeff = 2.5d4
-      star%ctrl%use_constant_background_diffusion = .false.
-      star%ctrl%no_am_transport_in_core = .false.
-      star%ctrl%lvfc = .false.
-      star%ctrl%use_diffusion_advection_transport = .false.
-      star%ctrl%chi_grid_scale = [1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, &
+      rotation_settings%secular_shear_velocity_scale = 1.0d0
+      rotation_settings%critical_reynolds = 1.0d3
+      rotation_settings%es_mixing_scale = 1.0d0
+      rotation_settings%secular_shear_mixing_scale = 1.0d0
+      rotation_settings%gsf_mixing_scale = 1.0d0
+      rotation_settings%gsf_inhibition_mode = 1
+      rotation_settings%constant_background_diffusion_coeff = 2.5d4
+      rotation_settings%use_constant_background_diffusion = .false.
+      rotation_settings%no_am_transport_in_core = .false.
+      rotation_settings%use_zahn_coupling_factor = .false.
+      rotation_settings%use_diffusion_advection_transport = .false.
+      rotation_settings%chi_grid_scale = [1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, &
            5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1]
       call secular_case("first iteration", 1, 0, .false., .true.)
       call secular_case("second iteration", 2, 0, .false., .false.)
       call secular_case("secular shear band (10x solar rotation)", 1, 1, .false., .true.)
       call secular_case("dynamical shear band (30x solar, near-adiabatic)", 1, 2, .false., .true.)
       call secular_case("shear band in the core's mu gradient", 1, 3, .false., .true.)
-      star%ctrl%gsf_inhibition_mode = 0
+      rotation_settings%gsf_inhibition_mode = 0
       call secular_case("GSF inhibition mode 0", 1, 0, .false., .false.)
-      star%ctrl%gsf_inhibition_mode = 2
+      rotation_settings%gsf_inhibition_mode = 2
       call secular_case("GSF inhibition mode 2", 1, 0, .false., .false.)
-      star%ctrl%gsf_inhibition_mode = 1
-      star%ctrl%lvfc = .true.
+      rotation_settings%gsf_inhibition_mode = 1
+      rotation_settings%use_zahn_coupling_factor = .true.
       call secular_case("Zahn coupling factor (lvfc)", 1, 0, .true., .false.)
-      star%ctrl%lvfc = .false.
-      star%ctrl%use_constant_background_diffusion = .true.
+      rotation_settings%use_zahn_coupling_factor = .false.
+      rotation_settings%use_constant_background_diffusion = .true.
       call secular_case("constant background diffusion", 1, 0, .false., .false.)
-      star%ctrl%use_constant_background_diffusion = .false.
-      star%ctrl%no_am_transport_in_core = .true.
+      rotation_settings%use_constant_background_diffusion = .false.
+      rotation_settings%no_am_transport_in_core = .true.
       call secular_case("no transport in the core", 1, 0, .false., .false.)
-      star%ctrl%no_am_transport_in_core = .false.
+      rotation_settings%no_am_transport_in_core = .false.
 
 end subroutine secular_check
 

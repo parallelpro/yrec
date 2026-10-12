@@ -6,6 +6,7 @@
 ! (diffusion_velocity_scales), the Zahn coupling factor and the
 ! quadrupole moment of the distorted star.
 module circulation
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
@@ -72,7 +73,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
       call apply_velocity_scales()
       if (iteration.gt.1) call average_with_previous()
       call sum_velocities()
-      if (star%ctrl%no_am_transport_in_core) call zero_transport_in_core()
+      if (rotation_settings%no_am_transport_in_core) call zero_transport_in_core()
 
 contains
 
@@ -85,7 +86,7 @@ subroutine store_previous_velocities()
          circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
          circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)
       end do
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
             rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
             rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
@@ -166,7 +167,7 @@ subroutine eddington_sweet_velocity()
  303        format(i5,' RAT ',1pe10.3,' POT SPH,CYL,QUA', &
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
-         if (.not.star%ctrl%use_diffusion_advection_transport) then
+         if (.not.rotation_settings%use_diffusion_advection_transport) then
             star%es_circulation_velocity(i) = &
                  abs(rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)- &
                  rot_scr%es_shear_coeff(i)*qw)
@@ -206,7 +207,7 @@ subroutine inhibit_by_mu_gradient()
           ddtest2 = max(ddel,1.0d-3)
           qqq = ddtest/ddtest2
           star%es_circulation_velocity(i) = star%es_circulation_velocity(i)*qqq
-          if (star%ctrl%use_diffusion_advection_transport) then
+          if (rotation_settings%use_diffusion_advection_transport) then
              rot_scr%es_advective_velocity(i) = rot_scr%es_advective_velocity(i)*qqq
              rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)*qqq
           end if
@@ -235,7 +236,7 @@ subroutine gsf_velocity()
               am_transport_convective_flag(i-1)) cycle
 ! MHP 8/93 STABILITY CONDITION ADDED, NEGLECTING THE EFFECTS OF
 ! MU GRADIENTS.
-         if (star%ctrl%gsf_inhibition_mode.eq.2 .or. star%ctrl%gsf_inhibition_mode.eq.0) then
+         if (rotation_settings%gsf_inhibition_mode.eq.2 .or. rotation_settings%gsf_inhibition_mode.eq.0) then
             qwrmx = 2.0d0*sqrt(rot_scr%kinematic_viscosity_interface(i)/ &
                  rot_scr%thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
             if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
@@ -248,7 +249,7 @@ subroutine gsf_velocity()
             fxx = 1.0d0
          end if
          dr = radius(i)-radius(i-1)
-         if (star%ctrl%gsf_inhibition_mode.eq.0) then
+         if (rotation_settings%gsf_inhibition_mode.eq.0) then
             qwrmx=2.0d0*sqrt(rot_scr%gravity_factor_interface(i)* &
                  abs(mid_scr%mu(i)-mid_scr%mu(i-1)) &
                  /dr/rot_scr%mean_molecular_weight_interface(i))
@@ -344,7 +345,7 @@ subroutine shear_velocities()
 ! MHP 3/92 SQUARE ROOT OF PR# NEEDED, NOT PR # - ERROR CORRECTED!
 ! THE VELOCITY ESTIMATE HERE IS FROM ZAHN 1991.
          qwrmx = sqrt(rot_scr%kinematic_viscosity_interface(i)/ &
-              rot_scr%thermal_diffusivity_interface(i)*1.25d-1*star%ctrl%critical_reynolds)* &
+              rot_scr%thermal_diffusivity_interface(i)*1.25d-1*rotation_settings%critical_reynolds)* &
               dlnomega_dlnr_max(i)
          if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
 !  UNSTABLE; CHECK FOR MU GRADIENTS.
@@ -383,24 +384,24 @@ subroutine apply_velocity_scales()
 !  MULTIPLY THE VELOCITY ESTIMATES BY THE USER-DEFINED SCALE FACTORS
 !  (MU-GRADIENT INHIBITION IS ALREADY INCLUDED ABOVE).
       do i = zone_min,zone_max
-         star%es_circulation_velocity(i)=abs(star%ctrl%es_velocity_scale* &
+         star%es_circulation_velocity(i)=abs(rotation_settings%es_velocity_scale* &
               star%es_circulation_velocity(i))
-         star%gsf_circulation_velocity(i) = star%ctrl%gsf_velocity_scale* &
+         star%gsf_circulation_velocity(i) = rotation_settings%gsf_velocity_scale* &
               star%gsf_circulation_velocity(i)
-         star%secular_shear_velocity(i)= star%ctrl%secular_shear_velocity_scale* &
+         star%secular_shear_velocity(i)= rotation_settings%secular_shear_velocity_scale* &
               star%secular_shear_velocity(i)
       end do
 ! MHP 11/94
 ! REPEAT FOR DIF+AD
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
-               rot_scr%es_diffusive_velocity(i)=abs(star%ctrl%es_velocity_scale* &
+               rot_scr%es_diffusive_velocity(i)=abs(rotation_settings%es_velocity_scale* &
                     rot_scr%es_diffusive_velocity(i))
-               rot_scr%es_advective_velocity(i)=star%ctrl%es_velocity_scale* &
+               rot_scr%es_advective_velocity(i)=rotation_settings%es_velocity_scale* &
                     rot_scr%es_advective_velocity(i)
          end do
       end if
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
 ! MHP 05/02
 ! CHANGED TO REFLECT THE DIFFERENT TREATMENT OF THE GSF INSTABILITY.
 ! THE ENDAL AND SOFIA VARIANT HAD V=THDIF*DLNWDR*W**2/R WHICH WAS
@@ -434,7 +435,7 @@ subroutine average_with_previous()
               + circ_scr%secular_shear_velocity_prev(i))
       end do
 ! MHP 11/94
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
          do i = zone_min,zone_max
             rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
                  + rot_scr%es_advective_velocity_prev(i))
@@ -497,7 +498,7 @@ end subroutine circulation_velocities
 
 ! ---------------------------------------------------------------
 ! 2/91 SUBROUTINE ALTERED TO ALLOW DIFFERENT FC'S FOR DIFFERENT
-!      MECHANISMS (star%ctrl%es_mixing_scale etc.)
+!      MECHANISMS (rotation_settings%es_mixing_scale etc.)
 !
 !  THIS SR DETERMINES THE RUN OF DIFFUSION COEFFICIENTS (VELOCITY
 !  TIMES LENGTH SCALE) FOR THE DIFFUSION EQUATIONS.
@@ -546,17 +547,17 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
          radius_mid(i) = 0.5d0*(radius_mid_prev(i)+radius_mid_prev(i-1))
       end do
 ! MHP 9/14 ADDED LOOP TO ALLOW A CONSTANT BACKGROUND DIFFUSION COEFFICIENT
-      con1 = c4pi*star%ctrl%difad_velocity_scale
-      if (.not.star%ctrl%use_constant_background_diffusion) then
-         if (.not.star%ctrl%lvfc) then
-            con2 = con1*star%ctrl%mixing_velocity_scale
+      con1 = c4pi*rotation_settings%difad_velocity_scale
+      if (.not.rotation_settings%use_constant_background_diffusion) then
+         if (.not.rotation_settings%use_zahn_coupling_factor) then
+            con2 = con1*rotation_settings%mixing_velocity_scale
             do i = 2,num_zones
                am_diffusion_coeff(i)=con1*(star%es_circulation_velocity(i)+ &
                     star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
-                    star%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
-                    star%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
+               mixing_diffusion_coeff(i)=con2*(rotation_settings%es_mixing_scale* &
+                    star%es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
+                    star%gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
                     star%secular_shear_velocity(i))*radius_mid(i)
             end do
          else
@@ -568,15 +569,15 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
             end do
          end if
       else
-         if (.not.star%ctrl%lvfc) then
-            con2 = con1*star%ctrl%mixing_velocity_scale
+         if (.not.rotation_settings%use_zahn_coupling_factor) then
+            con2 = con1*rotation_settings%mixing_velocity_scale
             do i = 2,num_zones
-               am_diffusion_coeff(i)=con1*(star%ctrl%constant_background_diffusion_coeff+ &
+               am_diffusion_coeff(i)=con1*(rotation_settings%constant_background_diffusion_coeff+ &
                     (star%es_circulation_velocity(i)+star%gsf_circulation_velocity(i)+ &
                     star%secular_shear_velocity(i))*radius_mid(i))
-               mixing_diffusion_coeff(i)=con2*(star%ctrl%es_mixing_scale* &
-                    star%es_circulation_velocity(i)+star%ctrl%gsf_mixing_scale* &
-                    star%gsf_circulation_velocity(i)+star%ctrl%secular_shear_mixing_scale* &
+               mixing_diffusion_coeff(i)=con2*(rotation_settings%es_mixing_scale* &
+                    star%es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
+                    star%gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
                     star%secular_shear_velocity(i))*radius_mid(i)
             end do
          else
@@ -587,12 +588,12 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
                mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
 ! MHP 8/13 ADD D.C. AFTER SCALE FACTOR FOR MIXING APPLIED
                am_diffusion_coeff(i) = am_diffusion_coeff(i)+ &
-                    con1*star%ctrl%constant_background_diffusion_coeff
+                    con1*rotation_settings%constant_background_diffusion_coeff
             end do
          end if
       end if
 ! OPTION TO SUPPRESS ANGULAR MOMENTUM TRANSPORT (BUT PERMIT MIXING).
-      if (star%ctrl%no_am_transport_in_core) then
+      if (rotation_settings%no_am_transport_in_core) then
          do i = 2,num_zones
             am_diffusion_coeff(i) = 0.0d0
          end do
@@ -637,7 +638,7 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
 
 ! IF FC = 0, SKIP CALCULATION (NO MIXING).
 
-      if (star%ctrl%mixing_velocity_scale.le.0.0D0) then
+      if (rotation_settings%mixing_velocity_scale.le.0.0D0) then
          do zone_index = zone_min, zone_max
             star%vfc(zone_index) = 0.0D0
          end do
@@ -702,8 +703,8 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
          else
             denom_test = max(abs(circ_velocity(zone_index)- &
                  half_dlnj_dlnr(zone_index)*diffusion_velocity(zone_index))/ &
-                 diffusion_velocity(zone_index),star%ctrl%mixing_velocity_scale)
-            star%vfc(zone_index) = star%ctrl%mixing_velocity_scale/denom_test
+                 diffusion_velocity(zone_index),rotation_settings%mixing_velocity_scale)
+            star%vfc(zone_index) = rotation_settings%mixing_velocity_scale/denom_test
          endif
       end do
 

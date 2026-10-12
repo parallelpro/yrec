@@ -11,6 +11,7 @@
 ! am_transport_convective_flag_mid) goes into rot_scr, where the rest of
 ! the sub-step reads it.
 module mid_timestep_model
+      use rotation_configuration, only: rotation_settings
       use am_regions, only: am_convective_regions
       use omega_profile, only: solid_body_omega, omega_from_j
       implicit none
@@ -59,7 +60,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
       ierr = 0
 
       num_species_tracked = 11
-      if (star%job%use_extended_composition) num_species_tracked = 15
+      if (rotation_settings%use_extended_composition) num_species_tracked = 15
       call start_substep_composition()
       call interpolate_structure()
       call settle_convective_state()
@@ -255,7 +256,7 @@ end subroutine locate_convection_zones
 ! ---------------------------------------------------------------
 subroutine rotate_midpoint_model()
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
-      if (.not.star%ctrl%force_solid_body_rotation .and. (star%ctrl%solid_body_mode_flag.ne.1)) then
+      if (.not.rotation_settings%force_solid_body_rotation .and. (rotation_settings%solid_body_mode_flag.ne.1)) then
 !  NOW FIND THE RUN OF ROTATION VARIABLES THAT ARE CONSISTENT WITH THE
 !  INTERMEDIATE STRUCTURE AND THE RUN OF SPECIFIC ANGULAR MOMENTUM J/M.
 !  J/M = I/M * OMEGA.
@@ -356,7 +357,7 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
 
       ierr = 0
 
-      if (star%job%use_extended_composition) then
+      if (rotation_settings%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -394,7 +395,7 @@ subroutine settle_helium()
 ! HQPR=VECTOR OF D LN P/DR.
 ! STOT=TOTAL STELLAR MASS(UNLOGGED).
       settling: do
-         if (composition(1,1).lt.star%ctrl%hydrogen_diffusion_floor) then
+         if (composition(1,1).lt.rotation_settings%hydrogen_diffusion_floor) then
             star%job%diffuse_helium_active=.false.
             exit settling
          end if
@@ -419,7 +420,7 @@ subroutine settle_helium()
          if (convective_zone_bounds(num_convective_zones,1).gt.2 .or. convective_zone_bounds(num_convective_zones,2).ne.num_zones) then
          outer_boundary_zone = radiative_zone_bounds(num_radiative_zones,2)
          do zone_idx = outer_boundary_zone,1,-1
-            if (composition(2,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
+            if (composition(2,zone_idx).gt.rotation_settings%helium_diffusion_min) exit
          end do
          if (zone_idx < (1)) then
 !   Y<YMIN FOR THE WHOLE STAR IF THE CODE GETS HERE.
@@ -447,7 +448,7 @@ subroutine settle_helium()
             if (solver_diagnostics()) write(run_log_unit,*) 'JMAX=', &
                  outer_boundary_zone,' FM= ', &
                  mass_fraction_above,' TSCALE=',settling_timescale
-            max_settling_dt = star%ctrl%settling_timestep_fraction*settling_timescale
+            max_settling_dt = rotation_settings%settling_timestep_fraction*settling_timescale
             num_settling_substeps = int(timestep/max_settling_dt)
             if (mod(max_settling_dt,timestep).ne.0.0d0.or. &
                  num_settling_substeps.eq.0) &

@@ -24,6 +24,7 @@
 ! in each, Omega solves Omega = Omega_0 - dOmega(Omega_avg) by averaging
 ! the explicit and implicit solutions (MHP 12/91).
 module magnetic_braking
+      use rotation_configuration, only: rotation_settings
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star, json
       use physical_constants, only: ln10, cgl, log10_radius_from_l_teff
@@ -78,7 +79,7 @@ subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bot
       ierr = 0
       law%cz_moment_of_inertia = cz_moment_of_inertia
       law%total_mass_msun = total_mass_msun
-      if (star%ctrl%use_pmm_wind_law) then
+      if (rotation_settings%use_pmm_wind_law) then
          call set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       else
          call set_kawaler_law(.true., law, ierr)
@@ -154,29 +155,29 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
       law%cz_moment_of_inertia = cz_moment_of_inertia
       omega_first = omega_old
       omega_now = omega_surface
-      if (star%ctrl%use_pmm_wind_law) then
-         if (star%ctrl%scale_by_rossby_number) then
+      if (rotation_settings%use_pmm_wind_law) then
+         if (rotation_settings%scale_by_rossby_number) then
             law%turnover_timescale = interpolated_turnover_timescale()
-            law%omega_saturation = star%job%wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
+            law%omega_saturation = rotation_settings%wind_saturation_omega*rotation_settings%pmm_solar_turnover_timescale/ &
                  law%turnover_timescale
 ! with B-field scaling, Omega and Omega_sat both carry tau_cz/tau_cz(Sun)
-            if (star%ctrl%scale_by_b_field) then
+            if (rotation_settings%scale_by_b_field) then
                omega_first = omega_first*law%turnover_timescale/ &
-                    star%ctrl%pmm_solar_turnover_timescale
+                    rotation_settings%pmm_solar_turnover_timescale
                omega_now = omega_now*law%turnover_timescale/ &
-                    star%ctrl%pmm_solar_turnover_timescale
+                    rotation_settings%pmm_solar_turnover_timescale
                law%omega_saturation = law%omega_saturation*law%turnover_timescale/ &
-                    star%ctrl%pmm_solar_turnover_timescale
+                    rotation_settings%pmm_solar_turnover_timescale
             endif
          else
-            law%omega_saturation = star%job%wind_saturation_omega
+            law%omega_saturation = rotation_settings%wind_saturation_omega
          endif
          law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
-         wind_coefficient = (full_timestep/cz_moment_of_inertia)*star%ctrl%constfactor* &
+         wind_coefficient = (full_timestep/cz_moment_of_inertia)*rotation_settings%wind_constant* &
               law%structure_factor
 ! the solar centrifugal term, without the 1/G of brake_convection_zone's:
 ! the original divided by exp(ln10*gl) with gl an unset local (zero)
-         law%fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/star%solar_mass_cgs
+         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*star%solar_radius_cgs**3/star%solar_mass_cgs
          law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
               star%log10_solar_luminosity)
          fcen1 = matt_centrifugal_factor(omega_old, law%fsun, law%log10_radius, total_mass_msun)
@@ -185,16 +186,16 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
          call set_kawaler_law(.false., law, ierr)
          if (ierr /= 0) return
          call set_kawaler_radius(log_luminosity_lsun, log_teff, law)
-         wind_coefficient = full_timestep/cz_moment_of_inertia*star%ctrl%constfactor* &
-              pow((law%mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
-              *pow((law%total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)*pow(total_mass_msun, star%ctrl%exm)
+         wind_coefficient = full_timestep/cz_moment_of_inertia*rotation_settings%wind_constant* &
+              pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
+              *pow((law%total_radius_cm/star%solar_radius_cgs), rotation_settings%wind_radius_exponent)*pow(total_mass_msun, rotation_settings%wind_mass_exponent)
          fcen1 = 1.0d0
          fcen2 = 1.0d0
       endif
       domega_start = wind_coefficient*pow(min(omega_first,law%omega_saturation), &
-           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_old*fcen1
+           rotation_settings%wind_law_omega_exponent-1.0d0)*omega_old*fcen1
       domega_end_this_iter = wind_coefficient*pow(min(omega_now,law%omega_saturation), &
-           star%ctrl%wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
+           rotation_settings%wind_law_omega_exponent-1.0d0)*omega_surface*fcen2
       if (iteration_number == 1) then
          domega_end = domega_end_this_iter
       else
@@ -211,19 +212,19 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       type(braking_law), intent(inout) :: law
 
       law%matt = .true.
-      if (star%ctrl%scale_by_rossby_number) then
+      if (rotation_settings%scale_by_rossby_number) then
          law%turnover_timescale = interpolated_turnover_timescale()
-         if (star%ctrl%scale_by_b_field) then
-            law%omega_saturation = star%job%wind_saturation_omega
+         if (rotation_settings%scale_by_b_field) then
+            law%omega_saturation = rotation_settings%wind_saturation_omega
          else
-            law%omega_saturation = star%job%wind_saturation_omega*star%ctrl%pmm_solar_turnover_timescale/ &
+            law%omega_saturation = rotation_settings%wind_saturation_omega*rotation_settings%pmm_solar_turnover_timescale/ &
                  law%turnover_timescale
          endif
       else
-         law%omega_saturation = star%job%wind_saturation_omega
+         law%omega_saturation = rotation_settings%wind_saturation_omega
       endif
       law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
-      law%fsun = 0.5*star%ctrl%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
+      law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
       law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
            star%log10_solar_luminosity)
 end subroutine set_matt_law
@@ -240,19 +241,19 @@ subroutine set_kawaler_law(check_transport, law, ierr)
 
       ierr = 0
       law%matt = .false.
-      if (check_transport .and. .not. star%job%instability_transport_active) then
-         law%omega_saturation = star%job%wind_saturation_omega
-      else if (star%job%wind_saturation_omega > 1.0d0) then
+      if (check_transport .and. .not. rotation_settings%instability_transport_active) then
+         law%omega_saturation = rotation_settings%wind_saturation_omega
+      else if (rotation_settings%wind_saturation_omega > 1.0d0) then
          if (star%convective_turnover_timescale > 1.0d0) then
-            law%omega_saturation = star%job%wind_saturation_omega/star%convective_turnover_timescale
+            law%omega_saturation = rotation_settings%wind_saturation_omega/star%convective_turnover_timescale
          else
-            write(*,911)star%job%wind_saturation_omega,star%convective_turnover_timescale
+            write(*,911)rotation_settings%wind_saturation_omega,star%convective_turnover_timescale
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
             ierr = 1
             return
          endif
       else
-         law%omega_saturation = star%job%wind_saturation_omega
+         law%omega_saturation = rotation_settings%wind_saturation_omega
       endif
 end subroutine set_kawaler_law
 
@@ -278,18 +279,18 @@ real(dp) function domega(law, dt, omega, initial)
 
       if (law%matt) then
          omega_scaled = omega
-         if (star%ctrl%scale_by_b_field .and. (star%ctrl%scale_by_rossby_number .or. .not. initial)) &
-              omega_scaled = omega*law%turnover_timescale/star%ctrl%pmm_solar_turnover_timescale
+         if (rotation_settings%scale_by_b_field .and. (rotation_settings%scale_by_rossby_number .or. .not. initial)) &
+              omega_scaled = omega*law%turnover_timescale/rotation_settings%pmm_solar_turnover_timescale
          fcen = matt_centrifugal_factor(omega, law%fsun, law%log10_radius, law%total_mass_msun)
-         domega = (dt/law%cz_moment_of_inertia)*star%ctrl%constfactor* &
+         domega = (dt/law%cz_moment_of_inertia)*rotation_settings%wind_constant* &
               law%structure_factor*omega &
-              *pow(min(omega_scaled,law%omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))*fcen
+              *pow(min(omega_scaled,law%omega_saturation), (rotation_settings%wind_law_omega_exponent-1.0d0))*fcen
       else
-         domega = (dt/law%cz_moment_of_inertia)*star%ctrl%constfactor* &
-              pow((law%mass_loss_rate_msun_yr/1.0d-14), star%ctrl%exmd) &
-              *omega*pow((law%total_radius_cm/star%solar_radius_cgs), star%ctrl%exr)* &
-              pow(law%total_mass_msun, star%ctrl%exm) &
-              *pow(min(omega,law%omega_saturation), (star%ctrl%wind_law_omega_exponent-1.0d0))
+         domega = (dt/law%cz_moment_of_inertia)*rotation_settings%wind_constant* &
+              pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
+              *omega*pow((law%total_radius_cm/star%solar_radius_cgs), rotation_settings%wind_radius_exponent)* &
+              pow(law%total_mass_msun, rotation_settings%wind_mass_exponent) &
+              *pow(min(omega,law%omega_saturation), (rotation_settings%wind_law_omega_exponent-1.0d0))
       end if
 end function domega
 
@@ -306,15 +307,15 @@ real(dp) function matt_structure_factor(total_mass_msun, log_luminosity_lsun, lo
            star%log10_solar_luminosity))/star%solar_radius_cgs
       luminosity_lsun = exp10(log_luminosity_lsun)
       photospheric_pressure_ratio = exp10((star%pphot0+star%fracstep*(star%pphot-star%pphot0)))/ &
-           (exp10(star%ctrl%pmm_solar_pressure))
-      if (star%ctrl%scale_by_rossby_number) then
-         turnover_ratio = interpolated_turnover_timescale()/star%ctrl%pmm_solar_turnover_timescale
+           (exp10(rotation_settings%pmm_solar_pressure))
+      if (rotation_settings%scale_by_rossby_number) then
+         turnover_ratio = interpolated_turnover_timescale()/rotation_settings%pmm_solar_turnover_timescale
       else
          turnover_ratio = 1.
       endif
-      matt_structure_factor = pow(total_mass_msun, star%ctrl%exm) * pow(radius_rsun, star%ctrl%exr) * &
-           pow(luminosity_lsun, star%ctrl%exl) * pow(photospheric_pressure_ratio, star%ctrl%expr) &
-           * pow(turnover_ratio, star%ctrl%extau)
+      matt_structure_factor = pow(total_mass_msun, rotation_settings%wind_mass_exponent) * pow(radius_rsun, rotation_settings%wind_radius_exponent) * &
+           pow(luminosity_lsun, rotation_settings%wind_luminosity_exponent) * pow(photospheric_pressure_ratio, rotation_settings%wind_pressure_exponent) &
+           * pow(turnover_ratio, rotation_settings%wind_turnover_exponent)
 end function matt_structure_factor
 
 ! The centrifugal reduction of Matt et al. (2012), relative to the Sun:
@@ -324,7 +325,7 @@ real(dp) function matt_centrifugal_factor(omega, fsun, log10_radius, total_mass_
       real(dp) :: f
       f = 0.5*omega**2*exp(ln10*(3.0*log10_radius-cgl))/ &
            total_mass_msun/star%solar_mass_cgs
-      matt_centrifugal_factor = pow(((star%ctrl%c_2**2+fsun)/(star%ctrl%c_2**2+f)), star%ctrl%excen)
+      matt_centrifugal_factor = pow(((rotation_settings%wind_centrifugal_constant**2+fsun)/(rotation_settings%wind_centrifugal_constant**2+f)), rotation_settings%wind_centrifugal_exponent)
 end function matt_centrifugal_factor
 
 ! tau_cz interpolated in the step (MHP 8/17)

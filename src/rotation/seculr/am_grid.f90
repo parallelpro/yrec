@@ -5,6 +5,7 @@
 ! (am_transport_grid), and the map of its results back to the model
 ! (equal_grid_to_model).
 module am_grid
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: am_transport_grid, equal_grid_to_model
@@ -33,7 +34,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
      eq_mass, eq_omega, single_interface_flag)
       use rotation_scratch_lib
       use equal_grid
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use numerics_lib
       use math_lib
@@ -208,8 +209,8 @@ subroutine edge_coefficients()
       call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
            rot_scr%num_eq_points, eval_x, table_x, table_y, eq_mixing_diffusion_coeff)
 ! ADD DIFFUSION PLUS ADVECTION TREATMENT IF DESIRED
-      if (star%ctrl%use_diffusion_advection_transport) then
-         scale_factor = 0.2d0*c4pi*star%ctrl%difad_velocity_scale
+      if (rotation_settings%use_diffusion_advection_transport) then
+         scale_factor = 0.2d0*c4pi*rotation_settings%difad_velocity_scale
          table_y(1) = scale_factor*rot_scr%es_advective_velocity(zone_begin + 1)
          do i = 2,ntab
             ii = zone_begin + i - 1
@@ -259,7 +260,7 @@ subroutine apply_jacobians()
 ! NOW ADD MULTIPLICATIVE FACTORS TO DIFFUSION COEFFICIENTS
       call multiply_by_exp10(eq_am_diffusion_coeff, eval_y, rot_scr%num_eq_points)
 ! MHP 05/02
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
          call multiply_by_exp10(rot_scr%am_advective_coeff, eval_y, rot_scr%num_eq_points)
          call multiply_by_exp10(rot_scr%am_diffusive_coeff, eval_y, rot_scr%num_eq_points)
       end if

@@ -50,6 +50,7 @@
 ! factors and the order d omega/dr shear terms (difad_shear_coeff1/2,
 ! facd2/facd3), set here.
 module stability_coefficients
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: rotation_stability_setup
@@ -157,7 +158,7 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
            g_i => rot_scr%gravity_factor_interface, eps_i => rot_scr%eps_total_interface, &
            grada_i => rot_scr%grada_interface, grad_i => rot_scr%gradT_interface)
       do zone_idx = transport_zone_begin,transport_zone_end
-         if(.not.star%ctrl%use_diffusion_advection_transport)then
+         if(.not.rotation_settings%use_diffusion_advection_transport)then
             dlnmu_dlnp = (log10(mid_scr%mu(zone_idx))-log10(mid_scr%mu(zone_idx-1)))/ &
                  (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          else
@@ -209,7 +210,7 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
       end do
 ! The advection-diffusion transport's terms of order d omega/dr
 ! (Maeder & Zahn 1998).
-      if(star%ctrl%use_diffusion_advection_transport)then
+      if(rotation_settings%use_diffusion_advection_transport)then
          temperature_scale_height_below = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
               2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
               /mass_unlogged(transport_zone_begin-1)/grav_const/mid_scr%gradr(transport_zone_begin-1)

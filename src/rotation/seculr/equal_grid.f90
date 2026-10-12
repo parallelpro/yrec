@@ -12,6 +12,7 @@
 ! the two es_advective/es_diffusive interpolations under
 ! use_diffusion_advection_transport (a scale factor on each table entry).
 module equal_grid
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: edge_grid_abscissae, interp_edge_coeff, dchi_dr_jacobian, &
@@ -92,10 +93,10 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
            four_pi_rho_r2, dchi_dr
 
 ! PRODUCT OF RHO R^2 BY D CHI/DR
-      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*surface_luminosity_lsun* &
+      mass_scale = rotation_settings%chi_grid_scale(ichi_dm_max)
+      luminosity_scale = rotation_settings%chi_grid_scale(ichi_dl_max)*surface_luminosity_lsun* &
            star%solar_luminosity_cgs
-      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
+      pressure_scale = rotation_settings%chi_grid_scale(ichi_dp_core_max)
       do i = 1, ntab
          ii = zone_begin + i - 1
          table_x(i) = chi(i)
@@ -140,7 +141,7 @@ end subroutine multiply_by_exp10
 subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use physical_constants
       use numerics_lib
@@ -161,9 +162,9 @@ subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin
       double precision :: mass_scale, luminosity_scale, pressure_scale
 
 ! USE THE MODEL CRITERIA FOR ASSIGNING THE SPACING BETWEEN GRID POINTS.
-      mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = star%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)
-      pressure_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
+      mass_scale = rotation_settings%chi_grid_scale(ichi_dm_max)
+      luminosity_scale = rotation_settings%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)
+      pressure_scale = rotation_settings%chi_grid_scale(ichi_dp_core_max)
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1

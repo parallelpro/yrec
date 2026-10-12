@@ -91,10 +91,11 @@ PUBLIC = {
                    "set_convection_settings", "set_convection_envelope_metals"},
     # rotation deliberately has no facade (multi-primitive surface, a
     # user decision, confirmed 2026-10-12): its modules are used by name,
-    # and these are the procedures core and setup may call.
+    # and these are the procedures core and setup may call
+    # (set_rotation_settings installs its settings record each run card).
     "rotation": {"evolve_angular_momentum", "omega_from_j",
                  "rotation_shape_factors", "zone_moments_of_inertia",
-                 "am_convective_regions", "viscos"},
+                 "am_convective_regions", "viscos", "set_rotation_settings"},
     # element diffusion (gravitational settling and microscopic
     # diffusion of the elements), split out of rotation in 2026-10: the
     # original routines and the newer ones, chosen by
@@ -178,6 +179,29 @@ def check_star_free(src_root):
                                 "slot constants are in composition_layout)")
             if re.search(r"(?i)\bstar%", code):
                 problems.append(f"{rel}: references star% (STAR_FREE_DIRS)")
+    return problems
+
+
+# Domains that use the star object for their state but read their
+# configuration from a settings record (2026-10): their code may not
+# read star%ctrl or star%job, except the listed members, which are
+# state shared with core rather than settings (rotation: the settling
+# latch, which settling turns off when X or Y runs out).
+CONTROLS_FREE_DIRS = {"rotation": {"job%diffuse_helium_active"}}
+
+def check_controls_free(src_root):
+    problems = []
+    read = re.compile(r"(?i)\bstar%((?:ctrl|job)%\w+)")
+    for d, allowed in CONTROLS_FREE_DIRS.items():
+        for f in sorted((src_root / d).rglob("*.f90")):
+            rel = f.relative_to(src_root).as_posix()
+            if "/test/" in rel:
+                continue
+            for name in sorted(set(m.lower() for m in read.findall(
+                    strip_comments(f.read_text(errors="replace"))))):
+                if name not in allowed:
+                    problems.append(f"{rel}: reads star%{name} (CONTROLS_FREE_DIRS; "
+                                    f"add it to {d}'s settings record)")
     return problems
 
 
@@ -328,6 +352,13 @@ def main():
     if free_problems:
         print("STAR-FREE CONTRACT VIOLATIONS:")
         for b in free_problems:
+            print("  " + b)
+        return 1
+
+    controls_problems = check_controls_free(SRC)
+    if controls_problems:
+        print("CONTROLS-FREE CONTRACT VIOLATIONS:")
+        for b in controls_problems:
             print("  " + b)
         return 1
 

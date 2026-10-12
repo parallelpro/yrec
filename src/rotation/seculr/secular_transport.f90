@@ -37,6 +37,7 @@
 ! unstable-domain bounds, the surface-CZ terms, and the outputs.
 ! Wrapped as a module procedure so the compiler enforces the call.
 module secular_transport
+      use rotation_configuration, only: rotation_settings
       use transport_checks, only: check_angular_momentum, check_composition
       use am_grid, only: am_transport_grid, equal_grid_to_model
       use rotational_mixing, only: diffuse_composition_driver
@@ -135,7 +136,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 ! and instability transport are on, which is why the many non-rotating
 ! decks that set it run fine; here, where it would take effect, the run
 ! stops instead.
-      if (star%ctrl%use_diffusion_advection_transport) then
+      if (rotation_settings%use_diffusion_advection_transport) then
          write(*,'(a)') 'apply_secular_transport: use_diffusion_advection_transport' &
               //' (LDIFAD) is not functional -- its advective transport' &
               //' coefficients are never computed. Set it .false.'
@@ -182,7 +183,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 !  ITERATION IS USED TO GET THE VELOCITIES.  THIS 'NEW' VELOCITY IS THEN
 !  AVERAGED WITH THE VELOCITY FOUND IN THE PREVIOUS ITERATION TO GET A
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
-      do iteration = 1,star%ctrl%max_diffusion_iters
+      do iteration = 1,rotation_settings%max_diffusion_iters
          omega_surface = rot_scr%omega_mid(star%nz)
          if(iteration.gt.1) call restart_iteration()
          call spin_down_uncoupled_surface()
@@ -234,8 +235,8 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
          endif
 ! MHP 3/09 SKIP ANGULAR MOMENTUM EVOLUTION FOR SOLID BODY MODELS
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
-         if(.not.star%ctrl%force_solid_body_rotation .and. &
-              (star%ctrl%solid_body_mode_flag.ne.1))then
+         if(.not.rotation_settings%force_solid_body_rotation .and. &
+              (rotation_settings%solid_body_mode_flag.ne.1))then
             call transport_angular_momentum_in_region()
             if (ierr /= 0) return
          endif
@@ -267,7 +268,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
               diffusion_solve_ok,redo_flag, ierr)
          if (ierr /= 0) return
 ! MHP 9/93
-         if(star%ctrl%no_am_transport_in_core)diffusion_solve_ok = .true.
+         if(rotation_settings%no_am_transport_in_core)diffusion_solve_ok = .true.
 ! IF LOK=T,CONVERGED.
          if(diffusion_solve_ok)exit
 ! IF LREDO=T, A PROBLEM REQUIRES TIMESTEP CUTTING.
@@ -281,7 +282,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
       rot_scr%am_transport_convective_flag_mid(1) = .true.
       rot_scr%am_transport_convective_flag_mid(star%nz) = .true.
       species_begin = 5
-      if(star%job%use_extended_composition)then
+      if(rotation_settings%use_extended_composition)then
          species_end = 15
       else
          species_end = 11
@@ -316,7 +317,7 @@ subroutine compute_circulation()
            rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-      if(star%ctrl%lvfc) &
+      if(rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,rot_scr%omega_mid)
 end subroutine compute_circulation
@@ -356,15 +357,15 @@ subroutine spin_down_uncoupled_surface()
          do i = zone_max,star%nz
             cz_moment_of_inertia = cz_moment_of_inertia + rot_scr%moment_of_inertia_mid(i)
          end do
-         wind_loss_active = star%job%use_wind_torque
+         wind_loss_active = rotation_settings%use_wind_torque
          call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom, &
               cz_mass_top,zone_max,star%nz,wind_loss_active,omega_surface, &
               star%star_mass,star%log_Teff,cz_moment_of_inertia, &
               star%j_rot, ierr)
          if (ierr /= 0) return
-      else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
-           (star%ctrl%solid_body_mode_flag.eq.1)))then
-         wind_loss_active = star%job%use_wind_torque
+      else if(surface_cz_active .and. (rotation_settings%force_solid_body_rotation .or. &
+           (rotation_settings%solid_body_mode_flag.eq.1)))then
+         wind_loss_active = rotation_settings%use_wind_torque
          solid_cz_mass_bottom = 0.0D0
          solid_cz_mass_top = exp(ln10*star%log_total_mass)
          solid_start_zone = 1
@@ -425,7 +426,7 @@ subroutine transport_angular_momentum_in_region()
             fix_omega_at_surface = .true.
          else
             fix_omega_at_surface = .false.
-            if(star%job%use_wind_torque)then
+            if(rotation_settings%use_wind_torque)then
                cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%num_eq_points)
                omega_surface = rot_scr%omega_mid(star%nz)
                call compute_solid_body_braking(star%log_L,sub_timestep, &
@@ -444,7 +445,7 @@ subroutine transport_angular_momentum_in_region()
          wind_loss_implicit = 0.0D0
       endif
       diffusion_converged = .false.
-      if(.not.star%ctrl%use_diffusion_advection_transport)then
+      if(.not.rotation_settings%use_diffusion_advection_transport)then
 !  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
          call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
               eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%num_eq_points, &

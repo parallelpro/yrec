@@ -4,6 +4,7 @@
 ! The conservation checks of a transport step: the angular momentum
 ! (check_angular_momentum) and the composition (check_composition).
 module transport_checks
+      use rotation_configuration, only: rotation_settings
       implicit none
       private
       public :: check_angular_momentum, check_composition
@@ -115,7 +116,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
       call measure_convergence()
       call update_omega()
       call smooth_gradient_reversals()
-      if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag) &
+      if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
            call report_largest_change()
 
 contains
@@ -176,7 +177,7 @@ subroutine measure_convergence()
               specific_angular_momentum(zone_index)
       end do
       if(abs(max_delta_j_by_iter(iteration_number)).le. &
-           star%ctrl%convergence_tolerance) then
+           rotation_settings%convergence_tolerance) then
          converged_flag = .true.
       endif
 end subroutine measure_convergence
@@ -189,17 +190,17 @@ subroutine update_omega()
 !  RELAX TOLERANCE FOR MOMENT OF INERTIA ITERATION EXCEPT FOR THE
 !  FINAL STEP.
       saved_tolerance = rot_scr%moment_of_inertia_tolerance
-      saved_acc_tolerance = star%job%acfpft
-      if(iteration_number.lt.star%ctrl%max_diffusion_iters.and..not.converged_flag)then
+      saved_acc_tolerance = rotation_settings%shape_tolerance
+      if(iteration_number.lt.rotation_settings%max_diffusion_iters.and..not.converged_flag)then
          rot_scr%moment_of_inertia_tolerance = &
-              max(star%ctrl%convergence_tolerance*1.0d-2,saved_tolerance)
-         star%job%acfpft = max(star%ctrl%convergence_tolerance*1.0d-2,saved_acc_tolerance)
+              max(rotation_settings%convergence_tolerance*1.0d-2,saved_tolerance)
+         rotation_settings%shape_tolerance = max(rotation_settings%convergence_tolerance*1.0d-2,saved_acc_tolerance)
       endif
       call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius)
       rot_scr%moment_of_inertia_tolerance = saved_tolerance
-      star%job%acfpft = saved_acc_tolerance
+      rotation_settings%shape_tolerance = saved_acc_tolerance
 end subroutine update_omega
 
 ! ---------------------------------------------------------------
@@ -286,7 +287,7 @@ subroutine smooth_gradient_reversals()
                        shell_mass,zone_bottom,zone_top,eta_squared, &
                        moment_of_inertia,omega,qiw,mean_radius,num_zones)
          end do
-         if(iteration_number.eq.star%ctrl%max_diffusion_iters.or.converged_flag) &
+         if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
   120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
                  i5,' AND ',i5,' ITERATION ',i5)
@@ -385,7 +386,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
 !  CHECK FOR ANOMALOUS COMPOSITIONS.
 !  PRIOR TO THE LAST ITERATION, ONLY DIFFUSION OF H,HE,HE3 PERFORMED.
 !  FIND NUMBER OF SPECIES BEING DIFFUSED.
-      if(iteration_number.eq.star%ctrl%max_diffusion_iters)then
+      if(iteration_number.eq.rotation_settings%max_diffusion_iters)then
          num_diffused_species = 11
       else
          num_diffused_species = 4

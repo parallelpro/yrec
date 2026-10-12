@@ -10,6 +10,7 @@
 ! instance each; yrec_reset snapshots and restores them, so an
 ! in-process rerun starts from the same state.
 module rotation_scratch_lib
+      use rotation_configuration, only: rotation_settings
       use star_info_lib, only: json, star
       implicit none
       private
@@ -204,8 +205,8 @@ contains
 ! MHP 9/94 disk locking: true while the disk-locking option is on and
 ! the model is still younger than the disk-locking age (Gyr).
       logical function disk_locking_engaged()
-      disk_locking_engaged = star%job%disk_locking_active .and. &
-           star%disk_gate_age_gyr.le.star%job%disk_locking_age_gyr
+      disk_locking_engaged = rotation_settings%disk_locking_active .and. &
+           star%disk_gate_age_gyr.le.rotation_settings%disk_locking_age_gyr
       end function disk_locking_engaged
 
 end module rotation_scratch_lib
