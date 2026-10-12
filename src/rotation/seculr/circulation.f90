@@ -41,7 +41,7 @@ contains
 subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
-     total_luminosity, timestep, log_pressure)
+     total_luminosity, log_pressure)
       use rotation_scratch_lib
 
       use star_info_lib, only: star, json
@@ -58,12 +58,11 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
       double precision, intent(in) :: dlnomega_dlnr(json), &
            dlnomega_dlnr_max(json)
       double precision, intent(out) :: total_circulation_velocity(json)
-      double precision, intent(in) :: total_luminosity, timestep, &
-           log_pressure(json)
+      double precision, intent(in) :: total_luminosity, log_pressure(json)
 ! --- locals ---
       integer :: i, i0, i1
       double precision :: dr, gmid, phistd, phis2, phi2, qw, &
-           q1, q2, q0, qmu, qp, ddel, ddtest, ddtest2, qqq, &
+           qmu, qp, ddel, ddtest, ddtest2, qqq, &
            qwrmx, fxx, qwrmx2, qwr, rmid, dlnwdr, dlnjmdr, fx, qwrmx_dyn, &
            wmin, dlnwdr0, dlnjmdr0, dell
 
@@ -95,12 +94,13 @@ subroutine store_previous_velocities()
          circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
          circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)
       end do
-      if (rotation_settings%use_diffusion_advection_transport) then
-         do i = zone_min,zone_max
-            rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
-            rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
-         end do
-      end if
+! (commented out: the advection-diffusion transport's velocities)
+!      if (rotation_settings%use_diffusion_advection_transport) then
+!         do i = zone_min,zone_max
+!            rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
+!            rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
+!         end do
+!      end if
 end subroutine store_previous_velocities
 
 ! ---------------------------------------------------------------
@@ -179,13 +179,12 @@ subroutine eddington_sweet_velocity()
  303        format(i5,' RAT ',1pe10.3,' POT SPH,CYL,QUA', &
                  3e10.3/' QUA,G,R ',6e12.3)
          end if
-         if (.not.rotation_settings%use_diffusion_advection_transport) then
 ! U_ES = |circulation_correction_ratio U_ES - es_shear_coeff qw|.
-            star%es_circulation_velocity(i) = &
-                 abs(rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)- &
-                 rot_scr%es_shear_coeff(i)*qw)
-         else
-! The advection-diffusion transport (Maeder & Zahn 1998; not functional,
+         star%es_circulation_velocity(i) = &
+              abs(rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)- &
+              rot_scr%es_shear_coeff(i)*qw)
+! (commented out: the advection-diffusion branch)
+! The advection-diffusion transport (Maeder & Zahn 1998; commented out,
 ! see secular_transport). theta_new is the d theta/dt term (MHP 6/02),
 !   theta_new = es_relaxation_factor (theta_mean qw - theta_prev)/timestep.
 ! With ratio = circulation_correction_ratio, the advective part is
@@ -201,23 +200,22 @@ subroutine eddington_sweet_velocity()
 ! where the es_shear_coeff term has the opposite sign to the branch
 ! above. second_deriv_geom_factor_eqgrid is second_deriv_geom_factor
 ! times omega.
-            rot_scr%theta_new(i) = rot_scr%es_relaxation_factor(i)*(rot_scr%theta_mean(i)*qw- &
-                 rot_scr%theta_prev(i))/timestep
-            rot_scr%es_advective_velocity(i) = 0.2d0* &
-                 (rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
-                 rot_scr%theta_new(i))
-            q1 = rot_scr%difad_shear_coeff1(i)*rot_scr%omega_interface(i)**2
-            q2 = rot_scr%difad_shear_coeff2(i)*qw
-            q0 = rot_scr%es_shear_coeff(i)*rot_scr%omega_interface(i)**2
-            rot_scr%es_diffusive_velocity(i) = 0.2d0*(q0+q1+q2)
-            star%es_circulation_velocity(i) = &
-                 rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
-                 rot_scr%theta_new(i)+ &
-                 (rot_scr%es_shear_coeff(i)+rot_scr%difad_shear_coeff1(i))*qw+ &
-                 rot_scr%difad_shear_coeff2(i)*((omega(i)-omega(i-1))/dr)**2
-            rot_scr%second_deriv_geom_factor_eqgrid(i) = &
-                 rot_scr%second_deriv_geom_factor(i)*rot_scr%omega_interface(i)
-         end if
+!            rot_scr%theta_new(i) = rot_scr%es_relaxation_factor(i)*(rot_scr%theta_mean(i)*qw- &
+!                 rot_scr%theta_prev(i))/timestep
+!            rot_scr%es_advective_velocity(i) = 0.2d0* &
+!                 (rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
+!                 rot_scr%theta_new(i))
+!            q1 = rot_scr%difad_shear_coeff1(i)*rot_scr%omega_interface(i)**2
+!            q2 = rot_scr%difad_shear_coeff2(i)*qw
+!            q0 = rot_scr%es_shear_coeff(i)*rot_scr%omega_interface(i)**2
+!            rot_scr%es_diffusive_velocity(i) = 0.2d0*(q0+q1+q2)
+!            star%es_circulation_velocity(i) = &
+!                 rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
+!                 rot_scr%theta_new(i)+ &
+!                 (rot_scr%es_shear_coeff(i)+rot_scr%difad_shear_coeff1(i))*qw+ &
+!                 rot_scr%difad_shear_coeff2(i)*((omega(i)-omega(i-1))/dr)**2
+!            rot_scr%second_deriv_geom_factor_eqgrid(i) = &
+!                 rot_scr%second_deriv_geom_factor(i)*rot_scr%omega_interface(i)
       end do
 end subroutine eddington_sweet_velocity
 
@@ -228,9 +226,11 @@ end subroutine eddington_sweet_velocity
 ! velocities are multiplied by
 !   qqq = max(del_grad_diff_interface, 1e-3)
 !         / max(del_grad_diff_interface + grad_mu, 1e-3).
-! Without the advection-diffusion transport, del_grad_diff_interface
-! already contains grad_mu (rotation_stability_setup), so grad_mu
-! enters this factor twice.
+! del_grad_diff_interface already contains grad_mu
+! (rotation_stability_setup), so grad_mu enters this factor twice and
+! the mu gradient can cut U_ES by at most a half. This is the F77
+! behaviour (setupv.f, vcirc.f), kept by the author's decision
+! (2026-10-12; docs/HOW_YREC_WORKS.md section 4.6).
 subroutine inhibit_by_mu_gradient()
        do i = zone_min,zone_max
           qmu = log(mid_scr%mu(i))-log(mid_scr%mu(i-1))
@@ -240,15 +240,15 @@ subroutine inhibit_by_mu_gradient()
           ddtest2 = max(ddel,1.0d-3)
           qqq = ddtest/ddtest2
           star%es_circulation_velocity(i) = star%es_circulation_velocity(i)*qqq
-          if (rotation_settings%use_diffusion_advection_transport) then
-             rot_scr%es_advective_velocity(i) = rot_scr%es_advective_velocity(i)*qqq
-             rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)*qqq
-          end if
-! The same factor on the advection-diffusion coefficients that contain
-! 1/Delta. They are set once per sub-step (rotation_stability_setup),
-! so each iteration multiplies them by qqq again.
-          rot_scr%es_relaxation_factor(i) = rot_scr%es_relaxation_factor(i)*qqq
-          rot_scr%velocity_coeff0(i) = rot_scr%velocity_coeff0(i)*qqq
+! (commented out: the factor on the advection-diffusion transport's
+! velocities and its coefficients that contain 1/Delta, set once per
+! sub-step and so multiplied by qqq again at each iteration)
+!          if (rotation_settings%use_diffusion_advection_transport) then
+!             rot_scr%es_advective_velocity(i) = rot_scr%es_advective_velocity(i)*qqq
+!             rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)*qqq
+!          end if
+!          rot_scr%es_relaxation_factor(i) = rot_scr%es_relaxation_factor(i)*qqq
+!          rot_scr%velocity_coeff0(i) = rot_scr%velocity_coeff0(i)*qqq
        end do
 end subroutine inhibit_by_mu_gradient
 
@@ -446,16 +446,18 @@ subroutine apply_velocity_scales()
          star%secular_shear_velocity(i)= rotation_settings%secular_shear_velocity_scale* &
               star%secular_shear_velocity(i)
       end do
+! (commented out: the scales of the advection-diffusion transport's
+! parts, and their GSF and shear diffusion coefficients r |U|)
 ! The same for the advection-diffusion parts (MHP 11/94).
-      if (rotation_settings%use_diffusion_advection_transport) then
-         do i = zone_min,zone_max
-               rot_scr%es_diffusive_velocity(i)=abs(rotation_settings%es_velocity_scale* &
-                    rot_scr%es_diffusive_velocity(i))
-               rot_scr%es_advective_velocity(i)=rotation_settings%es_velocity_scale* &
-                    rot_scr%es_advective_velocity(i)
-         end do
-      end if
-      if (rotation_settings%use_diffusion_advection_transport) then
+!      if (rotation_settings%use_diffusion_advection_transport) then
+!         do i = zone_min,zone_max
+!               rot_scr%es_diffusive_velocity(i)=abs(rotation_settings%es_velocity_scale* &
+!                    rot_scr%es_diffusive_velocity(i))
+!               rot_scr%es_advective_velocity(i)=rotation_settings%es_velocity_scale* &
+!                    rot_scr%es_advective_velocity(i)
+!         end do
+!      end if
+!      if (rotation_settings%use_diffusion_advection_transport) then
 ! In the advection-diffusion transport (MHP 5/02) the GSF and shear
 ! instabilities act as diffusion. In the Endal & Sofia form a velocity
 ! U (e.g. U_GSF ~ K dlnwdr omega^2/r) enters d/dr(con U r d omega/dr),
@@ -466,21 +468,21 @@ subroutine apply_velocity_scales()
 ! the Endal & Sofia coefficient: r |U| of each is added to
 ! es_diffusive_velocity and kept in shear_diffusion_coeff and
 ! gsf_diffusion_coeff.
-         do i = zone_min,zone_max
-            rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
-                 rot_scr%radius_interface(i)*(abs(star%gsf_circulation_velocity(i))+ &
-                 abs(star%secular_shear_velocity(i)))
-            rot_scr%shear_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
-                 abs(star%secular_shear_velocity(i))
-            rot_scr%gsf_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
-                 abs(star%gsf_circulation_velocity(i))
-         end do
-      end if
+!         do i = zone_min,zone_max
+!            rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
+!                 rot_scr%radius_interface(i)*(abs(star%gsf_circulation_velocity(i))+ &
+!                 abs(star%secular_shear_velocity(i)))
+!            rot_scr%shear_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
+!                 abs(star%secular_shear_velocity(i))
+!            rot_scr%gsf_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
+!                 abs(star%gsf_circulation_velocity(i))
+!         end do
+!      end if
 end subroutine apply_velocity_scales
 
 ! ---------------------------------------------------------------
 ! From the second iteration on, the mean of the new velocities and the
-! previous iteration's (the advection-diffusion parts too; MHP 11/94).
+! previous iteration's (MHP 11/94).
 subroutine average_with_previous()
       do i = zone_min,zone_max
          star%gsf_circulation_velocity(i) = 0.5d0*(star%gsf_circulation_velocity(i) &
@@ -490,14 +492,15 @@ subroutine average_with_previous()
          star%secular_shear_velocity(i) = 0.5d0*(star%secular_shear_velocity(i) &
               + circ_scr%secular_shear_velocity_prev(i))
       end do
-      if (rotation_settings%use_diffusion_advection_transport) then
-         do i = zone_min,zone_max
-            rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
-                 + rot_scr%es_advective_velocity_prev(i))
-            rot_scr%es_diffusive_velocity(i) = 0.5d0*(rot_scr%es_diffusive_velocity(i) &
-                 + rot_scr%es_diffusive_velocity_prev(i))
-         end do
-      end if
+! (commented out: the same for the advection-diffusion parts)
+!      if (rotation_settings%use_diffusion_advection_transport) then
+!         do i = zone_min,zone_max
+!            rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
+!                 + rot_scr%es_advective_velocity_prev(i))
+!            rot_scr%es_diffusive_velocity(i) = 0.5d0*(rot_scr%es_diffusive_velocity(i) &
+!                 + rot_scr%es_diffusive_velocity_prev(i))
+!         end do
+!      end if
 end subroutine average_with_previous
 
 ! ---------------------------------------------------------------
@@ -526,8 +529,8 @@ subroutine zero_transport_in_core()
             star%gsf_circulation_velocity(i) = 0.0d0
             star%es_circulation_velocity(i) = 0.0d0
             star%secular_shear_velocity(i) = 0.0d0
-            rot_scr%es_advective_velocity(i) = 0.0d0
-            rot_scr%es_diffusive_velocity(i) = 0.0d0
+!            rot_scr%es_advective_velocity(i) = 0.0d0
+!            rot_scr%es_diffusive_velocity(i) = 0.0d0
          else
             exit
          end if

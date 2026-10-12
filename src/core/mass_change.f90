@@ -253,7 +253,7 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
       logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
       integer :: nz, jenv, zone_idx, species_idx
-      double precision :: omega_ratio_sq, omega_max_ratio_sq
+!      double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs
       double precision :: cz_mass_grams
       double precision :: timestep_limit_total_mass, timestep_limit_cz_mass, &
@@ -281,14 +281,19 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
       nz = star%nz
       jenv = star%envelope_cz_bottom_index
       old_log_envelope_mass_fraction = star%log_mass(nz) - star%log_total_mass
-! MHP 8/10- CHECK FOR SCALED SOLAR WIND MASS LOSS
-      if(star%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
-         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
-         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
-         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
-              min(omega_ratio_sq,omega_max_ratio_sq)
-         write(*,*)star%omega(nz),mass_loss_rate_msun_yr
-      endif
+! COMMENTED OUT (2026-10-12, the author's decision): the solar wind
+! scaled by the surface rotation (MHP 8/10), Mdot = Mdot_sun
+! min((omega/omega_ref)^2, (omega_max/omega_ref)^2). Nothing set its
+! switch or its three parameters (the legacy LSOLWIND is read but never
+! reached them), so it never ran. To revive it, uncomment this block,
+! its locals and its star members (state/star_info_lib), and set them.
+!      if(star%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
+!         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
+!         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
+!         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
+!              min(omega_ratio_sq,omega_max_ratio_sq)
+!         write(*,*)star%omega(nz),mass_loss_rate_msun_yr
+!      endif
 ! CONVERT FROM SOLAR MASSES/YEAR TO GM/SEC
       mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*star%solar_mass_cgs/ &
            seconds_per_year

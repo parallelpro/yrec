@@ -296,9 +296,9 @@ The numerics of abundance change solutions and thresholds for computing reaction
 | `DPENV`    | Full mixing from center to fractional mass depth.        |
 | `LADOV`    | Experimental adiabatic overshoot.                        |
 | `LVFC`     | Zahn 1991 variable-FC model.                             |
-| `LDIFAD`   | Treat meridional circulation as diffusion + advection.   |
+| `LDIFAD`   | Not available: the diffusion + advection treatment of the circulation never worked and is commented out. A rotating run with `LDIFAD = .TRUE.` stops. |
 | `LMDOT`    | Enable experimental mass-loss module.                    |
-| `LSOLWIND` | Remove mass loss scaled to solar wind (not implemented). |
+| `LSOLWIND` | Not used: the solar-wind mass loss scaled by rotation it would select is commented out. |
 
 ### Unused parameters
 
@@ -308,4 +308,5 @@ The numerics of abundance change solutions and thresholds for computing reaction
 | `TCUT(3)` | Not used. Former CNO-cycle equilibrium threshold.              |
 | `MCORE`   | Not used. Obsolete core mesh allocation parameter.             |
 | `LENVG`   | Not used. Outer-layer structure calculation after convergence. |
+| `FMU`     | Not used. Scaled the μ-gradient velocity, which was always zero and was removed (2026-10). |
 | `ALFA`    | Not used. Legacy exponent for Kawaler (1988) wind law.         |

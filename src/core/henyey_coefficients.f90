@@ -32,7 +32,6 @@
 subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
      saha_state, envelope_zone_index, ierr)
       use convection_lib, only: compute_temperature_gradients
-      use rotation_scratch_lib
       use henyey_elimination
 
       use net_lib, only: nuclear_energy_result
@@ -104,7 +103,7 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       integer :: im, im1, j
       double precision :: energy_sum_inverse
       double precision :: chi_rho, chi_t, specific_heat_cv
-      double precision :: total_energy_sum, neutrino_and_grav_sum
+!      double precision :: total_energy_sum, neutrino_and_grav_sum
 ! 7/91 MHP
 ! ZERO OUT SOLAR NEUTRINO FLUXES.
 ! FLUXTOT = TOTAL FLUX OF EACH OF THE NEUTRINOS PRODUCED IN THE SUN
@@ -373,19 +372,21 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             star%adiabatic_index_gamma1(im) = chi_rho*eos_res%specific_heat_cp/ &
                  specific_heat_cv
 
-         if (star%job%rotation_active) then
-            rot_scr%dlnkappa_dlnt(im) = kap_res(i_dlnkap_dlnt)
-! MHP 10/02 variable index error
-            if (star%eps_total(im).gt.0.0d0) then
-               total_energy_sum = star%eps_total(im)
-               neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
-               rot_scr%neutrino_loss_fraction(im) = (total_energy_sum - &
-                    neutrino_and_grav_sum)/total_energy_sum
-            else
-               rot_scr%neutrino_loss_fraction(im) = 0.0d0
-            end if
-            rot_scr%deps_dlnt(im) = zone_deps_dlnt
-         end if
+! (commented out with rotation's advection-diffusion transport,
+! 2026-10-12, its only reader: the copies of d ln kappa/d ln T, d eps/d
+! ln T and (eps - eps_nu - eps_grav)/eps for rotation_stability_setup)
+!         if (star%job%rotation_active) then
+!            rot_scr%dlnkappa_dlnt(im) = kap_res(i_dlnkap_dlnt)
+!            if (star%eps_total(im).gt.0.0d0) then
+!               total_energy_sum = star%eps_total(im)
+!               neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
+!               rot_scr%neutrino_loss_fraction(im) = (total_energy_sum - &
+!                    neutrino_and_grav_sum)/total_energy_sum
+!            else
+!               rot_scr%neutrino_loss_fraction(im) = 0.0d0
+!            end if
+!            rot_scr%deps_dlnt(im) = zone_deps_dlnt
+!         end if
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
 ! (the legacy path-length-triggered OPAL pulsation writer's flag), but

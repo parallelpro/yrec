@@ -3,7 +3,7 @@
 This directory evolves a star's rotation over each timestep:
 - the shape of the rotating star, which enters the structure equations (fp, ft);
 - the rotation curve implied by the angular momentum;
-- the transport of angular momentum by secular instabilities (diffusion, and advection-diffusion);
+- the transport of angular momentum by secular instabilities, as diffusion;
 - the mixing of the composition that transport drives;
 - the wind's spin-down of the surface convection zone (magnetic braking).
 
@@ -31,7 +31,7 @@ Rotation reads its controls from a settings record, `rotation_settings` (module 
 | `shell_quadrature` | The two quadratures of the distortion integral. |
 | **seculr/** | |
 | `secular_transport` | `apply_secular_transport`: one sub-step of transport, and the tridiagonal angular momentum solve. |
-| `am_transport_coefficients` | The diffusion and advection-diffusion coefficients, and the banded solver. |
+| `am_transport_coefficients` | The diffusion equation's tridiagonal system (and, commented out, the advection-diffusion transport). |
 | `circulation` | The circulation and instability velocities, their scales, the Zahn coupling factor, the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
@@ -39,6 +39,8 @@ Rotation reads its controls from a settings record, `rotation_settings` (module 
 | `transport_checks` | The angular momentum and composition checks, which can ask for a redo. |
 
 `burn_settle_mix.f90`, `burn_mix_extrapolated.f90` and `burn_li_be_midpoint.f90` hold the Bulirsch–Stoer burn-and-mix path. It is commented out by the author's decision; each file's header says how to revive it.
+
+The advection-diffusion transport (`use_diffusion_advection_transport`, legacy `LDIFAD`; Maeder & Zahn 1998) is commented out too (2026-10-12, the author's decision): it never worked, because most of its coefficient arrays were never filled. `am_advection_diffusion_coeffs`' banner lists the pieces to uncomment; a rotating run that sets the flag stops.
 
 ## 2. A step
 
@@ -62,6 +64,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - CGS, and log is log₁₀. ω is in rad/s, and `j_rot` is the specific angular momentum. Zones run from the center out.
 - Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one.
 - Failures (a singular solve, a step cut too often) return `ierr`.
+- Kept by decision (2026-10-12): the μ gradient enters the Eddington–Sweet inhibition twice (`inhibit_by_mu_gradient`), so it cuts U_ES by at most a half, as in the F77 code. `docs/HOW_YREC_WORKS.md` §4.6 explains it.
 
 ## 4. Tests and extending
 

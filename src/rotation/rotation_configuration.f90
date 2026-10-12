@@ -56,8 +56,10 @@ module rotation_configuration
               gsf_mixing_scale = 0.0d0, secular_shear_mixing_scale = 0.0d0
          logical :: use_constant_background_diffusion = .false.
          real(dp) :: constant_background_diffusion_coeff = 0.0d0
-! the advection-diffusion transport (Maeder & Zahn 1998) and its
-! velocity scale
+! the advection-diffusion transport (Maeder & Zahn 1998), commented out:
+! a rotating run that sets it stops; and the overall scale of the
+! diffusion coefficients, D = 4 pi difad_velocity_scale (U_ES + U_GSF +
+! U_SS) r (legacy FW)
          logical :: use_diffusion_advection_transport = .false.
          real(dp) :: difad_velocity_scale = 0.0d0
 ! the grid scales (the former hpttol, slots ichi_* in controls_buffer):

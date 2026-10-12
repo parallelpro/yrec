@@ -51,7 +51,7 @@ the coordinate; all cgs):
 Thomas (1970) / Endal & Sofia (1976) form factors `f_P` (`star%fp_rot`) and
 `f_T` (`star%ft_rot`): surface-averaged corrections computed by
 `rotation_shape_factors` (`fpft`,
-`rotation/shape/rotation_shape_factors.f90`) from ω(m) and the shell shape
+`rotation/shape/rotating_shape.f90`) from ω(m) and the shell shape
 (oblateness via the η₂ Radau parameter, `star%eta_squared`), multiplying
 the hydrostatic and radiative-transport terms respectively. This is the
 standard 1.5-D scheme: the star remains a 1-D object, but each shell is an
@@ -111,7 +111,7 @@ Specific angular momentum j(m) (`star%j_rot`) evolves by:
   wind or the Matt-style "PMM" law; saturation at ω_sat; optional disk
   locking on the pre-MS holds ω fixed for `tdisk`),
 - **solid-body rotation enforced in convective zones** (`solid_body_omega`
-  (`solid`), `rotation/solid_body_omega.f90`),
+  (`solid`), `rotation/omega_profile.f90`),
 - **diffusive transport in radiative zones**:
   ∂ω/∂t = (1/ρr⁴) ∂/∂r [ρ r⁴ D(r) ∂ω/∂r], with the total diffusion
   coefficient D built from the active hydrodynamic instabilities.
@@ -460,25 +460,46 @@ interpolated in both directions with edge-validity bookkeeping
   equation integrated over the model; `rotation/shape/`, entry point
   `rotation_shape_factors` (`fpft`)), surface-average gravity
   corrections.
-- **Instability diffusion coefficients** (`apply_secular_transport` (`seculr`)
-  and `diffusion_velocity_scales` (`codiff`) in `rotation/seculr/`, from the
-  Pinsonneault et al. 1989 formulation): dynamical instabilities
-  (checked/enforced instantaneously) and secular ones providing D(r) —
-  **Eddington–Sweet meridional circulation**, **Goldreich–Schubert–
-  Fricke**, **secular shear**, with mean-molecular-weight-gradient
-  inhibition (f_μ weighting) and per-mechanism efficiency factors
-  (`fes/fgsf/fss/fc` — the f_c "coupling" factor relates composition
-  mixing to angular momentum transport, D_mix = f_c · D_AM);
-  optionally a constant additional D.
+- **Instability diffusion coefficients** (`apply_secular_transport` (`seculr`),
+  `circulation_velocities` (`vcirc`) and `diffusion_velocity_scales`
+  (`codiff`) in `rotation/seculr/`, from the Pinsonneault et al. 1989
+  formulation): each mechanism gives a velocity U at the interfaces where
+  it is unstable, and D = 4π f_W (Σ f_i U_i) r — **Eddington–Sweet
+  meridional circulation** (Zahn 1992, with the quadrupole correction),
+  **Goldreich–Schubert–Fricke** (Kippenhahn 1980), **secular shear**,
+  with per-mechanism efficiency factors (`fes/fgsf/fss/fc` — the f_c
+  "coupling" factor relates composition mixing to angular momentum
+  transport, D_mix = f_c · D_AM); optionally a constant additional D.
+- **Dynamical shear** is not mixed instantaneously. Where
+  Ri = (ρ/P)(∇_ad − ∇) g²/(dΩ/d ln r)² < 1/4, the shear velocity becomes
+  the large value U = (8/45) K (|dΩ/d ln r| / limit)²/r, with the limit the
+  |dΩ/d ln r| at Ri = 1/4. It goes into the same implicit diffusion solve,
+  and the code prints "DYNAMICAL SHEAR-SHELL" for each such interface.
+- **μ-gradient inhibition of the circulation** (Maeder & Zahn 1998): U_ES
+  carries 1/Δ, Δ = ∇_ad − ∇, and a μ gradient should replace Δ by
+  Δ + ∇_μ (∇_μ = d ln μ/d ln P). The code multiplies U_ES by
+  max(Δ_μ, 10⁻³)/max(Δ_μ + ∇_μ, 10⁻³), where Δ_μ
+  (`del_grad_diff_interface`, from `rotation_stability_setup`) is already
+  max(Δ + ∇_μ, floor). So **∇_μ is counted twice**: the factor is
+  (Δ + ∇_μ)/(Δ + 2∇_μ) rather than Δ/(Δ + ∇_μ), and a μ gradient can
+  reduce U_ES by at most a factor of two. This is the original F77
+  behaviour (`setupv.f`'s DDELM includes DELMU; `vcirc.f` adds QMU/QP
+  again), kept deliberately (2026-10-12) so that published and calibrated
+  rotating models stay reproducible. The shear instabilities feel μ
+  through their own Richardson criterion, and the GSF through
+  `gsf_inhibition_mode` (`IGSF`).
 - **Solvers**: each unstable radiative region is mapped to an
-  equally-spaced grid (`am_transport_grid` (`rotgrid`)), the AM diffusion
-  equation is solved implicitly — tridiagonal (`am_diffusion_coeffs` (`dcoeft`) + `solve_angular_momentum_transport` (`tridia`))
-  for the pure-diffusion form, or a banded advective-diffusive variant
-  (`am_advection_diffusion_coeffs` (`dadcoeft`) + `banded_solver`, with its
-  own timestep-cutting loop) — then mapped back (`equal_grid_to_model`
-  (`eq2mod`)). `check_angular_momentum` (`checkj`) guards
-  against unphysical ω-gradient reversals (enforcing local solid-body
-  where diffusion overshoots); composition mixing uses the same grid
+  equally-spaced grid in χ (`am_transport_grid` (`rotgrid`)), the AM
+  diffusion equation is solved implicitly — tridiagonal
+  (`am_diffusion_coeffs` (`dcoeft`) + `solve_angular_momentum_transport`
+  (`tridia`)) — then mapped back (`equal_grid_to_model` (`eq2mod`)).
+  The advective-diffusive variant (`LDIFAD`: `am_advection_diffusion_coeffs`
+  (`dadcoeft`) + `banded_solver`) never worked (its coefficient arrays
+  were never filled) and is commented out; a rotating run that sets
+  `LDIFAD` stops. `check_angular_momentum` (`checkj`) stops the run at a
+  negative j, tests convergence on j, and smooths ω-gradient reversals
+  only where ω exceeds 1 rad/s (as in the F77 code), so that safeguard
+  practically never acts. Composition mixing uses the same grid
   (`diffuse_composition_driver`/`diffuse_composition` (`ndifcom`/`mixcom`),
   species-by-species with conservation-checked updates);
   `check_composition` (`checkc`) validates and can force timestep cuts.

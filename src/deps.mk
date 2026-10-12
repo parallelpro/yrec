@@ -272,7 +272,7 @@ core/envelope_integration_kernel.o: atm_lib.mod atmosphere_structure.mod envelop
 core/envelope_refit.o: envelope_structure.mod star_info_lib.mod
 core/envelope_structure.o: star_info_lib.mod
 core/evolve_step.o: burn_step.mod composition_step.mod convection_geometry.mod convection_lib.mod evolve_rotation.mod henyey_iteration.mod io_units.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rotating_shape.mod star_info_lib.mod stitched_model.mod stop_conditions.mod yrec_output.mod
-core/henyey_coefficients.o: burn_step.mod convection_lib.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod point_scratch_lib.mod rotation_scratch_lib.mod star_info_lib.mod
+core/henyey_coefficients.o: burn_step.mod convection_lib.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod
 core/henyey_elimination.o: physical_constants.mod star_info_lib.mod
 core/henyey_iteration.o: eos_lib.mod io_units.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_log.mod star_info_lib.mod
 core/henyey_solve.o: star_info_lib.mod
@@ -357,7 +357,7 @@ rotation/mid_timestep_model.o: am_regions.mod burn_step.mod element_diffusion_li
 rotation/omega_profile.o: math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod
 rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/am_transport_coefficients.o: math_lib.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/am_transport_coefficients.o: rotation_configuration.mod star_info_lib.mod
 rotation/seculr/circulation.o: math_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/equal_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod

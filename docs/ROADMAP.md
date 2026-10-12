@@ -1638,14 +1638,23 @@ commit, and the full battery at 43f852c1):
     omega exceeds 1 rad/s (as F77 checkj.f), so it practically never
     acts. checkj.f's authors made the first negative j stop the run
     (IREDO.GT.0 replacing .GT.3); the message's "3 attempts" is stale.
+- **Decided (2026-10-12):**
+  - Kept and documented (docs/HOW_YREC_WORKS.md section 4.6, the
+    README, inhibit_by_mu_gradient): the mu gradient is counted twice
+    in the Eddington-Sweet inhibition (inhibit_by_mu_gradient adds
+    d ln mu/d ln P to a margin that already includes it), so mu
+    gradients cut U_ES by at most a half. Inherited from F77 (setupv.f,
+    vcirc.f); changing it would move every rotating model.
+  - Fixed: apply_secular_transport returned without setting redo_flag
+    when the model was stable on the first iteration, so after a redo
+    the stale flag would rewind the clock again; it now starts false.
+  - Commented out, like the Bulirsch-Stoer path: the advection-diffusion
+    transport (LDIFAD: am_advection_diffusion_coeffs, banded_solver, the
+    advection branches of the live routines, the theta term, some 40
+    scratch arrays and henyey's derivative copies; a rotating run that
+    sets the flag still stops), and mass_change's rotation-scaled solar
+    wind (and its four star members).
 - **Open (behaviour; each needs a decision and a measured commit):**
-  - The mu gradient is counted twice in the Eddington-Sweet inhibition
-    (circulation's inhibit_by_mu_gradient adds d ln mu/d ln P to a
-    margin that already includes it), so mu gradients cut U_ES by at
-    most a half. Inherited from F77 (setupv.f, vcirc.f).
-  - apply_secular_transport returns without setting redo_flag when the
-    model is stable on the first iteration; after a redo, the stale
-    flag would rewind the clock again. One line fixes it.
   - At a transport region's ends, the equal-grid zone sums take in a
     convection zone below (above) whenever the neighbouring zone is
     convective, but the change goes back into it only when the end
@@ -1654,13 +1663,6 @@ commit, and the full battery at 43f852c1):
     before secular_transport mixes them; 12-15 are never checked.
   - max_delta_j_by_iter has 16 slots; nothing caps max_diffusion_iters.
 - **Open (structure):**
-  - The advection-diffusion path (use_diffusion_advection_transport,
-    LDIFAD) stops the run where it would act; it reads arrays nothing
-    fills. am_advection_diffusion_coeffs, about 20 scratch arrays and
-    henyey's derivative copies serve only it: comment it out like the
-    Bulirsch-Stoer path, or rebuild it.
-  - mass_change's rotation-scaled solar wind cannot run (nothing sets
-    use_rotation_scaled_solar_wind).
   - Settling converts star%m to Bahcall & Loeb units and back in
     place; the round trip can change its last bit every step. Working
     on a copy would fix it but changes results at round-off; it needs

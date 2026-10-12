@@ -44,7 +44,7 @@ module secular_transport
       use am_grid, only: am_transport_grid, equal_grid_to_model
       use rotational_mixing, only: diffuse_composition_driver
       use circulation, only: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
-      use am_transport_coefficients, only: am_diffusion_coeffs, am_advection_diffusion_coeffs
+      use am_transport_coefficients, only: am_diffusion_coeffs
       use omega_profile, only: solid_body_omega
       use stability_coefficients, only: rotation_stability_setup
       implicit none
@@ -150,21 +150,24 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
       integer :: species_begin, species_end
 
       ierr = 0
+! A sub-step that is stable from the start returns before any check
+! sets redo_flag, so it starts out false (otherwise a previous redo's
+! .true. would survive and rewind the clock again).
+      redo_flag = .false.
 
-! The advection-diffusion option (use_diffusion_advection_transport,
-! legacy LDIFAD) does not work. The equal-grid coefficients that
-! am_advection_diffusion_coeffs reads (eq_velocity_coeff*,
-! geometric_factor, am_2nd/3rd_deriv_coeff, dchi_dr_edge,
-! mixing_geometric_factor, equatorial_radius) are set nowhere, nor were
-! their F77 originals (EV*, FGEOM, ECOD5/6, /DIFAD4/, /EGRIDCHI/, read
-! only by dadcoeft.f), so the path divides by a zero geometric factor.
+! The advection-diffusion transport (use_diffusion_advection_transport,
+! legacy LDIFAD) is commented out (2026-10-12, the author's decision;
+! see am_transport_coefficients): it never worked, as the equal-grid
+! coefficients it read (eq_velocity_coeff*, geometric_factor,
+! am_2nd/3rd_deriv_coeff, dchi_dr_edge, mixing_geometric_factor,
+! equatorial_radius) were set nowhere, nor were their F77 originals.
 ! The flag acts only with rotation and instability transport on, so the
 ! many non-rotating decks that set it run unaffected; here, where it
 ! would act, the run stops.
       if (rotation_settings%use_diffusion_advection_transport) then
          write(*,'(a)') 'apply_secular_transport: use_diffusion_advection_transport' &
-              //' (LDIFAD) is not functional -- its advective transport' &
-              //' coefficients are never computed. Set it .false.'
+              //' (LDIFAD) is not available -- the advection-diffusion' &
+              //' transport is commented out. Set it .false.'
          ierr = 1
          return
       end if
@@ -366,7 +369,7 @@ subroutine compute_circulation()
       call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
            rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
-           total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
+           total_luminosity,rot_scr%log_pressure_mid)
       if(rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,rot_scr%omega_mid)
@@ -483,9 +486,9 @@ end subroutine find_unstable_region
 ! When the region reaches the surface convection zone, its outermost
 ! point also loses the wind's I_n (wind_loss_explicit +
 ! wind_loss_implicit)/2, or, under disk locking, keeps its omega. The
-! change of angular momentum is then mapped back to the model. The
-! advection-diffusion branch is the non-functional
-! use_diffusion_advection_transport path.
+! change of angular momentum is then mapped back to the model. (The
+! commented-out advection-diffusion transport solved a band system for
+! omega and its derivatives here instead.)
 subroutine transport_angular_momentum_in_region()
 ! The wind terms, when the region reaches the surface convection zone.
       if(surface_cz_active.and.zone_end.eq.zone_max)then
@@ -518,30 +521,27 @@ subroutine transport_angular_momentum_in_region()
          wind_loss_implicit = 0.0D0
       endif
       diffusion_converged = .false.
-      if(.not.rotation_settings%use_diffusion_advection_transport)then
 ! The diffusion equation's tridiagonal system.
-         call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-              eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%num_eq_points, &
-              wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
-              sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
+      call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
+           eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%num_eq_points, &
+           wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
+           sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 ! Its solve: eq_delta_angular_momentum = I (omega' - omega) at each
 ! grid point, sum_delta_angular_momentum their sum.
-         call solve_angular_momentum_transport(rot_scr%num_eq_points,eq_moment_of_inertia, &
-              eq_delta_angular_momentum,sum_delta_angular_momentum, &
-              sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
-              surface_wind_loss_term, ierr)
-         if (ierr /= 0) return
-      else
-! Advection-diffusion: omega and its derivatives from a band matrix.
-! Unreachable: apply_secular_transport stops the run when the option
-! is set.
-         call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-              eq_omega,rot_scr%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
-              eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
-              sum_delta_angular_momentum,fix_omega_at_surface, &
-              diffusion_converged, ierr)
-         if (ierr /= 0) return
-      endif
+      call solve_angular_momentum_transport(rot_scr%num_eq_points,eq_moment_of_inertia, &
+           eq_delta_angular_momentum,sum_delta_angular_momentum, &
+           sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
+           surface_wind_loss_term, ierr)
+      if (ierr /= 0) return
+! (commented out: the advection-diffusion branch)
+!      else
+!         call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
+!              eq_omega,rot_scr%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
+!              eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
+!              sum_delta_angular_momentum,fix_omega_at_surface, &
+!              diffusion_converged, ierr)
+!         if (ierr /= 0) return
+!      endif
 ! The fractional change dJ/J interpolated back to the region's model
 ! zones (and any convection zone adjoining it), rescaled if needed so
 ! that the total change is sum_delta_angular_momentum

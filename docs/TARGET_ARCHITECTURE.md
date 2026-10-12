@@ -57,7 +57,7 @@ These were found while tracing the tasks above. Each traces to one of the root c
 - The GYRE pulse-file columns `eps_eps_T` and `eps_eps_rho` are wrong by a factor of ε. A field named as a log derivative holds the absolute derivative and is multiplied by ε a second time. *(Undocumented contract.)*
 - Deuterium depletion and deuterium energy generation use rates that differ by 0.68%. *(Duplication.)*
 - `star%am_transport_convective_flag` is read by the Ω(j) inversion on every Newton iteration but is never assigned. Every assignment goes to a local array with the same name. *(Global state plus name shadowing.)*
-- The advective rotational-transport option (`ldifad`) cannot work, because its coefficient arrays are never filled. *(Scratch-module data flow.)*
+- The advective rotational-transport option (`ldifad`) could not work, because its coefficient arrays were never filled; it is commented out (2026-10-12). *(Scratch-module data flow.)*
 
 ---
 
@@ -337,7 +337,7 @@ end interface
   - sub-stepping, with a criterion that includes D·Δt/Δr² as well as ΔΩ;
   - Picard averaging;
   - convergence checks, which return a verdict instead of halving the timestep themselves.
-- **Advective transport.** If the group wants it (Zahn 1992; Maeder & Zahn 1998), the interface gains an optional advective velocity U(r). Today's `ldifad` path, which attempted this, is dead code and would be removed.
+- **Advective transport.** If the group wants it (Zahn 1992; Maeder & Zahn 1998), the interface gains an optional advective velocity U(r). The `ldifad` path, which attempted this, is commented out (2026-10-12); a rebuild would start from the interface, not from it.
 
 ### 4.6 Controls
 
@@ -568,6 +568,7 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - It is inherited: in the original F77 only `dadcoeft.f` referenced `/DIFAD4/`, `/EGRIDCHI/`, `FGEOM`, `ECOD5/6` and the `EV*` arrays.
    - The flag takes effect only in rotating runs with instability transport. 16 legacy decks and 316 inlists set it, but none of them rotate, so for them it is inert.
    - Fixed (2026-10): `secular_transport` now stops with an error when the flag would take effect.
+   - Commented out (2026-10-12, the author's decision): the path, its branches in the live routines, its scratch arrays and henyey's derivative copies; the stop stays.
 5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`blended_eos.f90:324` vs `:484`).
 6. **Opacity ramp derivatives are inconsistent** (*reported, not yet checked*). The ramp blends κ linearly but averages the dln κ derivatives without weighting them and drops the dw/dln T term (`kap_lib.f90:312–317`).
 7. **`max_delta_j_by_iter(16)` can overflow** (*reported, not yet checked*). It overflows when `max_diffusion_iters > 16` (`check_angular_momentum.f90:91`).

@@ -39,16 +39,19 @@
 !     mu_gradient_richardson_coeff holds everything but d ln mu.
 !   - del_grad_diff_interface = max(grad_ad - grad + d ln mu/d ln P,
 !     floor), the margin with the mu gradient (Maeder & Zahn 1998), by
-!     which circulation inhibits the circulation.
+!     which circulation inhibits the circulation (it adds d ln mu/d ln P
+!     again, so the mu gradient counts twice, as in the F77 code; see
+!     inhibit_by_mu_gradient).
 ! The floor is 1e-3, except at the transport region's first and last
 ! interfaces, where it is the larger of 1e-3 and half the neighbouring
 ! zone's grad_ad - grad (plus d ln mu/d ln P).
 !
-! The advection-diffusion transport (use_diffusion_advection_transport;
-! Maeder & Zahn 1998) also needs the theta relaxation factor, the
-! velocity_coeff* terms, the second- and third-derivative geometric
-! factors and the order d omega/dr shear terms (difad_shear_coeff1/2,
-! facd2/facd3), set here.
+! The commented-out advection-diffusion transport (2026-10-12, the
+! author's decision; see am_transport_coefficients) also needed the
+! theta relaxation factor, the velocity_coeff* terms, the second- and
+! third-derivative geometric factors and the order d omega/dr shear
+! terms (difad_shear_coeff1/2, facd2/facd3), set here; they are
+! commented out with it.
 module stability_coefficients
       use rotation_configuration, only: rotation_settings
       implicit none
@@ -77,23 +80,26 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
       double precision :: specific_heat_interface(json)
       integer :: zone_idx, interior_begin, interior_end
       double precision :: grav_const
-! log10 of r^4/(G m) at the interface (the theta term)
-      double precision :: log_theta_mean
+! (commented out with the advection-diffusion transport: log10 of
+! r^4/(G m) at the interface, the theta term)
+!      double precision :: log_theta_mean
 ! d ln mu/d ln P; the floor of Delta and Delta itself
       double precision :: dlnmu_dlnp, delta_grad_floor, delta_grad
-! H_P and H_T = H_P/grad; (4/3) r^3/(G m); P/(g Delta c_P rho T);
+! H_P; (4/3) r^3/(G m); P/(g Delta c_P rho T);
 ! (8/3) r^3/(G m) P/(g Delta c_P rho T); L/m; 1/(pi G)
-      double precision :: pressure_scale_height, temperature_scale_height, &
+      double precision :: pressure_scale_height, &
            rotation_factor, thermal_factor, es_prefactor, specific_luminosity, &
            one_over_pi_g
-! the advection-diffusion terms: F/rho = L/(4 pi rho r^2); H_T at the
-! zones; the mean d eps/d ln T and neutrino_loss_fraction;
-! (2/3) r^4/(G m); d ln chi/d ln T = 3 - d ln kappa/d ln T; and
-! P/(g Delta_mu c_P rho T), with Delta_mu = del_grad_diff_interface
-      double precision :: flux_over_density
-      double precision :: temperature_scale_height_below, temperature_scale_height_zone
-      double precision :: mean_deps_dlnt, mean_neutrino_fraction
-      double precision :: second_deriv_factor, dlnchi_dlnt, thermal_factor_mu
+! (commented out with the advection-diffusion transport: H_T = H_P/grad;
+! F/rho = L/(4 pi rho r^2); H_T at the zones; the mean d eps/d ln T and
+! neutrino_loss_fraction; (2/3) r^4/(G m); d ln chi/d ln T = 3 - d ln
+! kappa/d ln T; and P/(g Delta_mu c_P rho T), with Delta_mu =
+! del_grad_diff_interface)
+!      double precision :: temperature_scale_height
+!      double precision :: flux_over_density
+!      double precision :: temperature_scale_height_below, temperature_scale_height_zone
+!      double precision :: mean_deps_dlnt, mean_neutrino_fraction
+!      double precision :: second_deriv_factor, dlnchi_dlnt, thermal_factor_mu
 
 ! the unlogged radii of the zones, and the interfaces midway between
       do zone_idx = 1,num_zones
@@ -138,18 +144,20 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          rot_scr%es_shear_coeff(zone_idx) = 0.0d0
          rot_scr%gsf_kippenhahn_coeff(zone_idx) = 0.0d0
          rot_scr%mu_gradient_richardson_coeff(zone_idx) = 0.0d0
-         rot_scr%es_relaxation_factor(zone_idx) = 0.0d0
-         rot_scr%theta_mean(zone_idx) = 0.0d0
-         rot_scr%difad_shear_coeff1(zone_idx) = 0.0d0
-         rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0
+! (commented out with the advection-diffusion transport)
+!         rot_scr%es_relaxation_factor(zone_idx) = 0.0d0
+!         rot_scr%theta_mean(zone_idx) = 0.0d0
+!         rot_scr%difad_shear_coeff1(zone_idx) = 0.0d0
+!         rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0
       end do
-! r^4/(G m) at each interface, from the geometric means of r and m on
-! either side: the d theta/dt term of Maeder & Zahn (1998)
-      do zone_idx = 2,num_zones
-         log_theta_mean = 2.0d0*(log_radius(zone_idx)+log_radius(zone_idx-1))-0.5d0* &
-              (log10(mass_unlogged(zone_idx))+log10(mass_unlogged(zone_idx-1)))-cgl
-         rot_scr%theta_mean(zone_idx) = exp(ln10*log_theta_mean)
-      end do
+! (commented out with the advection-diffusion transport: r^4/(G m) at
+! each interface, from the geometric means of r and m on either side,
+! the d theta/dt term of Maeder & Zahn 1998)
+!      do zone_idx = 2,num_zones
+!         log_theta_mean = 2.0d0*(log_radius(zone_idx)+log_radius(zone_idx-1))-0.5d0* &
+!              (log10(mass_unlogged(zone_idx))+log10(mass_unlogged(zone_idx-1)))-cgl
+!         rot_scr%theta_mean(zone_idx) = exp(ln10*log_theta_mean)
+!      end do
 ! the coefficients at every interface of the transport region
       one_over_pi_g = 4.0d0/c4pi/grav_const
       associate (p_i => rot_scr%pressure_interface, t_i => rot_scr%temperature_interface, &
@@ -158,12 +166,9 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
            g_i => rot_scr%gravity_factor_interface, eps_i => rot_scr%eps_total_interface, &
            grada_i => rot_scr%grada_interface, grad_i => rot_scr%gradT_interface)
       do zone_idx = transport_zone_begin,transport_zone_end
-         if(.not.rotation_settings%use_diffusion_advection_transport)then
-            dlnmu_dlnp = (log10(mid_scr%mu(zone_idx))-log10(mid_scr%mu(zone_idx-1)))/ &
-                 (log_pressure(zone_idx)-log_pressure(zone_idx-1))
-         else
-            dlnmu_dlnp = 0.0d0
-         endif
+! (the commented-out advection-diffusion transport set it to zero)
+         dlnmu_dlnp = (log10(mid_scr%mu(zone_idx))-log10(mid_scr%mu(zone_idx-1)))/ &
+              (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          if(zone_idx.eq.transport_zone_begin)then
             delta_grad_floor=max(1.0d-3,0.5d0*(mid_scr%grada(transport_zone_begin+1)- &
                  mid_scr%gradT(transport_zone_begin+1)) &
@@ -178,10 +183,11 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          delta_grad = max(grada_i(zone_idx)-grad_i(zone_idx),delta_grad_floor)
          rot_scr%del_grad_diff_interface(zone_idx) = &
               max(grada_i(zone_idx)-grad_i(zone_idx)+dlnmu_dlnp,delta_grad_floor)
-! the theta relaxation factor P/(g Delta rho)
-         rot_scr%es_relaxation_factor(zone_idx) = p_i(zone_idx)/(g_i(zone_idx)*delta_grad*rho_i(zone_idx))
+! (commented out with the advection-diffusion transport: the theta
+! relaxation factor P/(g Delta rho))
+!         rot_scr%es_relaxation_factor(zone_idx) = p_i(zone_idx)/(g_i(zone_idx)*delta_grad*rho_i(zone_idx))
          pressure_scale_height = p_i(zone_idx)*r_i(zone_idx)**2/rho_i(zone_idx)/m_i(zone_idx)/grav_const
-         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
+!         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
          rotation_factor = 2.0d0*cc23*r_i(zone_idx)**3/grav_const/m_i(zone_idx)
          rot_scr%gsf_kippenhahn_coeff(zone_idx)= 8.0d0*pressure_scale_height*rotation_factor/delta_grad
          thermal_factor = p_i(zone_idx)/(g_i(zone_idx)*delta_grad*specific_heat_interface(zone_idx)* &
@@ -192,12 +198,13 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
          rot_scr%es_velocity_coeff2(zone_idx)= -0.5d0*es_prefactor*specific_luminosity*one_over_pi_g/rho_i(zone_idx)
          rot_scr%es_shear_coeff(zone_idx) = specific_luminosity*thermal_factor*cc13*one_over_pi_g*r_i(zone_idx)/ &
               rho_i(zone_idx)
-         rot_scr%velocity_coeff0(zone_idx) = thermal_factor
-         rot_scr%velocity_coeff1a(zone_idx) = rot_scr%es_velocity_coeff1(zone_idx)/thermal_factor
-         rot_scr%velocity_coeff1b(zone_idx) = rot_scr%es_velocity_coeff2(zone_idx)/thermal_factor
-         rot_scr%velocity_coeff2a(zone_idx) = specific_luminosity*one_over_pi_g*3.0d0*temperature_scale_height/ &
-              rho_i(zone_idx)
-         rot_scr%velocity_coeff2b(zone_idx) = -specific_luminosity*one_over_pi_g*r_i(zone_idx)/rho_i(zone_idx)
+! (commented out with the advection-diffusion transport)
+!         rot_scr%velocity_coeff0(zone_idx) = thermal_factor
+!         rot_scr%velocity_coeff1a(zone_idx) = rot_scr%es_velocity_coeff1(zone_idx)/thermal_factor
+!         rot_scr%velocity_coeff1b(zone_idx) = rot_scr%es_velocity_coeff2(zone_idx)/thermal_factor
+!         rot_scr%velocity_coeff2a(zone_idx) = specific_luminosity*one_over_pi_g*3.0d0*temperature_scale_height/ &
+!              rho_i(zone_idx)
+!         rot_scr%velocity_coeff2b(zone_idx) = -specific_luminosity*one_over_pi_g*r_i(zone_idx)/rho_i(zone_idx)
 ! the dynamical shear: the |d omega/d ln r| at which Ri = 1/4
          dynamical_shear_omega_limit(zone_idx)=sqrt(rho_i(zone_idx)/p_i(zone_idx)* &
               max(grada_i(zone_idx) - grad_i(zone_idx),1.0d-3)) &
@@ -208,39 +215,39 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
               (radiation_constant_over_3*t_i(zone_idx)**4/p_i(zone_idx)-1.0d0)/ &
               (1.0d0 + 3.0d0*radiation_constant_over_3*t_i(zone_idx)**4/p_i(zone_idx))
       end do
-! The advection-diffusion transport's terms of order d omega/dr
-! (Maeder & Zahn 1998).
-      if(rotation_settings%use_diffusion_advection_transport)then
-         temperature_scale_height_below = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
-              2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
-              /mass_unlogged(transport_zone_begin-1)/grav_const/mid_scr%gradr(transport_zone_begin-1)
-         rot_scr%third_deriv_geom_factor(transport_zone_begin-1) = temperature_scale_height_below
-         do zone_idx = transport_zone_begin,transport_zone_end
-         pressure_scale_height = p_i(zone_idx)*r_i(zone_idx)**2/rho_i(zone_idx)/m_i(zone_idx)/grav_const
-         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
-         thermal_factor_mu = p_i(zone_idx)/(g_i(zone_idx)*rot_scr%del_grad_diff_interface(zone_idx)* &
-              specific_heat_interface(zone_idx)*rho_i(zone_idx)*t_i(zone_idx))
-         second_deriv_factor = cc23*r_i(zone_idx)**4/grav_const/m_i(zone_idx)
-         rot_scr%second_deriv_geom_factor(zone_idx) = second_deriv_factor
-         dlnchi_dlnt = 3.0d0 - 0.5d0*(rot_scr%dlnkappa_dlnt(zone_idx)+rot_scr%dlnkappa_dlnt(zone_idx-1))
-         temperature_scale_height_zone = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)- &
-              log_density(zone_idx)))/mass_unlogged(zone_idx)/grav_const/mid_scr%gradT(zone_idx)
-         rot_scr%third_deriv_geom_factor(zone_idx) = temperature_scale_height_zone
-         mean_deps_dlnt = 0.5d0*(rot_scr%deps_dlnt(zone_idx)+rot_scr%deps_dlnt(zone_idx-1))
-         mean_neutrino_fraction = 0.5d0*(rot_scr%neutrino_loss_fraction(zone_idx)+ &
-              rot_scr%neutrino_loss_fraction(zone_idx-1))
-         rot_scr%difad_shear_coeff1(zone_idx)= &
-         - thermal_factor_mu*second_deriv_factor*(mean_neutrino_fraction*mean_deps_dlnt + &
-              eps_i(zone_idx)*(1.0d0 - mean_neutrino_fraction - dlnchi_dlnt))
-         rot_scr%velocity_coeff2b(zone_idx) = rot_scr%velocity_coeff2b(zone_idx)+ &
-              rot_scr%difad_shear_coeff1(zone_idx)/thermal_factor_mu
-         rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0
-         flux_over_density = l_i(zone_idx)/c4pi/rho_i(zone_idx)/r_i(zone_idx)**2
-         rot_scr%facd2(zone_idx) = thermal_factor_mu*(flux_over_density*dlnchi_dlnt - &
-              eps_i(zone_idx)*temperature_scale_height)
-         rot_scr%facd3(zone_idx) = -thermal_factor_mu*flux_over_density
-         end do
-      endif
+! (commented out: the advection-diffusion transport's terms of order
+! d omega/dr, Maeder & Zahn 1998)
+!      if(rotation_settings%use_diffusion_advection_transport)then
+!         temperature_scale_height_below = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
+!              2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
+!              /mass_unlogged(transport_zone_begin-1)/grav_const/mid_scr%gradr(transport_zone_begin-1)
+!         rot_scr%third_deriv_geom_factor(transport_zone_begin-1) = temperature_scale_height_below
+!         do zone_idx = transport_zone_begin,transport_zone_end
+!         pressure_scale_height = p_i(zone_idx)*r_i(zone_idx)**2/rho_i(zone_idx)/m_i(zone_idx)/grav_const
+!         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
+!         thermal_factor_mu = p_i(zone_idx)/(g_i(zone_idx)*rot_scr%del_grad_diff_interface(zone_idx)* &
+!              specific_heat_interface(zone_idx)*rho_i(zone_idx)*t_i(zone_idx))
+!         second_deriv_factor = cc23*r_i(zone_idx)**4/grav_const/m_i(zone_idx)
+!         rot_scr%second_deriv_geom_factor(zone_idx) = second_deriv_factor
+!         dlnchi_dlnt = 3.0d0 - 0.5d0*(rot_scr%dlnkappa_dlnt(zone_idx)+rot_scr%dlnkappa_dlnt(zone_idx-1))
+!         temperature_scale_height_zone = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)- &
+!              log_density(zone_idx)))/mass_unlogged(zone_idx)/grav_const/mid_scr%gradT(zone_idx)
+!         rot_scr%third_deriv_geom_factor(zone_idx) = temperature_scale_height_zone
+!         mean_deps_dlnt = 0.5d0*(rot_scr%deps_dlnt(zone_idx)+rot_scr%deps_dlnt(zone_idx-1))
+!         mean_neutrino_fraction = 0.5d0*(rot_scr%neutrino_loss_fraction(zone_idx)+ &
+!              rot_scr%neutrino_loss_fraction(zone_idx-1))
+!         rot_scr%difad_shear_coeff1(zone_idx)= &
+!         - thermal_factor_mu*second_deriv_factor*(mean_neutrino_fraction*mean_deps_dlnt + &
+!              eps_i(zone_idx)*(1.0d0 - mean_neutrino_fraction - dlnchi_dlnt))
+!         rot_scr%velocity_coeff2b(zone_idx) = rot_scr%velocity_coeff2b(zone_idx)+ &
+!              rot_scr%difad_shear_coeff1(zone_idx)/thermal_factor_mu
+!         rot_scr%difad_shear_coeff2(zone_idx) = 0.0d0
+!         flux_over_density = l_i(zone_idx)/c4pi/rho_i(zone_idx)/r_i(zone_idx)**2
+!         rot_scr%facd2(zone_idx) = thermal_factor_mu*(flux_over_density*dlnchi_dlnt - &
+!              eps_i(zone_idx)*temperature_scale_height)
+!         rot_scr%facd3(zone_idx) = -thermal_factor_mu*flux_over_density
+!         end do
+!      endif
       end associate
       return
 

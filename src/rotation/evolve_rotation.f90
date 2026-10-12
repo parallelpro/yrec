@@ -93,7 +93,8 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       integer :: core_boundary_zone_cur, envelope_boundary_zone_cur
       integer :: num_convective_zones_burn
       integer :: iend
-      double precision :: omega_avg, domega_dr, delta_radius_step
+! (commented out with the advection-diffusion transport's theta term)
+!      double precision :: omega_avg, domega_dr, delta_radius_step
 
       ierr = 0
       num_species_tracked = 11
@@ -135,7 +136,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       redo_count = 0
       retry: do
       call advance_substep_clock()
-      call carry_theta_forward()
+      call record_substep_start_omega()
       fx = elapsed_substep_time/full_timestep
       star%fracstep = fx
       call advance_rotation_substep(full_timestep, sub_timestep, fx, first_call, &
@@ -271,29 +272,30 @@ subroutine advance_substep_clock()
 end subroutine advance_substep_clock
 
 ! ---------------------------------------------------------------
-! The previous theta and the sub-step's starting omega, for the
-! advection-diffusion treatment (Maeder & Zahn 1998): from the stored
-! values on the first sub-step, recomputed from omega on the others.
-subroutine carry_theta_forward()
+! omega at the start of the sub-step (the step's starting omega on the
+! first, the current omega afterwards), for the wind torque. The
+! commented-out advection-diffusion transport (Maeder & Zahn 1998) also
+! carried its theta term forward here.
+subroutine record_substep_start_omega()
       if(first_call)then
-         rot_scr%theta_prev(1) = rot_scr%theta_rezoned(1)
+!         rot_scr%theta_prev(1) = rot_scr%theta_rezoned(1)
          rot_scr%omega_substep_start(1) = star%old_omega(1)
          do zone_index = 2,star%nz
-            rot_scr%theta_prev(zone_index) = rot_scr%theta_rezoned(zone_index)
+!            rot_scr%theta_prev(zone_index) = rot_scr%theta_rezoned(zone_index)
             rot_scr%omega_substep_start(zone_index) = star%old_omega(zone_index)
          end do
       else
          rot_scr%omega_substep_start(1) = star%omega(1)
          do zone_index = 2,star%nz
-            omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
-            delta_radius_step = exp10(rot_scr%log_radius_mid(zone_index))- &
-                 exp10(rot_scr%log_radius_mid(zone_index-1))
-            domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
-            rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
+!            omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
+!            delta_radius_step = exp10(rot_scr%log_radius_mid(zone_index))- &
+!                 exp10(rot_scr%log_radius_mid(zone_index-1))
+!            domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
+!            rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
             rot_scr%omega_substep_start(zone_index) = star%omega(zone_index)
          end do
       endif
-end subroutine carry_theta_forward
+end subroutine record_substep_start_omega
 
 ! ---------------------------------------------------------------
 ! The wind's spin-down of the surface convection zone over the sub-step

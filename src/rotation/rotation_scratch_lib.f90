@@ -18,13 +18,11 @@ module rotation_scratch_lib
            circulation_velocity_state, rot_scr, mid_scr, circ_scr, &
            disk_locking_engaged
 
-! Row capacity of the 10-column banded system assembled by
-! am_advection_diffusion_coeffs and eliminated by banded_solver
-! (4*num_eq_points - 2 rows for num_eq_points equal-grid points, i.e.
-! room for 2000 points; num_eq_points itself is only bounded by json
-! and is not checked
-! against this capacity).
-      integer, parameter, public :: band_nmax = 8000
+! (commented out with the advection-diffusion transport: the row
+! capacity of the 10-column banded system of
+! am_advection_diffusion_coeffs and banded_solver, 4*num_eq_points - 2
+! rows, room for 2000 points, not checked against num_eq_points)
+!      integer, parameter, public :: band_nmax = 8000
 
 
       type, public :: rotation_diffusion_state
@@ -33,43 +31,59 @@ module rotation_scratch_lib
 !          double precision :: bs_extrapolation_table(11,15,json), &
 !               bs_extrapolated_composition(15,json), &
 !               bs_extrapolation_increment(15,json)
-! angular momentum transport: the advective and diffusive coefficients
-           double precision :: am_advective_coeff(json), &
-                am_diffusive_coeff(json)
-! the Eddington-Sweet advective and diffusive velocities, now and at the
-! previous iteration
-           double precision :: es_advective_velocity(json), &
-                es_advective_velocity_prev(json), &
-                es_diffusive_velocity(json), &
-                es_diffusive_velocity_prev(json)
-! the advection-diffusion (Maeder & Zahn) coefficients on the model and
-! equal grids, and the shear and GSF diffusion coefficients. facd2/facd3
-! are filled by rotation_stability_setup (stability_coefficients) and
-! read by nothing.
-           double precision :: facd2(json), facd3(json), &
-                am_2nd_deriv_coeff(json), &
-                am_3rd_deriv_coeff(json), &
-                geometric_factor(json), &
-                velocity_coeff0(json), &
-                velocity_coeff1a(json), &
-                velocity_coeff1b(json), &
-                velocity_coeff2a(json), &
-                velocity_coeff2b(json), &
-                eq_velocity_coeff0(json), &
-                eq_velocity_coeff1a(json), &
-                eq_velocity_coeff1b(json), &
-                eq_velocity_coeff2a(json), &
-                eq_velocity_coeff2b(json), &
-                shear_diffusion_coeff(json), &
-                gsf_diffusion_coeff(json), &
-                shear_diffusion_coeff_eqgrid(json), &
-                gsf_diffusion_coeff_eqgrid(json)
-! mixing: the geometric factor, the velocity estimate, the equatorial radius
-           double precision :: mixing_geometric_factor(json), &
-                mixing_velocity_estimate(json), &
-                equatorial_radius(json)
-! omega and d omega/dr at the start of the step
-           double precision :: omega_avg_start(json), domega_dr_start(json)
+! The commented-out advection-diffusion transport's arrays (2026-10-12,
+! the author's decision; see am_transport_coefficients), commented out
+! with it. Those marked "unset" were never filled, which is why that
+! transport never worked; facd2/facd3 were filled and read by nothing.
+! The advective and diffusive coefficients on the equal grid; the
+! Eddington-Sweet advective and diffusive velocities and their previous
+! iterates; the Maeder & Zahn coefficients on the model grid and (unset)
+! on the equal grid; the shear and GSF diffusion coefficients on the
+! model grid and (unset) on the equal grid; the (unset) geometric
+! factors, mixing velocity estimate and equatorial radius; d chi/dr at
+! the grid edges (unset); the second- and third-derivative geometric
+! factors; the theta term (Maeder & Zahn 1998) on the new mesh, now,
+! mean and previous, and its relaxation factor; the order d omega/dr
+! shear terms; henyey_coefficients' copies of d ln kappa/d ln T,
+! d eps/d ln T and (eps - eps_nu - eps_grav)/eps.
+!           double precision :: am_advective_coeff(json), &
+!                am_diffusive_coeff(json)
+!           double precision :: es_advective_velocity(json), &
+!                es_advective_velocity_prev(json), &
+!                es_diffusive_velocity(json), &
+!                es_diffusive_velocity_prev(json)
+!           double precision :: facd2(json), facd3(json), &
+!                am_2nd_deriv_coeff(json), &
+!                am_3rd_deriv_coeff(json), &
+!                geometric_factor(json), &
+!                velocity_coeff0(json), &
+!                velocity_coeff1a(json), &
+!                velocity_coeff1b(json), &
+!                velocity_coeff2a(json), &
+!                velocity_coeff2b(json), &
+!                eq_velocity_coeff0(json), &
+!                eq_velocity_coeff1a(json), &
+!                eq_velocity_coeff1b(json), &
+!                eq_velocity_coeff2a(json), &
+!                eq_velocity_coeff2b(json), &
+!                shear_diffusion_coeff(json), &
+!                gsf_diffusion_coeff(json), &
+!                shear_diffusion_coeff_eqgrid(json), &
+!                gsf_diffusion_coeff_eqgrid(json)
+!           double precision :: mixing_geometric_factor(json), &
+!                mixing_velocity_estimate(json), &
+!                equatorial_radius(json)
+!           double precision :: dchi_dr_edge(json)
+!           double precision :: second_deriv_geom_factor_eqgrid(json), &
+!                third_deriv_geom_factor_eqgrid(json), &
+!                second_deriv_geom_factor(json), &
+!                third_deriv_geom_factor(json)
+!           double precision :: theta_rezoned(json), theta_new(json), &
+!                theta_mean(json), es_relaxation_factor(json), &
+!                theta_prev(json)
+!           double precision :: difad_shear_coeff1(json), difad_shear_coeff2(json)
+!           double precision :: dlnkappa_dlnt(json), &
+!                deps_dlnt(json), neutrino_loss_fraction(json)
 ! The equally spaced grid, set by equal_spaced_grid. Its coordinate is
 !   chi = log M/dm + L/(L_tot dl) - log P/dp
 ! (dm, dl, dp the ranges' scales). chi holds it at the model zones of the
@@ -81,14 +95,6 @@ module rotation_scratch_lib
                 eq_enclosed_mass(json)
            double precision :: eq_chi_spacing
            integer :: num_eq_points
-! d chi/dr at the grid edges
-           double precision :: dchi_dr_edge(json)
-! the geometric factors of the second- and third-derivative terms, on the
-! equal and model grids
-           double precision :: second_deriv_geom_factor_eqgrid(json), &
-                third_deriv_geom_factor_eqgrid(json), &
-                second_deriv_geom_factor(json), &
-                third_deriv_geom_factor(json)
 ! the angular momentum conservation tolerance
            double precision :: moment_of_inertia_tolerance
 ! 4-point Lagrange interpolation weights
@@ -127,15 +133,12 @@ module rotation_scratch_lib
                 old_visc(json), old_thdif(json), &
                 old_eps_total(json), old_gradr(json), &
                 old_eps_plus_neu_grav(json)
-! theta (the Maeder & Zahn term) and omega across sub-steps.
 ! omega_substep_start (WMST): omega at the start of the current
 ! sub-step (star%old_omega on the first, star%omega afterwards), read at
-! the surface by secular_transport for the wind torque. theta_rezoned
-! is the previous model's theta term on the new mesh (setup/rezone).
-           double precision :: theta_rezoned(json), theta_new(json), &
-                theta_mean(json), &
-                del_grad_diff_interface(json), &
-                es_relaxation_factor(json), theta_prev(json), &
+! the surface by secular_transport for the wind torque.
+! del_grad_diff_interface: max(grad_ad - grad + d ln mu/d ln P, floor)
+! at the interfaces (rotation_stability_setup).
+           double precision :: del_grad_diff_interface(json), &
                 omega_substep_start(json)
 ! the circulation's correction ratio
            double precision :: circulation_correction_ratio(json)
@@ -147,21 +150,16 @@ module rotation_scratch_lib
                 es_velocity_coeff2(json), &
                 gsf_kippenhahn_coeff(json), &
                 es_shear_coeff(json)
-! the mu-gradient (Richardson) term and the advection-diffusion shear terms
-           double precision :: mu_gradient_richardson_coeff(json), &
-                difad_shear_coeff1(json), difad_shear_coeff2(json)
+! the mu-gradient (Richardson) term
+           double precision :: mu_gradient_richardson_coeff(json)
 ! the convective flags at the previous sub-step
            logical :: convective_flag_prev(json)
-! the opacity and energy-generation derivatives, filled by
-! henyey_coefficients: dlnkappa_dlnt is logarithmic; deps_dlnt is the
-! absolute d eps/d ln T (erg/g/s).
-           double precision :: dlnkappa_dlnt(json), &
-                deps_dlnt(json), neutrino_loss_fraction(json)
 ! The structure interpolated in time to the current sub-step, at the
 ! fraction of the step elapsed when the sub-step ends (the "_mid" names
 ! are the legacy midpoint model's): filled by mid_timestep_model, read
-! by secular_transport and the rest of the sub-step. Reads follow a write in the same step (the later
-! sub-steps' seeding reads the previous sub-step's values).
+! by secular_transport and the rest of the sub-step. Reads follow a
+! write in the same step (the later sub-steps' seeding reads the
+! previous sub-step's values).
 ! luminosity_lsun_mid is linear L/Lsun (interpolated from
 ! star%luminosity_lsun), not a log, unlike its log_* neighbours.
 ! mean_gravity_mid is star%mean_gravity's; di_domega_mid is

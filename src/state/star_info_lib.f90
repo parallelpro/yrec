@@ -283,11 +283,11 @@ module star_info_lib
 ! shifts of log P and log T accretion makes at the surface
             double precision :: envelope_specific_entropy, &
                  delta_log_pressure, delta_log_temperature
-! the rotation-scaled solar wind of mass_change: nothing sets these, so
-! that branch never runs
-            double precision :: solar_wind_mass_loss_rate_msun_yr, &
-                 wind_reference_omega, wind_max_omega
-            logical :: use_rotation_scaled_solar_wind
+! (commented out with mass_change's rotation-scaled solar wind,
+! 2026-10-12: its rate, reference and maximum omega, and its switch)
+!            double precision :: solar_wind_mass_loss_rate_msun_yr, &
+!                 wind_reference_omega, wind_max_omega
+!            logical :: use_rotation_scaled_solar_wind
             logical :: star_found_flag = .false., &
                  just_passed_target_radius_flag = .false., &
                  use_two_z_tables = .false.

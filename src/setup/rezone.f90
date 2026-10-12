@@ -91,7 +91,8 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: zone_index
       double precision :: sum_angular_momentum, sum_rotational_ke
       double precision :: angular_momentum_shell
-      double precision :: delta_radius, delta_omega, omega_mid, log_factor
+! (commented out with the advection-diffusion transport's theta term)
+!      double precision :: delta_radius, delta_omega, omega_mid, log_factor
       double precision :: mass_two_back, mass_prev, mass_curr
       integer :: radiative_zone_begin, radiative_zone_end
       integer :: num_radiative_zones, num_convective_zones
@@ -821,16 +822,16 @@ subroutine interpolate_onto_new_grid
 ! MHP 6/00 CALCULATED EARLIER
 !            ESUMO(IM) = SESUM(IM)
          end do
-! MHP 06/02 ADDED TERM FOR THE TIME EVOLUTION
-! OF THE ANGULAR VELOCITY DISTRIBUTION
-         do i = 2,star%nz
-            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
-            delta_omega = star%omega(i) - star%omega(i-1)
-            omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
-            log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
-     (star%log_mass(i)+star%log_mass(i-1))-cgl
-            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
-         end do
+! (commented out with the advection-diffusion transport, 2026-10-12:
+! its theta term, r^4/(G m) omega d omega/dr, on the new mesh; MHP 6/02)
+!         do i = 2,star%nz
+!            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
+!            delta_omega = star%omega(i) - star%omega(i-1)
+!            omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
+!            log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
+!     (star%log_mass(i)+star%log_mass(i-1))-cgl
+!            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
+!         end do
       endif
 !  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
       if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then

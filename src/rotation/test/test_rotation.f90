@@ -421,9 +421,6 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          mid_scr%qdt(i) = 1.0d0
          mid_scr%visc(i) = 10.0d0*(1.0d0 + 3.0d0*f)
          mid_scr%thdif(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
-         rot_scr%dlnkappa_dlnt(i) = -3.0d0
-         rot_scr%deps_dlnt(i) = 4.0d0
-         rot_scr%neutrino_loss_fraction(i) = 0.02d0
       end do
 ! shear bands: omega falls by a factor across a few zones
       select case (steep)
@@ -453,9 +450,6 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       end do
       zmin = 2
       zmax = count(.not. convective(1:n))
-      rot_scr%theta_prev = 0.0d0
-      rot_scr%es_diffusive_velocity_prev = 0.0d0
-      rot_scr%es_advective_velocity_prev = 0.0d0
       circ_scr%es_circulation_velocity_prev = 0.0d0
       circ_scr%secular_shear_velocity_prev = 0.0d0
       circ_scr%gsf_circulation_velocity_prev = 0.0d0
@@ -480,7 +474,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
             end do
          end if
          call circulation_velocities(log_r, radius, zmin, zmax, it, convective, n, w, active, &
-              dw_dlnr, shear_limit, v_total, lum_total, 3.0d13, log_p)
+              dw_dlnr, shear_limit, v_total, lum_total, log_p)
       end do
       if (zahn) call zahn_coupling_factor(log_rho, radius, v_total, zmin, zmax, w)
       call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix)

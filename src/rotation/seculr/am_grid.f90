@@ -15,8 +15,7 @@ contains
 
 ! ---------------------------------------------------------------
 ! Maps the unstable region zone_begin..zone_end onto the equally spaced
-! chi grid of the angular momentum solve (am_diffusion_coeffs, or
-! am_advection_diffusion_coeffs under use_diffusion_advection_transport);
+! chi grid of the angular momentum solve (am_diffusion_coeffs);
 ! composition_grid is its companion for the composition.
 ! equal_spaced_grid lays down the grid: rot_scr%chi at the region's
 ! model zones, rot_scr%eq_chi at the rot_scr%num_eq_points grid points
@@ -79,7 +78,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 
       double precision :: eq_reduced_moment_of_inertia(json)
       integer :: ntab, i, ii, ntabb
-      double precision :: emtop, embot, scale_factor
+      double precision :: emtop, embot
 ! The spline tables: table_x/table_y at the model zones (or their
 ! interfaces), eval_x/eval_y on the grid (points or edges).
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
@@ -228,36 +227,37 @@ subroutine edge_coefficients()
 ! The composition (mixing) diffusion coefficient.
       call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
            rot_scr%num_eq_points, eval_x, table_x, table_y, eq_mixing_diffusion_coeff)
-! Under use_diffusion_advection_transport, the advective and diffusive
+! (commented out with the advection-diffusion transport, 2026-10-12:
+! the advective and diffusive
 ! coefficients rot_scr%am_advective_coeff and am_diffusive_coeff: the
 ! Eddington-Sweet velocities rot_scr%es_advective_velocity and
 ! es_diffusive_velocity times 0.2 * 4 pi * difad_velocity_scale,
-! splined the same way.
-      if (rotation_settings%use_diffusion_advection_transport) then
-         scale_factor = 0.2d0*c4pi*rotation_settings%difad_velocity_scale
-         table_y(1) = scale_factor*rot_scr%es_advective_velocity(zone_begin + 1)
-         do i = 2,ntab
-            ii = zone_begin + i - 1
-            table_y(i) = scale_factor*rot_scr%es_advective_velocity(ii)
-         end do
-         table_y(ntabb) = scale_factor*rot_scr%es_advective_velocity(zone_end)
-         call osplin(eval_x,rot_scr%am_advective_coeff,table_x,table_y,ntabb,rot_scr%num_eq_points)
-         table_y(1) = scale_factor*rot_scr%es_diffusive_velocity(zone_begin + 1)
-         do i = 2,ntab
-            ii = zone_begin + i - 1
-            table_y(i) = scale_factor*rot_scr%es_diffusive_velocity(ii)
-         end do
-         table_y(ntabb) = scale_factor*rot_scr%es_diffusive_velocity(zone_end)
-         call osplin(eval_x,rot_scr%am_diffusive_coeff,table_x,table_y,ntabb,rot_scr%num_eq_points)
+! splined the same way)
+!      if (rotation_settings%use_diffusion_advection_transport) then
+!         scale_factor = 0.2d0*c4pi*rotation_settings%difad_velocity_scale
+!         table_y(1) = scale_factor*rot_scr%es_advective_velocity(zone_begin + 1)
+!         do i = 2,ntab
+!            ii = zone_begin + i - 1
+!            table_y(i) = scale_factor*rot_scr%es_advective_velocity(ii)
+!         end do
+!         table_y(ntabb) = scale_factor*rot_scr%es_advective_velocity(zone_end)
+!         call osplin(eval_x,rot_scr%am_advective_coeff,table_x,table_y,ntabb,rot_scr%num_eq_points)
+!         table_y(1) = scale_factor*rot_scr%es_diffusive_velocity(zone_begin + 1)
+!         do i = 2,ntab
+!            ii = zone_begin + i - 1
+!            table_y(i) = scale_factor*rot_scr%es_diffusive_velocity(ii)
+!         end do
+!         table_y(ntabb) = scale_factor*rot_scr%es_diffusive_velocity(zone_end)
+!         call osplin(eval_x,rot_scr%am_diffusive_coeff,table_x,table_y,ntabb,rot_scr%num_eq_points)
 ! The composition diffusion coefficient is added to the diffusive part,
 ! cf. Zahn 1992, A&A 265, 115: the Eddington-Sweet term
 ! (es_diffusive_velocity) is the diffusion from horizontal transport,
 ! the mixing coefficient that from vertical transport (MHP 5/02).
-         do i = 1, rot_scr%num_eq_points
-            rot_scr%am_diffusive_coeff(i) = rot_scr%am_diffusive_coeff(i)+ &
-                 eq_mixing_diffusion_coeff(i)
-         end do
-      end if
+!         do i = 1, rot_scr%num_eq_points
+!            rot_scr%am_diffusive_coeff(i) = rot_scr%am_diffusive_coeff(i)+ &
+!                 eq_mixing_diffusion_coeff(i)
+!         end do
+!      end if
 end subroutine edge_coefficients
 
 ! ---------------------------------------------------------------
@@ -267,8 +267,8 @@ end subroutine edge_coefficients
 ! from diffusion_velocity_scales),
 !   eq_mixing_diffusion_coeff = 4 pi D rho r^2 dchi/dr,
 !   eq_am_diffusion_coeff     = 4 pi nu rho r^4 (I/m r^2) dchi/dr,
-! and under use_diffusion_advection_transport the advective and
-! diffusive coefficients take the angular momentum factor too.
+! (the commented-out advection-diffusion coefficients took the angular
+! momentum factor too).
 ! I/(m r^2) of the model zone stands in for the 2/3 of a thin spherical
 ! shell in the flux of angular momentum (MHP 5/02).
 subroutine apply_jacobians()
@@ -289,11 +289,11 @@ subroutine apply_jacobians()
       call osplin(eval_x,eval_y,table_x,table_y,ntab,rot_scr%num_eq_points)
 ! The angular momentum coefficient times rho r^4 (I/m r^2) dchi/dr.
       call multiply_by_exp10(eq_am_diffusion_coeff, eval_y, rot_scr%num_eq_points)
-! The advection-diffusion coefficients by the same factor.
-      if (rotation_settings%use_diffusion_advection_transport) then
-         call multiply_by_exp10(rot_scr%am_advective_coeff, eval_y, rot_scr%num_eq_points)
-         call multiply_by_exp10(rot_scr%am_diffusive_coeff, eval_y, rot_scr%num_eq_points)
-      end if
+! (commented out: the advection-diffusion coefficients by the same factor)
+!      if (rotation_settings%use_diffusion_advection_transport) then
+!         call multiply_by_exp10(rot_scr%am_advective_coeff, eval_y, rot_scr%num_eq_points)
+!         call multiply_by_exp10(rot_scr%am_diffusive_coeff, eval_y, rot_scr%num_eq_points)
+!      end if
 end subroutine apply_jacobians
 
 end subroutine am_transport_grid
