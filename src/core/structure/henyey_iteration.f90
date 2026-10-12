@@ -167,6 +167,34 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
            converged) return
       converged = .false.
       do iter = 1,max_iterations
+       call linearize_structure_equations()
+       if (ierr /= 0) return
+       call renormalize_luminosity_channels()
+       call accept_small_residuals()
+       if (converged) return
+       call form_surface_bc_rows()
+! DO BACK SOLUTION FOR CORRECTIONS
+       call henyey_solve(star%nz,star%elim_coeff,star%elim_rhs,star%surface_bc)
+       call find_largest_corrections()
+       call test_henyey_convergence()
+       call set_henyey_correction_factor()
+       call log_henyey_corrections()
+       if (corrections_too_large) return
+       call apply_henyey_corrections()
+       call update_rotation_after_corrections()
+       if (ierr /= 0) return
+       iterations_done = iterations_done + 1
+       if (converged) return
+      end do
+
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Zero the residual maxima and linearize the structure equations at
+! every shell (henyey_coefficients); a failure leaves ierr nonzero.
+subroutine linearize_structure_equations()
 ! DO HENYEY REDUCTION
        star%max_residual(1) = 0.0d0
        star%max_residual(2) = 0.0d0
@@ -181,6 +209,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
           ierr = jerr
           return
        end if
+end subroutine linearize_structure_equations
+
+! ---------------------------------------------------------------
+! Scale the luminosity channels to sum to the surface luminosity
+! (not during the helium flash).
+subroutine renormalize_luminosity_channels()
 ! RENORMALIZE TLUMX-S
 !CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
 ! (per-iteration twin of observables's renormalize_luminosity_breakdown;
@@ -196,6 +230,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
              star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
           end do
        endif
+end subroutine renormalize_luminosity_channels
+
+! ---------------------------------------------------------------
+! After the first iteration, the model has converged if the equations'
+! residuals are all below their tolerances.
+subroutine accept_small_residuals()
 ! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
 ! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
        if (iter.gt.1) then
@@ -214,6 +254,14 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
              return
           endif
        endif
+! (a copy of log_henyey_corrections' format 75: a label belongs to
+! one procedure)
+   75 format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
+end subroutine accept_small_residuals
+
+! ---------------------------------------------------------------
+! The outer boundary-condition rows from the envelope-fit coefficients.
+subroutine form_surface_bc_rows()
 ! SET UP HENYEY COEFFICIENTS FOR SURFACE
        star%surface_bc(1) = -star%envelope_fit_coeffs(1)
        star%surface_bc(2) = -star%envelope_fit_coeffs(2)
@@ -226,8 +274,11 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%surface_bc(6) = temp*(star%envelope_fit_coeffs(4)*star%logP(star%nz)+ &
             star%envelope_fit_coeffs(5)*star%logT(star%nz)+ &
             star%envelope_fit_coeffs(6)-star%log_L)
-! DO BACK SOLUTION FOR CORRECTIONS
-       call henyey_solve(star%nz,star%elim_coeff,star%elim_rhs,star%surface_bc)
+end subroutine form_surface_bc_rows
+
+! ---------------------------------------------------------------
+! The largest P, T, R and L corrections and the shells where they occur.
+subroutine find_largest_corrections()
 ! CHECK ON MAXIMUM CORRECTIONS
        do j = 1,4
           star%max_residual(j) = dabs(star%elim_rhs(j,1))
@@ -255,6 +306,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
              star%max_correction_index(4) = i
           endif
        end do
+end subroutine find_largest_corrections
+
+! ---------------------------------------------------------------
+! Converged if every largest correction is below its tolerance, too
+! large if any exceeds its limit; keep the signed largest corrections.
+subroutine test_henyey_convergence()
 !CC   HE FLASH -- OK FOR ALL
        luminosity_correction_max = star%max_residual(4)
 ! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
@@ -272,6 +329,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
           max_correction_pos = star%max_correction_index(j)
           star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
        end do
+end subroutine test_henyey_convergence
+
+! ---------------------------------------------------------------
+! Ramp the under-relaxation factor and pick the correction factor (eased
+! in during the helium flash); count the iterations if converged.
+subroutine set_henyey_correction_factor()
        if (underrelax_ramp_active) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
 ! HE FLASH CHANGE
        correction_factor = star%job%fcorr
@@ -283,6 +346,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
             + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
        helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
        if (converged) star%newton_iterations = iterations_done + 1
+end subroutine set_henyey_correction_factor
+
+! ---------------------------------------------------------------
+! Log the corrections (solver diagnostics), and report corrections too
+! large to apply.
+subroutine log_henyey_corrections()
 ! 2026 log redesign: the correction trace was gated on the retired
 ! LCORR control; it is solver forensics, behind the diagnostics flag.
        if (solver_diagnostics()) then
@@ -306,6 +375,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
    80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')
             return
          endif
+end subroutine log_henyey_corrections
+
+! ---------------------------------------------------------------
+! Apply the scaled corrections to every shell; the new log L and
+! log Teff.
+subroutine apply_henyey_corrections()
 ! APPLY CORRECTIONS
        do i = 1,star%nz
           temp = correction_factor*star%elim_rhs(1,i)
@@ -322,6 +397,12 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
             star%envelope_fit_coeffs(8)*star%logT(star%nz) + &
             star%envelope_fit_coeffs(9)
+end subroutine apply_henyey_corrections
+
+! ---------------------------------------------------------------
+! With rotation, the rotation curve, the P/T shape factors and the
+! rotational kinetic energy of the corrected structure.
+subroutine update_rotation_after_corrections()
          if (star%job%rotation_active) then
             call omega_from_j(star%logRho,star%j_rot,star%logR, &
                  star%log_mass,star%dm,star%am_transport_convective_flag, &
@@ -336,11 +417,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
                star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
             end do
          endif
-       iterations_done = iterations_done + 1
-       if (converged) return
-      end do
+end subroutine update_rotation_after_corrections
 
-      return
 end subroutine henyey_iterate
 
 end module henyey_iteration

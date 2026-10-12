@@ -94,6 +94,20 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       double precision :: b, gl, rl, adjusted_teffl
 
       ierr = 0
+      call switch_atmosphere_choice()
+      call mark_triangle_vertices()
+      call locate_point_in_triangle()
+      call integrate_vertex_envelopes()
+      if (ierr /= 0) return
+      call fit_triangle_coefficients()
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Fall back to the gray atmosphere when Teff leaves the Kurucz/Allard
+! table, and switch back once it returns.
+subroutine switch_atmosphere_choice()
 ! MHP 9/01
       if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
@@ -136,6 +150,12 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
          endif
       endif
+end subroutine switch_atmosphere_choice
+
+! ---------------------------------------------------------------
+! No envelope recomputed yet; all three vertices need new envelopes for
+! a new or reset triangle, otherwise all three are still valid.
+subroutine mark_triangle_vertices()
       envelope_recomputed_flag = .false.
 ! IF LNEW0, REDO ALL 3 ENVELOPES EVERY MODEL
       if (start_new_triangle.or.reset_triangle) then
@@ -152,6 +172,12 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
        tri_vertex_valid(3) = .true.
        tri_err = 0.0d0
       endif
+end subroutine mark_triangle_vertices
+
+! ---------------------------------------------------------------
+! Start a triangle about (Teff, L), or reflect vertices of the old one
+! until it contains the point; a reflected vertex needs a new envelope.
+subroutine locate_point_in_triangle()
       if (start_new_triangle) then
 ! STARTING PROCEDURE
        tri_orientation = +1.0d0
@@ -182,6 +208,12 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
        exit tri_scan
        end do tri_scan
       endif
+end subroutine locate_point_in_triangle
+
+! ---------------------------------------------------------------
+! Integrate a new envelope at every vertex that needs one; a failure
+! leaves ierr nonzero.
+subroutine integrate_vertex_envelopes()
 ! COMPUTE NEW ENVELOPES IF NECESSARY
       envelope_needs_recompute = .false.
       do i = 1,3
@@ -221,6 +253,11 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
           envelope_needs_recompute = .true.
        endif
       end do
+end subroutine integrate_vertex_envelopes
+
+! ---------------------------------------------------------------
+! Refit the interpolation coefficients when any envelope is new.
+subroutine fit_triangle_coefficients()
       if (envelope_needs_recompute) then
 ! RECOMPUTE COEFFICIENTS
        temp = 1.0d0/(vtx_logt(2)-vtx_logt(1))
@@ -247,7 +284,8 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
        if (solver_diagnostics()) write(run_log_unit,70)
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
-      return
+end subroutine fit_triangle_coefficients
+
 end subroutine compute_surface_boundary
 
 end module surface_boundary

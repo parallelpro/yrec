@@ -126,6 +126,28 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 
       ierr = 0
 
+      call start_energy_bookkeeping()
+      do im = 1,star%nz
+       call gather_shell_inputs()
+       call evaluate_eos_opacity_gradients()
+       if (ierr /= 0) return
+       call form_radius_pressure_temperature_terms()
+       call form_nuclear_energy_terms()
+       call form_gravitational_energy_terms()
+       call eliminate_shell_pair()
+       call store_zone_energy_channels()
+       call store_zone_thermodynamics()
+       call store_pulse_derivatives()
+      end do
+
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! Zero the neutrino fluxes and the luminosity channels, and set up
+! the inverse time step of the entropy term when the step has a duration.
+subroutine start_energy_bookkeeping()
       if (star%ctrl%calc_neutrinos) then
          do j = 1,n_nu_fluxes
             star%neutrino_flux_total(j) = 0.0d0
@@ -140,7 +162,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       do j = 1,n_lum_channels
        star%luminosity_breakdown(j) = 0.0d0
       end do
-      do im = 1,star%nz
+end subroutine start_energy_bookkeeping
+
+! ---------------------------------------------------------------
+! Copy shell im's mass, temperature, pressure, radius, luminosity,
+! composition, density and rotation factors into the locals.
+subroutine gather_shell_inputs()
 ! SET UP LOCAL VARIABLES FOR CALLS TO BASIC PHYSICS ROUTINES
        zone_energy_luminosity = 0.0d0
        zone_log_mass = star%log_mass(im)
@@ -169,6 +196,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
        zone_log10_density = star%logRho(im)
        pressure_rotation_factor = star%fp_rot(im)
         temperature_rotation_factor = star%ft_rot(im)
+end subroutine gather_shell_inputs
+
+! ---------------------------------------------------------------
+! The equation of state, the opacity and the temperature gradients at
+! shell im; a failure leaves ierr nonzero.
+subroutine evaluate_eos_opacity_gradients()
          eos_res%log10_density = zone_log10_density
          eos_res%dlnrho_dlnt = dlnrho_dlnt
          eos_res%dlnrho_dlnp = dlnrho_dlnp
@@ -197,6 +230,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
               star%log_Teff, &
               im >= star%iov1 .and. im <= star%iov2, ierr)
          if (ierr /= 0) return
+end subroutine evaluate_eos_opacity_gradients
+
+! ---------------------------------------------------------------
+! Store the shell's density; form the radius, pressure and temperature
+! equations' terms and partials (radiative or convective gradient).
+subroutine form_radius_pressure_temperature_terms()
        star%logRho(im) = eos_res%log10_density
 ! COMPUTE DERIVATIVES
        qtemp = c4pil + zone_log_radius + zone_log_radius + zone_log_radius
@@ -225,6 +264,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
           cur%qt_dt = pt_scr%qt*dgrad_dt_component
           cur%qt_dr = cur%qt_dr + pt_scr%qt*dgrad_dr_component
        end if
+end subroutine form_radius_pressure_temperature_terms
+
+! ---------------------------------------------------------------
+! The luminosity equation's nuclear term and partials above the burning
+! cutoff, with the shell's share of the luminosity channels and neutrino fluxes.
+subroutine form_nuclear_energy_terms()
        cur%ql = 0.0d0
        cur%ql_dt = 0.0d0
        cur%ql_dp = 0.0d0
@@ -275,6 +320,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                  zone_deps_dlnrho*dlnrho_dlnt
             cur%ql_dp = cur%ql_dp + zone_deps_dlnrho*dlnrho_dlnp
          end if
+end subroutine form_nuclear_energy_terms
+
+! ---------------------------------------------------------------
+! Add the gravitational (entropy change) energy term and its partials,
+! and the change of the rotational kinetic energy, when the step has a duration.
+subroutine form_gravitational_energy_terms()
          if (compute_entropy_term) then
 ! SET UP ENTROPY TERMS
             zone_dt = delta_time_inv
@@ -320,6 +371,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
             end if
 ! ADD CHANGE IN ENTROPY FROM ACCRETED MATERIAL
          end if
+end subroutine form_gravitational_energy_terms
+
+! ---------------------------------------------------------------
+! Scale the luminosity terms, eliminate the pair (im-1, im), or set the
+! central boundary conditions at im = 1; carry cur into prev.
+subroutine eliminate_shell_pair()
          cccql = star%ln10_over_lsun*star%m(im)
          cur%ql = cccql*cur%ql
          cur%ql_dp = cccql*cur%ql_dp
@@ -345,6 +402,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
          end if
 ! carry this shell's terms into the next pair's elimination
          prev = cur
+end subroutine eliminate_shell_pair
+
+! ---------------------------------------------------------------
+! Store the shell's total energy generation and its fractions by channel
+! for output (zero below the burning cutoff).
+subroutine store_zone_energy_channels()
 !  STORE THE PER-ZONE PHYSICS FOR OUTPUT (always, for every model).
 !  ZERO OUT NUCLEAR ENERGY TERMS IF T < NUCLEAR CUTOFF.
          if (star%logT(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
@@ -368,6 +431,11 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
                star%eps_channels(j,im) = energy_gen_component(j)*energy_sum_inverse
               end do
          end if
+end subroutine store_zone_energy_channels
+
+! ---------------------------------------------------------------
+! Store the shell's eos, opacity and gradient values and Gamma1 for output.
+subroutine store_zone_thermodynamics()
          star%beta(im) = eos_res%beta
          star%eta(im) = eos_res%electron_degeneracy_parameter
          star%opacity_zone(im) = kap_res(i_kap)
@@ -402,6 +470,12 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
 !            end if
 !            rot_scr%deps_dlnt(im) = zone_deps_dlnt
 !         end if
+end subroutine store_zone_thermodynamics
+
+! ---------------------------------------------------------------
+! Store the shell's derivatives and mean molecular weights for the
+! pulsation output.
+subroutine store_pulse_derivatives()
 ! DBG PULSE
 ! MHP 8/25 unconditional: previously gated on pulsation_output_active
 ! (the legacy path-length-triggered OPAL pulsation writer's flag), but
@@ -436,9 +510,8 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
          star%valfmlt(im) = 0.0d0
          star%vphmlt(im) = 0.0d0
          star%vcmxmlt(im) = 0.0d0
-      end do
+end subroutine store_pulse_derivatives
 
-      return
 end subroutine compute_henyey_coefficients
 
 end module structure_equations
