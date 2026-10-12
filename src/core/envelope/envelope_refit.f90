@@ -1,26 +1,22 @@
 !----------------------------------------------------------------------
 ! envelope_refit
 !----------------------------------------------------------------------
-! The per-shell fill that the two envelope refits share (2026 W3).
-! After atm_get has integrated a fresh envelope from the surface down
-! past the current fitting point and the caller has shifted env_struct
-! so that its point 1 lies just below the last interior shell,
-! append_envelope_points appends the envelope points that lie below
-! the new fitting mass star%senv to the model grid as new shells,
-! interpolates the last one onto the fitting mass exactly, and
-! advances num_zones.
+! Appending envelope points to the model as shells, the step the two
+! envelope refits share. Before the call, atm_get has integrated a
+! fresh envelope from the surface down to the current fitting point,
+! and the caller has shifted env_struct so that its point 1 is the
+! first point outside the last interior shell.
 !
-! Callers: core/envelope/envelope_rebuild.f90 (fitting point moved during the
-! run) and core/model/starting_model.f90 (requested envelope mass
-! shallower than the starting model's). Everything the two callers do
-! before this loop (surface L/Teff/g, the env_struct shift) and after
-! it (shell masses, rotation, the prints) differs and stays in the
-! caller. Inside the loop they differ in exactly one test -- whether
-! an envelope point sitting exactly at the fitting mass is taken as a
-! shell (read_starting_model: .le.) or interpolated (rebuild_envelope:
-! .lt.) -- carried by accept_point_at_fit_mass. Each caller prints
-! its own message when ierr comes back nonzero (degenerate mass
-! interval).
+! Callers: core/envelope/envelope_rebuild.f90 (the fitting point moved
+! outward during the run) and core/model/starting_model.f90 (a
+! requested envelope thinner than the starting model's). What they do
+! before the call (the surface L, Teff and g, the env_struct shift)
+! and after it (shell masses, rotation, prints) stays with them. Inside
+! the loop they differ in one test, carried by
+! accept_point_at_fit_mass: whether an envelope point exactly at the
+! fitting mass is taken as a shell (read_starting_model, .le.) or
+! interpolated (rebuild_envelope, .lt.). Each prints its own message
+! when ierr comes back nonzero.
 module envelope_refit
       implicit none
       private
@@ -28,6 +24,16 @@ module envelope_refit
 
 contains
 
+! ---------------------------------------------------------------
+! Appends the env_struct points inside the new fitting mass star%senv
+! to the model as zones num_zones+1, num_zones+2, ..., and the first
+! point outside it as a last zone interpolated linearly in log m onto
+! the fitting mass; advances num_zones. Each new zone keeps the
+! luminosity of the last interior shell (log_luminosity holds L in
+! Lsun, linear, despite its name); it takes X and Z from the envelope,
+! He3 and the heavier tracers from the last interior shell, and
+! Y = 1 - X - Z - X(He3). ierr = 1 when the mass interval of the
+! interpolation is below 1e-14 dex.
 subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
      composition, log_density, log_luminosity, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, ierr)
@@ -49,12 +55,11 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
       double precision :: interp_fraction
 
       ierr = 0
-! ASSIGN NEW POINTS
       do zone_index = num_zones+1,num_zones+env_struct%num_env_points
          env_point_index = zone_index-num_zones
-! LUMINOSITY ASSUMED CONSTANT
+! The luminosity is constant through the envelope.
          log_luminosity(zone_index) = log_luminosity(num_zones)
-! INCLUDE NEW POINTS UP TO THE DIFFERENT DESIRED FITTING POINT
+! Points inside the new fitting mass become zones as they are.
          if (accept_point_at_fit_mass) then
             point_below_fit_mass = env_struct%env_log10_mass(env_point_index).le.star%senv
          else
@@ -75,10 +80,16 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
                  composition(i_metals,zone_index)-composition(i_he3,zone_index)
             convective_flag(zone_index) = env_struct%env_convective_flag(env_point_index)
          else
-! POINTS BEYOND THIS ARE ABOVE THE NEW DESIRED FITTING POINT;
-! INTERPOLATE LINEARLY, SET NEW NUMBER OF TOTAL POINTS, AND EXIT
+! The first point outside the fitting mass: the last zone is
+! interpolated linearly in log m onto the fitting mass,
+!   v = v0 + f (v2 - v0),  f = (log m_fit - log m0)/(log m2 - log m0),
+! between the zone or point below it (0) and this point (2); then
+! num_zones is set and the loop ends.
             if(env_point_index.eq.1)then
-! INTERPOLATE BETWEEN THE LAST INTERIOR POINT AND THE FIRST ENVELOPE POINT
+! Between the last interior shell and the first envelope point; the
+! zone is convective if either is. X and Z use the difference
+! X(nz) - X_env, the reverse of the other variables; it vanishes when
+! the envelope has the shell's X and Z, as both callers integrate it.
                mass_interp_x0 = log_mass(num_zones)
                mass_interp_x1 = star%stotal + star%senv
                mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
@@ -112,7 +123,8 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
                   convective_flag(zone_index) = .false.
                endif
             else
-! INTERPOLATE BETWEEN THE LAST 2 ENVELOPE POINTS
+! Between the last two envelope points; the zone is convective if
+! either is.
                mass_interp_x0 = env_struct%env_log10_mass(env_point_index-1) + star%stotal
                mass_interp_x1 = star%stotal + star%senv
                mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
@@ -150,9 +162,11 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
             exit
          endif
       end do
-! ASSIGN THE BOUNDARY AT THE PHOTOSPHERE FOR ENVELOPE MASS BELOW 1.0D-12.
-! (On the exit path above num_zones was just set to zone_index, so this
-! guard is false there; on fall-through num_zones is unchanged.)
+! Every envelope point, the photosphere included, lay inside the
+! fitting mass (an envelope below about 1e-12 of the star, senv at 0):
+! all became zones, and the model now ends at the photosphere. (After
+! the exit above, num_zones is already zone_index, and this test is
+! false.)
       if (zone_index .gt. num_zones + env_struct%num_env_points) then
       num_zones = num_zones + env_struct%num_env_points
       end if

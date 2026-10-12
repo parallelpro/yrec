@@ -13,45 +13,32 @@ module timestep_control
 
 contains
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! htimer
+! compute_timestep (legacy htimer.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original htimer.f; only variable names, source form, and comment
-! style were updated.
-!
-! htimer determines the timestep for the next model.
-! There are several possible means of determining the timestep; it
-! chooses the most stringent one.
-! First of all, the timestep may not be more than atime(13) times the
-!      previous one.
-! In sr ptime, the timestep based on structure changes from one
-!      model to the next is computed if desired (structure_dt).
-! In sr wtime, the timestep based on changes in the angular velocity
-!      from one model to the next is computed (rotating models only)
-!      (rotation_dt).
-! In sr xtime, the timestep based on hydrogen burning is computed
-!      (hydrogen_dt).
-! In sr ytime, the timestep based on helium burning is computed
-!      (helium_dt).
-! Details of the computation of these timesteps can be found in the
-!      appropriate subroutines.
-! The final timestep (previous_timestep, also returned as chosen_dt)
-!      is the minimum of the above timesteps.
-! **note: if a criterion is inapplicable or turned off by user
-!      parameters then the 'timestep' for that criterion is
-!      arbitrarily set to a large number (dt_unlimited).
-! If a fixed timestep is being enforced (timestep_override_active=T),
-! the above criteria are short-circuited and a timestep
-! (timestep_override) is enforced. Caveat user.
-! If the model is being evolved to a fixed age (end_age_stop_active=T),
-! the timestep will be reduced if the one used would put the model
-! past the desired age (target_end_age).
-!
-! A negative timestep indicates that a model is being relaxed
-! and not evolved. Check for negative dt and exit if found.
+! The timestep for the next model: the smallest of these limits, each
+! set by the change over the step just taken (a criterion that is off or
+! does not apply gives dt_unlimited):
+!   structure_dt  the change of log P, log T, log R and L at any point
+!                 (timestep_limit_structure, legacy ptime), while the
+!                 structure-based limits are on;
+!   rotation_dt   the change of omega, rotating models only
+!                 (timestep_limit_omega, legacy wtime);
+!   hydrogen_dt   hydrogen burning (timestep_limit_hburn, legacy xtime);
+!   helium_dt     helium burning (timestep_limit_heburn, legacy ytime);
+!   envelope_dt   the motion in the HR diagram against the envelope
+!                 triangle (timestep_limit_hr, legacy entime), when on
+!                 and the structure-based limits are off;
+! and, for a previous timestep above 1 s, atime(itime_max_dt_frac) times
+! the previous timestep.
+! A fixed timestep (timestep_override_active for this kind card)
+! replaces all of these; caveat user. When evolving to a fixed age
+! (end_age_stop_active with target_end_age > 0), the timestep is cut so
+! that the model does not pass that age.
+! A negative previous_timestep marks a model being relaxed rather than
+! evolved: the limits are skipped and only its magnitude is kept.
+! On return previous_timestep holds the new timestep (s), also in
+! chosen_dt and, in years, timestep_years.
 subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_density, &
      luminosity, enclosed_mass, log_temperature, composition, &
      convective_core_edge_zone, h_shell_midpoint_zone, &
@@ -82,24 +69,23 @@ subroutine compute_timestep(previous_timestep, chosen_dt, num_points, log_densit
       double precision, intent(out) :: max_domega_frac
       integer, intent(in) :: h_shell_zone_begin
       double precision, intent(in) :: log_teff
-! disable_structure_dt_limits: set when this call decided to switch the
-! structure-based limits off; the driver clears
-! star%job%use_structure_dt_limits on seeing it (W3).
+! disable_structure_dt_limits: set when this call switches the
+! structure-based limits off; the driver then clears
+! star%job%use_structure_dt_limits.
       logical, intent(out) :: disable_structure_dt_limits
       double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
 ! structure_limits_active: whether the structure-based limits apply to
-! this step -- star%job%use_structure_dt_limits, switched off once the
-! centre passes log Tc = 7.1 with L_grav < 0.  The routine reads only
-! this local after that decision and reports it through
-! disable_structure_dt_limits; the driver flips the star%job% flag.
+! this step: star%job%use_structure_dt_limits, unless
+! decide_structure_limits switches them off (log Tc > 7.1 with
+! L_grav < 0). The job flag itself is left to the driver.
       logical :: structure_limits_active
 ! dt_unlimited: "no limit from this criterion" sentinel (seconds).
       double precision, parameter :: dt_unlimited = 1.0d20
 
       disable_structure_dt_limits = .false.
       if (previous_timestep.ge.0.0d0) then
-! if user is fixing tstep, set dt to given value and exit
+! A fixed timestep for this kind card overrides the limits.
       if(star%job%timestep_override_active(kind_card_index)) then
        chosen_dt = star%job%timestep_override(kind_card_index)*seconds_per_year
        previous_timestep = chosen_dt
@@ -122,10 +108,9 @@ contains
 
 ! ---------------------------------------------------------------
 ! Whether the structure-based limits apply to this step: they are switched
-! off once log Tc passes 7.1 with L_grav < 0.
+! off (MHP 9/01) once the centre is hotter than log Tc = 7.1 while the
+! gravothermal luminosity L_grav (luminosity_components(7)) is negative.
 subroutine decide_structure_limits()
-! mhp 9/01  turn off structure-based timestep setting above a critical
-!           temperature; this is done when
       structure_limits_active = star%job%use_structure_dt_limits
       if(structure_limits_active) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
@@ -139,52 +124,46 @@ subroutine decide_structure_limits()
 end subroutine decide_structure_limits
 
 ! ---------------------------------------------------------------
-! The limit from the change of the structure variables (ptime), unlimited
-! when the structure-based limits are off.
+! The limit from the change of the structure variables
+! (timestep_limit_structure, legacy ptime), unlimited when the
+! structure-based limits are off. With no change since the previous
+! model (as on the first call of a kind card) it is the timestep stored
+! in the model.
 subroutine limit_by_structure_change()
-!  find timestep based on changes in structure variables from
-!       one model to the next.
-!  note that this returns the timestep stored in the model on the
-!       first call to htimer for each kind card.
       if(structure_limits_active) then
        call timestep_limit_structure(previous_timestep,luminosity,log_pressure,log_radius,log_temperature,num_points,structure_dt)
       else
        structure_dt = dt_unlimited
       endif
-!  mhp 6/90 a zero timestep in the model will fritz out the code, so
-!  avoid this by setting the structure timestep arbitrarily large.
+! A limit below 1 s (as from a zero timestep stored in the model) would
+! stall the run, so it counts as no limit (MHP 6/90).
       if(structure_dt.lt.1.0d0) structure_dt=dt_unlimited
 end subroutine limit_by_structure_change
 
 ! ---------------------------------------------------------------
-! The limit from the change of omega (wtime), rotating models only; it also
-! returns the largest fractional change of omega.
+! The limit from the change of omega (timestep_limit_omega, legacy
+! wtime), rotating models only; unlimited when omega did not change. It
+! also returns max_domega_frac, the largest fractional change of omega
+! since the previous model, which sets the number of angular momentum
+! transport sub-steps (evolve_angular_momentum).
 subroutine limit_by_omega_change()
-!  find timestep for rotating models based on changes in angular velocity
-!       from one model to the next.
-!  this sr also returns the maximum change in omega from the previous
-!       model to the current one, which is used in the diffusion routine
-!       to determine the number of diffusion timesteps required.
-!  note that this returns the timestep stored in the model on the
-!       first call to htimer for each kind card.
       if(star%job%rotation_active) then
        call timestep_limit_omega(previous_timestep,num_points,omega,rotation_dt,max_domega_frac)
       else
        rotation_dt = dt_unlimited
       endif
-!  mhp 6/90 a zero timestep in the model will fritz out the code, so
-!  avoid this by setting the rotation timestep arbitrarily large.
+! A limit below 1 s counts as no limit, as for the structure (MHP 6/90).
       if(rotation_dt.lt.1.0d0) rotation_dt=dt_unlimited
 end subroutine limit_by_omega_change
 
 ! ---------------------------------------------------------------
-! The limit from hydrogen burning (xtime), for stars that burn hydrogen.
+! The limit from hydrogen burning (timestep_limit_hburn, legacy xtime),
+! for stars that burn hydrogen.
 subroutine limit_by_hydrogen_burning()
-!  find the timestep based on hydrogen burning.
-!  determine the total luminosity due to hydrogen burning (in solar units).
+! The hydrogen-burning luminosity, L_H = L_pp1 + L_pp2 + L_pp3 + L_CNO
+! (Lsun); no limit when it is below 1e-34.
       hydrogen_luminosity = luminosity_components(1) + luminosity_components(2) + &
            luminosity_components(3) + luminosity_components(4)
-!  skip h-burning timestep criteria for stars without h burning.
       if(hydrogen_luminosity.gt.1.0d-34) then
        call timestep_limit_hburn(log_density,composition,luminosity,enclosed_mass, &
             log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
@@ -195,10 +174,10 @@ subroutine limit_by_hydrogen_burning()
 end subroutine limit_by_hydrogen_burning
 
 ! ---------------------------------------------------------------
-! The limit from helium burning (ytime), for stars that burn helium.
+! The limit from helium burning (timestep_limit_heburn, legacy ytime),
+! for stars that burn helium (triple-alpha luminosity
+! luminosity_components(5) above 1e-34 Lsun).
 subroutine limit_by_helium_burning()
-!  find the timestep based on helium burning.
-!  skip for stars without he burning.
       if(luminosity_components(5).gt.1.0d-34) then
        call timestep_limit_heburn(composition,log_density,luminosity, &
             enclosed_mass,log_temperature,convective_core_edge_zone, &
@@ -209,12 +188,12 @@ subroutine limit_by_helium_burning()
 end subroutine limit_by_helium_burning
 
 ! ---------------------------------------------------------------
-! The limit from the motion in the HR diagram (the envelope triangle), when
-! it is on and the structure-based limits are off.
+! The limit from the motion in the HR diagram (timestep_limit_hr, legacy
+! entime; JVS 04/14): the model may move no more than tri_delta_logl in
+! log L or tri_delta_teffl in log Teff per step, the size of the envelope
+! triangle. Applied when use_envelope_triangle_dt is on and the
+! structure-based limits are off.
 subroutine limit_by_hr_motion()
-!  04/14 jvs added timestep governor based on the size of the envelope
-!  triangle. timesteps are restricted such that the model does not move
-!  more than tri_delta_logl or tri_delta_teffl
       if(star%ctrl%use_envelope_triangle_dt .and. .not. structure_limits_active) then
        call timestep_limit_hr(previous_timestep,luminosity,log_teff,num_points,envelope_dt)
       else
@@ -223,21 +202,16 @@ subroutine limit_by_hr_motion()
 end subroutine limit_by_hr_motion
 
 ! ---------------------------------------------------------------
-! The timestep: the smallest of the limits and, for a non-zero previous
-! timestep, of its allowed growth.
+! The timestep: the smallest of the limits and, for a previous timestep
+! above 1 s, of its allowed growth,
+!   dt = min(atime(itime_max_dt_frac) dt_prev, hydrogen_dt, helium_dt,
+!            rotation_dt, structure_dt, envelope_dt).
 subroutine take_tightest_limit()
-!     limit increase in time step from one model to the next for models
-!     with a non-zero timestep.
       if(previous_timestep.gt.1.0d0) then
          previous_timestep = star%ctrl%atime(itime_max_dt_frac)*previous_timestep
-!  now set the timestep to be the minimum of the entropy based timestep,
-!  the nuclear burning timesteps, and the previous timestep*atime(13).
-!  04/14 jvs added envelope_dt
          previous_timestep = min(previous_timestep,hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       else
-!  set the timestep to be the minimum of the the above timesteps,
-!  but neglect the previous timestep.
-!  04/14 jvs added envelope_dt
+! A zero (or sub-second) previous timestep: the smallest limit alone.
          previous_timestep = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       endif
       chosen_dt = previous_timestep
@@ -245,12 +219,10 @@ end subroutine take_tightest_limit
 
 ! ---------------------------------------------------------------
 ! When evolving to a given age, shorten the timestep so the model does not
-! pass it.
+! pass it: dt = min(dt, target_end_age - age), in years. Only for a true
+! stop age (target_end_age > 0), since end_age_stop_active also covers
+! other stop conditions (MHP 10/24).
 subroutine clip_to_end_age()
-!     mhp 10/24 flag includes other stop conditions,
-!  so only do this if there is a true stop age.
-!     if evolving to a given age, ensure age not exceeded
-!      IF(LENDAG(NK)) THEN
       if(star%job%end_age_stop_active(kind_card_index) .and. star%job%target_end_age(kind_card_index).gt.0.0d0) then
        time_left_years = star%job%target_end_age(kind_card_index) - age_gyr*1.0d9
        if(time_left_years.lt. timestep_years) then
@@ -263,20 +235,21 @@ end subroutine clip_to_end_age
 
 end subroutine compute_timestep
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! ptime
+! timestep_limit_structure (legacy ptime.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ptime.f; only variable names, source form, and comment
-! style were updated.
-!
-! This subroutine limits the timestep based on the requirement that the
-! changes from one model to the next in T, P, R, and L be less than the
-! user parameters atime(itime_dt)-atime(itime_dl) at any model point. This criterion
-! dominates in the pre-main sequence, and this subroutine must be used
-! (use_structure_dt via LPTIME=T) to perform pre-main-sequence evolution.
+! The timestep limit from the change of the structure since the start of
+! the step (star%*_start). The largest changes over all points,
+!   dP = max_i |log P_start,i - log P_i|, and likewise dT and dR,
+!   dL = max_i |L_start,i - L_i| / ((L_i + L_(i-1))/2),
+! with L_2 in place of L_0 at the centre, give the factor
+!   f = max(dP/atime(itime_dp), dT/atime(itime_dt), dR/atime(itime_dr),
+!           dL/(ln 10 atime(itime_dl))),
+! where atime(itime_dl) limits Delta log L and Delta L/L ~ ln 10 Delta
+! log L. f = 1 when nothing changed; f is clipped to [1/a, a] with
+! a = atime(itime_max_dt_frac); and struct_dt = previous_timestep/f.
+! This limit dominates on the pre-main sequence, where it must be on
+! (star%job%use_structure_dt_limits, legacy LPTIME).
 subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
@@ -284,38 +257,33 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
       use controls_buffer, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
       implicit none
 
-! previous_timestep: previous model timestep.
-! luminosity: run of luminosity (as a function of mass) in the current
-!             model. Confirmed linear (not logged): main.f updates it
-!             via HL(I)=HL(I)+HL(I)*rate*dt, an Euler step only
-!             consistent with a linear quantity.
-! log_pressure: run of log10(pressure) in the current model. Confirmed
-!               logged: ptime.f's own comments describe atime(itime_dt)-(itime_dr)
-!               as "MAX DELTA LOG T/P/R".
-! log_radius: run of log10(radius) in the current model.
-! log_temperature: run of log10(temperature) in the current model.
-! num_points: number of points in the model.
-! struct_dt: timestep for requested change in P, T, R, L.
+! previous_timestep: the previous model's timestep (s).
+! luminosity: L/Lsun at each point of the current model (linear, not
+!   log).
+! log_pressure, log_radius, log_temperature: log P, log R and log T at
+!   each point of the current model.
+! num_points: the number of points.
+! struct_dt: the structure-based timestep limit (s).
       double precision, intent(in) :: previous_timestep
       double precision, intent(in) :: luminosity(json), log_pressure(json), &
            log_radius(json), log_temperature(json)
       integer, intent(in) :: num_points
       double precision, intent(out) :: struct_dt
-! max_change: maximum absolute time differences for each quantity
-! (1 = P, 2 = T, 3 = R, 4 = L).
+! max_change: the largest change of each quantity over all points
+! (1 = log P, 2 = log T, 3 = log R, 4 = L, relative).
       double precision :: max_change(4)
       integer :: i
       double precision :: test_p, test_t, test_r, test_l, dt_factor, &
            dt_factor_limit
 
-! find maximum absolute time differences for each quantity
-! pressure
+! The changes at the centre, then the largest over the other points:
+! log P,
       max_change(1)=abs(star%logP_start(1)-log_pressure(1))
-! temperature
+! log T,
       max_change(2)=abs(star%logT_start(1)-log_temperature(1))
-! radius
+! log R,
       max_change(3)=abs(star%logR_start(1)-log_radius(1))
-! luminosity
+! and L, relative to the mean L of the point and its neighbour.
       if(luminosity(1)+luminosity(2).gt.0.0d0) then
        max_change(4)=abs((star%luminosity_lsun_start(1)-luminosity(1))*2.d0/(luminosity(2)+luminosity(1)))
       else
@@ -343,18 +311,18 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
           max_change(4) = test_l
        endif
       end do
-! now actually limit the timestep by a factor that reduces the
-! time changes in all quantities to the ps values or less
+! The factor f that brings the largest change of every quantity down to
+! its limit, the changes taken to scale with the timestep (2.3026 is
+! ln 10).
       dt_factor = max_change(1)/star%ctrl%atime(itime_dp)
       if (max_change(2)/star%ctrl%atime(itime_dt).gt.dt_factor) dt_factor=max_change(2)/star%ctrl%atime(itime_dt)
       if (max_change(3)/star%ctrl%atime(itime_dr).gt.dt_factor) dt_factor=max_change(3)/star%ctrl%atime(itime_dr)
       if (max_change(4)/(star%ctrl%atime(itime_dl)*2.3026d0).gt.dt_factor) then
         dt_factor=max_change(4)/(star%ctrl%atime(itime_dl)*2.3026d0)
       endif
-! if no change from previous model,set struct_dt to timestep
-! stored in the previous model.
+! No change since the previous model: keep the previous timestep.
       if (dt_factor.eq.0.d0) dt_factor=1.0d0
-! restrict change in timestep to no more than a factor of atime(itime_max_dt_frac)
+! Let the timestep change by at most a factor atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
       dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
@@ -364,18 +332,16 @@ subroutine timestep_limit_structure(previous_timestep, luminosity, log_pressure,
       return
 end subroutine timestep_limit_structure
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! wtime
+! timestep_limit_omega (legacy wtime.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original wtime.f; only variable names, source form, and comment
-! style were updated.
-!
-! For rotating models, limit the timestep based on max change in
-! omega. The user parameter max_domega_global (originally DTWIND)
-! governs the maximum change allowed between models.
+! For rotating models, the timestep limit from the change of omega since
+! the start of the step (star%old_omega):
+!   max_domega_frac = max_i 2 |omega_i - omega_old,i|/(omega_i + omega_old,i),
+!   f = max_domega_frac/max_domega_global   (legacy DTWIND),
+! clipped to [1/a, a] with a = atime(itime_max_dt_frac), and
+! rotation_dt = previous_timestep/f; dt_unlimited when omega did not
+! change.
 subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
 
@@ -383,11 +349,11 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
       use controls_buffer, only: itime_max_dt_frac
       implicit none
 
-! previous_timestep: previous model timestep.
-! num_points: number of model points.
-! omega: run of angular velocity in the current model.
-! rotation_dt: rotation-based timestep.
-! max_domega_frac: maximum fractional change in omega.
+! previous_timestep: the previous model's timestep (s).
+! num_points: the number of points.
+! omega: the angular velocity at each point of the current model.
+! rotation_dt: the rotation-based timestep limit (s).
+! max_domega_frac: the largest fractional change of omega.
       double precision, intent(in) :: previous_timestep
       integer, intent(in) :: num_points
       double precision, intent(in) :: omega(json)
@@ -408,13 +374,12 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
          endif
       end do
       dt_factor = max_domega_frac/star%job%max_domega_global
-! if no change from previous model,set rotation_dt to timestep
-! stored in the previous model.
+! No change of omega: no limit.
       if (dt_factor.eq.0.d0)then
           rotation_dt = dt_unlimited
           return
       endif
-! restrict change in timestep to no more than a factor of atime(itime_max_dt_frac)
+! Let the timestep change by at most a factor atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
       dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
@@ -423,27 +388,28 @@ subroutine timestep_limit_omega(previous_timestep, num_points, omega, rotation_d
       return
 end subroutine timestep_limit_omega
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! xtime
+! timestep_limit_hburn (legacy xtime.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original xtime.f; only variable names, source form, and comment
-! style were updated.
-!
-! This subroutine finds the timestep based on hydrogen burning.
-! For stars with central X > atime(itime_core_min) the timestep is the time needed
-! to burn the minimum of atime(itime_dx_core_tot) of X at the center or the fraction
-! atime(itime_dx_core_frac) of the central X.
-! Stars with central X < atime(itime_core_min) are considered by the program to
-! have a hydrogen shell burning source. The timestep is the minimum of
-! the time required to burn atime(itime_dx_shell) of X at the shell midpoint or to
-! burn the mass fraction atime(itime_dx_total) of X in the entire star.
-! dX/dt at the shell midpoint comes from the network's reactions
-! (compute_abundance_rates) on the zone's rates and its start-of-step
-! abundances. (2026-10: it came from the equilibrium burn, with He3 and
-! the CN cycle in equilibrium, removed with the level-1 burn.)
+! The timestep limit from hydrogen burning, with E_H = 6.0e18 erg/g the
+! energy released per gram of hydrogen burned.
+! Core burning (central X >= atime(itime_core_min)): the time to burn
+!   Delta X = min(atime(itime_dx_core_tot), atime(itime_dx_core_frac) X_cc)
+! in the mass m_cc inside the convective-core edge (the centre without a
+! convective core) at the luminosity L_cc there,
+!   hydrogen_dt = E_H Delta X m_cc/(L_cc Lsun),
+! X_cc being X at the core edge.
+! Shell burning (central X below that): the smaller of the time to burn
+! atime(itime_dx_total) Msun of material with the surface X at the
+! hydrogen-burning luminosity L_H (Lsun),
+!   E_H atime(itime_dx_total) X_surf Msun/(L_H Lsun),
+! and the time for X at the shell midpoint to fall by
+! atime(itime_dx_shell),
+!   atime(itime_dx_shell)/|dX/dt|,
+! with dX/dt from the network's reactions (compute_abundance_rates) on
+! the zone's rates and its start-of-step abundances. (The legacy code
+! took dX/dt from the equilibrium burn, with He3 and the CN cycle in
+! equilibrium.)
 subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_mass, &
      log_temperature, hydrogen_luminosity, &
      convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
@@ -465,38 +431,33 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       integer, intent(in) :: convective_core_edge_zone, &
            h_shell_midpoint_zone, num_points
       double precision, intent(out) :: hydrogen_dt
-! the composition rate vector and dX_i/dt / A_i of the network species
-! at the shell midpoint
+! rate_vec, dxdt_per_a: the network's rate vector and dX_i/dt / A_i of
+! the network species at the shell midpoint.
       double precision :: rate_vec(num_rate_rows), dxdt_per_a(n_network)
-! delta_x: hydrogen mass-fraction change budget for the current
-! branch (core-burning limit in the first branch, whole-star shell-
-! burning limit in the second -- a single reused scratch variable in
-! the original, exactly as here).
+! delta_x: the hydrogen budget of the branch taken, Delta X in the core
+! branch and atime(itime_dx_total) X_surf Msun/Lsun in the shell branch.
       double precision :: delta_x
-! local_log_density/local_log_temperature: log10(rho)/log10(T) at the
-! shell midpoint, fed to rates().
+! local_log_density, local_log_temperature: log rho and log T at the
+! shell midpoint, for compute_network_rates.
       double precision :: local_log_density, local_log_temperature
       integer :: zone_end
-! energy released per gram of hydrogen burned (erg/g)
+! The energy released per gram of hydrogen burned (erg/g).
       double precision, parameter :: h_burn_energy_per_gram = 6.00d18
       double precision :: dx_dt, shell_dt_x_depletion
 
-!  h-core burning time criterion
-! **note that for a convective core, the timestep is based on the time
-!   needed to burn the given fraction of hydrogen in the core and not
-!   just in the central shell.
+! Core burning. With a convective core, the limit is the time to burn
+! the given amount of hydrogen in the whole core, not only at the centre.
       if(composition(i_h1,1).ge.star%ctrl%atime(itime_core_min)) then
        delta_x = min(star%ctrl%atime(itime_dx_core_tot),star%ctrl%atime(itime_dx_core_frac)*composition(i_h1,convective_core_edge_zone))
        hydrogen_dt =(h_burn_energy_per_gram/star%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
-!  h-shell burning criterion
-!  limit total mass of hydrogen burned.
+! Shell burning: limit the total mass of hydrogen burned,
       delta_x = star%ctrl%atime(itime_dx_total)*composition(i_h1,num_points)*(star%solar_mass_cgs/star%solar_luminosity_cgs)
       hydrogen_dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity
-!  limit x-depletion at shell mid-point: dX/dt there from the network
-!  (A = 1 for hydrogen)
+! and the depletion of X at the shell midpoint, with dX/dt from the
+! network (A = 1 for hydrogen).
       zone_end=h_shell_midpoint_zone
       local_log_density = log_density(zone_end)
       local_log_temperature = log_temperature(zone_end)
@@ -512,21 +473,22 @@ subroutine timestep_limit_hburn(log_density, composition, luminosity, enclosed_m
       return
 end subroutine timestep_limit_hburn
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! ytime
+! timestep_limit_heburn (legacy ytime.f; the helium-shell branch is new)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ytime.f; only variable names, source form, and comment
-! style were updated -- except the He-shell branch (2026, see below).
-!
-! Stars with a helium luminosity have a timestep limit based on the
-! time required to burn atime(itime_dy_core_tot) of Y at the maximum in temperature or
-! the fraction atime(itime_dy_core_frac) of Y at this point.
-! Test for helium flash burning; high central density is taken as a
-! sign that the model is a giant undergoing a He flash rather than a
-! horizontal branch star.
+! The timestep limit from helium burning, with E_He = 5.85e17 erg/g the
+! energy released per gram of helium burned.
+! Helium flash (log rho_c >= 5, taken as a giant in the flash rather
+! than a horizontal-branch star): the time for the triple-alpha rate at
+! the temperature maximum to release 1e15 erg/g (about 1.7e-3 in Y),
+!   helium_dt = 1e15/eps_3alpha(T_max),   eps_3alpha >= 1e-22.
+! Core burning (Y_core = 1 - Z at the convective-core edge
+! >= atime(itime_core_min)): the time to burn
+!   Delta Y = min(atime(itime_dy_core_tot), atime(itime_dy_core_frac) Y_core)
+! in the mass m_cc inside the convective-core edge at the luminosity
+! L_cc there,
+!   helium_dt = E_He Delta Y m_cc/(L_cc Lsun).
+! Shell burning (core helium exhausted): see that branch below.
 subroutine timestep_limit_heburn(composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
@@ -541,27 +503,27 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       double precision, intent(in) :: log_density(json), luminosity(json), &
            enclosed_mass(json), log_temperature(json)
       integer, intent(in) :: convective_core_edge_zone, num_points
-! helium_dt: assigned on every path (2026 -- the He-shell branch no
-! longer reads the incoming value; see the note there).
+! helium_dt: the helium-burning timestep limit (s), assigned on every
+! path.
       double precision, intent(out) :: helium_dt
       integer, intent(in) :: h_shell_zone_begin
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, shell_zone
-! the hottest zone's composition (deuterium counted only with the
-! extended composition, as it always has been here)
+! zone_xa: the hottest zone's composition, with deuterium zeroed unless
+! the extended composition is used.
       double precision :: zone_xa(15)
-! only the helium-burning term (burn%triple_alpha_energy_gen) of the
-! shell's energy record is used here.
+! burn: the zone's energy record, of which only the triple-alpha term
+! (burn%triple_alpha_energy_gen) is used here.
       type(nuclear_energy_result) :: burn
       double precision :: helium_energy_gen
       double precision :: core_helium_fraction
-! energy released per gram of helium burned (erg/g)
+! The energy released per gram of helium burned (erg/g).
       double precision, parameter :: he_burn_energy_per_gram = 5.85d17
 ! dt_unlimited: "no limit from this criterion" sentinel (seconds).
       double precision, parameter :: dt_unlimited = 1.0d20
 
       if (log_density(1).ge.5.0d0) then
-!     search for temperature maximum
+! Helium flash: find the temperature maximum,
        max_temp = 0.0d0
        max_temp_zone = 1
        do zone_idx = 1,num_points
@@ -570,7 +532,7 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
              max_temp = log_temperature(zone_idx)
           endif
        end do
-!     calculate helium burning rate at tmax
+! and the triple-alpha energy generation there.
        local_log_density = log_density(max_temp_zone)
        local_log_temperature = log_temperature(max_temp_zone)
        zone_xa = composition(:,max_temp_zone)
@@ -581,28 +543,28 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
        if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
        helium_dt=1.0d15/helium_energy_gen
       else
-!  set limits on he burning for non-helium flash stars
-!  core_helium_fraction: computed as 1 - Z(core); in a He-burning core
-!  X is normally negligible there, so this approximates the core Y.
+! No flash. core_helium_fraction = 1 - Z at the convective-core edge,
+! which approximates the core Y since X is negligible in a
+! helium-burning core.
        core_helium_fraction = 1d0 - composition(i_metals,convective_core_edge_zone)
        if(core_helium_fraction.ge.star%ctrl%atime(itime_core_min)) then
             helium_dt = min(star%ctrl%atime(itime_dy_core_tot),star%ctrl%atime(itime_dy_core_frac)*core_helium_fraction)
             helium_dt = (he_burn_energy_per_gram/star%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
          else
-! 2026 (bugsweep sec-10/11): core helium exhausted -- the He-shell
-! branch. The original (ytime.f) read DELTSY on the right-hand side
-! here, i.e. the PREVIOUS call's timestep (kept alive only by the
-! caller's blanket SAVE), and multiplied it by M/L again: a
-! dimensionless-nonsense recurrence that gave ~0 s on the first
-! model after exhaustion and, once the SAVE was gone, exactly 0 ->
-! dt = 0 -> NaN (the run_from_zahb_to_tahb failure at Y_c < atime(itime_core_min)).
-! Compute a fresh limit from the He-shell controls instead, mirroring
-! the H-shell branch of timestep_limit_hburn: atime(itime_dy_total) (time_dy_total,
-! Msun of He burned per step) and atime(itime_dy_shell) (time_dy_shell, fraction
-! of Y burned at the shell) -- both were mapped by map_user_inputs but
-! never consumed until now. The reference point is the shell just
-! below the H-burning shell (the He-rich core), as before.
+! Core helium exhausted: the helium-shell limit, mirroring the shell
+! branch of timestep_limit_hburn. At the zone just below the H-burning
+! shell (the top of the helium core), with its m, L and Y, helium_dt is
+! the smaller of
+!   E_He atime(itime_dy_total) Msun/(L Lsun)   (time_dy_total: Msun of
+!                                              helium burned per step),
+!   E_He atime(itime_dy_shell) Y m/(L Lsun)    (time_dy_shell: fraction
+!                                              of Y burned),
+! each used only when its control is positive; dt_unlimited otherwise.
+! (2026 deviation, bugsweep sec-10/11: ytime.f reused the previous
+! call's timestep here, times m/L again, which gave about 0 s and, once
+! the SAVE that kept it was gone, 0 and then NaN: the
+! run_from_zahb_to_tahb failure.)
             shell_zone = max(h_shell_zone_begin-1, 1)
             helium_dt = dt_unlimited
             if (luminosity(shell_zone) .gt. 0.0d0) then
@@ -619,20 +581,15 @@ subroutine timestep_limit_heburn(composition, log_density, luminosity, &
       return
 end subroutine timestep_limit_heburn
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! entime
+! timestep_limit_hr (legacy entime.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original entime.f; only variable names, source form, and comment
-! style were updated.
-!
-! This subroutine limits the timestep based on the requirement that the
-! changes from one model to the next in Teff and L be less than the
-! size of the envelope triangle (tri_delta_teffl and tri_delta_logl).
-! This prevents extrapolation outside of the triangle for small
-! envelope triangles.
+! The timestep limit from the motion in the HR diagram since the start
+! of the step, which keeps a small envelope triangle from being used
+! for extrapolation:
+!   f = max(|Delta log Teff|/tri_delta_teffl, |Delta log L|/tri_delta_logl),
+! f = 1 when nothing changed, clipped to [1/a, a] with
+! a = atime(itime_max_dt_frac), and envelope_dt = previous_timestep/f.
 subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
@@ -641,13 +598,11 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
       use math_lib
       implicit none
 
-! previous_timestep: previous model timestep.
-! luminosity: run of luminosity (as a function of mass) in the current
-!             model.
-! log_teff: log10(effective temperature) of the current model
-!           (confirmed logged: main.f computes 10.0d0**TEFFL).
-! num_points: number of points in the model.
-! envelope_dt: timestep for requested change in Teff, L.
+! previous_timestep: the previous model's timestep (s).
+! luminosity: L/Lsun at each point of the current model.
+! log_teff: log Teff of the current model.
+! num_points: the number of points.
+! envelope_dt: the HR-motion timestep limit (s).
       double precision, intent(in) :: previous_timestep
       double precision, intent(in) :: luminosity(json)
       double precision, intent(in) :: log_teff
@@ -656,19 +611,20 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
       double precision :: teffl_change, logl_change, dt_factor, &
            dt_factor_limit
 
-! find absolute changes in log Teff and log L since the previous model
+! The changes of log Teff and of the surface log L since the start of the
+! step; the start-of-step surface L is read at star%nz_start, the point
+! count saved before the rezone (seed_new_point_run in rezoning).
       teffl_change = abs(star%log_Teff_start - log_teff)
       logl_change = abs(log10(star%luminosity_lsun_start(star%nz_start)) - &
            log10(luminosity(num_points)))
 
-! now actually limit the timestep by a factor that reduces the
-! time changes in all quantities to the triangle values or less
+! The factor f that brings both changes down to the triangle's size.
       dt_factor = teffl_change/star%ctrl%tri_delta_teffl
       if (logl_change/star%ctrl%tri_delta_logl .gt.dt_factor) dt_factor = logl_change/star%ctrl%tri_delta_logl
-! if no change from previous model, set envelope_dt to timestep
-! stored in the previous model.
+! No change since the previous model: keep the previous timestep.
       if (dt_factor .eq. 0.0d0) dt_factor = 1.0d0
-! use atime(itime_max_dt_frac) as the global factor for limiting timestep changes
+! Let the timestep change by at most a factor atime(itime_max_dt_frac)
+! up or down.
       dt_factor_limit = star%ctrl%atime(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor = dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor = 1.0d0/dt_factor_limit

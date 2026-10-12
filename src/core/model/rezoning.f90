@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! rezoning
 !----------------------------------------------------------------------
-! The rezone of each step (rezone): new mesh points where the structure
-! or composition changes fastest, old ones merged where it changes
-! slowly, and the model interpolated onto the new mesh.
+! The rezone of each step (rezone): a new mesh in log m, its points
+! spaced evenly in a coordinate chi built from the changes of log m, L
+! and log P, with points added at X and Z jumps; the model interpolated
+! onto it and, for rotating models, the rotation re-spun on it.
 module rezoning
       use shell_physics, only: compute_shell_physics
       implicit none
@@ -12,23 +13,32 @@ module rezoning
 
 contains
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! hpoint
+! rezone (legacy hpoint.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original hpoint.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Rezones the model, spacing the shells such that the maximum distance
-! between two successive points in P, L, X, and Z specified by the
-! user is not exceeded. Also flags real discontinuities to prevent
-! artificial smoothing, relocates the convective core/envelope
-! boundaries in the new point distribution, and (for rotating models)
-! recomputes the moment of inertia and angular velocity distribution
-! consistent with the new mesh.
+! Rezones the model so that no step between successive points exceeds
+! the user's limits on log m, L, log P, X and Z (chi_grid_scale, legacy
+! HPTTOL), without smoothing across real discontinuities:
+!   1. check_envelope_temperature_range: the outermost point must lie in
+!      the envelope temperature window (tenv0, tenv1); outer points are
+!      deleted, or one is added, otherwise.
+!   2. flag_fixed_points: the points the rezone keeps and does not
+!      smooth across (convection-zone edges, the H-shell base, X, Z and
+!      omega jumps, the overshoot and fine-zoning bases).
+!   3. assign_new_points: the new mesh, evenly spaced in chi between the
+!      flagged points, with points added at X and Z jumps and crowded
+!      points dropped.
+!   4. locate_new_cz_edges: the convection-zone edges on the new mesh.
+!   5. interpolate_onto_new_grid: every variable splined onto the new
+!      mesh; for rotating models omega re-derived from j and the total
+!      angular momentum and rotational kinetic energy re-totalled.
+! envelope_store_index: the envelope-triangle vertex whose integration
+! stored its state where T reached tenv (0 for none), used when a point
+! is added at the surface. point_reset_flag: set when outer points were
+! deleted or added. h_shell_zone_begin, h_shell_active: the base of the
+! H-burning shell and whether there is one. total_angular_momentum,
+! total_rotational_ke: re-totalled on the new mesh (rotating models).
+! ierr /= 0 on failure.
 subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -57,29 +67,28 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
            total_rotational_ke
 
       double precision :: point_spacing_max(4)
-! 2026 audit fix: every append is bounds-guarded (append_flag_point)
-! -- the historical code capped only the gradient-scan loop at 100,
-! so the up-to-five appends outside it could write past the array.
+! flag_point(1:flag_count): the flagged points, at most max_flag_points.
+! append_flag_point guards every append (2026 audit fix: the legacy code
+! guarded only the gradient scan, so the appends outside it could write
+! past the array).
       integer, parameter :: max_flag_points = 100
       integer :: flag_point(max_flag_points)
       logical :: flag_overflow_warned
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
       double precision :: z_new(json), x_new(json)
-! MHP 6/00 added dummy vector
-! MHP 7/02 added chi vector - a running total of the normalized
-! differences in M, L, P between shells that is used to set the
-! point spacing.
+! spline_x, spline_y, spline_second_deriv: a spline table and its second
+! derivatives. chi (MHP 7/02): the running sum of the normalized changes
+! of log m, L and log P from shell to shell, which sets the spacing.
       double precision :: spline_x(json), spline_y(json), chi(json), &
            spline_second_deriv(json)
-! new_log_mass: the new run of log mass points (HSS of the original),
-! built in assign_new_points and adopted as star%log_mass in
-! interpolate_onto_new_grid. compact_log_mass: buffer for the
-! too-close-point deletion pass. regrid_in/regrid_out: the y-table
-! copy and osplin output of regrid_in_place. Before 2026 these four
-! lived in star%old_shell_mass / star%logRho_start / star%logP_start /
-! star%logT_start ("dummy arrays"); every element read is written
-! first within this call, so fresh locals see the same values.
+! new_log_mass: the new mesh in log m (legacy HSS), built in
+! assign_new_points and adopted as star%log_mass in transfer_new_points.
+! compact_log_mass: the buffer of drop_crowded_points. regrid_in,
+! regrid_out: the table copy and the osplin output of regrid_in_place.
+! (The legacy code kept these four in star%old_shell_mass, logRho_start,
+! logP_start and logT_start; every element is written here before it is
+! read.)
       double precision :: new_log_mass(json), compact_log_mass(json), &
            regrid_in(json), regrid_out(json)
       integer :: gradient_flag_index(json)
@@ -106,14 +115,14 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: zone_index
       double precision :: sum_angular_momentum, sum_rotational_ke
       double precision :: angular_momentum_shell
-! (commented out with the advection-diffusion transport's theta term)
+! The theta term's locals, commented out with the advection-diffusion
+! transport (see rerun_physics_on_new_grid).
 !      double precision :: delta_radius, delta_omega, omega_mid, log_factor
       double precision :: mass_two_back, mass_prev, mass_curr
       integer :: radiative_zone_begin, radiative_zone_end
       integer :: num_radiative_zones, num_convective_zones
 
-      ! 2026 (docs/ROADMAP.md stage 3): library errors return here via ierr;
-      ! this driver-side call site preserves the historical stop.
+      ! jerr: the error code of compute_shell_physics, passed on in ierr.
       integer :: jerr
 
       integer, intent(out) :: ierr
@@ -121,7 +130,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       ierr = 0
 
       point_reset_flag = .false.
-!  IEND IS THE NUMBER OF SPECIES THE PROGRAM IS KEEPING TRACK OF
+! The number of species carried: 11, or 15 with the extended composition.
       num_species_tracked = 11
       if (star%job%use_extended_composition) num_species_tracked = 15
       call check_envelope_temperature_range
@@ -140,11 +149,15 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
 contains
 
 ! ---------------------------------------------------------------
-! Verify the outermost Henyey point sits inside the allowed
-! envelope temperature window (tenv0/tenv), deleting or flagging
-! points as needed; ierr if the whole model is cooler than tenv0.
+! Keep the outermost Henyey point inside the envelope temperature window
+! tenv0 < log T < tenv1. If it is cooler than tenv0, the outer points
+! down to the first one hotter than tenv0 are deleted; if it is hotter
+! than tenv1 and a stored envelope state exists, one point is added
+! outside it. Either sets point_reset_flag (and star%senv); ierr if the
+! whole model is cooler than tenv0.
 subroutine check_envelope_temperature_range
-! CHECK IF TEMPERATURE OF OUTERMOST HENYEY POINT > MIMIMUM ENVELOPE T
+! The outer point is cooler than tenv0: delete points down to the first
+! one hotter than tenv0.
       if (star%logT(star%nz).lt.star%ctrl%tenv0) then
        do i = star%nz-1,1,-1
           if (star%logT(i).gt.star%ctrl%tenv0) then
@@ -157,17 +170,20 @@ subroutine check_envelope_temperature_range
           endif
        end do
        if (i < (1)) then
-!  ENTIRE MODEL HAS T<TENV0 - UNLIKELY - BUT STOP IF TRUE
+! The whole model is cooler than tenv0 (unlikely): stop with ierr, which
+! run_yrec returns and the command-line wrapper stops on.
        write(run_log_unit,30)
        write(terminal_unit,30)
    30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
      1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
-       ! 2026 (phase five, step B): stop converted to ierr; run_yrec
-       ! returns the error and the CLI wrapper (main) stops.
        ierr = 1
        return
        end if
-!  CHECK IF OUTER POINT T < MAXIMUM ENVELOPE T
+! The outer point is hotter than tenv1: add a point outside it at the
+! stored envelope state (log m/M = stored_envelope_state(4)), shifting
+! log P and log R by the stored state's offsets from the fitting point,
+! with Delta log T = Delta log P/4, L and the composition copied, and
+! log rho = log P - log T - 8 (a rough ideal-gas estimate).
       else if (star%logT(star%nz).gt.star%ctrl%tenv1.and. &
            envelope_store_index.ne.0) then
        star%nz = star%nz + 1
@@ -197,16 +213,18 @@ subroutine check_envelope_temperature_range
 end subroutine check_envelope_temperature_range
 
 ! ---------------------------------------------------------------
-! Set up the flagged points the rezoner must not smooth across:
-! convection-zone edges, the H-burning shell edge, X/Z/omega
-! gradient jumps, the overshoot base and the finely-zoned region
-! around the surface CZ; sort and de-duplicate them.
+! Flag the points the rezone keeps and does not smooth across: the edges
+! of the convective core and of the surface convection zone, the point
+! below the H-burning shell, shells where X or Z jumps by more than
+! flag_dx or flag_dz (or, rotating models, log omega by more than
+! flag_dw), the overshoot base and the base of the finely zoned region
+! below the surface convection zone. The list ends with star%nz and is
+! sorted and free of duplicates.
 subroutine flag_fixed_points
       use math_lib
-! SET UP FLAGGED POINTS - PROGRAM WILL NOT REZONE ACROSS FLAGGED POINTS
       flag_count = 1
       flag_overflow_warned = .false.
-! FLAG EDGES OF CENTRAL AND SURFACE CONVECTION ZONES
+! The edges of the central and surface convection zones.
       if (star%core_cz_top_index.gt.1) then
        call append_flag_point(star%core_cz_top_index)
       endif
@@ -214,19 +232,19 @@ subroutine flag_fixed_points
            star%envelope_cz_bottom_index.gt.1) then
        call append_flag_point(star%envelope_cz_bottom_index)
       endif
-! FLAG EDGE OF H SHELL
+! The point just below the H-burning shell.
       if (h_shell_active.and.h_shell_zone_begin.gt.1) then
        call append_flag_point(h_shell_zone_begin - 1)
       endif
       do i = 2,star%nz
-! TEST FOR FLAGGING DUE TO X GRADIENT
+! A jump in X between neighbouring shells,
        if (dabs(star%xa(i_h1,i)-star%xa(i_h1,i-1)).gt.star%ctrl%chi_grid_scale(ichi_flag_dx)) then
           call append_flag_point(i)
-! TEST FOR FLAGGING DUE TO Z GRADIENT
+! else a jump in Z,
        else if (dabs(star%xa(i_metals,i)-star%xa(i_metals,i-1)).gt. &
             star%ctrl%chi_grid_scale(ichi_flag_dz)) then
           call append_flag_point(i)
-! TEST FOR FLAGGING DUE TO GRADIENT IN LOG OMEGA.
+! else (rotating models) a jump in log omega.
        else if (star%job%rotation_active) then
           log_omega_top = log10(star%omega(i))
           log_omega_bot = log10(star%omega(i-1))
@@ -234,15 +252,17 @@ subroutine flag_fixed_points
              call append_flag_point(i)
           endif
        endif
-! stop scanning once full (append_flag_point warns on the first
-! rejected append; one slot stays reserved for the star%nz terminator)
+! Stop scanning once the list is full (append_flag_point warns on the
+! first rejected append; one slot stays reserved for the star%nz
+! terminator).
        if (flag_count.ge.max_flag_points) exit
       end do
-! THE OVERSHOOT-BASE AND FINE-ZONE-BASE FLAGS BELOW ARE ONLY ADDED WHEN
-! THE GRADIENT SCAN RAN TO COMPLETION (i = nz+1), I.E. THE LIST IS NOT
-! ALREADY FULL. (THE PER-REGION DEL LOG P LIMITS THAT USED TO BE
-! COMPUTED HERE -- PMAX1..PMAX5 -- WERE NEVER READ; THE LIVE LIMITS ARE
-! chi_grid_scale(7,8,10) USED IN assign_new_points.)
+! The overshoot-base and fine-zone-base flags are added only when the
+! scan above ran to completion (i = nz+1), i.e. the list is not full.
+! Without a surface convection zone, or in a fully convective star,
+! there is nothing to flag. (The legacy per-region log P limits PMAX1 to
+! PMAX5 computed here were never read; the live ones are in
+! accumulate_chi_spacing.)
       if (i > (star%nz)) then
       if (.not.star%convective_flag(star%nz)) then
        overshoot_base_zone = star%nz
@@ -251,7 +271,10 @@ subroutine flag_fixed_points
        overshoot_base_zone = 1
        fine_zone_base = 1
       else
-! LOCATE BASE OF OVERSHOOT REGION IF APPLICABLE.
+! The overshoot base: the convection-zone base without envelope
+! overshoot; with it, the deepest point with
+! log P - log P(czb) <= overshoot_alpha_envelope (alpha used here as a
+! depth in log P).
        if (.not.star%job%envelope_overshoot_active) then
           overshoot_base_zone = star%envelope_cz_bottom_index
        else
@@ -267,7 +290,9 @@ subroutine flag_fixed_points
        if (star%ctrl%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
-! NOW LOCATE BASE OF FINELY ZONED REGION.
+! The base of the finely zoned region: the deepest point with
+! log P - log P(czb) <= tol_czbase_fine_width, flagged when it differs
+! from the overshoot base.
           if (overshoot_base_zone.eq.1) then
              fine_zone_base = 1
           else
@@ -286,10 +311,10 @@ subroutine flag_fixed_points
        endif
       endif
       end if
-! flag_count <= max_flag_points is guaranteed by append_flag_point,
-! so the terminator write is always in bounds
+! append_flag_point keeps flag_count <= max_flag_points, so the
+! terminator is always in bounds.
       flag_point(flag_count) = star%nz
-! ARRANGE THE FLAG POINTS IN ASCENDING ORDER
+! Sort the flagged points into ascending order (bubble sort).
       if (flag_count.ne.1) then
       do
       sort_done = .true.
@@ -303,7 +328,7 @@ subroutine flag_fixed_points
       end do
       if (sort_done) exit
       end do
-! ENSURE THAT POINTS ARENT FLAGGED MORE THAN ONCE.
+! Remove the duplicates.
       i = 2
       do
       if (flag_point(i).eq.flag_point(i-1)) then
@@ -325,9 +350,9 @@ subroutine flag_fixed_points
 end subroutine flag_fixed_points
 
 ! ---------------------------------------------------------------
-! Bounds-guarded append to the fixed-point list (2026 audit fix).
-! Rejects appends that would leave no room for the star%nz
-! terminator, warning once per rezone.
+! Append zone to the flagged points, unless that would leave no room for
+! the star%nz terminator; the first dropped append of a rezone is
+! reported in the run log.
 subroutine append_flag_point(zone)
       integer, intent(in) :: zone
       if (flag_count .gt. max_flag_points - 1) then
@@ -343,11 +368,10 @@ subroutine append_flag_point(zone)
 end subroutine append_flag_point
 
 ! ---------------------------------------------------------------
-! Refloat the point distribution between flagged points: accumulate
-! the normalized chi = dM + dL + dP spacing measure per region,
-! add points where X or Z gradients demand them, and
-! delete new points that land too close together. ierr if the
-! requested point count exceeds json.
+! Build the new mesh new_log_mass(1:new_num_zones): points evenly spaced
+! in chi between the flagged points, more points where X rises or Z
+! falls outward too steeply, and points closer than tol_dm_min in log m
+! dropped. ierr past json points or on a spline failure.
 subroutine assign_new_points
       use math_lib
       call seed_new_point_run
@@ -362,20 +386,23 @@ subroutine assign_new_points
 end subroutine assign_new_points
 
 ! ---------------------------------------------------------------
-! Start the new run of points at the centre, save the start-of-step
-! Teff and point count, and set the maximum spacings in P, L, X and Z.
+! Start the new mesh at the centre, save the start-of-step Teff and point
+! count (for timestep_limit_hr), and set the maximum spacings
+! point_spacing_max in log P, L, X and Z, the L one scaled by the largest
+! L in the model.
 subroutine seed_new_point_run
-! BEGIN REFLOATING OF POINTS
+! The centre point stays where it is.
       new_log_mass(1) = star%log_mass(1)
       star%logP_start(1) = star%logP(1)
       star%luminosity_lsun_start(1) = star%luminosity_lsun(1)
       x_new(1) = star%xa(i_h1,1)
       z_new(1) = star%xa(i_metals,1)
       luminosity_max = star%luminosity_lsun(star%nz)
-!       JVS 04/14 added Teff to saved variables
+! The start-of-step log Teff (JVS 04/14) and point count (JVS 05/25),
+! saved before the rezone changes the point count.
         star%log_Teff_start = star%log_Teff
-!  JVS 05/25 Added model number to list of saved values
       star%nz_start = star%nz
+! luminosity_max: the largest L in the model.
       do i = star%nz-1,1,-1
          if (star%luminosity_lsun(i).gt.luminosity_max) then
             luminosity_max = star%luminosity_lsun(i)
@@ -388,24 +415,30 @@ subroutine seed_new_point_run
 end subroutine seed_new_point_run
 
 ! ---------------------------------------------------------------
-! Accumulate chi, the running sum of the normalized differences in M,
-! L and P between shells, with the P scale set by the region.
+! Accumulate chi, the running sum of the normalized changes from shell
+! to shell:
+!   chi(1) = 1,
+!   chi(j) = chi(j-1) + Delta log m/tol_dm_max
+!            + Delta L/(tol_dl_max L_max) - Delta log P/dp_scale,
+! the L term only where L increases outward. dp_scale depends on the
+! region: tol_dp_czbase_max within tol_czbase_fine_width in log P of the
+! surface convection zone's base (czb), tol_dp_core_max deeper, and
+! tol_dp_env_max above (in the convection zone). A unit step in chi is
+! the largest step allowed between points.
 subroutine accumulate_chi_spacing
-! CHI IS THE NORMALIZED VECTOR OF DIFFERENCES IN M,L,P:
-! CHI = HS/DELTA M + HL/DELTA L - HP/DELTA P
       mass_scale = star%ctrl%chi_grid_scale(ichi_dm_max)
       luminosity_scale = point_spacing_max(2)
       chi(1) = 1.0D0
       do j = 2, star%nz
          pressure_test = star%logP(j) - star%logP(star%envelope_cz_bottom_index)
          if (abs(pressure_test).lt.star%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
-! FINELY ZONED REGION
+! The finely zoned region around the convection-zone base.
             dp_scale = star%ctrl%chi_grid_scale(ichi_dp_czbase_max)
          else if (pressure_test.gt.star%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
-! BELOW SURFACE CZ
+! Below it, in the radiative interior.
             dp_scale = star%ctrl%chi_grid_scale(ichi_dp_core_max)
          else
-! IN SURFACE CZ
+! Above it, in the surface convection zone.
             dp_scale = star%ctrl%chi_grid_scale(ichi_dp_env_max)
          endif
          if (star%luminosity_lsun(j).gt.star%luminosity_lsun(j-1)) then
@@ -422,13 +455,16 @@ end subroutine accumulate_chi_spacing
 
 ! ---------------------------------------------------------------
 ! Place the new points evenly in chi between successive flagged points,
-! splining log mass against chi; ierr past json points or on a spline failure.
+! int(Delta chi) + 1 intervals per segment so that every step is below
+! one, reading log m off a natural cubic spline of log m against chi.
+! The flagged points themselves are kept (the spline passes through its
+! knots). ierr past json points or on a spline failure.
 subroutine place_points_along_chi
       do j = 1,star%nz
          spline_x(j) = chi(j)
          spline_y(j) = star%log_mass(j)
       end do
-! GET SPLINE COEFFICIENTS
+! The spline of log m against chi.
       call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
       chi_prev = chi(1)
       point_prev_index = 1
@@ -437,23 +473,21 @@ subroutine place_points_along_chi
          delta_chi = chi(flag_point(i))-chi_prev
          segment_point_count = int(delta_chi)+1
          if (new_num_zones+segment_point_count.gt.json) then
-! EXCEEDED ARRAY DIMENSIONS; COMPLAIN AND STOP
+! More points than the arrays hold: stop with ierr.
             write(*,101) new_num_zones+segment_point_count,json
  101        format(' DESIRED NUMBER OF POINTS ',I6,'EXCEEEDS JSON ', &
      I6/' RUN STOPPED')
-            ! 2026 (phase five, step B): stop converted to ierr; run_yrec
-            ! returns the error and the CLI wrapper (main) stops.
             ierr = 1
             return
          endif
          dchi = delta_chi/dfloat(segment_point_count)
-! ASSIGN NEW POINTS
+! The new points of this segment.
          do j = point_prev_index+1,point_prev_index+segment_point_count
             spline_eval_x = chi_prev + dchi
             call splint(spline_x, spline_y, star%nz, &
                  spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
-            ! 2026 numerics-gate opt-in: interpolation failure returns via
-            ! ierr (diagnostic printed at the gate) instead of stopping.
+            ! A spline failure returns through ierr (splint prints the
+            ! diagnostic).
             if (jerr_gate /= 0) then
                ierr = jerr_gate
                return
@@ -467,17 +501,17 @@ subroutine place_points_along_chi
 end subroutine place_points_along_chi
 
 ! ---------------------------------------------------------------
-! Interpolate X onto the new points and insert points where X rises by
-! more than its maximum spacing; ierr on a spline failure.
+! Interpolate X onto the new points (x_new) and, where X rises outward
+! by more than tol_dx_max between two new points, insert
+! int(Delta X/tol_dx_max) points evenly in log m between them. Skipped
+! when tol_dx_max is zero; ierr on a spline failure.
 subroutine add_points_for_x_jumps
-! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN X.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
          spline_y(j) = star%xa(i_h1,j)
       end do
-! GET SPLINE COEFFICIENTS
+! The spline of X against log m, evaluated at the new points.
       call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
-! ASSIGN INTERPOLATED VECTOR OF X VALUES TO x_new
       do i = 2,new_num_zones
          spline_eval_x = new_log_mass(i)
          call splint(spline_x, spline_y, star%nz, spline_second_deriv, &
@@ -488,9 +522,11 @@ subroutine add_points_for_x_jumps
          end if
          x_new(i) = spline_eval_y
       end do
-! SKIP IF HPMAX(3) IS ZEROED OUT
+! Skip when tol_dx_max (legacy HPMAX(3)) is zero.
       if (point_spacing_max(3).gt.1.0D-15) then
-! TEST ON X-CHANGE (ONLY FOR INCREASING X)
+! The intervals where X rises outward by more than tol_dx_max, collected
+! outermost first, so that each insertion below shifts only points
+! outside the intervals still to be filled.
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
          if (x_new(j)-x_new(j-1).gt.point_spacing_max(3)) then
@@ -503,9 +539,9 @@ subroutine add_points_for_x_jumps
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
          delta_x_over_max = (x_new(j) - x_new(j-1))/point_spacing_max(3)
-! NUMBER OF NEW POINTS NEEDED
+! The number of points to insert. Shift the points from j outward up by
+! num_new_points, then fill the interval below j evenly in log m.
          num_new_points = int(delta_x_over_max)
-!
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
          do k = working_num_zones+num_new_points,j+num_new_points,-1
@@ -522,17 +558,18 @@ subroutine add_points_for_x_jumps
 end subroutine add_points_for_x_jumps
 
 ! ---------------------------------------------------------------
-! Interpolate Z onto the new points and insert points where Z falls by
-! more than its maximum spacing; ierr on a spline failure.
+! Interpolate Z onto the new points (z_new) and, where Z falls outward
+! by more than tol_dz_max between two new points, insert
+! int(Delta Z/tol_dz_max) points evenly in log m between them, as
+! add_points_for_x_jumps does for X. Skipped when tol_dz_max is zero;
+! ierr on a spline failure.
 subroutine add_points_for_z_jumps
-! TEST FOR ASSIGNING POINTS BASED ON THE GRADIENT IN Z.
       do j = 1,star%nz
          spline_x(j) = star%log_mass(j)
          spline_y(j) = star%xa(i_metals,j)
       end do
-! GET SPLINE COEFFICIENTS
+! The spline of Z against log m, evaluated at the new points.
       call natural_spline(spline_x,spline_y,star%nz,spline_second_deriv)
-! ASSIGN INTERPOLATED VECTOR OF Z VALUES TO z_new
       do i = 2,new_num_zones
          spline_eval_x = new_log_mass(i)
          call splint(spline_x, spline_y, star%nz, spline_second_deriv, &
@@ -543,8 +580,9 @@ subroutine add_points_for_z_jumps
          end if
          z_new(i) = spline_eval_y
       end do
-! TEST ON Z-CHANGE (ONLY FOR DECREASING Z)
-! SKIP IF HPMAX(4) IS ZEROED OUT
+! Skip when tol_dz_max (legacy HPMAX(4)) is zero; otherwise collect the
+! intervals where Z falls outward by more than tol_dz_max, outermost
+! first.
       if (point_spacing_max(4).gt.1.0D-15) then
       gradient_flag_count = 0
       do j = new_num_zones,2,-1
@@ -558,7 +596,7 @@ subroutine add_points_for_z_jumps
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
-! NUMBER OF NEW POINTS NEEDED
+! The number of points to insert; shift and fill as for X.
          num_new_points = int(delta_z_over_max)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
@@ -576,10 +614,10 @@ subroutine add_points_for_z_jumps
 end subroutine add_points_for_z_jumps
 
 ! ---------------------------------------------------------------
-! Delete the new points that lie closer in log mass than the minimum spacing.
+! Drop the new points that lie within tol_dm_min in log m of the last
+! point kept; the first and last points are always kept. The mesh is
+! compacted through compact_log_mass, then copied back.
 subroutine drop_crowded_points
-! DELETE NEW POINTS THAT ARE TOO CLOSE TOGETHER (compacted through
-! compact_log_mass, then copied back).
       j = 1
       compact_log_mass(j) = new_log_mass(j)
       do k = 2,new_num_zones-1
@@ -597,11 +635,13 @@ subroutine drop_crowded_points
 end subroutine drop_crowded_points
 
 ! ---------------------------------------------------------------
-! Locate the convective-core outer edge and convective-envelope
-! inner edge in the new point distribution.
+! Locate the edges of the convection zones on the new mesh: the
+! convective core's outer edge becomes the last new point at or inside
+! the old edge, and the surface convection zone's base the first new
+! point at or outside the old base. Then set convective_flag on the new
+! points: convective in the core and the envelope zone, radiative
+! between.
 subroutine locate_new_cz_edges
-!  NOW LOCATE OUTER EDGE OF CONVECTIVE CORE AND INNER EDGE OF CONVECTIVE
-!  ENVELOPE IN THE NEW POINT DISTRIBUTION.
       if (star%core_cz_top_index.gt.1) then
        do j = 2,new_num_zones
           if (new_log_mass(j).gt.star%log_mass(star%core_cz_top_index)) exit
@@ -643,10 +683,13 @@ subroutine locate_new_cz_edges
 end subroutine locate_new_cz_edges
 
 ! ---------------------------------------------------------------
-! Osculatory-spline fit of every physical variable and species onto
-! the new mass grid, refresh the rotation profile and diffusion
-! auxiliaries, re-run physic, and update the surface opacity
-! tables if the surface composition moved.
+! Move the model onto the new mesh: spline the composition, structure
+! and rotation variables and the start-of-step energy generation onto it
+! with the shape-preserving osculatory quadratic spline (osplin), adopt
+! the mesh and set its shell masses; for rotating models re-spin and
+! re-total the angular momentum; re-run the shell physics where the
+! transport needs it; and rebuild the surface opacity tables if the
+! surface X moved.
 subroutine interpolate_onto_new_grid
       use math_lib
       use rotation_scratch_lib
@@ -668,37 +711,29 @@ end subroutine interpolate_onto_new_grid
 
 ! ---------------------------------------------------------------
 ! Set the old and new point counts, and spline the entropy terms, every
-! species (now and at the start of the step) and, above threshold, the
-! deuterium burning rate onto the new points.
+! species (now and at the start of the step) and, when the surface
+! deuterium is above 1e-14, the start-of-step deuterium burning rate
+! onto the new points.
 subroutine regrid_composition_terms
-!  NOW USE AN OSCILLATORY SPLINE TO FIT THE OLD RUN OF PHYSICAL VARIABLES
-!  AT THE NEW RUN OF MASS POINTS.
+! osplin(xval, yval, xtab, ytab, ntab, ntot) evaluates at the ntot new
+! points xval (here new_log_mass) the spline through the ntab old points
+! (xtab, ytab) (here star%log_mass and a variable), into yval. Each field
+! below goes through regrid_in_place, which overwrites it.
       old_point_count = star%nz
       new_point_count = new_num_zones
-!  XVAL=RUN OF NEW MODEL MASS COORDINATES(HSS)
-!  XTAB = RUN OF OLD MODEL MASS CO-ORDINATES(HS)
-!  YTAB = RUN OF VARIABLE WHOSE VALUE AT THE NEW MASS POINTS
-!         IS DESIRED(HP,HT,HL,HR,HD,ETC.)
-!  NTAB = NUMBER OF DATA POINTS(M)
-!  NTOT=NUMBER OF POINTS AT WHICH SPLINE IS TO BE EVALUTED(MNEW)
-!  YVAL = OUTPUT RUN OF VARIABLE VALUES AT THE NEW RUN OF MASS POINTS.
-!  FORM OF CALL IS CALL OSPLIN(XVAL,YVAL,XTAB,YTAB,NTAB,NTOT)
-!  DO EACH COMPOSITION IN ORDER THROUGH THE regrid_in/regrid_out
-!  BUFFERS (regrid_in_place, below).
-! 7/91 ADD ENTROPY TERM INTERPOLATION.
+! The entropy terms (7/91).
       call regrid_in_place(star%temperature_entropy_term)
       call regrid_in_place(star%pressure_entropy_term)
       call regrid_in_place(star%luminosity_entropy_term)
       call regrid_in_place(star%radius_entropy_term)
       do i = 1,num_species_tracked
          call regrid_in_place(star%xa(i,:))
-!  HCOMPP IS THE ARRAY OF COMPOSITION AT THE BEGINNING OF THE TIMESTEP.
-!  THIS IS NEEDED FOR COMPOSITION DIFFUSION IN ROTATING MODELS.
+! xa_start (legacy HCOMPP), the composition at the start of the step, is
+! needed for composition diffusion in rotating models.
          call regrid_in_place(star%xa_start(i,:))
       end do
-! MHP 05/02 IF THE SURFACE DEUTERIUM IS ABOVE
-! THRESHOLD (1.0D-14) FIND THE NEW RUN OF
-! DEUTERIUM BURNING RATES
+! The start-of-step deuterium burning rate, when the surface deuterium
+! is above 1e-14 (MHP 05/02).
       if (star%job%use_extended_composition .and. &
            star%xa(i_h2,star%nz).ge.1.0D-14) then
          call regrid_in_place(star%deuterium_burning_rate_start)
@@ -706,14 +741,13 @@ subroutine regrid_composition_terms
 end subroutine regrid_composition_terms
 
 ! ---------------------------------------------------------------
-! Spline P, R, L, T and rho onto the new points, into the start-of-step arrays.
+! Spline log P, log R, L, log T and log rho onto the new points, into the
+! start-of-step arrays star%*_start. Once transfer_new_points has copied
+! them into star%logP etc., the *_start arrays hold the start-of-step
+! model on the new mesh (what rezone_or_snapshot stores explicitly when
+! it does not rezone), which timestep_limit_structure,
+! mid_timestep_model, burn_step and convection_geometry read.
 subroutine regrid_structure_variables
-! NOW FIND RUN OF P,R,L,T,AND RHO IN THAT ORDER FOR THE NEW POINTS.
-! The results land in star%*_start: after the transfer loop below
-! copies them into star%logP etc., the *_start arrays hold the
-! start-of-step model on the new grid (the same thing
-! evolve_step's no-rezone branch stores explicitly), which
-! timestep_limit_structure, mid_timestep_model and burn_lib read.
 
       call osplin(new_log_mass,star%logP_start,star%log_mass,star%logP, &
            old_point_count,new_point_count)
@@ -728,10 +762,10 @@ subroutine regrid_structure_variables
 end subroutine regrid_structure_variables
 
 ! ---------------------------------------------------------------
-! For rotating models, spline omega, j, fp, ft, r0 and eta2 onto the
-! new points.
+! For rotating models, spline omega, the specific angular momentum j,
+! the shape factors fp and ft, r0 and eta2 onto the new points, into the
+! old_* arrays (and fp_old, ft_old) that transfer_new_points adopts.
 subroutine regrid_rotation_variables
-! FOR ROTATING MODELS FIND THE NEW RUN OF OMEGA,J/M,FP,FT,R0,AND ETA2.
       if (star%job%rotation_active) then
          call osplin(new_log_mass,star%old_omega,star%log_mass,star%omega, &
               old_point_count,new_point_count)
@@ -746,26 +780,20 @@ subroutine regrid_rotation_variables
          call osplin(new_log_mass,star%old_eta_squared,star%log_mass,star%eta_squared, &
               old_point_count,new_point_count)
       endif
-!
 
-! (2026: the LDEBUG/NPOINT old-vs-new point-distribution table that
-! printed here is retired with the .debug stream -- per-zone
-! structure lives in the MESA profile files, and the rezone
-! bookkeeping is in the run log under report_solver_diagnostics.)
 end subroutine regrid_rotation_variables
 
 ! ---------------------------------------------------------------
-! For rotating models (or extended composition with overshoot), spline
-! the start-of-step energy generation onto the new points.
+! For rotating models (or the extended composition with envelope
+! overshoot), spline the start-of-step energy generation onto the new
+! points (MHP 6/00): eps_total into old_eps_total and
+! eps_total + eps_neu + eps_grav into old_eps_plus_neu_grav, for the
+! mid-step Eddington-Sweet velocities. This runs before
+! transfer_new_points, while star%log_mass is still the old mesh. (2026
+! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
+! the new mesh, so the values were misplaced on every rotating rezone.)
 subroutine regrid_start_of_step_eps
       use rotation_scratch_lib
-! MHP 6/00 INTERPOLATED IN ENERGY GENERATION AT START OF TIMESTEP
-! 2026 (bugsweep sec-11): this block sat AFTER the transfer loop
-! below, so its x-table star%log_mass had already been overwritten
-! with the NEW grid for j <= new_num_zones while eps_total was still
-! on the old grid -- the mid-step eps/esum for the ES velocities were
-! mis-registered on every rotating rezone (inherited from hpoint.f).
-! It now runs with the other old->new interpolations.
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
          call osplin(new_log_mass,rot_scr%old_eps_total,star%log_mass,star%eps_total, &
@@ -780,10 +808,9 @@ subroutine regrid_start_of_step_eps
 end subroutine regrid_start_of_step_eps
 
 ! ---------------------------------------------------------------
-! Adopt the new points: the new mass grid and the splined structure and
+! Adopt the new points: the new mesh and the splined structure and
 ! rotation variables become the model, with the new point count.
 subroutine transfer_new_points
-! TRANSFER NEW POINTS.
       do j = 1,new_num_zones
        star%log_mass(j) = new_log_mass(j)
        star%logP(j) = star%logP_start(j)
@@ -810,10 +837,14 @@ subroutine transfer_new_points
 end subroutine transfer_new_points
 
 ! ---------------------------------------------------------------
-! Set the masses and mass weights of the new shells.
+! Set the point masses m_i = 10^(log m_i) and the mass weights
+!   dm_i  = (m_(i+1) - m_(i-1))/2,  with m_0 = -m_1,
+!   dm_nz = M - (m_(nz-1) + m_nz)/2,
+! so dm_i is the mass between the midpoints on either side of point i
+! (from the centre for i = 1), and dm_nz includes the envelope above the
+! outer point (M = 10^log_total_mass).
 subroutine set_new_shell_masses
       use math_lib
-! SET UP WEIGHTS AND MASSES
       mass_curr = exp(clndp*star%log_mass(1))
       mass_prev = - mass_curr
       do i = 2,star%nz
@@ -829,50 +860,51 @@ subroutine set_new_shell_masses
 end subroutine set_new_shell_masses
 
 ! ---------------------------------------------------------------
-! Rotating models: rebuild the moments of inertia, the convection regions
-! for angular momentum, omega from j and the shape factors on the new
-! points; ierr from the regions or the shape factors.
+! Rotating models: on the new mesh, rebuild the moments of inertia, the
+! convection regions for angular momentum transport, omega from the
+! splined specific angular momentum j, and the shape factors; ierr from
+! the regions or the shape factors.
 subroutine respin_on_new_grid
       use math_lib
-!  FIRST GUESS AT MOMENT OF INERTIA(HI)
+! First guess at the moments of inertia, I_i = (2/3) dm_i r_i^2
+! (spherical shells).
        do i=1,star%nz
           star%i_rot(i) = cc23*star%dm(i)* &
                exp(ln10*2.0D0*star%logR(i))
        end do
-!   CALCULATE OVERSHOOT
+! The convection zones, extended by overshoot, for angular momentum
+! transport (am_transport_convective_flag).
        call am_convective_regions(star%xa,star%logRho,star%logP,star%logR, &
             star%log_mass,star%logT,star%convective_flag,star%nz, &
             star%am_transport_convective_flag,radiative_zone_bounds, &
             convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
        if (ierr /= 0) return
-! JNT 2025/09/03 duplicating 2015/04/06 recompute moment of interia
-! before recomputing the rotation I am less confident that this is
-! necessary since WALPCZ does run in this version but I don't think
-! it can hurt.
+! The moments of inertia of the distorted shells (with eta2 and r0)
+! before omega is re-derived, as the 2015/04/06 version did (JNT
+! 2025/09/03). It may be redundant, since the convection-zone rotation
+! law (walpcz) runs in this version, but it is harmless.
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
             star%omega,star%mean_radius,star%i_rot,star%qiw)
-! END JNT
 
-!   FIND THE ANGULAR VELOCITY OMEGA THAT CORRESPONDS TO THE GIVEN
-!   SPECIFIC ANGULAR MOMENTUM HJM.
+! Omega from the specific angular momentum j (legacy HJM).
        call omega_from_j(star%logRho,star%j_rot,star%logR, &
             star%log_mass,star%dm,star%am_transport_convective_flag,star%nz, &
             star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
-!  CALCULATE FP,FT,R0 AND ETA2 GIVEN OMEGA
+! The shape factors fp and ft, r0 and eta2 for this omega.
        call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
             star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
        if (ierr /= 0) return
-!  FIND CORRECT MOMENT OF INERTIA(HI)
-!        CALL MOMI(ETA2,HD,HR,HS,HS2,1,M,OMEGA,R0,HI,QIW,M)  ! KC 2025-05-31
+! The moments of inertia for the new shape.
        call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
             star%omega,star%mean_radius,star%i_rot,star%qiw)
 end subroutine respin_on_new_grid
 
 ! ---------------------------------------------------------------
-! Rotating models: re-total the angular momentum and rotational kinetic
-! energy, and store the rotation state as the start of the step.
+! Rotating models: re-total the angular momentum and the rotational
+! kinetic energy on the new mesh,
+!   J = sum_i j_i dm_i,   E_rot = sum_i (1/2) omega_i j_i dm_i,
+! and store the rotation state as the start of the step.
 subroutine retally_angular_momentum
-!  FIND NEW TOTAL ANGULAR MOMENTUM
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
        do i = 1,star%nz
@@ -881,8 +913,7 @@ subroutine retally_angular_momentum
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
        end do
-! per-rezone conservation bookkeeping: solver forensics (2026
-! run-log verbosity sweep)
+! The totals before and after the rezone, a solver diagnostic.
        if (solver_diagnostics()) &
             write(run_log_unit,1120)total_angular_momentum, &
             sum_angular_momentum,total_rotational_ke,sum_rotational_ke
@@ -891,7 +922,7 @@ subroutine retally_angular_momentum
      ' NEW ',1PE21.13)
        total_angular_momentum = sum_angular_momentum
        total_rotational_ke = sum_rotational_ke
-!  STORE THE OLD MODEL STRUCTURE FOR USE IN DIFFUSION.
+! The start-of-step rotation state, for the angular momentum transport.
        do i = 1,star%nz
           star%old_omega(i) = star%omega(i)
           star%old_hg(i) = star%mean_gravity(i)
@@ -899,39 +930,34 @@ subroutine retally_angular_momentum
           star%old_eta_squared(i) = star%eta_squared(i)
           star%old_mean_radius(i) = star%mean_radius(i)
           star%convective_flag_start(i) = star%convective_flag(i)
-! MHP 10/91 J/M STORED IN HJX FOR I/O USE.
+! j also goes to old_specific_angular_momentum (legacy HJX), for I/O
+! as well (MHP 10/91).
             star%old_specific_angular_momentum(i) = star%j_rot(i)
        end do
 end subroutine retally_angular_momentum
 
 ! ---------------------------------------------------------------
-! Rotating models (or extended composition with overshoot): re-run the
-! shell physics on the new points and store what diffusion needs; ierr
-! if the physics fails.
+! For rotating models, or with the extended composition and envelope
+! overshoot, re-run the shell physics on the new points and store the
+! start-of-step quantities the transport needs; ierr if the physics
+! fails. The temperature gradients are needed with overshoot so that the
+! base of the overshoot region of pre-main-sequence models can be located
+! accurately (MHP 9/91); even without diffusion, the new physics locates
+! the convection-zone edges accurately.
 subroutine rerun_physics_on_new_grid
       use rotation_scratch_lib
-! MHP 9/91 CHANGE : T GRADIENTS STORED IF LEXCOM=T AND LOVSTE=T; OR FOR
-! ROTATION; THIS IS NEEDED SO THAT THE BASE OF THE OVERSHOOT REGION FOR
-! PRE-MS MODELS CAN BE ACCURATELY LOCATED.
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-! END OF 9/91 CHANGE
-!   FIND THE NEW RUN OF PHYSICAL VARIABLES AT THE NEW SET OF POINTS;
-!   THIS IS NEEDED EVEN IN THE ABSENCE OF DIFFUSION TO ACCURATELY LOCATE
-!   THE EDGES OF CONVECTION ZONES.
-!        CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
        call compute_shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun, &
             star%logP,star%logR,star%log_mass,star%logT, &
             star%convective_flag,star%nz,star%log_Teff, jerr)
        if (jerr /= 0) then
-       ! 2026 (phase five, step B): propagate instead of stopping
           ierr = jerr
           return
        end if
-!   FOR DIFFUSION STORE THE AUXILLARY QUANTITIES NEEDED TO CALCULATE
-!   VELOCITIES AT THE START OF THE TIMESTEP WITH THE NEW POINT DISTRIBUTION
-!   SO THAT A SERIES OF SMALL DIFFUSION TIMESTEPS CAN BE TAKEN WITHIN
-!   ONE LARGE EVOLUTIONARY TIMESTEP.
+! The quantities for the velocities at the start of the step on the new
+! mesh, so that several short diffusion sub-steps can be taken within
+! one evolutionary step.
          do zone_index = 1,star%nz
             rot_scr%old_gradr(zone_index) = star%gradr(zone_index)
             rot_scr%old_gradT(zone_index) = star%gradT(zone_index)
@@ -943,14 +969,14 @@ subroutine rerun_physics_on_new_grid
             rot_scr%old_conv_vel(zone_index) = star%conv_vel(zone_index)
             rot_scr%old_visc(zone_index) = star%visc(zone_index)
             rot_scr%old_thdif(zone_index) = star%thdif(zone_index)
-! MHP 06/02
+! grad_ad - grad (MHP 06/02). The start-of-step eps sum (legacy ESUMO)
+! is splined in regrid_start_of_step_eps (MHP 6/00).
             rot_scr%del_grad_diff_interface(zone_index) = &
                  rot_scr%old_grada(zone_index) - rot_scr%old_gradT(zone_index)
-! MHP 6/00 CALCULATED EARLIER
-!            ESUMO(IM) = SESUM(IM)
          end do
-! (commented out with the advection-diffusion transport, 2026-10-12:
-! its theta term, r^4/(G m) omega d omega/dr, on the new mesh; MHP 6/02)
+! The theta term of the advection-diffusion transport on the new mesh,
+!   theta_i = r^4/(G m) omega d omega/dr   (r, m, omega: means of i-1, i)
+! (MHP 6/02), commented out with that transport (2026-10-12).
 !         do i = 2,star%nz
 !            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
 !            delta_omega = star%omega(i) - star%omega(i-1)
@@ -963,9 +989,9 @@ subroutine rerun_physics_on_new_grid
 end subroutine rerun_physics_on_new_grid
 
 ! ---------------------------------------------------------------
-! Rebuild the surface opacity tables if the surface X has changed.
+! Rebuild the surface opacity tables (for the new surface X and Z) when
+! the surface X has moved by more than 1e-8 since they were built.
 subroutine refresh_surface_opacity
-!  CALCULATE NEW SURFACE OPACITY TABLE IF NEEDED.
       if (dabs(star%xnew-star%xa(i_h1,star%nz)).gt.1.0D-8) then
                star%xnew = star%xa(i_h1,star%nz)
                star%znew = star%xa(i_metals,star%nz)
@@ -978,12 +1004,10 @@ end subroutine refresh_surface_opacity
 !----------------------------------------------------------------------
 ! regrid_in_place
 !----------------------------------------------------------------------
-! Spline-interpolate one field from the old mass grid (star%log_mass,
-! old_point_count points) onto the new one (new_log_mass,
-! new_point_count points), overwriting field(1:new_num_zones).
-! regrid_in holds the y-table copy and regrid_out the osplin result
-! (the HPO/HTO "dummy arrays" of the original, formerly
-! star%logP_start / star%logT_start).
+! Spline one field from the old mesh (star%log_mass, old_point_count
+! points) onto the new one (new_log_mass, new_point_count points) with
+! osplin, overwriting field(1:new_num_zones). regrid_in holds the copy
+! of the table and regrid_out the result (the legacy HPO and HTO).
 subroutine regrid_in_place(field)
       double precision, intent(inout) :: field(:)
       integer :: j

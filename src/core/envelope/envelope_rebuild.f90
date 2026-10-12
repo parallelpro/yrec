@@ -1,9 +1,12 @@
 !----------------------------------------------------------------------
 ! envelope_rebuild
 !----------------------------------------------------------------------
-! Moving the fitting point outward when the star loses mass:
-! rebuild_envelope re-integrates the envelope and turns its points below
-! the old fitting point into interior shells.
+! Moving the fitting point outward when the star gains mass: accretion
+! thickens the envelope above a fixed fitting point, so
+! rebuild_envelope integrates a fresh envelope and turns its points
+! between the old and the new fitting point into interior shells.
+! (The legacy getnewenv's comment said "when the total mass is being
+! decreased"; evolve_step calls it after change_mass accretes.)
 module envelope_rebuild
       implicit none
       private
@@ -12,16 +15,20 @@ module envelope_rebuild
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
 ! rebuild_envelope (formerly getnewenv)
-!----------------------------------------------------------------------
-! Moves the outer fitting point when the total mass is being
-! decreased: re-integrates the envelope from the surface (atm_get at
-! the current L and Teff) down to the target envelope mass and
-! appends the envelope points below the old fitting point as new
-! interior shells, interpolating the rotation variables onto them.
-! Called from evolve_step; non-zero ierr propagates an envelope/
-! atmosphere integration failure.
+! ---------------------------------------------------------------
+! Moves the fitting point outward, to target_envelope_mass (a
+! log(m/M), clamped to senv_thin_envelope), after the star has accreted
+! (change_mass's new_atmosphere_fit_needed). It integrates the atmosphere and envelope from the surface
+! (atm_get at the current L and Teff) down to the current fitting
+! point, shifts the envelope onto the last interior shell, and appends
+! the envelope points inside the new fitting mass as interior shells
+! (append_envelope_points). Then come the new shells' masses and, with
+! rotation, a first guess at their rotation, which omega_from_j makes
+! consistent, and the star's angular momentum and rotational energy.
+! Updates star%senv and num_zones; called from evolve_step. ierr: the
+! integration failed, the zones would overflow json, or the mass
+! interpolation was degenerate.
 subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, &
@@ -83,43 +90,40 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       double precision :: sum_angular_momentum, sum_rotational_ke
       double precision :: angular_momentum_shell
       double precision :: mass_at_base
-! omega: 2026 (bugsweep sec-11) this is now the star's angular-velocity
-! array itself. The original (getnewenv.f/getrot.f) used a local OMEGA
-! that was read at old_num_zones (WALPCZ.GE.0 and general branches)
-! BEFORE anything wrote it -- stale from a previous call, zero on the
-! first -- so newly added envelope shells got omega = j_rot = 0; and
-! the rebuilt omega never reached the caller, which goes straight on
-! to rotation_shape_factors with star%omega. Using star%omega fixes
-! both: the seed is the current base-zone rate and omega_from_j's
-! result is what the caller sees.
+! The rotation rates are star%omega itself: the new shells' guess starts
+! from the rate of the old outermost shell, and omega_from_j's result
+! is what the caller sees. (The legacy getnewenv read a local OMEGA
+! that nothing had set, so new shells got omega = j = 0, and the
+! rebuilt omega never reached the caller; bugsweep 2026.)
 
       ierr = 0
       call prepare_envelope_rebuild()
       call set_envelope_surface()
       call integrate_new_envelope()
       if (ierr /= 0) return
-! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
-! 2026 io/driver stops -> ierr (was: stop 9999)
+! Return an error if the new points could overflow the arrays (legacy
+! stop 9999).
       if(num_zones+env_struct%num_env_points.ge.json) then
          write(*,*) 'rebuild_envelope: grid overflow (json too small)'
          ierr = 1
          return
       end if
       call shift_envelope_points()
-! ASSIGN NEW POINTS: append the envelope points below the new fitting
-! mass as shells, interpolating the last one onto it (2026 W3: the
-! loop shared with read_starting_model lives in envelope_refit;
-! a point exactly at the fitting mass is interpolated here, .lt.).
+! Append the envelope points inside the new fitting mass as shells,
+! interpolating the last one onto it; a point exactly at the fitting
+! mass is interpolated (accept_point_at_fit_mass = .false.).
       call append_envelope_points(.false., species_end_index, composition, &
            log_density, log_luminosity, log_pressure, log_radius, log_mass, &
            log_temperature, convective_flag, num_zones, ierr)
-! 2026 io/driver stops -> ierr (was: stop 9998)
+! A degenerate mass interval returns an error (legacy stop 9998).
       if (ierr /= 0) then
          write(*,*) 'rebuild_envelope: degenerate mass interpolation'
          return
       end if
       call compute_new_shell_masses()
-! RECOMPUTE TERMS RELATED TO ROTATION.
+! With rotation: guess omega and j of the new shells, find omega, the
+! shape and the moments of inertia of every zone from j (omega_from_j),
+! and sum the angular momentum and rotational energy.
       if(star%job%rotation_active)then
          call guess_new_shell_rotation()
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
@@ -145,14 +149,15 @@ subroutine prepare_envelope_rebuild()
       else
          species_end_index = n_species_basic
       endif
-! RESTRICT THE ENVELOPE MASS TO A MINIMUM OF 10**-12.
+! Keep senv at or below senv_thin_envelope: an envelope of at least
+! about 2.3e-12 of the star.
       target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
-! SAVE CURRENT VALUES OF THE TOTAL NUMBER OF POINTS AND ENVELOPE MASS.
+! The zone count and the fitting mass before the rebuild.
       old_num_zones = num_zones
       envelope_mass_before = star%senv
-! NUMERICAL PARAMETERS OF THE ENVELOPE INTEGRATION: a fixed step
-! (2026 W2: handed to atm_get for this call instead of overwriting
-! and restoring star%job%env_step_*)
+! The envelope integration takes a fixed step in log P,
+! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
+! only. No boundary vertex is saved, and saha_state starts at 0.
       env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))
       surface_bc_flag = .false.
       print_flag = .true.
@@ -163,24 +168,22 @@ end subroutine prepare_envelope_rebuild
 ! The surface of the envelope integration: L, R, g and the composition,
 ! no rotational distortion, the pressure limit and the eos composition.
 subroutine set_envelope_surface()
-! SET THE PHYSICAL PROPERTIES OF THE ENVELOPE SOLUTION
-! LUMINOSITY
+! L in Lsun.
       luminosity_linear = exp(ln10*log_luminosity_lsun)
-! RADIUS
+! R from L = 4 pi R^2 sigma Teff^4.
       log_radius_surface = surface_log10_radius_cm(log_luminosity_lsun, log_teff)
-! SURFACE GRAVITY
+! g = G M / R^2.
       log_gravity_surface = cgl + star%stotal - log_radius_surface - log_radius_surface
-! COMPOSITION
+! X and Z of the outermost shell.
       hydrogen_fraction = composition(i_h1,num_zones)
       metal_fraction = composition(i_metals,num_zones)
-! NEGLECT ROTATIONAL DISTORTION
+! No rotational distortion: f_P = f_T = 1.
       fp_surface = 1.0D0
       ft_surface = 1.0D0
-! PREVENT THE INTEGRATION FROM SHOOTING PAST THE
-! PRESSURE OF THE OUTER MODEL POINT, AT LEAST THE
-! FIRST TIME IT TRIES TO DO SO.
+! The first step that would cross the pressure of the outermost shell
+! stops at it.
       pressure_limit = log_pressure(num_zones)
-! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
+! The composition of the outermost shell for the EOS.
       call eos_set_debye_huckel_composition(composition(:,num_zones))
 end subroutine set_envelope_surface
 
@@ -188,9 +191,9 @@ end subroutine set_envelope_surface
 ! Integrate the atmosphere and envelope down to the current fitting
 ! point, then adopt the target envelope mass.
 subroutine integrate_new_envelope()
-! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
-! FOR SPOTTED RUNS, FIND THE
-! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
+! Integrate down to the current fitting point from the surface L and
+! Teff. A spotted run with a convective surface starts from the Teff of
+! the unspotted surface (ambient_log10_teff, legacy ATEFFL).
       if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
            star%ctrl%spot_temp_contrast.ne.1.0)then
          spot_adjusted_log_teff = ambient_log10_teff(log_teff)
@@ -202,8 +205,7 @@ subroutine integrate_new_envelope()
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
            ksaha,ierr=jerr_atm,env_steps=env_steps)
-! 2026 numerics-gate opt-in: same contract as read_starting_model's
-! atm_get call; caller (evolve_step) checks ierr.
+! An integration failure goes back to evolve_step in ierr.
       if (jerr_atm /= 0) then
          ierr = jerr_atm
          return
@@ -215,11 +217,13 @@ end subroutine integrate_new_envelope
 ! Match the envelope points to the last interior point and keep, shifted
 ! down by one, those above its mass.
 subroutine shift_envelope_points()
-! THE FIRST POINT IN THE ENVELOPE SOLUTION IS THE SET OF PROPERTIES
-! OBTAINED AT A MASS EQUAL TO THE LAST INTERIOR POINT.  USE THIS TO
-! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
-! ADJUST THE (P, RHO, T, R) POINTS TO BE CONSISTENT
-! WITH THE LAST MODEL POINT AND SHIFT ALL OF THE POINTS DOWN BY ONE.
+! Point 1 of the envelope lies at the mass of the last interior shell.
+! Its differences from that shell in log P, log rho, log T and log R
+! become offsets that make the envelope continuous with the interior.
+! Every later point whose log m exceeds the last kept one by more than
+! 1e-10 moves down one slot, with the offsets added. Only log P,
+! log rho, log R, log m, log T, X and Z move: env_convective_flag and
+! the other arrays are not shifted.
       pressure_offset = log_pressure(num_zones) - env_struct%env_log10_pressure(1)
       density_offset = log_density(num_zones) - env_struct%env_log10_density(1)
       temperature_offset = log_temperature(num_zones) - env_struct%env_log10_temperature(1)
@@ -246,8 +250,9 @@ end subroutine shift_envelope_points
 ! ---------------------------------------------------------------
 ! The (unlogged) masses of the new shells and their mass contents.
 subroutine compute_new_shell_masses()
-! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
-! MASS CONTENTS OF THE NEW SHELLS (HS2).
+! enclosed_mass (legacy HS1) = 10^log m, and the mass of each zone
+! (shell_mass, legacy HS2) = (m(k+1) - m(k-1))/2; the outermost zone
+! holds M - (m(nz) + m(nz-1))/2.
       do zone_index = old_num_zones,num_zones
          enclosed_mass(zone_index) = exp10(log_mass(zone_index))
       end do
@@ -259,28 +264,29 @@ subroutine compute_new_shell_masses()
 end subroutine compute_new_shell_masses
 
 ! ---------------------------------------------------------------
-! The first guess at the rotation of the new shells: constant j/m,
-! solid body, or omega r**walpcz constant.
+! The first guess at the rotation of the new shells, from the outermost
+! old shell by the convection-zone law walpcz: constant j, solid body,
+! or omega r^walpcz constant. Each shell's specific moment of inertia is
+! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
-! FIRST GUESS AT THE ROTATION RATES; ASSIGN A
-! VECTOR OF OMEGA SUCH THAT
-! OMEGA*R**WALPCZ = CONSTANT.
          if(star%ctrl%walpcz.le.-2.0D0)then
-! CONSTANT J/M
+! walpcz <= -2: constant specific angular momentum j.
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                star%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
          else if(star%ctrl%walpcz.ge.0.0D0)then
-! SOLID BODY ROTATION
+! walpcz >= 0: solid-body rotation, omega constant.
             do zone_index = old_num_zones+1,num_zones
                star%omega(zone_index) = star%omega(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = star%omega(old_num_zones)*moment_of_inertia(zone_index)
             end do
          else
-! GENERAL CASE
+! Otherwise omega r^walpcz = constant: omega = omega_old (r_old/r)^walpcz.
+! (enforce_rotation_profile in omega_profile imposes omega = C r^walpcz
+! instead.)
             omega_ref = star%omega(old_num_zones)*exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
             do zone_index = old_num_zones+1,num_zones
                star%omega(zone_index) = omega_ref/exp10((log_radius(zone_index)*star%ctrl%walpcz))
@@ -294,7 +300,8 @@ end subroutine guess_new_shell_rotation
 ! The angular momentum and rotational kinetic energy of each shell and
 ! of the star.
 subroutine sum_rotation_totals()
-! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
+! J_k = j_k dm_k and E_k = omega_k J_k / 2 for each shell, and their
+! sums.
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
        do zone_index = 1,num_zones

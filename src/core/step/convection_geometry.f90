@@ -1,9 +1,9 @@
 !----------------------------------------------------------------------
 ! convection_geometry
 !----------------------------------------------------------------------
-! Where the convection zones end, in one place (2026-10). The zone flags
-! (convection_lib's find_convection_zones) say which shells are convective; the
-! routines here turn that into positions:
+! Where the convection zones end, in one place. The zone flags
+! (convection_lib's find_convection_zones) say which shells are
+! convective; the routines here turn that into positions:
 !   cz_base_fraction           where del_rad - del_ad changes sign between
 !                              the last convective zone and the one below
 !   pressure_scale_height      H_P = P r^2 / (rho G m), cm
@@ -12,11 +12,11 @@
 !                              (convection zone plus envelope overshoot)
 !                              at the start and end of the step, for the
 !                              Li/Be burn
-! Users: observables (the surface CZ's mass, radius, T, rho, P, kappa),
-! turnover_timescale (the CZ-base radius), evolve_step and
-! evolve_angular_momentum (the envelope overshoot depth, alpha * H_P),
-! burn_step (burn_li_be, burn_li_be_midpoint). Each caller keeps its own
-! choice of gradients and its own switch for overshoot.
+! Users: observables (the surface convection zone's mass, radius, T, rho,
+! P and kappa), turnover_timescale (the radius of its base), evolve_step
+! and evolve_angular_momentum (the envelope overshoot depth, alpha_ov
+! H_P), burn_step (burn_li_be). Each caller keeps its own choice of
+! gradients and its own switch for overshoot.
 module convection_geometry
       implicit none
       private
@@ -26,10 +26,12 @@ module convection_geometry
 contains
 
 !----------------------------------------------------------------------
-! cz_base_fraction: gap = del_rad - del_ad (or del_ad - del_rad: the sign
-! cancels) at the last convective zone (gap) and at the zone below it
-! (gap_below). Returns the fraction of the way from the zone below to the
-! last convective zone at which gap = 0, by linear interpolation.
+! cz_base_fraction: the fraction f of the way from the zone below the last
+! convective zone up to that zone at which the gap del_rad - del_ad (or
+! del_ad - del_rad: the sign cancels) vanishes, by linear interpolation
+! between its value in the zone below (gap_below) and in the last
+! convective zone (gap):
+!   f = gap_below / (gap_below - gap).
 double precision function cz_base_fraction(gap_below, gap)
       double precision, intent(in) :: gap_below, gap
       cz_base_fraction = gap_below/(gap_below - gap)
@@ -49,9 +51,10 @@ double precision function pressure_scale_height(log_pressure, log_radius, &
 end function pressure_scale_height
 
 !----------------------------------------------------------------------
-! first_zone_above: searching down from start_zone, the first zone k with
-! r(k) < radius_limit (cm) gives k + 1, the lowest zone lying above the
-! limit; 1 if every zone down to the centre lies above it.
+! first_zone_above: the lowest zone lying above radius_limit (cm).
+! Searching down from start_zone, the first zone k with r(k) <
+! radius_limit gives k + 1; the result is 1 if every zone down to the
+! centre lies above the limit. log_radius is log10 r.
 integer function first_zone_above(log_radius, start_zone, radius_limit)
       use star_info_lib, only: json
       use physical_constants, only: ln10
@@ -69,17 +72,20 @@ integer function first_zone_above(log_radius, start_zone, radius_limit)
 end function first_zone_above
 
 !----------------------------------------------------------------------
-! locate_surface_mixing_base (formerly locate_cz_base in burn_step; shared
-! by burn_li_be and burn_li_be_midpoint, 2026 readability R3). Locates the true base of the
-! surface convection zone at the end of the step (cz_base_zone, with
-! cz_base_frac the offset of the true base from the zone midpoint in
-! units of the zone width: negative = higher, positive = lower) and
-! the base at the start of the step (cz_base_zone_old), including
-! envelope overshoot when active, and records cz_base_zone in
-! star%envelope_cz_base_zone_prev.
-! cz_base_frac is intent(inout): it is assigned only when the CZ base
-! is an interior zone (1 < env_cz_zone < num_zones), exactly as in the
-! original inline block, and is never read by the callers otherwise.
+! locate_surface_mixing_base (formerly locate_cz_base in burn_step)
+! The base of the surface mixed region (the convection zone, plus the
+! envelope overshoot when it is on) at the end of the step
+! (cz_base_zone) and at the start (cz_base_zone_old), for burn_li_be.
+! radius is log10 r of the end-of-step model; env_cz_zone and
+! env_cz_zone_old are the convection zone's base zone at the end and at
+! the start of the step. cz_base_frac places the true base within its
+! zone k = cz_base_zone: its offset from the midpoint of r(k-1) and r(k),
+! in units of r(k) - r(k-1), clipped to [-0.5, 0.5]; negative means the
+! true base lies higher, positive lower. It is intent(inout) because it
+! is assigned only when the base is an interior zone
+! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
+! cz_base_zone is kept in star%envelope_cz_base_zone_prev, the starting
+! zone of the next call within the step.
 !   star reads: grada, gradr, job%envelope_overshoot_active,
 !     job%instability_transport_active, job%rotation_active, logR_start,
 !     pressure_scale_height_end, pressure_scale_height_start
@@ -101,6 +107,9 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
       double precision :: search_radius, shell_radius, delta_radius, &
            cz_base_radius
 
+! del_ad - del_rad at the last convective zone and at the one below it:
+! with rotational mixing, from the rotation sub-step's midpoint model
+! (mid_scr); otherwise from the model's own gradients.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
          if(star%job%rotation_active.and.star%job%instability_transport_active)then
             del_diff = mid_scr%grada(env_cz_zone) - &
@@ -108,14 +117,13 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
             del_diff_below = mid_scr%grada(env_cz_zone-1) - &
                  mid_scr%gradr(env_cz_zone-1)
          else
-! EVALUATE DEL(AD) - DEL(RAD) AT THE LAST CONVECTIVE POINT AND THE ONE
-! BELOW IT.
             del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
             del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
          endif
-! USE LINEAR INTERPOLATION TO FIND THE DISTANCE OF THE TRUE LOCATION
-! OF THE BASE FROM THE ZONE MIDPOINT. IF FX IS NEGATIVE,THEN THE TRUE
-! BASE IS HIGHER; IF IT IS POSITIVE, THE TRUE BASE IS LOWER.
+! The true base (del_ad = del_rad) by linear interpolation, a fraction f
+! (cz_base_fraction) of the way up from zone env_cz_zone-1; as an offset
+! from the zone midpoint, cz_base_frac = 0.5 - f, clipped to
+! [-0.5, 0.5]. Negative means the true base lies higher, positive lower.
          cz_base_frac = max(-0.5d0,0.5d0-cz_base_fraction(del_diff_below, &
               del_diff))
          cz_base_frac = min(0.5d0,cz_base_frac)
@@ -123,8 +131,13 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else
-! STARTING CZ DEPTH (cz_base_radius_prev = 0 means no previous step
-! has stored one: locate it from the start-of-step model).
+! The starting depth. cz_base_radius_prev = 0 (set by rezone_or_snapshot
+! at every step) marks the first call of the step: the starting base
+! radius is then the midpoint of zones env_cz_zone_old-1 and
+! env_cz_zone_old in the start-of-step model, and the mixed region
+! reaches the overshoot depth alpha_ov H_P (pressure_scale_height_start)
+! below it. Later calls in the step (the rotation sub-steps) start from
+! the previous call's end-of-step zone.
             if(star%cz_base_radius_prev.eq.0.0d0)then
                star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
                         +exp(ln10*star%logR_start(env_cz_zone_old-1)))
@@ -134,16 +147,21 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
             else
                cz_base_zone_old = star%envelope_cz_base_zone_prev
             endif
-! ENDING CZ DEPTH : DETERMINE OVERSHOOT FROM TRUE CZ BASE.
+! The ending depth, from the interpolated true base,
+!   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
+! k = env_cz_zone; the mixed region reaches alpha_ov H_P
+! (pressure_scale_height_end) below it.
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
             star%cz_base_radius_prev = cz_base_radius
             search_radius = cz_base_radius - star%pressure_scale_height_end
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
-! the true overshoot edge's offset within its zone. (The zone width uses
-! the start-of-step radius above the edge and the current one below it,
-! as it always has: see ROADMAP 13.)
+! The overshoot edge's offset within its zone k = cz_base_zone, in the
+! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),
+! clipped to [-0.5, 0.5]. The zone width takes r(k) from the start-of-step
+! model (logR_start) and r(k-1) from the current one, as the legacy code
+! did (docs/ROADMAP.md section 13).
             if (cz_base_zone.gt.1) then
                shell_radius = exp(ln10*radius(cz_base_zone-1))
                delta_radius = exp(ln10*star%logR_start(cz_base_zone))-shell_radius

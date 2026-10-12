@@ -5,29 +5,28 @@
 ! for one iteration level, in two calls that evolve_step's solve_level
 ! makes in order, with the composition step between them at levels >= 3:
 !
-!   refresh_surface_bc   the surface boundary condition (surfbc), when
+!   refresh_surface_bc   the surface boundary condition
+!                        (compute_surface_boundary), when
 !                        recompute_surface_bc asks for it. It runs
 !                        before the composition step because it reads
 !                        the surface composition.
-!   henyey_iterate       the correction loop. Each iteration calls
-!                        henyey_coefficients to linearize the structure
-!                        equations at every mesh point, builds the outer
-!                        boundary-condition row from the envelope-fit
-!                        coefficients (star%envelope_fit_coeffs, from
-!                        surfbc), calls henyey_solve to back-solve the
-!                        block-tridiagonal system for the P/T/R/L
-!                        corrections, checks them against the
-!                        convergence/divergence tolerances (ctrl%*),
-!                        applies them, and (if rotation is active)
-!                        updates the rotation curve and the rotational
-!                        P/T factors via omega_from_j/rotation_shape_factors.
+!   henyey_iterate       the correction loop. Each iteration linearizes
+!                        the structure equations at every shell
+!                        (compute_henyey_coefficients), builds the outer
+!                        boundary-condition rows from the envelope fit
+!                        (star%envelope_fit_coeffs), solves for the
+!                        P, T, R and L corrections (henyey_solve), tests
+!                        them against the tolerances (ctrl%htoler),
+!                        applies them, and with rotation updates the
+!                        rotation curve and the rotational P and T
+!                        factors (omega_from_j, rotation_shape_factors).
 !
-! The two share the Saha-state counter of the EOS calls (saha_state)
-! and whether surfbc recomputed the envelope (envelope_recomputed_flag).
-! (2026-10: one routine, crrect/henyey_iterate, used to do both and run
-! the composition step itself in between.)
+! The two share the Saha-state counter of the eos calls (saha_state)
+! and whether compute_surface_boundary integrated a new envelope
+! (envelope_recomputed_flag). Legacy crrect did both, with the
+! composition step in between.
 !
-! Non-zero ierr propagates a callee failure to evolve_step.
+! Nonzero ierr propagates a callee failure to evolve_step.
 ! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
 module henyey_iteration
       use henyey_elimination, only: henyey_solve
@@ -42,9 +41,12 @@ module henyey_iteration
 contains
 
 !----------------------------------------------------------------------
-! refresh_surface_bc: start an iteration level -- log L, the envelope
-! mass, and (when recompute_surface_bc, forced on for a new or reset
-! triangle) the surface boundary condition from surfbc.
+! refresh_surface_bc: start an iteration level. Sets log L
+! (star%log_L), the log mass fraction inside the fitting point,
+!   senv = log m(nz) - log M,
+! and resets the Saha-state counter. When recompute_surface_bc is set
+! (forced on for a new triangle, or for a reset one at level 2), it
+! rebuilds the envelope fit with compute_surface_boundary.
 !----------------------------------------------------------------------
 subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
@@ -71,17 +73,15 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
       integer :: jerr
 
       ierr = 0
-! .false. unless surfbc runs and says otherwise
+! False unless compute_surface_boundary integrates a new envelope.
       envelope_recomputed_flag = .false.
       star%log_L = log10(star%luminosity_lsun(star%nz))
-! RESET THE SAHA-STATE COUNTER (2026 W2: the envelope/atmosphere
-! integrand call counters kenv/katm that used to be zeroed here were
-! never read; removed)
       saha_state = 0
       star%senv = star%log_mass(star%nz) - star%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
-!  FIND NEW FP AND FT IF MODEL IS ROTATING
+! The surface rotation factors fp and ft for the envelope integrations
+! (1 without rotation).
       if (star%job%rotation_active.and.recompute_surface_bc) then
        surface_pressure_rotation_factor = star%fp_rot(star%nz)
        surface_temperature_rotation_factor = &
@@ -90,8 +90,9 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
        surface_pressure_rotation_factor = 1.0d0
        surface_temperature_rotation_factor = 1.0d0
       endif
-! SET UP SURFACE BOUNDARY CONDITIONS-2ND AND 3RD LEVELS OF ITER ONLY
-! FIND ENVELOPE MASS AND SET X AND Z TO ENVELOPE VALUES
+! The envelope integrations use the surface composition (X, Z and the
+! Debye-Hueckel species of the outermost shell) and take log P(nz) as
+! their guess at the fitting-point pressure.
       if (recompute_surface_bc) then
        hydrogen_fraction = star%xnew
        metal_fraction = star%znew
@@ -106,9 +107,9 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
             log10_pressure_limit,star%convective_flag,star%nz,jerr)
-! 2026 numerics-gate opt-in: surfbc surfaces envelope/atmosphere
-! integration failures (incl. numerics_termination, negative) via
-! ierr; propagate to the driver.
+! An envelope or atmosphere integration failure (including
+! numerics_termination, a negative code) comes back in jerr and goes up
+! to the driver.
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -117,14 +118,18 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
 end subroutine refresh_surface_bc
 
 !----------------------------------------------------------------------
-! henyey_iterate: the Newton correction loop of one iteration level.
-! envelope_zone_index gates the accretion term of the entropy equation
-! in henyey_coefficients (zones at or above it get the accreted-layer
-! T and P changes); see solve_level for its value.
-! INPUTS  delta_time = TIME STEP IN SECONDS
-!         max_iterations = ITERATION NUMBER
-! OUTPUTS converged = .T. IF MODEL HAS CONVERGED
-!         corrections_too_large = .T. IF CORRECTIONS ARE TOO LARGE
+! henyey_iterate: the Newton correction loop of one iteration level, at
+! most max_iterations passes. Each pass linearizes the structure
+! equations, accepts the model if the residuals are already small,
+! closes the system with the surface rows, solves for the corrections,
+! tests them and applies them, scaled by the correction factor.
+! Inputs: delta_time, the time step in s; envelope_zone_index, from which
+!   zone up the entropy term of compute_henyey_coefficients adds the
+!   accretion shifts of T and P (see solve_level for its value).
+! Outputs: converged, true once the model has converged (on entry, the
+!   previous level's result); corrections_too_large, true if a correction
+!   exceeded its limit; iterations_done, increased by one for each
+!   applied correction.
 !----------------------------------------------------------------------
 subroutine henyey_iterate(delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
@@ -150,9 +155,9 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       integer, intent(out) :: ierr
 
       integer :: i, j, iter, max_correction_pos
-! sign of the fcorr0 control: > 0 means the under-relaxation factor
-! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is
-! ramped up by fcorri each iteration; <= 0 holds it fixed
+! The sign of the fcorr0 control: > 0 means the under-relaxation factor
+! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is ramped
+! up by fcorri each iteration; <= 0 holds it fixed.
       logical :: underrelax_ramp_active
       double precision :: temp, test, total_luminosity_terms, &
            luminosity_correction_max, correction_factor
@@ -162,8 +167,8 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
 
       ierr = 0
       underrelax_ramp_active = star%ctrl%fcorr0.gt.0.0d0
-!  IF MODEL CONVERGED ON THE PREVIOUS LEVEL OF ITERATION AND
-!  THE TRIANGLE WAS CHECKED AND NOT FLIPPED,SKIP CORRECTION ROUTINE.
+! If the model converged at the previous level and the envelope triangle
+! was checked without any new envelope, there is nothing to correct.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
            converged) return
       converged = .false.
@@ -174,7 +179,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        call accept_small_residuals()
        if (converged) return
        call form_surface_bc_rows()
-! DO BACK SOLUTION FOR CORRECTIONS
+! Solve for the corrections; they replace the residuals in elim_rhs.
        call henyey_solve(star%nz,star%elim_coeff,star%elim_rhs,star%surface_bc)
        call find_largest_corrections()
        call test_henyey_convergence()
@@ -194,33 +199,31 @@ contains
 
 ! ---------------------------------------------------------------
 ! Zero the residual maxima and linearize the structure equations at
-! every shell (henyey_coefficients); a failure leaves ierr nonzero.
+! every shell, with the forward elimination (compute_henyey_coefficients);
+! a failure leaves ierr nonzero.
 subroutine linearize_structure_equations()
-! DO HENYEY REDUCTION
        star%max_residual(1) = 0.0d0
        star%max_residual(2) = 0.0d0
        star%max_residual(3) = 0.0d0
        star%max_residual(4) = 0.0d0
-! (2026 de-tramp: the star%-shaped slots are read/written by
-! henyey_coefficients directly; only the per-call locals remain.)
        call compute_henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
-       ! 2026 (phase five, step B): propagate instead of stopping
+       ! Propagate the failure to the caller.
           ierr = jerr
           return
        end if
 end subroutine linearize_structure_equations
 
 ! ---------------------------------------------------------------
-! Scale the luminosity channels to sum to the surface luminosity
-! (not during the helium flash).
+! Scale the luminosity channels so that they sum to the surface
+! luminosity,
+!   luminosity_breakdown(j) *= L(nz)/sum_j luminosity_breakdown(j),
+! except during the helium flash, when the star is out of thermal
+! equilibrium. This is the per-iteration twin of observables'
+! renormalize_luminosity_breakdown; it also guards a nonpositive sum, and
+! is kept separate on purpose (reports/henyey-wave2.md item 6).
 subroutine renormalize_luminosity_channels()
-! RENORMALIZE TLUMX-S
-!CC   TAKE OUT RENORMALIZATION DURING HE FLASH (NON-THERMAL EQUALIBRIUM)
-! (per-iteration twin of observables's renormalize_luminosity_breakdown;
-! this one also guards total > 0 -- kept separate on purpose, see
-! reports/henyey-wave2.md item 6)
        total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
             star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
             star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
@@ -234,11 +237,12 @@ subroutine renormalize_luminosity_channels()
 end subroutine renormalize_luminosity_channels
 
 ! ---------------------------------------------------------------
-! After the first iteration, the model has converged if the equations'
-! residuals are all below their tolerances.
+! From the second pass on, the model has converged, without a solve, if
+! the largest residual |F_k| of every difference equation is within
+! tolerance: P and R against htoler(5,1), T and L against htoler(5,2)
+! (the L residual is absolute, in Lsun). The boundary conditions'
+! residuals are not checked.
 subroutine accept_small_residuals()
-! CHECK ON SIGNIFICANCE OF R.H.S. EQUATIONS FOR P AND T
-! N.B.  DOES NOT CHECK DIFFERENCES IN BOUNDARY EQUATIONS
        if (iter.gt.1) then
           if (star%max_residual(1).le.star%ctrl%htoler(5,1) .and. &
                star%max_residual(2).le.star%ctrl%htoler(5,2) .and. &
@@ -255,15 +259,23 @@ subroutine accept_small_residuals()
              return
           endif
        endif
-! (a copy of log_henyey_corrections' format 75: a label belongs to
-! one procedure)
+! A copy of log_henyey_corrections' format 75, since a statement label
+! belongs to one procedure.
    75 format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
 end subroutine accept_small_residuals
 
 ! ---------------------------------------------------------------
-! The outer boundary-condition rows from the envelope-fit coefficients.
+! The outer boundary-condition rows from the envelope fit of
+! compute_surface_boundary. At the fitting point, the outermost shell N,
+!   log R = cf(1) log P + cf(2) log T + cf(3)
+!   log L = cf(4) log P + cf(5) log T + cf(6)
+! with cf = star%envelope_fit_coeffs. Linearized in henyey_solve's form,
+! with s = star%surface_bc,
+!   dlog R = s(3) - s(1) dlog P - s(2) dlog T
+!   dL     = s(6) - s(4) dlog P - s(5) dlog T
+! s(3) and s(6) carry the fits' residuals, and the L row is multiplied
+! by dL/dlog L = ln10 L.
 subroutine form_surface_bc_rows()
-! SET UP HENYEY COEFFICIENTS FOR SURFACE
        star%surface_bc(1) = -star%envelope_fit_coeffs(1)
        star%surface_bc(2) = -star%envelope_fit_coeffs(2)
        star%surface_bc(3) = star%envelope_fit_coeffs(1)*star%logP(star%nz) + &
@@ -278,9 +290,10 @@ subroutine form_surface_bc_rows()
 end subroutine form_surface_bc_rows
 
 ! ---------------------------------------------------------------
-! The largest P, T, R and L corrections and the shells where they occur.
+! The largest |correction| of each variable and the shell where it
+! occurs (ties go to the outer shell). For L it is the smaller of |dL|
+! and |dL/L|, except at shell 1, which enters with |dL|.
 subroutine find_largest_corrections()
-! CHECK ON MAXIMUM CORRECTIONS
        do j = 1,4
           star%max_residual(j) = dabs(star%elim_rhs(j,1))
           star%max_correction_index(j) = 1
@@ -310,14 +323,13 @@ subroutine find_largest_corrections()
 end subroutine find_largest_corrections
 
 ! ---------------------------------------------------------------
-! Converged if every largest correction is below its tolerance, too
-! large if any exceeds its limit; keep the signed largest corrections.
+! Converged if every largest correction is below its tolerance
+! htoler(k,1); too large if any exceeds its limit htoler(k,2). The same
+! test holds during the helium flash. Then keep the signed correction at
+! each maximum, for the log line.
 subroutine test_henyey_convergence()
-!CC   HE FLASH -- OK FOR ALL
+! The largest L correction, for the helium flash's correction factor.
        luminosity_correction_max = star%max_residual(4)
-! LFINI = T IF MAX CORRECTIONS LESS THAN CONVERGENCE CRITERIA SET IN
-! HTOLER. LARGE = T IF MAX CORRECTIONS GREATER THAN LARGEST CORRECTIONS
-! ALLOWED, ALSO SET IN HTOLER
        converged = star%max_residual(1).lt.star%ctrl%htoler(1,1) .and. &
             star%max_residual(2).lt.star%ctrl%htoler(2,1) &
          .and. star%max_residual(3).lt.star%ctrl%htoler(3,1) .and. &
@@ -337,12 +349,14 @@ end subroutine test_henyey_convergence
 ! in during the helium flash); count the iterations if converged.
 subroutine set_henyey_correction_factor()
        if (underrelax_ramp_active) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
-! HE FLASH CHANGE
+! During the helium flash, apply 0.8 of the correction once the largest
+! L correction is at most 0.5, and all of it once it is at most 5e-3.
        correction_factor = star%job%fcorr
        if (star%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
+! The hydrogen- and helium-burning luminosities, for the log line.
        hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
             + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
        helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
@@ -353,8 +367,7 @@ end subroutine set_henyey_correction_factor
 ! Log the corrections (solver diagnostics), and report corrections too
 ! large to apply.
 subroutine log_henyey_corrections()
-! 2026 log redesign: the correction trace was gated on the retired
-! LCORR control; it is solver forensics, behind the diagnostics flag.
+! The correction trace is written only with solver diagnostics on.
        if (solver_diagnostics()) then
           write (run_log_unit,60) converged,star%max_residual(4), &
                star%ctrl%htoler(4,1),star%max_correction_index(4)
@@ -379,10 +392,13 @@ subroutine log_henyey_corrections()
 end subroutine log_henyey_corrections
 
 ! ---------------------------------------------------------------
-! Apply the scaled corrections to every shell; the new log L and
-! log Teff.
+! Apply the corrections, scaled by the correction factor f, at every
+! shell: log P += f dlog P and log T += f dlog T (and the same to their
+! changes over the step, log_pressure_delta and log_temperature_delta,
+! which the entropy term reads), log R += f dlog R, L += f dL. Then the
+! new log L, and log Teff from the envelope fit,
+!   log Teff = cf(7) log P(nz) + cf(8) log T(nz) + cf(9).
 subroutine apply_henyey_corrections()
-! APPLY CORRECTIONS
        do i = 1,star%nz
           temp = correction_factor*star%elim_rhs(1,i)
           star%logP(i) = star%logP(i) + temp
@@ -401,8 +417,9 @@ subroutine apply_henyey_corrections()
 end subroutine apply_henyey_corrections
 
 ! ---------------------------------------------------------------
-! With rotation, the rotation curve, the P/T shape factors and the
-! rotational kinetic energy of the corrected structure.
+! With rotation, the rotation curve, the P and T shape factors and the
+! rotational kinetic energy of the corrected structure,
+! E_rot = 0.5 omega j dm per shell.
 subroutine update_rotation_after_corrections()
          if (star%job%rotation_active) then
             call omega_from_j(star%logRho,star%j_rot,star%logR, &

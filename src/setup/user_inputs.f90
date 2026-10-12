@@ -2,8 +2,8 @@
 ! user_inputs
 !----------------------------------------------------------------------
 ! The mapping of the newer, descriptively named controls onto the
-! parameters the code uses (map_user_inputs, MHP 6/2014), during the
-! controls read.
+! parameters the code uses (map_user_inputs), during the controls
+! read.
 module user_inputs
       implicit none
       private
@@ -13,17 +13,22 @@ contains
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! remap
+! map_user_inputs (legacy remap.f, MHP 6/2014)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original remap.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! MHP 6/2014
-! Subroutine to remap new, more intuitively named, namelist parameters
-! onto existing code parameters.
+! Maps the newer, descriptively named namelist controls onto the
+! arrays the code uses:
+!  - with use_new_nuclear_rates (legacy LNEWNUC), the per-reaction S0
+!    values and their first and second derivatives (s0_*, s0p_*,
+!    s0pp_*) become the cross-section scales star%cross_section_scale
+!    (legacy SSTANDARD) and the derivative scales star%qs0e_scale and
+!    star%qqs0ee_scale (legacy QS0E, QQS0EE);
+!  - with lnewvars (use_new_rate_variables), the tol_*, flag_* and
+!    time_* controls overwrite the rezoning tolerances chi_grid_scale
+!    (legacy HPTTOL) and the timestep limiters atime, and set
+!    use_structure_dt_limits, max_domega_global and
+!    diffusion_timestep_factor.
+! The derivative and N15 + p branching scales are always first reset
+! to unity.
 subroutine map_user_inputs
       use star_info_lib, only: star
       use controls_buffer
@@ -33,14 +38,17 @@ subroutine map_user_inputs
 
       integer :: i
 
+! The reference S0 values (keV b) against which the input S0 values are
+! scaled: those of Bahcall & Ulrich (1988), the normalization of the
+! rates in compute_zone_energy (see set_cross_section_scales).
       double precision :: s0_pp_ref, s0_he3he3_ref, s0_he3he4_ref, &
            s0_p_c12_ref, s0_p_c13_ref
       data s0_pp_ref,s0_he3he3_ref,s0_he3he4_ref,s0_p_c12_ref,s0_p_c13_ref/ &
            4.07D-22,5.15D3,5.4D-1,1.45D0,5.5D0/
-! NOTE: PEP IS THE PROPORTIONALITY CONSTANT RELATIVE TO PP
-! NOTE: BE7+E- IS THE PROPORTIONALITY CONSTANT IN THE LINEAR TERM
-! THE CODE USES T9, NOT T6, SO ANY EXPRESSION IN TERMS OF T/10^6 K
-! NEEDS TO BE DIVIDED BY 1000^0.5 (FOR BOTH PEP AND BE7+E-)
+! For pep, the reference is the proportionality constant of the pep
+! rate relative to pp; for Be7 + e-, the constant of the linear term.
+! Both rates go as T^(-1/2), and the code uses T9 rather than T6, so a
+! constant quoted for T6 = T/1e6 K must be divided by 1000^(1/2).
       double precision :: s0_p_n14_ref, s0_p_o16_ref, s0_pep_ref, &
            s0_be7_electron_ref
       data s0_p_n14_ref,s0_p_o16_ref,s0_pep_ref,s0_be7_electron_ref/ &
@@ -49,30 +57,24 @@ subroutine map_user_inputs
            s0_n15_p_o16_branch_ref
       data s0_be7_p_ref,s0_hep_ref,s0_n15_p_c12_branch_ref, &
            s0_n15_p_o16_branch_ref/0.0243D0,8.0D-20,6.75D4,6.4D1/
-! REFERENCE ADELBERGER ET AL. 1998 CROSS SECTIONS - USED IN HARD-CODED
-! FIRST AND SECOND DERIVATIVE TERMS (EXPRESSED AS S'/S AND S''/S)
-! UNITS ARE KeV b
-!       DATA S0_1_1_A98,S0_3_3_A98,S0_3_4_A98,S0_1_12_A98,S0_1_13_A98/
-!      *     4.00D-22,5.4D3,5.3D-1,1.34D0,7.6D0/  ! KC 2025-05-31
-! 2026-10: each reaction's own Solar Fusion I S0 normalizes its S'/S
-! and S''/S scales below. The F77 remap.f divided reactions 2-7 by pp's
-! S0 instead (S0_1_1_A98, 4e-22 keV b), which made those scales ~1e-22
-! and silently deleted the q2..q5 terms of He3+He3, He3+He4, C12+p,
-! C13+p, N14+p and O16+p; the per-reaction values were left unused
-! (and their DATA line commented out, KC 2025-05-31).
+! The Solar Fusion I S0 values (Adelberger et al. 1998), in keV b. The
+! rate fits' first- and second-derivative terms are hard-coded as S'/S
+! and S''/S from that compilation, so each reaction's input S'/S and
+! S''/S are scaled below against its own Solar Fusion I ratio.
+! (2026-10: the F77 remap.f divided reactions 2-7 by the pp S0
+! instead, which made those scales ~1e-22 and silently removed the
+! q2..q5 terms of He3+He3, He3+He4, C12+p, C13+p, N14+p and O16+p.)
       double precision :: s0_pp_a98, s0_he3he3_a98, s0_he3he4_a98, &
            s0_p_c12_a98, s0_p_c13_a98, s0_p_n14_a98, s0_p_o16_a98
       data s0_pp_a98,s0_he3he3_a98,s0_he3he4_a98,s0_p_c12_a98,s0_p_c13_a98/ &
            4.00D-22,5.4D3,5.3D-1,1.34D0,7.6D0/
       data s0_p_n14_a98,s0_p_o16_a98/3.5D0,9.4D0/
-!       DATA S0_1_14_A98,S0_1_16_A98,S0_PEP_A98,S0_1_BE7E_A98/
-!      *     3.5D0,9.4D0,3.5734D-6,1.77088D-10/
-!       DATA S0_1_BE7P_A98,S0_HEP_A98,S0_1_15_C12ALP_A98,S0_1_15_O16_A98/
-!      *     0.019D0,2.3D-20,6.75D4,6.4D1/
+! No derivative scales are taken for pep, Be7 + e-, hep or the N15 + p
+! branches, so their Solar Fusion I values are not needed.
       double precision :: s0_be7_p_a98
       data s0_be7_p_a98/0.019D0/
-! REFERENCE FIRST DERRIVATIVES OF CROSS-SECTIONS (ADELBERGER ET AL. 1998)
-! UNITS ARE b
+! The Solar Fusion I first derivatives S'(0) (Adelberger et al. 1998),
+! in b.
       double precision :: qs0e_pp_a98, qs0e_he3he3_a98, qs0e_he3he4_a98, &
            qs0e_p_c12_a98
       data qs0e_pp_a98,qs0e_he3he3_a98,qs0e_he3he4_a98,qs0e_p_c12_a98/ &
@@ -81,31 +83,35 @@ subroutine map_user_inputs
            qs0e_be7_p_a98
       data qs0e_p_c13_a98,qs0e_p_n14_a98,qs0e_p_o16_a98,qs0e_be7_p_a98/ &
            -7.8D-3,-1.28D-2,-2.4D-2,-1.33D-5/
-! REFERENCE SECOND DERIVATIVES OF CROSS SECTIONS (ADELBERGER ET AL. 1998)
+! The Solar Fusion I second derivatives S''(0) (Adelberger et al.
+! 1998), in b/keV.
       double precision :: qqs0ee_p_c12_a98, qqs0ee_p_c13_a98, &
            qqs0ee_p_o16_a98, qqs0ee_be7_p_a98
       data qqs0ee_p_c12_a98,qqs0ee_p_c13_a98,qqs0ee_p_o16_a98, &
            qqs0ee_be7_p_a98/8.3D-5,7.3D-4,5.7D-5,7.22D-8/
-! The code explicitly treats non-equilibrium C12,C13,N14,O16.
-! N15 burning is assumed to immediately follow N14+p, with the
-! branching ratio between C12+Alpha and O16+Gamma calculated using
-! the relative S0 for the two.  To change the branching ratio, change
-! S0_1_15_C12ALP and S0_1_15_O16.  O17 proton capture is assumed to
-! immediately follow O16 proton capture, producing N14.
-! He-burning reactions triple-alpha,C12+He4,C13+He4,N14+He4 are tracked
-! in the code, using the Caughlin&Fowler(1988) cross-sections.  As resonances
-! are important for these reactions, a simple scaling by S0 is not sufficient,
-! and updates should instead use different functional forms (e.g. NACRE II).
-! IF THE LNEWNUC FLAG IS SET TRUE THE SSTANDARD VECTOR IS NORMALIZED TO UNITY
-! AND THE INDIVIDUAL CROSS-SECTION VALUES AND THEIR DERIVATIVES ARE USED INSTEAD.
+! The network follows C12, C13, N14 and O16 out of equilibrium. N15
+! burning is assumed to follow N14 + p at once, with the branching
+! between N15(p,alpha)C12 and N15(p,gamma)O16 set by the relative S0
+! of the two; to change it, change s0_n15_p_c12_branch and
+! s0_n15_p_o16_branch. O17 proton capture is assumed to follow O16
+! proton capture at once, producing N14. The helium-burning reactions
+! (triple alpha, C12 + He4, C13 + He4, N14 + He4) use the Caughlan &
+! Fowler (1988) rates. Resonances matter for these, so a simple
+! scaling by S0 is not enough; updates should use other functional
+! forms instead (e.g. NACRE II).
+!
+! With use_new_nuclear_rates (legacy LNEWNUC), the cross-section
+! scales are reset to unity and rebuilt from the individual S0 values
+! and their derivatives.
       call reset_rate_scale_defaults
       if (use_new_nuclear_rates) then
          call set_cross_section_scales
          call set_first_derivative_scales
          call set_second_derivative_scales
       end if
-! OPTION TO OVERWRITE SPATIAL AND TEMPORAL TOLERANCES WITH MORE INTUITIVE VARIABLE NAMES.
-! NOTE: THIS OVERWRITES THE HPTTOL AND ATIME VECTORS.
+! With lnewvars (use_new_rate_variables, which despite its name has
+! nothing to do with reaction rates), the named zoning and timestep
+! tolerances overwrite chi_grid_scale (legacy HPTTOL) and atime.
       if (lnewvars) then
          call map_zoning_tolerances
          call map_timestep_tolerances
@@ -115,8 +121,8 @@ subroutine map_user_inputs
 contains
 
 ! ---------------------------------------------------------------
-! Default the rate-derivative scales and the N15+p branching scales
-! to unity.
+! Reset the rate-derivative scales and the N15 + p branching scales to
+! unity.
 subroutine reset_rate_scale_defaults
       do i = 1,8
          star%qs0e_scale(i) = 1.0d0
@@ -124,26 +130,23 @@ subroutine reset_rate_scale_defaults
       end do
       star%c12_alpha_scale = 1.0d0
       star%o16_gamma_scale = 1.0d0
-!      WRITE(*,911)(QS0E(I),I=1,8),(QQS0EE(I),I=1,8),
-!     * (SSTANDARD(I),I=1,17),LNEWNUC
-! 911  FORMAT(8E12.3/8E12.3/8E12.3/9E12.3/L5)
 end subroutine reset_rate_scale_defaults
 
 ! ---------------------------------------------------------------
-! Set each reaction's cross-section scale from its S0 over the
-! reference S0, and the N15+p branching scales.
+! Set each reaction's cross-section scale, S0/S0_ref, and the scales
+! of the two N15 + p branches.
 subroutine set_cross_section_scales
          do i = 1,17
             star%cross_section_scale(i) = 1.0d0
          end do
-! The energy generation subroutine compute_zone_energy has a vector, SSTANDARD,
-! which is the ratio of the desired S0 to that of Bahcall & Ulrich (1988).
-! If this option is true, the namelist SSTANDARD vector is replaced
-! by explicit cross-sections for individual reactions, and the implied
-! Sstandard vector is derived here.  The first and second derivatives
-! of the reactions are permitted to be separately modified, unlike in the
-! original version of compute_zone_energy.  In this case the inputs are the ratios
-! S'/S0 and S''/S0, relative to the Solar Fusion I (Adelberger et al. 1998) ratios.
+! compute_zone_energy multiplies each rate by cross_section_scale
+! (legacy SSTANDARD), the ratio of the desired S0 to that of Bahcall &
+! Ulrich (1988). Here the namelist vector is replaced by explicit S0
+! values for the individual reactions, and the implied scales are
+! derived. The first and second derivatives may be changed separately
+! (unlike in the original compute_zone_energy): their inputs are S'/S0
+! and S''/S0, taken relative to the Solar Fusion I (Adelberger et al.
+! 1998) ratios.
          star%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
          star%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref
          star%cross_section_scale(r_he3he4) = s0_he3he4/s0_he3he4_ref
@@ -151,30 +154,30 @@ subroutine set_cross_section_scales
          star%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
          star%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
          star%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
-!      SSTANDARD(8) = S0_4_13/S0_4_13_REF resonant; not fit by simple S0
-!      SSTANDARD(9) = S0_4_16/S0_4_16_REF not used
-!      SSTANDARD(10) = S0_4_12/S0_4_12_REF resonant; not fit by simple S0
-!      SSTANDARD(11) = S0_4_14/S0_4_14_REF resonant; not fit by simple S0
-!      SSTANDARD(12) = S0_3A/S0_3A_REF resonant; not fit by simple S0
-!      SSTANDARD(13) = S0_12_12/S0_12_12_REF not used
+! Slots 8-13 keep unit scale: C13 + He4, C12 + He4, N14 + He4 and
+! triple alpha are resonant and not fit by a simple S0, and O16 + He4
+! and C12 + C12 are not used.
          star%cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
          star%cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
          star%cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
          star%cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
-! ABILITY TO CHANGE THE HARD-CODED BRANCHING RATIOS FOR THE OUTCOME OF N15+P
+! The scales of the N15 + p branches, N15(p,alpha)C12 and
+! N15(p,gamma)O16.
          star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
          star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
 end subroutine set_cross_section_scales
 
 ! ---------------------------------------------------------------
-! Set the first-derivative (S'/S) scales relative to Solar Fusion I,
-! zero where a reaction's S0 is not positive.
+! Set the first-derivative scales, for each reaction
+!   qs0e_scale = (S'/S0)_input / (S'/S0)_SolarFusionI,
+! zero where the input S0 is not positive.
 subroutine set_first_derivative_scales
-! NUCLEAR REACTION DERIVATIVES ARE USED IN THE VECTORS Q2-Q5 IN ENGEB AND NRATES.
-! THE Q2 AND Q3 FACTORS ARE DEFINED PROPORTIONAL TO S'/S (REFERENCE: SOLAR FUSION I IN 1998)
-! THE Q4 AND Q5 FACTORS ARE DEFINTED PROPORTIONAL TO S''/S (SAME REFERENCE)
-! FIRST DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q2 AND Q3 TERMS IN ENGEB
-! MHP 4/25 FIXED TYPOS AND TRAPPED OUT POTENTIAL DIVIDE BY ZERO ERRORS
+! The rate fits (net/reaction_rates.f90; legacy ENGEB and NRATES) carry
+! the S-factor derivatives in their q2-q5 terms: q2 and q3 are
+! proportional to S'/S and q4 and q5 to S''/S, both from Solar Fusion I
+! (Adelberger et al. 1998). qs0e_scale multiplies the q2 and q3 terms.
+! A non-positive S0 gives a zero scale (MHP 4/25) instead of a division
+! by zero.
          if (s0_pp.gt.0.0d0) then
             star%qs0e_scale(r_pp) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
          else
@@ -210,7 +213,7 @@ subroutine set_first_derivative_scales
          else
             star%qs0e_scale(r_po16) = 0.0d0
          end if
-!         QS0E(8)=(S0P_1_BE7P/S0_1_BE7P)/(QS0E_1_BE7P_A98/S0_1_BE7P__A98)
+! Slot iq_be7p (8) of the derivative scales holds Be7 + p.
          if (s0_be7_p.gt.0.0d0) then
             star%qs0e_scale(iq_be7p) = (s0p_be7_p/s0_be7_p)/ &
                  (qs0e_be7_p_a98/s0_be7_p_a98)
@@ -220,13 +223,13 @@ subroutine set_first_derivative_scales
 end subroutine set_first_derivative_scales
 
 ! ---------------------------------------------------------------
-! Set the second-derivative (S''/S) scales relative to Solar Fusion I,
-! zero where a reaction's S0 is not positive.
+! Set the second-derivative scales, for each reaction
+!   qqs0ee_scale = (S''/S0)_input / (S''/S0)_SolarFusionI,
+! zero where the input S0 is not positive.
 subroutine set_second_derivative_scales
-! SECOND DERIVATIVE TERMS - TO BE USED TO MULTIPLY Q4 AND Q5 TERMS IN ENGEB
-!         QQS0EE(1) = (S0PP_1_1/S0_1_1)/(QQS0EE_1_1_A98/S0_1_1_A98) ZEROED OUT IN 2003 VERSION
-!         QQS0EE(2) = (S0PP_3_3/S0_3_3)/(QQS0EE_3_3_A98/S0_3_3_A98) ZEROED OUT IN 2003 VERSION
-!         QQS0EE(3) = (S0PP_3_4/S0_3_4)/(QQS0EE_3_4_A98/S0_3_4_A98) ZEROED OUT IN 2003 VERSION
+! qqs0ee_scale multiplies the q4 and q5 terms of the rate fits. No
+! second-derivative scales are set for pp, He3 + He3, He3 + He4 or
+! N14 + p (dropped in the 2003 version); theirs stay at unity.
          if (s0_p_c12.gt.0.0d0) then
             star%qqs0ee_scale(r_pc12) = (s0pp_p_c12/s0_p_c12)/ &
                  (qqs0ee_p_c12_a98/s0_p_c12_a98)
@@ -239,7 +242,6 @@ subroutine set_second_derivative_scales
          else
             star%qqs0ee_scale(r_pc13) = 0.0d0
          end if
-!         QQS0EE(6) = (S0PP_1_14/S0_1_14)/(QQS0EE_1_14_A98/S0_1_14_A98) ZEROED OUT IN 2003 VERSION
          if (s0_p_o16.gt.0.0d0) then
             star%qqs0ee_scale(r_po16) = (s0pp_p_o16/s0_p_o16)/ &
                  (qqs0ee_p_o16_a98/s0_p_o16_a98)
@@ -257,29 +259,34 @@ end subroutine set_second_derivative_scales
 ! ---------------------------------------------------------------
 ! Copy the named zoning tolerances into chi_grid_scale.
 subroutine map_zoning_tolerances
-! MINIMUM LOG MASS SPACING BETWEEN SHELLS
+! Minimum log m spacing between shells.
          chi_grid_scale(ichi_dm_min) = tol_dm_min
-! MAXIMUM LOG MASS SPACING BETWEEN SHELLS
+! Maximum log m spacing between shells.
          chi_grid_scale(ichi_dm_max) = tol_dm_max
-! MAXIMUM L/LSURF SPACING BETWEEN SHELLS
+! Maximum L/L_surface spacing between shells.
          chi_grid_scale(ichi_dl_max) = tol_dl_max
-! MAXIMUM LOG P SPACING BETWEEN SHELLS, RADIATIVE INTERIOR
+! Maximum log P spacing between shells in the radiative interior.
          chi_grid_scale(ichi_dp_core_max) = tol_dp_core_max
-! MAXIMUM LOG P SPACING BETWEEN SHELLS, CONVECTIVE ENVELOPE
+! Maximum log P spacing between shells in the convective envelope.
          chi_grid_scale(ichi_dp_env_max) = tol_dp_env_max
-! MAXIMUM LOG P SPACING BETWEEN SHELLS, NEAR CZ BASE
+! Maximum log P spacing between shells near the base of the convection
+! zone.
          chi_grid_scale(ichi_dp_czbase_max) = tol_dp_czbase_max
-! WIDTH (IN LOG P) OF FINELY ZONED REGION NEAR THE CZ BASE
+! Width (in log P) of the finely zoned region near the base of the
+! convection zone.
          chi_grid_scale(ichi_czbase_fine_width) = tol_czbase_fine_width
-! MAXIMUM X SPACING BETWEEN SHELLS (USUALLY DISABLED)
+! Maximum X spacing between shells (usually disabled).
          chi_grid_scale(ichi_dx_max) = tol_dx_max
-! MAXIMUM Z SPACING BETWEEN SHELLS (USUALLY DISABLED)
+! Maximum Z spacing between shells (usually disabled).
          chi_grid_scale(ichi_dz_max) = tol_dz_max
-! X DIFFERENCE BETWEEN SHELLS REQUIRED TO FLAG (AVOID NUMERICAL DIFFUSION)
+! The X difference between shells that flags a shell (to avoid
+! numerical diffusion).
          chi_grid_scale(ichi_flag_dx) = flag_dx
-! Z DIFFERENCE BETWEEN SHELLS REQUIRED TO FLAG (AVOID NUMERICAL DIFFUSION)
+! The Z difference between shells that flags a shell (to avoid
+! numerical diffusion).
          chi_grid_scale(ichi_flag_dz) = flag_dz
-! MAXIMUM LOG OMEGA SPACING BETWEEN SHELLS (ROTATING MODELS ONLY)
+! The log omega difference between shells that flags a shell (rotating
+! models only).
          chi_grid_scale(ichi_flag_dw) = flag_dw
 end subroutine map_zoning_tolerances
 
@@ -287,40 +294,42 @@ end subroutine map_zoning_tolerances
 ! Copy the named timestep tolerances into atime and the other
 ! timestep controls.
 subroutine map_timestep_tolerances
-! MINIMUM CENTRAL ABUNDANCE TO USE CORE BURNING DT CRITERION
+! The minimum central abundance for the core-burning timestep
+! criterion.
          atime(itime_core_min) = time_core_min
-! MAX PERMITTED ABSOLUTE DELTA X BURNED IN CORE IN TIMESTEP
+! The largest absolute change in X burned in the core per step.
          atime(itime_dx_core_tot) = time_dx_core_tot
-! MAX PERMITTED FRACTION OF X BURNED IN CORE IN TIMESTEP
+! The largest fraction of the core X burned per step.
          atime(itime_dx_core_frac) = time_dx_core_frac
-! MAX PERMITTED SOLAR MASSES OF X BURNED IN TIMESTEP
+! The largest mass of X (Msun) burned per step.
          atime(itime_dx_total) = time_dx_total
-! MAX PERMITTED FRACTION OF X BURNED IN SHELL IN TIMESTEP
+! The largest fraction of X burned in the shell per step.
          atime(itime_dx_shell) = time_dx_shell
-! MAX PERMITTED ABSOLUTE DELTA Y BURNED IN CORE IN TIMESTEP
+! The largest absolute change in Y burned in the core per step.
          atime(itime_dy_core_tot) = time_dy_core_tot
-! MAX PERMITTED FRACTION OF Y BURNED IN CORE IN TIMESTEP
+! The largest fraction of the core Y burned per step.
          atime(itime_dy_core_frac) = time_dy_core_frac
-! MAX PERMITTED FRACTION OF Y BURNED IN SHELL IN TIMESTEP
+! The largest fraction of Y burned in the shell per step.
          atime(itime_dy_shell) = time_dy_shell
-! MAX PERMITTED SOLAR MASSES OF Y BURNED IN SHELL IN TIMESTEP
+! The largest mass of Y (Msun) burned in the shell per step.
          atime(itime_dy_total) = time_dy_total
-! MAX PERMITTED CHANGES IN T, P, R, L AT ANY GIVEN SHELL IN TIMESTEP
+! The largest changes in T, P, R and L at any shell per step.
          atime(itime_dt) = time_dt
          atime(itime_dp) = time_dp
          atime(itime_dr) = time_dr
          atime(itime_dl) = time_dl
-! MASTER FLAG THAT USES/DOES NOT USE ATIME(8)-(11)
-! NOTE: THIS IS USED ONLY IN THE PRE-MS AND DISABLED FOR MS STARS AUTOMATICALLY.
+! use_structure_dt_limits switches the structure limits above
+! (atime(itime_dt) .. atime(itime_dl), slots 8-11) on or off. They are
+! meant for the pre-main sequence; the code switches them off by itself
+! later on.
          use_structure_dt_limits = lstruct_time
-! MAX PERMITTED CHANGE IN OMEGA PER GLOBAL TIMESTEP
+! The largest change in omega per global timestep.
          max_domega_global = time_dw_global
-! THE CODE CAN MIX IN A SERIES OF SMALLER TIMESTEPS; THIS IS
-! THE MAX PERMITTED CHANGE IN OMEGA IN A SMALL, ROTATIONAL MIXING STEP
+! Rotational mixing can run in a series of smaller steps within the
+! timestep; this is the largest change in omega in one such step.
          diffusion_timestep_factor = time_dw_mix
-! THE TIMESTEP IS NOT PERMITTED TO CHANGE FROM ONE MODEL TO THE NEXT BY
-! MORE THAN THIS SCALE FACTOR
-!          ATIME(13) = TIME_MAX_DT_FAC
+! The largest factor by which the timestep may change from one model
+! to the next.
          atime(itime_max_dt_frac) = time_max_dt_frac
 end subroutine map_timestep_tolerances
 

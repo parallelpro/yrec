@@ -13,13 +13,12 @@ contains
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! star_setup
+! prepare_run (formerly star_setup)
 !----------------------------------------------------------------------
-! Added 2026 (phase five): the setup step of the former program main,
-! as its own star-layer routine: constants and table loads via setups
-! (which threads ierr into the kap/eos/atm facade inits), then the
-! Monte-Carlo run-range and its per-run parameter read. Errors return
-! via ierr.
+! The setup step before the run cards: the constants and the table
+! loads (set_up_constants_and_tables, which passes ierr through the
+! kap, eos and atm initializations), then the Monte-Carlo run range and
+! each run's sampled parameters. Errors return through ierr.
 subroutine prepare_run(ierr)
 
       use monte_carlo, only: setup_monte_carlo_runs
@@ -28,11 +27,11 @@ subroutine prepare_run(ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-! set up constants and read in tabular data
+! Set the constants and read the tables.
       call set_up_constants_and_tables(ierr)
       if (ierr /= 0) return
-! Monte-Carlo run range and per-run sampled-parameter read (2026:
-! core/run/monte_carlo.f90 -- the standalone MC home).
+! The Monte-Carlo run range and each run's sampled parameters
+! (core/run/monte_carlo.f90).
       call setup_monte_carlo_runs
 
       return
@@ -40,24 +39,22 @@ end subroutine prepare_run
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! setups
+! set_up_constants_and_tables (legacy setups.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original setups.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
+! One-time, model-independent setup at the start of a run: the physical
+! and derived constants (in physical_constants and star%), the HSRA
+! T(tau) offset, and the tables, loaded through the domain
+! initializations: the opacities (kap_init); the equation of state
+! (eos_init: the Fermi-Dirac degenerate-electron table, and the OPAL,
+! MHD and SCVH tables when selected); and the tabulated surface
+! boundary conditions (atm_init: the Kurucz, Allard or Kurucz/Castelli
+! tables for atm_choice 3-5).
 !
-! MHP 8/25 Passed file names directly instead of through common, as
-! character strings in common blocks can cause problems.
-!
-! One-time model-independent setup performed at program start:
-! defines the physical/mathematical constants used throughout the
-! code (physical_constants and star%), loads the opacity tables (setupopac/read_mhd_tables), the degenerate-electron
-! (Fermi-Dirac) equation-of-state table used by compute_fully_ionized_eos, the
-! Kurucz/Castelli surface-pressure table used for the T-tau surface
-! boundary condition, and (if enabled) the SCVH envelope
-! equation-of-state tables.
+! The table paths and the mixture weights are read from star%job, so
+! the caller must fill star%job (read_controls) first. The paths are
+! passed as character arguments rather than through common blocks,
+! where character strings can cause problems (MHP 8/25). Errors return
+! through ierr.
 subroutine set_up_constants_and_tables(ierr)
       use eos_lib
       use kap_lib
@@ -69,66 +66,63 @@ subroutine set_up_constants_and_tables(ierr)
       implicit none
       integer, intent(out) :: ierr
 
-! 2026 de-tramp: the 24 table paths and the mixture work array come
-! from star%job directly (they were only ever star%job members passed
-! positionally through star_setup) -- callers set star%job first.
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
            planck_constant
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! SETUP CONSTANTS
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! --- Constants -------------------------------------------------------
 ! (ln10, cc13, cpi and the other mathematical constants are parameters
-! of physical_constants)
-! Luminosity of Sun
+! of physical_constants.)
+! Solar luminosity: log10 Lsun, and ln10/Lsun (not a log; s/erg).
       star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
       star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
-! Mass of Sun (namelist control since 2026; default 1.9891d33)
+! Solar mass (a namelist control; default 1.9891d33 g).
       star%solar_mass_cgs = star%ctrl%solar_mass_cgs
       star%log10_solar_mass = log10(star%solar_mass_cgs)
-! Radius of Sun
+! Solar radius.
       star%log10_solar_radius = log10(star%solar_radius_cgs)
-! Bolometric magnitude of the sun
+! Bolometric magnitude of the Sun.
       star%solar_bolometric_magnitude = 4.79d0
-! Speed of Light
+! Speed of light.
       speed_of_light = 2.99792458d10
-! Stefan-Boltzmann constant
+! Stefan-Boltzmann constant sigma, and its log.
       csig = 5.67051d-5
       csigl = log10(csig)
-! radiation constant/3
+! a/3 = 4 sigma/(3 c), with a the radiation constant, and its log.
       radiation_constant_over_3 = csig*4.0d0/(3.0d0*speed_of_light)
       ca3l = log10(radiation_constant_over_3)
-! molar gas constant
+! Molar gas constant.
       gas_constant = 8.314510d7
-! log of the gravitational constant. G_cgs < 0 (default) keeps the
-! historical hard-coded log10 G = -7.17571 (G=6.6726D-8) bit-for-bit;
-! a positive G_cgs (namelist control since 2026) overrides it.
+! log10 G. A non-positive G_cgs (the default) keeps the historical
+! hard-coded log10 G = -7.17571 (G = 6.6726d-8) bit for bit; a
+! positive G_cgs (a namelist control) overrides it.
       if (star%ctrl%G_cgs > 0.0d0) then
          cgl = log10(star%ctrl%G_cgs)
       else
          cgl = -7.17571d0
       end if
-! mass of the electron
+! Electron mass.
       electron_mass = 9.1093897d-28
-! Boltzmann constant
+! Boltzmann constant.
       boltzmann_constant = 1.380658d-16
-! Planck's constant
+! Planck constant.
       planck_constant = 6.6260755d-27
+! The Saha-equation constant:
+! cmkh = log10[ (2 pi m_e)^(3/2) k^(5/2) / h^3 ].
       cmkh = 1.50d0*log10(2.0d0*cpi*electron_mass)+2.5d0* &
            log10(boltzmann_constant)- &
            3.0d0*log10(planck_constant)
+! The radiative-gradient constant, cdelrl = log10[ 3/(64 pi sigma) ],
+! so that grad_rad = 10^cdelrl kappa L P / (G m T^4).
       cdelrl = -c4pi3l - csigl - log10(16.0d0)
+! Mixing-length-theory constants: 1/3 and 16 sqrt(2) sigma.
       cmixl2 = cc13
       cmixl3 = 16.0d0*dsqrt(2.0d0)*csig
-! (the Debye-Hueckel constants are eos_init's, 2026-10)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     EVALUATE TAU = 2/3 TEMPERATURE FOR HRA
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! (The Debye-Hueckel constants are set in eos_init.)
+! --- HSRA T(tau) offset -----------------------------------------------
+! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
       star%atm_hras = hsra_t_tau_offset()
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     SET UP OPACITY TABLES
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! --- Opacity tables ---------------------------------------------------
       ierr = 0
       call kap_init(opacity_settings(), star%envelope_hydrogen_fraction, &
            star%envelope_metal_fraction, star%job%mixture_weights, &
@@ -138,41 +132,21 @@ subroutine set_up_constants_and_tables(ierr)
            star%job%pure_z_table_path,star%job%alex95_table_paths, &
            star%job%conductive_table_path, ierr)
       if (ierr /= 0) return
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!     READ IN MHD EOS TABLES
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! MHP 8/25 Passed file names directly instead of through common, as
-! character strings in common blocks can cause problems
-! 2026 (docs/ROADMAP.md stage 1): the use_mhd_eos gate moved inside
-! eos_lib's eos_init; a no-op when MHD is off, exactly as before.
-! eos_init also reads the Fermi-Dirac degenerate-electron table
-! (the F-tables block that used to sit inline just below).
+! --- Equation-of-state tables -----------------------------------------
+! eos_init reads the Fermi-Dirac degenerate-electron table always, and
+! the OPAL, MHD and SCVH tables when the settings select them.
       call eos_init(equation_of_state_settings(), star%job%fermi_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path, &
            star%job%scv_z_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path, &
            star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path, &
            star%job%centre3_table_path,star%job%centre4_table_path,star%job%centre5_table_path, &
            star%job%opal_eos_table_path, ierr)
       if (ierr /= 0) return
-!
-!
-! (The F-tables read for the degenerate equation of state that lived
-! here moved into eos_lib's eos_init above -- 2026, docs/ROADMAP.md
-! stage 1 -- along with its state's relocation from atm_tables to
-! yale_eos_tables.)
-! JMH 8/18/91
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! INPUT PRESSURE TABLE FOR SURFACE BOUNDARY CONDITIONS
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! 2026 (docs/ROADMAP.md stage 1): the Kurucz (atm_choice 3/4), Allard
-! (atm_choice 4), and Kurucz/Castelli (atm_choice 5) surface table
-! loads that lived inline here moved into atm_lib's atm_init.
+! --- Surface-pressure tables for the surface boundary condition -------
+! atm_init reads the Kurucz (atm_choice 3 and 4), Allard (atm_choice 4)
+! and Kurucz/Castelli (atm_choice 5) tables.
       call atm_init(atmosphere_settings(), star%job%atm_table_path, &
            star%job%allard_table_path, ierr)
       if (ierr /= 0) return
-
-! (The SCV equation-of-state table reads that lived here moved into
-! eos_lib's eos_init -- 2026, docs/ROADMAP.md stage 1 -- alongside the
-! Fermi-Dirac table read.)
 
       return
 end subroutine set_up_constants_and_tables

@@ -1,9 +1,13 @@
 !----------------------------------------------------------------------
 ! surface_boundary
 !----------------------------------------------------------------------
-! The outer boundary condition of the Henyey solve: compute_surface_boundary
-! interpolates the fitting-point P and T, and their derivatives, from the
-! triangle of envelope integrations around the current (L, Teff).
+! The outer boundary condition of the Henyey solve. Envelope
+! integrations at the three vertices of a triangle in the
+! (log Teff, log L) plane around the current model each give log P,
+! log T and log R at the fitting point; compute_surface_boundary fits
+! log R, log L and log Teff there as linear functions of the
+! fitting-point log P and log T, which henyey_iterate turns into the
+! surface rows of the Henyey system.
 module surface_boundary
       implicit none
       private
@@ -11,37 +15,31 @@ module surface_boundary
 
 contains
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! surfbc
+! compute_surface_boundary (legacy surfbc.f)
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original surfbc.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! Maintains the (Teff, L) triangle used to interpolate the envelope
-! solution (P, T, R at the fitting point) around the current model's
-! (TEFFL, BL): checks whether the requested point still lies inside
-! the existing triangle, re-triangulates and recomputes any envelope
-! vertices as needed via envelope_integration's atm_get, and rebuilds the bilinear
-! interpolation coefficients CFENV. Also handles the automatic
-! gray-atmosphere fallback when Teff moves outside the range of a
-! tabulated (Kurucz/Allard) T-tau relation.
-!
-! hydrogen_fraction/metal_fraction/pressure_rotation_factor/
-! temperature_rotation_factor are intent(inout), not intent(in): they
-! are relayed unchanged into atm_get's own same-named dummies, which
-! atm_get's own header documents as intent(inout) because they flow
-! through to bsstep/mmid's callback machinery. Declaring them
-! intent(in) here was a pre-existing bug of the same shape documented
-! in atm_get's header (and compute_blended_eos's metal_fraction fix) --
-! silently tolerated while atm_get (as envint) was a bare external
-! subroutine with no interface to check against, surfaced once
-! envelope_integration gave it one. core/structure/henyey_iteration.f90 (this routine's only
-! caller) already passes real local variables for these positions, so
-! widening the intent here changes nothing about how it's called.
+! Maintains the triangle of envelope integrations around the current
+! (log Teff, log L) = (log10_teff, log_luminosity) and its fit,
+! envelope_coeffs = c:
+!   log R    = c(1) log P + c(2) log T + c(3)
+!   log L    = c(4) log P + c(5) log T + c(6)
+!   log Teff = c(7) log P + c(8) log T + c(9)
+! at the fitting point (a plane through the three vertices, for each).
+! In steps: switch to or from the gray atmosphere when Teff crosses the
+! edge of a tabulated (Kurucz or Allard) T-tau relation; start a new
+! triangle, or reflect vertices until the triangle contains the point;
+! integrate a new envelope (envelope_integration's atm_get) at every
+! vertex that needs one; refit the coefficients.
+! tri_teffl and tri_logl hold the vertices, and vtx_logp, vtx_logt and
+! vtx_logr each vertex's fitting-point log P, log T and log R.
+! start_new_triangle builds three new envelopes about the point;
+! reset_triangle redoes all three and retriangulates if needed. Both
+! come back false. envelope_recomputed_flag is true if any envelope was
+! integrated, and then log10_teff comes back as the log Teff of the last
+! vertex integrated, not the model's.
+! hydrogen_fraction, metal_fraction and the two rotation factors are
+! intent(inout) only because atm_get's dummies are (they pass through to
+! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
 subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
@@ -53,9 +51,6 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
      envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
      zone_index, ierr)
 
-! INPUTS   start_new_triangle = .T.    START UP WITH 3 NEW ENVELOPES ABOUT(TEFFL,BL)
-! INPUTS   reset_triangle = .T.  REDO ALL 3 ENVELOPES AND RETRIANGULATE IF NEED
-! BOTH start_new_triangle AND reset_triangle ARE RESET TO .FALSE.
       use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use atm_lib, only: atm_allard_teff_max
       use star_info_lib
@@ -105,10 +100,12 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
 contains
 
 ! ---------------------------------------------------------------
-! Fall back to the gray atmosphere when Teff leaves the Kurucz/Allard
-! table, and switch back once it returns.
+! Fall back to the gray atmosphere (atm_choice 0) and start a new
+! triangle when log Teff reaches 3.95 with the Kurucz table (atm_choice
+! 3) or the Allard table's maximum (atm_choice 4) (MHP 9/01); switch
+! back to the initial choice once Teff is below again, keeping the
+! triangle.
 subroutine switch_atmosphere_choice()
-! MHP 9/01
       if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
             write(*,*)
@@ -118,7 +115,7 @@ subroutine switch_atmosphere_choice()
             write(*,*)
             star%job%atm_choice = 0
             start_new_triangle = .true.
-! MHP 06/13 Remember that flag is switched
+! Remember the switch.
             star%use_ttau_relation = .true.
          endif
       endif
@@ -131,7 +128,7 @@ subroutine switch_atmosphere_choice()
             write(*,*)
             star%job%atm_choice = 0
             start_new_triangle = .true.
-! MHP 06/13 Remember that flag is switched
+! Remember the switch.
             star%use_ttau_relation = .true.
          endif
       endif
@@ -155,11 +152,10 @@ end subroutine switch_atmosphere_choice
 ! ---------------------------------------------------------------
 ! No envelope recomputed yet; all three vertices need new envelopes for
 ! a new or reset triangle, otherwise all three are still valid.
+! tri_err, the tolerance of the inside test, is always zero.
 subroutine mark_triangle_vertices()
       envelope_recomputed_flag = .false.
-! IF LNEW0, REDO ALL 3 ENVELOPES EVERY MODEL
       if (start_new_triangle.or.reset_triangle) then
-! REDO ALL THREE ENVELOPES
        tri_vertex_valid(1) = .false.
        tri_vertex_valid(2) = .false.
        tri_vertex_valid(3) = .false.
@@ -179,7 +175,10 @@ end subroutine mark_triangle_vertices
 ! until it contains the point; a reflected vertex needs a new envelope.
 subroutine locate_point_in_triangle()
       if (start_new_triangle) then
-! STARTING PROCEDURE
+! A new triangle, counterclockwise, with vertices (log Teff, log L) at
+!   1: (Teff - dT/2, L - dL/2), 2: (Teff + dT/2, L - dL/2),
+!   3: (Teff, L + dL/2),
+! dT = tri_delta_teffl and dL = tri_delta_logl.
        tri_orientation = +1.0d0
        tri_teffl(3) = log10_teff
        tri_teffl(1) = tri_teffl(3) - 0.5d0*star%ctrl%tri_delta_teffl
@@ -189,7 +188,14 @@ subroutine locate_point_in_triangle()
        tri_logl(2) = tri_logl(1)
        start_new_triangle = .false.
       else
-! CHECK TRIANGULATION OF POINT (TEFFL,BL)
+! Is the point inside? For vertex i1, with i2 and i3 the other two,
+!   temp = tri_orientation [(Teff_i3 - Teff_i2)(L - L_i2)
+!                           - (L_i3 - L_i2)(Teff - Teff_i2)],
+! the cross product of the edge i2 -> i3 with the point minus vertex
+! i2, is positive when the point lies on i1's side of that edge. If it
+! is below -tri_err, reflect i1 through the edge's midpoint
+! (x_i1 -> x_i2 + x_i3 - x_i1), which reverses the orientation, mark it
+! for a new envelope, and scan again.
        tri_scan: do
        do i1 = 1,3
           i2 = mod(i1,3) + 1
@@ -214,11 +220,11 @@ end subroutine locate_point_in_triangle
 ! Integrate a new envelope at every vertex that needs one; a failure
 ! leaves ierr nonzero.
 subroutine integrate_vertex_envelopes()
-! COMPUTE NEW ENVELOPES IF NECESSARY
       envelope_needs_recompute = .false.
       do i = 1,3
        if (.not.tri_vertex_valid(i)) then
-! NEW ENVELOPE NEEDED
+! The vertex's L (Lsun), its radius from L = 4 pi R^2 sigma Teff^4, and
+! its surface gravity, log g = log G + log M - 2 log R.
           envelope_recomputed_flag = .true.
           log10_teff = tri_teffl(i)
           b = exp(ln10*tri_logl(i))
@@ -227,7 +233,9 @@ subroutine integrate_vertex_envelopes()
           print_envelope_flag = .false.
           vertex_being_computed=i
           save_boundary_flag = .true.
-! FOR SPOTTED RUNS, FIND THE PRESSURE AT THE AMBIENT TEMPERATURE
+! Spotted runs (G. Somers): when the outermost shell is convective and
+! spots are on, the atmosphere starts from the Teff of the unspotted
+! (ambient) surface.
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
                adjusted_teffl = ambient_log10_teff(log10_teff)
           else
@@ -242,24 +250,27 @@ subroutine integrate_vertex_envelopes()
                  stored_envelope_state=stored_envelope_state, &
                  stored_vertex_index=stored_vertex_index, &
                  vtx_logp=vtx_logp,vtx_logr=vtx_logr,vtx_logt=vtx_logt)
-! 2026 numerics-gate opt-in: envelope-integration failures
-! (numerics_termination) and table errors surface here instead of
-! stopping inside atm_get; the caller (henyey_iterate) propagates.
+! An integration failure (numerics_termination) or a table error comes
+! back in jerr_atm; the caller (refresh_surface_bc) propagates it.
           if (jerr_atm /= 0) then
              ierr = jerr_atm
              return
           end if
-! G Somers END
           envelope_needs_recompute = .true.
        endif
       end do
 end subroutine integrate_vertex_envelopes
 
 ! ---------------------------------------------------------------
-! Refit the interpolation coefficients when any envelope is new.
+! Refit the coefficients when any envelope is new. For f = log R, log L
+! and log Teff, the plane f = a log P + b log T + c through the three
+! vertices (P_k, T_k: vertex k's fitting-point log P and log T):
+!   temp1 = (T_3 - T_1)/(T_2 - T_1)
+!   a = [(f_3 - f_1) - temp1 (f_2 - f_1)]/[(P_3 - P_1) - temp1 (P_2 - P_1)]
+!   b = [(f_2 - f_1) - a (P_2 - P_1)]/(T_2 - T_1)
+!   c = f_1 - a P_1 - b T_1
 subroutine fit_triangle_coefficients()
       if (envelope_needs_recompute) then
-! RECOMPUTE COEFFICIENTS
        temp = 1.0d0/(vtx_logt(2)-vtx_logt(1))
        temp1 = (vtx_logt(3)-vtx_logt(1))*temp
        temp2 = 1.0d0/(vtx_logp(3)-vtx_logp(1)-temp1*(vtx_logp(2)-vtx_logp(1)))
