@@ -57,21 +57,7 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
            wmin, dlnwdr0, dlnjmdr0, dell
 
       any_transport_active = .false.
-!  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
-      if (iteration.gt.1) then
-         do i = zone_min,zone_max
-            rot_scr%mu_gradient_velocity_prev(i) = circ_scr%mu_gradient_velocity(i)
-            circ_scr%gsf_circulation_velocity_prev(i) = star%gsf_circulation_velocity(i)
-            circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
-            circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)
-         end do
-         if (star%ctrl%use_diffusion_advection_transport) then
-            do i = zone_min,zone_max
-               rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
-               rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
-            end do
-         end if
-      end if
+      if (iteration.gt.1) call store_previous_velocities()
       do i = 1,num_zones
          total_circulation_velocity(i) = 0.0d0
          star%es_circulation_velocity(i) = 0.0d0
@@ -79,6 +65,38 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
          star%secular_shear_velocity(i) = 0.0d0
          circ_scr%mu_gradient_velocity(i) = 0.0d0
       end do
+      call interpolate_to_interfaces()
+      call eddington_sweet_velocity()
+      call inhibit_by_mu_gradient()
+      call gsf_velocity()
+      call shear_velocities()
+      call apply_velocity_scales()
+      if (iteration.gt.1) call average_with_previous()
+      call sum_velocities()
+      if (star%ctrl%no_am_transport_in_core) call zero_transport_in_core()
+
+contains
+
+! ---------------------------------------------------------------
+! The previous iteration's velocities, for the averaging.
+subroutine store_previous_velocities()
+!  STORE THE OLD VELOCITY ESTIMATES FOR LATER USE.
+      do i = zone_min,zone_max
+         rot_scr%mu_gradient_velocity_prev(i) = circ_scr%mu_gradient_velocity(i)
+         circ_scr%gsf_circulation_velocity_prev(i) = star%gsf_circulation_velocity(i)
+         circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
+         circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)
+      end do
+      if (star%ctrl%use_diffusion_advection_transport) then
+         do i = zone_min,zone_max
+            rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
+            rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
+         end do
+      end if
+end subroutine store_previous_velocities
+
+! ---------------------------------------------------------------
+subroutine interpolate_to_interfaces()
 !  MEAN MOLECULAR WEIGHT (AS WELL AS QUANTITIES WHICH DEPEND ON IT) AND
 !  THE ANGULAR VELOCITY DISTRIBUTION CHANGE DURING A DIFFUSION TIMESTEP.
 !  FIND THE NEW VALUES AT THE MIDPOINT IN RADIUS BETWEEN MASS SHELLS
@@ -112,6 +130,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
          rot_scr%mean_molecular_weight_interface(i) = 0.5d0*(mix_scr%amum(i)+mix_scr%amum(i-1))
          rot_scr%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
       end do
+end subroutine interpolate_to_interfaces
+
+! ---------------------------------------------------------------
+subroutine eddington_sweet_velocity()
 ! MHP 8/03 OMITTED OLD KM1974 MERIDIONAL CIRCULATION VELOCITY ESTIMATE.
 ! EDDINGTON CIRCULATION, ZAHN (1991) VELOCITY ESTIMATE (COEFFICIENTS
 ! DEFINED IN rotation_stability_setup).
@@ -171,6 +193,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
                  rot_scr%second_deriv_geom_factor(i)*rot_scr%omega_interface(i)
          end if
       end do
+end subroutine eddington_sweet_velocity
+
+! ---------------------------------------------------------------
+subroutine inhibit_by_mu_gradient()
 ! INHIBITION CAUSED BY GRADIENTS IN MEAN MOLECULAR WEIGHT.
 ! INCLUDE ONLY THE ZAHN & MAEDER 1998 TREATMENT, WHERE (DEL - DEL AD) IS
 ! REPLACED BY (DEL + DEL MU - DEL AD).
@@ -190,6 +216,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
           rot_scr%es_relaxation_factor(i) = rot_scr%es_relaxation_factor(i)*qqq
           rot_scr%velocity_coeff0(i) = rot_scr%velocity_coeff0(i)*qqq
        end do
+end subroutine inhibit_by_mu_gradient
+
+! ---------------------------------------------------------------
+subroutine gsf_velocity()
 !  GSF INSTABILITY.  VELOCITY DEFINED IN rotation_stability_setup.
 ! OMIT ALL BUT THE KIPPENHAHN 1980 ESTIMATE.
 ! IGSF IS RETAINED, AND THE VALUE DETERMINES WHAT IS PERMITTED TO
@@ -264,6 +294,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
          end if
          star%gsf_circulation_velocity(i) = abs(fxx*star%gsf_circulation_velocity(i))
       end do
+end subroutine gsf_velocity
+
+! ---------------------------------------------------------------
+subroutine shear_velocities()
 !  DIFFUSIVE AND DYNAMICAL SHEAR INSTABILITIES - REF. ENDAL&SOFIA PAPER II.
       do i = zone_min,zone_max
 !  CHECK FOR OPERATION OF DYNAMICAL SHEAR.
@@ -344,6 +378,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
             end if
          end if
       end do
+end subroutine shear_velocities
+
+! ---------------------------------------------------------------
+subroutine apply_velocity_scales()
 !  MULTIPLY THE VELOCITY ESTIMATES BY THE USER-DEFINED SCALE FACTORS
 !  (MU-GRADIENT INHIBITION IS ALREADY INCLUDED ABOVE).
       do i = zone_min,zone_max
@@ -384,26 +422,34 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
                  abs(star%gsf_circulation_velocity(i))
          end do
       end if
+end subroutine apply_velocity_scales
+
+! ---------------------------------------------------------------
+subroutine average_with_previous()
 !  AVERAGE PREVIOUS AND NEW VELOCITY ESTIMATES AFTER THE FIRST ITERATION.
-      if (iteration.gt.1) then
-         do i = zone_min,zone_max
-            star%gsf_circulation_velocity(i) = 0.5d0*(star%gsf_circulation_velocity(i) &
-                 + circ_scr%gsf_circulation_velocity_prev(i))
-            star%es_circulation_velocity(i) = 0.5d0*(star%es_circulation_velocity(i) &
-                 + circ_scr%es_circulation_velocity_prev(i))
-            star%secular_shear_velocity(i) = 0.5d0*(star%secular_shear_velocity(i) &
-                 + circ_scr%secular_shear_velocity_prev(i))
-         end do
+      do i = zone_min,zone_max
+         star%gsf_circulation_velocity(i) = 0.5d0*(star%gsf_circulation_velocity(i) &
+              + circ_scr%gsf_circulation_velocity_prev(i))
+         star%es_circulation_velocity(i) = 0.5d0*(star%es_circulation_velocity(i) &
+              + circ_scr%es_circulation_velocity_prev(i))
+         star%secular_shear_velocity(i) = 0.5d0*(star%secular_shear_velocity(i) &
+              + circ_scr%secular_shear_velocity_prev(i))
+      end do
 ! MHP 11/94
-         if (star%ctrl%use_diffusion_advection_transport) then
-            do i = zone_min,zone_max
-               rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
-                    + rot_scr%es_advective_velocity_prev(i))
-               rot_scr%es_diffusive_velocity(i) = 0.5d0*(rot_scr%es_diffusive_velocity(i) &
-                    + rot_scr%es_diffusive_velocity_prev(i))
-            end do
-         end if
+      if (star%ctrl%use_diffusion_advection_transport) then
+         do i = zone_min,zone_max
+            rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
+                 + rot_scr%es_advective_velocity_prev(i))
+            rot_scr%es_diffusive_velocity(i) = 0.5d0*(rot_scr%es_diffusive_velocity(i) &
+                 + rot_scr%es_diffusive_velocity_prev(i))
+         end do
       end if
+end subroutine average_with_previous
+
+! ---------------------------------------------------------------
+! The total velocity at each interface (below 1e-20, zero) and whether any
+! transport acts.
+subroutine sum_velocities()
       do i =zone_min,zone_max
          total_circulation_velocity(i) = star%gsf_circulation_velocity(i) + &
               star%es_circulation_velocity(i) + star%secular_shear_velocity(i)
@@ -411,29 +457,29 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
       end do
+end subroutine sum_velocities
+
+! ---------------------------------------------------------------
+subroutine zero_transport_in_core()
 ! 9/93 MIXING WITHOUT TRANSPORT ADDED.
 ! ZERO OUT COEFFICIENTS IN CORE TO AVOID NUMERICAL PROBLEMS IN
 ! THE H-BURNING SHELL.
-      if (star%ctrl%no_am_transport_in_core) then
-         do i = zone_min,zone_max
-            dell = rot_scr%interface_luminosity(i)/total_luminosity
-            if (dell.lt.9.9d-1) then
-               total_circulation_velocity(i) = 0.0d0
-               star%gsf_circulation_velocity(i) = 0.0d0
-               star%es_circulation_velocity(i) = 0.0d0
-               star%secular_shear_velocity(i) = 0.0d0
+      do i = zone_min,zone_max
+         dell = rot_scr%interface_luminosity(i)/total_luminosity
+         if (dell.lt.9.9d-1) then
+            total_circulation_velocity(i) = 0.0d0
+            star%gsf_circulation_velocity(i) = 0.0d0
+            star%es_circulation_velocity(i) = 0.0d0
+            star%secular_shear_velocity(i) = 0.0d0
 ! MHP 11/94
-               rot_scr%es_advective_velocity(i) = 0.0d0
-               rot_scr%es_diffusive_velocity(i) = 0.0d0
-            else
-               exit
-            end if
-         end do
-      end if
+            rot_scr%es_advective_velocity(i) = 0.0d0
+            rot_scr%es_diffusive_velocity(i) = 0.0d0
+         else
+            exit
+         end if
+      end do
+end subroutine zero_transport_in_core
 
-      return
-
-contains
 
 ! 4-point Lagrangian interpolation in log(a) of a(k..k+3) to interface
 ! i, using the weights rot_scr%lagrange_interp_weights(1:4,i) set up
