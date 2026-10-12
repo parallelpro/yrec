@@ -19,7 +19,7 @@ Code outside convection/ uses it only through `convection_lib` (enforced by `too
 | `convection_zones` | `find_convection_zones`: the zones from the convective flags, extended by step overshoot (private `extend_by_overshoot`, with the scale height from the EOS in `compute_scale_height`), merged where overshoot joins them, and the radiative regions between them. Also `homogenize_convection_zones`, which mixes each zone's composition. |
 | `semiconvection` | `extend_by_semiconvection`: semiconvection at the edge of the convective core (Castellani et al. 1971). |
 
-The burn–settle–mix sub-stepping of rotating models (`rotmix` and the compiled-out Bulirsch–Stoer path) lives in `rotation/`. core's `composition_step` drives the zones, semiconvection and homogenization for each timestep, and `core/convection_geometry.f90` turns the zone flags into boundary positions.
+The burn–settle–mix sub-stepping of rotating models (`rotmix` and the commented-out Bulirsch–Stoer path) lives in `rotation/`. core's `composition_step` drives the zones, semiconvection and homogenization for each timestep, and `core/convection_geometry.f90` turns the zone flags into boundary positions.
 
 ## 2. Settings and state
 

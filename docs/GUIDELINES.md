@@ -724,7 +724,7 @@ identity both used is `physical_constants`'s
 homogenization) has consumers in core and rotation and is what a user
 changes to try another convection theory, so it became the star-free
 domain `convection/` behind `convection_lib`. Its burn-settle-mix
-sub-stepping (`rotmix` and the compiled-out Bulirsch-Stoer path) was
+sub-stepping (`rotmix` and the commented-out Bulirsch-Stoer path) was
 called only from rotation's sub-steps and moved there.
 
 Three files were, though, found and relocated by the same

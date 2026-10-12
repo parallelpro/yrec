@@ -296,9 +296,6 @@ numerics/cubic_spline.o: io_units.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod quadratic_spline.mod table_interpolation.mod
 numerics/test/test_numerics.o: io_units.mod numerics_lib.mod star_info_lib.mod
 rotation/am_convective_regions.o: convection_lib.mod star_info_lib.mod
-rotation/burn_li_be_midpoint.o: burn_step.mod convection_geometry.mod math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/burn_mix_extrapolated.o: math_lib.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/burn_settle_mix.o: burn_step.mod net_lib.mod star_info_lib.mod
 rotation/enforce_rotation_profile.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/equal_spaced_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/evolve_angular_momentum.o: burn_step.mod convection_geometry.mod convection_lib.mod magnetic_braking.mod math_lib.mod mid_timestep_model.mod physical_constants.mod rotation_scratch_lib.mod secular_transport.mod star_info_lib.mod

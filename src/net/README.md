@@ -102,7 +102,7 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 
 ---
 
-The compiled-out Bulirsch–Stoer path keeps its own single-midpoint Li/Be variant, `burn_li_be_midpoint`, in `rotation/burn_li_be_midpoint.f90` beside the other two files of that path; build with `-DYREC_BULIRSCH_STOER_BURN` to include it.
+The commented-out Bulirsch–Stoer path keeps its own single-midpoint Li/Be variant, `burn_li_be_midpoint`, in `rotation/burn_li_be_midpoint.f90` beside the other two files of that path; build with `-DYREC_BULIRSCH_STOER_BURN` to include it.
 
 ## 2. When each piece runs during a timestep
 

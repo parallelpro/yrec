@@ -1488,10 +1488,12 @@ Debye-Hueckel decks, and the full battery).
     interface, which exposed am_convective_regions' intent(in)
     convective flag (element num_zones+1 is written).
 - **Open:**
-  - The Bulirsch-Stoer burn-plus-mix path (about 770 lines in
-    rotation/) is compiled out and nothing can enable it. Keeping it is
-    the author's call. Its burn_li_be_midpoint is that path's own
-    variant of core's burn_li_be, not a live duplicate.
+  - DONE 2026-10-11 (the author chose to comment it out): the
+    Bulirsch-Stoer burn-plus-mix path (about 770 lines in rotation/) is
+    now plain comments, its two call sites in evolve_angular_momentum
+    commented out and their always-false switch folded away. Its
+    burn_li_be_midpoint was that path's own variant of core's
+    burn_li_be, not a live duplicate.
   - rotmix's name is misleading: it burns and settles helium, it does
     not mix. To be addressed in the rotation series.
   - Semiconvection has no standalone test (it needs the opacity

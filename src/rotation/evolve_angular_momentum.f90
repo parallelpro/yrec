@@ -52,18 +52,12 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! The "_mid" midpoint-in-time structure arrays (computed by
 ! mid_timestep_model each diffusion sub-step) live in rot_scr
 ! (rotation_scratch_lib) -- see rot_scr%*_mid uses below.
-! MHP 6/00 added cod2, diffusion_velocity (HV) to allow BUR-ST mixing plus burning.
-! Both are produced by secular_transport and consumed only by
-! burn_settle_mix.
+! cod2 and diffusion_velocity (HV): produced by secular_transport for
+! the commented-out burn_settle_mix, their only consumer.
       double precision :: cod2(json), diffusion_velocity(json)
       integer :: convective_zone_bounds(12,2), &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
-! LBURS is hardcoded .FALSE. here: this permanently disables the BUR-ST
-! extrapolation branch near the end of this routine regardless of
-! LINSTB/LALLCZ. Kept pending an author decision -- see
-! audit/readability-sweep-2026-09-03/SUMMARY.md.
-      logical :: burs_extrapolation_active
       integer :: num_species_tracked
       logical :: disk_lock_engaged
       double precision :: omega_surface
@@ -94,11 +88,6 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       double precision :: omega_avg, domega_dr, delta_radius_step
 
       ierr = 0
-
-! .false. always: the Bulirsch-Stoer mixing-plus-burning path it would
-! select is compiled out unless YREC_BULIRSCH_STOER_BURN is defined
-! (see rotation/burn_settle_mix.f90)
-      burs_extrapolation_active = .false.
 ! DETERMINE THE NUMBER OF DIFFERENT ELEMENTS AND ISOTOPES BEING TRACKED
 ! BY THE CODE (NSPEC).
       num_species_tracked = 11
@@ -321,15 +310,11 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! MHP 05/02 TAKEN OUT OF LOOP SO THAT NUCLEAR BURNING
 ! IS ACCOUNTED FOR IN MODELS THAT ARE FULLY CONVECTIVE
 ! OR WITHOUT INSTABILITIES
-! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
-! BURNING - ONLY UPDATED IF NOT USED
-      if(.not.burs_extrapolation_active)then
-         do zone_index = 1,star%nz
-            do species_index = 1,11
-                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
-            end do
+      do zone_index = 1,star%nz
+         do species_index = 1,11
+            star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
          end do
-      endif
+      end do
       first_call = .false.
 !  CLEAN UP EXTENDED COMP ARRAYS; ZERO VALUES THROUGHOUT MOST OF THE
 !  INTERIOR CAN LEAD TO SMALL NEGATIVE VALUES DUE TO ROUNDOFF ERROR IN
@@ -359,29 +344,23 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
          call store_end_li_be_rates(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz)
 ! STORE CURRENT "END OF STEP" QUANTITIES AS "BEGINNING" ONES FOR
 ! THE NEXT STEP.
-! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
-! BURNING - ONLY UPDATED IF NOT USED
-         if(.not.star%job%instability_transport_active .or. .not.burs_extrapolation_active .or. fully_convective_flag)then
 ! COMPUTE BURNING.
-            call burn_li_be(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
-                 star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
-                 envelope_boundary_zone_prev,star%nz)
-            envelope_boundary_zone_prev = envelope_boundary_zone_cur
-            star%pressure_scale_height_start = star%pressure_scale_height_end
-            do zone_index = 1,star%nz
-               star%rate_li6_start(zone_index) = star%rate_li6(zone_index)
-               star%rate_li7_start(zone_index) = star%rate_li7(zone_index)
-               star%rate_be9_start(zone_index) = star%rate_be9(zone_index)
-            end do
-#ifdef YREC_BULIRSCH_STOER_BURN
-         else
-! COMPUTE BURNING (Bulirsch-Stoer path, compiled out by default; see
-! rotation/burn_settle_mix.f90).
-            call burn_li_be_midpoint(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
-                 star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
-                 envelope_boundary_zone_prev,star%nz)
-#endif
-         endif
+         call burn_li_be(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+              star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
+              envelope_boundary_zone_prev,star%nz)
+         envelope_boundary_zone_prev = envelope_boundary_zone_cur
+         star%pressure_scale_height_start = star%pressure_scale_height_end
+         do zone_index = 1,star%nz
+            star%rate_li6_start(zone_index) = star%rate_li6(zone_index)
+            star%rate_li7_start(zone_index) = star%rate_li7(zone_index)
+            star%rate_be9_start(zone_index) = star%rate_be9(zone_index)
+         end do
+! The commented-out Bulirsch-Stoer path (rotation/burn_settle_mix.f90)
+! burned here instead, when instability transport was on and the model
+! not fully convective, and left the start-of-step rates alone:
+!           call burn_li_be_midpoint(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+!                star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
+!                envelope_boundary_zone_prev,star%nz)
 !  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
          call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz)
 !  ZERO OUT LOW ABUNDANCES.
@@ -391,37 +370,25 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
             end do
          end do
 ! MHP 6/00 ADDED OVERWRITE OF HCOMPP FOR LIGHT ELEMENTS
-! ADDED CHANGE FOR BURLICH-STORER TREATMENT OF MIXING PLUS
-! BURNING - ONLY UPDATED IF NOT USED
-         if(.not.star%job%instability_transport_active.or.fully_convective_flag)then
-            do zone_index = 1,star%nz
-               do species_index = 12,15
-                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
-               end do
+         do zone_index = 1,star%nz
+            do species_index = 12,15
+               star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
             end do
-         else if(.not.burs_extrapolation_active)then
-            do zone_index = 1,star%nz
-               do species_index = 12,15
-                  star%xa_start(species_index,zone_index) = star%xa(species_index,zone_index)
-               end do
-            end do
-         endif
+         end do
       endif
-! MHP 6/00 NOW ADDED THE OPTION OF PERFORMING A BUR-ST EXTRAPOLATION
-! TO ZERO TIMESTEP FOR THE COMBINATION OF MIXING AND NUCLEAR BURNING.
-      if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
-#ifdef YREC_BULIRSCH_STOER_BURN
-         if(burs_extrapolation_active)then
-        call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
-             rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
-             rot_scr%log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
-             envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
-             rot_scr%am_transport_convective_flag_mid,star%nz,radiative_zone_bounds, &
-             convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
-        if (ierr /= 0) return
-         endif
-#endif
-      endif
+! The commented-out Bulirsch-Stoer path (MHP 6/00) extrapolated mixing
+! plus burning to zero timestep here, when instability transport was on
+! and the model not fully convective; while it was on, the xa_start
+! updates above were skipped:
+!     if(star%job%instability_transport_active .and. .not.fully_convective_flag)then
+!       call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
+!            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
+!            rot_scr%log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
+!            envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
+!            rot_scr%am_transport_convective_flag_mid,star%nz,radiative_zone_bounds, &
+!            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+!       if (ierr /= 0) return
+!     endif
       exit retry
       end do retry
 !  RETURN FOR NEXT SMALL DIFFUSION TIMESTEP IF NEEDED.

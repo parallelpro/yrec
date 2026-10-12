@@ -492,7 +492,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
 | `kemcom` | `net/network.f90` (`burn_implicitly`) |
 | `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
-| `rotmix`, `bursmix`, `bsrotmix` | `rotation/rotmix.f90`, `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two compiled out) |
+| `rotmix`, `bursmix`, `bsrotmix` | `rotation/rotmix.f90`, `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two commented out) |
 | `hpoint` | `setup/rezone.f90` |
 | `findsh` | `setup/locate_shell_boundaries.f90` |
 | `setups` | `setup/setups.f90` |

@@ -507,7 +507,7 @@ None of the numerics keeps `save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files
 (`core/run_yrec.f90`, `core/evolve_step.f90`) and
-`rotation/burn_mix_extrapolated.f90` (compiled out). `numerics/README.md` describes the
+`rotation/burn_mix_extrapolated.f90` (commented out). `numerics/README.md` describes the
 modules.
 
 ## 6. Calibration modes
