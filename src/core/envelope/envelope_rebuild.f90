@@ -94,6 +94,52 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! result is what the caller sees.
 
       ierr = 0
+      call prepare_envelope_rebuild()
+      call set_envelope_surface()
+      call integrate_new_envelope()
+      if (ierr /= 0) return
+! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
+! 2026 io/driver stops -> ierr (was: stop 9999)
+      if(num_zones+env_struct%num_env_points.ge.json) then
+         write(*,*) 'rebuild_envelope: grid overflow (json too small)'
+         ierr = 1
+         return
+      end if
+      call shift_envelope_points()
+! ASSIGN NEW POINTS: append the envelope points below the new fitting
+! mass as shells, interpolating the last one onto it (2026 W3: the
+! loop shared with read_starting_model lives in envelope_refit;
+! a point exactly at the fitting mass is interpolated here, .lt.).
+      call append_envelope_points(.false., species_end_index, composition, &
+           log_density, log_luminosity, log_pressure, log_radius, log_mass, &
+           log_temperature, convective_flag, num_zones, ierr)
+! 2026 io/driver stops -> ierr (was: stop 9998)
+      if (ierr /= 0) then
+         write(*,*) 'rebuild_envelope: degenerate mass interpolation'
+         return
+      end if
+      call compute_new_shell_masses()
+! RECOMPUTE TERMS RELATED TO ROTATION.
+      if(star%job%rotation_active)then
+         call guess_new_shell_rotation()
+         call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
+              shell_mass,convective_flag,num_zones,eta_squared, &
+              moment_of_inertia,star%omega,qiw,mean_radius)
+         call sum_rotation_totals()
+      endif
+      call print_new_interior_points()
+      new_points_added_flag = .true.
+       write(*,597)envelope_mass_before,star%senv
+ 597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
+     'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
+      return
+
+contains
+
+! ---------------------------------------------------------------
+! The species count, the target envelope mass (clamped), the current
+! number of zones and envelope mass, and the integration settings.
+subroutine prepare_envelope_rebuild()
       if(star%job%use_extended_composition)then
          species_end_index = n_species_extended
       else
@@ -111,6 +157,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       surface_bc_flag = .false.
       print_flag = .true.
       ksaha = 0
+end subroutine prepare_envelope_rebuild
+
+! ---------------------------------------------------------------
+! The surface of the envelope integration: L, R, g and the composition,
+! no rotational distortion, the pressure limit and the eos composition.
+subroutine set_envelope_surface()
 ! SET THE PHYSICAL PROPERTIES OF THE ENVELOPE SOLUTION
 ! LUMINOSITY
       luminosity_linear = exp(ln10*log_luminosity_lsun)
@@ -130,6 +182,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       pressure_limit = log_pressure(num_zones)
 ! SET UP VALUES FOR THE EQUATION OF STATE CALCULATION
       call eos_set_debye_huckel_composition(composition(:,num_zones))
+end subroutine set_envelope_surface
+
+! ---------------------------------------------------------------
+! Integrate the atmosphere and envelope down to the current fitting
+! point, then adopt the target envelope mass.
+subroutine integrate_new_envelope()
 ! INTEGRATE DOWN TO THE CURRENT FITTING POINT USING THE SURFACE L AND TEFF.
 ! FOR SPOTTED RUNS, FIND THE
 ! PRESSURE AT THE AMBIENT TEMPERATURE ATEFFL
@@ -151,13 +209,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
          return
       end if
       star%senv = target_envelope_mass
-! STOP IF THE DESIRED NUMBER OF POINTS EXCEEDS THE ARRAY DIMENSIONS
-! 2026 io/driver stops -> ierr (was: stop 9999)
-      if(num_zones+env_struct%num_env_points.ge.json) then
-         write(*,*) 'rebuild_envelope: grid overflow (json too small)'
-         ierr = 1
-         return
-      end if
+end subroutine integrate_new_envelope
+
+! ---------------------------------------------------------------
+! Match the envelope points to the last interior point and keep, shifted
+! down by one, those above its mass.
+subroutine shift_envelope_points()
 ! THE FIRST POINT IN THE ENVELOPE SOLUTION IS THE SET OF PROPERTIES
 ! OBTAINED AT A MASS EQUAL TO THE LAST INTERIOR POINT.  USE THIS TO
 ! ENFORCE CONSISTENCY WITH THE INTERIOR SOLUTION;
@@ -184,18 +241,11 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
          endif
       end do
       env_struct%num_env_points = num_new_env_points
-! ASSIGN NEW POINTS: append the envelope points below the new fitting
-! mass as shells, interpolating the last one onto it (2026 W3: the
-! loop shared with read_starting_model lives in envelope_refit;
-! a point exactly at the fitting mass is interpolated here, .lt.).
-      call append_envelope_points(.false., species_end_index, composition, &
-           log_density, log_luminosity, log_pressure, log_radius, log_mass, &
-           log_temperature, convective_flag, num_zones, ierr)
-! 2026 io/driver stops -> ierr (was: stop 9998)
-      if (ierr /= 0) then
-         write(*,*) 'rebuild_envelope: degenerate mass interpolation'
-         return
-      end if
+end subroutine shift_envelope_points
+
+! ---------------------------------------------------------------
+! The (unlogged) masses of the new shells and their mass contents.
+subroutine compute_new_shell_masses()
 ! ADD THE UNLOGGED MASSES OF THE NEW SHELLS (HS1) AND COMPUTE THE
 ! MASS CONTENTS OF THE NEW SHELLS (HS2).
       do zone_index = old_num_zones,num_zones
@@ -206,8 +256,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
       end do
       mass_at_base = 0.5D0*(enclosed_mass(num_zones)+enclosed_mass(num_zones-1))
       shell_mass(num_zones) = exp10(log_total_mass) - mass_at_base
-! RECOMPUTE TERMS RELATED TO ROTATION.
-      if(star%job%rotation_active)then
+end subroutine compute_new_shell_masses
+
+! ---------------------------------------------------------------
+! The first guess at the rotation of the new shells: constant j/m,
+! solid body, or omega r**walpcz constant.
+subroutine guess_new_shell_rotation()
 ! FIRST GUESS AT THE ROTATION RATES; ASSIGN A
 ! VECTOR OF OMEGA SUCH THAT
 ! OMEGA*R**WALPCZ = CONSTANT.
@@ -234,9 +288,12 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
                specific_angular_momentum(zone_index) = star%omega(zone_index)*moment_of_inertia(zone_index)
             end do
          endif
-         call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
-              shell_mass,convective_flag,num_zones,eta_squared, &
-              moment_of_inertia,star%omega,qiw,mean_radius)
+end subroutine guess_new_shell_rotation
+
+! ---------------------------------------------------------------
+! The angular momentum and rotational kinetic energy of each shell and
+! of the star.
+subroutine sum_rotation_totals()
 ! GIVEN OMEGA AND I, FIND ANGULAR MOMENTUM AND ROTATIONAL K.E.
        sum_angular_momentum = 0.0D0
        sum_rotational_ke = 0.0D0
@@ -248,7 +305,11 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
        end do
        total_angular_momentum = sum_angular_momentum
        total_rotational_ke = sum_rotational_ke
-      endif
+end subroutine sum_rotation_totals
+
+! ---------------------------------------------------------------
+! Print the new interior shells.
+subroutine print_new_interior_points()
       write(*,910)
  910  format(1X,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
      ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
@@ -258,11 +319,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
            log_temperature(zone_index),convective_flag(zone_index), &
            zone_index = old_num_zones,num_zones)
  911  format(I5,1P6E16.8,L2)
-      new_points_added_flag = .true.
-       write(*,597)envelope_mass_before,star%senv
- 597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
-     'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
-      return
+end subroutine print_new_interior_points
 end subroutine rebuild_envelope
 
 end module envelope_rebuild

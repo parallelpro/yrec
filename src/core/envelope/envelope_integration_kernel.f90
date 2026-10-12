@@ -279,6 +279,35 @@ subroutine integrate_atmosphere
       atm_density_guess = cfg%atm_step_initial
       atm_retry: do
 ! Return point if X0 > XLIM (was label 1998)
+      call find_atmosphere_start()
+      if (ierr /= 0) return
+
+! INTEGRATE DP/DTAU FROM THIS STARTING TAU TO TAU = 2/3.
+! SET NUMERICAL PARAMETERS UP.
+      num_eqs = 1
+      tolerance = cfg%atm_error_tol
+! photospheric integration limit for the chosen relation (t_tau_relations)
+      x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
+
+      if  (indep_var .gt. x_limit) then ! Check that starting point is before endpoint
+         write(run_log_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
+       write(run_log_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
+       atm_density_guess = atm_density_guess / 10d0   ! If not before, divide starting density by 10
+       cycle atm_retry        ! and retry.
+      endif
+
+      call integrate_to_photosphere()
+      if (ierr /= 0) return
+      exit atm_retry
+      end do atm_retry
+      end if
+end subroutine integrate_atmosphere
+
+! ---------------------------------------------------------------
+! The starting point of the atmosphere integration: the pressure at the
+! guessed T and density, then the optical depth there and dP/dtau.
+subroutine find_atmosphere_start()
+      use math_lib
       temperature = exp(ln10*log10_temperature)
 ! FIND THE PRESSURE CORRESPONDING TO THIS T AND THE DENSITY CHOSEN
 ! FOR THE START OF THE ATMOSPHERE INTEGRATION.
@@ -357,21 +386,12 @@ subroutine integrate_atmosphere
       indep_var = log10_pressure - log10_gravity + log10(opacity)
       y(1) = log10_pressure
       dydx(1) = exp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
+end subroutine find_atmosphere_start
 
-! INTEGRATE DP/DTAU FROM THIS STARTING TAU TO TAU = 2/3.
-! SET NUMERICAL PARAMETERS UP.
-      num_eqs = 1
-      tolerance = cfg%atm_error_tol
-! photospheric integration limit for the chosen relation (t_tau_relations)
-      x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
-
-      if  (indep_var .gt. x_limit) then ! Check that starting point is before endpoint
-         write(run_log_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
-       write(run_log_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
-       atm_density_guess = atm_density_guess / 10d0   ! If not before, divide starting density by 10
-       cycle atm_retry        ! and retry.
-      endif
-
+! ---------------------------------------------------------------
+! Integrate dP/dtau from the starting optical depth to the photosphere,
+! storing each point in atmo_struct; ierr after maxstp steps.
+subroutine integrate_to_photosphere()
       h_max = cfg%atm_step_max
       h_min = cfg%atm_step_min
       h_step = cfg%atm_step_begin
@@ -381,6 +401,46 @@ subroutine integrate_atmosphere
 
 ! INTEGRATION LOOP.
       do step_index = 1,maxstp
+       call limit_atmosphere_step()
+       call take_atmosphere_step()
+       if (ierr /= 0) return
+       call store_atmosphere_point()
+       if(h_did.eq.h_step) then
+          num_ok = num_ok + 1
+       else
+          num_bad = num_bad + 1
+       endif
+       call store_atmosphere_gradients()
+
+
+! CHECK IF INTEGRATION COMPLETE
+       if(dabs(indep_var - x_limit).le.step_tolerance) then
+          if (solver_diagnostics()) write(run_log_unit,35)num_ok,num_bad,err_sum(1)
+   35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
+                 'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+                 I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
+          exit
+       endif
+       if(h_next.lt.h_min) h_next = h_min
+       h_step = h_next
+      end do
+      if (step_index .gt. maxstp) then
+! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
+! PRINT NASTY MESSAGE AND QUIT.
+      write(terminal_unit,50)
+      write(run_log_unit,50)
+   50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
+             'INTEGRATIONS.I QUIT.')
+      jerr = 1
+      ierr = jerr
+      return
+      end if
+end subroutine integrate_to_photosphere
+
+! ---------------------------------------------------------------
+! The error scale of the step, and the step limited to the maximum size
+! and to the end of the integration.
+subroutine limit_atmosphere_step()
 ! YSCAL IS THE ARRAY THAT THE NUMERICAL ERRORS ARE SCALED AGAINST.
        do i = 1,num_eqs
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
@@ -389,6 +449,11 @@ subroutine integrate_atmosphere
 ! THE LIMIT OF THE INTEGRATION.
        if((indep_var-x_limit)*(indep_var+h_step-x_limit).lt.0.0d0) h_step = x_limit - indep_var
        if(h_step.gt.h_max) h_step = h_max
+end subroutine limit_atmosphere_step
+
+! ---------------------------------------------------------------
+! One Bulirsch-Stoer step of the atmosphere, then dP/dtau at its end.
+subroutine take_atmosphere_step()
 ! INTEGRATE THE ATMOSPHERE FROM TAU TO TAU + H
 ! H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 ! PREDICTED NEXT STEP.
@@ -414,6 +479,12 @@ subroutine integrate_atmosphere
           ierr = jerr
           return
        end if
+end subroutine take_atmosphere_step
+
+! ---------------------------------------------------------------
+! The thermodynamic state of the new atmosphere point, into atmo_struct.
+subroutine store_atmosphere_point()
+      use math_lib
 ! 2026 (.store convergence): the structure save below was gated on
 ! the print flag (so only the legacy .store stitch, which called
 ! atm_get with printing on, ever populated atmo_struct), and the
@@ -441,11 +512,13 @@ subroutine integrate_atmosphere
        atmo_struct%atmo_dlnkap_dlnrho(step_index) = pt_scr%qqod
        atmo_struct%atmo_dlnkap_dlnt(step_index) = pt_scr%qqot
        atmo_struct%atmo_specific_heat_cp(step_index) = pt_scr%qqcp
-       if(h_did.eq.h_step) then
-          num_ok = num_ok + 1
-       else
-          num_bad = num_bad + 1
-       endif
+end subroutine store_atmosphere_point
+
+! ---------------------------------------------------------------
+! The depth step from the previous point and the temperature gradients
+! of the new atmosphere point, into atmo_struct.
+subroutine store_atmosphere_gradients()
+      use math_lib
 ! Geometric step length between successive tau points (J.P. Cox,
 ! Princ. of Stell. Struc. p590). prev_tau/prev_density/prev_opacity
 ! carry across steps; their values entering the FIRST step are
@@ -473,34 +546,7 @@ subroutine integrate_atmosphere
        atmo_struct%num_atm_points = step_index
        prev_tau = tau_now
        prev_density = density_now
-
-
-! CHECK IF INTEGRATION COMPLETE
-       if(dabs(indep_var - x_limit).le.step_tolerance) then
-          if (solver_diagnostics()) write(run_log_unit,35)num_ok,num_bad,err_sum(1)
-   35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
-                 'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
-                 I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
-          exit
-       endif
-       if(h_next.lt.h_min) h_next = h_min
-       h_step = h_next
-      end do
-      if (step_index .gt. maxstp) then
-! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
-! PRINT NASTY MESSAGE AND QUIT.
-      write(terminal_unit,50)
-      write(run_log_unit,50)
-   50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
-             'INTEGRATIONS.I QUIT.')
-      jerr = 1
-      ierr = jerr
-      return
-      end if
-      exit atm_retry
-      end do atm_retry
-      end if
-end subroutine integrate_atmosphere
+end subroutine store_atmosphere_gradients
 
 ! ---------------------------------------------------------------
 ! Integrate the envelope in pressure from the photosphere down to
@@ -516,8 +562,28 @@ subroutine integrate_envelope
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_point%log10_temperature
        endif
- 230     format(4X,3F16.12,8X,F16.12)
       else
+      call start_envelope_integration()
+      if (ierr /= 0) return
+      call store_first_envelope_point()
+      call integrate_to_fitting_mass()
+      if (ierr /= 0) return
+      end if
+      call invert_envelope_points()
+
+      if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
+ 215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
+           'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+           I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &
+           5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
+           '  R ',E14.5)
+
+end subroutine integrate_envelope
+
+! ---------------------------------------------------------------
+! The envelope integration's starting values and numerical parameters,
+! and the derivatives at the photosphere.
+subroutine start_envelope_integration()
 !  INITIALIZE VARIABLES AND SET NUMERICAL PARAMETERS.
       in_atmosphere = .false.
       do i = 1,3
@@ -552,6 +618,12 @@ subroutine integrate_envelope
          ierr = jerr
          return
       end if
+end subroutine start_envelope_integration
+
+! ---------------------------------------------------------------
+! The photosphere as the first point of env_struct.
+subroutine store_first_envelope_point()
+      use math_lib
 ! STORE STARTING VALUES OF THE INTEGRATION
 ! 07/02 INITIALIZE NUMBER OF STORED ENVELOPE POINTS TO 1
       cz_in_envelope = .false.
@@ -589,7 +661,58 @@ subroutine integrate_envelope
       env_struct%env_dlnrho_dlnt(1) = pt_scr%qqdt
       if(env_struct%env_convective_flag(1))cz_in_envelope = .true.
       env_struct%num_env_points = 1
+end subroutine store_first_envelope_point
+
+! ---------------------------------------------------------------
+! Integrate the envelope in pressure down to the fitting mass, storing
+! each point in env_struct; ierr after maxstp steps.
+subroutine integrate_to_fitting_mass()
       do step_index = 1,maxstp
+       call limit_envelope_step()
+       call take_envelope_step()
+       if (ierr /= 0) return
+       if(h_did.eq.h_step) then
+          num_ok = num_ok + 1
+       else
+          num_bad = num_bad + 1
+       endif
+!  CHECK IF INTEGRATION COMPLETE
+       mass_diff_remaining = cfg%senv - y(1)
+       call store_envelope_point()
+       if(dabs(mass_diff_remaining).le.step_tolerance)then
+!            WRITE(*,*)TAUCZENV/CSECYR
+          call interpolate_envelope_vertex()
+          exit
+       else if(.not.store_flag_set) then
+          if(y(2).ge.cfg%tenv .and. save_boundary_flag) then
+             store_flag_set = .true.
+             stored_vertex_index = vertex_index
+             stored_envelope_state(1) = indep_var
+             stored_envelope_state(2) = y(2)
+             stored_envelope_state(3) = y(3)
+             stored_envelope_state(4) = y(1)
+          endif
+       endif
+       if(h_next.lt.h_min) h_next = h_min
+       h_step = h_next
+      end do
+      if (step_index .gt. maxstp) then
+! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
+! PRINT NASTY MESSAGE AND QUIT.
+      write(terminal_unit,911)
+      write(run_log_unit,911)
+ 911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
+           'I QUIT')
+      jerr = 1
+      ierr = jerr
+      return
+      end if
+end subroutine integrate_to_fitting_mass
+
+! ---------------------------------------------------------------
+! The error scale of the step, and the step limited so it neither
+! overshoots the fitting mass nor exceeds the maximum size or plim.
+subroutine limit_envelope_step()
        x_start = indep_var
        do i = 1,num_eqs
           y_start(i) = y(i)
@@ -618,6 +741,11 @@ subroutine integrate_envelope
              pressure_limit_test_flag = .false.
           endif
        endif
+end subroutine limit_envelope_step
+
+! ---------------------------------------------------------------
+! One Bulirsch-Stoer step of the envelope, then the derivatives at its end.
+subroutine take_envelope_step()
 !  INTEGRATE THE EQUATIONS FROM X0 TO X0 + H
 !  H IS THE ATTEMPTED STEP,HDID IS THE ONE PERFORMED, AND HNEXT IS THE
 !  PREDICTED NEXT STEP.
@@ -643,13 +771,13 @@ subroutine integrate_envelope
           ierr = jerr
           return
        end if
-       if(h_did.eq.h_step) then
-          num_ok = num_ok + 1
-       else
-          num_bad = num_bad + 1
-       endif
-!  CHECK IF INTEGRATION COMPLETE
-       mass_diff_remaining = cfg%senv - y(1)
+end subroutine take_envelope_step
+
+! ---------------------------------------------------------------
+! The new envelope point into env_struct unless the step overshot the
+! fitting mass, accumulating the convective turnover time.
+subroutine store_envelope_point()
+      use math_lib
 ! 07/02 STORE ENVELOPE TERMS IF THE INTEGRATION
 ! HAS NOT OVERSHOT THE FITTING POINT.
          if(mass_diff_remaining.le.step_tolerance)then
@@ -695,8 +823,12 @@ subroutine integrate_envelope
                taucz_env_accum = taucz_env_accum + delta_radius_cz/pt_scr%current_velocity
             endif
          endif
-       if(dabs(mass_diff_remaining).le.step_tolerance)then
-!            WRITE(*,*)TAUCZENV/CSECYR
+end subroutine store_envelope_point
+
+! ---------------------------------------------------------------
+! The fitting-point vertex (log P, log R, log T), interpolated to the
+! fitting mass within the last step.
+subroutine interpolate_envelope_vertex()
           if(save_boundary_flag) then
              interp_weight = mass_diff_remaining/(y_start(1)-y(1))
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
@@ -704,32 +836,12 @@ subroutine integrate_envelope
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
              if(print_flag .and. solver_diagnostics())write(run_log_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),cfg%senv
           endif
-          exit
-       else if(.not.store_flag_set) then
-          if(y(2).ge.cfg%tenv .and. save_boundary_flag) then
-             store_flag_set = .true.
-             stored_vertex_index = vertex_index
-             stored_envelope_state(1) = indep_var
-             stored_envelope_state(2) = y(2)
-             stored_envelope_state(3) = y(3)
-             stored_envelope_state(4) = y(1)
-          endif
-       endif
-       if(h_next.lt.h_min) h_next = h_min
-       h_step = h_next
-      end do
-      if (step_index .gt. maxstp) then
-! INTEGRATION HAS FAILED TO FINISH IN MAXSTP STEPS;
-! PRINT NASTY MESSAGE AND QUIT.
-      write(terminal_unit,911)
-      write(run_log_unit,911)
- 911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
-           'I QUIT')
-      jerr = 1
-      ierr = jerr
-      return
-      end if
-      end if
+ 230     format(4X,3F16.12,8X,F16.12)
+end subroutine interpolate_envelope_vertex
+
+! ---------------------------------------------------------------
+! Reverse env_struct from surface-inward to centre-outward.
+subroutine invert_envelope_points()
 ! 07/02 NOW INVERT THE ENVELOPE VECTOR (surface-inward -> centre-outward).
       if(cfg%senv.lt.senv_thin_envelope)then
          associate (n => env_struct%num_env_points)
@@ -754,15 +866,7 @@ subroutine integrate_envelope
             env_struct%env_ion_fraction(:,1:n) = env_struct%env_ion_fraction(:,n:1:-1)
          end associate
       endif
-
-      if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
- 215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
-           'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
-           I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &
-           5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
-           '  R ',E14.5)
-
-end subroutine integrate_envelope
+end subroutine invert_envelope_points
 
 
 
