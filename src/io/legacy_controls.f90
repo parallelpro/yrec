@@ -345,6 +345,7 @@ subroutine set_legacy_defaults
       cstmixing = 1.0d0
       cstdiffmix = 1.0d0
       tcut = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
+      tscut = 6.0d0
 ! vnew: the metal mixture, mass fractions of Na, Al, Mg, Fe, Si, C, H, O,
 ! N, Ar, Ne and He (Grevesse & Noels 1993 solar)
       vnew = (/ 0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, &
@@ -645,7 +646,6 @@ subroutine set_legacy_defaults
       fmonte1 = repeat(achar(0), len(fmonte1))
       fmonte2 = repeat(achar(0), len(fmonte2))
       descrip = repeat(achar(0), len(descrip))
-      tscut = 0
       xenv0a = 0
       zenv0a = 0
       cmixla = 0

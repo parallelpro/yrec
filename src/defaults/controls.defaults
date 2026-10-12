@@ -393,7 +393,7 @@
       nuclear_logT_cutoffs = 6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0
 
       ! (legacy name: tscut)
-      saha_log10t_cutoff = 0
+      saha_log10t_cutoff = 6.0d0
 
       ! hpoint envelope rezoning temperature bound (lower)
       ! (legacy name: tenv0)
