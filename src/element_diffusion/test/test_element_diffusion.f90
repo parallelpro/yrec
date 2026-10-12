@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------
-! test_diffusion
+! test_element_diffusion
 !----------------------------------------------------------------------
 ! Standalone test of element diffusion, printed for byte-comparison
-! against expected_test_diffusion.out. Both settling routines run one
+! against expected_test_element_diffusion.out. Both settling routines run one
 ! step on a synthetic 200-zone solar-like model (radiative interior,
 ! convective envelope above 0.71 R):
 !   gravitational_settling  the original routines (use_new_diffusion_
@@ -24,7 +24,7 @@
 ! Each case prints the change of H, He4, Z, Li7 and Be9 at nine zones
 ! and the mass-weighted change of each species over the star, all at
 ! full precision. No deck pins the original routines.
-program test_diffusion
+program test_element_diffusion
       use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
            i_li7, i_be9
@@ -215,4 +215,4 @@ subroutine settle(label, new_routines)
       end do
 end subroutine settle
 
-end program test_diffusion
+end program test_element_diffusion

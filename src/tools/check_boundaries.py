@@ -26,7 +26,7 @@ import collections
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
 DOMAINS = ["eos", "kap", "atm", "net", "convection",
-           "rotation", "numerics"]
+           "rotation", "element_diffusion", "numerics"]
 
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
 # star%ctrl / star%job are the authoritative post-read home, and every
@@ -99,10 +99,14 @@ PUBLIC = {
     "rotation": {"evolve_angular_momentum", "omega_from_j",
                  "rotation_shape_factors", "zone_moments_of_inertia",
                  "am_convective_regions", "viscos",
-                 "enforce_rotation_profile", "gravitational_settling",
-                 "microdiff", "diffuse_composition_driver",
+                 "enforce_rotation_profile", "diffuse_composition_driver",
                  "diffuse_composition", "composition_grid",
                  "solid_body_omega"},
+    # element diffusion (gravitational settling and microscopic
+    # diffusion of the elements), split out of rotation in 2026-10: the
+    # original routines and the newer ones, chosen by
+    # use_new_diffusion_routines.
+    "element_diffusion": {"gravitational_settling", "microdiff"},
     # numerics is the shared numerics library: everything numerics_lib
     # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
     # modules behind it).
@@ -258,6 +262,8 @@ def main():
     defs = {}
     for dom in DOMAINS:
         for path in (SRC / dom).rglob("*.f90"):
+            if "test" in path.relative_to(SRC).parts:
+                continue   # a test program's own procedures are not domain API
             for m in DEF_RE.finditer(strip_comments(path.read_text())):
                 defs[m.group(1).lower()] = dom
 

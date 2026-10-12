@@ -836,6 +836,8 @@ The remaining 36 files split into 3 pipeline subfolders plus root:
   during ROADMAP.md stage 1 (same day) that pair was itself relocated
   into `rotation/microdiff/`, making those calls intra-folder --
   grsett is settling physics that lived in `setup/` only by name.
+  (2026-10: the whole group left rotation for its own domain,
+  `element_diffusion/`, since non-rotating models settle too.)
 - `rotation/shape/` (4 files): the rotational-distortion group --
   `fpft`, `func`, `momi`, `intmom` (Kippenhahn-Thomas/Endal-Sofia
   shape formalism and Law-thesis moment-of-inertia expansion).

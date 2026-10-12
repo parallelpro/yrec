@@ -99,7 +99,7 @@ Composition evolves by:
 - **microscopic diffusion** (optional) — gravitational settling and
   thermal diffusion of He and metals in the Bahcall & Loeb / Michaud
   formulation with Thoul, Bahcall & Loeb (1994) coefficients
-  (`rotation/microdiff/`: `microdiff`, or the older
+  (`element_diffusion/`: `microdiff`, or the older
   `gravitational_settling` (`grsett`)), sub-stepped so no
   settling step exceeds a set fraction of the local settling timescale.
 
