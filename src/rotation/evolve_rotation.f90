@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! evolve_rotation
+!----------------------------------------------------------------------
+! The rotation of the star over a timestep: evolve_angular_momentum
+! sub-steps the transport of angular momentum and the mixing it drives,
+! with the wind torque, and updates omega.
+module evolve_rotation
+      implicit none
+      private
+      public :: evolve_angular_momentum
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! getw
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -28,8 +42,7 @@
 subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use am_regions, only: am_convective_regions
-      use omega_profile, only: enforce_rotation_profile
-      use omega_profile, only: omega_from_j
+      use omega_profile, only: enforce_rotation_profile, omega_from_j
       use rotation_scratch_lib
       use mid_timestep_model
       use secular_transport
@@ -412,3 +425,5 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! flag, was deleted here -- its only reader.)
       return
 end subroutine evolve_angular_momentum
+
+end module evolve_rotation

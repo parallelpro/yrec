@@ -89,19 +89,12 @@ PUBLIC = {
     "convection": {"compute_temperature_gradients", "find_convection_zones",
                    "homogenize_convection_zones", "extend_by_semiconvection",
                    "set_convection_settings", "set_convection_envelope_metals"},
-    # rotation deliberately has no facade (multi-primitive surface,
-    # user decision during the phase-two sweep). (equipotential_integrand,
-    # the former func, left the list in 2026-10: the shape quadrature
-    # that calls it moved from numerics into rotation/shape.)
-    # rotation_shape_factors (the former solid) joined when step 1
-    # moved it here from misc/ (rotation geometry, legitimately called
-    # from core and setup/rezone).
+    # rotation deliberately has no facade (multi-primitive surface, a
+    # user decision, confirmed 2026-10-12): its modules are used by name,
+    # and these are the procedures core and setup may call.
     "rotation": {"evolve_angular_momentum", "omega_from_j",
                  "rotation_shape_factors", "zone_moments_of_inertia",
-                 "am_convective_regions", "viscos",
-                 "enforce_rotation_profile", "diffuse_composition_driver",
-                 "diffuse_composition", "composition_grid",
-                 "solid_body_omega"},
+                 "am_convective_regions", "viscos"},
     # element diffusion (gravitational settling and microscopic
     # diffusion of the elements), split out of rotation in 2026-10: the
     # original routines and the newer ones, chosen by
