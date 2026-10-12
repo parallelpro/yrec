@@ -1,4 +1,24 @@
 !----------------------------------------------------------------------
+! run_driver
+!----------------------------------------------------------------------
+! The run: run_yrec reads the controls, sets up the tables, and goes
+! through the run cards (and the Monte-Carlo and calibration loops),
+! evolving each card's model with evolve_step.
+module run_driver
+      use neutrino_flux_output, only: write_neutrino_flux_table
+      use step_driver, only: evolve_step
+      use run_setup, only: prepare_run
+      use shell_boundaries, only: locate_shell_boundaries
+      use starting_model, only: read_starting_model
+      use calibration, only: check_solar_calibration, setup_solar_calibration, setup_star_calibration
+      implicit none
+      private
+      public :: run_yrec
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! run_yrec
 !----------------------------------------------------------------------
 ! Added 2026 (phase five -- the embeddable engine; see docs/ROADMAP.md).
@@ -89,7 +109,7 @@ subroutine run_yrec(ierr)
 ! Z ramp or Z diffusion (read by the kap table loaders from
 ! star_setup's kap_init on; formerly decided inside kap/setupopac)
       star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
-      call star_setup(ierr)
+      call prepare_run(ierr)
       if (ierr /= 0) return
 ! sanity pass over the adopted controls: warn (terminal only) about
 ! silently-inert or self-cancelling combinations (2026 audit)
@@ -322,7 +342,7 @@ subroutine begin_kind_card
 ! (core/neutrino_flux_table.f90); it describes the starting model
 ! of each kind card.
       if (star%ctrl%compute_neutrino_fluxes) then
-         call neutrino_flux_table
+         call write_neutrino_flux_table
       endif
 ! save mass in solar units
          star%pulsation_mass_msun=star%star_mass
@@ -381,3 +401,5 @@ subroutine end_kind_card
 end subroutine end_kind_card
 
 end subroutine run_yrec
+
+end module run_driver

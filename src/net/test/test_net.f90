@@ -28,6 +28,8 @@
 ! Results print for byte-comparison against expected_test_net.out;
 ! the checks print ok or FAIL.
 program test_net
+      use run_setup, only: set_up_constants_and_tables
+      use user_inputs, only: map_user_inputs
       use controls_buffer
       use io_units
       use star_info_lib, only: star, i_h1, i_h2, i_he3, i_he4, i_metals, &
@@ -136,7 +138,7 @@ program test_net
       star%job%scv_he_table_path = dummy_path
       star%job%scv_z_table_path = dummy_path
       star%job%alex95_table_paths = dummy_paths7
-      call setups(setups_ierr)
+      call set_up_constants_and_tables(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_net: FAIL (setups error)"
          stop 1

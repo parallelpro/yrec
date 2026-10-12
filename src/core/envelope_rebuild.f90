@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! envelope_rebuild
+!----------------------------------------------------------------------
+! Moving the fitting point outward when the star loses mass:
+! rebuild_envelope re-integrates the envelope and turns its points below
+! the old fitting point into interior shells.
+module envelope_rebuild
+      implicit none
+      private
+      public :: rebuild_envelope
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! rebuild_envelope (formerly getnewenv)
 !----------------------------------------------------------------------
 ! Moves the outer fitting point when the total mass is being
@@ -250,3 +264,5 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
      'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
       return
 end subroutine rebuild_envelope
+
+end module envelope_rebuild

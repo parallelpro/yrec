@@ -18,6 +18,7 @@
 ! Semiconvection needs the opacity tables; the configuration matrix's
 ! semiconvection deck pins it.
 program test_convection
+      use run_setup, only: set_up_constants_and_tables
       use star_info_lib, only: star, json, max_convective_zones, max_radiative_zones
       use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
@@ -79,7 +80,7 @@ subroutine boot_yale_eos()
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
       star%job%fermi_table_path = trim(yrec_input)//"/eos/yale/FERMI.TAB"
-      call setups(setups_ierr)
+      call set_up_constants_and_tables(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_convection: FAIL (setups error)"
          stop 1

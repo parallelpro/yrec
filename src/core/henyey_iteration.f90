@@ -30,6 +30,9 @@
 ! Non-zero ierr propagates a callee failure to evolve_step.
 ! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
 module henyey_iteration
+      use henyey_elimination, only: henyey_solve
+      use surface_boundary, only: compute_surface_boundary
+      use structure_equations, only: compute_henyey_coefficients
       use omega_profile, only: omega_from_j
       use rotating_shape, only: rotation_shape_factors
       implicit none
@@ -93,7 +96,7 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
        metal_fraction = star%znew
        log10_pressure_limit = star%logP(star%nz)
        call eos_set_debye_huckel_composition(star%xa(:,star%nz))
-       call surfbc(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
+       call compute_surface_boundary(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &
             start_new_triangle,reset_triangle,saha_state, &
@@ -171,7 +174,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        star%max_residual(4) = 0.0d0
 ! (2026 de-tramp: the star%-shaped slots are read/written by
 ! henyey_coefficients directly; only the per-call locals remain.)
-       call henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
+       call compute_henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! 2026 (phase five, step B): propagate instead of stopping

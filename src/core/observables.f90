@@ -28,6 +28,7 @@
 ! from the previous call's surface-CZ interpolation fraction -- the
 ! FX/FX2 typo; that block was never consumed and is deleted.)
 module observables
+      use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib
       use eos_lib
       use physical_constants

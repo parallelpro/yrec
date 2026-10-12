@@ -1,4 +1,20 @@
 !----------------------------------------------------------------------
+! model_rescaling
+!----------------------------------------------------------------------
+! Rescaling a model at the start of a rescale run card (rescale_model):
+! its surface X and interior Z for main-sequence models, its core and
+! total mass for horizontal-branch models, and optionally one species
+! and a Z ramp toward the core.
+module model_rescaling
+      use shell_boundaries, only: locate_shell_boundaries
+      implicit none
+      private
+      public :: rescale_model
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! rscale
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -336,3 +352,5 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
       end if
       return
 end subroutine rescale_model
+
+end module model_rescaling

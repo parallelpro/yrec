@@ -22,6 +22,7 @@
 ! in the historical "solution diverged" mode (outputs up to that
 ! model are valid); positive is a hard error; zero is success.
 module yrec_capi
+      use run_driver, only: run_yrec
       use iso_c_binding, only: c_int, c_char, c_null_char
       use star_info_lib, only: control_nml_override, physics_nml_override
       implicit none

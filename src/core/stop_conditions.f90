@@ -31,6 +31,7 @@
 ! stop is configured when its threshold is positive; disarming
 ! negates it (the historical convention -- every check tests .gt.0).
 module stop_conditions
+      use calibration, only: check_star_calibration
       use star_info_lib, only: star, i_h1, i_h2, i_he4
       use io_units
       use math_lib

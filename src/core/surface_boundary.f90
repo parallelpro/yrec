@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! surface_boundary
+!----------------------------------------------------------------------
+! The outer boundary condition of the Henyey solve: compute_surface_boundary
+! interpolates the fitting-point P and T, and their derivatives, from the
+! triangle of envelope integrations around the current (L, Teff).
+module surface_boundary
+      implicit none
+      private
+      public :: compute_surface_boundary
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! surfbc
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -28,7 +42,7 @@
 ! envelope_integration gave it one. core/henyey_iteration.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
-subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
+subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
      stored_envelope_state, &
@@ -234,4 +248,6 @@ subroutine surfbc(tri_teffl, tri_logl, envelope_coeffs, &
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
       return
-end subroutine surfbc
+end subroutine compute_surface_boundary
+
+end module surface_boundary

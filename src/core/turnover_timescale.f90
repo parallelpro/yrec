@@ -1,4 +1,17 @@
 !----------------------------------------------------------------------
+! turnover_timescale
+!----------------------------------------------------------------------
+! The convective turnover timescale near the base of the surface
+! convection zone (compute_turnover_timescale), from the stitched model.
+module turnover_timescale
+      implicit none
+      private
+      public :: compute_turnover_timescale
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! gettau / tauintnew
 !----------------------------------------------------------------------
 ! G Somers, 3/17; 2026 stitched-model restructure.
@@ -361,3 +374,5 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 end subroutine turnover_from_interior_new
 
 end subroutine compute_turnover_timescale
+
+end module turnover_timescale

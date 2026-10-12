@@ -16,6 +16,7 @@
 ! two Z tables, and the Kurucz 1990 and Alexander 1994/95 molecular
 ! tables (check_families).
 program test_kap
+      use run_setup, only: set_up_constants_and_tables
       use io_units
       use star_info_lib, only: star
       use kap_lib
@@ -111,7 +112,7 @@ program test_kap
       star%job%scv_he_table_path = dummy_path
       star%job%scv_z_table_path = dummy_path
       star%job%alex95_table_paths = dummy_paths7
-      call setups(setups_ierr)
+      call set_up_constants_and_tables(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_kap: FAIL (setups error)"
          stop 1

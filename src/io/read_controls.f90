@@ -9,6 +9,7 @@
 ! live in legacy_controls (the namelist variables and their defaults),
 ! run_files, derived_controls and run_cards. Errors return via ierr.
 module controls_reader
+      use user_inputs, only: map_user_inputs
       use star_info_lib, only: star, control_nml_override, physics_nml_override
       use controls_sync, only: store_controls_to_star
       use physical_constants

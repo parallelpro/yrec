@@ -17,6 +17,7 @@
 ! consequences (pphot, the Allard gray-atmosphere fallback switching
 ! atm_choice/use_ttau_relation) return as outputs the driver applies.
 module envelope_integration_kernel
+      use envelope_integrands, only: compute_atmosphere_derivs, compute_envelope_derivs
       use numerics_lib, only: ode_system
       implicit none
 
@@ -63,13 +64,13 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
       integer, intent(out) :: ierr
       external atmosphere_derivs, envelope_derivs
       if (self%atmosphere) then
-         call atmosphere_derivs(x, y, dydx, self%luminosity_linear, &
+         call compute_atmosphere_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, ierr)
       else
-         call envelope_derivs(x, y, dydx, self%luminosity_linear, &
+         call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
@@ -405,7 +406,7 @@ subroutine integrate_atmosphere
        end if
 ! FIND DP/DTAU AT THE START OF THE NEXT STEP.
        err_sum(1) = err_sum(1) + step_err(1)
-       call atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+       call compute_atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
@@ -543,7 +544,7 @@ subroutine integrate_envelope
          pressure_limit_test_flag = .true.
       end if
 !  FIND DY/DX AT THE START OF THE STEP.
-      call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+      call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
@@ -634,7 +635,7 @@ subroutine integrate_envelope
           err_sum(i) = err_sum(i) + step_err(i)
        end do
 !  FIND DY/DX AT THE START OF THE NEXT STEP.
-       call envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
+       call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)

@@ -1,4 +1,45 @@
 !----------------------------------------------------------------------
+! run_setup
+!----------------------------------------------------------------------
+! The setup before the run cards: the physical constants and the
+! microphysics tables (set_up_constants_and_tables), and the Monte-Carlo
+! run range (prepare_run).
+module run_setup
+      implicit none
+      private
+      public :: prepare_run, set_up_constants_and_tables
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
+! star_setup
+!----------------------------------------------------------------------
+! Added 2026 (phase five): the setup step of the former program main,
+! as its own star-layer routine: constants and table loads via setups
+! (which threads ierr into the kap/eos/atm facade inits), then the
+! Monte-Carlo run-range and its per-run parameter read. Errors return
+! via ierr.
+subroutine prepare_run(ierr)
+
+      use monte_carlo, only: setup_monte_carlo_runs
+      implicit none
+
+      integer, intent(out) :: ierr
+
+      ierr = 0
+! set up constants and read in tabular data
+      call set_up_constants_and_tables(ierr)
+      if (ierr /= 0) return
+! Monte-Carlo run range and per-run sampled-parameter read (2026:
+! core/monte_carlo.f90 -- the standalone MC home).
+      call setup_monte_carlo_runs
+
+      return
+end subroutine prepare_run
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! setups
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -17,7 +58,7 @@
 ! Kurucz/Castelli surface-pressure table used for the T-tau surface
 ! boundary condition, and (if enabled) the SCVH envelope
 ! equation-of-state tables.
-subroutine setups(ierr)
+subroutine set_up_constants_and_tables(ierr)
       use eos_lib
       use kap_lib
       use microphysics_settings, only: opacity_settings, equation_of_state_settings, atmosphere_settings
@@ -33,7 +74,7 @@ subroutine setups(ierr)
 ! positionally through star_setup) -- callers set star%job first.
 ! --- locals ---
       double precision :: speed_of_light, electron_mass, boltzmann_constant, &
-           planck_constant, hydrogen_atom_mass, electron_charge_esu
+           planck_constant
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! SETUP CONSTANTS
@@ -134,4 +175,6 @@ subroutine setups(ierr)
 ! Fermi-Dirac table read.)
 
       return
-end subroutine setups
+end subroutine set_up_constants_and_tables
+
+end module run_setup

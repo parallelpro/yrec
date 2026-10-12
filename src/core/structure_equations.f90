@@ -1,4 +1,19 @@
 !----------------------------------------------------------------------
+! structure_equations
+!----------------------------------------------------------------------
+! The structure equations of the Henyey solve: compute_henyey_coefficients
+! evaluates the physics at every shell and forms the difference
+! equations' terms and partials, eliminating as it goes
+! (henyey_elimination).
+module structure_equations
+      implicit none
+      private
+      public :: compute_henyey_coefficients
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! henyey_coefficients (formerly coefft)
 !----------------------------------------------------------------------
 ! Builds the Henyey structure-equation coefficients (star%elim_coeff/
@@ -29,7 +44,7 @@
 ! writers read them from pt_scr afterwards. They keep the historical
 ! pt_scr names here despite those names no longer being very
 ! descriptive of their role in this file.
-subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
+subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
      saha_state, envelope_zone_index, ierr)
       use convection_lib, only: compute_temperature_gradients
       use henyey_elimination
@@ -424,4 +439,6 @@ subroutine henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       end do
 
       return
-end subroutine henyey_coefficients
+end subroutine compute_henyey_coefficients
+
+end module structure_equations

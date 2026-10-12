@@ -11,6 +11,7 @@
 ! The original main.f had no PROGRAM statement (an unnamed F77 main
 ! program); it is named "main" here, matching the file name.
 program main
+      use run_driver, only: run_yrec
       implicit none
       integer :: ierr
 

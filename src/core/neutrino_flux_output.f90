@@ -1,4 +1,17 @@
 !----------------------------------------------------------------------
+! neutrino_flux_output
+!----------------------------------------------------------------------
+! The opt-in neutrino-flux table of the starting model
+! (write_neutrino_flux_table; compute_neutrino_fluxes).
+module neutrino_flux_output
+      implicit none
+      private
+      public :: write_neutrino_flux_table
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! neutrino_flux_table
 !----------------------------------------------------------------------
 ! Resurrected 2026 as an opt-in diagnostic (controls_buffer's
@@ -24,7 +37,7 @@
 ! normalized production profiles in the Bahcall & Pinsonneault layout
 ! (r/Rsun, T6, log n_e, shell mass fraction, X_Be7, then pp, B8, N13,
 ! O15, F17, Be7, pep, hep).
-subroutine neutrino_flux_table
+subroutine write_neutrino_flux_table
       use star_info_lib, only: star, json, i_h1, i_h2, i_he3, i_he4, &
            i_c12, i_c13, i_n14, i_o16, i_o18, &
            i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
@@ -124,4 +137,6 @@ subroutine neutrino_flux_table
  145     format(F9.5,F7.3,F6.3,1P10E10.3)
       end do
       return
-end subroutine neutrino_flux_table
+end subroutine write_neutrino_flux_table
+
+end module neutrino_flux_output

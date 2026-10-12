@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! shell_boundaries
+!----------------------------------------------------------------------
+! Where the model's regions are (locate_shell_boundaries): the outer
+! edge of a convective core, the inner edge of the surface convection
+! zone, and the beginning, middle and end of a hydrogen-burning shell.
+module shell_boundaries
+      implicit none
+      private
+      public :: locate_shell_boundaries
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! findsh
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -115,3 +129,5 @@ subroutine locate_shell_boundaries(composition, luminosity, is_convective, num_p
       if(envelope_edge.eq.1) core_edge = 1
       return
 end subroutine locate_shell_boundaries
+
+end module shell_boundaries

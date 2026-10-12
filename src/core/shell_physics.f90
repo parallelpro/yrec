@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! shell_physics
+!----------------------------------------------------------------------
+! The local physics of every zone (compute_shell_physics): the EOS, the
+! opacity, the temperature gradients, mu, and the viscosity, for the
+! rotation code and the convection-zone edges.
+module shell_physics
+      implicit none
+      private
+      public :: compute_shell_physics
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! shell_physics (legacy physic)
 !----------------------------------------------------------------------
 ! The local physics of every zone, for the rotation code and the
@@ -11,7 +25,7 @@
 ! convective velocity; then viscos gives the kinematic viscosity and the
 ! thermal diffusivity. log_luminosity holds L/Lsun, not its log (the
 ! callers pass star%luminosity_lsun).
-subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
+subroutine compute_shell_physics(fp, ft, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
       use viscosity, only: viscos
@@ -130,4 +144,6 @@ subroutine shell_physics(fp, ft, composition, log_density, log_luminosity, &
       end do
 ! The thermal diffusivity and kinematic viscosity.
       call viscos(composition, log_density, log_temperature, num_zones)
-end subroutine shell_physics
+end subroutine compute_shell_physics
+
+end module shell_physics

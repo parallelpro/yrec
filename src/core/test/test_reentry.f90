@@ -19,6 +19,7 @@
 ! file fills both slots) so the engine's own getarg default is
 ! bypassed for BOTH calls.
 program test_reentry
+      use run_driver, only: run_yrec
       use star_info_lib, only: control_nml_override, physics_nml_override
       implicit none
       integer :: ierr, nargs

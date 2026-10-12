@@ -5,6 +5,7 @@
 ! sub-steps the transport of angular momentum and the mixing it drives,
 ! with the wind torque, and updates omega.
 module evolve_rotation
+      use shell_physics, only: compute_shell_physics
       use rotation_configuration, only: rotation_settings
       implicit none
       private
@@ -124,7 +125,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! The quantities both kinds of instability need: the temperature
 ! gradients, opacities, viscosities, thermal diffusivity and heat
 ! capacity.
-      call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun,star%logP, &
+      call compute_shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%log_Teff, ierr)
       if (ierr /= 0) return
 ! The sub-steps: the structure is interpolated between the start and the

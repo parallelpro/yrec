@@ -44,6 +44,7 @@
 ! And the MHD table interpolation on a synthetic table
 ! (check_mhd_table_lookup), which runs without the MHD tables.
 program test_eos
+      use run_setup, only: set_up_constants_and_tables
       use io_units
       use star_info_lib, only: star
       use eos_lib
@@ -196,7 +197,7 @@ program test_eos
       star%job%scv_z_table_path = scvz_path
       star%job%alex95_table_paths = dummy_paths7
       star%job%opal_eos_table_path = opal06_path
-      call setups(setups_ierr)
+      call set_up_constants_and_tables(setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_eos: FAIL (setups error)"
          stop 1

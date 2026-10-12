@@ -1,4 +1,19 @@
 !----------------------------------------------------------------------
+! rezoning
+!----------------------------------------------------------------------
+! The rezone of each step (rezone): new mesh points where the structure
+! or composition changes fastest, old ones merged where it changes
+! slowly, and the model interpolated onto the new mesh.
+module rezoning
+      use shell_physics, only: compute_shell_physics
+      implicit none
+      private
+      public :: rezone
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! hpoint
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -793,7 +808,7 @@ subroutine interpolate_onto_new_grid
 !   THIS IS NEEDED EVEN IN THE ABSENCE OF DIFFUSION TO ACCURATELY LOCATE
 !   THE EDGES OF CONVECTION ZONES.
 !        CALL PHYSIC(FP,FT,HCOMP,HD,HG,HL,HP,HR,HS,HT,LC,LCZ,M,TEFFL)  ! KC 2025-05-31
-       call shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun, &
+       call compute_shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun, &
             star%logP,star%logR,star%log_mass,star%logT, &
             star%convective_flag,star%nz,star%log_Teff, jerr)
        if (jerr /= 0) then
@@ -867,3 +882,5 @@ subroutine regrid_in_place(field)
 end subroutine regrid_in_place
 
 end subroutine rezone
+
+end module rezoning

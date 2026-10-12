@@ -1,4 +1,18 @@
 !----------------------------------------------------------------------
+! user_inputs
+!----------------------------------------------------------------------
+! The mapping of the newer, descriptively named controls onto the
+! parameters the code uses (map_user_inputs, MHP 6/2014), during the
+! controls read.
+module user_inputs
+      implicit none
+      private
+      public :: map_user_inputs
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! remap
 !----------------------------------------------------------------------
 ! Modernized (free-form, readable names) 2026 as part of the YREC
@@ -267,3 +281,5 @@ subroutine map_user_inputs
       end if
       return
 end subroutine map_user_inputs
+
+end module user_inputs

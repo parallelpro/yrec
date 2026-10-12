@@ -1,4 +1,23 @@
 !----------------------------------------------------------------------
+! step_driver
+!----------------------------------------------------------------------
+! One model: evolve_step advances the star by a timestep (mass change,
+! composition, rezone, the structure solve and its rotation coupling,
+! the post-step updates, output and the next timestep), retrying with
+! a smaller timestep when the solve diverges.
+module step_driver
+      use shell_boundaries, only: locate_shell_boundaries
+      use rezoning, only: rezone
+      use starting_model, only: read_starting_model
+      use envelope_rebuild, only: rebuild_envelope
+      implicit none
+      private
+      public :: evolve_step
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! evolve_step
 !----------------------------------------------------------------------
 ! Added 2026 (phase five -- the embeddable engine; docs/ROADMAP.md). One
@@ -598,3 +617,5 @@ double precision function envelope_overshoot_depth()
 end function envelope_overshoot_depth
 
 end subroutine evolve_step
+
+end module step_driver

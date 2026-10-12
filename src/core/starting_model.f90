@@ -1,4 +1,21 @@
 !----------------------------------------------------------------------
+! starting_model
+!----------------------------------------------------------------------
+! The starting model of a run card: read_starting_model reads (or reuses)
+! the model, rescales it if asked, and sets up the state the first step
+! needs.
+module starting_model
+      use turnover_timescale, only: compute_turnover_timescale
+      use shell_physics, only: compute_shell_physics
+      use model_rescaling, only: rescale_model
+      implicit none
+      private
+      public :: read_starting_model
+
+contains
+
+! ---------------------------------------------------------------
+!----------------------------------------------------------------------
 ! read_starting_model (formerly starin)
 !----------------------------------------------------------------------
 ! YREC's initial-model setup/read driver, called at the start of every
@@ -186,7 +203,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       call update_surface_mixture
       call snapshot_step_start
       if (ierr /= 0) return
-      call shell_physics(star%fp_rot,star%ft_rot, &
+      call compute_shell_physics(star%fp_rot,star%ft_rot, &
            star%xa,star%logRho,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
            star%log_Teff, jerr)
@@ -946,3 +963,5 @@ subroutine snapshot_step_start
 end subroutine snapshot_step_start
 
 end subroutine read_starting_model
+
+end module starting_model
