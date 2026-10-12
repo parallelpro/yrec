@@ -11,15 +11,6 @@ module am_regions
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! ovrot
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ovrot.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Isolates convective regions including overshoot (via CONVEC) and
 ! builds am_transport_convective_flag, the convective flag used for
 ! angular-momentum-transport/mixing purposes -- i.e. extended to

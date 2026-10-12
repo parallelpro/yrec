@@ -492,21 +492,24 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
 | `kemcom` | `net/network.f90` (`burn_implicitly`) |
 | `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
-| `rotmix`, `bursmix`, `bsrotmix` | `rotation/rotmix.f90`, `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two commented out) |
+| `rotmix`, `bursmix`, `bsrotmix` | `rotation/mid_timestep_model.f90` (`burn_and_settle`), `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two commented out) |
 | `hpoint` | `setup/rezone.f90` |
 | `findsh` | `setup/locate_shell_boundaries.f90` |
 | `setups` | `setup/setups.f90` |
 | `htimer` | `util/compute_timestep.f90` |
-| `getw` | `rotation/evolve_angular_momentum.f90` |
+| `getw` | `rotation/evolve_rotation.f90` (`evolve_angular_momentum`) |
 | `midmod` | `rotation/mid_timestep_model.f90` |
-| `solid` | `rotation/solid_body_omega.f90` |
-| `viscos` | `rotation/viscos.f90` |
-| `fpft` | `rotation/shape/rotation_shape_factors.f90` |
+| `solid`, `getrot`, `wczimp` | `rotation/omega_profile.f90` (`solid_body_omega`, `omega_from_j`, `enforce_rotation_profile`) |
+| `viscos` | `rotation/viscosity.f90` |
+| `ovrot` | `rotation/am_regions.f90` (`am_convective_regions`) |
+| `fpft`, `shape` | `rotation/shape/rotating_shape.f90` (`rotation_shape_factors`, `shape`) |
+| `momi`, `intmom` | `rotation/shape/moments_of_inertia.f90` (`zone_moments_of_inertia`) |
 | `seculr` | `rotation/seculr/secular_transport.f90` |
-| `codiff` | `rotation/seculr/diffusion_velocity_scales.f90` |
-| `rotgrid` | `rotation/seculr/am_transport_grid.f90` |
-| `dcoeft`, `dadcoeft` | `rotation/seculr/am_diffusion_coeffs.f90`, `am_advection_diffusion_coeffs.f90` |
-| `checkj`, `checkc` | `rotation/seculr/check_angular_momentum.f90`, `check_composition.f90` |
+| `codiff`, `vcirc`, `zahn`, `getqua` | `rotation/seculr/circulation.f90` |
+| `rotgrid` | `rotation/seculr/am_grid.f90` (`am_transport_grid`, `equal_grid_to_model`) |
+| `ndifcom`, `mixcom`, `mixgrid` | `rotation/seculr/rotational_mixing.f90` (`diffuse_composition_driver`) |
+| `dcoeft`, `dadcoeft` | `rotation/seculr/am_transport_coefficients.f90` |
+| `checkj`, `checkc` | `rotation/seculr/transport_checks.f90` |
 | `mwind`, `wind`, `mcowind`, `cowind`, `amcalc` | `rotation/magnetic_braking.f90` (`brake_convection_zone` for mwind/wind, `compute_solid_body_braking` for mcowind/cowind) |
 | `massloss`, `mdot` | `core/mass_change.f90` (`change_mass`, `apply_mass_change`) |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |

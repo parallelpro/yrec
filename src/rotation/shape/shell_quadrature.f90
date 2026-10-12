@@ -72,7 +72,7 @@ subroutine refine_distortion_integral(b1, b2, s, n, rho, rhop, sm, smp, w2, w2p,
        do j = 1, it
           r03t = y**3
 ! interpolate rho,m,omega,eta2+2 between shell i and shell i-1
-! 2026 (bugsweep Batch 2): the linear interpolants must be evaluated
+! (Fixed in the 2026 bug sweep:) the linear interpolants must be evaluated
 ! at the offset (y - b1) of the current abscissa, as smt already is;
 ! the inherited `*del` used the constant sub-interval width instead.
           rhot = rhop+drho*(y - b1)

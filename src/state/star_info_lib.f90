@@ -30,7 +30,7 @@
 ! "former common/..." markers throughout the type.)
 !
 ! Mid-timestep working copies (the *_mid arrays getw builds for
-! seculr/rotmix) are working state of the rotation pipeline, not the
+! seculr/mid_timestep_model) are working state of the rotation pipeline, not the
 ! model; routines that receive those keep explicit arguments.
 module star_info_lib
 ! the slots of the composition and neutrino-flux vectors, re-exported

@@ -11,15 +11,6 @@ module viscosity
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! viscos
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original viscos.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Computes the kinematic microscopic viscosity (radiative + molecular)
 ! and the radiative thermal diffusivity at every zone, for use by the
 ! rotational-mixing/instability diffusion routines.

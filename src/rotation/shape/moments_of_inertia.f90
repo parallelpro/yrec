@@ -11,15 +11,6 @@ module moments_of_inertia
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! momi
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original momi.f; only variable names, source form, and comment style
-! were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Finds the moment of inertia (moment_of_inertia) and dI/d(omega)
 ! (di_domega) at each zone from zone_start to zone_end. momi assumes
 ! that SHAPE has already been called. The moment of inertia is
@@ -87,15 +78,6 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
 end subroutine zone_moments_of_inertia
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! intmom
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original intmom.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Returns the moment of inertia per unit mass (moment_of_inertia_per_mass,
 ! originally HIM) and dI/d(omega) per unit mass (di_domega_per_mass,
 ! originally QIWM) at a single zone center, given the local rotation

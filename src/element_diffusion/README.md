@@ -4,7 +4,7 @@ This directory moves the elements through the radiative interior over a timestep
 
 Code outside element_diffusion/ uses it only through `element_diffusion_lib` (enforced by `tools/check_boundaries.py`). It has two callers, and they call it the same way:
 - core's `composition_step` settles every model with settling on, rotating or not;
-- rotation's `rotmix` settles within its burn and settle sub-steps.
+- rotation's `burn_and_settle` (in `mid_timestep_model`) settles within each rotation sub-step.
 
 ---
 

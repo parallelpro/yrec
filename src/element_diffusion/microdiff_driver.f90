@@ -43,7 +43,7 @@ contains
 !  log_radius (HR) - LOG RADIUS (CM)
 !  enclosed_mass (HS1) - MASS (GM), UNLOGGED
 !  log_temperature (HT) - LOG TEMPERATURE (K)
-!  del_grad - DEL (=DLNT/DLNP) per zone (core passes star%gradT, rotmix
+!  del_grad - DEL (=DLNT/DLNP) per zone (core passes star%gradT, burn_and_settle
 !     its mid-step gradient)
 !  convective_flag (LC) - FLAG T/F FOR CONVECTION
 !  num_zones (M) - NUMBER OF MODEL POINTS

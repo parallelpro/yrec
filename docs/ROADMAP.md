@@ -1557,11 +1557,11 @@ test_mesa_output and the full battery compare the runs.
     another run's output. They now stop with "cannot open the starting
     model"; test_controls records that.
 
-### rotation/ series: element diffusion split out (yrec-next, 2026-10-12)
+### rotation/ series: element diffusion split out, modules, README (yrec-next, 2026-10-12)
 
-The first part of the rotation series. All bitwise identical (the new
-tests, test_reentry, the quick check, the solar GS decks rotating and
-not, and the full battery).
+All bitwise identical (the new tests, test_reentry, the quick check,
+the solar GS decks rotating and not, the three testsuite
+rotating-mixing decks, and the full battery).
 - **DONE: pins first** (491adc36, 94c33ff4): test_diffusion (now
   test_element_diffusion) runs both settling routines on a synthetic
   solar-like model. No deck used the original gravitational_settling,
@@ -1569,20 +1569,38 @@ not, and the full battery).
   test_rotation gains the rotating structure (moments of inertia,
   omega from j, the shape factors, viscos).
 - **DONE: element_diffusion/ is its own domain** (f2d05f1e, bc215a7b,
-  fb0aa9d6): settling is not rotation physics (core settles
+  fb0aa9d6, ce7648e2): settling is not rotation physics (core settles
   non-rotating models through it). Topic modules behind
   element_diffusion_lib, whose diffuse_elements makes the
   original-or-newer choice both callers used to make; its own scratch,
-  reset through the facade.
+  reset through the facade; a README.
+- **DONE: rotation's procedures are module procedures** (6c08a206,
+  b4ea1bd1, d380df08, 5e650c72): its 41 external-procedure files became
+  topic modules (rotating_shape, moments_of_inertia, omega_profile,
+  am_regions, viscosity, and in seculr am_transport_coefficients,
+  circulation, rotational_mixing, am_grid, transport_checks; the driver
+  is evolve_rotation). rotmix, which burned and settled but did not mix,
+  is burn_and_settle in mid_timestep_model. Rotation stays facade-free
+  (the author's decision, confirmed 2026-10-12); check_boundaries lists
+  the six procedures core and setup call.
+- **DONE: evolve_angular_momentum reads as its steps** (e7d66a5b).
+- **DONE: comments and README** (rotation/README.md): the migration
+  history, F77 banners and stale file references gave way to
+  descriptions; rotation_scratch_lib's 32 "former common" groups have
+  topical headings.
 - Found: use_thoul_fit and use_thoul_diffusion act only in the original
-  routines. rotmix declared the enclosed mass intent(in) although
-  settling converts it in place (now inout).
+  settling routines. rotmix declared the enclosed mass intent(in)
+  although settling converts it in place (now inout).
 - **Open:**
   - Settling converts star%m to Bahcall & Loeb units and back in
     place; the round trip can change its last bit every step. Working
     on a copy would fix it but changes results at round-off; it needs
     a measured commit.
-  - rotation itself: modules for its 41 external-procedure files, the
-    evolve_angular_momentum steps, rotmix's name, comments. Whether
-    rotation gets a facade is the author's call (an earlier decision
-    kept it without one).
+  - Rotation calls back into core (shell_physics, the light-element
+    burn) and setup (rotation_stability_setup): the layering runs both
+    ways.
+  - rotation_scratch_lib holds core's mass-change state (masschg2/3)
+    and the commented-out path's tables; they belong elsewhere.
+  - burn_and_settle and core's composition_step each size the settling
+    sub-steps from the helium settling timescale with near-identical
+    code; element_diffusion could own it.

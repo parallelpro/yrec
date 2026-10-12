@@ -450,7 +450,7 @@ end subroutine store_end_li_be_rates
 ! hydrogen is exhausted (X < 5e-7 at the top of the region), as
 ! 1 - X - Y - He3.
 ! log_temperature, rate_by_zone and composition are arguments because
-! the two callers differ: burn_network passes the model's, rotmix the
+! the two callers differ: burn_network passes the model's, burn_and_settle the
 ! rotation sub-step's midpoint temperatures (rot_scr). If the Newton
 ! iteration fails, ierr = 1 and the run stops.
 !   star reads: ctrl%absolute_tolerance, ctrl%max_burn_iterations,
@@ -615,7 +615,7 @@ end subroutine network_rates_of_model
 ! (light_elements's deuterium_rate, stored in
 ! star%deuterium_burning_rate and, with store_start_rates, _start).
 ! (2026-10: the rate vectors were also copied to
-! rot_scr%reaction_rate_by_zone for rotmix, which now computes its own
+! rot_scr%reaction_rate_by_zone for burn_and_settle, which now computes its own
 ! on the sub-step's midpoint model.)
 !   star reads: convective_turnover_timescale,
 !     ctrl%accreted_composition, ctrl%mass_accretion_rate,

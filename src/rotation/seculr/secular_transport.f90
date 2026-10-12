@@ -1,43 +1,35 @@
 !----------------------------------------------------------------------
-! seculr
+! secular_transport
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original seculr.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! SECULR CALCULATES THE TRANSFER OF ANGULAR MOMENTUM(AND THE ASSOCIATED
 ! TRANSPORT OF COMPOSITION) DUE TO SECULAR ROTATIONAL INSTABILITIES.
 !
 ! A few local/dummy quantities are named differently by the various
-! already-converted callees this file dispatches to. Where that
+! callees this file dispatches to. Where that
 ! happens the name used here is the one shared by the most callees (or
 ! the more descriptive of the two), and the alternate name(s) are
-! noted alongside the declaration, following the convention set by
-! henyey_iteration.f90:
-!  - dynamical_shear_omega_limit (QWRMAX): circulation_velocities.f90 calls the same
+! noted alongside the declaration, following henyey_iteration's convention:
+!  - dynamical_shear_omega_limit (QWRMAX): circulation_velocities calls the same
 !    quantity dlnomega_dlnr_max.
-!  - radius_unlogged (HRU): circulation_velocities.f90/zahn_coupling_factor.f90/compute_quadrupole.f90/am_transport_grid.f90
-!    call it radius; diffusion_velocity_scales.f90 calls it radius_mid_prev.
-!  - mixing_diffusion_coeff (COD2, dummy arg): diffuse_composition_driver.f90 calls it
+!  - radius_unlogged (HRU): circulation_velocities/zahn_coupling_factor/compute_quadrupole/am_transport_grid
+!    call it radius; diffusion_velocity_scales calls it radius_mid_prev.
+!  - mixing_diffusion_coeff (COD2, dummy arg): diffuse_composition_driver calls it
 !    diffusion_coeff.
-!  - diffusion_velocity (HV, dummy arg): circulation_velocities.f90 calls it
+!  - diffusion_velocity (HV, dummy arg): circulation_velocities calls it
 !    total_circulation_velocity.
-!  - eq_mixing_diffusion_coeff (ECOD2): diffuse_composition_driver.f90 calls it
+!  - eq_mixing_diffusion_coeff (ECOD2): diffuse_composition_driver calls it
 !    equally_spaced_diffusion_coeff.
-!  - eq_angular_momentum (EJ): equal_grid_to_model.f90 calls it angular_momentum.
-!  - eq_am_diffusion_coeff (ECOD): am_diffusion_coeffs.f90 calls it diffusion_coeff.
-!  - eq_delta_angular_momentum (DJ): equal_grid_to_model.f90 calls it
+!  - eq_angular_momentum (EJ): equal_grid_to_model calls it angular_momentum.
+!  - eq_am_diffusion_coeff (ECOD): am_diffusion_coeffs calls it diffusion_coeff.
+!  - eq_delta_angular_momentum (DJ): equal_grid_to_model calls it
 !    delta_angular_momentum; solve_angular_momentum_transport calls it dj.
-!  - eq_mass (EM): diffuse_composition_driver.f90 calls it equally_spaced_mass.
-!  - diffusion_converged (LOKAD): check_angular_momentum.f90 calls it
+!  - eq_mass (EM): diffuse_composition_driver calls it equally_spaced_mass.
+!  - diffusion_converged (LOKAD): check_angular_momentum calls it
 !    already_converged_flag.
 !  - wind_loss_explicit/wind_loss_implicit (WIND1/WIND2):
 !    magnetic_braking's compute_solid_body_braking calls the same pair
 !    domega_start/domega_end.
-! 2026 de-tramp (ROADMAP item 3): 37 arguments -> 15. The midpoint
-! structure arrays live in rot_scr (rotation_scratch_lib, filled by
+! The midpoint structure arrays live in rot_scr (rotation_scratch_lib, filled by
 ! mid_timestep_model each sub-step) and the star-model arrays/scalars
 ! (log_mass/m/dm/j_rot/xa/nz/log_L/log_total_mass/star_mass/log_Teff)
 ! are read from star directly. What remains is genuine per-call data:
@@ -131,7 +123,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 
       ierr = 0
 
-! 2026-10 audit: the advective transport option (LDIFAD,
+! The advective transport option (LDIFAD,
 ! use_diffusion_advection_transport) has never been functional. The
 ! equal-grid coefficients am_advection_diffusion_coeffs reads
 ! (eq_velocity_coeff*, geometric_factor, am_2nd/3rd_deriv_coeff,
@@ -185,10 +177,9 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
            rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-! 2026 (bugsweep Batch 2): F77 seculr.f gated GETFC on LVFC; the
-! modernization (94c7f45) switched it to LDIFAD, so lvfc=T with
-! ldifad=F left star%vfc at its zeroed value and silently killed all
-! rotational mixing in diffusion_velocity_scales.
+! Gated on lvfc, as in the F77 seculr.f (a 2026 change had gated it on
+! ldifad, which left star%vfc zero and killed the rotational mixing in
+! diffusion_velocity_scales; fixed in the 2026 bug sweep).
       if(star%ctrl%lvfc) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,rot_scr%omega_mid)
@@ -296,10 +287,8 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 !  FIND DIFFUSION COEFFICIENTS(COD) FOR ALL UNSTABLE REGIONS.
          call diffusion_velocity_scales(radius_unlogged,star%nz,radius_mid, &
               am_diffusion_coeff,mixing_diffusion_coeff)
-! 2026: expose the model-grid transport coefficients as profile
-! columns (D_omega, D_mix) -- the physically meaningful per-zone
-! diffusion coefficients, formerly reachable only through the dead
-! .FULL diagnostics. Last substep of the step wins.
+! The model-grid transport coefficients are profile columns (D_omega,
+! D_mix); the step's last sub-step wins.
          do i = 1, star%nz
             star%am_diffusion_coeff(i) = am_diffusion_coeff(i)
             star%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
@@ -531,8 +520,6 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
          gamma_elim(j) = super_diag(j-1)/bet
          bet = diag(j) - sub_diag(j)*gamma_elim(j)
          if (bet.eq.0) then
-! 2026 audit (section 7): library stop -> ierr (numerics must not
-! kill the process; the drivers decide).
             write(*,*) 'solve_angular_momentum_transport: singular matrix'
             ierr = 1
             return

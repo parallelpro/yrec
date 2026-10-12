@@ -12,15 +12,6 @@ module am_transport_coefficients
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! dcoeft
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original dcoeft.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 !  DCOEFT SETS UP THE COEFFICIENTS FOR THE DIFFUSION DIFFERENCE EQUATION.
 !
 !  INPUT VARIABLES:
@@ -74,10 +65,7 @@ contains
 ! through common/tridi/ (positional storage; surface_wind_loss_term was
 ! smuggled through the gamma_elim(num_eq_points) slot specifically so
 ! the solver's first statement could read it before overwriting
-! gamma_elim as pure solver scratch). Converted (2026, docs/GUIDELINES.md)
-! to explicit output arguments since this is real per-call data flow,
-! not global configuration -- see solve_angular_momentum_transport's
-! matching dj_n_seed input argument.
+! gamma_elim as pure solver scratch).
 subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
@@ -175,15 +163,6 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
 end subroutine am_diffusion_coeffs
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! dadcoeft
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original dadcoeft.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! MHP 06/02
 ! DCOEFT SETS UP THE COEFFICIENTS FOR THE DIFFUSION DIFFERENCE EQUATION.
 !
@@ -191,8 +170,7 @@ end subroutine am_diffusion_coeffs
 ! ECOD : DIFFUSION COEFFICIENTS AT THE EQUALLY SPACED GRID POINTS.
 ! grid_spacing (DR) : GRID SPACING.
 ! timestep (DT) : TIMESTEP (the full step; the routine works with
-!    substep_timestep = timestep/num_substeps internally and, before
-!    2026 W2, wrote that into DT and put DT back at the end).
+!    substep_timestep = timestep/num_substeps internally).
 ! eq_moment_of_inertia (EI) : RUN OF MOMENTS OF INERTIA OF EQUALLY
 !    SPACED GRID POINTS.
 ! eq_omega (EW) : RUN OF ANGULAR VELOCITY OF EQUALLY SPACED GRID POINTS.
@@ -200,9 +178,7 @@ end subroutine am_diffusion_coeffs
 ! wind_loss_explicit (WIND1) : THE ANGULAR MOMENTUM LOSS FROM A
 !    SURFACE C.Z. COMPUTED EXPLICITILY.
 ! wind_loss_implicit (WIND2) : AS WIND1, BUT COMPUTED IMPLICITLY.
-!    Rescaled per theta iteration into the local wind_loss_implicit_iter
-!    (before 2026 W2 the rescaled value was written back into WIND2,
-!    which no caller read afterwards).
+!    Rescaled per theta iteration into the local wind_loss_implicit_iter.
 ! *NOTE: IF NOT APPLICABLE, WIND1 AND WIND2 ARE ZEROED OUT.
 !
 ! OUTPUT VARIABLES :
@@ -632,9 +608,7 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
          num_substeps = 2*num_substeps
          if (timestep_cut_count.gt.5) then
             write(*,*) 'TIMESTEP CUT MORE THAN 5 TIMES - RUN STOPPED'
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-            ! preserve the historical stop on a nonzero return.
+            ! a nonzero ierr stops the run
             ierr = 1
             return
          else
@@ -688,15 +662,6 @@ subroutine am_advection_diffusion_coeffs(grid_spacing, timestep, eq_moment_of_in
 end subroutine am_advection_diffusion_coeffs
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! bandw
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original bandw.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Custom fixed-10-column banded-matrix eliminator for the angular-
 ! momentum-transport diffusion system built by am_advection_diffusion_coeffs.f90: a system
 ! of NM = 4*NTOT-2 equations (4 per shell: omega, d2(omega)/dr2,
@@ -710,8 +675,7 @@ end subroutine am_advection_diffusion_coeffs
 ! treatment of the first/last few rows where the band is truncated by
 ! the domain boundary. Transliterated as directly as possible from the
 ! original; the elimination structure itself is not independently
-! re-derived here. (The original's commented-out older version of the
-! elimination was removed in the 2026 readability sweep.)
+! re-derived here.
 subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
       use rotation_scratch_lib, only: band_nmax
       implicit none
@@ -732,9 +696,7 @@ subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
       do i = 1,nm-5
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-            ! preserve the historical stop on a nonzero return.
+            ! a nonzero ierr stops the run
             ierr = 1
             return
          end if
@@ -757,9 +719,7 @@ subroutine banded_solver(coeff_matrix, nm, rhs, ierr)
          ii = nm-i
          if (abs(coeff_matrix(i,5)).lt.tiny) then
             write(*,911) i,(coeff_matrix(i,j),j=1,10)
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-            ! preserve the historical stop on a nonzero return.
+            ! a nonzero ierr stops the run
             ierr = 1
             return
          end if

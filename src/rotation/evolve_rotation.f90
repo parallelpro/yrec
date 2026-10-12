@@ -12,15 +12,6 @@ module evolve_rotation
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! getw
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getw.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! 11/91 MHP revised subroutine (replaces old FINDW).
 ! GETW evolves the angular momentum distribution in time.
 ! It enforces local conservation of angular momentum in radiative regions,

@@ -12,15 +12,6 @@ module am_grid
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! rotgrid
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original rotgrid.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Builds the equally-spaced-grid quantities needed by am_advection_diffusion_coeffs.f90's
 ! angular-momentum-transport diffusion solve: given the first/last
 ! unstable zones of a region (zone_begin/zone_end), calls equal_spaced_grid to
@@ -253,15 +244,6 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
 end subroutine am_transport_grid
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! eq2mod
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original eq2mod.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! The diffusion equation for angular momentum transport is solved using
 ! an equally spaced grid for each unstable region. Once the equation
 ! has been solved, we need the new run of angular momentum at the

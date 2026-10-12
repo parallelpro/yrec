@@ -1,14 +1,10 @@
 !----------------------------------------------------------------------
 ! equal_grid
 !----------------------------------------------------------------------
-! 2026 readability sweep (W3, rotation): the blocks that am_transport_grid
-! (rotgrid.f) and composition_grid (mixgrid.f) carried as verbatim copies,
-! each taking the osplin scratch tables (rot_scr%xtab/ytab/xval/yval) as
-! explicit arguments instead of reading rot_scr%.  Every statement is
-! token-for-token the former inline code; the callers invoke each helper
-! at the position the block occupied.
-!
-! Rotation-internal (seculr/); not a public rotation entry.
+! The equally spaced grids' shared pieces: the chi grid itself
+! (equal_spaced_grid) and the blocks am_transport_grid and
+! composition_grid both need, which take the spline tables
+! (rot_scr%xtab/ytab/xval/yval) as arguments.
 !
 ! The blocks that differ between the two callers stay inline there:
 ! the zone-mass construction (am_transport_grid interleaves the moment
@@ -22,9 +18,6 @@ module equal_grid
            multiply_by_exp10, equal_spaced_grid
 contains
 
-!----------------------------------------------------------------------
-! edge_grid_abscissae
-!----------------------------------------------------------------------
 ! Abscissae for the zone-edge interpolations: xtab(1) and xtab(ntabb)
 ! are the region's end points, xtab(2..ntab) the midpoints between
 ! consecutive chi values; xval(1) is the first point and xval(2..ntot)
@@ -51,9 +44,6 @@ subroutine edge_grid_abscissae(chi, echi, dchi, ntab, ntot, xtab, xval, ntabb)
       end do
 end subroutine edge_grid_abscissae
 
-!----------------------------------------------------------------------
-! interp_edge_coeff
-!----------------------------------------------------------------------
 ! Interpolates a model-point coefficient onto the zone edges of the
 ! equal grid through the tables built by edge_grid_abscissae, assuming
 ! it constant below the bottom interface and above the top interface:
@@ -78,9 +68,6 @@ subroutine interp_edge_coeff(coeff, zone_begin, zone_end, ntab, ntabb, ntot, &
       call osplin(xval,eq_coeff,xtab,ytab,ntabb,ntot)
 end subroutine interp_edge_coeff
 
-!----------------------------------------------------------------------
-! dchi_dr_jacobian
-!----------------------------------------------------------------------
 ! log10 of the product rho r^2 dchi/dr at the model points
 ! zone_begin..zone_begin+ntab-1 (left in ytab(1:ntab), with
 ! xtab(1:ntab) = chi(1:ntab)), interpolated onto xval into yval.
@@ -126,9 +113,6 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
       call osplin(xval,yval,xtab,ytab,ntab,ntot)
 end subroutine dchi_dr_jacobian
 
-!----------------------------------------------------------------------
-! multiply_by_exp10
-!----------------------------------------------------------------------
 ! coeff(i) = coeff(i) * 10**log_factor(i) over the ntot equal-grid
 ! points (the multiplicative Jacobian factor on a diffusion coefficient).
 subroutine multiply_by_exp10(coeff, log_factor, ntot)
@@ -147,15 +131,6 @@ subroutine multiply_by_exp10(coeff, log_factor, ntot)
 end subroutine multiply_by_exp10
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! getgrid
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getgrid.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! This routine forms the sum of rot_scr%chi, defined as
 ! rot_scr%chi = log(M)/dm + L/(Ltot*dl) - log(P)/dp, where dm, dp, and dl are
 ! the point spacings for log mass, luminosity, and pressure

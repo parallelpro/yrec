@@ -202,9 +202,6 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
       endif
 end subroutine compute_solid_body_braking
 
-!----------------------------------------------------------------------
-! set_matt_law
-!----------------------------------------------------------------------
 ! The Matt law's saturation (scaled by the Rossby number when asked:
 ! Omega_sat(Sun) tau_cz(Sun)/tau_cz, unless the B-field scaling moves
 ! the factor onto Omega instead), structure factor, solar centrifugal
@@ -231,9 +228,6 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
            star%log10_solar_luminosity)
 end subroutine set_matt_law
 
-!----------------------------------------------------------------------
-! set_kawaler_law
-!----------------------------------------------------------------------
 ! The Kawaler law's saturation. MHP 3/09: Omega_sat > 1 means
 ! Omega_sat(Sun) tau_cz(Sun), so Omega_sat = Omega_sat/tau_cz(star);
 ! for the convection zone (check_transport) only with angular momentum
@@ -271,9 +265,6 @@ subroutine set_kawaler_radius(log_luminosity_lsun, log_teff, law)
       law%mass_loss_rate_msun_yr = 2.0d-14
 end subroutine set_kawaler_radius
 
-!----------------------------------------------------------------------
-! domega
-!----------------------------------------------------------------------
 ! The drop in Omega over dt from the law's torque at omega. For the
 ! Matt law, Omega is scaled by tau_cz/tau_cz(Sun) for the saturation
 ! test with B-field scaling: at the first guess (initial) only with
@@ -302,9 +293,6 @@ real(dp) function domega(law, dt, omega, initial)
       end if
 end function domega
 
-!----------------------------------------------------------------------
-! matt_structure_factor
-!----------------------------------------------------------------------
 ! G Somers 3/17: the Matt law's dependence on the star,
 ! M**exm (R/Rsun)**exr (L/Lsun)**exl (P_phot/P_phot,Sun)**expr
 ! (tau_cz/tau_cz,Sun)**extau (the last only with Rossby scaling), with
@@ -329,9 +317,6 @@ real(dp) function matt_structure_factor(total_mass_msun, log_luminosity_lsun, lo
            * pow(turnover_ratio, star%ctrl%extau)
 end function matt_structure_factor
 
-!----------------------------------------------------------------------
-! matt_centrifugal_factor
-!----------------------------------------------------------------------
 ! The centrifugal reduction of Matt et al. (2012), relative to the Sun:
 ! ((c_2**2 + f_sun)/(c_2**2 + f))**excen with f = omega**2 R**3/(2 G M).
 real(dp) function matt_centrifugal_factor(omega, fsun, log10_radius, total_mass_msun)

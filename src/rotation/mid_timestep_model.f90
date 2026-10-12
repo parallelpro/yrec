@@ -1,27 +1,15 @@
 !----------------------------------------------------------------------
-! midmod
+! mid_timestep_model
 !----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original midmod.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! In general a diffusion timestep is less than a model timestep. This
-! subroutine takes the structure at the beginning and end of the
-! timestep and assigns an intermediate structure using linear
-! interpolation in time. Nuclear burning is accounted for here, and
-! the changes in angular velocity due to changes in radius and
-! conservation of angular momentum are also computed. MIDMOD also
-! locates the outer edge of a central convection zone and the inner
-! edge of a surface C.Z., and determines the mass and moment of
-! inertia of the surface C.Z.
-! 2026 de-tramp (ROADMAP item 3): 29 arguments -> 16. The 13 midpoint
-! structure arrays (eta_squared_mid ... am_transport_convective_flag_mid)
-! moved into rot_scr (rotation_scratch_lib) -- they are the seculr/
-! midmod pipeline's shared per-sub-step workspace, not per-call data.
-! The remaining arguments are genuine per-call scalars/bounds. Wrapped
-! as a module procedure so the compiler enforces the call.
+! The rotation sub-step. A diffusion sub-step is shorter than the model
+! step: advance_rotation_substep interpolates the structure linearly in
+! time between the step's start and end, burns (burn_and_settle, which
+! also settles helium), finds the omega the changed radii imply under
+! conservation of angular momentum, and locates the edge of a central
+! convection zone and the base of the surface one with that zone's mass
+! and moment of inertia. The midpoint structure (eta_squared_mid ...
+! am_transport_convective_flag_mid) goes into rot_scr, where the rest of
+! the sub-step reads it.
 module mid_timestep_model
       use am_regions, only: am_convective_regions
       use omega_profile, only: solid_body_omega, omega_from_j
@@ -62,7 +50,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
       integer :: num_species_tracked
       integer :: i, j, k
       double precision :: step_fraction_ratio
-! the composition rate vectors of the midpoint model, for rotmix
+! the composition rate vectors of the midpoint model, for burn_and_settle
       double precision :: rate_by_zone(num_rate_rows, json)
       double precision :: total_epsilon
       integer, allocatable :: regions(:,:)
@@ -148,8 +136,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 !  REBURN THE ORIGINAL MIXTURE FOR THE SMALL DIFFUSION TIME STEP.
 ! MHP 6/00 - FOR THERMODYNAMIC CONSISTENCY USE CURRENT T, NOT END OF
 ! TIMESTEP T (REPLACED HT IN CALL WITH HTM)
-! the network's rates on the midpoint model (2026-10; the end-of-step
-! structure's, from the last composition step, before)
+! the network's rates on the midpoint model
       call network_rates_of_model(rot_scr%log_density_mid, &
            rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
       call burn_and_settle(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
@@ -280,12 +267,6 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 end subroutine advance_rotation_substep
 
 ! ---------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original rotmix.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Burns each burn region (burn_step's burn_regions: shell by shell in
 ! the radiative regions, each convection zone as a unit, homogenized) by
 ! burn_network_region. Then (if diffuse_helium_active) performs gravitational settling of
@@ -293,9 +274,7 @@ end subroutine advance_rotation_substep
 ! composition to guard against small negative/overflowing abundances.
 ! rate_by_zone holds the composition rate vectors of the model being
 ! burned (network_rates_of_model: mid_timestep_model passes the rotation
-! sub-step's midpoint). (2026-10: they used to come from
-! rot_scr%reaction_rate_by_zone, the rates of the last composition step,
-! i.e. of the end-of-step structure.)
+! sub-step's midpoint).
 subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
      rate_by_zone, num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
@@ -384,9 +363,7 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
             write(run_log_unit,911)
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL'/ &
                  'STOPPED IN SUBROUTINE MIX')
-            ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-            ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-            ! preserve the historical stop on a nonzero return.
+            ! a nonzero ierr stops the run
             ierr = 1
             return
          end if
@@ -420,9 +397,6 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
                  exp(ln10*1.5d0*log_temperature(outer_boundary_zone))
 !  RESTRICT TIMESTEP TO THE MINIMUM OF THE MODEL TIMESTEP AND
 !  A USER SPECIFIED FRACTION (DT_GS) OF THE SETTLING TIMESCALE.
-! (2026: this settling diagnostic wrote to never-opened unit 69,
-! leaving stray fort.69 files -- now solver forensics in the run
-! log, like its peers)
             if (solver_diagnostics()) write(run_log_unit,*) 'JMAX=', &
                  outer_boundary_zone,' FM= ', &
                  mass_fraction_above,' TSCALE=',settling_timescale

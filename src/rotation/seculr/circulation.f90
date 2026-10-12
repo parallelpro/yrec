@@ -13,15 +13,6 @@ module circulation
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! vcirc
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original vcirc.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 !   SKIPPING CONVECTIVE REGIONS, CHECK FOR INSTABILITY AGAINST EACH
 !   SECULAR MECHANISM.IF UNSTABLE,COMPUTE A CIRCULATION VELOCITY.
 !   THE PROCEDURE FOR CALCULATING STABILITY IS AS FOLLOWS:
@@ -461,15 +452,6 @@ contains
 end subroutine circulation_velocities
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! codiff
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original codiff.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! 2/91 SUBROUTINE ALTERED TO ALLOW DIFFERENT FC'S FOR DIFFERENT
 !      MECHANISMS (star%ctrl%es_mixing_scale etc.)
 !
@@ -575,15 +557,6 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
 end subroutine diffusion_velocity_scales
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! getfc
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getfc.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! This subroutine solves for the variable FC using the prescription
 ! of Zahn (1992). FC = MIN(1, C/30*U/(2V-ALPHA*U)), where
 ! ALPHA = 1/2 D(LN J/M)/D LN R and
@@ -630,7 +603,7 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
       do zone_index = zone_min, zone_max
          omega_mid = 0.5D0*(angular_velocity(zone_index)+ &
               angular_velocity(zone_index-1))
-! 2026 (bugsweep Batch 2): the header defines alpha = 1/2 dln(r^2 Omega)/
+! (Fixed in the 2026 bug sweep:) the header defines alpha = 1/2 dln(r^2 Omega)/
 ! dln r (Zahn 1992) and the consumer forms |2V - alpha U| with
 ! circ_velocity already holding 2V; the inherited expression lacked
 ! the 1/2.
@@ -694,15 +667,6 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
 end subroutine zahn_coupling_factor
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! getqua
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getqua.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Solves for the quadrupole moment of a rotating star, using the
 ! Sweet (1950) formulation as given in Zahn (1992). We are solving
 ! the equation

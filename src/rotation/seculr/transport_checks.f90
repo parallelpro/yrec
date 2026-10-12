@@ -11,15 +11,6 @@ module transport_checks
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! checkj
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original checkj.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! SR CHECKJ PERFORMS SEVERAL FUNCTIONS.
 ! FIRST, IT CHECKS FOR NEGATIVE SPECIFIC ANGULAR MOMENTA.
 ! IF THEY ARE ENCOUNTERED, THE TIMESTEP IS CUT.
@@ -132,9 +123,7 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
                        5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                        ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
                        'RUN STOPPED')
-               ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-               ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-               ! preserve the historical stop on a nonzero return.
+               ! a nonzero ierr stops the run
                ierr = 1
                return
             else
@@ -194,8 +183,6 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
 !  SOLID-BODY ROTATION IN THE OFFENDING PAIR OF ZONES.
       zone_index = num_zones
       zone_bottom = num_zones
-! (Restructured 2026: the label 20/130 zone scan became the named
-! zone_scan loop; the label-70 redo loop a plain do.)
       zone_scan: do
 !  POSITIVE OMEGA GRADIENT ENCOUNTERED.
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
@@ -303,27 +290,11 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
   160       format(' MAX D(J/M)/(J/M)',1pe12.3,' AT PT.',i5, &
                     ' BY ITERATION'/5(1x,e11.3,i4))
          endif
-!
-! 2026 retire-legacy: the .FULL (FMODPT) diagnostics block that
-! lived here -- per-shell omega/J tables, circulation-velocity and
-! transport-coefficient listings -- was hard-disabled in 11/14
-! ('G Somers: I am turning off the output to the .full file') and
-! is deleted with the file itself. The model-grid transport
-! coefficients are profile columns (D_omega, D_mix) instead.
       endif
       return
 end subroutine check_angular_momentum
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! checkc
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original checkc.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! SR CHECKC PERFORMS SEVERAL FUNCTIONS.
 ! FIRST, IT CHECKS FOR ANOMALOUS COMPOSITIONS.
 ! IF THEY ARE ENCOUNTERED, THE TIMESTEP IS CUT.
@@ -419,9 +390,7 @@ subroutine check_composition(composition, iteration_number, num_zones, &
               ' ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5,' ABUNDANCE ', &
               1pe12.3/' 3 ATTEMPTS AT TIMESTEP CUTTING FAILED'/ &
               'RUN STOPPED')
-                  ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
-                  ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
-                  ! preserve the historical stop on a nonzero return.
+                  ! a nonzero ierr stops the run
                   ierr = 1
                   return
                else

@@ -13,15 +13,6 @@ module rotating_shape
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! fpft
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original fpft.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Computes the rotational distortion correction factors pressure_
 ! rotation_factor/temperature_rotation_factor (FP/FT) applied to the
 ! hydrostatic/thermal structure equations in henyey_coefficients.f90 to account for
@@ -145,14 +136,6 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 end subroutine rotation_shape_factors
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! shape
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original shape.f; only variable names, source form, and comment
-! style were updated.
-!
 ! SHAPE FINDS THE DISTORTION OF A GIVEN SHELL FROM SPHERICAL SYMMETRY;
 ! IT CALCULATES THE CHARACTERISTIC RADIUS R0 AND ASSOCIATED PARAMETER
 ! ETA2.  IN POLAR CO-ORDINATES THE RADIUS OF A SHELL IS

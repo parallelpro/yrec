@@ -12,15 +12,6 @@ module omega_profile
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! getrot
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original getrot.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! GETROT takes the angular momentum distribution and finds the
 ! rotation curve that corresponds to it. Convective regions have
 ! solid body rotation enforced on them.
@@ -85,14 +76,6 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
 end subroutine omega_from_j
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! solid
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original solid.f; only variable names, source form, and comment
-! style were updated.
-!
 ! Given the angular momentum per unit mass of zones zone_start..zone_end,
 ! returns the single (solid-body) rotation rate omega that carries the
 ! same total angular momentum, iterating on omega with shape (r0, eta2)
@@ -194,15 +177,6 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
 end subroutine solid_body_omega
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! wczimp
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original wczimp.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! JNT 2025/09/03 copy of 2025/05/14 to make the code enforce specific
 ! rotation profiles. Extends the original wcz.f (base solid-body/
 ! constant-J-per-mass/power-law behaviour, now the mode-0 branches

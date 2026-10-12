@@ -12,15 +12,6 @@ module rotational_mixing
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! ndifcom
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ndifcom.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Dummy-argument names for the quantities passed straight through to
 ! composition_grid.f90 (log_density/luminosity_lsun/log_pressure/log_radius/
 ! log_mass/enclosed_mass/log_total_mass) match that already-converted
@@ -180,15 +171,6 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 end subroutine diffuse_composition_driver
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! mixcom
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original mixcom.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! DIFCOM (this routine's original header name) calculates the
 ! diffusion of composition due to angular momentum transport. This is
 ! done by transforming to an equally spaced grid which was previously
@@ -336,7 +318,7 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
             end do
             if (zone_idx .gt. num_zones) i1 = num_zones
          else
-! 2026 (bugsweep sec-11): the original (mixcom.f) never set I1 on
+! The original (mixcom.f) never set I1 on
 ! this branch, so when the diffused region's top is radiative or is
 ! the surface, the species-mass sum and the He4 renormalisation loop
 ! below ran over 1..0 (i1 was zero via -finit-local-zero; whatever
@@ -377,15 +359,6 @@ subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
 end subroutine diffuse_composition
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! ccoeft
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original ccoeft.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 !  SET UP COEFFICIENTS OF DIFFUSION DIFFERENCE EQUATIONS FOR COMPOSITION
 !  TRANSPORT DUE TO ROTATIONALLY INDUCED MIXING.
 !
@@ -423,10 +396,8 @@ end subroutine diffuse_composition
 ! transport tridiagonal setup; called by diffuse_composition.f90, which passes the
 ! output matrix straight on to numerics' solve_tridiagonal.
 !
-! sub_diag/diag/super_diag/rhs were originally shared with diffuse_composition.f90/
-! ctridi.f90 (now solve_tridiagonal) via common/tridi/ (positional storage); converted (2026,
-! docs/GUIDELINES.md) to explicit output arguments since this is real
-! per-call data flow, not global configuration.
+! sub_diag/diag/super_diag/rhs: the tridiagonal system diffuse_composition
+! solves (solve_tridiagonal).
 subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, eq_composition, &
      eq_mass, num_eq_points, sub_diag, diag, super_diag, rhs)
       use star_info_lib, only: json
@@ -469,15 +440,6 @@ subroutine composition_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep,
 end subroutine composition_diffusion_coeffs
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! mixgrid
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original mixgrid.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
 ! Builds the equally-spaced-grid quantities needed by diffuse_composition.f90's
 ! diffusive composition solve: given the first/last unstable zones of
 ! a region (zone_begin/zone_end), calls equal_spaced_grid to lay down the
