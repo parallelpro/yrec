@@ -8,7 +8,11 @@
 !   the two quadratures of the shape factors (the trapezoid refinement
 !   of the distortion integral, the Gauss-Legendre average over an
 !   equipotential);
-!   the tridiagonal solve of angular-momentum transport.
+!   the tridiagonal solve of angular-momentum transport;
+!   the rotating structure on a synthetic model: the moments of inertia
+!   (and the imposed convection-zone law), omega from the specific
+!   angular momentum, the shape factors fp and ft, and the viscosity
+!   and thermal diffusivity (viscos).
 ! The braking entry points:
 !   brake_convection_zone       the spin-down of the convection zone
 !                               over a step: its j/m afterwards. The
@@ -131,6 +135,7 @@ program test_rotation
       end do
       call shape_quadrature_check()
       call angular_momentum_solve_check()
+      call structure_check()
       write(*,'(a)') "test_rotation: done"
 
 contains
@@ -211,5 +216,86 @@ subroutine angular_momentum_solve_check()
       call solve_angular_momentum_transport(n, inertia, dj, sumdj, sub, diag, sup, rhs, solution, 0.125d0, ierr)
       write(*,'(a,i3)') "singular: ierr", ierr
 end subroutine angular_momentum_solve_check
+
+! The rotating structure on a synthetic 60-zone solar-like model with a
+! convective envelope above 0.71 R, rotating differentially at about
+! ten times the solar rate (so the distortion shows), in
+! rezone's order: the moments of inertia, omega from the specific
+! angular momentum (convection zones rotate as solid bodies), the shape
+! factors fp and ft with eta2 and the mean radius, the moments again,
+! and the imposed convection-zone law (walpcz /= 0: thin shells). Then
+! the radiative and molecular viscosity and the thermal diffusivity.
+subroutine structure_check()
+      use star_info_lib, only: i_h1, i_he4, i_metals, i_he3
+      integer, parameter :: n = 60
+      integer, parameter :: shown(6) = [1, 12, 30, 43, 50, 60]
+      double precision, parameter :: rsun = 6.9598d10
+      double precision :: log_rho(json), log_r(json), log_m(json), log_t(json), &
+           dm(json), w(json), eta2(json), r0(json), fp(json), ft(json), gbar(json), &
+           inertia(json), di_dw(json), jm(json), qiw(json), f, r(json), rho(json)
+      double precision, allocatable :: xa(:,:)
+      logical :: convective(json)
+      integer :: i, s
+      write(*,'(a)') "# rotating structure"
+      allocate(xa(15,json))
+      xa = 0.0d0
+      do i = 1, n
+         f = dble(i - 1)/dble(n - 1)
+         r(i) = rsun*(0.002d0 + 0.998d0*f)
+         log_r(i) = log10(r(i))
+         log_t(i) = 7.196d0 - 0.85d0*f**1.3d0 - 2.6d0*f**25
+         log_rho(i) = 2.18d0 - 3.8d0*f**1.1d0 - 5.0d0*f**30
+         rho(i) = 10.0d0**log_rho(i)
+         convective(i) = f > 0.71d0
+         w(i) = 2.9d-5*(1.0d0 + 0.5d0*(1.0d0 - f)**2)
+         xa(i_h1,i) = 0.71d0 - 0.35d0*exp(-(f/0.12d0)**2)
+         xa(i_metals,i) = 0.018d0
+         xa(i_he3,i) = 1.0d-5
+         xa(i_he4,i) = 1.0d0 - xa(i_h1,i) - xa(i_metals,i) - xa(i_he3,i)
+      end do
+      dm(1) = 4.0d0/3.0d0*acos(-1.0d0)*r(1)**3*rho(1)
+      log_m(1) = log10(dm(1))
+      do i = 2, n
+         dm(i) = 2.0d0*acos(-1.0d0)*(r(i)**2*rho(i) + r(i-1)**2*rho(i-1))*(r(i) - r(i-1))
+         log_m(i) = log10(10.0d0**log_m(i-1) + dm(i))
+      end do
+      eta2 = 0.0d0
+      r0 = r
+      qiw = 0.0d0
+      star%ctrl%walpcz = 0.0d0
+      call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
+      jm(1:n) = inertia(1:n)*w(1:n)/dm(1:n)
+      call omega_from_j(log_rho, jm, log_r, log_m, dm, convective, n, eta2, inertia, w, qiw, r0)
+      write(*,'(a)') "zone  omega from j/m"
+      write(*,'(i4,1pe24.15)') (shown(s), w(shown(s)), s = 1, size(shown))
+      call rotation_shape_factors(log_rho, log_r, log_m, n, w, eta2, fp, ft, gbar, r0, ierr)
+      write(*,'(a,i2)') "shape factors: ierr", ierr
+      write(*,'(a)') "zone  fp ft eta2 r0 gbar"
+      do s = 1, size(shown)
+         i = shown(s)
+         write(*,'(i4,5(1pe24.15))') i, fp(i), ft(i), eta2(i), r0(i), gbar(i)
+      end do
+      call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
+      write(*,'(a)') "zone  I dI/domega"
+      do s = 1, size(shown)
+         write(*,'(i4,2(1pe24.15))') shown(s), inertia(shown(s)), di_dw(shown(s))
+      end do
+      star%ctrl%walpcz = -1.0d0
+      call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
+      write(*,'(a)') "walpcz = -1: zone  I dI/domega"
+      do s = 1, size(shown)
+         write(*,'(i4,2(1pe24.15))') shown(s), inertia(shown(s)), di_dw(shown(s))
+      end do
+      star%ctrl%walpcz = 0.0d0
+      do i = 1, n
+         star%cp(i) = 3.0d8*(1.0d0 + dble(i)/dble(n))
+         star%opacity_zone(i) = 1.0d0 + 100.0d0*(dble(i)/dble(n))**4
+      end do
+      call viscos(xa, log_rho, log_t, n)
+      write(*,'(a)') "zone  viscosity thermal-diffusivity"
+      do s = 1, size(shown)
+         write(*,'(i4,2(1pe24.15))') shown(s), star%visc(shown(s)), star%thdif(shown(s))
+      end do
+end subroutine structure_check
 
 end program test_rotation
