@@ -360,7 +360,7 @@ rotation/seculr/transport_checks.o: io_units.mod omega_profile.mod rotation_scra
 rotation/shape/moments_of_inertia.o: math_lib.mod physical_constants.mod star_info_lib.mod
 rotation/shape/rotating_shape.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod shell_quadrature.mod star_info_lib.mod
 rotation/shape/shell_quadrature.o: math_lib.mod physical_constants.mod star_info_lib.mod
-rotation/test/test_rotation.o: magnetic_braking.mod moments_of_inertia.mod omega_profile.mod physical_constants.mod rotating_shape.mod secular_transport.mod shell_quadrature.mod star_info_lib.mod viscosity.mod
+rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod physical_constants.mod rotating_shape.mod rotation_scratch_lib.mod rotational_mixing.mod secular_transport.mod shell_quadrature.mod star_info_lib.mod viscosity.mod
 rotation/viscosity.o: math_lib.mod physical_constants.mod star_info_lib.mod
 setup/locate_shell_boundaries.o: controls_buffer.mod star_info_lib.mod
 setup/map_user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod

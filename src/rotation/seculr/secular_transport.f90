@@ -155,14 +155,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
            rot_scr%log_radius_mid,star%m,rot_scr%log_temperature_mid,zone_min,zone_max, &
            star%nz,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = star%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(star%nz)
-!  COMPUTE ANGULAR VELOCITY GRADIENTS
-      do i = zone_min,zone_max
-! CENTER LOGARITHMIC DERIVATIVE.
-         log_radius_center = log10(rot_scr%interface_radius(i))
-         dlnr_weight = 1.0D0/ln10/(rot_scr%log_radius_mid(i)-log_radius_center)+ &
-              1.0D0/ln10/(log_radius_center-rot_scr%log_radius_mid(i-1))
-         dlnomega_dlnr(i) = 0.25D0*(rot_scr%omega_mid(i)-rot_scr%omega_mid(i-1))*dlnr_weight
-      end do
+      call compute_omega_gradients()
       call compute_quadrupole(rot_scr%log_density_mid,rot_scr%hg_mid,radius_unlogged,rot_scr%omega_mid,star%nz,ierr)
       if (ierr /= 0) return
       do i = 1,star%nz
@@ -172,17 +165,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 !  MECHANISMS CONSIDERED:SECULAR AND DYNAMICAL SHEAR,EDDINGTON CIRCULATION,
 !  AND THE GSF INSTABILITY.
       iteration = 1
-! MHP 06/02 added timestep to call
-      call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
-           rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
-           dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
-           total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-! Gated on lvfc, as in the F77 seculr.f (a 2026 change had gated it on
-! ldifad, which left star%vfc zero and killed the rotational mixing in
-! diffusion_velocity_scales; fixed in the 2026 bug sweep).
-      if(star%ctrl%lvfc) &
-           call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
-           zone_min,zone_max,rot_scr%omega_mid)
+      call compute_circulation()
 !  STORE INITIAL ANGULAR MOMENTUM DISTRIBUTION.
       do i =1,star%nz
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
@@ -200,83 +183,9 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 !  CORRECTED V AND THUS A MORE ACCURATE RUN OF DIFFUSION COEFFICIENTS.
       do iteration = 1,star%ctrl%max_diffusion_iters
          omega_surface = rot_scr%omega_mid(star%nz)
-         if(iteration.gt.1)then
-!  COMPUTE NEW RUN OF ANGULAR VELOCITIES (AVERAGE OF INITIAL AND
-!  LATEST VALUES).
-            do i = 1,star%nz
-               rot_scr%omega_mid(i) = 0.5D0*(rot_scr%omega_mid(i)+omega_start(i))
-            end do
-!  COMPUTE NEW RUN OF ANGULAR VELOCITY GRADIENTS.
-            do i = zone_min,zone_max
-! CENTER LOGARITHMIC DERIVATIVE.
-               log_radius_center = log10(rot_scr%interface_radius(i))
-               dlnr_weight = 1.0D0/ln10/(rot_scr%log_radius_mid(i)-log_radius_center)+ &
-                    1.0D0/ln10/(log_radius_center-rot_scr%log_radius_mid(i-1))
-               dlnomega_dlnr(i) = 0.25D0*(rot_scr%omega_mid(i)-rot_scr%omega_mid(i-1))*dlnr_weight
-            end do
-!  ON 2ND AND SUBSEQUENT ITERATIONS,COMPUTE CHARACTERISTIC VELOCITIES
-!  FOR THE NEW RUN OF OMEGA AND COMPOSITION FOUND IN THE PREVIOUS
-!  ITERATION.
-! MHP 06/02 added pressure and timestep to call
-            call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max, &
-                 iteration,rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid, &
-                 unstable_zone_found,dlnomega_dlnr,dynamical_shear_omega_limit, &
-                 diffusion_velocity,total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
-            if(star%ctrl%lvfc) &
-                 call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
-                 zone_min,zone_max,rot_scr%omega_mid)
-!  NOW THAT THE NEW DIFFUSION VELOCITIES HAVE BEEN COMPUTED, RESET THE
-!  ANGULAR MOMENTUM AND COMPOSITION ARRAYS TO THEIR ORIGINAL VALUES.
-            do i = 1,star%nz
-               star%j_rot(i) = specific_angular_momentum_saved(i)
-               do j = 1,4
-                  star%xa(j,i) = rot_scr%composition_snapshot(j,i)
-               end do
-            end do
-! MHP 10/91 CHANGED TO REMIX CZ'S TO THEIR PROPER DEPTH!
-! OTHERWISE, DRASTIC ERRORS OCCUR IN THE PRESENCE OF A DEEPENING CZ
-! (THE LOCAL ABUNDANCE AT THE CZ BASE PRIOR TO THE DEEPENING OF THE
-!  CZ IS ASSIGNED TO THE WHOLE CZ - X AND HE3 ONLY, AND ONLY FOR A
-!  CZ WHICH IS BECOMING DEEPER.)
-!  ENSURE THAT CONVECTIVE REGIONS ARE FULLY MIXED.
-         call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid, &
-              star%nz)
-         endif
-!  CALCULATE LOSS OF ANGULAR MOMENTUM DUE TO WIND FOR AN
-!  ISOLATED SURFACE C.Z.(NO COUPLING WITH INTERIOR VIA DIFFUSION).
-         if(surface_cz_active.and.diffusion_velocity(zone_max).eq.0.0D0 &
-              .and. .not.disk_lock_active)then
-!  FIND MOMENT OF INERTIA OF THE SURFACE C.Z.
-            cz_moment_of_inertia = 0.0D0
-            do i = zone_max,star%nz
-               cz_moment_of_inertia = cz_moment_of_inertia + rot_scr%moment_of_inertia_mid(i)
-            end do
-            wind_loss_active = star%job%use_wind_torque
-! MHP 10/02 UNUSED LFIRST REMOVED FROM CALL
-            call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom, &
-                 cz_mass_top,zone_max,star%nz,wind_loss_active,omega_surface, &
-                 star%star_mass,star%log_Teff,cz_moment_of_inertia, &
-                 star%j_rot, ierr)
-            if (ierr /= 0) return
-! REMOVE TORQUE FROM ENTIRE STAR
-! JNT 09/25 FOR 05/15 IMPJMOD=1 SAME AS LSOLID
-         else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
-              (star%ctrl%solid_body_mode_flag.eq.1)))then
-            wind_loss_active = star%job%use_wind_torque
-            solid_cz_mass_bottom = 0.0D0
-            solid_cz_mass_top = exp(ln10*star%log_total_mass)
-            solid_start_zone = 1
-            call brake_convection_zone(star%log_L,sub_timestep,solid_cz_mass_bottom, &
-                 solid_cz_mass_top,solid_start_zone,star%nz,wind_loss_active, &
-                 omega_surface,star%star_mass,star%log_Teff,cz_moment_of_inertia, &
-                 star%j_rot, ierr)
-            if (ierr /= 0) return
-            solid_body_zone_start = 1
-            solid_body_zone_end = star%nz
-            call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
-                 star%log_mass,star%dm,solid_body_zone_start,solid_body_zone_end, &
-                 rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,star%nz)
-         endif
+         if(iteration.gt.1) call restart_iteration()
+         call spin_down_uncoupled_surface()
+         if (ierr /= 0) return
 !  IF LDO=F,NO INSTABILITIES OCCUR (STABLE AGAINST ALL MECHANISMS).
          if(.not.unstable_zone_found) return
 !  TREAT CENTRAL AND SURFACE ZONES AS ALWAYS CONVECTIVE
@@ -294,35 +203,10 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
             star%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
          end do
 !  EACH UNSTABLE REGION IS SOLVED SEPARATELY STARTING HERE.
-!  LTEST IS SET T IF A NON-ZERO VELOCITY IS ENCOUNTERED.
-!  IBEG IS THE ZONE BELOW THE FIRST NON-ZERO V;IEND IS THE ZONE ABOVE
-!  THE LAST NON-ZERO V.
          in_unstable_region = .false.
          scan_start_zone = zone_min
          region_loop: do
-         unstable_zone_found = .false.
-         do j = scan_start_zone,zone_max
-            if(diffusion_velocity(j).gt.0.0D0) then
-               unstable_zone_found = .true.
-               if(.not.in_unstable_region) then
-!  START OF UNSTABLE REGION
-                  in_unstable_region = .true.
-                  zone_begin = j - 1
-               endif
-            else if(in_unstable_region) then
-!  END OF UNSTABLE REGION
-               zone_end = j - 1
-               in_unstable_region = .false.
-               scan_start_zone = j + 1
-               exit
-            endif
-         end do
-         if (j .gt. zone_max) then
-!  IF THE LAST INTERFACE IS UNSTABLE (NON-ZERO V) ENSURE THAT IEND IS SET
-!  PROPERLY.
-         if(in_unstable_region) zone_end = zone_max
-         scan_start_zone = zone_max + 1
-         end if
+         call find_unstable_region()
 !  IF NO NON-ZERO V'S ENCOUNTERED, EXIT.
          if(.not.unstable_zone_found) exit region_loop
 !  TRANSFORM TO EQUAL GRID SPACING IN CHI FOR THE REGION.
@@ -351,74 +235,16 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 ! JNT 09/25 FOR 05/15 IMPJMOD=1 IS THE SAME AS LSOLID
          if(.not.star%ctrl%force_solid_body_rotation .and. &
               (star%ctrl%solid_body_mode_flag.ne.1))then
-!  CHECK IF SURFACE C.Z. IS PART OF THE UNSTABLE REGION.
-!  IF SO,CALCULATE TERMS FOR DIFFUSION.
-         if(surface_cz_active.and.zone_end.eq.zone_max)then
-            if(disk_lock_active)then
-               wind_loss_explicit = 0.0D0
-               wind_loss_implicit = 0.0D0
-               fix_omega_at_surface = .true.
-            else
-               fix_omega_at_surface = .false.
-               if(star%job%use_wind_torque)then
-                  cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
-                  omega_surface = rot_scr%omega_mid(star%nz)
-                  call compute_solid_body_braking(star%log_L,sub_timestep, &
-                       cz_moment_of_inertia,iteration,omega_surface, &
-                       star%star_mass,star%log_Teff,omega_surface_start, &
-                       wind_loss_explicit,wind_loss_implicit, ierr)
-                  if (ierr /= 0) return
-               else
-                  wind_loss_explicit = 0.0D0
-                  wind_loss_implicit = 0.0D0
-               endif
-            endif
-         else
-            fix_omega_at_surface = .false.
-            wind_loss_explicit = 0.0D0
-            wind_loss_implicit = 0.0D0
-         endif
-         diffusion_converged = .false.
-         if(.not.star%ctrl%use_diffusion_advection_transport)then
-!  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
-            call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-                 eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%ntot, &
-                 wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
-                 sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
-!  SOLVE MATRIX FOR THE RUN OF OMEGA AT THE END OF THE TIMESTEP AT THE
-!  EQUALLY SPACED GRID POINTS.
-            call solve_angular_momentum_transport(rot_scr%ntot,eq_moment_of_inertia, &
-                 eq_delta_angular_momentum,sum_delta_angular_momentum, &
-                 sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
-                 surface_wind_loss_term, ierr)
-            if (ierr /= 0) return
-         else
-! SOLVE FOR OMEGA AND ITS DERIVATIVES IN A BAND MATRIX
-            call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-                 eq_omega,rot_scr%ntot,wind_loss_explicit,wind_loss_implicit, &
-                 eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
-                 sum_delta_angular_momentum,fix_omega_at_surface, &
-                 diffusion_converged, ierr)
+            call transport_angular_momentum()
             if (ierr /= 0) return
          endif
-!  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
-!  POINTS IN THE UNSTABLE REGION.
-            call equal_grid_to_model(eq_delta_angular_momentum,eq_angular_momentum, &
-                 star%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
-                 star%nz,sum_delta_angular_momentum,star%j_rot)
 !  PERFORM COMPOSITION DIFFUSION.
 !  UNTIL THE FINAL ITERATION, ONLY COMPOSITION DIFFUSION OF SPECIES WHICH
 !  AFFECT GRADIENTS IN MEAN MOLECULAR WEIGHT IS COMPUTED (H,HE3,HE4).
 !  ON THE FINAL ITERATION, DIFFUSION OF ALL SPECIES IS PERFORMED.
-         endif
          species_begin = 1
          species_end = 4
-         call diffuse_composition_driver(sub_timestep,mixing_diffusion_coeff, &
-              eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
-              rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
-              star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
-              zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
-              star%nz,star%xa,species_begin,species_end, ierr)
+         call mix_composition()
          if (ierr /= 0) return
 !  RETURN FOR NEXT REGION IF APPLICABLE
          if(scan_start_zone.gt.zone_max) exit region_loop
@@ -459,16 +285,205 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
       else
          species_end = 11
       endif
+      call mix_composition()
+      if (ierr /= 0) return
+      rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
+      rot_scr%am_transport_convective_flag_mid(star%nz) = lcz_last_zone
+
+contains
+
+! ---------------------------------------------------------------
+! d omega/d ln r at each interface of the transport region, centered
+! (weights from the one-sided log-radius spacings).
+subroutine compute_omega_gradients()
+      do i = zone_min,zone_max
+         log_radius_center = log10(rot_scr%interface_radius(i))
+         dlnr_weight = 1.0D0/ln10/(rot_scr%log_radius_mid(i)-log_radius_center)+ &
+              1.0D0/ln10/(log_radius_center-rot_scr%log_radius_mid(i-1))
+         dlnomega_dlnr(i) = 0.25D0*(rot_scr%omega_mid(i)-rot_scr%omega_mid(i-1))*dlnr_weight
+      end do
+end subroutine compute_omega_gradients
+
+! ---------------------------------------------------------------
+! The circulation and instability velocities of this iteration (and
+! whether any transport acts), and the Zahn coupling factor under lvfc
+! (as in the F77 seculr.f; a 2026 change had gated it on ldifad, which
+! left star%vfc zero and killed the rotational mixing in
+! diffusion_velocity_scales, fixed in the 2026 bug sweep).
+subroutine compute_circulation()
+      call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
+           rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
+           dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
+           total_luminosity,sub_timestep,rot_scr%log_pressure_mid)
+      if(star%ctrl%lvfc) &
+           call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
+           zone_min,zone_max,rot_scr%omega_mid)
+end subroutine compute_circulation
+
+! ---------------------------------------------------------------
+! The second and later iterations: omega averaged with its value at the
+! start, the velocities recomputed from it, then the angular momentum
+! and composition reset to their start and the convection zones remixed
+! to their proper depth (otherwise a deepening convection zone takes the
+! local abundance at its old base; MHP 10/91).
+subroutine restart_iteration()
+      do i = 1,star%nz
+         rot_scr%omega_mid(i) = 0.5D0*(rot_scr%omega_mid(i)+omega_start(i))
+      end do
+      call compute_omega_gradients()
+      call compute_circulation()
+      do i = 1,star%nz
+         star%j_rot(i) = specific_angular_momentum_saved(i)
+         do j = 1,4
+            star%xa(j,i) = rot_scr%composition_snapshot(j,i)
+         end do
+      end do
+      call homogenize_convection_zones(star%xa,star%dm,rot_scr%am_transport_convective_flag_mid, &
+           star%nz)
+end subroutine restart_iteration
+
+! ---------------------------------------------------------------
+! The wind on a surface convection zone the diffusion does not couple to
+! the interior (no velocity at its base), or on the whole star when it
+! rotates as a solid body (solid_body_mode_flag = 1 acts like
+! force_solid_body_rotation).
+subroutine spin_down_uncoupled_surface()
+      if(surface_cz_active.and.diffusion_velocity(zone_max).eq.0.0D0 &
+           .and. .not.disk_lock_active)then
+! the moment of inertia of the surface convection zone
+         cz_moment_of_inertia = 0.0D0
+         do i = zone_max,star%nz
+            cz_moment_of_inertia = cz_moment_of_inertia + rot_scr%moment_of_inertia_mid(i)
+         end do
+         wind_loss_active = star%job%use_wind_torque
+         call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom, &
+              cz_mass_top,zone_max,star%nz,wind_loss_active,omega_surface, &
+              star%star_mass,star%log_Teff,cz_moment_of_inertia, &
+              star%j_rot, ierr)
+         if (ierr /= 0) return
+      else if(surface_cz_active .and. (star%ctrl%force_solid_body_rotation .or. &
+           (star%ctrl%solid_body_mode_flag.eq.1)))then
+         wind_loss_active = star%job%use_wind_torque
+         solid_cz_mass_bottom = 0.0D0
+         solid_cz_mass_top = exp(ln10*star%log_total_mass)
+         solid_start_zone = 1
+         call brake_convection_zone(star%log_L,sub_timestep,solid_cz_mass_bottom, &
+              solid_cz_mass_top,solid_start_zone,star%nz,wind_loss_active, &
+              omega_surface,star%star_mass,star%log_Teff,cz_moment_of_inertia, &
+              star%j_rot, ierr)
+         if (ierr /= 0) return
+         solid_body_zone_start = 1
+         solid_body_zone_end = star%nz
+         call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
+              star%log_mass,star%dm,solid_body_zone_start,solid_body_zone_end, &
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%qiw_mid,rot_scr%mean_radius_mid,star%nz)
+      endif
+end subroutine spin_down_uncoupled_surface
+
+! ---------------------------------------------------------------
+! The next unstable region, from scan_start_zone on: zone_begin is the
+! zone below its first nonzero velocity, zone_end the zone above its
+! last; unstable_zone_found is false when there is none.
+subroutine find_unstable_region()
+      unstable_zone_found = .false.
+      do j = scan_start_zone,zone_max
+         if(diffusion_velocity(j).gt.0.0D0) then
+            unstable_zone_found = .true.
+            if(.not.in_unstable_region) then
+               in_unstable_region = .true.
+               zone_begin = j - 1
+            endif
+         else if(in_unstable_region) then
+            zone_end = j - 1
+            in_unstable_region = .false.
+            scan_start_zone = j + 1
+            exit
+         endif
+      end do
+      if (j .gt. zone_max) then
+! the last interface is unstable: the region ends at zone_max
+      if(in_unstable_region) zone_end = zone_max
+      scan_start_zone = zone_max + 1
+      end if
+end subroutine find_unstable_region
+
+! ---------------------------------------------------------------
+! Angular momentum transport across the region: the wind terms when the
+! surface convection zone is part of it (none under disk locking, which
+! fixes the surface omega), the diffusion equation on the equally spaced
+! grid and its solve (the advection-diffusion branch is the never
+! functional ldifad path), and the change of angular momentum mapped
+! back to the model.
+subroutine transport_angular_momentum()
+!  CHECK IF SURFACE C.Z. IS PART OF THE UNSTABLE REGION.
+!  IF SO,CALCULATE TERMS FOR DIFFUSION.
+      if(surface_cz_active.and.zone_end.eq.zone_max)then
+         if(disk_lock_active)then
+            wind_loss_explicit = 0.0D0
+            wind_loss_implicit = 0.0D0
+            fix_omega_at_surface = .true.
+         else
+            fix_omega_at_surface = .false.
+            if(star%job%use_wind_torque)then
+               cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%ntot)
+               omega_surface = rot_scr%omega_mid(star%nz)
+               call compute_solid_body_braking(star%log_L,sub_timestep, &
+                    cz_moment_of_inertia,iteration,omega_surface, &
+                    star%star_mass,star%log_Teff,omega_surface_start, &
+                    wind_loss_explicit,wind_loss_implicit, ierr)
+               if (ierr /= 0) return
+            else
+               wind_loss_explicit = 0.0D0
+               wind_loss_implicit = 0.0D0
+            endif
+         endif
+      else
+         fix_omega_at_surface = .false.
+         wind_loss_explicit = 0.0D0
+         wind_loss_implicit = 0.0D0
+      endif
+      diffusion_converged = .false.
+      if(.not.star%ctrl%use_diffusion_advection_transport)then
+!  SET UP DIFFUSION EQUATION ARRAYS TO SOLVE FOR OMEGA AT END OF TSTEP
+         call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
+              eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%ntot, &
+              wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
+              sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
+!  SOLVE MATRIX FOR THE RUN OF OMEGA AT THE END OF THE TIMESTEP AT THE
+!  EQUALLY SPACED GRID POINTS.
+         call solve_angular_momentum_transport(rot_scr%ntot,eq_moment_of_inertia, &
+              eq_delta_angular_momentum,sum_delta_angular_momentum, &
+              sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
+              surface_wind_loss_term, ierr)
+         if (ierr /= 0) return
+      else
+! SOLVE FOR OMEGA AND ITS DERIVATIVES IN A BAND MATRIX
+         call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
+              eq_omega,rot_scr%ntot,wind_loss_explicit,wind_loss_implicit, &
+              eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
+              sum_delta_angular_momentum,fix_omega_at_surface, &
+              diffusion_converged, ierr)
+         if (ierr /= 0) return
+      endif
+!  TRANSFORM THE NEW ANGULAR MOMENTUM DISTRIBUTION BACK TO THE ORIGINAL GRID
+!  POINTS IN THE UNSTABLE REGION.
+      call equal_grid_to_model(eq_delta_angular_momentum,eq_angular_momentum, &
+           star%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
+           star%nz,sum_delta_angular_momentum,star%j_rot)
+end subroutine transport_angular_momentum
+
+! ---------------------------------------------------------------
+! The rotational mixing of species species_begin..species_end across the
+! transport region.
+subroutine mix_composition()
       call diffuse_composition_driver(sub_timestep,mixing_diffusion_coeff, &
            eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm, &
            star%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
            zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
            star%nz,star%xa,species_begin,species_end, ierr)
-      if (ierr /= 0) return
-      rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
-      rot_scr%am_transport_convective_flag_mid(star%nz) = lcz_last_zone
-      return
+end subroutine mix_composition
+
 end subroutine apply_secular_transport
 
 !----------------------------------------------------------------------
