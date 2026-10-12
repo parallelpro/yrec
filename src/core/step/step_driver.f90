@@ -30,7 +30,7 @@ contains
 !   step_status = step_continue        advance accepted, continue
 !   step_status = step_kind_card_done  age/abundance stop reached
 !   step_status = step_leave_run_loop  target radius crossed
-!   (named constants from core/stop_conditions.f90)
+!   (named constants from core/run/stop_conditions.f90)
 !   ierr /= 0        error; run_yrec returns it to the CLI wrapper
 !
 ! The blanket `save` is load-bearing exactly as in run_yrec: these
@@ -197,7 +197,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! the star layer (fills star%*, star%luminosity_breakdown
 ! renormalization, star% via gettau); wrtout below only
 ! reads. One theme subroutine per quantity family -- see
-! core/observables.f90.
+! core/diagnostics/observables.f90.
        call compute_observables(ierr)
        if (ierr /= 0) return
 ! WRTOUT IS THE OUTPUT DRIVER ROUTINE

@@ -18,7 +18,7 @@ contains
 !----------------------------------------------------------------------
 ! Convective turnover timescale, one pressure scale height above the
 ! base of the surface convection zone -- computed from the STITCHED
-! model (core/stitched_model.f90): the converged interior + the
+! model (core/diagnostics/stitched_model.f90): the converged interior + the
 ! fixed-step envelope re-integration, walked as one structure by the
 ! internal walker turnover_from_interior_new below (its only caller
 ! is this routine, so the pair lives in one file).

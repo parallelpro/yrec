@@ -3,8 +3,8 @@
 !----------------------------------------------------------------------
 ! The command-line entry point. The whole job -- parameter and table
 ! setup, the Monte-Carlo / kind-card run loops, model evolution,
-! output and calibration -- lives in core/run_yrec.f90 (the
-! embeddable engine, also reachable through core/yrec_capi.f90);
+! output and calibration -- lives in core/run/run_driver.f90 (the
+! embeddable engine, also reachable through core/run/yrec_capi.f90);
 ! this program only runs it and turns its error code into an exit
 ! status.
 !

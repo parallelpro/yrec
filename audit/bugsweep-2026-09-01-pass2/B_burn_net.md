@@ -109,7 +109,7 @@ with the dummy list and matches.
 - provenance: inherited -- `git show 6cd5673:src/liburn.f | grep -n "DMASS\|FRAD"` -> 449 `DMASS = HSBEG - HSEND`, 454 `FRAD = (HS1(I)-HSBEG)/DMASS`; liburn2.f 292, 297 identical.
 - detail: For zones between the old CZ base (cz_base_zone_old) and the new, shallower base (cz_base_zone), the comment says a point 1/3 of the way from the old to the new base "SPENT 1/3 OF THE TIME IN THE CZ AND 2/3 OUT", so radiative_frac should run from 1 (at the old base, zone left the CZ immediately) to 0 (at the new base). With delta_mass = mass_coord_beg - mass_coord_end < 0 (mass coordinate increases outward, beg < end) and numerator (m - m_beg) >= 0, the code gives radiative_frac in [-1, 0]: exactly 1 less than intended. The depletion exponent radiative_frac*log(rate_rad) + (1-radiative_frac)*log(rate_cz) therefore weights the CZ-base rate by 1..2 and the local radiative rate by 0..-1. Since the local radiative rate at the old base is smaller than the CZ-average start rate, the mis-weighting over-depletes Li/Be in the just-decoupled shells (by exp of the log-ratio, easily a factor of several per step). Observable: pre-MS Li7 profile just below the retreating envelope CZ, and thus the surface Li that is dredged later; also the Li6/Be9 profiles. Fires every step in which the envelope CZ retreats (all of the pre-MS).
 
-## core/burn_lib.f90:2985-3060 + core/evolve_step.f90:541 -- "end of the time step" Li/Be rates are never computed; both rate arrays hold start-of-step values
+## core/burn_lib.f90:2985-3060 + core/step/step_driver.f90:541 -- "end of the time step" Li/Be rates are never computed; both rate arrays hold start-of-step values
 - class: logical
 - severity: medium
 - confidence: high

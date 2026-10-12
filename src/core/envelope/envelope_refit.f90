@@ -10,8 +10,8 @@
 ! interpolates the last one onto the fitting mass exactly, and
 ! advances num_zones.
 !
-! Callers: core/rebuild_envelope.f90 (fitting point moved during the
-! run) and core/read_starting_model.f90 (requested envelope mass
+! Callers: core/envelope/envelope_rebuild.f90 (fitting point moved during the
+! run) and core/model/starting_model.f90 (requested envelope mass
 ! shallower than the starting model's). Everything the two callers do
 ! before this loop (surface L/Teff/g, the env_struct shift) and after
 ! it (shell masses, rotation, the prints) differs and stays in the

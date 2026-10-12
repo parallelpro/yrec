@@ -9,7 +9,7 @@
 !
 ! Writers are PURE READERS of the stitched full-star model
 ! (interior + envelope + atmosphere), assembled every step by
-! core/stitched_model.f90 into the stx_* arrays. Module state below
+! core/diagnostics/stitched_model.f90 into the stx_* arrays. Module state below
 ! is per-job (output directory, parsed selection), reset by
 ! profile_output_init on every job.
 module profile_output

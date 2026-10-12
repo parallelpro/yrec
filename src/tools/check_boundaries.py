@@ -144,7 +144,7 @@ def mask_strings(line):
 STAR_BLIND_FILES = [
     # envint purity split (2026): the integration kernel takes its
     # configuration explicitly and must never touch the star layer
-    "core/envelope_integration_kernel.f90",
+    "core/envelope/envelope_integration_kernel.f90",
     "atm/t_tau_relations.f90",
 ]
 

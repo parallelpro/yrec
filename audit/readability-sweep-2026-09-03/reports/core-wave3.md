@@ -45,11 +45,11 @@ boundary guard) is token-identical in both apart from one comparison
   `accept_point_at_fit_mass` (`.le.` when true, `.lt.` when false;
   operands identical). Degenerate mass interval returns `ierr = 1`
   without printing.
-- `src/core/rebuild_envelope.f90`: loop replaced by the call with
+- `src/core/envelope/envelope_rebuild.f90`: loop replaced by the call with
   `.false.`; on `ierr /= 0` prints its former `write(*,*)` message and
   returns (was `stop 9998` -> ierr path, unchanged text). Locals
   `env_point_index, k, mass_interp_x0/x1/x2, interp_fraction` removed.
-- `src/core/read_starting_model.f90` (`rescale_and_refit_envelope`):
+- `src/core/model/starting_model.f90` (`rescale_and_refit_envelope`):
   loop replaced by the call with `.true.`; on `ierr /= 0` prints its
   former `write(run_log_unit,*)` message and returns. Locals
   `env_point_index, lower/target/upper_mass_coord,
@@ -62,7 +62,7 @@ The brief's premise was slightly off: `compute_seismic_columns` already
 reads through `ext_profile_value`; the actual duplication is between
 `profile_value`/`ext_profile_value` and `build_pulse_points` (and
 `compute_seismic_columns`' gravity). Five private module functions in
-`src/core/stitched_model.f90` (placed before `ideal_gas_mu`, each body
+`src/core/diagnostics/stitched_model.f90` (placed before `ideal_gas_mu`, each body
 token-for-token a former site, each site still reading the array it
 read before):
 
@@ -87,15 +87,15 @@ duplicates are listed under Deferred 2; io/ untouched.
 Applied exactly as proposed, in BOTH drivers (the brief named only
 evolve_step; the user message added run_yrec:332):
 
-- `src/core/evolve_step.f90`: new local `logical :: disable_structure_dt_limits`
+- `src/core/step/step_driver.f90`: new local `logical :: disable_structure_dt_limits`
   (line 54); line 140 `disable_structure_dt_limits = .false.`; the
   `call compute_timestep(...)` at 141-143 gained the trailing actual
   `disable_structure_dt_limits`; line 144
   `if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.`.
-- `src/core/run_yrec.f90`: same pattern -- local at line 53, pre-set at
+- `src/core/run/run_driver.f90`: same pattern -- local at line 53, pre-set at
   336, call 337-341 with the trailing actual, flip at 342.
 
-For mixburn (callee side, `util/compute_timestep.f90`): add
+For mixburn (callee side, `core/step/timestep_control.f90`): add
 `logical, intent(out) :: disable_structure_dt_limits` as the new last
 dummy (after `log_teff`), set `.false.` on entry and `.true.` where
 `structure_limits_active` is cleared, delete the
@@ -105,14 +105,14 @@ trailing actual is ignored until the dummy exists; the driver flip is
 a no-op on the explicit `.false.`. Merge order: core alone is safe;
 mixburn's callee change must merge together with or after core.
 
-The `massloss` half of Deferred 4 (call at `core/evolve_step.f90:233`)
+The `massloss` half of Deferred 4 (call at `core/step/step_driver.f90:233`)
 was NOT applied: `wind/massloss.f90`, where the `disk_exhausted` flip
 now lives, has no wave-3 owner (mixburn owns `wind/mdot.f90` only).
 See Deferred 3.
 
-### 4. `surfbc` dummy `luminosity_linear -> log_luminosity`
+### 4. `compute_surface_boundary` dummy `luminosity_linear -> log_luminosity`
 
-`src/core/surfbc.f90` only (dummy declaration, the two uses at the
+`src/core/structure/surface_boundary.f90` only (dummy declaration, the two uses at the
 `tri_logl` assignments, and the header comment). No caller change.
 
 ### 5. Geometry helpers per site
@@ -138,7 +138,7 @@ uses `star%solar_luminosity_cgs`) and `stitched_model.f90:147-148`
 
 ### 6. Wave-2 Deferred leftovers (core-only, class A)
 
-- 6a (`5d75705`, sidechan Deferred 2) `src/core/read_starting_model.f90`: deleted
+- 6a (`5d75705`, sidechan Deferred 2) `src/core/model/starting_model.f90`: deleted
   `star%iovim = -1` (was :688) and appended `zone_index=-1` to the
   `call temperature_gradients(...)` below it. The only remaining
   reader of `star%iovim` is the optional-argument fallback at
@@ -154,7 +154,7 @@ uses `star%solar_luminosity_cgs`) and `stitched_model.f90:147-148`
 ## Deferred (exact proposals)
 
 1. **Envelope refit, remaining differences** between
-   `core/rebuild_envelope.f90` and `core/read_starting_model.f90`
+   `core/envelope/envelope_rebuild.f90` and `core/model/starting_model.f90`
    (`rescale_and_refit_envelope`) -- all outside the shared loop:
    - surface radius: `read_starting_model.f90:718`
      `0.5d0*(star%log_L + star%solar_luminosity_cgs - 4.0d0*star%log_Teff - c4pil - csigl)`
@@ -201,7 +201,7 @@ uses `star%solar_luminosity_cgs`) and `stitched_model.f90:147-148`
    `wind/massloss.f90` gets an owner (its :283
    `if(disk_exhausted) star%job%use_mass_accretion = .false.` is the
    callee write): add a `logical :: disk_exhausted` local in
-   `core/evolve_step.f90`, set `.false.` before the `call massloss(...)`
+   `core/step/step_driver.f90`, set `.false.` before the `call massloss(...)`
    at `:233`, pass it as the trailing-but-one actual (before `ierr`,
    as sidechan proposed; massloss is external with no interface block,
    so unlike the trailing compute_timestep actual this one must land
@@ -212,27 +212,27 @@ uses `star%solar_luminosity_cgs`) and `stitched_model.f90:147-148`
    All evaluate `L = 4 pi R^2 sigma Teff^4`:
    - order A `0.5d0*(logL + star%log10_solar_luminosity - 4.0d0*logTeff - c4pil - csigl)`
      -- now `envint_lib::surface_log10_radius_cm`, sites
-     `core/rebuild_envelope.f90:103` (`log_luminosity_lsun, log_teff`),
-     `core/surfbc.f90:179` (`tri_logl(i), log10_teff`),
-     `core/stitched_model.f90:142` (`star%log_L, star%log_Teff`).
+     `core/envelope/envelope_rebuild.f90:103` (`log_luminosity_lsun, log_teff`),
+     `core/structure/surface_boundary.f90:179` (`tri_logl(i), log10_teff`),
+     `core/diagnostics/stitched_model.f90:142` (`star%log_L, star%log_Teff`).
    - order B `0.5d0*(logL + star%log10_solar_luminosity - c4pil - csigl - 4.0d0*logTeff)`
      -- now `observables_lib::log_r_surface_cm`, sites
      `core/observables_lib.f90:282` (`compute_surface_globals`) and
-     `core/run_yrec.f90:224` (then `- star%log10_solar_radius`).
+     `core/run/run_driver.f90:224` (then `- star%log10_solar_radius`).
      `wind/wind_lib.f90:22 log10_radius_from_l_teff` is this same
      order (`4.d0`); once the order is decided, one of the two could
      go.
-   - outlier `core/read_starting_model.f90:718`
+   - outlier `core/model/starting_model.f90:718`
      `0.5d0*(star%log_L + star%solar_luminosity_cgs - 4.0d0*star%log_Teff - c4pil - csigl)`
      (bug; see Deferred 1).
    Spot ("ambient") Teff sites:
    - `log_teff - 0.25*log10(star%ctrl%spot_filling_factor * pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)`
      (real*4 literals) -- now `envint_lib::ambient_log10_teff`, sites
-     `core/rebuild_envelope.f90:131`, `core/surfbc.f90:186`,
-     `core/read_starting_model.f90:739`;
+     `core/envelope/envelope_rebuild.f90:131`, `core/structure/surface_boundary.f90:186`,
+     `core/model/starting_model.f90:739`;
      `mixing/temperature_gradients.f90:181-182` is the same text (not
      mine).
-   - `core/stitched_model.f90:147-148` same formula with `0.25d0`,
+   - `core/diagnostics/stitched_model.f90:147-148` same formula with `0.25d0`,
      `4.0d0`, `1.0d0` -- different literal kinds (the real*4 `0.25`,
      `1.0` are exact in double, `pow(x, 4.0)` goes through
      `pow_r_sp -> pow_r(x, dble(4.0))`, so the values are probably
@@ -267,7 +267,7 @@ None. Every gate1 run was IDENTICAL on the first build.
 
 ## What the audit / earlier reports got wrong or understated
 
-- Brief item 3 named only `core/evolve_step.f90`; `core/run_yrec.f90`
+- Brief item 3 named only `core/step/step_driver.f90`; `core/run/run_driver.f90`
   has an identical `compute_timestep` call (:337) that needed the same
   edit (the user message caught it). Sidechan's Deferred 4 line
   numbers (`evolve_step.f90:141/235`) are now `:141` and `:233`.

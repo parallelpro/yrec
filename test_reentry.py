@@ -97,7 +97,7 @@ def _assert_second_matches_fresh(fresh, twice, ignore_stem=None):
     assert not diffs, (
         f"second in-process run differs from a fresh process in: {diffs} "
         "-- some SAVEd state is escaping the reset (see "
-        "core/yrec_reset.f90 and the ROADMAP step-C notes)"
+        "core/run/yrec_reset.f90 and the ROADMAP step-C notes)"
     )
 
 

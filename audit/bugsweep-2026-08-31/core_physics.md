@@ -23,14 +23,14 @@ All files read in full; provenance checked against `git show 6cd5673:src/<name>.
 - provenance: inherited (engeb.f:1160-1169)
 - detail: engeb's returned "dlnepsilon" derivatives are actually ABSOLUTE derivatives d(eps)/dln(T,rho): sum3 = sum_i DG(i)*dlnrate_i = eps * dln eps/dlnT (erg/g/s), and both downstream Henyey use (henyey_coefficients.f90:291-294 scales ql and ql_dt by the same cccql factor; henyey_eliminate uses them with a ln10 factor as absolute d(eps)/dlogT) and the old (non-Itoh) neutrino branch (qetnx accumulates dln-terms multiplied by the absolute rates ex1..ex3 before subtracting, lines 2006-2021) are consistent with that. The Itoh branch instead converts the NEUTRINO derivative to a dimensionless log-derivative (`neutrino_dlnq_dlnt = -dsnudt*T/enu`, line 1953) and adds it to the absolute accumulator -- a units mismatch that mis-weights the neutrino contribution by a factor |eps_nu| relative to the nuclear terms. Same in the original.
 
-## core/stitched_model.f90:529-530 -- pulse builder swaps grad/grad_ad for the envelope region
+## core/diagnostics/stitched_model.f90:529-530 -- pulse builder swaps grad/grad_ad for the envelope region
 - class: logical (copy-paste / parallel-branch asymmetry)
 - severity: high (for GYRE/FGONG output)
 - confidence: high
 - provenance: new-code (stitched restructure 065c064; the matching PROFILE-column swap was later fixed -- see the comment at lines 333-339 -- but the pulse builder site was missed)
 - detail: env_gradients ordering is (1) radiative, (2) ADIABATIC, (3) ACTUAL (envelope_derivs.f90:105-107 fills current_gradients(2)=grada, (3)=actual_gradient). ext_profile_value's envelope case correctly maps col 13 (gradT) -> (3) and col 14 (grada) -> (2). But build_pulse_points region 2 sets `nab = env_gradients(2,i)` (adiabatic!) and `nab_ad = env_gradients(3,i)` (actual!). Consequences in every envelope-region pulse point: GYRE columns nabla and nabla_ad are swapped, and the first-pass thermal N^2 = g^2 (rho/P) delta (nab_ad - nab) has its SIGN flipped -- so convective envelope points get N^2 > 0 and are then overwritten by the centered-difference form (exactly the cancellation noise the hybrid scheme was designed to avoid there), while radiative envelope points keep a wrong-sign negative thermal N^2 (GYRE sees convection where there is none). The atmosphere region is unaffected because atmo_gradients uses a different ordering ((2)=actual, (3)=adiabatic, envint_kernel.f90:495-497) that happens to match the code. Note the two structs' differing row orders are the trap that caused this.
 
-## core/stitched_model.f90:508-509 -- eps_eps_T / eps_eps_rho double-multiplied by eps (over-correction of a known finding)
+## core/diagnostics/stitched_model.f90:508-509 -- eps_eps_T / eps_eps_rho double-multiplied by eps (over-correction of a known finding)
 - class: physical
 - severity: medium (nonadiabatic GYRE runs only)
 - confidence: medium-high
@@ -58,14 +58,14 @@ All files read in full; provenance checked against `git show 6cd5673:src/<name>.
 - provenance: inherited (liburn.f:448-458: DMASS = HSBEG - HSEND; FRAD = (HS1(I)-HSBEG)/DMASS; identical in liburn2.f)
 - detail: For the zones that "began convective and ended radiative" (CZ base retreated outward, so mass_coord_end > mass_coord_beg), the comment defines the recipe: a point x of the way (in mass) from the old to the new base spends x of the timestep in the CZ, 1-x radiative, so FRAD (the radiative-rate weight) should be 1 - x with x = (m - beg)/(end - beg). The code computes radiative_frac = (m - beg)/(beg - end) = -x: 0 at the old base (should be 1) and -1 at the new base (should be 0). The blend exp(frad*ln r_rad + (1-frad)*ln r_cz) is therefore evaluated with a negative weight on the radiative rate and a weight up to 2 on the CZ rate -- the per-zone depletion in the transition region is scaled by r_cz/r_rad relative to the intended value. Affects Li6/Li7/Be9 depletion whenever the surface CZ retreats (pre-MS spin-down/Li-depletion science). Verbatim in both originals.
 
-## core/read_starting_model.f90:604-613 -- core-extension JSON overflow prints "RUN TERMINATED" but does not terminate
+## core/model/starting_model.f90:604-613 -- core-extension JSON overflow prints "RUN TERMINATED" but does not terminate
 - class: logical
 - severity: high (when it fires: out-of-bounds writes across every model array)
 - confidence: high
 - provenance: inherited (starin.f:378-387: same IF/WRITE block with no STOP, falls through into the shift loop)
 - detail: extend_core_toward_center checks `num_shells_extended .gt. json`, writes "STARIN: ***** RUN TERMINATED *****" -- and then continues: no `ierr = 1`, no `return`. The very next loop shifts every model array to index i + num_core_shells_added up to num_shells_extended > json, writing past the declared bounds of star%log_mass/logR/xa/etc. The original had the identical dead warning (no STOP). The modernized routine has the ierr channel one line away, so this is also the cheapest possible fix.
 
-## core/read_starting_model.f90:956-961 -- inverted interpolation sign for X and Z at the new envelope fitting point
+## core/model/starting_model.f90:956-961 -- inverted interpolation sign for X and Z at the new envelope fitting point
 - class: physical (sign error)
 - severity: low-medium
 - confidence: high
@@ -79,7 +79,7 @@ All files read in full; provenance checked against `git show 6cd5673:src/<name>.
 - provenance: inherited (liburn.f: ending-depth block uses `DR = EXP(CLN*HRO(J+1))-R` with R from HR(J))
 - detail: In the ENDING CZ depth search (envelope overshoot active), shell_radius and search_radius are built from the current model's radius array, but the zone width used to place cz_base_frac is `delta_radius = exp(ln10*star%logR_start(zone_idx+1)) - shell_radius` -- the START-of-step radius of the zone above minus the current radius of the zone below. The matching STARTING-depth block a few lines up consistently uses logR_start throughout, so the ending block's mixture looks like a copy-paste from it. Between models the two grids differ by the structural change over the step, so cz_base_frac (and hence the burn-rate/mass adjustment of the CZ base zone) is systematically perturbed. Inherited from the original.
 
-## core/check_solar_calibration.f90:72 -- dlum_dalpha value contradicts its own empirical comment by a factor of 10
+## core/run/calibration.f90:72 -- dlum_dalpha value contradicts its own empirical comment by a factor of 10
 - class: physical (comment-vs-code mismatch)
 - severity: low
 - confidence: medium (that one of the two numbers is wrong; unclear which)
@@ -93,7 +93,7 @@ All files read in full; provenance checked against `git show 6cd5673:src/<name>.
 - provenance: inherited (deutrate.f uses 3.0115D23 = NA/2.000 with a comment claiming "Avogadro / mass of deuteron in amu"; engeb.f uses 6.023D23/ANUC(3) = NA/2.013553 = 2.9912e23)
 - detail: The same physical factor (Avogadro's number over the deuteron mass in amu) is 3.0115e23 in deutrate (divides by exactly 2, contradicting its own comment) and 2.9912e23 in engeb -- a 0.7% inconsistency between the abundance-update rate (DRATE, used by dburn/dburnm) and the energy-generation rate for the identical reaction. deutrate's overturn cap (rdeutmax) uses the same NA/2 value. Trivially fixable; noted mostly because the two sites are supposed to be the same rate.
 
-## Known-item sharpening: core/read_starting_model.f90:616-673 -- extend_core never shifts logRho, and the ideal-gas offset mixes shells
+## Known-item sharpening: core/model/starting_model.f90:616-673 -- extend_core never shifts logRho, and the ideal-gas offset mixes shells
 - class: logical/physical
 - severity: low-medium
 - confidence: high

@@ -5,7 +5,7 @@
 ! eos/kap/atm's (see eos/test/test_eos.f90 for the initialization
 ! conventions). net/ is a function of (log T, log rho, composition)
 ! once its settings are installed, so each piece is tested on its own:
-!   * the cross-section scales (setup/map_user_inputs.f90, newcross
+!   * the cross-section scales (setup/user_inputs.f90, newcross
 !     defaults) and configure_network,
 !   * compute_network_rates on a (log T, log rho) grid, and
 !     compute_reaction_rates' analytic derivatives against centred

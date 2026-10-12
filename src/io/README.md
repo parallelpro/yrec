@@ -21,7 +21,7 @@ The physics never reads a deck or writes a file itself. It reads its controls fr
 | `run_files` | The fixed unit numbers, the `{YREC_INPUT}`/`{YREC_START}`/`{YREC_OUTPUT}` placeholders in paths, the output directory with its copy of the deck (`inlist_used`), and opening the run's files. |
 | `derived_controls` | `derive_controls`: the controls computed from the ones read (rate scales, which EOS and opacity tables, the wind law's exponents, the mixture changes, the diffusion switches), the semiconvection-with-overshoot stop, and the run log's header. |
 | `run_cards` | `interpret_kind_cards`: the run plan from the kind cards (evolve, rescale, rescale and evolve). |
-| `controls_check` | Warnings about controls that are set but inert. run_yrec calls it once, after `star_setup`. |
+| `controls_check` | Warnings about controls that are set but inert. run_yrec calls it once, after `prepare_run`. |
 | `io_units` | The three fixed units written from everywhere (the run log, the terminal and the final model), and `check_io`, the report for a failed open, read or write. |
 
 **The output and the models**

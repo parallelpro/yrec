@@ -32,7 +32,7 @@ subroutine prepare_run(ierr)
       call set_up_constants_and_tables(ierr)
       if (ierr /= 0) return
 ! Monte-Carlo run range and per-run sampled-parameter read (2026:
-! core/monte_carlo.f90 -- the standalone MC home).
+! core/run/monte_carlo.f90 -- the standalone MC home).
       call setup_monte_carlo_runs
 
       return

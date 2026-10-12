@@ -71,14 +71,14 @@ date" -- no file gained or lost a `use` of a module it did not already use).
    `luminosity_breakdown`, `neutrino_flux`, `neutrino_flux_total`,
    `neutrino_flux_zone` and the nine Monte-Carlo sample arrays declared with them.
    Consumers: `core/henyey_iterate.f90` (num_species, `do j = 1,n_lum_channels`),
-   `core/evolve_step.f90` (num_species), `core/read_starting_model.f90`
+   `core/step/step_driver.f90` (num_species), `core/model/starting_model.f90`
    (num_species, `reference_composition(n_species_extended)`),
-   `core/rebuild_envelope.f90` (`composition(n_species_extended,json)`,
-   `species_end_index`), `core/henyey_coefficients.f90` (`n_lum_channels`,
+   `core/envelope/envelope_rebuild.f90` (`composition(n_species_extended,json)`,
+   `species_end_index`), `core/structure/structure_equations.f90` (`n_lum_channels`,
    two `n_nu_fluxes` loops, `luminosity_breakdown(8)` -> `(i_lum_he_c)`),
    `core/observables_lib.f90` (renormalize_luminosity_breakdown loop),
-   `core/neutrino_flux_table.f90` (three loops and the two implied-do write
-   lists -- record layout unchanged), `core/monte_carlo.f90`
+   `core/diagnostics/neutrino_flux_output.f90` (three loops and the two implied-do write
+   lists -- record layout unchanged), `core/run/monte_carlo.f90`
    (`min(star%job%mc_run_end,max_mc_runs)`).
    The three `do k = 4,species_end_index` in rebuild_envelope are now
    `do k = i_he3,species_end_index`: 4 is provably i_he3 -- the routine sets
@@ -94,18 +94,18 @@ date" -- no file gained or lost a `use` of a module it did not already use).
    `if (j_idx.lt.max_convective_zones) cycle`. `mixing/mix.f90`: dummy
    `mixed_zone_bounds_no_overshoot(max_convective_zones,2)` and local
    `radiative_zone_bounds(max_radiative_zones,2)`. `core/henyey_iterate.f90`
-   and `core/read_starting_model.f90`: locals.
+   and `core/model/starting_model.f90`: locals.
    The mix.f90:48 dummy was NOT changed to (13,2): both actuals are (12,2)
    (`star%mixed_zone_bounds_no_overshoot` from evolve_step, henyey_iterate's
    local), and the star_info_lib member is (12,2), so the audit's claim of a
    (13,2)/(12,2) mismatch is wrong; only the dimension is named.
-   `setup/locate_shell_boundaries.f90` contains no 12/13 literal at all -- the
-   (13,2)/(12,2) locals the brief had in mind are in `setup/rezone.f90:46`
+   `core/model/shell_boundaries.f90` contains no 12/13 literal at all -- the
+   (13,2)/(12,2) locals the brief had in mind are in `core/model/rezoning.f90:46`
    (not in my file list; see Deferred).
 
 7. **ln_solar_luminosity -> ln10_over_lsun** -- done. Member renamed with a
    comment saying it is ln(10)/solar_luminosity_cgs, not a logarithm of Lsun;
-   `setup/setups.f90`, `core/monte_carlo.f90`, `core/henyey_coefficients.f90`
+   `core/run/run_setup.f90`, `core/run/monte_carlo.f90`, `core/structure/structure_equations.f90`
    (`cccql = star%ln10_over_lsun*star%m(im)`). No io/ user; grep for the old
    name over src/ is empty.
 
@@ -113,10 +113,10 @@ date" -- no file gained or lost a `use` of a module it did not already use).
    "chosen_dt (former DELTSH): the timestep compute_timestep adopted (the
    minimum over all its limiters, seconds); read_starting_model reuses the slot
    transiently as |delta_time|. Nothing reads it as an H-burning governor."
-   Sites: `core/evolve_step.f90` (compute_timestep and read_starting_model
-   calls), `core/run_yrec.f90` (two). `util/compute_timestep.f90`: comment only
+   Sites: `core/step/step_driver.f90` (compute_timestep and read_starting_model
+   calls), `core/run/run_driver.f90` (two). `core/step/timestep_control.f90`: comment only
    ("the caller stores it in star%chosen_dt") -- its local `hydrogen_dt` and the
-   dummy of `util/timestep_limit_hburn.f90` are the real H-burn limiter and stay.
+   dummy of `core/step/timestep_control.f90` are the real H-burn limiter and stay.
    Verified by reading compute_timestep: the actual passed for the member is the
    final `min` of all limiters, never fed back as an H-burn quantity.
    `core/main.f90:82-86`: main.f90 is 23 lines; the note was already removed by
@@ -125,7 +125,7 @@ date" -- no file gained or lost a `use` of a module it did not already use).
 9. **massloss age_gyr** -- done. `wind/massloss.f90`: `age_gyr` removed from the
    dummy list and its declaration; grep of the file shows the name occurred only
    on those two lines (no contained procedures), so it was unread.
-   `core/evolve_step.f90`: the call drops `star%dage`; the remaining arguments are
+   `core/step/step_driver.f90`: the call drops `star%dage`; the remaining arguments are
    unchanged and in the same order.
 
 10. **ix_* mixture index block** -- done. `star_info_lib.f90`:
@@ -135,7 +135,7 @@ date" -- no file gained or lost a `use` of a module it did not already use).
     proven from read_starting_model's atomic-weight DATA
     (23.0, 26.99, 24.32, 55.86, 28.1, 12.015, 1.008, 16.0, 14.01, 39.96, 20.19,
     4.004) and the LAOL table header "CS mix: C,N,O,Ne,Na,Mg,Al,Si,Ar,Fe".
-    `core/read_starting_model.f90`: the mixture block uses the names (sum of ten
+    `core/model/starting_model.f90`: the mixture block uses the names (sum of ten
     metals, zenvm minus ix_c/ix_o/ix_n, `species_mix_weights(ix_h)`, `(ix_he)`),
     `species_mix_weights`/`atomic_weight(n_mix_species)`, three `do i = 1,12` ->
     `n_mix_species`. `kap/laol89/rdlaol.f90:50-51` only: read list
@@ -149,7 +149,7 @@ date" -- no file gained or lost a `use` of a module it did not already use).
   `max_convective_zones`/`max_radiative_zones` (all `(12,2)`/`(13,2)`):
   `mixing/rotmix.f90:35-36`, `mixing/burn_settle_mix.f90:52-53`,
   `mixing/semiconvection.f90:57`, `mixing/overshoot_boundaries.f90:26-27`,
-  `setup/rezone.f90:46`, `rotation/evolve_angular_momentum.f90:57-58`,
+  `core/model/rezoning.f90:46`, `rotation/evolve_angular_momentum.f90:57-58`,
   `rotation/am_convective_regions.f90:29-30,34`,
   `rotation/mid_timestep_model.f90:51-52`. Mechanical, value-preserving; the
   names are public in star_info_lib.
@@ -162,8 +162,8 @@ date" -- no file gained or lost a `use` of a module it did not already use).
   sources of clsnuf_diag/gasnuf_diag (not the 10 flux slots and not the 8
   luminosity channels); it needs its own name (e.g. `n_nu_sources = 8`), which
   the brief did not ask for.
-- Seconds-per-year duplicates `3.1558d7`: `core/henyey_coefficients.f90:116`
-  (`one_year_sec`), `setup/setups.f90:57` (`seconds_per_year`),
+- Seconds-per-year duplicates `3.1558d7`: `core/structure/structure_equations.f90:116`
+  (`one_year_sec`), `core/run/run_setup.f90:57` (`seconds_per_year`),
   `rotation/microdiff/gravitational_settling_setup.f90:72` (`seconds_per_year_bl`),
   `rotation/microdiff/microdiff_setup.f90:66` (`csecyr_bah`) -- one
   `phys_const_lib` parameter would replace all four; not in the brief.
@@ -180,8 +180,8 @@ None of the ten items was skipped.
 
 - mix.f90:48: the dummy `mixed_zone_bounds_no_overshoot(12,2)` matches both
   actuals and the star_info_lib member (all (12,2)); there is no (13,2) mismatch.
-- `setup/locate_shell_boundaries.f90` has no 12/13 literals; the zone-bound
-  locals are in `setup/rezone.f90:46`.
+- `core/model/shell_boundaries.f90` has no 12/13 literals; the zone-bound
+  locals are in `core/model/rezoning.f90:46`.
 - `core/main.f90:82-86` (the DELTSH/hydrogen_dt note) no longer exists after
   core R1; main.f90 is 23 lines.
 - `ln_solar_luminosity` and `reaction_rate_1..13` have no io/ readers, so the

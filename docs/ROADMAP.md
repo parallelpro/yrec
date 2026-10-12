@@ -536,7 +536,7 @@ small for slow rotators.
 
 ### NEW in pass 2 -- VERIFIED
 
-1. core/henyey_coefficients.f90:464 + stitched_model.f90:448-455,
+1. core/structure/structure_equations.f90:464 + stitched_model.f90:448-455,
    512-514 (new-code): pulse_mean_molecular_weight is filled from
    eos_res(i_gas_constant) = R/mu, and
    pulse_electron_mean_molecular_weight already holds 1/mu_e, so
@@ -570,7 +570,7 @@ small for slow rotators.
    Step noise in rho, cp, grad_ad for every SCV-EOS run (the
    run_from_start_to_dbl and giant_differential_rotation OPALSCV
    decks). Reseed on fix.
-4. setup/rezone.f90:845-852 (inherited hpoint.f "MHP 6/00" block):
+4. core/model/rezoning.f90:845-852 (inherited hpoint.f "MHP 6/00" block):
    the start-of-step osplin of eps/esum onto rot_scr%old_esum/
    old_eps passes star%log_mass as the table abscissa AFTER the
    transfer loop overwrote it with the new grid (old count, new
@@ -1006,7 +1006,7 @@ left for a decision (physics changes):
   neutrino loss, alpha-capture and He3 energies, fluxes and Be7 came
   back through star% scalars; per-shell reaction rates and branchings
   were stored and never read (removed).
-- **mix -> core/composition_step.f90 -- DONE (86fd404d).**
+- **mix -> core/step/composition_step.f90 -- DONE (86fd404d).**
 - **The composition step is called by evolve_step, not by the
   structure solver -- DONE.** henyey_iterate (crrect) refreshed the
   surface boundary condition, re-ran the composition step at levels
@@ -1024,7 +1024,7 @@ left for a decision (physics changes):
   predictors, so the converged model is affected only through the
   starting point of levels 3-4. Likely unintended; fixing it changes
   accretion runs.
-- **core/convection_geometry.f90 -- DONE.** The CZ-base interpolation
+- **core/step/convection_geometry.f90 -- DONE.** The CZ-base interpolation
   (three copies: observables_lib, turnover_timescale, burn_step's
   locate_cz_base), the pressure scale height behind the envelope
   overshoot depth (evolve_step, evolve_angular_momentum) and the
@@ -1384,7 +1384,7 @@ and the full battery.
   star%job%structfactor control is gone. log10_radius_from_l_teff
   moves to physical_constants and also replaces observables's
   log_r_surface_cm, which was the same expression.
-- **DONE: mass_change** (5e46b707). core/mass_change.f90's change_mass
+- **DONE: mass_change** (5e46b707). core/step/mass_change.f90's change_mass
   and apply_mass_change (formerly massloss and mdot) read the model
   from star, so they take 3 and 8 arguments. mdot's mu output, always
   overwritten before use, is a local.

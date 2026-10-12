@@ -62,7 +62,7 @@ copied on the way in or out.
   both call sites. Safe because solve_composition reads only zones inside
   the radiative/convective bounds, all <= the `num_zones` columns that mix
   filled.
-- `src/util/timestep_limit_hburn.f90`: same local-array pattern for the
+- `src/core/step/timestep_control.f90`: same local-array pattern for the
   single shell-midpoint column; `eqburn` call updated.
 - `src/net/test/test_net.f90`: `rate_vec(num_rate_rows)` replaces the fifteen
   `json = 5000` arrays; the three print statements print the same twelve
@@ -105,16 +105,16 @@ internal subroutines `compute_energy_generation` /
 and the inline rate block (the bit-drift note at burn_lib.f90:1166-1169) is
 untouched. The three callers:
 
-- `src/core/henyey_coefficients.f90`: `type(burn_result) :: burn`; after the
+- `src/core/structure/structure_equations.f90`: `type(burn_result) :: burn`; after the
   call, `zone_dlnepsilon_dlnrho = burn%deps_dlnrho`,
   `zone_dlnepsilon_dlnt = burn%deps_dlnt`,
   `energy_gen_rate = burn%total_energy_gen_rate`, and the five
   `energy_gen_component(1..5) = burn%...` copies -- the two
   `zone_dlnepsilon_*` locals survive because they are read further down
   outside my hunk (lines ~250-252, 380-381, 396-397).
-- `src/core/neutrino_flux_table.f90`: eight scalar locals -> `burn`; nothing
+- `src/core/diagnostics/neutrino_flux_output.f90`: eight scalar locals -> `burn`; nothing
   downstream reads them (they were discarded there before, too).
-- `src/util/timestep_limit_heburn.f90`: `burn` plus
+- `src/core/step/timestep_control.f90`: `burn` plus
   `helium_energy_gen = burn%triple_alpha_energy_gen`, which the existing
   `if(helium_energy_gen.lt.1.d-22)` floor then reads as before.
 
@@ -156,7 +156,7 @@ mid_timestep_model.f90 passes `sub_timestep` (seconds) to dburnm.
 
 `reports/core-wave3.md` exists and confirms the driver edit: commit
 `6b50553` on `rs/core` adds the local `disable_structure_dt_limits` in BOTH
-`core/evolve_step.f90` and `core/run_yrec.f90`, pre-sets it `.false.`,
+`core/step/step_driver.f90` and `core/run/run_driver.f90`, pre-sets it `.false.`,
 passes it as the new trailing actual of `compute_timestep`, and flips
 `star%job%use_structure_dt_limits` when it comes back `.true.`.
 
@@ -168,7 +168,7 @@ dummy here and store `.false.`/`.true.` into it, the callee writes through a
 stack slot the callers never filled -- undefined behaviour, and the pins in
 this worktree could not be byte-identical (or would crash) with the
 `star%job%` write removed. Per the shared rules (no rebase, no merge, do
-not touch `core/evolve_step.f90`), the callee edit cannot be made
+not touch `core/step/step_driver.f90`), the callee edit cannot be made
 self-consistent on this branch. It is left in place, and the exact edit is
 under Deferred 1 so it can be applied in the merge commit together with or
 after `6b50553` (core's report says the same about merge order).
@@ -242,7 +242,7 @@ Proposal under Deferred 3.
 
 ## Deferred
 
-1. **Item 4 callee edit for `util/compute_timestep.f90`** (apply together with
+1. **Item 4 callee edit for `core/step/timestep_control.f90`** (apply together with
    or after `rs/core` `6b50553`):
    - line 44: `log_teff)` -> `log_teff, disable_structure_dt_limits)`;
    - after line 68 (`double precision, intent(in) :: log_teff`): add

@@ -21,7 +21,7 @@ Date: 2026-09-01. READ-ONLY review; nothing built or run. Earlier-pass reports w
 - /Applications/YREC/src/io/luout_lib.f90 (28)
 - /Applications/YREC/src/io/print_allard_tables.f90 (66)
 
-Read for context (not assigned, not fully audited): src/io/inlist_new_read.inc, src/io/inlist_new_decl.inc, src/core/atmosphere_derivs.f90, src/core/envint_kernel.f90 (lines 160-300), src/core/yrec_capi.f90, src/core/yrec_reset.f90, src/wind/massloss.f90 (lines 235-275), src/numerics/numerics_lib.f90 (inter3/kspline/ksplint/locate/polint), src/defaults/controls_registry.tsv (spot checks). F77 ancestors consulted at 6cd5673: surfp.f, kcsurfp.f, alsurfp.f, altabinit.f, alfilein.f, parmin.f (there is no atmos.f/ttau.f/readin.f at that revision; the T(tau) statement functions lived in the callers, and parmin.f is the read_controls ancestor).
+Read for context (not assigned, not fully audited): src/io/inlist_new_read.inc, src/io/inlist_new_decl.inc, src/core/envelope/envelope_integrands.f90, src/core/envint_kernel.f90 (lines 160-300), src/core/run/yrec_capi.f90, src/core/run/yrec_reset.f90, src/wind/massloss.f90 (lines 235-275), src/numerics/numerics_lib.f90 (inter3/kspline/ksplint/locate/polint), src/defaults/controls_registry.tsv (spot checks). F77 ancestors consulted at 6cd5673: surfp.f, kcsurfp.f, alsurfp.f, altabinit.f, alfilein.f, parmin.f (there is no atmos.f/ttau.f/readin.f at that revision; the T(tau) statement functions lived in the callers, and parmin.f is the read_controls ancestor).
 
 ## Verified clean (re-derived, found correct)
 
@@ -64,7 +64,7 @@ Read for context (not assigned, not fully audited): src/io/inlist_new_read.inc, 
 - class: logical
 - severity: medium
 - confidence: high
-- provenance: new-code (the four-step pristine-defaults design at read_controls.f90:9-19 and the re-entrancy contract at core/yrec_capi.f90:17-19 / core/yrec_reset.f90:13-14 are 2026 additions; the F77 parmin ran once per process)
+- provenance: new-code (the four-step pristine-defaults design at read_controls.f90:9-19 and the re-entrancy contract at core/run/yrec_capi.f90:17-19 / core/run/yrec_reset.f90:13-14 are 2026 additions; the F77 parmin ran once per process)
 - detail: read_controls resets star%ctrl and re-seeds the controls_lib BUFFER before every read, but the legacy-spelled namelist locals inside read_input are DATA-initialized (`data kttau/0/`, `data clsun,crsun/...`, `data wmax,wmax_sun/...`, `data awind,pmma.../...`, `data tdisk,pdisk,ldisk/...`, `data atmerr.../...`, `data zxmix,frac_c.../...`, `data toll,tolr,tolz,lcals,...,calsolage,calsolzx/...`, the s0_* cross sections, etc.) or declared with initializers (alphac, alphae, dtdif, wnew, niter1-4, lthoul, lsemic, lmonte, ...), which gives them the SAVE attribute. A second in-process yrec_run whose inlist omits, say, atm_choice keeps the first run's kttau (the legacy read only overwrites what the file provides, and the new-style path seeds `atm_choice = kttau` from the stale local at inlist_new_read.inc:176 before reading). Every such control then flows into star%ctrl via adopt_canonical_names. The re-entry acceptance test (core/test/test_reentry.f90) runs the SAME inlist twice, so it cannot detect this. Observable: a pyyrec grid that varies inlists between calls silently carries over any control the later inlist does not restate (atmosphere choice, solar constants, wind law, overshoot, tolerances...).
 
 ## atm/tables/altabinit.f90:88 -- low-gravity extrapolation limit is four column widths, not "one column's width" as documented

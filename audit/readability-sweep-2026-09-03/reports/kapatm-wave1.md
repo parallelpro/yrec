@@ -81,7 +81,7 @@ Dead code (how shown dead is in the commit message):
 6. kap/setupopac.f90:35 — `star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z` is a star_info_lib member being decided inside the opacity setup. Proposed: compute it in core/ (where `use_z_ramp`/`use_diffusion_z` are resolved) and let setupopac only read it.
 7. kap/opacity_table_lib.f90 `n_alex95_*` parameters and `alex95_*` type members describe the Alexander 1994 tables (files kap/alex94/*). Rename to `n_alex94_*`/`alex94_*` touches io/read_controls.f90:605-870 (`lalex95`, `alex95_table_unit`) and io/controls_lib.f90; deferred.
 8. numerics_lib: the reviewer suggested a domain-neutral stencil search helper. `stencil4_locate`/`stencil4_locate_opal95` were kept in opacity_table_lib (the only users are kap/). If another domain grows the same pattern, move them to numerics_lib unchanged.
-9. kap/laol89/rdlaol.f90:50-51 — `laol_work_array(6), (9), (8), (11), (1), ...` element meanings are defined by core/read_starting_model.f90:135-1148 (`species_mix_weights(12)`, "V(7)=H, V(12)=HE"). Proposed: an `integer, parameter` index block (`ix_h = 7, ix_he = 12, ...`) in the state/ or core/ module that owns the 12-element mixture layout, then used by rdlaol.
+9. kap/laol89/rdlaol.f90:50-51 — `laol_work_array(6), (9), (8), (11), (1), ...` element meanings are defined by core/model/starting_model.f90:135-1148 (`species_mix_weights(12)`, "V(7)=H, V(12)=HE"). Proposed: an `integer, parameter` index block (`ix_h = 7, ix_he = 12, ...`) in the state/ or core/ module that owns the 12-element mixture layout, then used by rdlaol.
 
 ## Reverted (changed numbers)
 

@@ -96,7 +96,7 @@ module star_info_lib
 
 
 ! (2026 envint purity split: the pulse q* scratch moved to
-! core/point_scratch_lib.f90 -- see rotation_scratch_lib precedent.)
+! core/structure/point_scratch_lib.f90 -- see rotation_scratch_lib precedent.)
 
 ! ---- from state/star_job_lib.f90 ----
 ! 2026 controls->star% campaign, phase B: the authoritative home of
@@ -220,7 +220,7 @@ module star_info_lib
             integer :: atm_choice_initial
             logical :: use_ttau_relation
 ! phase A batch 2: the nuclear cross-section scale family -- fully
-! recomputed by setup/map_user_inputs.f90 from the s0_* namelist inputs after
+! recomputed by setup/user_inputs.f90 from the s0_* namelist inputs after
 ! every controls read (never namelist values themselves), and
 ! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
 ! apply_monte_carlo_parameters. Consumed by net_lib's compute_network_rates and
@@ -236,7 +236,7 @@ module star_info_lib
 ! yrec_reset star0 restore).
             double precision :: mixing_length_alpha = 1.4d0
 ! phase A batch 5: the solar-unit octet (former common/const/).
-! Computed at startup by setup/setups.f90 -- solar_luminosity_cgs/
+! Computed at startup by core/run/run_setup.f90 -- solar_luminosity_cgs/
 ! solar_radius_cgs seeded from the NAMELIST /physics/ clsun/crsun
 ! values (copied by parmin), the rest derived from them -- and the
 ! luminosity trio is overwritten per Monte-Carlo run by
@@ -433,7 +433,7 @@ module star_info_lib
                 central_log10_density, envelope_mass, envelope_radius
 ! 2026 (phase four, step 5): observables formerly computed as
 ! locals inside the retired write_legacy_output, now filled by the star layer
-! (core/observables.f90) and only READ by the writers.
+! (core/diagnostics/observables.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &
@@ -444,7 +444,7 @@ module star_info_lib
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
 ! (former common/envprt/'s current_* point scratch moved to
-! core/point_scratch_lib.f90)
+! core/structure/point_scratch_lib.f90)
 ! former common/oldrot/
            double precision :: old_omega(json), &
                 old_specific_angular_momentum(json), &

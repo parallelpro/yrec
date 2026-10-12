@@ -14,7 +14,7 @@ This directory gives the stellar model its surface boundary condition: the press
 | `allard_atmosphere` (`tables/`) | The Allard model atmospheres (NextGen, AMES-Cond, AMES-Dusty): `read_allard_tables` (both file layouts), `find_allard_table_bounds` and `interpolate_allard_surface`, which can also return P and T at tau = 100. |
 | `t_tau_relations` (`t_tau_relations.f90`) | The analytic T-tau relations: Eddington gray, Krishna-Swamy (1966) and the HSRA fit. Each gives log T(tau), the starting temperature of the atmosphere integration and its photospheric limit. |
 
-The atmosphere integration itself (`core/envelope_integration_kernel.f90`, `core/atmosphere_derivs.f90`) belongs to the star layer. It calls these services, and its results (`atmosphere_structure`, `envelope_structure`, the current point `atm_point`) live in core/.
+The atmosphere integration itself (`core/envelope/envelope_integration_kernel.f90`, `core/envelope/envelope_integrands.f90`) belongs to the star layer. It calls these services, and its results (`atmosphere_structure`, `envelope_structure`, the current point `atm_point`) live in core/.
 
 ## 2. The atmosphere choices
 
@@ -27,7 +27,7 @@ The atmosphere integration itself (`core/envelope_integration_kernel.f90`, `core
 | 4 | Allard tables (with the Kurucz table loaded as well) |
 | 5 | Castelli & Kurucz (2003) table |
 
-The star layer switches a run between its tabulated choice and gray as Teff leaves and re-enters the table (`core/surfbc.f90`), so `atm_get_surface_pt` takes the current choice as an argument. When an Allard lookup falls outside the tables, `lookup_failed` is set and the integrator falls back to gray for that model.
+The star layer switches a run between its tabulated choice and gray as Teff leaves and re-enters the table (`core/structure/surface_boundary.f90`), so `atm_get_surface_pt` takes the current choice as an argument. When an Allard lookup falls outside the tables, `lookup_failed` is set and the integrator falls back to gray for that model.
 
 ## 3. Conventions
 

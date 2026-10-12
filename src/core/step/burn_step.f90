@@ -535,7 +535,7 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
 end subroutine burn_network_region
 
 ! =================================================================
-! The burns of the composition step (core/composition_step.f90).
+! The burns of the composition step (core/step/composition_step.f90).
 ! =================================================================
 
 !----------------------------------------------------------------------

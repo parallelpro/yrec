@@ -44,7 +44,7 @@ from `star%luminosity_lsun_start` + fraction * (`star%luminosity_lsun` -
 start), and `secular_transport` multiplies it by `star%solar_luminosity_cgs`
 to get erg/s -- a log would be exp10'd. `equal_spaced_grid` uses it as
 `L/(LTOT*DL)` next to `LOG(M)/DM` and `LOG(P)/DP`. Conversely the wind
-scalars `log_luminosity_lsun` (`wind/*.f90`, `core/rebuild_envelope.f90:40`)
+scalars `log_luminosity_lsun` (`wind/*.f90`, `core/envelope/envelope_rebuild.f90:40`)
 are exp10'd before use and `star%trial_log_luminosity` feeds the Henyey
 log variables; those are true logs and were left alone.
 
@@ -61,7 +61,7 @@ rr_triple_alpha=12, rr_zero13=13, rr_frac_c12_alpha=14, rr_frac_be7_electron=15
 ```
 
 Used in `mixing/rotmix.f90` (12 literal-row reads) and in
-`setup/rezone.f90` (`use rotation_scratch_lib, only: rr_*`;
+`core/model/rezoning.f90` (`use rotation_scratch_lib, only: rr_*`;
 `reaction_rate_species_index(7) = [rr_pp, rr_he3_he3, rr_c12_p, rr_c13_p,
 rr_n14_p, rr_o16_p, rr_zero9]`, plus the loop comment). Only the item-2 lines
 of `rezone.f90` were touched (shared with ioctrl).
@@ -95,7 +95,7 @@ Done:
   still uses it.
 - `facd2/facd3`: kept (written by `setup/rotation_stability_setup.f90`,
   outside my files) but now provably unread; comment says so. See Deferred.
-- `qwrst`: kept (written by `setup/rezone.f90:832`, an ioctrl line) but now
+- `qwrst`: kept (written by `core/model/rezoning.f90:832`, an ioctrl line) but now
   unread; comment says so. See Deferred.
 
 Not renamed (writer in `setup/rotation_stability_setup.f90`, not mine):
@@ -133,7 +133,7 @@ Sites that should become `max_convective_zones` (12) /
 - `mixing/overshoot_boundaries.f90:26-27`
 - `mixing/find_convection_zones.f90:63-65`
 - `mixing/mix.f90:48, 62`
-- `setup/rezone.f90:48`
+- `core/model/rezoning.f90:48`
 
 (`mid_timestep_model.f90:156` `xa_start(12,...)` and
 `evolve_angular_momentum.f90:378-393` `12,15` are species indices, not zone
@@ -145,7 +145,7 @@ bounds; `mix.f90:134` `accreted_composition(12)` likewise.)
    `rr_*` names, e.g. `rot_scr%reaction_rate_by_zone(rr_pp,zone_idx) =
    rate_pp(zone_idx)` ... `(rr_frac_be7_electron,zone_idx) =
    frac_be7_electron(zone_idx)`.
-2. `core/shell_physics.f90:14,31` and `core/rebuild_envelope.f90:12,30`:
+2. `core/step/shell_physics.f90:14,31` and `core/envelope/envelope_rebuild.f90:12,30`:
    dummy `log_luminosity(json)` receives `star%luminosity_lsun` (linear;
    `shell_physics.f90:82` copies it straight into `luminosity_lsun`).
    Rename to `luminosity_lsun` (core domain). `rebuild_envelope.f90:40`
@@ -165,12 +165,12 @@ bounds; `mix.f90:134` `accreted_composition(12)` likewise.)
      `dm*interface_radius`), `delami` -> `interface_grad_ad`,
      `delmi` -> `interface_grad_rad`, `epsilm` -> `interface_eps`,
      `qdtmi` -> `interface_qdt`.
-4. `setup/rezone.f90:831-832` (outside my item-2 hunk): `tho` -> e.g.
+4. `core/model/rezoning.f90:831-832` (outside my item-2 hunk): `tho` -> e.g.
    `theta_rezoned` (read at `evolve_angular_momentum.f90:231,234` into
    `theta_prev`); `qwrst` is now unread -- delete line 832 and the member.
 5. `masschg2/3` -> `star%`: members `accretion_specific_entropy`,
    `envelope_specific_entropy`, `updated_mass_msun`, `delta_log_pressure`,
-   `delta_log_temperature` (used at `core/henyey_coefficients.f90:266,268`,
+   `delta_log_temperature` (used at `core/structure/structure_equations.f90:266,268`,
    `wind/massloss.f90:172-259`, `wind/mdot.f90:160,241`) and
    `solar_wind_mass_loss_rate_msun_yr`, `wind_reference_omega`,
    `wind_max_omega`, `use_rotation_scaled_solar_wind` (`wind/mdot.f90:86-89`).
@@ -218,7 +218,7 @@ None. Every pin stayed byte-identical.
 - The brief's item 1 names (`log_luminosity_start`) no longer existed;
   the live misnomers were `rot_scr%log_luminosity_mid` and the
   `log_luminosity` dummies.
-- The brief said ioctrl edits `atime(` subscripts in `setup/rezone.f90`;
+- The brief said ioctrl edits `atime(` subscripts in `core/model/rezoning.f90`;
   there is no `atime` in that file. ioctrl's rezone hunks are the
   `chi_grid_scale(...)` subscripts (lines 202-367 and 522), none of which
   overlap my item-2 hunks (lines 18-25, 44-59, 604-619 in the new

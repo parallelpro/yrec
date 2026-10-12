@@ -25,7 +25,7 @@ module controls_buffer
 
 ! Maximum number of runs (kind cards) in one job: the dimension of
 ! every per-run array below (the calibration protocols in
-! setup/setup_star_calibration.f90 / setup_solar_calibration.f90 fill
+! core/run/calibration.f90 / setup_solar_calibration.f90 fill
 ! them up to this limit). tools/gen_controls_state.py substitutes the
 ! literal value into the generated star%ctrl / star%job type bodies,
 ! which star_info_lib includes without seeing this module.
@@ -87,7 +87,7 @@ module controls_buffer
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
 ! Slot names for atime (the per-phase timestep-control factors). The
-! meaning of each slot is fixed by setup/map_user_inputs.f90, which
+! meaning of each slot is fixed by setup/user_inputs.f90, which
 ! fills it from the like-named time_* namelist inputs when lnewvars
 ! is set; readers subscript with these names.
       integer, parameter, public :: &
@@ -216,7 +216,7 @@ module controls_buffer
       double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
       double precision :: chi_grid_scale(12)
 ! Slot names for chi_grid_scale (the former hpttol vector). The
-! meaning of each slot is fixed by setup/map_user_inputs.f90, which
+! meaning of each slot is fixed by setup/user_inputs.f90, which
 ! fills it from the like-named tol_*/flag_* namelist inputs when
 ! lnewvars is set; readers subscript with these names.
       integer, parameter, public :: &

@@ -22,7 +22,7 @@ Solvers that carry a domain's physics in their interface live with that domain:
 
 ## 2. Integrating ODEs
 
-`bsstep` integrates any system you describe as an extension of the abstract type `ode_system`. Its deferred procedure `derivatives(self, x, y, dydx, ierr)` returns dy/dx. The extension carries whatever the derivatives need. The envelope integration's `envelope_equations` (`core/envelope_integration_kernel.f90`) holds the luminosity, rotation factors, composition and EOS state, and calls `atmosphere_derivs` or `envelope_derivs`. To integrate a new system:
+`bsstep` integrates any system you describe as an extension of the abstract type `ode_system`. Its deferred procedure `derivatives(self, x, y, dydx, ierr)` returns dy/dx. The extension carries whatever the derivatives need. The envelope integration's `envelope_equations` (`core/envelope/envelope_integration_kernel.f90`) holds the luminosity, rotation factors, composition and EOS state, and calls `compute_atmosphere_derivs` or `compute_envelope_derivs`. To integrate a new system:
 
 ```fortran
 type, extends(ode_system) :: my_system

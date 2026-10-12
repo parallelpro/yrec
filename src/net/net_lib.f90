@@ -20,7 +20,7 @@
 ! modules.
 ! net/ reads no model state and no star%ctrl: its configuration is the
 ! net_settings record, filled at the start of every run by the star
-! layer (configure_network in core/burn_step.f90). How the pieces are
+! layer (configure_network in core/step/burn_step.f90). How the pieces are
 ! called during a timestep: net/README.md.
 !----------------------------------------------------------------------
 module net_lib

@@ -145,7 +145,7 @@ module reaction_rates
 ! Everything net/ needs from the run's configuration, in one record. The
 ! star layer fills it at the start of every run, after the controls are
 ! read and the Monte Carlo rate factors applied (configure_network,
-! core/burn_step.f90), by calling set_net_settings; nothing else writes it.
+! core/step/burn_step.f90), by calling set_net_settings; nothing else writes it.
       integer, parameter, public :: num_cross_section_scales = xs_hep
       type, public :: net_settings_t
 ! log10 T at or below which: (1) nothing burns; (4) helium burning is

@@ -31,7 +31,7 @@ contains
 ! implicitly static, and this body's locals (the rescale and
 ! calibration bookkeeping) rely on that; as subroutine locals they
 ! would otherwise be automatic. Repeated calls are made legal by
-! yrec_run_prologue (core/yrec_reset.f90), which puts the saved state
+! yrec_run_prologue (core/run/yrec_reset.f90), which puts the saved state
 ! back to process-start values.
 !
 ! ierr: 0 on a normal end of job; positive on a configuration, read or
@@ -94,7 +94,7 @@ subroutine run_yrec(ierr)
       ierr = 0
 
 ! 2026 (phase five, step C): fresh-process semantics for repeated
-! calls -- see core/yrec_reset.f90.
+! calls -- see core/run/yrec_reset.f90.
       call yrec_run_prologue
 
       call set_version_strings()
@@ -149,7 +149,7 @@ subroutine run_yrec(ierr)
 ! the new model is being relaxed
        do model_iteration = 1,star%job%num_models(star%job%nk)
 ! 2026 (phase five): one model advance per iteration, extracted to
-! core/evolve_step.f90 (see its header for the step_status contract).
+! core/step/step_driver.f90 (see its header for the step_status contract).
        call evolve_step(model_iteration, step_status, ierr)
        if (ierr /= 0) return
        if (step_status == step_kind_card_done) exit
@@ -198,7 +198,7 @@ subroutine run_yrec(ierr)
       call log_run_summary(dble(clock_now-clock_start)/dble(clock_rate))
 
 ! FOR MONTE CARLO, REWIND OUTPUT FILES AND WRITE OUT SNU FLUXES AND
-! MODEL PARAMETERS (legacy mode only; core/monte_carlo.f90).
+! MODEL PARAMETERS (legacy mode only; core/run/monte_carlo.f90).
       call write_run_summaries(monte_carlo_run_number, &
            convergence_iterations, log_r_rsun)
       end do
@@ -339,7 +339,7 @@ subroutine begin_kind_card
          call init_stop_conditions(star%job%nk)
 ! Opt-in diagnostic (2026): the former LNUTAB per-zone neutrino
 ! table, off since 2004, is now the compute_neutrino_fluxes control
-! (core/neutrino_flux_table.f90); it describes the starting model
+! (core/diagnostics/neutrino_flux_output.f90); it describes the starting model
 ! of each kind card.
       if (star%ctrl%compute_neutrino_fluxes) then
          call write_neutrino_flux_table

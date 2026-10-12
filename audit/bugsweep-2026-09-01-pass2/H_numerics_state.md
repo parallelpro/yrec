@@ -14,7 +14,7 @@ consulted at rev 6cd5673 via `git show`.
 - /Applications/YREC/src/state/controls_state_def.inc, job_controls_def.inc
 - /Applications/YREC/src/io/controls_lib.f90 (the namelist buffer the sync copies)
 
-Read in part (for provenance / consequence only): src/setup/setups.f90
+Read in part (for provenance / consequence only): src/core/run/run_setup.f90
 lines 50-130 (where the phys_const values are assigned),
 src/io/read_controls.f90 lines 1-120 and 1500-1510,
 src/io/inlist_new_read.inc, src/eos/mhd/mhdpx1.f90, mhdpx2.f90,
@@ -111,7 +111,7 @@ intpol.f, ratext.f, bsstep.f, trapzd.f, qgauss.f, setups.f.
 - provenance: inherited -- bsstep.f: dummy list `(Y,DYDX,NV,X0,HTRY,...,TEFFL,X,Z,KOUNT,KSAHA,ERR)` and line 51 `IF(X+H.EQ.X) THEN`; NR's test is on the integration variable X (here X0).
 - detail: Numerical Recipes guards the step-halving loop with `if (x+h .eq. x)` on the integration variable. YREC renamed the independent variable X0 and used X for the hydrogen-fraction pass-through, so the test compares `hydrogen_fraction + h` with `hydrogen_fraction`. The integration variable is log P (or log tau) of order 1-10 while X is 0.7 (or 0 in a He-rich envelope), so the test fires at a different, and in the X=0 case only at the true denormal-underflow, point; the retry loop can therefore spin ~30 more quartering iterations than intended before returning ierr. No wrong result, but a delayed/mis-scaled failure detection in envint's atmosphere/envelope integrations.
 
-## src/setup/setups.f90:118 (value of phys_const hydrogen_atom_mass) -- Avogadro digits transposed
+## src/core/run/run_setup.f90:118 (value of phys_const hydrogen_atom_mass) -- Avogadro digits transposed
 - class: physical
 - severity: low
 - confidence: high

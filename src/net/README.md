@@ -1,13 +1,13 @@
-# Nuclear burning in YREC: `net/` and `core/burn_step.f90`
+# Nuclear burning in YREC: `net/` and `core/step/burn_step.f90`
 
 This note explains how YREC computes nuclear reaction rates, energy generation and composition changes: which routine does what, who calls it during a timestep, and how data flows between them. It ends with recipes for the most common extensions. File references are relative to `src/`.
 
 Two layers are involved:
 
 - **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never touch `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (in `reaction_rates`), which the star layer fills at the start of every run (`configure_network`). `tools/check_boundaries.py` enforces this.
-- **`core/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
+- **`core/step/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
 
-Callers elsewhere in the code (the composition step `core/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC uses from the five modules below, and nothing more. The individual reaction rates, the reaction table and the neutrino routines stay internal. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
+Callers elsewhere in the code (the composition step `core/step/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC uses from the five modules below, and nothing more. The individual reaction rates, the reaction table and the neutrino routines stay internal. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
 
 Names follow the project rules (`docs/GUIDELINES.md`): modules are nouns named for what they hold, procedures are verbs (`compute_…`, `burn_…`), and functions returning a quantity are named for it (`deuterium_rate`).
 
@@ -83,7 +83,7 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 - **YREC's wrappers:** `compute_thermal_neutrino_losses` and `compute_mixture_neutrino_losses`.
 - **Timmes' routines, under their public names:** `sneut` (the emissivities), `azbar` (mean A and Z), `ifermi12` and `zfermim12` (inverse Fermi integrals).
 
-### `core/burn_step.f90` (module `burn_step`): the star-layer driver
+### `core/step/burn_step.f90` (module `burn_step`): the star-layer driver
 
 | Routine | Called from | What it does |
 |---|---|---|
@@ -95,10 +95,10 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 | `burn_network_region` | `burn_network`, `mid_timestep_model`'s `burn_and_settle` | Model bookkeeping around `burn_implicitly`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
 | `burn_deuterium` | `advance_composition` | `burn_deuterium_region` for each of the `burn_regions`. |
 | `surface_accretion_now` | `burn_deuterium`, `mid_timestep_model` | The accreted gas over a step (`surface_accretion`: on, inflow, its deuterium fraction, the mass accreted) for `burn_deuterium_region`. |
-| `compute_zone_energy` | `henyey_coefficients`, `neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
+| `compute_zone_energy` | `compute_henyey_coefficients`, `write_neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
 | `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
 | `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
-| `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step, with the trace-element integrator (log interpolation): radiative shells, then the surface convection zone as one unit on its mass-averaged rates (`average_li_be_over_cz`), then the shells a retreating CZ left. The CZ base at the start and end of the step, overshoot included, comes from `locate_surface_mixing_base` in `core/convection_geometry.f90`. |
+| `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step, with the trace-element integrator (log interpolation): radiative shells, then the surface convection zone as one unit on its mass-averaged rates (`average_li_be_over_cz`), then the shells a retreating CZ left. The CZ base at the start and end of the step, overshoot included, comes from `locate_surface_mixing_base` in `core/step/convection_geometry.f90`. |
 
 ---
 
@@ -106,13 +106,13 @@ The commented-out Bulirsch–Stoer path keeps its own single-midpoint Li/Be vari
 
 ## 2. When each piece runs during a timestep
 
-`core/evolve_step.f90` advances one model. The calls that involve burning, in order:
+`core/step/step_driver.f90` advances one model. The calls that involve burning, in order:
 
 ```
 evolve_step
  advance_composition_and_age
    star%xa_start := star%xa                      start-of-step composition
-   advance_composition(predictor_pass)           core/composition_step.f90
+   advance_composition(predictor_pass)           core/step/composition_step.f90
      find_convection_zones                       radiative shells and mixed regions
      compute_burn_rates      [burn_step]         per shell: compute_network_rates, deuterium_rate
      burn_network            [burn_step]         per region: burn_network_region -> burn_implicitly
@@ -153,7 +153,7 @@ Two things often surprise newcomers:
 
 - **Composition.** `star%xa(i, k)` holds mass fractions in the slots of `state/composition_layout.f90` (net/ takes them from there, never from `star_info_lib`): `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
 - **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is that times the atomic mass unit in grams, per s per amu: with Y = X/A, dY/dt = Σ ν R. Every time in the burning code is in seconds (2026-10; it used to mix years and Gyr, with a year length that differed by 4.7×10⁻⁶ between the timestep and the rates). Integer mass numbers convert X to Y.
-- **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/henyey_elimination.f90`).
+- **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/structure/henyey_elimination.f90`).
 - **Temperature cutoffs.** `net_settings%logT_cutoffs` (from `ctrl%nuclear_logT_cutoffs`): `(1)` gates all burning, `(4)` gates helium burning, and `(5)` the solar neutrino fluxes and thermal neutrino losses. `(2)` and `(3)` gated the level-1 equilibrium burn, removed in 2026-10; they are read and unused.
 
 ---
@@ -189,7 +189,7 @@ A deliberate change to its output means regenerating `net/test/expected_test_net
 
 **Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments), driven per region from `burn_step`.
 
-**Add an energy source that is not nuclear** (tidal or magnetic heating, for example). That belongs to the structure equations, not here. Phase 2 of `docs/TARGET_ARCHITECTURE.md` adds an energy-source list with a user hook. Until then the energy term is assembled in `core/henyey_coefficients.f90`; see the conventions in `core/henyey_elimination.f90` before touching it.
+**Add an energy source that is not nuclear** (tidal or magnetic heating, for example). That belongs to the structure equations, not here. Phase 2 of `docs/TARGET_ARCHITECTURE.md` adds an energy-source list with a user hook. Until then the energy term is assembled in `core/structure/structure_equations.f90`; see the conventions in `core/structure/henyey_elimination.f90` before touching it.
 
 ---
 

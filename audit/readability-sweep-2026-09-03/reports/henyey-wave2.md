@@ -30,7 +30,7 @@ reader at all. `star%converged_zone(im) = conductive_opacity_flag`
 `converged_zone` is read nowhere in `src/`, `tools/`, `tests/` or
 `pyyrec/` -- so the store was removed rather than kept.
 
-- `core/henyey_coefficients.f90`: `want_derivatives = .true.` and
+- `core/structure/structure_equations.f90`: `want_derivatives = .true.` and
   `in_atmosphere = .false.` are now `logical, parameter` locals (same
   values, same kind) fed to the same `intent(in)` positions of
   `eos_get`/`temperature_gradients`; the other two flags, the
@@ -39,10 +39,10 @@ reader at all. `star%converged_zone(im) = conductive_opacity_flag`
   touched (sidechan's).
 - `core/henyey_iterate.f90`: four `intent(out)` dummies dropped from the
   signature; call to henyey_coefficients shortened.
-- `core/evolve_step.f90`: the four SAVEd locals and their
+- `core/step/step_driver.f90`: the four SAVEd locals and their
   `evolve_step_reset_pending` reset lines removed; henyey_iterate call
   shortened.
-- `core/read_starting_model.f90`: the write-only local
+- `core/model/starting_model.f90`: the write-only local
   `local_conductive_opacity_flag` removed (same family; it was assigned
   once and never read).
 
@@ -51,13 +51,13 @@ reader at all. `star%converged_zone(im) = conductive_opacity_flag`
 Traced: `kenv`/`katm` (dummy names `env_call_count`/`atm_call_count`,
 `call_count` in numerics) were zeroed in henyey_iterate,
 rebuild_envelope, read_starting_model and build_stitched_model,
-incremented once per call in `atmosphere_derivs`/`envelope_derivs`, and
+incremented once per call in `compute_atmosphere_derivs`/`compute_envelope_derivs`, and
 otherwise only passed through surfbc -> atm_get ->
 integrate_envelope_atmosphere -> bsstep -> mmid -> deriv. No read
 anywhere (the only former consumer, a format in the old envint, is
 gone). Removed from all six signatures and the four drivers:
 
-- `core/atmosphere_derivs.f90`, `core/envelope_derivs.f90`: dummy,
+- `core/envelope/envelope_integrands.f90`, `core/envelope/envelope_integrands.f90`: dummy,
   declaration and `x = x + 1` removed.
 - `numerics/numerics_lib.f90` (this item only): `mmid` and `bsstep`
   dummy lists / declarations and their `deriv`/`mmid` calls; the two
@@ -65,11 +65,11 @@ gone). Removed from all six signatures and the four drivers:
   `core/envint_kernel.f90`. Nothing else in numerics touched.
 - `core/envint_kernel.f90`: dummy/declaration and the six integrand /
   bsstep calls; no arithmetic touched.
-- `core/envint_lib.f90`, `core/surfbc.f90`, `core/henyey_iterate.f90`,
-  `core/rebuild_envelope.f90`, `core/read_starting_model.f90`,
-  `core/stitched_model.f90`: counters and their zeroing removed.
+- `core/envint_lib.f90`, `core/structure/surface_boundary.f90`, `core/henyey_iterate.f90`,
+  `core/envelope/envelope_rebuild.f90`, `core/model/starting_model.f90`,
+  `core/diagnostics/stitched_model.f90`: counters and their zeroing removed.
 
-Note: `core/atmosphere_derivs.f90` is not in the brief's explicit file
+Note: `core/envelope/envelope_integrands.f90` is not in the brief's explicit file
 list but is unavoidable for this item (it is the fourth integrand
 signature); sidechan's brief assigns all of `src/core/*` to henyey, so
 it was edited here.
@@ -90,13 +90,13 @@ around the call so atm_get would snapshot their values into it.
   when present, else from `star%job` as before. When the vertex group is
   absent, zero-initialised scratch is passed to the kernel via a
   contained `run_kernel` wrapper (so the kernel call is written once).
-- `core/surfbc.f90`: passes the vertex group by keyword (all six).
-- `core/rebuild_envelope.f90`, `core/read_starting_model.f90`: the
+- `core/structure/surface_boundary.f90`: passes the vertex group by keyword (all six).
+- `core/envelope/envelope_rebuild.f90`, `core/model/starting_model.f90`: the
   save/override/restore of `star%job%env_step_*`, the four dummy arrays,
   `ixx_flag`/`vertex_index = 0`, `atm_get_unused_flag = 0` are gone;
   `env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))`
   is passed instead.
-- `core/stitched_model.f90`: same for both triples (`atm_step_size`,
+- `core/diagnostics/stitched_model.f90`: same for both triples (`atm_step_size`,
   `envelope_step_size`); its six saved copies and four dummies gone.
 
 Value fidelity: the double-precision step values reach
@@ -138,7 +138,7 @@ there either.
   :196-224), to `mix`, and to henyey_iterate's `delta_time` where
   `compute_entropy_term = delta_time.gt.0.0d0` and the
   `star%dt.le.0` first-guess test read the sign. A comment at the
-  assignment (`core/evolve_step.f90:316-322`) now states the encoding
+  assignment (`core/step/step_driver.f90:316-322`) now states the encoding
   and its readers.
 
 ### 5. Small core items (core 15) -- done (`35838b0`)
@@ -146,7 +146,7 @@ there either.
 - `use_correct_gradients = .true.`: already deleted in wave 1 (R1,
   `reports/core-wave1.md` "Dead code"); nothing left to do.
 - Retired-machinery comment in `update_output_flags_for_step`
-  (`core/evolve_step.f90`): rewritten to say what the routine does now
+  (`core/step/step_driver.f90`): rewritten to say what the routine does now
   (rewind `run_log_unit` -- log_output_file / run.log -- when the lrwsh
   control `rewind_short_file` is set).
 - Duplicated pressure-scale-height formula: already one contained
@@ -178,12 +178,12 @@ assigned to henyey by sidechan's brief; only the comment was added.)
 2. **dt sign -> explicit flag.** Exact proposal (all Class-A if done
    together, but crosses into rotation/, mixing/, and the model file):
    add `logical :: age_this_model` to `star_info` (job section), set in
-   `core/evolve_step.f90:322` (`age_this_model = evolve_model_flag`)
+   `core/step/step_driver.f90:322` (`age_this_model = evolve_model_flag`)
    instead of `star%dt = -dabs(star%dt)`, and replace the sign readers:
-   `core/evolve_step.f90:330` (`star%dt.le.0.0D0` ->
+   `core/step/step_driver.f90:330` (`star%dt.le.0.0D0` ->
    `.not.age_this_model`), `:377` (`star%dt.gt.0.0D0` ->
    `age_this_model`), `:134` (`star%dt = dabs(star%dt)` -> drop),
-   `core/henyey_coefficients.f90` `compute_entropy_term =
+   `core/structure/structure_equations.f90` `compute_entropy_term =
    delta_time.gt.0.0d0` (-> a new logical dummy), `rotation/
    evolve_angular_momentum.f90:187` (`full_timestep.gt.0.0D0`) and the
    `matt_wind` call at :164 which today receives the NEGATIVE

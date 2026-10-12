@@ -39,7 +39,7 @@ contains
 ! in atm_get's header (and compute_blended_eos's metal_fraction fix) --
 ! silently tolerated while atm_get (as envint) was a bare external
 ! subroutine with no interface to check against, surfaced once
-! envelope_integration gave it one. core/henyey_iteration.f90 (this routine's only
+! envelope_integration gave it one. core/structure/henyey_iteration.f90 (this routine's only
 ! caller) already passes real local variables for these positions, so
 ! widening the intent here changes nothing about how it's called.
 subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &

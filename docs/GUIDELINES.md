@@ -212,7 +212,7 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    arguments and their configuration as one settings record filled by
    the star layer at the start of a run (`net/`: `net_lib`'s
    `net_settings`, filled by `configure_network` in
-   `core/burn_step.f90`). They take the slot constants from the
+   `core/step/burn_step.f90`). They take the slot constants from the
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
@@ -531,7 +531,7 @@ the tables being 1994-dated; not renamed, just flagged), `kap/kurucz90/`
 `kap/laol89/` (Los Alamos, including its pure-Z variant used for the
 He-burning correction, 7 files), `kap/conductive/` (Potekhin, per
 Cassisi et al. 2007, 2 files). `kap_lib.f90` and `setupopac.f90` (the
-startup-time table loader, called once from `setup/setups.f90`) stay
+startup-time table loader, called once from `core/run/run_setup.f90`) stay
 at `kap/` root. Per the YREC public release paper, this maps onto
 three *user-facing* opacity families (conductive, atomic, molecular);
 the paper's third atomic family (OP/Badnell 2005) doesn't have an
@@ -714,7 +714,7 @@ the braking laws are the boundary condition of rotation's angular
 momentum equation, called only from rotation, and massloss/mdot are a
 stage of the timestep that changes the grid and the total mass, called
 only from evolve_step. Each moved to its one consumer:
-`rotation/magnetic_braking.f90` and `core/mass_change.f90` (step 2 of
+`rotation/magnetic_braking.f90` and `core/step/mass_change.f90` (step 2 of
 docs/TARGET_ARCHITECTURE.md's stage list). The radius-from-(L, Teff)
 identity both used is `physical_constants`'s
 `log10_radius_from_l_teff`.

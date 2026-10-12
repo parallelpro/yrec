@@ -181,7 +181,7 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
 ! The thermal-only form g^2 rho delta (grada - gradT)/P previously used
 ! here is exact only for homogeneous composition -- it omits the Ledoux
 ! mu-gradient term that dominates N^2 in composition-gradient layers
-! (see the matching note in core/stitched_model.f90's
+! (see the matching note in core/diagnostics/stitched_model.f90's
 ! build_pulse_points, which fixes the same formula for the
 ! profile-coupled GSM/FGONG/GYRE writers). CONVECTIVE shells (where
 ! the thermal form is negative) keep the thermal value: the mixture is
@@ -222,12 +222,12 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
 ! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
-! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see core/henyey_coefficients.f90).
+! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see core/structure/structure_equations.f90).
          delta = -star%pulse_dlnrho_dlnt(i)
 ! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
 ! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
 ! eps*dlneps/dlnT = deps/dlnT, not the bare log-derivatives.
-! pulse_deps_* already hold deps/dln (see core/stitched_model.f90's
+! pulse_deps_* already hold deps/dln (see core/diagnostics/stitched_model.f90's
 ! build_pulse_points), so they are not multiplied by eps.
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
               pressure_cgs,temperature_k,density_cgs,star%gradT(i), &

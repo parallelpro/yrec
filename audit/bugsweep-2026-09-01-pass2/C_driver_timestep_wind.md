@@ -20,17 +20,17 @@ that; everything else is from the code and the F77 alone.
 
 ## Files read in full
 
-core/evolve_step.f90, core/run_yrec.f90, core/stop_conditions.f90, core/main.f90,
-core/star_setup.f90, core/yrec_reset.f90, core/yrec_capi.f90,
-core/check_solar_calibration.f90, core/check_star_calibration.f90,
-core/monte_carlo.f90, core/neutrino_flux_table.f90,
-util/compute_timestep.f90, util/timestep_limit_hburn.f90,
-util/timestep_limit_heburn.f90, util/timestep_limit_hr.f90,
-util/timestep_limit_omega.f90, util/timestep_limit_structure.f90,
-util/version.f90, util/xrng4.f90, util/zero.f90,
-setup/setups.f90, setup/setup_solar_calibration.f90,
-setup/setup_star_calibration.f90, setup/map_user_inputs.f90,
-setup/locate_shell_boundaries.f90, setup/rescale_model.f90,
+core/step/step_driver.f90, core/run/run_driver.f90, core/run/stop_conditions.f90, core/main.f90,
+core/run/run_setup.f90, core/run/yrec_reset.f90, core/run/yrec_capi.f90,
+core/run/calibration.f90, core/run/calibration.f90,
+core/run/monte_carlo.f90, core/diagnostics/neutrino_flux_output.f90,
+core/step/timestep_control.f90, core/step/timestep_control.f90,
+core/step/timestep_control.f90, core/step/timestep_control.f90,
+core/step/timestep_control.f90, core/step/timestep_control.f90,
+core/run/yrec_version.f90, kap/laol89/laol_opacity.f90, eos/mhd/mhd_eos.f90,
+core/run/run_setup.f90, core/run/calibration.f90,
+core/run/calibration.f90, setup/user_inputs.f90,
+core/model/shell_boundaries.f90, core/model/model_rescaling.f90,
 wind/kawaler_wind.f90, wind/massloss.f90, wind/matt_structure_factor.f90,
 wind/matt_wind.f90, wind/mdot.f90, wind/wcz.f90, wind/wind_spindown.f90,
 wind/wind_spindown_matt.f90.
@@ -38,7 +38,7 @@ wind/wind_spindown_matt.f90.
 Also read for call-site / consumer checks (not in full unless noted):
 rotation/seculr/secular_transport.f90 (wind call sites 262-300, 405-415),
 rotation/evolve_angular_momentum.f90 (140-150, 276-290),
-core/read_starting_model.f90 (450-465), io/read_controls.f90 (2000-2015,
+core/model/starting_model.f90 (450-465), io/read_controls.f90 (2000-2015,
 Kawaler constant mapping), net/net_lib.f90 ~2059 and net/burn_lib.f90 ~1359
 (consumers of qs0e_scale/qqs0ee_scale), state/star_info_lib.f90 (composition
 index constants).
@@ -52,7 +52,7 @@ were read via the modernized headers' quoted originals and main.f.)
 Bare-external call-site checks (one `grep -rn "call <name>" /Applications/YREC/src`
 each, no head): xrng4 (kap/laol89/gtpurz.f90:49, gtlaol.f90:64, gtlaol2.f90:62),
 setups, map_user_inputs (net/test/test_net.f90:141, io/read_controls.f90:1757),
-rescale_model (core/read_starting_model.f90:330, :690), locate_shell_boundaries
+rescale_model (core/model/starting_model.f90:330, :690), locate_shell_boundaries
 (evolve_step.f90:115, run_yrec.f90:341, rescale_model.f90:181), compute_timestep
 (evolve_step.f90:139, run_yrec.f90:348), massloss (evolve_step.f90:255),
 setup_solar_calibration (run_yrec.f90:190), setup_star_calibration
@@ -97,7 +97,7 @@ matt_wind 12/12, kawaler_wind 12/12).
 
 ---
 
-## util/timestep_limit_heburn.f90:111 -- helium_dt read before it is written at core-He exhaustion -> zero timestep
+## core/step/timestep_control.f90:111 -- helium_dt read before it is written at core-He exhaustion -> zero timestep
 
 - class: numerical
 - severity: high
@@ -105,7 +105,7 @@ matt_wind 12/12, kawaler_wind 12/12).
 - provenance: inherited (ytime.f: `DELTSY = (5.85D17/CLSUN)*DELTSY*(HS(JXBEG-1)/HL(JXBEG-1))`) aggravated by modernization (htimer.f's `SAVE` on DELTSY is gone; compute_timestep.f90:67 makes helium_dt a plain local)
 - detail: In the non-flash branch, when the core helium fraction `1-Z(jcore)` drops below atime(1) (i.e. core He exhausted, Z_core -> 1), the routine computes `helium_dt = const*helium_dt*(M/L)` using helium_dt on the right-hand side. The dummy is intent(inout) and the header admits this "is preserved exactly, not fixed", but the actual argument is now an uninitialised local of compute_timestep (line 67), so with `-finit-local-zero` the result is exactly 0 (without it, stack garbage). compute_timestep then takes `min(..., helium_dt, ...)` at line 157/162 and returns previous_timestep = 0; the "fritz-out" guard at lines 98/113 protects only structure_dt and rotation_dt, not helium_dt. A zero dt feeds the Henyey gravitational-energy term (dS/dt) and the composition update as a division by zero, producing Inf/NaN in the next model. This is the most plausible root cause of the reported symptom "run_from_zahb_to_tahb Solar_m1p0 GN93 dies with NaN in the MLT cubic near model 950 at core He exhaustion": the failure is at exactly the transition where this branch first fires. In the F77 the SAVEd DELTSY made the expression a (dimensionally meaningless but nonzero) recurrence on the previous call's value, so it "worked". Fix direction: the shell branch should compute a fresh timestep from atime(4)/atime(5) and the shell's M/L exactly like the core branch (or from the He-shell burning rate), never from the incoming value.
 
-## setup/map_user_inputs.f90:133 -- qs0e/qqs0ee S-factor derivative scalings normalised by the wrong reference S0 (pp instead of each reaction's own)
+## setup/user_inputs.f90:133 -- qs0e/qqs0ee S-factor derivative scalings normalised by the wrong reference S0 (pp instead of each reaction's own)
 
 - class: physical
 - severity: medium
@@ -113,7 +113,7 @@ matt_wind 12/12, kawaler_wind 12/12).
 - provenance: inherited (remap.f:132 `QS0E(2) = (S0P_3_3/S0_3_3)/(QS0E_3_3_A98/S0_1_1_A98)` and the same pattern for reactions 3,4,5,7,8 and the QQS0EE entries)
 - detail: The scaling of the first- and second-derivative S-factor terms is meant to be (S'/S)_user / (S'/S)_A98, i.e. each numerator ratio divided by the Adelberger-98 ratio for the same reaction. Only reaction 1 (pp) and reaction 8 use their own S0 in the denominator; lines 133, 138, 143, 148, 153, 158 (qs0e) and 174, 180, 187 (qqs0ee) divide `qs0e_<rxn>_a98` by `s0_pp_a98` (= 4e-22 MeV b) instead of `s0_<rxn>_a98`. With defaults (e.g. He3+He3: s0p=-4.9, s0=5.21e3, qs0e_a98=-4.1) qs0e_scale(2) comes out ~9e-26 instead of ~1.24. Consumers net_lib.f90:~2059 and burn_lib.f90:~1359 multiply the FCZ eq.(52) Q2/Q3 (and Q4/Q5) energy-derivative corrections by these factors, so the derivative corrections to S_eff for He3+He3, He3+He4, p+C12, p+C13, p+N14, p+O16 are silently switched off whenever use_new_nuclear_rates (lnewnuc) is true -- which it is in examples/run_standard_solar_model/*.nml2 and run_from_dbl_to_zams. Effect is a few-tenths-percent to percent-level bias in the pp-II/III and CNO rates at solar temperatures (the pp chain itself is unaffected, which is why solar calibration still converges). Note also line 36's `9.4E0` single-precision literal in the s0_p_o16 reference data (harmless at ~4e-8 relative).
 
-## setup/rescale_model.f90:372 -- Z-ramp block scales CNO by (Zold-Zc)/Zold instead of Zc/Zold
+## core/model/model_rescaling.f90:372 -- Z-ramp block scales CNO by (Zold-Zc)/Zold instead of Zc/Zold
 
 - class: physical
 - severity: medium
@@ -155,19 +155,19 @@ matt_wind 12/12, kawaler_wind 12/12).
 
 ## Weak/uncertain observations
 
-- util/timestep_limit_heburn.f90:112 -- `enclosed_mass(h_shell_zone_begin-1)` indexes 0 when locate_shell_boundaries reports no H shell (h_shell_zone_begin=1) while the core-He-exhausted branch fires; unreachable for ordinary stars but unguarded (inherited ytime.f).
-- util/compute_timestep.f90:51/71 -- hydrogen_dt is intent(out) but never assigned when previous_timestep < 0 (relaxation case); caller receives an undefined value (modernization: F77 had it SAVEd).
-- util/compute_timestep.f90:200-205 -- if the model's age already exceeds target_end_age, time_left_years < 0 is copied into the timestep, producing a negative dt for one step before stop_conditions ends the run (inherited).
-- setup/rescale_model.f90:144 -- the error WRITE prints `icomp`, which is never assigned in this routine (F77 ICOMP likewise undefined); prints 0/garbage in the diagnostic.
-- setup/rescale_model.f90:189 -- env_mass_old2 is recorded before the mass rescale and reused for the core rescale, so a run that rescales both mass and core uses a stale envelope-mass fraction (inherited rscale.f).
-- setup/map_user_inputs.f90:36 -- `9.4E0` single-precision literal in a double-precision DATA-style initialisation (~4e-8 relative error; harmless).
+- core/step/timestep_control.f90:112 -- `enclosed_mass(h_shell_zone_begin-1)` indexes 0 when locate_shell_boundaries reports no H shell (h_shell_zone_begin=1) while the core-He-exhausted branch fires; unreachable for ordinary stars but unguarded (inherited ytime.f).
+- core/step/timestep_control.f90:51/71 -- hydrogen_dt is intent(out) but never assigned when previous_timestep < 0 (relaxation case); caller receives an undefined value (modernization: F77 had it SAVEd).
+- core/step/timestep_control.f90:200-205 -- if the model's age already exceeds target_end_age, time_left_years < 0 is copied into the timestep, producing a negative dt for one step before stop_conditions ends the run (inherited).
+- core/model/model_rescaling.f90:144 -- the error WRITE prints `icomp`, which is never assigned in this routine (F77 ICOMP likewise undefined); prints 0/garbage in the diagnostic.
+- core/model/model_rescaling.f90:189 -- env_mass_old2 is recorded before the mass rescale and reused for the core rescale, so a run that rescales both mass and core uses a stale envelope-mass fraction (inherited rscale.f).
+- setup/user_inputs.f90:36 -- `9.4E0` single-precision literal in a double-precision DATA-style initialisation (~4e-8 relative error; harmless).
 - wind/massloss.f90 -- on the mass-loss path (rate < 0) mean_molecular_weight_local, accretion_specific_energy, mean_thermal_energy and new_atmosphere_fit_needed are left unset before the mdot call; harmless today because mdot only reads them under delta_mass > 0, but fragile.
 - wind/massloss.f90:301/304 -- rot_scr%envelope_specific_entropy is unconditionally forced to 0 (historical toggle), so mdot's delta_log_radius correction is dead code; comment says the accretion entropy is used (inherited).
 - wind/kawaler_wind.f90:58-75 -- uses the current star%convective_turnover_timescale while matt_wind interpolates between old/new turnover times with fracstep; the two laws see slightly different Rossby numbers on the same sub-step (inherited wind.f vs mwind.f).
-- util/timestep_limit_hr.f90 header says log_teff "confirmed logged: main.f computes 10.0d0**TEFFL" -- header refers to a computation that lives in the caller; the argument is indeed log10(Teff) in both call paths, so the comment is merely misleading.
-- util/timestep_limit_heburn.f90:75-78 -- h2_fraction passed to engeb is uninitialised when use_extended_composition is false (zero under -finit-local-zero; engeb ignores it in that mode).
-- core/check_solar_calibration.f90 -- log_zx_mismatch is only assigned when the Z/X calibration is on but is written to the log unconditionally (prints 0).
-- core/check_solar_calibration.f90 -- comment states dlum_dalpha uses a derivative "from Basu"; the coded constant is 0.0139 with no source; value is only a first-guess seed so the calibration converges regardless.
-- setup/setup_solar_calibration.f90 -- the central_x/y/d stop criteria (end_xcen etc.) added in 10/24 are not propagated to runs > 3 the way endage/setdt are (inherited setcal.f); only matters if a user sets those on a calibration run.
-- core/run_yrec.f90 -- `log_r_rsun_current` is actually log10(R/Rsun) of the *previous* model at the point where check_star_calibration uses it (name misleading; logic matches chkscal.f).
+- core/step/timestep_control.f90 header says log_teff "confirmed logged: main.f computes 10.0d0**TEFFL" -- header refers to a computation that lives in the caller; the argument is indeed log10(Teff) in both call paths, so the comment is merely misleading.
+- core/step/timestep_control.f90:75-78 -- h2_fraction passed to engeb is uninitialised when use_extended_composition is false (zero under -finit-local-zero; engeb ignores it in that mode).
+- core/run/calibration.f90 -- log_zx_mismatch is only assigned when the Z/X calibration is on but is written to the log unconditionally (prints 0).
+- core/run/calibration.f90 -- comment states dlum_dalpha uses a derivative "from Basu"; the coded constant is 0.0139 with no source; value is only a first-guess seed so the calibration converges regardless.
+- core/run/calibration.f90 -- the central_x/y/d stop criteria (end_xcen etc.) added in 10/24 are not propagated to runs > 3 the way endage/setdt are (inherited setcal.f); only matters if a user sets those on a calibration run.
+- core/run/run_driver.f90 -- `log_r_rsun_current` is actually log10(R/Rsun) of the *previous* model at the point where check_star_calibration uses it (name misleading; logic matches chkscal.f).
 - wind/wcz.f90 -- dead code (no callers); retained per batch scope, matches wcz.f.

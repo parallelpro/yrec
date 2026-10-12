@@ -133,19 +133,19 @@ the assigned files.
    `integer, parameter, public :: n_species_basic = 11,
    n_species_extended = 15` next to the i_* slots. Then replace
    `num_species = 11 / = 15` in `core/henyey_iterate.f90:130-131`,
-   `core/evolve_step.f90:239-240`, `core/read_starting_model.f90:616-617`
-   and `species_end_index = 15 / = 11` in `core/rebuild_envelope.f90:86-88`;
+   `core/step/step_driver.f90:239-240`, `core/model/starting_model.f90:616-617`
+   and `species_end_index = 15 / = 11` in `core/envelope/envelope_rebuild.f90:86-88`;
    also the `do k = 4,...` loops there could start at `i_he3`.
 2. `state/star_info_lib.f90:156` `luminosity_breakdown(8)`: add
    `n_lum_channels = 8`; users `core/henyey_iterate.f90:175`,
-   `core/henyey_coefficients.f90:118`, `core/observables_lib.f90`
+   `core/structure/structure_equations.f90:118`, `core/observables_lib.f90`
    (renormalize_luminosity_breakdown `do i = 1,8`).
 3. `state/star_info_lib.f90:367` `neutrino_flux(10), neutrino_flux_total(10)`
    and `neutrino_flux_zone(10,json)`: add `n_nu_fluxes = 10`; users
-   `core/henyey_coefficients.f90:104,231`, `core/neutrino_flux_table.f90:59,91`.
+   `core/structure/structure_equations.f90:104,231`, `core/diagnostics/neutrino_flux_output.f90:59,91`.
 4. `state/star_info_lib.f90:116-119` nine Monte-Carlo arrays `(1000)`:
    add `max_mc_runs = 1000`, use it there and in
-   `core/monte_carlo.f90:44` `min(star%job%mc_run_end,1000)` (area item 24).
+   `core/run/monte_carlo.f90:44` `min(star%job%mc_run_end,1000)` (area item 24).
 5. `mixing/mix.f90:48` dummy `mixed_zone_bounds_no_overshoot(12,2)` vs the
    actual `(13,2)` in `state/star_info_lib.f90:273`: declare the dummy
    `(13,2)` (or assumed-shape) so the shape matches (area item 17 tail).
@@ -191,7 +191,7 @@ three full pin runs passed on the first attempt.
   step sizes they restore; a merge is a behaviour decision.
 - area item 12 (check_solar_calibration empirical derivatives as
   parameters): they are stored in star% and read by the io domain.
-- area item 10, `surfbc` dummy `luminosity_linear` (it is log10 L):
+- area item 10, `compute_surface_boundary` dummy `luminosity_linear` (it is log10 L):
   noticed after R2 was committed; a dummy-only rename, safe to do in the
   next naming pass.
 - evolve_step still carries `use math_lib` in rezone_or_snapshot and

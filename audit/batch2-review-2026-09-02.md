@@ -277,7 +277,7 @@ lines. Effect: rotating runs only; aint biased ~1-3% -> f_P by ~1e-8
 (Sun) to 1e-6 (rapid rotators). All rotating pins move at bit level.
 Confidence: high that it is a bug, low that it matters.
 
-## 13. envelope_derivs dydx(3) -- core/envelope_derivs.f90:95
+## 13. envelope_derivs dydx(3) -- core/envelope/envelope_integrands.f90:95
 
 Kippenhahn-Thomas/Endal-Sofia: dP/dM_P = -G M f_P/(4 pi r^4), dr/dM =
 1/(4 pi r^2 rho); chain rule with x = logP gives 1/f_P on BOTH

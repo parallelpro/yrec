@@ -17,11 +17,11 @@
 !    the reference solar-model namelists; all kap table flags false
 !    so setups' kap_init is a no-op; atm_choice=0 so atm_init is a
 !    no-op).
-!  * constants + eos table loads: the real setup/setups.f90 +
+!  * constants + eos table loads: the real core/run/run_setup.f90 +
 !    eos_lib's eos_init, with real Fermi/SCV table paths and dummy
 !    paths for everything gated off.
 !  * env_comp (the envelope-composition state blend_eos consumes):
-!    core/read_starting_model.f90's exact mixture algorithm (its statements at the
+!    core/model/starting_model.f90's exact mixture algorithm (its statements at the
 !    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
 !    mixture_weights_seed defaults (the G&N93 12-species mixture) and starin's
 !    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped

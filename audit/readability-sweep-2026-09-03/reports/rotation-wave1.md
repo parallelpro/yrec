@@ -135,7 +135,7 @@ All helper bodies are token-for-token the former inline expressions.
 1. `chi_grid_scale(2)/(9)/(11)` at `src/rotation/equal_spaced_grid.f90:39-41`
    and `src/rotation/seculr/am_transport_grid.f90:230-233`. The mapping to
    `tol_dm_max`/`tol_dl_max`/`tol_dp_core_max` lives in
-   `src/setup/map_user_inputs.f90:203-209` and is applied only under
+   `src/setup/user_inputs.f90:203-209` and is applied only under
    `lnewvars`, so the named controls cannot be read directly. Proposal: in
    `src/io/controls_lib.f90` (owner of `chi_grid_scale`) add
    `integer, parameter, public :: ichi_dm_max = 2, ichi_dl_max = 9, ichi_dp_core_max = 11`

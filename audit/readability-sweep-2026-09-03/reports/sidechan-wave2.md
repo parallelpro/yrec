@@ -24,7 +24,7 @@ On the final tree (`f9b3869`): the full 37-case pin selection ended `PINS EXIT 0
 
 ## Item 1 -- `rezone` local spline buffers (`76b08ec`)
 
-`setup/rezone.f90`. The four `star%` members used as "dummy arrays" became
+`core/model/rezoning.f90`. The four `star%` members used as "dummy arrays" became
 host-level locals of `rezone`, shared by its contained phases:
 
 | was | now | role |
@@ -42,8 +42,8 @@ What was checked:
   luminosity_lsun_start / logT_start / logRho_start` for the P, R, L, T, rho
   run are NOT scratch and are unchanged: after the transfer loop they hold
   the start-of-step model on the new grid (what `evolve_step`'s no-rezone
-  branch stores explicitly at `core/evolve_step.f90:270-308`) and are read
-  by `util/timestep_limit_structure.f90:47-72`,
+  branch stores explicitly at `core/step/step_driver.f90:270-308`) and are read
+  by `core/step/timestep_control.f90:47-72`,
   `rotation/mid_timestep_model.f90:87-96`, `core/burn_lib.f90:2059-2083,
   2876-2882` over `1..star%nz`. Those calls overwrite elements `1..new nz`
   after the last scratch use, so every element a later reader touches is
@@ -69,11 +69,11 @@ deleted (only those lines changed in the shared core files):
 
 | call site | passes | was |
 |---|---|---|
-| `core/henyey_coefficients.f90` | `zone_index=im` | `star%iovim = im` |
-| `core/shell_physics.f90` | `zone_index=im` | `star%iovim = im` |
-| `core/envelope_derivs.f90` | `zone_index=-1` | `star%iovim = -1` (kernel path stays explicit-args) |
+| `core/structure/structure_equations.f90` | `zone_index=im` | `star%iovim = im` |
+| `core/step/shell_physics.f90` | `zone_index=im` | `star%iovim = im` |
+| `core/envelope/envelope_integrands.f90` | `zone_index=-1` | `star%iovim = -1` (kernel path stays explicit-args) |
 | `mixing/semiconvection.f90` (3 calls) | `zone_index=-1` | nothing written (stale value read) |
-| `core/read_starting_model.f90:697` | (absent -> reads `star%iovim`) | `star%iovim = -1` still written at :696 |
+| `core/model/starting_model.f90:697` | (absent -> reads `star%iovim`) | `star%iovim = -1` still written at :696 |
 
 Deviation from the brief, semiconvection: the brief said "pass `star%iovim`
 itself so today's value flows". That would not have preserved today's value
@@ -85,7 +85,7 @@ the gate only rewrites `actual_gradient`, so the index cannot reach any
 output. Passed `-1` with a comment at the first call saying exactly this.
 Byte-identical confirmed by gate1 + full pins.
 
-Why `optional`: `core/read_starting_model.f90:696-697` (henyey's file) also
+Why `optional`: `core/model/starting_model.f90:696-697` (henyey's file) also
 calls `temperature_gradients`, which the brief did not list; a mandatory
 argument would not have built. The fallback reads `star%iovim` exactly as
 before at that one site. Removal is Deferred 2.
@@ -159,7 +159,7 @@ Done, byte-safe:
   which returns immediately after -- does
   `if (disk_exhausted) star%job%use_mass_accretion = .false.`. Nothing in
   `mdot` read the flag after the old write, so this is a pure move.
-- `util/compute_timestep.f90`: the decision is now a local
+- `core/step/timestep_control.f90`: the decision is now a local
   `structure_limits_active` (initialised from
   `star%job%use_structure_dt_limits`, cleared in the log Tc > 7.1 /
   L_grav < 0 block) and the two later reads (`timestep_limit_structure`
@@ -222,9 +222,9 @@ build caught it.
 1. **state, `state/star_info_lib.f90:337`**: delete
    `double precision :: old_shell_mass(json)` (and its mention in the
    nearby comment). No reader or writer remains (grep: only the historical
-   note in `setup/rezone.f90:72`).
+   note in `core/model/rezoning.f90:72`).
 2. **henyey/state, `star%iovim` retirement**:
-   `core/read_starting_model.f90:696` delete `star%iovim = -1`; at :697-700
+   `core/model/starting_model.f90:696` delete `star%iovim = -1`; at :697-700
    append `, zone_index=-1` to the `call temperature_gradients(...)`
    argument list. Then (mixing, any batch) in
    `mixing/temperature_gradients.f90` drop `optional` from `zone_index`,
@@ -245,7 +245,7 @@ build caught it.
    `star%m`, `dlnp_dr`, `settling_dt`, `total_mass` after each settling
    call, which the pins will show as last-digit drift in long runs.
 4. **henyey, item 5 driver edits**:
-   - `core/evolve_step.f90:235-237` (`massloss` call inside `if
+   - `core/step/step_driver.f90:235-237` (`massloss` call inside `if
      (evolve_model_flag)`): add a `logical :: disk_exhausted` local,
      pass it as a new trailing-but-one actual (`..., new_atmosphere_fit_needed,
      disk_exhausted, ierr)`), and after the `if (ierr /= 0) return` add
@@ -253,12 +253,12 @@ build caught it.
      `wind/massloss.f90` (mine) turn the local `disk_exhausted` into
      `logical, intent(out) :: disk_exhausted` placed before `ierr` and
      delete the flip at the end of `massloss`.
-   - `core/evolve_step.f90:141-143` and `core/run_yrec.f90:332-336`
+   - `core/step/step_driver.f90:141-143` and `core/run/run_driver.f90:332-336`
      (`compute_timestep` calls): add a `logical ::
      disable_structure_dt_limits` local at each site, pass it as a new
      trailing actual, and after each call add `if
      (disable_structure_dt_limits) star%job%use_structure_dt_limits =
-     .false.`. Then in `util/compute_timestep.f90` (mine) add `logical,
+     .false.`. Then in `core/step/timestep_control.f90` (mine) add `logical,
      intent(out) :: disable_structure_dt_limits`, set it `.false.` at
      entry and `.true.` where `structure_limits_active = .false.` is set,
      and delete the `star%job%use_structure_dt_limits = .false.` line.
@@ -290,7 +290,7 @@ fixed before any pin ran).
   places; their osplin outputs for the P/T/rho run are the real
   start-of-step model on the new grid, read by three later routines.
   Replacing those would have broken timestep control.
-- Item 2 (brief): `core/read_starting_model.f90:697` is a fourth caller of
+- Item 2 (brief): `core/model/starting_model.f90:697` is a fourth caller of
   `temperature_gradients` with its own `star%iovim = -1`; the brief listed
   it only as a writer. It is why `zone_index` had to be optional.
 - Item 4 (rotation audit item 9 / Structural 5): the restore is inexact,

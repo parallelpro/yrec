@@ -41,7 +41,7 @@ In October 2026, four common tasks were traced through the code from start to fi
 
 1. **Nowhere to plug new physics in.** Each physics choice is a hard-coded if-chain. Adding an option means editing every place the existing options pass through.
 2. **Physics runs inside the numerics.**
-   - `henyey_coefficients` (legacy `coefft`) calls `eos_get`, `kap_get` and `engeb` inside the loop that feeds the eliminator. It also writes about 25 diagnostic arrays on every Newton iteration.
+   - `compute_henyey_coefficients` (legacy `coefft`) calls `eos_get`, `kap_get` and `engeb` inside the loop that feeds the eliminator. It also writes about 25 diagnostic arrays on every Newton iteration.
    - `henyey_iterate` (legacy `crrect`) runs envelope integrations, composition mixing (at levels ≥ 3) and the Ω(j) inversion inside the Newton driver.
    - In rotation, `secular_transport` (legacy `seculr`) mixes physics, wind torques, grid mapping, linear solves and convergence logic in one loop. The convergence checks halve the timestep and change controls as a side effect.
 3. **Contracts that live only in people's heads.**
@@ -84,7 +84,7 @@ These were found while tracing the tasks above. Each traces to one of the root c
 
 ## 3. The timestep today
 
-The order of operations in `core/evolve_step.f90` is sound: it is the physics. This section records it with current names (legacy names in parentheses) so that section 4 can say precisely what changes.
+The order of operations in `core/step/step_driver.f90` is sound: it is the physics. This section records it with current names (legacy names in parentheses) so that section 4 can say precisely what changes.
 
 ```
 evolve_step
@@ -215,7 +215,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
 
 ### 4.4 Structure: separating physics from the Henyey numerics
 
-**Today.** `henyey_coefficients` evaluates the microphysics and forms the per-shell terms `q*` and their partials in one loop, interleaved with calls to `henyey_eliminate`. The per-shell type `henyey_shell_terms` carries only the partials that happen to be nonzero for today's physics: there is no `ql_dr` or `ql_dl`.
+**Today.** `compute_henyey_coefficients` evaluates the microphysics and forms the per-shell terms `q*` and their partials in one loop, interleaved with calls to `henyey_eliminate`. The per-shell type `henyey_shell_terms` carries only the partials that happen to be nonzero for today's physics: there is no `ql_dr` or `ql_dl`.
 
 **Target.**
 
@@ -232,7 +232,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
   (`henyey_elimination.f90`, top of the routine).
 - **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `henyey_coefficients.f90`).
 - **The luminosity term.** `ql = (ln 10 · m / L☉) · ε`, where ε is the total specific energy rate in erg g⁻¹ s⁻¹. So `ql_dT` and `ql_dP` take the **absolute** derivatives dε/dln T and dε/dln ρ, which is what `engeb` returns.
-- **The envelope.** The envelope integration (`envelope_derivs`) carries m, T and R against log P at constant L. Any energy source above the fitting mass is excluded. This must be stated in the energy-source interface, and checked: a source that is nonzero above the fitting point should cause a warning.
+- **The envelope.** The envelope integration (`compute_envelope_derivs`) carries m, T and R against log P at constant L. Any energy source above the fitting mass is excluded. This must be stated in the energy-source interface, and checked: a source that is nonzero above the fitting point should cause a warning.
 
 ### 4.5 The four extension points
 
@@ -471,32 +471,32 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 
 | Legacy | Current file |
 |---|---|
-| `starin` | `core/read_starting_model.f90` |
-| `crrect` | `core/henyey_iteration.f90` (`refresh_surface_bc`, `henyey_iterate`) |
-| `coefft` | `core/henyey_coefficients.f90` |
-| `reduce` | `core/henyey_elimination.f90` |
-| `hsolve` | `core/henyey_solve.f90` |
-| `surfbc` | `core/surfbc.f90` |
-| `envint` | `core/envelope_integration.f90`, `core/envelope_integration_kernel.f90` |
-| `qatm`, `qenv` | `core/atmosphere_derivs.f90`, `core/envelope_derivs.f90` |
-| `physic` | `core/shell_physics.f90` |
-| `gettau` | `core/turnover_timescale.f90` |
-| `chkcal`, `setcal` | `core/check_solar_calibration.f90`, `setup/setup_solar_calibration.f90` |
-| `chkscal`, `setscal` | `core/check_star_calibration.f90`, `setup/setup_star_calibration.f90` |
-| `engeb` | `net/nuclear_energy.f90` (`nuclear_energy`), adapter `compute_zone_energy` in `core/burn_step.f90` |
+| `starin` | `core/model/starting_model.f90` |
+| `crrect` | `core/structure/henyey_iteration.f90` (`refresh_surface_bc`, `henyey_iterate`) |
+| `coefft` | `core/structure/structure_equations.f90` |
+| `reduce` | `core/structure/henyey_elimination.f90` |
+| `hsolve` | `core/structure/henyey_elimination.f90` |
+| `compute_surface_boundary` | `core/structure/surface_boundary.f90` |
+| `envint` | `core/envelope/envelope_integration.f90`, `core/envelope/envelope_integration_kernel.f90` |
+| `qatm`, `qenv` | `core/envelope/envelope_integrands.f90`, `core/envelope/envelope_integrands.f90` |
+| `physic` | `core/step/shell_physics.f90` |
+| `gettau` | `core/diagnostics/turnover_timescale.f90` |
+| `chkcal`, `setcal` | `core/run/calibration.f90`, `core/run/calibration.f90` |
+| `chkscal`, `setscal` | `core/run/calibration.f90`, `core/run/calibration.f90` |
+| `engeb` | `net/nuclear_energy.f90` (`nuclear_energy`), adapter `compute_zone_energy` in `core/step/burn_step.f90` |
 | `deutrate`, `dburn`, `dburnm` | `net/light_elements.f90` (`deuterium_rate`, `burn_deuterium_region`) |
-| `liburn`, `lirate88` | `core/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
+| `liburn`, `lirate88` | `core/step/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
 | `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
-| `mix` | `core/composition_step.f90` (`advance_composition`) |
+| `mix` | `core/step/composition_step.f90` (`advance_composition`) |
 | `convec`, `oversh`, `hsubp`, `mixcz` | `convection/convection_zones.f90` (`find_convection_zones`, `extend_by_overshoot`, `compute_scale_height`, `homogenize_convection_zones`) |
 | `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
 | `kemcom` | `net/network.f90` (`burn_implicitly`) |
 | `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
 | `rotmix`, `bursmix`, `bsrotmix` | `rotation/mid_timestep_model.f90` (`burn_and_settle`), `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two commented out) |
-| `hpoint` | `setup/rezone.f90` |
-| `findsh` | `setup/locate_shell_boundaries.f90` |
-| `setups` | `setup/setups.f90` |
-| `htimer` | `util/compute_timestep.f90` |
+| `hpoint` | `core/model/rezoning.f90` |
+| `findsh` | `core/model/shell_boundaries.f90` |
+| `set_up_constants_and_tables` | `core/run/run_setup.f90` |
+| `htimer` | `core/step/timestep_control.f90` |
 | `getw` | `rotation/evolve_rotation.f90` (`evolve_angular_momentum`) |
 | `midmod` | `rotation/mid_timestep_model.f90` |
 | `solid`, `getrot`, `wczimp` | `rotation/omega_profile.f90` (`solid_body_omega`, `omega_from_j`, `enforce_rotation_profile`) |
@@ -511,7 +511,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `dcoeft`, `dadcoeft` | `rotation/seculr/am_transport_coefficients.f90` |
 | `checkj`, `checkc` | `rotation/seculr/transport_checks.f90` |
 | `mwind`, `wind`, `mcowind`, `cowind`, `amcalc` | `rotation/magnetic_braking.f90` (`brake_convection_zone` for mwind/wind, `compute_solid_body_braking` for mcowind/cowind) |
-| `massloss`, `mdot` | `core/mass_change.f90` (`change_mass`, `apply_mass_change`) |
+| `massloss`, `mdot` | `core/step/mass_change.f90` (`change_mass`, `apply_mass_change`) |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
 | `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`, `read_mhd_tables`) |
 | `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three; `find_opal_edge_ramp` over `find_opal95_ramp` (`opal95_eos.f90`), `find_opal2001_ramp`, `find_opal2006_ramp`) |

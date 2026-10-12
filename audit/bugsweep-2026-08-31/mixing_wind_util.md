@@ -6,7 +6,7 @@ F77 revision a8e6067). Build context that matters below: `GNU_BASE_FFLAGS`
 includes `-finit-local-zero` and does NOT include `-fno-automatic`, so
 un-SAVEd locals are automatic and deterministically zeroed at every entry.
 
-## util/compute_timestep.f90:67,129 + util/timestep_limit_heburn.f90:34,111 -- dropped blanket SAVE zeroes the He-burning timestep; likely ROOT CAUSE of the TAHB NaN crash
+## core/step/timestep_control.f90:67,129 + core/step/timestep_control.f90:34,111 -- dropped blanket SAVE zeroes the He-burning timestep; likely ROOT CAUSE of the TAHB NaN crash
 - class: logical / numerical
 - severity: high
 - confidence: high (that it is a real bug); medium-high (that it is the TAHB crash root cause)
@@ -130,7 +130,7 @@ un-SAVEd locals are automatic and deterministically zeroed at every entry.
   helium-diffusion path of mix. Fix is mod(timestep,max_settling_dt) plus
   the rotmix-style nstep==0 guard.
 
-## util/timestep_limit_heburn.f90:111 -- the shell-burning branch formula is dimensionally incoherent even as originally written
+## core/step/timestep_control.f90:111 -- the shell-burning branch formula is dimensionally incoherent even as originally written
 - class: physical
 - severity: medium (masked in F77; becomes finding #1 after modernization)
 - confidence: medium-high
@@ -231,7 +231,7 @@ un-SAVEd locals are automatic and deterministically zeroed at every entry.
   Anyone setting dpenv from the header comment gets the complement of
   what they asked for.
 
-## util/timestep_limit_structure.f90:56,77 -- luminosity "relative change" denominator mixes adjacent zones of the current model instead of old/new values
+## core/step/timestep_control.f90:56,77 -- luminosity "relative change" denominator mixes adjacent zones of the current model instead of old/new values
 - class: numerical (inconsistent averaging)
 - severity: low
 - confidence: medium

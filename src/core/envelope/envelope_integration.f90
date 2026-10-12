@@ -6,7 +6,7 @@
 ! the star solver's outer-boundary integrator: it integrates the
 ! atmosphere and envelope down to the fit point, driving the
 ! atmosphere_derivs/envelope_derivs integrands (which call the eos/
-! kap facades) through numerics' bsstep in core/envelope_integration_kernel.f90,
+! kap facades) through numerics' bsstep in core/envelope/envelope_integration_kernel.f90,
 ! consuming the pure atm surface lookups (surfp/kcsurfp/interpolate_allard_surface --
 ! still atm-domain physics) and writing model state (star%pphot,
 ! the pt_scr pulse scratch, the envelope/atmosphere structure
@@ -82,7 +82,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! 2026 envint purity split phase B: atm_get is now the thin star-layer
 ! DRIVER. It snapshots the configuration out of star%job / star%ctrl
 ! into an envint_config, calls the star-blind kernel
-! (core/envelope_integration_kernel.f90), and applies the star-state consequences:
+! (core/envelope/envelope_integration_kernel.f90), and applies the star-state consequences:
 ! star%pphot from the integrated photosphere, and the Allard
 ! gray-fallback switch (atm_choice -> 0, use_ttau_relation) when the
 ! kernel reports it.

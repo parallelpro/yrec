@@ -3,7 +3,7 @@
 Files read in full: atm/atm_lib.f90, atm/atm_table_lib.f90, atm/atmstruct_lib.f90,
 atm/envstruct_lib.f90, atm/ttau_lib.f90, atm/tables/{surfp,kcsurfp,alsurfp,altabinit,alfilein}.f90,
 net/net_lib.f90, math/math_lib.f90. There is no atm/turnover/ directory in the tree; the
-turnover/acoustic-depth diagnostics named in the assignment live in core/turnover_timescale.f90
+turnover/acoustic-depth diagnostics named in the assignment live in core/diagnostics/turnover_timescale.f90
 (gettau/tauintnew successor) and core/observables_lib.f90 (acoustic radius / delta_nu / delta_Pg)
 — both reviewed in full as part of this scope.
 
@@ -62,7 +62,7 @@ T-tau relations verified against the standard forms: Eddington offset 0.25*log10
   garbage can enter the N15 branching fraction used in abundance updates (in the F77
   code it was a silently stale value from the previous hot shell).
 
-## core/turnover_timescale.f90:258-263 + 315 -- innermost-point TAUCZ result overwritten by the averaging block
+## core/diagnostics/turnover_timescale.f90:258-263 + 315 -- innermost-point TAUCZ result overwritten by the averaging block
 - class: logical
 - severity: medium
 - confidence: high
@@ -81,7 +81,7 @@ T-tau relations verified against the standard forms: Eddington offset 0.25*log10
   BCZ (coarse grids, thin CZs); silent numerical divergence from the F77 behavior in
   the wind-saturation/deuterium-limiter and history taucz.
 
-## core/turnover_timescale.f90:192-198 -- core_cz_top_index read while uninitialized (guard tests garbage)
+## core/diagnostics/turnover_timescale.f90:192-198 -- core_cz_top_index read while uninitialized (guard tests garbage)
 - class: numerical
 - severity: medium
 - confidence: high
@@ -191,10 +191,10 @@ T-tau relations verified against the standard forms: Eddington offset 0.25*log10
 
 ## Weak/uncertain observations (one line each)
 
-- core/turnover_timescale.f90:202-203 — `convective_flag(cz_base_index+1/+2)` can index past num_points (reads unfilled elements) when the located CZ base is within 2 shells of the top; inherited (LCZ(IMAX+1/+2), tauintnew.f:90).
-- core/turnover_timescale.f90:338-348 — averaging-branch edge guard only handles k==cz_base_index+1; k==cz_base_index (possible when the CZ-center radius is below the first point) gives kk-2 = cz_base_index-2, underflowing for a base near index 1; inherited.
-- core/turnover_timescale.f90:244/326 — interp_fraction = dd2/(dd2-dd1) can divide by ~0 when gradr-grada is equal at adjacent points; inherited.
-- core/turnover_timescale.f90:365-367 — the taucz>1e20 retry sets search_start_index = cz_base_index+1, which can exceed num_points; the next scan then reads convective_flag(search_start_index) beyond the filled range; inherited.
+- core/diagnostics/turnover_timescale.f90:202-203 — `convective_flag(cz_base_index+1/+2)` can index past num_points (reads unfilled elements) when the located CZ base is within 2 shells of the top; inherited (LCZ(IMAX+1/+2), tauintnew.f:90).
+- core/diagnostics/turnover_timescale.f90:338-348 — averaging-branch edge guard only handles k==cz_base_index+1; k==cz_base_index (possible when the CZ-center radius is below the first point) gives kk-2 = cz_base_index-2, underflowing for a base near index 1; inherited.
+- core/diagnostics/turnover_timescale.f90:244/326 — interp_fraction = dd2/(dd2-dd1) can divide by ~0 when gradr-grada is equal at adjacent points; inherited.
+- core/diagnostics/turnover_timescale.f90:365-367 — the taucz>1e20 retry sets search_start_index = cz_base_index+1, which can exceed num_points; the next scan then reads convective_flag(search_start_index) beyond the filled range; inherited.
 - atm/tables/surfp.f90:175-181 — modernization dropped the original's WRITE(ISTOR,...) copies of the log-P diagnostic (model-store stream loses two lines; output-only); same in kcsurfp.
 - atm/tables/alfilein.f90:198/287 vs 322-323 — FeH skip tolerance 1d-5 but store-verify tolerance 1d-6: a record with |dFeH| in (1d-6,1d-5] is counted in pass 1 but silently not stored in pass 2, leaving -999 holes that altabinit then rejects; alpha uses `.gt.0d0` (exact equality) in the skip but 1d-6 in the verify; inherited.
 - atm/tables/alfilein.f90:236-251 — FeH/alpha uniqueness scans bounded by allard_num_gl instead of their own counters (acknowledged in a code comment; preserved inherited bug; harmless while FeH/alpha grids are single-valued).

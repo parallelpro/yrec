@@ -40,7 +40,7 @@ four standard stellar-structure ODEs, in log₁₀ form internally
 (`logP`, `logT`, `logR`, and linear `L` as dependent variables, `log m` as
 the coordinate; all cgs):
 
-| # | Equation | YREC form (per shell, `henyey_coefficients` (`coefft`), `core/henyey_coefficients.f90`) |
+| # | Equation | YREC form (per shell, `compute_henyey_coefficients` (`coefft`), `core/structure/structure_equations.f90`) |
 |---|----------|------------------------------------------|
 | 1 | Mass conservation | dr/dm = 1/(4πr²ρ) — residual `cur%qr = exp(ln10·(log m − log ρ − log 4πr³))` |
 | 2 | Hydrostatic equilibrium | dP/dm = −Gm/(4πr⁴) · **f_P** — residual `qp = −exp(ln10·(log G + 2 log m − log P − log 4πr³ − log r))·f_P` (held in `pt_scr%qp`, mirrored into `cur%qp`) |
@@ -77,7 +77,7 @@ Composition evolves by:
 - **nuclear burning** — an implicit (backward-Euler) network solve per
   region, Newton iteration on the coupled H/He3/CNO abundances
   (`burn_implicitly`, `net/network.f90`, driven per region by
-  `burn_network_region` in `core/burn_step.f90`: the equations and
+  `burn_network_region` in `core/step/burn_step.f90`: the equations and
   Jacobian come from a reaction table, solved by `simeqc` in
   `numerics/numerics_lib.f90`), plus explicit updates: equilibrium-He3/CN
   hydrogen and helium burning rates on the first iteration level
@@ -86,14 +86,14 @@ Composition evolves by:
   walks through these routines and their call order;
 - **instantaneous convective mixing** — convective zones (plus overshoot
   extensions) are homogenized every step (inside `advance_composition`,
-  `core/composition_step.f90`, and again after the structure converges by
+  `core/step/composition_step.f90`, and again after the structure converges by
   `homogenize_convection_zones` (`mixcz`));
 - **light elements** (Li6, Li7, Be9, H2) — burned in the trace
   approximation by exponential decay with the rate interpolated over the
   step (closed form, `surviving_fraction` in `net/light_elements.f90`),
   accounting for the time-dependent depth of the surface convection zone
-  (`burn_li_be` in `core/burn_step.f90`, rates from `compute_li_be_rates`, the CZ
-  base from `core/convection_geometry.f90`; the CZ-depth history enters via the pressure-scale-height
+  (`burn_li_be` in `core/step/burn_step.f90`, rates from `compute_li_be_rates`, the CZ
+  base from `core/step/convection_geometry.f90`; the CZ-depth history enters via the pressure-scale-height
   bounds `star%pressure_scale_height_start`/`_end` and the previous CZ-base
   radius `star%cz_base_radius_prev`);
 - **microscopic diffusion** (optional) — gravitational settling and
@@ -134,8 +134,8 @@ condition as functions P_fit(Teff, L), T_fit(Teff, L), R_fit(Teff, L).
 
 ### 2.2 The envelope triangle
 
-Because each envelope integration is expensive, `surfbc`
-(`core/surfbc.f90`) maintains a **triangle of three (log Teff, log L)
+Because each envelope integration is expensive, `compute_surface_boundary`
+(`core/structure/surface_boundary.f90`) maintains a **triangle of three (log Teff, log L)
 vertices** at which full envelope integrations have been performed, and
 interpolates the fitting-point conditions linearly inside it
 (`star%envelope_fit_coeffs`). As the Henyey solution moves the surface,
@@ -151,8 +151,8 @@ call to `henyey_iterate` (`crrect`)) instead of three.
 
 ### 2.3 Linearization and the block elimination
 
-At each interior shell `henyey_coefficients` (`coefft`,
-`core/henyey_coefficients.f90`) evaluates the four residuals and
+At each interior shell `compute_henyey_coefficients` (`coefft`,
+`core/structure/structure_equations.f90`) evaluates the four residuals and
 their analytic partial derivatives with respect to the corrections
 (δlogP, δlogT, δlogR, δL) at the shell and its neighbor — the EOS
 (`eos_get`), opacity (`kap_get`), gradient (`compute_temperature_gradients`
@@ -162,15 +162,15 @@ branch of equation 3 carries
 ∂qt/∂logT = qt·(−4 + ∂lnκ/∂lnT + ∂lnκ/∂lnρ·∂lnρ/∂lnT).
 
 The 4-equation, 4-unknown per-shell-pair system is **reduced on the fly**:
-`henyey_eliminate` (`reduce`, `core/henyey_elimination.f90`; called inside
-`henyey_coefficients`' shell loop) builds the trapezoidal
+`henyey_eliminate` (`reduce`, `core/structure/henyey_elimination.f90`; called inside
+`compute_henyey_coefficients`' shell loop) builds the trapezoidal
 residuals, Gauss-Jordan-eliminates the local 4×4 (pivoting the L, R, T, P
 rows in turn) while carrying the coupling to the previous shell, and so
 fuses the forward elimination into the coefficient pass itself. What is
 stored (`star%elim_coeff(4,2,:)` / `star%elim_rhs(4,:)`) is not a matrix
 to be factored later but an already-eliminated **bidiagonal recurrence in
 (δlogP, δlogT)**, with rows 3 and 4 retaining the recipe to recover
-(δlogR, δL). `henyey_solve` (`hsolve`, `core/henyey_solve.f90`) then only
+(δlogR, δL). `henyey_solve` (`hsolve`, `core/structure/henyey_elimination.f90`) then only
 closes the recurrence at the surface — a 2×2 solve against the 6-element
 linearized surface boundary condition (`star%surface_bc`, built by
 `henyey_iterate` from the envelope triangle's `star%envelope_fit_coeffs`)
@@ -185,10 +185,10 @@ the singular ODE forms).
 
 ### 2.4 The four iteration levels
 
-`henyey_iterate` (`core/henyey_iteration.f90`) is called up to four times
+`henyey_iterate` (`core/structure/henyey_iteration.f90`) is called up to four times
 per timestep by `evolve_step` (through its `solve_level` wrapper), with
 different boundary-condition policies (`star%ctrl%max_iter_level1..4`
-control the iteration budget). The surface BC is refreshed (`surfbc`) at
+control the iteration budget). The surface BC is refreshed (`compute_surface_boundary`) at
 most once per call, before the Newton loop:
 
 1. **Level 1** — iterate on the *cached* envelope fit of the previous
@@ -214,9 +214,9 @@ the timestep and retry.
 
 ### 2.5 Envelope/atmosphere integrators
 
-`atm_get` (`envint`; driver in `core/envelope_integration.f90`, star-blind kernel in
-`core/envelope_integration_kernel.f90`, integrands in `core/atmosphere_derivs.f90` and
-`core/envelope_derivs.f90`) integrates:
+`atm_get` (`envint`; driver in `core/envelope/envelope_integration.f90`, star-blind kernel in
+`core/envelope/envelope_integration_kernel.f90`, integrands in `core/envelope/envelope_integrands.f90` and
+`core/envelope/envelope_integrands.f90`) integrates:
 
 - **Atmosphere**: from τ near 0 to the photospheric pressure, in the
   variable x = log(κP/g) (one ODE for log P vs. τ via dP/dτ = g/κ), with
@@ -240,7 +240,7 @@ error-budget failure.
 
 ### 2.6 Timestep control
 
-`compute_timestep` (`htimer`, `util/compute_timestep.f90`, with the
+`compute_timestep` (`htimer`, `core/step/timestep_control.f90`, with the
 per-criterion limiters `timestep_limit_structure`/`_omega`/`_hburn`/
 `_heburn`/`_hr` (`ptime`/`wtime`/`xtime`/`ytime`/`entime`) in
 `util/timestep_limit_*.f90`) selects Δt for the next model from the most
@@ -258,7 +258,7 @@ itself off once log T_c > 7.1 with L_grav < 0 (the terminal reports
 
 ### 2.7 Rezoning
 
-`rezone` (`hpoint`, `setup/rezone.f90`) re-meshes after each converged
+`rezone` (`hpoint`, `core/model/rezoning.f90`) re-meshes after each converged
 model: shells are inserted/deleted so that a structure function
 χ = Δlog m/δm + ΔL/δL − ΔlogP/δP, with separate ΔX and ΔZ limits, stays
 within tolerance per shell (the scales come from
@@ -275,7 +275,7 @@ McAllister–Roulier `choose/cases/spline` machinery,
 
 ## 3. Order of operations within one timestep
 
-`evolve_step` (`core/evolve_step.f90`; stages 0-4 run inside the
+`evolve_step` (`core/step/step_driver.f90`; stages 0-4 run inside the
 `retry_step` loop, then 5-12 once; current names, legacy in parentheses):
 
 ```
@@ -417,7 +417,7 @@ overshoot region (`star%ctrl%ladov`, inlist name
 rate-limited "semiconvective" overshoot variant with a propagation-speed
 cap.
 
-### 4.4 Nuclear network (`net/` physics + `core/burn_step.f90` drivers)
+### 4.4 Nuclear network (`net/` physics + `core/step/burn_step.f90` drivers)
 
 The routines, their call order and how to extend them are described in
 `src/net/README.md`. In brief:
@@ -431,7 +431,7 @@ The routines, their call order and how to extend them are described in
   newer-rate set with **Solar Fusion II** S-factors and per-reaction
   namelist scale factors (`s0_*` controls, turned into
   `star%cross_section_scale` by `map_user_inputs` (`remap`) in
-  `setup/map_user_inputs.f90`);
+  `setup/user_inputs.f90`);
 - **weak and intermediate screening** (Salpeter/Graboske) selected by a
   threshold; the code's own comment notes strong screening is untested;
 - **neutrino energy losses** from each pp/CNO chain branch, plus
@@ -513,7 +513,7 @@ interpolated in both directions with edge-validity bookkeeping
 | Kernel | Method | Used by |
 |---|---|---|
 | `bsstep` (with `mmid`, `ratext`) | Bulirsch–Stoer with modified midpoint + rational extrapolation, for an `ode_system` | atmosphere & envelope integration (`envelope_equations`) |
-| `henyey_solve` (`hsolve`; in `core/henyey_solve.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
+| `henyey_solve` (`hsolve`; in `core/structure/henyey_elimination.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
 | `simeqc` | Gauss-Jordan with pivoting | `burn_implicitly`'s Newton systems |
 | `ludcmp`/`lubksb` | LU with partial pivoting | Thoul diffusion coefficients |
 | `solve_tridiagonal` (`tridiag_gs`, `ctridi`) | tridiagonal (Thomas) solver | gravitational settling, rotational composition diffusion |
@@ -527,7 +527,7 @@ interpolated in both directions with edge-validity bookkeeping
 None of the numerics keeps `save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files
-(`core/run_yrec.f90`, `core/evolve_step.f90`) and
+(`core/run/run_driver.f90`, `core/step/step_driver.f90`) and
 `rotation/burn_mix_extrapolated.f90` (commented out). `numerics/README.md` describes the
 modules.
 
@@ -539,14 +539,14 @@ modules.
   Z/X — to solar targets, and updates (X₀, α_MLT) (and Z₀ for Z/X) with
   stored empirical partial derivatives (∂logL/∂X = −3.78 etc., hardwired
   from experiment in `check_solar_calibration` (`chkcal`,
-  `core/check_solar_calibration.f90`)), iterating whole evolutionary runs
+  `core/run/calibration.f90`)), iterating whole evolutionary runs
   to tolerance (`toll/tolr` ≈ 3×10⁻⁵). Yields the classic calibrated solar
   model in a handful of runs.
 - **Star calibration** (`star%ctrl%calibrate_star_flag`, namelist `lcalst`;
   `setup_star_calibration`/`check_star_calibration` (`setscal`/`chkscal`)):
   same machinery against arbitrary (Teff, L) targets.
 - **Monte-Carlo mode** (`star%ctrl%monte_carlo_active`, namelist `lmonte`;
-  `core/monte_carlo.f90`): repeated runs drawing physics
+  `core/run/monte_carlo.f90`): repeated runs drawing physics
   parameters (rate S-factors, diffusion factors, Z/X…) per realization —
   the classic solar-model uncertainty machinery (compile-verified only: no
   regression deck enables it).
@@ -557,7 +557,7 @@ modules.
 main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
   └─ run_yrec(ierr)                            └─ yrec_capi: yrec_run()
        ├─ yrec_run_prologue     (re-entrancy: snapshot/restore all state;
-       │                         core/yrec_reset.f90)
+       │                         core/run/yrec_reset.f90)
        ├─ read_controls         (io/read_controls.f90; read_input (parmin):
        │                         legacy $CONTROL/$PHYSICS or MESA-style
        │                         &star_job/&controls inlists)
@@ -585,14 +585,14 @@ members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
 bundles are nested: `star%job` (run list and calibration cards) and
 `star%ctrl` (namelist controls, fixed after `read_controls`). Solver
 scratch lives in `rotation/rotation_scratch_lib.f90` and
-`core/point_scratch_lib.f90`, table state inside each physics domain. Two
+`core/structure/point_scratch_lib.f90`, table state inside each physics domain. Two
 `run_yrec` calls in one process are byte-identical to two fresh processes
 (the re-entrancy contract), which is what makes the Python embedding sound.
 
 **The physics boundary today.** Per-point evaluation takes explicit
 inputs: `eos_get`, `kap_get` and `net_lib`'s `compute_reaction_rates` receive T, P or ρ and
 the composition as arguments, and the envelope kernel
-`core/envelope_integration_kernel.f90` is star-blind (enforced by
+`core/envelope/envelope_integration_kernel.f90` is star-blind (enforced by
 `tools/check_boundaries.py`). Configuration is still read from `star`: 26
 files under `eos/`, `kap/`, `atm/` and `net/` `use star_info_lib, only:
 star` and read about 60 distinct members — 54 `star%ctrl`/`star%job`
@@ -630,7 +630,7 @@ imports `star`, is `TARGET_ARCHITECTURE.md` §4.1 and §4.6.
 *Caveats: `henyey_solve`'s (`hsolve`) algebra is dense and was renamed
 structurally, not rederived, during modernization — the description in
 §2.3 reflects the code's own documentation plus the
-`henyey_coefficients` (`coefft`) equation forms. The MHD EOS path
+`compute_henyey_coefficients` (`coefft`) equation forms. The MHD EOS path
 is unexercised (no tables ship). Legacy output (`wrtout`) was retired on
 2026-08-28, so the Monte-Carlo and helium-flash paths now write through
 `io/yrec_output.f90` like every other run; the Monte-Carlo path is

@@ -7,18 +7,18 @@ the 2026-08-31 pass.
 ## Files read in full
 
 Assigned (all 15):
-- core/henyey_coefficients.f90 (vs coefft.f)
+- core/structure/structure_equations.f90 (vs coefft.f)
 - core/henyey_iterate.f90 (vs crrect.f)
 - core/henyey_eliminate.f90 (vs reduce.f)
-- core/henyey_solve.f90 (vs hsolve.f)
+- core/structure/henyey_elimination.f90 (vs hsolve.f)
 - core/envint_kernel.f90 (vs envint.f)
 - core/envint_lib.f90 (vs envint.f driver part)
-- core/envelope_derivs.f90 (vs qenv.f)
-- core/atmosphere_derivs.f90 (vs qatm.f)
-- core/surfbc.f90 (vs surfbc.f)
-- core/rebuild_envelope.f90 (vs getnewenv.f, getrot.f)
-- core/shell_physics.f90 (vs physic.f)
-- core/turnover_timescale.f90 (vs gettau.f, tauintnew.f)
+- core/envelope/envelope_integrands.f90 (vs qenv.f)
+- core/envelope/envelope_integrands.f90 (vs qatm.f)
+- core/structure/surface_boundary.f90 (vs surfbc.f)
+- core/envelope/envelope_rebuild.f90 (vs getnewenv.f, getrot.f)
+- core/step/shell_physics.f90 (vs physic.f)
+- core/diagnostics/turnover_timescale.f90 (vs gettau.f, tauintnew.f)
 - core/observables_lib.f90 (vs wrtout.f blocks)
 - mixing/temperature_gradients.f90 (vs tpgrad.f)
 - mixing/compute_scale_height.f90 (vs hsubp.f)
@@ -27,12 +27,12 @@ F77 ancestors read in full: coefft.f, crrect.f, reduce.f, hsolve.f, envint.f,
 qenv.f, qatm.f, surfbc.f, getnewenv.f, getrot.f, physic.f, tpgrad.f, hsubp.f,
 gettau.f, tauintnew.f; wrtout.f (relevant blocks).
 
-Supporting files read (in part, to trace flow): core/evolve_step.f90 (corrector
-ladder, rebuild_envelope call site), core/stitched_model.f90 (atm_get call,
+Supporting files read (in part, to trace flow): core/step/step_driver.f90 (corrector
+ladder, rebuild_envelope call site), core/diagnostics/stitched_model.f90 (atm_get call,
 delta(1) handling), rotation/omega_from_j.f90 (full), atm/ttau_lib.f90
 (dispatch), eos/eqstat.f90 (which result slots are always overwritten),
 wind/mdot.f90 (where rot_scr%delta_log_temperature/pressure are set),
-mixing/overshoot_boundaries.f90 and core/read_starting_model.f90 / core/rezone.f90
+mixing/overshoot_boundaries.f90 and core/model/starting_model.f90 / core/rezone.f90
 / rotation/evolve_angular_momentum.f90 (call sites of bare externals),
 Makefile (compiler flags).
 
@@ -91,7 +91,7 @@ divisions below into hard traps.
 
 ## Findings
 
-## core/atmosphere_derivs.f90:61 -- Allard-fallback integration mixes an HSRA T(tau) integrand with an Eddington start point and x-limit
+## core/envelope/envelope_integrands.f90:61 -- Allard-fallback integration mixes an HSRA T(tau) integrand with an Eddington start point and x-limit
 - class: logical
 - severity: medium
 - confidence: high
@@ -105,14 +105,14 @@ divisions below into hard traps.
 - provenance: modernization (crrect.f line 58 blanket SAVE keeps JENV across calls; MIX at crrect.f 103-104 sets it only at ITLVL>2, COEFFT at 121-123 receives it every level; coefft.f:253 `IF(IM.GE.JENV)`)
 - detail: `envelope_zone_index` is declared as a plain local at henyey_iterate.f90:133, is written only by the `call mix(...)` at 214-216 (guarded by `iteration_level.gt.2 .and. delta_time.gt.0`), and is passed to henyey_coefficients at 240-242 on every iteration. At levels 1 and 2 (evolve_step.f90:397, 402) it is therefore 0 under gfortran (-finit-local-zero) and garbage under ifort/ifx. henyey_coefficients.f90:300 tests `if (im.ge.envelope_zone_index)` to decide whether to add rot_scr%delta_log_temperature / delta_log_pressure (the accretion entropy-term corrections, set in mdot.f90:179-180 only when mass is being accreted) -- with JENV=0 every zone is treated as belonging to the accreting envelope. In F77 the SAVE'd JENV carried the previous step's value into levels 1-2, which is approximately right; the modern code applies the accretion correction to the whole interior at levels 1-2. Level 3 then recomputes with the correct JENV, so the converged model is (mostly) recovered, but the level-2 solution is what is stored into the entropy-term predictor arrays at evolve_step.f90:407-414 (which feed the next model's first guess), and a bad level-1/2 iterate can trip the divergence flag and force a timestep cut. Only accretion runs (dM/dt > 0) are affected; non-accreting runs see zero deltas and are unaffected.
 
-## core/rebuild_envelope.f90:96 -- comment claims a blanket SAVE that does not exist; omega(old_num_zones) read before set, so new envelope shells get j_rot = 0
+## core/envelope/envelope_rebuild.f90:96 -- comment claims a blanket SAVE that does not exist; omega(old_num_zones) read before set, so new envelope shells get j_rot = 0
 - class: logical
 - severity: medium
 - confidence: high
 - provenance: inherited + modernization (getnewenv.f line 46 `SAVE`, line 40 local OMEGA(JSON), lines 246/252 read OMEGA(MM) before this call's GETROT; modern file has no `save` statement at all -- grep finds only the env_*_saved scalars)
 - detail: The header comment at rebuild_envelope.f90:92-103 says "Because of the blanket SAVE below, [omega] retains the previous call's values ... Preserved exactly as such", but no `save` exists in the modern file, so the local `omega(json)` is fresh on every call. Lines 352, 354 and 358 read `omega(old_num_zones)` before `call omega_from_j(...)` at 365-367 fills omega(1..num_zones) from specific_angular_momentum. Under gfortran that read is 0, so in the solid-body branch (352-354) every added envelope shell gets omega=0 and j_rot=0, and in the general branch (358) omega_ref=0 so j_rot=0 there too; under ifort/ifx it is garbage. The F77 was also wrong (stale value from the previous call, zero on the first call) but the comment says the modern code reproduces the stale-value behaviour, and it does not: it reproduces the first-call behaviour every time. In addition star%omega is never refreshed by rebuild_envelope (the F77 GETROT also only wrote the local OMEGA), yet the caller evolve_step.f90:122-128 immediately passes star%omega to rotation_shape_factors. Fires on every envelope rebuild in a mass-loss+rotation run where the number of zones changes; observable as a spurious j_rot=0 layer at the top of the model right after each rebuild, later smeared by the angular-momentum transport step.
 
-## core/henyey_coefficients.f90:443 -- dlnepsilon partials and energy components below the nuclear cutoff are stored from stale/zero locals
+## core/structure/structure_equations.f90:443 -- dlnepsilon partials and energy components below the nuclear cutoff are stored from stale/zero locals
 - class: numerical
 - severity: low
 - confidence: high

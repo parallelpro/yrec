@@ -1,7 +1,7 @@
 # Bug sweep: src/numerics/, src/setup/, src/state/
 
 Files read in full: numerics/intpar_lib.f90, numerics/numerics_lib.f90 (3243 lines);
-setup/setups.f90, locate_shell_boundaries.f90, map_user_inputs.f90, rescale_model.f90,
+core/run/run_setup.f90, locate_shell_boundaries.f90, map_user_inputs.f90, rescale_model.f90,
 rezone.f90, rotation_stability_setup.f90, setup_solar_calibration.f90,
 setup_star_calibration.f90; state/star_info_lib.f90, controls_sync_lib.f90,
 phys_const_lib.f90 (+ controls_state_def.inc, job_controls_def.inc).
@@ -70,7 +70,7 @@ mismatched targets).
   shape factors/mean gravity accuracy in rotating models; exact for rigid uniform
   shells, biased where rho/omega/eta2 vary across a shell.
 
-## setup/map_user_inputs.f90:133-190 -- S'/S and S''/S rate-derivative scales normalized by the pp S0 instead of each reaction's own A98 S0
+## setup/user_inputs.f90:133-190 -- S'/S and S''/S rate-derivative scales normalized by the pp S0 instead of each reaction's own A98 S0
 - class: physical
 - severity: medium
 - confidence: medium
@@ -93,7 +93,7 @@ mismatched targets).
   ambiguously ("relative to the Solar Fusion I ... ratios") while example inputs use
   absolute S0 values.
 
-## setup/rezone.f90:534-551, 590-604 -- gradient-driven point insertion has no json bound check
+## core/model/rezoning.f90:534-551, 590-604 -- gradient-driven point insertion has no json bound check
 - class: logical
 - severity: medium
 - confidence: high
@@ -109,7 +109,7 @@ mismatched targets).
   adjacent star_info member rather than trapping. The 2026 audit fixed the analogous
   flag_point overflow (known finding) but not this one.
 
-## setup/rescale_model.f90:144 -- error message prints `icomp`, which is never assigned
+## core/model/model_rescaling.f90:144 -- error message prints `icomp`, which is never assigned
 - class: logical
 - severity: low
 - confidence: high

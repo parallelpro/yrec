@@ -20,7 +20,7 @@ Special checks requested and performed:
   (fstch, zalex2, zopal952) are inherited dead namelist slots. ONE completeness
   defect found: the lfirst(1) force (finding 2).
 - write_fgong_pulse var()/glob() slots checked against the FGONG standard
-  (JCD ivar=40 layout) and the species_slot table in core/stitched_model.f90:
+  (JCD ivar=40 layout) and the species_slot table in core/diagnostics/stitched_model.f90:
   var(1-15,17,18,19,21-25,29-31,33-35) all land on the correct FGONG columns
   (21 He3, 22 C12, 23 C13, 24 N14, 25 O16, 29 H2, 30 He4, 31 Li7, 33 N15,
   34 O17, 35 O18); var(2) is correctly ln(m/M); var(15)=N^2 r/g; glob(13-15)

@@ -8,7 +8,7 @@
 ! from defaults/history_columns.list -- see output_columns).
 !
 ! Writers are PURE READERS: every quantity is computed by
-! compute_observables (core/observables.f90, after the step's
+! compute_observables (core/diagnostics/observables.f90, after the step's
 ! physics) into star_info. Module state below is per-job (path,
 ! parsed selection), reset by history_output_init on every job.
 module history_output

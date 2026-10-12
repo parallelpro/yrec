@@ -21,8 +21,8 @@ there beyond the inherited quirks listed at the end.
 - provenance: modernization (commit 212a652 "ierr campaign close-out" added
   `integer, intent(out) :: ierr` as the 11th dummy of
   rotation/shape/rotation_shape_factors.f90:21-23; the call sites in
-  core/read_starting_model.f90:1090 and core/evolve_step.f90:128,512 were
-  updated, but core/henyey_iterate.f90:391 and setup/rezone.f90:898 still
+  core/model/starting_model.f90:1090 and core/step/step_driver.f90:128,512 were
+  updated, but core/henyey_iterate.f90:391 and core/model/rezoning.f90:898 still
   pass only 10 actual arguments)
 - detail: rotation_shape_factors is a bare external subroutine (not in a
   module), so the 10-argument calls compile silently against the 11-dummy
@@ -36,7 +36,7 @@ there beyond the inherited quirks listed at the end.
   real error detected inside rotation_shape_factors is lost. Fix: pass a
   jerr actual (and check it) at henyey_iterate.f90:391 and rezone.f90:898.
 
-## core/rebuild_envelope.f90:266-269 -- X/Z interpolation sign inverted (extrapolates away from envelope value)
+## core/envelope/envelope_rebuild.f90:266-269 -- X/Z interpolation sign inverted (extrapolates away from envelope value)
 - class: physical
 - severity: medium
 - confidence: high
@@ -58,7 +58,7 @@ there beyond the inherited quirks listed at the end.
   small, but nonzero with diffusion/accretion), and creates a spurious
   composition kink at the new outer zone.
 
-## core/envelope_derivs.f90:94-95 -- dlogR/dlogP multiplies by fp where it should divide (rotating envelopes)
+## core/envelope/envelope_integrands.f90:94-95 -- dlogR/dlogP multiplies by fp where it should divide (rotating envelopes)
 - class: physical
 - severity: medium
 - confidence: medium-high
@@ -79,7 +79,7 @@ there beyond the inherited quirks listed at the end.
   envelope, hence of the surface boundary condition fed back into the
   Henyey solve.
 
-## core/rebuild_envelope.f90:103,352,358 -- omega() read before set; comment claims a blanket SAVE that does not exist
+## core/envelope/envelope_rebuild.f90:103,352,358 -- omega() read before set; comment claims a blanket SAVE that does not exist
 - class: logical / numerical
 - severity: medium
 - confidence: high
