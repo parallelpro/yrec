@@ -18,27 +18,22 @@
 ! themes that read star%log_R_surface.
 !
 ! One local of the legacy routine's blanket SAVE is real cross-call
-! state and lives at module level: ksaha_center, the Saha-table state
-! of the central eos call. The others are set before every use and are
-! plain locals. (Legacy wrtout's core-boundary radius, which read the
+! state: the Saha-table state of the central eos call, which the star
+! carries (s%central_saha_state). The others are set before every use
+! and are plain locals. (Legacy wrtout's core-boundary radius, which read the
 ! previous call's interpolation fraction through an FX/FX2 typo and was
 ! never used, is not carried over.)
 module observables
       use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: i_h1, i_metals, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
            i_lum_cno, i_lum_3alpha, i_lum_neu, i_lum_grav, i_lum_he_c, &
-           n_lum_channels, observables_reset_pending, star_info
+           n_lum_channels, star_info
       use eos_lib
       use physical_constants
       implicit none
       private
       public :: compute_observables
       public :: shell_masses_from_log_mass
-
-! Cross-call state (see the header): the central eos call's Saha-table
-! state. Zero at process start, and zero again for a new run in the same
-! process (observables_reset_pending).
-      integer, save :: ksaha_center = 0
 
 ! The capture rate per unit flux of the eight solar-neutrino fluxes (pp,
 ! pep, hep, 7Be, 8B, 13N, 15O, 17F, the order of neutrino_flux_layout)
@@ -59,13 +54,6 @@ subroutine compute_observables(s, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-
-! A new run in the same process (yrec_reset) restarts the central eos
-! call's Saha-table state.
-      if (observables_reset_pending) then
-         ksaha_center = 0
-         observables_reset_pending = .false.
-      end if
 
       call renormalize_luminosity_breakdown(s)
       call locate_core_cz(s)
@@ -193,7 +181,7 @@ subroutine compute_central_conditions(s, ierr)
 ! The eos at (P_c, T_c) for the central density, beta and eta.
       call eos_get(log_temperature_center, log_pressure_center, &
            hydrogen_fraction_center, metal_fraction_center, eos_res, &
-           compute_derivatives, is_atmosphere_point, ksaha_center, &
+           compute_derivatives, is_atmosphere_point, s%central_saha_state, &
            composition_at_zone=s%xa(:,1), ierr=ierr)
       if (ierr /= 0) return
 ! Store the central values for later use.

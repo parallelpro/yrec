@@ -18,8 +18,7 @@
 ! the same table configuration -- the acceptance test
 ! (test_reentry.py) verifies the end-to-end equivalence.
 module yrec_reset
-      use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
-           observables_reset_pending
+      use star_info_lib, only: star, star_info, evolve_step_reset_pending
       use rotation_scratch_lib
       use element_diffusion_lib, only: reset_element_diffusion
       implicit none
@@ -60,7 +59,6 @@ subroutine yrec_run_prologue
          mid_scr = mid_scr0
          circ_scr = circ_scr0
          evolve_step_reset_pending = .true.
-         observables_reset_pending = .true.
          do u = 7, 99
             close(u)
          end do

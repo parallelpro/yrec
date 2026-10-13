@@ -435,6 +435,9 @@ module star_info_lib
 ! locals inside the retired write_legacy_output, now filled by the star layer
 ! (core/diagnostics/observables.f90) and only READ by the writers.
            double precision :: central_beta, central_degeneracy_eta
+! The Saha-table state of the central EOS call (compute_central_conditions),
+! carried from model to model.
+           integer :: central_saha_state = 0
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &
                 envelope_cz_pressure, envelope_cz_opacity
@@ -513,6 +516,5 @@ module star_info_lib
       character(len=256), public, save :: control_nml_override = ' '
       character(len=256), public, save :: physics_nml_override = ' '
       logical, public, save :: evolve_step_reset_pending = .false.
-      logical, public, save :: observables_reset_pending = .false.
 
 end module star_info_lib
