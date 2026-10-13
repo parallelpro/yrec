@@ -21,10 +21,17 @@
 ! The thermal-energy and entropy bookkeeping for accretion is
 ! experimental and valid for Allard atmospheres only (llp 06/15/2009).
 ! The model is read from and written to star; the timestep is star%dt.
+! The convection zone's new masses, the wind's angular momentum and the
+! accreted composition are computed by the star-blind kernels of
+! mass_change_kernel.f90.
 module mass_change
       use atm_lib, only: atm_get_surface_pt
       use atmosphere_structure, only: atm_point
       use star_info_lib, only: star, json
+      use mass_change_kernel, only: wind_angular_momentum, &
+           convection_zone_mass, change_shell_masses, &
+           wind_specific_angular_momentum, remove_wind_angular_momentum, &
+           mix_accreted_composition
       use physical_constants
       use eos_lib
       use math_lib
@@ -43,6 +50,13 @@ contains
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
 ! when matter was accreted.
+!   star reads: ctrl%mass_accretion_rate, ctrl%reimers_scaling_factor,
+!     ctrl%use_reimers_wind, dm, envelope_cz_bottom_index,
+!     log10_solar_luminosity, log_L, log_Teff, log_total_mass, logP,
+!     logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
+!     star_mass, xa
+!   star writes: convective_turnover_timescale,
+!     envelope_specific_entropy, jcz, job%use_mass_accretion
 subroutine change_mass(old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
@@ -303,7 +317,9 @@ end subroutine change_mass
 ! Limits the timestep, then removes or adds the step's mass,
 ! dM = Mdot dt, at the surface: the R/P/T shift and the mixing for
 ! accretion, the angular momentum carried off by mass loss, and the
-! convection zone's masses. Inputs: total_radius_cm (R), the rate
+! convection zone's masses. The arithmetic is in the star-blind kernels
+! of mass_change_kernel; this driver gathers the zone from star, calls
+! them and stores the results. Inputs: total_radius_cm (R), the rate
 ! mass_loss_rate_msun_yr (Msun/yr, positive for accretion),
 ! accretion_specific_energy and mean_thermal_energy (the energies per
 ! gram of the accreted matter and of the convection zone), and
@@ -312,6 +328,15 @@ end subroutine change_mass
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
 ! boundary is the surface zone.
+!   star reads: ctrl%accreted_composition, ctrl%fczdmdt, ctrl%ftotdmdt,
+!     ctrl%walpcz, disk_gate_age_gyr, envelope_cz_bottom_index,
+!     envelope_specific_entropy, job%disk_locking_active,
+!     job%disk_locking_age_gyr, job%rotation_active, logRho, nz, omega,
+!     solar_mass_cgs
+!   star writes: accreted_mass, delta_log_pressure,
+!     delta_log_temperature, dm, dt, j_rot, log_mass, log_total_mass,
+!     logP, logR, logT, m, recompute_envelope_triangle, senv, star_mass,
+!     stotal, xa
 subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
@@ -324,7 +349,7 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
-      integer :: nz, jenv, zone_idx, species_idx
+      integer :: nz, jenv, zone_idx
 !      double precision :: omega_ratio_sq, omega_max_ratio_sq
       double precision :: mass_loss_rate_cgs
       double precision :: cz_mass_grams
@@ -340,13 +365,12 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
            delta_log_radius
       double precision :: boundary_radius_cm, radius_scale_factor, &
            radius_before_cm, radius_after_cm
-      double precision :: surface_moment_of_inertia_per_mass, &
-           delta_angular_momentum, surface_omega_local
-      double precision :: cz_total_am, cz_new_am, cz_shrunk_am, am_ratio
-      double precision :: mass_scale_factor
+      logical :: wind_carries_angular_momentum
+      double precision, allocatable :: cz_shell_masses_before(:)
+      double precision :: wind_j_surface
+      type(wind_angular_momentum) :: wind_am
       double precision :: delta_mass_msun
       double precision :: total_mass_grams_old, total_mass_grams_new
-      double precision :: mixed_abundance
 
       ierr = 0
       disk_exhausted = .false.
@@ -376,31 +400,29 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
 ! The mass change of the step, dM = Mdot dt, in g (negative for loss).
       delta_mass_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs*star%dt/ &
            seconds_per_year
+! With mass loss from a rotating star, the lost matter carries off
+! angular momentum (a thermal wind).
+      wind_carries_angular_momentum = star%job%rotation_active .and. &
+           delta_mass_cgs.lt.0.0d0
       call adjust_cz_for_accreted_entropy()
-      call measure_wind_angular_momentum()
-      call rescale_cz_masses()
-      call update_total_mass()
-      call remove_wind_angular_momentum()
+      call update_masses()
+      call spin_down_cz_by_wind()
+      call report_new_mass()
       call mix_in_accreted_composition()
 
 contains
 
 ! ---------------------------------------------------------------
-! The mass of the surface convection zone; ierr = 1 when the envelope
-! boundary is the surface zone.
+! The mass of the surface convection zone below the fitting point
+! (convection_zone_mass); ierr = 1 when the envelope boundary is the
+! surface zone.
 subroutine weigh_surface_convection_zone()
-! The zone's mass below the fitting point, cz_mass_grams =
-! m(nz) - m(jenv), or m(nz) when the zone reaches the center (jenv = 1).
       if(jenv.eq.nz) then
          write(*,*) 'mdot: envelope boundary at the surface (911)'
          ierr = 1
          return
       end if
-      if(jenv.gt.1) then
-         cz_mass_grams = star%m(nz)-star%m(jenv)
-      else
-         cz_mass_grams = star%m(nz)
-      endif
+      cz_mass_grams = convection_zone_mass(jenv, star%m(1:nz))
 end subroutine weigh_surface_convection_zone
 
 ! ---------------------------------------------------------------
@@ -497,134 +519,68 @@ subroutine adjust_cz_for_accreted_entropy()
 end subroutine adjust_cz_for_accreted_entropy
 
 ! ---------------------------------------------------------------
-! With mass loss from a rotating star, before the masses change: the
-! angular momentum the lost matter carries (a thermal wind) and the
-! convection zone's angular momentum.
-subroutine measure_wind_angular_momentum()
-! A thermal wind: the lost matter carries away only its own specific
-! angular momentum, that of the surface under the convection zone's
-! rotation law (walpcz), dJ = j_surface dM (dM < 0).
-      if(star%job%rotation_active .and. delta_mass_cgs.lt.0.0d0)then
-! The moment of inertia per unit mass of a thin shell at the surface,
-! (2/3) R^2.
-         surface_moment_of_inertia_per_mass = 2.0d0/3.0d0*total_radius_cm**2
-         if(star%ctrl%walpcz.ge.0.0d0)then
-! A solid-body convection zone: j_surface = (2/3) R^2 omega(nz).
-            delta_angular_momentum = star%omega(nz)* &
-                 surface_moment_of_inertia_per_mass*delta_mass_cgs
-         else if(star%ctrl%walpcz.le.-2.0d0)then
-! Constant specific angular momentum: j_surface = j_rot(nz).
-            delta_angular_momentum = star%j_rot(nz)*delta_mass_cgs
-         else
-! A power law, omega ~ r^walpcz (the rotation module's law, as in
-! omega_profile), extrapolated from the outer zone to R:
-! omega_s = omega(nz) (R/r(nz))^walpcz.
-            surface_omega_local = star%omega(nz)*pow(total_radius_cm, star%ctrl%walpcz)/ &
-                 exp10(star%logR(nz)*star%ctrl%walpcz)
-            delta_angular_momentum = surface_omega_local* &
-                 surface_moment_of_inertia_per_mass*delta_mass_cgs
-         endif
-! The convection zone's angular momentum, J_cz = sum of j_rot dm over
-! jenv..nz, and its value after the loss, J_cz + dJ.
-         cz_total_am = star%j_rot(jenv)*star%dm(jenv)
-         do zone_idx = jenv+1,nz
-            cz_total_am = cz_total_am + star%j_rot(zone_idx)*star%dm(zone_idx)
-         end do
-         cz_new_am = (cz_total_am+delta_angular_momentum)
-! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
-! convective envelope's mass.
-         write(*,22)delta_mass_cgs,delta_angular_momentum,star%omega(nz), &
-              cz_new_am,cz_total_am,cz_total_mass_below_fitting
- 22      format(1P6E13.4)
-      endif
-end subroutine measure_wind_angular_momentum
-
-! ---------------------------------------------------------------
-! With mass loss from a rotating star, after the masses changed: the
-! convection zone keeps J_cz + dJ.
-subroutine remove_wind_angular_momentum()
-! The shrunk zones at unchanged j_rot hold sum j_rot dm' (dm' the new
-! shell masses), already short of J_cz by about <j>|dM|; every zone's
-! j_rot is scaled by (J_cz + dJ)/sum j_rot dm', so the zone loses dJ
-! once. (It used to be scaled by (J_cz + dJ)/J_cz before the masses
-! shrank, which removed <j>|dM| on top of dJ.)
-      if(star%job%rotation_active .and. delta_mass_cgs.lt.0.0d0)then
-         cz_shrunk_am = star%j_rot(jenv)*star%dm(jenv)
-         do zone_idx = jenv+1,nz
-            cz_shrunk_am = cz_shrunk_am + star%j_rot(zone_idx)*star%dm(zone_idx)
-         end do
-         am_ratio = cz_new_am/cz_shrunk_am
-         do zone_idx = jenv,nz
-            star%j_rot(zone_idx) = star%j_rot(zone_idx)*am_ratio
-         end do
-      endif
-end subroutine remove_wind_angular_momentum
-
-! ---------------------------------------------------------------
-! With mass loss: the masses above the envelope boundary rescaled to the
-! convection zone's new mass.
-subroutine rescale_cz_masses()
-! The zone-center masses above the base (and their logs) compress
-! about m(jenv): m(k) = m(jenv) + f (m(k) - m(jenv)) for k > jenv, with
-! f = (M_cz + dM)/M_cz and M_cz = cz_mass_grams. Accreted mass is not
-! spread over the zones; it lands in dm(nz) (update_total_mass).
-      if(delta_mass_cgs.lt.0.0d0)then
-         mass_scale_factor = (cz_mass_grams+delta_mass_cgs)/cz_mass_grams
-         do zone_idx = jenv+1,nz
-            star%m(zone_idx) = star%m(jenv)+ &
-                 mass_scale_factor*(star%m(zone_idx)-star%m(jenv))
-            star%log_mass(zone_idx) = log10(star%m(zone_idx))
-         end do
-      endif
-end subroutine rescale_cz_masses
-
-! ---------------------------------------------------------------
-! The new total mass, the shell masses dm of the convection zone and
-! senv; the surface boundary condition is to be recomputed.
-subroutine update_total_mass()
+! The new total mass, the masses of the convection zone
+! (change_shell_masses: with mass loss the zone-center masses compress
+! about the zone's base; the shell masses dm, the last reaching the new
+! total) and senv; the surface boundary condition is to be recomputed.
+! With a wind that carries angular momentum, the zone's shell masses
+! before the change are kept for spin_down_cz_by_wind.
+subroutine update_masses()
+      if(wind_carries_angular_momentum) &
+           cz_shell_masses_before = star%dm(jenv:nz)
 ! The new total mass, in Msun (star_mass) and as log10 M in g
 ! (log_total_mass and its copy stotal).
       star%star_mass = star%star_mass + delta_mass_cgs/star%solar_mass_cgs
-      delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
-      write(*,20)star%star_mass,delta_mass_msun
- 20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
       total_mass_grams_old = exp10(star%log_total_mass)
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       star%log_total_mass = log10(total_mass_grams_new)
       star%stotal = star%log_total_mass
-! The shell masses dm (g) of the convection zone: half the span between
-! the neighbouring zone centers, the last shell reaching the total mass.
-! A zone reaching the center (jenv = 1) starts from it: dm(1) =
-! (m(1) + m(2))/2, i.e. m_0 = -m_1 as in rezoning. (It used to read
-! m(0), outside the array.)
-      do zone_idx = max(jenv,2),nz-1
-         star%dm(zone_idx) = 0.5d0*(star%m(zone_idx+1)-star%m(zone_idx-1))
-      end do
-      if(jenv.eq.1) star%dm(1) = 0.5d0*(star%m(2)+star%m(1))
-      star%dm(nz) = total_mass_grams_new-0.5d0*(star%m(nz)+star%m(nz-1))
+      call change_shell_masses(jenv, delta_mass_cgs, total_mass_grams_new, &
+           star%m(1:nz), star%log_mass(1:nz), star%dm(1:nz))
 ! senv = log10(m(nz)/M), the mass fraction inside the fitting point.
       star%senv = star%log_mass(nz) - star%log_total_mass
 ! The envelope triangle (the surface boundary condition) is to be
 ! recomputed.
       star%recompute_envelope_triangle = .true.
-end subroutine update_total_mass
+end subroutine update_masses
+
+! ---------------------------------------------------------------
+! With mass loss from a rotating star: the wind carries off the
+! surface's specific angular momentum under the convection zone's
+! rotation law (wind_specific_angular_momentum), and the zone keeps
+! J_cz + dJ on its new masses (remove_wind_angular_momentum).
+subroutine spin_down_cz_by_wind()
+      if(wind_carries_angular_momentum)then
+         wind_j_surface = wind_specific_angular_momentum(star%ctrl%walpcz, &
+              total_radius_cm, star%omega(nz), star%logR(nz), star%j_rot(nz))
+         call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
+              cz_shell_masses_before, star%dm(jenv:nz), star%j_rot(jenv:nz), &
+              wind_am)
+! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
+! convective envelope's mass.
+         write(*,22)delta_mass_cgs,wind_am%lost,star%omega(nz), &
+              wind_am%zone_after,wind_am%zone_before,cz_total_mass_below_fitting
+ 22      format(1P6E13.4)
+      endif
+end subroutine spin_down_cz_by_wind
+
+! ---------------------------------------------------------------
+! The run log: the new mass and the step's change, in Msun.
+subroutine report_new_mass()
+      delta_mass_msun = delta_mass_cgs/star%solar_mass_cgs
+      write(*,20)star%star_mass,delta_mass_msun
+ 20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
+end subroutine report_new_mass
 
 ! ---------------------------------------------------------------
 ! With accretion: the accreted composition mixed into the convection
-! zone, and the accreted mass recorded.
+! zone (mix_accreted_composition, with M_cz = cz_total_mass_below_fitting
+! and X_acc = accreted_composition), and the accreted mass recorded.
 subroutine mix_in_accreted_composition()
-! For each of the 11 basic species, with M_cz = cz_total_mass_below_fitting
-! and X_acc = accreted_composition,
-!   X = (X(jenv) M_cz + X_acc dM)/(M_cz + dM)  in every zone jenv..nz.
       if(delta_mass_cgs.gt.0.0d0)then
-         do species_idx = 1,11
-            mixed_abundance = (star%xa(species_idx,jenv)* &
-                 cz_total_mass_below_fitting+star%ctrl%accreted_composition(species_idx)* &
-                 delta_mass_cgs)/(delta_mass_cgs+cz_total_mass_below_fitting)
-            do zone_idx = jenv,nz
-               star%xa(species_idx,zone_idx) = mixed_abundance
-            end do
-         end do
+         call mix_accreted_composition(cz_total_mass_below_fitting, &
+              delta_mass_cgs, star%ctrl%accreted_composition, &
+              star%xa(:,jenv:nz))
          star%accreted_mass = delta_mass_cgs
       endif
 end subroutine mix_in_accreted_composition

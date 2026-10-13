@@ -1,0 +1,67 @@
+# mass: zone 25..40, dM/M = -1.0E-03
+  M_cz = convection_zone_mass                        0.0E+00  ok
+  sum of dm = M + dM                                 0.0E+00  ok
+  m(k > jenv) - m(jenv) scale by (M_cz+dM)/M_cz      9.9E-16  ok
+  m(k <= jenv) unchanged                             0.0E+00  ok
+# mass: zone 25..40, dM/M =  1.0E-03
+  M_cz = convection_zone_mass                        0.0E+00  ok
+  sum of dm = M + dM                                 2.9E-16  ok
+  m(k > jenv) unchanged (dM lands in dm(nz))         0.0E+00  ok
+  m(k <= jenv) unchanged                             0.0E+00  ok
+# mass: zone 1..40, dM/M = -1.0E-03
+  M_cz = convection_zone_mass                        0.0E+00  ok
+  sum of dm = M + dM                                 0.0E+00  ok
+  m(k > jenv) - m(jenv) scale by (M_cz+dM)/M_cz      1.1E-16  ok
+  m(k <= jenv) unchanged                             0.0E+00  ok
+  dm(1) = (m(1) + m(2))/2                            0.0E+00  ok
+# mass: zone 1..40, dM/M =  1.0E-03
+  M_cz = convection_zone_mass                        0.0E+00  ok
+  sum of dm = M + dM                                 2.9E-16  ok
+  m(k > jenv) unchanged (dM lands in dm(nz))         0.0E+00  ok
+  m(k <= jenv) unchanged                             0.0E+00  ok
+  dm(1) = (m(1) + m(2))/2                            0.0E+00  ok
+# angular momentum: zone 25..40, walpcz =  0.0, dM/M = -1.0E-03
+  j_s = (2/3) R^2 omega(nz) (R/r(nz))^walpcz         0.0E+00  ok
+  dJ = j_s dM                                        0.0E+00  ok
+  J_cz = sum of j dm before                          0.0E+00  ok
+  sum of j dm after = J_cz + dJ                      1.6E-16  ok
+# angular momentum: zone 25..40, walpcz = -1.0, dM/M = -1.0E-03
+  j_s = (2/3) R^2 omega(nz) (R/r(nz))^walpcz         1.9E-15  ok
+  dJ = j_s dM                                        1.8E-15  ok
+  J_cz = sum of j dm before                          0.0E+00  ok
+  sum of j dm after = J_cz + dJ                      0.0E+00  ok
+# angular momentum: zone 25..40, walpcz = -2.0, dM/M = -1.0E-03
+  j_s = (2/3) R^2 omega(nz) (R/r(nz))^walpcz         2.1E-16  ok
+  dJ = j_s dM                                        1.3E-16  ok
+  J_cz = sum of j dm before                          0.0E+00  ok
+  sum of j dm after = J_cz + dJ                      0.0E+00  ok
+# angular momentum: zone 1..40, walpcz =  0.0, dM/M = -1.0E-03
+  j_s = (2/3) R^2 omega(nz) (R/r(nz))^walpcz         0.0E+00  ok
+  dJ = j_s dM                                        0.0E+00  ok
+  J_cz = sum of j dm before                          0.0E+00  ok
+  sum of j dm after = J_cz + dJ                      1.3E-16  ok
+# composition: zone 25..40, dM/M =  1.0E-03
+  sum of X dm = old + X_acc dM, h1                   1.6E-16  ok
+  sum of X dm = old + X_acc dM, he4                  2.1E-16  ok
+  sum of X dm = old + X_acc dM, Z                    0.0E+00  ok
+  sum of X dm = old + X_acc dM, he3                  0.0E+00  ok
+  sum of X dm = old + X_acc dM, c12                  3.0E-16  ok
+  sum of X dm = old + X_acc dM, c13                  1.8E-16  ok
+  sum of X dm = old + X_acc dM, n14                  2.2E-16  ok
+  sum of X dm = old + X_acc dM, n15                  0.0E+00  ok
+  sum of X dm = old + X_acc dM, o16                  2.0E-16  ok
+  sum of X dm = old + X_acc dM, o17                  0.0E+00  ok
+  sum of X dm = old + X_acc dM, o18                  1.8E-16  ok
+# composition: zone 1..40, dM/M =  1.0E-03
+  sum of X dm = old + X_acc dM, h1                   0.0E+00  ok
+  sum of X dm = old + X_acc dM, he4                  0.0E+00  ok
+  sum of X dm = old + X_acc dM, Z                    1.1E-16  ok
+  sum of X dm = old + X_acc dM, he3                  1.5E-16  ok
+  sum of X dm = old + X_acc dM, c12                  1.9E-16  ok
+  sum of X dm = old + X_acc dM, c13                  4.4E-16  ok
+  sum of X dm = old + X_acc dM, n14                  0.0E+00  ok
+  sum of X dm = old + X_acc dM, n15                  2.7E-16  ok
+  sum of X dm = old + X_acc dM, o16                  1.2E-16  ok
+  sum of X dm = old + X_acc dM, o17                  2.7E-16  ok
+  sum of X dm = old + X_acc dM, o18                  0.0E+00  ok
+test_mass_change: done
