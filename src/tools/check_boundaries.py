@@ -101,7 +101,7 @@ PUBLIC = {
     # original routines and the newer ones, chosen by
     # use_new_diffusion_routines; diffuse_elements, the facade's one
     # entry, chooses.
-    "element_diffusion": {"diffuse_elements", "reset_element_diffusion"},
+    "element_diffusion": {"diffuse_elements"},
     # numerics is the shared numerics library: everything numerics_lib
     # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
     # modules behind it).
@@ -232,7 +232,10 @@ def check_controls_free(src_root):
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
     "core": (124, 2),
-    "element_diffusion": (69, 9),
+    # element_diffusion: +16 (2026-10) for settling_suspended_reported, the
+    # run log's latch, which outlives a step and so moved from the
+    # scratch record diff_scr into the star; -1 importer (bahcall_loeb_units)
+    "element_diffusion": (85, 8),
     # io: +2 (2026-10) for the two calls that hand the profile and pulse
     # writers the stitched model, which moved from module variables into
     # the star (s%stitched)

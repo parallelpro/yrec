@@ -12,7 +12,7 @@ Code outside element_diffusion/ uses it only through `element_diffusion_lib` (en
 
 | Module (file) | What it holds |
 |---|---|
-| `element_diffusion_lib` | **The public interface.** `diffuse_elements` runs one settling step: the newer routines (`microdiff`) when `use_new_diffusion_routines` is set, else the original ones (`gravitational_settling`). `reset_element_diffusion` restores the domain's working state at the start of each run (called by yrec_reset). |
+| `element_diffusion_lib` | **The public interface.** `diffuse_elements` runs one settling step: the newer routines (`microdiff`) when `use_new_diffusion_routines` is set, else the original ones (`gravitational_settling`). |
 | `original_settling` | The original routines: `gravitational_settling` and its setup of the diffusion coefficients (the Thoul et al. coefficients, their fit, or the older analytic ones). |
 | `settling_grid` | The original routines' mapping of the model onto an equally spaced grid in radius and back. |
 | `microdiff_driver` | The newer routines: `microdiff` and its setup (the diffusion region, the conversion to Bahcall & Loeb units). |
@@ -21,7 +21,7 @@ Code outside element_diffusion/ uses it only through `element_diffusion_lib` (en
 | `diffusion_scheme` | The numerical scheme both pipelines use: the two-step Lax–Wendroff advection of the first term and the coefficients of the implicit solve of the second. |
 | `thoul_solver` | `thoul_diffusion`: the solution of the Burgers equations for the coefficients (Thoul et al. 1994). |
 | `species_table`, `bahcall_loeb_units` | The species' weights and charges; the Bahcall & Loeb unit scales. |
-| `element_diffusion_scratch` | The working state (`diff_scr`): coefficient arrays, the unit scales, the "settling suspended" latch. |
+| `element_diffusion_scratch` | The working state (`diff_scr`): coefficient arrays and the unit scales. Nothing in it outlives a step; the "settling suspended" latch is the star's (`settling_suspended_reported`). |
 
 ## 2. Conventions
 

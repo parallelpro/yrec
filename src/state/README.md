@@ -35,12 +35,12 @@ The rest of this README describes the members of `star`: what each one is, its u
 | Diagnostics written during the solve | 29 | Per-zone physics stored for output by `compute_henyey_coefficients` on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). | After convergence they hold the last iteration's values: the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
 | Diagnostics written after convergence | 36 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
 | Step control | 11 | The timestep and the flags that steer one step's solve. | During and between steps. |
-| Run and card bookkeeping | 28 | Per-run and per-card state: the calibration loops, the card's mixing length and mass, the surface mixture of the first card, the atmosphere switch, the reason the run ended. | From the card (or run) that sets them. |
+| Run and card bookkeeping | 29 | Per-run and per-card state: the calibration loops, the card's mixing length and mass, the surface mixture of the first card, the atmosphere switch, the reason the run ended. | From the card (or run) that sets them. |
 | Constants set at setup | 16 | Values fixed for the whole run during the controls read or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales some of them. |
 | Scratch | 4 | Values stored in `star` but used only inside the module (often the procedure) that writes them. | Only inside that module. |
 | Never referenced | 0 | Declared and not used (the two there were removed in 2026-10). | — |
 
-242 members in all, besides `ctrl` and `job` (section 4).
+243 members in all, besides `ctrl` and `job` (section 4).
 
 ## 3. The members
 
@@ -308,6 +308,7 @@ How to read the tables:
 | `log_l_prev_model` | log(L/Lsun) of the previous model | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `r_rsun_prev_model` | R/Rsun of the previous model | Rsun | `calibration` (check_star_calibration, setup_star_calibration) | `calibration` | was `log_r_prev_model` until 2026-10 |
 | `termination_reason` | why the last run card ended | text | `run_driver` (end_of_card_calibration); `stop_conditions` (converged_model_is_nan, structure_limit_stop_triggered, abundance_stop_triggered, init_stop_conditions) | `stop_conditions`, `run_log` | default 'model budget exhausted'; read by the run summary |
+| `settling_suspended_reported` | the settling routines have reported that settling is suspended (fully convective, or no hydrogen or helium to settle) | logical | `microdiff_driver` (microdiff_setup); `original_settling` (gravitational_settling_setup) | `microdiff_driver`, `original_settling` | the message prints once per suspension; "SETTLING RESUMED" clears it. `diff_scr`'s until 2026-10 |
 | `star_found_flag` | the star calibration found a track through the target L and R; the final run is armed | logical | `calibration` (check_star_calibration, setup_star_calibration) | `run_driver`, `stop_conditions` |  |
 | `just_passed_target_radius_flag` | this model has just crossed the target radius | logical | `calibration` (check_star_calibration, setup_star_calibration) | `stop_conditions` |  |
 | `pulsation_mass_msun` | star_mass at the start of the card | Msun | `run_driver` (begin_kind_card) | `profile_output` | for the profile and pulsation headers |

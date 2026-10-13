@@ -322,7 +322,7 @@ core/run/run_driver.o: burn_step.mod calibration.mod controls_check.mod controls
 core/run/run_setup.o: atm_lib.mod eos_lib.mod kap_lib.mod math_lib.mod microphysics_settings.mod monte_carlo.mod physical_constants.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod io_units.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
-core/run/yrec_reset.o: element_diffusion_lib.mod star_info_lib.mod
+core/run/yrec_reset.o: star_info_lib.mod
 core/run/yrec_version.o: physical_constants.mod
 core/step/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/step/composition_step.o: burn_step.mod convection_lib.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
@@ -342,9 +342,9 @@ core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod physical_constants.mod regridding.mod
 core/test/test_structure.o: burn_step.mod controls_reader.mod convection_lib.mod eos_lib.mod microphysics_settings.mod rotation_configuration.mod rotation_settings_setup.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
-element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod star_info_lib.mod
+element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod
 element_diffusion/diffusion_scheme.o: element_diffusion_scratch.mod physical_constants.mod star_info_lib.mod
-element_diffusion/element_diffusion_lib.o: element_diffusion_scratch.mod microdiff_driver.mod original_settling.mod star_info_lib.mod
+element_diffusion/element_diffusion_lib.o: microdiff_driver.mod original_settling.mod star_info_lib.mod
 element_diffusion/element_diffusion_scratch.o: star_info_lib.mod
 element_diffusion/microdiff_coefficients.o: math_lib.mod microdiff_mapping.mod physical_constants.mod species_table.mod star_info_lib.mod thoul_solver.mod
 element_diffusion/microdiff_driver.o: bahcall_loeb_units.mod element_diffusion_scratch.mod io_units.mod math_lib.mod microdiff_mapping.mod microdiff_run.mod physical_constants.mod run_log.mod species_table.mod star_info_lib.mod

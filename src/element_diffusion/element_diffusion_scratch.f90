@@ -3,10 +3,13 @@
 !----------------------------------------------------------------------
 ! The settling routines' own working state, one module-level instance
 ! (diff_scr): the metal diffusion coefficients on the model and the
-! equally spaced grids, the change of the metal abundance, the Bahcall
-! & Loeb (1990) unit scales, and the latch that reports a suspension of
-! settling once. yrec_reset snapshots and restores it with star, so an
-! in-process rerun starts from the same state.
+! equally spaced grids, the change of the metal abundance, and the
+! Bahcall & Loeb (1990) unit scales. Nothing in it outlives a step: each
+! settling call writes what it reads (diff_scr poisoned with NaN at
+! every step start, 2026-10-13: every pinned deck byte-identical), so an
+! in-process rerun needs no restore. (The run-log latch that reports a
+! suspension of settling once is the star's,
+! star%settling_suspended_reported.)
 module element_diffusion_scratch
       use star_info_lib, only: json
       implicit none
@@ -31,9 +34,6 @@ module element_diffusion_scratch
 ! the Bahcall & Loeb units (set_bahcall_loeb_scales)
            double precision :: bl_radius_scale, bl_mass_scale, &
                 bl_temp_scale, bl_time_scale
-! the "no settling" message prints once per suspension (per-model
-! repeats only under report_solver_diagnostics)
-           logical :: settling_suspended_reported = .false.
       end type diffusion_scratch
 
       type(diffusion_scratch), public, save :: diff_scr

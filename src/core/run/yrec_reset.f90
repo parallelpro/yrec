@@ -19,12 +19,12 @@
 ! (test_reentry.py) verifies the end-to-end equivalence.
 module yrec_reset
       use star_info_lib, only: star, star_info, evolve_step_reset_pending
-      use element_diffusion_lib, only: reset_element_diffusion
       implicit none
 
       logical, save :: first_entry = .true.
-! The rotation workspace (rotation_scratch_lib) needs no snapshot:
-! nothing in it outlives a step.
+! The rotation and element-diffusion workspaces (rotation_scratch_lib,
+! element_diffusion_scratch) need no snapshot: nothing in them outlives
+! a step.
       ! star0 also carries star%job and star%evo since the 2026
       ! MESA-convention fold -- one snapshot covers all three roots.
       type(star_info), save :: star0
@@ -41,7 +41,6 @@ subroutine yrec_run_prologue
 ! read_controls re-seeds it from pristine star%ctrl defaults before
 ! every read; physical_constants needs no restoring because, with cmixl
 ! evicted to star%, every member is recomputed by setups each run.
-      call reset_element_diffusion()
       if (first_entry) then
          star0 = star
          first_entry = .false.

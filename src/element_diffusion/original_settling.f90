@@ -401,10 +401,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
          if (solver_diagnostics() .or. &
-              .not. diff_scr%settling_suspended_reported) then
+              .not. star%settling_suspended_reported) then
             write(run_log_unit,15)
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            diff_scr%settling_suspended_reported = .true.
+            star%settling_suspended_reported = .true.
          end if
          return
          end if
@@ -422,10 +422,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. diff_scr%settling_suspended_reported) then
+           .not. star%settling_suspended_reported) then
          write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
    16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         diff_scr%settling_suspended_reported = .true.
+         star%settling_suspended_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
@@ -451,20 +451,20 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. diff_scr%settling_suspended_reported) then
+           .not. star%settling_suspended_reported) then
          write(run_log_unit,17)star%ctrl%helium_diffusion_min
    17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         diff_scr%settling_suspended_reported = .true.
+         star%settling_suspended_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
       end if
       zone_end = zone_idx
 ! all suspension checks passed: settling proceeds this model
-      if (diff_scr%settling_suspended_reported) then
+      if (star%settling_suspended_reported) then
          write(run_log_unit,916)
   916    format(1x,' SETTLING RESUMED')
-         diff_scr%settling_suspended_reported = .false.
+         star%settling_suspended_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
       call set_bahcall_loeb_scales()

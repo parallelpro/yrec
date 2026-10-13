@@ -160,7 +160,7 @@ subroutine reset_controls()
       star%ctrl%constant_settling_reduction = 1.0d0
       star%ctrl%fgry = 1.0d0
       star%job%fgrz = 1.0d0
-      diff_scr%settling_suspended_reported = .false.
+      star%settling_suspended_reported = .false.
 end subroutine reset_controls
 
 ! The abundance floors: settling only below the outermost zone with
@@ -173,11 +173,11 @@ subroutine floors(new_routines)
       star%ctrl%helium_diffusion_min = 0.5d0
       call settle_case(tag//' outer edge where Y > 0.5', new_routines)
       star%ctrl%helium_diffusion_min = 0.99d0
-      diff_scr%settling_suspended_reported = .false.
+      star%settling_suspended_reported = .false.
       call settle_case(tag//' Y below its floor everywhere', new_routines)
       star%ctrl%helium_diffusion_min = 1.0d-3
       star%ctrl%hydrogen_diffusion_floor = 0.9d0
-      diff_scr%settling_suspended_reported = .false.
+      star%settling_suspended_reported = .false.
       call settle_case(tag//' X below its floor everywhere', new_routines)
       star%ctrl%hydrogen_diffusion_floor = 1.0d-3
 end subroutine floors

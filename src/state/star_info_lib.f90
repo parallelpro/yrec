@@ -288,6 +288,11 @@ module star_info_lib
 ! set per card by init_stop_conditions, overridden by whichever stop
 ! fires; read by run_log's end-of-run summary.
             character(len=96) :: termination_reason = 'model budget exhausted'
+! run-log bookkeeping: the settling routines have reported that
+! settling is suspended (a fully convective model, or one without
+! hydrogen or helium to settle); the message prints once per suspension,
+! and "SETTLING RESUMED" clears it.
+            logical :: settling_suspended_reported = .false.
 ! the mass change's state (core/mass_change; henyey_coefficients reads
 ! the structure shifts): the envelope's mean specific entropy, and the
 ! shifts of log P and log T accretion makes at the surface

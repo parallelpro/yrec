@@ -10,7 +10,6 @@ module bahcall_loeb_units
 contains
 
 subroutine set_bahcall_loeb_scales()
-      use star_info_lib, only: star
       use physical_constants, only: rsun_cgs_legacy
       implicit none
 !     solar_radius_bl = SOLAR RADIUS (CM)
