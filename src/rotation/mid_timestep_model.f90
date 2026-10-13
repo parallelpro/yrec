@@ -334,7 +334,7 @@ subroutine rotate_midpoint_model()
          call omega_from_j(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz, &
               rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid, &
-              rot_scr%mean_radius_mid)
+              rot_scr%mean_radius_mid,star%disk_gate_age_gyr)
 ! The moment of inertia of the surface convection zone, if there is one.
          if (surface_cz_active) then
             moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(star%nz)
@@ -351,7 +351,7 @@ subroutine rotate_midpoint_model()
          call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,solid_zone_start,solid_zone_end, &
               rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid, &
-              rot_scr%mean_radius_mid,star%nz)
+              rot_scr%mean_radius_mid,star%nz,star%disk_gate_age_gyr)
          if (surface_cz_active) then
             moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(1)
             do i = 2,star%nz

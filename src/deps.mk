@@ -404,7 +404,7 @@ rotation/am_regions.o: convection_lib.mod star_info_lib.mod
 rotation/evolve_rotation.o: am_regions.mod burn_step.mod convection_geometry.mod convection_lib.mod magnetic_braking.mod math_lib.mod mid_timestep_model.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod secular_transport.mod shell_physics.mod star_info_lib.mod
 rotation/magnetic_braking.o: math_lib.mod physical_constants.mod rotation_configuration.mod star_info_lib.mod
 rotation/mid_timestep_model.o: am_regions.mod burn_step.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
-rotation/omega_profile.o: math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/omega_profile.o: math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod star_info_lib.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod
 rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_transport_coefficients.o: rotation_configuration.mod star_info_lib.mod

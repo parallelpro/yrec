@@ -213,6 +213,7 @@ subroutine update_omega()
       call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius, &
+           star%disk_gate_age_gyr, &
            inertia_tolerance=inertia_tolerance)
       rotation_settings%shape_tolerance = saved_acc_tolerance
 end subroutine update_omega
@@ -268,7 +269,7 @@ subroutine smooth_gradient_reversals()
 ! Solid-body rotation from zone_bottom to zone_top.
          call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
                     shell_mass,zone_bottom,zone_top,eta_squared, &
-                    moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                    moment_of_inertia,omega,qiw,mean_radius,num_zones,star%disk_gate_age_gyr)
 ! Widen the region while the redistribution makes new reversals at its
 ! edges. redo_flag serves here as the flag that an edge moved; it ends
 ! false, so it never asks for a redo of the sub-step.
@@ -311,7 +312,7 @@ subroutine smooth_gradient_reversals()
          if(.not. redo_flag) exit
             call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
-                       moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                       moment_of_inertia,omega,qiw,mean_radius,num_zones,star%disk_gate_age_gyr)
          end do
          if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number

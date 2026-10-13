@@ -427,7 +427,7 @@ subroutine update_rotation_after_corrections()
             call omega_from_j(s%logRho,s%j_rot,s%logR, &
                  s%log_mass,s%dm,s%am_transport_convective_flag, &
                  s%nz,s%eta_squared,s%i_rot,s%omega,s%qiw, &
-                 s%mean_radius)
+                 s%mean_radius,s%disk_gate_age_gyr)
             call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
                  s%eta_squared,s%fp_rot, &
                  s%ft_rot,s%mean_gravity,s%mean_radius,ierr)

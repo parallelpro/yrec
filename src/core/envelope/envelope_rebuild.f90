@@ -129,7 +129,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
          call guess_new_shell_rotation()
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
               shell_mass,convective_flag,num_zones,eta_squared, &
-              moment_of_inertia,s%omega,qiw,mean_radius)
+              moment_of_inertia,s%omega,qiw,mean_radius,s%disk_gate_age_gyr)
          call sum_rotation_totals()
       endif
       call print_new_interior_points()

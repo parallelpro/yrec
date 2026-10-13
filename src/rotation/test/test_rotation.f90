@@ -278,7 +278,7 @@ subroutine structure_check()
       rotation_settings%cz_rotation_law_exponent = 0.0d0
       call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
       jm(1:n) = inertia(1:n)*w(1:n)/dm(1:n)
-      call omega_from_j(log_rho, jm, log_r, log_m, dm, convective, n, eta2, inertia, w, qiw, r0)
+      call omega_from_j(log_rho, jm, log_r, log_m, dm, convective, n, eta2, inertia, w, qiw, r0,0.0d0)
       write(*,'(a)') "zone  omega from j/m"
       write(*,'(i4,1pe24.15)') (shown(s), w(shown(s)), s = 1, size(shown))
       call rotation_shape_factors(log_rho, log_r, log_m, n, w, eta2, fp, ft, gbar, r0, ierr)

@@ -47,11 +47,11 @@ contains
 ! ierr /= 0 on failure.
 !   star reads: conv_vel, cp, ctrl%chi_grid_scale,
 !     ctrl%overshoot_alpha_envelope, ctrl%tenv0, ctrl%tenv1,
-!     eps_channels, eps_total, fit_point_pressure, fit_point_radius,
-!     grada, gradr, gradT, job%envelope_overshoot_active,
-!     job%rotation_active, job%use_extended_composition, log_Teff,
-!     log_total_mass, mu, opacity_zone, qdt, stored_envelope_state,
-!     thdif, visc
+!     disk_gate_age_gyr, eps_channels, eps_total, fit_point_pressure,
+!     fit_point_radius, grada, gradr, gradT,
+!     job%envelope_overshoot_active, job%rotation_active,
+!     job%use_extended_composition, log_Teff, log_total_mass, mu,
+!     opacity_zone, qdt, stored_envelope_state, thdif, visc
 !   star writes: am_transport_convective_flag, convective_flag,
 !     convective_flag_start, core_cz_top_index,
 !     deuterium_burning_rate_start, dln_luminosity_dt, dlog_pressure_dt,
@@ -940,7 +940,7 @@ subroutine respin_on_new_grid
 ! Omega from the specific angular momentum j (legacy HJM).
        call omega_from_j(s%logRho,s%j_rot,s%logR, &
             s%log_mass,s%dm,s%am_transport_convective_flag,s%nz, &
-            s%eta_squared,s%i_rot,s%omega,s%qiw,s%mean_radius)
+            s%eta_squared,s%i_rot,s%omega,s%qiw,s%mean_radius,s%disk_gate_age_gyr)
 ! The shape factors fp and ft, r0 and eta2 for this omega.
        call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
             s%eta_squared,s%fp_rot,s%ft_rot,s%mean_gravity,s%mean_radius,ierr)

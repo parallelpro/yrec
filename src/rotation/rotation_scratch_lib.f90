@@ -17,8 +17,7 @@ module rotation_scratch_lib
       implicit none
       private
       public :: rotation_diffusion_state, midstep_physics_state, &
-           circulation_velocity_state, rot_scr, mid_scr, circ_scr, &
-           disk_locking_engaged
+           circulation_velocity_state, rot_scr, mid_scr, circ_scr
 
 ! (commented out with the advection-diffusion transport: the row
 ! capacity of the 10-column banded system of
@@ -204,11 +203,5 @@ module rotation_scratch_lib
 
 contains
 
-! MHP 9/94 disk locking: true while the disk-locking option is on and
-! the model is still younger than the disk-locking age (Gyr).
-      logical function disk_locking_engaged()
-      disk_locking_engaged = rotation_settings%disk_locking_active .and. &
-           star%disk_gate_age_gyr.le.rotation_settings%disk_locking_age_gyr
-      end function disk_locking_engaged
 
 end module rotation_scratch_lib

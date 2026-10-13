@@ -11,7 +11,8 @@ module rotation_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
-      public :: rotation_settings_t, rotation_settings, set_rotation_settings
+      public :: rotation_settings_t, rotation_settings, set_rotation_settings, &
+           disk_locking_engaged
 
       type :: rotation_settings_t
 ! instability transport (secular_transport) on. The step is cut into
@@ -106,5 +107,14 @@ subroutine set_rotation_settings(settings)
       type(rotation_settings_t), intent(in) :: settings
       rotation_settings = settings
 end subroutine set_rotation_settings
+
+! MHP 9/94 disk locking: true while the disk-locking option is on and a
+! model of age age_gyr (Gyr; the last converged model's,
+! star%disk_gate_age_gyr) is still younger than the disk-locking age.
+logical function disk_locking_engaged(age_gyr)
+      real(dp), intent(in) :: age_gyr
+      disk_locking_engaged = rotation_settings%disk_locking_active .and. &
+           age_gyr.le.rotation_settings%disk_locking_age_gyr
+end function disk_locking_engaged
 
 end module rotation_configuration

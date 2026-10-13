@@ -241,8 +241,10 @@ STAR_ACCESS_BUDGET = {
     # the star (s%stitched)
     "io": (476, 10),
     # rotation: +18 (2026-10) for omega_mid, which outlives the step and
-    # so moved from the scratch record rot_scr into the star
-    "rotation": (423, 10),
+    # so moved from the scratch record rot_scr into the star; +12 for the
+    # disk-gate age the omega_profile calls now pass (until rotation
+    # takes the star as an argument)
+    "rotation": (435, 10),
     "setup": (152, 3),
     "state": (738, 1),
 }

@@ -6,7 +6,7 @@
 ! with the wind torque, and updates omega.
 module evolve_rotation
       use shell_physics, only: compute_shell_physics
-      use rotation_configuration, only: rotation_settings
+      use rotation_configuration, only: rotation_settings, disk_locking_engaged
       implicit none
       private
       public :: evolve_angular_momentum
@@ -110,7 +110,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
            convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
       disk_lock_engaged = .false.
-      if(disk_locking_engaged()) disk_lock_engaged = .true.
+      if(disk_locking_engaged(star%disk_gate_age_gyr)) disk_lock_engaged = .true.
       if(.not.rotation_settings%instability_transport_active)then
          call spin_down_without_transport()
          return
@@ -119,7 +119,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! zones as solid bodies.
       call omega_from_j(star%logRho,star%j_rot,star%logR,star%log_mass, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
-           star%i_rot,star%omega,star%qiw,star%mean_radius)
+           star%i_rot,star%omega,star%qiw,star%mean_radius,star%disk_gate_age_gyr)
       if (.not. full_timestep.gt.0.0D0) return
       call count_substeps()
 ! The quantities both kinds of instability need: the temperature
@@ -191,7 +191,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       end do
       call omega_from_j(star%logRho,star%j_rot,star%logR,star%log_mass, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
-           star%i_rot,star%omega,star%qiw,star%mean_radius)
+           star%i_rot,star%omega,star%qiw,star%mean_radius,star%disk_gate_age_gyr)
 
 contains
 
@@ -209,7 +209,7 @@ subroutine spin_down_without_transport()
       endif
       call omega_from_j(star%logRho,star%j_rot,star%logR, &
            star%log_mass,star%dm,am_transport_convective_flag,star%nz, &
-           star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius)
+           star%eta_squared,star%i_rot,star%omega,star%qiw,star%mean_radius,star%disk_gate_age_gyr)
       if(.not.disk_lock_engaged .and. rotation_settings%use_wind_torque .and. star%convective_flag(star%nz)) then
 ! the moment of inertia of the surface convection zone (the whole star
 ! under solid-body rotation), and the masses at its bottom and top
@@ -242,7 +242,7 @@ subroutine spin_down_without_transport()
          iend = star%nz
          call enforce_rotation_profile(star%logRho,star%j_rot,star%logR, &
               star%log_mass,star%dm,envelope_boundary_zone,iend,star%eta_squared, &
-              star%i_rot,star%omega,star%qiw,star%mean_radius,star%nz)
+              star%i_rot,star%omega,star%qiw,star%mean_radius,star%nz,star%disk_gate_age_gyr)
       endif
 end subroutine spin_down_without_transport
 
@@ -312,7 +312,7 @@ subroutine brake_surface_convection_zone()
          iend = star%nz
          call enforce_rotation_profile(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,envelope_boundary_zone,iend,rot_scr%eta_squared_mid, &
-              rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
+              rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz,star%disk_gate_age_gyr)
       endif
 end subroutine brake_surface_convection_zone
 

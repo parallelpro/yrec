@@ -39,7 +39,7 @@
 ! its start, the bounds of the transport region, the surface convection
 ! zone's terms, and the outputs.
 module secular_transport
-      use rotation_configuration, only: rotation_settings
+      use rotation_configuration, only: rotation_settings, disk_locking_engaged
       use transport_checks, only: check_angular_momentum, check_composition
       use am_grid, only: am_transport_grid, equal_grid_to_model
       use rotational_mixing, only: diffuse_composition_driver
@@ -158,7 +158,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 ! reaches the surface holds its surface omega fixed, and an uncoupled
 ! surface convection zone feels no wind.
       disk_lock_active = .false.
-      if(disk_locking_engaged()) disk_lock_active = .true.
+      if(disk_locking_engaged(star%disk_gate_age_gyr)) disk_lock_active = .true.
       call save_end_zone_flags()
       call set_up_interfaces()
       if (ierr /= 0) return
@@ -377,7 +377,7 @@ subroutine spin_down_uncoupled_surface()
          solid_body_zone_end = star%nz
          call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,solid_body_zone_start,solid_body_zone_end, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz,star%disk_gate_age_gyr)
       endif
 end subroutine spin_down_uncoupled_surface
 
