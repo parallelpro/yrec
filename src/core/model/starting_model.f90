@@ -246,23 +246,19 @@ contains
 
 ! ---------------------------------------------------------------
 ! Obtain the starting model. With first_call_flag(run_index) false,
-! reuse the model in memory (legacy LFIRST), rescaled on a rescale
-! card. With it true, read the model file on unit iread, warn if its
-! mixing length or composition set differs from the controls, reset
-! the step state, set the rotation curve and, in a chemically
-! homogeneous model, alter the heavy-element mixture and isotope
-! ratios if asked. Sets ierr on failure.
+! reuse the model in memory (legacy LFIRST). With it true, read the
+! model file on unit iread, warn if its mixing length or composition
+! set differs from the controls, reset the step state, set the
+! rotation curve and, in a chemically homogeneous model, alter the
+! heavy-element mixture and isotope ratios if asked. Sets ierr on
+! failure.
 subroutine acquire_starting_model
 
-      if (.not.star%job%first_call_flag(run_index)) then
-! Reuse the model in memory; rescale it on a rescale card
-! (rescale_kind /= 1). rescale_and_refit_envelope calls rescale_model
-! a second time on this path, as starin did.
-         if (star%job%rescale_kind(run_index).ne.1) call rescale_model(star%luminosity_lsun, &
-              star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
-              star%star_mass,star%convective_flag, ierr)
-         if (ierr /= 0) return
-      else
+! A reused model (first_call_flag false) stays as it is in memory. On a
+! rescale card it is rescaled once, in rescale_and_refit_envelope, as a
+! model read from file is. (starin rescaled a reused model here as well,
+! so it was rescaled twice.)
+      if (star%job%first_call_flag(run_index)) then
          call read_starting_model_file
          if (ierr /= 0) return
          call check_model_against_controls

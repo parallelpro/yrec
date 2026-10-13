@@ -63,6 +63,7 @@ subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
            mass_shift_grams, unlogged_mass_temp, core_mass_new, &
            shell_mass_new
       double precision :: z_ramp_slope, mass_fraction_local, z_ramp_value
+      double precision :: species_target
       integer :: core_edge, envelope_edge, shell_begin, shell_end, shell_mid
       logical :: has_h_shell
 
@@ -176,17 +177,20 @@ subroutine rescale_one_species
 ! (legacy LREL), a log abundance relative to the surface X on a scale
 ! where X is 12, by mass:
 !   X_k = 10^(value - 12) X_surf,
-! so 3.0 means 1e-9 times the surface X. The converted value
-! overwrites star%job%new_species_value.
-            if(star%ctrl%value_relative_to_h) star%job%new_species_value = &
+! so 3.0 means 1e-9 times the surface X. The control itself is left
+! as given, so every rescale card converts it afresh. (The converted
+! value used to overwrite it, and a second rescale converted it again,
+! to about 1e-12 X.)
+            species_target = star%job%new_species_value
+            if(star%ctrl%value_relative_to_h) species_target = &
                  exp(ln10*(star%job%new_species_value-12.0d0))*composition(1,num_zones)
-            if(star%job%new_species_value.lt.1.0d0) then
+            if(species_target.lt.1.0d0) then
                do zone_idx = 1,num_zones
-                  composition(star%ctrl%new_species_index,zone_idx) = star%job%new_species_value
+                  composition(star%ctrl%new_species_index,zone_idx) = species_target
                end do
             else
 ! An abundance of 1 or more is refused; the species is not changed.
-               write(run_log_unit,1004)star%ctrl%new_species_index,run_index,star%job%new_species_value
+               write(run_log_unit,1004)star%ctrl%new_species_index,run_index,species_target
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
