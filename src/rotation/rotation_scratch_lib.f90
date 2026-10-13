@@ -6,9 +6,11 @@
 ! sub-step (rot_scr); the physics interpolated to it (mid_scr); the
 ! previous iterates of the circulation velocities
 ! (circ_scr). These are working arrays, not properties of the star (what
-! the output or other domains read lives on star%). One module-level
-! instance each; yrec_reset snapshots and restores them, so an
-! in-process rerun starts from the same state.
+! the output or other domains read, and what outlives a step, lives on
+! star%). One module-level instance each. Nothing in them outlives a
+! step: every field is written within a step before it is read (all
+! three poisoned with NaN at every step start, 2026-10-13: every pinned
+! deck byte-identical), so an in-process rerun needs no restore.
 module rotation_scratch_lib
       use rotation_configuration, only: rotation_settings
       use star_info_lib, only: json, star
@@ -95,8 +97,6 @@ module rotation_scratch_lib
                 eq_enclosed_mass(json)
            double precision :: eq_chi_spacing
            integer :: num_eq_points
-! the angular momentum conservation tolerance
-           double precision :: moment_of_inertia_tolerance
 ! 4-point Lagrange interpolation weights
            double precision :: lagrange_interp_weights(4,json)
 ! The structure at the interfaces, set by rotation_stability_setup:
@@ -160,6 +160,7 @@ module rotation_scratch_lib
 ! by secular_transport and the rest of the sub-step. Reads follow a
 ! write in the same step (the later sub-steps' seeding reads the
 ! previous sub-step's values).
+! (Its omega is star%omega_mid, which outlives the step.)
 ! luminosity_lsun_mid is linear L/Lsun (interpolated from
 ! star%luminosity_lsun), not a log, unlike its log_* neighbours.
 ! mean_gravity_mid is star%mean_gravity's; di_domega_mid is
@@ -168,7 +169,7 @@ module rotation_scratch_lib
                 log_density_mid(json), mean_gravity_mid(json), &
                 moment_of_inertia_mid(json), luminosity_lsun_mid(json), &
                 log_pressure_mid(json), log_radius_mid(json), &
-                log_temperature_mid(json), omega_mid(json), &
+                log_temperature_mid(json), &
                 mean_radius_mid(json), di_domega_mid(json)
            logical :: convective_flag_mid(json), &
                 am_transport_convective_flag_mid(json)

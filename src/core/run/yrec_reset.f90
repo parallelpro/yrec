@@ -19,17 +19,12 @@
 ! (test_reentry.py) verifies the end-to-end equivalence.
 module yrec_reset
       use star_info_lib, only: star, star_info, evolve_step_reset_pending
-      use rotation_scratch_lib
       use element_diffusion_lib, only: reset_element_diffusion
       implicit none
 
       logical, save :: first_entry = .true.
-! 2026 solver-scratch cleanup: the rotation workspace lives outside
-! star_info now (rotation_scratch_lib), so it needs its own pristine
-! snapshots alongside star0.
-      type(rotation_diffusion_state), save :: rot_scr0
-      type(midstep_physics_state), save :: mid_scr0
-      type(circulation_velocity_state), save :: circ_scr0
+! The rotation workspace (rotation_scratch_lib) needs no snapshot:
+! nothing in it outlives a step.
       ! star0 also carries star%job and star%evo since the 2026
       ! MESA-convention fold -- one snapshot covers all three roots.
       type(star_info), save :: star0
@@ -49,15 +44,9 @@ subroutine yrec_run_prologue
       call reset_element_diffusion()
       if (first_entry) then
          star0 = star
-         rot_scr0 = rot_scr
-         mid_scr0 = mid_scr
-         circ_scr0 = circ_scr
          first_entry = .false.
       else
          star = star0
-         rot_scr = rot_scr0
-         mid_scr = mid_scr0
-         circ_scr = circ_scr0
          evolve_step_reset_pending = .true.
          do u = 7, 99
             close(u)

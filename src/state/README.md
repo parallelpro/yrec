@@ -30,17 +30,17 @@ The rest of this README describes the members of `star`: what each one is, its u
 | Rotation state | 13 | The rotation curve and the shape of the rotating star. The specific angular momentum `j_rot` is conserved; omega, the moments of inertia and the shape factors are derived from it and the structure. | Between steps. Meaningful only with `job%rotation_active`; without rotation the shape factors are 1. |
 | Regions of the current model | 12 | Point indices and bounds of the convective core, the surface convection zone, the hydrogen-burning shell and the mixed regions. | Located again at each stage that needs them (composition step, rezone, after convergence); valid for the model they were located on. |
 | Step snapshot | 24 | Copies of model quantities at the start of the step (`*_start`, `old_*`, `*_old`, `pphot0`) or of the structure-rotation iteration (`orig_*`), mapped onto the step's mesh. | From the start-of-step copy (the rezone, or `rezone_or_snapshot` without one) to the end of the step. |
-| Step working state | 23 | Values one stage computes for a later stage of the same or the next step, and that are not output: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses. | From the stage that writes them; each table row says which. |
+| Step working state | 28 | Values one stage computes for a later stage of the same or the next step, and that are not output: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses, the outer layers of the latest envelope integration, the last rotation sub-step's omega. | From the stage that writes them; each table row says which. |
 | Newton | 10 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve. `log_pressure_delta` and `log_temperature_delta`, the changes over the step, stay valid until the next step's solve starts. |
 | Diagnostics written during the solve | 29 | Per-zone physics stored for output by `compute_henyey_coefficients` on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). | After convergence they hold the last iteration's values: the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
-| Diagnostics written after convergence | 35 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
+| Diagnostics written after convergence | 36 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
 | Step control | 11 | The timestep and the flags that steer one step's solve. | During and between steps. |
 | Run and card bookkeeping | 28 | Per-run and per-card state: the calibration loops, the card's mixing length and mass, the surface mixture of the first card, the atmosphere switch, the reason the run ended. | From the card (or run) that sets them. |
 | Constants set at setup | 16 | Values fixed for the whole run during the controls read or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales some of them. |
 | Scratch | 4 | Values stored in `star` but used only inside the module (often the procedure) that writes them. | Only inside that module. |
 | Never referenced | 0 | Declared and not used (the two there were removed in 2026-10). | — |
 
-236 members in all, besides `ctrl` and `job` (section 4).
+242 members in all, besides `ctrl` and `job` (section 4).
 
 ## 3. The members
 
@@ -181,6 +181,11 @@ How to read the tables:
 | `dlog_pressure_dt(json)` | d log P/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `pressure_entropy_term` until 2026-10 |
 | `dln_luminosity_dt(json)` | d ln L/dt over the last step, 2 (L - L_start)/(L + L_start)/dt | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `luminosity_entropy_term` until 2026-10 |
 | `dlog_radius_dt(json)` | d log r/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `radius_entropy_term` until 2026-10 |
+| `env_points` (type `envelope_structure_state`, `envelope_points`) | the envelope of the latest envelope integration, point by point: log P, log T, log m, log rho, log r, X, Z, the gradients, the opacity and its derivatives, ... | cgs; logs base 10 | `envelope_integration` (atm_get, through the integration kernel) | `stitched_model`, `envelope_refit`, `envelope_rebuild`, `starting_model` | the module variable `env_struct` until 2026-10 |
+| `atm_points` (type `atmosphere_structure_state`) | the atmosphere of the latest integration, point by point | cgs; logs base 10 | `envelope_integration` (atm_get) | `stitched_model` | the module variable `atmo_struct` until 2026-10 |
+| `atm_point` (type `atmosphere_point_state`) | the atmosphere integration's current point: log tau, log P, log T, log rho, the opacity, the ionization fractions | logs base 10 | `envelope_integration` (atm_get) | `mass_change` | the mass change falls back on its last values when the Allard lookup fails; a module variable until 2026-10 |
+| `central_saha_state` | the Saha state the central EOS call carries from one model to the next | - | `observables` (compute_observables) | `observables` | observables' module variable `ksaha_center` until 2026-10 |
+| `omega_mid(json)` | omega of the latest rotation sub-step's model, the structure interpolated to the sub-step's end | rad/s | `mid_timestep_model` (rotate_midpoint_model); `secular_transport`; `evolve_rotation` (through `enforce_rotation_profile`) | `evolve_rotation`, `secular_transport`, `mid_timestep_model` | `rot_scr%omega_mid` until 2026-10. It outlives the step: the next step's first solid-body sub-step starts its Newton iteration from its mean |
 
 ### 3.6 Newton
 
@@ -237,6 +242,7 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
+| `stitched` (type `stitched_model_record`, `stitched_model_state`) | the stitched model: the converged star (interior, envelope and atmosphere) on one extended grid, with its profile and pulse columns | cgs | `stitched_model` (build_stitched_model) | `observables`, `turnover_timescale`, `yrec_output`; the profile and pulse writers through their argument | stitched_model's module arrays until 2026-10; allocated, and zeroed, by the first build |
 | `es_circulation_velocity(json)` | Eddington-Sweet circulation velocity at each interface | cm/s | `circulation` (circulation_velocities, clear_velocities, apply_velocity_scales, average_with_previous, zero_transport_in_core) | `stitched_model`, `circulation` | written by the rotation transport, last iteration of the last sub-step |
 | `secular_shear_velocity(json)` | secular (or dynamical) shear-instability velocity | cm/s | `circulation` (circulation_velocities, clear_velocities, apply_velocity_scales, average_with_previous, zero_transport_in_core) | `stitched_model`, `circulation` | as es_circulation_velocity |
 | `gsf_circulation_velocity(json)` | GSF-instability velocity | cm/s | `circulation` (circulation_velocities, clear_velocities, apply_velocity_scales, average_with_previous, zero_transport_in_core) | `stitched_model`, `circulation` | as es_circulation_velocity |

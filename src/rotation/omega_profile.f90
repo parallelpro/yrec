@@ -9,7 +9,15 @@ module omega_profile
       use rotation_configuration, only: rotation_settings
       implicit none
       private
-      public :: omega_from_j, solid_body_omega, enforce_rotation_profile
+      public :: omega_from_j, solid_body_omega, enforce_rotation_profile, &
+           default_inertia_tolerance
+
+! The relative tolerance on J of solid_body_omega's Newton iteration
+! when the caller gives none: zero, so the iteration always takes its
+! 20 corrections. It is the F77 TOLERI, which nothing ever set;
+! check_angular_momentum loosens it (inertia_tolerance) for the
+! transport's iterations before the last.
+      double precision, parameter :: default_inertia_tolerance = 0.0d0
 
 contains
 
@@ -22,10 +30,12 @@ contains
 ! which imposes the convection-zone rotation law on the run as a whole.
 ! Updates omega (rad/s), j, and each zone's shape and inertia:
 ! eta_squared (Radau's eta_2), mean_radius (r0), moment_of_inertia (I)
-! and qiw (di_domega of zone_moments_of_inertia).
+! and qiw (di_domega of zone_moments_of_inertia). inertia_tolerance
+! (optional) goes to every solid_body_omega call.
 subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, am_transport_convective_flag, num_zones, &
-     eta_squared, moment_of_inertia, omega, qiw, mean_radius)
+     eta_squared, moment_of_inertia, omega, qiw, mean_radius, &
+     inertia_tolerance)
       use star_info_lib, only: json
 
       implicit none
@@ -37,6 +47,7 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: eta_squared(json), &
            moment_of_inertia(json), omega(json), qiw(json), mean_radius(json)
+      double precision, intent(in), optional :: inertia_tolerance
       logical :: in_convection_zone
       integer :: zone_index, zone_start, zone_end
 
@@ -49,7 +60,8 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
                zone_end = zone_index
                call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                     log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                    moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                    moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                    inertia_tolerance=inertia_tolerance)
             else
 ! The first zone of a convection zone: note where it starts.
                in_convection_zone = .true.
@@ -61,13 +73,15 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
             zone_end = zone_index - 1
             call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
 ! Then solve the current, radiative, zone alone.
             zone_start = zone_index
             zone_end = zone_index
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
             in_convection_zone = .false.
          else if (zone_index.eq.num_zones) then
 ! The convection zone reaches the surface: impose the rotation law on
@@ -77,7 +91,8 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
             zone_end = num_zones
             call enforce_rotation_profile(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          endif
       end do
       return
@@ -90,7 +105,8 @@ end subroutine omega_from_j
 ! at each guess, shape gives the zones' r0 (mean_radius) and eta_2
 ! (eta_squared), and zone_moments_of_inertia their I and di_domega.
 ! The iteration stops when |J - omega sum_i I_i| <= J times
-! rot_scr%moment_of_inertia_tolerance, or after 20 corrections (then
+! inertia_tolerance (default_inertia_tolerance if absent), or after 20
+! corrections (then
 ! the last guess is kept). On return omega, I, di_domega, r0 and eta_2
 ! belong to the last guess, and j_i = I_i omega / dm_i.
 ! Disk locking (MHP 9/94): while disk_locking_engaged(), a surface
@@ -99,7 +115,8 @@ end subroutine omega_from_j
 ! reset to match; the disk takes up the difference in J.
 subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, zone_start, zone_end, eta_squared, &
-     moment_of_inertia, omega, di_domega, mean_radius, num_zones)
+     moment_of_inertia, omega, di_domega, mean_radius, num_zones, &
+     inertia_tolerance)
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: shape
       use rotation_scratch_lib
@@ -118,7 +135,9 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       double precision, intent(out) :: di_domega(json)
       double precision, intent(out) :: mean_radius(json)
       integer, intent(in) :: num_zones
+      double precision, intent(in), optional :: inertia_tolerance
 ! --- locals ---
+      double precision :: tolerance
       double precision :: total_angular_momentum, omega_sum
       integer :: iteration_count
       logical :: disk_locked
@@ -128,6 +147,8 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
            delta_omega
       integer :: zone_idx
 
+      tolerance = default_inertia_tolerance
+      if (present(inertia_tolerance)) tolerance = inertia_tolerance
       total_angular_momentum = 0.0d0
       omega_sum = 0.0d0
       iteration_count = 0
@@ -174,7 +195,7 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       delta_angular_momentum = total_angular_momentum - new_angular_momentum
       if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
-           rot_scr%moment_of_inertia_tolerance) then
+           tolerance) then
          if(iteration_count.lt.20) then
             iteration_count = iteration_count + 1
             delta_omega = delta_angular_momentum/ &
@@ -217,10 +238,11 @@ end subroutine solid_body_omega
 ! re-solve each zone's omega alone at fixed j (solid_body_omega), as I
 ! depends on omega; omega follows the law up to that change in I.
 ! (solid_body_mode_flag is legacy IMPJMOD; legacy wcz lacked modes 2
-! and 3.)
+! and 3.) inertia_tolerance (optional) goes to every solid_body_omega
+! call.
 subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
-     omega, qiw, mean_radius, num_zones)
+     omega, qiw, mean_radius, num_zones, inertia_tolerance)
       use star_info_lib, only: json
       use physical_constants
       use math_lib
@@ -236,6 +258,7 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
       double precision, intent(inout) :: omega(json), qiw(json), &
            mean_radius(json)
       integer, intent(in) :: num_zones
+      double precision, intent(in), optional :: inertia_tolerance
 ! --- locals ---
 ! In the power-law branches cz_total_mass accumulates sum r^alpha I,
 ! the normalization of omega = C r^alpha; only in the constant-j branch
@@ -251,7 +274,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
            (rotation_settings%solid_body_mode_flag.eq.1) .or. (iend.lt.num_zones)) then
          call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
-              moment_of_inertia,omega,qiw,mean_radius,num_zones)
+              moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+              inertia_tolerance=inertia_tolerance)
 ! Mode 2: omega = C r^alpha in the convection zone,
 ! C = J_cz / sum_i r_i^alpha I_i, and everything below it a solid body
 ! detached from the convection zone.
@@ -279,13 +303,15 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             zone_end = zone_idx
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          end do
 ! The interior rotates as one solid body with its own angular momentum.
          if (istart.gt.1) then
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,1,istart-1,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          endif
 ! Mode 3: the whole star (zones 1..iend) shares its angular momentum
 ! between the convection zone, omega = C r^alpha, and the interior
@@ -326,7 +352,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             zone_end = zone_idx
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          end do
 ! Set the interior to the rate of the zone's base and re-solve it as one
 ! solid body.
@@ -338,7 +365,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             end do
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,1,istart-1,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          endif
 
       else if((rotation_settings%cz_rotation_law_exponent.le.-2.0d0) .and. (rotation_settings%solid_body_mode_flag.eq.0))then
@@ -362,7 +390,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             zone_end = zone_idx
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          end do
       else
 ! The general law omega = C r^alpha, C constant over the convection
@@ -391,7 +420,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
             zone_end = zone_idx
             call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
                  log_mass,shell_mass,zone_start,zone_end,eta_squared, &
-                 moment_of_inertia,omega,qiw,mean_radius,num_zones)
+                 moment_of_inertia,omega,qiw,mean_radius,num_zones, &
+                 inertia_tolerance=inertia_tolerance)
          end do
       endif
       return

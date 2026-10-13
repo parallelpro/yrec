@@ -184,6 +184,13 @@ module star_info_lib
                  j_rot(json), kinetic_energy_rot(json), &
                  kinetic_energy_rot_old(json), mean_radius(json), &
                  eta_squared(json), qiw(json), mean_gravity(json)
+! omega_mid: omega (rad/s) of the latest rotation sub-step's model, the
+! structure interpolated to the sub-step's end (rot_scr's *_mid model).
+! mid_timestep_model, secular_transport and the wind write it;
+! evolve_rotation copies it into omega at the end of the step. It
+! outlives the step: the next step's first solid-body sub-step
+! (rotate_midpoint_model) starts its Newton iteration from its mean.
+            double precision :: omega_mid(json)
 ! am_transport_convective_flag (legacy LCZ): T where a zone is
 ! convective for angular-momentum purposes (overshoot included), from
 ! am_convective_regions on the current grid. Written by

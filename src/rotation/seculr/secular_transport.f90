@@ -69,7 +69,7 @@ contains
 ! between the sub-step's start and the previous iterate (and averaged
 ! with the previous U), until check_angular_momentum finds j converged.
 ! The other species mix once, at the end.
-! Outputs: star%j_rot and star%xa; rot_scr%omega_mid and the shape from
+! Outputs: star%j_rot and star%xa; star%omega_mid and the shape from
 ! the new j; redo_flag, with sub_timestep halved and cut_count raised,
 ! when a check asks for a shorter sub-step; diffusion_solve_ok;
 ! omega_surface and cz_moment_of_inertia of the surface convection zone;
@@ -171,7 +171,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
 ! (restart_iteration), averaged in turn with the previous velocities,
 ! for a more accurate run of diffusion coefficients.
       do iteration = 1,rotation_settings%max_diffusion_iters
-         omega_surface = rot_scr%omega_mid(star%nz)
+         omega_surface = star%omega_mid(star%nz)
          if(iteration.gt.1) call restart_iteration()
          call spin_down_uncoupled_surface()
          if (ierr /= 0) return
@@ -262,8 +262,8 @@ subroutine set_up_interfaces()
            star%nz,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = star%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(star%nz)
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,rot_scr%omega_mid,dlnomega_dlnr)
-      call compute_quadrupole(rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,rot_scr%omega_mid,star%nz,ierr)
+           rot_scr%log_radius_mid,star%omega_mid,dlnomega_dlnr)
+      call compute_quadrupole(rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,star%omega_mid,star%nz,ierr)
 end subroutine set_up_interfaces
 
 ! ---------------------------------------------------------------
@@ -286,7 +286,7 @@ end subroutine compute_unperturbed_velocities
 subroutine save_substep_start()
       do i =1,star%nz
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
-         omega_start(i) = rot_scr%omega_mid(i)
+         omega_start(i) = star%omega_mid(i)
       end do
       omega_surface_start = rot_scr%omega_substep_start(star%nz)
       diffusion_solve_ok = .false.
@@ -301,12 +301,12 @@ end subroutine save_substep_start
 ! seculr.f, not on LDIFAD).
 subroutine compute_circulation()
       call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
-           rot_scr%am_transport_convective_flag_mid,star%nz,rot_scr%omega_mid,unstable_zone_found, &
+           rot_scr%am_transport_convective_flag_mid,star%nz,star%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,rot_scr%log_pressure_mid)
       if(rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
-           zone_min,zone_max,rot_scr%omega_mid)
+           zone_min,zone_max,star%omega_mid)
 end subroutine compute_circulation
 
 ! ---------------------------------------------------------------
@@ -320,10 +320,10 @@ end subroutine compute_circulation
 ! old base.
 subroutine restart_iteration()
       do i = 1,star%nz
-         rot_scr%omega_mid(i) = 0.5D0*(rot_scr%omega_mid(i)+omega_start(i))
+         star%omega_mid(i) = 0.5D0*(star%omega_mid(i)+omega_start(i))
       end do
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,rot_scr%omega_mid,dlnomega_dlnr)
+           rot_scr%log_radius_mid,star%omega_mid,dlnomega_dlnr)
       call compute_circulation()
       do i = 1,star%nz
          star%j_rot(i) = specific_angular_momentum_saved(i)
@@ -377,7 +377,7 @@ subroutine spin_down_uncoupled_surface()
          solid_body_zone_end = star%nz
          call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,solid_body_zone_start,solid_body_zone_end, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
       endif
 end subroutine spin_down_uncoupled_surface
 
@@ -553,7 +553,7 @@ subroutine set_surface_wind_terms()
 ! (wind_loss_implicit, averaged with its previous value from the second
 ! iteration on), for the outermost grid point's moment of inertia.
                cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%num_eq_points)
-               omega_surface = rot_scr%omega_mid(star%nz)
+               omega_surface = star%omega_mid(star%nz)
                call compute_solid_body_braking(star%log_L,sub_timestep, &
                     cz_moment_of_inertia,iteration,omega_surface, &
                     star%star_mass,star%log_Teff,omega_surface_start, &
@@ -587,7 +587,7 @@ subroutine check_iterate()
            iteration, &
            rot_scr%am_transport_convective_flag_mid,star%nz,sub_timestep,rot_scr%eta_squared_mid, &
            rot_scr%moment_of_inertia_mid,star%j_rot,cut_count, &
-           diffusion_solve_ok,redo_flag,rot_scr%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid, &
+           diffusion_solve_ok,redo_flag,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid, &
            diffusion_converged, ierr)
       if (ierr /= 0) return
       if(.not.redo_flag)call check_composition(star%xa,iteration, &

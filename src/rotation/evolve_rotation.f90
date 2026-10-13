@@ -187,7 +187,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       end do
 ! omega from the new angular momentum distribution, self-consistently
       do zone_index = 1,star%nz
-         star%omega(zone_index) = rot_scr%omega_mid(zone_index)
+         star%omega(zone_index) = star%omega_mid(zone_index)
       end do
       call omega_from_j(star%logRho,star%j_rot,star%logR,star%log_mass, &
            star%dm,am_transport_convective_flag,star%nz,star%eta_squared, &
@@ -302,7 +302,7 @@ end subroutine record_substep_start_omega
 ! The wind's spin-down of the surface convection zone over the sub-step
 ! (Weber-Davis magnetic wind), when transport is not doing it.
 subroutine brake_surface_convection_zone()
-      omega_surface = rot_scr%omega_mid(star%nz)
+      omega_surface = star%omega_mid(star%nz)
       if(fully_convective_flag.or..not.rotation_settings%instability_transport_active) then
          call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
               envelope_boundary_zone,star%nz,wind_loss_active,omega_surface, &
@@ -312,7 +312,7 @@ subroutine brake_surface_convection_zone()
          iend = star%nz
          call enforce_rotation_profile(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
               star%log_mass,star%dm,envelope_boundary_zone,iend,rot_scr%eta_squared_mid, &
-              rot_scr%moment_of_inertia_mid,rot_scr%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
+              rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,star%nz)
       endif
 end subroutine brake_surface_convection_zone
 

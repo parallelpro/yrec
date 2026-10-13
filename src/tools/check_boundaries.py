@@ -237,7 +237,9 @@ STAR_ACCESS_BUDGET = {
     # writers the stitched model, which moved from module variables into
     # the star (s%stitched)
     "io": (476, 10),
-    "rotation": (405, 10),
+    # rotation: +18 (2026-10) for omega_mid, which outlives the step and
+    # so moved from the scratch record rot_scr into the star
+    "rotation": (423, 10),
     "setup": (152, 3),
     "state": (738, 1),
 }
