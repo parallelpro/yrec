@@ -268,7 +268,7 @@ end subroutine compute_new_shell_masses
 ! ---------------------------------------------------------------
 ! The first guess at the rotation of the new shells, from the outermost
 ! old shell by the convection-zone law walpcz: constant j, solid body,
-! or omega r^walpcz constant. Each shell's specific moment of inertia is
+! or omega ~ r^walpcz. Each shell's specific moment of inertia is
 ! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
          if(star%ctrl%walpcz.le.-2.0D0)then
@@ -286,12 +286,11 @@ subroutine guess_new_shell_rotation()
                specific_angular_momentum(zone_index) = star%omega(old_num_zones)*moment_of_inertia(zone_index)
             end do
          else
-! Otherwise omega r^walpcz = constant: omega = omega_old (r_old/r)^walpcz.
-! (enforce_rotation_profile in omega_profile imposes omega = C r^walpcz
-! instead.)
-            omega_ref = star%omega(old_num_zones)*exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
+! Otherwise omega ~ r^walpcz, the law enforce_rotation_profile
+! (omega_profile) imposes: omega = omega_old (r/r_old)^walpcz.
+            omega_ref = star%omega(old_num_zones)/exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
             do zone_index = old_num_zones+1,num_zones
-               star%omega(zone_index) = omega_ref/exp10((log_radius(zone_index)*star%ctrl%walpcz))
+               star%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*star%ctrl%walpcz))
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = star%omega(zone_index)*moment_of_inertia(zone_index)
             end do

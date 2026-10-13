@@ -516,11 +516,11 @@ subroutine measure_wind_angular_momentum()
 ! Constant specific angular momentum: j_surface = j_rot(nz).
             delta_angular_momentum = star%j_rot(nz)*delta_mass_cgs
          else
-! A power law, omega extrapolated from the outer zone to R as
-! omega_s = omega(nz) (r(nz)/R)^walpcz, i.e. omega r^walpcz constant
-! (the rotation module's law is omega ~ r^walpcz, the inverse).
-            surface_omega_local = star%omega(nz)*exp10( &
-                 star%logR(nz)*star%ctrl%walpcz)/pow(total_radius_cm, star%ctrl%walpcz)
+! A power law, omega ~ r^walpcz (the rotation module's law, as in
+! omega_profile), extrapolated from the outer zone to R:
+! omega_s = omega(nz) (R/r(nz))^walpcz.
+            surface_omega_local = star%omega(nz)*pow(total_radius_cm, star%ctrl%walpcz)/ &
+                 exp10(star%logR(nz)*star%ctrl%walpcz)
             delta_angular_momentum = surface_omega_local* &
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
          endif
