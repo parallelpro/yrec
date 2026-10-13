@@ -7,7 +7,8 @@
 ! log T and log R at the fitting point; compute_surface_boundary fits
 ! log R, log L and log Teff there as linear functions of the
 ! fitting-point log P and log T, which henyey_iterate turns into the
-! surface rows of the Henyey system.
+! surface rows of the Henyey system. The triangle's geometry and the fit
+! are the star-blind kernels of triangle_fit.f90.
 module surface_boundary
       implicit none
       private
@@ -29,7 +30,10 @@ contains
 ! edge of a tabulated (Kurucz or Allard) T-tau relation; start a new
 ! triangle, or reflect vertices until the triangle contains the point;
 ! integrate a new envelope (envelope_integration's atm_get) at every
-! vertex that needs one; refit the coefficients.
+! vertex that needs one; refit the coefficients. The geometry
+! (start_triangle, reflect_until_inside) and the fit
+! (fit_triangle_coefficients) are triangle_fit's kernels; this routine
+! gathers their inputs, integrates the envelopes, and stores the results.
 ! tri_teffl and tri_logl hold the vertices, and vtx_logp, vtx_logt and
 ! vtx_logr each vertex's fitting-point log P, log T and log R.
 ! start_new_triangle builds three new envelopes about the point;
@@ -41,6 +45,9 @@ contains
 ! hydrogen_fraction, metal_fraction and the two rotation factors are
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
+!   star reads: atm_choice_initial, ctrl%spot_filling_factor,
+!     ctrl%spot_temp_contrast, ctrl%tri_delta_logl, ctrl%tri_delta_teffl
+!   star writes: job%atm_choice, use_ttau_relation
 subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
@@ -53,6 +60,8 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
      zone_index, ierr)
 
       use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
+      use triangle_fit, only: start_triangle, reflect_until_inside, &
+           fit_triangle_coefficients
       use atm_lib, only: atm_allard_teff_max
       use star_info_lib
       use io_units
@@ -83,8 +92,8 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(out) :: ierr
       integer :: jerr_atm
 ! --- locals ---
-      integer :: i1, i2, i3, i, vertex_being_computed, j
-      double precision :: temp, temp1, temp2, tri_err
+      integer :: i, vertex_being_computed, j
+      double precision :: tri_err
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
       double precision :: b, gl, rl, adjusted_teffl, vertex_log10_teff
@@ -95,7 +104,7 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       call locate_point_in_triangle()
       call integrate_vertex_envelopes()
       if (ierr /= 0) return
-      call fit_triangle_coefficients()
+      call refit_coefficients()
       return
 
 contains
@@ -175,48 +184,24 @@ subroutine mark_triangle_vertices()
 end subroutine mark_triangle_vertices
 
 ! ---------------------------------------------------------------
-! Start a triangle about (Teff, L), or reflect vertices of the old one
-! until it contains the point; a reflected vertex needs a new envelope.
+! Start a triangle about (Teff, L), dT = tri_delta_teffl wide and
+! dL = tri_delta_logl high, or reflect vertices of the old one through
+! the midpoints of their opposite edges until it contains the point; a
+! reflected vertex needs a new envelope.
 subroutine locate_point_in_triangle()
+      logical :: reflected(3)
+      integer :: n_reflections
       if (start_new_triangle) then
-! A new triangle, counterclockwise, with vertices (log Teff, log L) at
-!   1: (Teff - dT/2, L - dL/2), 2: (Teff + dT/2, L - dL/2),
-!   3: (Teff, L + dL/2),
-! dT = tri_delta_teffl and dL = tri_delta_logl.
-       tri_orientation = +1.0d0
-       tri_teffl(3) = log10_teff
-       tri_teffl(1) = tri_teffl(3) - 0.5d0*star%ctrl%tri_delta_teffl
-       tri_teffl(2) = tri_teffl(1) + star%ctrl%tri_delta_teffl
-       tri_logl(3) = log_luminosity + 0.5d0*star%ctrl%tri_delta_logl
-       tri_logl(1) = tri_logl(3) - star%ctrl%tri_delta_logl
-       tri_logl(2) = tri_logl(1)
+       call start_triangle(log10_teff, log_luminosity, &
+            star%ctrl%tri_delta_teffl, star%ctrl%tri_delta_logl, &
+            tri_teffl, tri_logl, tri_orientation)
        start_new_triangle = .false.
       else
-! Is the point inside? For vertex i1, with i2 and i3 the other two,
-!   temp = tri_orientation [(Teff_i3 - Teff_i2)(L - L_i2)
-!                           - (L_i3 - L_i2)(Teff - Teff_i2)],
-! the cross product of the edge i2 -> i3 with the point minus vertex
-! i2, is positive when the point lies on i1's side of that edge. If it
-! is below -tri_err, reflect i1 through the edge's midpoint
-! (x_i1 -> x_i2 + x_i3 - x_i1), which reverses the orientation, mark it
-! for a new envelope, and scan again.
-       tri_scan: do
-       do i1 = 1,3
-          i2 = mod(i1,3) + 1
-          i3 = mod(i2,3) + 1
-          temp = tri_orientation*((tri_logl(i2)-tri_logl(i3))*(log10_teff-tri_teffl(i2)) + &
-                 (tri_teffl(i3)-tri_teffl(i2))*(log_luminosity-tri_logl(i2)) )
-          if (temp.lt.-tri_err) then
-             tri_orientation = -tri_orientation
-             tri_teffl(i1) = tri_teffl(i2) + tri_teffl(i3) - tri_teffl(i1)
-             tri_logl(i1) = tri_logl(i2) + tri_logl(i3) - tri_logl(i1)
-             tri_vertex_valid(i1) = .false.
-             tri_err = 0.0d0
-             cycle tri_scan
-          endif
+       call reflect_until_inside(tri_teffl, tri_logl, tri_orientation, &
+            log10_teff, log_luminosity, tri_err, reflected, n_reflections)
+       do i = 1,3
+          if (reflected(i)) tri_vertex_valid(i) = .false.
        end do
-       exit tri_scan
-       end do tri_scan
       endif
 end subroutine locate_point_in_triangle
 
@@ -266,27 +251,13 @@ subroutine integrate_vertex_envelopes()
 end subroutine integrate_vertex_envelopes
 
 ! ---------------------------------------------------------------
-! Refit the coefficients when any envelope is new. For f = log R, log L
-! and log Teff, the plane f = a log P + b log T + c through the three
-! vertices (P_k, T_k: vertex k's fitting-point log P and log T):
-!   temp1 = (T_3 - T_1)/(T_2 - T_1)
-!   a = [(f_3 - f_1) - temp1 (f_2 - f_1)]/[(P_3 - P_1) - temp1 (P_2 - P_1)]
-!   b = [(f_2 - f_1) - a (P_2 - P_1)]/(T_2 - T_1)
-!   c = f_1 - a P_1 - b T_1
-subroutine fit_triangle_coefficients()
+! Refit the coefficients when any envelope is new: for log R, log L and
+! log Teff, the plane in the fitting-point (log P, log T) through the
+! three vertices.
+subroutine refit_coefficients()
       if (envelope_needs_recompute) then
-       temp = 1.0d0/(vtx_logt(2)-vtx_logt(1))
-       temp1 = (vtx_logt(3)-vtx_logt(1))*temp
-       temp2 = 1.0d0/(vtx_logp(3)-vtx_logp(1)-temp1*(vtx_logp(2)-vtx_logp(1)))
-       envelope_coeffs(1) = (  vtx_logr(3)-  vtx_logr(1)-temp1*(  vtx_logr(2)-  vtx_logr(1)))*temp2
-       envelope_coeffs(4) = (tri_logl(3)-tri_logl(1)-temp1*(tri_logl(2)-tri_logl(1)))*temp2
-       envelope_coeffs(7) = (tri_teffl(3)-tri_teffl(1)-temp1*(tri_teffl(2)-tri_teffl(1)))*temp2
-       envelope_coeffs(2) = (  vtx_logr(2)-  vtx_logr(1)-envelope_coeffs(1)*(vtx_logp(2)-vtx_logp(1)))*temp
-       envelope_coeffs(5) = (tri_logl(2)-tri_logl(1)-envelope_coeffs(4)*(vtx_logp(2)-vtx_logp(1)))*temp
-       envelope_coeffs(8) = (tri_teffl(2)-tri_teffl(1)-envelope_coeffs(7)*(vtx_logp(2)-vtx_logp(1)))*temp
-       envelope_coeffs(3) =   vtx_logr(1) - envelope_coeffs(1)*vtx_logp(1) - envelope_coeffs(2)*vtx_logt(1)
-       envelope_coeffs(6) = tri_logl(1) - envelope_coeffs(4)*vtx_logp(1) - envelope_coeffs(5)*vtx_logt(1)
-       envelope_coeffs(9) = tri_teffl(1) - envelope_coeffs(7)*vtx_logp(1) - envelope_coeffs(8)*vtx_logt(1)
+       call fit_triangle_coefficients(vtx_logp, vtx_logt, vtx_logr, &
+            tri_logl, tri_teffl, envelope_coeffs)
        if (solver_diagnostics()) then
         write(run_log_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
               (envelope_coeffs(3*(i-1)+j),j=1,3), i=1,3)
@@ -299,7 +270,7 @@ subroutine fit_triangle_coefficients()
        if (solver_diagnostics()) write(run_log_unit,70)
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
-end subroutine fit_triangle_coefficients
+end subroutine refit_coefficients
 
 end subroutine compute_surface_boundary
 

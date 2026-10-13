@@ -1,0 +1,87 @@
+# fit: planes through linear functions of (log Teff, log L)
+  A (start triangle, Sun): log R plane at the vertices               9.8E-17  ok
+  A (start triangle, Sun): log R plane at interior points            9.8E-17  ok
+  A (start triangle, Sun): log L plane at the vertices               5.4E-17  ok
+  A (start triangle, Sun): log L plane at interior points            4.2E-17  ok
+  A (start triangle, Sun): log Teff plane at the vertices            1.5E-16  ok
+  A (start triangle, Sun): log Teff plane at interior points         1.5E-16  ok
+  A (start triangle, Sun): slopes against the inverse map            6.4E-14  ok
+  B (giant, clockwise): log R plane at the vertices                  1.4E-16  ok
+  B (giant, clockwise): log R plane at interior points               1.4E-16  ok
+  B (giant, clockwise): log L plane at the vertices                  4.9E-17  ok
+  B (giant, clockwise): log L plane at interior points               1.3E-16  ok
+  B (giant, clockwise): log Teff plane at the vertices               1.7E-16  ok
+  B (giant, clockwise): log Teff plane at interior points            1.7E-16  ok
+  B (giant, clockwise): slopes against the inverse map               1.5E-13  ok
+  C (scalene): log R plane at the vertices                           0.0E+00  ok
+  C (scalene): log R plane at interior points                        7.1E-17  ok
+  C (scalene): log L plane at the vertices                           9.7E-17  ok
+  C (scalene): log L plane at interior points                        7.6E-17  ok
+  C (scalene): log Teff plane at the vertices                        5.0E-17  ok
+  C (scalene): log Teff plane at interior points                     5.0E-17  ok
+  C (scalene): slopes against the inverse map                        5.0E-14  ok
+  C: log R plane through arbitrary values at the vertices            5.9E-17  ok
+# degenerate: collinear fitting points, a zero-area triangle
+  collinear (log P, log T): non-finite coefficients                  9.0E+00  ok
+  T_2 = T_1, plane exists: non-finite coefficients                   9.0E+00  ok
+  zero area: a point on its line is inside                           0.0E+00  ok
+  zero area: so is one on the line far outside                       0.0E+00  ok
+  zero area: a point off its line, reflections tried                 1.0E+03  ok
+  orientation against the vertices: reflections tried                1.0E+03  ok
+# inside: vertex_to_reflect (0 inside), value the smallest edge_side
+  ccw, inside -> 0                                                   4.9E-04  ok
+  ccw, beyond edge 2-3 -> 1                                         -4.9E-04  ok
+  ccw, beyond edge 3-1 -> 2                                         -4.9E-04  ok
+  ccw, beyond edge 1-2 -> 3                                         -9.8E-04  ok
+  ccw, beyond edges 2-3 and 1-2 -> 1                                -1.5E-03  ok
+  ccw, on edge 1-2 -> 0                                              0.0E+00  ok
+  ccw, on edge 2-3 -> 0                                              0.0E+00  ok
+  ccw, on edge 3-1 -> 0                                              0.0E+00  ok
+  ccw, at vertex 1 -> 0                                              0.0E+00  ok
+  ccw, at vertex 2 -> 0                                              0.0E+00  ok
+  ccw, at vertex 3 -> 0                                              0.0E+00  ok
+  ccw, 2^-40 beyond edge 1-2 -> 3                                   -1.4E-14  ok
+  ccw, (same, tolerance 2^-45) -> 0                                 -1.4E-14  ok
+  cw, inside -> 0                                                    4.9E-04  ok
+  cw, beyond edge 2-3 -> 1                                          -4.9E-04  ok
+  cw, beyond edge 3-1 -> 3                                          -4.9E-04  ok
+  cw, beyond edge 1-2 -> 2                                          -9.8E-04  ok
+  cw, beyond edges 2-3 and 1-2 -> 1                                 -1.5E-03  ok
+  cw, on edge 1-2 -> 0                                               0.0E+00  ok
+  cw, on edge 2-3 -> 0                                               0.0E+00  ok
+  cw, on edge 3-1 -> 0                                               0.0E+00  ok
+  cw, at vertex 1 -> 0                                               0.0E+00  ok
+  cw, at vertex 2 -> 0                                               0.0E+00  ok
+  cw, at vertex 3 -> 0                                               0.0E+00  ok
+  cw, 2^-40 beyond edge 1-2 -> 2                                    -1.4E-14  ok
+  cw, (same, tolerance 2^-45) -> 0                                  -1.4E-14  ok
+# reflection: reflect_vertex, the half turn about the opposite edge's midpoint
+  vertex 1: half turn about the edge midpoint                        0.0E+00  ok
+  vertex 1: area kept, orientation reversed                          0.0E+00  ok
+  vertex 1: a point beyond the edge is inside after                  4.9E-04  ok
+  vertex 2: half turn about the edge midpoint                        0.0E+00  ok
+  vertex 2: area kept, orientation reversed                          0.0E+00  ok
+  vertex 2: a point beyond the edge is inside after                  4.9E-04  ok
+  vertex 3: half turn about the edge midpoint                        0.0E+00  ok
+  vertex 3: area kept, orientation reversed                          0.0E+00  ok
+  vertex 3: a point beyond the edge is inside after                  4.9E-04  ok
+  start triangle, vertex 3: half turn = mirror image                 0.0E+00  ok
+  start triangle, vertex 1: half turn /= mirror image                7.9E-02  ok
+# walk: reflect_until_inside from the start triangle, value the reflections
+  to ( 3.763,  0.00): inside, orientation matches                    0.0E+00  ok
+  to ( 3.763,  0.00): area kept                                      0.0E+00  ok
+  to ( 3.770,  0.03): inside, orientation matches                    1.0E+00  ok
+  to ( 3.770,  0.03): area kept                                      0.0E+00  ok
+  to ( 3.732,  0.30): inside, orientation matches                    1.0E+01  ok
+  to ( 3.732,  0.30): area kept                                      5.6E-16  ok
+  to ( 3.650,  2.00): inside, orientation matches                    5.1E+01  ok
+  to ( 3.650,  2.00): area kept                                      2.0E-15  ok
+  to ( 3.900, -1.00): inside, orientation matches                    4.0E+01  ok
+  to ( 3.900, -1.00): area kept                                      2.2E-15  ok
+  to ( 3.762, -3.00): inside, orientation matches                    7.3E+01  ok
+  to ( 3.762, -3.00): area kept                                      8.9E-16  ok
+  to ( 4.200,  3.00): inside, orientation matches                    1.2E+02  ok
+  to ( 4.200,  3.00): area kept                                      8.9E-16  ok
+  track of 40 models: inside at every model                          4.0E+01  ok
+  track of 40 models: area kept                                      2.2E-15  ok
+test_triangle_fit: done
