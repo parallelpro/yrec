@@ -533,7 +533,7 @@ end function profile_value
 ! needs. Envelope/atmosphere points carry what those integrations
 ! store. The opacity derivatives (kap_kap_T, kap_kap_rho) are among
 ! them since 2026: the envelope and atmosphere integrations always
-! computed dlnkap/dlnT and dlnkap/dlnrho (pt_scr%qqot, qqod) but did
+! computed dlnkap/dlnT and dlnkap/dlnrho (pt%qqot, qqod) but did
 ! not keep them, so these two columns were written as zero above the
 ! fitting point -- which, for a nonadiabatic pulsation code reading
 ! the file, removes the kappa mechanism of the hydrogen ionisation

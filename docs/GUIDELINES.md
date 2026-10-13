@@ -169,7 +169,7 @@ commits). Output columns keep their MESA names.
 
 **Modules, files and procedures (2026-10).** Four rules; new code
 follows them, and the 2026-10 sweep brought the tree into line (the state
-modules star_info_lib, rotation_scratch_lib and point_scratch_lib wait
+modules star_info_lib and rotation_scratch_lib wait
 for the Phase 5 state split, docs/TARGET_ARCHITECTURE.md section 4.2,
 which replaces them).
 

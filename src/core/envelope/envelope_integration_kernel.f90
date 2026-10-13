@@ -12,7 +12,7 @@
 !      surface down to the fitting mass, log(m/M) = senv.
 ! On the way it records each atmosphere point in atm_points and each
 ! envelope point in env_points (the records it is given are its product).
-! The physics of each point comes from pt_scr (point_scratch_lib), where
+! The physics of each point comes from pt (point_physics), where
 ! the integrands of envelope_integrands leave it.
 !
 ! The kernel is star-blind: its code uses neither star_info_lib nor
@@ -25,7 +25,8 @@
 module envelope_integration_kernel
       use envelope_points, only: envelope_structure_state, &
            atmosphere_structure_state, atmosphere_point_state
-      use envelope_integrands, only: compute_atmosphere_derivs, compute_envelope_derivs
+      use envelope_integrands, only: compute_atmosphere_derivs, compute_envelope_derivs, &
+           point_physics
       use numerics_lib, only: ode_system
       implicit none
 
@@ -76,8 +77,10 @@ module envelope_integration_kernel
             integer :: atm_choice = 0
             double precision :: atm_hras = 0.0d0, log10_total_mass = 0.0d0
 ! the atmosphere integration's current point, which the atmosphere
-! integrand writes (copied in and out around each step)
+! integrand writes (copied in and out around each step), and the
+! physics of the point the integrands last evaluated (likewise)
             type(atmosphere_point_state) :: atm_point
+            type(point_physics) :: pt
       contains
             procedure :: derivatives => equation_derivatives
       end type envelope_equations
@@ -97,14 +100,14 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%atm_choice, self%atm_hras, self%atm_point, ierr)
+              self%atm_choice, self%atm_hras, self%atm_point, self%pt, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%log10_total_mass, ierr)
+              self%log10_total_mass, self%pt, ierr)
       end if
 end subroutine equation_derivatives
 
@@ -139,7 +142,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 
       use eos_lib
       use kap_lib
-      use point_scratch_lib
       use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit
       use io_units
@@ -207,6 +209,9 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! eos_res before the call and back after it.
       type(eos_result) :: eos_res
       double precision :: kap_res(num_kap_results)
+! The physics of the point the integrands last evaluated (point_physics):
+! each integrand call fills it, and the point recorders read it.
+      type(point_physics) :: pt
 ! The independent variable: log tau in the atmosphere, log P in the
 ! envelope.
       double precision :: indep_var
@@ -266,7 +271,7 @@ contains
 ! integrates. Sets tabulated_bc; ierr when a table interpolation fails.
 subroutine prepare_surface_boundary
 ! The EOS derivatives are always requested: the integrands store them
-! in pt_scr for atm_points and env_points.
+! in pt for atm_points and env_points.
       want_derivatives = .true.
       in_atmosphere = .true.
       conductive_opacity_flag = .false.
@@ -526,7 +531,7 @@ subroutine take_atmosphere_step()
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-            cfg%atm_choice, cfg%atm_hras, atm_point, jerr)
+            cfg%atm_choice, cfg%atm_hras, atm_point, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -535,7 +540,7 @@ end subroutine take_atmosphere_step
 
 ! ---------------------------------------------------------------
 ! The thermodynamic state of the new atmosphere point, as the last call
-! of compute_atmosphere_derivs left it in atm_point and pt_scr, into
+! of compute_atmosphere_derivs left it in atm_point and pt, into
 ! atm_points.
 subroutine store_atmosphere_point()
       use math_lib
@@ -544,24 +549,24 @@ subroutine store_atmosphere_point()
 ! chi_T = -chi_rho (d ln rho/d ln T)_P,
 ! c_V = c_P - (P/(rho T)) chi_T^2/chi_rho and Gamma1 = chi_rho c_P/c_V.
        beta = 1.0d0 - radiation_constant_over_3*exp(ln10*(4.0d0*atm_point%log10_temperature-atm_point%log10_pressure))
-       chi_rho = 1.0d0/pt_scr%qqdp
-       chi_t = -chi_rho*pt_scr%qqdt
-       specific_heat_cv = pt_scr%qqcp - exp(ln10*(atm_point%log10_pressure-atm_point%log10_density-atm_point%log10_temperature))*chi_t**2/chi_rho
-       gamma1 = chi_rho*pt_scr%qqcp/specific_heat_cv
+       chi_rho = 1.0d0/pt%qqdp
+       chi_t = -chi_rho*pt%qqdt
+       specific_heat_cv = pt%qqcp - exp(ln10*(atm_point%log10_pressure-atm_point%log10_density-atm_point%log10_temperature))*chi_t**2/chi_rho
+       gamma1 = chi_rho*pt%qqcp/specific_heat_cv
 ! Store the point in atm_points.
        atm_points%atmo_log10_pressure(step_index) = atm_point%log10_pressure
        atm_points%atmo_log10_temperature(step_index) = atm_point%log10_temperature
        atm_points%atmo_log10_density(step_index) = atm_point%log10_density
        atm_points%atmo_beta(step_index) = beta
        atm_points%atmo_gamma1(step_index) = gamma1
-       atm_points%atmo_dlnrho_dlnt(step_index) = pt_scr%qqdt
+       atm_points%atmo_dlnrho_dlnt(step_index) = pt%qqdt
        atm_points%atmo_ion_fraction(1,step_index) = atm_point%ion_fraction(1)
        atm_points%atmo_ion_fraction(2,step_index) = atm_point%ion_fraction(2)
        atm_points%atmo_ion_fraction(3,step_index) = atm_point%ion_fraction(3)
        atm_points%atmo_opacity(step_index) = atm_point%opacity
-       atm_points%atmo_dlnkap_dlnrho(step_index) = pt_scr%qqod
-       atm_points%atmo_dlnkap_dlnt(step_index) = pt_scr%qqot
-       atm_points%atmo_specific_heat_cp(step_index) = pt_scr%qqcp
+       atm_points%atmo_dlnkap_dlnrho(step_index) = pt%qqod
+       atm_points%atmo_dlnkap_dlnt(step_index) = pt%qqot
+       atm_points%atmo_specific_heat_cp(step_index) = pt%qqcp
 end subroutine store_atmosphere_point
 
 ! ---------------------------------------------------------------
@@ -576,8 +581,8 @@ subroutine store_atmosphere_gradients()
 ! and are not set before the first step. They are not SAVEd, so the
 ! build's -finit-local-zero makes them zero on entry: the first point's
 ! depth is measured from tau = 0 with rho kappa = 0 there.
-       opacity_now = pt_scr%qo
-       density_now = exp(ln10*pt_scr%qdl)
+       opacity_now = pt%qo
+       density_now = exp(ln10*pt%qdl)
        tau_now = exp(ln10*atm_point%log10_tau)
        delta_tau_step =  (tau_now - prev_tau)/(((density_now*opacity_now)+(prev_density*prev_opacity))/2)
        prev_opacity = opacity_now
@@ -587,18 +592,18 @@ subroutine store_atmosphere_gradients()
 ! with 10^cdelrl = 3/(64 pi sigma), L = luminosity_linear Lsun and M the
 ! total mass. The gradient is grad_rad where grad_rad <= grad_ad + 1e-6,
 ! and grad_ad above.
-       pulse_radiative_gradient = pt_scr%qo*luminosity_linear*exp(ln10*(pt_scr%qpl-log10_star_mass-4.0d0*pt_scr%qtl+cfg%log10_solar_luminosity-cgl+ &
+       pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl+cfg%log10_solar_luminosity-cgl+ &
               cdelrl))*temperature_rotation_factor/pressure_rotation_factor
-       if (pulse_radiative_gradient-pt_scr%qdela .le. 1.0d-6) then
+       if (pulse_radiative_gradient-pt%qdela .le. 1.0d-6) then
          pulse_gradient = pulse_radiative_gradient
        else
-         pulse_gradient = pt_scr%qdela
+         pulse_gradient = pt%qdela
        end if
 ! Store the depth step and the gradients (grad_rad, grad, grad_ad).
        atm_points%atmo_delta_depth(step_index) = delta_tau_step
        atm_points%atmo_gradients(1,step_index) = pulse_radiative_gradient
        atm_points%atmo_gradients(2,step_index) = pulse_gradient
-       atm_points%atmo_gradients(3,step_index) = pt_scr%qdela
+       atm_points%atmo_gradients(3,step_index) = pt%qdela
        atm_points%num_atm_points = step_index
        prev_tau = tau_now
        prev_density = density_now
@@ -676,7 +681,7 @@ subroutine start_envelope_integration()
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-           cfg%log10_total_mass, jerr)
+           cfg%log10_total_mass, pt, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -685,43 +690,43 @@ end subroutine start_envelope_integration
 
 ! ---------------------------------------------------------------
 ! The surface point as point 1 of env_points, as compute_envelope_derivs
-! left it in pt_scr; also starts the convection-zone bookkeeping.
+! left it in pt; also starts the convection-zone bookkeeping.
 subroutine store_first_envelope_point()
       use math_lib
       cz_in_envelope = .false.
       taucz_env_accum = 0.0d0
-      env_points%env_log10_density(1) = pt_scr%current_log10_density
-      env_points%env_log10_pressure(1) = pt_scr%current_log10_pressure
-      env_points%env_log10_radius(1) = pt_scr%current_log10_radius
-      env_points%env_log10_mass(1) = pt_scr%current_log10_mass
-      env_points%env_log10_temperature(1) = pt_scr%current_log10_temperature
+      env_points%env_log10_density(1) = pt%current_log10_density
+      env_points%env_log10_pressure(1) = pt%current_log10_pressure
+      env_points%env_log10_radius(1) = pt%current_log10_radius
+      env_points%env_log10_mass(1) = pt%current_log10_mass
+      env_points%env_log10_temperature(1) = pt%current_log10_temperature
       env_points%env_hydrogen_fraction(1) = hydrogen_fraction
       env_points%env_metal_fraction(1) = metal_fraction
-      env_points%env_convective_flag(1) = pt_scr%current_velocity.gt.0.0d0
+      env_points%env_convective_flag(1) = pt%current_velocity.gt.0.0d0
 ! The gradients (grad_rad, grad_ad, grad), the convective velocity and
 ! beta.
-      env_points%env_gradients(1,1) = pt_scr%current_gradients(1)
-      env_points%env_gradients(2,1) = pt_scr%current_gradients(2)
-      env_points%env_gradients(3,1) = pt_scr%current_gradients(3)
-      env_points%env_convective_velocity(1) = pt_scr%current_velocity
-      env_points%env_beta(1) = pt_scr%current_beta
+      env_points%env_gradients(1,1) = pt%current_gradients(1)
+      env_points%env_gradients(2,1) = pt%current_gradients(2)
+      env_points%env_gradients(3,1) = pt%current_gradients(3)
+      env_points%env_convective_velocity(1) = pt%current_velocity
+      env_points%env_beta(1) = pt%current_beta
 ! Gamma1 and c_P (as in store_atmosphere_point), the ionization
 ! fractions, the opacity and its derivatives, L (in Lsun) and
 ! (d ln rho/d ln T)_P.
-      chi_rho = 1.0d0/pt_scr%qqdp
-      chi_t = -chi_rho*pt_scr%qqdt
-      specific_heat_cv = pt_scr%qqcp - exp(ln10*(pt_scr%current_log10_pressure-pt_scr%current_log10_density- &
-           pt_scr%current_log10_temperature))*chi_t**2/chi_rho
-      env_points%env_gamma1(1) = chi_rho*pt_scr%qqcp/specific_heat_cv
-      env_points%env_specific_heat_cp(1) = pt_scr%qqcp
-      env_points%env_ion_fraction(1,1) = pt_scr%current_ion_fraction(1)
-      env_points%env_ion_fraction(2,1) = pt_scr%current_ion_fraction(2)
-      env_points%env_ion_fraction(3,1) = pt_scr%current_ion_fraction(3)
-      env_points%env_opacity(1) = pt_scr%current_opacity
-      env_points%env_dlnkap_dlnrho(1) = pt_scr%qqod
-      env_points%env_dlnkap_dlnt(1) = pt_scr%qqot
+      chi_rho = 1.0d0/pt%qqdp
+      chi_t = -chi_rho*pt%qqdt
+      specific_heat_cv = pt%qqcp - exp(ln10*(pt%current_log10_pressure-pt%current_log10_density- &
+           pt%current_log10_temperature))*chi_t**2/chi_rho
+      env_points%env_gamma1(1) = chi_rho*pt%qqcp/specific_heat_cv
+      env_points%env_specific_heat_cp(1) = pt%qqcp
+      env_points%env_ion_fraction(1,1) = pt%current_ion_fraction(1)
+      env_points%env_ion_fraction(2,1) = pt%current_ion_fraction(2)
+      env_points%env_ion_fraction(3,1) = pt%current_ion_fraction(3)
+      env_points%env_opacity(1) = pt%current_opacity
+      env_points%env_dlnkap_dlnrho(1) = pt%qqod
+      env_points%env_dlnkap_dlnt(1) = pt%qqot
       env_points%env_luminosity(1) = luminosity_linear
-      env_points%env_dlnrho_dlnt(1) = pt_scr%qqdt
+      env_points%env_dlnrho_dlnt(1) = pt%qqdt
       if(env_points%env_convective_flag(1))cz_in_envelope = .true.
       env_points%num_env_points = 1
 end subroutine store_first_envelope_point
@@ -832,7 +837,7 @@ subroutine take_envelope_step()
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-              cfg%log10_total_mass, jerr)
+              cfg%log10_total_mass, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -848,37 +853,37 @@ subroutine store_envelope_point()
       use math_lib
          if(mass_diff_remaining.le.step_tolerance)then
             env_points%num_env_points = env_points%num_env_points + 1
-            env_points%env_log10_density(env_points%num_env_points) = pt_scr%current_log10_density
-            env_points%env_log10_pressure(env_points%num_env_points) = pt_scr%current_log10_pressure
-            env_points%env_log10_radius(env_points%num_env_points) = pt_scr%current_log10_radius
-            env_points%env_log10_mass(env_points%num_env_points) = pt_scr%current_log10_mass
-            env_points%env_log10_temperature(env_points%num_env_points) = pt_scr%current_log10_temperature
+            env_points%env_log10_density(env_points%num_env_points) = pt%current_log10_density
+            env_points%env_log10_pressure(env_points%num_env_points) = pt%current_log10_pressure
+            env_points%env_log10_radius(env_points%num_env_points) = pt%current_log10_radius
+            env_points%env_log10_mass(env_points%num_env_points) = pt%current_log10_mass
+            env_points%env_log10_temperature(env_points%num_env_points) = pt%current_log10_temperature
             env_points%env_hydrogen_fraction(env_points%num_env_points) = hydrogen_fraction
             env_points%env_metal_fraction(env_points%num_env_points) = metal_fraction
-            env_points%env_convective_flag(env_points%num_env_points) = pt_scr%current_velocity.gt.0.0d0
+            env_points%env_convective_flag(env_points%num_env_points) = pt%current_velocity.gt.0.0d0
 ! The gradients (grad_rad, grad_ad, grad), the convective velocity and
 ! beta.
-            env_points%env_gradients(1,env_points%num_env_points) = pt_scr%current_gradients(1)
-            env_points%env_gradients(2,env_points%num_env_points) = pt_scr%current_gradients(2)
-            env_points%env_gradients(3,env_points%num_env_points) = pt_scr%current_gradients(3)
-            env_points%env_convective_velocity(env_points%num_env_points) = pt_scr%current_velocity
-            env_points%env_beta(env_points%num_env_points) = pt_scr%current_beta
+            env_points%env_gradients(1,env_points%num_env_points) = pt%current_gradients(1)
+            env_points%env_gradients(2,env_points%num_env_points) = pt%current_gradients(2)
+            env_points%env_gradients(3,env_points%num_env_points) = pt%current_gradients(3)
+            env_points%env_convective_velocity(env_points%num_env_points) = pt%current_velocity
+            env_points%env_beta(env_points%num_env_points) = pt%current_beta
 ! Gamma1, c_P, the ionization fractions, the opacity and its
 ! derivatives, L and (d ln rho/d ln T)_P, as for point 1.
-            chi_rho = 1.0d0/pt_scr%qqdp
-            chi_t = -chi_rho*pt_scr%qqdt
-            specific_heat_cv = pt_scr%qqcp - exp(ln10*(pt_scr%current_log10_pressure-pt_scr%current_log10_density- &
-                 pt_scr%current_log10_temperature))*chi_t**2/chi_rho
-            env_points%env_gamma1(env_points%num_env_points) = chi_rho*pt_scr%qqcp/specific_heat_cv
-            env_points%env_specific_heat_cp(env_points%num_env_points) = pt_scr%qqcp
-            env_points%env_ion_fraction(1,env_points%num_env_points) = pt_scr%current_ion_fraction(1)
-            env_points%env_ion_fraction(2,env_points%num_env_points) = pt_scr%current_ion_fraction(2)
-            env_points%env_ion_fraction(3,env_points%num_env_points) = pt_scr%current_ion_fraction(3)
-            env_points%env_opacity(env_points%num_env_points) = pt_scr%current_opacity
-            env_points%env_dlnkap_dlnrho(env_points%num_env_points) = pt_scr%qqod
-            env_points%env_dlnkap_dlnt(env_points%num_env_points) = pt_scr%qqot
+            chi_rho = 1.0d0/pt%qqdp
+            chi_t = -chi_rho*pt%qqdt
+            specific_heat_cv = pt%qqcp - exp(ln10*(pt%current_log10_pressure-pt%current_log10_density- &
+                 pt%current_log10_temperature))*chi_t**2/chi_rho
+            env_points%env_gamma1(env_points%num_env_points) = chi_rho*pt%qqcp/specific_heat_cv
+            env_points%env_specific_heat_cp(env_points%num_env_points) = pt%qqcp
+            env_points%env_ion_fraction(1,env_points%num_env_points) = pt%current_ion_fraction(1)
+            env_points%env_ion_fraction(2,env_points%num_env_points) = pt%current_ion_fraction(2)
+            env_points%env_ion_fraction(3,env_points%num_env_points) = pt%current_ion_fraction(3)
+            env_points%env_opacity(env_points%num_env_points) = pt%current_opacity
+            env_points%env_dlnkap_dlnrho(env_points%num_env_points) = pt%qqod
+            env_points%env_dlnkap_dlnt(env_points%num_env_points) = pt%qqot
             env_points%env_luminosity(env_points%num_env_points) = luminosity_linear
-            env_points%env_dlnrho_dlnt(env_points%num_env_points) = pt_scr%qqdt
+            env_points%env_dlnrho_dlnt(env_points%num_env_points) = pt%qqdt
 
 ! From the first convective point on, add dr/v_conv of each convective
 ! point (dr from the previous point, which lies further out).
@@ -886,10 +891,10 @@ subroutine store_envelope_point()
                if(env_points%env_convective_flag(env_points%num_env_points))then
                   cz_in_envelope = .true.
                endif
-            else if(pt_scr%current_velocity.gt.0.0d0)then
+            else if(pt%current_velocity.gt.0.0d0)then
                delta_radius_cz = exp10(env_points%env_log10_radius(env_points%num_env_points-1)) - &
                     exp10(env_points%env_log10_radius(env_points%num_env_points))
-               taucz_env_accum = taucz_env_accum + delta_radius_cz/pt_scr%current_velocity
+               taucz_env_accum = taucz_env_accum + delta_radius_cz/pt%current_velocity
             endif
          endif
 end subroutine store_envelope_point
@@ -964,6 +969,7 @@ subroutine load_equations(atmosphere)
       equations%atm_hras = cfg%atm_hras
       equations%log10_total_mass = cfg%log10_total_mass
       equations%atm_point = atm_point
+      equations%pt = pt
 end subroutine load_equations
 
 ! Copy back the values the integrands update (nothing else reads them
@@ -973,6 +979,7 @@ subroutine unload_equations()
       log10_teff = equations%log10_teff
       saha_state = equations%saha_state
       atm_point = equations%atm_point
+      pt = equations%pt
 end subroutine unload_equations
 
 end subroutine integrate_envelope_atmosphere

@@ -118,7 +118,7 @@ evolve_step
 
 The order is fine. The problems lie in how these stages communicate:
 
-- **Through the global object.** The stages exchange data through roughly 265 fields of `star`, plus the scratch modules `rot_scr`, `mid_scr` and `pt_scr`. No stage states its inputs or outputs.
+- **Through the global object.** The stages exchange data through roughly 265 fields of `star`, plus the scratch modules `rot_scr`, `mid_scr` and (until 2026-10) `pt_scr`. No stage states its inputs or outputs.
 - **Stages nest inside one another.** Mixing, envelope integration and rotation shape updates run inside the Newton driver. The splitting iteration between composition and structure exists, but only as "`mix` is called again when `iteration_level > 2`" inside `henyey_iterate`. (Fixed for the composition step on `yrec-next`, 2026-10: `solve_level` in `evolve_step` now runs the surface boundary condition, the composition step and the Newton loop as three calls.)
 - **Flags are encoded in data.** "Do not age this model" is a negative `star%dt`, and four routines read its sign.
 - **Snapshots are scattered.** There are three separate snapshot families in `star`: `*_start` (start of step), `orig_*` (for the structure⇄rotation iteration) and `old_*` (rotation). A fourth, `rot_scr%old_*`, holds the rezone snapshot. Each is copied with hand-written loops.

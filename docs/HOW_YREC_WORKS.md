@@ -43,7 +43,7 @@ the coordinate; all cgs):
 | # | Equation | YREC form (per shell, `compute_henyey_coefficients` (`coefft`), `core/structure/structure_equations.f90`) |
 |---|----------|------------------------------------------|
 | 1 | Mass conservation | dr/dm = 1/(4πr²ρ) — residual `cur%qr = exp(ln10·(log m − log ρ − log 4πr³))` |
-| 2 | Hydrostatic equilibrium | dP/dm = −Gm/(4πr⁴) · **f_P** — residual `qp = −exp(ln10·(log G + 2 log m − log P − log 4πr³ − log r))·f_P` (held in `pt_scr%qp`, mirrored into `cur%qp`) |
+| 2 | Hydrostatic equilibrium | dP/dm = −Gm/(4πr⁴) · **f_P** — residual `qp = −exp(ln10·(log G + 2 log m − log P − log 4πr³ − log r))·f_P` (in `cur%qp`, formed by `evaluate_shell_equations`) |
 | 3 | Energy transport | dlnT/dm = ∇ · dlnP/dm — residual `qt = ∇ · qp`, with ∇ = ∇_rad (radiative) or ∇_conv (MLT) |
 | 4 | Energy conservation | dL/dm = ε_nuc − ε_ν + ε_grav — assembled from `compute_zone_energy` → `nuclear_energy` (burning + neutrinos) plus the entropy ("gravothermal") term −T ∂S/∂t, evaluated from the change in (log T, log P) since the start of the step divided by Δt |
 
@@ -584,8 +584,9 @@ flat MESA-style: the start-of-step snapshot is the `*_start` family
 members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
 bundles are nested: `star%job` (run list and calibration cards) and
 `star%ctrl` (namelist controls, fixed after `read_controls`). Solver
-scratch lives in `rotation/rotation_scratch_lib.f90` and
-`core/structure/point_scratch_lib.f90`, table state inside each physics domain. Two
+scratch lives in `rotation/rotation_scratch_lib.f90` (the envelope
+integration's point values are the kernel's own, 2026-10), table state
+inside each physics domain. Two
 `run_yrec` calls in one process are byte-identical to two fresh processes
 (the re-entrancy contract), which is what makes the Python embedding sound.
 

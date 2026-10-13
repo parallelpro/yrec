@@ -16,7 +16,7 @@ This file is the authority on names in YREC (see `TARGET_ARCHITECTURE.md` sectio
 | Units | cgs unless stated. "dex" means a log₁₀ quantity. "—" means dimensionless or a flag. "unconfirmed" means the units could not be settled from the code. |
 | Current name(s) | Name in the code today. Several names separated by commas are copies or aliases of the same quantity. "also" lists the name a different routine uses for it. |
 | Legacy | F77 name before the 2026 modernization: a COMMON member, a `main.f` array, or a namelist variable. An arrow (`A → B`) records an intermediate 2026 name. "—" means the quantity is new since 2026. |
-| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mid_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`, and `pt_scr` in `core/structure/point_scratch_lib.f90`. Controls are declared in the generated `state/controls_state_def.inc` (`ctrl`) and `state/job_controls_def.inc` (`job`). |
+| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mid_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`. The envelope integration's point values `pt` are the kernel's own (`core/envelope/envelope_integrands.f90`'s `point_physics`). Controls are declared in the generated `state/controls_state_def.inc` (`ctrl`) and `state/job_controls_def.inc` (`job`). |
 
 **Naming rules** (from `TARGET_ARCHITECTURE.md` 4.7, plus what the code already practises):
 
@@ -159,12 +159,12 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| q_P | — | `cur%qp`, `pt_scr%qp` | `QP` | core/structure/structure_equations.f90 | dlog₁₀P/dlog₁₀m = −G m² f_P/(4π r⁴ P). |
+| q_P | — | `cur%qp` | `QP` | core/structure/structure_equations.f90 | dlog₁₀P/dlog₁₀m = −G m² f_P/(4π r⁴ P). |
 | ∂q_P/∂ln r | — | `cur%qp_dr` | `QPR` | core/structure/structure_equations.f90 | = −4 q_P. |
 | ∂q_P/∂ln P | — | `cur%qp_dp` | `QPP` | core/structure/structure_equations.f90 | = −q_P. |
-| q_T | — | `cur%qt`, `pt_scr%qt` | `QT` | core/structure/structure_equations.f90 | dlog₁₀T/dlog₁₀m = ∇ · q_P. |
+| q_T | — | `cur%qt` | `QT` | core/structure/structure_equations.f90 | dlog₁₀T/dlog₁₀m = ∇ · q_P. |
 | ∂q_T/∂ln r | — | `cur%qt_dr` | `QTR` | core/structure/structure_equations.f90 | −4 q_T, plus q_T · ∂ln∇/∂ln R in convective zones. |
-| ∂q_T/∂L ÷ ln10 | L☉⁻¹ | `cur%qt_dl`, `pt_scr%qtl` | `QTL` | core/structure/structure_equations.f90 | q_T/(L ln10) where radiative; 0 where convective. |
+| ∂q_T/∂L ÷ ln10 | L☉⁻¹ | `cur%qt_dl` | `QTL` | core/structure/structure_equations.f90 | q_T/(L ln10) where radiative; 0 where convective. |
 | ∂q_T/∂ln P | — | `cur%qt_dp` | `QTP` | core/structure/structure_equations.f90 | Radiative: q_T κ_ρ (∂lnρ/∂lnP). Convective: q_T(−1 + ∂ln∇/∂lnP). |
 | ∂q_T/∂ln T | — | `cur%qt_dt` | `QTT` | core/structure/structure_equations.f90 | Radiative: q_T(−4 + κ_T + κ_ρ ∂lnρ/∂lnT). Convective: q_T ∂ln∇/∂lnT. |
 | q_r | — | `cur%qr` | `QR` | core/structure/structure_equations.f90 | dlog₁₀r/dlog₁₀m = m/(4π r³ ρ). |
@@ -396,7 +396,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | 1/μ_e | — | `star%pulse_electron_mean_weight_inverse` | `PEMU` | core/structure/structure_equations.f90 | Inverse electron mean weight (already inverted). |
 | pulse columns 1–18 | cgs | `stx_pulse(ipul_r ... ipul_omega, :)`: r, m, L (erg s⁻¹), P, T, ρ, ∇, N², Γ₁, ∇_ad, δ, κ, κ·κ_T, κ·κ_ρ, ε, ε·ε_T, ε·ε_ρ, Ω | — | core/diagnostics/stitched_model.f90:47-55 | GYRE schema-101 set. Columns 16–17 multiply `eps_total` by the already-absolute derivative (trap 1). |
 | pulse columns 19–34 | mixed | `ipul_cp`, `ipul_mu_e_inv`, `ipul_h1`, `ipul_z`, species at `ipul_species_base+k` (k=1..11: ³He, ¹²C, ¹³C, ¹⁴N, ¹⁶O, ²H, ⁴He, ⁷Li, ¹⁵N, ¹⁷O, ¹⁸O), `ipul_eps_grav` | — | core/diagnostics/stitched_model.f90:700-706 | FGONG extras. Column 35 is never filled. |
-| q* point scratch | mixed | `pt_scr%qqdp`, `qqdt`, `qqod`, `qqot`, `qdel`, `qdela`, `qqcp`, `qrmu`, `qemu`, `qd`, `qdl`, `qo`, `qol`, `qp`, `qpl`, `qt`, `qtl`, `current_*` | same names (`/PULSE2/`), `current_*` → `/ENVPRT/` | core/envelope/envelope_integrands.f90, core/envelope/envelope_integrands.f90, core/structure/structure_equations.f90 | Physics of the last evaluated point for the envelope/atmosphere recorder. `qp`, `qt`, `qtl` mean different things per writer (trap 2). |
+| q* point values (envelope integration) | mixed | `pt%qqdp`, `qqdt`, `qqod`, `qqot`, `qdel`, `qdela`, `qqcp`, `qrmu`, `qemu`, `qd`, `qdl`, `qo`, `qol`, `qp`, `qpl`, `qt`, `qtl`, `current_*` | same names (`/PULSE2/`), `current_*` → `/ENVPRT/` | core/envelope/envelope_integrands.f90, core/envelope/envelope_integrands.f90, core/structure/structure_equations.f90 | Physics of the last evaluated point for the envelope/atmosphere recorder. `qp`, `qt`, `qtl` mean different things per writer (trap 2). |
 
 ### 2.13 Physical constants and unit scales
 
@@ -475,9 +475,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - The Jacobian always used them correctly, and so does the rotation code (`rotation/seculr/stability_coefficients.f90`): there f·dε/dlnT is added to ε·(1 − f − χ_T), which is consistent only for the absolute derivative.
    - Misled by the old names, commit 2ed398ca (2026-08-30) multiplied them by ε a second time in both pulse writers. The `eps_eps_T`/`eps_eps_rho` columns were wrong by a factor of ε until the 2026-10 fix (`TARGET_ARCHITECTURE.md` Appendix B #1).
    - The `engeb` comment used to say "the callers divide by eps themselves". None does; the comment was corrected in 2026-10.
-2. **`pt_scr%qp`, `qt`, `qtl` mean different things depending on who wrote them last.**
-   - In `compute_henyey_coefficients` they are Henyey terms: q_P, q_T = ∇ q_P, and q_T/(L ln10) (`core/structure/structure_equations.f90:189-205`).
-   - In the envelope and atmosphere integrands they are P (dyn cm⁻²), T (K) and log₁₀ T (`core/envelope/envelope_integrands.f90:127-130`, `core/envelope/envelope_integrands.f90:84-87`).
+2. **`pt%qp`, `qt`, `qtl` in the envelope integration are P (dyn cm⁻²), T (K) and log₁₀ T**, not Henyey terms. (Until 2026-10 the same module slots, `pt_scr`, also carried the structure equations' q_P, q_T and q_T/(L ln10).)
    - `qrmu` is R/μ, not μ.
 3. **`dlnomega_dlnr` is the absolute dΩ/d ln r, and `max_domega_dr` is per ln r.**
    - `secular_transport.f90:163` forms ¼ΔΩ·(Σ 1/Δln r), which has units of rad s⁻¹.
@@ -532,7 +530,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - μ: `star%mu` (full-ionization estimate, `core/step/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `core/structure/structure_equations.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
 19. **The 3-row gradient carriers use two row orders, and the named constants document the wrong one.**
     - `i_grad_rad=1, i_grad_actual=2, i_grad_ad=3` (`state/star_info_lib.f90:83-87`) give the order (rad, actual, ad), the order of the former `DEL_GRAD`. Their comment says they apply to `current_gradients` and `env_gradients`, but no code uses them.
-    - `pt_scr%current_gradients` and `env_points%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).
+    - `pt%current_gradients` and `env_points%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).
     - `atm_points%atmo_gradients` is (rad, **actual**, ad) (`core/envelope/envelope_integration_kernel.f90:459-461`).
     - The output code has already mixed up the two orders once (`core/diagnostics/stitched_model.f90:598-607`).
 20. **`chosen_dt` is reused transiently.**

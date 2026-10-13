@@ -21,7 +21,6 @@ module yrec_reset
       use star_info_lib, only: star, star_info, evolve_step_reset_pending, &
            observables_reset_pending
       use rotation_scratch_lib
-      use point_scratch_lib
       use element_diffusion_lib, only: reset_element_diffusion
       implicit none
 
@@ -30,7 +29,6 @@ module yrec_reset
 ! star_info now (rotation_scratch_lib), so it needs its own pristine
 ! snapshots alongside star0.
       type(rotation_diffusion_state), save :: rot_scr0
-      type(point_physics_scratch), save :: pt_scr0
       type(midstep_physics_state), save :: mid_scr0
       type(circulation_velocity_state), save :: circ_scr0
       ! star0 also carries star%job and star%evo since the 2026
@@ -53,14 +51,12 @@ subroutine yrec_run_prologue
       if (first_entry) then
          star0 = star
          rot_scr0 = rot_scr
-         pt_scr0 = pt_scr
          mid_scr0 = mid_scr
          circ_scr0 = circ_scr
          first_entry = .false.
       else
          star = star0
          rot_scr = rot_scr0
-         pt_scr = pt_scr0
          mid_scr = mid_scr0
          circ_scr = circ_scr0
          evolve_step_reset_pending = .true.

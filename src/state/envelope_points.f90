@@ -43,8 +43,8 @@ module envelope_points
             double precision :: env_opacity(json), env_luminosity(json), &
                  env_dlnrho_dlnt(json)
 ! the opacity derivatives the envelope
-! integration computes at every point (envelope_derivs: pt_scr%qqod,
-! pt_scr%qqot), kept so that the pulse writers can fill the GYRE/GSM
+! integration computes at every point (envelope_derivs: pt%qqod,
+! pt%qqot), kept so that the pulse writers can fill the GYRE/GSM
 ! kap_kap_T and kap_kap_rho columns of the envelope points (they were
 ! written as zero, which switches off the kappa mechanism of the
 ! hydrogen ionisation zone in any nonadiabatic calculation on the file).
@@ -62,7 +62,7 @@ module envelope_points
                  atmo_ion_fraction(3,json)
             double precision :: atmo_opacity(json), atmo_specific_heat_cp(json)
 ! opacity derivatives at every atmosphere
-! point (atmosphere_derivs: pt_scr%qqod, pt_scr%qqot), for the pulse
+! point (atmosphere_derivs: pt%qqod, pt%qqot), for the pulse
 ! writers' kap_kap_T and kap_kap_rho columns (see envelope_structure_state).
             double precision :: atmo_dlnkap_dlnrho(json), atmo_dlnkap_dlnt(json)
             integer :: num_atm_points

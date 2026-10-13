@@ -97,8 +97,8 @@ module star_info_lib
 
 
 
-! (2026 envint purity split: the pulse q* scratch moved to
-! core/structure/point_scratch_lib.f90 -- see rotation_scratch_lib precedent.)
+! (2026: the pulse q* values moved out of star; they are the envelope
+! integration's point_physics, core/envelope/envelope_integrands.f90.)
 
 ! ---- from state/star_job_lib.f90 ----
 ! 2026 controls->star% campaign, phase B: the authoritative home of
@@ -442,8 +442,8 @@ module star_info_lib
                 orig_composition(n_species_extended,json)
 ! former common/comp2/
            double precision :: envelope_helium_fraction, envelope_he3_fraction
-! (former common/envprt/'s current_* point scratch moved to
-! core/structure/point_scratch_lib.f90)
+! (former common/envprt/'s current_* point values: now the envelope
+! integration's point_physics, core/envelope/envelope_integrands.f90)
 ! former common/oldrot/
            double precision :: old_omega(json), &
                 old_specific_angular_momentum(json), &

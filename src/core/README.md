@@ -45,7 +45,6 @@ Its subdirectories follow the layers of `docs/TARGET_ARCHITECTURE.md` §4.1:
 | `henyey_elimination` | The block elimination (`henyey_eliminate`) and back-substitution (`henyey_solve`). |
 | `surface_boundary` | `compute_surface_boundary`: the outer boundary condition from the triangle of envelope integrations: switches the atmosphere, keeps the triangle around the model, integrates the envelopes at its vertices, and stores the fit. |
 | `triangle_fit` | The kernels of the triangle -- `start_triangle`, the point-in-triangle test (`edge_side`, `vertex_to_reflect`), `reflect_vertex`, `reflect_until_inside`, and `fit_triangle_coefficients` (log R, log L and log Teff as planes in the fitting point's log P and log T) -- with strict in/out arguments and no star. |
-| `point_scratch_lib` | The per-point physics the integrands and `compute_henyey_coefficients` share. |
 | **envelope/** | |
 | `envelope_integration`, `envelope_integration_kernel` | The atmosphere and envelope integrations from the surface to the fitting point (the kernel is star-blind). |
 | `envelope_integrands` | Their right-hand sides, in optical depth and in pressure. |
