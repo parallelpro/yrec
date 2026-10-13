@@ -103,8 +103,9 @@ contains
 ! Fall back to the gray atmosphere (atm_choice 0) and start a new
 ! triangle when log Teff reaches 3.95 with the Kurucz table (atm_choice
 ! 3) or the Allard table's maximum (atm_choice 4) (MHP 9/01); switch
-! back to the initial choice once Teff is below again, keeping the
-! triangle.
+! back to the initial choice once Teff is below again, with a new
+! triangle as well. (The switch back used to keep the triangle, whose
+! vertices held gray-atmosphere envelopes, until each was reflected.)
 subroutine switch_atmosphere_choice()
       if (star%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
@@ -135,12 +136,14 @@ subroutine switch_atmosphere_choice()
       if (star%use_ttau_relation) then
          if (star%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
             star%job%atm_choice = star%atm_choice_initial
+            start_new_triangle = .true.
             star%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
          else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
             star%job%atm_choice = star%atm_choice_initial
+            start_new_triangle = .true.
             star%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_allard_teff_max()
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
