@@ -35,8 +35,9 @@ contains
 ! start_new_triangle builds three new envelopes about the point;
 ! reset_triangle redoes all three and retriangulates if needed. Both
 ! come back false. envelope_recomputed_flag is true if any envelope was
-! integrated, and then log10_teff comes back as the log Teff of the last
-! vertex integrated, not the model's.
+! integrated. (log10_teff, the model's, used to come back as the last
+! integrated vertex's log Teff, which the first Newton pass then read;
+! each vertex now has its own, vertex_log10_teff.)
 ! hydrogen_fraction, metal_fraction and the two rotation factors are
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
@@ -69,7 +70,7 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       logical, intent(inout) :: start_new_triangle, reset_triangle
       integer, intent(inout) :: saha_state
       double precision, intent(in) :: log10_star_mass, log_luminosity
-      double precision, intent(inout) :: log10_teff
+      double precision, intent(in) :: log10_teff
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
            pressure_rotation_factor, temperature_rotation_factor
       logical, intent(out) :: envelope_recomputed_flag
@@ -86,7 +87,7 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       double precision :: temp, temp1, temp2, tri_err
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
-      double precision :: b, gl, rl, adjusted_teffl
+      double precision :: b, gl, rl, adjusted_teffl, vertex_log10_teff
 
       ierr = 0
       call switch_atmosphere_choice()
@@ -229,9 +230,9 @@ subroutine integrate_vertex_envelopes()
 ! The vertex's L (Lsun), its radius from L = 4 pi R^2 sigma Teff^4, and
 ! its surface gravity, log g = log G + log M - 2 log R.
           envelope_recomputed_flag = .true.
-          log10_teff = tri_teffl(i)
+          vertex_log10_teff = tri_teffl(i)
           b = exp(ln10*tri_logl(i))
-          rl = surface_log10_radius_cm(tri_logl(i), log10_teff)
+          rl = surface_log10_radius_cm(tri_logl(i), vertex_log10_teff)
           gl = cgl + log10_star_mass - rl - rl
           print_envelope_flag = .false.
           vertex_being_computed=i
@@ -240,9 +241,9 @@ subroutine integrate_vertex_envelopes()
 ! spots are on, the atmosphere starts from the Teff of the unspotted
 ! (ambient) surface.
           if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = ambient_log10_teff(log10_teff)
+               adjusted_teffl = ambient_log10_teff(vertex_log10_teff)
           else
-             adjusted_teffl = log10_teff
+             adjusted_teffl = vertex_log10_teff
           endif
           call atm_get(b,pressure_rotation_factor,temperature_rotation_factor,gl, &
                  log10_star_mass,print_envelope_flag, &
