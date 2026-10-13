@@ -58,18 +58,12 @@
 ! the same form, and the surface boundary condition (star%surface_bc,
 ! from henyey_iterate) gives dlog R and dL at the surface.
 module henyey_elimination
+! The structure-equation terms at one shell (the term q of each of the
+! four equations and its nonzero partials) come from the kernel
+! evaluate_shell_equations (shell_equations.f90), which defines their
+! record.
+      use shell_equations, only: henyey_shell_terms
       implicit none
-
-! The structure-equation terms at one shell: for each of the four
-! equations (pressure, temperature, radius, luminosity), the term q and
-! its nonzero partials. The caller forms qp, qt and qt_dl in the scratch
-! slots pt_scr%qp, qt, qtl and copies them in.
-      type :: henyey_shell_terms
-         double precision :: qp, qp_dr, qp_dp
-         double precision :: qt, qt_dr, qt_dl, qt_dp, qt_dt
-         double precision :: qr, qr_dr, qr_dp, qr_dt
-         double precision :: ql, ql_dp, ql_dt
-      end type henyey_shell_terms
 
 contains
 

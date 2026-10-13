@@ -1,0 +1,78 @@
+tolerance  1.0E-04
+# shell centre (    1) convective T burning T log T  6.2752
+  q =  -4.7551E-04 -1.8883E-04  3.3571E-01  8.8571E-01
+  term/var     analytic        f.d.   rel.diff  status
+  qp/lnP   4.7551E-04  4.7551E-04  1.5E-10  ok
+  qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
+  qp/lnR   1.9020E-03  1.9020E-03  4.3E-10  ok
+  qp/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  qt/lnP   1.8982E-04  1.8866E-04  6.1E-03  known
+  qt/lnT  -1.4788E-06  7.3947E-07  1.5E+00  known
+  qt/lnR   7.5534E-04  7.5534E-04  4.3E-10  ok
+  qt/L     0.0000E+00 -7.0351E-08  1.0E+00  known
+  qr/lnP  -3.3703E-01 -3.3703E-01  2.1E-05  ok
+  qr/lnT   3.4125E-01  3.4123E-01  5.0E-05  ok
+  qr/lnR  -1.0071E+00 -1.0071E+00  3.2E-10  ok
+  qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/lnP   8.8930E-01  8.8928E-01  2.1E-05  ok
+  ql/lnT   7.4369E+00  7.4370E+00  6.1E-06  ok
+  ql/lnR   0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+# shell mid mass (  530) convective T burning T log T  6.0035
+  q =  -1.7014E+00 -6.7533E-01  5.1222E-01  2.7052E+01
+  term/var     analytic        f.d.   rel.diff  status
+  qp/lnP   1.7014E+00  1.7014E+00  1.9E-10  ok
+  qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
+  qp/lnR   6.8057E+00  6.8057E+00  4.4E-10  ok
+  qp/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  qt/lnP   6.8336E-01  6.7672E-01  9.7E-03  known
+  qt/lnT  -1.8188E-02 -5.4670E-03  7.0E-01  known
+  qt/lnR   2.7013E+00  2.7013E+00  4.4E-10  ok
+  qt/L     0.0000E+00 -1.8332E-07  2.7E-01  known
+  qr/lnP  -5.1498E-01 -5.1497E-01  1.8E-05  ok
+  qr/lnT   5.2363E-01  5.2361E-01  4.5E-05  ok
+  qr/lnR  -1.5367E+00 -1.5367E+00  3.2E-10  ok
+  qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/lnP   2.9828E+01  2.9827E+01  1.6E-05  ok
+  ql/lnT   2.8300E+02  2.8300E+02  4.2E-06  ok
+  ql/lnR   0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+# shell outer convection zone (  992) convective T burning F log T  4.1507
+  q =  -1.8162E+06 -2.2764E+05  4.4660E+03 -2.6816E-04
+  term/var     analytic        f.d.   rel.diff  status
+  qp/lnP   1.8162E+06  1.8162E+06  1.6E-10  ok
+  qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
+  qp/lnR   7.2650E+06  7.2650E+06  4.5E-10  ok
+  qp/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  qt/lnP   2.1367E+05  2.1367E+05  1.6E-07  ok
+  qt/lnT   1.2606E+05  1.2606E+05  3.2E-08  ok
+  qt/lnR   9.3290E+05  9.3290E+05  2.9E-08  ok
+  qt/L     0.0000E+00 -1.7581E+03  1.0E+00  known
+  qr/lnP  -4.8628E+03 -4.8628E+03  8.0E-10  ok
+  qr/lnT   9.8816E+03  9.8816E+03  3.3E-10  ok
+  qr/lnR  -1.3398E+04 -1.3398E+04  3.2E-10  ok
+  qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/lnP   9.5369E-02  9.5369E-02  6.1E-10  ok
+  ql/lnT  -8.2170E-01 -8.2170E-01  3.8E-09  ok
+  ql/lnR   0.0000E+00  1.0842E-15  4.0E-06  ok
+  ql/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+# shell outer point (  995) convective T burning F log T  4.1433
+  q =  -2.0825E+06 -2.6143E+05  4.9954E+03 -2.6186E-04
+  term/var     analytic        f.d.   rel.diff  status
+  qp/lnP   2.0825E+06  2.0825E+06  6.4E-10  ok
+  qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
+  qp/lnR   8.3299E+06  8.3299E+06  4.3E-10  ok
+  qp/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  qt/lnP   2.4516E+05  2.4516E+05  1.6E-07  ok
+  qt/lnT   1.7146E+05  1.7146E+05  3.6E-08  ok
+  qt/lnR   1.0741E+06  1.0741E+06  2.9E-08  ok
+  qt/L     0.0000E+00 -2.2363E+03  1.0E+00  known
+  qr/lnP  -5.4264E+03 -5.4264E+03  3.9E-11  ok
+  qr/lnT   1.0960E+04  1.0960E+04  3.3E-10  ok
+  qr/lnR  -1.4986E+04 -1.4986E+04  3.2E-10  ok
+  qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
+  ql/lnP   9.2225E-02  9.2225E-02  6.1E-10  ok
+  ql/lnT  -8.0018E-01 -8.0018E-01  3.8E-09  ok
+  ql/lnR   0.0000E+00  1.3553E-15  5.2E-06  ok
+  ql/L     0.0000E+00  4.2656E-17  0.0E+00  ok
+test_structure: done

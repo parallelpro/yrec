@@ -39,7 +39,8 @@ Its subdirectories follow the layers of `docs/TARGET_ARCHITECTURE.md` §4.1:
 | `timestep_control` | `compute_timestep`: the next timestep, the most stringent of the structure, ω, burning and HR-diagram limits. |
 | **structure/** | |
 | `henyey_iteration` | `henyey_iterate`: the Newton iterations of one solve level. |
-| `structure_equations` | `compute_henyey_coefficients`: the physics at every shell and the difference equations' terms and partials. |
+| `structure_equations` | `compute_henyey_coefficients`: across the model, gathers each shell from the star, calls the kernel, eliminates, and stores the shells' output values. |
+| `shell_equations` | `evaluate_shell_equations`: the kernel -- the four equations' terms and partials at one shell (eos, opacity, gradients, nuclear and gravitational energy), with strict in/out arguments and no star. |
 | `henyey_elimination` | The block elimination (`henyey_eliminate`) and back-substitution (`henyey_solve`). |
 | `surface_boundary` | `compute_surface_boundary`: the outer boundary condition from the triangle of envelope integrations. |
 | `point_scratch_lib` | The per-point physics the integrands and `compute_henyey_coefficients` share. |
@@ -81,3 +82,7 @@ A step that diverges stops the run: nothing cuts the timestep.
 ## 4. Tests
 
 Every deck runs core, so the deck pins are its test: the 37 pins of `test_all.py`/`test_mesa_baselines.py`, the legacy byte comparison of every example's log, and `test_reentry` (two runs in one process). No pinned deck rescales a model, calibrates to a target star, or writes the neutrino table; check changes there by running such a deck against the previous commit's binary.
+
+The kernels have unit tests of their own (`docs/GUIDELINES.md`, star rule 6):
+
+- `test_structure` (`core/test/test_structure.f90`, run by `test_structure.py`) compares every partial of `evaluate_shell_equations` with central differences of its own terms at six shells of a TAMS model (OPAL tables) and four of a birthline model (Yale EOS). The partials it marks `known` are documented approximations: the convective gradient's dependence on L is not linearized, and its P and T derivatives near the adiabat rest on the EOS's derivatives of grad_ad.

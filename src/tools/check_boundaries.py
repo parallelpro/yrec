@@ -145,6 +145,8 @@ STAR_BLIND_FILES = [
     # envint purity split (2026): the integration kernel takes its
     # configuration explicitly and must never touch the star layer
     "core/envelope/envelope_integration_kernel.f90",
+    # the structure equations at one shell (2026-10, GUIDELINES star rule 6)
+    "core/structure/shell_equations.f90",
     "atm/t_tau_relations.f90",
 ]
 
@@ -220,7 +222,7 @@ def check_controls_free(src_root):
 # in the same commit.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (3166, 29),
+    "core": (3141, 29),
     "element_diffusion": (69, 9),
     "io": (474, 10),
     "rotation": (420, 10),
