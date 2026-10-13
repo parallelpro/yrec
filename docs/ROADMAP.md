@@ -1726,24 +1726,35 @@ with a frozen 66d7788f binary; the step splits also on pulse output
     convective flag; the burn locals below the cutoff in the pulse
     output; the mass change's debug print; the calibration's 14-cycle
     message).
-  - **Open, group B (change pinned decks; each a measured commit):**
-    update_total_mass reads m(0) every step of the two pinned mass-loss
-    decks (dm(1) about 0.5 m(1) too small; -fcheck aborts); the eps_grav
-    Jacobian misses 1/chi_T (Newton path only, every deck at tolerance);
-    the end-age floor 1e-3 dage[Gyr] yr (one pin's final dt); the
-    HR-motion limit reads luminosity_lsun_start(nz_start) after a
-    rezone (timesteps with use_envelope_triangle_dt); the first
-    atmosphere step's derivative omits f_P (rotating decks at
-    round-off); compute_surface_boundary leaves log_Teff at the last
-    vertex for the first Newton pass (spot decks).
-  - **Open, group C (inherited physics no shipped deck reaches):** the
-    wind's angular momentum removed twice (rotation plus mass loss, up
-    to 2x); the convection-zone rotation law's exponent inverted in
-    mass_change and envelope_rebuild (-2 < walpcz < 0); rescale_model
-    twice for a reused model (the Z ramp twice, a relative species
-    target converted twice; TAHB decks at round-off); the Z ramp's CNO
-    factor (Z_old - Z_new)/Z_old; switching from gray back to a table
-    keeps the gray triangle.
+  - **FIXED, group B (bc874267..3d065901, one measured commit each;
+    all inherited, the HR-motion read from the 2025 ENTIME fix):**
+    update_total_mass's m(0) (dm(1) from the center, as the rezone);
+    the eps_grav partials' 1/chi (Newton path; every deck moves at the
+    solver tolerance, |dlog L| peaks 1.5-1.8e-4 near the ZAMS as a
+    ~1e4 yr timing shift, finals within 2e-5); the end-age floor, 1e-3
+    of the age (only final dt's change); the HR-motion limit's start L,
+    now star%surface_luminosity_lsun_start (nz_start goes; one
+    testsuite deck moves within its own timestep sensitivity); the
+    atmosphere's first slope with f_P (rotating decks, <= 1.9e-4 near
+    the ZAMS); each triangle vertex's own Teff (spot decks, <= 3.2e-5).
+  - **FIXED, group C (91a6b567..67d711a7; all inherited, each shown on
+    a scratch deck, the 21 decks of the check byte-identical):** the
+    wind removes dJ once (it removed dJ + <j>|dM|); the convection
+    zone's law is omega ~ r^walpcz in mass_change and envelope_rebuild
+    too; the Z ramp's CNO factor Z_new/Z_old (CNO/Z was 0.23 in the
+    ramped core against 0.69); a reused model is rescaled once, and the
+    relative species target no longer overwrites its control (Li7/X
+    was 1e-12 after a second card, now 10^(value-12)); switching back
+    from gray to a table starts a new triangle.
+  - **Found while checking, open:** with -fcheck=all the decks tried
+    (cm_base and the two mass-loss decks) stop at the start, in
+    stitched_model's atmosphere_radius_cm, which reads
+    env_log10_radius(num_env_points) with num_env_points = 0 when the
+    starting model's stitched model is built (before any envelope is
+    stored): the first stitched model's atmosphere radii come from
+    memory outside the array. Output only. Also: three testsuite
+    Allard decks (0.03, 0.05 and 0.1 Msun) stop with MODEL FAILED TO
+    CONVERGE after 50-100 models, the same before this series.
 - **The 0.03 Msun deck (e16b304a): a stop it can reach, and why it
   fails.** Its central-H stop never triggers in a brown dwarf, and
   every YREC version fails to converge (a Newton two-cycle) later in
