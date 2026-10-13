@@ -1812,33 +1812,74 @@ the full battery runs on the series' end.
   C API and the tests name the global (core: 124 references, 2
   importers, from 3166 and 29). io/, rotation/, element_diffusion/ and
   setup/ still use the global.
-- **Found, open (reported by the tests and the reviews; each changes
-  results or needs a decision):**
-  - Jacobian: the convective gradient's L dependence is not linearized;
-    its P and T derivatives near the adiabat rest on the EOS's grad_ad
-    derivatives (off by up to 72% of the entry, < 1% of qt); the OPAL
-    tables' dln rho derivatives agree with finite differences to 2e-3.
-  - Triangle: the fit has no pivoting (collinear fitting points, or two
-    vertices at the same fitting-point log T, give Inf/NaN silently);
-    reflect_until_inside never ends for a zero or negative
-    tri_delta_teffl/tri_delta_logl (no control check).
-  - Mass change: accretion mixes as if the zone were uniform
-    (X(jenv) M_cz); two definitions of M_cz; with jenv = 1 the zone
-    compresses about m(1).
-  - Rezone: the deuterium gate reads xa(h2, nz) with the old nz after
-    the regrid; deuterium_burning_rate_start stays in old-mesh order
-    when the gate is false.
-  - Rotation: cz_moment_of_inertia is intent(out) but read before it
-    is set (works because the caller set it); the dynamical-shear
-    omega limit (wmin) in compute_shear_velocities can overshoot
-    omega(i-1), or go <= 0 (log NaN); the U_GSF correction picks its
-    branch with wmin rather than omega(i-1).
-  - State: the members still written but never read (state/README.md
-    section 5); envelope_hydrogen_fraction is read by kap_init and the
-    kind cards before the first card sets it; envelope_radius is
-    written twice per model; check_star_contracts does not split
-    statements at ';'.
-  - Earlier finds still open: stitched_model's atmosphere_radius_cm
-    reads env_log10_radius(0) for the starting model (stops -fcheck
-    builds); the 0.05 and 0.1 Msun Allard testsuite decks fail to
-    converge.
+- **Open, with proposed fixes (to decide later).** Found by the tests
+  and the reviews of this series. Each entry says what the fix would
+  change.
+  1. **Triangle** (core/structure/triangle_fit.f90): reflect_until_inside
+     never ends for a zero or negative tri_delta_teffl/tri_delta_logl, or
+     a model file whose stored orientation disagrees with its vertices;
+     the fit has no pivoting, so collinear fitting points, or two
+     vertices at the same fitting-point log T, give Inf/NaN silently.
+     The triangle is refitted only between iteration levels, so the
+     Newton iteration itself always sees one linear boundary row.
+     Proposed: check the two controls (> 0) at the read and the stored
+     orientation at the model read; cap the walk (e.g. 1000 steps) with
+     a clean error; stop with a message when the fitting points are
+     near-collinear. Keep the arithmetic (pivoting would move every deck
+     at round-off). Byte-identical for valid decks.
+  2. **Rotation** (rotation/seculr): cz_moment_of_inertia is intent(out)
+     but read before it is set (works because the caller set it); the
+     dynamical-shear limit wmin in compute_shear_velocities comes from
+     the plain difference quotient while its trigger uses the centred
+     gradient, so it can overshoot omega(i-1) or go <= 0 (log NaN); the
+     U_GSF correction picks its branch with wmin instead of omega(i-1).
+     Proposed: intent(inout) (byte-identical); wmin from the same
+     gradient as the trigger and the branch from omega(i-1), after
+     measuring which decks reach that branch; one measured commit.
+  3. **Rezone** (core/model/rezoning.f90): the deuterium gate reads
+     xa(h2, nz) with the pre-rezone nz; when it is false,
+     deuterium_burning_rate_start stays in old-mesh order (read by
+     mid_timestep_model). Proposed: read the new surface; regrid the
+     rate unconditionally. Measured; expected drift at round-off or none.
+  4. **Accretion mixing** (core/step/mass_change_kernel.f90): mixes as if
+     the zone were uniform (X(jenv) M_cz); the step uses two definitions
+     of M_cz; with jenv = 1 the zone compresses about m(1). Proposed: mix
+     with the zone's true content, the sum of X dm, so species are
+     conserved exactly; one definition of M_cz. Changes accreting runs
+     only (no pinned deck accretes).
+  5. **Jacobian** (core/structure/shell_equations.f90, eos/): the
+     convective gradient's L dependence is not linearized; its P and T
+     derivatives near the adiabat rest on the EOS's grad_ad derivatives
+     (off by up to 72% of the entry, < 1% of qt); the OPAL tables' dln
+     rho derivatives agree with finite differences to 2e-3. These change
+     convergence, not converged results. Proposed: first run the 0.03
+     Msun deck with numerical derivatives for these entries (item 8);
+     fix them only if that cures the two-cycle.
+  6. **State** (state/README.md section 5): about 19 members are written
+     but never read; envelope_hydrogen_fraction is read by kap_init and
+     the kind cards before the first card sets it; envelope_radius is
+     written twice per model; check_star_contracts does not split
+     statements at ';'. Proposed: remove the dead stores; for the
+     diagnostics stored but never written (fxion_zone, scp, the two He3
+     luminosities, pulse_dlnrho_dlnp) and the always-zero MLT pulse
+     arrays, a decision: output columns or removal; check whether
+     kap_init uses the unset envelope X (likely overwritten before use)
+     and set it first if it does.
+  7. **Out-of-range read** (core/diagnostics/stitched_model.f90):
+     atmosphere_radius_cm reads env_log10_radius(0) when the starting
+     model's stitched model is built before any envelope is stored (it
+     stops -fcheck builds at startup). Proposed: take the outer shell's
+     radius as the photosphere when the envelope is empty (changes only
+     the starting model's atmosphere radii in profile output); then add
+     a -fcheck=all run of the config matrix to the battery.
+  8. **Low-mass convergence** (one investigation): the 0.03 Msun Newton
+     two-cycle and the 0.05 and 0.1 Msun Allard testsuite decks that
+     stop converging. Proposed, on the 0.03 Msun deck: log the triangle
+     fit's conditioning up to the failure (item 1), try numerical
+     derivatives (item 5), and find where the corrections alternate
+     (surface rows, convective interior, EOS table edges); a fix only
+     once the cause is known.
+  Proposed order: the byte-identical safety work (items 1 and 7's
+  -fcheck run, 2's intent); the small measured fixes (3, 4, 2's limit,
+  7's radius); 6 after the output decision; then the investigation (8,
+  with 5).
