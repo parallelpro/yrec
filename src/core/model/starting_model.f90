@@ -841,8 +841,6 @@ subroutine integrate_envelope_to_new_fit
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
           log10_pressure_limit = s%logP(s%nz)
-! The Debye-Hueckel correction takes the last shell's composition.
-            call eos_set_debye_huckel_composition(s%xa(:,s%nz))
 ! Spotted stars (G. Somers 10/14): with spot_filling_factor f /= 0,
 ! spot_temp_contrast x /= 1 and envelope_cz_bottom_index = nz, the
 ! envelope is integrated at the Teff of the unspotted surface
@@ -858,7 +856,7 @@ subroutine integrate_envelope_to_new_fit
                  point_temperature_rotation_factor,log10_gravity,s%stotal, &
                  print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
-                 hydrogen_fraction,metal_fraction,saha_state, &
+                 hydrogen_fraction,metal_fraction,s%xa(:,s%nz),saha_state, &
                  ierr=jerr_atm,env_steps=env_steps)
 ! atm_get returns integration failures (numerics_termination among
 ! them) in jerr_atm; pass them on.

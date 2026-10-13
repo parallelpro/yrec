@@ -23,6 +23,7 @@
 ! switch to a gray atmosphere when the Allard table lookup fails, come
 ! back as outputs that the driver applies.
 module envelope_integration_kernel
+      use composition_layout, only: n_species_extended
       use envelope_points, only: envelope_structure_state, &
            atmosphere_structure_state, atmosphere_point_state
       use envelope_integrands, only: compute_atmosphere_derivs, compute_envelope_derivs, &
@@ -46,6 +47,9 @@ module envelope_integration_kernel
             double precision :: atm_error_tol, env_error_tol, atm_step_initial
             double precision :: atm_hras, senv, tenv, log10_solar_luminosity
             double precision :: log10_total_mass
+! the outer shell's composition (star%xa layout), for the EOS's
+! Debye-Hueckel correction
+            double precision :: surface_composition(n_species_extended)
             logical :: calc_envelope
       end type envint_config
 
@@ -76,6 +80,7 @@ module envelope_integration_kernel
 ! total mass in g
             integer :: atm_choice = 0
             double precision :: atm_hras = 0.0d0, log10_total_mass = 0.0d0
+            double precision :: surface_composition(n_species_extended) = 0.0d0
 ! the atmosphere integration's current point, which the atmosphere
 ! integrand writes (copied in and out around each step), and the
 ! physics of the point the integrands last evaluated (likewise)
@@ -100,14 +105,15 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%atm_choice, self%atm_hras, self%atm_point, self%pt, ierr)
+              self%atm_choice, self%atm_hras, self%surface_composition, &
+              self%atm_point, self%pt, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%log10_total_mass, self%pt, ierr)
+              self%log10_total_mass, self%surface_composition, self%pt, ierr)
       end if
 end subroutine equation_derivatives
 
@@ -399,7 +405,7 @@ subroutine find_atmosphere_start()
       eos_res%specific_heat_cp_dp = specific_heat_cp_dp
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, ierr=jerr)
+           saha_state, composition_at_zone=cfg%surface_composition, ierr=jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -531,7 +537,8 @@ subroutine take_atmosphere_step()
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-            cfg%atm_choice, cfg%atm_hras, atm_point, pt, jerr)
+            cfg%atm_choice, cfg%atm_hras, cfg%surface_composition, &
+            atm_point, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -681,7 +688,7 @@ subroutine start_envelope_integration()
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-           cfg%log10_total_mass, pt, jerr)
+           cfg%log10_total_mass, cfg%surface_composition, pt, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -837,7 +844,7 @@ subroutine take_envelope_step()
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-              cfg%log10_total_mass, pt, jerr)
+              cfg%log10_total_mass, cfg%surface_composition, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -968,6 +975,7 @@ subroutine load_equations(atmosphere)
       equations%atm_choice = cfg%atm_choice
       equations%atm_hras = cfg%atm_hras
       equations%log10_total_mass = cfg%log10_total_mass
+      equations%surface_composition = cfg%surface_composition
       equations%atm_point = atm_point
       equations%pt = pt
 end subroutine load_equations

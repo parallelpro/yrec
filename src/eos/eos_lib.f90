@@ -45,7 +45,7 @@ module eos_lib
       private
       public :: eos_init, eos_get, eos_get_gamma1, eos_result
       public :: eos_set_mixture, eos_set_debye_huckel_z, &
-           eos_set_debye_huckel_composition, eos_update_envelope_tables
+           eos_update_envelope_tables
       public :: eos_settings_t, set_eos_settings
 
 contains
@@ -58,7 +58,8 @@ contains
 ! the six second derivatives; in_atmosphere skips the Saha solver's
 ! derivatives; saha_state carries that solver's state between calls.
 ! composition_at_zone (a zone's composition, star%xa layout) sets the
-! Debye-Hueckel composition; callers with only X and Z omit it. ierr /= 0
+! Debye-Hueckel composition; every star-layer call passes it (omitted, as
+! by the unit tests, the previous call's composition stays). ierr /= 0
 ! reports a corrupt table or a bad configuration; the diagnostic is
 ! already in the run log.
 subroutine eos_get(log10_temperature, log10_pressure, &
@@ -237,10 +238,11 @@ end subroutine eos_set_debye_huckel_z
 ! eos_set_debye_huckel_composition
 !----------------------------------------------------------------------
 ! The composition the Debye-Hueckel correction uses, from a zone's
-! composition (star%xa layout). eos_eval sets it from
-! composition_at_zone; the star layer sets the surface zone's before
-! the envelope integration, whose calls pass none. Does nothing when
-! the correction is off.
+! composition (star%xa layout), set by eos_get from its
+! composition_at_zone at every call (private since 2026-10: the star
+! layer used to set the surface zone's before an envelope integration,
+! whose calls then passed none, so the integration used whatever the
+! last setter left). Does nothing when the correction is off.
 subroutine eos_set_debye_huckel_composition(composition)
       real(dp), intent(in) :: composition(:)
 

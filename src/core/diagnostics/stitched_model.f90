@@ -152,7 +152,7 @@ subroutine build_stitched_model(s)
 ! gone). The stitch runs every step, so pphot is always current.
       call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
            s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
-           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), ksaha, jerr, &
+           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), ksaha, jerr, &
            atm_steps=atm_steps, env_steps=env_steps)
 
       if (jerr /= 0) then

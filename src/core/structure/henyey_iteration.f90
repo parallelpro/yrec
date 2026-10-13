@@ -52,7 +52,6 @@ contains
 subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
      stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
-      use eos_lib, only: eos_set_debye_huckel_composition
       use math_lib
       use star_info_lib, only: i_c12, i_c13, i_h1, i_he3, i_he4, i_metals, &
            i_n14, i_n15, i_o16, i_o17, i_o18
@@ -99,7 +98,6 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
        hydrogen_fraction = s%xnew
        metal_fraction = s%znew
        log10_pressure_limit = s%logP(s%nz)
-       call eos_set_debye_huckel_composition(s%xa(:,s%nz))
        call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l,s%envelope_fit_coeffs,s%fit_point_pressure,s%fit_point_temperature, &
             s%fit_point_radius,tri_orientation,stored_vertex_index, &
             s%stored_envelope_state, &

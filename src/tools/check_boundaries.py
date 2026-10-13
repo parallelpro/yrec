@@ -64,7 +64,7 @@ PUBLIC = {
     # eos_get_gamma1 is test-only: its sole caller is
     # eos/test/test_eos.f90 (the calcad diagnostic it served is gone).
     "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",
-            "eos_set_debye_huckel_z", "eos_set_debye_huckel_composition",
+            "eos_set_debye_huckel_z",
             "eos_update_envelope_tables", "set_eos_settings"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).

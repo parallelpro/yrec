@@ -307,8 +307,8 @@ core/diagnostics/stitched_model.o: envelope_integration.mod math_lib.mod physica
 core/diagnostics/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 core/envelope/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
-core/envelope/envelope_integration_kernel.o: atm_lib.mod envelope_integrands.mod envelope_points.mod eos_lib.mod integration_parameters.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod
-core/envelope/envelope_rebuild.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod eos_lib.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
+core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod integration_parameters.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod
+core/envelope/envelope_rebuild.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
 core/model/model_rescaling.o: eos_lib.mod io_units.mod math_lib.mod physical_constants.mod shell_boundaries.mod star_info_lib.mod
@@ -333,7 +333,7 @@ core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.m
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_geometry.mod convection_lib.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod io_units.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod controls_buffer.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/structure/henyey_elimination.o: physical_constants.mod shell_equations.mod star_info_lib.mod
-core/structure/henyey_iteration.o: eos_lib.mod henyey_elimination.mod io_units.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_log.mod star_info_lib.mod structure_equations.mod surface_boundary.mod
+core/structure/henyey_iteration.o: henyey_elimination.mod io_units.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_log.mod star_info_lib.mod structure_equations.mod surface_boundary.mod
 core/structure/shell_equations.o: composition_layout.mod convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod
 core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod triangle_fit.mod

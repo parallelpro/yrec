@@ -51,7 +51,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, atm_choice, atm_hras, atm_point, pt, ierr)
+     saha_state, atm_choice, atm_hras, composition, atm_point, pt, ierr)
 
       use eos_lib
       use kap_lib
@@ -81,6 +81,9 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       integer, intent(in) :: atm_choice
 ! atm_hras: the HSRA T(tau) relation's offset.
       double precision, intent(in) :: atm_hras
+! composition: the outer shell's composition, for the EOS's
+! Debye-Hueckel correction.
+      double precision, intent(in) :: composition(:)
 ! atm_point: the integration's current point, written here.
       type(atmosphere_point_state), intent(inout) :: atm_point
 ! pt: the point's physics, written here for the kernel.
@@ -105,7 +108,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, ierr=ierr)
+           saha_state, composition_at_zone=composition, ierr=ierr)
       if (ierr /= 0) return
 ! The opacity at the density the EOS returned.
       call kap_get(eos_res%log10_density, log10_temperature, &
@@ -168,7 +171,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, log10_total_mass, pt, ierr)
+     saha_state, log10_total_mass, composition, pt, ierr)
 
       use convection_lib, only: compute_temperature_gradients
       use eos_lib
@@ -190,6 +193,9 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       integer, intent(inout) :: saha_state
 ! log10_total_mass: log10 M (g), the origin of y(1) = log(m/M).
       double precision, intent(in) :: log10_total_mass
+! composition: the outer shell's composition, for the EOS's
+! Debye-Hueckel correction.
+      double precision, intent(in) :: composition(:)
 ! pt: the point's physics, written here for the kernel.
       type(point_physics), intent(inout) :: pt
       integer, intent(out) :: ierr
@@ -215,7 +221,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       log10_radius = y(3)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, ierr=ierr)
+           saha_state, composition_at_zone=composition, ierr=ierr)
       if (ierr /= 0) return
 ! The opacity at the density the EOS returned.
       call kap_get(eos_res%log10_density, log10_temperature, &

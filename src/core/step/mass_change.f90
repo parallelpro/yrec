@@ -265,7 +265,8 @@ subroutine find_accreted_surface_state()
       eos_res%beta = beta_local
       call eos_get(log10_temperature_local, log10_pressure_local, &
            hydrogen_fraction_local, metal_fraction_local, eos_res, &
-           eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
+           eos_deriv_flag, eos_atmosphere_flag, saha_flag, &
+           composition_at_zone=s%xa(:,nz), ierr=ierr)
       if (ierr /= 0) return
 ! The new seeds; beta and P_gas/(rho T) at the surface (the latter is
 ! not used afterwards).
@@ -304,7 +305,8 @@ subroutine evaluate_stahler_surface()
          eos_res%beta = beta_local
          call eos_get(log10_temperature_local, log10_pressure_local, &
               hydrogen_fraction_local, metal_fraction_local, eos_res, &
-              eos_deriv_flag, eos_atmosphere_flag, saha_flag, ierr=ierr)
+              eos_deriv_flag, eos_atmosphere_flag, saha_flag, &
+              composition_at_zone=s%xa(:,nz), ierr=ierr)
          if (ierr /= 0) return
       endif
 end subroutine evaluate_stahler_surface

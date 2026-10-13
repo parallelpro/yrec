@@ -38,7 +38,6 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
      rotational_kinetic_energy, log_luminosity_lsun, total_angular_momentum, &
      total_rotational_ke, log_teff, num_zones, new_points_added_flag, ierr)
       use omega_profile, only: omega_from_j
-      use eos_lib, only: eos_set_debye_huckel_composition
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff
       use envelope_integration_kernel, only: senv_thin_envelope
@@ -185,8 +184,6 @@ subroutine set_envelope_surface()
 ! The first step that would cross the pressure of the outermost shell
 ! stops at it.
       pressure_limit = log_pressure(num_zones)
-! The composition of the outermost shell for the EOS.
-      call eos_set_debye_huckel_composition(composition(:,num_zones))
 end subroutine set_envelope_surface
 
 ! ---------------------------------------------------------------
@@ -206,7 +203,7 @@ subroutine integrate_new_envelope()
            log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
-           ksaha,ierr=jerr_atm,env_steps=env_steps)
+           composition(:,num_zones),ksaha,ierr=jerr_atm,env_steps=env_steps)
 ! An integration failure goes back to evolve_step in ierr.
       if (jerr_atm /= 0) then
          ierr = jerr_atm

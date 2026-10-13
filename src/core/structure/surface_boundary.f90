@@ -47,7 +47,8 @@ contains
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
 !   star reads: atm_choice_initial, ctrl%spot_filling_factor,
-!     ctrl%spot_temp_contrast, ctrl%tri_delta_logl, ctrl%tri_delta_teffl
+!     ctrl%spot_temp_contrast, ctrl%tri_delta_logl,
+!     ctrl%tri_delta_teffl, nz, xa
 !   star writes: job%atm_choice, use_ttau_relation
 subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
@@ -236,7 +237,7 @@ subroutine integrate_vertex_envelopes()
                  log10_star_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
-                 saha_state,ierr=jerr_atm, &
+                 s%xa(:,s%nz),saha_state,ierr=jerr_atm, &
                  vertex_index=vertex_being_computed, &
                  stored_envelope_state=stored_envelope_state, &
                  stored_vertex_index=stored_vertex_index, &
