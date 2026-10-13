@@ -225,7 +225,7 @@ STAR_ACCESS_BUDGET = {
     "core": (3141, 29),
     "element_diffusion": (69, 9),
     "io": (474, 10),
-    "rotation": (420, 10),
+    "rotation": (418, 10),
     "setup": (152, 3),
     "state": (738, 1),
 }
