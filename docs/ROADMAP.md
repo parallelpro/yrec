@@ -1775,3 +1775,70 @@ with a frozen 66d7788f binary; the step splits also on pulse output
     alone to 83; the other files leave it at 179. The solve is
     marginal here, and small changes move where it breaks. Open if
     the deck should evolve further: the two-cycle itself.
+
+### core/ Stage B: kernels with unit tests, the star as an argument (yrec-next, 2026-10-13)
+
+Every commit byte-identical on the check's 21 decks and the core extras
+(and, where they apply, the Kurucz, Allard and Debye-Hueckel decks);
+the full battery runs on the series' end.
+
+- **DONE: the rule and the ratchet** (49cea924). GUIDELINES' star rule
+  6: equations and algorithms live in star-blind kernels with strict
+  intent and a unit test (STAR_BLIND_FILES); drivers gather from the
+  star and store back. check_boundaries' STAR_ACCESS_BUDGET may only go
+  down per directory.
+- **DONE: four kernels with tests.**
+  - The structure equations at one shell, `evaluate_shell_equations`
+    (14c2215a): `test_structure` checks every partial against finite
+    differences on a TAMS model (OPAL, tolerance 3e-3) and a birthline
+    model (Yale EOS, 1e-4); with 18869257's 1/chi removed it fails.
+  - The mass change's masses, wind angular momentum and accreted
+    composition (a7349330): `test_mass_change`, conservation to
+    round-off; fails with bc874267 or 91a6b567 reverted.
+  - The rezone's regridding (2f0eb509): `test_regrid` pins the
+    regridding's non-conservation (60-point model: J -1.3e-3, X +1.7e-4,
+    Y -3.3e-4, falling as h^2).
+  - The envelope triangle's geometry and fit (7d904caf):
+    `test_triangle_fit`, exact planes, the inside test, the reflections.
+  - Also star-free now: the envelope integrands (87348acc), and
+    circulation_velocities' formulas (e9c00d7f; apply_secular_transport
+    in named steps, fbc153a8).
+- **DONE: state documented and tidied.** state/README.md and
+  setup/README.md (4bea0c8b): every star member's meaning, unit,
+  writers, readers and lifetime. 14 misleading members renamed, 4 dead
+  ones removed, 1 made a local (b3a6675b).
+- **DONE: the star as an argument** (802b3cdb). 81 core procedures take
+  `type(star_info), intent(inout) :: s`; only run_yrec, yrec_reset, the
+  C API and the tests name the global (core: 124 references, 2
+  importers, from 3166 and 29). io/, rotation/, element_diffusion/ and
+  setup/ still use the global.
+- **Found, open (reported by the tests and the reviews; each changes
+  results or needs a decision):**
+  - Jacobian: the convective gradient's L dependence is not linearized;
+    its P and T derivatives near the adiabat rest on the EOS's grad_ad
+    derivatives (off by up to 72% of the entry, < 1% of qt); the OPAL
+    tables' dln rho derivatives agree with finite differences to 2e-3.
+  - Triangle: the fit has no pivoting (collinear fitting points, or two
+    vertices at the same fitting-point log T, give Inf/NaN silently);
+    reflect_until_inside never ends for a zero or negative
+    tri_delta_teffl/tri_delta_logl (no control check).
+  - Mass change: accretion mixes as if the zone were uniform
+    (X(jenv) M_cz); two definitions of M_cz; with jenv = 1 the zone
+    compresses about m(1).
+  - Rezone: the deuterium gate reads xa(h2, nz) with the old nz after
+    the regrid; deuterium_burning_rate_start stays in old-mesh order
+    when the gate is false.
+  - Rotation: cz_moment_of_inertia is intent(out) but read before it
+    is set (works because the caller set it); the dynamical-shear
+    omega limit (wmin) in compute_shear_velocities can overshoot
+    omega(i-1), or go <= 0 (log NaN); the U_GSF correction picks its
+    branch with wmin rather than omega(i-1).
+  - State: the members still written but never read (state/README.md
+    section 5); envelope_hydrogen_fraction is read by kap_init and the
+    kind cards before the first card sets it; envelope_radius is
+    written twice per model; check_star_contracts does not split
+    statements at ';'.
+  - Earlier finds still open: stitched_model's atmosphere_radius_cm
+    reads env_log10_radius(0) for the starting model (stops -fcheck
+    builds); the 0.05 and 0.1 Msun Allard testsuite decks fail to
+    converge.
