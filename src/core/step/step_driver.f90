@@ -184,12 +184,13 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
 ! With a fixed end age (target_end_age > 0) that this model reached,
 ! compute_timestep has clipped the next timestep to (nearly) zero. Write
-! the timestep just taken (dt_saved, floored at 1e-3*dage*seconds_per_year)
-! to the model instead, so that the sequence can be continued. Other stops
-! keep the new timestep.
+! the timestep just taken (dt_saved, floored at 1e-3 of the age, dage
+! in Gyr) to the model instead, so that the sequence can be continued.
+! Other stops keep the new timestep. (The floor read 1e-3*dage years,
+! dage taken as years, until 2026-10, as in main.f.)
        if (star%job%end_age_stop_active(star%job%nk) .and. star%job%target_end_age(star%job%nk).gt.0.0D0) then
           if (reached_end_age(star%job%nk)) then
-             star%dt = max(star%dt_saved,1.0D-3*star%dage*seconds_per_year)
+             star%dt = max(star%dt_saved,1.0D-3*star%dage*1.0D9*seconds_per_year)
              star%timestep_yr = star%dt/seconds_per_year
           else
              star%dt_saved = star%dt
