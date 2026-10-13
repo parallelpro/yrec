@@ -1,5 +1,5 @@
 ! Converted from examples/giant_differential_rotation/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.nml1 + examples/giant_differential_rotation/Test_3Msolar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10_RGp2diffrotI3cz2.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = 'Example case: giant differential rotation. 3 Msun model, diffusion, rotation, diff rot no'  
  run_description(2) = 'Gray Atm OPAL06+SCV EOS GS98, I3 cz2 '
@@ -49,7 +49,7 @@ central_helium_stop(1) = 0.5 ! Run stops if NMODLS(I) is reached or this central
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

@@ -418,14 +418,14 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 
 ### 2.14 Key controls
 
-- **Inlist name:** the new-style `&controls` name, or `&star_job` where marked (sj).
+- **Inlist name:** the name in an inlist's `&physics` group, or in its `&control` group where marked (c).
 - **Legacy:** the F77 namelist name, read by the legacy reader (`io/read_controls.f90`).
 - **Code field:** where the value lives at run time. `ctrl` means `star%ctrl%`. `job` means `star%job%`, which holds run-list and calibration state and may change during a run.
 - **Full list:** the ~380 controls are in `defaults/controls_registry.tsv` and the generated `defaults/*.defaults`.
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| α_MLT | — | inlist `mixing_length_alpha` (sj, per card); code `job%mixing_length_array(50)` | `CMIXLA` | job | Mixing length per kind card; copied to `star%mixing_length_alpha`. |
+| α_MLT | — | inlist `mixing_length_alpha` (c, per card); code `job%mixing_length_array(50)` | `CMIXLA` | job | Mixing length per kind card; copied to `star%mixing_length_alpha`. |
 | α_ov,core | H_P | `overshoot_alpha_core`; code `ctrl%overshoot_alpha_core` | `ALPHAC` | ctrl | Core overshoot extent. |
 | α_ov,env | H_P | `overshoot_alpha_envelope`; code `ctrl%overshoot_alpha_envelope` | `ALPHAE` | ctrl | Envelope (undershoot) extent below the surface CZ. |
 | — | logical | `core_overshoot_active`, `envelope_overshoot_active`, `intermediate_overshoot_active`; code `job%core_overshoot_active`, `job%envelope_overshoot_active`, `job%lovstm`; `adiabatic_overshoot_active` → `ctrl%ladov` | `LOVSTC`, `LOVSTE`, `LOVSTM`; `LADOV` | job / ctrl | Enable overshoot at the core, at the surface-CZ base, and at intermediate CZs; treat overshoot regions as adiabatic. |
@@ -448,17 +448,17 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | — | — | `env_error_tol`, `atm_error_tol`; code `ctrl%env_error_tol`, `ctrl%atm_error_tol` | `ENVERR`, `ATMERR` | ctrl | Error tolerances of the envelope and atmosphere integrations. |
 | Δlog T_eff, Δlog L | dex | `tri_delta_teffl`, `tri_delta_logl`; code `ctrl%tri_delta_teffl`, `ctrl%tri_delta_logl` | `TRIDT`, `TRIDL` | ctrl | Size of the envelope-fit triangle. |
 | — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code `ctrl%use_opal95_eos`, ... `ctrl%use_mhd_eos`; `use_scv_eos` lives in `eos/scv_eos_lib` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | ctrl | EOS table selection on top of the Yale/Saha base. |
-| — | logical | `use_opal95_tables` (sj), `use_alex06_tables` (sj), `use_conductive_opacity`; code `ctrl%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | ctrl | Opacity table selection. |
+| — | logical | `use_opal95_tables` (c), `use_alex06_tables` (c), `use_conductive_opacity`; code `ctrl%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | ctrl | Opacity table selection. |
 | — | logical | `use_extended_composition`; code `job%use_extended_composition` | `LEXCOM` | job | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
 | log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `compute_henyey_coefficients`. |
 | — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `fcorr`. |
 | — | — | `timestep_factors`; code `ctrl%atime(14)` (slots `itime_*` in `io/controls_buffer.f90:113-126`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
 | — | logical | `improved_first_guess_flag`; code `ctrl%improved_first_guess_flag` | `LNEWS` | ctrl | Extrapolate the next first guess from `*_entropy_term` rates. |
 | — | logical | `use_new_rate_variables`; code `ctrl%lnewvars` | `LNEWVARS` | ctrl | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `ctrl%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `atime`. Not a nuclear-rate switch (trap 23). |
-| t_end | yr | `max_age` (sj, per card); code `job%target_end_age(50)` | `ENDAGE` | job | Stop age per kind card. |
-| X₀, Z₀ | mass fraction | `initial_x_array`, `initial_z_array` (sj); code `job%initial_x_array(50)`, `job%initial_z_array(50)` | `XENV0A`, `ZENV0A` | job | Initial X and Z per kind card. |
-| — | — | `run_kind` (sj); code `job%rescale_kind(50)` | `KINDRN` | job | 1 evolve, 2 rescale (no aging), 3 rescale and evolve (pre-MS). |
-| — | logical; dex | `calibrate_solar_model` (sj), `luminosity_tolerance`, `radius_tolerance` (sj); code `ctrl%` same names | `LCALS`, `TOLL`, `TOLR` | ctrl | Automatic solar calibration and its L and R tolerances. |
+| t_end | yr | `max_age` (c, per card); code `job%target_end_age(50)` | `ENDAGE` | job | Stop age per kind card. |
+| X₀, Z₀ | mass fraction | `initial_x_array`, `initial_z_array` (c); code `job%initial_x_array(50)`, `job%initial_z_array(50)` | `XENV0A`, `ZENV0A` | job | Initial X and Z per kind card. |
+| — | — | `run_kind` (c); code `job%rescale_kind(50)` | `KINDRN` | job | 1 evolve, 2 rescale (no aging), 3 rescale and evolve (pre-MS). |
+| — | logical; dex | `calibrate_solar_model` (c), `luminosity_tolerance`, `radius_tolerance` (c); code `ctrl%` same names | `LCALS`, `TOLL`, `TOLR` | ctrl | Automatic solar calibration and its L and R tolerances. |
 | — | logical; Gyr; rad s⁻¹ | `disk_locking_active`, `disk_locking_age_gyr`, `disk_omega_rad_s`; code `job%` same names | `LDISK`, `TDISK`, `PDISK` | job | Disk locking: surface CZ held at `disk_omega_rad_s` while age ≤ `disk_locking_age_gyr`. Old deck comments give wrong units. |
 | Ω_sat | rad s⁻¹ or Ω_sat·τ_cz | `wind_saturation_omega`; code `job%wind_saturation_omega` | `WMAX` | job | Wind saturation threshold. Its meaning depends on its magnitude (trap 25). |
 | η_R | M☉ yr⁻¹ per (L R/M) in solar units | `use_reimers_wind`, `reimers_scaling_factor`; code `ctrl%use_reimers_wind`, `ctrl%reimers_scaling_factor` | `LREIMER`, `CREIM` | ctrl | Reimers mass loss Ṁ = η_R (L/L☉)(R/R☉)/(M/M☉) (`core/step/mass_change.f90:103-107`). |

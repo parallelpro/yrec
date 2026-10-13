@@ -7,8 +7,8 @@
 ! so edit here and REBUILD to change the default output. To drop a
 ! column from the default, comment it out as '!name' (no space).
 ! To customize a single run instead, copy this file to the run
-! directory, comment/uncomment as desired, and point the &star_job
-! control profile_columns_file at the copy. One column name per
+! directory, comment/uncomment as desired, and set profile_columns_file
+! in the &control group to the copy. One column name per
 ! line; order in the file is the order in the output file.
 ! Unknown names are fatal, with the valid list written to the log.
 

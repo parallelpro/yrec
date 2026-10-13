@@ -1,5 +1,5 @@
 ! Converted from grid/Grid_m4p5feh+0p5GS98_std25_TAMS.nml1 + grid/Grid_m4p5feh+0p5GS98_std25_TAMS.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "YREC Grid (std25). No diffusion, no rotation" ! Label for output (optional)  
  run_description(2) = "Gray Atm OPAL06+SCV EOS GS98" ! Second line label for output (optional)
@@ -133,7 +133,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

@@ -1,8 +1,9 @@
 # YREC inlist controls registry (draft for review)
 
-Proposed namelist revamp: `&control`/`&physics` -> `&star_job`/`&controls`
-with readable names; where a genuine MESA control equivalent exists, the
-MESA name is adopted for the inlist.
+Namelist revamp: the `&control` and `&physics` groups (named `&star_job`
+and `&controls` from 2026-08 to 2026-10) with readable names; where a
+genuine MESA control equivalent exists, the MESA name is adopted for the
+inlist.
 
 Status legend: **canonical** = name already established internally during
 the modernization (parmin's post-read copy); **proposed** = hand-named in
@@ -12,7 +13,7 @@ provisionally, semantics need verification before freezing.
 Defaults marked `*` are implicit static zero/false/'' (no explicit
 assignment before the namelist read; pinned by -finit-local-zero).
 
-## &control -> &star_job (146 entries)
+## &control (146 entries)
 
 | legacy | type | default | proposed name | status | MESA | doc |
 |---|---|---|---|---|---|---|
@@ -163,7 +164,7 @@ assignment before the namelist read; pinned by -finit-local-zero).
 | `xb11_ini` | real | `0.0*` | **`initial_b11_fraction`** | canonical |  |  |
 | `pulse_gyre_interval` | integer | `0*` | **`pulse_gyre_interval`** | keep |  | former common/pulsegyre/: pulse_gyre_interval is a NAMELIST /control/ value spelled identically to its canonic |
 
-## &physics -> &controls (245 entries)
+## &physics (245 entries)
 
 | legacy | type | default | proposed name | status | MESA | doc |
 |---|---|---|---|---|---|---|

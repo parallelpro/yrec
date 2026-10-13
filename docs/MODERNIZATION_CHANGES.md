@@ -225,14 +225,17 @@ frequencies computed from them, but not the evolution itself.
 
 ### 3.2 Input and controls
 
-- **Single inlist** with `&star_job` and `&controls`, readable names, run as
-  `yrec CASE.inlist`. The reader auto-detects style, so legacy `.nml1`/`.nml2`
-  pairs still run unchanged.
+- **Single inlist** with the legacy group names `&control` and `&physics`
+  (named `&star_job` and `&controls` from 2026-08 to 2026-10), readable
+  variable names, run as `yrec CASE.inlist`. A file holding both groups is
+  an inlist; anything else is read as a legacy `.nml1`/`.nml2` pair, which
+  still runs unchanged. An inlist with the 2026-08 group names stops with
+  the command that renames them (`tools/upgrade_inlist.py DECK.inlist`).
 - **Controls registry** `src/defaults/controls_registry.tsv` (383 rows) maps
   every legacy name to its new-format name, with type, status, MESA
   equivalent and description. The defaults live in the code
   (`controls_buffer`, `set_legacy_defaults`); the generated
-  `star_job.defaults` and `controls.defaults` document every control with
+  `control.defaults` and `physics.defaults` document every control with
   the default the reader uses.
 - **Representative renames:** `cmixla` to `mixing_length_alpha`, `endage` to
   `max_age`, `nmodls` to `max_model_number`, `lrot` to `rotation_flag`,

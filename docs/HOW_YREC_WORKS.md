@@ -559,8 +559,8 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
        ├─ yrec_run_prologue     (re-entrancy: snapshot/restore all state;
        │                         core/run/yrec_reset.f90)
        ├─ read_controls         (io/read_controls.f90; read_input (parmin):
-       │                         legacy $CONTROL/$PHYSICS or MESA-style
-       │                         &star_job/&controls inlists)
+       │                         a legacy $CONTROL/$PHYSICS pair or a
+       │                         single-file &control/&physics inlist)
        ├─ star_setup            (eos_init/kap_init/atm_init table loads)
        └─ run loop (kind cards) ── model loop ── evolve_step
                                                     │

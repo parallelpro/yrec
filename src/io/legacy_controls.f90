@@ -4,11 +4,11 @@
 ! The controls reader's working state: the variables the legacy
 ! CONTROL and PHYSICS namelists bind to, under their original
 ! spellings (a namelist matches input entries by variable name, so
-! renaming one would break every deck that sets it), the two namelist
-! groups, the declarations of the new-style &star_job/&controls
-! variables (inlist_new_decl.inc, generated), and the reader's other
-! working variables. read_input copies the values into their
-! canonical homes (controls_buffer, star%job) after the read;
+! renaming one would break every deck that sets it), the two legacy
+! namelist groups, and the reader's other working variables. (The
+! inlist's &control and &physics groups, under the new names, belong
+! to read_inlist in read_controls.) read_input copies the values into
+! their canonical homes (controls_buffer, star%job) after the read;
 ! reset_legacy_controls clears everything at the start of each read.
 module legacy_controls
       use controls_buffer
@@ -324,11 +324,6 @@ module legacy_controls
            &    tol_dm_min,tol_dp_core_max,tol_dp_czbase_max,tol_dp_env_max, &
            &    tol_dx_max,tol_dz_max,time_max_dt_frac,lnewvars, &
            &    lcalcenv
-
-! 2026 inlist revamp: new-style (&star_job/&controls) machinery,
-! generated from defaults/controls_registry.tsv.
-      include 'inlist_new_decl.inc'
-
 
 contains
 

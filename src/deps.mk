@@ -427,8 +427,7 @@ state/envelope_points.o: composition_layout.mod
 state/star_info_lib.o: composition_layout.mod envelope_points.mod neutrino_flux_layout.mod stitched_model_state.mod
 
 # real prerequisites: include files
-io/legacy_controls.o: io/inlist_new_decl.inc
 io/output_columns.o: io/default_columns.inc
-io/read_controls.o: io/inlist_new_read.inc
+io/read_controls.o: io/inlist_new_decl.inc io/inlist_new_read.inc
 io/test/test_controls.o: io/test/controls_dump.inc
 state/star_info_lib.o: state/controls_state_def.inc state/job_controls_def.inc

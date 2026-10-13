@@ -1,5 +1,5 @@
 ! Converted from testsuite/Test_m0p3feh+0p0GS98_spot25_ZAMS.nml1 + testsuite/Test_m0p3feh+0p0GS98_spot25_ZAMS.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
   run_description(1) = "YREC release paper test suite" ! Label for output (optional)  
   run_description(2) = "ZAMS model Fspot=0.25" ! Second line label for output (optional)
@@ -111,7 +111,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

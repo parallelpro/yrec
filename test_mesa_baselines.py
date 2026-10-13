@@ -51,8 +51,8 @@ def _mesa_inlist(case, tmp):
     text = conv.read_text()
     assert "use_legacy_output" not in text   # retired; nothing stamped
     text = text.replace(
-        "&controls",
-        "&controls\n write_profile_flag = .true.\n write_pulse_flag = .true.\n",
+        "&physics",
+        "&physics\n write_profile_flag = .true.\n write_pulse_flag = .true.\n",
         1)
     return text
 

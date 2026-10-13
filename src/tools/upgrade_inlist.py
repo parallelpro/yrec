@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""Convert a legacy YREC inlist pair (.nml1 + .nml2) to new-style.
+"""Convert a legacy YREC deck to a single-file inlist, or rename the
+groups of an inlist written before 2026-10.
 
 Usage:
     python3 tools/upgrade_inlist.py CASE.nml1 CASE.nml2 [-o inlist_CASE]
+    python3 tools/upgrade_inlist.py DECK.inlist [DECK2.inlist ...]
 
-Produces one new-style file containing &star_job (from &control) and
-&controls (from &physics), with every variable renamed per
-defaults/controls_registry.tsv. Values, array subscripts, comments and
-line layout are preserved verbatim -- only the names change. Unused
-legacy controls (status 'unused' in the registry) and legacy-reader-only
-ones (status 'legacy') are dropped with a warning. The converted file must produce byte-identical outputs to the
-legacy pair (test_inlist_convert.py enforces this on the examples).
+A legacy pair (the CONTROL namelist in .nml1, PHYSICS in .nml2) becomes
+one file holding a &control and a &physics group, with every variable
+renamed per defaults/controls_registry.tsv. Values, array subscripts,
+comments and line layout are preserved verbatim -- only the names
+change. Unused legacy controls (status 'unused' in the registry) and
+legacy-reader-only ones (status 'legacy') are dropped with a warning.
+The converted file must produce byte-identical outputs to the legacy
+pair (test_inlist_convert.py enforces this on the examples).
+
+An inlist whose groups are named &star_job and &controls (their names
+from 2026-08 to 2026-10) has them renamed &control and &physics in
+place (or written to -o, for a single file); nothing else changes.
 """
 import argparse
 import pathlib
@@ -40,7 +47,7 @@ def convert_group(text, group_in, group_out, renames, dead, other_renames):
 
     A line whose assignments all resolve in the OTHER group's rename
     map belongs to a control whose new-style home moved across groups
-    (e.g. legacy &control FSHORT -> &controls log_output_file); such
+    (e.g. legacy CONTROL FSHORT -> &physics log_output_file); such
     lines are renamed and returned separately for the caller to splice
     into the other output group."""
     # capture the record: &group ... / (terminator on its own or line end)
@@ -95,33 +102,63 @@ def convert_group(text, group_in, group_out, renames, dead, other_renames):
     return "&" + group_out + "\n".join(out_lines) + "\n/\n", dropped, moved
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("nml1")
-    ap.add_argument("nml2")
-    ap.add_argument("-o", "--output")
-    args = ap.parse_args()
+# the group headers of an inlist from 2026-08 to 2026-10
+OLD_GROUPS = [(re.compile(r"^(\s*)&star_job\b", re.I | re.M), r"\1&control"),
+              (re.compile(r"^(\s*)&controls\b", re.I | re.M), r"\1&physics")]
+
+
+def rename_groups(path, output):
+    text = pathlib.Path(path).read_text()
+    for (pattern, new), old in zip(OLD_GROUPS, ("&star_job", "&controls")):
+        text, n = pattern.subn(new, text)
+        if n != 1:
+            sys.exit(f"{path}: expected one {old} group, found {n}")
+    pathlib.Path(output or path).write_text(text)
+    print(f"wrote {output or path}")
+
+
+def convert_pair(nml1, nml2, output):
     ren, dead = load_registry()
-    t1 = pathlib.Path(args.nml1).read_text(errors="replace")
-    t2 = pathlib.Path(args.nml2).read_text(errors="replace")
-    g1, d1, m1 = convert_group(t1, "control", "star_job", ren["control"],
+    t1 = pathlib.Path(nml1).read_text(errors="replace")
+    t2 = pathlib.Path(nml2).read_text(errors="replace")
+    g1, d1, m1 = convert_group(t1, "control", "control", ren["control"],
                                dead["control"], ren["physics"])
-    g2, d2, m2 = convert_group(t2, "physics", "controls", ren["physics"],
+    g2, d2, m2 = convert_group(t2, "physics", "physics", ren["physics"],
                                dead["physics"], ren["control"])
     # splice cross-group migrations into their new home (before the '/')
     if m1:
         g2 = g2[:g2.rfind("\n/\n")] + "\n" + "\n".join(m1) + "\n/\n"
     if m2:
         g1 = g1[:g1.rfind("\n/\n")] + "\n" + "\n".join(m2) + "\n/\n"
-    out = pathlib.Path(args.output or
-                       ("inlist_" + pathlib.Path(args.nml1).stem))
+    out = pathlib.Path(output or ("inlist_" + pathlib.Path(nml1).stem))
     # (use_legacy_output is retired: every run produces the unified
     # MESA-style output set, so nothing is stamped any more.)
-    out.write_text("! Converted from " + args.nml1 + " + " + args.nml2 +
+    out.write_text("! Converted from " + nml1 + " + " + nml2 +
                    " by tools/upgrade_inlist.py\n" + g1 + "\n" + g2)
     for d in d1 + d2:
         print(f"WARNING: dropped unused/retired legacy control {d}", file=sys.stderr)
     print(f"wrote {out}")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("files", nargs="+",
+                    help="a legacy CASE.nml1 CASE.nml2 pair, or inlists "
+                         "with &star_job/&controls groups")
+    ap.add_argument("-o", "--output")
+    args = ap.parse_args()
+    old_style = [any(p.search(pathlib.Path(f).read_text(errors="replace"))
+                     for p, _ in OLD_GROUPS) for f in args.files]
+    if all(old_style):
+        if args.output and len(args.files) > 1:
+            sys.exit("-o takes a single inlist")
+        for f in args.files:
+            rename_groups(f, args.output)
+    elif len(args.files) == 2 and not any(old_style):
+        convert_pair(*args.files, args.output)
+    else:
+        sys.exit("give a legacy .nml1 .nml2 pair, or inlists whose groups "
+                 "are &star_job and &controls")
 
 
 if __name__ == "__main__":

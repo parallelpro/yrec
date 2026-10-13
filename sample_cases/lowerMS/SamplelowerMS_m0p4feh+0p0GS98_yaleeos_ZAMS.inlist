@@ -1,5 +1,5 @@
 ! Converted from sample_cases/lowerMS/SamplelowerMS_m0p4feh+0p0GS98_yaleeos_ZAMS.nml1 + sample_cases/lowerMS/SamplelowerMS_m0p4feh+0p0GS98_yaleeos_ZAMS.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "YREC release paper sample case" ! Label for output (optional)  
  run_description(2) = "Lower MS, Yale EoS" ! Second line label for output (optional)
@@ -133,7 +133,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

@@ -1,5 +1,5 @@
 ! Converted from sample_cases/Gyrochrones/rotevolin_m0p3per3p4.nml1 + sample_cases/Gyrochrones/rotevolin_m0p3per3p4.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "YREC Sample Cases, Gyrochrones" ! Label for output (optional)  
  run_description(2) = "Allard Atm OPALALLARD ATM OPAL06+SCV EOS GS98SCV EOS GS98" ! Second line label for output (optional)
@@ -133,7 +133,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

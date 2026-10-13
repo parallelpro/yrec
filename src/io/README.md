@@ -15,8 +15,8 @@ The physics never reads a deck or writes a file itself. It reads its controls fr
 
 | Module (file) | What it holds |
 |---|---|
-| `controls_reader` (`read_controls.f90`) | `read_controls`, the entry point, and `read_input`, the read in order (§2). Also the namelist read itself (`read_namelist_files`), the copy to the canonical names (`adopt_canonical_names`) and the table paths' load and store. |
-| `legacy_controls` | The variables the namelists bind to, under their legacy spellings; the legacy `/control/` and `/physics/` groups; the new-format groups (generated `inlist_new_decl.inc`); and `set_legacy_defaults`, which gives each variable its default at the start of every read. |
+| `controls_reader` (`read_controls.f90`) | `read_controls`, the entry point, and `read_input`, the read in order (§2). Also the namelist read itself (`read_namelist_files`, and `read_inlist` for an inlist), the copy to the canonical names (`adopt_canonical_names`) and the table paths' load and store. |
+| `legacy_controls` | The variables the namelists bind to, under their legacy spellings; the legacy `/control/` and `/physics/` groups; and `set_legacy_defaults`, which gives each variable its default at the start of every read. |
 | `controls_buffer` | Every control under its canonical name, with its default as the initializer: the buffer the deck is read into. Also the named constants `max_runs`, `itime_*` and `ichi_*`. |
 | `run_files` | The fixed unit numbers, the `{YREC_INPUT}`/`{YREC_START}`/`{YREC_OUTPUT}` placeholders in paths, the output directory with its copy of the deck (`inlist_used`), and opening the run's files. |
 | `derived_controls` | `derive_controls`: the controls computed from the ones read (rate scales, which EOS and opacity tables, the wind law's exponents, the mixture changes, the diffusion switches), the semiconvection-with-overshoot stop, and the run log's header. |
@@ -37,12 +37,12 @@ The physics never reads a deck or writes a file itself. It reads its controls fr
 
 ## 2. How a deck is read
 
-A deck is either a single-file inlist (`&star_job` and `&controls`) or a legacy CONTROL/PHYSICS namelist pair (`.nml1`/`.nml2`). `read_controls` runs:
+A deck is either a single-file inlist, one file holding a `&control` and a `&physics` group under the readable names, or a legacy CONTROL/PHYSICS namelist pair (`.nml1`/`.nml2`), the same groups under the legacy names in two files. An inlist with the group names of 2026-08 to 2026-10, `&star_job` and `&controls`, stops the run with the command that renames them. `read_controls` runs:
 1. `star%ctrl = controls_state()`: the pristine defaults, generated from `controls_buffer`'s initializers.
 2. `seed_controls_buffer`: buffer ← `star%ctrl`.
 3. `read_input`:
    - `set_legacy_defaults`, `assign_unit_numbers`, and loading the table paths;
-   - `read_namelist_files`: the namelist read, over the defaults;
+   - `read_namelist_files`: the namelist read, over the defaults (an inlist's through `read_inlist`, whose groups, declared in the generated `inlist_new_decl.inc`, hide `legacy_controls`' groups of the same names);
    - `adopt_canonical_names`: each legacy-spelled variable copied to its canonical name;
    - `map_user_inputs` (`setup/`): the readable timestep and zoning inputs mapped onto the code's vectors, and the cross sections from the S-factors;
    - `store_controls_to_star` (the output setup reads `star%ctrl`);
@@ -53,7 +53,7 @@ A deck is either a single-file inlist (`&star_job` and `&controls`) or a legacy 
 
 Every read starts from the same state, so an in-process rerun (pyyrec, `test_reentry`) reads exactly as a fresh run does.
 
-**Errors.** Every open and namelist read in io/, and every output writer's open, checks its status. `check_io` (`io_units`) reports `cannot <action> <path>: <reason>` on the terminal, and in the run log once it is open, and returns ierr = 1, which stops the run with exit status 1. A misspelled control, for example, gives `cannot read &star_job from deck.inlist: Cannot match namelist object name ...`.
+**Errors.** Every open and namelist read in io/, and every output writer's open, checks its status. `check_io` (`io_units`) reports `cannot <action> <path>: <reason>` on the terminal, and in the run log once it is open, and returns ierr = 1, which stops the run with exit status 1. A misspelled control, for example, gives `cannot read &control from deck.inlist: Cannot match namelist object name ...`.
 
 **A control's three names.** A namelist matches a deck's entries by variable name, so the legacy decks fix the legacy spellings (`KTTAU`). Inside the code a control has its canonical name (`atm_choice`, in `controls_buffer` and `star%ctrl`). Its new-format name is usually the canonical one. `defaults/controls_registry.tsv` maps all three and documents each control. Derived code works on the canonical names; only the reader sees the legacy ones.
 
@@ -62,11 +62,11 @@ Every read starts from the same state, so an in-process rerun (pyyrec, `test_ree
 | File | Generator | From |
 |---|---|---|
 | `state/controls_state_def.inc`, `state/job_controls_def.inc`, `state/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` |
-| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/star_job.defaults`, `defaults/controls.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
+| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/control.defaults`, `defaults/physics.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
 | `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` declarations |
 | `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` |
 
-`tools/upgrade_inlist.py` converts a legacy pair to a single-file inlist.
+`tools/upgrade_inlist.py` converts a legacy pair to a single-file inlist, and renames the groups of an inlist written with `&star_job` and `&controls`.
 
 ## 3. Output
 
@@ -89,7 +89,7 @@ The interior-only GYRE file is written every `pulse_gyre_interval` models. The w
 ## 5. Extending
 
 **Add a control:**
-1. Declare it in `controls_buffer.f90`, with its default as the initializer. That is the only place its default is written; `controls.defaults` documents it from there.
+1. Declare it in `controls_buffer.f90`, with its default as the initializer. That is the only place its default is written; `physics.defaults` (or `control.defaults`) documents it from there.
 2. Add its row to `defaults/controls_registry.tsv` (its names, type, status and description).
 3. Run `tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
 4. Read it from `star%ctrl` (or `star%job`) where it is used.

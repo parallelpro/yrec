@@ -1,5 +1,5 @@
 ! Converted from sample_cases/UpperMS/Sample_m9p0feh+0p0GS98_yaleeos_sc_TAMS.nml1 + sample_cases/UpperMS/Sample_m9p0feh+0p0GS98_yaleeos_sc_TAMS.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "YREC release paper sample case" ! Label for output (optional)  
  run_description(2) = "9 Msun evolution model" ! Second line label for output (optional)
@@ -134,7 +134,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

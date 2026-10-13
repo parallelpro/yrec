@@ -73,7 +73,7 @@ def test_mesa_output_contract(tmp_path):
     # write_profile_flag and write_pulse_flag both default to .false.;
     # the mesa run opts into profiles to test that contract
     with_profiles = unstamped.replace(
-        "&controls", "&controls\n write_profile_flag = .true.\n", 1)
+        "&physics", "&physics\n write_profile_flag = .true.\n", 1)
 
     mesa_out = _run(tmp_path / "mesa", with_profiles)
 
@@ -154,11 +154,11 @@ def test_mesa_output_contract(tmp_path):
     # ---- custom history columns + FGONG pulse output ----
     columns = "! test subset\nstar_age\nlog_Teff\nlog_L\n"
     custom = unstamped.replace(
-        "&star_job",
-        "&star_job\n history_columns_file = 'my_columns.list'\n", 1)
+        "&control",
+        "&control\n history_columns_file = 'my_columns.list'\n", 1)
     custom = custom.replace(
-        "&controls",
-        "&controls\n pulse_format = 'FGONG'\n"
+        "&physics",
+        "&physics\n pulse_format = 'FGONG'\n"
         " write_profile_flag = .false.\n write_pulse_flag = .true.\n", 1)
     custom_out = _run(tmp_path / "custom", custom,
                       extra_files={"my_columns.list": columns})
@@ -254,8 +254,8 @@ def test_gsm_pulse_output(tmp_path):
     text = "\n".join(l for l in inlist.read_text().splitlines()
                      if "use_legacy_output" not in l) + "\n"
     text = text.replace(
-        "&controls",
-        "&controls\n pulse_format = 'GSM'\n write_pulse_flag = .true.\n"
+        "&physics",
+        "&physics\n pulse_format = 'GSM'\n write_pulse_flag = .true.\n"
         " write_profile_flag = .false.\n", 1)
     out = _run(tmp_path / "gsm", text)
     gsms = sorted(out.glob("profile*.data.GSM"))

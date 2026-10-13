@@ -25,7 +25,7 @@ CASE = "Test_solar_noGS_norot"
 ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
 
 
-def _run_with_controls(tmp_path, extra_controls, extra_star_job=""):
+def _run_with_controls(tmp_path, extra_physics, extra_control=""):
     """Convert the solar pair, splice extra lines into the namelist
     groups, run."""
     if not YREC.exists():
@@ -37,9 +37,9 @@ def _run_with_controls(tmp_path, extra_controls, extra_star_job=""):
         capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     text = conv.read_text()
-    text = text.replace("&controls", "&controls\n" + extra_controls, 1)
-    if extra_star_job:
-        text = text.replace("&star_job", "&star_job\n" + extra_star_job, 1)
+    text = text.replace("&physics", "&physics\n" + extra_physics, 1)
+    if extra_control:
+        text = text.replace("&control", "&control\n" + extra_control, 1)
     conv.write_text(text)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
@@ -62,8 +62,8 @@ def _assert_stopped_early(log, hist, needle):
     assert len(hist) < 40, f"run did not stop early: {len(hist)} history lines"
 
 
-# per-kind-card arrays living in &star_job with the other kind-card
-# settings (moved from &controls 2026-08-29): the solar deck's card 2
+# per-kind-card arrays living in &control with the other kind-card
+# settings (moved from &physics 2026-08-29): the solar deck's card 2
 # is the evolving card, so the limits are set on (2)
 @pytest.mark.parametrize("control,needle", [
     ("Teff_upper_limit(2) = 4.0d3", "STOP: Teff"),
@@ -72,7 +72,7 @@ def _assert_stopped_early(log, hist, needle):
     ("log_g_upper_limit(2) = 3.0d0", "STOP: log_g"),
 ])
 def test_structure_limit_stops_run(tmp_path, control, needle):
-    log, hist = _run_with_controls(tmp_path, "", extra_star_job=f" {control}\n")
+    log, hist = _run_with_controls(tmp_path, "", extra_control=f" {control}\n")
     _assert_stopped_early(log, hist, needle)
 
 
@@ -82,7 +82,7 @@ def test_seismic_columns_are_opt_in(tmp_path):
         "model_number\nlog_Teff\nnu_max\ndelta_nu_rho\ndelta_nu\ndelta_Pg\n")
     log, hist = _run_with_controls(
         tmp_path, "",
-        extra_star_job=" nu_max_lower_limit(2) = 5.0d3\n"
+        extra_control=" nu_max_lower_limit(2) = 5.0d3\n"
         f" history_columns_file = '{cols}'\n")
     _assert_stopped_early(log, hist, "STOP: nu_max")
     names = hist[5].split()
@@ -111,7 +111,7 @@ def test_seismic_columns_are_opt_in(tmp_path):
 
 def test_seismic_columns_absent_by_default(tmp_path):
     log, hist = _run_with_controls(
-        tmp_path, "", extra_star_job=" Teff_upper_limit(2) = 4.0d3\n")
+        tmp_path, "", extra_control=" Teff_upper_limit(2) = 4.0d3\n")
     _assert_stopped_early(log, hist, "STOP: Teff")
     names = hist[5].split()
     assert "nu_max" not in names and "delta_nu_rho" not in names, (

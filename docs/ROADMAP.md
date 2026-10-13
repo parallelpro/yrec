@@ -25,8 +25,8 @@ messages; the one-line summary:
 - MESA conventions: star%job/star%ctrl nested, everything else flat
   on MESA vocabulary; controls -> star% campaign complete
   (generated controls_state/sync from the reader-internal buffer).
-- Inlist revamp: &star_job/&controls with readable names (registry-
-  driven, defaults/*.defaults generated), converter + byte-identity
+- Inlist revamp: &control/&physics (named &star_job/&controls from
+  2026-08 to 2026-10) with readable names (registry-driven, defaults/*.defaults generated), converter + byte-identity
   tests. ALL 1163 legacy deck pairs migrated to single inlists
   (the 4 solar pairs remain as legacy-reader fixtures); stray
   fort.* writers retired.
@@ -48,7 +48,7 @@ messages; the one-line summary:
   nu_max_sun/delta_nu_sun/Teff_sun controls), delta_nu (sound-travel
   integral) + delta_Pg (Brunt integral over the innermost cavity) --
   opt-in history columns; MESA-style structure-limit stops
-  (log_L/Teff/log_g/nu_max upper+lower, per kind card, &star_job).
+  (log_L/Teff/log_g/nu_max upper+lower, per kind card, &control).
 - Numbering/constants: fresh start-model loads reset the model
   counter (set_initial_model_number, default 1; <=0 keeps the stored
   counter); solar_mass_cgs + G_cgs are controls (G sentinel keeps the

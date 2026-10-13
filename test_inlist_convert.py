@@ -1,7 +1,7 @@
 """Inlist-revamp acceptance test (2026).
 
 For each covered example case: convert the legacy .nml1/.nml2 pair to a
-single new-style inlist (&star_job + &controls, readable names) with
+single new-style inlist (&control + &physics, readable names) with
 tools/upgrade_inlist.py, run yrec on BOTH, and require byte-identical
 outputs (version-hash line excluded). This is the whole revamp's
 correctness contract: renaming the user-facing controls must not change

@@ -1,5 +1,5 @@
 ! Converted from examples/run_from_seed_to_start/m0300gs98z018804_prems.nml1 + examples/run_from_seed_to_start/run_from_seed_to_start.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "model5.1 test suite. Solar model, diffusion, no rotation" ! Label for output (optional)  
  run_description(2) = "Gray Atm OPAL06+SCV EOS GS98" ! Second line label for output (optional)
@@ -73,7 +73,7 @@
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

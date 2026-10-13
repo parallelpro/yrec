@@ -1,5 +1,5 @@
 ! Converted from sample_cases/TAHB/ZAHB_m1p6feh+0p0_TAHB.nml1 + sample_cases/TAHB/ZAHB_m1p6feh+0p0_TAHB.nml2 by tools/upgrade_inlist.py
-&star_job  
+&control  
 
  run_description(1) = "model5.1 example. Core helium burning, no diffusion, no rotation"
  run_description(2) = "Gray Atm OPAL06+SCV EOS GS98" ! Second line label for output (optional)
@@ -88,7 +88,7 @@ central_helium_stop(3) = 0.001 ! Run stops if NMODLS(I) is reached or this centr
  
 /
 
-&controls
+&physics
  
  ! Constants. Code does cgs computations but does output in solar units.
  solar_luminosity_cgs = 3.828D33 ! Definition of Lsun used for tracks and output

@@ -15,12 +15,14 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
 
 import pytest
 
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CASE_DIR = REPO / "examples" / "run_standard_solar_model"
+CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 NML1 = "Test_solar_noGS_norot.nml1"
 NML2 = "Test_solar_noGS_norot.nml2"
 
@@ -135,3 +137,40 @@ def test_advective_transport_rejected(tmp_path):
     assert "use_diffusion_advection_transport" in result.stdout, (
         "expected the secular_transport diagnostic on the terminal"
     )
+
+
+def test_old_group_names_refused(tmp_path):
+    """An inlist whose groups carry their 2026-08 names (&star_job and
+    &controls, now &control and &physics) must stop the run with exit 1
+    and the command that renames them -- and that command must give back
+    the inlist exactly."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    inlist = tmp_path / "deck.inlist"
+    conv = subprocess.run(
+        [sys.executable, str(CONVERTER), str(CASE_DIR / NML1),
+         str(CASE_DIR / NML2), "-o", str(inlist)],
+        capture_output=True, text=True)
+    assert conv.returncode == 0, conv.stderr
+    current = inlist.read_text()
+    old = re.sub(r"(?m)^&control\b", "&star_job", current, count=1)
+    old = re.sub(r"(?m)^&physics\b", "&controls", old, count=1)
+    assert old.count("&star_job") == 1 and old.count("&controls") == 1
+    inlist.write_text(old)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ)
+    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_START"] = str(REPO / "startmodels")
+    result = subprocess.run(
+        [str(YREC), "deck.inlist"], cwd=tmp_path,
+        env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 1, (
+        "a &star_job inlist must exit 1 "
+        f"(got {result.returncode}); stdout tail: {result.stdout[-300:]}"
+    )
+    assert "upgrade_inlist.py deck.inlist" in result.stdout, result.stdout[-300:]
+    fix = subprocess.run([sys.executable, str(CONVERTER), str(inlist)],
+                         capture_output=True, text=True)
+    assert fix.returncode == 0, fix.stderr
+    assert inlist.read_text() == current
