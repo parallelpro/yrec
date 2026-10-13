@@ -196,7 +196,7 @@ which replaces them).
    procedures the clash cannot arise. (External routines keep their
    authors' names: Timmes' `sneut`, `azbar`, `ifermi12`, `zfermim12`.)
 
-## The star object: five rules (2026-10)
+## The star object: six rules (2026-10)
 
 `star` (`state/star_info_lib.f90`) is global, and nothing in Fortran
 stops any procedure from reading or writing any of its ~260 members.
@@ -244,6 +244,21 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    its module.** Values computed inside the Newton iterations and kept
    only for output belong in a pass over the converged model, not in
    `star` members overwritten on every iteration.
+6. **Equations and algorithms live in star-blind kernels.** A routine
+   that holds something a reader could get wrong -- the structure
+   equations and their partials, a conservation sum, a regridding, a
+   boundary fit -- takes strict `intent(in)`/`intent(out)` arguments (or
+   small records) and never `star`; its driver gathers the inputs from
+   `star` and stores the results. A kernel gets a unit test (a
+   finite-difference Jacobian, a conservation check) and its file goes
+   into `STAR_BLIND_FILES` in `tools/check_boundaries.py`. Sequencing and
+   bookkeeping (call this stage, copy that array, accumulate output) stay
+   in drivers that use `star`.
+
+`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` is a ratchet on the
+rest: per directory, the number of `star%` references and of files that
+import the global `star` may not grow. When a change lowers a count the
+check says so; lower the budget in the same commit.
 
 
 ## Declarations and interfaces (2026-10)

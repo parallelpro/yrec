@@ -205,6 +205,93 @@ def check_controls_free(src_root):
     return problems
 
 
+# The star layer's access to the star object (2026-10). Routines come in
+# three kinds, never mixed in one routine:
+#   orchestration (core's drivers, io's writers): reads and writes the
+#     star (star_info_lib's star, to become an argument s);
+#   kernels (the physics and numerics inside core and rotation): strict
+#     intent(in)/intent(out) arguments, never the star -- listed in
+#     STAR_BLIND_FILES above once extracted;
+#   domains (eos, kap, atm, net, convection, numerics): star-free
+#     (STAR_FREE_DIRS).
+# STAR_ACCESS_BUDGET is a ratchet on the rest: per directory, the number
+# of star% references and of files that import the global star may not
+# grow. When a count drops, the check says so; lower the budget to match
+# in the same commit.
+STAR_ACCESS_BUDGET = {
+    # directory: (star% references, files importing the global star)
+    "core": (3166, 29),
+    "element_diffusion": (69, 9),
+    "io": (474, 10),
+    "rotation": (420, 10),
+    "setup": (152, 3),
+    "state": (738, 1),
+}
+
+
+def join_continuations(code):
+    """Join free-form continuation lines (trailing &, optional leading &)."""
+    out, cur = [], ""
+    for line in code.splitlines():
+        s = line.rstrip()
+        if cur:
+            s = s.lstrip()
+            if s.startswith("&"):
+                s = s[1:]
+        if s.endswith("&"):
+            cur += s[:-1] + " "
+            continue
+        out.append(cur + s)
+        cur = ""
+    if cur:
+        out.append(cur)
+    return out
+
+
+def imports_global_star(code):
+    """True if a use statement brings star_info_lib's star into scope."""
+    for stmt in join_continuations(code):
+        m = re.match(r"(?i)^\s*use\s+star_info_lib\b\s*(,\s*only\s*:(.*))?$", stmt)
+        if not m:
+            continue
+        if m.group(1) is None:
+            return True
+        names = [x.split("=>")[-1].strip().lower() for x in m.group(2).split(",")]
+        if "star" in names:
+            return True
+    return False
+
+
+def star_access_counts(src_root):
+    counts = {}
+    for d in STAR_ACCESS_BUDGET:
+        refs = files = 0
+        for f in sorted((src_root / d).rglob("*.f90")):
+            if "/test/" in f.relative_to(src_root).as_posix():
+                continue
+            code = strip_comments(f.read_text(errors="replace"))
+            refs += len(re.findall(r"(?i)\bstar%", code))
+            files += imports_global_star(code)
+        counts[d] = (refs, files)
+    return counts
+
+
+def check_star_access_budget(src_root):
+    problems, notes = [], []
+    for d, (refs, files) in star_access_counts(src_root).items():
+        max_refs, max_files = STAR_ACCESS_BUDGET[d]
+        if refs > max_refs:
+            problems.append(f"{d}: {refs} star% references, budget {max_refs} "
+                            "(pass what a kernel needs as arguments instead)")
+        if files > max_files:
+            problems.append(f"{d}: {files} files import the global star, "
+                            f"budget {max_files}")
+        if (refs, files) < (max_refs, max_files) and refs <= max_refs and files <= max_files:
+            notes.append(f"{d}: now ({refs}, {files}), budget ({max_refs}, {max_files}) "
+                         "-- lower STAR_ACCESS_BUDGET to match")
+    return problems, notes
+
+
 # Domains whose modules only their facade may expose (docs/GUIDELINES.md,
 # naming rule 2): outside the domain's directory, `use` may name only
 # <domain>_lib. Add a domain once its users go through its facade.
@@ -384,6 +471,15 @@ def main():
         for b in free_problems:
             print("  " + b)
         return 1
+
+    budget_problems, budget_notes = check_star_access_budget(SRC)
+    if budget_problems:
+        print("STAR-ACCESS BUDGET EXCEEDED (tools/check_boundaries.py):")
+        for b in budget_problems:
+            print("  " + b)
+        return 1
+    for n in budget_notes:
+        print("star-access budget: " + n)
 
     controls_problems = check_controls_free(SRC)
     if controls_problems:
