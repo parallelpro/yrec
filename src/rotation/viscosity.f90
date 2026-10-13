@@ -12,19 +12,21 @@ contains
 
 ! ---------------------------------------------------------------
 ! viscos: for every zone, convective ones included, the kinematic
-! viscosity star%visc = nu_rad + nu_ion and the radiative thermal
-! diffusivity star%thdif = K (both cm^2/s), for the rotational
-! instability and mixing coefficients. Uses the opacity and c_P that
-! shell_physics stored in star%opacity_zone and star%cp.
-subroutine viscos(composition, log_density, log_temperature, num_zones)
-      use star_info_lib, only: star, json, i_metals
+! viscosity visc = nu_rad + nu_ion and the radiative thermal
+! diffusivity thdif = K (both cm^2/s), for the rotational instability
+! and mixing coefficients, from the composition, log rho, log T, the
+! opacity (cm^2/g) and c_P (erg/g/K) of each zone.
+subroutine viscos(composition, log_density, log_temperature, opacity, cp, &
+     num_zones, visc, thdif)
+      use star_info_lib, only: json, i_metals
       use physical_constants
       use math_lib
       implicit none
 
       double precision, intent(in) :: composition(15,json), log_density(json), &
-           log_temperature(json)
+           log_temperature(json), opacity(json), cp(json)
       integer, intent(in) :: num_zones
+      double precision, intent(inout) :: visc(json), thdif(json)
 
       double precision :: amu
 ! Atomic weights and charges for composition rows 1..11 (i_h1..i_o18 of
@@ -57,7 +59,7 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
 ! 1/m_u), the mean ion charge Z_bar = sum n_i Z_i / sum n_i, and
 ! electron_number_density = Z_bar rho/m_u. (The electron density is
 ! Z_bar (rho/m_u) sum n_i; the two agree only when sum n_i = 1.)
-         opacity_local = star%opacity_zone(shell_idx)
+         opacity_local = opacity(shell_idx)
          mean_charge = 0.0d0
          number_density_sum = 0.0d0
          do species_idx = 1,11
@@ -115,11 +117,11 @@ subroutine viscos(composition, log_density, log_temperature, num_zones)
          end do
 ! nu_ion = sum_i eta_i / rho.
          viscosity_molecular = viscosity_molecular/density_cgs
-         star%visc(shell_idx) = viscosity_radiative+viscosity_molecular
+         visc(shell_idx) = viscosity_radiative+viscosity_molecular
 ! The radiative thermal diffusivity (conduction neglected):
 !   K = 16 sigma T^3 / (3 kappa rho^2 c_P).
-         star%thdif(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
-              temperature_sq/(opacity_local*density_cgs**2*star%cp(shell_idx))
+         thdif(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
+              temperature_sq/(opacity_local*density_cgs**2*cp(shell_idx))
       end do
 
       return

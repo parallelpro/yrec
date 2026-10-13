@@ -82,7 +82,7 @@ subroutine apply_secular_transport(sub_timestep, specific_angular_momentum_saved
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
       use rotation_scratch_lib
-      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
+      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use convection_lib, only: homogenize_convection_zones
       use star_info_lib, only: star, json
       use physical_constants
@@ -303,10 +303,11 @@ subroutine compute_circulation()
       call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
            rot_scr%am_transport_convective_flag_mid,star%nz,star%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
-           total_luminosity,rot_scr%log_pressure_mid)
+           total_luminosity,rot_scr%log_pressure_mid,star%es_circulation_velocity, &
+           star%gsf_circulation_velocity,star%secular_shear_velocity)
       if(rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
-           zone_min,zone_max,star%omega_mid)
+           zone_min,zone_max,star%omega_mid,star%vfc)
 end subroutine compute_circulation
 
 ! ---------------------------------------------------------------
@@ -357,7 +358,7 @@ subroutine spin_down_uncoupled_surface()
          call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom, &
               cz_mass_top,zone_max,star%nz,wind_loss_active,omega_surface, &
               star%star_mass,star%log_Teff,cz_moment_of_inertia, &
-              star%j_rot, ierr)
+              star%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
       else if(surface_cz_active .and. (rotation_settings%force_solid_body_rotation .or. &
            (rotation_settings%solid_body_mode_flag.eq.1)))then
@@ -370,7 +371,7 @@ subroutine spin_down_uncoupled_surface()
          call brake_convection_zone(star%log_L,sub_timestep,solid_cz_mass_bottom, &
               solid_cz_mass_top,solid_start_zone,star%nz,wind_loss_active, &
               omega_surface,star%star_mass,star%log_Teff,cz_moment_of_inertia, &
-              star%j_rot, ierr)
+              star%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
 ! One omega for the whole star from its new j.
          solid_body_zone_start = 1
@@ -389,7 +390,8 @@ end subroutine spin_down_uncoupled_surface
 ! sub-step.
 subroutine set_diffusion_coefficients()
       call diffusion_velocity_scales(radius_unlogged,star%nz,radius_mid, &
-           am_diffusion_coeff,mixing_diffusion_coeff)
+           am_diffusion_coeff,mixing_diffusion_coeff,star%es_circulation_velocity, &
+           star%gsf_circulation_velocity,star%secular_shear_velocity,star%vfc)
       do i = 1, star%nz
          star%am_diffusion_coeff(i) = am_diffusion_coeff(i)
          star%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
@@ -557,7 +559,7 @@ subroutine set_surface_wind_terms()
                call compute_solid_body_braking(star%log_L,sub_timestep, &
                     cz_moment_of_inertia,iteration,omega_surface, &
                     star%star_mass,star%log_Teff,omega_surface_start, &
-                    wind_loss_explicit,wind_loss_implicit, ierr)
+                    wind_loss_explicit,wind_loss_implicit, wind_now(), ierr)
                if (ierr /= 0) return
             else
                wind_loss_explicit = 0.0D0
@@ -623,6 +625,19 @@ subroutine mix_composition()
            zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
            star%nz,star%xa,species_begin,species_end, ierr)
 end subroutine mix_composition
+
+
+! ---------------------------------------------------------------
+! The step's state the wind laws read: tau_cz and log P_phot at the
+! start and the end of the step, and the fraction of it elapsed.
+function wind_now() result(conditions)
+      type(wind_conditions) :: conditions
+      conditions = wind_conditions( &
+           turnover_timescale_start=star%convective_turnover_timescale_old, &
+           turnover_timescale_end=star%convective_turnover_timescale, &
+           log_pphot_start=star%pphot0, log_pphot_end=star%pphot, &
+           step_fraction=star%fracstep)
+end function wind_now
 
 end subroutine apply_secular_transport
 

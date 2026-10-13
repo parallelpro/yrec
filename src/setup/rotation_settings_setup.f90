@@ -37,7 +37,9 @@ contains
 !     job%disk_locking_age_gyr, job%disk_omega_rad_s,
 !     job%instability_transport_active, job%lovstm,
 !     job%max_domega_global, job%use_extended_composition,
-!     job%use_wind_torque, job%wind_saturation_omega
+!     job%use_wind_torque, job%wind_saturation_omega,
+!     log10_solar_luminosity, solar_luminosity_cgs, solar_mass_cgs,
+!     solar_radius_cgs
 !   star writes: none
 function rotation_settings_from_star() result(s)
       use star_info_lib, only: star
@@ -97,6 +99,10 @@ function rotation_settings_from_star() result(s)
       s%use_extended_composition = star%job%use_extended_composition
       s%intermediate_overshoot = star%job%lovstm
       s%overshoot_alpha_envelope = star%ctrl%overshoot_alpha_envelope
+      s%solar_luminosity_cgs = star%solar_luminosity_cgs
+      s%log10_solar_luminosity = star%log10_solar_luminosity
+      s%solar_radius_cgs = star%solar_radius_cgs
+      s%solar_mass_cgs = star%solar_mass_cgs
 end function rotation_settings_from_star
 
 end module rotation_settings_setup

@@ -24,12 +24,12 @@ contains
 ! (rotation_stability_setup, stability_coefficients) times a gradient
 ! across the interface, compared with a critical value; where the
 ! interface is unstable the mechanism gets a velocity:
-!  - star%es_circulation_velocity, the Eddington-Sweet circulation (Zahn
+!  - es_circulation_velocity, the Eddington-Sweet circulation (Zahn
 !    1991, 1992), corrected for the quadrupole moment and reduced by the
 !    mu gradient (Maeder & Zahn 1998);
-!  - star%gsf_circulation_velocity, the GSF instability (Kippenhahn
+!  - gsf_circulation_velocity, the GSF instability (Kippenhahn
 !    1980), optionally inhibited by viscosity and mu gradients;
-!  - star%secular_shear_velocity, the secular shear instability, or the
+!  - secular_shear_velocity, the secular shear instability, or the
 !    dynamical one where Ri < 1/4 (Endal & Sofia 1978).
 ! The Eddington-Sweet and GSF velocities are skipped at interfaces with
 ! convective zones on both sides. From the second iteration on, each
@@ -44,14 +44,15 @@ contains
 ! The formulas are the kernels below this routine. Its internal steps
 ! keep the books: they interpolate the physics to the interfaces
 ! (rot_scr), and store, clear, scale, average and sum the velocities
-! (star% and circ_scr).
+! (the arguments and circ_scr).
 subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
-     total_luminosity, log_pressure)
+     total_luminosity, log_pressure, es_circulation_velocity, &
+     gsf_circulation_velocity, secular_shear_velocity)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use math_lib
       implicit none
 
@@ -65,6 +66,10 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
            dlnomega_dlnr_max(json)
       double precision, intent(out) :: total_circulation_velocity(json)
       double precision, intent(in) :: total_luminosity, log_pressure(json)
+! The three velocities (cm/s; the star's, for the output): the previous
+! iteration's on entry, this iteration's on return.
+      double precision, intent(inout) :: es_circulation_velocity(json), &
+           gsf_circulation_velocity(json), secular_shear_velocity(json)
 ! --- locals ---
       integer :: i, i0, i1
       double precision :: dell
@@ -77,21 +82,21 @@ subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iterat
            radius, omega, rot_scr%omega_interface, rot_scr%radius_interface, &
            rot_scr%local_gravity, rot_scr%quadrupole_moment, rot_scr%es_velocity_coeff1, &
            rot_scr%es_velocity_coeff2, rot_scr%es_shear_coeff, &
-           rot_scr%circulation_correction_ratio, star%es_circulation_velocity)
+           rot_scr%circulation_correction_ratio, es_circulation_velocity)
       call inhibit_by_mu_gradient(zone_min, zone_max, mid_scr%mu, log_pressure, &
-           rot_scr%del_grad_diff_interface, star%es_circulation_velocity)
+           rot_scr%del_grad_diff_interface, es_circulation_velocity)
       call compute_gsf_velocity(zone_min, zone_max, rotation_settings%gsf_inhibition_mode, &
            am_transport_convective_flag, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
            mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%omega_interface, &
            rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
            rot_scr%gravity_factor_interface, rot_scr%gsf_kippenhahn_coeff, &
-           star%gsf_circulation_velocity)
+           gsf_circulation_velocity)
       call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
            log_radius, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
            mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%radius_interface, &
            rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
-           rot_scr%mu_gradient_richardson_coeff, star%secular_shear_velocity, &
-           star%gsf_circulation_velocity)
+           rot_scr%mu_gradient_richardson_coeff, secular_shear_velocity, &
+           gsf_circulation_velocity)
       call apply_velocity_scales()
       if (iteration.gt.1) call average_with_previous()
       call sum_velocities()
@@ -103,9 +108,9 @@ contains
 ! Keep the previous iteration's velocities for average_with_previous.
 subroutine store_previous_velocities()
       do i = zone_min,zone_max
-         circ_scr%gsf_circulation_velocity_prev(i) = star%gsf_circulation_velocity(i)
-         circ_scr%es_circulation_velocity_prev(i) = star%es_circulation_velocity(i)
-         circ_scr%secular_shear_velocity_prev(i) = star%secular_shear_velocity(i)
+         circ_scr%gsf_circulation_velocity_prev(i) = gsf_circulation_velocity(i)
+         circ_scr%es_circulation_velocity_prev(i) = es_circulation_velocity(i)
+         circ_scr%secular_shear_velocity_prev(i) = secular_shear_velocity(i)
       end do
 ! (commented out: the advection-diffusion transport's velocities)
 !      if (rotation_settings%use_diffusion_advection_transport) then
@@ -122,9 +127,9 @@ end subroutine store_previous_velocities
 subroutine clear_velocities()
       do i = 1,num_zones
          total_circulation_velocity(i) = 0.0d0
-         star%es_circulation_velocity(i) = 0.0d0
-         star%gsf_circulation_velocity(i) = 0.0d0
-         star%secular_shear_velocity(i) = 0.0d0
+         es_circulation_velocity(i) = 0.0d0
+         gsf_circulation_velocity(i) = 0.0d0
+         secular_shear_velocity(i) = 0.0d0
       end do
 end subroutine clear_velocities
 
@@ -171,12 +176,12 @@ end subroutine interpolate_to_interfaces
 ! legacy FES, FGSF, FSS). The mu-gradient inhibition is already applied.
 subroutine apply_velocity_scales()
       do i = zone_min,zone_max
-         star%es_circulation_velocity(i)=abs(rotation_settings%es_velocity_scale* &
-              star%es_circulation_velocity(i))
-         star%gsf_circulation_velocity(i) = rotation_settings%gsf_velocity_scale* &
-              star%gsf_circulation_velocity(i)
-         star%secular_shear_velocity(i)= rotation_settings%secular_shear_velocity_scale* &
-              star%secular_shear_velocity(i)
+         es_circulation_velocity(i)=abs(rotation_settings%es_velocity_scale* &
+              es_circulation_velocity(i))
+         gsf_circulation_velocity(i) = rotation_settings%gsf_velocity_scale* &
+              gsf_circulation_velocity(i)
+         secular_shear_velocity(i)= rotation_settings%secular_shear_velocity_scale* &
+              secular_shear_velocity(i)
       end do
 ! (commented out: the scales of the advection-diffusion transport's
 ! parts, and their GSF and shear diffusion coefficients r |U|)
@@ -202,12 +207,12 @@ subroutine apply_velocity_scales()
 ! gsf_diffusion_coeff.
 !         do i = zone_min,zone_max
 !            rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
-!                 rot_scr%radius_interface(i)*(abs(star%gsf_circulation_velocity(i))+ &
-!                 abs(star%secular_shear_velocity(i)))
+!                 rot_scr%radius_interface(i)*(abs(gsf_circulation_velocity(i))+ &
+!                 abs(secular_shear_velocity(i)))
 !            rot_scr%shear_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
-!                 abs(star%secular_shear_velocity(i))
+!                 abs(secular_shear_velocity(i))
 !            rot_scr%gsf_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
-!                 abs(star%gsf_circulation_velocity(i))
+!                 abs(gsf_circulation_velocity(i))
 !         end do
 !      end if
 end subroutine apply_velocity_scales
@@ -217,11 +222,11 @@ end subroutine apply_velocity_scales
 ! previous iteration's (MHP 11/94).
 subroutine average_with_previous()
       do i = zone_min,zone_max
-         star%gsf_circulation_velocity(i) = 0.5d0*(star%gsf_circulation_velocity(i) &
+         gsf_circulation_velocity(i) = 0.5d0*(gsf_circulation_velocity(i) &
               + circ_scr%gsf_circulation_velocity_prev(i))
-         star%es_circulation_velocity(i) = 0.5d0*(star%es_circulation_velocity(i) &
+         es_circulation_velocity(i) = 0.5d0*(es_circulation_velocity(i) &
               + circ_scr%es_circulation_velocity_prev(i))
-         star%secular_shear_velocity(i) = 0.5d0*(star%secular_shear_velocity(i) &
+         secular_shear_velocity(i) = 0.5d0*(secular_shear_velocity(i) &
               + circ_scr%secular_shear_velocity_prev(i))
       end do
 ! (commented out: the same for the advection-diffusion parts)
@@ -240,8 +245,8 @@ end subroutine average_with_previous
 ! zeroed below 1e-20 cm/s; any_transport_active if any is positive.
 subroutine sum_velocities()
       do i =zone_min,zone_max
-         total_circulation_velocity(i) = star%gsf_circulation_velocity(i) + &
-              star%es_circulation_velocity(i) + star%secular_shear_velocity(i)
+         total_circulation_velocity(i) = gsf_circulation_velocity(i) + &
+              es_circulation_velocity(i) + secular_shear_velocity(i)
          if (total_circulation_velocity(i).lt.1.0d-20) &
               total_circulation_velocity(i)=0.0d0
          if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
@@ -258,9 +263,9 @@ subroutine zero_transport_in_core()
          dell = rot_scr%luminosity_interface(i)/total_luminosity
          if (dell.lt.9.9d-1) then
             total_circulation_velocity(i) = 0.0d0
-            star%gsf_circulation_velocity(i) = 0.0d0
-            star%es_circulation_velocity(i) = 0.0d0
-            star%secular_shear_velocity(i) = 0.0d0
+            gsf_circulation_velocity(i) = 0.0d0
+            es_circulation_velocity(i) = 0.0d0
+            secular_shear_velocity(i) = 0.0d0
 !            rot_scr%es_advective_velocity(i) = 0.0d0
 !            rot_scr%es_diffusive_velocity(i) = 0.0d0
          else
@@ -372,14 +377,14 @@ subroutine compute_eddington_sweet_velocity(zone_min, zone_max, am_transport_con
 !            rot_scr%theta_new(i) = rot_scr%es_relaxation_factor(i)*(rot_scr%theta_mean(i)*qw- &
 !                 rot_scr%theta_prev(i))/timestep
 !            rot_scr%es_advective_velocity(i) = 0.2d0* &
-!                 (rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
+!                 (rot_scr%circulation_correction_ratio(i)*es_circulation_velocity(i)+ &
 !                 rot_scr%theta_new(i))
 !            q1 = rot_scr%difad_shear_coeff1(i)*rot_scr%omega_interface(i)**2
 !            q2 = rot_scr%difad_shear_coeff2(i)*qw
 !            q0 = rot_scr%es_shear_coeff(i)*rot_scr%omega_interface(i)**2
 !            rot_scr%es_diffusive_velocity(i) = 0.2d0*(q0+q1+q2)
-!            star%es_circulation_velocity(i) = &
-!                 rot_scr%circulation_correction_ratio(i)*star%es_circulation_velocity(i)+ &
+!            es_circulation_velocity(i) = &
+!                 rot_scr%circulation_correction_ratio(i)*es_circulation_velocity(i)+ &
 !                 rot_scr%theta_new(i)+ &
 !                 (rot_scr%es_shear_coeff(i)+rot_scr%difad_shear_coeff1(i))*qw+ &
 !                 rot_scr%difad_shear_coeff2(i)*((omega(i)-omega(i-1))/dr)**2
@@ -682,15 +687,16 @@ end subroutine compute_shear_velocities
 !       (es_mixing_scale U_ES + gsf_mixing_scale U_GSF
 !        + secular_shear_mixing_scale U_SS) r,
 !     each mechanism with its own mixing efficiency (2/91), or, with
-!     use_zahn_coupling_factor, am_diffusion_coeff times star%vfc.
+!     use_zahn_coupling_factor, am_diffusion_coeff times vfc.
 ! difad_velocity_scale and mixing_velocity_scale are legacy FW and FC.
 ! With use_constant_background_diffusion, 4 pi difad_velocity_scale
 ! constant_background_diffusion_coeff is added to am_diffusion_coeff
 ! only (MHP 9/14, 8/13). With no_am_transport_in_core,
 ! am_diffusion_coeff is zero everywhere and only the mixing remains.
 subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
-     am_diffusion_coeff, mixing_diffusion_coeff)
-      use star_info_lib, only: star, json
+     am_diffusion_coeff, mixing_diffusion_coeff, es_circulation_velocity, &
+     gsf_circulation_velocity, secular_shear_velocity, vfc)
+      use star_info_lib, only: json
       use physical_constants
       implicit none
       double precision, intent(in) :: radius_mid_prev(json)
@@ -698,6 +704,11 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
       double precision, intent(out) :: radius_mid(json)
       double precision, intent(out) :: am_diffusion_coeff(json), &
            mixing_diffusion_coeff(json)
+! the velocities of circulation_velocities (cm/s) and the coupling
+! factor of zahn_coupling_factor
+      double precision, intent(in) :: es_circulation_velocity(json), &
+           gsf_circulation_velocity(json), secular_shear_velocity(json), &
+           vfc(json)
       integer :: i
       double precision :: con1, con2
 
@@ -710,20 +721,20 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
          if (.not.rotation_settings%use_zahn_coupling_factor) then
             con2 = con1*rotation_settings%mixing_velocity_scale
             do i = 2,num_zones
-               am_diffusion_coeff(i)=con1*(star%es_circulation_velocity(i)+ &
-                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i)=con1*(es_circulation_velocity(i)+ &
+                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
                     radius_mid(i)
                mixing_diffusion_coeff(i)=con2*(rotation_settings%es_mixing_scale* &
-                    star%es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
-                    star%gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
-                    star%secular_shear_velocity(i))*radius_mid(i)
+                    es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
+                    gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
+                    secular_shear_velocity(i))*radius_mid(i)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(star%es_circulation_velocity(i)+ &
-                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(es_circulation_velocity(i)+ &
+                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
             end do
          end if
       else
@@ -731,19 +742,19 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
             con2 = con1*rotation_settings%mixing_velocity_scale
             do i = 2,num_zones
                am_diffusion_coeff(i)=con1*(rotation_settings%constant_background_diffusion_coeff+ &
-                    (star%es_circulation_velocity(i)+star%gsf_circulation_velocity(i)+ &
-                    star%secular_shear_velocity(i))*radius_mid(i))
+                    (es_circulation_velocity(i)+gsf_circulation_velocity(i)+ &
+                    secular_shear_velocity(i))*radius_mid(i))
                mixing_diffusion_coeff(i)=con2*(rotation_settings%es_mixing_scale* &
-                    star%es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
-                    star%gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
-                    star%secular_shear_velocity(i))*radius_mid(i)
+                    es_circulation_velocity(i)+rotation_settings%gsf_mixing_scale* &
+                    gsf_circulation_velocity(i)+rotation_settings%secular_shear_mixing_scale* &
+                    secular_shear_velocity(i))*radius_mid(i)
             end do
          else
             do i = 2,num_zones
-               am_diffusion_coeff(i) = con1*(star%es_circulation_velocity(i)+ &
-                    star%gsf_circulation_velocity(i)+star%secular_shear_velocity(i))* &
+               am_diffusion_coeff(i) = con1*(es_circulation_velocity(i)+ &
+                    gsf_circulation_velocity(i)+secular_shear_velocity(i))* &
                     radius_mid(i)
-               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*star%vfc(i)
+               mixing_diffusion_coeff(i) = am_diffusion_coeff(i)*vfc(i)
 ! The background coefficient is added after the mixing coefficient is
 ! formed, so it does not mix (MHP 8/13).
                am_diffusion_coeff(i) = am_diffusion_coeff(i)+ &
@@ -761,7 +772,7 @@ subroutine diffusion_velocity_scales(radius_mid_prev, num_zones, radius_mid, &
 end subroutine diffusion_velocity_scales
 
 ! ---------------------------------------------------------------
-! The coupling factor star%vfc between the angular momentum and the
+! The coupling factor vfc between the angular momentum and the
 ! composition diffusion coefficients, with the prescription of Zahn
 ! (1992), at the interfaces zone_min..zone_max:
 !   vfc = min(1, f_c U/|2V - alpha U|),
@@ -771,10 +782,10 @@ end subroutine diffusion_velocity_scales
 ! and f_c = mixing_velocity_scale (legacy FC) plays the role of C/30.
 ! vfc = 0 where U <= 0, and everywhere if f_c <= 0 (no mixing).
 subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_min, &
-     zone_max, angular_velocity)
+     zone_max, angular_velocity, vfc)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
@@ -788,6 +799,8 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
            diffusion_velocity(json)
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: angular_velocity(json)
+! vfc: the coupling factor, set at the interfaces zone_min..zone_max
+      double precision, intent(inout) :: vfc(json)
 
       double precision :: half_dlnj_dlnr(json), circ_velocity(json)
       integer :: zone_index
@@ -802,7 +815,7 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
 
       if (rotation_settings%mixing_velocity_scale.le.0.0D0) then
          do zone_index = zone_min, zone_max
-            star%vfc(zone_index) = 0.0D0
+            vfc(zone_index) = 0.0D0
          end do
          return
       endif
@@ -865,12 +878,12 @@ subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_mi
 !   vfc = f_c/max(|2V - alpha U|/U, f_c).
       do zone_index = zone_min, zone_max
          if (diffusion_velocity(zone_index).le.0.0D0) then
-            star%vfc(zone_index) = 0.0D0
+            vfc(zone_index) = 0.0D0
          else
             denom_test = max(abs(circ_velocity(zone_index)- &
                  half_dlnj_dlnr(zone_index)*diffusion_velocity(zone_index))/ &
                  diffusion_velocity(zone_index),rotation_settings%mixing_velocity_scale)
-            star%vfc(zone_index) = rotation_settings%mixing_velocity_scale/denom_test
+            vfc(zone_index) = rotation_settings%mixing_velocity_scale/denom_test
          endif
       end do
 

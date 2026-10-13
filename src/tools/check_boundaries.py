@@ -240,12 +240,12 @@ STAR_ACCESS_BUDGET = {
     # writers the stitched model, which moved from module variables into
     # the star (s%stitched)
     "io": (476, 10),
-    # rotation: +18 (2026-10) for omega_mid, which outlives the step and
-    # so moved from the scratch record rot_scr into the star; +12 for the
-    # disk-gate age the omega_profile calls now pass (until rotation
-    # takes the star as an argument)
-    "rotation": (435, 10),
-    "setup": (152, 3),
+    # rotation (2026-10): circulation, magnetic braking, viscos and the
+    # grids are star-free; the drivers still use the global
+    "rotation": (372, 5),
+    # setup: +4 (2026-10) for the solar units the rotation settings record
+    # now carries
+    "setup": (156, 3),
     "state": (738, 1),
 }
 

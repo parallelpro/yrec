@@ -23,15 +23,28 @@
 ! A step whose first-guess loss exceeds Omega is split into sub-steps;
 ! in each, Omega solves Omega = Omega_0 - dOmega(Omega_avg) by averaging
 ! the explicit and implicit solutions (MHP 12/91).
+! The laws read the controls and the solar units from rotation_settings
+! and the step's state from a wind_conditions record; never the star.
 module magnetic_braking
       use rotation_configuration, only: rotation_settings
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants, only: ln10, cgl, log10_radius_from_l_teff
       use math_lib
       implicit none
       private
       public :: brake_convection_zone, compute_solid_body_braking
+
+! The step's state the laws read (the caller fills it from the star):
+! the convective turnover time tau_cz (s) at the start and the end of the
+! step, log10 of the photospheric pressure (dyn/cm^2) at the start and
+! the end, and the fraction of the step elapsed at the current rotation
+! sub-step, at which the Matt law interpolates both.
+      type, public :: wind_conditions
+         real(dp) :: turnover_timescale_start = 0.0d0, turnover_timescale_end = 0.0d0
+         real(dp) :: log_pphot_start = 0.0d0, log_pphot_end = 0.0d0
+         real(dp) :: step_fraction = 0.0d0
+      end type wind_conditions
 
 ! The law in force for one call, and what its torque needs.
       type :: braking_law
@@ -44,6 +57,8 @@ module magnetic_braking
          real(dp) :: fsun = 0.0d0, log10_radius = 0.0d0
 ! Kawaler: R and the fixed mass-loss rate
          real(dp) :: total_radius_cm = 0.0d0, mass_loss_rate_msun_yr = 0.0d0
+! the step's state (the caller's)
+         type(wind_conditions) :: conditions
       end type braking_law
 
 contains
@@ -55,12 +70,13 @@ contains
 ! cz_mass_bottom..cz_mass_top, moment of inertia I_cz) down over
 ! full_timestep from omega_surface, and subtracts the j/m lost from each
 ! of its zones. The Kawaler law acts only with wind_loss_active; the
-! Matt law always does. ierr = 1: the Kawaler saturation needs tau_cz
-! and it is undefined.
+! Matt law always does. conditions: the step's tau_cz, P_phot and elapsed
+! fraction. ierr = 1: the Kawaler saturation needs tau_cz and it is
+! undefined.
 subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bottom, &
      cz_mass_top, start_zone, end_zone, wind_loss_active, omega_surface, &
      total_mass_msun, log_teff, cz_moment_of_inertia, &
-     specific_angular_momentum, ierr)
+     specific_angular_momentum, conditions, ierr)
       real(dp), intent(in) :: log_luminosity_lsun, full_timestep, &
            cz_mass_bottom, cz_mass_top
       integer, intent(in) :: start_zone, end_zone
@@ -68,6 +84,7 @@ subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bot
       real(dp), intent(in) :: omega_surface, total_mass_msun, log_teff, &
            cz_moment_of_inertia
       real(dp), intent(inout) :: specific_angular_momentum(json)
+      type(wind_conditions), intent(in) :: conditions
       integer, intent(out) :: ierr
       type(braking_law) :: law
       real(dp) :: domega_test, sub_timestep
@@ -77,6 +94,7 @@ subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bot
       real(dp) :: cz_mass, delta_j_per_mass
 
       ierr = 0
+      law%conditions = conditions
       law%cz_moment_of_inertia = cz_moment_of_inertia
       law%total_mass_msun = total_mass_msun
       if (rotation_settings%use_pmm_wind_law) then
@@ -136,9 +154,10 @@ end subroutine brake_convection_zone
 ! full_timestep from the torque at the start of the step (at omega_old)
 ! and at its end (at omega_surface). domega_end is averaged with its
 ! previous value after the first iteration of the caller's solve.
+! conditions: the step's tau_cz, P_phot and elapsed fraction.
 subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_moment_of_inertia, &
      iteration_number, omega_surface, total_mass_msun, log_teff, &
-     omega_old, domega_start, domega_end, ierr)
+     omega_old, domega_start, domega_end, conditions, ierr)
       real(dp), intent(in) :: log_luminosity_lsun, full_timestep, &
            cz_moment_of_inertia
       integer, intent(in) :: iteration_number
@@ -146,18 +165,20 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
       real(dp), intent(in) :: omega_old
       real(dp), intent(out) :: domega_start
       real(dp), intent(inout) :: domega_end
+      type(wind_conditions), intent(in) :: conditions
       integer, intent(out) :: ierr
       type(braking_law) :: law
       real(dp) :: omega_first, omega_now, wind_coefficient, fcen1, fcen2, &
            domega_end_this_iter
 
       ierr = 0
+      law%conditions = conditions
       law%cz_moment_of_inertia = cz_moment_of_inertia
       omega_first = omega_old
       omega_now = omega_surface
       if (rotation_settings%use_pmm_wind_law) then
          if (rotation_settings%scale_by_rossby_number) then
-            law%turnover_timescale = interpolated_turnover_timescale()
+            law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
             law%omega_saturation = rotation_settings%wind_saturation_omega*rotation_settings%pmm_solar_turnover_timescale/ &
                  law%turnover_timescale
 ! with B-field scaling, Omega and Omega_sat both carry tau_cz/tau_cz(Sun)
@@ -172,14 +193,15 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
          else
             law%omega_saturation = rotation_settings%wind_saturation_omega
          endif
-         law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
+         law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff, &
+              law%conditions)
          wind_coefficient = (full_timestep/cz_moment_of_inertia)*rotation_settings%wind_constant* &
               law%structure_factor
 ! the solar centrifugal term, without the 1/G of brake_convection_zone's:
 ! the original divided by exp(ln10*gl) with gl an unset local (zero)
-         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*star%solar_radius_cgs**3/star%solar_mass_cgs
+         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/rotation_settings%solar_mass_cgs
          law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
-              star%log10_solar_luminosity)
+              rotation_settings%log10_solar_luminosity)
          fcen1 = matt_centrifugal_factor(omega_old, law%fsun, law%log10_radius, total_mass_msun)
          fcen2 = matt_centrifugal_factor(omega_surface, law%fsun, law%log10_radius, total_mass_msun)
       else
@@ -188,7 +210,7 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
          call set_kawaler_radius(log_luminosity_lsun, log_teff, law)
          wind_coefficient = full_timestep/cz_moment_of_inertia*rotation_settings%wind_constant* &
               pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
-              *pow((law%total_radius_cm/star%solar_radius_cgs), rotation_settings%wind_radius_exponent)*pow(total_mass_msun, rotation_settings%wind_mass_exponent)
+              *pow((law%total_radius_cm/rotation_settings%solar_radius_cgs), rotation_settings%wind_radius_exponent)*pow(total_mass_msun, rotation_settings%wind_mass_exponent)
          fcen1 = 1.0d0
          fcen2 = 1.0d0
       endif
@@ -213,7 +235,7 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
 
       law%matt = .true.
       if (rotation_settings%scale_by_rossby_number) then
-         law%turnover_timescale = interpolated_turnover_timescale()
+         law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
          if (rotation_settings%scale_by_b_field) then
             law%omega_saturation = rotation_settings%wind_saturation_omega
          else
@@ -223,10 +245,11 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       else
          law%omega_saturation = rotation_settings%wind_saturation_omega
       endif
-      law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
-      law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*star%solar_radius_cgs**3/exp(ln10*cgl)/star%solar_mass_cgs
+      law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff, &
+              law%conditions)
+      law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/exp(ln10*cgl)/rotation_settings%solar_mass_cgs
       law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
-           star%log10_solar_luminosity)
+           rotation_settings%log10_solar_luminosity)
 end subroutine set_matt_law
 
 ! The Kawaler law's saturation. MHP 3/09: Omega_sat > 1 means
@@ -244,10 +267,10 @@ subroutine set_kawaler_law(check_transport, law, ierr)
       if (check_transport .and. .not. rotation_settings%instability_transport_active) then
          law%omega_saturation = rotation_settings%wind_saturation_omega
       else if (rotation_settings%wind_saturation_omega > 1.0d0) then
-         if (star%convective_turnover_timescale > 1.0d0) then
-            law%omega_saturation = rotation_settings%wind_saturation_omega/star%convective_turnover_timescale
+         if (law%conditions%turnover_timescale_end > 1.0d0) then
+            law%omega_saturation = rotation_settings%wind_saturation_omega/law%conditions%turnover_timescale_end
          else
-            write(*,911)rotation_settings%wind_saturation_omega,star%convective_turnover_timescale
+            write(*,911)rotation_settings%wind_saturation_omega,law%conditions%turnover_timescale_end
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
             ierr = 1
             return
@@ -262,7 +285,7 @@ subroutine set_kawaler_radius(log_luminosity_lsun, log_teff, law)
       real(dp), intent(in) :: log_luminosity_lsun, log_teff
       type(braking_law), intent(inout) :: law
       law%total_radius_cm = exp(ln10*log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
-           star%log10_solar_luminosity))
+           rotation_settings%log10_solar_luminosity))
       law%mass_loss_rate_msun_yr = 2.0d-14
 end subroutine set_kawaler_radius
 
@@ -288,7 +311,7 @@ real(dp) function domega(law, dt, omega, initial)
       else
          domega = (dt/law%cz_moment_of_inertia)*rotation_settings%wind_constant* &
               pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
-              *omega*pow((law%total_radius_cm/star%solar_radius_cgs), rotation_settings%wind_radius_exponent)* &
+              *omega*pow((law%total_radius_cm/rotation_settings%solar_radius_cgs), rotation_settings%wind_radius_exponent)* &
               pow(law%total_mass_msun, rotation_settings%wind_mass_exponent) &
               *pow(min(omega,law%omega_saturation), (rotation_settings%wind_law_omega_exponent-1.0d0))
       end if
@@ -298,18 +321,21 @@ end function domega
 ! M**exm (R/Rsun)**exr (L/Lsun)**exl (P_phot/P_phot,Sun)**expr
 ! (tau_cz/tau_cz,Sun)**extau (the last only with Rossby scaling), with
 ! P_phot and tau_cz interpolated in the step.
-real(dp) function matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff)
+real(dp) function matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff, &
+     conditions)
       real(dp), intent(in) :: total_mass_msun, log_luminosity_lsun, log_teff
+      type(wind_conditions), intent(in) :: conditions
       real(dp) :: radius_rsun, luminosity_lsun, photospheric_pressure_ratio, &
            turnover_ratio
 
       radius_rsun = exp(ln10*log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
-           star%log10_solar_luminosity))/star%solar_radius_cgs
+           rotation_settings%log10_solar_luminosity))/rotation_settings%solar_radius_cgs
       luminosity_lsun = exp10(log_luminosity_lsun)
-      photospheric_pressure_ratio = exp10((star%pphot0+star%fracstep*(star%pphot-star%pphot0)))/ &
+      photospheric_pressure_ratio = exp10((conditions%log_pphot_start+conditions%step_fraction* &
+           (conditions%log_pphot_end-conditions%log_pphot_start)))/ &
            (exp10(rotation_settings%pmm_solar_pressure))
       if (rotation_settings%scale_by_rossby_number) then
-         turnover_ratio = interpolated_turnover_timescale()/rotation_settings%pmm_solar_turnover_timescale
+         turnover_ratio = interpolated_turnover_timescale(conditions)/rotation_settings%pmm_solar_turnover_timescale
       else
          turnover_ratio = 1.
       endif
@@ -324,14 +350,15 @@ real(dp) function matt_centrifugal_factor(omega, fsun, log10_radius, total_mass_
       real(dp), intent(in) :: omega, fsun, log10_radius, total_mass_msun
       real(dp) :: f
       f = 0.5*omega**2*exp(ln10*(3.0*log10_radius-cgl))/ &
-           total_mass_msun/star%solar_mass_cgs
+           total_mass_msun/rotation_settings%solar_mass_cgs
       matt_centrifugal_factor = pow(((rotation_settings%wind_centrifugal_constant**2+fsun)/(rotation_settings%wind_centrifugal_constant**2+f)), rotation_settings%wind_centrifugal_exponent)
 end function matt_centrifugal_factor
 
 ! tau_cz interpolated in the step (MHP 8/17)
-real(dp) function interpolated_turnover_timescale()
-      interpolated_turnover_timescale = star%convective_turnover_timescale_old+ &
-           star%fracstep*(star%convective_turnover_timescale-star%convective_turnover_timescale_old)
+real(dp) function interpolated_turnover_timescale(conditions)
+      type(wind_conditions), intent(in) :: conditions
+      interpolated_turnover_timescale = conditions%turnover_timescale_start+ &
+           conditions%step_fraction*(conditions%turnover_timescale_end-conditions%turnover_timescale_start)
 end function interpolated_turnover_timescale
 
 end module magnetic_braking

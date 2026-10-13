@@ -145,7 +145,8 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
          s%conv_vel(im) = convective_velocity
       end do
 ! The thermal diffusivity and kinematic viscosity.
-      call viscos(composition, log_density, log_temperature, num_zones)
+      call viscos(composition, log_density, log_temperature, s%opacity_zone, &
+           s%cp, num_zones, s%visc, s%thdif)
 end subroutine compute_shell_physics
 
 end module shell_physics

@@ -65,7 +65,7 @@ subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
@@ -319,7 +319,7 @@ subroutine interpolate_to_interface(first_point, interface_idx)
       rot_scr%qdt_interface(interface_idx)=interp4(mid_scr%qdt, first_point, interface_idx)
       rot_scr%mass_interface(interface_idx)=interp4(mass_unlogged, first_point, interface_idx)
       rot_scr%eps_total_interface(interface_idx)=interp4(mid_scr%eps_total, first_point, interface_idx)
-      rot_scr%luminosity_interface(interface_idx)=star%solar_luminosity_cgs*(interp4(luminosity, first_point, &
+      rot_scr%luminosity_interface(interface_idx)=rotation_settings%solar_luminosity_cgs*(interp4(luminosity, first_point, &
            interface_idx))
       rot_scr%gravity_factor_interface(interface_idx)=interp4(local_gravity, first_point, interface_idx)
       specific_heat_interface(interface_idx)=interp4(mid_scr%cp, first_point, interface_idx)

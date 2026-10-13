@@ -43,7 +43,7 @@ program test_rotation
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: star, json
       use physical_constants, only: csig, csigl, cgl
-      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking
+      use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
       use secular_transport, only: solve_angular_momentum_transport
       use stability_coefficients, only: rotation_stability_setup
@@ -137,11 +137,11 @@ program test_rotation
          dt = 1.0d16
          domega_end = 0.0d0
          call compute_solid_body_braking(0.0d0, dt, 1.0d54, 1, 0.9d0*omega, 1.0d0, &
-              3.762d0, omega, domega_start, domega_end, ierr)
+              3.762d0, omega, domega_start, domega_end, wind_now(), ierr)
          write(*,'(a,i2,a,i2,2(1pe24.15))') "case", k, " iteration 1 ierr", ierr, &
               domega_start, domega_end
          call compute_solid_body_braking(0.0d0, dt, 1.0d54, 2, 0.95d0*omega, 1.0d0, &
-              3.762d0, omega, domega_start, domega_end, ierr)
+              3.762d0, omega, domega_start, domega_end, wind_now(), ierr)
          write(*,'(a,i2,a,i2,2(1pe24.15))') "case", k, " iteration 2 ierr", ierr, &
               domega_start, domega_end
       end do
@@ -152,6 +152,16 @@ program test_rotation
       write(*,'(a)') "test_rotation: done"
 
 contains
+
+! The step's state the wind laws read, from the star as the test set it.
+function wind_now() result(conditions)
+      type(wind_conditions) :: conditions
+      conditions = wind_conditions( &
+           turnover_timescale_start=star%convective_turnover_timescale_old, &
+           turnover_timescale_end=star%convective_turnover_timescale, &
+           log_pphot_start=star%pphot0, log_pphot_end=star%pphot, &
+           step_fraction=star%fracstep)
+end function wind_now
 
 ! The convection zone: zones 3-6 of the model, 0.02 Msun with moment of
 ! inertia 1e54 g cm^2, rotating at omega; prints its j/m after the
@@ -166,7 +176,7 @@ subroutine cz_case(label, omega_surface, timestep, wind_flag)
          j(zone) = 1.0d16*zone
       end do
       call brake_convection_zone(0.0d0, timestep, 0.98d0*msun, 1.0d0*msun, 3, 6, wind_flag, &
-           omega_surface, 1.0d0, 3.762d0, 1.0d54, j, ierr)
+           omega_surface, 1.0d0, 3.762d0, 1.0d54, j, wind_now(), ierr)
       write(*,'(a,a,a,i2)') "cz ", label, "  ierr", ierr
       write(*,'(4(1pe24.15))') j(2:7)
 end subroutine cz_case
@@ -304,7 +314,8 @@ subroutine structure_check()
          star%cp(i) = 3.0d8*(1.0d0 + dble(i)/dble(n))
          star%opacity_zone(i) = 1.0d0 + 100.0d0*(dble(i)/dble(n))**4
       end do
-      call viscos(xa, log_rho, log_t, n)
+      call viscos(xa, log_rho, log_t, star%opacity_zone, star%cp, n, &
+           star%visc, star%thdif)
       write(*,'(a)') "zone  viscosity thermal-diffusivity"
       do s = 1, size(shown)
          write(*,'(i4,2(1pe24.15))') shown(s), star%visc(shown(s)), star%thdif(shown(s))
@@ -402,6 +413,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       integer :: i, it, s
       star%nz = n
       star%solar_luminosity_cgs = 3.8515d33
+      rotation_settings%solar_luminosity_cgs = star%solar_luminosity_cgs
       do i = 1, n
          f = dble(i - 1)/dble(n - 1)
          r(i) = rsun*(0.002d0 + 0.998d0*f)
@@ -474,10 +486,15 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
             end do
          end if
          call circulation_velocities(log_r, radius, zmin, zmax, it, convective, n, w, active, &
-              dw_dlnr, shear_limit, v_total, lum_total, log_p)
+              dw_dlnr, shear_limit, v_total, lum_total, log_p, &
+              star%es_circulation_velocity, star%gsf_circulation_velocity, &
+              star%secular_shear_velocity)
       end do
-      if (zahn) call zahn_coupling_factor(log_rho, radius, v_total, zmin, zmax, w)
-      call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix)
+      if (zahn) call zahn_coupling_factor(log_rho, radius, v_total, zmin, zmax, w, &
+           star%vfc)
+      call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix, &
+           star%es_circulation_velocity, star%gsf_circulation_velocity, &
+           star%secular_shear_velocity, star%vfc)
       write(*,'(a)') "## "//label
       write(*,'(a,i2,a,l2,a,i3)') "quadrupole ierr", ierr, "  transport active", active, &
            "  zone_max", zmax

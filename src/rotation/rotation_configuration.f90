@@ -96,6 +96,11 @@ module rotation_configuration
 ! convection zones (job%lovstm) and the envelope's overshoot extent
          logical :: use_extended_composition = .false., intermediate_overshoot = .false.
          real(dp) :: overshoot_alpha_envelope = 0.0d0
+! the solar units: the luminosity (erg/s; star%solar_luminosity_cgs,
+! which a Monte-Carlo run rescales), the unit of the luminosity_lsun
+! arrays, and its log10; the radius (cm) and the mass (g)
+         real(dp) :: solar_luminosity_cgs = 0.0d0, log10_solar_luminosity = 0.0d0
+         real(dp) :: solar_radius_cgs = 0.0d0, solar_mass_cgs = 0.0d0
       end type rotation_settings_t
 
       type(rotation_settings_t), save :: rotation_settings

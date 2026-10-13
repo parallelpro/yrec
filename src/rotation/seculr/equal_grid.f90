@@ -96,7 +96,7 @@ end subroutine interp_edge_coeff
 subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
      enclosed_mass, epsm, surface_luminosity_lsun, zone_begin, ntab, num_eq_points, &
      chi, eval_x, table_x, table_y, eval_y)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use physical_constants
       use numerics_lib, only: osplin
@@ -116,7 +116,7 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
 ! dl L_tot in erg/s.
       mass_scale = rotation_settings%chi_grid_scale(ichi_dm_max)
       luminosity_scale = rotation_settings%chi_grid_scale(ichi_dl_max)*surface_luminosity_lsun* &
-           star%solar_luminosity_cgs
+           rotation_settings%solar_luminosity_cgs
       pressure_scale = rotation_settings%chi_grid_scale(ichi_dp_core_max)
       do i = 1, ntab
          ii = zone_begin + i - 1

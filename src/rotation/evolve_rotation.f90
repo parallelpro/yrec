@@ -39,7 +39,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
       use rotation_scratch_lib
       use mid_timestep_model
       use secular_transport
-      use magnetic_braking, only: brake_convection_zone
+      use magnetic_braking, only: brake_convection_zone, wind_conditions
       use convection_lib, only: find_convection_zones, homogenize_convection_zones
       use star_info_lib, only: star, json
       use physical_constants
@@ -236,7 +236,7 @@ subroutine spin_down_without_transport()
               cz_mass_top,envelope_boundary_zone,star%nz,wind_loss_active, &
               omega_surface, &
               star%star_mass,star%log_Teff,moment_of_inertia_cz, &
-              star%j_rot, ierr)
+              star%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
 ! the convection zone's new rotation after the wind
          iend = star%nz
@@ -307,7 +307,7 @@ subroutine brake_surface_convection_zone()
          call brake_convection_zone(star%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
               envelope_boundary_zone,star%nz,wind_loss_active,omega_surface, &
               star%star_mass,star%log_Teff,moment_of_inertia_cz, &
-              star%j_rot, ierr)
+              star%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
          iend = star%nz
          call enforce_rotation_profile(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
@@ -398,6 +398,19 @@ subroutine burn_light_elements_over_substep()
          end do
       end do
 end subroutine burn_light_elements_over_substep
+
+
+! ---------------------------------------------------------------
+! The step's state the wind laws read: tau_cz and log P_phot at the
+! start and the end of the step, and the fraction of it elapsed.
+function wind_now() result(conditions)
+      type(wind_conditions) :: conditions
+      conditions = wind_conditions( &
+           turnover_timescale_start=star%convective_turnover_timescale_old, &
+           turnover_timescale_end=star%convective_turnover_timescale, &
+           log_pphot_start=star%pphot0, log_pphot_end=star%pphot, &
+           step_fraction=star%fracstep)
+end function wind_now
 
 end subroutine evolve_angular_momentum
 
