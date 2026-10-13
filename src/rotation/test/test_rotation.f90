@@ -45,7 +45,7 @@ program test_rotation
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
-      use secular_transport, only: solve_angular_momentum_transport
+      use am_transport_coefficients, only: solve_angular_momentum_transport
       use stability_coefficients, only: rotation_stability_setup
       implicit none
       double precision, parameter :: msun = 1.989d33

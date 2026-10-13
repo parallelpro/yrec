@@ -18,7 +18,7 @@ contains
 ! opacity (cm^2/g) and c_P (erg/g/K) of each zone.
 subroutine viscos(composition, log_density, log_temperature, opacity, cp, &
      num_zones, visc, thdif)
-      use star_info_lib, only: json, i_metals
+      use composition_layout, only: json, i_metals
       use physical_constants
       use math_lib
       implicit none

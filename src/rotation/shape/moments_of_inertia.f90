@@ -30,7 +30,7 @@ contains
 ! a sphere, I = (2/5) dm r^2 at r = sqrt(r(1) r(2)).
 subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass, zone_start, &
      zone_end, omega, mean_radius, moment_of_inertia, di_domega)
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants
       use math_lib
       implicit none

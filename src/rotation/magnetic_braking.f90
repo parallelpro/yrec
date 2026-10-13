@@ -28,7 +28,7 @@
 module magnetic_braking
       use rotation_configuration, only: rotation_settings
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants, only: ln10, cgl, log10_radius_from_l_teff
       use math_lib
       implicit none

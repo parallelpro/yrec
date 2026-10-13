@@ -39,7 +39,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
      mean_gravity, r0, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants
       use numerics_lib, only: polint
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
@@ -173,7 +173,7 @@ end subroutine rotation_shape_factors
 ! from zone zone_start - 1, using its eta2 and r0 from an earlier call.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
      omega, eta2, r0)
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants
       use math_lib
       implicit none

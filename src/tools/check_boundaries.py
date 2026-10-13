@@ -157,6 +157,19 @@ STAR_BLIND_FILES = [
     # the rezone's regridding arithmetic (2026-10, GUIDELINES star rule 6)
     "core/model/regridding.f90",
     "atm/t_tau_relations.f90",
+    # rotation's kernels (2026-10, star rule 6; test_rotation_kernels):
+    # the rotation curve from j, the moments of inertia, the shape and
+    # its quadratures, the angular momentum diffusion system and its
+    # solve, the wind laws, the viscosity, the convection zones for the
+    # transport
+    "rotation/omega_profile.f90",
+    "rotation/shape/moments_of_inertia.f90",
+    "rotation/shape/rotating_shape.f90",
+    "rotation/shape/shell_quadrature.f90",
+    "rotation/seculr/am_transport_coefficients.f90",
+    "rotation/magnetic_braking.f90",
+    "rotation/viscosity.f90",
+    "rotation/am_regions.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their

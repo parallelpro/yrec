@@ -12,7 +12,7 @@
 module rotational_mixing
       implicit none
       private
-      public :: diffuse_composition_driver
+      public :: diffuse_composition_driver, composition_diffusion_coeffs
 
 contains
 

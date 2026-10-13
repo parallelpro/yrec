@@ -37,7 +37,7 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, am_transport_convective_flag, num_zones, &
      eta_squared, moment_of_inertia, omega, qiw, mean_radius, &
      disk_gate_age_gyr, inertia_tolerance)
-      use star_info_lib, only: json
+      use composition_layout, only: json
 
       implicit none
 
@@ -126,7 +126,7 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: shape
 
-      use star_info_lib, only: json
+      use composition_layout, only: json
       implicit none
 
       double precision, intent(in) :: log_density(json)
@@ -249,7 +249,7 @@ end subroutine solid_body_omega
 subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_radius, &
      log_mass, shell_mass, istart, iend, eta_squared, moment_of_inertia, &
      omega, qiw, mean_radius, num_zones, disk_gate_age_gyr, inertia_tolerance)
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants
       use math_lib
       implicit none

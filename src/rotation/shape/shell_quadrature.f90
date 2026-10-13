@@ -13,7 +13,7 @@
 !       surface, with the effective gravity g and the area element from
 !       equipotential_integrand (legacy func).
 module shell_quadrature
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use physical_constants
       use math_lib
       implicit none

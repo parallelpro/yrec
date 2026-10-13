@@ -23,7 +23,7 @@ subroutine am_convective_regions(composition, log_density, log_pressure, log_rad
      am_transport_convective_flag, radiative_zone_bounds, &
      convective_zone_bounds, num_radiative_zones, num_convective_zones, &
      overshoot_bottom, overshoot_top, ierr)
-      use star_info_lib, only: json
+      use composition_layout, only: json
       use convection_lib, only: find_convection_zones
       implicit none
 

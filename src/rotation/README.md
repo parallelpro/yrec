@@ -9,7 +9,9 @@ This directory evolves a star's rotation over each timestep:
 
 Rotation has no facade: by the author's decision, core and setup use its modules by name. `tools/check_boundaries.py` lists the seven procedures they may call: `evolve_angular_momentum`, `omega_from_j`, `rotation_shape_factors`, `zone_moments_of_inertia`, `am_convective_regions`, `viscos` and `set_rotation_settings`.
 
-Rotation reads its controls from a settings record, `rotation_settings` (module `rotation_configuration`), never from `star%ctrl` or `star%job` (the checker enforces this). The star layer builds the record from the controls (`setup/rotation_settings_setup`), and `run_yrec` installs it at the start of every run card. The star's state (ω, J, the structure) is still read from `star%`.
+Rotation reads its controls, and the solar units, from a settings record, `rotation_settings` (module `rotation_configuration`), never from `s%ctrl` or `s%job` (the checker enforces this). The star layer builds the record from the controls (`setup/rotation_settings_setup`), and `run_yrec` installs it at the start of every run card.
+
+The star comes in as an argument: the four drivers (`evolve_angular_momentum`, `advance_rotation_substep` and `burn_and_settle`, `apply_secular_transport`, `check_angular_momentum` and `check_composition`) take `type(star_info) :: s`, as core's procedures do, and nothing in rotation names the global `star`. Everything else is star-free: the drivers pass what it needs as arguments (the wind laws, for one, get the step's turnover times and photospheric pressures in a `wind_conditions` record). The kernels that touch no scratch either are listed in `check_boundaries.py`'s `STAR_BLIND_FILES` and tested by `test_rotation_kernels` (§4). `rotation_scratch_lib` is rotation's alone: no file outside `rotation/` may use it.
 
 ---
 
@@ -30,8 +32,8 @@ Rotation reads its controls from a settings record, `rotation_settings` (module 
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |
 | `shell_quadrature` | The two quadratures of the distortion integral. |
 | **seculr/** | |
-| `secular_transport` | `apply_secular_transport`: one sub-step of transport, and the tridiagonal angular momentum solve. |
-| `am_transport_coefficients` | The diffusion equation's tridiagonal system (and, commented out, the advection-diffusion transport). |
+| `secular_transport` | `apply_secular_transport`: one sub-step of transport. |
+| `am_transport_coefficients` | The angular momentum diffusion equation's tridiagonal system (`am_diffusion_coeffs`; and, commented out, the advection-diffusion transport) and its solve (`solve_angular_momentum_transport`). |
 | `circulation` | The circulation and instability velocities, their scales, the Zahn coupling factor, the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
@@ -74,8 +76,17 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - the angular momentum solve;
 - the rotating structure on a synthetic model: the moments of inertia, ω from J, the shape factors and the viscosity.
 
+`test_rotation_kernels` (`pytest test_rotation_kernels.py`) checks the kernels against the laws they keep, on a synthetic model:
+- the moments of inertia and the shape factors in the spherical limit, and their growth with ω (1 − fp as ω², 1 − ft as ω⁴);
+- `omega_from_j` gives each radiative zone and the convective envelope back their angular momentum, the envelope as a solid body;
+- the angular momentum diffusion conserves J without a wind, loses exactly the wind's surface term with one, and keeps a solid body;
+- the composition mixing conserves each species and keeps a uniform composition;
+- the Kawaler law's ω exponents below and above saturation.
+
 The decks pin the full step: the rotating solar deck, the five rotating configuration-matrix decks, and the three testsuite rotating-mixing decks (differential and solid body). A deliberate change means regenerating `rotation/test/expected_test_rotation.out`.
 
 **Add a control:** add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
+
+**Add a transport mechanism or a kernel:** keep it star-free (arguments in, results out), add its file to `STAR_BLIND_FILES`, and give it a check in `test_rotation_kernels` that a mistake would break (a conservation law, a limit, a scaling).
 
 **Add a braking law:** give it a control (as above), set its coefficients in `magnetic_braking`'s law setup, and add its cases to `test_rotation`'s braking checks (which set `rotation_settings` directly).

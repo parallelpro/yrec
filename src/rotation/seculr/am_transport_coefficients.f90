@@ -12,7 +12,7 @@ module am_transport_coefficients
       use rotation_configuration, only: rotation_settings
       implicit none
       private
-      public :: am_diffusion_coeffs
+      public :: am_diffusion_coeffs, solve_angular_momentum_transport
 
 contains
 
@@ -65,7 +65,7 @@ subroutine am_diffusion_coeffs(diffusion_coeff, grid_spacing, timestep, &
      eq_moment_of_inertia, eq_angular_momentum, eq_omega, num_eq_points, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      sub_diag, diag, super_diag, rhs, surface_wind_loss_term)
-      use star_info_lib, only: json
+      use composition_layout, only: json
       implicit none
 
       double precision, intent(in) :: diffusion_coeff(json)
@@ -827,5 +827,77 @@ end subroutine am_diffusion_coeffs
 !      end do
 !      return
 !end subroutine banded_solver
+
+!----------------------------------------------------------------------
+! solve_angular_momentum_transport (legacy tridia)
+!----------------------------------------------------------------------
+! Solves the tridiagonal system of the angular momentum diffusion
+! equation on n grid points by the Thomas algorithm. sub_diag, diag,
+! super_diag and rhs come from am_diffusion_coeffs: rhs is omega at the
+! start of the sub-step, the outermost point's scaled by
+! (1 + dj_n_seed/J_n) for the wind. Returns omega at the end in
+! solution, and the change of angular momentum of each point and its
+! sum,
+!   dj(k) = (solution(k) - rhs(k)) ei(k),            k < n,
+!   dj(n) = dj_n_seed + (solution(n) - rhs(n)) ei(n),
+!   sumdj = sum of dj(k),
+! with ei the points' moments of inertia and dj_n_seed the wind's loss
+! from the outermost point, -I_n (wind_loss_explicit +
+! wind_loss_implicit)/2; dj(n) is thus I_n (omega_end - omega_start)
+! when J_n = I_n omega_start. Before the back substitution solution(n)
+! is rewritten as rhs(n) (1 + (solution(n) - rhs(n))/rhs(n)), the same
+! value up to round-off. A zero pivot returns ierr = 1.
+subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
+     solution, dj_n_seed, ierr)
+      use composition_layout, only: json
+
+      integer, intent(in) :: n
+      double precision, intent(in) :: ei(json)
+      double precision, intent(out) :: dj(json)
+      double precision, intent(out) :: sumdj
+! The matrix's three diagonals and the right-hand side, from the caller;
+! the solution; dj(n)'s starting value.
+      double precision, intent(in) :: sub_diag(json), diag(json), &
+           super_diag(json), rhs(json)
+      double precision, intent(out) :: solution(json)
+      double precision, intent(in) :: dj_n_seed
+      integer, intent(out) :: ierr
+
+! The elimination's factors, gamma_elim(j) = super_diag(j-1)/bet.
+      double precision :: gamma_elim(json)
+
+      double precision :: rhs_orig(json)
+      integer :: i, j
+      double precision :: bet, fj
+
+      ierr = 0
+      dj(n) = dj_n_seed
+      do i = 1, n
+         rhs_orig(i) = rhs(i)
+      end do
+      bet = diag(1)
+      solution(1) = rhs(1)/bet
+      do j = 2, n
+         gamma_elim(j) = super_diag(j-1)/bet
+         bet = diag(j) - sub_diag(j)*gamma_elim(j)
+         if (bet.eq.0) then
+            write(*,*) 'solve_angular_momentum_transport: singular matrix'
+            ierr = 1
+            return
+         end if
+         solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
+      end do
+      dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)
+      sumdj = dj(n)
+      fj = 1.0d0+(solution(n)-rhs_orig(n))/rhs_orig(n)
+      solution(n) = rhs_orig(n)*fj
+      do j = n-1, 1, -1
+         solution(j) = solution(j) - gamma_elim(j+1)*solution(j+1)
+         dj(j) = (solution(j)-rhs_orig(j))*ei(j)
+         sumdj = sumdj + dj(j)
+      end do
+
+      return
+end subroutine solve_angular_momentum_transport
 
 end module am_transport_coefficients
