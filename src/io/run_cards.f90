@@ -115,7 +115,8 @@ subroutine interpret_kind_cards
             write(run_log_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
        end if
-         if(rescale_params(3,nkind).ge.0.0d0)  star%envelope_metal_fraction=rescale_params(3,nkind)
+! a positive rescale target sets the envelope Z (0, the default, keeps it)
+         if(rescale_params(3,nkind).gt.0.0d0)  star%envelope_metal_fraction=rescale_params(3,nkind)
 ! keep the eos-side mixture in step with the rescaled Z
          call eos_set_mixture(star%envelope_hydrogen_fraction, &
               star%envelope_metal_fraction, star%amuenv, &

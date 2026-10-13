@@ -544,6 +544,14 @@ subroutine add_points_for_x_jumps
          num_new_points = int(delta_x_over_max)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
+! More points than the arrays hold: stop with ierr, as
+! place_points_along_chi does (no check here before 2026-10).
+         if (working_num_zones+num_new_points.gt.json) then
+            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+                 working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            ierr = 1
+            return
+         end if
          do k = working_num_zones+num_new_points,j+num_new_points,-1
             new_log_mass(k) = new_log_mass(k-num_new_points)
          end do
@@ -600,6 +608,14 @@ subroutine add_points_for_z_jumps
          num_new_points = int(delta_z_over_max)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
+! More points than the arrays hold: stop with ierr, as
+! place_points_along_chi does (no check here before 2026-10).
+         if (working_num_zones+num_new_points.gt.json) then
+            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+                 working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            ierr = 1
+            return
+         end if
          do k = working_num_zones+num_new_points,j+num_new_points,-1
             new_log_mass(k) = new_log_mass(k-num_new_points)
          end do

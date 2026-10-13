@@ -392,6 +392,7 @@ star%cross_section_scale(14) =  1.02542470156106513E+000
 star%cross_section_scale(15) =  1.01078767123287672E+000
 star%cross_section_scale(16) =  8.55967078189300401E-001
 star%cross_section_scale(17) =  1.07500000000000018E+000
+star%envelope_metal_fraction =  1.79680000000000013E-002
 star%solar_luminosity_cgs =  3.82800000000000026E+033
 star%solar_radius_cgs =  6.95700000000000000E+010
 tolerance_fraction =  9.99999999999999955E-007

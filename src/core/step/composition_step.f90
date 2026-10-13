@@ -285,15 +285,19 @@ subroutine settle
 ! of helium there (Michaud et al. 1984, ApJ 282, 206), stored in s:
 !   t_settle = 4.348e21 yr q / T^1.5.
 ! The sub-step count is int(timestep/max_settling_dt), plus one when
-! mod(max_settling_dt, timestep) /= 0.
+! mod(max_settling_dt, timestep) /= 0 (the arguments reversed, as in
+! the F77 mix.f), and at least one: when max_settling_dt is an exact
+! multiple of timestep it would be zero, dividing by zero and skipping
+! the settling (the guard rotation's burn_and_settle, after rotmix.f,
+! already has).
       mass_fraction_above = (total_mass_unlogged- &
            star%m(search_idx))/total_mass_unlogged
       settling_timescale = 4.348d21*seconds_per_year*mass_fraction_above/ &
            exp(ln10*1.5d0*star%logT(search_idx))
       max_settling_dt = star%ctrl%settling_timestep_fraction*settling_timescale
       num_settling_steps = int(timestep/max_settling_dt)
-      if (mod(max_settling_dt,timestep).ne.0.0d0) num_settling_steps = &
-           num_settling_steps + 1
+      if (mod(max_settling_dt,timestep).ne.0.0d0 .or. num_settling_steps.eq.0) &
+           num_settling_steps = num_settling_steps + 1
       settling_dt = timestep/dfloat(num_settling_steps)
       do substep_idx = 1, num_settling_steps
          call diffuse_elements(settling_dt, star%xa, dlnp_dr, star%logR, &

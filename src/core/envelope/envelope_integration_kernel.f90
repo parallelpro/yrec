@@ -65,6 +65,9 @@ module envelope_integration_kernel
             double precision :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
             integer :: saha_state = 0
+! the T(tau) relation of the atmosphere integration (cfg%atm_choice,
+! gray after a failed Allard lookup)
+            integer :: atm_choice = 0
       contains
             procedure :: derivatives => equation_derivatives
       end type envelope_equations
@@ -83,7 +86,8 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
-              self%hydrogen_fraction, self%metal_fraction, self%saha_state, ierr)
+              self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
+              self%atm_choice, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
@@ -504,7 +508,8 @@ subroutine take_atmosphere_step()
        call compute_atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
+            log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+            cfg%atm_choice, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -889,7 +894,10 @@ end subroutine interpolate_envelope_vertex
 ! Reverse env_struct from surface-inward to centre-outward, when the
 ! envelope was integrated (senv below senv_thin_envelope).
 subroutine invert_envelope_points()
-      if(cfg%senv.lt.senv_thin_envelope)then
+! (.le., the complement of the skip test above: at senv exactly
+! senv_thin_envelope the envelope is integrated and must be reversed
+! too; the F77 envint.f tested .LT., fixed 2026-10)
+      if(cfg%senv.le.senv_thin_envelope)then
          associate (n => env_struct%num_env_points)
             env_struct%env_log10_density(1:n) = env_struct%env_log10_density(n:1:-1)
             env_struct%env_log10_pressure(1:n) = env_struct%env_log10_pressure(n:1:-1)
@@ -933,6 +941,7 @@ subroutine load_equations(atmosphere)
       equations%hydrogen_fraction = hydrogen_fraction
       equations%metal_fraction = metal_fraction
       equations%saha_state = saha_state
+      equations%atm_choice = cfg%atm_choice
 end subroutine load_equations
 
 ! Copy back the three values the integrands update (nothing else reads

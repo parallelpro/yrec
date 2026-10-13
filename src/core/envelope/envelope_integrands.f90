@@ -31,7 +31,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, ierr)
+     saha_state, atm_choice, ierr)
 
       use eos_lib
       use kap_lib
@@ -55,6 +55,12 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: saha_state
+! atm_choice: the integration's T(tau) relation, the kernel's (which
+! falls back to gray, 0, after a failed Allard lookup, while
+! star%job%atm_choice is reset only after the integration; reading the
+! star's here gave HSRA for that one integration, a 2026 regression,
+! fixed 2026-10; the F77 envint.f switched the common KTTAU qatm read)
+      integer, intent(in) :: atm_choice
 ! ierr: nonzero when the EOS or the opacity fails; bsstep passes it up
 ! to the kernel.
       integer, intent(out) :: ierr
@@ -71,7 +77,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       optical_depth = exp(ln10*atm_point%log10_tau)
 ! T(tau) from the T-tau relation.
       log10_temperature = ttau_log10_temperature(optical_depth, &
-           log10_teff, star%job%atm_choice, star%atm_hras)
+           log10_teff, atm_choice, star%atm_hras)
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &

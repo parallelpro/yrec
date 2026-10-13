@@ -153,6 +153,9 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
 ! legacy jumps to labels 50, 70/90/100 and 140.)
       fully_convective_flag = .false.
       search_start_index = 1
+! No convective core found yet (the scan sets it only when the centre is
+! convective; the guard below reads it).
+      core_cz_top_index = 0
       search: do
       call scan_for_cz_base_from_below()
 ! A scan that runs off the top finds either a fully convective star or
@@ -350,6 +353,9 @@ subroutine time_scale_height_above_base()
 !                 convective point, so that it stays above the base.
                kk = k
                if (k.eq.cz_base_index+1) kk = k+1
+!                 Keep the four points kk-2..kk+1 inside the model
+!                 (a zone in the top shells would reach past it).
+               kk = max(3, min(kk, num_points-1))
 !                 v_c and H_p by natural cubic splines through four
 !                 points in x = r - r_bcz - H_p, evaluated at x = 0.
                spline_x_delta(1) = exp(ln10*log10_radius(kk-2))-radius_at_bcz- &
@@ -414,6 +420,8 @@ subroutine time_bottom_cell_crossing()
 !           point, so that it stays above the base.
       kk = k
       if (k.eq.cz_base_index+1) kk = k+1
+! Keep the four points kk-2..kk+1 inside the model.
+      kk = max(3, min(kk, num_points-1))
 ! v_c at the middle by a natural cubic spline in r through four points.
       spline_x_radius(1) = exp(ln10*log10_radius(kk-2))
       spline_x_radius(2) = exp(ln10*log10_radius(kk-1))

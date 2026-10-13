@@ -555,8 +555,9 @@ subroutine extend_core_toward_center
           star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
                star%ctrl%chi_grid_scale(ichi_dm_max)
           num_shells_extended = star%nz + star%job%num_core_shells_added
-! Too many points for the json-point arrays: the message says the run
-! is terminated, but nothing here stops it (nor did starin).
+! Too many points for the json-point arrays: the run stops with ierr
+! (starin printed RUN TERMINATED but went on writing past json; fixed
+! 2026-10).
           if (num_shells_extended .gt. json) then
              write(run_log_unit,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
@@ -566,6 +567,8 @@ subroutine extend_core_toward_center
   476        format(2a)
   477        format(a, i8, a, i8)
   478        format(a)
+             ierr = 1
+             return
           endif
           core_shell_spacing = star%ctrl%chi_grid_scale(ichi_dm_max)
 ! Move every old point up by N slots (logRho is not moved).
@@ -885,8 +888,9 @@ subroutine append_envelope_as_shells
 ! Envelope point 1 is the deepest, at the old last shell's pressure.
 ! Shift log P, log rho, log T and log R of the envelope by the
 ! interior-minus-envelope difference there, so that the envelope joins
-! the interior continuously, and drop point 1. (env_convective_flag is
-! not shifted with the rest.)
+! the interior continuously, and drop point 1. The convective flag moves
+! with the rest (the F77 starin.f left it unshifted, one point off;
+! fixed 2026-10).
             pressure_offset = star%logP(star%nz) - env_struct%env_log10_pressure(1)
             density_offset = star%logRho(star%nz) - env_struct%env_log10_density(1)
             temperature_offset = star%logT(star%nz) - &
@@ -901,6 +905,7 @@ subroutine append_envelope_as_shells
                     temperature_offset
                env_struct%env_hydrogen_fraction(j) = env_struct%env_hydrogen_fraction(j+1)
                env_struct%env_metal_fraction(j) = env_struct%env_metal_fraction(j+1)
+               env_struct%env_convective_flag(j) = env_struct%env_convective_flag(j+1)
             end do
             env_struct%num_env_points = env_struct%num_env_points - 1
 ! Append the envelope points inside the new fitting mass as shells

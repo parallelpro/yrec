@@ -221,9 +221,10 @@ subroutine shift_envelope_points()
 ! Its differences from that shell in log P, log rho, log T and log R
 ! become offsets that make the envelope continuous with the interior.
 ! Every later point whose log m exceeds the last kept one by more than
-! 1e-10 moves down one slot, with the offsets added. Only log P,
-! log rho, log R, log m, log T, X and Z move: env_convective_flag and
-! the other arrays are not shifted.
+! 1e-10 moves down one slot, with the offsets added. Log P, log rho,
+! log R, log m, log T, X, Z and the convective flag move (the F77
+! getnewenv.f left the flag unshifted, one point off; fixed 2026-10);
+! the other arrays are not read for the appended points.
       pressure_offset = log_pressure(num_zones) - env_struct%env_log10_pressure(1)
       density_offset = log_density(num_zones) - env_struct%env_log10_density(1)
       temperature_offset = log_temperature(num_zones) - env_struct%env_log10_temperature(1)
@@ -240,6 +241,7 @@ subroutine shift_envelope_points()
             env_struct%env_log10_temperature(zone_index) = env_struct%env_log10_temperature(zone_index+1)+temperature_offset
             env_struct%env_hydrogen_fraction(zone_index) = env_struct%env_hydrogen_fraction(zone_index+1)
             env_struct%env_metal_fraction(zone_index) = env_struct%env_metal_fraction(zone_index+1)
+            env_struct%env_convective_flag(zone_index) = env_struct%env_convective_flag(zone_index+1)
             mass_test = mass_test2
             num_new_env_points = num_new_env_points + 1
          endif

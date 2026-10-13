@@ -130,10 +130,12 @@ end subroutine rescale_surface_x
 !   Z_i -> max(0, Z_i + dZ),
 !   X_k,i -> X_k,i max(0, Z_i + dZ)/(Z_i + 1e-30),  k = C12..O18.
 ! He3 and the light elements are left alone. The target is applied when
-! >= 0, so a target Z of 0 sets Z = 0. A requested Z above 1 is refused
+! positive, as the run plan's "0 or negative = keep current" says (the
+! F77 rscale.f applied it at >= 0, so an unset rescale_z, whose default
+! is 0, set Z = 0; fixed 2026-10). A requested Z above 1 is refused
 ! with a message.
 subroutine rescale_interior_z
-      if(star%job%rescale_params(3,run_index).ge.0.0d0) then
+      if(star%job%rescale_params(3,run_index).gt.0.0d0) then
          if(star%job%rescale_params(3,run_index).le.1.0d0) then
             delta_z = star%job%rescale_params(3,run_index) - star%znew
             do zone_idx = 1,num_zones

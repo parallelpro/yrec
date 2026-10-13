@@ -139,11 +139,18 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
 ! below it. Later calls in the step (the rotation sub-steps) start from
 ! the previous call's end-of-step zone.
             if(star%cz_base_radius_prev.eq.0.0d0)then
-               star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
-                        +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-               search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
-               cz_base_zone_old = first_zone_above(star%logR_start, env_cz_zone_old-1, &
-                    search_radius)
+               if (env_cz_zone_old.gt.1) then
+                  star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
+                           +exp(ln10*star%logR_start(env_cz_zone_old-1)))
+                  search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
+                  cz_base_zone_old = first_zone_above(star%logR_start, env_cz_zone_old-1, &
+                       search_radius)
+               else
+! Fully convective at the start of the step: there is no zone below
+! the base, which is zone 1 (the code used to read logR_start(0) here,
+! out of bounds, and arrive at the same zone).
+                  cz_base_zone_old = 1
+               end if
             else
                cz_base_zone_old = star%envelope_cz_base_zone_prev
             endif

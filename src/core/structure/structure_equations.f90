@@ -291,11 +291,16 @@ end subroutine form_radius_pressure_temperature_terms
 !   ql_dt = d eps/dln T + (d eps/dln rho)(dln rho/dln T),
 !   ql_dp = (d eps/dln rho)(dln rho/dln P).
 ! Below the cutoff the burn locals (zone_deps_*, energy_gen_component)
-! keep the values of the last shell that burned.
+! are zero. (The F77 coefft.f left them at the last burning shell's
+! values, which reached the pulse output's d eps columns of every cooler
+! shell, and eps_total of a shell exactly at the cutoff; fixed 2026-10.)
 subroutine form_nuclear_energy_terms()
        cur%ql = 0.0d0
        cur%ql_dt = 0.0d0
        cur%ql_dp = 0.0d0
+       zone_deps_dlnrho = 0.0d0
+       zone_deps_dlnt = 0.0d0
+       energy_gen_component = 0.0d0
        if (zone_log_temperature.gt.star%ctrl%nuclear_logT_cutoffs(1)) then
             call compute_zone_energy(zone_log10_density, &
                  zone_log_temperature, star%xa(:,im), shell_index, burn)

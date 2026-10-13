@@ -135,15 +135,19 @@ subroutine set_mass_change_rate()
 end subroutine set_mass_change_rate
 
 ! ---------------------------------------------------------------
-! With a surface convection zone, prints the turnover timescale (yr) and
-! R/Rsun and sets jcz to the zone's base; without one, zeroes the
-! turnover timescale and sets jcz = nz. Then sums the mass of the
-! convective envelope.
+! With a surface convection zone, sets jcz to the zone's base (and, with
+! the solver diagnostics on, prints the turnover timescale in yr and
+! R/Rsun); without one, zeroes the turnover timescale and sets jcz = nz.
+! Then sums the mass of the convective envelope.
 subroutine measure_convective_envelope()
+      use run_log, only: solver_diagnostics
 ! The turnover timescale was computed beforehand, for the previous model
-! (compute_turnover_timescale; MHP 2/12).
+! (compute_turnover_timescale; MHP 2/12). (The F77 code printed it
+! unlabelled every step; it is now a diagnostic.)
       if(jenv.lt.nz)then
-         write(*,*)star%convective_turnover_timescale/seconds_per_year, &
+         if (solver_diagnostics()) write(*,'(a,1p,2e12.4)') &
+              ' mass change: turnover time (yr), R/Rsun', &
+              star%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/star%solar_radius_cgs
          star%jcz = jenv
       else
@@ -405,21 +409,23 @@ subroutine limit_mass_change_timestep()
 ! The largest timestep that changes the mass by at most the fraction
 ! ftotdmdt of the star or fczdmdt of the surface convection zone,
 !   dt_max = min(ftotdmdt M, fczdmdt M_cz)/|Mdot|.
-      timestep_limit_total_mass = star%ctrl%ftotdmdt*star%star_mass*star%solar_mass_cgs/ &
-           mass_loss_rate_cgs
-      timestep_limit_cz_mass = star%ctrl%fczdmdt*cz_mass_grams/mass_loss_rate_cgs
-      timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
+! A zero rate sets no limit (it used to divide by zero, which traps in
+! the devel builds).
+      if(mass_loss_rate_cgs.gt.0.0d0)then
+         timestep_limit_total_mass = star%ctrl%ftotdmdt*star%star_mass*star%solar_mass_cgs/ &
+              mass_loss_rate_cgs
+         timestep_limit_cz_mass = star%ctrl%fczdmdt*cz_mass_grams/mass_loss_rate_cgs
+         timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! Nor by more than half the mass outside the fitting point (the outer
 ! zone), (M - m(nz))/2, for loss and accretion alike.
-      if(mass_loss_rate_cgs.gt.0.0d0)then
          timestep_limit_envelope = 0.5d0*(exp10(star%log_total_mass)- &
               exp10(star%log_mass(nz)))/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit,timestep_limit_envelope)
-      endif
-      if(timestep_limit.lt.star%dt)then
-         write(*,10)star%dt,timestep_limit
- 10      format(' TIMESTEP REDUCED FOR MASS LOSS - OLD,NEW',1P2E12.3)
-         star%dt = timestep_limit
+         if(timestep_limit.lt.star%dt)then
+            write(*,10)star%dt,timestep_limit
+ 10         format(' TIMESTEP REDUCED FOR MASS LOSS - OLD,NEW',1P2E12.3)
+            star%dt = timestep_limit
+         endif
       endif
 ! With accretion only (Mdot > 0, MHP 8/10): a step that would pass the
 ! disk-locking age is clipped to end there, and the mass change stops.

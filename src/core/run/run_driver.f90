@@ -266,7 +266,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! after 14 unconverged triples.
                   if (convergence_iterations.ge.15) then
                      star%termination_reason = &
-                          'solar calibration NOT converged after 15 cycles'
+                          'solar calibration NOT converged after 14 cycles'
                      runs_complete = .true.
                      return
                   end if
