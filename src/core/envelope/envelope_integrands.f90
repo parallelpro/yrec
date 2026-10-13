@@ -31,13 +31,12 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, atm_choice, ierr)
+     saha_state, atm_choice, atm_hras, ierr)
 
       use eos_lib
       use kap_lib
       use atmosphere_structure, only: atm_point
       use atm_lib, only: ttau_log10_temperature
-      use star_info_lib, only: star, json
       use point_scratch_lib
       use physical_constants
       use math_lib
@@ -61,6 +60,8 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
 ! star's here gave HSRA for that one integration, a 2026 regression,
 ! fixed 2026-10; the F77 envint.f switched the common KTTAU qatm read)
       integer, intent(in) :: atm_choice
+! atm_hras: the HSRA T(tau) relation's offset.
+      double precision, intent(in) :: atm_hras
 ! ierr: nonzero when the EOS or the opacity fails; bsstep passes it up
 ! to the kernel.
       integer, intent(out) :: ierr
@@ -77,7 +78,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       optical_depth = exp(ln10*atm_point%log10_tau)
 ! T(tau) from the T-tau relation.
       log10_temperature = ttau_log10_temperature(optical_depth, &
-           log10_teff, atm_choice, star%atm_hras)
+           log10_teff, atm_choice, atm_hras)
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
@@ -130,7 +131,7 @@ end subroutine compute_atmosphere_derivs
 ! compute_envelope_derivs (legacy qenv.f)
 ! ---------------------------------------------------------------
 ! The right-hand side of the envelope integration, with x = log P and
-! y = (log(m/M), log T, log r), M the total mass (star%stotal = log M):
+! y = (log(m/M), log T, log r), M the total mass (log10_total_mass = log M):
 !   d log m / d log P = -4 pi r^4 P / (G m^2 f_P)  (hydrostatic equilibrium)
 !   d log T / d log P = grad                       (the temperature gradient)
 !   d log r / d log P = -r P / (G m rho f_P)       (mass continuity with
@@ -144,12 +145,11 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, ierr)
+     saha_state, log10_total_mass, ierr)
 
       use convection_lib, only: compute_temperature_gradients
       use eos_lib
       use kap_lib
-      use star_info_lib, only: star, json
       use point_scratch_lib
       use physical_constants
       use math_lib
@@ -166,6 +166,8 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: saha_state
+! log10_total_mass: log10 M (g), the origin of y(1) = log(m/M).
+      double precision, intent(in) :: log10_total_mass
       integer, intent(out) :: ierr
 
 ! --- locals ---
@@ -184,7 +186,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       ierr = 0
       log10_pressure = log10_pressure_indep
 ! log m = log(m/M) + log M.
-      log10_mass = y(1) + star%stotal
+      log10_mass = y(1) + log10_total_mass
       log10_temperature = y(2)
       log10_radius = y(3)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
@@ -224,7 +226,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
 ! log(m/M)),
       pt_scr%current_log10_pressure = log10_pressure
       pt_scr%current_log10_temperature = log10_temperature
-      pt_scr%current_log10_mass = log10_mass - star%stotal
+      pt_scr%current_log10_mass = log10_mass - log10_total_mass
       pt_scr%current_log10_radius = log10_radius
       pt_scr%current_log10_density = eos_res%log10_density
       pt_scr%current_velocity = convective_velocity

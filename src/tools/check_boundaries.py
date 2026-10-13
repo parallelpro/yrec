@@ -147,6 +147,8 @@ STAR_BLIND_FILES = [
     "core/envelope/envelope_integration_kernel.f90",
     # the structure equations at one shell (2026-10, GUIDELINES star rule 6)
     "core/structure/shell_equations.f90",
+    # the atmosphere and envelope integrands, called back by the kernel
+    "core/envelope/envelope_integrands.f90",
     "atm/t_tau_relations.f90",
 ]
 
@@ -222,7 +224,7 @@ def check_controls_free(src_root):
 # in the same commit.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (3141, 29),
+    "core": (3139, 28),
     "element_diffusion": (69, 9),
     "io": (474, 10),
     "rotation": (405, 10),

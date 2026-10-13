@@ -150,6 +150,7 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
       cfg%env_error_tol = star%ctrl%env_error_tol
       cfg%atm_step_initial = star%ctrl%atm_step_initial
       cfg%atm_hras = star%atm_hras
+      cfg%log10_total_mass = star%stotal
       cfg%senv = star%senv
       cfg%tenv = star%tenv
       cfg%log10_solar_luminosity = star%log10_solar_luminosity

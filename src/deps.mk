@@ -302,7 +302,7 @@ core/diagnostics/observables.o: convection_geometry.mod eos_lib.mod math_lib.mod
 core/diagnostics/stitched_model.o: atmosphere_structure.mod envelope_integration.mod envelope_structure.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/atmosphere_structure.o: star_info_lib.mod
-core/envelope/envelope_integrands.o: atm_lib.mod atmosphere_structure.mod convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod star_info_lib.mod
+core/envelope/envelope_integrands.o: atm_lib.mod atmosphere_structure.mod convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod point_scratch_lib.mod
 core/envelope/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod atmosphere_structure.mod envelope_integrands.mod envelope_structure.mod eos_lib.mod integration_parameters.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod point_scratch_lib.mod run_log.mod
 core/envelope/envelope_rebuild.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod envelope_structure.mod eos_lib.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod

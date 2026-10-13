@@ -33,13 +33,16 @@ module envelope_integration_kernel
 ! atmosphere integration (atm_step_initial, legacy ATMD0, g/cm^3); the
 ! HSRA offset atm_hras; the fitting mass senv = log10(m_fit/M); tenv,
 ! the log T at which the envelope state is stored for the surface
-! boundary; log10 Lsun; and calc_envelope (false: the photosphere only).
+! boundary; log10 Lsun; log10 of the total mass in g, the origin of the
+! envelope's mass coordinate log(m/M) (star%stotal); and calc_envelope
+! (false: the photosphere only).
       type, public :: envint_config
             integer :: atm_choice
             double precision :: atm_step_begin, atm_step_min, atm_step_max
             double precision :: env_step_begin, env_step_min, env_step_max
             double precision :: atm_error_tol, env_error_tol, atm_step_initial
             double precision :: atm_hras, senv, tenv, log10_solar_luminosity
+            double precision :: log10_total_mass
             logical :: calc_envelope
       end type envint_config
 
@@ -66,8 +69,10 @@ module envelope_integration_kernel
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
             integer :: saha_state = 0
 ! the T(tau) relation of the atmosphere integration (cfg%atm_choice,
-! gray after a failed Allard lookup)
+! gray after a failed Allard lookup), its HSRA offset, and log10 of the
+! total mass in g
             integer :: atm_choice = 0
+            double precision :: atm_hras = 0.0d0, log10_total_mass = 0.0d0
       contains
             procedure :: derivatives => equation_derivatives
       end type envelope_equations
@@ -87,13 +92,14 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%atm_choice, ierr)
+              self%atm_choice, self%atm_hras, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
-              self%hydrogen_fraction, self%metal_fraction, self%saha_state, ierr)
+              self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
+              self%log10_total_mass, ierr)
       end if
 end subroutine equation_derivatives
 
@@ -511,7 +517,7 @@ subroutine take_atmosphere_step()
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-            cfg%atm_choice, jerr)
+            cfg%atm_choice, cfg%atm_hras, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -660,7 +666,8 @@ subroutine start_envelope_integration()
       call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
-           log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
+           log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+           cfg%log10_total_mass, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -815,7 +822,8 @@ subroutine take_envelope_step()
        call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
-              log10_teff,hydrogen_fraction,metal_fraction,saha_state, jerr)
+              log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+              cfg%log10_total_mass, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -944,6 +952,8 @@ subroutine load_equations(atmosphere)
       equations%metal_fraction = metal_fraction
       equations%saha_state = saha_state
       equations%atm_choice = cfg%atm_choice
+      equations%atm_hras = cfg%atm_hras
+      equations%log10_total_mass = cfg%log10_total_mass
 end subroutine load_equations
 
 ! Copy back the three values the integrands update (nothing else reads
