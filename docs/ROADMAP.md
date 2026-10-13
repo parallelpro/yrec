@@ -1883,3 +1883,47 @@ the full battery runs on the series' end.
   -fcheck run, 2's intent); the small measured fixes (3, 4, 2's limit,
   7's radius); 6 after the output decision; then the investigation (8,
   with 5).
+
+### Scratch with a one-step lifetime; inlist group names (yrec-next, 2026-10-13)
+
+Every commit byte-identical on the check's 21 decks, the core extras,
+the Kurucz, Allard and Debye-Hueckel decks and test_reentry. The test
+for scratch: poison a record with NaN at every step start; if every
+deck stays byte-identical, nothing in it outlives a step.
+
+- **DONE: the envelope integration's results are the star's.** The
+  envelope and atmosphere points (s%env_points, s%atm_points,
+  s%atm_point) go to the kernel as arguments (b7c5ef69); the
+  integrands' point physics is the kernel's own variable (50bd4313).
+- **DONE: the stitched model is the star's record, s%stitched**
+  (1cc08918).
+- **DONE: every surface EOS call passes its composition**; the
+  Debye-Hueckel side channel (eos_set_debye_huckel_composition) is gone
+  (fbdc6b97).
+- **DONE: the central EOS call's Saha state is the star's** (9837d1a8).
+- **DONE: inlist groups &control and &physics** (01931c03), the legacy
+  YREC names, in place of &star_job and &controls; an inlist with the
+  old names stops with the command that renames them
+  (tools/upgrade_inlist.py DECK.inlist).
+- **DONE: rotation** (0f2d50a9). moment_of_inertia_tolerance (the F77
+  TOLERI, never set) is an optional argument of omega_from_j,
+  enforce_rotation_profile and solid_body_omega; omega_mid, the
+  solid-body iteration's first guess at the next step, is the star's;
+  yrec_reset no longer restores rot_scr, mid_scr and circ_scr.
+- **DONE: element diffusion** (a82ada96). The run log's "settling
+  suspended" latch is the star's; reset_element_diffusion is gone.
+- **Open, with proposed fixes.**
+  1. **TOLERI is zero**, as in the F77, so solid_body_omega always takes
+     its 20 Newton corrections except in the transport's loosened
+     iterations. Proposed: a real tolerance (e.g. 1e-12), measured; it
+     moves omega at round-off and saves time.
+  2. **check_angular_momentum loosens rotation_settings%shape_tolerance**
+     by writing the settings record and restoring it afterwards.
+     Proposed: pass it to the shape as inertia_tolerance is passed
+     (byte-identical).
+  3. **Core writes rotation's scratch within a step**: the rezone stores
+     the previous model's physics on the new mesh in rot_scr%old_* (and
+     del_grad_diff_interface), and convection_geometry reads mid_scr's
+     gradients. Proposed: the step driver owns that record and hands it
+     to the rezone and the rotation driver as an argument, so
+     rotation_scratch_lib is rotation's alone.
