@@ -1744,3 +1744,23 @@ with a frozen 66d7788f binary; the step splits also on pulse output
     target converted twice; TAHB decks at round-off); the Z ramp's CNO
     factor (Z_old - Z_new)/Z_old; switching from gray back to a table
     keeps the gray triangle.
+- **The 0.03 Msun deck (e16b304a): a stop it can reach, and why it
+  fails.** Its central-H stop never triggers in a brown dwarf, and
+  every YREC version fails to converge (a Newton two-cycle) later in
+  the contraction: the F77 original after 210 models (0.047 Gyr),
+  370ae06d..b4673635 after 179, 0304e269 after 83, today after
+  77. The unified deck's coarser mesh, tolerances, iteration levels,
+  timestep limits and triangle made it fail on model 1; the deck now
+  has the original's values and stops at 50 models (re-pinned).
+  - Drift against the F77 original at equal age (original settings):
+    dlog L -2.3e-3 at 0.006 Gyr, -2.0e-2 at 0.008, -8.4e-2 at 0.012;
+    up to b4673635 it was below 2e-7. Bisected to Batch 2 (0304e269),
+    and within it to item 2, the CF88 d(p,g)3He rate's T9**(-2/3)
+    (was +2/3, about 5000x slower at 1e6 K): restoring the old power
+    alone brings the drift to -9.4e-5. Deliberate physics; no fix.
+  - The failure point is not one bug: on b4673635, Batch 2's eqscve
+    blend fix alone moves it from 179 to 62 models (drift 1e-4),
+    its rhoofp06 fix alone to 210 (drift 1e-9), the deuterium rate
+    alone to 83; the other files leave it at 179. The solve is
+    marginal here, and small changes move where it breaks. Open if
+    the deck should evolve further: the two-cycle itself.
