@@ -340,9 +340,10 @@ end subroutine integrate_atmosphere
 ! The EOS and opacity at (P, T) give kappa, and with kappa and g taken
 ! constant above this point, tau = kappa P / g:
 !   indep_var = log tau = log P - log g + log kappa,
-!   dydx(1) = d log P / d log tau = g tau / (kappa P),
-! which is 1 here up to rounding (without the factor f_P that
-! compute_atmosphere_derivs puts in g).
+!   dydx(1) = d log P / d log tau = g_eff tau / (kappa P),
+! with g_eff = g f_P as in compute_atmosphere_derivs, i.e. f_P up to
+! rounding. (The f_P was missing until 2026-10, as in envint.f, so a
+! rotating star's first step started from dydx = 1.)
 subroutine find_atmosphere_start()
       use math_lib
       temperature = exp(ln10*log10_temperature)
@@ -419,7 +420,8 @@ subroutine find_atmosphere_start()
 ! The starting optical depth, tau = kappa P / g, and d log P / d log tau.
       indep_var = log10_pressure - log10_gravity + log10(opacity)
       y(1) = log10_pressure
-      dydx(1) = exp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))
+      dydx(1) = exp(ln10*(log10_gravity+indep_var-log10_opacity-log10_pressure))* &
+           pressure_rotation_factor
 end subroutine find_atmosphere_start
 
 ! ---------------------------------------------------------------
