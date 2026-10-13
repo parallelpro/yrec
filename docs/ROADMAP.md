@@ -1927,3 +1927,65 @@ deck stays byte-identical, nothing in it outlives a step.
      gradients. Proposed: the step driver owns that record and hands it
      to the rezone and the rotation driver as an argument, so
      rotation_scratch_lib is rotation's alone.
+
+### rotation/ Stage B; element diffusion, setup and io take the star (yrec-next, 2026-10-13)
+
+Every commit byte-identical on the check's 21 decks, the core extras,
+the Kurucz, Allard and Debye-Hueckel decks, test_reentry and the unit
+tests; the full battery runs on the series' end.
+
+- **DONE: omega_profile is star-free** (25f04291): the disk-locking test
+  takes the model's age (disk_gate_age_gyr) as an argument.
+- **DONE: rotation's leaves are star-free** (ae031e5b): circulation's
+  velocities and the Zahn factor are arguments; magnetic braking reads
+  the solar units from the settings record and the step's tau_cz and
+  P_phot from a wind_conditions record; viscos takes kappa and c_P and
+  returns nu and K; the grids take L_sun from the settings record.
+- **DONE: the drivers take s** (5241a1db); rotation names the global
+  nowhere (budget (0, 0)).
+- **DONE: core no longer writes rotation's scratch** (56aa2e6f). The
+  start-of-step physics on the step's mesh is the star's step snapshot
+  (s%old_gradT, ...); the rezone's store into
+  rot_scr%del_grad_diff_interface was dead (poisoned after the rezone,
+  every rotating deck byte-identical) and is gone; burn_li_be takes the
+  gradients it locates the mixed region's base with. check_boundaries:
+  rotation_scratch_lib and element_diffusion_scratch are their domains'
+  alone.
+- **DONE: eight rotation kernels are star-blind, with physics tests**
+  (b98eb3bf). test_rotation_kernels: the spherical limits of I, fp and
+  ft and their growth with omega (1 - fp as omega^2, 1 - ft as
+  omega^4); omega_from_j gives each radiative zone and the convective
+  envelope back their J; the AM diffusion conserves J (round-off), takes
+  exactly the wind's surface term, keeps a solid body; the composition
+  mixing conserves each species; the Kawaler exponents. The AM solve
+  moved next to its system (am_transport_coefficients).
+- **DONE: element diffusion is a star-free domain** (926f34ef): a
+  settings record (diffusion_settings) installed per run card; the
+  helium switch and the run log's latch come in through
+  diffuse_elements. It joins STAR_FREE_DIRS.
+- **DONE: setup takes s** (3c6b54fe): the settings builders read it
+  intent(in); map_user_inputs writes it.
+- **DONE: io takes s** (02c388b2): the 30 readers and writers that touch
+  the star. solver_diagnostics() stays star-free (the run log's copy of
+  the control, installed by the controls read), so its star-free callers
+  are star-free in fact.
+- Now only run_yrec, yrec_reset, controls_sync and the tests name the
+  global star.
+- **Open, with proposed fixes.**
+  1. **Rotation's module scratch.** secular_transport,
+     mid_timestep_model, circulation, stability_coefficients, am_grid,
+     equal_grid and rotational_mixing still share rot_scr, mid_scr and
+     circ_scr, and so cannot be star-blind kernels yet. Proposed: per
+     sub-step records passed explicitly, kernel by kernel, each with a
+     check in test_rotation_kernels (the circulation and instability
+     velocities against their limits: no shear velocity for a solid
+     body, U_ES ~ omega^2 at fixed structure).
+  2. **The controls read and the global.** read_controls(s) is handed
+     the global star by run_yrec, while controls_sync's
+     store_controls_to_star writes the global directly: the same object
+     reached two ways inside one call. Proposed: controls_sync takes s
+     (tools/gen_controls_state.py).
+  3. **The global itself.** With every routine taking s, the star can
+     become run_yrec's local (or a handle table), which the C API and a
+     binary or multi-star driver would need (docs/TARGET_ARCHITECTURE.md
+     section 4.2).

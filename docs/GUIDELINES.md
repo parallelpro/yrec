@@ -200,14 +200,15 @@ which replaces them).
 
 The star (`state/star_info_lib.f90`'s `star_info`, ~240 members) is
 global storage, and nothing in Fortran stops a procedure that can see it
-from reading or writing any member. Since 2026-10 core/ receives it as
-an argument: every core procedure that touches the star takes
-`type(star_info), intent(inout) :: s` as its first argument and reads
-`s%member`; only the owners -- `run_yrec` (core/run/run_driver.f90),
-`yrec_reset`, the C API and the test programs -- name the global `star`,
-and pass it down. io/, rotation/, element_diffusion/ and setup/ still
-read the global (`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py`
-records how much). In the rules below, `star` means the star either way.
+from reading or writing any member. Since 2026-10 the star layer
+receives it as an argument: every procedure in core/, io/, rotation/
+and setup/ that touches the star takes `type(star_info) :: s` as its
+first argument (`intent(inout)`, or `intent(in)` for the settings
+builders) and reads `s%member`; only the owners -- `run_yrec`
+(core/run/run_driver.f90), `yrec_reset`, the generated copy module
+`controls_sync` and the test programs -- name the global `star`, and pass
+it down (`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` holds every
+other directory at zero). In the rules below, `star` means the star either way.
 What makes a reader unable to follow the code is not the global itself
 but using it without rules: signatures that show a fraction of what a
 routine touches, results handed back through `star`, and names that say
@@ -224,7 +225,8 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
-   `STAR_FREE_DIRS` (`net/`, `kap/`, `eos/`, `atm/`, `numerics/` and `convection/` so far); add a
+   `STAR_FREE_DIRS` (`net/`, `kap/`, `eos/`, `atm/`, `numerics/`, `convection/` and
+   `element_diffusion/` so far); add a
    domain there once it is clean.
 2. **Nothing returns results through `star`.** A routine returns what
    it computes in its arguments or a result record; the caller decides
