@@ -465,6 +465,20 @@ module star_info_lib
                 old_specific_angular_momentum(json), &
                 old_hg(json), &
                 old_mean_radius(json), old_eta_squared(json)
+! The start-of-step physics on the step's mesh, from which the rotation
+! sub-steps interpolate in time (mid_timestep_model): the rezone stores
+! it (rerun_physics_on_new_grid; eps_total and eps_total + eps_neu +
+! eps_grav splined by regrid_start_of_step_eps). The gradients, mu, the
+! opacity, c_P, d ln rho/d ln T, the convective velocity, the viscosity,
+! the thermal diffusivity and the two energy-generation sums, named
+! after the members they copy (opacity: opacity_zone).
+           double precision :: old_gradT(json), &
+                old_grada(json), old_mu(json), &
+                old_opacity(json), old_cp(json), &
+                old_qdt(json), old_conv_vel(json), &
+                old_visc(json), old_thdif(json), &
+                old_eps_total(json), old_gradr(json), &
+                old_eps_plus_neu_grav(json)
 ! former common/i2o/
            character(len=4) :: initial_composition_code
 ! -- former evolve_state (evo (driver-step state)) --

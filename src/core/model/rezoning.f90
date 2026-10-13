@@ -60,9 +60,11 @@ contains
 !     kinetic_energy_rot, log_mass, log_Teff_start, logP, logP_start,
 !     logR, logR_start, logRho, logRho_start, logT, logT_start,
 !     luminosity_lsun, luminosity_lsun_start, m, mean_gravity,
-!     mean_radius, nz, old_eta_squared, old_hg, old_mean_radius,
-!     old_omega, old_specific_angular_momentum, omega, qiw, senv,
-!     surface_luminosity_lsun_start, xa, xa_start, xnew, znew
+!     mean_radius, nz, old_conv_vel, old_cp, old_eps_plus_neu_grav,
+!     old_eps_total, old_eta_squared, old_grada, old_gradr, old_gradT,
+!     old_hg, old_mean_radius, old_mu, old_omega, old_opacity, old_qdt,
+!     old_specific_angular_momentum, old_thdif, old_visc, omega, qiw,
+!     senv, surface_luminosity_lsun_start, xa, xa_start, xnew, znew
 subroutine rezone(s, envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -736,7 +738,6 @@ end subroutine locate_new_cz_edges
 ! opacity tables if the surface X moved.
 subroutine interpolate_onto_new_grid
       use math_lib
-      use rotation_scratch_lib
       call regrid_composition_terms
       call regrid_structure_variables
       call regrid_rotation_variables
@@ -852,19 +853,18 @@ end subroutine regrid_rotation_variables
 ! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
 ! the new mesh, so the values were misplaced on every rotating rezone.)
 subroutine regrid_start_of_step_eps
-      use rotation_scratch_lib
       if (s%job%rotation_active .or. (s%job%use_extended_composition .and. &
            s%job%envelope_overshoot_active)) then
          call regrid_profile(s%log_mass(1:old_point_count), &
               s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
-              rot_scr%old_eps_total(1:new_point_count))
+              s%old_eps_total(1:new_point_count))
          do zone_index = 1,s%nz
             spline_y(zone_index) = s%eps_total(zone_index)+s%eps_channels(i_eps_neu,zone_index)+ &
                  s%eps_channels(i_eps_grav,zone_index)
          end do
          call regrid_profile(s%log_mass(1:old_point_count), &
               spline_y(1:old_point_count), new_log_mass(1:new_point_count), &
-              rot_scr%old_eps_plus_neu_grav(1:new_point_count))
+              s%old_eps_plus_neu_grav(1:new_point_count))
       endif
 end subroutine regrid_start_of_step_eps
 
@@ -991,7 +991,6 @@ end subroutine retally_angular_momentum
 ! accurately (MHP 9/91); even without diffusion, the new physics locates
 ! the convection-zone edges accurately.
 subroutine rerun_physics_on_new_grid
-      use rotation_scratch_lib
       if (s%job%rotation_active .or. (s%job%use_extended_composition .and. &
            s%job%envelope_overshoot_active)) then
        call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun, &
@@ -1005,20 +1004,20 @@ subroutine rerun_physics_on_new_grid
 ! mesh, so that several short diffusion sub-steps can be taken within
 ! one evolutionary step.
          do zone_index = 1,s%nz
-            rot_scr%old_gradr(zone_index) = s%gradr(zone_index)
-            rot_scr%old_gradT(zone_index) = s%gradT(zone_index)
-            rot_scr%old_grada(zone_index) = s%grada(zone_index)
-            rot_scr%old_mu(zone_index) = s%mu(zone_index)
-            rot_scr%old_opacity(zone_index) = s%opacity_zone(zone_index)
-            rot_scr%old_cp(zone_index) = s%cp(zone_index)
-            rot_scr%old_qdt(zone_index) = s%qdt(zone_index)
-            rot_scr%old_conv_vel(zone_index) = s%conv_vel(zone_index)
-            rot_scr%old_visc(zone_index) = s%visc(zone_index)
-            rot_scr%old_thdif(zone_index) = s%thdif(zone_index)
-! grad_ad - grad (MHP 06/02). The start-of-step eps sum (legacy ESUMO)
-! is splined in regrid_start_of_step_eps (MHP 6/00).
-            rot_scr%del_grad_diff_interface(zone_index) = &
-                 rot_scr%old_grada(zone_index) - rot_scr%old_gradT(zone_index)
+            s%old_gradr(zone_index) = s%gradr(zone_index)
+            s%old_gradT(zone_index) = s%gradT(zone_index)
+            s%old_grada(zone_index) = s%grada(zone_index)
+            s%old_mu(zone_index) = s%mu(zone_index)
+            s%old_opacity(zone_index) = s%opacity_zone(zone_index)
+            s%old_cp(zone_index) = s%cp(zone_index)
+            s%old_qdt(zone_index) = s%qdt(zone_index)
+            s%old_conv_vel(zone_index) = s%conv_vel(zone_index)
+            s%old_visc(zone_index) = s%visc(zone_index)
+            s%old_thdif(zone_index) = s%thdif(zone_index)
+! The start-of-step eps sum (legacy ESUMO) is splined in
+! regrid_start_of_step_eps (MHP 6/00). (Until 2026-10 this loop also
+! stored grad_ad - grad (MHP 06/02) in rot_scr%del_grad_diff_interface,
+! which rotation_stability_setup overwrites before anything reads it.)
          end do
 ! The theta term of the advection-diffusion transport on the new mesh,
 !   theta_i = r^4/(G m) omega d omega/dr   (r, m, omega: means of i-1, i)

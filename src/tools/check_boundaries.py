@@ -159,6 +159,24 @@ STAR_BLIND_FILES = [
     "atm/t_tau_relations.f90",
 ]
 
+# Scratch modules that only their own domain may use (2026-10): their
+# records are working arrays with a one-step lifetime, and what the star
+# layer needs from them goes through arguments or the star.
+SCRATCH_OWNERS = {"rotation_scratch_lib": "rotation",
+                  "element_diffusion_scratch": "element_diffusion"}
+
+def check_scratch_private(src_root):
+    problems = []
+    use_re = re.compile(r"(?im)^\s*use\s+(\w+)")
+    for f in sorted(src_root.rglob("*.f90")):
+        rel = f.relative_to(src_root).as_posix()
+        for m in use_re.finditer(strip_comments(f.read_text(errors="replace"))):
+            owner = SCRATCH_OWNERS.get(m.group(1).lower())
+            if owner and not rel.startswith(owner + "/"):
+                problems.append(f"{rel}: uses {m.group(1)} ({owner}'s scratch)")
+    return problems
+
+
 def check_star_blind(src_root):
     problems = []
     for rel in STAR_BLIND_FILES:
@@ -478,6 +496,14 @@ def main():
         print("\nRoute these through the domain's <domain>_lib facade, "
               "or (deliberately) add the name to PUBLIC in "
               "tools/check_boundaries.py.")
+        return 1
+
+    scratch_problems = check_scratch_private(SRC)
+    if scratch_problems:
+        print("Scratch used outside its domain (SCRATCH_OWNERS; pass the "
+              "values as arguments or keep them on the star):")
+        for b in scratch_problems:
+            print(f"  {b}")
         return 1
 
     blind_problems = check_star_blind(SRC)

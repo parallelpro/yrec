@@ -88,13 +88,11 @@ end function first_zone_above
 ! cz_base_zone is kept in star%envelope_cz_base_zone_prev, the starting
 ! zone of the next call within the step.
 !   star reads: envelope_overshoot_depth_end,
-!     envelope_overshoot_depth_start, grada, gradr,
-!     job%envelope_overshoot_active, job%instability_transport_active,
-!     job%rotation_active, logR_start
+!     envelope_overshoot_depth_start, job%envelope_overshoot_active,
+!     logR_start
 !   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
-subroutine locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, num_zones, &
-     cz_base_zone, cz_base_zone_old, cz_base_frac)
-      use rotation_scratch_lib
+subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
+     env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       use star_info_lib, only: json
       use physical_constants
       use math_lib
@@ -102,6 +100,9 @@ subroutine locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, n
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: radius(json)
+! grada, gradr: the adiabatic and radiative gradients the base is located
+! with (a rotation sub-step's interpolated model's, or the model's own)
+      double precision, intent(in) :: grada(json), gradr(json)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
       integer, intent(out) :: cz_base_zone, cz_base_zone_old
       double precision, intent(inout) :: cz_base_frac
@@ -110,19 +111,10 @@ subroutine locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, n
       double precision :: search_radius, shell_radius, delta_radius, &
            cz_base_radius
 
-! del_ad - del_rad at the last convective zone and at the one below it:
-! with rotational mixing, from the rotation sub-step's midpoint model
-! (mid_scr); otherwise from the model's own gradients.
+! del_ad - del_rad at the last convective zone and at the one below it.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(s%job%rotation_active.and.s%job%instability_transport_active)then
-            del_diff = mid_scr%grada(env_cz_zone) - &
-                 mid_scr%gradr(env_cz_zone)
-            del_diff_below = mid_scr%grada(env_cz_zone-1) - &
-                 mid_scr%gradr(env_cz_zone-1)
-         else
-            del_diff = s%grada(env_cz_zone)-s%gradr(env_cz_zone)
-            del_diff_below = s%grada(env_cz_zone-1)-s%gradr(env_cz_zone-1)
-         endif
+         del_diff = grada(env_cz_zone) - gradr(env_cz_zone)
+         del_diff_below = grada(env_cz_zone-1) - gradr(env_cz_zone-1)
 ! The true base (del_ad = del_rad) by linear interpolation, a fraction f
 ! (cz_base_fraction) of the way up from zone env_cz_zone-1; as an offset
 ! from the zone midpoint, cz_base_frac = 0.5 - f, clipped to

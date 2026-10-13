@@ -135,7 +135,7 @@ subroutine start_substep_composition()
       if (first_call) then
          do j = 1,s%nz
             rot_scr%convective_flag_prev(j) = s%convective_flag_start(j)
-            mid_scr%mu(j) = rot_scr%old_mu(j)
+            mid_scr%mu(j) = s%old_mu(j)
             do i = 1,num_species_tracked
                s%xa(i,j) = s%xa_start(i,j)
             end do
@@ -173,22 +173,22 @@ subroutine interpolate_structure()
          rot_scr%log_temperature_mid(j) = s%logT_start(j) + &
               time_fraction*(s%logT(j)-s%logT_start(j))
          rot_scr%mean_gravity_mid(j) = s%old_hg(j) + time_fraction*(s%mean_gravity(j) - s%old_hg(j))
-         mid_scr%grada(j) = rot_scr%old_grada(j) + &
-              time_fraction*(s%grada(j)-rot_scr%old_grada(j))
-         mid_scr%gradT(j) = rot_scr%old_gradT(j) + time_fraction*(s%gradT(j) - rot_scr%old_gradT(j))
-         mid_scr%gradr(j) = rot_scr%old_gradr(j) + &
-              time_fraction*(s%gradr(j) - rot_scr%old_gradr(j))
-         mid_scr%eps_total(j) = rot_scr%old_eps_total(j) + time_fraction*(s%eps_total(j) - rot_scr%old_eps_total(j))
-         mid_scr%visc(j) = rot_scr%old_visc(j) + time_fraction*(s%visc(j) - rot_scr%old_visc(j))
-         mid_scr%thdif(j) = rot_scr%old_thdif(j) + time_fraction*(s%thdif(j) - rot_scr%old_thdif(j))
-         mid_scr%cp(j) = rot_scr%old_cp(j) + time_fraction*(s%cp(j) - rot_scr%old_cp(j))
-         mid_scr%qdt(j) = rot_scr%old_qdt(j) + time_fraction*(s%qdt(j) - rot_scr%old_qdt(j))
-         mid_scr%opacity(j) = rot_scr%old_opacity(j) + time_fraction*(s%opacity_zone(j) - rot_scr%old_opacity(j))
-         mid_scr%mu(j) = mid_scr%mu(j) + step_fraction_ratio*(s%mu(j) - rot_scr%old_mu(j))
+         mid_scr%grada(j) = s%old_grada(j) + &
+              time_fraction*(s%grada(j)-s%old_grada(j))
+         mid_scr%gradT(j) = s%old_gradT(j) + time_fraction*(s%gradT(j) - s%old_gradT(j))
+         mid_scr%gradr(j) = s%old_gradr(j) + &
+              time_fraction*(s%gradr(j) - s%old_gradr(j))
+         mid_scr%eps_total(j) = s%old_eps_total(j) + time_fraction*(s%eps_total(j) - s%old_eps_total(j))
+         mid_scr%visc(j) = s%old_visc(j) + time_fraction*(s%visc(j) - s%old_visc(j))
+         mid_scr%thdif(j) = s%old_thdif(j) + time_fraction*(s%thdif(j) - s%old_thdif(j))
+         mid_scr%cp(j) = s%old_cp(j) + time_fraction*(s%cp(j) - s%old_cp(j))
+         mid_scr%qdt(j) = s%old_qdt(j) + time_fraction*(s%qdt(j) - s%old_qdt(j))
+         mid_scr%opacity(j) = s%old_opacity(j) + time_fraction*(s%opacity_zone(j) - s%old_opacity(j))
+         mid_scr%mu(j) = mid_scr%mu(j) + step_fraction_ratio*(s%mu(j) - s%old_mu(j))
 ! The total energy generation, eps_total + eps_neu + eps_grav with the
 ! stored signs (MHP 6/00).
          total_epsilon = s%eps_total(j)+s%eps_channels(i_eps_neu,j)+s%eps_channels(i_eps_grav,j)
-         mid_scr%eps_plus_neu_grav(j) = rot_scr%old_eps_plus_neu_grav(j)+time_fraction*(total_epsilon-rot_scr%old_eps_plus_neu_grav(j))
+         mid_scr%eps_plus_neu_grav(j) = s%old_eps_plus_neu_grav(j)+time_fraction*(total_epsilon-s%old_eps_plus_neu_grav(j))
       end do
 end subroutine interpolate_structure
 
@@ -204,11 +204,11 @@ subroutine settle_convective_state()
       do i = 1,s%nz
          if (s%convective_flag(i).eqv.rot_scr%convective_flag_prev(i)) then
             rot_scr%convective_flag_mid(i) = s%convective_flag(i)
-            mid_scr%conv_vel(i) = rot_scr%old_conv_vel(i) + time_fraction*(s%conv_vel(i)-rot_scr%old_conv_vel(i))
+            mid_scr%conv_vel(i) = s%old_conv_vel(i) + time_fraction*(s%conv_vel(i)-s%old_conv_vel(i))
          else
             if (mid_scr%grada(i).lt.mid_scr%gradr(i)) then
                rot_scr%convective_flag_mid(i) = .true.
-               mid_scr%conv_vel(i) = max(rot_scr%old_conv_vel(i),s%conv_vel(i))
+               mid_scr%conv_vel(i) = max(s%old_conv_vel(i),s%conv_vel(i))
             else
                rot_scr%convective_flag_mid(i) = .false.
                mid_scr%conv_vel(i) = 0.0D0

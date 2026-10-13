@@ -313,7 +313,7 @@ core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
 core/model/model_rescaling.o: eos_lib.mod io_units.mod math_lib.mod physical_constants.mod shell_boundaries.mod star_info_lib.mod
 core/model/regridding.o: math_lib.mod numerics_lib.mod physical_constants.mod
-core/model/rezoning.o: am_regions.mod controls_buffer.mod io_units.mod kap_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod rotation_scratch_lib.mod run_log.mod shell_physics.mod star_info_lib.mod
+core/model/rezoning.o: am_regions.mod controls_buffer.mod io_units.mod kap_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_log.mod shell_physics.mod star_info_lib.mod
 core/model/shell_boundaries.o: controls_buffer.mod star_info_lib.mod
 core/model/starting_model.o: am_regions.mod controls_buffer.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/run/calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
@@ -326,7 +326,7 @@ core/run/yrec_reset.o: star_info_lib.mod
 core/run/yrec_version.o: physical_constants.mod
 core/step/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/step/composition_step.o: burn_step.mod convection_lib.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
-core/step/convection_geometry.o: math_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
+core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
 core/step/mass_change.o: atm_lib.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
 core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod viscosity.mod

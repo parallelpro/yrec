@@ -558,7 +558,8 @@ subroutine burn_light_elements
 ! The burning rates at the end of the step, from the converged model;
 ! then the burn.
                call store_end_li_be_rates(s, s%xa,s%logRho,s%logT,s%nz)
-               call burn_li_be(s, s%dt,s%xa,s%logR,s%m,s%dm,s%logT,envelope_cz_zone_end,envelope_cz_zone_prev,s%nz)
+               call burn_li_be(s, s%dt,s%xa,s%logR,s%m,s%dm,s%logT,s%grada,s%gradr, &
+                    envelope_cz_zone_end,envelope_cz_zone_prev,s%nz)
             endif
          endif
 end subroutine burn_light_elements

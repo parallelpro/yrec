@@ -122,16 +122,8 @@ module rotation_scratch_lib
 ! the sub-step's burned and settled composition, which
 ! secular_transport restores (slots 1-4) at each later iteration
            double precision :: composition_snapshot(15,json)
-! the previous model's physics on the new mesh (setup/rezone), for the
-! interpolation in time to the sub-step: the old values of mid_scr's
-! fields
-           double precision :: old_gradT(json), &
-                old_grada(json), old_mu(json), &
-                old_opacity(json), old_cp(json), &
-                old_qdt(json), old_conv_vel(json), &
-                old_visc(json), old_thdif(json), &
-                old_eps_total(json), old_gradr(json), &
-                old_eps_plus_neu_grav(json)
+! (The start-of-step physics they interpolate from, on the step's mesh,
+! is the star's: star%old_gradT, ..., which the rezone stores.)
 ! omega_substep_start (WMST): omega at the start of the current
 ! sub-step (star%old_omega on the first, star%omega afterwards), read at
 ! the surface by secular_transport for the wind torque.

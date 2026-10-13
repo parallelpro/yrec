@@ -232,7 +232,8 @@ end subroutine average_li_be_over_cz
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
 !   star writes: none
 subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
-     shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
+     shell_mass, log_temperature, grada, gradr, env_cz_zone, env_cz_zone_old, &
+     num_zones)
       use star_info_lib, only: json, i_li6, i_li7, i_be9
       use net_lib, only: surviving_fraction, accreted_survival, &
            linear_in_time, linear_in_log
@@ -245,6 +246,9 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
       double precision, intent(in) :: mass_coordinate(json)
       double precision, intent(in) :: shell_mass(json)
       double precision, intent(in) :: log_temperature(json)
+! grada, gradr: the gradients the base of the surface mixed region is
+! located with (locate_surface_mixing_base)
+      double precision, intent(in) :: grada(json), gradr(json)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
 
       integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
@@ -262,8 +266,8 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 ! sensitively on the temperature at its base, so locating it accurately
 ! matters. min_zone is the deeper of the two bases, max_zone the
 ! shallower.
-      call locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, &
-           num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
+      call locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
+           env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
 

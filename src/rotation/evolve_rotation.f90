@@ -340,7 +340,7 @@ subroutine apply_instability_transport()
          elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
          do zone_index = 1,s%nz
             s%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-            mid_scr%mu(zone_index) = mid_scr%mu(zone_index) - fx*(s%mu(zone_index)-rot_scr%old_mu(zone_index))
+            mid_scr%mu(zone_index) = mid_scr%mu(zone_index) - fx*(s%mu(zone_index)-s%old_mu(zone_index))
             do species_index = 1,num_species_tracked
                s%xa(species_index,zone_index) = s%xa_start(species_index,zone_index)
             end do
@@ -371,9 +371,18 @@ subroutine burn_light_elements_over_substep()
          s%envelope_overshoot_depth_end = 0.0D0
       endif
       call store_end_li_be_rates(s, s%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,s%nz)
-      call burn_li_be(s, sub_timestep,s%xa,rot_scr%log_radius_mid,s%m, &
-           s%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
-           envelope_boundary_zone_prev,s%nz)
+! The base of the surface mixed region is located on the sub-step's
+! interpolated model's gradients with rotational mixing, else on the
+! model's own.
+      if (rotation_settings%instability_transport_active) then
+         call burn_li_be(s, sub_timestep,s%xa,rot_scr%log_radius_mid,s%m, &
+              s%dm,rot_scr%log_temperature_mid,mid_scr%grada,mid_scr%gradr, &
+              envelope_boundary_zone_cur,envelope_boundary_zone_prev,s%nz)
+      else
+         call burn_li_be(s, sub_timestep,s%xa,rot_scr%log_radius_mid,s%m, &
+              s%dm,rot_scr%log_temperature_mid,s%grada,s%gradr, &
+              envelope_boundary_zone_cur,envelope_boundary_zone_prev,s%nz)
+      end if
       envelope_boundary_zone_prev = envelope_boundary_zone_cur
       s%envelope_overshoot_depth_start = s%envelope_overshoot_depth_end
       do zone_index = 1,s%nz
