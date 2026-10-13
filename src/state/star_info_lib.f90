@@ -39,6 +39,7 @@ module star_info_lib
       use composition_layout
       use envelope_points, only: envelope_structure_state, &
            atmosphere_structure_state, atmosphere_point_state
+      use stitched_model_state, only: stitched_model_record
       use neutrino_flux_layout
       implicit none
       private
@@ -498,6 +499,8 @@ module star_info_lib
             type(envelope_structure_state) :: env_points
             type(atmosphere_structure_state) :: atm_points
             type(atmosphere_point_state) :: atm_point
+! The stitched model of the converged star (stitched_model_state).
+            type(stitched_model_record) :: stitched
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

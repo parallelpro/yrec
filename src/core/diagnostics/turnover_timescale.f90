@@ -29,7 +29,7 @@ contains
 ! stored at the end of the previous step (the _old and pphot0 copies).
 ! Called by read_starting_model and compute_observables.
 subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
-      use stitched_model, only: stx_prof, n_ie, &
+      use stitched_model, only: &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
            ip_grada, ip_conv_vel
       use star_info_lib, only: json
@@ -64,23 +64,23 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
          if (.not. s%convective_flag(j)) exit
       end do
       if (s%logP(j+1) - s%logP(s%nz) .lt. 1.0d0) then
-         num_points = min(n_ie, json)
+         num_points = min(s%stitched%n_ie, json)
       else
          num_points = s%nz
       end if
 ! The walker's inputs: m (g), log r, log P, log rho, g = G m/r^2, the
 ! convective velocity, gradr, grada and the convective flag.
       do j = 1, num_points
-         combined_mass(j) = stx_prof(ip_mass,j)*s%solar_mass_cgs
-         combined_radius(j) = stx_prof(ip_logR,j)
-         combined_pressure(j) = stx_prof(ip_logP,j)
-         combined_density(j) = stx_prof(ip_logRho,j)
+         combined_mass(j) = s%stitched%prof(ip_mass,j)*s%solar_mass_cgs
+         combined_radius(j) = s%stitched%prof(ip_logR,j)
+         combined_pressure(j) = s%stitched%prof(ip_logP,j)
+         combined_density(j) = s%stitched%prof(ip_logRho,j)
          combined_gravity(j) = combined_mass(j)* &
               exp(ln10*(cgl - 2.0d0*combined_radius(j)))
-         combined_velocity(j) = stx_prof(ip_conv_vel,j)
-         combined_grad1(j) = stx_prof(ip_gradr,j)
-         combined_grad2(j) = stx_prof(ip_grada,j)
-         combined_convective_flag(j) = stx_prof(ip_conv,j) .ne. 0.0d0
+         combined_velocity(j) = s%stitched%prof(ip_conv_vel,j)
+         combined_grad1(j) = s%stitched%prof(ip_gradr,j)
+         combined_grad2(j) = s%stitched%prof(ip_grada,j)
+         combined_convective_flag(j) = s%stitched%prof(ip_conv,j) .ne. 0.0d0
       end do
 
       call turnover_from_interior_new(s, combined_mass, combined_convective_flag, &

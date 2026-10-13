@@ -13,7 +13,7 @@
 ! is per-job (output directory, parsed selection), reset by
 ! profile_output_init on every job.
 module profile_output
-      use stitched_model, only: n_ext, stx_prof, n_prof_cols
+      use stitched_model, only: n_prof_cols
       use output_columns, only: max_cols, parse_columns, &
            prof_default_names, n_prof_default
       implicit none
@@ -113,10 +113,13 @@ subroutine profile_column_names(names)
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------
-subroutine write_profile(iprof, ierr)
+subroutine write_profile(iprof, stitched, ierr)
       use star_info_lib, only: star
+      use stitched_model_state, only: stitched_model_record
       use io_units, only: check_io
       integer, intent(in) :: iprof
+! stitched: the stitched model whose columns are written.
+      type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
       character(len=24) :: names(n_prof_cols)
       character(len=256) :: path, msg
@@ -141,7 +144,7 @@ subroutine write_profile(iprof, ierr)
 ! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
 ! time_step are in years, matching MESA's profile header.
       write(u, '(2(1x,i40),6(1x,es40.16e3))') star%model_number, &
-           n_ext, star%pulsation_mass_msun, &
+           stitched%n_ext, star%pulsation_mass_msun, &
            star%job%initial_envelope_z, star%age_gyr*1.0d9, &
            star%timestep_yr, star%log_Teff, star%star_mass
       write(u, '(a)') ''
@@ -151,13 +154,13 @@ subroutine write_profile(iprof, ierr)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
 ! is stored inward-to-outward, so walk it in reverse.
-      do k = 1, n_ext
-         kz = n_ext - k + 1
+      do k = 1, stitched%n_ext
+         kz = stitched%n_ext - k + 1
          do i = 1, prof_nsel
             if (prof_sel(i) == col_zone) then
                v = dble(k)
             else
-               v = stx_prof(prof_sel(i), kz)
+               v = stitched%prof(prof_sel(i), kz)
             end if
             if (prof_sel(i) == col_zone .or. prof_sel(i) == col_mixing_type) then
                write(u, '(1x,i40)', advance='no') nint(v)

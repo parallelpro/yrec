@@ -301,7 +301,7 @@ end subroutine compute_surface_globals
 ! asymptotic delta_nu and delta_Pg from the stitched model.
 subroutine compute_seismic_observables(s)
       use math_lib
-      use stitched_model, only: n_ie, stx_prof, ip_logR, &
+      use stitched_model, only: ip_logR, &
            ip_brunt_N2, ip_csound
       type(star_info), intent(inout) :: s
       double precision :: log_g_solar
@@ -325,12 +325,12 @@ subroutine compute_seismic_observables(s)
 ! (center to photosphere; the atmosphere above R is excluded, as in
 ! MESA's acoustic radius). In uHz (the integral is in seconds).
       acoustic_radius = 0.0d0
-      do k = 2, n_ie
-         if (stx_prof(ip_csound,k) <= 0.0d0 .or. &
-             stx_prof(ip_csound,k-1) <= 0.0d0) cycle
-         dr = exp10(stx_prof(ip_logR,k)) - exp10(stx_prof(ip_logR,k-1))
+      do k = 2, s%stitched%n_ie
+         if (s%stitched%prof(ip_csound,k) <= 0.0d0 .or. &
+             s%stitched%prof(ip_csound,k-1) <= 0.0d0) cycle
+         dr = exp10(s%stitched%prof(ip_logR,k)) - exp10(s%stitched%prof(ip_logR,k-1))
          acoustic_radius = acoustic_radius + dr*0.5d0 &
-              *(1.0d0/stx_prof(ip_csound,k) + 1.0d0/stx_prof(ip_csound,k-1))
+              *(1.0d0/s%stitched%prof(ip_csound,k) + 1.0d0/s%stitched%prof(ip_csound,k-1))
       end do
       if (acoustic_radius > 0.0d0) then
          s%delta_nu = 1.0d6/(2.0d0*acoustic_radius)
@@ -349,13 +349,13 @@ subroutine compute_seismic_observables(s)
 ! 0/0 there).
       buoyancy_radius = 0.0d0
       entered_g_mode_cavity = .false.
-      do k = 2, n_ie - 1
-         n2 = stx_prof(ip_brunt_N2,k)
+      do k = 2, s%stitched%n_ie - 1
+         n2 = s%stitched%prof(ip_brunt_N2,k)
          if (n2 > 0.0d0) then
             entered_g_mode_cavity = .true.
-            r_inner = exp10(stx_prof(ip_logR,k-1))
-            r_here = exp10(stx_prof(ip_logR,k))
-            r_outer = exp10(stx_prof(ip_logR,k+1))
+            r_inner = exp10(s%stitched%prof(ip_logR,k-1))
+            r_here = exp10(s%stitched%prof(ip_logR,k))
+            r_outer = exp10(s%stitched%prof(ip_logR,k+1))
             buoyancy_radius = buoyancy_radius &
                  + sqrt(n2)/r_here*0.5d0*(r_outer - r_inner)
          else if (entered_g_mode_cavity) then

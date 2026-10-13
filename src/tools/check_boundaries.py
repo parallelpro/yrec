@@ -233,7 +233,10 @@ STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
     "core": (124, 2),
     "element_diffusion": (69, 9),
-    "io": (474, 10),
+    # io: +2 (2026-10) for the two calls that hand the profile and pulse
+    # writers the stitched model, which moved from module variables into
+    # the star (s%stitched)
+    "io": (476, 10),
     "rotation": (405, 10),
     "setup": (152, 3),
     "state": (738, 1),

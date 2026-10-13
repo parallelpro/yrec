@@ -10,11 +10,11 @@
 ! at the converged (Teff, L) with the fixed output step sizes
 ! (stitch's recipe, formerly io/yrec_output.f90's build_extended),
 ! then fills:
-!   stx_prof(1:n_prof_cols, 1:n_ext)  -- the profile column values
+!   s%stitched%prof(1:n_prof_cols, 1:n_ext) -- the profile column values
 !     (column meanings = io/yrec_output.f90's profile column
 !     registry; column 1, the zone number, is left 0 -- the writer
 !     numbers zones itself)
-!   stx_pulse(1:n_pulse_cols, 1:n_ext) -- the GYRE/FGONG pulse set
+!   s%stitched%pulse(1:n_pulse_cols, 1:n_ext) -- the GYRE/FGONG pulse set
 ! The io writers are pure readers of these arrays; nothing in the
 ! output path integrates or stitches anything. compute_observables
 ! themes may read them too (profile-based observables).
@@ -24,8 +24,7 @@ module stitched_model
       use star_info_lib, only: json, star_info
       implicit none
       private
-      public :: build_stitched_model, n_ext, n_ie, stx_prof, &
-           stx_pulse, n_prof_cols, n_pulse_cols, &
+      public :: build_stitched_model, n_prof_cols, n_pulse_cols, &
            ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
            ip_gradr, ip_gradT, ip_grada, ip_conv_vel, ip_brunt_N2, &
            ip_csound
@@ -53,7 +52,7 @@ module stitched_model
            ipul_mu_e_inv = 20, ipul_h1 = 21, ipul_z = 22, &
            ipul_species_base = 22, ipul_eps_grav = 34
       integer, parameter :: ipul_gyre_last = ipul_omega
-! Named indices for the stx_prof columns physics consumers read
+! Named indices for the s%stitched%prof columns physics consumers read
 ! (column meanings = the profile column registry in io/yrec_output).
       integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
            ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
@@ -74,23 +73,9 @@ module stitched_model
 ! superadiabatic layer and photosphere, which dominate p-mode
 ! frequencies.
       integer, parameter :: max_ext = 3*json
-      integer :: n_ext = 0
-      integer :: ext_region(max_ext)   ! 1 interior, 2 envelope, 3 atmosphere
-      integer :: ext_index(max_ext)    ! index within that region
-! Seismic profile columns (54-57), precomputed over the extended grid
-! by compute_seismic_columns (called from build_stitched_model): brunt_N2,
-! lamb_S2 (l=1), gradL, gradr_div_grada.
-      double precision :: ext_seismic(4,max_ext)
-! Geometric height of each atmosphere point above the photosphere,
-! indexed like atm_points (1 = outermost): the cumulative sum of
-! envint's per-step lengths, built by build_stitched_model.
-      double precision :: atm_height(max_ext)
-      double precision :: stx_prof(n_prof_cols, max_ext)
-      double precision :: stx_pulse(n_pulse_cols, max_ext)
-! Index of the last NON-atmosphere point: the turnover calculation
-! walks regions 1-2 only (interior + envelope), matching the
-! pre-restructure combined-array assembly.
-      integer :: n_ie = 0
+! The extended model itself, its index map, its seismic columns and the
+! atmosphere heights live in the star's record s%stitched
+! (state/stitched_model_state.f90), sized max_ext.
 
 contains
 
@@ -112,15 +97,27 @@ subroutine build_stitched_model(s)
       integer :: ksaha
       logical :: lprt, lsbc0
 
+! The record's arrays, allocated and zeroed on the first build.
+      if (.not. allocated(s%stitched%prof)) then
+         allocate(s%stitched%region(max_ext), s%stitched%index(max_ext), &
+              s%stitched%seismic(4,max_ext), s%stitched%atm_height(max_ext), &
+              s%stitched%prof(n_prof_cols,max_ext), s%stitched%pulse(n_pulse_cols,max_ext))
+         s%stitched%region = 0
+         s%stitched%index = 0
+         s%stitched%seismic = 0.0d0
+         s%stitched%atm_height = 0.0d0
+         s%stitched%prof = 0.0d0
+         s%stitched%pulse = 0.0d0
+      end if
 ! interior always present
-      n_ext = 0
+      s%stitched%n_ext = 0
       do j = 1, s%nz
-         n_ext = n_ext + 1
-         ext_region(n_ext) = 1
-         ext_index(n_ext) = j
+         s%stitched%n_ext = s%stitched%n_ext + 1
+         s%stitched%region(s%stitched%n_ext) = 1
+         s%stitched%index(s%stitched%n_ext) = j
       end do
       if (.not. s%job%calc_envelope_flag) then
-         n_ie = n_ext
+         s%stitched%n_ie = s%stitched%n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this
 ! branch -- they hold whatever the last full build left.)
@@ -159,7 +156,7 @@ subroutine build_stitched_model(s)
            atm_steps=atm_steps, env_steps=env_steps)
 
       if (jerr /= 0) then
-         n_ie = n_ext
+         s%stitched%n_ie = s%stitched%n_ext
          call fill_stitched_arrays(s)
          return
       end if
@@ -171,13 +168,13 @@ subroutine build_stitched_model(s)
 ! envelope point not strictly outside the interior, keeping the
 ! extended radius strictly monotonic for GYRE.
       do i = 1, s%env_points%num_env_points
-         if (n_ext >= max_ext) exit
+         if (s%stitched%n_ext >= max_ext) exit
          if (s%env_points%env_log10_radius(i) <= s%logR(s%nz)) cycle
-         n_ext = n_ext + 1
-         ext_region(n_ext) = 2
-         ext_index(n_ext) = i
+         s%stitched%n_ext = s%stitched%n_ext + 1
+         s%stitched%region(s%stitched%n_ext) = 2
+         s%stitched%index(s%stitched%n_ext) = i
       end do
-      n_ie = n_ext
+      s%stitched%n_ie = s%stitched%n_ext
 ! atmosphere: atm_points runs outward-in, so walk it in reverse.
 ! atmo_delta_depth(k) is the PER-STEP geometric length between tau
 ! points k-1 and k (envint's Cox p590 quadrature), not a height, so
@@ -191,25 +188,25 @@ subroutine build_stitched_model(s)
 ! deepest point (height 0) repeats the envelope's photosphere radius
 ! and is skipped, same as the fitting-point repeat above.
       if (s%atm_points%num_atm_points > 0) then
-         atm_height(s%atm_points%num_atm_points) = 0.0d0
+         s%stitched%atm_height(s%atm_points%num_atm_points) = 0.0d0
          do i = s%atm_points%num_atm_points - 1, 1, -1
-            atm_height(i) = atm_height(i+1) + &
+            s%stitched%atm_height(i) = s%stitched%atm_height(i+1) + &
                  s%atm_points%atmo_delta_depth(i+1)
          end do
       end if
       do i = s%atm_points%num_atm_points, 1, -1
-         if (n_ext >= max_ext) exit
-         if (atm_height(i) <= 0.0d0) cycle
-         n_ext = n_ext + 1
-         ext_region(n_ext) = 3
-         ext_index(n_ext) = i
+         if (s%stitched%n_ext >= max_ext) exit
+         if (s%stitched%atm_height(i) <= 0.0d0) cycle
+         s%stitched%n_ext = s%stitched%n_ext + 1
+         s%stitched%region(s%stitched%n_ext) = 3
+         s%stitched%index(s%stitched%n_ext) = i
       end do
       call compute_seismic_columns(s)
       call fill_stitched_arrays(s)
 end subroutine build_stitched_model
 
 ! ---------------------------------------------------------------
-! Fill ext_seismic(1:4,:) over the assembled extended grid:
+! Fill s%stitched%seismic(1:4,:) over the assembled extended grid:
 !   1 brunt_N2 = g*[(1/Gamma1) dlnP/dr - dlnRho/dr]  (centered
 !     differences in r -- the same derivative content as FGONG's A4)
 !   2 lamb_S2  = l(l+1) c^2 / r^2 with l=1: 2*Gamma1*P/(rho r^2)
@@ -229,7 +226,7 @@ subroutine compute_seismic_columns(s)
       logical :: mu_ok(max_ext)
 
       mu_ok = .true.
-      do j = 1, n_ext
+      do j = 1, s%stitched%n_ext
          r(j)      = exp(ln10*ext_profile_value(s, ip_logR, j))
          lnp(j)    = ln10*ext_profile_value(s, ip_logP, j)
          lnrho(j)  = ln10*ext_profile_value(s, ip_logRho, j)
@@ -246,31 +243,31 @@ subroutine compute_seismic_columns(s)
             mu_ok(j) = .false.
          end if
       end do
-      do j = 1, n_ext
+      do j = 1, s%stitched%n_ext
          p   = exp(lnp(j))
          rho = exp(lnrho(j))
 ! lamb_S2 (pointwise)
          if (r(j) > 0.0d0 .and. rho > 0.0d0 .and. g1(j) > 0.0d0) then
-            ext_seismic(2,j) = 2.0d0*g1(j)*p/(rho*r(j)*r(j))
+            s%stitched%seismic(2,j) = 2.0d0*g1(j)*p/(rho*r(j)*r(j))
          else
-            ext_seismic(2,j) = 0.0d0
+            s%stitched%seismic(2,j) = 0.0d0
          end if
 ! gradr_div_grada (pointwise)
          if (grada_(j) /= 0.0d0) then
-            ext_seismic(4,j) = gradr_(j)/grada_(j)
+            s%stitched%seismic(4,j) = gradr_(j)/grada_(j)
          else
-            ext_seismic(4,j) = 0.0d0
+            s%stitched%seismic(4,j) = 0.0d0
          end if
       end do
-      do j = 2, n_ext-1
+      do j = 2, s%stitched%n_ext-1
          dr = r(j+1) - r(j-1)
          if (dr /= 0.0d0 .and. r(j) > 0.0d0 .and. g1(j) > 0.0d0) then
             dlnp_dr   = (lnp(j+1) - lnp(j-1))/dr
             dlnrho_dr = (lnrho(j+1) - lnrho(j-1))/dr
             grav = local_gravity_cgs(mass_g(j), r(j))
-            ext_seismic(1,j) = grav*(dlnp_dr/g1(j) - dlnrho_dr)
+            s%stitched%seismic(1,j) = grav*(dlnp_dr/g1(j) - dlnrho_dr)
          else
-            ext_seismic(1,j) = 0.0d0
+            s%stitched%seismic(1,j) = 0.0d0
          end if
 ! 2026 (bugsweep sec-11): column 52 is now the real mu everywhere
 ! (it was R/mu in the interior -- wrong-signed composition term --
@@ -279,16 +276,16 @@ subroutine compute_seismic_columns(s)
          if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0 .and. &
               mu_ok(j-1) .and. mu_ok(j+1)) then
             dlnmu_dlnp = (lnmu(j+1) - lnmu(j-1))/(lnp(j+1) - lnp(j-1))
-            ext_seismic(3,j) = grada_(j) + dlnmu_dlnp/delta_(j)
+            s%stitched%seismic(3,j) = grada_(j) + dlnmu_dlnp/delta_(j)
          else
-            ext_seismic(3,j) = grada_(j)
+            s%stitched%seismic(3,j) = grada_(j)
          end if
       end do
-      if (n_ext >= 2) then
-         ext_seismic(1,1) = ext_seismic(1,2)
-         ext_seismic(3,1) = ext_seismic(3,2)
-         ext_seismic(1,n_ext) = ext_seismic(1,n_ext-1)
-         ext_seismic(3,n_ext) = ext_seismic(3,n_ext-1)
+      if (s%stitched%n_ext >= 2) then
+         s%stitched%seismic(1,1) = s%stitched%seismic(1,2)
+         s%stitched%seismic(3,1) = s%stitched%seismic(3,2)
+         s%stitched%seismic(1,s%stitched%n_ext) = s%stitched%seismic(1,s%stitched%n_ext-1)
+         s%stitched%seismic(3,s%stitched%n_ext) = s%stitched%seismic(3,s%stitched%n_ext-1)
       end if
 end subroutine compute_seismic_columns
 
@@ -304,11 +301,11 @@ double precision function ext_profile_value(s, icol, j)
       integer :: i
 
       if (icol >= ip_seismic_first .and. icol <= ip_seismic_last) then
-         ext_profile_value = ext_seismic(icol-ip_seismic_first+1, j)
+         ext_profile_value = s%stitched%seismic(icol-ip_seismic_first+1, j)
          return
       end if
-      i = ext_index(j)
-      select case (ext_region(j))
+      i = s%stitched%index(j)
+      select case (s%stitched%region(j))
       case (1)
          ext_profile_value = profile_value(s, icol, i)
       case (2)
@@ -432,7 +429,7 @@ double precision function atmosphere_radius_cm(s, i)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: i
       atmosphere_radius_cm = exp(ln10* &
-           s%env_points%env_log10_radius(s%env_points%num_env_points)) + atm_height(i)
+           s%env_points%env_log10_radius(s%env_points%num_env_points)) + s%stitched%atm_height(i)
 end function atmosphere_radius_cm
 
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
@@ -548,14 +545,14 @@ subroutine build_pulse_points(s, pts)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
       type(star_info), intent(inout) :: s
-      double precision, intent(out) :: pts(n_pulse_cols, n_ext)
+      double precision, intent(out) :: pts(n_pulse_cols, s%stitched%n_ext)
       integer :: j, i, k
       double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav
 
-      do j = 1, n_ext
-         i = ext_index(j)
+      do j = 1, s%stitched%n_ext
+         i = s%stitched%index(j)
          pts(:,j) = 0.0d0
-         select case (ext_region(j))
+         select case (s%stitched%region(j))
          case (1)
             call gather_interior_point()
          case (2)
@@ -716,7 +713,7 @@ subroutine difference_brunt_n2()
 ! base (the mu-discontinuity's buoyancy interface) lands on the
 ! radiative side and is kept -- it is physics, not noise.
 ! Endpoints copy their neighbor, matching compute_seismic_columns.
-      do j = 2, n_ext - 1
+      do j = 2, s%stitched%n_ext - 1
          if (pts(ipul_N2,j) >= 0.0d0 .and. &
               pts(ipul_r,j) > 0.0d0 .and. pts(ipul_r,j+1) > pts(ipul_r,j-1) .and. &
               pts(ipul_gamma1,j) > 0.0d0) then
@@ -727,9 +724,9 @@ subroutine difference_brunt_n2()
                  (pts(ipul_r,j+1) - pts(ipul_r,j-1))
          end if
       end do
-      if (n_ext >= 2) then
+      if (s%stitched%n_ext >= 2) then
          pts(ipul_N2,1) = pts(ipul_N2,2)
-         pts(ipul_N2,n_ext) = pts(ipul_N2,n_ext-1)
+         pts(ipul_N2,s%stitched%n_ext) = pts(ipul_N2,s%stitched%n_ext-1)
       end if
 end subroutine difference_brunt_n2
 
@@ -751,12 +748,12 @@ end function species_slot
 subroutine fill_stitched_arrays(s)
       type(star_info), intent(inout) :: s
       integer :: j, icol
-      do j = 1, n_ext
+      do j = 1, s%stitched%n_ext
          do icol = 1, n_prof_cols
-            stx_prof(icol, j) = ext_profile_value(s, icol, j)
+            s%stitched%prof(icol, j) = ext_profile_value(s, icol, j)
          end do
       end do
-      call build_pulse_points(s, stx_pulse)
+      call build_pulse_points(s, s%stitched%pulse)
 end subroutine fill_stitched_arrays
 
 end module stitched_model

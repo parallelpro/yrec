@@ -382,7 +382,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 
 ### 2.12 Pulse output
 
-The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equations.f90` for every converged model. The column set `stx_pulse(35, n_ext)` is assembled over the full stitched model by `build_pulse_points` in `core/diagnostics/stitched_model.f90`. The FGONG, GYRE and GSM writers only read these arrays.
+The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equations.f90` for every converged model. The column set `s%stitched%pulse(35, n_ext)` is assembled over the full stitched model by `build_pulse_points` in `core/diagnostics/stitched_model.f90`. The FGONG, GYRE and GSM writers only read these arrays.
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
@@ -394,7 +394,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | c_P | erg g⁻¹ K⁻¹ | `star%pulse_specific_heat` | `PQCP` | core/structure/structure_equations.f90 | Specific heat. |
 | μ | — | `star%pulse_mean_molecular_weight` | `PRMU` | core/structure/structure_equations.f90:412 | R/(R/μ) from the EOS; the legacy slot held R/μ. |
 | 1/μ_e | — | `star%pulse_electron_mean_weight_inverse` | `PEMU` | core/structure/structure_equations.f90 | Inverse electron mean weight (already inverted). |
-| pulse columns 1–18 | cgs | `stx_pulse(ipul_r ... ipul_omega, :)`: r, m, L (erg s⁻¹), P, T, ρ, ∇, N², Γ₁, ∇_ad, δ, κ, κ·κ_T, κ·κ_ρ, ε, ε·ε_T, ε·ε_ρ, Ω | — | core/diagnostics/stitched_model.f90:47-55 | GYRE schema-101 set. Columns 16–17 multiply `eps_total` by the already-absolute derivative (trap 1). |
+| pulse columns 1–18 | cgs | `s%stitched%pulse(ipul_r ... ipul_omega, :)`: r, m, L (erg s⁻¹), P, T, ρ, ∇, N², Γ₁, ∇_ad, δ, κ, κ·κ_T, κ·κ_ρ, ε, ε·ε_T, ε·ε_ρ, Ω | — | core/diagnostics/stitched_model.f90:47-55 | GYRE schema-101 set. Columns 16–17 multiply `eps_total` by the already-absolute derivative (trap 1). |
 | pulse columns 19–34 | mixed | `ipul_cp`, `ipul_mu_e_inv`, `ipul_h1`, `ipul_z`, species at `ipul_species_base+k` (k=1..11: ³He, ¹²C, ¹³C, ¹⁴N, ¹⁶O, ²H, ⁴He, ⁷Li, ¹⁵N, ¹⁷O, ¹⁸O), `ipul_eps_grav` | — | core/diagnostics/stitched_model.f90:700-706 | FGONG extras. Column 35 is never filled. |
 | q* point values (envelope integration) | mixed | `pt%qqdp`, `qqdt`, `qqod`, `qqot`, `qdel`, `qdela`, `qqcp`, `qrmu`, `qemu`, `qd`, `qdl`, `qo`, `qol`, `qp`, `qpl`, `qt`, `qtl`, `current_*` | same names (`/PULSE2/`), `current_*` → `/ENVPRT/` | core/envelope/envelope_integrands.f90, core/envelope/envelope_integrands.f90, core/structure/structure_equations.f90 | Physics of the last evaluated point for the envelope/atmosphere recorder. `qp`, `qt`, `qtl` mean different things per writer (trap 2). |
 

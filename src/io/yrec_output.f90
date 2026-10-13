@@ -22,7 +22,6 @@
 ! output_init_mesa together with the writers' own state.
 module yrec_output
       use physical_constants
-      use stitched_model, only: n_ext, stx_pulse
       use history_output, only: history_output_init, write_history_row
       use profile_output, only: profile_output_init, write_profile
       use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, &
@@ -148,9 +147,9 @@ subroutine output_write_model(ierr)
       if (profile_write_due()) then
          profile_counter = profile_counter + 1
          iprof = profile_counter
-         if (star%ctrl%write_profile_flag) call write_profile(iprof, ierr)
+         if (star%ctrl%write_profile_flag) call write_profile(iprof, star%stitched, ierr)
          if (ierr /= 0) return
-         if (star%ctrl%write_pulse_flag) call write_pulse(iprof, ierr)
+         if (star%ctrl%write_pulse_flag) call write_pulse(iprof, star%stitched, ierr)
          if (ierr /= 0) return
       end if
       call write_history_row(iprof, ierr)
@@ -189,10 +188,13 @@ end function profile_write_due
 ! extended model. Global M_star/R_star/L_star refer to the
 ! photosphere (atmosphere points extend above R_star, as in MESA's
 ! add_atmosphere).
-subroutine write_pulse(iprof, ierr)
+subroutine write_pulse(iprof, stitched, ierr)
       use math_lib
       use star_info_lib, only: star
+      use stitched_model_state, only: stitched_model_record
       integer, intent(in) :: iprof
+! stitched: the stitched model whose pulse columns are written.
+      type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
       character(len=256) :: path
       character(len=12) :: numstr
@@ -206,16 +208,16 @@ subroutine write_pulse(iprof, ierr)
       if (star%job%pulse_format(1:5) == 'FGONG' .or. &
           star%job%pulse_format(1:5) == 'fgong') then
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
-         call write_fgong_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
+         call write_fgong_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       else if (star%job%pulse_format(1:3) == 'GSM' .or. &
                star%job%pulse_format(1:3) == 'gsm') then
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
-         call write_gsm_pulse(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
+         call write_gsm_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       else
          path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
-         call write_gyre_ext(n_ext, stx_pulse(:,1:n_ext), mstar_g, rstar_cm, &
+         call write_gyre_ext(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       end if
 end subroutine write_pulse
