@@ -301,10 +301,10 @@ subroutine begin_kind_card
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
 ! Pass the card's mixing length to the convection domain's settings,
-         call set_convection_settings(convection_settings_from_star())
+         call set_convection_settings(convection_settings_from_star(star))
 ! and refresh the rotation and element-diffusion domains' settings.
-         call set_rotation_settings(rotation_settings_from_star())
-         call set_diffusion_settings(diffusion_settings_from_star())
+         call set_rotation_settings(rotation_settings_from_star(star))
+         call set_diffusion_settings(diffusion_settings_from_star(star))
        star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
        star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%reset_triangle = .false.

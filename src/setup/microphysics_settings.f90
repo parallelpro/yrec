@@ -38,31 +38,32 @@ contains
 !     ctrl%use_opal92_tables, ctrl%use_opal95_tables,
 !     ctrl%use_pure_z_table, use_two_z_tables
 !   star writes: none
-function opacity_settings() result(s)
-      use star_info_lib, only: star
-      type(kap_settings_t) :: s
+function opacity_settings(s) result(settings)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(kap_settings_t) :: settings
 
-      s%use_opal95_tables = star%ctrl%use_opal95_tables
-      s%use_opal92_tables = star%ctrl%use_opal92_tables
-      s%use_laol89_tables = star%ctrl%use_laol89_tables
-      s%use_pure_z_table = star%ctrl%use_pure_z_table
-      s%use_alex06_tables = star%ctrl%use_alex06_tables
-      s%use_alex95_tables = star%ctrl%use_alex95_tables
-      s%use_kurucz90_tables = star%ctrl%use_kurucz90_tables
-      s%use_conductive_opacity = star%ctrl%use_conductive_opacity
-      s%use_two_z_tables = star%use_two_z_tables
-      s%opal95_single_table_z = star%ctrl%opal95_single_table_z
-      s%opal_table_z1 = star%ctrl%opal_table_z1
-      s%opal_table_z2 = star%ctrl%opal_table_z2
-      s%laol_table_z1 = star%ctrl%laol_table_z1
-      s%laol_table_z2 = star%ctrl%laol_table_z2
-      s%kurucz_table_z1 = star%ctrl%kurucz_table_z1
-      s%kurucz_table_z2 = star%ctrl%kurucz_table_z2
-      s%alex_table_z1 = star%ctrl%alex_table_z1
-      s%molecular_opacity_logt_min = star%ctrl%molecular_opacity_logt_min
-      s%molecular_opacity_logt_max = star%ctrl%molecular_opacity_logt_max
-      s%metal_fraction_match_tolerance = star%ctrl%metal_fraction_match_tolerance
-      s%laol_extrapolation_tolerance = star%ctrl%tollaol
+      settings%use_opal95_tables = s%ctrl%use_opal95_tables
+      settings%use_opal92_tables = s%ctrl%use_opal92_tables
+      settings%use_laol89_tables = s%ctrl%use_laol89_tables
+      settings%use_pure_z_table = s%ctrl%use_pure_z_table
+      settings%use_alex06_tables = s%ctrl%use_alex06_tables
+      settings%use_alex95_tables = s%ctrl%use_alex95_tables
+      settings%use_kurucz90_tables = s%ctrl%use_kurucz90_tables
+      settings%use_conductive_opacity = s%ctrl%use_conductive_opacity
+      settings%use_two_z_tables = s%use_two_z_tables
+      settings%opal95_single_table_z = s%ctrl%opal95_single_table_z
+      settings%opal_table_z1 = s%ctrl%opal_table_z1
+      settings%opal_table_z2 = s%ctrl%opal_table_z2
+      settings%laol_table_z1 = s%ctrl%laol_table_z1
+      settings%laol_table_z2 = s%ctrl%laol_table_z2
+      settings%kurucz_table_z1 = s%ctrl%kurucz_table_z1
+      settings%kurucz_table_z2 = s%ctrl%kurucz_table_z2
+      settings%alex_table_z1 = s%ctrl%alex_table_z1
+      settings%molecular_opacity_logt_min = s%ctrl%molecular_opacity_logt_min
+      settings%molecular_opacity_logt_max = s%ctrl%molecular_opacity_logt_max
+      settings%metal_fraction_match_tolerance = s%ctrl%metal_fraction_match_tolerance
+      settings%laol_extrapolation_tolerance = s%ctrl%tollaol
 end function opacity_settings
 
 !----------------------------------------------------------------------
@@ -73,21 +74,22 @@ end function opacity_settings
 !     ctrl%use_opal2001_eos, ctrl%use_opal2006_eos, ctrl%use_opal95_eos,
 !     ctrl%use_scv_eos, job%use_diffusion_z
 !   star writes: none
-function equation_of_state_settings() result(s)
-      use star_info_lib, only: star
-      type(eos_settings_t) :: s
+function equation_of_state_settings(s) result(settings)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(eos_settings_t) :: settings
 
-      s%use_mhd_eos = star%ctrl%use_mhd_eos
-      s%use_opal95_eos = star%ctrl%use_opal95_eos
-      s%use_opal2001_eos = star%ctrl%use_opal2001_eos
-      s%use_opal2006_eos = star%ctrl%use_opal2006_eos
-      s%use_scv_eos = star%ctrl%use_scv_eos
-      s%use_numerical_derivatives = star%ctrl%use_numerical_derivatives
-      s%use_diffusion_z = star%job%use_diffusion_z
-      s%use_debye_huckel_correction = star%ctrl%use_debye_huckel_correction
-      s%debye_huckel_eta_min = star%ctrl%debye_huckel_eta_min
-      s%debye_huckel_eta_max = star%ctrl%debye_huckel_eta_max
-      s%saha_log10t_cutoff = star%ctrl%saha_log10t_cutoff
+      settings%use_mhd_eos = s%ctrl%use_mhd_eos
+      settings%use_opal95_eos = s%ctrl%use_opal95_eos
+      settings%use_opal2001_eos = s%ctrl%use_opal2001_eos
+      settings%use_opal2006_eos = s%ctrl%use_opal2006_eos
+      settings%use_scv_eos = s%ctrl%use_scv_eos
+      settings%use_numerical_derivatives = s%ctrl%use_numerical_derivatives
+      settings%use_diffusion_z = s%job%use_diffusion_z
+      settings%use_debye_huckel_correction = s%ctrl%use_debye_huckel_correction
+      settings%debye_huckel_eta_min = s%ctrl%debye_huckel_eta_min
+      settings%debye_huckel_eta_max = s%ctrl%debye_huckel_eta_max
+      settings%saha_log10t_cutoff = s%ctrl%saha_log10t_cutoff
 end function equation_of_state_settings
 
 !----------------------------------------------------------------------
@@ -95,14 +97,15 @@ end function equation_of_state_settings
 !   star reads: ctrl%allard_target_alpha, ctrl%allard_target_feh,
 !     ctrl%allard_use_tau100, job%atm_choice
 !   star writes: none
-function atmosphere_settings() result(s)
-      use star_info_lib, only: star
-      type(atm_settings_t) :: s
+function atmosphere_settings(s) result(settings)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(atm_settings_t) :: settings
 
-      s%atm_choice = star%job%atm_choice
-      s%allard_use_tau100 = star%ctrl%allard_use_tau100
-      s%allard_target_feh = star%ctrl%allard_target_feh
-      s%allard_target_alpha = star%ctrl%allard_target_alpha
+      settings%atm_choice = s%job%atm_choice
+      settings%allard_use_tau100 = s%ctrl%allard_use_tau100
+      settings%allard_target_feh = s%ctrl%allard_target_feh
+      settings%allard_target_alpha = s%ctrl%allard_target_alpha
 end function atmosphere_settings
 
 !----------------------------------------------------------------------
@@ -117,30 +120,31 @@ end function atmosphere_settings
 !     log10_solar_luminosity, mixing_length_alpha, solar_luminosity_cgs,
 !     zenvm
 !   star writes: none
-function convection_settings_from_star() result(s)
-      use star_info_lib, only: star
-      type(convection_settings_t) :: s
+function convection_settings_from_star(s) result(settings)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(convection_settings_t) :: settings
 
-      s%mixing_length_alpha = star%mixing_length_alpha
-      s%log10_t_cut = star%ctrl%tgcut
-      s%adiabatic_overshoot = star%ctrl%ladov
-      s%solar_luminosity_cgs = star%solar_luminosity_cgs
-      s%log10_solar_luminosity = star%log10_solar_luminosity
-      s%spot_filling_factor = star%ctrl%spot_filling_factor
-      s%spot_temp_contrast = star%ctrl%spot_temp_contrast
-      s%spot_depth_varies = star%ctrl%spot_depth_varies
-      s%core_overshoot = star%job%core_overshoot_active
-      s%envelope_overshoot = star%job%envelope_overshoot_active
-      s%intermediate_overshoot = star%job%lovstm
-      s%overshoot_alpha_core = star%ctrl%overshoot_alpha_core
-      s%overshoot_alpha_envelope = star%ctrl%overshoot_alpha_envelope
-      s%overshoot_alpha_intermediate = star%ctrl%alpham
-      s%limit_core_overshoot = star%ctrl%lovmax
-      s%core_overshoot_limit = star%ctrl%betac
-      s%rotation_active = star%job%rotation_active
-      s%instability_transport_active = star%job%instability_transport_active
-      s%use_extended_composition = star%job%use_extended_composition
-      s%envelope_metals_no_cno = star%zenvm
+      settings%mixing_length_alpha = s%mixing_length_alpha
+      settings%log10_t_cut = s%ctrl%tgcut
+      settings%adiabatic_overshoot = s%ctrl%ladov
+      settings%solar_luminosity_cgs = s%solar_luminosity_cgs
+      settings%log10_solar_luminosity = s%log10_solar_luminosity
+      settings%spot_filling_factor = s%ctrl%spot_filling_factor
+      settings%spot_temp_contrast = s%ctrl%spot_temp_contrast
+      settings%spot_depth_varies = s%ctrl%spot_depth_varies
+      settings%core_overshoot = s%job%core_overshoot_active
+      settings%envelope_overshoot = s%job%envelope_overshoot_active
+      settings%intermediate_overshoot = s%job%lovstm
+      settings%overshoot_alpha_core = s%ctrl%overshoot_alpha_core
+      settings%overshoot_alpha_envelope = s%ctrl%overshoot_alpha_envelope
+      settings%overshoot_alpha_intermediate = s%ctrl%alpham
+      settings%limit_core_overshoot = s%ctrl%lovmax
+      settings%core_overshoot_limit = s%ctrl%betac
+      settings%rotation_active = s%job%rotation_active
+      settings%instability_transport_active = s%job%instability_transport_active
+      settings%use_extended_composition = s%job%use_extended_composition
+      settings%envelope_metals_no_cno = s%zenvm
 end function convection_settings_from_star
 
 !----------------------------------------------------------------------
@@ -154,24 +158,25 @@ end function convection_settings_from_star
 !     ctrl%use_thoul_diffusion, ctrl%use_thoul_fit, job%fgrz,
 !     job%use_diffusion_z
 !   star writes: none
-function diffusion_settings_from_star() result(s)
-      use star_info_lib, only: star
-      type(diffusion_settings_t) :: s
+function diffusion_settings_from_star(s) result(settings)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(diffusion_settings_t) :: settings
 
-      s%use_new_diffusion_routines = star%ctrl%use_new_diffusion_routines
-      s%use_diffusion_z = star%job%use_diffusion_z
-      s%diffuse_lithium = star%ctrl%diffuse_lithium
-      s%fgry = star%ctrl%fgry
-      s%fgrz = star%job%fgrz
-      s%hydrogen_diffusion_floor = star%ctrl%hydrogen_diffusion_floor
-      s%helium_diffusion_min = star%ctrl%helium_diffusion_min
-      s%settling_num_iterations = star%ctrl%settling_num_iterations
-      s%settling_tolerance = star%ctrl%settling_tolerance
-      s%constant_mixing_coeff = star%ctrl%constant_mixing_coeff
-      s%coulomb_log_choice = star%ctrl%coulomb_log_choice
-      s%use_thoul_fit = star%ctrl%use_thoul_fit
-      s%use_thoul_diffusion = star%ctrl%use_thoul_diffusion
-      s%constant_settling_reduction = star%ctrl%constant_settling_reduction
+      settings%use_new_diffusion_routines = s%ctrl%use_new_diffusion_routines
+      settings%use_diffusion_z = s%job%use_diffusion_z
+      settings%diffuse_lithium = s%ctrl%diffuse_lithium
+      settings%fgry = s%ctrl%fgry
+      settings%fgrz = s%job%fgrz
+      settings%hydrogen_diffusion_floor = s%ctrl%hydrogen_diffusion_floor
+      settings%helium_diffusion_min = s%ctrl%helium_diffusion_min
+      settings%settling_num_iterations = s%ctrl%settling_num_iterations
+      settings%settling_tolerance = s%ctrl%settling_tolerance
+      settings%constant_mixing_coeff = s%ctrl%constant_mixing_coeff
+      settings%coulomb_log_choice = s%ctrl%coulomb_log_choice
+      settings%use_thoul_fit = s%ctrl%use_thoul_fit
+      settings%use_thoul_diffusion = s%ctrl%use_thoul_diffusion
+      settings%constant_settling_reduction = s%ctrl%constant_settling_reduction
 end function diffusion_settings_from_star
 
 end module microphysics_settings

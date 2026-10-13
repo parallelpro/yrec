@@ -272,9 +272,9 @@ STAR_ACCESS_BUDGET = {
     # rotation (2026-10): the drivers take the star as an argument s; the
     # rest is star-free
     "rotation": (0, 0),
-    # setup: +4 (2026-10) for the solar units the rotation settings record
-    # now carries, +14 for element diffusion's settings record
-    "setup": (170, 3),
+    # setup (2026-10): the settings builders and map_user_inputs take the
+    # star as an argument s
+    "setup": (0, 0),
     "state": (738, 1),
 }
 

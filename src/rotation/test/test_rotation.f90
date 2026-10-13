@@ -61,7 +61,7 @@ program test_rotation
       star%log10_solar_luminosity = log10(3.828d33)
 ! the settings record from the controls' defaults (as each run card
 ! installs it); the cases below set what they vary
-      rotation_settings = rotation_settings_from_star()
+      rotation_settings = rotation_settings_from_star(star)
 ! a Matt-type law: tau_cz and P_phot at their solar values, exponents
 ! of order unity
       rotation_settings%wind_constant = 3.4d47

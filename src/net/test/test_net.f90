@@ -175,7 +175,7 @@ program test_net
       s0pp_be7_p = -2.288d-7
 
 ! cross-section scales via the real remap, then the network's settings
-      call map_user_inputs
+      call map_user_inputs(star)
       call configure_network(star)
       write(*,'(a)') "# test_net: cross_section_scale from map_user_inputs " // &
            "(newcross defaults)"

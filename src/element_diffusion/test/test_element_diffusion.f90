@@ -200,7 +200,7 @@ subroutine settle_case(label, new_routines)
       ierr = 0
       star%ctrl%use_new_diffusion_routines = new_routines
 ! the controls set above, as a run card installs them
-      call set_diffusion_settings(diffusion_settings_from_star())
+      call set_diffusion_settings(diffusion_settings_from_star(star))
       call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
            log_t, del, convective, nz, mass, star%job%diffuse_helium_active, &
            star%settling_suspended_reported, ierr)

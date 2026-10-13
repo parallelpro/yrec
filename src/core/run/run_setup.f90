@@ -125,7 +125,7 @@ subroutine set_up_constants_and_tables(s, ierr)
       s%atm_hras = hsra_t_tau_offset()
 ! --- Opacity tables ---------------------------------------------------
       ierr = 0
-      call kap_init(opacity_settings(), s%envelope_hydrogen_fraction, &
+      call kap_init(opacity_settings(s), s%envelope_hydrogen_fraction, &
            s%envelope_metal_fraction, s%job%mixture_weights, &
            s%job%alex06_table_path,s%job%kurucz_table_path,s%job%kurucz_table2_path, &
            s%job%laol_table_path,s%job%laol_table2_path, &
@@ -136,7 +136,7 @@ subroutine set_up_constants_and_tables(s, ierr)
 ! --- Equation-of-state tables -----------------------------------------
 ! eos_init reads the Fermi-Dirac degenerate-electron table always, and
 ! the OPAL, MHD and SCVH tables when the settings select them.
-      call eos_init(equation_of_state_settings(), s%job%fermi_table_path,s%job%scv_h_table_path,s%job%scv_he_table_path, &
+      call eos_init(equation_of_state_settings(s), s%job%fermi_table_path,s%job%scv_h_table_path,s%job%scv_he_table_path, &
            s%job%scv_z_table_path,s%job%zams_a_table_path,s%job%zams_b_table_path, &
            s%job%zams_c_table_path,s%job%centre1_table_path,s%job%centre2_table_path, &
            s%job%centre3_table_path,s%job%centre4_table_path,s%job%centre5_table_path, &
@@ -145,7 +145,7 @@ subroutine set_up_constants_and_tables(s, ierr)
 ! --- Surface-pressure tables for the surface boundary condition -------
 ! atm_init reads the Kurucz (atm_choice 3 and 4), Allard (atm_choice 4)
 ! and Kurucz/Castelli (atm_choice 5) tables.
-      call atm_init(atmosphere_settings(), s%job%atm_table_path, &
+      call atm_init(atmosphere_settings(s), s%job%atm_table_path, &
            s%job%allard_table_path, ierr)
       if (ierr /= 0) return
 

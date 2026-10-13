@@ -81,7 +81,7 @@ subroutine read_input(ierr)
       call read_namelist_files(ierr)
       if (ierr /= 0) return
       call adopt_canonical_names
-      call map_user_inputs
+      call map_user_inputs(star)
 ! open_run_files' output_init_mesa reads its controls from star%ctrl
       call store_controls_to_star
       call expand_paths

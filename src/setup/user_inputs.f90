@@ -19,9 +19,9 @@ contains
 ! arrays the code uses:
 !  - with use_new_nuclear_rates (legacy LNEWNUC), the per-reaction S0
 !    values and their first and second derivatives (s0_*, s0p_*,
-!    s0pp_*) become the cross-section scales star%cross_section_scale
-!    (legacy SSTANDARD) and the derivative scales star%qs0e_scale and
-!    star%qqs0ee_scale (legacy QS0E, QQS0EE);
+!    s0pp_*) become the cross-section scales s%cross_section_scale
+!    (legacy SSTANDARD) and the derivative scales s%qs0e_scale and
+!    s%qqs0ee_scale (legacy QS0E, QQS0EE);
 !  - with lnewvars (use_new_rate_variables), the tol_*, flag_* and
 !    time_* controls overwrite the rezoning tolerances chi_grid_scale
 !    (legacy HPTTOL) and the timestep limiters atime, and set
@@ -29,12 +29,13 @@ contains
 !    diffusion_timestep_factor.
 ! The derivative and N15 + p branching scales are always first reset
 ! to unity.
-subroutine map_user_inputs
-      use star_info_lib, only: star
+subroutine map_user_inputs(s)
+      use star_info_lib, only: star_info
       use controls_buffer
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer :: i
 
@@ -125,11 +126,11 @@ contains
 ! unity.
 subroutine reset_rate_scale_defaults
       do i = 1,8
-         star%qs0e_scale(i) = 1.0d0
-         star%qqs0ee_scale(i) = 1.0d0
+         s%qs0e_scale(i) = 1.0d0
+         s%qqs0ee_scale(i) = 1.0d0
       end do
-      star%c12_alpha_scale = 1.0d0
-      star%o16_gamma_scale = 1.0d0
+      s%c12_alpha_scale = 1.0d0
+      s%o16_gamma_scale = 1.0d0
 end subroutine reset_rate_scale_defaults
 
 ! ---------------------------------------------------------------
@@ -137,7 +138,7 @@ end subroutine reset_rate_scale_defaults
 ! of the two N15 + p branches.
 subroutine set_cross_section_scales
          do i = 1,17
-            star%cross_section_scale(i) = 1.0d0
+            s%cross_section_scale(i) = 1.0d0
          end do
 ! compute_zone_energy multiplies each rate by cross_section_scale
 ! (legacy SSTANDARD), the ratio of the desired S0 to that of Bahcall &
@@ -147,24 +148,24 @@ subroutine set_cross_section_scales
 ! (unlike in the original compute_zone_energy): their inputs are S'/S0
 ! and S''/S0, taken relative to the Solar Fusion I (Adelberger et al.
 ! 1998) ratios.
-         star%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
-         star%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref
-         star%cross_section_scale(r_he3he4) = s0_he3he4/s0_he3he4_ref
-         star%cross_section_scale(r_pc12) = s0_p_c12/s0_p_c12_ref
-         star%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
-         star%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
-         star%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
+         s%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
+         s%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref
+         s%cross_section_scale(r_he3he4) = s0_he3he4/s0_he3he4_ref
+         s%cross_section_scale(r_pc12) = s0_p_c12/s0_p_c12_ref
+         s%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
+         s%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
+         s%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
 ! Slots 8-13 keep unit scale: C13 + He4, C12 + He4, N14 + He4 and
 ! triple alpha are resonant and not fit by a simple S0, and O16 + He4
 ! and C12 + C12 are not used.
-         star%cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
-         star%cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
-         star%cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
-         star%cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
+         s%cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
+         s%cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
+         s%cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
+         s%cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
 ! The scales of the N15 + p branches, N15(p,alpha)C12 and
 ! N15(p,gamma)O16.
-         star%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
-         star%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
+         s%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
+         s%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
 end subroutine set_cross_section_scales
 
 ! ---------------------------------------------------------------
@@ -179,46 +180,46 @@ subroutine set_first_derivative_scales
 ! A non-positive S0 gives a zero scale (MHP 4/25) instead of a division
 ! by zero.
          if (s0_pp.gt.0.0d0) then
-            star%qs0e_scale(r_pp) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
+            s%qs0e_scale(r_pp) = (s0p_pp/s0_pp)/(qs0e_pp_a98/s0_pp_a98)
          else
-            star%qs0e_scale(r_pp) = 0.0d0
+            s%qs0e_scale(r_pp) = 0.0d0
          end if
          if (s0_he3he3.gt.0.0d0) then
-            star%qs0e_scale(r_he3he3) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_he3he3_a98)
+            s%qs0e_scale(r_he3he3) = (s0p_he3he3/s0_he3he3)/(qs0e_he3he3_a98/s0_he3he3_a98)
          else
-            star%qs0e_scale(r_he3he3) = 0.0d0
+            s%qs0e_scale(r_he3he3) = 0.0d0
          end if
          if (s0_he3he4.gt.0.0d0) then
-            star%qs0e_scale(r_he3he4) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_he3he4_a98)
+            s%qs0e_scale(r_he3he4) = (s0p_he3he4/s0_he3he4)/(qs0e_he3he4_a98/s0_he3he4_a98)
          else
-            star%qs0e_scale(r_he3he4) = 0.0d0
+            s%qs0e_scale(r_he3he4) = 0.0d0
          end if
          if (s0_p_c12.gt.0.0d0) then
-            star%qs0e_scale(r_pc12) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_p_c12_a98)
+            s%qs0e_scale(r_pc12) = (s0p_p_c12/s0_p_c12)/(qs0e_p_c12_a98/s0_p_c12_a98)
          else
-            star%qs0e_scale(r_pc12) = 0.0d0
+            s%qs0e_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            star%qs0e_scale(r_pc13) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_p_c13_a98)
+            s%qs0e_scale(r_pc13) = (s0p_p_c13/s0_p_c13)/(qs0e_p_c13_a98/s0_p_c13_a98)
          else
-            star%qs0e_scale(r_pc13) = 0.0d0
+            s%qs0e_scale(r_pc13) = 0.0d0
          end if
          if (s0_p_n14.gt.0.0d0) then
-            star%qs0e_scale(r_pn14) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_p_n14_a98)
+            s%qs0e_scale(r_pn14) = (s0p_p_n14/s0_p_n14)/(qs0e_p_n14_a98/s0_p_n14_a98)
          else
-            star%qs0e_scale(r_pn14) = 0.0d0
+            s%qs0e_scale(r_pn14) = 0.0d0
          end if
          if (s0_p_o16.gt.0.0d0) then
-            star%qs0e_scale(r_po16) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_p_o16_a98)
+            s%qs0e_scale(r_po16) = (s0p_p_o16/s0_p_o16)/(qs0e_p_o16_a98/s0_p_o16_a98)
          else
-            star%qs0e_scale(r_po16) = 0.0d0
+            s%qs0e_scale(r_po16) = 0.0d0
          end if
 ! Slot iq_be7p (8) of the derivative scales holds Be7 + p.
          if (s0_be7_p.gt.0.0d0) then
-            star%qs0e_scale(iq_be7p) = (s0p_be7_p/s0_be7_p)/ &
+            s%qs0e_scale(iq_be7p) = (s0p_be7_p/s0_be7_p)/ &
                  (qs0e_be7_p_a98/s0_be7_p_a98)
          else
-            star%qs0e_scale(iq_be7p) = 0.0d0
+            s%qs0e_scale(iq_be7p) = 0.0d0
          end if
 end subroutine set_first_derivative_scales
 
@@ -231,28 +232,28 @@ subroutine set_second_derivative_scales
 ! second-derivative scales are set for pp, He3 + He3, He3 + He4 or
 ! N14 + p (dropped in the 2003 version); theirs stay at unity.
          if (s0_p_c12.gt.0.0d0) then
-            star%qqs0ee_scale(r_pc12) = (s0pp_p_c12/s0_p_c12)/ &
+            s%qqs0ee_scale(r_pc12) = (s0pp_p_c12/s0_p_c12)/ &
                  (qqs0ee_p_c12_a98/s0_p_c12_a98)
          else
-            star%qqs0ee_scale(r_pc12) = 0.0d0
+            s%qqs0ee_scale(r_pc12) = 0.0d0
          end if
          if (s0_p_c13.gt.0.0d0) then
-            star%qqs0ee_scale(r_pc13) = (s0pp_p_c13/s0_p_c13)/ &
+            s%qqs0ee_scale(r_pc13) = (s0pp_p_c13/s0_p_c13)/ &
                  (qqs0ee_p_c13_a98/s0_p_c13_a98)
          else
-            star%qqs0ee_scale(r_pc13) = 0.0d0
+            s%qqs0ee_scale(r_pc13) = 0.0d0
          end if
          if (s0_p_o16.gt.0.0d0) then
-            star%qqs0ee_scale(r_po16) = (s0pp_p_o16/s0_p_o16)/ &
+            s%qqs0ee_scale(r_po16) = (s0pp_p_o16/s0_p_o16)/ &
                  (qqs0ee_p_o16_a98/s0_p_o16_a98)
          else
-            star%qqs0ee_scale(r_po16) = 0.0d0
+            s%qqs0ee_scale(r_po16) = 0.0d0
          end if
          if (s0_be7_p.gt.0.0d0) then
-            star%qqs0ee_scale(iq_be7p) = (s0pp_be7_p/s0_be7_p)/ &
+            s%qqs0ee_scale(iq_be7p) = (s0pp_be7_p/s0_be7_p)/ &
                  (qqs0ee_be7_p_a98/s0_be7_p_a98)
          else
-            star%qqs0ee_scale(iq_be7p) = 0.0d0
+            s%qqs0ee_scale(iq_be7p) = 0.0d0
          end if
 end subroutine set_second_derivative_scales
 

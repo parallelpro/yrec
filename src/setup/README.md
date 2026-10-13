@@ -4,11 +4,11 @@ The physics domains do not read `star` (`docs/GUIDELINES.md`, star rule 1): each
 
 | Module (file) | What it holds |
 |---|---|
-| `microphysics_settings` | `opacity_settings` (kap's `kap_settings_t`), `equation_of_state_settings` (eos's `eos_settings_t`), `atmosphere_settings` (atm's `atm_settings_t`) and `convection_settings_from_star` (convection's `convection_settings_t`). Each is a function that copies controls into the record; besides `ctrl` and `job` they read `star%use_two_z_tables` (kap) and `star%mixing_length_alpha`, `star%solar_luminosity_cgs`, `star%log10_solar_luminosity` and `star%zenvm` (convection). |
-| `rotation_settings_setup` | `rotation_settings_from_star`: rotation's `rotation_settings_t`, from controls only. |
+| `microphysics_settings` | `opacity_settings` (kap's `kap_settings_t`), `equation_of_state_settings` (eos's `eos_settings_t`), `atmosphere_settings` (atm's `atm_settings_t`) `convection_settings_from_star` (convection's `convection_settings_t`) and `diffusion_settings_from_star` (element diffusion's `diffusion_settings_t`). Each is a function that copies controls into the record; besides `ctrl` and `job` they read `star%use_two_z_tables` (kap) and `star%mixing_length_alpha`, `star%solar_luminosity_cgs`, `star%log10_solar_luminosity` and `star%zenvm` (convection). |
+| `rotation_settings_setup` | `rotation_settings_from_star`: rotation's `rotation_settings_t`, from the controls and the solar units. |
 | `user_inputs` | `map_user_inputs`: with `use_new_nuclear_rates`, the per-reaction S0 values and their derivatives (`s0_*`, `s0p_*`, `s0pp_*`) become `star%cross_section_scale`, `star%qs0e_scale`, `star%qqs0ee_scale` and the two N15 + p branch scales; with `lnewvars`, the `tol_*`, `flag_*` and `time_*` controls overwrite `chi_grid_scale`, `atime`, `use_structure_dt_limits`, `max_domega_global` and `diffusion_timestep_factor` in the controls buffer. The derivative and branch scales are reset to 1 first. |
 
-The settings functions write nothing (their headers say `star writes: none`); `map_user_inputs` writes the five rate-scale members of `star` and the controls buffer (`io/controls_buffer.f90`), which it may import because it runs inside the read (`CONTROLS_BUFFER_IMPORTERS` in `tools/check_boundaries.py`).
+Every procedure here takes the star as an argument, `s` (read-only, `intent(in)`, for the settings functions; the caller passes its own `s`, or `star` in the owners: `run_yrec`, the controls reader, the tests). The settings functions write nothing (their headers say `star writes: none`); `map_user_inputs` writes the five rate-scale members of `star` and the controls buffer (`io/controls_buffer.f90`), which it may import because it runs inside the read (`CONTROLS_BUFFER_IMPORTERS` in `tools/check_boundaries.py`).
 
 ## When each runs
 
@@ -16,7 +16,7 @@ The settings functions write nothing (their headers say `star writes: none`); `m
 |---|---|---|
 | `map_user_inputs` | `io/read_controls.f90` (`read_input`) | Once per controls read, i.e. once per `run_yrec` call: after `adopt_canonical_names`, before the buffer is first stored into `star%ctrl`/`star%job`. |
 | `opacity_settings`, `equation_of_state_settings`, `atmosphere_settings` | `core/run/run_setup.f90` (`set_up_constants_and_tables`), as the first argument of `kap_init`, `eos_init` and `atm_init` | Once per run, after the controls read (`prepare_run`), before the first run card. |
-| `convection_settings_from_star`, `rotation_settings_from_star` | `core/run/run_driver.f90` (`begin_kind_card`), through `set_convection_settings` and `set_rotation_settings` | At the start of every run card, after the card's `mixing_length_alpha` is set and before its starting model is read. |
+| `convection_settings_from_star`, `rotation_settings_from_star`, `diffusion_settings_from_star` | `core/run/run_driver.f90` (`begin_kind_card`), through `set_convection_settings`, `set_rotation_settings` and `set_diffusion_settings` | At the start of every run card, after the card's `mixing_length_alpha` is set and before its starting model is read. |
 
 The tests build records the same way: `core/test/test_structure.f90` (convection and rotation), `rotation/test/test_rotation.f90` (rotation) and `net/test/test_net.f90` (`map_user_inputs`).
 
