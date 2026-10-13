@@ -342,7 +342,7 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
            radius_before_cm, radius_after_cm
       double precision :: surface_moment_of_inertia_per_mass, &
            delta_angular_momentum, surface_omega_local
-      double precision :: cz_total_am, cz_new_am, am_ratio
+      double precision :: cz_total_am, cz_new_am, cz_shrunk_am, am_ratio
       double precision :: mass_scale_factor
       double precision :: delta_mass_msun
       double precision :: total_mass_grams_old, total_mass_grams_new
@@ -377,9 +377,10 @@ subroutine apply_mass_change(total_radius_cm, mass_loss_rate_msun_yr, &
       delta_mass_cgs = mass_loss_rate_msun_yr*star%solar_mass_cgs*star%dt/ &
            seconds_per_year
       call adjust_cz_for_accreted_entropy()
-      call remove_wind_angular_momentum()
+      call measure_wind_angular_momentum()
       call rescale_cz_masses()
       call update_total_mass()
+      call remove_wind_angular_momentum()
       call mix_in_accreted_composition()
 
 contains
@@ -496,9 +497,10 @@ subroutine adjust_cz_for_accreted_entropy()
 end subroutine adjust_cz_for_accreted_entropy
 
 ! ---------------------------------------------------------------
-! With mass loss from a rotating star: the convection zone loses the
-! angular momentum the lost matter carries (a thermal wind).
-subroutine remove_wind_angular_momentum()
+! With mass loss from a rotating star, before the masses change: the
+! angular momentum the lost matter carries (a thermal wind) and the
+! convection zone's angular momentum.
+subroutine measure_wind_angular_momentum()
 ! A thermal wind: the lost matter carries away only its own specific
 ! angular momentum, that of the surface under the convection zone's
 ! rotation law (walpcz), dJ = j_surface dM (dM < 0).
@@ -523,18 +525,35 @@ subroutine remove_wind_angular_momentum()
                  surface_moment_of_inertia_per_mass*delta_mass_cgs
          endif
 ! The convection zone's angular momentum, J_cz = sum of j_rot dm over
-! jenv..nz; every zone's j_rot is then scaled by (J_cz + dJ)/J_cz.
+! jenv..nz, and its value after the loss, J_cz + dJ.
          cz_total_am = star%j_rot(jenv)*star%dm(jenv)
          do zone_idx = jenv+1,nz
             cz_total_am = cz_total_am + star%j_rot(zone_idx)*star%dm(zone_idx)
          end do
          cz_new_am = (cz_total_am+delta_angular_momentum)
-         am_ratio = cz_new_am/cz_total_am
 ! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
 ! convective envelope's mass.
          write(*,22)delta_mass_cgs,delta_angular_momentum,star%omega(nz), &
               cz_new_am,cz_total_am,cz_total_mass_below_fitting
  22      format(1P6E13.4)
+      endif
+end subroutine measure_wind_angular_momentum
+
+! ---------------------------------------------------------------
+! With mass loss from a rotating star, after the masses changed: the
+! convection zone keeps J_cz + dJ.
+subroutine remove_wind_angular_momentum()
+! The shrunk zones at unchanged j_rot hold sum j_rot dm' (dm' the new
+! shell masses), already short of J_cz by about <j>|dM|; every zone's
+! j_rot is scaled by (J_cz + dJ)/sum j_rot dm', so the zone loses dJ
+! once. (It used to be scaled by (J_cz + dJ)/J_cz before the masses
+! shrank, which removed <j>|dM| on top of dJ.)
+      if(star%job%rotation_active .and. delta_mass_cgs.lt.0.0d0)then
+         cz_shrunk_am = star%j_rot(jenv)*star%dm(jenv)
+         do zone_idx = jenv+1,nz
+            cz_shrunk_am = cz_shrunk_am + star%j_rot(zone_idx)*star%dm(zone_idx)
+         end do
+         am_ratio = cz_new_am/cz_shrunk_am
          do zone_idx = jenv,nz
             star%j_rot(zone_idx) = star%j_rot(zone_idx)*am_ratio
          end do
