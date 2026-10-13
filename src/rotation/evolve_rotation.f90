@@ -125,7 +125,7 @@ subroutine evolve_angular_momentum(full_timestep, max_domega_step, wind_loss_act
 ! The quantities both kinds of instability need: the temperature
 ! gradients, opacities, viscosities, thermal diffusivity and heat
 ! capacity.
-      call compute_shell_physics(star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun,star%logP, &
+      call compute_shell_physics(star, star%fp_rot,star%ft_rot,star%xa,star%logRho,star%luminosity_lsun,star%logP, &
            star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%log_Teff, ierr)
       if (ierr /= 0) return
 ! The sub-steps: the structure is interpolated between the start and the
@@ -369,8 +369,8 @@ subroutine burn_light_elements_over_substep()
       else
          star%envelope_overshoot_depth_end = 0.0D0
       endif
-      call store_end_li_be_rates(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz)
-      call burn_li_be(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
+      call store_end_li_be_rates(star, star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz)
+      call burn_li_be(star, sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
            star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
            envelope_boundary_zone_prev,star%nz)
       envelope_boundary_zone_prev = envelope_boundary_zone_cur

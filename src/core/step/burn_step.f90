@@ -23,6 +23,7 @@ module burn_step
       use convection_geometry, only: locate_surface_mixing_base
 ! exp and log: crmath's under USE_CRMATH
       use math_lib
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: configure_network, surface_accretion_now, &
@@ -48,25 +49,25 @@ contains
 !     ctrl%use_itoh_neutrino_loss, ctrl%weak_screening_threshold,
 !     o16_gamma_scale, qqs0ee_scale, qs0e_scale
 !   star writes: none
-subroutine configure_network()
-      use star_info_lib, only: star
+subroutine configure_network(s)
       use net_lib, only: net_settings_t, set_net_settings
+      type(star_info), intent(inout) :: s
       type(net_settings_t) :: settings
 
-      settings%logT_cutoffs = star%ctrl%nuclear_logT_cutoffs
-      settings%weak_screening_threshold = star%ctrl%weak_screening_threshold
-      settings%cross_section_scale = star%cross_section_scale
-      settings%qs0e_scale = star%qs0e_scale
-      settings%qqs0ee_scale = star%qqs0ee_scale
-      settings%o16_gamma_scale = star%o16_gamma_scale
-      settings%c12_alpha_scale = star%c12_alpha_scale
-      settings%li6_rate_scale = star%ctrl%li6_rate_scale
-      settings%li7_rate_scale = star%ctrl%li7_rate_scale
-      settings%be9_pg_rate_scale = star%ctrl%be9_pg_rate_scale
-      settings%be9_pd_rate_scale = star%ctrl%be9_pd_rate_scale
-      settings%be9_palpha_rate_scale = star%ctrl%be9_palpha_rate_scale
-      settings%calc_neutrinos = star%ctrl%calc_neutrinos
-      settings%use_itoh_neutrino_loss = star%ctrl%use_itoh_neutrino_loss
+      settings%logT_cutoffs = s%ctrl%nuclear_logT_cutoffs
+      settings%weak_screening_threshold = s%ctrl%weak_screening_threshold
+      settings%cross_section_scale = s%cross_section_scale
+      settings%qs0e_scale = s%qs0e_scale
+      settings%qqs0ee_scale = s%qqs0ee_scale
+      settings%o16_gamma_scale = s%o16_gamma_scale
+      settings%c12_alpha_scale = s%c12_alpha_scale
+      settings%li6_rate_scale = s%ctrl%li6_rate_scale
+      settings%li7_rate_scale = s%ctrl%li7_rate_scale
+      settings%be9_pg_rate_scale = s%ctrl%be9_pg_rate_scale
+      settings%be9_pd_rate_scale = s%ctrl%be9_pd_rate_scale
+      settings%be9_palpha_rate_scale = s%ctrl%be9_palpha_rate_scale
+      settings%calc_neutrinos = s%ctrl%calc_neutrinos
+      settings%use_itoh_neutrino_loss = s%ctrl%use_itoh_neutrino_loss
       call set_net_settings(settings)
 end subroutine configure_network
 
@@ -80,14 +81,15 @@ end subroutine configure_network
 !   star reads: ctrl%accreted_composition, ctrl%mass_accretion_rate,
 !     job%use_mass_accretion
 !   star writes: none
-function surface_accretion_now(mass) result(accretion)
-      use star_info_lib, only: star, i_h2
+function surface_accretion_now(s, mass) result(accretion)
+      use star_info_lib, only: i_h2
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: mass
       type(surface_accretion) :: accretion
 
-      accretion%on = star%job%use_mass_accretion
-      accretion%inflow = star%ctrl%mass_accretion_rate.gt.0.0d0
-      accretion%deuterium_fraction = star%ctrl%accreted_composition(i_h2)
+      accretion%on = s%job%use_mass_accretion
+      accretion%inflow = s%ctrl%mass_accretion_rate.gt.0.0d0
+      accretion%deuterium_fraction = s%ctrl%accreted_composition(i_h2)
       accretion%mass = mass
 end function surface_accretion_now
 
@@ -102,17 +104,17 @@ end function surface_accretion_now
 ! stored.
 !   star reads: convective_turnover_timescale, jcz
 !   star writes: none
-subroutine compute_zone_energy(log_density, log_temperature, xa, &
+subroutine compute_zone_energy(s, log_density, log_temperature, xa, &
      shell_index, e)
-      use star_info_lib, only: star
       use net_lib, only: compute_nuclear_energy
+      type(star_info), intent(inout) :: s
 ! xa: the shell's composition, star%xa layout
       double precision, intent(in) :: log_density, log_temperature, xa(:)
       integer, intent(in) :: shell_index
       type(nuclear_energy_result), intent(out) :: e
 
       call compute_nuclear_energy(log_density, log_temperature, xa, &
-           shell_index.ge.star%jcz, star%convective_turnover_timescale, e)
+           shell_index.ge.s%jcz, s%convective_turnover_timescale, e)
 end subroutine compute_zone_energy
 
 
@@ -141,10 +143,11 @@ end subroutine compute_zone_energy
 !   star reads: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
 !     rate_li7, rate_li7_start
 !   star writes: none
-subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
+subroutine average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
      cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
      x_start, log_rate_start, x_end, cz_mass_end, log_rate_end)
-      use star_info_lib, only: star, json, i_li6, i_li7, i_be9
+      use star_info_lib, only: json, i_li6, i_li7, i_be9
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: composition(15,json)
       double precision, intent(in) :: mass_coordinate(json)
       double precision, intent(in) :: shell_mass(json)
@@ -163,8 +166,8 @@ subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
       cz_mass_start = 0.0d0
       do zone_idx = cz_base_zone_old,num_zones
          x_start = x_start + composition(species,zone_idx)*shell_mass(zone_idx)
-         rate_sum = rate_sum + [star%rate_li6_start(zone_idx), &
-              star%rate_li7_start(zone_idx), star%rate_be9_start(zone_idx)]* &
+         rate_sum = rate_sum + [s%rate_li6_start(zone_idx), &
+              s%rate_li7_start(zone_idx), s%rate_be9_start(zone_idx)]* &
               shell_mass(zone_idx)
          cz_mass_start = cz_mass_start + shell_mass(zone_idx)
       end do
@@ -178,14 +181,14 @@ subroutine average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
       cz_mass_end = 0.0d0
       do zone_idx = cz_base_zone,num_zones
          mass = shell_mass(zone_idx)
-         rate = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
-              star%rate_be9(zone_idx)]
+         rate = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
+              s%rate_be9(zone_idx)]
          if (zone_idx.eq.cz_base_zone .and. cz_base_zone.gt.1 .and. &
               cz_base_zone.lt.num_zones) then
             mass = mass + cz_base_frac* &
                  (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
-            rate = rate + 0.5d0*cz_base_frac*([star%rate_li6(cz_base_zone-1), &
-                 star%rate_li7(cz_base_zone-1), star%rate_be9(cz_base_zone-1)] - rate)
+            rate = rate + 0.5d0*cz_base_frac*([s%rate_li6(cz_base_zone-1), &
+                 s%rate_li7(cz_base_zone-1), s%rate_be9(cz_base_zone-1)] - rate)
          end if
          rate_sum = rate_sum + rate*mass
          x_end = x_end + composition(species,zone_idx)*mass
@@ -228,11 +231,12 @@ end subroutine average_li_be_over_cz
 !     ctrl%mass_accretion_rate, job%use_mass_accretion, rate_be9,
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
 !   star writes: none
-subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
+subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, env_cz_zone, env_cz_zone_old, num_zones)
-      use star_info_lib, only: star, json, i_li6, i_li7, i_be9
+      use star_info_lib, only: json, i_li6, i_li7, i_be9
       use net_lib, only: surviving_fraction, accreted_survival, &
            linear_in_time, linear_in_log
+      type(star_info), intent(inout) :: s
 
 ! timestep: s
       double precision, intent(in) :: timestep
@@ -244,7 +248,7 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
 
       integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
-      integer :: zone_idx, s, cz_base_zone, cz_base_zone_old, min_zone, max_zone
+      integer :: zone_idx, isp, cz_base_zone, cz_base_zone_old, min_zone, max_zone
       double precision :: cz_base_frac
       double precision :: rate_start(3), rate_end(3), rate
       double precision :: x_cz_start(3), x_cz_end(3), log_rate_cz_start(3), &
@@ -258,7 +262,7 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
 ! sensitively on the temperature at its base, so locating it accurately
 ! matters. min_zone is the deeper of the two bases, max_zone the
 ! shallower.
-      call locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, &
+      call locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, &
            num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       min_zone = min(cz_base_zone,cz_base_zone_old)
       max_zone = max(cz_base_zone,cz_base_zone_old)
@@ -267,30 +271,30 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
 ! stops at the first shell too cool to burn (rate_be9 <= 1e-32 at the
 ! start or end) and skips shells already depleted.
       do zone_idx = 1,min_zone-1
-         if(star%rate_be9(zone_idx).le.1.0d-32 .or. star%rate_be9_start(zone_idx).le.1.0d-32)exit
+         if(s%rate_be9(zone_idx).le.1.0d-32 .or. s%rate_be9_start(zone_idx).le.1.0d-32)exit
          if(all(composition(species,zone_idx).lt.1.0d-24))cycle
          if(log_temperature(zone_idx).gt.7.0d0)then
             composition(species,zone_idx) = 0.0d0
             cycle
          endif
-         rate_start = [star%rate_li6_start(zone_idx), star%rate_li7_start(zone_idx), &
-              star%rate_be9_start(zone_idx)]
-         rate_end = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
-              star%rate_be9(zone_idx)]
-         do s = 1,3
-            composition(species(s),zone_idx) = composition(species(s),zone_idx)* &
-                 surviving_fraction(rate_start(s), rate_end(s), timestep, linear_in_log)
-            if(composition(species(s),zone_idx).lt.1.0d-24) &
-                 composition(species(s),zone_idx) = 0.0d0
+         rate_start = [s%rate_li6_start(zone_idx), s%rate_li7_start(zone_idx), &
+              s%rate_be9_start(zone_idx)]
+         rate_end = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
+              s%rate_be9(zone_idx)]
+         do isp = 1,3
+            composition(species(isp),zone_idx) = composition(species(isp),zone_idx)* &
+                 surviving_fraction(rate_start(isp), rate_end(isp), timestep, linear_in_log)
+            if(composition(species(isp),zone_idx).lt.1.0d-24) &
+                 composition(species(isp),zone_idx) = 0.0d0
          end do
       end do
 
 ! 3. The convection zone as one unit. When its base is too cool to burn
 ! (rate_be9 <= 1e-32 at the start or end), nothing more burns: return.
-      if (star%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.star%rate_be9(cz_base_zone).le.1.0d-32) then
+      if (s%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.s%rate_be9(cz_base_zone).le.1.0d-32) then
          return
       end if
-      call average_li_be_over_cz(composition, mass_coordinate, shell_mass, &
+      call average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
            cz_base_zone, cz_base_zone_old, cz_base_frac, num_zones, &
            x_cz_start, log_rate_cz_start, x_cz_end, cz_mass_end, log_rate_cz_end)
 ! When the zone deepened, start from the abundance mixed over the deeper
@@ -303,17 +307,17 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
 ! This assumes that all the accreted matter lands in a convection zone
 ! of the end-of-step depth: not strictly true, but not a bad
 ! approximation either.
-      accreting = star%job%use_mass_accretion .and. &
-           star%ctrl%mass_accretion_rate.gt.0.0d0
-      do s = 1,3
-         x_cz_end(s) = x_cz_start(s)*surviving_fraction(exp(log_rate_cz_start(s)), &
-              exp(log_rate_cz_end(s)), timestep, linear_in_log)
-         if (accreting) x_cz_end(s) = (x_cz_end(s)*cz_mass_end + &
-              star%ctrl%accreted_composition(species(s))* &
-              accreted_survival(exp(log_rate_cz_start(s)), exp(log_rate_cz_end(s)), &
-              timestep, linear_in_log)*star%accreted_mass)/ &
-              (cz_mass_end + star%accreted_mass)
-         if(x_cz_end(s).lt.1.0d-24) x_cz_end(s) = 0.0d0
+      accreting = s%job%use_mass_accretion .and. &
+           s%ctrl%mass_accretion_rate.gt.0.0d0
+      do isp = 1,3
+         x_cz_end(isp) = x_cz_start(isp)*surviving_fraction(exp(log_rate_cz_start(isp)), &
+              exp(log_rate_cz_end(isp)), timestep, linear_in_log)
+         if (accreting) x_cz_end(isp) = (x_cz_end(isp)*cz_mass_end + &
+              s%ctrl%accreted_composition(species(isp))* &
+              accreted_survival(exp(log_rate_cz_start(isp)), exp(log_rate_cz_end(isp)), &
+              timestep, linear_in_log)*s%accreted_mass)/ &
+              (cz_mass_end + s%accreted_mass)
+         if(x_cz_end(isp).lt.1.0d-24) x_cz_end(isp) = 0.0d0
       end do
 ! The new abundance is set from the shallower base (max_zone) out; when
 ! the zone deepened, the shells between the two bases are left as they
@@ -345,20 +349,20 @@ subroutine burn_li_be(timestep, composition, radius, mass_coordinate, &
       delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! Stop at the first shell too cool to burn.
-         if(star%rate_be9(zone_idx).le.1.0d-32)exit
+         if(s%rate_be9(zone_idx).le.1.0d-32)exit
          radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
-         rate_end = [star%rate_li6(zone_idx), star%rate_li7(zone_idx), &
-              star%rate_be9(zone_idx)]
-         do s = 1,3
+         rate_end = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
+              s%rate_be9(zone_idx)]
+         do isp = 1,3
 ! The rate, weighted in the log between the shell's own end-of-step rate
 ! and the convection zone's start-of-step rate, and held over the step:
 !   ln rate = radiative_frac ln rate_end + (1 - radiative_frac) ln rate_cz.
-            rate = exp(radiative_frac*log(rate_end(s)) + &
-                 (1.0d0-radiative_frac)*log_rate_cz_start(s))
-            composition(species(s),zone_idx) = composition(species(s),zone_idx)* &
+            rate = exp(radiative_frac*log(rate_end(isp)) + &
+                 (1.0d0-radiative_frac)*log_rate_cz_start(isp))
+            composition(species(isp),zone_idx) = composition(species(isp),zone_idx)* &
                  surviving_fraction(rate, rate, timestep, linear_in_time)
-            if(composition(species(s),zone_idx).lt.1.0d-24) &
-                 composition(species(s),zone_idx) = 0.0d0
+            if(composition(species(isp),zone_idx).lt.1.0d-24) &
+                 composition(species(isp),zone_idx) = 0.0d0
          end do
       end do
 end subroutine burn_li_be
@@ -381,11 +385,12 @@ end subroutine burn_li_be
 !   star reads: logRho_start, logT_start, xa_start
 !   star writes: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
 !     rate_li7, rate_li7_start
-subroutine store_li_be_rates(composition, log_density, log_temperature, &
+subroutine store_li_be_rates(s, composition, log_density, log_temperature, &
      num_zones, start_of_step)
-      use star_info_lib, only: star, json, i_h1
+      use star_info_lib, only: json, i_h1
       use physical_constants, only: ln10
       use net_lib, only: compute_li_be_rates
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: composition(15,json)
       double precision, intent(in) :: log_density(json)
@@ -399,31 +404,31 @@ subroutine store_li_be_rates(composition, log_density, log_temperature, &
 
       do zone_idx = 1,num_zones
          if (log_temperature(zone_idx) < min_log_temperature .and. &
-              star%logT_start(zone_idx) < min_log_temperature) exit
+              s%logT_start(zone_idx) < min_log_temperature) exit
          if (start_of_step) then
-            rhox = exp(ln10*star%logRho_start(zone_idx))*star%xa_start(i_h1,zone_idx)
-            t9 = exp(ln10*(star%logT_start(zone_idx)-9.0d0))
+            rhox = exp(ln10*s%logRho_start(zone_idx))*s%xa_start(i_h1,zone_idx)
+            t9 = exp(ln10*(s%logT_start(zone_idx)-9.0d0))
          else
             rhox = exp(ln10*log_density(zone_idx))*composition(i_h1,zone_idx)
             t9 = exp(ln10*(log_temperature(zone_idx)-9.0d0))
          end if
          call compute_li_be_rates(t9, li6_rate, li7_rate, be9_rate)
          if (start_of_step) then
-            star%rate_li6_start(zone_idx) = li6_rate*rhox
-            star%rate_li7_start(zone_idx) = li7_rate*rhox
-            star%rate_be9_start(zone_idx) = be9_rate*rhox
+            s%rate_li6_start(zone_idx) = li6_rate*rhox
+            s%rate_li7_start(zone_idx) = li7_rate*rhox
+            s%rate_be9_start(zone_idx) = be9_rate*rhox
          else
-            star%rate_li6(zone_idx) = li6_rate*rhox
-            star%rate_li7(zone_idx) = li7_rate*rhox
-            star%rate_be9(zone_idx) = be9_rate*rhox
+            s%rate_li6(zone_idx) = li6_rate*rhox
+            s%rate_li7(zone_idx) = li7_rate*rhox
+            s%rate_be9(zone_idx) = be9_rate*rhox
          end if
       end do
-      star%rate_li6(zone_idx:num_zones) = 0.0d0
-      star%rate_li7(zone_idx:num_zones) = 0.0d0
-      star%rate_be9(zone_idx:num_zones) = 0.0d0
-      star%rate_li6_start(zone_idx:num_zones) = 0.0d0
-      star%rate_li7_start(zone_idx:num_zones) = 0.0d0
-      star%rate_be9_start(zone_idx:num_zones) = 0.0d0
+      s%rate_li6(zone_idx:num_zones) = 0.0d0
+      s%rate_li7(zone_idx:num_zones) = 0.0d0
+      s%rate_be9(zone_idx:num_zones) = 0.0d0
+      s%rate_li6_start(zone_idx:num_zones) = 0.0d0
+      s%rate_li7_start(zone_idx:num_zones) = 0.0d0
+      s%rate_be9_start(zone_idx:num_zones) = 0.0d0
 end subroutine store_li_be_rates
 
 !----------------------------------------------------------------------
@@ -435,19 +440,20 @@ end subroutine store_li_be_rates
 ! sub-step's midpoint model) into star%rate_*.
 !   star reads: logRho, logT, nz, xa
 !   star writes: none
-subroutine store_start_li_be_rates()
-      use star_info_lib, only: star
-      call store_li_be_rates(star%xa, star%logRho, star%logT, star%nz, .true.)
+subroutine store_start_li_be_rates(s)
+      type(star_info), intent(inout) :: s
+      call store_li_be_rates(s, s%xa, s%logRho, s%logT, s%nz, .true.)
 end subroutine store_start_li_be_rates
 
 !   star reads: none
 !   star writes: none
-subroutine store_end_li_be_rates(composition, log_density, log_temperature, num_zones)
+subroutine store_end_li_be_rates(s, composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: json
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: composition(15,json), log_density(json), &
            log_temperature(json)
       integer, intent(in) :: num_zones
-      call store_li_be_rates(composition, log_density, log_temperature, &
+      call store_li_be_rates(s, composition, log_density, log_temperature, &
            num_zones, .false.)
 end subroutine store_end_li_be_rates
 
@@ -481,13 +487,14 @@ end subroutine store_end_li_be_rates
 !     ctrl%min_abundance, ctrl%nuclear_logT_cutoffs,
 !     ctrl%relative_tolerance, xa_start
 !   star writes: none
-subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
+subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep, ierr)
 
-      use star_info_lib, only: star, json, i_h1, i_metals, n_species_basic
+      use star_info_lib, only: json, i_h1, i_metals, n_species_basic
       use net_lib, only: burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4
       use io_units, only: run_log_unit
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: zone_begin, zone_end
@@ -512,18 +519,18 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
          rate_vec = 0.0d0
          do k = zone_begin, zone_end
             region_mass = region_mass + shell_mass(k)
-            region_start = region_start + star%xa_start(1:n_species_basic,k)*shell_mass(k)
+            region_start = region_start + s%xa_start(1:n_species_basic,k)*shell_mass(k)
             rate_vec = rate_vec + shell_mass(k)*rate_by_zone(:,k)
          end do
          region_start = region_start/region_mass
          rate_vec = rate_vec/region_mass
       else
-         region_start = star%xa_start(1:n_species_basic,zone_begin)
+         region_start = s%xa_start(1:n_species_basic,zone_begin)
          rate_vec = rate_by_zone(:,zone_begin)
       end if
 
 ! Too cool to burn (below ctrl%nuclear_logT_cutoffs(1)): only homogenize.
-      if (log_temperature(zone_begin) < star%ctrl%nuclear_logT_cutoffs(1)) then
+      if (log_temperature(zone_begin) < s%ctrl%nuclear_logT_cutoffs(1)) then
          do k = zone_begin, zone_end
             composition(1:n_species_basic,k) = region_start
          end do
@@ -538,19 +545,19 @@ subroutine burn_network_region(log_temperature, zone_begin, zone_end, &
       x(n_solved+1:) = x_start(n_solved+1:)
 
       call burn_implicitly(x_start, rate_vec, timestep, &
-           star%ctrl%min_abundance, star%ctrl%absolute_tolerance, &
-           star%ctrl%relative_tolerance, star%ctrl%max_burn_iterations, x, ierr)
+           s%ctrl%min_abundance, s%ctrl%absolute_tolerance, &
+           s%ctrl%relative_tolerance, s%ctrl%max_burn_iterations, x, ierr)
       if (ierr /= 0) then
          write (run_log_unit,'(a,i0,a,i0,a)') ' burn_network_region: no '// &
               'convergence for the new abundances of shell ', zone_begin, &
-              ' in ', star%ctrl%max_burn_iterations, &
+              ' in ', s%ctrl%max_burn_iterations, &
               ' iterations (ctrl%max_burn_iterations); run stopped'
          return
       end if
 
 ! Z: once hydrogen is exhausted at the top of the region (X < 5e-7),
 ! Z = 1 - X - Y - He3; otherwise the region's start-of-step Z.
-      if (star%xa_start(i_h1,zone_end) < 5.0d-7) then
+      if (s%xa_start(i_h1,zone_end) < 5.0d-7) then
          metals = 1.0d0 - x(s_h1) - x(s_he3) - x(s_he4)
       else
          metals = region_start(i_metals)
@@ -577,9 +584,9 @@ end subroutine burn_network_region
 ! sub-steps their midpoint model's.
 !   star reads: ctrl%nuclear_logT_cutoffs
 !   star writes: none
-function burn_regions(log_temperature, radiative_zone_bounds, &
+function burn_regions(s, log_temperature, radiative_zone_bounds, &
      num_radiative_zones, mixed_zone_bounds, num_mixed_zones) result(regions)
-      use star_info_lib, only: star
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_temperature(:)
       integer, intent(in) :: radiative_zone_bounds(:,:), mixed_zone_bounds(:,:)
       integer, intent(in) :: num_radiative_zones, num_mixed_zones
@@ -590,7 +597,7 @@ function burn_regions(log_temperature, radiative_zone_bounds, &
       n = 0
       do r = 1, num_radiative_zones
          do k = radiative_zone_bounds(r,1), radiative_zone_bounds(r,2)
-            if (log_temperature(k) <= star%ctrl%nuclear_logT_cutoffs(1)) exit
+            if (log_temperature(k) <= s%ctrl%nuclear_logT_cutoffs(1)) exit
             n = n + 1
             list(:,n) = [k, k]
          end do
@@ -611,10 +618,11 @@ end function burn_regions
 ! star's, mid_timestep_model a rotation sub-step's midpoint (rot_scr).
 !   star reads: ctrl%nuclear_logT_cutoffs
 !   star writes: none
-subroutine network_rates_of_model(log_density, log_temperature, &
+subroutine network_rates_of_model(s, log_density, log_temperature, &
      composition, num_zones, rate_by_zone)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use net_lib, only: compute_network_rates
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_density(json), &
            log_temperature(json), composition(15,json)
       integer, intent(in) :: num_zones
@@ -623,7 +631,7 @@ subroutine network_rates_of_model(log_density, log_temperature, &
 
       do zone_idx = 1, num_zones
 ! Stop at the first shell at or below the nuclear cutoff.
-         if (log_temperature(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
+         if (log_temperature(zone_idx).le.s%ctrl%nuclear_logT_cutoffs(1)) exit
          call compute_network_rates(log_density(zone_idx), log_temperature(zone_idx), &
               composition(:,zone_idx), rate_by_zone(:, zone_idx))
       end do
@@ -648,9 +656,10 @@ end subroutine network_rates_of_model
 !     ctrl%nuclear_logT_cutoffs, jcz, job%use_mass_accretion, logRho,
 !     logT, nz, xa
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
-subroutine compute_burn_rates(store_start_rates, rate_by_zone)
-      use star_info_lib, only: star, json, i_h1, i_h2
+subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
+      use star_info_lib, only: json, i_h1, i_h2
       use net_lib, only: deuterium_rate
+      type(star_info), intent(inout) :: s
 ! store_start_rates: also keep the deuterium rates as the start-of-step
 ! rates (star%deuterium_burning_rate_start; the composition step's
 ! predictor pass).
@@ -659,32 +668,32 @@ subroutine compute_burn_rates(store_start_rates, rate_by_zone)
       double precision :: deuterium_test
       integer :: zone_idx, clear_idx
 
-      call network_rates_of_model(star%logRho, star%logT, star%xa, star%nz, &
+      call network_rates_of_model(s, s%logRho, s%logT, s%xa, s%nz, &
            rate_by_zone)
 ! The deuterium burning rates (MHP 5/02), computed only while the surface
 ! deuterium, or with inflowing accretion the larger of it and the
 ! accreted gas's, exceeds 1e-11; zero from the first shell at or below
 ! the nuclear cutoff out.
-      if (star%job%use_mass_accretion .and. star%ctrl%mass_accretion_rate.gt.0.0d0) then
-         deuterium_test = max(star%xa(i_h2,star%nz), &
-              star%ctrl%accreted_composition(i_h2))
+      if (s%job%use_mass_accretion .and. s%ctrl%mass_accretion_rate.gt.0.0d0) then
+         deuterium_test = max(s%xa(i_h2,s%nz), &
+              s%ctrl%accreted_composition(i_h2))
       else
-         deuterium_test = star%xa(i_h2,star%nz)
+         deuterium_test = s%xa(i_h2,s%nz)
       end if
-      do zone_idx = 1, star%nz
-         if (star%logT(zone_idx).le.star%ctrl%nuclear_logT_cutoffs(1)) exit
+      do zone_idx = 1, s%nz
+         if (s%logT(zone_idx).le.s%ctrl%nuclear_logT_cutoffs(1)) exit
          if (deuterium_test.gt.1.0d-11) then
-            star%deuterium_burning_rate(zone_idx) = deuterium_rate( &
-                 star%logRho(zone_idx), star%logT(zone_idx), star%xa(i_h1,zone_idx), &
-                 zone_idx.ge.star%jcz, star%convective_turnover_timescale)
-            if (store_start_rates) star%deuterium_burning_rate_start(zone_idx) = &
-                 star%deuterium_burning_rate(zone_idx)
+            s%deuterium_burning_rate(zone_idx) = deuterium_rate( &
+                 s%logRho(zone_idx), s%logT(zone_idx), s%xa(i_h1,zone_idx), &
+                 zone_idx.ge.s%jcz, s%convective_turnover_timescale)
+            if (store_start_rates) s%deuterium_burning_rate_start(zone_idx) = &
+                 s%deuterium_burning_rate(zone_idx)
          else
-            star%deuterium_burning_rate(zone_idx) = 0.0d0
+            s%deuterium_burning_rate(zone_idx) = 0.0d0
          end if
       end do
-      do clear_idx = zone_idx, star%nz
-         star%deuterium_burning_rate(clear_idx) = 0.0d0
+      do clear_idx = zone_idx, s%nz
+         s%deuterium_burning_rate(clear_idx) = 0.0d0
       end do
 end subroutine compute_burn_rates
 
@@ -696,9 +705,10 @@ end subroutine compute_burn_rates
 ! homogenizes the mixed regions.
 !   star reads: dm, logT, mixed_zone_bounds
 !   star writes: xa
-subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
+subroutine burn_network(s, radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep, ierr)
-      use star_info_lib, only: star, json, max_radiative_zones
+      use star_info_lib, only: json, max_radiative_zones
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
@@ -709,11 +719,11 @@ subroutine burn_network(radiative_zone_bounds, num_radiative_zones, &
       integer :: r
 
       ierr = 0
-      regions = burn_regions(star%logT, radiative_zone_bounds, &
-           num_radiative_zones, star%mixed_zone_bounds, num_mixed_zones)
+      regions = burn_regions(s, s%logT, radiative_zone_bounds, &
+           num_radiative_zones, s%mixed_zone_bounds, num_mixed_zones)
       do r = 1, size(regions,2)
-         call burn_network_region(star%logT, regions(1,r), regions(2,r), &
-              rate_by_zone, star%dm, star%xa, timestep, ierr)
+         call burn_network_region(s, s%logT, regions(1,r), regions(2,r), &
+              rate_by_zone, s%dm, s%xa, timestep, ierr)
          if (ierr /= 0) return
       end do
 end subroutine burn_network
@@ -727,10 +737,11 @@ end subroutine burn_network
 !     deuterium_burning_rate_start, dm, logT, mixed_zone_bounds, nz,
 !     xa_start
 !   star writes: xa
-subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
+subroutine burn_deuterium(s, radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, timestep)
-      use star_info_lib, only: star, max_radiative_zones
+      use star_info_lib, only: max_radiative_zones
       use net_lib, only: burn_deuterium_region, min_deuterium_step
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
            num_radiative_zones, num_mixed_zones
 ! timestep: s
@@ -738,13 +749,13 @@ subroutine burn_deuterium(radiative_zone_bounds, num_radiative_zones, &
       integer, allocatable :: regions(:,:)
       integer :: r
 
-      regions = burn_regions(star%logT, radiative_zone_bounds, &
-           num_radiative_zones, star%mixed_zone_bounds, num_mixed_zones)
+      regions = burn_regions(s, s%logT, radiative_zone_bounds, &
+           num_radiative_zones, s%mixed_zone_bounds, num_mixed_zones)
       do r = 1, size(regions,2)
-         call burn_deuterium_region(regions(1,r), regions(2,r), star%nz, &
-              star%dm, star%xa, timestep, star%xa_start, &
-              star%deuterium_burning_rate_start, star%deuterium_burning_rate, &
-              surface_accretion_now(star%accreted_mass), min_deuterium_step)
+         call burn_deuterium_region(regions(1,r), regions(2,r), s%nz, &
+              s%dm, s%xa, timestep, s%xa_start, &
+              s%deuterium_burning_rate_start, s%deuterium_burning_rate, &
+              surface_accretion_now(s, s%accreted_mass), min_deuterium_step)
       end do
 end subroutine burn_deuterium
 

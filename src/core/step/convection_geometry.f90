@@ -18,6 +18,7 @@
 ! H_P), burn_step (burn_li_be). Each caller keeps its own choice of
 ! gradients and its own switch for overshoot.
 module convection_geometry
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: cz_base_fraction, pressure_scale_height, first_zone_above, &
@@ -91,13 +92,14 @@ end function first_zone_above
 !     job%envelope_overshoot_active, job%instability_transport_active,
 !     job%rotation_active, logR_start
 !   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
-subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
+subroutine locate_surface_mixing_base(s, radius, env_cz_zone, env_cz_zone_old, num_zones, &
      cz_base_zone, cz_base_zone_old, cz_base_frac)
       use rotation_scratch_lib
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: radius(json)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
@@ -112,14 +114,14 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
 ! with rotational mixing, from the rotation sub-step's midpoint model
 ! (mid_scr); otherwise from the model's own gradients.
       if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
-         if(star%job%rotation_active.and.star%job%instability_transport_active)then
+         if(s%job%rotation_active.and.s%job%instability_transport_active)then
             del_diff = mid_scr%grada(env_cz_zone) - &
                  mid_scr%gradr(env_cz_zone)
             del_diff_below = mid_scr%grada(env_cz_zone-1) - &
                  mid_scr%gradr(env_cz_zone-1)
          else
-            del_diff = star%grada(env_cz_zone)-star%gradr(env_cz_zone)
-            del_diff_below = star%grada(env_cz_zone-1)-star%gradr(env_cz_zone-1)
+            del_diff = s%grada(env_cz_zone)-s%gradr(env_cz_zone)
+            del_diff_below = s%grada(env_cz_zone-1)-s%gradr(env_cz_zone-1)
          endif
 ! The true base (del_ad = del_rad) by linear interpolation, a fraction f
 ! (cz_base_fraction) of the way up from zone env_cz_zone-1; as an offset
@@ -128,7 +130,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
          cz_base_frac = max(-0.5d0,0.5d0-cz_base_fraction(del_diff_below, &
               del_diff))
          cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.star%job%envelope_overshoot_active)then
+         if(.not.s%job%envelope_overshoot_active)then
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else
@@ -139,12 +141,12 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
 ! reaches the overshoot depth alpha_ov H_P (pressure_scale_height_start)
 ! below it. Later calls in the step (the rotation sub-steps) start from
 ! the previous call's end-of-step zone.
-            if(star%cz_base_radius_prev.eq.0.0d0)then
+            if(s%cz_base_radius_prev.eq.0.0d0)then
                if (env_cz_zone_old.gt.1) then
-                  star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
-                           +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-                  search_radius = star%cz_base_radius_prev - star%envelope_overshoot_depth_start
-                  cz_base_zone_old = first_zone_above(star%logR_start, env_cz_zone_old-1, &
+                  s%cz_base_radius_prev = 0.5d0*(exp(ln10*s%logR_start(env_cz_zone_old)) &
+                           +exp(ln10*s%logR_start(env_cz_zone_old-1)))
+                  search_radius = s%cz_base_radius_prev - s%envelope_overshoot_depth_start
+                  cz_base_zone_old = first_zone_above(s%logR_start, env_cz_zone_old-1, &
                        search_radius)
                else
 ! Fully convective at the start of the step: there is no zone below
@@ -153,7 +155,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
                   cz_base_zone_old = 1
                end if
             else
-               cz_base_zone_old = star%envelope_cz_base_zone_prev
+               cz_base_zone_old = s%envelope_cz_base_zone_prev
             endif
 ! The ending depth, from the interpolated true base,
 !   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
@@ -162,8 +164,8 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
-            star%cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - star%envelope_overshoot_depth_end
+            s%cz_base_radius_prev = cz_base_radius
+            search_radius = cz_base_radius - s%envelope_overshoot_depth_end
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
 ! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),
@@ -172,7 +174,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
 ! did (docs/ROADMAP.md section 13).
             if (cz_base_zone.gt.1) then
                shell_radius = exp(ln10*radius(cz_base_zone-1))
-               delta_radius = exp(ln10*star%logR_start(cz_base_zone))-shell_radius
+               delta_radius = exp(ln10*s%logR_start(cz_base_zone))-shell_radius
                cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                cz_base_frac = max(-0.5d0,cz_base_frac)
                cz_base_frac = min(0.5d0,cz_base_frac)
@@ -182,7 +184,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
          cz_base_zone = env_cz_zone
          cz_base_zone_old = env_cz_zone_old
       endif
-      star%envelope_cz_base_zone_prev = cz_base_zone
+      s%envelope_cz_base_zone_prev = cz_base_zone
       return
 end subroutine locate_surface_mixing_base
 

@@ -88,9 +88,9 @@ subroutine load_deck_model(path)
       physics_nml_override = path
       call read_controls(ierr)
       if (ierr /= 0) call die('read_controls')
-      call set_up_constants_and_tables(ierr)
+      call set_up_constants_and_tables(star, ierr)
       if (ierr /= 0) call die('set_up_constants_and_tables')
-      call configure_network()
+      call configure_network(star)
       star%job%nk = 1
       star%job%initial_envelope_x = star%job%initial_x_array(1)
       star%job%initial_envelope_z = star%job%initial_z_array(1)
@@ -101,7 +101,7 @@ subroutine load_deck_model(path)
       star%job%requested_envelope_mass = star%job%senv0_array(1)
       star%total_angular_momentum = 0.0d0
       star%total_rotational_ke = 0.0d0
-      call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
+      call read_starting_model(star, star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
            star%ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
            star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
            star%total_angular_momentum, star%total_rotational_ke, &

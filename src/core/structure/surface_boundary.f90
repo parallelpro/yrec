@@ -10,6 +10,7 @@
 ! surface rows of the Henyey system. The triangle's geometry and the fit
 ! are the star-blind kernels of triangle_fit.f90.
 module surface_boundary
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: compute_surface_boundary
@@ -48,7 +49,7 @@ contains
 !   star reads: atm_choice_initial, ctrl%spot_filling_factor,
 !     ctrl%spot_temp_contrast, ctrl%tri_delta_logl, ctrl%tri_delta_teffl
 !   star writes: job%atm_choice, use_ttau_relation
-subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
+subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
      stored_envelope_state, &
@@ -63,12 +64,13 @@ subroutine compute_surface_boundary(tri_teffl, tri_logl, envelope_coeffs, &
       use triangle_fit, only: start_triangle, reflect_until_inside, &
            fit_triangle_coefficients
       use atm_lib, only: atm_allard_teff_max
-      use star_info_lib
+      use star_info_lib, only: json
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
       double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
            envelope_coeffs(9)
       double precision, intent(inout) :: vtx_logp(3), &
@@ -117,44 +119,44 @@ contains
 ! triangle as well. (The switch back used to keep the triangle, whose
 ! vertices held gray-atmosphere envelopes, until each was reflected.)
 subroutine switch_atmosphere_choice()
-      if (star%job%atm_choice.eq.3) then
+      if (s%job%atm_choice.eq.3) then
          if (log10_teff.ge.3.95d0) then
             write(*,*)
             write(*,5) log10_teff
  5          format('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH' &
                    ,'TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            star%job%atm_choice = 0
+            s%job%atm_choice = 0
             start_new_triangle = .true.
 ! Remember the switch.
-            star%use_ttau_relation = .true.
+            s%use_ttau_relation = .true.
          endif
       endif
-      if (star%job%atm_choice.eq.4) then
+      if (s%job%atm_choice.eq.4) then
          if (log10_teff.ge.atm_allard_teff_max()) then
             write(*,*)
             write(*,7) log10_teff, atm_allard_teff_max()
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            star%job%atm_choice = 0
+            s%job%atm_choice = 0
             start_new_triangle = .true.
 ! Remember the switch.
-            star%use_ttau_relation = .true.
+            s%use_ttau_relation = .true.
          endif
       endif
-      if (star%use_ttau_relation) then
-         if (star%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            star%job%atm_choice = star%atm_choice_initial
+      if (s%use_ttau_relation) then
+         if (s%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
+            s%job%atm_choice = s%atm_choice_initial
             start_new_triangle = .true.
-            star%use_ttau_relation = .false.
+            s%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (star%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
-            star%job%atm_choice = star%atm_choice_initial
+         else if (s%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
+            s%job%atm_choice = s%atm_choice_initial
             start_new_triangle = .true.
-            star%use_ttau_relation = .false.
+            s%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_allard_teff_max()
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
@@ -193,7 +195,7 @@ subroutine locate_point_in_triangle()
       integer :: n_reflections
       if (start_new_triangle) then
        call start_triangle(log10_teff, log_luminosity, &
-            star%ctrl%tri_delta_teffl, star%ctrl%tri_delta_logl, &
+            s%ctrl%tri_delta_teffl, s%ctrl%tri_delta_logl, &
             tri_teffl, tri_logl, tri_orientation)
        start_new_triangle = .false.
       else
@@ -217,7 +219,7 @@ subroutine integrate_vertex_envelopes()
           envelope_recomputed_flag = .true.
           vertex_log10_teff = tri_teffl(i)
           b = exp(ln10*tri_logl(i))
-          rl = surface_log10_radius_cm(tri_logl(i), vertex_log10_teff)
+          rl = surface_log10_radius_cm(s, tri_logl(i), vertex_log10_teff)
           gl = cgl + log10_star_mass - rl - rl
           print_envelope_flag = .false.
           vertex_being_computed=i
@@ -225,12 +227,12 @@ subroutine integrate_vertex_envelopes()
 ! Spotted runs (G. Somers): when the outermost shell is convective and
 ! spots are on, the atmosphere starts from the Teff of the unspotted
 ! (ambient) surface.
-          if (convective_flag(zone_index).and.star%ctrl%spot_filling_factor.ne.0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               adjusted_teffl = ambient_log10_teff(vertex_log10_teff)
+          if (convective_flag(zone_index).and.s%ctrl%spot_filling_factor.ne.0.0.and.s%ctrl%spot_temp_contrast.ne.1.0) then
+               adjusted_teffl = ambient_log10_teff(s, vertex_log10_teff)
           else
              adjusted_teffl = vertex_log10_teff
           endif
-          call atm_get(b,pressure_rotation_factor,temperature_rotation_factor,gl, &
+          call atm_get(s, b,pressure_rotation_factor,temperature_rotation_factor,gl, &
                  log10_star_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &

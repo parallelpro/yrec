@@ -11,6 +11,7 @@ module step_driver
       use rezoning, only: rezone
       use starting_model, only: read_starting_model
       use envelope_rebuild, only: rebuild_envelope
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: evolve_step
@@ -47,13 +48,13 @@ contains
 ! previous step). The reset block below (evolve_step_reset_pending)
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
-subroutine evolve_step(model_iteration, step_status, ierr)
+subroutine evolve_step(s, model_iteration, step_status, ierr)
       use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
       use rotating_shape, only: rotation_shape_factors
 
-      use star_info_lib, only: star, evolve_step_reset_pending, i_h1, i_h2, i_he4, &
-           n_species_basic, n_species_extended
+      use star_info_lib, only: evolve_step_reset_pending, i_h1, i_h2, &
+           i_he4, n_species_basic, n_species_extended
       use io_units
       use physical_constants
       use burn_step, only: store_start_li_be_rates, store_end_li_be_rates, &
@@ -68,6 +69,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
       use convection_lib, only: find_convection_zones, homogenize_convection_zones
       use stop_conditions
       implicit none
+      type(star_info), intent(inout) :: s
 
 ! The run-card index is star%job%nk (legacy NK in /ZRAMP/), not an
 ! argument.
@@ -139,77 +141,77 @@ subroutine evolve_step(model_iteration, step_status, ierr)
          if (ierr /= 0) return
          call solve_structure
          if (ierr /= 0) return
-         if (star%model_diverged_flag) cycle retry_step
+         if (s%model_diverged_flag) cycle retry_step
          call converge_with_rotation
          if (ierr /= 0) return
-         if (star%model_diverged_flag) cycle retry_step
+         if (s%model_diverged_flag) cycle retry_step
          exit retry_step
       end do retry_step
 ! A non-finite converged structure is an error, not a model
 ! (converged_model_is_nan in stop_conditions).
-      if (converged_model_is_nan()) then
+      if (converged_model_is_nan(s)) then
          ierr = 1
          return
       end if
 ! Locate the hydrogen-burning shell and the edges of the convective core
 ! and of the surface convection zone, where they exist.
-       call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
-              star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin,star%h_shell_end_index,star%h_shell_midpoint_zone, &
-              star%has_h_shell)
+       call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
+              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_zone_begin,s%h_shell_end_index,s%h_shell_midpoint_zone, &
+              s%has_h_shell)
 ! Burn Li6, Li7 and Be9 on the converged model (burn_light_elements,
 ! below).
          call burn_light_elements
 ! When change_mass accreted (new_atmosphere_fit_needed), move the
 ! fitting point: rebuild the envelope down to target_envelope_mass.
          if (new_atmosphere_fit_needed) then
-            call rebuild_envelope(target_envelope_mass,star%xa,star%logRho,star%luminosity_lsun,star%logP,star%logR,star%log_mass,star%m,star%dm, &
-                            star%log_total_mass,star%logT,star%convective_flag,star%eta_squared,star%i_rot,star%j_rot,star%qiw,star%mean_radius, &
-                            star%kinetic_energy_rot,star%log_L,star%total_angular_momentum,star%total_rotational_ke,star%log_Teff,star%nz,star%recompute_envelope_triangle,ierr)
+            call rebuild_envelope(s, target_envelope_mass,s%xa,s%logRho,s%luminosity_lsun,s%logP,s%logR,s%log_mass,s%m,s%dm, &
+                            s%log_total_mass,s%logT,s%convective_flag,s%eta_squared,s%i_rot,s%j_rot,s%qiw,s%mean_radius, &
+                            s%kinetic_energy_rot,s%log_L,s%total_angular_momentum,s%total_rotational_ke,s%log_Teff,s%nz,s%recompute_envelope_triangle,ierr)
             if (ierr /= 0) return
 ! The rotational shape factors f_P and f_T (fp_rot, ft_rot) for the
 ! current omega on the new points.
-            call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+            call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega,s%eta_squared,s%fp_rot,s%ft_rot,s%mean_gravity,s%mean_radius,ierr)
             if (ierr /= 0) return
             new_atmosphere_fit_needed = .false.
          endif
 ! The timestep of the next model. star%dt is made positive again (a
 ! negative dt marked a model that is solved but not aged; see
 ! solve_structure).
-       star%dt = dabs(star%dt)
-       star%dt_saved = star%dt
+       s%dt = dabs(s%dt)
+       s%dt_saved = s%dt
        disable_structure_dt_limits = .false.
-       call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%logT,star%xa,star%core_cz_top_index, &
-              star%h_shell_midpoint_zone,star%luminosity_breakdown,star%age_gyr,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
-              star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff, disable_structure_dt_limits)
-       if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
+       call compute_timestep(s, s%dt,s%chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
+              s%h_shell_midpoint_zone,s%luminosity_breakdown,s%age_gyr,s%timestep_yr,s%job%nk,s%logP,s%logR,s%omega, &
+              s%max_domega_frac,s%h_shell_zone_begin,s%log_Teff, disable_structure_dt_limits)
+       if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
 ! With a fixed end age (target_end_age > 0) that this model reached,
 ! compute_timestep has clipped the next timestep to (nearly) zero. Write
 ! the timestep just taken (dt_saved, floored at 1e-3 of the age, dage
 ! in Gyr) to the model instead, so that the sequence can be continued.
 ! Other stops keep the new timestep. (The floor read 1e-3*dage years,
 ! dage taken as years, until 2026-10, as in main.f.)
-       if (star%job%end_age_stop_active(star%job%nk) .and. star%job%target_end_age(star%job%nk).gt.0.0D0) then
-          if (reached_end_age(star%job%nk)) then
-             star%dt = max(star%dt_saved,1.0D-3*star%age_gyr*1.0D9*seconds_per_year)
-             star%timestep_yr = star%dt/seconds_per_year
+       if (s%job%end_age_stop_active(s%job%nk) .and. s%job%target_end_age(s%job%nk).gt.0.0D0) then
+          if (reached_end_age(s, s%job%nk)) then
+             s%dt = max(s%dt_saved,1.0D-3*s%age_gyr*1.0D9*seconds_per_year)
+             s%timestep_yr = s%dt/seconds_per_year
           else
-             star%dt_saved = star%dt
+             s%dt_saved = s%dt
           endif
        else
-          star%dt_saved = star%dt
+          s%dt_saved = s%dt
        endif
 ! A rescale-only card (rescale_kind = 2) does not count models.
-       if (star%job%rescale_kind(star%job%nk).ne.2) star%model_number = star%model_number+1
+       if (s%job%rescale_kind(s%job%nk).ne.2) s%model_number = s%model_number+1
 ! Assemble the whole converged star (interior, envelope and atmosphere)
 ! into the stitched arrays before the observables: the turnover-time
 ! observable walks them, star%pphot comes from this build, and the output
 ! writers below only copy; nothing downstream integrates anything.
-       call build_stitched_model
+       call build_stitched_model(s)
 ! The per-model observables, computed in the star layer (one procedure
 ! per family of quantities, core/diagnostics/observables.f90), including
 ! the renormalized luminosity_breakdown; the output below only reads
 ! them.
-       call compute_observables(ierr)
+       call compute_observables(s, ierr)
        if (ierr /= 0) return
 ! Write the model's output (formerly wrtout).
        call output_write_model(ierr)
@@ -218,7 +220,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! The stop conditions (MHP 10/24), in order: the end age, the table of
 ! central D/X/Y abundances, the structure limits (log L, Teff, log g,
 ! nu_max) and the star-calibration target radius.
-      call check_stop_conditions(model_iteration, step_status)
+      call check_stop_conditions(s, model_iteration, step_status)
       return
 contains
 
@@ -228,7 +230,7 @@ contains
 ! so that it holds only the current model's solver diagnostics.
 subroutine update_output_flags_for_step
 
-          if (star%ctrl%rewind_short_file) then
+          if (s%ctrl%rewind_short_file) then
              rewind(run_log_unit)
           endif
 end subroutine update_output_flags_for_step
@@ -241,18 +243,18 @@ end subroutine update_output_flags_for_step
 ! the helium-flash option, the next run card stores its starting model
 ! on last_model_unit when the flag is set.
 subroutine reload_model_if_diverged
-            if (star%model_diverged_flag) then
-             call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, &
-                  star%triangle_orientation, star%ikut_flag, star%stored_vertex_index, &
-                  star%model_diverged_flag, star%recompute_envelope_triangle, star%job%nk, &
-                  star%dlnrho_dlnp, star%dlnrho_dlnt, star%total_angular_momentum, &
-                  star%total_rotational_ke, star%convective_velocity, &
-                  star%job%mixture_weights, ierr)
+            if (s%model_diverged_flag) then
+             call read_starting_model(s, s%timestep_yr, s%dt, s%chosen_dt, &
+                  s%triangle_orientation, s%ikut_flag, s%stored_vertex_index, &
+                  s%model_diverged_flag, s%recompute_envelope_triangle, s%job%nk, &
+                  s%dlnrho_dlnp, s%dlnrho_dlnt, s%total_angular_momentum, &
+                  s%total_rotational_ke, s%convective_velocity, &
+                  s%job%mixture_weights, ierr)
              if (ierr /= 0) return
-             call check_rotation_initialised(ierr)
+             call check_rotation_initialised(s, ierr)
              if (ierr /= 0) return
           endif
-          star%punch_pending_flag = .true.
+          s%punch_pending_flag = .true.
 end subroutine reload_model_if_diverged
 
 ! ---------------------------------------------------------------
@@ -265,39 +267,39 @@ subroutine advance_composition_and_age
 ! card (rescale_kind = 2), where it is aged only while the centre is
 ! cooler than log Tc = 6.6: pre-main-sequence models are rescaled and
 ! aged at the same time (MHP 7/98).
-            evolve_model_flag = star%model_number.ge.0 .and. &
-                 (star%job%rescale_kind(star%job%nk).ne.2 .or. star%logT(1).lt.6.6D0)
+            evolve_model_flag = s%model_number.ge.0 .and. &
+                 (s%job%rescale_kind(s%job%nk).ne.2 .or. s%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! Mass loss or accretion at the surface. change_mass sets
 ! target_envelope_mass (log10 of m(nz)/M before the change) and, when it
 ! accretes, new_atmosphere_fit_needed, for the envelope rebuild after
 ! convergence.
-               call change_mass(target_envelope_mass, new_atmosphere_fit_needed, ierr)
+               call change_mass(s, target_envelope_mass, new_atmosphere_fit_needed, ierr)
                if (ierr /= 0) return
 ! Store the composition at the start of the timestep (xa_start).
                num_species = n_species_basic
-               if (star%job%use_extended_composition) num_species=n_species_extended
-               do i = 1,star%nz
+               if (s%job%use_extended_composition) num_species=n_species_extended
+               do i = 1,s%nz
                   do j = 1,num_species
-                     star%xa_start(j,i) = star%xa(j,i)
+                     s%xa_start(j,i) = s%xa(j,i)
                   end do
                end do
-               star%timestep_yr = star%dt/seconds_per_year
+               s%timestep_yr = s%dt/seconds_per_year
 ! The composition step on the start-of-step structure. Its zone outputs
 ! are arguments, not star members set inside it, because the corrector
 ! passes at levels >= 3 (solve_level) pass their own local storage,
 ! deliberately separate from these star copies.
-               call advance_composition(star%dt, predictor_pass, &
-                    star%core_cz_top_index, star%envelope_cz_bottom_index, &
-                    star%mixed_zone_bounds_no_overshoot, jerr)
+               call advance_composition(s, s%dt, predictor_pass, &
+                    s%core_cz_top_index, s%envelope_cz_bottom_index, &
+                    s%mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
                ! Return the error to the caller.
                   ierr = jerr
                   return
                end if
 ! The new age, dage in Gyr.
-             star%age_gyr = star%age_gyr + 1.0D-9*star%timestep_yr
+             s%age_gyr = s%age_gyr + 1.0D-9*s%timestep_yr
             endif
 end subroutine advance_composition_and_age
 
@@ -312,32 +314,32 @@ end subroutine advance_composition_and_age
 subroutine rezone_or_snapshot
       use math_lib
 ! Rezone the new model, except with the helium-flash option.
-          if (.not.star%ctrl%helium_flash_active) then
-             call rezone(star%stored_vertex_index, star%reset_triangle, star%h_shell_zone_begin, &
-                  star%has_h_shell, star%total_angular_momentum, &
-                  star%total_rotational_ke, ierr)
+          if (.not.s%ctrl%helium_flash_active) then
+             call rezone(s, s%stored_vertex_index, s%reset_triangle, s%h_shell_zone_begin, &
+                  s%has_h_shell, s%total_angular_momentum, &
+                  s%total_rotational_ke, ierr)
              if (ierr /= 0) return
 ! The base zone of the surface convection zone, where deuterium burning
 ! is capped (compute_zone_energy, compute_burn_rates).
-               star%jcz = star%envelope_cz_bottom_index
+               s%jcz = s%envelope_cz_bottom_index
             else
 ! Keep the start-of-step structure, which the structure-change timestep
 ! limit (timestep_limit_structure, formerly ptime) compares against.
-               do i=1, star%nz
-                  star%logP_start(i) = star%logP(i)
-                  star%logT_start(i) = star%logT(i)
-                  star%logR_start(i) = star%logR(i)
-                  star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
-                  star%logRho_start(i) = star%logRho(i)
+               do i=1, s%nz
+                  s%logP_start(i) = s%logP(i)
+                  s%logT_start(i) = s%logT(i)
+                  s%logR_start(i) = s%logR(i)
+                  s%luminosity_lsun_start(i) = s%luminosity_lsun(i)
+                  s%logRho_start(i) = s%logRho(i)
                end do
 ! Teff and the surface L are kept as well.
-               star%log_Teff_start = star%log_Teff
-               star%surface_luminosity_lsun_start = star%luminosity_lsun(star%nz)
+               s%log_Teff_start = s%log_Teff
+               s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
           endif
 ! The start-of-step rotational kinetic energy of each zone.
-            if (star%job%rotation_active) then
-               do i = 1,star%nz
-                  star%kinetic_energy_rot_old(i) = star%kinetic_energy_rot(i)
+            if (s%job%rotation_active) then
+               do i = 1,s%nz
+                  s%kinetic_energy_rot_old(i) = s%kinetic_energy_rot(i)
                end do
             endif
 ! The start-of-step depth of the surface convection zone, for the Li/Be
@@ -345,12 +347,12 @@ subroutine rezone_or_snapshot
 ! below it (stored as pressure_scale_height_start, though it is not H_P).
 ! cz_base_radius_prev = 0 tells locate_surface_mixing_base that no base
 ! radius has been stored yet this step.
-            if (star%job%use_extended_composition) then
-               star%cz_base_radius_prev = 0.0D0
-               envelope_cz_zone_prev = star%envelope_cz_bottom_index
-               star%envelope_overshoot_depth_start = envelope_overshoot_depth()
+            if (s%job%use_extended_composition) then
+               s%cz_base_radius_prev = 0.0D0
+               envelope_cz_zone_prev = s%envelope_cz_bottom_index
+               s%envelope_overshoot_depth_start = envelope_overshoot_depth()
 ! The Li/Be burning rates of the start-of-step model.
-               call store_start_li_be_rates()
+               call store_start_li_be_rates(s)
             endif
 end subroutine rezone_or_snapshot
 
@@ -367,35 +369,35 @@ subroutine solve_structure
 ! Flags for henyey_iterate: with ctrl%lnew0, a new envelope triangle is
 ! computed on the first iteration (the previous model's is ignored);
 ! converged and star%model_diverged_flag report the outcome.
-          if (star%ctrl%lnew0) star%recompute_envelope_triangle = .true.
+          if (s%ctrl%lnew0) s%recompute_envelope_triangle = .true.
 ! "Do not age this model" is encoded as a negative star%dt: the Henyey
 ! pass (delta_time > 0 gates the entropy terms), the improved-first-guess
 ! test just below and the rotation step (evolve_angular_momentum, which
 ! also does arithmetic on it) all read the sign. It is made positive
 ! again after convergence (star%dt = dabs(star%dt) before
 ! compute_timestep).
-            if (.not.evolve_model_flag) star%dt = -dabs(star%dt)
+            if (.not.evolve_model_flag) s%dt = -dabs(s%dt)
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
 ! ctrl%fcorr0 selects whether henyey_iterate raises it by fcorri per
 ! iteration, up to 1 (fcorr0 > 0), or holds it fixed.
-            star%job%fcorr = dabs(star%ctrl%fcorr0) - star%ctrl%fcorri
+            s%job%fcorr = dabs(s%ctrl%fcorr0) - s%ctrl%fcorri
             iterations_done = 0
-            star%model_diverged_flag = .false.
+            s%model_diverged_flag = .false.
             converged = .false.
 ! Without the improved first guess, or for a model not aged, start from
 ! the previous model: zero the changes of log T and log P over the step
 ! (from which the energy equation builds the entropy term T dS/dt) and
 ! the rates of change of the previous step.
-            if (.not.star%ctrl%improved_first_guess_flag .or. star%dt.le.0.0D0) then
-               do i = 1,star%nz
-                  star%log_temperature_delta(i) = 0.0D0
-                  star%log_pressure_delta(i) = 0.0D0
-                  star%dlog_temperature_dt(i) = 0.0D0
-                  star%dlog_pressure_dt(i) = 0.0D0
-                  star%dln_luminosity_dt(i) = 0.0D0
-                  star%dlog_radius_dt(i) = 0.0D0
+            if (.not.s%ctrl%improved_first_guess_flag .or. s%dt.le.0.0D0) then
+               do i = 1,s%nz
+                  s%log_temperature_delta(i) = 0.0D0
+                  s%log_pressure_delta(i) = 0.0D0
+                  s%dlog_temperature_dt(i) = 0.0D0
+                  s%dlog_pressure_dt(i) = 0.0D0
+                  s%dln_luminosity_dt(i) = 0.0D0
+                  s%dlog_radius_dt(i) = 0.0D0
 ! Zero the gravitational luminosity.
-                  star%eps_grav(i) = 0.0D0
+                  s%eps_grav(i) = 0.0D0
                end do
             else
 ! Improved first guess: extrapolate each variable by its rate of change
@@ -404,19 +406,19 @@ subroutine solve_structure
 !   log T += (d log T/dt) dt,  log P += (d log P/dt) dt,
 !   L += L (d ln L/dt) dt,     log R += (d log R/dt) dt,
 ! and start the changes of log T and log P over the step at those values.
-               do i = 1,star%nz
-                  delta_temp_step = star%dlog_temperature_dt(i)*star%dt
-                  delta_pressure_step = star%dlog_pressure_dt(i)*star%dt
-                  delta_lum_step = star%luminosity_lsun(i)*star%dln_luminosity_dt(i)*star%dt
-                  delta_radius_step = star%dlog_radius_dt(i)*star%dt
-                  star%log_temperature_delta(i) = delta_temp_step
-                  star%log_pressure_delta(i) = delta_pressure_step
-                  star%logT(i) = star%logT(i) + delta_temp_step
-                  star%logP(i) = star%logP(i) + delta_pressure_step
-                  star%luminosity_lsun(i) = star%luminosity_lsun(i) + delta_lum_step
-                  star%logR(i) = star%logR(i) + delta_radius_step
+               do i = 1,s%nz
+                  delta_temp_step = s%dlog_temperature_dt(i)*s%dt
+                  delta_pressure_step = s%dlog_pressure_dt(i)*s%dt
+                  delta_lum_step = s%luminosity_lsun(i)*s%dln_luminosity_dt(i)*s%dt
+                  delta_radius_step = s%dlog_radius_dt(i)*s%dt
+                  s%log_temperature_delta(i) = delta_temp_step
+                  s%log_pressure_delta(i) = delta_pressure_step
+                  s%logT(i) = s%logT(i) + delta_temp_step
+                  s%logP(i) = s%logP(i) + delta_pressure_step
+                  s%luminosity_lsun(i) = s%luminosity_lsun(i) + delta_lum_step
+                  s%logR(i) = s%logR(i) + delta_radius_step
 ! Zero the gravitational luminosity.
-                  star%eps_grav(i) = 0.0D0
+                  s%eps_grav(i) = 0.0D0
                end do
             endif
 
@@ -424,33 +426,33 @@ subroutine solve_structure
 ! model of a run the triangle is generated here. The four levels differ
 ! only in their arguments to solve_level: the level, its iteration limit
 ! and whether the surface boundary condition is re-checked.
-            call solve_level(1, star%ctrl%max_iter_level1, .false.)
+            call solve_level(1, s%ctrl%max_iter_level1, .false.)
             if (ierr /= 0) return
 ! Level 2 checks the envelope triangle (the surface boundary condition)
 ! before iterating.
-            if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
-            call solve_level(2, star%ctrl%max_iter_level2, .true.)
+            if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
+            call solve_level(2, s%ctrl%max_iter_level2, .true.)
             if (ierr /= 0) return
-            if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
+            if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 ! The rates of change of the structure over this step, from the level-2
 ! solution, for the improved first guess of the next model
 ! (ctrl%improved_first_guess_flag, legacy LNEWS; 7/91):
 !   d log T/dt = log_temperature_delta/dt,  d log P/dt = log_pressure_delta/dt,
 !   d ln L/dt = 2 (L - L_start)/(L + L_start)/dt,
 !   d log R/dt = (log R - log R_start)/dt.
-            if (star%dt.gt.0.0D0) then
-               do ii = 1,star%nz
-                  star%dlog_temperature_dt(ii)=star%log_temperature_delta(ii)/star%dt
-                  star%dlog_pressure_dt(ii)=star%log_pressure_delta(ii)/star%dt
-                  star%dln_luminosity_dt(ii)=2.0D0*(star%luminosity_lsun(ii)-star%luminosity_lsun_start(ii))/(star%luminosity_lsun(ii)+star%luminosity_lsun_start(ii))/star%dt
-                  star%dlog_radius_dt(ii)=(star%logR(ii)-star%logR_start(ii))/star%dt
+            if (s%dt.gt.0.0D0) then
+               do ii = 1,s%nz
+                  s%dlog_temperature_dt(ii)=s%log_temperature_delta(ii)/s%dt
+                  s%dlog_pressure_dt(ii)=s%log_pressure_delta(ii)/s%dt
+                  s%dln_luminosity_dt(ii)=2.0D0*(s%luminosity_lsun(ii)-s%luminosity_lsun_start(ii))/(s%luminosity_lsun(ii)+s%luminosity_lsun_start(ii))/s%dt
+                  s%dlog_radius_dt(ii)=(s%logR(ii)-s%logR_start(ii))/s%dt
                end do
             endif
 ! Level 3: from here on, solve_level redoes the composition step on the
 ! updated structure before iterating.
-            call solve_level(3, star%ctrl%max_iter_level3, .false.)
+            call solve_level(3, s%ctrl%max_iter_level3, .false.)
             if (ierr /= 0) return
-            if (star%model_diverged_flag) return   ! (host cycles retry_step on the flag)
+            if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 end subroutine solve_structure
 
 ! ---------------------------------------------------------------
@@ -463,26 +465,26 @@ end subroutine solve_structure
 ! start-of-step composition and angular momentum are restored on repeat
 ! passes, so that nothing is counted twice.
 subroutine converge_with_rotation
-            if (.not.star%job%rotation_active) then
-               star%job%num_rotation_structure_iters = 1
+            if (.not.s%job%rotation_active) then
+               s%job%num_rotation_structure_iters = 1
             endif
 ! When the structure and rotation are iterated (MHP 05/02), keep copies
 ! of the start-of-step specific angular momentum (j_rot) and composition
 ! (xa_start, legacy HCOMPP), so that every pass starts from them.
-            if (star%job%num_rotation_structure_iters.gt.1) then
-               do i = 1,star%nz
-                  star%orig_specific_angular_momentum(i) = star%j_rot(i)
+            if (s%job%num_rotation_structure_iters.gt.1) then
+               do i = 1,s%nz
+                  s%orig_specific_angular_momentum(i) = s%j_rot(i)
                   do j = 1,n_species_extended
-                     star%orig_composition(j,i) = star%xa_start(j,i)
+                     s%orig_composition(j,i) = s%xa_start(j,i)
                   end do
                end do
             endif
-            do itrot = 1, star%job%num_rotation_structure_iters
+            do itrot = 1, s%job%num_rotation_structure_iters
 ! On repeat passes, restore the start-of-step composition (MHP 05/02).
                if (itrot.gt.1) then
-                  do i = 1,star%nz
+                  do i = 1,s%nz
                      do j = 1,n_species_extended
-                        star%xa_start(j,i) = star%orig_composition(j,i)
+                        s%xa_start(j,i) = s%orig_composition(j,i)
                      end do
                   end do
                endif
@@ -494,31 +496,31 @@ subroutine converge_with_rotation
 ! iteration. The surface boundary condition is not re-checked here
 ! (check_surface_bc = .false.), although level 3 changed the composition
 ! and hence the structure; the legacy comment left that check for later.
-            call solve_level(4, star%ctrl%max_iter_level4, .false.)
+            call solve_level(4, s%ctrl%max_iter_level4, .false.)
             if (ierr /= 0) return
             if (.not.converged) then
 ! Not converged within the iterations of levels 1-4 (max_iter_level1 to
 ! max_iter_level4): flag the divergence.
-               star%model_diverged_flag = .true.
+               s%model_diverged_flag = .true.
                return   ! (host cycles retry_step on the flag)
             endif
 
 ! The model has converged. Mix the convection zones fully.
-      call homogenize_convection_zones(star%xa,star%dm,star%convective_flag,star%nz)
+      call homogenize_convection_zones(s%xa,s%dm,s%convective_flag,s%nz)
 
 ! The age (Gyr) that the disk-locking test reads.
-            star%disk_gate_age_gyr = star%age_gyr
-            if (star%job%rotation_active) then
+            s%disk_gate_age_gyr = s%age_gyr
+            if (s%job%rotation_active) then
 ! On repeat passes, restore the start-of-step angular momentum.
                if (itrot.gt.1) then
-                  do i = 1,star%nz
-                     star%j_rot(i) = star%orig_specific_angular_momentum(i)
+                  do i = 1,s%nz
+                     s%j_rot(i) = s%orig_specific_angular_momentum(i)
                   end do
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
 ! the wind torque when job%use_wind_torque is set).
-               wind_loss_active = star%job%use_wind_torque
-               call evolve_angular_momentum(star%dt, star%max_domega_frac, wind_loss_active, &
+               wind_loss_active = s%job%use_wind_torque
+               call evolve_angular_momentum(s%dt, s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
                ! Return the error to the caller.
@@ -526,7 +528,7 @@ subroutine converge_with_rotation
                   return
                end if
 ! The rotational shape factors f_P and f_T for the new omega.
-               call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega,star%eta_squared,star%fp_rot,star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+               call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega,s%eta_squared,s%fp_rot,s%ft_rot,s%mean_gravity,s%mean_radius,ierr)
                if (ierr /= 0) return
             endif
             end do
@@ -542,21 +544,21 @@ end subroutine converge_with_rotation
 subroutine burn_light_elements
       use math_lib
 ! Only with the extended composition, for a model being aged.
-         if (star%job%use_extended_composition .and. star%model_number.ge.0 .and. star%dt.gt.0.0D0) then
+         if (s%job%use_extended_composition .and. s%model_number.ge.0 .and. s%dt.gt.0.0D0) then
 ! Only without rotation, or without rotational mixing.
-            if (.not.star%job%rotation_active .or. .not.star%job%instability_transport_active) then
+            if (.not.s%job%rotation_active .or. .not.s%job%instability_transport_active) then
 ! The convection zones at the end of the step.
-               call find_convection_zones(star%xa,star%logRho,star%logP,star%logR,star%log_mass,star%logT,star%convective_flag,star%nz,star%radiative_zone_bounds,star%mixed_zone_bounds, &
-                            star%mixed_zone_bounds_no_overshoot,star%core_cz_top_index,star%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, star%iov1, star%iov2, ierr)
+               call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,s%radiative_zone_bounds,s%mixed_zone_bounds, &
+                            s%mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
                if (ierr /= 0) return
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).
-               envelope_cz_zone_end = star%envelope_cz_bottom_index
-               star%envelope_overshoot_depth_end = envelope_overshoot_depth()
+               envelope_cz_zone_end = s%envelope_cz_bottom_index
+               s%envelope_overshoot_depth_end = envelope_overshoot_depth()
 ! The burning rates at the end of the step, from the converged model;
 ! then the burn.
-               call store_end_li_be_rates(star%xa,star%logRho,star%logT,star%nz)
-               call burn_li_be(star%dt,star%xa,star%logR,star%m,star%dm,star%logT,envelope_cz_zone_end,envelope_cz_zone_prev,star%nz)
+               call store_end_li_be_rates(s, s%xa,s%logRho,s%logT,s%nz)
+               call burn_li_be(s, s%dt,s%xa,s%logR,s%m,s%dm,s%logT,envelope_cz_zone_end,envelope_cz_zone_prev,s%nz)
             endif
          endif
 end subroutine burn_light_elements
@@ -594,9 +596,9 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       recompute_surface_bc = check_surface_bc
       if (max_iterations.le.0) return
 
-      call refresh_surface_bc(iteration_level, star%recompute_envelope_triangle, &
-           star%reset_triangle, recompute_surface_bc, star%triangle_orientation, &
-           star%stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
+      call refresh_surface_bc(s, iteration_level, s%recompute_envelope_triangle, &
+           s%reset_triangle, recompute_surface_bc, s%triangle_orientation, &
+           s%stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
       if (ierr /= 0) return
 
 ! envelope_zone_index gates the accretion correction to the entropy term
@@ -608,24 +610,24 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       envelope_zone_index = 0
       core_cz_edge_rerun = 0
       mixed_zone_bounds_rerun = 0
-      if (iteration_level.gt.2 .and. star%dt.gt.0.0d0) then
+      if (iteration_level.gt.2 .and. s%dt.gt.0.0d0) then
          num_species = n_species_basic
-         if (star%job%use_extended_composition) num_species = n_species_extended
-         do i = 1,star%nz
+         if (s%job%use_extended_composition) num_species = n_species_extended
+         do i = 1,s%nz
             do j = 1,num_species
-               star%xa(j,i) = star%xa_start(j,i)
+               s%xa(j,i) = s%xa_start(j,i)
             end do
          end do
-         call advance_composition(star%dt, corrector_pass, &
+         call advance_composition(s, s%dt, corrector_pass, &
               core_cz_edge_rerun, envelope_zone_index, &
               mixed_zone_bounds_rerun, ierr)
          if (ierr /= 0) return
       end if
 
-      call henyey_iterate(star%dt, max_iterations, converged, &
-           star%model_diverged_flag, recompute_surface_bc, &
+      call henyey_iterate(s, s%dt, max_iterations, converged, &
+           s%model_diverged_flag, recompute_surface_bc, &
            envelope_recomputed_flag, saha_state, envelope_zone_index, &
-           star%dlnrho_dlnt, star%dlnrho_dlnp, iterations_done, ierr)
+           s%dlnrho_dlnt, s%dlnrho_dlnp, iterations_done, ierr)
 end subroutine solve_level
 
 ! ---------------------------------------------------------------
@@ -637,12 +639,12 @@ end subroutine solve_level
 ! (rezone_or_snapshot, burn_light_elements).
 double precision function envelope_overshoot_depth()
       use math_lib
-      if (star%job%envelope_overshoot_active) then
-         envelope_overshoot_depth = star%ctrl%overshoot_alpha_envelope* &
-              pressure_scale_height(star%logP(star%envelope_cz_bottom_index), &
-              star%logR(star%envelope_cz_bottom_index), &
-              star%logRho(star%envelope_cz_bottom_index), &
-              star%log_mass(star%envelope_cz_bottom_index))
+      if (s%job%envelope_overshoot_active) then
+         envelope_overshoot_depth = s%ctrl%overshoot_alpha_envelope* &
+              pressure_scale_height(s%logP(s%envelope_cz_bottom_index), &
+              s%logR(s%envelope_cz_bottom_index), &
+              s%logRho(s%envelope_cz_bottom_index), &
+              s%log_mass(s%envelope_cz_bottom_index))
       else
          envelope_overshoot_depth = 0.0D0
       endif

@@ -231,7 +231,7 @@ def check_controls_free(src_root):
 # in the same commit.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (3097, 28),
+    "core": (124, 2),
     "element_diffusion": (69, 9),
     "io": (474, 10),
     "rotation": (405, 10),

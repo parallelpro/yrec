@@ -5,6 +5,7 @@
 ! starting model (write_neutrino_flux_table, switched on by the
 ! compute_neutrino_fluxes control).
 module neutrino_flux_output
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: write_neutrino_flux_table
@@ -35,11 +36,10 @@ contains
 ! N13, O15 and F17; slots 9-10 are the He3+He3 and He3+He4 reaction
 ! rates in the same units. The shell masses are local arrays, so the
 ! model's star%m and star%dm are not touched.
-subroutine write_neutrino_flux_table
-      use star_info_lib, only: star, json, i_h1, i_h2, i_he3, i_he4, &
-           i_c12, i_c13, i_n14, i_o16, i_o18, &
-           i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
-           i_nu_o15, i_nu_f17, n_nu_fluxes
+subroutine write_neutrino_flux_table(s)
+      use star_info_lib, only: json, i_h1, i_h2, i_he3, i_he4, i_c12, &
+           i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &
+           i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, n_nu_fluxes
       use io_units
       use physical_constants
       use net_lib, only: nuclear_energy_result
@@ -47,6 +47,7 @@ subroutine write_neutrino_flux_table
       use math_lib
       use observables, only: shell_masses_from_log_mass
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision :: shell_center_mass(json), shell_mass(json)
       double precision :: shell_log_density, shell_log_temperature
@@ -60,75 +61,75 @@ subroutine write_neutrino_flux_table
 ! The shell masses from the log m grid: shell_center_mass is the mass
 ! (g) inside each shell center, and shell_mass the mass (g) of each
 ! shell.
-      call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
-           star%nz, shell_center_mass, shell_mass)
+      call shell_masses_from_log_mass(s%log_mass, s%log_total_mass, &
+           s%nz, shell_center_mass, shell_mass)
 
       do j = 1,n_nu_fluxes
-         star%neutrino_flux_total(j) = 0.0d0
-         do i = 1,star%nz
-            star%neutrino_flux_zone(j,i) = 0.0d0
+         s%neutrino_flux_total(j) = 0.0d0
+         do i = 1,s%nz
+            s%neutrino_flux_zone(j,i) = 0.0d0
          end do
       end do
 
 ! The production in each shell, from compute_zone_energy.
-      do i = 1,star%nz
-         shell_log_density = star%logRho(i)
-         shell_log_temperature = star%logT(i)
+      do i = 1,s%nz
+         shell_log_density = s%logRho(i)
+         shell_log_temperature = s%logT(i)
 ! Stop at the first shell cooler than log T = 6, or at or below the
 ! nuclear cutoff, where nothing burns.
          if (shell_log_temperature.lt.6.0d0 .or. &
-              shell_log_temperature.le.star%ctrl%nuclear_logT_cutoffs(1)) exit
-         call compute_zone_energy(shell_log_density, &
-              shell_log_temperature, star%xa(:,i), i, burn)
+              shell_log_temperature.le.s%ctrl%nuclear_logT_cutoffs(1)) exit
+         call compute_zone_energy(s, shell_log_density, &
+              shell_log_temperature, s%xa(:,i), i, burn)
 ! The Be7 mass fraction (zero where X <= 1e-6, where none is computed).
-         star%be7_mass_fraction_zone(i) = burn%be7_mass_fraction
+         s%be7_mass_fraction_zone(i) = burn%be7_mass_fraction
 ! The shell's fluxes: the per-gram fluxes times the shell mass (g).
          do j = 1,n_nu_fluxes
-            star%neutrino_flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
-            star%neutrino_flux_total(j) = star%neutrino_flux_total(j) &
-                 + star%neutrino_flux_zone(j,i)
+            s%neutrino_flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
+            s%neutrino_flux_total(j) = s%neutrino_flux_total(j) &
+                 + s%neutrino_flux_zone(j,i)
          end do
          write(run_log_unit,911)i,shell_mass(i), &
-              (star%neutrino_flux_zone(j,i),j=1,n_nu_fluxes)
+              (s%neutrino_flux_zone(j,i),j=1,n_nu_fluxes)
  911     format(I5,1P11E10.3)
       end do
 
 ! The total fluxes, in units of 10^10 cm^-2 s^-1.
-      write(run_log_unit,222)(star%neutrino_flux_total(i),i=1,n_nu_fluxes)
+      write(run_log_unit,222)(s%neutrino_flux_total(i),i=1,n_nu_fluxes)
  222  format(1P10E10.3)
 
 ! Normalize each shell's flux to the total of its slot.
       do j = 1,n_nu_fluxes
-         if (star%neutrino_flux_total(j) .ne. 0.0d0) then
-            do i = 1,star%nz
-               star%neutrino_flux_zone(j,i) = star%neutrino_flux_zone(j,i) &
-                    /star%neutrino_flux_total(j)
+         if (s%neutrino_flux_total(j) .ne. 0.0d0) then
+            do i = 1,s%nz
+               s%neutrino_flux_zone(j,i) = s%neutrino_flux_zone(j,i) &
+                    /s%neutrino_flux_total(j)
             end do
          end if
       end do
-      do i = 1,star%nz
+      do i = 1,s%nz
 ! T6 = T/1e6 K; stop below 5e6 K.
-         t6_million_k = exp(ln10*(star%logT(i)-6.0d0))
+         t6_million_k = exp(ln10*(s%logT(i)-6.0d0))
          if (t6_million_k.lt.5.0d0) exit
 ! The electron density for full ionization,
 ! log(n_e/N_A) = log[rho (1+X)/2].
-         log_electron_density = star%logRho(i)+log10((1.0d0+star%xa(i_h1,i))/2.0d0)
+         log_electron_density = s%logRho(i)+log10((1.0d0+s%xa(i_h1,i))/2.0d0)
 ! The shell mass in solar masses.
-         zone_mass_fraction = shell_mass(i)/star%solar_mass_cgs
+         zone_mass_fraction = shell_mass(i)/s%solar_mass_cgs
 ! The radius in solar radii.
-         zone_radius_fraction = exp(ln10*star%logR(i))/star%solar_radius_cgs
+         zone_radius_fraction = exp(ln10*s%logR(i))/s%solar_radius_cgs
 ! The fluxes in the order Bahcall & Pinsonneault use.
          write(run_log_unit,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &
-              star%be7_mass_fraction_zone(i), &
-              star%neutrino_flux_zone(i_nu_pp,i), &
-              star%neutrino_flux_zone(i_nu_b8,i), &
-              star%neutrino_flux_zone(i_nu_n13,i), &
-              star%neutrino_flux_zone(i_nu_o15,i), &
-              star%neutrino_flux_zone(i_nu_f17,i), &
-              star%neutrino_flux_zone(i_nu_be7,i), &
-              star%neutrino_flux_zone(i_nu_pep,i), &
-              star%neutrino_flux_zone(i_nu_hep,i)
+              s%be7_mass_fraction_zone(i), &
+              s%neutrino_flux_zone(i_nu_pp,i), &
+              s%neutrino_flux_zone(i_nu_b8,i), &
+              s%neutrino_flux_zone(i_nu_n13,i), &
+              s%neutrino_flux_zone(i_nu_o15,i), &
+              s%neutrino_flux_zone(i_nu_f17,i), &
+              s%neutrino_flux_zone(i_nu_be7,i), &
+              s%neutrino_flux_zone(i_nu_pep,i), &
+              s%neutrino_flux_zone(i_nu_hep,i)
  145     format(F9.5,F7.3,F6.3,1P10E10.3)
       end do
       return

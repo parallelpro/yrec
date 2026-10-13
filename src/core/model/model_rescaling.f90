@@ -7,6 +7,7 @@
 ! models), and optionally a Z ramp toward the center.
 module model_rescaling
       use shell_boundaries, only: locate_shell_boundaries
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: rescale_model
@@ -36,14 +37,15 @@ contains
 ! and total_mass_log are log10 m and log10 M (g); star_mass is M in
 ! Msun. xnew and znew hold the old surface X and Z on entry, and the
 ! targets on return when X or Z is rescaled.
-subroutine rescale_model(luminosity_array, composition, shell_mass_log, &
+subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
       use physical_constants
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use io_units
       use eos_lib, only: eos_set_mixture
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: luminosity_array(json)
       double precision, intent(inout) :: composition(15,json)
@@ -101,22 +103,22 @@ contains
 ! Valid for main-sequence and horizontal-branch models alike. A
 ! requested X above 1 is refused with a message.
 subroutine rescale_surface_x
-      if(star%job%rescale_params(2,run_index).gt.0.0d0) then
-         if(star%job%rescale_params(2,run_index).le.1.0d0) then
-            x_rescale_factor = star%job%rescale_params(2,run_index)/dmax1(star%xnew,1.0d-20)
+      if(s%job%rescale_params(2,run_index).gt.0.0d0) then
+         if(s%job%rescale_params(2,run_index).le.1.0d0) then
+            x_rescale_factor = s%job%rescale_params(2,run_index)/dmax1(s%xnew,1.0d-20)
             do zone_idx = 1,num_zones
-               composition(1,zone_idx) = dmin1(star%job%rescale_params(2,run_index), &
+               composition(1,zone_idx) = dmin1(s%job%rescale_params(2,run_index), &
                     composition(1,zone_idx)*x_rescale_factor)
             end do
-            star%xnew = star%job%rescale_params(2,run_index)
-            star%job%initial_envelope_x = star%job%rescale_params(2,run_index)
+            s%xnew = s%job%rescale_params(2,run_index)
+            s%job%initial_envelope_x = s%job%rescale_params(2,run_index)
 ! The envelope X, star%envelope_hydrogen_fraction (legacy XENV), is
 ! deliberately left alone: it sets the initial mean molecular weight
 ! for the Yale EOS and must not change after the first run (MHP 7/99).
          else
 ! Requested X above 1: X is not changed.
             error_species_index = 2
-            write(run_log_unit,1000)run_index,star%job%rescale_params(error_species_index,run_index)
+            write(run_log_unit,1000)run_index,s%job%rescale_params(error_species_index,run_index)
  1000       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF X', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  X NOT RESCALED')
@@ -136,9 +138,9 @@ end subroutine rescale_surface_x
 ! is 0, set Z = 0; fixed 2026-10). A requested Z above 1 is refused
 ! with a message.
 subroutine rescale_interior_z
-      if(star%job%rescale_params(3,run_index).gt.0.0d0) then
-         if(star%job%rescale_params(3,run_index).le.1.0d0) then
-            delta_z = star%job%rescale_params(3,run_index) - star%znew
+      if(s%job%rescale_params(3,run_index).gt.0.0d0) then
+         if(s%job%rescale_params(3,run_index).le.1.0d0) then
+            delta_z = s%job%rescale_params(3,run_index) - s%znew
             do zone_idx = 1,num_zones
                z_rescale_factor=dmax1(0.d0,composition(3,zone_idx)+delta_z)/ &
                     (composition(3,zone_idx)+1.d-30)
@@ -147,19 +149,19 @@ subroutine rescale_interior_z
                   composition(species_idx,zone_idx) = composition(species_idx,zone_idx)*z_rescale_factor
                end do
             end do
-            star%znew = star%job%rescale_params(3,run_index)
-            star%job%initial_envelope_z = star%job%rescale_params(3,run_index)
+            s%znew = s%job%rescale_params(3,run_index)
+            s%job%initial_envelope_z = s%job%rescale_params(3,run_index)
 ! Unlike X, the envelope Z (star%envelope_metal_fraction, legacy ZENV)
 ! follows the new Z, since many routines read it (DBG 4/95), and the
 ! EOS mixture with it.
-            star%envelope_metal_fraction = star%job%initial_envelope_z
-            call eos_set_mixture(star%envelope_hydrogen_fraction, &
-                 star%envelope_metal_fraction, star%amuenv, &
-                 star%fxenv)
+            s%envelope_metal_fraction = s%job%initial_envelope_z
+            call eos_set_mixture(s%envelope_hydrogen_fraction, &
+                 s%envelope_metal_fraction, s%amuenv, &
+                 s%fxenv)
          else
 ! Requested Z above 1: Z is not changed.
             error_species_index = 3
-            write(run_log_unit,1002)run_index,star%job%rescale_params(error_species_index,run_index)
+            write(run_log_unit,1002)run_index,s%job%rescale_params(error_species_index,run_index)
  1002       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF Z', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -172,7 +174,7 @@ end subroutine rescale_interior_z
 ! than X, Y and Z, slot new_species_index, to new_species_value in
 ! every shell (main-sequence models).
 subroutine rescale_one_species
-         if(star%ctrl%rescale_species_active.and.star%job%new_species_value.ge.0.0d0) then
+         if(s%ctrl%rescale_species_active.and.s%job%new_species_value.ge.0.0d0) then
 ! new_species_value is a mass fraction or, with value_relative_to_h
 ! (legacy LREL), a log abundance relative to the surface X on a scale
 ! where X is 12, by mass:
@@ -181,16 +183,16 @@ subroutine rescale_one_species
 ! as given, so every rescale card converts it afresh. (The converted
 ! value used to overwrite it, and a second rescale converted it again,
 ! to about 1e-12 X.)
-            species_target = star%job%new_species_value
-            if(star%ctrl%value_relative_to_h) species_target = &
-                 exp(ln10*(star%job%new_species_value-12.0d0))*composition(1,num_zones)
+            species_target = s%job%new_species_value
+            if(s%ctrl%value_relative_to_h) species_target = &
+                 exp(ln10*(s%job%new_species_value-12.0d0))*composition(1,num_zones)
             if(species_target.lt.1.0d0) then
                do zone_idx = 1,num_zones
-                  composition(star%ctrl%new_species_index,zone_idx) = species_target
+                  composition(s%ctrl%new_species_index,zone_idx) = species_target
                end do
             else
 ! An abundance of 1 or more is refused; the species is not changed.
-               write(run_log_unit,1004)star%ctrl%new_species_index,run_index,species_target
+               write(run_log_unit,1004)s%ctrl%new_species_index,run_index,species_target
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -203,11 +205,11 @@ end subroutine rescale_one_species
 ! (main-sequence models): log M and every log m shift by
 ! log10(M_new/M_old); nothing else in the model changes.
 subroutine rescale_main_sequence_mass
-         if(star%job%rescale_params(1,run_index).gt.0.0d0) then
-            log_mass_shift = log10(star%job%rescale_params(1,run_index)/star_mass)
+         if(s%job%rescale_params(1,run_index).gt.0.0d0) then
+            log_mass_shift = log10(s%job%rescale_params(1,run_index)/star_mass)
             total_mass_log = total_mass_log + log_mass_shift
-            star_mass = star%job%rescale_params(1,run_index)
-            star%stotal = total_mass_log
+            star_mass = s%job%rescale_params(1,run_index)
+            s%stotal = total_mass_log
             do zone_idx = 1,num_zones
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
             end do
@@ -224,14 +226,14 @@ end subroutine rescale_main_sequence_mass
 !   env_mass_old2  m(nz) - m(shell_end), the envelope inside the
 !                  fitting point.
 subroutine measure_hb_masses
-         if(star%job%rescale_params(1,run_index).gt.0.0d0.or.star%job%rescale_params(4,run_index).gt.0.0d0) then
-            call locate_shell_boundaries(composition,luminosity_array,convective_flag,num_zones, &
+         if(s%job%rescale_params(1,run_index).gt.0.0d0.or.s%job%rescale_params(4,run_index).gt.0.0d0) then
+            call locate_shell_boundaries(s, composition,luminosity_array,convective_flag,num_zones, &
                  core_edge,envelope_edge,shell_begin,shell_end,shell_mid, &
                  has_h_shell)
-            core_mass_old = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
-            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
-            env_mass_old2 = (exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
-            shell_mass_old = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
+            core_mass_old = exp(ln10*shell_mass_log(shell_begin-1))/s%solar_mass_cgs
+            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/s%solar_mass_cgs
+            env_mass_old2 = (exp(ln10*shell_mass_log(num_zones))-exp(ln10*shell_mass_log(shell_end)))/s%solar_mass_cgs
+            shell_mass_old = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/s%solar_mass_cgs
             delta_env_mass = 0.0d0
             delta_core_mass = 0.0d0
             write(run_log_unit,63)core_mass_old,shell_mass_old,env_mass_old,star_mass
@@ -250,19 +252,19 @@ end subroutine measure_hb_masses
 ! prints diagnostics to the terminal. Sets ierr if the envelope mass
 ! would not be positive.
 subroutine rescale_hb_total_mass
-         if(star%job%rescale_params(1,run_index).gt.0.0d0) then
+         if(s%job%rescale_params(1,run_index).gt.0.0d0) then
 
-            delta_env_mass = star%job%rescale_params(1,run_index) - star_mass
+            delta_env_mass = s%job%rescale_params(1,run_index) - star_mass
             env_mass_new = env_mass_old + delta_env_mass
 
-            if((((pow(10d0, total_mass_log))/star%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
+            if((((pow(10d0, total_mass_log))/s%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
       write(*,*)'Entering old method ',(exp10(total_mass_log)-exp10(shell_mass_log(num_zones)))/ &
                                         (exp10(shell_mass_log(num_zones))-exp10(shell_mass_log(shell_begin-1)))
       write(*,*)'SENV ',exp10(total_mass_log) - exp10(shell_mass_log(num_zones))
       write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! The new envelope mass outside the H shell must be positive.
             if(env_mass_new.le.0.0d0)then
-               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
+               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,s%job%rescale_params(1,run_index),star_mass
    69          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
            'DESIRED NEW ENVELOPE MASS LESS THAN ZERO'/1x, &
            'OLD ENVELOPE MASS ',1pe9.2,' NEW ENVELOPE ',e9.2, &
@@ -274,13 +276,13 @@ subroutine rescale_hb_total_mass
             endif
 
 ! Base m_b = m(shell_end); s from the masses in Msun.
-        mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)/ &
-                          (star_mass-exp(ln10*shell_mass_log(shell_end))/star%solar_mass_cgs)
+        mass_scale_factor =(s%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_end))/s%solar_mass_cgs)/ &
+                          (star_mass-exp(ln10*shell_mass_log(shell_end))/s%solar_mass_cgs)
 
         total_mass_log=log10(exp10(shell_mass_log(shell_end))+mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_end))))
 
-            star_mass = star%job%rescale_params(1,run_index)
-            star%stotal = total_mass_log
+            star_mass = s%job%rescale_params(1,run_index)
+            s%stotal = total_mass_log
             do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_end))+ &
              mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_end))))
@@ -295,9 +297,9 @@ subroutine rescale_hb_total_mass
       write(*,*)'Envelope ',exp10(shell_mass_log(num_zones)) - exp10(shell_mass_log(shell_begin-1))
 ! The mass outside the core must be positive. (This tests the old
 ! mass, M_old - M_core, not the new one.)
-            env_mass_check = ((exp10(total_mass_log))/star%solar_mass_cgs)-core_mass_old
+            env_mass_check = ((exp10(total_mass_log))/s%solar_mass_cgs)-core_mass_old
             if(env_mass_check.le.0.0d0)then
-               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,star%job%rescale_params(1,run_index),star_mass
+               write(run_log_unit,69)env_mass_old,env_mass_old+delta_env_mass,s%job%rescale_params(1,run_index),star_mass
                ! run_yrec returns the error; the command-line wrapper
                ! (main) stops.
                ierr = 1
@@ -305,18 +307,18 @@ subroutine rescale_hb_total_mass
             endif
 
 ! Base m_b = m(shell_begin-1); s from the masses in Msun.
-        mass_scale_factor =(star%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)/ &
-                          (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs)
+        mass_scale_factor =(s%job%rescale_params(1,run_index)-exp(ln10*shell_mass_log(shell_begin-1))/s%solar_mass_cgs)/ &
+                          (star_mass-exp(ln10*shell_mass_log(shell_begin-1))/s%solar_mass_cgs)
        total_mass_log=log10(exp10(shell_mass_log(shell_begin-1))+ &
             mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_begin-1))))
 
-            star_mass = star%job%rescale_params(1,run_index)
-            star%stotal = total_mass_log
+            star_mass = s%job%rescale_params(1,run_index)
+            s%stotal = total_mass_log
             do zone_idx = shell_begin,num_zones
       shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_begin-1))+ &
            mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_begin-1))))
             end do
-            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
+            env_mass_old = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/s%solar_mass_cgs
          endif
          endif
 end subroutine rescale_hb_total_mass
@@ -334,14 +336,14 @@ end subroutine rescale_hb_total_mass
 ! Sets ierr if the envelope inside the fitting point, env_mass_old2,
 ! would not keep a positive mass.
 subroutine rescale_hb_core_mass
-         if(star%job%rescale_params(4,run_index).gt.0.0d0) then
+         if(s%job%rescale_params(4,run_index).gt.0.0d0) then
 
             shell_mass_prev= (exp(ln10*shell_mass_log(shell_end)))
-            delta_core_mass = star%job%rescale_params(4,run_index) - core_mass_old
+            delta_core_mass = s%job%rescale_params(4,run_index) - core_mass_old
             delta_env_mass = - delta_core_mass
             env_mass_new = env_mass_old2 + delta_env_mass
             if(env_mass_new.le.0.0d0)then
-               write(run_log_unit,71)env_mass_old,env_mass_new,star%job%rescale_params(4,run_index),core_mass_old
+               write(run_log_unit,71)env_mass_old,env_mass_new,s%job%rescale_params(4,run_index),core_mass_old
    71          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
            'NEW ENVELOPE MASS LESS THAN ZERO BECAUSE OF CORE', &
            ' RESCALING'/1x, &
@@ -352,14 +354,14 @@ subroutine rescale_hb_core_mass
                ierr = 1
                return
             endif
-            log_mass_shift = log10(star%job%rescale_params(4,run_index)/core_mass_old)
+            log_mass_shift = log10(s%job%rescale_params(4,run_index)/core_mass_old)
             do zone_idx = 1,shell_begin-1
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
             end do
 
 ! Every H-shell point moves by dM_core (g), which keeps the shell's
 ! mass.
-            mass_shift_grams = delta_core_mass*star%solar_mass_cgs
+            mass_shift_grams = delta_core_mass*s%solar_mass_cgs
             do zone_idx = shell_begin,shell_end
                unlogged_mass_temp = exp(ln10*shell_mass_log(zone_idx))
                shell_mass_log(zone_idx) = log10(unlogged_mass_temp + mass_shift_grams)
@@ -380,10 +382,10 @@ end subroutine rescale_hb_core_mass
 ! Echo the rescaled horizontal-branch core, shell, envelope and total
 ! masses.
 subroutine report_hb_masses
-         if(star%job%rescale_params(1,run_index).gt.0.0d0.or.star%job%rescale_params(4,run_index).gt.0.0d0)then
-            core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/star%solar_mass_cgs
-            env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/star%solar_mass_cgs
-            shell_mass_new = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/star%solar_mass_cgs
+         if(s%job%rescale_params(1,run_index).gt.0.0d0.or.s%job%rescale_params(4,run_index).gt.0.0d0)then
+            core_mass_new = exp(ln10*shell_mass_log(shell_begin-1))/s%solar_mass_cgs
+            env_mass_new = (exp(ln10*total_mass_log)-exp(ln10*shell_mass_log(shell_end)))/s%solar_mass_cgs
+            shell_mass_new = (exp(ln10*shell_mass_log(shell_end))-exp(ln10*shell_mass_log(shell_begin-1)))/s%solar_mass_cgs
             write(run_log_unit,101)core_mass_new,shell_mass_new,env_mass_new,star_mass
   101       format(1x,'HB-RESCALED MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL ',f9.6)
@@ -411,20 +413,20 @@ end subroutine set_helium_from_x_and_z
 ! (Z_old - Z_new)/Z_old, the fraction of Z removed: right only for a
 ! halved Z, zero for an unchanged one, negative for a raised one.)
 subroutine ramp_interior_z
-      if(star%ctrl%use_z_ramp.and.(star%job%rsclzc(run_index).gt.0d0).and.(star%job%rsclzm1(run_index).gt.0d0) &
-           .and.(star%job%rsclzm2(run_index).gt.0d0))then
-            z_ramp_slope = (star%znew - star%job%rsclzc(run_index))/(star%job%rsclzm2(run_index)-star%job%rsclzm1(run_index))
+      if(s%ctrl%use_z_ramp.and.(s%job%rsclzc(run_index).gt.0d0).and.(s%job%rsclzm1(run_index).gt.0d0) &
+           .and.(s%job%rsclzm2(run_index).gt.0d0))then
+            z_ramp_slope = (s%znew - s%job%rsclzc(run_index))/(s%job%rsclzm2(run_index)-s%job%rsclzm1(run_index))
             do zone_idx = 1,num_zones
-               mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*star%solar_mass_cgs)
-               if (mass_fraction_local .lt. star%job%rsclzm1(run_index)) then
-                  z_rescale_factor = star%job%rsclzc(run_index)/(composition(3,zone_idx)+1.d-30)
-                  composition(3,zone_idx) = star%job%rsclzc(run_index)
+               mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*s%solar_mass_cgs)
+               if (mass_fraction_local .lt. s%job%rsclzm1(run_index)) then
+                  z_rescale_factor = s%job%rsclzc(run_index)/(composition(3,zone_idx)+1.d-30)
+                  composition(3,zone_idx) = s%job%rsclzc(run_index)
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)
                   do species_idx = 5,11
                       composition(species_idx,zone_idx) = composition(species_idx,zone_idx)*z_rescale_factor
                   enddo
-               else if (mass_fraction_local .lt. star%job%rsclzm2(run_index)) then
-                  z_ramp_value = (mass_fraction_local-star%job%rsclzm1(run_index))*z_ramp_slope+star%job%rsclzc(run_index)
+               else if (mass_fraction_local .lt. s%job%rsclzm2(run_index)) then
+                  z_ramp_value = (mass_fraction_local-s%job%rsclzm1(run_index))*z_ramp_slope+s%job%rsclzc(run_index)
                   z_rescale_factor = z_ramp_value/(composition(3,zone_idx)+1.d-30)
                   composition(3, zone_idx) = z_ramp_value
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)

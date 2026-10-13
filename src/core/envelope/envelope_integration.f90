@@ -16,6 +16,7 @@
 ! turnover diagnostics. atm/ keeps what MESA's atm has: tables,
 ! their init, and pure surface lookups.
 module envelope_integration
+      use star_info_lib, only: star_info
       implicit none
 
 ! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
@@ -49,11 +50,11 @@ end function fixed_envint_step
 ! same identity with the - 4 log Teff term last, which can differ in
 ! the last bit. Unifying
 ! them is a numbers-changing decision (R6), so both forms are kept.
-double precision function surface_log10_radius_cm(log_luminosity_lsun, log_teff)
-      use star_info_lib, only: star
+double precision function surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
       use physical_constants
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_luminosity_lsun, log_teff
-      surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + star%log10_solar_luminosity &
+      surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + s%log10_solar_luminosity &
            - 4.0d0*log_teff - c4pil - csigl)
 end function surface_log10_radius_cm
 
@@ -63,15 +64,15 @@ end function surface_log10_radius_cm
 ! surface shell is convective. The single-precision literals
 ! (0.25, 4.0, 1.0) are the original ones; build_stitched_model keeps
 ! its own copy with d0 literals, which is not token-identical.
-double precision function ambient_log10_teff(log_teff)
-      use star_info_lib, only: star
+double precision function ambient_log10_teff(s, log_teff)
       use math_lib
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_teff
-      ambient_log10_teff = log_teff - 0.25*log10(star%ctrl%spot_filling_factor * &
-           pow(star%ctrl%spot_temp_contrast, 4.0) + 1.0 - star%ctrl%spot_filling_factor)
+      ambient_log10_teff = log_teff - 0.25*log10(s%ctrl%spot_filling_factor * &
+           pow(s%ctrl%spot_temp_contrast, 4.0) + 1.0 - s%ctrl%spot_filling_factor)
 end function ambient_log10_teff
 
-subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
+subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
@@ -97,8 +98,8 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 ! replace the star%job%{atm,env}_step_* triples for this call only
 ! (the drivers that used to overwrite and restore star%job).
       use envelope_integration_kernel
-      use star_info_lib, only: star
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(inout) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
@@ -127,34 +128,34 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
            scratch_logt(3)
       integer :: scratch_vertex_index, scratch_stored_vertex_index
 
-      cfg%atm_choice = star%job%atm_choice
+      cfg%atm_choice = s%job%atm_choice
       if (present(atm_steps)) then
          cfg%atm_step_begin = atm_steps%step_begin
          cfg%atm_step_min = atm_steps%step_min
          cfg%atm_step_max = atm_steps%step_max
       else
-         cfg%atm_step_begin = star%job%atm_step_begin
-         cfg%atm_step_min = star%job%atm_step_min
-         cfg%atm_step_max = star%job%atm_step_max
+         cfg%atm_step_begin = s%job%atm_step_begin
+         cfg%atm_step_min = s%job%atm_step_min
+         cfg%atm_step_max = s%job%atm_step_max
       end if
       if (present(env_steps)) then
          cfg%env_step_begin = env_steps%step_begin
          cfg%env_step_min = env_steps%step_min
          cfg%env_step_max = env_steps%step_max
       else
-         cfg%env_step_begin = star%job%env_step_begin
-         cfg%env_step_min = star%job%env_step_min
-         cfg%env_step_max = star%job%env_step_max
+         cfg%env_step_begin = s%job%env_step_begin
+         cfg%env_step_min = s%job%env_step_min
+         cfg%env_step_max = s%job%env_step_max
       end if
-      cfg%atm_error_tol = star%ctrl%atm_error_tol
-      cfg%env_error_tol = star%ctrl%env_error_tol
-      cfg%atm_step_initial = star%ctrl%atm_step_initial
-      cfg%atm_hras = star%atm_hras
-      cfg%log10_total_mass = star%stotal
-      cfg%senv = star%senv
-      cfg%tenv = star%tenv
-      cfg%log10_solar_luminosity = star%log10_solar_luminosity
-      cfg%calc_envelope = star%job%calc_envelope_flag
+      cfg%atm_error_tol = s%ctrl%atm_error_tol
+      cfg%env_error_tol = s%ctrl%env_error_tol
+      cfg%atm_step_initial = s%ctrl%atm_step_initial
+      cfg%atm_hras = s%atm_hras
+      cfg%log10_total_mass = s%stotal
+      cfg%senv = s%senv
+      cfg%tenv = s%tenv
+      cfg%log10_solar_luminosity = s%log10_solar_luminosity
+      cfg%calc_envelope = s%job%calc_envelope_flag
 
       if (present(vertex_index)) then
          call run_kernel(vertex_index, stored_envelope_state, &
@@ -173,12 +174,12 @@ subroutine atm_get(luminosity_linear, pressure_rotation_factor, &
 
 ! star-state consequences of the integration, applied HERE and only
 ! here (the kernel never sees star_info):
-      if (log10_photo_pressure > -1.0d98) star%pphot = log10_photo_pressure
+      if (log10_photo_pressure > -1.0d98) s%pphot = log10_photo_pressure
       if (switched_to_gray) then
 ! Allard table lookup out of range: the kernel fell back to a gray
 ! atmosphere for this and all future calls (historical behavior)
-         star%job%atm_choice = 0
-         star%use_ttau_relation = .true.
+         s%job%atm_choice = 0
+         s%use_ttau_relation = .true.
       end if
 
 contains

@@ -34,6 +34,7 @@ module henyey_iteration
       use structure_equations, only: compute_henyey_coefficients
       use omega_profile, only: omega_from_j
       use rotating_shape, only: rotation_shape_factors
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: refresh_surface_bc, henyey_iterate
@@ -48,14 +49,15 @@ contains
 ! (forced on for a new triangle, or for a reset one at level 2), it
 ! rebuilds the envelope fit with compute_surface_boundary.
 !----------------------------------------------------------------------
-subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
+subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
      stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
       use eos_lib, only: eos_set_debye_huckel_composition
       use math_lib
-      use star_info_lib, only: star, i_c12, i_c13, i_h1, i_he3, i_he4, &
-           i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use star_info_lib, only: i_c12, i_c13, i_h1, i_he3, i_he4, i_metals, &
+           i_n14, i_n15, i_o16, i_o17, i_o18
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: iteration_level
       logical, intent(inout) :: start_new_triangle, reset_triangle
@@ -75,17 +77,17 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
       ierr = 0
 ! False unless compute_surface_boundary integrates a new envelope.
       envelope_recomputed_flag = .false.
-      star%log_L = log10(star%luminosity_lsun(star%nz))
+      s%log_L = log10(s%luminosity_lsun(s%nz))
       saha_state = 0
-      star%senv = star%log_mass(star%nz) - star%log_total_mass
+      s%senv = s%log_mass(s%nz) - s%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
 ! The surface rotation factors fp and ft for the envelope integrations
 ! (1 without rotation).
-      if (star%job%rotation_active.and.recompute_surface_bc) then
-       surface_pressure_rotation_factor = star%fp_rot(star%nz)
+      if (s%job%rotation_active.and.recompute_surface_bc) then
+       surface_pressure_rotation_factor = s%fp_rot(s%nz)
        surface_temperature_rotation_factor = &
-            star%ft_rot(star%nz)
+            s%ft_rot(s%nz)
       else
        surface_pressure_rotation_factor = 1.0d0
        surface_temperature_rotation_factor = 1.0d0
@@ -94,19 +96,19 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
 ! Debye-Hueckel species of the outermost shell) and take log P(nz) as
 ! their guess at the fitting-point pressure.
       if (recompute_surface_bc) then
-       hydrogen_fraction = star%xnew
-       metal_fraction = star%znew
-       log10_pressure_limit = star%logP(star%nz)
-       call eos_set_debye_huckel_composition(star%xa(:,star%nz))
-       call compute_surface_boundary(star%triangle_log_teff,star%triangle_log_l,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
-            star%fit_point_radius,tri_orientation,stored_vertex_index, &
-            star%stored_envelope_state, &
+       hydrogen_fraction = s%xnew
+       metal_fraction = s%znew
+       log10_pressure_limit = s%logP(s%nz)
+       call eos_set_debye_huckel_composition(s%xa(:,s%nz))
+       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l,s%envelope_fit_coeffs,s%fit_point_pressure,s%fit_point_temperature, &
+            s%fit_point_radius,tri_orientation,stored_vertex_index, &
+            s%stored_envelope_state, &
             start_new_triangle,reset_triangle,saha_state, &
-            star%log_total_mass,star%log_L, &
-            star%log_Teff,hydrogen_fraction,metal_fraction, &
+            s%log_total_mass,s%log_L, &
+            s%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
-            log10_pressure_limit,star%convective_flag,star%nz,jerr)
+            log10_pressure_limit,s%convective_flag,s%nz,jerr)
 ! An envelope or atmosphere integration failure (including
 ! numerics_termination, a negative code) comes back in jerr and goes up
 ! to the driver.
@@ -131,17 +133,19 @@ end subroutine refresh_surface_bc
 !   exceeded its limit; iterations_done, increased by one for each
 !   applied correction.
 !----------------------------------------------------------------------
-subroutine henyey_iterate(delta_time, max_iterations, converged, &
+subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
      saha_state, envelope_zone_index, dlnrho_dlnt, dlnrho_dlnp, &
      iterations_done, ierr)
-      use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, &
-           i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, &
+           i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
+           n_lum_channels
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: delta_time
       integer, intent(in) :: max_iterations
@@ -166,7 +170,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
       integer :: jerr
 
       ierr = 0
-      underrelax_ramp_active = star%ctrl%fcorr0.gt.0.0d0
+      underrelax_ramp_active = s%ctrl%fcorr0.gt.0.0d0
 ! If the model converged at the previous level and the envelope triangle
 ! was checked without any new envelope, there is nothing to correct.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
@@ -180,7 +184,7 @@ subroutine henyey_iterate(delta_time, max_iterations, converged, &
        if (converged) return
        call form_surface_bc_rows()
 ! Solve for the corrections; they replace the residuals in elim_rhs.
-       call henyey_solve(star%nz,star%elim_coeff,star%elim_rhs,star%surface_bc)
+       call henyey_solve(s%nz,s%elim_coeff,s%elim_rhs,s%surface_bc)
        call find_largest_corrections()
        call test_henyey_convergence()
        call set_henyey_correction_factor()
@@ -202,11 +206,11 @@ contains
 ! every shell, with the forward elimination (compute_henyey_coefficients);
 ! a failure leaves ierr nonzero.
 subroutine linearize_structure_equations()
-       star%max_residual(1) = 0.0d0
-       star%max_residual(2) = 0.0d0
-       star%max_residual(3) = 0.0d0
-       star%max_residual(4) = 0.0d0
-       call compute_henyey_coefficients(delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
+       s%max_residual(1) = 0.0d0
+       s%max_residual(2) = 0.0d0
+       s%max_residual(3) = 0.0d0
+       s%max_residual(4) = 0.0d0
+       call compute_henyey_coefficients(s, delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! Propagate the failure to the caller.
@@ -224,14 +228,14 @@ end subroutine linearize_structure_equations
 ! renormalize_luminosity_breakdown; it also guards a nonpositive sum, and
 ! is kept separate on purpose (reports/henyey-wave2.md item 6).
 subroutine renormalize_luminosity_channels()
-       total_luminosity_terms = star%luminosity_breakdown(i_lum_pp1)+star%luminosity_breakdown(i_lum_pp2)+ &
-            star%luminosity_breakdown(i_lum_pp3)+star%luminosity_breakdown(i_lum_cno)+star%luminosity_breakdown(i_lum_3alpha)+ &
-            star%luminosity_breakdown(i_lum_neu)+star%luminosity_breakdown(i_lum_grav)+star%luminosity_breakdown(i_lum_he_c)
-       if (.not.star%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
+       total_luminosity_terms = s%luminosity_breakdown(i_lum_pp1)+s%luminosity_breakdown(i_lum_pp2)+ &
+            s%luminosity_breakdown(i_lum_pp3)+s%luminosity_breakdown(i_lum_cno)+s%luminosity_breakdown(i_lum_3alpha)+ &
+            s%luminosity_breakdown(i_lum_neu)+s%luminosity_breakdown(i_lum_grav)+s%luminosity_breakdown(i_lum_he_c)
+       if (.not.s%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
-          temp = star%luminosity_lsun(star%nz)/total_luminosity_terms
+          temp = s%luminosity_lsun(s%nz)/total_luminosity_terms
           do j = 1,n_lum_channels
-             star%luminosity_breakdown(j) = star%luminosity_breakdown(j)*temp
+             s%luminosity_breakdown(j) = s%luminosity_breakdown(j)*temp
           end do
        endif
 end subroutine renormalize_luminosity_channels
@@ -244,13 +248,13 @@ end subroutine renormalize_luminosity_channels
 ! residuals are not checked.
 subroutine accept_small_residuals()
        if (iter.gt.1) then
-          if (star%max_residual(1).le.star%ctrl%htoler(5,1) .and. &
-               star%max_residual(2).le.star%ctrl%htoler(5,2) .and. &
-               star%max_residual(3).le.star%ctrl%htoler(5,1) .and. &
-               star%max_residual(4).le. star%ctrl%htoler(5,2)) then
-             star%newton_iterations = iterations_done + 1
+          if (s%max_residual(1).le.s%ctrl%htoler(5,1) .and. &
+               s%max_residual(2).le.s%ctrl%htoler(5,2) .and. &
+               s%max_residual(3).le.s%ctrl%htoler(5,1) .and. &
+               s%max_residual(4).le. s%ctrl%htoler(5,2)) then
+             s%newton_iterations = iterations_done + 1
              if (solver_diagnostics()) then
-                write(run_log_unit,20) (star%max_residual(j),j=1,4)
+                write(run_log_unit,20) (s%max_residual(j),j=1,4)
    20           format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
               '  R ',E9.2,'  L ',E9.2)
                 write(run_log_unit,75) iterations_done+1
@@ -276,17 +280,17 @@ end subroutine accept_small_residuals
 ! s(3) and s(6) carry the fits' residuals, and the L row is multiplied
 ! by dL/dlog L = ln10 L.
 subroutine form_surface_bc_rows()
-       star%surface_bc(1) = -star%envelope_fit_coeffs(1)
-       star%surface_bc(2) = -star%envelope_fit_coeffs(2)
-       star%surface_bc(3) = star%envelope_fit_coeffs(1)*star%logP(star%nz) + &
-            star%envelope_fit_coeffs(2)*star%logT(star%nz) + &
-            star%envelope_fit_coeffs(3) - star%logR(star%nz)
-       temp = ln10*star%luminosity_lsun(star%nz)
-       star%surface_bc(4) =-temp*star%envelope_fit_coeffs(4)
-       star%surface_bc(5) =-temp*star%envelope_fit_coeffs(5)
-       star%surface_bc(6) = temp*(star%envelope_fit_coeffs(4)*star%logP(star%nz)+ &
-            star%envelope_fit_coeffs(5)*star%logT(star%nz)+ &
-            star%envelope_fit_coeffs(6)-star%log_L)
+       s%surface_bc(1) = -s%envelope_fit_coeffs(1)
+       s%surface_bc(2) = -s%envelope_fit_coeffs(2)
+       s%surface_bc(3) = s%envelope_fit_coeffs(1)*s%logP(s%nz) + &
+            s%envelope_fit_coeffs(2)*s%logT(s%nz) + &
+            s%envelope_fit_coeffs(3) - s%logR(s%nz)
+       temp = ln10*s%luminosity_lsun(s%nz)
+       s%surface_bc(4) =-temp*s%envelope_fit_coeffs(4)
+       s%surface_bc(5) =-temp*s%envelope_fit_coeffs(5)
+       s%surface_bc(6) = temp*(s%envelope_fit_coeffs(4)*s%logP(s%nz)+ &
+            s%envelope_fit_coeffs(5)*s%logT(s%nz)+ &
+            s%envelope_fit_coeffs(6)-s%log_L)
 end subroutine form_surface_bc_rows
 
 ! ---------------------------------------------------------------
@@ -295,29 +299,29 @@ end subroutine form_surface_bc_rows
 ! and |dL/L|, except at shell 1, which enters with |dL|.
 subroutine find_largest_corrections()
        do j = 1,4
-          star%max_residual(j) = dabs(star%elim_rhs(j,1))
-          star%max_correction_index(j) = 1
+          s%max_residual(j) = dabs(s%elim_rhs(j,1))
+          s%max_correction_index(j) = 1
        end do
-       do i = 2,star%nz
-          test = dabs(star%elim_rhs(1,i))
-          if (star%max_residual(1).le.test) then
-             star%max_residual(1) = test
-             star%max_correction_index(1) = i
+       do i = 2,s%nz
+          test = dabs(s%elim_rhs(1,i))
+          if (s%max_residual(1).le.test) then
+             s%max_residual(1) = test
+             s%max_correction_index(1) = i
           endif
-          test = dabs(star%elim_rhs(2,i))
-          if (star%max_residual(2).le.test) then
-             star%max_residual(2) = test
-             star%max_correction_index(2) = i
+          test = dabs(s%elim_rhs(2,i))
+          if (s%max_residual(2).le.test) then
+             s%max_residual(2) = test
+             s%max_correction_index(2) = i
           endif
-          test = dabs(star%elim_rhs(3,i))
-          if (star%max_residual(3).le.test) then
-             star%max_residual(3) = test
-             star%max_correction_index(3) = i
+          test = dabs(s%elim_rhs(3,i))
+          if (s%max_residual(3).le.test) then
+             s%max_residual(3) = test
+             s%max_correction_index(3) = i
           endif
-          test = dmin1(dabs(star%elim_rhs(4,i)),dabs(star%elim_rhs(4,i)/star%luminosity_lsun(i)))
-          if (star%max_residual(4).le.test) then
-             star%max_residual(4) = test
-             star%max_correction_index(4) = i
+          test = dmin1(dabs(s%elim_rhs(4,i)),dabs(s%elim_rhs(4,i)/s%luminosity_lsun(i)))
+          if (s%max_residual(4).le.test) then
+             s%max_residual(4) = test
+             s%max_correction_index(4) = i
           endif
        end do
 end subroutine find_largest_corrections
@@ -329,18 +333,18 @@ end subroutine find_largest_corrections
 ! each maximum, for the log line.
 subroutine test_henyey_convergence()
 ! The largest L correction, for the helium flash's correction factor.
-       luminosity_correction_max = star%max_residual(4)
-       converged = star%max_residual(1).lt.star%ctrl%htoler(1,1) .and. &
-            star%max_residual(2).lt.star%ctrl%htoler(2,1) &
-         .and. star%max_residual(3).lt.star%ctrl%htoler(3,1) .and. &
-         star%max_residual(4).lt.star%ctrl%htoler(4,1)
-       corrections_too_large = star%max_residual(1).gt.star%ctrl%htoler(1,2) .or. &
-            star%max_residual(2).gt.star%ctrl%htoler(2,2) &
-         .or. star%max_residual(3).gt.star%ctrl%htoler(3,2) .or. &
-         star%max_residual(4).gt.star%ctrl%htoler(4,2)
+       luminosity_correction_max = s%max_residual(4)
+       converged = s%max_residual(1).lt.s%ctrl%htoler(1,1) .and. &
+            s%max_residual(2).lt.s%ctrl%htoler(2,1) &
+         .and. s%max_residual(3).lt.s%ctrl%htoler(3,1) .and. &
+         s%max_residual(4).lt.s%ctrl%htoler(4,1)
+       corrections_too_large = s%max_residual(1).gt.s%ctrl%htoler(1,2) .or. &
+            s%max_residual(2).gt.s%ctrl%htoler(2,2) &
+         .or. s%max_residual(3).gt.s%ctrl%htoler(3,2) .or. &
+         s%max_residual(4).gt.s%ctrl%htoler(4,2)
        do j = 1,4
-          max_correction_pos = star%max_correction_index(j)
-          star%max_residual(j) = star%elim_rhs(j,max_correction_pos)
+          max_correction_pos = s%max_correction_index(j)
+          s%max_residual(j) = s%elim_rhs(j,max_correction_pos)
        end do
 end subroutine test_henyey_convergence
 
@@ -348,19 +352,19 @@ end subroutine test_henyey_convergence
 ! Ramp the under-relaxation factor and pick the correction factor (eased
 ! in during the helium flash); count the iterations if converged.
 subroutine set_henyey_correction_factor()
-       if (underrelax_ramp_active) star%job%fcorr = dmin1(1.d0,star%job%fcorr+star%ctrl%fcorri)
+       if (underrelax_ramp_active) s%job%fcorr = dmin1(1.d0,s%job%fcorr+s%ctrl%fcorri)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
-       correction_factor = star%job%fcorr
-       if (star%ctrl%helium_flash_active) then
+       correction_factor = s%job%fcorr
+       if (s%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
 ! The hydrogen- and helium-burning luminosities, for the log line.
-       hydrogen_burn_luminosity = star%luminosity_breakdown(i_lum_pp1) + star%luminosity_breakdown(i_lum_pp2) &
-            + star%luminosity_breakdown(i_lum_pp3) + star%luminosity_breakdown(i_lum_cno)
-       helium_burn_luminosity= star%luminosity_breakdown(i_lum_3alpha) + star%luminosity_breakdown(i_lum_he_c)
-       if (converged) star%newton_iterations = iterations_done + 1
+       hydrogen_burn_luminosity = s%luminosity_breakdown(i_lum_pp1) + s%luminosity_breakdown(i_lum_pp2) &
+            + s%luminosity_breakdown(i_lum_pp3) + s%luminosity_breakdown(i_lum_cno)
+       helium_burn_luminosity= s%luminosity_breakdown(i_lum_3alpha) + s%luminosity_breakdown(i_lum_he_c)
+       if (converged) s%newton_iterations = iterations_done + 1
 end subroutine set_henyey_correction_factor
 
 ! ---------------------------------------------------------------
@@ -369,12 +373,12 @@ end subroutine set_henyey_correction_factor
 subroutine log_henyey_corrections()
 ! The correction trace is written only with solver diagnostics on.
        if (solver_diagnostics()) then
-          write (run_log_unit,60) converged,star%max_residual(4), &
-               star%ctrl%htoler(4,1),star%max_correction_index(4)
+          write (run_log_unit,60) converged,s%max_residual(4), &
+               s%ctrl%htoler(4,1),s%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
-          write(run_log_unit,70)(star%max_correction_index(j),star%max_residual(j), &
+          write(run_log_unit,70)(s%max_correction_index(j),s%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &
-               helium_burn_luminosity,(star%luminosity_breakdown(j),j=6,7)
+               helium_burn_luminosity,(s%luminosity_breakdown(j),j=6,7)
    70       format(' CORR',I5,'P',1PE9.2,I5,'T',E9.2,I5,'R',E9.2,I5,'L', &
             E9.2,'  F=',0PF5.3,'  E-HY',1PE10.3,' HE',E10.3,' NU',E10.3, &
             ' G',E10.3)
@@ -399,21 +403,21 @@ end subroutine log_henyey_corrections
 ! new log L, and log Teff from the envelope fit,
 !   log Teff = cf(7) log P(nz) + cf(8) log T(nz) + cf(9).
 subroutine apply_henyey_corrections()
-       do i = 1,star%nz
-          temp = correction_factor*star%elim_rhs(1,i)
-          star%logP(i) = star%logP(i) + temp
-          star%log_pressure_delta(i) = star%log_pressure_delta(i) + temp
-          temp = correction_factor*star%elim_rhs(2,i)
-          star%logT(i) = star%logT(i) + temp
-          star%log_temperature_delta(i) = star%log_temperature_delta(i) + temp
-          star%logR(i) = star%logR(i) + correction_factor*star%elim_rhs(3,i)
-          star%luminosity_lsun(i) = star%luminosity_lsun(i) + &
-               correction_factor*star%elim_rhs(4,i)
+       do i = 1,s%nz
+          temp = correction_factor*s%elim_rhs(1,i)
+          s%logP(i) = s%logP(i) + temp
+          s%log_pressure_delta(i) = s%log_pressure_delta(i) + temp
+          temp = correction_factor*s%elim_rhs(2,i)
+          s%logT(i) = s%logT(i) + temp
+          s%log_temperature_delta(i) = s%log_temperature_delta(i) + temp
+          s%logR(i) = s%logR(i) + correction_factor*s%elim_rhs(3,i)
+          s%luminosity_lsun(i) = s%luminosity_lsun(i) + &
+               correction_factor*s%elim_rhs(4,i)
        end do
-       star%log_L = log10(star%luminosity_lsun(star%nz))
-       star%log_Teff = star%envelope_fit_coeffs(7)*star%logP(star%nz) + &
-            star%envelope_fit_coeffs(8)*star%logT(star%nz) + &
-            star%envelope_fit_coeffs(9)
+       s%log_L = log10(s%luminosity_lsun(s%nz))
+       s%log_Teff = s%envelope_fit_coeffs(7)*s%logP(s%nz) + &
+            s%envelope_fit_coeffs(8)*s%logT(s%nz) + &
+            s%envelope_fit_coeffs(9)
 end subroutine apply_henyey_corrections
 
 ! ---------------------------------------------------------------
@@ -421,18 +425,18 @@ end subroutine apply_henyey_corrections
 ! rotational kinetic energy of the corrected structure,
 ! E_rot = 0.5 omega j dm per shell.
 subroutine update_rotation_after_corrections()
-         if (star%job%rotation_active) then
-            call omega_from_j(star%logRho,star%j_rot,star%logR, &
-                 star%log_mass,star%dm,star%am_transport_convective_flag, &
-                 star%nz,star%eta_squared,star%i_rot,star%omega,star%qiw, &
-                 star%mean_radius)
-            call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
-                 star%eta_squared,star%fp_rot, &
-                 star%ft_rot,star%mean_gravity,star%mean_radius,ierr)
+         if (s%job%rotation_active) then
+            call omega_from_j(s%logRho,s%j_rot,s%logR, &
+                 s%log_mass,s%dm,s%am_transport_convective_flag, &
+                 s%nz,s%eta_squared,s%i_rot,s%omega,s%qiw, &
+                 s%mean_radius)
+            call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
+                 s%eta_squared,s%fp_rot, &
+                 s%ft_rot,s%mean_gravity,s%mean_radius,ierr)
             if (ierr /= 0) return
-            do i = 1,star%nz
-               shell_angular_momentum = star%j_rot(i)*star%dm(i)
-               star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
+            do i = 1,s%nz
+               shell_angular_momentum = s%j_rot(i)*s%dm(i)
+               s%kinetic_energy_rot(i) = 0.5d0*s%omega(i)*shell_angular_momentum
             end do
          endif
 end subroutine update_rotation_after_corrections

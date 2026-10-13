@@ -8,6 +8,7 @@
 ! (The legacy getnewenv's comment said "when the total mass is being
 ! decreased"; evolve_step calls it after change_mass accretes.)
 module envelope_rebuild
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: rebuild_envelope
@@ -29,7 +30,7 @@ contains
 ! Updates star%senv and num_zones; called from evolve_step. ierr: the
 ! integration failed, the zones would overflow json, or the mass
 ! interpolation was degenerate.
-subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
+subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, &
      log_total_mass, log_temperature, convective_flag, eta_squared, &
@@ -42,12 +43,14 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
            surface_log10_radius_cm, ambient_log10_teff
       use envelope_integration_kernel, only: senv_thin_envelope
       use envelope_refit, only: append_envelope_points
-      use star_info_lib
+      use star_info_lib, only: i_h1, i_metals, json, n_species_basic, &
+           n_species_extended
       use controls_buffer, only: ichi_dp_env_max
       use envelope_structure
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
       integer :: jerr_atm
       double precision, intent(inout) :: target_envelope_mass
@@ -112,7 +115,7 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! Append the envelope points inside the new fitting mass as shells,
 ! interpolating the last one onto it; a point exactly at the fitting
 ! mass is interpolated (accept_point_at_fit_mass = .false.).
-      call append_envelope_points(.false., species_end_index, composition, &
+      call append_envelope_points(s, .false., species_end_index, composition, &
            log_density, log_luminosity, log_pressure, log_radius, log_mass, &
            log_temperature, convective_flag, num_zones, ierr)
 ! A degenerate mass interval returns an error (legacy stop 9998).
@@ -124,16 +127,16 @@ subroutine rebuild_envelope(target_envelope_mass, composition, log_density, &
 ! With rotation: guess omega and j of the new shells, find omega, the
 ! shape and the moments of inertia of every zone from j (omega_from_j),
 ! and sum the angular momentum and rotational energy.
-      if(star%job%rotation_active)then
+      if(s%job%rotation_active)then
          call guess_new_shell_rotation()
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
               shell_mass,convective_flag,num_zones,eta_squared, &
-              moment_of_inertia,star%omega,qiw,mean_radius)
+              moment_of_inertia,s%omega,qiw,mean_radius)
          call sum_rotation_totals()
       endif
       call print_new_interior_points()
       new_points_added_flag = .true.
-       write(*,597)envelope_mass_before,star%senv
+       write(*,597)envelope_mass_before,s%senv
  597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
      'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
       return
@@ -144,7 +147,7 @@ contains
 ! The species count, the target envelope mass (clamped), the current
 ! number of zones and envelope mass, and the integration settings.
 subroutine prepare_envelope_rebuild()
-      if(star%job%use_extended_composition)then
+      if(s%job%use_extended_composition)then
          species_end_index = n_species_extended
       else
          species_end_index = n_species_basic
@@ -154,11 +157,11 @@ subroutine prepare_envelope_rebuild()
       target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
 ! The zone count and the fitting mass before the rebuild.
       old_num_zones = num_zones
-      envelope_mass_before = star%senv
+      envelope_mass_before = s%senv
 ! The envelope integration takes a fixed step in log P,
 ! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
 ! only. No boundary vertex is saved, and saha_state starts at 0.
-      env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))
+      env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
       surface_bc_flag = .false.
       print_flag = .true.
       ksaha = 0
@@ -171,9 +174,9 @@ subroutine set_envelope_surface()
 ! L in Lsun.
       luminosity_linear = exp(ln10*log_luminosity_lsun)
 ! R from L = 4 pi R^2 sigma Teff^4.
-      log_radius_surface = surface_log10_radius_cm(log_luminosity_lsun, log_teff)
+      log_radius_surface = surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
 ! g = G M / R^2.
-      log_gravity_surface = cgl + star%stotal - log_radius_surface - log_radius_surface
+      log_gravity_surface = cgl + s%stotal - log_radius_surface - log_radius_surface
 ! X and Z of the outermost shell.
       hydrogen_fraction = composition(i_h1,num_zones)
       metal_fraction = composition(i_metals,num_zones)
@@ -194,13 +197,13 @@ subroutine integrate_new_envelope()
 ! Integrate down to the current fitting point from the surface L and
 ! Teff. A spotted run with a convective surface starts from the Teff of
 ! the unspotted surface (ambient_log10_teff, legacy ATEFFL).
-      if(convective_flag(num_zones).and.star%ctrl%spot_filling_factor.ne.0.0.and. &
-           star%ctrl%spot_temp_contrast.ne.1.0)then
-         spot_adjusted_log_teff = ambient_log10_teff(log_teff)
+      if(convective_flag(num_zones).and.s%ctrl%spot_filling_factor.ne.0.0.and. &
+           s%ctrl%spot_temp_contrast.ne.1.0)then
+         spot_adjusted_log_teff = ambient_log10_teff(s, log_teff)
       else
          spot_adjusted_log_teff = log_teff
       endif
-      call atm_get(luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
+      call atm_get(s, luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
            log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
@@ -210,7 +213,7 @@ subroutine integrate_new_envelope()
          ierr = jerr_atm
          return
       end if
-      star%senv = target_envelope_mass
+      s%senv = target_envelope_mass
 end subroutine integrate_new_envelope
 
 ! ---------------------------------------------------------------
@@ -232,7 +235,7 @@ subroutine shift_envelope_points()
       mass_test = log_mass(num_zones)
       num_new_env_points = 0
       do zone_index = 1,env_struct%num_env_points - 1
-         mass_test2 = star%stotal+env_struct%env_log10_mass(zone_index+1)
+         mass_test2 = s%stotal+env_struct%env_log10_mass(zone_index+1)
          if(mass_test2-mass_test.gt.1.0D-10)then
             env_struct%env_log10_density(zone_index) = env_struct%env_log10_density(zone_index+1)+density_offset
             env_struct%env_log10_pressure(zone_index) = env_struct%env_log10_pressure(zone_index+1)+pressure_offset
@@ -271,28 +274,28 @@ end subroutine compute_new_shell_masses
 ! or omega ~ r^walpcz. Each shell's specific moment of inertia is
 ! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
-         if(star%ctrl%walpcz.le.-2.0D0)then
+         if(s%ctrl%walpcz.le.-2.0D0)then
 ! walpcz <= -2: constant specific angular momentum j.
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               star%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
+               s%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
-         else if(star%ctrl%walpcz.ge.0.0D0)then
+         else if(s%ctrl%walpcz.ge.0.0D0)then
 ! walpcz >= 0: solid-body rotation, omega constant.
             do zone_index = old_num_zones+1,num_zones
-               star%omega(zone_index) = star%omega(old_num_zones)
+               s%omega(zone_index) = s%omega(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               specific_angular_momentum(zone_index) = star%omega(old_num_zones)*moment_of_inertia(zone_index)
+               specific_angular_momentum(zone_index) = s%omega(old_num_zones)*moment_of_inertia(zone_index)
             end do
          else
 ! Otherwise omega ~ r^walpcz, the law enforce_rotation_profile
 ! (omega_profile) imposes: omega = omega_old (r/r_old)^walpcz.
-            omega_ref = star%omega(old_num_zones)/exp10((log_radius(old_num_zones)*star%ctrl%walpcz))
+            omega_ref = s%omega(old_num_zones)/exp10((log_radius(old_num_zones)*s%ctrl%walpcz))
             do zone_index = old_num_zones+1,num_zones
-               star%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*star%ctrl%walpcz))
+               s%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*s%ctrl%walpcz))
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
-               specific_angular_momentum(zone_index) = star%omega(zone_index)*moment_of_inertia(zone_index)
+               specific_angular_momentum(zone_index) = s%omega(zone_index)*moment_of_inertia(zone_index)
             end do
          endif
 end subroutine guess_new_shell_rotation
@@ -307,7 +310,7 @@ subroutine sum_rotation_totals()
        sum_rotational_ke = 0.0D0
        do zone_index = 1,num_zones
           angular_momentum_shell = specific_angular_momentum(zone_index)*shell_mass(zone_index)
-          rotational_kinetic_energy(zone_index) = 0.5D0*star%omega(zone_index)*angular_momentum_shell
+          rotational_kinetic_energy(zone_index) = 0.5D0*s%omega(zone_index)*angular_momentum_shell
           sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
           sum_rotational_ke = sum_rotational_ke + rotational_kinetic_energy(zone_index)
        end do
@@ -323,7 +326,7 @@ subroutine print_new_interior_points()
      ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(zone_index,log_density(zone_index),log_luminosity(zone_index), &
            log_pressure(zone_index),log_radius(zone_index), &
-           log_mass(zone_index)-star%stotal, &
+           log_mass(zone_index)-s%stotal, &
            log_temperature(zone_index),convective_flag(zone_index), &
            zone_index = old_num_zones,num_zones)
  911  format(I5,1P6E16.8,L2)

@@ -21,7 +21,7 @@
 module stitched_model
       use physical_constants
       use math_lib
-      use star_info_lib, only: json
+      use star_info_lib, only: json, star_info
       implicit none
       private
       public :: build_stitched_model, n_ext, n_ie, stx_prof, &
@@ -101,12 +101,13 @@ contains
 ! so a fresh atm_get at the converged values is required (the same recipe
 ! io/write_stitched_profile.f90 uses for the legacy .store profiles, with the
 ! same fixed output step sizes).
-subroutine build_stitched_model
-      use star_info_lib, only: star, i_h1, i_metals
+subroutine build_stitched_model(s)
+      use star_info_lib, only: i_h1, i_metals
       use envelope_structure
       use atmosphere_structure
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm
+      type(star_info), intent(inout) :: s
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
       double precision :: b, gl, rl, ateffl, plim
@@ -115,53 +116,53 @@ subroutine build_stitched_model
 
 ! interior always present
       n_ext = 0
-      do j = 1, star%nz
+      do j = 1, s%nz
          n_ext = n_ext + 1
          ext_region(n_ext) = 1
          ext_index(n_ext) = j
       end do
-      if (.not. star%job%calc_envelope_flag) then
+      if (.not. s%job%calc_envelope_flag) then
          n_ie = n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this
 ! branch -- they hold whatever the last full build left.)
-         call fill_stitched_arrays
+         call fill_stitched_arrays(s)
          return
       end if
 
 ! ---- re-integrate at the converged model (stitch's recipe) ----
 ! fixed output step sizes for this atm_get call only (2026 W2: passed
 ! in instead of overwriting and restoring star%job%{atm,env}_step_*)
-      atm_steps = fixed_envint_step(star%ctrl%atm_step_size)
-      env_steps = fixed_envint_step(star%ctrl%envelope_step_size)
+      atm_steps = fixed_envint_step(s%ctrl%atm_step_size)
+      env_steps = fixed_envint_step(s%ctrl%envelope_step_size)
 
       ksaha = 0
       lprt = .false.
       lsbc0 = .false.
-      b = exp(ln10*star%log_L)
-      rl = surface_log10_radius_cm(star%log_L, star%log_Teff)
-      gl = cgl + star%log_total_mass - rl - rl
-      plim = star%logP(star%nz)
-      if (star%convective_flag(star%nz) .and. star%ctrl%spot_filling_factor /= 0.0d0 &
-          .and. star%ctrl%spot_temp_contrast /= 1.0d0) then
-         ateffl = star%log_Teff - 0.25d0*log10(star%ctrl%spot_filling_factor* &
-              pow(star%ctrl%spot_temp_contrast, 4.0d0) + 1.0d0 - star%ctrl%spot_filling_factor)
+      b = exp(ln10*s%log_L)
+      rl = surface_log10_radius_cm(s, s%log_L, s%log_Teff)
+      gl = cgl + s%log_total_mass - rl - rl
+      plim = s%logP(s%nz)
+      if (s%convective_flag(s%nz) .and. s%ctrl%spot_filling_factor /= 0.0d0 &
+          .and. s%ctrl%spot_temp_contrast /= 1.0d0) then
+         ateffl = s%log_Teff - 0.25d0*log10(s%ctrl%spot_filling_factor* &
+              pow(s%ctrl%spot_temp_contrast, 4.0d0) + 1.0d0 - s%ctrl%spot_filling_factor)
       else
-         ateffl = star%log_Teff
+         ateffl = s%log_Teff
       end if
       jerr = 0
 ! The stitch is the ONE writer of star%pphot: atm_get sets it from
 ! this integration at the converged model, and no other path
 ! recomputes it (the former gettau/wrtout own atm_get calls are
 ! gone). The stitch runs every step, so pphot is always current.
-      call atm_get(b, star%fp_rot(star%nz), star%ft_rot(star%nz), gl, &
-           star%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
-           star%xa(i_h1,star%nz), star%xa(i_metals,star%nz), ksaha, jerr, &
+      call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
+           s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
+           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), ksaha, jerr, &
            atm_steps=atm_steps, env_steps=env_steps)
 
       if (jerr /= 0) then
          n_ie = n_ext
-         call fill_stitched_arrays
+         call fill_stitched_arrays(s)
          return
       end if
 
@@ -173,7 +174,7 @@ subroutine build_stitched_model
 ! extended radius strictly monotonic for GYRE.
       do i = 1, env_struct%num_env_points
          if (n_ext >= max_ext) exit
-         if (env_struct%env_log10_radius(i) <= star%logR(star%nz)) cycle
+         if (env_struct%env_log10_radius(i) <= s%logR(s%nz)) cycle
          n_ext = n_ext + 1
          ext_region(n_ext) = 2
          ext_index(n_ext) = i
@@ -205,8 +206,8 @@ subroutine build_stitched_model
          ext_region(n_ext) = 3
          ext_index(n_ext) = i
       end do
-      call compute_seismic_columns
-      call fill_stitched_arrays
+      call compute_seismic_columns(s)
+      call fill_stitched_arrays(s)
 end subroutine build_stitched_model
 
 ! ---------------------------------------------------------------
@@ -219,9 +220,9 @@ end subroutine build_stitched_model
 !     gradient is a centered difference in lnP)
 !   4 gradr_div_grada
 ! Endpoints copy their neighbor's derivative-based values.
-subroutine compute_seismic_columns
+subroutine compute_seismic_columns(s)
       use math_lib
-      use star_info_lib, only: star
+      type(star_info), intent(inout) :: s
       integer :: j
       double precision :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
            lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
@@ -231,15 +232,15 @@ subroutine compute_seismic_columns
 
       mu_ok = .true.
       do j = 1, n_ext
-         r(j)      = exp(ln10*ext_profile_value(ip_logR, j))
-         lnp(j)    = ln10*ext_profile_value(ip_logP, j)
-         lnrho(j)  = ln10*ext_profile_value(ip_logRho, j)
-         g1(j)     = ext_profile_value(ip_gamma1, j)
-         grada_(j) = ext_profile_value(ip_grada, j)
-         gradr_(j) = ext_profile_value(ip_gradr, j)
-         delta_(j) = ext_profile_value(ip_delta, j)
-         mass_g(j) = ext_profile_value(ip_mass, j)*star%solar_mass_cgs
-         lnmu(j)   = ext_profile_value(ip_mu, j)
+         r(j)      = exp(ln10*ext_profile_value(s, ip_logR, j))
+         lnp(j)    = ln10*ext_profile_value(s, ip_logP, j)
+         lnrho(j)  = ln10*ext_profile_value(s, ip_logRho, j)
+         g1(j)     = ext_profile_value(s, ip_gamma1, j)
+         grada_(j) = ext_profile_value(s, ip_grada, j)
+         gradr_(j) = ext_profile_value(s, ip_gradr, j)
+         delta_(j) = ext_profile_value(s, ip_delta, j)
+         mass_g(j) = ext_profile_value(s, ip_mass, j)*s%solar_mass_cgs
+         lnmu(j)   = ext_profile_value(s, ip_mu, j)
          if (lnmu(j) > 0.0d0) then
             lnmu(j) = log(lnmu(j))
          else
@@ -297,11 +298,12 @@ end subroutine compute_seismic_columns
 ! carry what those integrations store; quantities they do not track
 ! (per-species abundances beyond X/Z, burning terms, rotation
 ! internals) are zero, as io/write_stitched_profile.f90 also writes them.
-double precision function ext_profile_value(icol, j)
+double precision function ext_profile_value(s, icol, j)
       use math_lib
-      use star_info_lib, only: star, i_h1, i_metals
+      use star_info_lib, only: i_h1, i_metals
       use envelope_structure
       use atmosphere_structure
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: icol, j
       integer :: i
 
@@ -312,10 +314,10 @@ double precision function ext_profile_value(icol, j)
       i = ext_index(j)
       select case (ext_region(j))
       case (1)
-         ext_profile_value = profile_value(icol, i)
+         ext_profile_value = profile_value(s, icol, i)
       case (2)
          select case (icol)
-         case (2);  ext_profile_value = envelope_mass_g(i)/star%solar_mass_cgs
+         case (2);  ext_profile_value = envelope_mass_g(s, i)/s%solar_mass_cgs
          case (3);  ext_profile_value = env_struct%env_log10_radius(i)
          case (4);  ext_profile_value = env_struct%env_log10_temperature(i)
          case (5);  ext_profile_value = env_struct%env_log10_density(i)
@@ -336,7 +338,7 @@ double precision function ext_profile_value(icol, j)
          case (16); ext_profile_value = env_struct%env_beta(i)
          case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
          case (41); ext_profile_value = env_struct%env_metal_fraction(i)
-         case (42); ext_profile_value = star%omega(star%nz)
+         case (42); ext_profile_value = s%omega(s%nz)
          case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
          case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
 ! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
@@ -353,21 +355,21 @@ double precision function ext_profile_value(icol, j)
          end select
       case (3)
          select case (icol)
-         case (2);  ext_profile_value = star%star_mass
+         case (2);  ext_profile_value = s%star_mass
          case (3);  ext_profile_value = log10(atmosphere_radius_cm(i))
          case (4);  ext_profile_value = atmo_struct%atmo_log10_temperature(i)
          case (5);  ext_profile_value = atmo_struct%atmo_log10_density(i)
          case (6);  ext_profile_value = atmo_struct%atmo_log10_pressure(i)
-         case (7);  ext_profile_value = exp(ln10*star%log_L)
+         case (7);  ext_profile_value = exp(ln10*s%log_L)
          case (10); ext_profile_value = atmo_struct%atmo_gamma1(i)
          case (11); ext_profile_value = atmo_struct%atmo_opacity(i)
          case (12); ext_profile_value = atmo_struct%atmo_gradients(1,i)
          case (13); ext_profile_value = atmo_struct%atmo_gradients(2,i)
          case (14); ext_profile_value = atmo_struct%atmo_gradients(3,i)
          case (16); ext_profile_value = atmo_struct%atmo_beta(i)
-         case (27); ext_profile_value = star%xa(i_h1,star%nz)
-         case (41); ext_profile_value = star%xa(i_metals,star%nz)
-         case (42); ext_profile_value = star%omega(star%nz)
+         case (27); ext_profile_value = s%xa(i_h1,s%nz)
+         case (41); ext_profile_value = s%xa(i_metals,s%nz)
+         case (42); ext_profile_value = s%omega(s%nz)
          case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
          case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
          case (52); ext_profile_value = ideal_gas_mu( &
@@ -422,11 +424,11 @@ end function convective_indicator
 
 ! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
 ! the total mass).
-double precision function envelope_mass_g(i)
-      use star_info_lib, only: star
+double precision function envelope_mass_g(s, i)
       use envelope_structure
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: i
-      envelope_mass_g = exp(ln10*(env_struct%env_log10_mass(i) + star%log_total_mass))
+      envelope_mass_g = exp(ln10*(env_struct%env_log10_mass(i) + s%log_total_mass))
 end function envelope_mass_g
 
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
@@ -455,72 +457,76 @@ end function ideal_gas_mu
 ! Per-zone value for profile column icol at YREC zone index k
 ! (1 = center .. nz = surface). Sources match putstore's per-shell
 ! block and the pulse arrays coefft fills every model.
-double precision function profile_value(icol, k)
+double precision function profile_value(s, icol, k)
       use math_lib
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18
+      use star_info_lib, only: i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, &
+           i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
+           i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, &
+           i_o17, i_o18
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: icol, k
 
       select case (icol)
       case (1);  profile_value = 0.0d0   ! zone number set by the writer
-      case (2);  profile_value = star%m(k)/star%solar_mass_cgs
-      case (3);  profile_value = star%logR(k)
-      case (4);  profile_value = star%logT(k)
-      case (5);  profile_value = star%logRho(k)
-      case (6);  profile_value = star%logP(k)
-      case (7);  profile_value = star%luminosity_lsun(k)
-      case (8);  profile_value = star%dm(k)/star%solar_mass_cgs
-      case (9);  profile_value = convective_indicator(star%convective_flag(k))
-      case (10); profile_value = star%adiabatic_index_gamma1(k)
-      case (11); profile_value = star%opacity_zone(k)
-      case (12); profile_value = star%gradr(k)
-      case (13); profile_value = star%gradT(k)
-      case (14); profile_value = star%grada(k)
-      case (15); profile_value = star%conv_vel(k)
-      case (16); profile_value = star%beta(k)
-      case (17); profile_value = star%eta(k)
+      case (2);  profile_value = s%m(k)/s%solar_mass_cgs
+      case (3);  profile_value = s%logR(k)
+      case (4);  profile_value = s%logT(k)
+      case (5);  profile_value = s%logRho(k)
+      case (6);  profile_value = s%logP(k)
+      case (7);  profile_value = s%luminosity_lsun(k)
+      case (8);  profile_value = s%dm(k)/s%solar_mass_cgs
+      case (9);  profile_value = convective_indicator(s%convective_flag(k))
+      case (10); profile_value = s%adiabatic_index_gamma1(k)
+      case (11); profile_value = s%opacity_zone(k)
+      case (12); profile_value = s%gradr(k)
+      case (13); profile_value = s%gradT(k)
+      case (14); profile_value = s%grada(k)
+      case (15); profile_value = s%conv_vel(k)
+      case (16); profile_value = s%beta(k)
+      case (17); profile_value = s%eta(k)
       case (18)
-         profile_value = exp(ln10*(cgl - 2.0d0*star%logR(k)))*star%m(k)
-      case (19); profile_value = star%eps_channels(i_eps_pp1,k)
-      case (20); profile_value = star%eps_channels(i_eps_pp2,k)
-      case (21); profile_value = star%eps_channels(i_eps_pp3,k)
-      case (22); profile_value = star%eps_channels(i_eps_cno,k)
-      case (23); profile_value = star%eps_channels(i_eps_he3,k)
-      case (24); profile_value = star%eps_total(k)
-      case (25); profile_value = star%eps_channels(i_eps_neu,k)
-      case (26); profile_value = star%eps_channels(i_eps_grav,k)
-      case (27); profile_value = star%xa(i_h1,k)
-      case (28); profile_value = star%xa(i_h2,k)
-      case (29); profile_value = star%xa(i_he3,k)
-      case (30); profile_value = star%xa(i_he4,k)
-      case (31); profile_value = star%xa(i_li6,k)
-      case (32); profile_value = star%xa(i_li7,k)
-      case (33); profile_value = star%xa(i_be9,k)
-      case (34); profile_value = star%xa(i_c12,k)
-      case (35); profile_value = star%xa(i_c13,k)
-      case (36); profile_value = star%xa(i_n14,k)
-      case (37); profile_value = star%xa(i_n15,k)
-      case (38); profile_value = star%xa(i_o16,k)
-      case (39); profile_value = star%xa(i_o17,k)
-      case (40); profile_value = star%xa(i_o18,k)
-      case (41); profile_value = star%xa(i_metals,k)
-      case (42); profile_value = star%omega(k)
-      case (43); profile_value = star%j_rot(k)
-      case (44); profile_value = star%i_rot(k)
-      case (45); profile_value = star%fp_rot(k)
-      case (46); profile_value = star%ft_rot(k)
-      case (47); profile_value = star%es_circulation_velocity(k)
-      case (48); profile_value = star%gsf_circulation_velocity(k)
-      case (49); profile_value = star%secular_shear_velocity(k)
-      case (50); profile_value = star%pulse_specific_heat(k)
-      case (51); profile_value = -star%pulse_dlnrho_dlnt(k)
-      case (52); profile_value = star%pulse_mean_molecular_weight(k)
+         profile_value = exp(ln10*(cgl - 2.0d0*s%logR(k)))*s%m(k)
+      case (19); profile_value = s%eps_channels(i_eps_pp1,k)
+      case (20); profile_value = s%eps_channels(i_eps_pp2,k)
+      case (21); profile_value = s%eps_channels(i_eps_pp3,k)
+      case (22); profile_value = s%eps_channels(i_eps_cno,k)
+      case (23); profile_value = s%eps_channels(i_eps_he3,k)
+      case (24); profile_value = s%eps_total(k)
+      case (25); profile_value = s%eps_channels(i_eps_neu,k)
+      case (26); profile_value = s%eps_channels(i_eps_grav,k)
+      case (27); profile_value = s%xa(i_h1,k)
+      case (28); profile_value = s%xa(i_h2,k)
+      case (29); profile_value = s%xa(i_he3,k)
+      case (30); profile_value = s%xa(i_he4,k)
+      case (31); profile_value = s%xa(i_li6,k)
+      case (32); profile_value = s%xa(i_li7,k)
+      case (33); profile_value = s%xa(i_be9,k)
+      case (34); profile_value = s%xa(i_c12,k)
+      case (35); profile_value = s%xa(i_c13,k)
+      case (36); profile_value = s%xa(i_n14,k)
+      case (37); profile_value = s%xa(i_n15,k)
+      case (38); profile_value = s%xa(i_o16,k)
+      case (39); profile_value = s%xa(i_o17,k)
+      case (40); profile_value = s%xa(i_o18,k)
+      case (41); profile_value = s%xa(i_metals,k)
+      case (42); profile_value = s%omega(k)
+      case (43); profile_value = s%j_rot(k)
+      case (44); profile_value = s%i_rot(k)
+      case (45); profile_value = s%fp_rot(k)
+      case (46); profile_value = s%ft_rot(k)
+      case (47); profile_value = s%es_circulation_velocity(k)
+      case (48); profile_value = s%gsf_circulation_velocity(k)
+      case (49); profile_value = s%secular_shear_velocity(k)
+      case (50); profile_value = s%pulse_specific_heat(k)
+      case (51); profile_value = -s%pulse_dlnrho_dlnt(k)
+      case (52); profile_value = s%pulse_mean_molecular_weight(k)
 ! 2026 (bugsweep sec-11): the array already holds 1/mu_e (eos
 ! electron_mean_weight_inverse); it used to be inverted again here.
-      case (53); profile_value = star%pulse_electron_mean_weight_inverse(k)
-      case (58); profile_value = sound_speed_cgs(star%adiabatic_index_gamma1(k), &
-              star%logP(k), star%logRho(k))
-      case (59); profile_value = star%am_diffusion_coeff(k)
-      case (60); profile_value = star%mixing_diffusion_coeff(k)
+      case (53); profile_value = s%pulse_electron_mean_weight_inverse(k)
+      case (58); profile_value = sound_speed_cgs(s%adiabatic_index_gamma1(k), &
+              s%logP(k), s%logRho(k))
+      case (59); profile_value = s%am_diffusion_coeff(k)
+      case (60); profile_value = s%mixing_diffusion_coeff(k)
       case default
          profile_value = 0.0d0
       end select
@@ -543,11 +549,12 @@ end function profile_value
 ! the fitting point), and the composition above the fitting point is
 ! the surface composition, as io/write_stitched_profile.f90 also
 ! writes.
-subroutine build_pulse_points(pts)
+subroutine build_pulse_points(s, pts)
       use math_lib
-      use star_info_lib, only: star, i_eps_grav, i_h1, i_metals
+      use star_info_lib, only: i_eps_grav, i_h1, i_metals
       use envelope_structure
       use atmosphere_structure
+      type(star_info), intent(inout) :: s
       double precision, intent(out) :: pts(n_pulse_cols, n_ext)
       integer :: j, i, k
       double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav
@@ -573,17 +580,17 @@ contains
 ! Interior point i: its structure, and the pulse columns the converged
 ! interior model holds.
 subroutine gather_interior_point()
-      r = exp(ln10*star%logR(i))
-      m = star%m(i)
-      P = exp(ln10*star%logP(i))
-      T = exp(ln10*star%logT(i))
-      rho = exp(ln10*star%logRho(i))
-      delta = -star%pulse_dlnrho_dlnt(i)
-      nab = star%gradT(i)
-      nab_ad = star%grada(i)
-      pts(ipul_L,j) = star%luminosity_lsun(i)*star%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = star%adiabatic_index_gamma1(i)
-      pts(ipul_kap,j) = star%opacity_zone(i)
+      r = exp(ln10*s%logR(i))
+      m = s%m(i)
+      P = exp(ln10*s%logP(i))
+      T = exp(ln10*s%logT(i))
+      rho = exp(ln10*s%logRho(i))
+      delta = -s%pulse_dlnrho_dlnt(i)
+      nab = s%gradT(i)
+      nab_ad = s%grada(i)
+      pts(ipul_L,j) = s%luminosity_lsun(i)*s%solar_luminosity_cgs
+      pts(ipul_gamma1,j) = s%adiabatic_index_gamma1(i)
+      pts(ipul_kap,j) = s%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
 ! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
@@ -593,22 +600,22 @@ subroutine gather_interior_point()
 ! are: multiplying them by eps as well (2ed398ca, misled by their former
 ! pulse_dlneps_* names) made these columns wrong by a factor eps until
 ! the 2026-10 audit.
-      pts(ipul_kap_kap_T,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i)
-      pts(ipul_eps,j) = star%eps_total(i)
-      pts(ipul_eps_eps_T,j) = star%pulse_deps_dlnt(i)
-      pts(ipul_eps_eps_rho,j) = star%pulse_deps_dlnrho(i)
-      pts(ipul_omega,j) = star%omega(i)
-      pts(ipul_cp,j) = star%pulse_specific_heat(i)
+      pts(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
+      pts(ipul_eps,j) = s%eps_total(i)
+      pts(ipul_eps_eps_T,j) = s%pulse_deps_dlnt(i)
+      pts(ipul_eps_eps_rho,j) = s%pulse_deps_dlnrho(i)
+      pts(ipul_omega,j) = s%omega(i)
+      pts(ipul_cp,j) = s%pulse_specific_heat(i)
 ! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG
 ! var(14) wants exactly that (it used to be inverted a second time).
-      pts(ipul_mu_e_inv,j) = star%pulse_electron_mean_weight_inverse(i)
-      pts(ipul_h1,j) = star%xa(i_h1,i)
-      pts(ipul_z,j) = star%xa(i_metals,i)
+      pts(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
+      pts(ipul_h1,j) = s%xa(i_h1,i)
+      pts(ipul_z,j) = s%xa(i_metals,i)
       do k = 1, 11
-         pts(ipul_species_base+k,j) = star%xa(species_slot(k),i)
+         pts(ipul_species_base+k,j) = s%xa(species_slot(k),i)
       end do
-      pts(ipul_eps_grav,j) = star%eps_channels(i_eps_grav,i)
+      pts(ipul_eps_grav,j) = s%eps_channels(i_eps_grav,i)
 end subroutine gather_interior_point
 
 ! ---------------------------------------------------------------
@@ -616,7 +623,7 @@ end subroutine gather_interior_point
 ! rotation and composition are the surface's.
 subroutine gather_envelope_point()
       r = exp(ln10*env_struct%env_log10_radius(i))
-      m = envelope_mass_g(i)
+      m = envelope_mass_g(s, i)
       P = exp(ln10*env_struct%env_log10_pressure(i))
       T = exp(ln10*env_struct%env_log10_temperature(i))
       rho = exp(ln10*env_struct%env_log10_density(i))
@@ -630,19 +637,19 @@ subroutine gather_envelope_point()
 ! every pulse file and swapping the grad/grad_ad pulse columns there.
       nab = env_struct%env_gradients(3,i)
       nab_ad = env_struct%env_gradients(2,i)
-      pts(ipul_L,j) = env_struct%env_luminosity(i)*star%solar_luminosity_cgs
+      pts(ipul_L,j) = env_struct%env_luminosity(i)*s%solar_luminosity_cgs
       pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
       pts(ipul_kap,j) = env_struct%env_opacity(i)
 ! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
 ! used for the interior above
       pts(ipul_kap_kap_T,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnt(i)
       pts(ipul_kap_kap_rho,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnrho(i)
-      pts(ipul_omega,j) = star%omega(star%nz)
+      pts(ipul_omega,j) = s%omega(s%nz)
       pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
       pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
       pts(ipul_z,j) = env_struct%env_metal_fraction(i)
       do k = 1, 11
-         pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
+         pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_envelope_point
 
@@ -651,24 +658,24 @@ end subroutine gather_envelope_point
 ! the luminosity, rotation and composition are the surface's.
 subroutine gather_atmosphere_point()
       r = atmosphere_radius_cm(i)
-      m = exp(ln10*star%log_total_mass)
+      m = exp(ln10*s%log_total_mass)
       P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
       T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
       rho = exp(ln10*atmo_struct%atmo_log10_density(i))
       delta = -atmo_struct%atmo_dlnrho_dlnt(i)
       nab = atmo_struct%atmo_gradients(2,i)
       nab_ad = atmo_struct%atmo_gradients(3,i)
-      pts(ipul_L,j) = exp(ln10*star%log_L)*star%solar_luminosity_cgs
+      pts(ipul_L,j) = exp(ln10*s%log_L)*s%solar_luminosity_cgs
       pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
       pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
       pts(ipul_kap_kap_T,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnt(i)
       pts(ipul_kap_kap_rho,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnrho(i)
-      pts(ipul_omega,j) = star%omega(star%nz)
+      pts(ipul_omega,j) = s%omega(s%nz)
       pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
-      pts(ipul_h1,j) = star%xa(i_h1,star%nz)
-      pts(ipul_z,j) = star%xa(i_metals,star%nz)
+      pts(ipul_h1,j) = s%xa(i_h1,s%nz)
+      pts(ipul_z,j) = s%xa(i_metals,s%nz)
       do k = 1, 11
-         pts(ipul_species_base+k,j) = star%xa(species_slot(k),star%nz)
+         pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_atmosphere_point
 
@@ -748,14 +755,15 @@ end function species_slot
 
 ! ---------------------------------------------------------------
 ! Materialize the writer-facing arrays from the assembled grid.
-subroutine fill_stitched_arrays
+subroutine fill_stitched_arrays(s)
+      type(star_info), intent(inout) :: s
       integer :: j, icol
       do j = 1, n_ext
          do icol = 1, n_prof_cols
-            stx_prof(icol, j) = ext_profile_value(icol, j)
+            stx_prof(icol, j) = ext_profile_value(s, icol, j)
          end do
       end do
-      call build_pulse_points(stx_pulse)
+      call build_pulse_points(s, stx_pulse)
 end subroutine fill_stitched_arrays
 
 end module stitched_model

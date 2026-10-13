@@ -112,7 +112,7 @@ program test_kap
       star%job%scv_he_table_path = dummy_path
       star%job%scv_z_table_path = dummy_path
       star%job%alex95_table_paths = dummy_paths7
-      call set_up_constants_and_tables(setups_ierr)
+      call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_kap: FAIL (setups error)"
          stop 1

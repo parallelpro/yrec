@@ -8,6 +8,7 @@
 ! henyey_eliminate (henyey_elimination.f90) as it goes, and stores the
 ! shells' values for output.
 module structure_equations
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: compute_henyey_coefficients
@@ -31,18 +32,19 @@ contains
 ! partials, are in shell_equations.f90's header.
 ! dlnrho_dlnt and dlnrho_dlnp: on entry the starting point of the first
 ! shell's eos; on return the last shell's values.
-subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
+subroutine compute_henyey_coefficients(s, delta_time, dlnrho_dlnt, dlnrho_dlnp, &
      saha_state, envelope_zone_index, ierr)
       use henyey_elimination
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
+      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
            i_lum_he_c, n_lum_channels, n_nu_fluxes
       use eos_lib, only: eos_result
       use kap_lib, only: i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: delta_time
       double precision, intent(inout) :: dlnrho_dlnt, dlnrho_dlnp
@@ -69,7 +71,7 @@ subroutine compute_henyey_coefficients(delta_time, dlnrho_dlnt, dlnrho_dlnp, &
       call set_structure_settings()
       eos_res%dlnrho_dlnt = dlnrho_dlnt
       eos_res%dlnrho_dlnp = dlnrho_dlnp
-      do im = 1,star%nz
+      do im = 1,s%nz
        call gather_shell_state()
        call evaluate_shell_equations(sh, cfg, eos_res, saha_state, cur, diag, ierr)
        if (ierr /= 0) return
@@ -92,13 +94,13 @@ contains
 ! flux of neutrino species j made in the star) and the luminosity
 ! channels.
 subroutine start_energy_bookkeeping()
-      if (star%ctrl%calc_neutrinos) then
+      if (s%ctrl%calc_neutrinos) then
          do j = 1,n_nu_fluxes
-            star%neutrino_flux_total(j) = 0.0d0
+            s%neutrino_flux_total(j) = 0.0d0
          end do
       end if
       do j = 1,n_lum_channels
-       star%luminosity_breakdown(j) = 0.0d0
+       s%luminosity_breakdown(j) = 0.0d0
       end do
 end subroutine start_energy_bookkeeping
 
@@ -108,11 +110,11 @@ end subroutine start_energy_bookkeeping
 ! the rotation switch.
 subroutine set_structure_settings()
       cfg%dt = delta_time
-      cfg%burning_log_temperature_cutoff = star%ctrl%nuclear_logT_cutoffs(1)
-      cfg%log_teff = star%log_Teff
-      cfg%turnover_timescale = star%convective_turnover_timescale
-      cfg%ln10_over_lsun = star%ln10_over_lsun
-      cfg%rotation_active = star%job%rotation_active
+      cfg%burning_log_temperature_cutoff = s%ctrl%nuclear_logT_cutoffs(1)
+      cfg%log_teff = s%log_Teff
+      cfg%turnover_timescale = s%convective_turnover_timescale
+      cfg%ln10_over_lsun = s%ln10_over_lsun
+      cfg%rotation_active = s%job%rotation_active
 end subroutine set_structure_settings
 
 ! ---------------------------------------------------------------
@@ -120,38 +122,38 @@ end subroutine set_structure_settings
 ! envelope_zone_index add the accretion shifts of log T and log P
 ! (mass_change.f90) to their change over the step.
 subroutine gather_shell_state()
-       sh%log_mass = star%log_mass(im)
-       sh%mass = star%m(im)
-       sh%shell_mass = star%dm(im)
-       sh%log_temperature = star%logT(im)
-       sh%log_pressure = star%logP(im)
-       sh%log_radius = star%logR(im)
-       sh%luminosity_lsun = star%luminosity_lsun(im)
-       sh%log_density = star%logRho(im)
-       sh%xa = star%xa(:,im)
-       sh%fp = star%fp_rot(im)
-       sh%ft = star%ft_rot(im)
-       sh%log_temperature_delta = star%log_temperature_delta(im)
-       sh%log_pressure_delta = star%log_pressure_delta(im)
-       if (star%job%use_mass_accretion.and.star%ctrl%mass_accretion_rate.gt.0.0d0) then
+       sh%log_mass = s%log_mass(im)
+       sh%mass = s%m(im)
+       sh%shell_mass = s%dm(im)
+       sh%log_temperature = s%logT(im)
+       sh%log_pressure = s%logP(im)
+       sh%log_radius = s%logR(im)
+       sh%luminosity_lsun = s%luminosity_lsun(im)
+       sh%log_density = s%logRho(im)
+       sh%xa = s%xa(:,im)
+       sh%fp = s%fp_rot(im)
+       sh%ft = s%ft_rot(im)
+       sh%log_temperature_delta = s%log_temperature_delta(im)
+       sh%log_pressure_delta = s%log_pressure_delta(im)
+       if (s%job%use_mass_accretion.and.s%ctrl%mass_accretion_rate.gt.0.0d0) then
           if (im.ge.envelope_zone_index) then
-             sh%log_temperature_delta = star%log_temperature_delta(im)+ &
-                  star%delta_log_temperature
-             sh%log_pressure_delta = star%log_pressure_delta(im)+ &
-                  star%delta_log_pressure
+             sh%log_temperature_delta = s%log_temperature_delta(im)+ &
+                  s%delta_log_temperature
+             sh%log_pressure_delta = s%log_pressure_delta(im)+ &
+                  s%delta_log_pressure
           end if
        end if
-       sh%rotational_ke = star%kinetic_energy_rot(im)
-       sh%rotational_ke_start = star%kinetic_energy_rot_old(im)
-       sh%in_overshoot = im >= star%iov1 .and. im <= star%iov2
-       sh%in_surface_cz = im.ge.star%jcz
+       sh%rotational_ke = s%kinetic_energy_rot(im)
+       sh%rotational_ke_start = s%kinetic_energy_rot_old(im)
+       sh%in_overshoot = im >= s%iov1 .and. im <= s%iov2
+       sh%in_surface_cz = im.ge.s%jcz
 end subroutine gather_shell_state
 
 ! ---------------------------------------------------------------
 ! The shell's density and convective flag.
 subroutine store_shell_structure()
-       star%logRho(im) = diag%log_density
-       star%convective_flag(im) = diag%convective
+       s%logRho(im) = diag%log_density
+       s%convective_flag(im) = diag%convective
 end subroutine store_shell_structure
 
 ! ---------------------------------------------------------------
@@ -163,28 +165,28 @@ end subroutine store_shell_structure
 ! nuclear_energy.f90), so times dm it is the shell's flux.
 subroutine add_shell_energy_budget()
        if (diag%burned) then
-            if (star%ctrl%calc_neutrinos) then
+            if (s%ctrl%calc_neutrinos) then
                do j = 1,n_nu_fluxes
-                  star%neutrino_flux_total(j) = star%neutrino_flux_total(j) + &
-                       diag%burn%neutrino_flux(j)*star%dm(im)
+                  s%neutrino_flux_total(j) = s%neutrino_flux_total(j) + &
+                       diag%burn%neutrino_flux(j)*s%dm(im)
                end do
             end if
             do j = 1,6
-               star%luminosity_breakdown(j) = star%luminosity_breakdown(j) + &
-                    (star%dm(im)/star%solar_luminosity_cgs)* &
+               s%luminosity_breakdown(j) = s%luminosity_breakdown(j) + &
+                    (s%dm(im)/s%solar_luminosity_cgs)* &
                     diag%energy_gen_component(j)
             end do
-            star%he3_he3_luminosity_zone(im) = (star%dm(im)/ &
-                 star%solar_luminosity_cgs)*diag%burn%eps_he3_he3
-            star%he3_burning_luminosity_zone(im) = (star%dm(im)/ &
-                 star%solar_luminosity_cgs)*diag%burn%eps_he3_burning
-            star%luminosity_breakdown(i_lum_he_c)=star%luminosity_breakdown(i_lum_he_c)+(star%dm(im)/ &
-                 star%solar_luminosity_cgs)*diag%burn%eps_alpha_capture
+            s%he3_he3_luminosity_zone(im) = (s%dm(im)/ &
+                 s%solar_luminosity_cgs)*diag%burn%eps_he3_he3
+            s%he3_burning_luminosity_zone(im) = (s%dm(im)/ &
+                 s%solar_luminosity_cgs)*diag%burn%eps_he3_burning
+            s%luminosity_breakdown(i_lum_he_c)=s%luminosity_breakdown(i_lum_he_c)+(s%dm(im)/ &
+                 s%solar_luminosity_cgs)*diag%burn%eps_alpha_capture
        end if
        if (diag%has_eps_grav) then
-            star%eps_grav(im) = diag%eps_grav
-            star%luminosity_breakdown(i_lum_grav) = star%luminosity_breakdown(i_lum_grav) + &
-                 (star%dm(im)/star%solar_luminosity_cgs)*diag%eps_grav
+            s%eps_grav(im) = diag%eps_grav
+            s%luminosity_breakdown(i_lum_grav) = s%luminosity_breakdown(i_lum_grav) + &
+                 (s%dm(im)/s%solar_luminosity_cgs)*diag%eps_grav
        end if
 end subroutine add_shell_energy_budget
 
@@ -194,7 +196,7 @@ end subroutine add_shell_energy_budget
 subroutine eliminate_shell_pair()
          if (im.gt.1) then
             im1 = im
-            call henyey_eliminate(im1, prev, cur)
+            call henyey_eliminate(s, im1, prev, cur)
          else
 ! The central boundary conditions, rows 3 and 4 at shell 1 in the form
 ! of henyey_elimination.f90,
@@ -205,13 +207,13 @@ subroutine eliminate_shell_pair()
 ! (dln rho/dln P, dln rho/dln T)/3. Its luminosity is L = eps m/Lsun =
 ! ql/ln10, so elim_rhs(4,1) = ql/ln10 - L and elim_coeff(4,:,1) =
 ! -(ql_dp, ql_dt).
-            star%elim_coeff(3,1,1) = cc13*dlnrho_dlnp
-            star%elim_coeff(3,2,1) = cc13*dlnrho_dlnt
-            star%elim_rhs(3,1) = -cc13*(c4pi3l + diag%log_density - &
+            s%elim_coeff(3,1,1) = cc13*dlnrho_dlnp
+            s%elim_coeff(3,2,1) = cc13*dlnrho_dlnt
+            s%elim_rhs(3,1) = -cc13*(c4pi3l + diag%log_density - &
                  sh%log_mass) - sh%log_radius
-            star%elim_coeff(4,1,1) = -cur%ql_dp
-            star%elim_coeff(4,2,1) = -cur%ql_dt
-            star%elim_rhs(4,1) = clni*cur%ql - sh%luminosity_lsun
+            s%elim_coeff(4,1,1) = -cur%ql_dp
+            s%elim_coeff(4,2,1) = -cur%ql_dt
+            s%elim_rhs(4,1) = clni*cur%ql - sh%luminosity_lsun
          end if
 ! Carry this shell's terms into the next pair's elimination.
          prev = cur
@@ -225,25 +227,25 @@ end subroutine eliminate_shell_pair
 !   eps_grav (erg/g/s).
 ! Below the burning cutoff only eps_grav is nonzero.
 subroutine store_zone_energy_channels()
-         if (star%logT(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
-            star%eps_total(im) = 0.0d0
-            star%eps_channels(i_eps_grav,im) = star%eps_grav(im)
+         if (s%logT(im).lt.s%ctrl%nuclear_logT_cutoffs(1)) then
+            s%eps_total(im) = 0.0d0
+            s%eps_channels(i_eps_grav,im) = s%eps_grav(im)
             do j = 1,6
-               star%eps_channels(j,im) = 0.0d0
+               s%eps_channels(j,im) = 0.0d0
            end do
          else
-            star%eps_total(im) = diag%energy_gen_component(1)+diag%energy_gen_component(2)+ &
+            s%eps_total(im) = diag%energy_gen_component(1)+diag%energy_gen_component(2)+ &
                  diag%energy_gen_component(3)+diag%energy_gen_component(4)+ &
                  diag%energy_gen_component(5)
-            star%eps_channels(i_eps_neu,im) = diag%energy_gen_component(6)
-            star%eps_channels(i_eps_grav,im) = star%eps_grav(im)
-            if (star%eps_total(im).gt.1.0d-22) then
-               energy_sum_inverse = 1.0d0/star%eps_total(im)
+            s%eps_channels(i_eps_neu,im) = diag%energy_gen_component(6)
+            s%eps_channels(i_eps_grav,im) = s%eps_grav(im)
+            if (s%eps_total(im).gt.1.0d-22) then
+               energy_sum_inverse = 1.0d0/s%eps_total(im)
             else
                energy_sum_inverse = 0.0d0
             end if
             do j = 1,5
-               star%eps_channels(j,im) = diag%energy_gen_component(j)*energy_sum_inverse
+               s%eps_channels(j,im) = diag%energy_gen_component(j)*energy_sum_inverse
               end do
          end if
 end subroutine store_zone_energy_channels
@@ -251,18 +253,18 @@ end subroutine store_zone_energy_channels
 ! ---------------------------------------------------------------
 ! Store the shell's eos, opacity and gradient values and Gamma1 for output.
 subroutine store_zone_thermodynamics()
-         star%beta(im) = eos_res%beta
-         star%eta(im) = eos_res%electron_degeneracy_parameter
-         star%opacity_zone(im) = diag%kap_res(i_kap)
-         star%gradr(im) = diag%radiative_gradient
-         star%gradT(im) = diag%actual_gradient
-         star%grada(im) = eos_res%adiabatic_gradient
+         s%beta(im) = eos_res%beta
+         s%eta(im) = eos_res%electron_degeneracy_parameter
+         s%opacity_zone(im) = diag%kap_res(i_kap)
+         s%gradr(im) = diag%radiative_gradient
+         s%gradT(im) = diag%actual_gradient
+         s%grada(im) = eos_res%adiabatic_gradient
          do j = 1,3
-            star%fxion_zone(j,im) = eos_res%ion_fraction(j)
+            s%fxion_zone(j,im) = eos_res%ion_fraction(j)
          end do
-         star%conv_vel(im) = diag%convective_velocity
-         star%scp(im) = eos_res%specific_heat_cp
-         star%adiabatic_index_gamma1(im) = diag%gamma1
+         s%conv_vel(im) = diag%convective_velocity
+         s%scp(im) = eos_res%specific_heat_cp
+         s%adiabatic_index_gamma1(im) = diag%gamma1
 
 ! Disabled with rotation's advection-diffusion transport (2026-10-12),
 ! their only reader: the copies of dln kappa/dln T, d eps/dln T and
@@ -290,27 +292,27 @@ end subroutine store_zone_thermodynamics
 ! needs them (MHP 8/25). No other output file reads these arrays. Below
 ! the burning cutoff pulse_deps_dlnrho/dlnt are zero.
 subroutine store_pulse_derivatives()
-         star%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
-         star%pulse_deps_dlnrho(im) = diag%deps_dlnrho
-         star%pulse_deps_dlnt(im) = diag%deps_dlnt
-         star%pulse_dlnkap_dlnrho(im) = diag%kap_res(i_dlnkap_dlnrho)
-         star%pulse_dlnkap_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
-         star%pulse_specific_heat(im) = eos_res%specific_heat_cp
+         s%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
+         s%pulse_deps_dlnrho(im) = diag%deps_dlnrho
+         s%pulse_deps_dlnt(im) = diag%deps_dlnt
+         s%pulse_dlnkap_dlnrho(im) = diag%kap_res(i_dlnkap_dlnrho)
+         s%pulse_dlnkap_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
+         s%pulse_specific_heat(im) = eos_res%specific_heat_cp
 ! eos_res%specific_gas_constant is R/mu, so mu = R/specific_gas_constant;
 ! the electron slot is 1/mu_e straight from the eos.
          if (eos_res%specific_gas_constant > 0.0d0) then
-            star%pulse_mean_molecular_weight(im) = gas_constant/eos_res%specific_gas_constant
+            s%pulse_mean_molecular_weight(im) = gas_constant/eos_res%specific_gas_constant
          else
-            star%pulse_mean_molecular_weight(im) = 0.0d0
+            s%pulse_mean_molecular_weight(im) = 0.0d0
          end if
-         star%pulse_electron_mean_weight_inverse(im) = eos_res%electron_mean_weight_inverse
-         star%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
+         s%pulse_electron_mean_weight_inverse(im) = eos_res%electron_mean_weight_inverse
+         s%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
 ! These MLT pulse-output arrays are always zero: the alfmlt/phmlt/cmxmlt
 ! scalars they once copied were only ever zeroed, and are gone. Whether
 ! to keep the arrays awaits an author decision (audit SUMMARY.md 1.1 #10).
-         star%valfmlt(im) = 0.0d0
-         star%vphmlt(im) = 0.0d0
-         star%vcmxmlt(im) = 0.0d0
+         s%valfmlt(im) = 0.0d0
+         s%vphmlt(im) = 0.0d0
+         s%vcmxmlt(im) = 0.0d0
 end subroutine store_pulse_derivatives
 
 end subroutine compute_henyey_coefficients

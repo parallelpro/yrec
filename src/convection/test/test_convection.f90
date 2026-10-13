@@ -80,7 +80,7 @@ subroutine boot_yale_eos()
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
       star%job%fermi_table_path = trim(yrec_input)//"/eos/yale/FERMI.TAB"
-      call set_up_constants_and_tables(setups_ierr)
+      call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_convection: FAIL (setups error)"
          stop 1

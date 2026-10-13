@@ -198,8 +198,16 @@ which replaces them).
 
 ## The star object: six rules (2026-10)
 
-`star` (`state/star_info_lib.f90`) is global, and nothing in Fortran
-stops any procedure from reading or writing any of its ~260 members.
+The star (`state/star_info_lib.f90`'s `star_info`, ~240 members) is
+global storage, and nothing in Fortran stops a procedure that can see it
+from reading or writing any member. Since 2026-10 core/ receives it as
+an argument: every core procedure that touches the star takes
+`type(star_info), intent(inout) :: s` as its first argument and reads
+`s%member`; only the owners -- `run_yrec` (core/run/run_driver.f90),
+`yrec_reset`, the C API and the test programs -- name the global `star`,
+and pass it down. io/, rotation/, element_diffusion/ and setup/ still
+read the global (`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py`
+records how much). In the rules below, `star` means the star either way.
 What makes a reader unable to follow the code is not the global itself
 but using it without rules: signatures that show a fraction of what a
 routine touches, results handed back through `star`, and names that say

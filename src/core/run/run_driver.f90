@@ -108,7 +108,7 @@ subroutine run_yrec(ierr)
 ! ramp or with Z diffusion; the kap table loaders read this flag from
 ! kap_init (called in prepare_run) on.
       star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
-      call prepare_run(ierr)
+      call prepare_run(star, ierr)
       if (ierr /= 0) return
 ! Warn (terminal only) about control combinations that are silently
 ! inert or cancel each other.
@@ -118,9 +118,9 @@ subroutine run_yrec(ierr)
 ! Per-run setup: this run's Monte-Carlo parameters, then the network
 ! settings (which take the Monte-Carlo rate factors), then the
 ! calibration protocols.
-      call apply_monte_carlo_parameters(monte_carlo_run_number, &
+      call apply_monte_carlo_parameters(star, monte_carlo_run_number, &
            age_scale_factor)
-      call configure_network()
+      call configure_network(star)
       call begin_calibration
 
 ! Go through the kind cards in order. star%job%nk is the run list's
@@ -145,7 +145,7 @@ subroutine run_yrec(ierr)
        do model_iteration = 1,star%job%num_models(star%job%nk)
 ! One model step per iteration (core/step/step_driver.f90; its header
 ! gives the step_status contract).
-       call evolve_step(model_iteration, step_status, ierr)
+       call evolve_step(star, model_iteration, step_status, ierr)
        if (ierr /= 0) return
        if (step_status == step_kind_card_done) exit
        if (step_status == step_leave_run_loop) cycle run_loop
@@ -197,7 +197,7 @@ subroutine run_yrec(ierr)
 ! Monte-Carlo and solar-calibration end-of-run bookkeeping: rewind the
 ! output units and write the Monte-Carlo summary
 ! (core/run/monte_carlo.f90).
-      call write_run_summaries(monte_carlo_run_number, &
+      call write_run_summaries(star, monte_carlo_run_number, &
            convergence_iterations, log_r_rsun)
       end do
 
@@ -218,7 +218,7 @@ subroutine begin_calibration
 ! Automatic solar calibration (MHP 1/93). convergence_iterations counts
 ! the calibration cycles: it starts at 1, and is 0 without calibration.
       if (star%ctrl%calibrate_solar_model) then
-         call setup_solar_calibration(age_scale_factor)
+         call setup_solar_calibration(star, age_scale_factor)
          convergence_iterations = 1
          saved_use_structure_dt_limits = star%job%use_structure_dt_limits   ! restored after each cycle
          saved_atm_choice  = star%job%atm_choice    ! restored after each cycle
@@ -228,7 +228,7 @@ subroutine begin_calibration
 ! Automatic calibration (DBG 12/94) of a star to a target L and a
 ! target Teff or radius.
       if (star%ctrl%calibrate_star_flag) then
-         call setup_star_calibration
+         call setup_star_calibration(star)
       endif
 end subroutine begin_calibration
 
@@ -252,7 +252,7 @@ subroutine end_of_card_calibration(runs_complete)
                     star%log10_solar_luminosity)-star%log10_solar_radius
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
                current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-               call check_solar_calibration(star%log_L,log_r_rsun,star%job%nk,current_zx)
+               call check_solar_calibration(star, star%log_L,log_r_rsun,star%job%nk,current_zx)
                star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! restore for the next cycle
                star%job%atm_choice  = saved_atm_choice    ! restore for the next cycle
                if (star%solar_calibration_converged) then
@@ -312,7 +312,7 @@ subroutine begin_kind_card
          star%total_rotational_ke = 0.0D0
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
-       call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
+       call read_starting_model(star, star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
             star%ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
             star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
             star%total_angular_momentum, star%total_rotational_ke, &
@@ -331,17 +331,17 @@ subroutine begin_kind_card
           star%model_number = star%ctrl%set_initial_model_number - 1
        end if
 
-      call check_rotation_initialised(ierr)
+      call check_rotation_initialised(star, ierr)
       if (ierr /= 0) return
 ! Disarm the stop conditions whose thresholds the starting model has
 ! already passed (e.g. a central-abundance stop already below its
 ! target) (MHP 10/24).
-         call init_stop_conditions(star%job%nk)
+         call init_stop_conditions(star, star%job%nk)
 ! Optional diagnostic: the per-shell neutrino-flux table of each card's
 ! starting model (compute_neutrino_fluxes, legacy LNUTAB;
 ! core/diagnostics/neutrino_flux_output.f90).
       if (star%ctrl%compute_neutrino_fluxes) then
-         call write_neutrino_flux_table
+         call write_neutrino_flux_table(star)
       endif
 ! The stellar mass in solar units, for the pulsation output.
          star%pulsation_mass_msun=star%star_mass
@@ -363,12 +363,12 @@ subroutine begin_kind_card
 
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).
-         call locate_shell_boundaries(star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
+         call locate_shell_boundaries(star, star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
               star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! Estimate the first timestep of the card.
        disable_structure_dt_limits = .false.
-       call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call compute_timestep(star, star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%age_gyr,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &

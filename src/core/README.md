@@ -77,9 +77,10 @@ A step that diverges stops the run: nothing cuts the timestep.
 
 ## 3. Conventions
 
+- The star comes in as an argument: a core procedure that touches it takes `type(star_info), intent(inout) :: s` first and reads `s%member`. Only `run_yrec` (and `yrec_reset`, the C API and the tests) uses the global `star`, and passes it down. Kernels (star rule 6) take neither.
 - CGS unless a name carries its unit (`_msun`, `_lsun`, `_yr`, `_gyr`); `log` is log₁₀.
 - The structure variables are log₁₀ P, log₁₀ T, log₁₀ R and L in L☉, against log₁₀ m. The difference equations and their partials follow `docs/TARGET_ARCHITECTURE.md` §4.4 (and `structure_equations`' header).
-- A negative `star%dt` means "solve, do not age" (a rescale, a relaxation); it is made positive after convergence.
+- A negative `s%dt` means "solve, do not age" (a rescale, a relaxation); it is made positive after convergence.
 - Errors return `ierr` up to `run_yrec`, which stops the run.
 
 ## 4. Tests

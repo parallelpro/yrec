@@ -5,6 +5,7 @@
 ! microphysics tables (set_up_constants_and_tables), and the Monte-Carlo
 ! run range (prepare_run).
 module run_setup
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: prepare_run, set_up_constants_and_tables
@@ -19,20 +20,21 @@ contains
 ! loads (set_up_constants_and_tables, which passes ierr through the
 ! kap, eos and atm initializations), then the Monte-Carlo run range and
 ! each run's sampled parameters. Errors return through ierr.
-subroutine prepare_run(ierr)
+subroutine prepare_run(s, ierr)
 
       use monte_carlo, only: setup_monte_carlo_runs
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(out) :: ierr
 
       ierr = 0
 ! Set the constants and read the tables.
-      call set_up_constants_and_tables(ierr)
+      call set_up_constants_and_tables(s, ierr)
       if (ierr /= 0) return
 ! The Monte-Carlo run range and each run's sampled parameters
 ! (core/run/monte_carlo.f90).
-      call setup_monte_carlo_runs
+      call setup_monte_carlo_runs(s)
 
       return
 end subroutine prepare_run
@@ -55,15 +57,15 @@ end subroutine prepare_run
 ! passed as character arguments rather than through common blocks,
 ! where character strings can cause problems (MHP 8/25). Errors return
 ! through ierr.
-subroutine set_up_constants_and_tables(ierr)
+subroutine set_up_constants_and_tables(s, ierr)
       use eos_lib
       use kap_lib
       use microphysics_settings, only: opacity_settings, equation_of_state_settings, atmosphere_settings
       use atm_lib, only: atm_init, hsra_t_tau_offset
-      use star_info_lib, only: star
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
 ! --- locals ---
@@ -74,14 +76,14 @@ subroutine set_up_constants_and_tables(ierr)
 ! (ln10, cc13, cpi and the other mathematical constants are parameters
 ! of physical_constants.)
 ! Solar luminosity: log10 Lsun, and ln10/Lsun (not a log; s/erg).
-      star%log10_solar_luminosity = log10(star%solar_luminosity_cgs)
-      star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
+      s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
+      s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
 ! Solar mass (a namelist control; default 1.9891d33 g).
-      star%solar_mass_cgs = star%ctrl%solar_mass_cgs
+      s%solar_mass_cgs = s%ctrl%solar_mass_cgs
 ! Solar radius.
-      star%log10_solar_radius = log10(star%solar_radius_cgs)
+      s%log10_solar_radius = log10(s%solar_radius_cgs)
 ! Bolometric magnitude of the Sun.
-      star%solar_bolometric_magnitude = 4.79d0
+      s%solar_bolometric_magnitude = 4.79d0
 ! Speed of light.
       speed_of_light = 2.99792458d10
 ! Stefan-Boltzmann constant sigma, and its log.
@@ -95,8 +97,8 @@ subroutine set_up_constants_and_tables(ierr)
 ! log10 G. A non-positive G_cgs (the default) keeps the historical
 ! hard-coded log10 G = -7.17571 (G = 6.6726d-8) bit for bit; a
 ! positive G_cgs (a namelist control) overrides it.
-      if (star%ctrl%G_cgs > 0.0d0) then
-         cgl = log10(star%ctrl%G_cgs)
+      if (s%ctrl%G_cgs > 0.0d0) then
+         cgl = log10(s%ctrl%G_cgs)
       else
          cgl = -7.17571d0
       end if
@@ -120,31 +122,31 @@ subroutine set_up_constants_and_tables(ierr)
 ! (The Debye-Hueckel constants are set in eos_init.)
 ! --- HSRA T(tau) offset -----------------------------------------------
 ! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
-      star%atm_hras = hsra_t_tau_offset()
+      s%atm_hras = hsra_t_tau_offset()
 ! --- Opacity tables ---------------------------------------------------
       ierr = 0
-      call kap_init(opacity_settings(), star%envelope_hydrogen_fraction, &
-           star%envelope_metal_fraction, star%job%mixture_weights, &
-           star%job%alex06_table_path,star%job%kurucz_table_path,star%job%kurucz_table2_path, &
-           star%job%laol_table_path,star%job%laol_table2_path, &
-           star%job%opal95_table_path,star%job%opal92_table_path,star%job%opal92_table2_path, &
-           star%job%pure_z_table_path,star%job%alex95_table_paths, &
-           star%job%conductive_table_path, ierr)
+      call kap_init(opacity_settings(), s%envelope_hydrogen_fraction, &
+           s%envelope_metal_fraction, s%job%mixture_weights, &
+           s%job%alex06_table_path,s%job%kurucz_table_path,s%job%kurucz_table2_path, &
+           s%job%laol_table_path,s%job%laol_table2_path, &
+           s%job%opal95_table_path,s%job%opal92_table_path,s%job%opal92_table2_path, &
+           s%job%pure_z_table_path,s%job%alex95_table_paths, &
+           s%job%conductive_table_path, ierr)
       if (ierr /= 0) return
 ! --- Equation-of-state tables -----------------------------------------
 ! eos_init reads the Fermi-Dirac degenerate-electron table always, and
 ! the OPAL, MHD and SCVH tables when the settings select them.
-      call eos_init(equation_of_state_settings(), star%job%fermi_table_path,star%job%scv_h_table_path,star%job%scv_he_table_path, &
-           star%job%scv_z_table_path,star%job%zams_a_table_path,star%job%zams_b_table_path, &
-           star%job%zams_c_table_path,star%job%centre1_table_path,star%job%centre2_table_path, &
-           star%job%centre3_table_path,star%job%centre4_table_path,star%job%centre5_table_path, &
-           star%job%opal_eos_table_path, ierr)
+      call eos_init(equation_of_state_settings(), s%job%fermi_table_path,s%job%scv_h_table_path,s%job%scv_he_table_path, &
+           s%job%scv_z_table_path,s%job%zams_a_table_path,s%job%zams_b_table_path, &
+           s%job%zams_c_table_path,s%job%centre1_table_path,s%job%centre2_table_path, &
+           s%job%centre3_table_path,s%job%centre4_table_path,s%job%centre5_table_path, &
+           s%job%opal_eos_table_path, ierr)
       if (ierr /= 0) return
 ! --- Surface-pressure tables for the surface boundary condition -------
 ! atm_init reads the Kurucz (atm_choice 3 and 4), Allard (atm_choice 4)
 ! and Kurucz/Castelli (atm_choice 5) tables.
-      call atm_init(atmosphere_settings(), star%job%atm_table_path, &
-           star%job%allard_table_path, ierr)
+      call atm_init(atmosphere_settings(), s%job%atm_table_path, &
+           s%job%allard_table_path, ierr)
       if (ierr /= 0) return
 
       return

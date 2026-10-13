@@ -2,8 +2,9 @@
 """Star-contract checker for YREC (2026-10).
 
 A procedure may declare, in the comment block directly above its
-`subroutine`/`function` line, which members of the global `star` it
-reads and writes:
+`subroutine`/`function` line, which members of the star it reads and
+writes -- through the global `star`, or through the argument `s`
+(type(star_info)) that core's procedures receive it as:
 
     !   star reads: jcz, convective_turnover_timescale
     !   star writes: none
@@ -45,6 +46,11 @@ INTENT_RE = re.compile(r"^\s*(?:double precision|integer|logical|real|character|
                        r"type\s*\(\s*\w+\s*\))[^:]*intent\s*\(\s*(in|out|inout)\s*\)"
                        r"[^:]*::\s*(.*)$", re.I)
 READS_RE = re.compile(r"^(\s*!\s*)star reads:\s*(.*)$", re.I)
+# The star as an argument: a dummy s of type(star_info), whose s%member
+# references count as star%member in its scope (and its internal
+# procedures').
+STAR_DUMMY_RE = re.compile(r"^\s*type\s*\(\s*star_info\s*\)[^:]*::\s*s\s*$", re.I)
+S_RE = re.compile(r"(?<![\w%])s%", re.I)
 WRITES_RE = re.compile(r"^(\s*!\s*)star writes:\s*(.*)$", re.I)
 
 
@@ -141,6 +147,10 @@ def scan(files):
             if not stack:
                 continue
             p = stack[-1]
+            if STAR_DUMMY_RE.match(code):
+                p["star_s"] = True
+            if any(q.get("star_s") for q in stack):
+                code = S_RE.sub("star%", code)
             mi = INTENT_RE.match(code)
             if mi:
                 for n in re.sub(r"\([^)]*\)", "", mi.group(2)).split(","):

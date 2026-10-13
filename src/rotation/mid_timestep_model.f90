@@ -102,7 +102,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 ! sub-step. For thermodynamic consistency (MHP 6/00) the network rates
 ! and temperatures are those of the interpolated model, not those of
 ! the step's end.
-      call network_rates_of_model(rot_scr%log_density_mid, &
+      call network_rates_of_model(star, rot_scr%log_density_mid, &
            rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
       call burn_and_settle(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
            rate_by_zone, star%nz,radiative_zone_bounds,convective_zone_bounds, &
@@ -245,14 +245,14 @@ subroutine burn_deuterium_over_substep()
 ! with the sub-step's share of the accreted mass. burn_deuterium_region
 ! starts from star%xa_start, so in a region that still has deuterium
 ! its X and He3 replace those burn_and_settle left.
-      regions = burn_regions(rot_scr%log_temperature_mid, &
+      regions = burn_regions(star, rot_scr%log_temperature_mid, &
            radiative_zone_bounds, num_radiative_zones, &
            convective_zone_bounds, num_convective_zones)
       do k = 1, size(regions,2)
          call burn_deuterium_region(regions(1,k), regions(2,k), star%nz, &
               star%dm, star%xa, sub_timestep, star%xa_start, &
               rot_scr%deuterium_rate_mid_start, rot_scr%deuterium_rate_mid, &
-              surface_accretion_now(step_fraction_ratio*star%accreted_mass), &
+              surface_accretion_now(star, step_fraction_ratio*star%accreted_mass), &
               min_deuterium_substep)
       end do
 end subroutine burn_deuterium_over_substep
@@ -431,10 +431,10 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
          num_species = 11
       end if
 ! The abundances at the end of the sub-step, region by region.
-      regions = burn_regions(log_temperature, radiative_zone_bounds, &
+      regions = burn_regions(star, log_temperature, radiative_zone_bounds, &
            num_radiative_zones, convective_zone_bounds, num_convective_zones)
       do region_idx = 1, size(regions,2)
-         call burn_network_region(log_temperature, regions(1,region_idx), &
+         call burn_network_region(star, log_temperature, regions(1,region_idx), &
               regions(2,region_idx), rate_by_zone, shell_mass, composition, &
               timestep, ierr)
          if (ierr /= 0) return

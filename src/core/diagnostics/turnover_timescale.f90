@@ -6,6 +6,7 @@
 ! gathers the points, and turnover_from_interior_new finds the zone and
 ! times it.
 module turnover_timescale
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: compute_turnover_timescale
@@ -27,14 +28,15 @@ contains
 ! consumers (the wind saturation, the deuterium limiter) read the values
 ! stored at the end of the previous step (the _old and pphot0 copies).
 ! Called by read_starting_model and compute_observables.
-subroutine compute_turnover_timescale(radius_at_bcz, ierr)
+subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       use stitched_model, only: stx_prof, n_ie, &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
            ip_grada, ip_conv_vel
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(out) :: radius_at_bcz
       integer, intent(out) :: ierr
@@ -48,7 +50,7 @@ subroutine compute_turnover_timescale(radius_at_bcz, ierr)
 
       ierr = 0
 ! Start from zero; pphot is left alone (the stitched build owns it).
-      star%convective_turnover_timescale = 0.0
+      s%convective_turnover_timescale = 0.0
 
 ! The span. In the interior model, zones j+1..nz-1 are the convective
 ! ones below the surface (j is the outermost radiative zone below nz).
@@ -58,18 +60,18 @@ subroutine compute_turnover_timescale(radius_at_bcz, ierr)
 ! envelope (regions 1-2 of the stitched grid, never the atmosphere),
 ! clamped to the json-sized arrays the walker takes. A deeper zone, or a
 ! fully convective star, is walked on the nz interior points alone.
-      do j = star%nz-1, 1, -1
-         if (.not. star%convective_flag(j)) exit
+      do j = s%nz-1, 1, -1
+         if (.not. s%convective_flag(j)) exit
       end do
-      if (star%logP(j+1) - star%logP(star%nz) .lt. 1.0d0) then
+      if (s%logP(j+1) - s%logP(s%nz) .lt. 1.0d0) then
          num_points = min(n_ie, json)
       else
-         num_points = star%nz
+         num_points = s%nz
       end if
 ! The walker's inputs: m (g), log r, log P, log rho, g = G m/r^2, the
 ! convective velocity, gradr, grada and the convective flag.
       do j = 1, num_points
-         combined_mass(j) = stx_prof(ip_mass,j)*star%solar_mass_cgs
+         combined_mass(j) = stx_prof(ip_mass,j)*s%solar_mass_cgs
          combined_radius(j) = stx_prof(ip_logR,j)
          combined_pressure(j) = stx_prof(ip_logP,j)
          combined_density(j) = stx_prof(ip_logRho,j)
@@ -81,9 +83,9 @@ subroutine compute_turnover_timescale(radius_at_bcz, ierr)
          combined_convective_flag(j) = stx_prof(ip_conv,j) .ne. 0.0d0
       end do
 
-      call turnover_from_interior_new(combined_mass, combined_convective_flag, &
+      call turnover_from_interior_new(s, combined_mass, combined_convective_flag, &
            combined_radius, combined_pressure, combined_density, &
-           combined_gravity, num_points, star%nz, combined_velocity, &
+           combined_gravity, num_points, s%nz, combined_velocity, &
            combined_grad1, combined_grad2, radius_at_bcz, ierr)
       if (ierr /= 0) return
 
@@ -108,7 +110,7 @@ end subroutine compute_turnover_timescale
 ! Legacy names: cz_base_index (IMAX), the base found from below;
 ! upper_cz_base_index (JMAX), the base of the uppermost zone;
 ! radius_at_bcz (RBCZ); the timescale (TAUCZ).
-subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius, &
+subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz, ierr)
@@ -116,7 +118,8 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
       use numerics_lib
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
-      use star_info_lib, only: star, json
+      use star_info_lib, only: json
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: shell_mass(json)
       logical, intent(in) :: convective_flag(json)
@@ -213,14 +216,14 @@ subroutine turnover_from_interior_new(shell_mass, convective_flag, log10_radius,
             if (ierr /= 0) return
          end if
 !        The base radius in Rsun.
-         radius_at_bcz = radius_at_bcz/star%solar_radius_cgs
+         radius_at_bcz = radius_at_bcz/s%solar_radius_cgs
       else
-         star%convective_turnover_timescale = 0.0d0
+         s%convective_turnover_timescale = 0.0d0
          radius_at_bcz = 0.0
       endif
 !     A timescale above 1e20 s means the zone found lies deep in the
 !     interior: search again above its base.
-      if (star%convective_turnover_timescale.gt.1.0d20) then
+      if (s%convective_turnover_timescale.gt.1.0d20) then
          search_start_index = cz_base_index + 1
          cycle search
       endif
@@ -293,7 +296,7 @@ subroutine assess_surface_cz_depth()
       endif
 ! surface_cz_deep_enough (legacy LCZSUR): a surface convection zone deep
 ! enough for angular-momentum loss exists; the threshold is any mass.
-      if ((mass_at_cz_top-mass_at_cz_bottom)/star%solar_mass_cgs.gt.0.0d0) then
+      if ((mass_at_cz_top-mass_at_cz_bottom)/s%solar_mass_cgs.gt.0.0d0) then
          surface_cz_deep_enough = .true.
       else
          surface_cz_deep_enough= .false.
@@ -339,7 +342,7 @@ subroutine time_scale_height_above_base()
          k = cz_base_index
          convective_velocity_bcz = convective_velocity(cz_base_index)
          pressure_scale_height = pressure_scale_height2
-         star%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+         s%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
       else
          do k = cz_base_index+1,num_points-1,1
             pressure_scale_height1 = pressure_scale_height2
@@ -381,7 +384,7 @@ subroutine time_scale_height_above_base()
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                if (ierr /= 0) return
 ! tau = H_p/v_c.
-               star%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
+               s%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                spline_taucz_done = .true.
                exit
             endif
@@ -435,7 +438,7 @@ subroutine time_bottom_cell_crossing()
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
       if (ierr /= 0) return
 ! tau = width/v_c.
-      star%convective_turnover_timescale = cz_width/convective_velocity_bcz
+      s%convective_turnover_timescale = cz_width/convective_velocity_bcz
 end subroutine time_bottom_cell_crossing
 
 end subroutine turnover_from_interior_new

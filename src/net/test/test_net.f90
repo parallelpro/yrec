@@ -138,7 +138,7 @@ program test_net
       star%job%scv_he_table_path = dummy_path
       star%job%scv_z_table_path = dummy_path
       star%job%alex95_table_paths = dummy_paths7
-      call set_up_constants_and_tables(setups_ierr)
+      call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_net: FAIL (setups error)"
          stop 1
@@ -176,7 +176,7 @@ program test_net
 
 ! cross-section scales via the real remap, then the network's settings
       call map_user_inputs
-      call configure_network()
+      call configure_network(star)
       write(*,'(a)') "# test_net: cross_section_scale from map_user_inputs " // &
            "(newcross defaults)"
       write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, 16)

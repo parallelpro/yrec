@@ -18,6 +18,7 @@
 ! interpolated (rebuild_envelope, .lt.). Each prints its own message
 ! when ierr comes back nonzero.
 module envelope_refit
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: append_envelope_points
@@ -34,12 +35,13 @@ contains
 ! He3 and the heavier tracers from the last interior shell, and
 ! Y = 1 - X - Z - X(He3). ierr = 1 when the mass interval of the
 ! interpolation is below 1e-14 dex.
-subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
+subroutine append_envelope_points(s, accept_point_at_fit_mass, species_end_index, &
      composition, log_density, log_luminosity, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, ierr)
-      use star_info_lib, only: star, json, n_species_extended, &
-           i_h1, i_he4, i_metals, i_he3
+      use star_info_lib, only: json, n_species_extended, i_h1, i_he4, &
+           i_metals, i_he3
       use envelope_structure
+      type(star_info), intent(inout) :: s
       logical, intent(in) :: accept_point_at_fit_mass
       integer, intent(in) :: species_end_index
       double precision, intent(inout) :: composition(n_species_extended,json), &
@@ -61,15 +63,15 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
          log_luminosity(zone_index) = log_luminosity(num_zones)
 ! Points inside the new fitting mass become zones as they are.
          if (accept_point_at_fit_mass) then
-            point_below_fit_mass = env_struct%env_log10_mass(env_point_index).le.star%senv
+            point_below_fit_mass = env_struct%env_log10_mass(env_point_index).le.s%senv
          else
-            point_below_fit_mass = env_struct%env_log10_mass(env_point_index).lt.star%senv
+            point_below_fit_mass = env_struct%env_log10_mass(env_point_index).lt.s%senv
          end if
          if(point_below_fit_mass)then
             log_density(zone_index) = env_struct%env_log10_density(env_point_index)
             log_pressure(zone_index) = env_struct%env_log10_pressure(env_point_index)
             log_radius(zone_index) = env_struct%env_log10_radius(env_point_index)
-            log_mass(zone_index) = env_struct%env_log10_mass(env_point_index) + star%stotal
+            log_mass(zone_index) = env_struct%env_log10_mass(env_point_index) + s%stotal
             log_temperature(zone_index) = env_struct%env_log10_temperature(env_point_index)
             composition(i_h1,zone_index) = env_struct%env_hydrogen_fraction(env_point_index)
             composition(i_metals,zone_index) = env_struct%env_metal_fraction(env_point_index)
@@ -91,8 +93,8 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
 ! X(nz) - X_env, the reverse of the other variables; it vanishes when
 ! the envelope has the shell's X and Z, as both callers integrate it.
                mass_interp_x0 = log_mass(num_zones)
-               mass_interp_x1 = star%stotal + star%senv
-               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
+               mass_interp_x1 = s%stotal + s%senv
+               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + s%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
                   ierr = 1
                   return
@@ -125,9 +127,9 @@ subroutine append_envelope_points(accept_point_at_fit_mass, species_end_index, &
             else
 ! Between the last two envelope points; the zone is convective if
 ! either is.
-               mass_interp_x0 = env_struct%env_log10_mass(env_point_index-1) + star%stotal
-               mass_interp_x1 = star%stotal + star%senv
-               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + star%stotal
+               mass_interp_x0 = env_struct%env_log10_mass(env_point_index-1) + s%stotal
+               mass_interp_x1 = s%stotal + s%senv
+               mass_interp_x2 = env_struct%env_log10_mass(env_point_index) + s%stotal
                if(mass_interp_x2-mass_interp_x0.lt.1.0D-14) then
                   ierr = 1
                   return

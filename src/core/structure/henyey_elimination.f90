@@ -63,6 +63,7 @@ module henyey_elimination
 ! evaluate_shell_equations (shell_equations.f90), which defines their
 ! record.
       use shell_equations, only: henyey_shell_terms
+      use star_info_lib, only: star_info
       implicit none
 
 contains
@@ -82,10 +83,10 @@ contains
 ! 2 = dL(i-1), 3 = dlog P(i-1), 4 = dlog T(i-1), 5 = dlog R(i),
 ! 6 = dL(i); dlog P(i) and dlog T(i) stay on the right as
 ! elim_coeff(:,1:2,i). q(k,1) and q(k,2) hold columns 3 and 4.
-subroutine henyey_eliminate(zone_index, prev, cur)
-      use star_info_lib, only: star
+subroutine henyey_eliminate(s, zone_index, prev, cur)
       use physical_constants
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: zone_index
       type(henyey_shell_terms), intent(in) :: prev, cur
@@ -97,19 +98,19 @@ subroutine henyey_eliminate(zone_index, prev, cur)
 ! The residuals
 !   F_k(i) = 0.5 Delta log m (q_k(i-1) + q_k(i)) - (y_k(i) - y_k(i-1))
 ! and their running maxima.
-      half_delta_log_mass = 0.5D0*(star%log_mass(zone_index)-star%log_mass(zone_index-1))
-      star%elim_rhs(1,zone_index) = half_delta_log_mass*(prev%qp + cur%qp) - &
-           (star%logP(zone_index) - star%logP(zone_index-1))
-      star%max_residual(1) = dmax1(star%max_residual(1),dabs(star%elim_rhs(1,zone_index)))
-      star%elim_rhs(2,zone_index) = half_delta_log_mass*(prev%qt + cur%qt) - &
-           (star%logT(zone_index) - star%logT(zone_index-1))
-      star%max_residual(2) = dmax1(star%max_residual(2),dabs(star%elim_rhs(2,zone_index)))
-      star%elim_rhs(3,zone_index) = half_delta_log_mass*(prev%qr + cur%qr) - &
-           (star%logR(zone_index) - star%logR(zone_index-1))
-      star%max_residual(3) = dmax1(star%max_residual(3),dabs(star%elim_rhs(3,zone_index)))
-      star%elim_rhs(4,zone_index) = half_delta_log_mass*(prev%ql + cur%ql) - &
-           (star%luminosity_lsun(zone_index) - star%luminosity_lsun(zone_index-1))
-      star%max_residual(4) = dmax1(star%max_residual(4),dabs(star%elim_rhs(4,zone_index)))
+      half_delta_log_mass = 0.5D0*(s%log_mass(zone_index)-s%log_mass(zone_index-1))
+      s%elim_rhs(1,zone_index) = half_delta_log_mass*(prev%qp + cur%qp) - &
+           (s%logP(zone_index) - s%logP(zone_index-1))
+      s%max_residual(1) = dmax1(s%max_residual(1),dabs(s%elim_rhs(1,zone_index)))
+      s%elim_rhs(2,zone_index) = half_delta_log_mass*(prev%qt + cur%qt) - &
+           (s%logT(zone_index) - s%logT(zone_index-1))
+      s%max_residual(2) = dmax1(s%max_residual(2),dabs(s%elim_rhs(2,zone_index)))
+      s%elim_rhs(3,zone_index) = half_delta_log_mass*(prev%qr + cur%qr) - &
+           (s%logR(zone_index) - s%logR(zone_index-1))
+      s%max_residual(3) = dmax1(s%max_residual(3),dabs(s%elim_rhs(3,zone_index)))
+      s%elim_rhs(4,zone_index) = half_delta_log_mass*(prev%ql + cur%ql) - &
+           (s%luminosity_lsun(zone_index) - s%luminosity_lsun(zone_index-1))
+      s%max_residual(4) = dmax1(s%max_residual(4),dabs(s%elim_rhs(4,zone_index)))
 ! From here half_delta_log_mass is h = 0.5 Delta log m ln10, which turns
 ! the dln partials into dlog10 ones.
       half_delta_log_mass = half_delta_log_mass*ln10
@@ -120,98 +121,98 @@ subroutine henyey_eliminate(zone_index, prev, cur)
 ! Pressure row: dlog R(i-1) enters through qp_dr.
       pivot = -half_delta_log_mass*prev%qp_dr
       q(1,1) = (-1.0D0-half_delta_log_mass*prev%qp_dp) - &
-           pivot*star%elim_coeff(3,1,zone_index-1)
-      q(1,2) =                  - pivot*star%elim_coeff(3,2,zone_index-1)
-      star%elim_rhs(1,zone_index) = star%elim_rhs(1,zone_index) - &
-           pivot*star%elim_rhs(3,zone_index-1)
+           pivot*s%elim_coeff(3,1,zone_index-1)
+      q(1,2) =                  - pivot*s%elim_coeff(3,2,zone_index-1)
+      s%elim_rhs(1,zone_index) = s%elim_rhs(1,zone_index) - &
+           pivot*s%elim_rhs(3,zone_index-1)
 ! Temperature row: dlog R(i-1) and dL(i-1) enter through qt_dr and qt_dl.
       pivot = -half_delta_log_mass*prev%qt_dr
       pivotb= -half_delta_log_mass*prev%qt_dl
       q(2,1) = -half_delta_log_mass*prev%qt_dp &
-           -pivot*star%elim_coeff(3,1,zone_index-1)-pivotb*star%elim_coeff(4,1,zone_index-1)
+           -pivot*s%elim_coeff(3,1,zone_index-1)-pivotb*s%elim_coeff(4,1,zone_index-1)
       q(2,2) =(-1.0D0-half_delta_log_mass*prev%qt_dt) &
-           -pivot*star%elim_coeff(3,2,zone_index-1)-pivotb*star%elim_coeff(4,2,zone_index-1)
-      star%elim_rhs(2,zone_index) = star%elim_rhs(2,zone_index) - &
-           pivot*star%elim_rhs(3,zone_index-1) - pivotb*star%elim_rhs(4,zone_index-1)
+           -pivot*s%elim_coeff(3,2,zone_index-1)-pivotb*s%elim_coeff(4,2,zone_index-1)
+      s%elim_rhs(2,zone_index) = s%elim_rhs(2,zone_index) - &
+           pivot*s%elim_rhs(3,zone_index-1) - pivotb*s%elim_rhs(4,zone_index-1)
 ! Radius row: the coefficient of dlog R(i-1) is -1 - h qr_dr.
       pivot = -1.0D0 - half_delta_log_mass*prev%qr_dr
-      q(3,1) = -half_delta_log_mass*prev%qr_dp - pivot*star%elim_coeff(3,1,zone_index-1)
-      q(3,2) = -half_delta_log_mass*prev%qr_dt - pivot*star%elim_coeff(3,2,zone_index-1)
-      star%elim_rhs(3,zone_index) = star%elim_rhs(3,zone_index) - &
-           pivot*star%elim_rhs(3,zone_index-1)
+      q(3,1) = -half_delta_log_mass*prev%qr_dp - pivot*s%elim_coeff(3,1,zone_index-1)
+      q(3,2) = -half_delta_log_mass*prev%qr_dt - pivot*s%elim_coeff(3,2,zone_index-1)
+      s%elim_rhs(3,zone_index) = s%elim_rhs(3,zone_index) - &
+           pivot*s%elim_rhs(3,zone_index-1)
 ! Luminosity row: the coefficient of dL(i-1) is -1 (there is no ql_dl).
-      q(4,1) = -half_delta_log_mass*prev%ql_dp + star%elim_coeff(4,1,zone_index-1)
-      q(4,2) = -half_delta_log_mass*prev%ql_dt + star%elim_coeff(4,2,zone_index-1)
-      star%elim_rhs(4,zone_index) = star%elim_rhs(4,zone_index) + star%elim_rhs(4,zone_index-1)
+      q(4,1) = -half_delta_log_mass*prev%ql_dp + s%elim_coeff(4,1,zone_index-1)
+      q(4,2) = -half_delta_log_mass*prev%ql_dt + s%elim_coeff(4,2,zone_index-1)
+      s%elim_rhs(4,zone_index) = s%elim_rhs(4,zone_index) + s%elim_rhs(4,zone_index-1)
 ! The current point's coefficients are -h q_kX(i) + delta_kX. Reduce the
 ! remaining system for columns 3 to 6.
 ! Pivot on row 4 (luminosity) and column 6: the coefficient of dL(i) is
 ! 1, so row 4 already gives dL(i). Remove dL(i) from row 2, the only
 ! other row it enters (through qt_dl).
-      star%elim_coeff(4,1,zone_index) = -half_delta_log_mass*cur%ql_dp
-      star%elim_coeff(4,2,zone_index) = -half_delta_log_mass*cur%ql_dt
+      s%elim_coeff(4,1,zone_index) = -half_delta_log_mass*cur%ql_dp
+      s%elim_coeff(4,2,zone_index) = -half_delta_log_mass*cur%ql_dt
       pivot = -half_delta_log_mass*cur%qt_dl
       q(2,1) = q(2,1) - pivot*q(4,1)
       q(2,2) = q(2,2) - pivot*q(4,2)
-      star%elim_rhs(2,zone_index) = star%elim_rhs(2,zone_index) - pivot*star%elim_rhs(4,zone_index)
-      star%elim_coeff(2,1,zone_index) = -half_delta_log_mass*cur%qt_dp      - &
-           pivot*star%elim_coeff(4,1,zone_index)
-      star%elim_coeff(2,2,zone_index) = (1.0D0-half_delta_log_mass*cur%qt_dt) - &
-           pivot*star%elim_coeff(4,2,zone_index)
+      s%elim_rhs(2,zone_index) = s%elim_rhs(2,zone_index) - pivot*s%elim_rhs(4,zone_index)
+      s%elim_coeff(2,1,zone_index) = -half_delta_log_mass*cur%qt_dp      - &
+           pivot*s%elim_coeff(4,1,zone_index)
+      s%elim_coeff(2,2,zone_index) = (1.0D0-half_delta_log_mass*cur%qt_dt) - &
+           pivot*s%elim_coeff(4,2,zone_index)
 ! Pivot on row 3 (radius) and column 5: divide by the coefficient of
 ! dlog R(i), 1 - h qr_dr, and remove dlog R(i) from rows 1 and 2
 ! (through qp_dr and qt_dr).
       div = 1.0D0/(1.0D0 - half_delta_log_mass*cur%qr_dr)
       q(3,1) = q(3,1)*div
       q(3,2) = q(3,2)*div
-      star%elim_rhs(3,zone_index) = star%elim_rhs(3,zone_index)*div
+      s%elim_rhs(3,zone_index) = s%elim_rhs(3,zone_index)*div
       div = -half_delta_log_mass*div
-      star%elim_coeff(3,1,zone_index) = div*cur%qr_dp
-      star%elim_coeff(3,2,zone_index) = div*cur%qr_dt
+      s%elim_coeff(3,1,zone_index) = div*cur%qr_dp
+      s%elim_coeff(3,2,zone_index) = div*cur%qr_dt
       pivot = -half_delta_log_mass*cur%qp_dr
       q(1,1) = q(1,1) - pivot*q(3,1)
       q(1,2) = q(1,2) - pivot*q(3,2)
-      star%elim_rhs(1,zone_index) = star%elim_rhs(1,zone_index) - pivot*star%elim_rhs(3,zone_index)
-      star%elim_coeff(1,1,zone_index) = (1.0D0-half_delta_log_mass*cur%qp_dp) - &
-           pivot*star%elim_coeff(3,1,zone_index)
-      star%elim_coeff(1,2,zone_index) =                - pivot*star%elim_coeff(3,2,zone_index)
+      s%elim_rhs(1,zone_index) = s%elim_rhs(1,zone_index) - pivot*s%elim_rhs(3,zone_index)
+      s%elim_coeff(1,1,zone_index) = (1.0D0-half_delta_log_mass*cur%qp_dp) - &
+           pivot*s%elim_coeff(3,1,zone_index)
+      s%elim_coeff(1,2,zone_index) =                - pivot*s%elim_coeff(3,2,zone_index)
       pivot = -half_delta_log_mass*cur%qt_dr
       q(2,1) = q(2,1) - pivot*q(3,1)
       q(2,2) = q(2,2) - pivot*q(3,2)
-      star%elim_rhs(2,zone_index) = star%elim_rhs(2,zone_index) - pivot*star%elim_rhs(3,zone_index)
-      star%elim_coeff(2,1,zone_index) = star%elim_coeff(2,1,zone_index) - &
-           pivot*star%elim_coeff(3,1,zone_index)
-      star%elim_coeff(2,2,zone_index) = star%elim_coeff(2,2,zone_index) - &
-           pivot*star%elim_coeff(3,2,zone_index)
+      s%elim_rhs(2,zone_index) = s%elim_rhs(2,zone_index) - pivot*s%elim_rhs(3,zone_index)
+      s%elim_coeff(2,1,zone_index) = s%elim_coeff(2,1,zone_index) - &
+           pivot*s%elim_coeff(3,1,zone_index)
+      s%elim_coeff(2,2,zone_index) = s%elim_coeff(2,2,zone_index) - &
+           pivot*s%elim_coeff(3,2,zone_index)
 ! Pivot on row 2 (temperature) and column 4: divide by the coefficient
 ! of dlog T(i-1) and remove it from rows 1, 3 and 4.
       div = 1.0D0/q(2,2)
       q(2,1) = q(2,1)*div
-      star%elim_rhs(2,zone_index) = star%elim_rhs(2,zone_index)*div
-      star%elim_coeff(2,1,zone_index) = star%elim_coeff(2,1,zone_index)*div
-      star%elim_coeff(2,2,zone_index) = star%elim_coeff(2,2,zone_index)*div
+      s%elim_rhs(2,zone_index) = s%elim_rhs(2,zone_index)*div
+      s%elim_coeff(2,1,zone_index) = s%elim_coeff(2,1,zone_index)*div
+      s%elim_coeff(2,2,zone_index) = s%elim_coeff(2,2,zone_index)*div
       do j=1,4
       if (j.eq.2) cycle
       q(j,1) = q(j,1) - q(j,2)*q(2,1)
-      star%elim_rhs(j,zone_index) = star%elim_rhs(j,zone_index) - q(j,2)*star%elim_rhs(2,zone_index)
-      star%elim_coeff(j,1,zone_index) = star%elim_coeff(j,1,zone_index) - &
-           q(j,2)*star%elim_coeff(2,1,zone_index)
-      star%elim_coeff(j,2,zone_index) = star%elim_coeff(j,2,zone_index) - &
-           q(j,2)*star%elim_coeff(2,2,zone_index)
+      s%elim_rhs(j,zone_index) = s%elim_rhs(j,zone_index) - q(j,2)*s%elim_rhs(2,zone_index)
+      s%elim_coeff(j,1,zone_index) = s%elim_coeff(j,1,zone_index) - &
+           q(j,2)*s%elim_coeff(2,1,zone_index)
+      s%elim_coeff(j,2,zone_index) = s%elim_coeff(j,2,zone_index) - &
+           q(j,2)*s%elim_coeff(2,2,zone_index)
       end do
 ! Pivot on row 1 (pressure) and column 3: divide by the coefficient of
 ! dlog P(i-1) and remove it from rows 2 to 4. What is left at index i
 ! is the four relations of the module header.
       div = 1.0D0/q(1,1)
-      star%elim_rhs(1,zone_index) = star%elim_rhs(1,zone_index)*div
-      star%elim_coeff(1,1,zone_index) = star%elim_coeff(1,1,zone_index)*div
-      star%elim_coeff(1,2,zone_index) = star%elim_coeff(1,2,zone_index)*div
+      s%elim_rhs(1,zone_index) = s%elim_rhs(1,zone_index)*div
+      s%elim_coeff(1,1,zone_index) = s%elim_coeff(1,1,zone_index)*div
+      s%elim_coeff(1,2,zone_index) = s%elim_coeff(1,2,zone_index)*div
       do j=2,4
-      star%elim_rhs(j,zone_index) = star%elim_rhs(j,zone_index) - q(j,1)*star%elim_rhs(1,zone_index)
-      star%elim_coeff(j,1,zone_index) = star%elim_coeff(j,1,zone_index) - &
-           q(j,1)*star%elim_coeff(1,1,zone_index)
-      star%elim_coeff(j,2,zone_index) = star%elim_coeff(j,2,zone_index) - &
-           q(j,1)*star%elim_coeff(1,2,zone_index)
+      s%elim_rhs(j,zone_index) = s%elim_rhs(j,zone_index) - q(j,1)*s%elim_rhs(1,zone_index)
+      s%elim_coeff(j,1,zone_index) = s%elim_coeff(j,1,zone_index) - &
+           q(j,1)*s%elim_coeff(1,1,zone_index)
+      s%elim_coeff(j,2,zone_index) = s%elim_coeff(j,2,zone_index) - &
+           q(j,1)*s%elim_coeff(1,2,zone_index)
       end do
       return
 end subroutine henyey_eliminate

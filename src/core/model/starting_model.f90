@@ -8,6 +8,7 @@ module starting_model
       use turnover_timescale, only: compute_turnover_timescale
       use shell_physics, only: compute_shell_physics
       use model_rescaling, only: rescale_model
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: read_starting_model
@@ -51,7 +52,7 @@ contains
 ! rotation geometry); the
 ! single-point physics in set_new_last_shell_convection uses
 ! shell_physics' log10_* names.
-subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
+subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
      triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
@@ -60,7 +61,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use convection_lib, only: compute_temperature_gradients, set_convection_envelope_metals
-      use star_info_lib, only: star, i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
+      use star_info_lib, only: i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
       use controls_buffer, only: ichi_dm_max, ichi_dp_env_max
@@ -75,6 +76,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       use kap_lib
       use stitched_model, only: build_stitched_model
       implicit none
+      type(star_info), intent(inout) :: s
       integer :: jerr_atm
 
       double precision, intent(inout) :: timestep_yr
@@ -189,7 +191,7 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
 
 ! The model file is on unit star%ctrl%first_unit (legacy IFIRST).
       ikut_flag = 0
-      iread = star%ctrl%first_unit
+      iread = s%ctrl%first_unit
 
 ! Initial values: no convective velocity, and the ideal-gas
 ! dlnrho/dlnT = -1 and dlnrho/dlnP = 1.
@@ -209,20 +211,20 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
       call update_surface_mixture
       call snapshot_step_start
       if (ierr /= 0) return
-      call compute_shell_physics(star%fp_rot,star%ft_rot, &
-           star%xa,star%logRho,star%luminosity_lsun,star%logP, &
-           star%logR,star%log_mass,star%logT,star%convective_flag,star%nz, &
-           star%log_Teff, jerr)
+      call compute_shell_physics(s, s%fp_rot,s%ft_rot, &
+           s%xa,s%logRho,s%luminosity_lsun,s%logP, &
+           s%logR,s%log_mass,s%logT,s%convective_flag,s%nz, &
+           s%log_Teff, jerr)
       if (jerr /= 0) then
       ! Pass the error on.
          ierr = jerr
          return
       end if
-      call am_convective_regions(star%xa,star%logRho,star%logP,star%logR,star%log_mass, &
-                 star%logT,star%convective_flag,star%nz, &
-                 star%am_transport_convective_flag,radiative_zone_bounds, &
+      call am_convective_regions(s%xa,s%logRho,s%logP,s%logR,s%log_mass, &
+                 s%logT,s%convective_flag,s%nz, &
+                 s%am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones, star%iov1, star%iov2, ierr)
+                 num_convective_zones, s%iov1, s%iov2, ierr)
       if (ierr /= 0) return
 ! Initialize the convective turnover time (legacy TAUCZ), the
 ! photospheric pressure pphot and fracstep. The stitched model
@@ -233,12 +235,12 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
 ! wind takes pphot and the turnover time at the fraction fracstep of
 ! the step, between the step-start copies (pphot0, *_old) and the
 ! current values.
-      call build_stitched_model
-      call compute_turnover_timescale(star%envelope_radius, ierr)
+      call build_stitched_model(s)
+      call compute_turnover_timescale(s, s%envelope_radius, ierr)
       if (ierr /= 0) return
-      star%convective_turnover_timescale_old = star%convective_turnover_timescale
-      star%pphot0 = star%pphot
-      star%fracstep = 0.5
+      s%convective_turnover_timescale_old = s%convective_turnover_timescale
+      s%pphot0 = s%pphot
+      s%fracstep = 0.5
 
       return
 
@@ -258,7 +260,7 @@ subroutine acquire_starting_model
 ! rescale card it is rescaled once, in rescale_and_refit_envelope, as a
 ! model read from file is. (starin rescaled a reused model here as well,
 ! so it was rescaled twice.)
-      if (star%job%first_call_flag(run_index)) then
+      if (s%job%first_call_flag(run_index)) then
          call read_starting_model_file
          if (ierr /= 0) return
          call check_model_against_controls
@@ -273,7 +275,7 @@ subroutine acquire_starting_model
 ! abundances. Between them they can overwrite mass fractions 4-15.
 ! (The test below is always true inside this branch; starin once also
 ! required the first card.)
-         if (star%job%first_call_flag(run_index)) then
+         if (s%job%first_call_flag(run_index)) then
             call check_mixture_homogeneity
             if (mixture_ok) then
                call rescale_cno_mixture
@@ -348,7 +350,7 @@ subroutine read_starting_model_file
 ! The timestep in s, and the log total mass.
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
-      star%stotal = star%log_total_mass
+      s%stotal = s%log_total_mass
 end subroutine read_starting_model_file
 
 ! ---------------------------------------------------------------
@@ -356,20 +358,20 @@ end subroutine read_starting_model_file
 ! extended-composition flag that differs from the controls. A warning
 ! only: the run goes on.
 subroutine check_model_against_controls
-      if (star%model_number.gt.0) then
+      if (s%model_number.gt.0) then
        mixing_length_matches = .true.
 ! The tolerance 2e-3 allows for model files storing the mixing length
 ! to four significant digits; a model mixing length <= 0 is not
 ! checked.
        if (mixing_length0.gt.0.0d0) mixing_length_matches = &
-            (dabs(star%mixing_length_alpha-mixing_length0).lt.2.0d-3)
+            (dabs(s%mixing_length_alpha-mixing_length0).lt.2.0d-3)
 ! The warning prints lexcp0, which is never set (see its declaration),
 ! for the model's flag.
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
-            star%job%use_extended_composition) then
-          write(run_log_unit,1040) star%mixing_length_alpha,mixing_length0, &
-               star%job%use_extended_composition,lexcp0
-          write(terminal_unit,1040) star%mixing_length_alpha,mixing_length0,star%job%use_extended_composition, &
+            s%job%use_extended_composition) then
+          write(run_log_unit,1040) s%mixing_length_alpha,mixing_length0, &
+               s%job%use_extended_composition,lexcp0
+          write(terminal_unit,1040) s%mixing_length_alpha,mixing_length0,s%job%use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
@@ -391,8 +393,8 @@ subroutine reset_state_after_read
 
 
 ! Surface X and Z (xnew, znew) from the outermost interior point.
-      star%xnew = star%xa(i_h1,star%nz)
-      star%znew = star%xa(i_metals,star%nz)
+      s%xnew = s%xa(i_h1,s%nz)
+      s%znew = s%xa(i_metals,s%nz)
 end subroutine reset_state_after_read
 
 ! ---------------------------------------------------------------
@@ -400,18 +402,18 @@ end subroutine reset_state_after_read
 ! unit rotation factors fp and ft (non-rotating runs).
 subroutine set_starting_rotation_curve
 
-      if (star%job%rotation_active) then
-       if (star%ctrl%set_initial_omega) then
+      if (s%job%rotation_active) then
+       if (s%ctrl%set_initial_omega) then
 ! Solid-body rotation, omega = initial_omega (legacy WNEW) in every
 ! shell: this turns a non-rotating model into a rotating one.
-          do i = 1,star%nz
-             star%omega(i) = star%ctrl%initial_omega
+          do i = 1,s%nz
+             s%omega(i) = s%ctrl%initial_omega
           end do
        endif
       else
          do i = 1,json
-            star%fp_rot(i) = 1.0d0
-            star%ft_rot(i) = 1.0d0
+            s%fp_rot(i) = 1.0d0
+            s%ft_rot(i) = 1.0d0
          end do
       endif
 end subroutine set_starting_rotation_curve
@@ -422,13 +424,13 @@ end subroutine set_starting_rotation_curve
 ! is altered; mixture_ok is false, with a message, if not.
 subroutine check_mixture_homogeneity
       mixture_ok = .true.
-      if (star%ctrl%change_cno_mixture_active .or. star%ctrl%change_isotope_ratios_active) then
+      if (s%ctrl%change_cno_mixture_active .or. s%ctrl%change_isotope_ratios_active) then
          do i = 1,15
-            reference_composition(i)=star%xa(i,1)
+            reference_composition(i)=s%xa(i,1)
          end do
-         homogeneity: do j = 2,star%nz
+         homogeneity: do j = 2,s%nz
             do i = 1,15
-               fraction_diff = abs(star%xa(i,j)-reference_composition(i))
+               fraction_diff = abs(s%xa(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
                   write(*,592)i,j,fraction_diff
                   write(run_log_unit,592)i,j,fraction_diff
@@ -447,7 +449,7 @@ end subroutine check_mixture_homogeneity
 ! Scale the C, N and O isotopes in every shell so that C, N and O make
 ! up the requested fractions of Z. Z itself is not changed.
 subroutine rescale_cno_mixture
-      if (star%ctrl%change_cno_mixture_active) then
+      if (s%ctrl%change_cno_mixture_active) then
 ! The current fractions, from the (homogeneous) central composition:
 !   f_C = (X(C12) + X(C13))/Z,  f_N = (X(N14) + X(N15))/Z,
 !   f_O = (X(O16) + X(O17) + X(O18))/Z.
@@ -460,31 +462,31 @@ subroutine rescale_cno_mixture
          total_oxygen_cno_fraction = (reference_composition(i_o16)+ &
               reference_composition(i_o17)+reference_composition(i_o18))/ &
               reference_composition(i_metals)
-         carbon_scale_ratio = star%ctrl%target_carbon_cno_fraction/ &
+         carbon_scale_ratio = s%ctrl%target_carbon_cno_fraction/ &
               total_carbon_cno_fraction
-         nitrogen_scale_ratio = star%ctrl%target_nitrogen_cno_fraction/ &
+         nitrogen_scale_ratio = s%ctrl%target_nitrogen_cno_fraction/ &
               total_nitrogen_cno_fraction
-         oxygen_scale_ratio = star%ctrl%target_oxygen_cno_fraction/ &
+         oxygen_scale_ratio = s%ctrl%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
          do i = i_c12,i_c13
-            do j = 1,star%nz
-               star%xa(i,j)=carbon_scale_ratio*star%xa(i,j)
+            do j = 1,s%nz
+               s%xa(i,j)=carbon_scale_ratio*s%xa(i,j)
             end do
          end do
          do i = i_n14,i_n15
-            do j = 1,star%nz
-               star%xa(i,j)=nitrogen_scale_ratio*star%xa(i,j)
+            do j = 1,s%nz
+               s%xa(i,j)=nitrogen_scale_ratio*s%xa(i,j)
             end do
          end do
          do i = i_o16,i_o18
-            do j = 1,star%nz
-               star%xa(i,j)=oxygen_scale_ratio*star%xa(i,j)
+            do j = 1,s%nz
+               s%xa(i,j)=oxygen_scale_ratio*s%xa(i,j)
             end do
          end do
          write(*,594)(reference_composition(k),k=i_c12,i_o18), &
-              (star%xa(k,1),k=i_c12,i_o18)
+              (s%xa(k,1),k=i_c12,i_o18)
          write(run_log_unit,594)(reference_composition(k),k=i_c12,i_o18), &
-              (star%xa(k,1),k=i_c12,i_o18)
+              (s%xa(k,1),k=i_c12,i_o18)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
@@ -500,26 +502,26 @@ end subroutine rescale_cno_mixture
 ! and likewise for O16 and O18. N15 and O17 are not altered, and B10
 ! and B11 are not species of the model.
 subroutine set_isotope_ratios
-      if (star%ctrl%change_isotope_ratios_active) then
-         sum_c12_c13 = star%xa(i_c12,1)+star%xa(i_c13,1)
-         sum_o16_o18 = star%xa(i_o16,1)+star%xa(i_o18,1)
-         do j = 1,star%nz
-            star%xa(i_he3,j)=star%ctrl%initial_he3_fraction
-            star%xa(i_c12,j)= star%ctrl%c12_to_c13_ratio*sum_c12_c13/ &
-                 (1.0d0+star%ctrl%c12_to_c13_ratio)
-            star%xa(i_c13,j)= sum_c12_c13/(1.0d0+star%ctrl%c12_to_c13_ratio)
-            star%xa(i_o16,j)= star%ctrl%o16_to_o18_ratio*sum_o16_o18/ &
-                 (1.0d0+star%ctrl%o16_to_o18_ratio)
-            star%xa(i_o18,j)= sum_o16_o18/(1.0d0+star%ctrl%o16_to_o18_ratio)
-            star%xa(i_h2,j)=star%ctrl%initial_h2_fraction
-            star%xa(i_li6,j)=star%ctrl%initial_li6_fraction
-            star%xa(i_li7,j)=star%ctrl%initial_li7_fraction
-            star%xa(i_be9,j)=star%ctrl%initial_be9_fraction
+      if (s%ctrl%change_isotope_ratios_active) then
+         sum_c12_c13 = s%xa(i_c12,1)+s%xa(i_c13,1)
+         sum_o16_o18 = s%xa(i_o16,1)+s%xa(i_o18,1)
+         do j = 1,s%nz
+            s%xa(i_he3,j)=s%ctrl%initial_he3_fraction
+            s%xa(i_c12,j)= s%ctrl%c12_to_c13_ratio*sum_c12_c13/ &
+                 (1.0d0+s%ctrl%c12_to_c13_ratio)
+            s%xa(i_c13,j)= sum_c12_c13/(1.0d0+s%ctrl%c12_to_c13_ratio)
+            s%xa(i_o16,j)= s%ctrl%o16_to_o18_ratio*sum_o16_o18/ &
+                 (1.0d0+s%ctrl%o16_to_o18_ratio)
+            s%xa(i_o18,j)= sum_o16_o18/(1.0d0+s%ctrl%o16_to_o18_ratio)
+            s%xa(i_h2,j)=s%ctrl%initial_h2_fraction
+            s%xa(i_li6,j)=s%ctrl%initial_li6_fraction
+            s%xa(i_li7,j)=s%ctrl%initial_li7_fraction
+            s%xa(i_be9,j)=s%ctrl%initial_be9_fraction
          end do
          write(*,593)(reference_composition(k),k=i_he3,i_be9), &
-              (star%xa(k,1),k=i_he3,i_be9)
+              (s%xa(k,1),k=i_he3,i_be9)
          write(run_log_unit,593)(reference_composition(k),k=i_he3,i_be9), &
-              (star%xa(k,1),k=i_he3,i_be9)
+              (s%xa(k,1),k=i_he3,i_be9)
  593     format(1x,'isotope/light-element mixture applied to the', &
              ' starting model:',/, &
              4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
@@ -541,16 +543,16 @@ end subroutine set_isotope_ratios
 subroutine extend_core_toward_center
       use math_lib
 
-      if (star%ctrl%extend_core_inward .and. star%job%first_call_flag(run_index)) then
+      if (s%ctrl%extend_core_inward .and. s%job%first_call_flag(run_index)) then
 ! The innermost mass is to drop by the factor core_mass_reduction_factor
 ! (legacy FCORE): that takes N = int(log10(factor)/dlogm) + 1 steps
 ! (num_core_shells_added, legacy MCORE). The control is then
 ! overwritten with the log10 shift N dlogm actually made.
-          star%job%num_core_shells_added = int(log10(star%job%core_mass_reduction_factor)/ &
-               star%ctrl%chi_grid_scale(ichi_dm_max))+1
-          star%job%core_mass_reduction_factor = dble(star%job%num_core_shells_added)* &
-               star%ctrl%chi_grid_scale(ichi_dm_max)
-          num_shells_extended = star%nz + star%job%num_core_shells_added
+          s%job%num_core_shells_added = int(log10(s%job%core_mass_reduction_factor)/ &
+               s%ctrl%chi_grid_scale(ichi_dm_max))+1
+          s%job%core_mass_reduction_factor = dble(s%job%num_core_shells_added)* &
+               s%ctrl%chi_grid_scale(ichi_dm_max)
+          num_shells_extended = s%nz + s%job%num_core_shells_added
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
 ! 2026-10).
@@ -566,74 +568,74 @@ subroutine extend_core_toward_center
              ierr = 1
              return
           endif
-          core_shell_spacing = star%ctrl%chi_grid_scale(ichi_dm_max)
+          core_shell_spacing = s%ctrl%chi_grid_scale(ichi_dm_max)
 ! Move every old point up by N slots (logRho is not moved).
-          do i=star%nz,1, -1
-             star%log_mass(i+star%job%num_core_shells_added) = star%log_mass(i)
-             star%logR(i+star%job%num_core_shells_added) = star%logR(i)
-             star%luminosity_lsun(i+star%job%num_core_shells_added) = star%luminosity_lsun(i)
-             star%logP(i+star%job%num_core_shells_added) = star%logP(i)
-             star%logT(i+star%job%num_core_shells_added) = star%logT(i)
-             star%convective_flag(i+star%job%num_core_shells_added) = star%convective_flag(i)
+          do i=s%nz,1, -1
+             s%log_mass(i+s%job%num_core_shells_added) = s%log_mass(i)
+             s%logR(i+s%job%num_core_shells_added) = s%logR(i)
+             s%luminosity_lsun(i+s%job%num_core_shells_added) = s%luminosity_lsun(i)
+             s%logP(i+s%job%num_core_shells_added) = s%logP(i)
+             s%logT(i+s%job%num_core_shells_added) = s%logT(i)
+             s%convective_flag(i+s%job%num_core_shells_added) = s%convective_flag(i)
              do j=1, 15
-                star%xa(j,i+star%job%num_core_shells_added) = star%xa(j,i)
+                s%xa(j,i+s%job%num_core_shells_added) = s%xa(j,i)
              end do
-             star%omega(i+star%job%num_core_shells_added) = star%omega(i)
+             s%omega(i+s%job%num_core_shells_added) = s%omega(i)
           end do
-          first_original_shell = star%job%num_core_shells_added+1
+          first_original_shell = s%job%num_core_shells_added+1
 ! March inward in mass from the innermost old point (now slot N+1).
 ! Slots 1 and 2 still hold the old innermost values here, so rho_c is
 ! the old central density and del = d log T/d log P is taken between
 ! the two innermost old points (for N = 1, slot 2 has already been
 ! overwritten and del is 0/0).
-          central_log_density = star%logRho(1)
-          actual_gradient = (star%logT(2)-star%logT(1))/ &
-               (star%logP(2)-star%logP(1))
-          central_shell_luminosity = star%luminosity_lsun(1)
+          central_log_density = s%logRho(1)
+          actual_gradient = (s%logT(2)-s%logT(1))/ &
+               (s%logP(2)-s%logP(1))
+          central_shell_luminosity = s%luminosity_lsun(1)
 ! Offset for estimating rho from P and T at fixed mean molecular weight
 ! (MHP 4/12): log rho = log P - log T - offset, with the offset taken
 ! at slot N+1.
-          density_estimate_offset = star%logP(first_original_shell)- &
-               star%logRho(first_original_shell)- &
-               star%logT(first_original_shell)
-          do i = star%job%num_core_shells_added,1,-1
-             star%log_mass(i) = star%log_mass(i+1)-core_shell_spacing
+          density_estimate_offset = s%logP(first_original_shell)- &
+               s%logRho(first_original_shell)- &
+               s%logT(first_original_shell)
+          do i = s%job%num_core_shells_added,1,-1
+             s%log_mass(i) = s%log_mass(i+1)-core_shell_spacing
 ! Constant density, m = (4 pi/3) rho_c r^3:
 !   log r = (1/3)(log m - log(4 pi/3) - log rho_c).
-             star%logR(i) = cc13*(star%log_mass(i)-c4pi3l-central_log_density)
+             s%logR(i) = cc13*(s%log_mass(i)-c4pi3l-central_log_density)
 ! Constant epsilon: L = L_1 m/m_1, L_1 and m_1 at the innermost old
 ! point.
-             star%luminosity_lsun(i) = exp(ln10*(star%log_mass(i)- &
-                  star%log_mass(first_original_shell)))*central_shell_luminosity
+             s%luminosity_lsun(i) = exp(ln10*(s%log_mass(i)- &
+                  s%log_mass(first_original_shell)))*central_shell_luminosity
 ! Hydrostatic equilibrium, d log P/d log m = -G m^2/(4 pi r^4 P), taken
 ! inward in two stages: log P half a step in from point i+1, then the
 ! full step with that pressure:
 !   log P_i = log P_(i+1) + (G m_i^2/(4 pi r_i^4 P_half)) dlogm.
-             trial_log_pressure = star%logP(i+1)
-             temp_scratch = exp(ln10*(cgl+2.0d0*star%log_mass(i)-c4pil- &
-                  trial_log_pressure-4.0d0*star%logR(i)))
+             trial_log_pressure = s%logP(i+1)
+             temp_scratch = exp(ln10*(cgl+2.0d0*s%log_mass(i)-c4pil- &
+                  trial_log_pressure-4.0d0*s%logR(i)))
              trial_log_pressure = trial_log_pressure+0.5d0*temp_scratch* &
                   core_shell_spacing
-             temp_scratch = exp(ln10*(cgl+2.0d0*star%log_mass(i)-c4pil- &
-                  trial_log_pressure-4.0d0*star%logR(i)))
-             star%logP(i) = star%logP(i+1)+temp_scratch* &
+             temp_scratch = exp(ln10*(cgl+2.0d0*s%log_mass(i)-c4pil- &
+                  trial_log_pressure-4.0d0*s%logR(i)))
+             s%logP(i) = s%logP(i+1)+temp_scratch* &
                   core_shell_spacing
 ! Convective or radiative as the innermost old point.
-             star%convective_flag(i) = star%convective_flag(first_original_shell)
+             s%convective_flag(i) = s%convective_flag(first_original_shell)
 ! Constant del: log T_i = log T_(i+1) + del (log P_i - log P_(i+1)).
-             star%logT(i) = star%logT(i+1)+temp_scratch* &
+             s%logT(i) = s%logT(i+1)+temp_scratch* &
                   actual_gradient*core_shell_spacing
 ! Omega and composition as at the innermost old point.
-             star%omega(i) = star%omega(first_original_shell)
+             s%omega(i) = s%omega(first_original_shell)
              do j=1, 15
-                star%xa(j,i) = star%xa(j,first_original_shell)
+                s%xa(j,i) = s%xa(j,first_original_shell)
              end do
 ! The local density estimate, in place of an EOS call that did not
 ! work here (MHP 4/12).
-             star%logRho(i) = star%logP(i) - star%logT(i) - &
+             s%logRho(i) = s%logP(i) - s%logT(i) - &
                   density_estimate_offset
           end do
-          star%nz = num_shells_extended
+          s%nz = num_shells_extended
       end if
 end subroutine extend_core_toward_center
 
@@ -653,25 +655,25 @@ end subroutine extend_core_toward_center
 subroutine rescale_and_refit_envelope
       use math_lib
 
-      if (star%job%rescale_kind(run_index).ne.1) call rescale_model(star%luminosity_lsun, &
-           star%xa,star%log_mass,star%log_total_mass,star%nz,run_index, &
-           star%star_mass,star%convective_flag, ierr)
+      if (s%job%rescale_kind(run_index).ne.1) call rescale_model(s, s%luminosity_lsun, &
+           s%xa,s%log_mass,s%log_total_mass,s%nz,run_index, &
+           s%star_mass,s%convective_flag, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
-      if (star%job%change_envelope_mass_flag) then
+      if (s%job%change_envelope_mass_flag) then
       envelope_rescale: do
        call clamp_requested_envelope_mass
-       if (star%senv.eq.star%job%requested_envelope_mass) exit envelope_rescale
+       if (s%senv.eq.s%job%requested_envelope_mass) exit envelope_rescale
        num_species = n_species_basic
-       if (star%job%use_extended_composition) num_species = n_species_extended
-       if (star%job%requested_envelope_mass.lt.star%senv) then
+       if (s%job%use_extended_composition) num_species = n_species_extended
+       if (s%job%requested_envelope_mass.lt.s%senv) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit
           if (i < (1)) then
 ! The requested fitting mass lies inside the innermost shell: report
 ! it and leave the envelope mass unchanged.
-          write(run_log_unit,576)star%job%requested_envelope_mass
+          write(run_log_unit,576)s%job%requested_envelope_mass
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
@@ -688,7 +690,7 @@ subroutine rescale_and_refit_envelope
           if (ierr /= 0) return
        endif
        envelope_recomputed_flag = .true.
-       write(run_log_unit,597)old_senv,star%senv
+       write(run_log_unit,597)old_senv,s%senv
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -702,14 +704,14 @@ end subroutine rescale_and_refit_envelope
 ! shallower than -1e-12, and record the current one,
 ! senv = log m(nz) - log M, in senv and old_senv.
 subroutine clamp_requested_envelope_mass
-       if (star%job%requested_envelope_mass.gt.0.0d0) star%job%requested_envelope_mass = &
-            -star%job%requested_envelope_mass
+       if (s%job%requested_envelope_mass.gt.0.0d0) s%job%requested_envelope_mass = &
+            -s%job%requested_envelope_mass
 ! The limit -1e-12 stands for the base of the atmosphere, tau = 2/3
 ! (DBG 2/92; it was -1e-10).
-       if (star%job%requested_envelope_mass.gt.-1.0d-12) star%job%requested_envelope_mass = &
+       if (s%job%requested_envelope_mass.gt.-1.0d-12) s%job%requested_envelope_mass = &
             -1.d-12
-       star%senv = star%log_mass(star%nz) - star%log_total_mass
-       old_senv = star%senv
+       s%senv = s%log_mass(s%nz) - s%log_total_mass
+       old_senv = s%senv
 end subroutine clamp_requested_envelope_mass
 
 ! ---------------------------------------------------------------
@@ -717,9 +719,9 @@ end subroutine clamp_requested_envelope_mass
 ! log m_fit = log M + requested_envelope_mass; i = 0 when the fitting
 ! mass lies inside the innermost shell.
 subroutine find_shell_below_new_fit
-          target_log_mass_at_fit = star%log_total_mass+star%job%requested_envelope_mass
-          do i = star%nz-1,1,-1
-             if (star%log_mass(i).lt.target_log_mass_at_fit) exit
+          target_log_mass_at_fit = s%log_total_mass+s%job%requested_envelope_mass
+          do i = s%nz-1,1,-1
+             if (s%log_mass(i).lt.target_log_mass_at_fit) exit
           end do
 end subroutine find_shell_below_new_fit
 
@@ -731,30 +733,30 @@ end subroutine find_shell_below_new_fit
 !   y = y_i + f (y_(i+1) - y_i) for log rho, L, log P, log R, log T.
 ! The new surface X and Z (xnew, znew) are its X and Z.
 subroutine interpolate_new_fitting_point
-            star%nz = i + 1
-          star%senv = star%job%requested_envelope_mass
-          interior_interp_fraction = (target_log_mass_at_fit-star%log_mass(i))/ &
-               (star%log_mass(i+1) - star%log_mass(i))
-          star%log_mass(star%nz) = target_log_mass_at_fit
-          star%logRho(star%nz) = star%logRho(i) + &
-               interior_interp_fraction*(star%logRho(i+1) - star%logRho(i))
-          star%luminosity_lsun(star%nz) = star%luminosity_lsun(i) + &
-               interior_interp_fraction*(star%luminosity_lsun(i+1) - &
-               star%luminosity_lsun(i))
-          star%logP(star%nz) = star%logP(i) + &
-               interior_interp_fraction*(star%logP(i+1) - star%logP(i))
-          star%logR(star%nz) = star%logR(i) + &
-               interior_interp_fraction*(star%logR(i+1) - star%logR(i))
-          star%logT(star%nz) = star%logT(i) + &
-               interior_interp_fraction*(star%logT(i+1) - &
-               star%logT(i))
+            s%nz = i + 1
+          s%senv = s%job%requested_envelope_mass
+          interior_interp_fraction = (target_log_mass_at_fit-s%log_mass(i))/ &
+               (s%log_mass(i+1) - s%log_mass(i))
+          s%log_mass(s%nz) = target_log_mass_at_fit
+          s%logRho(s%nz) = s%logRho(i) + &
+               interior_interp_fraction*(s%logRho(i+1) - s%logRho(i))
+          s%luminosity_lsun(s%nz) = s%luminosity_lsun(i) + &
+               interior_interp_fraction*(s%luminosity_lsun(i+1) - &
+               s%luminosity_lsun(i))
+          s%logP(s%nz) = s%logP(i) + &
+               interior_interp_fraction*(s%logP(i+1) - s%logP(i))
+          s%logR(s%nz) = s%logR(i) + &
+               interior_interp_fraction*(s%logR(i+1) - s%logR(i))
+          s%logT(s%nz) = s%logT(i) + &
+               interior_interp_fraction*(s%logT(i+1) - &
+               s%logT(i))
           do j = 1,num_species
-             star%xa(j,star%nz) = star%xa(j,i)
+             s%xa(j,s%nz) = s%xa(j,i)
           end do
-          star%xnew = star%xa(i_h1,star%nz)
-          star%znew = star%xa(i_metals,star%nz)
-          if (star%job%rotation_active) star%omega(star%nz) = star%omega(i) + &
-               interior_interp_fraction*(star%omega(i+1)-star%omega(i))
+          s%xnew = s%xa(i_h1,s%nz)
+          s%znew = s%xa(i_metals,s%nz)
+          if (s%job%rotation_active) s%omega(s%nz) = s%omega(i) + &
+               interior_interp_fraction*(s%omega(i+1)-s%omega(i))
 end subroutine interpolate_new_fitting_point
 
 ! ---------------------------------------------------------------
@@ -764,30 +766,30 @@ end subroutine interpolate_new_fitting_point
 ! compute_temperature_gradients, no rotation), which also give its
 ! density.
 subroutine set_new_last_shell_convection
-          if (star%convective_flag(i).and.star%convective_flag(i+1)) then
-             star%convective_flag(star%nz) = .true.
-          else if (.not.star%convective_flag(i).and. .not.star%convective_flag(i+1)) &
+          if (s%convective_flag(i).and.s%convective_flag(i+1)) then
+             s%convective_flag(s%nz) = .true.
+          else if (.not.s%convective_flag(i).and. .not.s%convective_flag(i+1)) &
                then
-             star%convective_flag(star%nz) = .false.
+             s%convective_flag(s%nz) = .false.
           else
              want_derivatives = .false.
              in_atmosphere = .true.
              saha_state = 0
-             hydrogen_fraction = star%xa(i_h1,star%nz)
-             metal_fraction = star%xa(i_metals,star%nz)
-             log10_pressure = star%logP(star%nz)
-             log10_temperature = star%logT(star%nz)
-             log10_density = star%logRho(star%nz)
-             shell_luminosity_lsun = star%luminosity_lsun(star%nz)
-             log10_radius = star%logR(star%nz)
-             log10_mass = star%log_mass(star%nz)
+             hydrogen_fraction = s%xa(i_h1,s%nz)
+             metal_fraction = s%xa(i_metals,s%nz)
+             log10_pressure = s%logP(s%nz)
+             log10_temperature = s%logT(s%nz)
+             log10_density = s%logRho(s%nz)
+             shell_luminosity_lsun = s%luminosity_lsun(s%nz)
+             log10_radius = s%logR(s%nz)
+             log10_mass = s%log_mass(s%nz)
              point_pressure_rotation_factor = 1.0d0
              point_temperature_rotation_factor = 1.0d0
                eos_res%log10_density = log10_density
                call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
                     want_derivatives, in_atmosphere, saha_state, &
-                    composition_at_zone=star%xa(:,star%nz), ierr=ierr)
+                    composition_at_zone=s%xa(:,s%nz), ierr=ierr)
                if (ierr /= 0) return
 ! The opacity is taken at the density eos_get returns.
                call kap_get(eos_res%log10_density, log10_temperature, &
@@ -800,15 +802,15 @@ subroutine set_new_last_shell_convection
                     dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
                     convective_velocity, want_derivatives, is_convective, &
                     point_pressure_rotation_factor, &
-                    point_temperature_rotation_factor, star%log_Teff, .false., jerr)
+                    point_temperature_rotation_factor, s%log_Teff, .false., jerr)
                if (jerr /= 0) then
                ! Pass the error on.
                   ierr = jerr
                   return
                end if
                log10_density = eos_res%log10_density
-               star%logRho(star%nz) = log10_density
-               star%convective_flag(star%nz) = is_convective
+               s%logRho(s%nz) = log10_density
+               s%convective_flag(s%nz) = is_convective
           endif
 end subroutine set_new_last_shell_convection
 
@@ -819,10 +821,10 @@ end subroutine set_new_last_shell_convection
 ! failure.
 subroutine integrate_envelope_to_new_fit
       use math_lib
-            old_last_shell = star%nz
+            old_last_shell = s%nz
 ! atm_get integrates with one fixed step for start, minimum and
 ! maximum: chi_grid_scale(ichi_dp_env_max) (legacy HPTTOL(8)).
-            env_steps = fixed_envint_step(star%ctrl%chi_grid_scale(ichi_dp_env_max))
+            env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
           save_boundary_flag = .false.
           print_flag = .true.
           saha_state = 0
@@ -831,30 +833,30 @@ subroutine integrate_envelope_to_new_fit
 !   log R = (log L/Lsun + log Lsun - 4 log Teff - log(4 pi) - log sigma)/2,
 ! with log Lsun = star%log10_solar_luminosity (starin's CLSUNL; the
 ! 2026-08 modernization had put Lsun in erg/s there, fixed 2026-10-12).
-          shell_luminosity_lsun = exp(ln10*star%log_L)
-          log10_radius = 0.5d0*(star%log_L + star%log10_solar_luminosity - &
-               4.0d0*star%log_Teff - c4pil - csigl)
-          log10_gravity = cgl + star%stotal - log10_radius - log10_radius
-          hydrogen_fraction = star%xa(i_h1,star%nz)
-          metal_fraction = star%xa(i_metals,star%nz)
+          shell_luminosity_lsun = exp(ln10*s%log_L)
+          log10_radius = 0.5d0*(s%log_L + s%log10_solar_luminosity - &
+               4.0d0*s%log_Teff - c4pil - csigl)
+          log10_gravity = cgl + s%stotal - log10_radius - log10_radius
+          hydrogen_fraction = s%xa(i_h1,s%nz)
+          metal_fraction = s%xa(i_metals,s%nz)
           point_pressure_rotation_factor = 1.0d0
           point_temperature_rotation_factor = 1.0d0
-          log10_pressure_limit = star%logP(star%nz)
+          log10_pressure_limit = s%logP(s%nz)
 ! The Debye-Hueckel correction takes the last shell's composition.
-            call eos_set_debye_huckel_composition(star%xa(:,star%nz))
+            call eos_set_debye_huckel_composition(s%xa(:,s%nz))
 ! Spotted stars (G. Somers 10/14): with spot_filling_factor f /= 0,
 ! spot_temp_contrast x /= 1 and envelope_cz_bottom_index = nz, the
 ! envelope is integrated at the Teff of the unspotted surface
 ! (ambient_log10_teff, legacy ATEFFL):
 !   Teff_amb^4 = Teff^4/(f x^4 + 1 - f).
-          if (star%envelope_cz_bottom_index.eq.star%nz.and.star%ctrl%spot_filling_factor.ne. &
-               0.0.and.star%ctrl%spot_temp_contrast.ne.1.0) then
-               spot_adjusted_log_teff = ambient_log10_teff(star%log_Teff)
+          if (s%envelope_cz_bottom_index.eq.s%nz.and.s%ctrl%spot_filling_factor.ne. &
+               0.0.and.s%ctrl%spot_temp_contrast.ne.1.0) then
+               spot_adjusted_log_teff = ambient_log10_teff(s, s%log_Teff)
           else
-             spot_adjusted_log_teff = star%log_Teff
+             spot_adjusted_log_teff = s%log_Teff
           endif
-          call atm_get(shell_luminosity_lsun,point_pressure_rotation_factor, &
-                 point_temperature_rotation_factor,log10_gravity,star%stotal, &
+          call atm_get(s, shell_luminosity_lsun,point_pressure_rotation_factor, &
+                 point_temperature_rotation_factor,log10_gravity,s%stotal, &
                  print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,saha_state, &
@@ -865,7 +867,7 @@ subroutine integrate_envelope_to_new_fit
              ierr = jerr_atm
              return
           end if
-          star%senv = star%job%requested_envelope_mass
+          s%senv = s%job%requested_envelope_mass
 end subroutine integrate_envelope_to_new_fit
 
 ! ---------------------------------------------------------------
@@ -876,7 +878,7 @@ end subroutine integrate_envelope_to_new_fit
 subroutine append_envelope_as_shells
       use math_lib
 ! Stop if the envelope points would overflow the json-point arrays.
-            if (star%nz+env_struct%num_env_points.ge.json) then
+            if (s%nz+env_struct%num_env_points.ge.json) then
                write(*,*) 'read_starting_model: grid overflow (json too small)'
                ierr = 1
                return
@@ -887,11 +889,11 @@ subroutine append_envelope_as_shells
 ! the interior continuously, and drop point 1. The convective flag moves
 ! with the rest (the F77 starin.f left it unshifted, one point off;
 ! fixed 2026-10).
-            pressure_offset = star%logP(star%nz) - env_struct%env_log10_pressure(1)
-            density_offset = star%logRho(star%nz) - env_struct%env_log10_density(1)
-            temperature_offset = star%logT(star%nz) - &
+            pressure_offset = s%logP(s%nz) - env_struct%env_log10_pressure(1)
+            density_offset = s%logRho(s%nz) - env_struct%env_log10_density(1)
+            temperature_offset = s%logT(s%nz) - &
                  env_struct%env_log10_temperature(1)
-            radius_offset = star%logR(star%nz) - env_struct%env_log10_radius(1)
+            radius_offset = s%logR(s%nz) - env_struct%env_log10_radius(1)
             do j = 1,env_struct%num_env_points - 1
                env_struct%env_log10_density(j) = env_struct%env_log10_density(j+1)+density_offset
                env_struct%env_log10_pressure(j) = env_struct%env_log10_pressure(j+1)+pressure_offset
@@ -908,9 +910,9 @@ subroutine append_envelope_as_shells
 ! and interpolate the last one onto it (append_envelope_points, shared
 ! with rebuild_envelope; here a point exactly at the fitting mass is
 ! kept as a shell).
-            call append_envelope_points(.true., num_species, star%xa, &
-                 star%logRho, star%luminosity_lsun, star%logP, star%logR, &
-                 star%log_mass, star%logT, star%convective_flag, star%nz, ierr)
+            call append_envelope_points(s, .true., num_species, s%xa, &
+                 s%logRho, s%luminosity_lsun, s%logP, s%logR, &
+                 s%log_mass, s%logT, s%convective_flag, s%nz, ierr)
             if (ierr /= 0) then
 ! A degenerate interpolation interval in mass is fatal; run_yrec
 ! returns the error.
@@ -920,19 +922,19 @@ subroutine append_envelope_as_shells
             end if
 ! The new shells rotate with the old last shell's omega, with the
 ! specific angular momentum of a thin shell, j = (2/3) omega r^2.
-            if (star%job%rotation_active) then
-               do j = old_last_shell+1,star%nz
-                  star%omega(j) = star%omega(old_last_shell)
-                  star%j_rot(j) = cc23*star%omega(old_last_shell)* &
-                       exp10((2.0d0*star%logR(j)))
+            if (s%job%rotation_active) then
+               do j = old_last_shell+1,s%nz
+                  s%omega(j) = s%omega(old_last_shell)
+                  s%j_rot(j) = cc23*s%omega(old_last_shell)* &
+                       exp10((2.0d0*s%logR(j)))
                end do
             endif
             write(*,910)
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
-      write(*,911)(j,star%logRho(j),star%luminosity_lsun(j),star%logP(j), &
-                   star%logR(j),star%log_mass(j)-star%stotal, &
-                   star%logT(j),star%convective_flag(j), j = old_last_shell,star%nz)
+      write(*,911)(j,s%logRho(j),s%luminosity_lsun(j),s%logP(j), &
+                   s%logR(j),s%log_mass(j)-s%stotal, &
+                   s%logT(j),s%convective_flag(j), j = old_last_shell,s%nz)
  911  format(i5,1p6e16.8,l2)
 end subroutine append_envelope_as_shells
 
@@ -941,8 +943,8 @@ end subroutine append_envelope_as_shells
 ! from the (possibly extended or refitted) log-mass grid.
 subroutine build_shell_masses
       use observables, only: shell_masses_from_log_mass
-      call shell_masses_from_log_mass(star%log_mass, star%log_total_mass, &
-           star%nz, star%m, star%dm)
+      call shell_masses_from_log_mass(s%log_mass, s%log_total_mass, &
+           s%nz, s%m, s%dm)
 end subroutine build_shell_masses
 
 ! ---------------------------------------------------------------
@@ -950,27 +952,27 @@ end subroutine build_shell_masses
 ! inertia, and the totals of angular momentum and rotational kinetic
 ! energy, echoed beside the totals held on entry.
 subroutine initialize_rotation_state
-      if (star%job%rotation_active) then
+      if (s%job%rotation_active) then
 ! Shape factors fp_rot and ft_rot, mean gravity and radius, and
 ! eta_squared, from omega.
-       call rotation_shape_factors(star%logRho,star%logR,star%log_mass,star%nz,star%omega, &
-            star%eta_squared,star%fp_rot,star%ft_rot, &
-            star%mean_gravity,star%mean_radius,ierr)
+       call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
+            s%eta_squared,s%fp_rot,s%ft_rot, &
+            s%mean_gravity,s%mean_radius,ierr)
        if (ierr /= 0) return
 ! Moment of inertia of each shell, i_rot (legacy HI).
-       call zone_moments_of_inertia(star%eta_squared,star%logR,star%log_mass,star%dm,1,star%nz, &
-            star%omega,star%mean_radius,star%i_rot,star%qiw)
+       call zone_moments_of_inertia(s%eta_squared,s%logR,s%log_mass,s%dm,1,s%nz, &
+            s%omega,s%mean_radius,s%i_rot,s%qiw)
 ! Per shell: angular momentum J_i = omega_i I_i, specific angular
 ! momentum j_rot = J_i/dm_i and kinetic energy (1/2) omega_i J_i;
 ! summed over the star.
        angular_momentum_sum = 0.0d0
        rotational_ke_sum = 0.0d0
-       do i = 1,star%nz
-          shell_angular_momentum = star%omega(i)*star%i_rot(i)
-          star%j_rot(i) = shell_angular_momentum/star%dm(i)
-          star%kinetic_energy_rot(i) = 0.5d0*star%omega(i)*shell_angular_momentum
+       do i = 1,s%nz
+          shell_angular_momentum = s%omega(i)*s%i_rot(i)
+          s%j_rot(i) = shell_angular_momentum/s%dm(i)
+          s%kinetic_energy_rot(i) = 0.5d0*s%omega(i)*shell_angular_momentum
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
-          rotational_ke_sum = rotational_ke_sum + star%kinetic_energy_rot(i)
+          rotational_ke_sum = rotational_ke_sum + s%kinetic_energy_rot(i)
        end do
        write(run_log_unit,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
@@ -995,16 +997,16 @@ subroutine update_surface_mixture
 ! The relative mass fractions w_i of the ten metals are the controls'
 ! mixture_weights_seed.
       do i=1, n_mix_species
-         species_mix_weights(i)=star%ctrl%mixture_weights_seed(i)
+         species_mix_weights(i)=s%ctrl%mixture_weights_seed(i)
       end do
 
 ! Surface composition: X_env = xnew, Z_env = znew, X(He3) of the last
 ! shell, Y_env = 1 - X_env - Z_env - X(He3).
-      star%envelope_hydrogen_fraction = star%xnew
-      star%envelope_metal_fraction = star%znew
-      star%envelope_helium_fraction = 1.0d0 - star%envelope_hydrogen_fraction - &
-           star%envelope_metal_fraction - star%xa(i_he3,star%nz)
-      star%envelope_he3_fraction = star%xa(i_he3,star%nz)
+      s%envelope_hydrogen_fraction = s%xnew
+      s%envelope_metal_fraction = s%znew
+      s%envelope_helium_fraction = 1.0d0 - s%envelope_hydrogen_fraction - &
+           s%envelope_metal_fraction - s%xa(i_he3,s%nz)
+      s%envelope_he3_fraction = s%xa(i_he3,s%nz)
 ! S = sum of w_i over the ten metals (all but H and He).
       mixture_weight_sum = species_mix_weights(ix_na)+species_mix_weights(ix_al)+ &
            species_mix_weights(ix_mg)+species_mix_weights(ix_fe)+ &
@@ -1012,45 +1014,45 @@ subroutine update_surface_mixture
            species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
            species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
 ! The part of Z not in C, N and O: zenvm = Z_env (S - w_C - w_O - w_N)/S.
-      star%zenvm = star%envelope_metal_fraction*(mixture_weight_sum - &
+      s%zenvm = s%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
-      call set_convection_envelope_metals(star%zenvm)
+      call set_convection_envelope_metals(s%zenvm)
 ! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
 ! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
 ! fraction too. Then w_i becomes X_i/A_i, and
 !   amuenv = sum_i X_i/A_i,
 ! the inverse mean atomic weight 1/mu_ion of the whole surface mixture.
-      mixture_scale_factor = star%envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(ix_h) = star%envelope_hydrogen_fraction/ &
+      mixture_scale_factor = s%envelope_metal_fraction/mixture_weight_sum
+      species_mix_weights(ix_h) = s%envelope_hydrogen_fraction/ &
            mixture_scale_factor
-      species_mix_weights(ix_he) = (1.0d0-star%envelope_hydrogen_fraction- &
-           star%envelope_metal_fraction)/mixture_scale_factor
+      species_mix_weights(ix_he) = (1.0d0-s%envelope_hydrogen_fraction- &
+           s%envelope_metal_fraction)/mixture_scale_factor
       mixture_weight_sum = 0.0d0
       do i = 1,n_mix_species
        species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
       end do
-      star%amuenv = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/star%amuenv
+      s%amuenv = mixture_weight_sum
+      mixture_scale_factor = 1.0d0/s%amuenv
 ! Number fractions of the elements, fxenv(i) = (X_i/A_i)/amuenv, which
 ! the EOS needs (DBG 1/96): compute_blended_eos and compute_saha_eos
 ! (legacy EQSAHA).
       do i = 1,n_mix_species
-       star%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
+       s%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
       end do
 ! Pass the new mixture to the EOS.
-      call eos_set_mixture(star%envelope_hydrogen_fraction, &
-           star%envelope_metal_fraction, star%amuenv, &
-           star%fxenv)
+      call eos_set_mixture(s%envelope_hydrogen_fraction, &
+           s%envelope_metal_fraction, s%amuenv, &
+           s%fxenv)
       end if
 ! Regenerate the surface opacity tables for the surface X (DBG 11/95),
 ! and the SCV envelope EOS table when SCV is on.
-      call kap_update_surface_tables(star%envelope_hydrogen_fraction, ierr=ierr)
+      call kap_update_surface_tables(s%envelope_hydrogen_fraction, ierr=ierr)
       if (ierr /= 0) return
-      call eos_update_envelope_tables(star%envelope_hydrogen_fraction, &
-           star%envelope_metal_fraction)
+      call eos_update_envelope_tables(s%envelope_hydrogen_fraction, &
+           s%envelope_metal_fraction)
 
 end subroutine update_surface_mixture
 
@@ -1060,17 +1062,17 @@ end subroutine update_surface_mixture
 ! limits the change from model to model; with them Teff and the surface
 ! L, and, when rotating, omega into old_omega.
 subroutine snapshot_step_start
-      do i = 1,star%nz
-         star%logP_start(i) = star%logP(i)
-         star%logT_start(i) = star%logT(i)
-         star%logR_start(i) = star%logR(i)
-         star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
+      do i = 1,s%nz
+         s%logP_start(i) = s%logP(i)
+         s%logT_start(i) = s%logT(i)
+         s%logR_start(i) = s%logR(i)
+         s%luminosity_lsun_start(i) = s%luminosity_lsun(i)
       end do
-      star%log_Teff_start = star%log_Teff
-      star%surface_luminosity_lsun_start = star%luminosity_lsun(star%nz)
-      if (star%job%rotation_active) then
-         do i = 1,star%nz
-          star%old_omega(i) = star%omega(i)
+      s%log_Teff_start = s%log_Teff
+      s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
+      if (s%job%rotation_active) then
+         do i = 1,s%nz
+          s%old_omega(i) = s%omega(i)
          end do
       endif
 end subroutine snapshot_step_start

@@ -5,6 +5,7 @@
 ! opacity, the temperature gradients, mu, and the viscosity, for the
 ! rotation code and the convection-zone edges.
 module shell_physics
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: compute_shell_physics
@@ -25,19 +26,20 @@ contains
 ! convective velocity; then viscos gives the kinematic viscosity and the
 ! thermal diffusivity. log_luminosity holds L/Lsun, not its log (the
 ! callers pass star%luminosity_lsun).
-subroutine compute_shell_physics(fp, ft, composition, log_density, log_luminosity, &
+subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
       use viscosity, only: viscos
       use convection_lib, only: compute_temperature_gradients
 
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
+      use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use physical_constants
       use eos_lib
       use kap_lib
       use numerics_lib
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: fp(json), ft(json)
       double precision, intent(in) :: composition(15,json), log_density(json)
@@ -112,23 +114,23 @@ subroutine compute_shell_physics(fp, ft, composition, log_density, log_luminosit
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
               log_teff, &
-              im >= star%iov1 .and. im <= star%iov2, ierr)
+              im >= s%iov1 .and. im <= s%iov2, ierr)
          if (ierr /= 0) return
          convective_flag(im) = is_convective
-         star%gradr(im) = radiative_gradient
-         star%gradT(im) = actual_gradient
-         star%grada(im) = eos_res%adiabatic_gradient
+         s%gradr(im) = radiative_gradient
+         s%gradT(im) = actual_gradient
+         s%grada(im) = eos_res%adiabatic_gradient
 ! The mean molecular weight of a fully ionized gas,
 ! mu = mu_ion mu_e / (mu_ion + mu_e) (amu2 = mu_ion, emu2 = mu_e):
 !   1/mu_ion = amuenv + sum_k (X_k - X_k,env)/A_k over H, He4, Z (as C12)
 !              and He3, where star%amuenv is 1/mu_ion of the surface
 !              mixture and X_k,env its abundances;
 !   1/mu_e = X/A_H + 2 (X_He3/A_He3 + Y/A_He4) + Z/2.
-         dfx1 = composition(i_h1,im) - star%envelope_hydrogen_fraction
-         dfx2 = composition(i_he4,im) - star%envelope_helium_fraction
-         dfx3 = composition(i_metals,im) - star%envelope_metal_fraction
-         dfx4 = composition(i_he3,im) - star%envelope_he3_fraction
-         temp_scratch = star%amuenv + dfx1/atomic_weight(i_h1) + &
+         dfx1 = composition(i_h1,im) - s%envelope_hydrogen_fraction
+         dfx2 = composition(i_he4,im) - s%envelope_helium_fraction
+         dfx3 = composition(i_metals,im) - s%envelope_metal_fraction
+         dfx4 = composition(i_he3,im) - s%envelope_he3_fraction
+         temp_scratch = s%amuenv + dfx1/atomic_weight(i_h1) + &
               dfx2/atomic_weight(i_he4) + dfx3/atomic_weight(i_metals) + &
               dfx4/atomic_weight(i_he3)
          amu2 = 1.0d0/temp_scratch
@@ -136,11 +138,11 @@ subroutine compute_shell_physics(fp, ft, composition, log_density, log_luminosit
               2.0d0*(composition(i_he3,im)/atomic_weight(i_he3) + &
               composition(i_he4,im)/atomic_weight(i_he4)) + 0.5d0*composition(i_metals,im)
          emu2 = 1.0d0/temp_scratch
-         star%mu(im) = amu2*emu2/(amu2+emu2)
-         star%opacity_zone(im) = kap_res(i_kap)
-         star%cp(im) = eos_res%specific_heat_cp
-         star%qdt(im) = eos_res%dlnrho_dlnt
-         star%conv_vel(im) = convective_velocity
+         s%mu(im) = amu2*emu2/(amu2+emu2)
+         s%opacity_zone(im) = kap_res(i_kap)
+         s%cp(im) = eos_res%specific_heat_cp
+         s%qdt(im) = eos_res%dlnrho_dlnt
+         s%conv_vel(im) = convective_velocity
       end do
 ! The thermal diffusivity and kinematic viscosity.
       call viscos(composition, log_density, log_temperature, num_zones)
