@@ -32,8 +32,9 @@ module profile_output
 contains
 
 ! ---------------------------------------------------------------
-subroutine profile_output_init(out_dir, ierr)
-      use star_info_lib, only: star
+subroutine profile_output_init(s, out_dir, ierr)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       character(len=*), intent(in) :: out_dir
       integer, intent(out) :: ierr
       character(len=24) :: prof_names(n_prof_cols)
@@ -41,7 +42,7 @@ subroutine profile_output_init(out_dir, ierr)
       prof_out_dir = out_dir
       ierr = 0
       call profile_column_names(prof_names)
-      call parse_columns(star%ctrl%profile_columns_file, prof_names, &
+      call parse_columns(s%ctrl%profile_columns_file, prof_names, &
            n_prof_cols, prof_default_names, n_prof_default, &
            prof_sel, prof_nsel, 'profile', ierr)
 end subroutine profile_output_init
@@ -113,10 +114,11 @@ subroutine profile_column_names(names)
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------
-subroutine write_profile(iprof, stitched, ierr)
-      use star_info_lib, only: star
+subroutine write_profile(s, iprof, stitched, ierr)
+      use star_info_lib, only: star_info
       use stitched_model_state, only: stitched_model_record
       use io_units, only: check_io
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: iprof
 ! stitched: the stitched model whose columns are written.
       type(stitched_model_record), intent(in) :: stitched
@@ -129,7 +131,7 @@ subroutine write_profile(iprof, stitched, ierr)
 
       call profile_column_names(names)
       write(numstr, '(i0)') iprof
-      path = trim(prof_out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+      path = trim(prof_out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', path, ierr)
       if (ierr /= 0) return
@@ -143,10 +145,10 @@ subroutine write_profile(iprof, stitched, ierr)
 ! initial_mass/initial_z are the kind card's starting values
 ! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
 ! time_step are in years, matching MESA's profile header.
-      write(u, '(2(1x,i40),6(1x,es40.16e3))') star%model_number, &
-           stitched%n_ext, star%pulsation_mass_msun, &
-           star%job%initial_envelope_z, star%age_gyr*1.0d9, &
-           star%timestep_yr, star%log_Teff, star%star_mass
+      write(u, '(2(1x,i40),6(1x,es40.16e3))') s%model_number, &
+           stitched%n_ext, s%pulsation_mass_msun, &
+           s%job%initial_envelope_z, s%age_gyr*1.0d9, &
+           s%timestep_yr, s%log_Teff, s%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
       write(u, '(999(1x,a40))') &

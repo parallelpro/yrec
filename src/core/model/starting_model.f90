@@ -298,7 +298,7 @@ subroutine read_starting_model_file
       if (format_tag .eq. 'YMOD') then
          write(run_log_unit,11)
  11      format(1x,'loading starting model (YREC .mod format)')
-         call read_mod_model(iread, timestep_yr, mixing_length0, &
+         call read_mod_model(s, iread, timestep_yr, mixing_length0, &
               use_extended_composition0, rotation_active0, jerr)
          if (jerr /= 0) then
             ierr = jerr
@@ -311,7 +311,7 @@ subroutine read_starting_model_file
 ! file's own header values (mixing length, timestep, flags, physics
 ! codes), which check_model_against_controls compares with the
 ! controls.
-         call read_yrec7(mixing_length0,timestep_yr,triangle_orientation,iread, &
+         call read_yrec7(s, mixing_length0,timestep_yr,triangle_orientation,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0, &
               use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
@@ -327,7 +327,7 @@ subroutine read_starting_model_file
          write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
 ! Same header values as read_yrec7 (no ierr).
-         call read_model2(mixing_length0,timestep_yr,triangle_orientation,iread, &
+         call read_model2(s, mixing_length0,timestep_yr,triangle_orientation,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0, &
               use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &

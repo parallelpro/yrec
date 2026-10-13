@@ -9,8 +9,9 @@
 ! live in legacy_controls (the namelist variables and their defaults),
 ! run_files, derived_controls and run_cards. Errors return via ierr.
 module controls_reader
+      use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
-      use star_info_lib, only: star, control_nml_override, physics_nml_override
+      use star_info_lib, only: control_nml_override, physics_nml_override
       use controls_sync, only: store_controls_to_star
       use physical_constants
       use io_units
@@ -24,21 +25,25 @@ module controls_reader
 
 contains
 
-subroutine read_controls(ierr)
+subroutine read_controls(s, ierr)
+      use star_info_lib, only: star_info
 
-      use star_info_lib, only: star, controls_state
+      use star_info_lib, only: controls_state
       use controls_sync, only: seed_controls_buffer, &
            store_controls_to_star
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(out) :: ierr
 
       ierr = 0
-      star%ctrl = controls_state()
+      s%ctrl = controls_state()
+      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call seed_controls_buffer
-      call read_input(ierr)
+      call read_input(s, ierr)
       if (ierr /= 0) return
       call store_controls_to_star
+      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
 
       return
 end subroutine read_controls
@@ -51,13 +56,15 @@ end subroutine read_controls
 ! the two files named on the command line). Then copies the values to
 ! their canonical names, opens the run's files, derives the remaining
 ! controls and turns the kind cards into the run plan.
-subroutine read_input(ierr)
+subroutine read_input(s, ierr)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
       ierr = 0
       call set_legacy_defaults
       call assign_unit_numbers
-      call load_table_paths
+      call load_table_paths(s)
 
       print *,''
       print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
@@ -80,17 +87,18 @@ subroutine read_input(ierr)
       print *, ' '
       call read_namelist_files(ierr)
       if (ierr /= 0) return
-      call adopt_canonical_names
-      call map_user_inputs(star)
+      call adopt_canonical_names(s)
+      call map_user_inputs(s)
 ! open_run_files' output_init_mesa reads its controls from star%ctrl
       call store_controls_to_star
+      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call expand_paths
-      call open_run_files(ierr)
-      call store_table_paths
+      call open_run_files(s, ierr)
+      call store_table_paths(s)
       if (ierr /= 0) return
-      call derive_controls(ierr)
+      call derive_controls(s, ierr)
       if (ierr /= 0) return
-      call interpret_kind_cards
+      call interpret_kind_cards(s)
 
 end subroutine read_input
 
@@ -99,59 +107,63 @@ end subroutine read_input
 ! The table paths between star%job and their namelist variables. The
 ! load comes first, so a deck that names no table keeps the previous
 ! read's path; the store follows the read and the path expansion.
-subroutine load_table_paths
-      falex06 = star%job%alex06_table_path
-      fallard = star%job%allard_table_path
-      fatm = star%job%atm_table_path
-      ffermi = star%job%fermi_table_path
-      fkur = star%job%kurucz_table_path
-      fkur2 = star%job%kurucz_table2_path
-      flaol = star%job%laol_table_path
-      flaol2 = star%job%laol_table2_path
-      fliv95 = star%job%opal95_table_path
-      flldat = star%job%opal92_table_path
-      fmhd1 = star%job%zams_a_table_path
-      fmhd2 = star%job%zams_b_table_path
-      fmhd3 = star%job%zams_c_table_path
-      fmhd4 = star%job%centre1_table_path
-      fmhd5 = star%job%centre2_table_path
-      fmhd6 = star%job%centre3_table_path
-      fmhd7 = star%job%centre4_table_path
-      fmhd8 = star%job%centre5_table_path
-      fopal2 = star%job%opal92_table2_path
-      fpurez = star%job%pure_z_table_path
-      fscvh = star%job%scv_h_table_path
-      fscvhe = star%job%scv_he_table_path
-      fscvz = star%job%scv_z_table_path
-      opecalex = star%job%alex95_table_paths
+subroutine load_table_paths(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
+      falex06 = s%job%alex06_table_path
+      fallard = s%job%allard_table_path
+      fatm = s%job%atm_table_path
+      ffermi = s%job%fermi_table_path
+      fkur = s%job%kurucz_table_path
+      fkur2 = s%job%kurucz_table2_path
+      flaol = s%job%laol_table_path
+      flaol2 = s%job%laol_table2_path
+      fliv95 = s%job%opal95_table_path
+      flldat = s%job%opal92_table_path
+      fmhd1 = s%job%zams_a_table_path
+      fmhd2 = s%job%zams_b_table_path
+      fmhd3 = s%job%zams_c_table_path
+      fmhd4 = s%job%centre1_table_path
+      fmhd5 = s%job%centre2_table_path
+      fmhd6 = s%job%centre3_table_path
+      fmhd7 = s%job%centre4_table_path
+      fmhd8 = s%job%centre5_table_path
+      fopal2 = s%job%opal92_table2_path
+      fpurez = s%job%pure_z_table_path
+      fscvh = s%job%scv_h_table_path
+      fscvhe = s%job%scv_he_table_path
+      fscvz = s%job%scv_z_table_path
+      opecalex = s%job%alex95_table_paths
 end subroutine load_table_paths
 
-subroutine store_table_paths
-      star%job%alex06_table_path = falex06
-      star%job%allard_table_path = fallard
-      star%job%atm_table_path = fatm
-      star%job%fermi_table_path = ffermi
-      star%job%kurucz_table_path = fkur
-      star%job%kurucz_table2_path = fkur2
-      star%job%laol_table_path = flaol
-      star%job%laol_table2_path = flaol2
-      star%job%opal95_table_path = fliv95
-      star%job%opal92_table_path = flldat
-      star%job%zams_a_table_path = fmhd1
-      star%job%zams_b_table_path = fmhd2
-      star%job%zams_c_table_path = fmhd3
-      star%job%centre1_table_path = fmhd4
-      star%job%centre2_table_path = fmhd5
-      star%job%centre3_table_path = fmhd6
-      star%job%centre4_table_path = fmhd7
-      star%job%centre5_table_path = fmhd8
-      star%job%opal92_table2_path = fopal2
-      star%job%pure_z_table_path = fpurez
-      star%job%scv_h_table_path = fscvh
-      star%job%scv_he_table_path = fscvhe
-      star%job%scv_z_table_path = fscvz
-      star%job%alex95_table_paths = opecalex
-      star%job%conductive_table_path = fcondopacp
+subroutine store_table_paths(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
+      s%job%alex06_table_path = falex06
+      s%job%allard_table_path = fallard
+      s%job%atm_table_path = fatm
+      s%job%fermi_table_path = ffermi
+      s%job%kurucz_table_path = fkur
+      s%job%kurucz_table2_path = fkur2
+      s%job%laol_table_path = flaol
+      s%job%laol_table2_path = flaol2
+      s%job%opal95_table_path = fliv95
+      s%job%opal92_table_path = flldat
+      s%job%zams_a_table_path = fmhd1
+      s%job%zams_b_table_path = fmhd2
+      s%job%zams_c_table_path = fmhd3
+      s%job%centre1_table_path = fmhd4
+      s%job%centre2_table_path = fmhd5
+      s%job%centre3_table_path = fmhd6
+      s%job%centre4_table_path = fmhd7
+      s%job%centre5_table_path = fmhd8
+      s%job%opal92_table2_path = fopal2
+      s%job%pure_z_table_path = fpurez
+      s%job%scv_h_table_path = fscvh
+      s%job%scv_he_table_path = fscvhe
+      s%job%scv_z_table_path = fscvz
+      s%job%alex95_table_paths = opecalex
+      s%job%conductive_table_path = fcondopacp
 end subroutine store_table_paths
 
 ! ---------------------------------------------------------------
@@ -234,7 +246,9 @@ end subroutine read_inlist
 ! Copy each control read under a legacy name into its canonical home
 ! (controls_buffer, integration_parameters or star). map_user_inputs,
 ! which runs next, reads use_new_nuclear_rates and the s0_* values.
-subroutine adopt_canonical_names
+subroutine adopt_canonical_names(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       tolerance_fraction = stolr0
       max_stage_index = imax
       extrap_order = nuse
@@ -276,8 +290,8 @@ subroutine adopt_canonical_names
       use_mass_accretion = lmdot
       use_itoh_neutrino_loss = lnulos1
       calc_envelope_flag = lcalcenv
-      star%solar_luminosity_cgs = clsun
-      star%solar_radius_cgs = crsun
+      s%solar_luminosity_cgs = clsun
+      s%solar_radius_cgs = crsun
       use_extended_composition = lexcom
       spot_filling_factor = spotf
       spot_temp_contrast = spotx
@@ -461,10 +475,10 @@ subroutine adopt_canonical_names
 ! lnewnuc = .false. takes the cross sections from sstandard (ratios to
 ! Bahcall & Ulrich 1988); map_user_inputs sets them from the s0_* inputs
 ! otherwise. An inlist gets the default ratios.
-      if (.not. lnewnuc) star%cross_section_scale = sstandard
+      if (.not. lnewnuc) s%cross_section_scale = sstandard
 ! the atmosphere choice as read; the run may change star%job%atm_choice
-      star%atm_choice_initial = kttau
-      star%use_ttau_relation = .false.
+      s%atm_choice_initial = kttau
+      s%use_ttau_relation = .false.
 end subroutine adopt_canonical_names
 
 ! Does this namelist file contain the group &<gname> (in any case, and

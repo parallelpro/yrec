@@ -32,7 +32,7 @@ program test_controls
          physics_nml_override = deck2
 ! read_controls writes its banner to standard output; the dump goes to
 ! unit 6 after a marker so the two can be told apart
-         call read_controls(ierr)
+         call read_controls(star, ierr)
          write(u,'(a)') "# controls"
          write(u,'(a,i0)') "ierr = ", ierr
       else

@@ -38,10 +38,11 @@ module yrec_output
 contains
 
 ! ---------------------------------------------------------------
-subroutine output_init_mesa(log_output_file, ierr)
-      use star_info_lib, only: star
+subroutine output_init_mesa(s, log_output_file, ierr)
+      use star_info_lib, only: star_info
       use io_units
       use run_log, only: log_reset
+      type(star_info), intent(inout) :: s
       character(len=*), intent(in) :: log_output_file
       integer, intent(out) :: ierr
       character(len=256) :: log_path, msg
@@ -76,14 +77,14 @@ subroutine output_init_mesa(log_output_file, ierr)
       end if
       profile_counter = 0
 
-      call history_output_init(out_dir, ierr)
+      call history_output_init(s, out_dir, ierr)
       if (ierr /= 0) return
-      call profile_output_init(out_dir, ierr)
+      call profile_output_init(s, out_dir, ierr)
       if (ierr /= 0) return
 ! 2026 io-writer stops -> ierr: fail GSM-without-HDF5 at config time
 ! (the stub's stop at first write remains only as a last resort).
-      if (star%ctrl%write_pulse_flag .and. &
-          trim(star%job%pulse_format) == 'GSM') then
+      if (s%ctrl%write_pulse_flag .and. &
+          trim(s%job%pulse_format) == 'GSM') then
          if (.not. gsm_supported()) then
             write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
             write(*,*) '  make clean && make USE_HDF5=1'
@@ -96,15 +97,17 @@ subroutine output_init_mesa(log_output_file, ierr)
 end subroutine output_init_mesa
 
 ! ---------------------------------------------------------------
-subroutine output_write_model(ierr)
+subroutine output_write_model(s, ierr)
+      use star_info_lib, only: star_info
 ! 2026 use_legacy_output retirement: ONE output path for every run.
 ! Per converged model: the run-log progress line, the isochrone
 ! record (if enabled), profiles/pulse files when due, the history
 ! row, the .mod restart model, and the interval GYRE pulse. The
 ! remnants of the deleted write_legacy_output (wrtout) live here.
-      use star_info_lib, only: star, i_he4
+      use star_info_lib, only: i_he4
       use io_units
       use run_log, only: log_model_line
+      type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
       integer :: iprof
       double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
@@ -113,23 +116,23 @@ subroutine output_write_model(ierr)
       character(len=320) :: gyre_path
 
 ! the compact progress line (throttled by terminal_interval)
-      call log_model_line()
+      call log_model_line(s)
 
 ! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, He-core mass (g)
-      if (star%ctrl%isochrone_output_active) then
-        age_yr = star%age_gyr*1.0D9
-        luminosity_erg_s = exp10(star%log_L)*star%solar_luminosity_cgs
-        radius_cm = exp10(star%log_R_surface)*star%solar_radius_cgs
-        teff_k = exp10(star%log_Teff)
-        gravity_cgs = exp10(star%log_g_surface)
-        ycenter_local = star%xa(i_he4,1)
-        if (star%has_h_shell) then
-           he_core_mass_grams = star%m(star%h_shell_zone_begin-1)
+      if (s%ctrl%isochrone_output_active) then
+        age_yr = s%age_gyr*1.0D9
+        luminosity_erg_s = exp10(s%log_L)*s%solar_luminosity_cgs
+        radius_cm = exp10(s%log_R_surface)*s%solar_radius_cgs
+        teff_k = exp10(s%log_Teff)
+        gravity_cgs = exp10(s%log_g_surface)
+        ycenter_local = s%xa(i_he4,1)
+        if (s%has_h_shell) then
+           he_core_mass_grams = s%m(s%h_shell_zone_begin-1)
         else
            he_core_mass_grams = 0.0D0
         end if
-        write(star%ctrl%isochrone_file_unit,1005) star%model_number, &
+        write(s%ctrl%isochrone_file_unit,1005) s%model_number, &
              age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
              ycenter_local,he_core_mass_grams
  1005   format(1X, I5, 1P7E17.8)
@@ -144,29 +147,29 @@ subroutine output_write_model(ierr)
 ! compute_observables); this block only decides whether THIS model
 ! gets profile/pulse files, then numbers and writes.
       iprof = 0
-      if (profile_write_due()) then
+      if (profile_write_due(s)) then
          profile_counter = profile_counter + 1
          iprof = profile_counter
-         if (star%ctrl%write_profile_flag) call write_profile(iprof, star%stitched, ierr)
+         if (s%ctrl%write_profile_flag) call write_profile(s, iprof, s%stitched, ierr)
          if (ierr /= 0) return
-         if (star%ctrl%write_pulse_flag) call write_pulse(iprof, star%stitched, ierr)
+         if (s%ctrl%write_pulse_flag) call write_pulse(s, iprof, s%stitched, ierr)
          if (ierr /= 0) return
       end if
-      call write_history_row(iprof, ierr)
+      call write_history_row(s, iprof, ierr)
       if (ierr /= 0) return
 ! The .mod model file: restart + in-run divergence recovery.
-      call write_mod_model(last_model_unit)
+      call write_mod_model(s, last_model_unit)
 
 ! interval GYRE pulse output (independent of write_pulse_flag);
 ! model-numbered (zero-padded), same prefix and directory as the
 ! counter-numbered profile/pulse stream
-      if (star%ctrl%pulse_gyre_interval.gt.0 .and. &
-          mod(star%model_number,star%ctrl%pulse_gyre_interval).eq.0) then
-         write(gyre_suffix,'(I5.5)') star%model_number
-         gyre_path = trim(out_dir)//trim(star%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
-         call write_gyre_pulse(star%nz,star%m, &
-              star%logRho,star%luminosity_lsun,star%logP,star%logR, &
-              star%logT,star%omega, gyre_path, ierr)
+      if (s%ctrl%pulse_gyre_interval.gt.0 .and. &
+          mod(s%model_number,s%ctrl%pulse_gyre_interval).eq.0) then
+         write(gyre_suffix,'(I5.5)') s%model_number
+         gyre_path = trim(out_dir)//trim(s%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
+         call write_gyre_pulse(s, s%nz,s%m, &
+              s%logRho,s%luminosity_lsun,s%logP,s%logR, &
+              s%logT,s%omega, gyre_path, ierr)
       endif
 end subroutine output_write_model
 
@@ -174,13 +177,14 @@ end subroutine output_write_model
 ! Is a profile/pulse write due this model? The historical trigger:
 ! MESA-style output, a positive cadence, at least one product
 ! enabled, and the model number on the cadence.
-logical function profile_write_due()
-      use star_info_lib, only: star
+logical function profile_write_due(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       profile_write_due = .false.
-      if (star%ctrl%profile_interval <= 0) return
-      if (.not. (star%ctrl%write_profile_flag .or. &
-           star%ctrl%write_pulse_flag)) return
-      profile_write_due = mod(star%model_number, star%ctrl%profile_interval) == 0
+      if (s%ctrl%profile_interval <= 0) return
+      if (.not. (s%ctrl%write_profile_flag .or. &
+           s%ctrl%write_pulse_flag)) return
+      profile_write_due = mod(s%model_number, s%ctrl%profile_interval) == 0
 end function profile_write_due
 
 ! Pulse file alongside profile <iprof>: profile<N>.data.GYRE /
@@ -188,10 +192,11 @@ end function profile_write_due
 ! extended model. Global M_star/R_star/L_star refer to the
 ! photosphere (atmosphere points extend above R_star, as in MESA's
 ! add_atmosphere).
-subroutine write_pulse(iprof, stitched, ierr)
+subroutine write_pulse(s, iprof, stitched, ierr)
+      use star_info_lib, only: star_info
       use math_lib
-      use star_info_lib, only: star
       use stitched_model_state, only: stitched_model_record
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: iprof
 ! stitched: the stitched model whose pulse columns are written.
       type(stitched_model_record), intent(in) :: stitched
@@ -200,23 +205,23 @@ subroutine write_pulse(iprof, stitched, ierr)
       character(len=12) :: numstr
       double precision :: mstar_g, rstar_cm, lstar_cgs
 
-      mstar_g = exp(ln10*star%log_total_mass)
-      rstar_cm = exp(ln10*(star%log_R_surface + star%log10_solar_radius))
-      lstar_cgs = exp(ln10*star%log_L)*star%solar_luminosity_cgs
+      mstar_g = exp(ln10*s%log_total_mass)
+      rstar_cm = exp(ln10*(s%log_R_surface + s%log10_solar_radius))
+      lstar_cgs = exp(ln10*s%log_L)*s%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
-      if (star%job%pulse_format(1:5) == 'FGONG' .or. &
-          star%job%pulse_format(1:5) == 'fgong') then
-         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
-         call write_fgong_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
+      if (s%job%pulse_format(1:5) == 'FGONG' .or. &
+          s%job%pulse_format(1:5) == 'fgong') then
+         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
+         call write_fgong_pulse(s, stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
-      else if (star%job%pulse_format(1:3) == 'GSM' .or. &
-               star%job%pulse_format(1:3) == 'gsm') then
-         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
+      else if (s%job%pulse_format(1:3) == 'GSM' .or. &
+               s%job%pulse_format(1:3) == 'gsm') then
+         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
          call write_gsm_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       else
-         path = trim(out_dir) // trim(star%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
+         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
          call write_gyre_ext(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       end if
@@ -225,21 +230,22 @@ end subroutine write_pulse
 ! ---------------------------------------------------------------
 ! At the start of each run card: the card's line on the terminal, and
 ! the isochrone file's header.
-subroutine output_run_header(total_mass_msun)
+subroutine output_run_header(s, total_mass_msun)
+      use star_info_lib, only: star_info
       use io_units
-      use star_info_lib, only: star
+      type(star_info), intent(inout) :: s
       double precision, intent(in) :: total_mass_msun
       double precision :: total_mass_grams
 
-      if (star%job%rescale_kind(star%job%nk) .eq. 1) then
-         write(terminal_unit, 47) star%job%nk, &
-              star%mixing_length_alpha, star%job%num_models(star%job%nk)
-      else if (star%job%rescale_kind(star%job%nk) .eq. 2) then
-         write(terminal_unit, 48) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
-              star%mixing_length_alpha, star%job%num_models(star%job%nk)
-      else if (star%job%rescale_kind(star%job%nk) .eq. 3) then
-         write(terminal_unit, 49) star%job%nk, star%job%initial_envelope_x, star%job%initial_envelope_z, &
-              star%mixing_length_alpha, star%job%num_models(star%job%nk)
+      if (s%job%rescale_kind(s%job%nk) .eq. 1) then
+         write(terminal_unit, 47) s%job%nk, &
+              s%mixing_length_alpha, s%job%num_models(s%job%nk)
+      else if (s%job%rescale_kind(s%job%nk) .eq. 2) then
+         write(terminal_unit, 48) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
+              s%mixing_length_alpha, s%job%num_models(s%job%nk)
+      else if (s%job%rescale_kind(s%job%nk) .eq. 3) then
+         write(terminal_unit, 49) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
+              s%mixing_length_alpha, s%job%num_models(s%job%nk)
       end if
   47  format(/,1x,'card',i3,' (evolve):  mixing length =',f8.6, &
              '  models =',i6)
@@ -248,10 +254,10 @@ subroutine output_run_header(total_mass_msun)
   49  format(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6, &
              '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
 
-      if (star%ctrl%isochrone_output_active) then
-         total_mass_grams = total_mass_msun*star%solar_mass_cgs
-         write(star%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
-              star%job%initial_envelope_x,star%job%initial_envelope_z,star%mixing_length_alpha,star%solar_bolometric_magnitude
+      if (s%ctrl%isochrone_output_active) then
+         total_mass_grams = total_mass_msun*s%solar_mass_cgs
+         write(s%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
+              s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,s%solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 

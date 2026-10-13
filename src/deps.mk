@@ -376,9 +376,9 @@ io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
 io/profile_output.o: io_units.mod output_columns.mod star_info_lib.mod stitched_model.mod stitched_model_state.mod
 io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-io/read_controls.o: controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod physical_constants.mod run_cards.mod run_files.mod star_info_lib.mod user_inputs.mod
+io/read_controls.o: controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod physical_constants.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod user_inputs.mod
 io/run_cards.o: eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
-io/run_files.o: io_units.mod legacy_controls.mod yrec_output.mod
+io/run_files.o: io_units.mod legacy_controls.mod star_info_lib.mod yrec_output.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_reader.mod integration_parameters.mod io_units.mod star_info_lib.mod
 io/yrec_output.o: history_output.mod io_units.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_log.mod star_info_lib.mod stitched_model_state.mod

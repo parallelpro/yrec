@@ -104,7 +104,7 @@ subroutine run_yrec(ierr)
 ! computed.
       star%punch_pending_flag = .false.
 ! Read the controls into star%ctrl and star%job.
-      call read_controls(ierr)
+      call read_controls(star, ierr)
       if (ierr /= 0) return
 ! A second opacity-table set at a different Z is needed under the Z
 ! ramp or with Z diffusion; the kap table loaders read this flag from
@@ -114,7 +114,7 @@ subroutine run_yrec(ierr)
       if (ierr /= 0) return
 ! Warn (terminal only) about control combinations that are silently
 ! inert or cancel each other.
-      call warn_inconsistent_controls
+      call warn_inconsistent_controls(star)
 
       do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
 ! Per-run setup: this run's Monte-Carlo parameters, then the network
@@ -194,7 +194,7 @@ subroutine run_yrec(ierr)
 ! End-of-run summary: why the run ended and the final model; the wall
 ! clock goes to the terminal only.
       call system_clock(clock_now)
-      call log_run_summary(dble(clock_now-clock_start)/dble(clock_rate))
+      call log_run_summary(star, dble(clock_now-clock_start)/dble(clock_rate))
 
 ! Monte-Carlo and solar-calibration end-of-run bookkeeping: rewind the
 ! output units and write the Monte-Carlo summary
@@ -353,14 +353,14 @@ subroutine begin_kind_card
          star%jcz = star%envelope_cz_bottom_index
          star%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
-      call output_run_header(star%star_mass)
+      call output_run_header(star, star%star_mass)
 
        if (star%ctrl%helium_flash_active) then
 ! Through the helium flash a timestep cut reloads the model stored on
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.
           if (star%punch_pending_flag) then
-             call write_mod_model(last_model_unit)
+             call write_mod_model(star, last_model_unit)
           endif
        endif
 
@@ -394,7 +394,7 @@ end subroutine begin_kind_card
 ! converged model, whatever the terminal_interval phase.
 subroutine end_kind_card
       use run_log, only: log_final_model_line
-      call log_final_model_line()
+      call log_final_model_line(star)
 end subroutine end_kind_card
 
 end subroutine run_yrec

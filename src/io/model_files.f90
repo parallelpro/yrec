@@ -30,14 +30,14 @@ contains
 ! reloaded between run cards round-trips exactly. Everything is read
 ! from star%; the unit is rewound first, since the file always holds one
 ! model, the latest.
-subroutine write_mod_model(iwrite)
-
-      use star_info_lib, only: star, i_h1, i_he4, i_metals, i_he3, &
-           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
-           i_li6, i_li7, i_be9
+subroutine write_mod_model(s, iwrite)
+      use star_info_lib, only: star_info, i_h1, i_he4, i_metals, i_he3, i_c12, &
+           i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
+           i_be9
       use io_units
       use run_log, only: solver_diagnostics
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: iwrite
 
@@ -48,30 +48,30 @@ subroutine write_mod_model(iwrite)
 
       rewind iwrite
       write(iwrite,'(a)') 'YMOD 1'
-      write(iwrite,'(a,1x,i12)')        'model_number        ', star%model_number
-      write(iwrite,'(a,1x,i12)')        'num_zones           ', star%nz
-      write(iwrite,'(a,1x,es26.16e3)')  'star_mass_msun      ', star%star_mass
-      write(iwrite,'(a,1x,es26.16e3)')  'log_total_mass      ', star%log_total_mass
-      write(iwrite,'(a,1x,es26.16e3)')  'star_age_gyr        ', star%age_gyr
-      write(iwrite,'(a,1x,es26.16e3)')  'timestep_yr         ', star%timestep_yr
-      write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', star%log_L
-      write(iwrite,'(a,1x,es26.16e3)')  'log_Teff            ', star%log_Teff
-      write(iwrite,'(a,1x,es26.16e3)')  'mixing_length_alpha ', star%mixing_length_alpha
-      write(iwrite,'(a,1x,l1)')         'extended_composition', star%job%use_extended_composition
-      write(iwrite,'(a,1x,l1)')         'rotation_active     ', star%job%rotation_active
+      write(iwrite,'(a,1x,i12)')        'model_number        ', s%model_number
+      write(iwrite,'(a,1x,i12)')        'num_zones           ', s%nz
+      write(iwrite,'(a,1x,es26.16e3)')  'star_mass_msun      ', s%star_mass
+      write(iwrite,'(a,1x,es26.16e3)')  'log_total_mass      ', s%log_total_mass
+      write(iwrite,'(a,1x,es26.16e3)')  'star_age_gyr        ', s%age_gyr
+      write(iwrite,'(a,1x,es26.16e3)')  'timestep_yr         ', s%timestep_yr
+      write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', s%log_L
+      write(iwrite,'(a,1x,es26.16e3)')  'log_Teff            ', s%log_Teff
+      write(iwrite,'(a,1x,es26.16e3)')  'mixing_length_alpha ', s%mixing_length_alpha
+      write(iwrite,'(a,1x,l1)')         'extended_composition', s%job%use_extended_composition
+      write(iwrite,'(a,1x,l1)')         'rotation_active     ', s%job%rotation_active
       write(iwrite,'(a)') 'columns: zone log_mass logR luminosity logP logT' &
            // ' logRho conv omega h1 he4 z he3 c12 c13 n14 n15 o16 o17 o18' &
            // ' h2 li6 li7 be9'
-      do k = 1, star%nz
+      do k = 1, s%nz
          write(iwrite,'(i6,6(1x,es26.16e3),1x,l1,16(1x,es26.16e3))') k, &
-              star%log_mass(k), star%logR(k), star%luminosity_lsun(k), &
-              star%logP(k), star%logT(k), star%logRho(k), &
-              star%convective_flag(k), star%omega(k), &
-              star%xa(slots(1),k),  star%xa(slots(2),k),  star%xa(slots(3),k), &
-              star%xa(slots(4),k),  star%xa(slots(5),k),  star%xa(slots(6),k), &
-              star%xa(slots(7),k),  star%xa(slots(8),k),  star%xa(slots(9),k), &
-              star%xa(slots(10),k), star%xa(slots(11),k), star%xa(slots(12),k), &
-              star%xa(slots(13),k), star%xa(slots(14),k), star%xa(slots(15),k)
+              s%log_mass(k), s%logR(k), s%luminosity_lsun(k), &
+              s%logP(k), s%logT(k), s%logRho(k), &
+              s%convective_flag(k), s%omega(k), &
+              s%xa(slots(1),k),  s%xa(slots(2),k),  s%xa(slots(3),k), &
+              s%xa(slots(4),k),  s%xa(slots(5),k),  s%xa(slots(6),k), &
+              s%xa(slots(7),k),  s%xa(slots(8),k),  s%xa(slots(9),k), &
+              s%xa(slots(10),k), s%xa(slots(11),k), s%xa(slots(12),k), &
+              s%xa(slots(13),k), s%xa(slots(14),k), s%xa(slots(15),k)
       end do
       flush(iwrite)
 
@@ -80,9 +80,9 @@ subroutine write_mod_model(iwrite)
 ! is solver forensics behind the diagnostics flag.
       if (solver_diagnostics()) then
          if (iwrite .eq. last_model_unit) then
-          write(run_log_unit,330) star%model_number, iwrite
+          write(run_log_unit,330) s%model_number, iwrite
          else
-          write(run_log_unit,340) star%model_number, star%age_gyr, iwrite
+          write(run_log_unit,340) s%model_number, s%age_gyr, iwrite
          endif
       end if
   330 format(' DUMPED MODEL',I5,'  FILE',I3)
@@ -98,14 +98,14 @@ end subroutine write_mod_model
 ! deck-consistency check and the timestep seeding need are returned. The
 ! luminosity breakdown is zeroed; the first energy-generation call
 ! computes it.
-subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
+subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
      use_extended_composition0, rotation_active0, ierr)
-
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, &
-           i_he3, i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, &
-           i_h2, i_li6, i_li7, i_be9
+      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
+           i_li7, i_be9
       use io_units
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: iread
       double precision, intent(out) :: timestep_yr, mixing_length0
@@ -151,21 +151,21 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
          if (ios /= 0 .or. len_trim(line) == 0) cycle
          select case (trim(name))
          case ('model_number')
-            read(line,*) name, star%model_number
+            read(line,*) name, s%model_number
          case ('num_zones')
-            read(line,*) name, star%nz
+            read(line,*) name, s%nz
          case ('star_mass_msun')
-            read(line,*) name, star%star_mass
+            read(line,*) name, s%star_mass
          case ('log_total_mass')
-            read(line,*) name, star%log_total_mass
+            read(line,*) name, s%log_total_mass
          case ('star_age_gyr')
-            read(line,*) name, star%age_gyr
+            read(line,*) name, s%age_gyr
          case ('timestep_yr')
             read(line,*) name, timestep_yr
          case ('log_L')
-            read(line,*) name, star%log_L
+            read(line,*) name, s%log_L
          case ('log_Teff')
-            read(line,*) name, star%log_Teff
+            read(line,*) name, s%log_Teff
          case ('mixing_length_alpha')
             read(line,*) name, mixing_length0
          case ('extended_composition')
@@ -185,23 +185,23 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
          ierr = 1
          return
       end if
-      if (star%nz < 1 .or. star%nz > json) then
+      if (s%nz < 1 .or. s%nz > json) then
          write(run_log_unit,'(a,i9)') &
-              'READ_MOD_MODEL: bad num_zones ', star%nz
+              'READ_MOD_MODEL: bad num_zones ', s%nz
          ierr = 1
          return
       end if
 
-      do k = 1, star%nz
+      do k = 1, s%nz
          read(iread,*,iostat=ios) izone, &
-              star%log_mass(k), star%logR(k), star%luminosity_lsun(k), &
-              star%logP(k), star%logT(k), star%logRho(k), &
-              star%convective_flag(k), star%omega(k), &
-              star%xa(slots(1),k),  star%xa(slots(2),k),  star%xa(slots(3),k), &
-              star%xa(slots(4),k),  star%xa(slots(5),k),  star%xa(slots(6),k), &
-              star%xa(slots(7),k),  star%xa(slots(8),k),  star%xa(slots(9),k), &
-              star%xa(slots(10),k), star%xa(slots(11),k), star%xa(slots(12),k), &
-              star%xa(slots(13),k), star%xa(slots(14),k), star%xa(slots(15),k)
+              s%log_mass(k), s%logR(k), s%luminosity_lsun(k), &
+              s%logP(k), s%logT(k), s%logRho(k), &
+              s%convective_flag(k), s%omega(k), &
+              s%xa(slots(1),k),  s%xa(slots(2),k),  s%xa(slots(3),k), &
+              s%xa(slots(4),k),  s%xa(slots(5),k),  s%xa(slots(6),k), &
+              s%xa(slots(7),k),  s%xa(slots(8),k),  s%xa(slots(9),k), &
+              s%xa(slots(10),k), s%xa(slots(11),k), s%xa(slots(12),k), &
+              s%xa(slots(13),k), s%xa(slots(14),k), s%xa(slots(15),k)
          if (ios /= 0) then
             write(run_log_unit,'(a,i7)') &
                  'READ_MOD_MODEL: read error at shell ', k
@@ -211,14 +211,14 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
       end do
 
 ! TLUMX was only a cosmetic seed; compute_zone_energy recomputes it on the first step.
-      star%luminosity_breakdown = 0.0d0
+      s%luminosity_breakdown = 0.0d0
 
       return
 end subroutine read_mod_model
 
 ! ---------------------------------------------------------------
 ! A YREC7-format model; the arguments are the file's header values.
-subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
+subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
      hik_code, use_diffusion_y, use_diffusion_z, &
@@ -228,9 +228,11 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
      use_semiconvection, disk_pressure, disk_temperature, &
      wind_saturation_omega, ierr)
       use io_units
-      use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
+      use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, i_lum_grav, &
+           i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(out) :: mixing_length
       double precision, intent(out) :: timestep_yr
@@ -276,9 +278,9 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
       ierr = 0
 
       do i  = 1, json
-         star%omega(i) = 0d0
+         s%omega(i) = 0d0
        do j = 1, 15
-          star%xa(j,i) = 0d0
+          s%xa(j,i) = 0d0
        enddo
       enddo
 
@@ -288,7 +290,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
       eos_code = "    ? "
       hik_code = "  ? "
       alok_code = "  ? "
-      star%initial_composition_code = "AG93"
+      s%initial_composition_code = "AG93"
 
 ! Set Model2-specific flags false
       use_diffusion_y = .false.
@@ -314,9 +316,9 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
       rewind(iread)
 
 ! get the header record
-      read(iread,10) header_keyword,star%model_number,star%nz,star%star_mass, &
-           star%log_Teff,star%log_L,star%log_total_mass, &
-           star%age_gyr,timestep_yr
+      read(iread,10) header_keyword,s%model_number,s%nz,s%star_mass, &
+           s%log_Teff,s%log_L,s%log_total_mass, &
+           s%age_gyr,timestep_yr
  10   format(A4,1X,2I5,3F8.5,1X,F14.10,F13.9,F13.0)
 
 ! Get the flags describing the input physics and the information that
@@ -326,18 +328,18 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
  30   format(2(L1,1X),5X,2I4,F7.3)
 
 ! get the LUMINOSITIES---PP(1-2-3)-CNO-HE-NU-GRAV
-      read(iread,40) (star%luminosity_breakdown(j),j=1,7)
+      read(iread,40) (s%luminosity_breakdown(j),j=1,7)
  40   format(10X,7E10.3)
 
 ! If TLUMX are in ergs, convert to solar units.  Decide by
 ! comparing to 10**20. If larger, divide by CLSUN.
-      max_luminosity_component = dmax1(star%luminosity_breakdown(i_lum_pp1), &
-           star%luminosity_breakdown(i_lum_pp2),star%luminosity_breakdown(i_lum_pp3), &
-           star%luminosity_breakdown(i_lum_cno),star%luminosity_breakdown(i_lum_3alpha), &
-           dabs(star%luminosity_breakdown(i_lum_neu)),star%luminosity_breakdown(i_lum_grav))
+      max_luminosity_component = dmax1(s%luminosity_breakdown(i_lum_pp1), &
+           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
+           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
+           dabs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
       if(max_luminosity_component.gt.1.0D20) then
        do j = 1,7
-          star%luminosity_breakdown(j) = star%luminosity_breakdown(j)/star%solar_luminosity_cgs
+          s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
          enddo
       endif
 
@@ -346,10 +348,10 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
 ! for the envelope triangle records was set to -1 by WRTLST.
       triangle_orientation = 1D0
       do i = 1,3
-       read(iread,70) envelope_record_number,star%triangle_log_teff(i), &
-            star%triangle_log_l(i),star%fit_point_pressure(i), &
-            star%fit_point_temperature(i),star%fit_point_radius(i), &
-            (star%envelope_fit_coeffs(3*i-3+j),j = 1,3)
+       read(iread,70) envelope_record_number,s%triangle_log_teff(i), &
+            s%triangle_log_l(i),s%fit_point_pressure(i), &
+            s%fit_point_temperature(i),s%fit_point_radius(i), &
+            (s%envelope_fit_coeffs(3*i-3+j),j = 1,3)
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
        if(envelope_record_number.lt.0) triangle_orientation = -1D0
       end do
@@ -357,12 +359,12 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
 ! READ IN HENYEY POINTS IN 4 PARTS
 !
 ! Read FIRST PART:M,R,L,P,T,RHO,CONV(T/F),X,Y,AND Z - one line per shell
-      do i = 1,star%nz
-       read(iread,100) star%log_mass(i),star%logR(i),star%luminosity_lsun(i), &
-            star%logP(i),star%logT(i),star%logRho(i),star%convective_flag(i), &
+      do i = 1,s%nz
+       read(iread,100) s%log_mass(i),s%logR(i),s%luminosity_lsun(i), &
+            s%logP(i),s%logT(i),s%logRho(i),s%convective_flag(i), &
             ix,iz
  100     format(0PF13.10,F10.7,1PE14.7,0PF10.7,2F10.7,L1,2I6)
-       if(star%log_mass(i).lt.0D0.or.star%log_mass(i).gt.star%log_total_mass) then
+       if(s%log_mass(i).lt.0D0.or.s%log_mass(i).gt.s%log_total_mass) then
           write(run_log_unit,1000)
           write(run_log_unit,1050) i
  1000       format(1X,39('>'),40('<')/1X,'RUN STOPPED')
@@ -373,19 +375,19 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
           ierr = 1
           return
        endif
-       star%xa(1,i) = 1.0D-6*dfloat(ix)
-       star%xa(3,i) = 1.0D-6*dfloat(iz)
+       s%xa(1,i) = 1.0D-6*dfloat(ix)
+       s%xa(3,i) = 1.0D-6*dfloat(iz)
       end do
 
 ! Read SECOND PART:ELEMENT ABUNDANCES: HE3,CNO CYCLE ELEMENTS.
 ! ABUNDANCES IN SURFACE AND CENTRAL CONVECTION ZONES STORED WITH 1
 ! VALUE PER ZONE RATHER THAN 1 VALUE PER SHELL
       if(envelope_cz_bottom_index.le.core_cz_top_index) then
-       read(iread,200)(star%xa(i,core_cz_top_index),i=4,11)
-       read(iread,200)(star%xa(i,envelope_cz_bottom_index),i=4,11)
+       read(iread,200)(s%xa(i,core_cz_top_index),i=4,11)
+       read(iread,200)(s%xa(i,envelope_cz_bottom_index),i=4,11)
       else
        do j = core_cz_top_index,envelope_cz_bottom_index
-          read(iread,200) (star%xa(i,j),i = 4,11)
+          read(iread,200) (s%xa(i,j),i = 4,11)
  200        format(8(1PE9.3,1X))
        end do
       endif
@@ -393,22 +395,22 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
 ! CONVECTIVE CORE- ASSIGN FIRST COMPOSITION VALUE TO SHELLS 1-JCORE
        do j = 1,core_cz_top_index-1
           do i = 4,11
-             star%xa(i,j) = star%xa(i,core_cz_top_index)
+             s%xa(i,j) = s%xa(i,core_cz_top_index)
           end do
        end do
       endif
-      if(envelope_cz_bottom_index.lt.star%nz) then
+      if(envelope_cz_bottom_index.lt.s%nz) then
 ! CONVECTIVE SURFACE- ASSIGN LAST COMPOSITION TO SHELLS JENV-M
-       do j = envelope_cz_bottom_index+1,star%nz
+       do j = envelope_cz_bottom_index+1,s%nz
           do i = 4,11
-             star%xa(i,j) = star%xa(i,envelope_cz_bottom_index)
+             s%xa(i,j) = s%xa(i,envelope_cz_bottom_index)
           end do
        end do
       endif
 ! DEFINE HE4 = 1 - X - Z - HE3.
-      do i = 1,star%nz
-       star%xa(2,i) = 1.0D0 - star%xa(1,i) - star%xa(3,i) - &
-            star%xa(4,i)
+      do i = 1,s%nz
+       s%xa(2,i) = 1.0D0 - s%xa(1,i) - s%xa(3,i) - &
+            s%xa(4,i)
       end do
 
 ! READ IN H2,LI6,LI7,BE9 (EXTENDED COMPOSITION)
@@ -416,37 +418,37 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
       if(use_extended_composition) then
        if(envelope_cz_bottom_index.eq.1)then
 ! FULLY CONVECTIVE MODEL
-          read(iread,300)(star%xa(i,1),i=12,15)
+          read(iread,300)(s%xa(i,1),i=12,15)
  300        format(4(1PE9.3,1X))
-          do j = 1,star%nz
+          do j = 1,s%nz
              do i = 12,15
-              star%xa(i,j) = star%xa(i,1)
+              s%xa(i,j) = s%xa(i,1)
              end do
           end do
        else
 ! GENERAL CASE
 ! THESE ABUNDANCES ARE READ IN WITH 2 SHELLS PER LINE
           do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
-             read(iread,200)((star%xa(i,j),i = 12,15), &
+             read(iread,200)((s%xa(i,j),i = 12,15), &
                   j = pair_start_index,pair_start_index+1)
           end do
 ! IF AN ODD NUMBER OF ABUNDANCES STORED, READ IN LAST VALUE
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
           if(mod(parity_test,2).ne.0) &
-               read(iread,300)(star%xa(i,pair_start_index),i = 12,15)
+               read(iread,300)(s%xa(i,pair_start_index),i = 12,15)
           if(core_cz_top_index.gt.1) then
 ! CONVECTIVE CORE- ASSIGN FIRST VALUE TO SHELLS 1-JCORE
              do j = 1,core_cz_top_index-1
               do i = 12,15
-                 star%xa(i,j) = star%xa(i,core_cz_top_index)
+                 s%xa(i,j) = s%xa(i,core_cz_top_index)
               end do
              end do
           endif
-          if(envelope_cz_bottom_index.lt.star%nz) then
+          if(envelope_cz_bottom_index.lt.s%nz) then
 ! CONVECTIVE SURFACE- ASSIGN LAST VALUE TO SHELLS JENV - M
-             do j = envelope_cz_bottom_index+1,star%nz
+             do j = envelope_cz_bottom_index+1,s%nz
               do i = 12,15
-                 star%xa(i,j) = star%xa(i,envelope_cz_bottom_index)
+                 s%xa(i,j) = s%xa(i,envelope_cz_bottom_index)
               end do
              end do
           endif
@@ -457,13 +459,13 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
 
       if(rotation_active) then
 ! READ OMEGA IN. If OMEGA records are missing go to OMEGA BYPASS below
-      read(iread,500,end=9999)(omega_log10(ii),ii = 1,star%nz)
+      read(iread,500,end=9999)(omega_log10(ii),ii = 1,s%nz)
  500    format(0P8F10.7)
-      do i = 1,star%nz
+      do i = 1,s%nz
            if(omega_log10(i) .lt. omega_log10_zero_sentinel) then
-              star%omega(i) = pow(10D0, (-omega_log10(i)))
+              s%omega(i) = pow(10D0, (-omega_log10(i)))
            else
-              star%omega(i) = 0D0
+              s%omega(i) = 0D0
            endif
       end do
       endif
@@ -482,7 +484,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
 9998  format(2A)
 
       do i  = 1, json
-         star%omega(i) = 0d0
+         s%omega(i) = 0d0
       enddo
 
 ! KEEP iread OPEN
@@ -494,7 +496,7 @@ end subroutine read_yrec7
 
 ! ---------------------------------------------------------------
 ! A MODEL2-format model: the YREC7 layout plus the MODEL2 additions.
-subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
+subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
      hik_code, use_diffusion_y, use_diffusion_z, &
@@ -503,8 +505,10 @@ subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
      envelope_overshoot_active, lovstm, use_pure_z_table, &
      use_semiconvection, disk_pressure, disk_temperature, &
      wind_saturation_omega)
-      use star_info_lib, only: star, i_lum_3alpha, i_lum_cno, i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
+      use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, &
+           i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(out) :: mixing_length
       double precision, intent(out) :: timestep_yr
@@ -535,16 +539,16 @@ subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
       rewind(iread)
 
 ! GET THE HEADER RECORD
-      read(iread,10) header_keyword,star%model_number,star%nz,star%star_mass, &
-           star%log_Teff,star%log_L,star%log_total_mass,star%age_gyr, &
-           timestep_yr,star%log_mass(1),star%log_mass(star%nz)
+      read(iread,10) header_keyword,s%model_number,s%nz,s%star_mass, &
+           s%log_Teff,s%log_L,s%log_total_mass,s%age_gyr, &
+           timestep_yr,s%log_mass(1),s%log_mass(s%nz)
  10   format(A5,2I8,5F16.12,1PE18.10,0P2F16.12)
 
 ! Get the flags describing the input physics and the information that
 ! is stored in the model (rotating or not?, extendec compotition, etc.)
       read(iread,30) core_cz_top_index,envelope_cz_bottom_index, &
            mixing_length,eos_code,atm_code,alok_code,hik_code, &
-           use_pure_z_table,star%initial_composition_code,use_extended_composition, &
+           use_pure_z_table,s%initial_composition_code,use_extended_composition, &
            use_diffusion_y,use_diffusion_z,use_semiconvection,core_overshoot_active, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,use_wind_torque,disk_locking_active, &
@@ -554,19 +558,19 @@ subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
 
 ! Get the  LUMINOSITIES---PP(1-2-3)-CNO-HE-NU-GRAV
 ! CONVERT TO SOLAR LUMINOSITIES
-      read(iread,40) (star%luminosity_breakdown(j),j=1,7)
+      read(iread,40) (s%luminosity_breakdown(j),j=1,7)
 !   40 FORMAT('TLUMX',5X,1P7E17.9)
    40 format(10X,1P7E17.9)
 
 ! If TLUMX are in ergs, convert to solar units.  Decide by
 ! comparing to 10**20.  IF larger, divide by CLSUN.
-      max_luminosity_component = dmax1(star%luminosity_breakdown(i_lum_pp1), &
-           star%luminosity_breakdown(i_lum_pp2),star%luminosity_breakdown(i_lum_pp3), &
-           star%luminosity_breakdown(i_lum_cno),star%luminosity_breakdown(i_lum_3alpha), &
-           dabs(star%luminosity_breakdown(i_lum_neu)),star%luminosity_breakdown(i_lum_grav))
+      max_luminosity_component = dmax1(s%luminosity_breakdown(i_lum_pp1), &
+           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
+           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
+           dabs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
       if (max_luminosity_component.gt.1.0D20) then
        do j = 1,7
-          star%luminosity_breakdown(j) = star%luminosity_breakdown(j)/star%solar_luminosity_cgs
+          s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
          enddo
       endif
 
@@ -575,10 +579,10 @@ subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
 ! for the envelope triangle records was set to -1 by WRTLST.
       triangle_orientation = 1D0
       do i = 1,3
-         read(iread,50)envelope_record_number,star%triangle_log_teff(i), &
-              star%triangle_log_l(i),star%fit_point_pressure(i), &
-              star%fit_point_temperature(i),star%fit_point_radius(i), &
-              (star%envelope_fit_coeffs(3*i-3+j),j=1,3)
+         read(iread,50)envelope_record_number,s%triangle_log_teff(i), &
+              s%triangle_log_l(i),s%fit_point_pressure(i), &
+              s%fit_point_temperature(i),s%fit_point_radius(i), &
+              (s%envelope_fit_coeffs(3*i-3+j),j=1,3)
          if (envelope_record_number .lt. 0) triangle_orientation = -1D0
       enddo
 !   50 FORMAT('ENV',I2,5F16.12,1P3E20.12)
@@ -590,10 +594,10 @@ subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
       read(iread,*)
 
 ! Read per-shell data (HENYEY POINGS)
-      do i = 1,star%nz
-         read(iread,60) k,star%log_mass(i),star%logR(i),star%luminosity_lsun(i), &
-              star%logP(i),star%logT(i),star%logRho(i), &
-              star%omega(i),star%convective_flag(i),(star%xa(j,i),j=1,15)
+      do i = 1,s%nz
+         read(iread,60) k,s%log_mass(i),s%logR(i),s%luminosity_lsun(i), &
+              s%logP(i),s%logT(i),s%logRho(i), &
+              s%omega(i),s%convective_flag(i),(s%xa(j,i),j=1,15)
        enddo
  60   format(I6,0P2F18.14,1PE24.16,0P3F18.14,1PE24.16,1x,L1, &
            3(0PF12.9),12(0PE16.8))

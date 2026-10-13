@@ -265,10 +265,8 @@ def check_controls_free(src_root):
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
     "core": (124, 2),
-    # io: +2 (2026-10) for the two calls that hand the profile and pulse
-    # writers the stitched model, which moved from module variables into
-    # the star (s%stitched)
-    "io": (476, 10),
+    # io (2026-10): the readers and writers take the star as an argument s
+    "io": (0, 0),
     # rotation (2026-10): the drivers take the star as an argument s; the
     # rest is star-free
     "rotation": (0, 0),

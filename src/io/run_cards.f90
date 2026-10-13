@@ -6,7 +6,6 @@
 ! targets and starting-model flags, echoed to the terminal and the run
 ! log (formerly part of parmin).
 module run_cards
-      use star_info_lib, only: star
       use io_units
       use eos_lib, only: eos_set_mixture
       use legacy_controls
@@ -19,7 +18,9 @@ contains
 ! ---------------------------------------------------------------
 ! Interpret the per-run "kind" cards: stop conditions, rescale
 ! parameters, and the rescaled envelope mixture for each run.
-subroutine interpret_kind_cards
+subroutine interpret_kind_cards(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       integer :: i, nkind
 
       write(run_log_unit,200)
@@ -116,11 +117,11 @@ subroutine interpret_kind_cards
            &       (rescale_params(i,nkind),i = 1,4)
        end if
 ! a positive rescale target sets the envelope Z (0, the default, keeps it)
-         if(rescale_params(3,nkind).gt.0.0d0)  star%envelope_metal_fraction=rescale_params(3,nkind)
+         if(rescale_params(3,nkind).gt.0.0d0)  s%envelope_metal_fraction=rescale_params(3,nkind)
 ! keep the eos-side mixture in step with the rescaled Z
-         call eos_set_mixture(star%envelope_hydrogen_fraction, &
-              star%envelope_metal_fraction, star%amuenv, &
-              star%fxenv)
+         call eos_set_mixture(s%envelope_hydrogen_fraction, &
+              s%envelope_metal_fraction, s%amuenv, &
+              s%fxenv)
       end do
 end subroutine interpret_kind_cards
 

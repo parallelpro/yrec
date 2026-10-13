@@ -11,7 +11,6 @@
 ! amix, aiso, anewcp, atmp, descrip, the Li/Be inputs) have no
 ! canonical home.
 module derived_controls
-      use star_info_lib, only: star
       use physical_constants
       use io_units
       use legacy_controls
@@ -23,11 +22,13 @@ contains
 
 ! ---------------------------------------------------------------
 ! ierr = 1: semiconvection and overshoot are both on.
-subroutine derive_controls(ierr)
+subroutine derive_controls(s, ierr)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
 
       call derive_rate_scales
-      call select_eos_and_opacity_tables
+      call select_eos_and_opacity_tables(s)
       if (use_semiconvection) then
          if (core_overshoot_active .or. envelope_overshoot_active .or. lovstm) then
             write(run_log_unit,2) use_semiconvection, envelope_overshoot_active, &
@@ -39,7 +40,7 @@ subroutine derive_controls(ierr)
             return
          end if
       end if
-      star%tenv = 0.5d0*(tenv0 + tenv1)
+      s%tenv = 0.5d0*(tenv0 + tenv1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
       call select_cno_mixture
@@ -70,18 +71,20 @@ end subroutine derive_rate_scales
 ! ---------------------------------------------------------------
 ! The newest OPAL EOS and Alexander opacities requested win; eos_init
 ! opens star%job%opal_eos_table_path.
-subroutine select_eos_and_opacity_tables
-      star%job%opal_eos_table_path = ""
+subroutine select_eos_and_opacity_tables(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
+      s%job%opal_eos_table_path = ""
       if (use_opal2006_eos) then
          use_opal2001_eos = .false.
          use_opal95_eos = .false.
-         star%job%opal_eos_table_path = fopale06
+         s%job%opal_eos_table_path = fopale06
       end if
       if (use_opal2001_eos) then
-         star%job%opal_eos_table_path = fopale01
+         s%job%opal_eos_table_path = fopale01
          use_opal95_eos = .false.
       else if (use_opal95_eos) then
-         star%job%opal_eos_table_path = fopale
+         s%job%opal_eos_table_path = fopale
       end if
       if (use_alex06_tables) then
          use_alex95_tables = .false.

@@ -214,7 +214,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
        call compute_observables(s, ierr)
        if (ierr /= 0) return
 ! Write the model's output (formerly wrtout).
-       call output_write_model(ierr)
+       call output_write_model(s, ierr)
        if (ierr /= 0) return
 
 ! The stop conditions (MHP 10/24), in order: the end age, the table of

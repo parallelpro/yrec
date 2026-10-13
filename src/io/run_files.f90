@@ -85,7 +85,9 @@ end subroutine expand_paths
 ! model, the final model (the restart file, and the solver's recovery
 ! source when a step diverges), the run log and history (output_init_mesa),
 ! and the Monte Carlo and isochrone files when those are on.
-subroutine open_run_files(ierr)
+subroutine open_run_files(s, ierr)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
       character(len=256) :: shell_cmd, msg
       integer :: i, last_slash_idx, ios
@@ -111,7 +113,7 @@ subroutine open_run_files(ierr)
       open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the final model file', flast, ierr)
       if (ierr /= 0) return
-      call output_init_mesa(fshort, ierr)
+      call output_init_mesa(s, fshort, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
          open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)

@@ -86,7 +86,7 @@ subroutine load_deck_model(path)
       ierr = 0
       control_nml_override = path
       physics_nml_override = path
-      call read_controls(ierr)
+      call read_controls(star, ierr)
       if (ierr /= 0) call die('read_controls')
       call set_up_constants_and_tables(star, ierr)
       if (ierr /= 0) call die('set_up_constants_and_tables')

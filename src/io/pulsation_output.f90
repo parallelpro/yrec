@@ -28,9 +28,9 @@ contains
 ! the dlnGamma1 partials, X_Be7, X_Ne20, r_X) are zero, as MESA writes
 ! several of them. var(18) = R_star - r is negative for atmosphere
 ! points.
-subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
+subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
-      use star_info_lib, only: star
+      use star_info_lib, only: star_info
       use physical_constants
       use math_lib
       use stitched_model, only: n_pulse_cols, ipul_r, ipul_m, &
@@ -39,6 +39,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
            ipul_cp, ipul_mu_e_inv, ipul_h1, ipul_z, &
            ipul_species_base, ipul_eps_grav
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: n
       double precision, intent(in) :: pts(n_pulse_cols, n)
@@ -66,8 +67,8 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(5) = pts(ipul_h1, n)
 ! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
 ! derivatives) not tracked here -- zero, as tools tolerate.
-      glob(13) = star%age_gyr*1.0d9
-      glob(14) = exp10(star%log_Teff)
+      glob(13) = s%age_gyr*1.0d9
+      glob(14) = exp10(s%log_Teff)
       glob(15) = grav_const_cgs
 
 ! MESA-style 4-line comment header (FGONG spec: lines 1-4 free text),
@@ -76,8 +77,8 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       write(u,'(a)') 'FGONG file'
       write(u,'(a)') 'Created by YREC'
       write(u,'(a,i8,a,1pe16.9,a,0pf10.6)') 'model_number ', &
-           star%model_number, '  star_age_yr ', star%age_gyr*1.0d9, &
-           '  log_Teff ', star%log_Teff
+           s%model_number, '  star_age_yr ', s%age_gyr*1.0d9, &
+           '  log_Teff ', s%log_Teff
       write(u,'(a)') ''
       write(u,'(4I10)') n, iconst, ivar, ivers
       write(u,'(1P,5(X,E26.18E3))') (glob(i), i = 1, iconst)
@@ -141,13 +142,14 @@ end subroutine write_fgong_pulse
 ! GYRE text format (schema 101, 18 columns) from the interior shells,
 ! centre (1) to surface, from the star%pulse_* arrays the Henyey
 ! coefficients fill for every shell.
-subroutine write_gyre_pulse(num_shells, mass_coordinate, &
+subroutine write_gyre_pulse(s, num_shells, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega, pulse_path, ierr)
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star_info, json
       use physical_constants
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       integer, intent(in) :: num_shells
       double precision, intent(in) :: mass_coordinate(json), &
@@ -172,7 +174,7 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
 
       global_data(1) = mass_coordinate(num_shells)
       global_data(2) = exp(ln10*log_radius(num_shells))
-      global_data(3) = log_luminosity(num_shells)*star%solar_luminosity_cgs
+      global_data(3) = log_luminosity(num_shells)*s%solar_luminosity_cgs
       write(gyre_unit,100) num_shells,global_data,gyre_schema
  100  format(I6,3(1X,1PE26.16),1X,I6)
 
@@ -193,16 +195,16 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
          radius_cm = exp(ln10*log_radius(i))
          dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i-1))
          if (radius_cm > 0.0d0 .and. dr > 0.0d0 .and. &
-              star%adiabatic_index_gamma1(i) > 0.0d0) then
+              s%adiabatic_index_gamma1(i) > 0.0d0) then
             grav = grav_const_cgs*mass_coordinate(i)/(radius_cm*radius_cm)
             brunt_n2(i) = grav*grav* &
                  (exp(ln10*(log_density(i) - log_pressure(i))))* &
-                 (-star%pulse_dlnrho_dlnt(i))* &
-                 (star%grada(i) - star%gradT(i))
+                 (-s%pulse_dlnrho_dlnt(i))* &
+                 (s%grada(i) - s%gradT(i))
             if (brunt_n2(i) >= 0.0d0) then
                brunt_n2(i) = grav*ln10*( &
                     (log_pressure(i+1) - log_pressure(i-1)) / &
-                    star%adiabatic_index_gamma1(i) - &
+                    s%adiabatic_index_gamma1(i) - &
                     (log_density(i+1) - log_density(i-1)) ) / dr
             end if
          else
@@ -217,27 +219,27 @@ subroutine write_gyre_pulse(num_shells, mass_coordinate, &
       do i = 1,num_shells
          radius_cm = exp(ln10*log_radius(i))
          mass_g = mass_coordinate(i)
-         luminosity_erg_s = log_luminosity(i)*star%solar_luminosity_cgs
+         luminosity_erg_s = log_luminosity(i)*s%solar_luminosity_cgs
          pressure_cgs = exp(ln10*log_pressure(i))
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
 ! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
 ! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see core/structure/structure_equations.f90).
-         delta = -star%pulse_dlnrho_dlnt(i)
+         delta = -s%pulse_dlnrho_dlnt(i)
 ! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
 ! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
 ! eps*dlneps/dlnT = deps/dlnT, not the bare log-derivatives.
 ! pulse_deps_* already hold deps/dln (see core/diagnostics/stitched_model.f90's
 ! build_pulse_points), so they are not multiplied by eps.
          write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
-              pressure_cgs,temperature_k,density_cgs,star%gradT(i), &
-              brunt_n2(i),star%adiabatic_index_gamma1(i),star%grada(i),delta, &
-              star%opacity_zone(i), &
-              star%opacity_zone(i)*star%pulse_dlnkap_dlnt(i), &
-              star%opacity_zone(i)*star%pulse_dlnkap_dlnrho(i), &
-              star%eps_total(i), &
-              star%pulse_deps_dlnt(i), &
-              star%pulse_deps_dlnrho(i),omega(i)
+              pressure_cgs,temperature_k,density_cgs,s%gradT(i), &
+              brunt_n2(i),s%adiabatic_index_gamma1(i),s%grada(i),delta, &
+              s%opacity_zone(i), &
+              s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i), &
+              s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i), &
+              s%eps_total(i), &
+              s%pulse_deps_dlnt(i), &
+              s%pulse_deps_dlnrho(i),omega(i)
  110     format(I6,99(1X,1PE26.16))
       end do
 

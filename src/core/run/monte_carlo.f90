@@ -176,7 +176,7 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
 
 ! Store the last converged model on monte_carlo_unit2 (legacy IMONTE2).
       iwrite = s%ctrl%monte_carlo_unit2
-      call write_mod_model(iwrite)
+      call write_mod_model(s, iwrite)
 ! The summary on monte_carlo_unit1. The surface Z/X:
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
 ! Record 1: the run number and its sampled parameters.
