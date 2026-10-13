@@ -399,19 +399,20 @@ subroutine form_gravitational_energy_terms()
 ! The partials differentiate each factor of eps_grav in turn: P/rho,
 ! chi, Delta ln P or Delta ln T, and 1/grad_ad (adiabatic_gradient_dp/_dt
 ! are dln grad_ad/dln P and dln grad_ad/dln T):
-!   ql_dp += [entropy_term (1 - dln rho/dln P + dlnrho_dlnt_dp)
+!   ql_dp += [entropy_term (1 - dln rho/dln P + dln chi/dln P)
 !             - entropy_term1 - entropy_term3 dln grad_ad/dln P]/dt
-!   ql_dt += [entropy_term (-dln rho/dln T + dlnrho_dlnt_dt)
+!   ql_dt += [entropy_term (-dln rho/dln T + dln chi/dln T)
 !             + entropy_term2 - entropy_term3 dln grad_ad/dln T]/dt
-! The chi factor's terms use dlnrho_dlnt_dp/_dt, which the eos defines as
-! d chi/dln P and d chi/dln T (eos_results.f90); the product rule wants
-! them divided by chi. Only the Jacobian is affected.
+! The eos gives d chi/dln P and d chi/dln T (dlnrho_dlnt_dp/_dt,
+! eos_results.f90), so dln chi = d chi/chi. (They were used without the
+! 1/chi until 2026-10, as in coefft.f; only the Jacobian, so the Newton
+! convergence, was affected.)
             cur%ql = cur%ql + egrav
             cur%ql_dp = cur%ql_dp + zone_dt*(entropy_term*(1.0d0-dlnrho_dlnp+ &
-                 eos_res%dlnrho_dlnt_dp)-entropy_term1 - entropy_term3* &
+                 eos_res%dlnrho_dlnt_dp/dlnrho_dlnt)-entropy_term1 - entropy_term3* &
                  eos_res%adiabatic_gradient_dp)
             cur%ql_dt = cur%ql_dt + zone_dt*(entropy_term*(-dlnrho_dlnt+ &
-                 eos_res%dlnrho_dlnt_dt) + entropy_term2 - entropy_term3* &
+                 eos_res%dlnrho_dlnt_dt/dlnrho_dlnt) + entropy_term2 - entropy_term3* &
                  eos_res%adiabatic_gradient_dt)
 ! The change of the rotational kinetic energy is a sink:
 !   ql -= (E_rot - E_rot_old)/(dm dt),
