@@ -1710,40 +1710,37 @@ with a frozen 66d7788f binary; the step splits also on pulse output
   Lsun since the 2026-08 modernization (6e31b68d), so moving the
   fitting point outward failed in the envelope integration. No pinned
   deck takes the path.
-- **Found (reported by the split and comment passes; spot-check before
-  fixing; each changes results):**
-  - Out-of-bounds risks: rezone's X/Z jump insertion has no json check;
-    extend_core_toward_center prints RUN TERMINATED and keeps writing;
-    update_total_mass reads m(0) when the surface convection zone
-    reaches the centre; convection_geometry reads logR_start(0) for a
-    fully convective start; turnover's spline stencil can pass
-    num_points, and core_cz_top_index can be read unset.
-  - rescale_model runs twice for a model reused from memory (as in
-    starin.f): the Z ramp is applied twice and a species target given
-    relative to H converted twice. The Z ramp's CNO factor is
-    (Z_old - Z_new)/Z_old (Z_new/Z_old intended?), and rescale_z = 0
-    (the default) sets Z to zero.
-  - The mass change: the wind's angular momentum looks double-counted
-    (j scaled, then the zone's mass shrunk); mass_change and
-    envelope_rebuild extrapolate the convection zone's rotation law with
-    the exponent's sign inverted relative to omega_profile; a zero
-    accretion rate divides by zero in the timestep limits; a debug
-    write every step.
-  - Structure: below the burning cutoff zone_deps_* are not reset, so
-    the pulse dε/dln rho, dε/dln T of cool shells repeat the last
-    burning shell's; the eps_grav Jacobian seems to miss a 1/chi_T
-    (Newton convergence only); compute_surface_boundary leaves
-    star%log_Teff at the last vertex until the corrections are applied;
-    switching back from gray to a table does not restart the triangle.
-  - Envelope: the integrand reads star%job%atm_choice while the kernel
-    has fallen back to gray (one call after a failed Allard lookup); the
-    envelope shifts move every array but the convective flag (also in
-    starting_model); the first atmosphere step's derivative omits f_P;
-    at senv exactly -1e-12 the envelope is integrated but not reversed.
-  - Composition step and rotation's burn_and_settle size the settling
-    sub-steps with mod(max_settling_dt, timestep) (arguments reversed;
-    zero sub-steps when the limit is a multiple of the step).
-  - The end-age floor max(dt_saved, 1e-3 dage[Gyr] yr) is 1e-12 of the
-    age; the HR-motion limit reads luminosity_lsun_start at the
-    pre-rezone nz; the solar calibration gives up after 14 cycles while
-    its message says 15.
+- **Spot-checked (2026-10-12): all real.** The 0.03 Msun ZAMS pin
+  (run_from_dbl_to_zams Test_m0030_feh0_noGS_ZAMS) was re-pinned for the
+  refit fix: it used to stop in the envelope integration, now it refits
+  and stops at its first evolution model (MODEL FAILED TO CONVERGE,
+  OPAL06 density inversion in the degenerate interior) -- as it does
+  with the refit switched off; this deck cannot evolve in the current
+  code, a separate question.
+  - **FIXED, group A (0d66503f): guards** that act only where the code
+    misbehaved (overruns in rezone's X/Z insertion,
+    extend_core_toward_center, convection_geometry, the turnover
+    stencils; divisions by zero for a zero mass-change rate and a zero
+    settling sub-step count; rescale_z = 0 zeroing Z; the senv = -1e-12
+    reversal; the Allard-fallback integrand; the envelope shifts'
+    convective flag; the burn locals below the cutoff in the pulse
+    output; the mass change's debug print; the calibration's 14-cycle
+    message).
+  - **Open, group B (change pinned decks; each a measured commit):**
+    update_total_mass reads m(0) every step of the two pinned mass-loss
+    decks (dm(1) about 0.5 m(1) too small; -fcheck aborts); the eps_grav
+    Jacobian misses 1/chi_T (Newton path only, every deck at tolerance);
+    the end-age floor 1e-3 dage[Gyr] yr (one pin's final dt); the
+    HR-motion limit reads luminosity_lsun_start(nz_start) after a
+    rezone (timesteps with use_envelope_triangle_dt); the first
+    atmosphere step's derivative omits f_P (rotating decks at
+    round-off); compute_surface_boundary leaves log_Teff at the last
+    vertex for the first Newton pass (spot decks).
+  - **Open, group C (inherited physics no shipped deck reaches):** the
+    wind's angular momentum removed twice (rotation plus mass loss, up
+    to 2x); the convection-zone rotation law's exponent inverted in
+    mass_change and envelope_rebuild (-2 < walpcz < 0); rescale_model
+    twice for a reused model (the Z ramp twice, a relative species
+    target converted twice; TAHB decks at round-off); the Z ramp's CNO
+    factor (Z_old - Z_new)/Z_old; switching from gray back to a table
+    keeps the gray triangle.
