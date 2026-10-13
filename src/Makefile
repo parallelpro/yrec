@@ -301,6 +301,10 @@ test_mass_change: FFLAGS += $(REL_FFLAGS)
 test_mass_change: core/test/test_mass_change.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+test_regrid: FFLAGS += $(REL_FFLAGS)
+test_regrid: core/test/test_regrid.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+
 test_controls: FFLAGS += $(REL_FFLAGS)
 test_controls: io/test/test_controls.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
@@ -314,7 +318,7 @@ test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
 .PHONY: tests
-tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change
+tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
@@ -365,7 +369,7 @@ clean:
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
-	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
 
 install:
 	install -d $(PREFIX)

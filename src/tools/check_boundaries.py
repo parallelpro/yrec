@@ -154,6 +154,8 @@ STAR_BLIND_FILES = [
     # the mass change's masses, wind angular momentum and accreted
     # composition (2026-10, GUIDELINES star rule 6)
     "core/step/mass_change_kernel.f90",
+    # the rezone's regridding arithmetic (2026-10, GUIDELINES star rule 6)
+    "core/model/regridding.f90",
     "atm/t_tau_relations.f90",
 ]
 
@@ -229,7 +231,7 @@ def check_controls_free(src_root):
 # in the same commit.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (3110, 28),
+    "core": (3103, 28),
     "element_diffusion": (69, 9),
     "io": (474, 10),
     "rotation": (405, 10),

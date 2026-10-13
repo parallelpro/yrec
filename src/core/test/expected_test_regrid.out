@@ -1,0 +1,21 @@
+old mesh  60 points, new mesh  65 points; X steps between old points 23 and 24
+  check                                               value    bound  status
+  shell masses, old mesh: sum dm/M - 1             -1.1E-16  1.3E-14  ok
+  shell masses, new mesh: sum dm/M - 1             -1.0E-15  1.4E-14  ok
+  centre rule: dm_1 = (m_1 + m_2)/2                 0.0E+00  2.2E-16  ok
+  interior rule: dm_i = (m_i+1 - m_i-1)/2           0.0E+00  2.2E-16  ok
+  outer rule: dm_n = M - (m_n-1 + m_n)/2            0.0E+00  2.2E-16  ok
+  structure: linear in log m reproduced             1.4E-15  1.0E-13  ok
+  composition: linear in log m reproduced           7.3E-16  1.0E-13  ok
+  rotation: linear in log m reproduced              1.1E-15  1.0E-13  ok
+  shared points keep their values (X, j)            0.0E+00  2.2E-16  ok
+  mass of X: relative change                        1.7E-04  1.8E-04  ok
+  mass of Y: relative change                       -3.3E-04  3.7E-04  ok
+  mass of Z: relative change                        1.1E-05  1.3E-05  ok
+  mass of He3: relative change                      9.2E-04  1.0E-03  ok
+  mass fractions outside their old range            7.9E-17  8.9E-16  ok
+  max |X + Y + Z - 1| at the new points             2.9E-06  3.2E-06  ok
+  J and E_rot totals = sum j dm, sum omega j dm/2   1.2E-16  1.4E-14  ok
+  angular momentum J: relative change              -1.3E-03  1.5E-03  ok
+  rotational kinetic energy: relative change       -1.1E-03  1.2E-03  ok
+test_regrid: done

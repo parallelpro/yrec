@@ -4,7 +4,11 @@
 ! The rezone of each step (rezone): a new mesh in log m, its points
 ! spaced evenly in a coordinate chi built from the changes of log m, L
 ! and log P, with points added at X and Z jumps; the model interpolated
-! onto it and, for rotating models, the rotation re-spun on it.
+! onto it and, for rotating models, the rotation re-spun on it. The
+! regridding arithmetic (the shell masses of a mesh, the interpolation
+! of the profiles, the angular momentum totals) is the star-blind kernel
+! in regridding.f90; rezone gathers its inputs from the star and stores
+! its results.
 module rezoning
       use shell_physics, only: compute_shell_physics
       implicit none
@@ -30,8 +34,9 @@ contains
 !      points dropped.
 !   4. locate_new_cz_edges: the convection-zone edges on the new mesh.
 !   5. interpolate_onto_new_grid: every variable splined onto the new
-!      mesh; for rotating models omega re-derived from j and the total
-!      angular momentum and rotational kinetic energy re-totalled.
+!      mesh and its shell masses set (the regridding kernels); for
+!      rotating models omega re-derived from j and the total angular
+!      momentum and rotational kinetic energy re-totalled.
 ! envelope_store_index: the envelope-triangle vertex whose integration
 ! stored its state where T reached tenv (0 for none), used when a point
 ! is added at the surface. point_reset_flag: set when outer points were
@@ -39,6 +44,25 @@ contains
 ! H-burning shell and whether there is one. total_angular_momentum,
 ! total_rotational_ke: re-totalled on the new mesh (rotating models).
 ! ierr /= 0 on failure.
+!   star reads: conv_vel, cp, ctrl%chi_grid_scale,
+!     ctrl%overshoot_alpha_envelope, ctrl%tenv0, ctrl%tenv1,
+!     eps_channels, eps_total, fit_point_pressure, fit_point_radius,
+!     grada, gradr, gradT, job%envelope_overshoot_active,
+!     job%rotation_active, job%use_extended_composition, log_Teff,
+!     log_total_mass, mu, opacity_zone, qdt, stored_envelope_state,
+!     thdif, visc
+!   star writes: am_transport_convective_flag, convective_flag,
+!     convective_flag_start, core_cz_top_index,
+!     deuterium_burning_rate_start, dm, envelope_cz_bottom_index,
+!     eta_squared, fp_rot, ft_rot, i_rot, iov1, iov2, j_rot,
+!     kinetic_energy_rot, log_mass, log_Teff_start, logP, logP_start,
+!     logR, logR_start, logRho, logRho_start, logT, logT_start,
+!     luminosity_entropy_term, luminosity_lsun, luminosity_lsun_start,
+!     m, mean_gravity, mean_radius, nz, old_eta_squared, old_hg,
+!     old_mean_radius, old_moment_of_inertia, old_omega,
+!     old_specific_angular_momentum, omega, pressure_entropy_term, qiw,
+!     radius_entropy_term, senv, surface_luminosity_lsun_start,
+!     temperature_entropy_term, xa, xa_start, xnew, znew
 subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -54,7 +78,10 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: natural_spline, splint
+      use regridding, only: structure_profiles, rotation_profiles, &
+           compute_shell_masses, regrid_profile, regrid_composition, &
+           regrid_structure, regrid_rotation, compute_angular_momentum_totals
 
       implicit none
       integer :: jerr_gate
@@ -74,6 +101,8 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer, parameter :: max_flag_points = 100
       integer :: flag_point(max_flag_points)
       logical :: flag_overflow_warned
+! ft_old, fp_old: the shape factors splined onto the new mesh, which
+! transfer_new_points adopts.
       double precision :: ft_old(json), fp_old(json)
       integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
       double precision :: z_new(json), x_new(json)
@@ -84,13 +113,13 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
            spline_second_deriv(json)
 ! new_log_mass: the new mesh in log m (legacy HSS), built in
 ! assign_new_points and adopted as star%log_mass in transfer_new_points.
-! compact_log_mass: the buffer of drop_crowded_points. regrid_in,
-! regrid_out: the table copy and the osplin output of regrid_in_place.
-! (The legacy code kept these four in star%old_shell_mass, logRho_start,
-! logP_start and logT_start; every element is written here before it is
-! read.)
+! compact_log_mass: the buffer of drop_crowded_points. regrid_out: the
+! regridded field of regrid_in_place. (The legacy code kept these, and
+! the copy of the field it splined, in star%old_shell_mass,
+! logRho_start, logP_start and logT_start; every element is written here
+! before it is read.)
       double precision :: new_log_mass(json), compact_log_mass(json), &
-           regrid_in(json), regrid_out(json)
+           regrid_out(json)
       integer :: gradient_flag_index(json)
       integer :: num_species_tracked, i, j, k
       integer :: flag_count
@@ -114,11 +143,9 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
       integer :: old_point_count, new_point_count
       integer :: zone_index
       double precision :: sum_angular_momentum, sum_rotational_ke
-      double precision :: angular_momentum_shell
 ! The theta term's locals, commented out with the advection-diffusion
 ! transport (see rerun_physics_on_new_grid).
 !      double precision :: delta_radius, delta_omega, omega_mid, log_factor
-      double precision :: mass_two_back, mass_prev, mass_curr
       integer :: radiative_zone_begin, radiative_zone_end
       integer :: num_radiative_zones, num_convective_zones
 
@@ -701,11 +728,11 @@ end subroutine locate_new_cz_edges
 ! ---------------------------------------------------------------
 ! Move the model onto the new mesh: spline the composition, structure
 ! and rotation variables and the start-of-step energy generation onto it
-! with the shape-preserving osculatory quadratic spline (osplin), adopt
-! the mesh and set its shell masses; for rotating models re-spin and
-! re-total the angular momentum; re-run the shell physics where the
-! transport needs it; and rebuild the surface opacity tables if the
-! surface X moved.
+! with the shape-preserving osculatory quadratic spline (osplin, through
+! the regridding kernels), adopt the mesh and set its shell masses; for
+! rotating models re-spin and re-total the angular momentum; re-run the
+! shell physics where the transport needs it; and rebuild the surface
+! opacity tables if the surface X moved.
 subroutine interpolate_onto_new_grid
       use math_lib
       use rotation_scratch_lib
@@ -731,10 +758,12 @@ end subroutine interpolate_onto_new_grid
 ! deuterium is above 1e-14, the start-of-step deuterium burning rate
 ! onto the new points.
 subroutine regrid_composition_terms
-! osplin(xval, yval, xtab, ytab, ntab, ntot) evaluates at the ntot new
-! points xval (here new_log_mass) the spline through the ntab old points
-! (xtab, ytab) (here star%log_mass and a variable), into yval. Each field
-! below goes through regrid_in_place, which overwrites it.
+! regridded_xa: the species tracked at the new points, before they
+! replace star%xa and star%xa_start.
+      double precision, allocatable :: regridded_xa(:,:)
+! Each field is splined from the old points (star%log_mass,
+! old_point_count of them) to the new ones (new_log_mass,
+! new_point_count); regrid_in_place overwrites the field it is given.
       old_point_count = star%nz
       new_point_count = new_num_zones
 ! The entropy terms (7/91).
@@ -742,14 +771,21 @@ subroutine regrid_composition_terms
       call regrid_in_place(star%pressure_entropy_term)
       call regrid_in_place(star%luminosity_entropy_term)
       call regrid_in_place(star%radius_entropy_term)
-      do i = 1,num_species_tracked
-         call regrid_in_place(star%xa(i,:))
+      allocate(regridded_xa(num_species_tracked,new_point_count))
+      call regrid_composition(star%log_mass(1:old_point_count), &
+           star%xa(1:num_species_tracked,1:old_point_count), &
+           new_log_mass(1:new_point_count), regridded_xa)
+      star%xa(1:num_species_tracked,1:new_point_count) = regridded_xa
 ! xa_start (legacy HCOMPP), the composition at the start of the step, is
 ! needed for composition diffusion in rotating models.
-         call regrid_in_place(star%xa_start(i,:))
-      end do
+      call regrid_composition(star%log_mass(1:old_point_count), &
+           star%xa_start(1:num_species_tracked,1:old_point_count), &
+           new_log_mass(1:new_point_count), regridded_xa)
+      star%xa_start(1:num_species_tracked,1:new_point_count) = regridded_xa
 ! The start-of-step deuterium burning rate, when the surface deuterium
-! is above 1e-14 (MHP 05/02).
+! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
+! here: when the mesh grew, this is the regridded deuterium at that
+! index, below the new surface.)
       if (star%job%use_extended_composition .and. &
            star%xa(i_h2,star%nz).ge.1.0D-14) then
          call regrid_in_place(star%deuterium_burning_rate_start)
@@ -764,17 +800,19 @@ end subroutine regrid_composition_terms
 ! it does not rezone), which timestep_limit_structure,
 ! mid_timestep_model, burn_step and convection_geometry read.
 subroutine regrid_structure_variables
-
-      call osplin(new_log_mass,star%logP_start,star%log_mass,star%logP, &
-           old_point_count,new_point_count)
-      call osplin(new_log_mass,star%logR_start,star%log_mass,star%logR, &
-           old_point_count,new_point_count)
-      call osplin(new_log_mass,star%luminosity_lsun_start,star%log_mass,star%luminosity_lsun, &
-           old_point_count,new_point_count)
-      call osplin(new_log_mass,star%logT_start,star%log_mass,star%logT, &
-           old_point_count,new_point_count)
-      call osplin(new_log_mass,star%logRho_start,star%log_mass,star%logRho, &
-           old_point_count,new_point_count)
+      type(structure_profiles) :: regridded
+      call regrid_structure(star%log_mass(1:old_point_count), &
+           structure_profiles(log_pressure=star%logP(1:old_point_count), &
+                log_radius=star%logR(1:old_point_count), &
+                luminosity_lsun=star%luminosity_lsun(1:old_point_count), &
+                log_temperature=star%logT(1:old_point_count), &
+                log_density=star%logRho(1:old_point_count)), &
+           new_log_mass(1:new_point_count), regridded)
+      star%logP_start(1:new_point_count) = regridded%log_pressure
+      star%logR_start(1:new_point_count) = regridded%log_radius
+      star%luminosity_lsun_start(1:new_point_count) = regridded%luminosity_lsun
+      star%logT_start(1:new_point_count) = regridded%log_temperature
+      star%logRho_start(1:new_point_count) = regridded%log_density
 end subroutine regrid_structure_variables
 
 ! ---------------------------------------------------------------
@@ -782,19 +820,23 @@ end subroutine regrid_structure_variables
 ! the shape factors fp and ft, r0 and eta2 onto the new points, into the
 ! old_* arrays (and fp_old, ft_old) that transfer_new_points adopts.
 subroutine regrid_rotation_variables
+      type(rotation_profiles) :: regridded
       if (star%job%rotation_active) then
-         call osplin(new_log_mass,star%old_omega,star%log_mass,star%omega, &
-              old_point_count,new_point_count)
-         call osplin(new_log_mass,star%old_specific_angular_momentum,star%log_mass, &
-              star%j_rot,old_point_count,new_point_count)
-         call osplin(new_log_mass,fp_old,star%log_mass,star%fp_rot, &
-              old_point_count,new_point_count)
-         call osplin(new_log_mass,ft_old,star%log_mass,star%ft_rot, &
-              old_point_count,new_point_count)
-         call osplin(new_log_mass,star%old_mean_radius,star%log_mass,star%mean_radius, &
-              old_point_count,new_point_count)
-         call osplin(new_log_mass,star%old_eta_squared,star%log_mass,star%eta_squared, &
-              old_point_count,new_point_count)
+         call regrid_rotation(star%log_mass(1:old_point_count), &
+              rotation_profiles(omega=star%omega(1:old_point_count), &
+                   specific_angular_momentum=star%j_rot(1:old_point_count), &
+                   fp=star%fp_rot(1:old_point_count), &
+                   ft=star%ft_rot(1:old_point_count), &
+                   mean_radius=star%mean_radius(1:old_point_count), &
+                   eta_squared=star%eta_squared(1:old_point_count)), &
+              new_log_mass(1:new_point_count), regridded)
+         star%old_omega(1:new_point_count) = regridded%omega
+         star%old_specific_angular_momentum(1:new_point_count) = &
+              regridded%specific_angular_momentum
+         fp_old(1:new_point_count) = regridded%fp
+         ft_old(1:new_point_count) = regridded%ft
+         star%old_mean_radius(1:new_point_count) = regridded%mean_radius
+         star%old_eta_squared(1:new_point_count) = regridded%eta_squared
       endif
 
 end subroutine regrid_rotation_variables
@@ -812,14 +854,16 @@ subroutine regrid_start_of_step_eps
       use rotation_scratch_lib
       if (star%job%rotation_active .or. (star%job%use_extended_composition .and. &
            star%job%envelope_overshoot_active)) then
-         call osplin(new_log_mass,rot_scr%old_eps_total,star%log_mass,star%eps_total, &
-              old_point_count,new_point_count)
+         call regrid_profile(star%log_mass(1:old_point_count), &
+              star%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
+              rot_scr%old_eps_total(1:new_point_count))
          do zone_index = 1,star%nz
             spline_y(zone_index) = star%eps_total(zone_index)+star%eps_channels(i_eps_neu,zone_index)+ &
                  star%eps_channels(i_eps_grav,zone_index)
          end do
-         call osplin(new_log_mass,rot_scr%old_eps_plus_neu_grav,star%log_mass,spline_y, &
-              old_point_count,new_point_count)
+         call regrid_profile(star%log_mass(1:old_point_count), &
+              spline_y(1:old_point_count), new_log_mass(1:new_point_count), &
+              rot_scr%old_eps_plus_neu_grav(1:new_point_count))
       endif
 end subroutine regrid_start_of_step_eps
 
@@ -856,23 +900,13 @@ end subroutine transfer_new_points
 ! Set the point masses m_i = 10^(log m_i) and the mass weights
 !   dm_i  = (m_(i+1) - m_(i-1))/2,  with m_0 = -m_1,
 !   dm_nz = M - (m_(nz-1) + m_nz)/2,
-! so dm_i is the mass between the midpoints on either side of point i
-! (from the centre for i = 1), and dm_nz includes the envelope above the
-! outer point (M = 10^log_total_mass).
+! of the new mesh (compute_shell_masses), so dm_i is the mass between
+! the midpoints on either side of point i (from the centre for i = 1),
+! and dm_nz includes the envelope above the outer point
+! (M = 10^log_total_mass).
 subroutine set_new_shell_masses
-      use math_lib
-      mass_curr = exp(clndp*star%log_mass(1))
-      mass_prev = - mass_curr
-      do i = 2,star%nz
-       mass_two_back = mass_prev
-       mass_prev = mass_curr
-       mass_curr = exp(clndp*star%log_mass(i))
-       star%m(i-1) = mass_prev
-       star%dm(i-1) = 0.5D0*(mass_curr-mass_two_back)
-      end do
-      star%m(star%nz) = mass_curr
-      star%dm(star%nz) = exp(ln10*star%log_total_mass) - &
-           0.5D0*(mass_prev+mass_curr)
+      call compute_shell_masses(star%log_mass(1:star%nz), star%log_total_mass, &
+           star%m(1:star%nz), star%dm(1:star%nz))
 end subroutine set_new_shell_masses
 
 ! ---------------------------------------------------------------
@@ -917,18 +951,14 @@ end subroutine respin_on_new_grid
 
 ! ---------------------------------------------------------------
 ! Rotating models: re-total the angular momentum and the rotational
-! kinetic energy on the new mesh,
+! kinetic energy on the new mesh (compute_angular_momentum_totals),
 !   J = sum_i j_i dm_i,   E_rot = sum_i (1/2) omega_i j_i dm_i,
 ! and store the rotation state as the start of the step.
 subroutine retally_angular_momentum
-       sum_angular_momentum = 0.0D0
-       sum_rotational_ke = 0.0D0
-       do i = 1,star%nz
-          angular_momentum_shell = star%j_rot(i)*star%dm(i)
-          star%kinetic_energy_rot(i) = 0.5D0*star%omega(i)*angular_momentum_shell
-          sum_angular_momentum = sum_angular_momentum + angular_momentum_shell
-          sum_rotational_ke = sum_rotational_ke + star%kinetic_energy_rot(i)
-       end do
+       call compute_angular_momentum_totals(star%j_rot(1:star%nz), &
+            star%omega(1:star%nz), star%dm(1:star%nz), &
+            star%kinetic_energy_rot(1:star%nz), sum_angular_momentum, &
+            sum_rotational_ke)
 ! The totals before and after the rezone, a solver diagnostic.
        if (solver_diagnostics()) &
             write(run_log_unit,1120)total_angular_momentum, &
@@ -1022,20 +1052,14 @@ end subroutine refresh_surface_opacity
 !----------------------------------------------------------------------
 ! Spline one field from the old mesh (star%log_mass, old_point_count
 ! points) onto the new one (new_log_mass, new_point_count points) with
-! osplin, overwriting field(1:new_num_zones). regrid_in holds the copy
-! of the table and regrid_out the result (the legacy HPO and HTO).
+! regrid_profile, overwriting field(1:new_point_count). regrid_out holds
+! the result until the old values have been read (the legacy HTO).
 subroutine regrid_in_place(field)
       double precision, intent(inout) :: field(:)
-      integer :: j
 
-      do j = 1,star%nz
-         regrid_in(j) = field(j)
-      end do
-      call osplin(new_log_mass,regrid_out,star%log_mass,regrid_in, &
-           old_point_count,new_point_count)
-      do j = 1,new_num_zones
-         field(j) = regrid_out(j)
-      end do
+      call regrid_profile(star%log_mass(1:old_point_count), field(1:old_point_count), &
+           new_log_mass(1:new_point_count), regrid_out(1:new_point_count))
+      field(1:new_point_count) = regrid_out(1:new_point_count)
 end subroutine regrid_in_place
 
 end subroutine rezone

@@ -24,6 +24,7 @@ src/test_convection
 src/test_structure
 src/test_triangle_fit
 src/test_mass_change
+src/test_regrid
 src/test_controls
 src/test_net.short
 src/test_convection.short
