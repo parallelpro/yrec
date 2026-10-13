@@ -575,9 +575,13 @@ subroutine update_total_mass()
       star%stotal = star%log_total_mass
 ! The shell masses dm (g) of the convection zone: half the span between
 ! the neighbouring zone centers, the last shell reaching the total mass.
-      do zone_idx = jenv,nz-1
+! A zone reaching the center (jenv = 1) starts from it: dm(1) =
+! (m(1) + m(2))/2, i.e. m_0 = -m_1 as in rezoning. (It used to read
+! m(0), outside the array.)
+      do zone_idx = max(jenv,2),nz-1
          star%dm(zone_idx) = 0.5d0*(star%m(zone_idx+1)-star%m(zone_idx-1))
       end do
+      if(jenv.eq.1) star%dm(1) = 0.5d0*(star%m(2)+star%m(1))
       star%dm(nz) = total_mass_grams_new-0.5d0*(star%m(nz)+star%m(nz-1))
 ! senv = log10(m(nz)/M), the mass fraction inside the fitting point.
       star%senv = star%log_mass(nz) - star%log_total_mass
