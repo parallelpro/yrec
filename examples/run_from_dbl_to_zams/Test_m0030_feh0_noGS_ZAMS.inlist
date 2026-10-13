@@ -35,7 +35,7 @@
   
  run_kind(2) = 1   
  first_call_flag(2) = .FALSE.  
- max_model_number(2) = 1000 
+ max_model_number(2) = 50 ! 0.03 Msun: the central-H stop below can never trigger (no H burning), and the Newton solve fails later in the contraction in every YREC version (the original after about 210 models), so stop at 50
  initial_x_array(2) = 0.719620
  initial_z_array(2) = 0.016492
  mixing_length_alpha(2) = 1.707575
@@ -126,15 +126,15 @@
 ! Niter1 and Niter2 are mandatory; Niter3 and Niter4 can be nonzero for high precision work, but set to zero if you are having convergence issues.
  max_iter_level1 =  2 ! Iterations before SBC is checked              
  max_iter_level2 = 40 ! Iterations after SBC is checked, assumes start of T nuclear burning rates.
- max_iter_level3 = 40 ! Iterate between model solution and rotational mixing. Set to 1 for models without rotation.
- max_iter_level4 = 40 ! Iterate between model solution and nuclear burning rates.
+ max_iter_level3 = 0 ! Iterate between model solution and rotational mixing. Set to 1 for models without rotation. (0.03 Msun: the original deck's value; the unified deck had 40)
+ max_iter_level4 = 0 ! Iterate between model solution and nuclear burning rates. (0.03 Msun: the original deck's value; the unified deck had 40)
  solver_underrelax_start = 0.6 ! The code predicts corrections to the structure variables, which can initially be overestimated. This is the iteration 1 scale factor by which they are multipled.          
  solver_underrelax_increment = 0.05 ! This is the increment to the factor for each successive interation, for example it reaches the max of 1 in 8 steps if (0.6,0.05). larger factor = faster convergence, less stable
- solver_tolerances(1,1) = 6.0D-7 ! Convergence tol for log P. If the maximum correction in a given stage anywhere is below this threshold (for all 4 state variables), the run is converged. 
- solver_tolerances(2,1) = 4.5D-7 ! Convergence tol for log T.
- solver_tolerances(3,1) = 3.0D-7 ! Convergence tol for log R.  
- solver_tolerances(4,1) = 9.0D-7 ! Convergence tol for L/Ltot. Note: all are local  
- solver_tolerances(5,1) = 3.0D-7 ! If the difference between analytic and numerical derivatives is better than this, iteration is skipped. (5,1) is for P+R   
+ solver_tolerances(1,1) = 6.0D-5 ! Convergence tol for log P. If the maximum correction in a given stage anywhere is below this threshold (for all 4 state variables), the run is converged. (0.03 Msun: the original deck's value; the unified deck had 6.0D-7)
+ solver_tolerances(2,1) = 4.5D-5 ! Convergence tol for log T. (0.03 Msun: the original deck's value; the unified deck had 4.5D-7)
+ solver_tolerances(3,1) = 3.0D-5 ! Convergence tol for log R. (0.03 Msun: the original deck's value; the unified deck had 3.0D-7)
+ solver_tolerances(4,1) = 9.0D-5 ! Convergence tol for L/Ltot. Note: all are local (0.03 Msun: the original deck's value; the unified deck had 9.0D-7)
+ solver_tolerances(5,1) = 3.0D-5 ! If the difference between analytic and numerical derivatives is better than this, iteration is skipped. (5,1) is for P+R (0.03 Msun: the original deck's value; the unified deck had 3.0D-7)
  solver_tolerances(1,2) = 9.0D5 ! Log correction in P larger than this ends run.   
  solver_tolerances(2,2) = 5.0D5 ! Log correction in T larger than this ends run.   
  solver_tolerances(3,2) = 5.0D5 ! Log correction in R larger than this ends run.   
@@ -202,8 +202,8 @@
 ! Atmospheric surface boundary condition options
  atm_choice = 0 ! Toggle switch. 0 = Eddington gray 1 = Krishnaswamy 2=legacy (don't use) 3=Kurucz 4=Allard. Note - for 3 and 4, switches to gray if outside table domain.
 ! Atmosphere and envelope integrator options. Note - if a tabulated atmosphere is used, only an envelope integration is performed to the outer fitting point.                                             
- tri_delta_teffl = .005 ! The code solves for a SBC between 3 models. This is the spacing between 2 of them in Log Teff. The third is a different L at the average Teff.
- tri_delta_logl = .040 ! Spacing between the lower pair and upper point in Log L.
+ tri_delta_teffl = .0025 ! The code solves for a SBC between 3 models. This is the spacing between 2 of them in Log Teff. The third is a different L at the average Teff. (0.03 Msun: the original deck's value; the unified deck had .005)
+ tri_delta_logl = .0200 ! Spacing between the lower pair and upper point in Log L. (0.03 Msun: the original deck's value; the unified deck had .040)
  
  atm_error_tol = 1.0D-9 ! Numerical tolerances for atmosphere and envelope solutions
  atm_step_max = 0.25 ! Atmosphere integrator uses an adaptive step. This is the maximum step in log tau.       
@@ -225,9 +225,9 @@
  
 ! Spatial tolerances for allocating mesh points, replaces HPTTOL
  tol_dm_min = 0.5D-10 ! Minimum spacing in mass between points (most important for thin outer fitting points)
- tol_dm_max = 0.02 ! Maximum spacing in log M; important for stellar cores
- tol_dl_max = 0.0025 ! Maximum spacing in L/Lsurf; important for energy generating regions
- tol_dp_env_max = 0.02 ! Maximum spacing in log P, surface CZ (most important for outer layers)
+ tol_dm_max = 0.01 ! Maximum spacing in log M; important for stellar cores (0.03 Msun: the original deck's finer value; at 0.02 the solve fails on the first evolution model)
+ tol_dl_max = 0.00125 ! Maximum spacing in L/Lsurf; important for energy generating regions (0.03 Msun: the original deck's value)
+ tol_dp_env_max = 0.01 ! Maximum spacing in log P, surface CZ (most important for outer layers) (0.03 Msun: the original deck's value)
  tol_dp_czbase_max = 0.02 ! Maximum spacing in log P near the SCZ base
  tol_dp_core_max = 0.02 ! Maximum spacing in log P, interior to SCZ (important between burning, SCZ base)
  flag_dx = 0.05 ! Discontinuities in X larger than this are preserved / flagged
@@ -248,10 +248,10 @@
  time_dy_total = 0.00015 ! Maximum absolute He burned per timestep, Msun (AGB)
  time_dy_shell = 0.02 ! Maximum fractional He burned, He shell (AGB)
  lstruct_time = .TRUE. ! Flag to restrict timestep from structural changes - disabled once Lnuc>>>Lgrav
- time_dt = 0.02 ! Maximum local change in temperature (pre-MS)
- time_dp = 0.04 ! Maximum local change in pressure (pre-MS)
- time_dr = 0.02 ! Maximum local change in radius (pre-MS)
- time_dl = 0.02 ! Maximum local change in luminosity (pre-MS)
+ time_dt = 0.01 ! Maximum local change in temperature (pre-MS) (0.03 Msun: the original deck's value; the unified deck had 0.02)
+ time_dp = 0.02 ! Maximum local change in pressure (pre-MS) (0.03 Msun: the original deck's value; the unified deck had 0.04)
+ time_dr = 0.01 ! Maximum local change in radius (pre-MS) (0.03 Msun: the original deck's value; the unified deck had 0.02)
+ time_dl = 0.01 ! Maximum local change in luminosity (pre-MS) (0.03 Msun: the original deck's value; the unified deck had 0.02)
  time_max_dt_frac = 1.3 ! Maximum fractional change in timestep, model to model
  time_dw_mix = 0.01 ! Maximum change in omega for each small step in the angular momentum solver (can be more than one per full model step)
  time_dw_global = 0.08 ! Maximum change in omega
