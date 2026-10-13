@@ -1057,8 +1057,8 @@ end subroutine update_surface_mixture
 ! ---------------------------------------------------------------
 ! Copy the step-start structure: log P, log T, log R and L into the
 ! *_start arrays (legacy HPOLD), against which the timestep control
-! limits the change from model to model; with them Teff and the zone
-! count, and, when rotating, omega into old_omega.
+! limits the change from model to model; with them Teff and the surface
+! L, and, when rotating, omega into old_omega.
 subroutine snapshot_step_start
       do i = 1,star%nz
          star%logP_start(i) = star%logP(i)
@@ -1067,7 +1067,7 @@ subroutine snapshot_step_start
          star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
       end do
       star%log_Teff_start = star%log_Teff
-      star%nz_start = star%nz
+      star%surface_luminosity_lsun_start = star%luminosity_lsun(star%nz)
       if (star%job%rotation_active) then
          do i = 1,star%nz
           star%old_omega(i) = star%omega(i)

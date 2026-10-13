@@ -612,10 +612,14 @@ subroutine timestep_limit_hr(previous_timestep, luminosity, log_teff, &
            dt_factor_limit
 
 ! The changes of log Teff and of the surface log L since the start of the
-! step; the start-of-step surface L is read at star%nz_start, the point
-! count saved before the rezone (seed_new_point_run in rezoning).
+! step; the start-of-step surface L is the one saved before the rezone
+! (seed_new_point_run in rezoning). (It used to be read as
+! luminosity_lsun_start(nz_start), nz_start the point count before the
+! rezone, but the rezone re-splines luminosity_lsun_start onto the new
+! points, so that read an interior point, or a stale one beyond the new
+! count, whenever the count changed.)
       teffl_change = abs(star%log_Teff_start - log_teff)
-      logl_change = abs(log10(star%luminosity_lsun_start(star%nz_start)) - &
+      logl_change = abs(log10(star%surface_luminosity_lsun_start) - &
            log10(luminosity(num_points)))
 
 ! The factor f that brings both changes down to the triangle's size.

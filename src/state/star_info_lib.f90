@@ -324,7 +324,9 @@ module star_info_lib
             double precision :: old_shell_mass(json)
             logical :: convective_flag_start(json)
             double precision :: log_Teff_start
-            integer :: nz_start
+! The start-of-step surface luminosity (Lsun), L at the outer point
+! before the rezone, for the HR-motion timestep limit.
+            double precision :: surface_luminosity_lsun_start
 ! -- former shell_diagnostics_state (per-zone diagnostics), member
 ! micro-renames 2026: eps_total (SESUM, total specific energy
 ! generation), eps_channels (SEG, per-channel via i_eps_*), beta

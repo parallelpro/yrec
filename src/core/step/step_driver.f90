@@ -330,9 +330,9 @@ subroutine rezone_or_snapshot
                   star%luminosity_lsun_start(i) = star%luminosity_lsun(i)
                   star%logRho_start(i) = star%logRho(i)
                end do
-! Teff and the zone count are kept as well.
+! Teff and the surface L are kept as well.
                star%log_Teff_start = star%log_Teff
-               star%nz_start = star%nz
+               star%surface_luminosity_lsun_start = star%luminosity_lsun(star%nz)
           endif
 ! The start-of-step rotational kinetic energy of each zone.
             if (star%job%rotation_active) then

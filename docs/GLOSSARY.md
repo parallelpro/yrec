@@ -149,7 +149,7 @@ below record their real units, and renames follow as code is touched.
 | log₁₀ T_eff | dex (K) | `star%log_Teff` | `TEFFL` → `log_teff` | core/structure/henyey_iteration.f90 | Effective temperature, from `envelope_fit_coeffs(7:9)`. |
 | log₁₀(m_fit/M) | dex | `star%senv` | `SENV` | core/structure/henyey_iteration.f90:86 | `log_mass(nz) − log_total_mass`: mass fraction inside the fitting point. |
 | log₁₀ P etc. at step start | as above | `star%logP_start`, `logT_start`, `logR_start`, `logRho_start`, `luminosity_lsun_start` | `HPO`, `HTO`, `HRO`, `HDO`, `HLO` (`/OLDMOD/`) → `old_pressure` ... | core/model/rezoning.f90, core/step/step_driver.f90 | Previous converged model on the current grid (section 1.6). |
-| log₁₀ T_eff, N at step start | dex, — | `star%log_Teff_start`, `star%nz_start` | `TEFFLO`, `MO` | core/model/rezoning.f90, core/step/step_driver.f90 | Used by the HR-track timestep limiter (`core/step/timestep_control.f90`). |
+| log₁₀ T_eff, surface L at step start | dex, L☉ | `star%log_Teff_start`, `star%surface_luminosity_lsun_start` | `TEFFLO`, `HLO(MO)` | core/model/rezoning.f90, core/step/step_driver.f90 | Used by the HR-track timestep limiter (`core/step/timestep_control.f90`). |
 | — | logical | `star%convective_flag_start` | `LCO` | core/model/rezoning.f90 | Previous model's `convective_flag`. (`cz_flag_start`, legacy `LCZO`, was write-only and was removed in 2026-10.) |
 | — | — | `star%old_shell_mass` | `HSS` | none | **Unused.** Historically held log-mass coordinates, not shell masses (trap 6). |
 
@@ -556,7 +556,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - With instability transport on and a value > 1, it is read as Ω_sat·τ_cz(☉), and Ω_sat = value/τ_cz.
     - Otherwise it is Ω_sat in rad s⁻¹ (the Kawaler law, `rotation/magnetic_braking.f90:242-263`; the solid-body form skips the instability-transport test).
 26. **The structure `_start` arrays are written by `rezone`, not at a single "start of step" point.**
-    - `core/model/rezoning.f90` stores `logP_start`, `luminosity_lsun_start`, `log_Teff_start` and `nz_start` while regridding (`:345-355`), and `convective_flag_start` after regridding.
+    - `core/model/rezoning.f90` stores `logP_start`, `luminosity_lsun_start`, `log_Teff_start` and `surface_luminosity_lsun_start` while regridding (`:345-355`), and `convective_flag_start` after regridding.
     - `xa_start` is stored later, after mass loss.
     - What all of these have in common is "previous converged model, remapped to the current grid".
 

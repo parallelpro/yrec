@@ -386,8 +386,8 @@ subroutine assign_new_points
 end subroutine assign_new_points
 
 ! ---------------------------------------------------------------
-! Start the new mesh at the centre, save the start-of-step Teff and point
-! count (for timestep_limit_hr), and set the maximum spacings
+! Start the new mesh at the centre, save the start-of-step Teff and
+! surface L (for the HR-motion timestep limit), and set the maximum spacings
 ! point_spacing_max in log P, L, X and Z, the L one scaled by the largest
 ! L in the model.
 subroutine seed_new_point_run
@@ -398,10 +398,10 @@ subroutine seed_new_point_run
       x_new(1) = star%xa(i_h1,1)
       z_new(1) = star%xa(i_metals,1)
       luminosity_max = star%luminosity_lsun(star%nz)
-! The start-of-step log Teff (JVS 04/14) and point count (JVS 05/25),
-! saved before the rezone changes the point count.
-        star%log_Teff_start = star%log_Teff
-      star%nz_start = star%nz
+! The start-of-step log Teff (JVS 04/14) and surface L, saved before the
+! rezone moves the points.
+      star%log_Teff_start = star%log_Teff
+      star%surface_luminosity_lsun_start = star%luminosity_lsun(star%nz)
 ! luminosity_max: the largest L in the model.
       do i = star%nz-1,1,-1
          if (star%luminosity_lsun(i).gt.luminosity_max) then
