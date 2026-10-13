@@ -63,7 +63,7 @@ contains
 !      in practice always false on return (see reject_negative_j and
 !      smooth_gradient_reversals).
 !   ierr : nonzero stops the run.
-subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
+subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev, &
      specific_angular_momentum_start, log_radius, log_mass, shell_mass, &
      iteration_number, &
      am_transport_convective_flag, num_zones, dt, eta_squared, &
@@ -75,9 +75,10 @@ subroutine check_angular_momentum(log_density, specific_angular_momentum_prev, &
            default_inertia_tolerance
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star_info, json
       use io_units
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(inout) :: log_density(json)
       double precision, intent(inout) :: specific_angular_momentum_prev(json)
@@ -213,7 +214,7 @@ subroutine update_omega()
       call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius, &
-           star%disk_gate_age_gyr, &
+           s%disk_gate_age_gyr, &
            inertia_tolerance=inertia_tolerance)
       rotation_settings%shape_tolerance = saved_acc_tolerance
 end subroutine update_omega
@@ -241,7 +242,7 @@ subroutine smooth_gradient_reversals()
 ! omega rises outward across the interface (by more than 1 rad/s).
       if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
 ! It did in the previous model too: leave it and move one zone in.
-         if(star%old_omega(zone_index)-star%old_omega(zone_index-1).gt.1.0d-15)then
+         if(s%old_omega(zone_index)-s%old_omega(zone_index-1).gt.1.0d-15)then
             zone_index = zone_bottom-1
             zone_bottom = zone_index
             if(zone_index.gt.1) cycle zone_scan
@@ -269,7 +270,7 @@ subroutine smooth_gradient_reversals()
 ! Solid-body rotation from zone_bottom to zone_top.
          call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
                     shell_mass,zone_bottom,zone_top,eta_squared, &
-                    moment_of_inertia,omega,qiw,mean_radius,num_zones,star%disk_gate_age_gyr)
+                    moment_of_inertia,omega,qiw,mean_radius,num_zones,s%disk_gate_age_gyr)
 ! Widen the region while the redistribution makes new reversals at its
 ! edges. redo_flag serves here as the flag that an edge moved; it ends
 ! false, so it never asks for a redo of the sub-step.
@@ -279,7 +280,7 @@ subroutine smooth_gradient_reversals()
 ! below (and its convection zone).
          if(zone_bottom.gt.1) then
             if(omega(zone_bottom)-omega(zone_bottom-1).gt.1.0d-15)then
-               if(star%old_omega(zone_bottom)-star%old_omega(zone_bottom-1).lt.1.0d-15)then
+               if(s%old_omega(zone_bottom)-s%old_omega(zone_bottom-1).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_bottom = zone_bottom - 1
                   if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
@@ -295,7 +296,7 @@ subroutine smooth_gradient_reversals()
 ! above (and its convection zone).
          if(zone_top.lt.num_zones) then
             if(omega(zone_top+1)-omega(zone_top).gt.1.0d-15)then
-               if(star%old_omega(zone_top+1)-star%old_omega(zone_top).lt.1.0d-15)then
+               if(s%old_omega(zone_top+1)-s%old_omega(zone_top).lt.1.0d-15)then
                   redo_flag = .true.
                   zone_top = zone_top+1
                   if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
@@ -312,7 +313,7 @@ subroutine smooth_gradient_reversals()
          if(.not. redo_flag) exit
             call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
                        shell_mass,zone_bottom,zone_top,eta_squared, &
-                       moment_of_inertia,omega,qiw,mean_radius,num_zones,star%disk_gate_age_gyr)
+                       moment_of_inertia,omega,qiw,mean_radius,num_zones,s%disk_gate_age_gyr)
          end do
          if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
               write(*,120)zone_bottom,zone_top,iteration_number
@@ -394,13 +395,14 @@ end subroutine check_angular_momentum
 !   mid_scr%mu : the new mean molecular weight (from the second
 !      iteration on).
 !   ierr : nonzero stops the run.
-subroutine check_composition(composition, iteration_number, num_zones, &
+subroutine check_composition(s, composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
+      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3
       use io_units
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: iteration_number
@@ -496,14 +498,14 @@ subroutine check_composition(composition, iteration_number, num_zones, &
       if(iteration_number.gt.1)then
          do zone_index = 1,num_zones
             delta_hydrogen = composition(i_h1,zone_index)- &
-                 star%envelope_hydrogen_fraction
+                 s%envelope_hydrogen_fraction
             delta_helium = composition(i_he4,zone_index)- &
-                 star%envelope_helium_fraction
+                 s%envelope_helium_fraction
             delta_metal = composition(i_metals,zone_index)- &
-                 star%envelope_metal_fraction
+                 s%envelope_metal_fraction
             delta_helium3 = composition(i_he3,zone_index)- &
-                 star%envelope_he3_fraction
-            amu_calc_temp = star%amuenv + delta_hydrogen/atomic_weight(1) + &
+                 s%envelope_he3_fraction
+            amu_calc_temp = s%amuenv + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)

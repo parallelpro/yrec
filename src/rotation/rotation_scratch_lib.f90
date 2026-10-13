@@ -13,7 +13,7 @@
 ! deck byte-identical), so an in-process rerun needs no restore.
 module rotation_scratch_lib
       use rotation_configuration, only: rotation_settings
-      use star_info_lib, only: json, star
+      use star_info_lib, only: json
       implicit none
       private
       public :: rotation_diffusion_state, midstep_physics_state, &

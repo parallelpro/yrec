@@ -202,7 +202,8 @@ CONTROLS_FREE_DIRS = {"rotation": {"job%diffuse_helium_active"}}
 
 def check_controls_free(src_root):
     problems = []
-    read = re.compile(r"(?i)\bstar%((?:ctrl|job)%\w+)")
+    # the global star, or the star as an argument s
+    read = re.compile(r"(?i)\b(?:star|s)%((?:ctrl|job)%\w+)")
     for d, allowed in CONTROLS_FREE_DIRS.items():
         for f in sorted((src_root / d).rglob("*.f90")):
             rel = f.relative_to(src_root).as_posix()
@@ -211,7 +212,7 @@ def check_controls_free(src_root):
             for name in sorted(set(m.lower() for m in read.findall(
                     strip_comments(f.read_text(errors="replace"))))):
                 if name not in allowed:
-                    problems.append(f"{rel}: reads star%{name} (CONTROLS_FREE_DIRS; "
+                    problems.append(f"{rel}: reads s%{name} (CONTROLS_FREE_DIRS; "
                                     f"add it to {d}'s settings record)")
     return problems
 
@@ -240,9 +241,9 @@ STAR_ACCESS_BUDGET = {
     # writers the stitched model, which moved from module variables into
     # the star (s%stitched)
     "io": (476, 10),
-    # rotation (2026-10): circulation, magnetic braking, viscos and the
-    # grids are star-free; the drivers still use the global
-    "rotation": (372, 5),
+    # rotation (2026-10): the drivers take the star as an argument s; the
+    # rest is star-free
+    "rotation": (0, 0),
     # setup: +4 (2026-10) for the solar units the rotation settings record
     # now carries
     "setup": (156, 3),

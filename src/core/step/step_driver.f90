@@ -520,7 +520,7 @@ subroutine converge_with_rotation
 ! Evolve the angular momentum over the step: the new run of omega (with
 ! the wind torque when job%use_wind_torque is set).
                wind_loss_active = s%job%use_wind_torque
-               call evolve_angular_momentum(s%dt, s%max_domega_frac, wind_loss_active, &
+               call evolve_angular_momentum(s, s%dt, s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
                ! Return the error to the caller.

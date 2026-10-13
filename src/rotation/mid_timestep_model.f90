@@ -39,14 +39,14 @@ contains
 ! surface convection zone (surface_cz_active, cz_mass_bottom and
 ! cz_mass_top in g, moment_of_inertia_cz in g cm^2); the radiative and
 ! convective zone tables. A nonzero ierr stops the run.
-subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, first_call, &
+subroutine advance_rotation_substep(s, full_timestep, sub_timestep, time_fraction, first_call, &
      moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
      core_boundary_zone, envelope_boundary_zone, fully_convective_flag, &
      surface_cz_active, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
       use rotation_scratch_lib
-      use star_info_lib, only: star, i_eps_grav, i_eps_neu, i_h2, json
+      use star_info_lib, only: star_info, i_eps_grav, i_eps_neu, i_h2, json
       use net_lib, only: burn_deuterium_region, min_deuterium_substep, &
            num_rate_rows
       use physical_constants
@@ -54,6 +54,7 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
            network_rates_of_model
       use math_lib
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: full_timestep, sub_timestep
       double precision, intent(in) :: time_fraction
@@ -93,33 +94,33 @@ subroutine advance_rotation_substep(full_timestep, sub_timestep, time_fraction, 
 ! The convection zones of the interpolated model with their overshoot,
 ! the zones convective for angular momentum transport
 ! (am_transport_convective_flag_mid), and the zone tables.
-      call am_convective_regions(star%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
-           star%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,star%nz, &
+      call am_convective_regions(s%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
+           s%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,s%nz, &
            rot_scr%am_transport_convective_flag_mid,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, star%iov1, star%iov2, ierr)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, s%iov1, s%iov2, ierr)
       if (ierr /= 0) return
 ! Burn the start-of-sub-step composition (star%xa_start) over the
 ! sub-step. For thermodynamic consistency (MHP 6/00) the network rates
 ! and temperatures are those of the interpolated model, not those of
 ! the step's end.
-      call network_rates_of_model(star, rot_scr%log_density_mid, &
-           rot_scr%log_temperature_mid, star%xa, star%nz, rate_by_zone)
-      call burn_and_settle(sub_timestep,star%xa,star%dm,rot_scr%log_temperature_mid, &
-           rate_by_zone, star%nz,radiative_zone_bounds,convective_zone_bounds, &
+      call network_rates_of_model(s, rot_scr%log_density_mid, &
+           rot_scr%log_temperature_mid, s%xa, s%nz, rate_by_zone)
+      call burn_and_settle(s, sub_timestep,s%xa,s%dm,rot_scr%log_temperature_mid, &
+           rate_by_zone, s%nz,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
-           ,star%log_total_mass,rot_scr%log_density_mid,star%log_mass,rot_scr%log_radius_mid, &
-           rot_scr%log_pressure_mid,rot_scr%am_transport_convective_flag_mid,star%m, ierr)
+           ,s%log_total_mass,rot_scr%log_density_mid,s%log_mass,rot_scr%log_radius_mid, &
+           rot_scr%log_pressure_mid,rot_scr%am_transport_convective_flag_mid,s%m, ierr)
       if (ierr /= 0) return
 ! The burned and settled composition, which secular_transport restores
 ! (slots 1-4) at the start of each of its later iterations.
-      do i = 1,star%nz
+      do i = 1,s%nz
          do j = 1,num_species_tracked
-            rot_scr%composition_snapshot(j,i) = star%xa(j,i)
+            rot_scr%composition_snapshot(j,i) = s%xa(j,i)
          end do
       end do
 ! Deuterium burns while the surface still has some at the start of the
 ! sub-step (X_D > 1e-14).
-      if (star%xa_start(i_h2,star%nz).gt.1.0D-14) call burn_deuterium_over_substep()
+      if (s%xa_start(i_h2,s%nz).gt.1.0D-14) call burn_deuterium_over_substep()
       call locate_convection_zones()
       call rotate_midpoint_model()
 
@@ -132,15 +133,15 @@ contains
 ! later sub-steps: the previous sub-step's convective flags (MHP 6/02).
 subroutine start_substep_composition()
       if (first_call) then
-         do j = 1,star%nz
-            rot_scr%convective_flag_prev(j) = star%convective_flag_start(j)
+         do j = 1,s%nz
+            rot_scr%convective_flag_prev(j) = s%convective_flag_start(j)
             mid_scr%mu(j) = rot_scr%old_mu(j)
             do i = 1,num_species_tracked
-               star%xa(i,j) = star%xa_start(i,j)
+               s%xa(i,j) = s%xa_start(i,j)
             end do
          end do
       else
-         do j = 1,star%nz
+         do j = 1,s%nz
             rot_scr%convective_flag_prev(j) = rot_scr%convective_flag_mid(j)
          end do
       endif
@@ -160,33 +161,33 @@ end subroutine start_substep_composition
 ! back out on a redo).
 subroutine interpolate_structure()
       step_fraction_ratio = sub_timestep/full_timestep
-      do j = 1,star%nz
-         rot_scr%log_density_mid(j) = star%logRho_start(j) + &
-              time_fraction*(star%logRho(j)-star%logRho_start(j))
-         rot_scr%luminosity_lsun_mid(j) = star%luminosity_lsun_start(j) + &
-              time_fraction*(star%luminosity_lsun(j)-star%luminosity_lsun_start(j))
-         rot_scr%log_pressure_mid(j) = star%logP_start(j) + &
-              time_fraction*(star%logP(j)-star%logP_start(j))
-         rot_scr%log_radius_mid(j) = star%logR_start(j) + &
-              time_fraction*(star%logR(j)-star%logR_start(j))
-         rot_scr%log_temperature_mid(j) = star%logT_start(j) + &
-              time_fraction*(star%logT(j)-star%logT_start(j))
-         rot_scr%mean_gravity_mid(j) = star%old_hg(j) + time_fraction*(star%mean_gravity(j) - star%old_hg(j))
+      do j = 1,s%nz
+         rot_scr%log_density_mid(j) = s%logRho_start(j) + &
+              time_fraction*(s%logRho(j)-s%logRho_start(j))
+         rot_scr%luminosity_lsun_mid(j) = s%luminosity_lsun_start(j) + &
+              time_fraction*(s%luminosity_lsun(j)-s%luminosity_lsun_start(j))
+         rot_scr%log_pressure_mid(j) = s%logP_start(j) + &
+              time_fraction*(s%logP(j)-s%logP_start(j))
+         rot_scr%log_radius_mid(j) = s%logR_start(j) + &
+              time_fraction*(s%logR(j)-s%logR_start(j))
+         rot_scr%log_temperature_mid(j) = s%logT_start(j) + &
+              time_fraction*(s%logT(j)-s%logT_start(j))
+         rot_scr%mean_gravity_mid(j) = s%old_hg(j) + time_fraction*(s%mean_gravity(j) - s%old_hg(j))
          mid_scr%grada(j) = rot_scr%old_grada(j) + &
-              time_fraction*(star%grada(j)-rot_scr%old_grada(j))
-         mid_scr%gradT(j) = rot_scr%old_gradT(j) + time_fraction*(star%gradT(j) - rot_scr%old_gradT(j))
+              time_fraction*(s%grada(j)-rot_scr%old_grada(j))
+         mid_scr%gradT(j) = rot_scr%old_gradT(j) + time_fraction*(s%gradT(j) - rot_scr%old_gradT(j))
          mid_scr%gradr(j) = rot_scr%old_gradr(j) + &
-              time_fraction*(star%gradr(j) - rot_scr%old_gradr(j))
-         mid_scr%eps_total(j) = rot_scr%old_eps_total(j) + time_fraction*(star%eps_total(j) - rot_scr%old_eps_total(j))
-         mid_scr%visc(j) = rot_scr%old_visc(j) + time_fraction*(star%visc(j) - rot_scr%old_visc(j))
-         mid_scr%thdif(j) = rot_scr%old_thdif(j) + time_fraction*(star%thdif(j) - rot_scr%old_thdif(j))
-         mid_scr%cp(j) = rot_scr%old_cp(j) + time_fraction*(star%cp(j) - rot_scr%old_cp(j))
-         mid_scr%qdt(j) = rot_scr%old_qdt(j) + time_fraction*(star%qdt(j) - rot_scr%old_qdt(j))
-         mid_scr%opacity(j) = rot_scr%old_opacity(j) + time_fraction*(star%opacity_zone(j) - rot_scr%old_opacity(j))
-         mid_scr%mu(j) = mid_scr%mu(j) + step_fraction_ratio*(star%mu(j) - rot_scr%old_mu(j))
+              time_fraction*(s%gradr(j) - rot_scr%old_gradr(j))
+         mid_scr%eps_total(j) = rot_scr%old_eps_total(j) + time_fraction*(s%eps_total(j) - rot_scr%old_eps_total(j))
+         mid_scr%visc(j) = rot_scr%old_visc(j) + time_fraction*(s%visc(j) - rot_scr%old_visc(j))
+         mid_scr%thdif(j) = rot_scr%old_thdif(j) + time_fraction*(s%thdif(j) - rot_scr%old_thdif(j))
+         mid_scr%cp(j) = rot_scr%old_cp(j) + time_fraction*(s%cp(j) - rot_scr%old_cp(j))
+         mid_scr%qdt(j) = rot_scr%old_qdt(j) + time_fraction*(s%qdt(j) - rot_scr%old_qdt(j))
+         mid_scr%opacity(j) = rot_scr%old_opacity(j) + time_fraction*(s%opacity_zone(j) - rot_scr%old_opacity(j))
+         mid_scr%mu(j) = mid_scr%mu(j) + step_fraction_ratio*(s%mu(j) - rot_scr%old_mu(j))
 ! The total energy generation, eps_total + eps_neu + eps_grav with the
 ! stored signs (MHP 6/00).
-         total_epsilon = star%eps_total(j)+star%eps_channels(i_eps_neu,j)+star%eps_channels(i_eps_grav,j)
+         total_epsilon = s%eps_total(j)+s%eps_channels(i_eps_neu,j)+s%eps_channels(i_eps_grav,j)
          mid_scr%eps_plus_neu_grav(j) = rot_scr%old_eps_plus_neu_grav(j)+time_fraction*(total_epsilon-rot_scr%old_eps_plus_neu_grav(j))
       end do
 end subroutine interpolate_structure
@@ -200,14 +201,14 @@ end subroutine interpolate_structure
 ! grad_ad < grad_rad (Schwarzschild), with the larger of the old and new
 ! convective velocities; otherwise it is radiative with zero velocity.
 subroutine settle_convective_state()
-      do i = 1,star%nz
-         if (star%convective_flag(i).eqv.rot_scr%convective_flag_prev(i)) then
-            rot_scr%convective_flag_mid(i) = star%convective_flag(i)
-            mid_scr%conv_vel(i) = rot_scr%old_conv_vel(i) + time_fraction*(star%conv_vel(i)-rot_scr%old_conv_vel(i))
+      do i = 1,s%nz
+         if (s%convective_flag(i).eqv.rot_scr%convective_flag_prev(i)) then
+            rot_scr%convective_flag_mid(i) = s%convective_flag(i)
+            mid_scr%conv_vel(i) = rot_scr%old_conv_vel(i) + time_fraction*(s%conv_vel(i)-rot_scr%old_conv_vel(i))
          else
             if (mid_scr%grada(i).lt.mid_scr%gradr(i)) then
                rot_scr%convective_flag_mid(i) = .true.
-               mid_scr%conv_vel(i) = max(rot_scr%old_conv_vel(i),star%conv_vel(i))
+               mid_scr%conv_vel(i) = max(rot_scr%old_conv_vel(i),s%conv_vel(i))
             else
                rot_scr%convective_flag_mid(i) = .false.
                mid_scr%conv_vel(i) = 0.0D0
@@ -226,18 +227,18 @@ end subroutine settle_convective_state
 ! from r_0 on the first sub-step.
 subroutine burn_deuterium_over_substep()
       if (first_call) then
-         do i = 1,star%nz
-            rot_scr%deuterium_rate_mid(i) = star%deuterium_burning_rate_start(i)+ &
-                 step_fraction_ratio*(star%deuterium_burning_rate(i)- &
-                 star%deuterium_burning_rate_start(i))
-            rot_scr%deuterium_rate_mid_start(i) = star%deuterium_burning_rate_start(i)
+         do i = 1,s%nz
+            rot_scr%deuterium_rate_mid(i) = s%deuterium_burning_rate_start(i)+ &
+                 step_fraction_ratio*(s%deuterium_burning_rate(i)- &
+                 s%deuterium_burning_rate_start(i))
+            rot_scr%deuterium_rate_mid_start(i) = s%deuterium_burning_rate_start(i)
          end do
       else
-         do i = 1,star%nz
+         do i = 1,s%nz
             rot_scr%deuterium_rate_mid_start(i) = rot_scr%deuterium_rate_mid(i)
             rot_scr%deuterium_rate_mid(i) = rot_scr%deuterium_rate_mid(i)+ &
-                 step_fraction_ratio*(star%deuterium_burning_rate(i)- &
-                 star%deuterium_burning_rate_start(i))
+                 step_fraction_ratio*(s%deuterium_burning_rate(i)- &
+                 s%deuterium_burning_rate_start(i))
          end do
       endif
 ! Each burn region of the interpolated model (burn_regions: a radiative
@@ -245,14 +246,14 @@ subroutine burn_deuterium_over_substep()
 ! with the sub-step's share of the accreted mass. burn_deuterium_region
 ! starts from star%xa_start, so in a region that still has deuterium
 ! its X and He3 replace those burn_and_settle left.
-      regions = burn_regions(star, rot_scr%log_temperature_mid, &
+      regions = burn_regions(s, rot_scr%log_temperature_mid, &
            radiative_zone_bounds, num_radiative_zones, &
            convective_zone_bounds, num_convective_zones)
       do k = 1, size(regions,2)
-         call burn_deuterium_region(regions(1,k), regions(2,k), star%nz, &
-              star%dm, star%xa, sub_timestep, star%xa_start, &
+         call burn_deuterium_region(regions(1,k), regions(2,k), s%nz, &
+              s%dm, s%xa, sub_timestep, s%xa_start, &
               rot_scr%deuterium_rate_mid_start, rot_scr%deuterium_rate_mid, &
-              surface_accretion_now(star, step_fraction_ratio*star%accreted_mass), &
+              surface_accretion_now(s, step_fraction_ratio*s%accreted_mass), &
               min_deuterium_substep)
       end do
 end subroutine burn_deuterium_over_substep
@@ -268,7 +269,7 @@ subroutine locate_convection_zones()
 ! below the zone's edge (interface i); 2 without a central convection
 ! zone.
       if (rot_scr%am_transport_convective_flag_mid(1)) then
-         do i = 2,star%nz
+         do i = 2,s%nz
             if (.not.rot_scr%am_transport_convective_flag_mid(i)) exit
          end do
          core_boundary_zone = max(2,i-1)
@@ -277,11 +278,11 @@ subroutine locate_convection_zones()
       endif
 ! The surface convection zone.
       fully_convective_flag = .false.
-      if (rot_scr%am_transport_convective_flag_mid(star%nz)) then
+      if (rot_scr%am_transport_convective_flag_mid(s%nz)) then
 ! envelope_boundary_zone (legacy IMAX) is its lowest zone; the interface
 ! below that zone, the zone's base, is the last interface the transport
 ! examines.
-         do i = star%nz-1,1,-1
+         do i = s%nz-1,1,-1
             if (.not.rot_scr%am_transport_convective_flag_mid(i)) exit
          end do
 ! No radiative zone found (i = 0): the model is fully convective.
@@ -290,24 +291,24 @@ subroutine locate_convection_zones()
 ! The masses (g) at the top of the convection zone (the total mass) and
 ! at its base (between its lowest zone and the zone below; zero when it
 ! reaches the centre).
-         cz_mass_top = exp(ln10*star%log_total_mass)
+         cz_mass_top = exp(ln10*s%log_total_mass)
          if (envelope_boundary_zone.gt.1) then
-            cz_mass_bottom = 0.5D0*(star%m(envelope_boundary_zone)+ &
-                 star%m(envelope_boundary_zone-1))
+            cz_mass_bottom = 0.5D0*(s%m(envelope_boundary_zone)+ &
+                 s%m(envelope_boundary_zone-1))
          else
             cz_mass_bottom = 0.0D0
          endif
 ! surface_cz_active (legacy LCZSUR): the surface convection zone is deep
 ! enough for the wind's angular momentum loss; the threshold on its mass
 ! is zero, so any convection zone of positive mass qualifies.
-         if ((cz_mass_top-cz_mass_bottom)/star%solar_mass_cgs.gt.0.0D0) then
+         if ((cz_mass_top-cz_mass_bottom)/s%solar_mass_cgs.gt.0.0D0) then
             surface_cz_active = .true.
          else
             surface_cz_active= .false.
          endif
       else
 ! No surface convection zone: the transport runs to the last interface.
-         envelope_boundary_zone = star%nz
+         envelope_boundary_zone = s%nz
          surface_cz_active = .false.
       endif
 end subroutine locate_convection_zones
@@ -323,22 +324,22 @@ subroutine rotate_midpoint_model()
 ! Differential rotation: j/m = (I/m) omega shell by shell. First guess,
 ! the thin spherical shell: I/m = (2/3) r^2, omega = j/(I/m), and
 ! I = dm (I/m).
-         do i = 1,star%nz
+         do i = 1,s%nz
             rot_scr%moment_of_inertia_mid(i) = cc23*exp(ln10*2.0D0*rot_scr%log_radius_mid(i))
-            star%omega_mid(i) = star%j_rot(i)/rot_scr%moment_of_inertia_mid(i)
-            rot_scr%moment_of_inertia_mid(i) = star%dm(i)*rot_scr%moment_of_inertia_mid(i)
+            s%omega_mid(i) = s%j_rot(i)/rot_scr%moment_of_inertia_mid(i)
+            rot_scr%moment_of_inertia_mid(i) = s%dm(i)*rot_scr%moment_of_inertia_mid(i)
          end do
 ! omega of each shell from star%j_rot and that first guess, iterating
 ! with the moments of inertia of the distorted shells; the convection
 ! zones rotate by their rotation law (omega_from_j).
-         call omega_from_j(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
-              star%log_mass,star%dm,rot_scr%am_transport_convective_flag_mid,star%nz, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid, &
-              rot_scr%mean_radius_mid,star%disk_gate_age_gyr)
+         call omega_from_j(rot_scr%log_density_mid,s%j_rot,rot_scr%log_radius_mid, &
+              s%log_mass,s%dm,rot_scr%am_transport_convective_flag_mid,s%nz, &
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,s%omega_mid,rot_scr%di_domega_mid, &
+              rot_scr%mean_radius_mid,s%disk_gate_age_gyr)
 ! The moment of inertia of the surface convection zone, if there is one.
          if (surface_cz_active) then
-            moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(star%nz)
-            do i = star%nz-1,1,-1
+            moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(s%nz)
+            do i = s%nz-1,1,-1
                if (.not.rot_scr%am_transport_convective_flag_mid(i)) exit
                moment_of_inertia_cz = moment_of_inertia_cz + rot_scr%moment_of_inertia_mid(i)
             end do
@@ -347,14 +348,14 @@ subroutine rotate_midpoint_model()
 ! Solid-body rotation: one omega for the whole star, which the wind then
 ! spins down as a unit, so moment_of_inertia_cz is the star's total.
          solid_zone_start = 1
-         solid_zone_end = star%nz
-         call solid_body_omega(rot_scr%log_density_mid,star%j_rot,rot_scr%log_radius_mid, &
-              star%log_mass,star%dm,solid_zone_start,solid_zone_end, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,star%omega_mid,rot_scr%di_domega_mid, &
-              rot_scr%mean_radius_mid,star%nz,star%disk_gate_age_gyr)
+         solid_zone_end = s%nz
+         call solid_body_omega(rot_scr%log_density_mid,s%j_rot,rot_scr%log_radius_mid, &
+              s%log_mass,s%dm,solid_zone_start,solid_zone_end, &
+              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,s%omega_mid,rot_scr%di_domega_mid, &
+              rot_scr%mean_radius_mid,s%nz,s%disk_gate_age_gyr)
          if (surface_cz_active) then
             moment_of_inertia_cz = rot_scr%moment_of_inertia_mid(1)
-            do i = 2,star%nz
+            do i = 2,s%nz
                moment_of_inertia_cz = moment_of_inertia_cz + rot_scr%moment_of_inertia_mid(i)
             end do
          endif
@@ -376,14 +377,14 @@ end subroutine advance_rotation_substep
 ! 2. While diffuse_helium_active, settle helium (settle_helium).
 ! 3. Clip and renormalize the abundances (renormalize_composition).
 ! A nonzero ierr stops the run.
-subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
+subroutine burn_and_settle(s, timestep, composition, shell_mass, log_temperature, &
      rate_by_zone, num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
       use rotation_scratch_lib
 
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star_info, json
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -392,6 +393,7 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
       use element_diffusion_lib, only: diffuse_elements
       use net_lib, only: num_rate_rows
       implicit none
+      type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)
@@ -431,15 +433,15 @@ subroutine burn_and_settle(timestep, composition, shell_mass, log_temperature, &
          num_species = 11
       end if
 ! The abundances at the end of the sub-step, region by region.
-      regions = burn_regions(star, log_temperature, radiative_zone_bounds, &
+      regions = burn_regions(s, log_temperature, radiative_zone_bounds, &
            num_radiative_zones, convective_zone_bounds, num_convective_zones)
       do region_idx = 1, size(regions,2)
-         call burn_network_region(star, log_temperature, regions(1,region_idx), &
+         call burn_network_region(s, log_temperature, regions(1,region_idx), &
               regions(2,region_idx), rate_by_zone, shell_mass, composition, &
               timestep, ierr)
          if (ierr /= 0) return
       end do
-      if (star%job%diffuse_helium_active) then
+      if (s%job%diffuse_helium_active) then
          call settle_helium()
          if (ierr /= 0) return
       end if
@@ -459,7 +461,7 @@ contains
 subroutine settle_helium()
       settling: do
          if (composition(1,1).lt.rotation_settings%hydrogen_diffusion_floor) then
-            star%job%diffuse_helium_active=.false.
+            s%job%diffuse_helium_active=.false.
             exit settling
          end if
 ! Settling needs a surface convection zone.
