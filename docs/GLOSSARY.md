@@ -48,7 +48,7 @@ Line numbers cited here are for the working tree of 2026-10-10. `src/` is being 
 
 ### 1.2 Grid and zone indexing
 
-- Zone 1 is the innermost mesh point and zone `nz` is the **fitting point**, the outermost interior point. Above `nz` the envelope and atmosphere are separate integrations (`env_struct`, `atmo_struct`). The stitched model (`core/diagnostics/stitched_model.f90`) joins all three for output.
+- Zone 1 is the innermost mesh point and zone `nz` is the **fitting point**, the outermost interior point. Above `nz` the envelope and atmosphere are separate integrations (`env_points`, `atm_points`). The stitched model (`core/diagnostics/stitched_model.f90`) joins all three for output.
 - `dm(k)` is a point-centred mass **weight**, not the mass between two points: `dm(k) = ½(m(k+1) − m(k−1))`. `dm(nz)` also contains the entire envelope mass above the fitting point, so Σ`dm` = M (`core/model/rezoning.f90:723-735`).
 - The envelope integration (`core/envelope/envelope_integrands.f90`) uses log₁₀ P as its independent variable and carries `y(1)` = log₁₀(m/M), `y(2)` = log₁₀ T and `y(3)` = log₁₀ r, at constant L.
 
@@ -272,8 +272,8 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | log₁₀ T | dex (K) | `star%tenv` | `TENV` (`/CTLIM/`) | io/read_controls.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state. |
 | log₁₀ T(τ=2/3) | dex (K) | `star%atm_hras` | `HRAS` (`/ATMOS/`) | core/run/run_setup.f90:124 | HSRA T–τ fit at τ = 2/3, the offset for `atm_choice` = 2. The `star_info` comment says Krishna-Swamy; the code uses `hsra_t_tau_offset`. |
 | — | logical | `star%use_ttau_relation` | `LTTAU` | core/structure/surface_boundary.f90, core/envelope/envelope_integration.f90 | Runtime switch to a T–τ relation, e.g. the gray fallback outside table range. |
-| — | mixed | `env_struct%env_log10_*`, `env_gradients(3,:)`, ... | `/ENVSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Envelope points (fitting point to photosphere). Gradient rows are (rad, **ad**, actual) (trap 19). |
-| — | mixed | `atmo_struct%atmo_log10_*`, `atmo_gradients(3,:)`, ... | `/ATMSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Atmosphere points. Gradient rows are (rad, **actual**, ad) (trap 19). |
+| — | mixed | `env_points%env_log10_*`, `env_gradients(3,:)`, ... | `/ENVSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Envelope points (fitting point to photosphere). Gradient rows are (rad, **ad**, actual) (trap 19). |
+| — | mixed | `atm_points%atmo_log10_*`, `atmo_gradients(3,:)`, ... | `/ATMSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Atmosphere points. Gradient rows are (rad, **actual**, ad) (trap 19). |
 
 ### 2.7 Rotation state (per zone unless noted)
 
@@ -532,8 +532,8 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - μ: `star%mu` (full-ionization estimate, `core/step/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `core/structure/structure_equations.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
 19. **The 3-row gradient carriers use two row orders, and the named constants document the wrong one.**
     - `i_grad_rad=1, i_grad_actual=2, i_grad_ad=3` (`state/star_info_lib.f90:83-87`) give the order (rad, actual, ad), the order of the former `DEL_GRAD`. Their comment says they apply to `current_gradients` and `env_gradients`, but no code uses them.
-    - `pt_scr%current_gradients` and `env_struct%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).
-    - `atmo_struct%atmo_gradients` is (rad, **actual**, ad) (`core/envelope/envelope_integration_kernel.f90:459-461`).
+    - `pt_scr%current_gradients` and `env_points%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).
+    - `atm_points%atmo_gradients` is (rad, **actual**, ad) (`core/envelope/envelope_integration_kernel.f90:459-461`).
     - The output code has already mixed up the two orders once (`core/diagnostics/stitched_model.f90:598-607`).
 20. **`chosen_dt` is reused transiently.**
     - It is the timestep adopted by `compute_timestep` (legacy `DELTSH`, later named `hydrogen_dt` although it is not a hydrogen-burning governor).

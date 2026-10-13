@@ -46,7 +46,6 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
       use star_info_lib, only: i_h1, i_metals, json, n_species_basic, &
            n_species_extended
       use controls_buffer, only: ichi_dp_env_max
-      use envelope_structure
       use physical_constants
       use math_lib
       implicit none
@@ -106,7 +105,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
       if (ierr /= 0) return
 ! Return an error if the new points could overflow the arrays (legacy
 ! stop 9999).
-      if(num_zones+env_struct%num_env_points.ge.json) then
+      if(num_zones+s%env_points%num_env_points.ge.json) then
          write(*,*) 'rebuild_envelope: grid overflow (json too small)'
          ierr = 1
          return
@@ -228,28 +227,28 @@ subroutine shift_envelope_points()
 ! log R, log m, log T, X, Z and the convective flag move (the F77
 ! getnewenv.f left the flag unshifted, one point off; fixed 2026-10);
 ! the other arrays are not read for the appended points.
-      pressure_offset = log_pressure(num_zones) - env_struct%env_log10_pressure(1)
-      density_offset = log_density(num_zones) - env_struct%env_log10_density(1)
-      temperature_offset = log_temperature(num_zones) - env_struct%env_log10_temperature(1)
-      radius_offset = log_radius(num_zones) - env_struct%env_log10_radius(1)
+      pressure_offset = log_pressure(num_zones) - s%env_points%env_log10_pressure(1)
+      density_offset = log_density(num_zones) - s%env_points%env_log10_density(1)
+      temperature_offset = log_temperature(num_zones) - s%env_points%env_log10_temperature(1)
+      radius_offset = log_radius(num_zones) - s%env_points%env_log10_radius(1)
       mass_test = log_mass(num_zones)
       num_new_env_points = 0
-      do zone_index = 1,env_struct%num_env_points - 1
-         mass_test2 = s%stotal+env_struct%env_log10_mass(zone_index+1)
+      do zone_index = 1,s%env_points%num_env_points - 1
+         mass_test2 = s%stotal+s%env_points%env_log10_mass(zone_index+1)
          if(mass_test2-mass_test.gt.1.0D-10)then
-            env_struct%env_log10_density(zone_index) = env_struct%env_log10_density(zone_index+1)+density_offset
-            env_struct%env_log10_pressure(zone_index) = env_struct%env_log10_pressure(zone_index+1)+pressure_offset
-            env_struct%env_log10_radius(zone_index) = env_struct%env_log10_radius(zone_index+1)+radius_offset
-            env_struct%env_log10_mass(zone_index) = env_struct%env_log10_mass(zone_index+1)
-            env_struct%env_log10_temperature(zone_index) = env_struct%env_log10_temperature(zone_index+1)+temperature_offset
-            env_struct%env_hydrogen_fraction(zone_index) = env_struct%env_hydrogen_fraction(zone_index+1)
-            env_struct%env_metal_fraction(zone_index) = env_struct%env_metal_fraction(zone_index+1)
-            env_struct%env_convective_flag(zone_index) = env_struct%env_convective_flag(zone_index+1)
+            s%env_points%env_log10_density(zone_index) = s%env_points%env_log10_density(zone_index+1)+density_offset
+            s%env_points%env_log10_pressure(zone_index) = s%env_points%env_log10_pressure(zone_index+1)+pressure_offset
+            s%env_points%env_log10_radius(zone_index) = s%env_points%env_log10_radius(zone_index+1)+radius_offset
+            s%env_points%env_log10_mass(zone_index) = s%env_points%env_log10_mass(zone_index+1)
+            s%env_points%env_log10_temperature(zone_index) = s%env_points%env_log10_temperature(zone_index+1)+temperature_offset
+            s%env_points%env_hydrogen_fraction(zone_index) = s%env_points%env_hydrogen_fraction(zone_index+1)
+            s%env_points%env_metal_fraction(zone_index) = s%env_points%env_metal_fraction(zone_index+1)
+            s%env_points%env_convective_flag(zone_index) = s%env_points%env_convective_flag(zone_index+1)
             mass_test = mass_test2
             num_new_env_points = num_new_env_points + 1
          endif
       end do
-      env_struct%num_env_points = num_new_env_points
+      s%env_points%num_env_points = num_new_env_points
 end subroutine shift_envelope_points
 
 ! ---------------------------------------------------------------

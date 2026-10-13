@@ -82,7 +82,7 @@ module stitched_model
 ! lamb_S2 (l=1), gradL, gradr_div_grada.
       double precision :: ext_seismic(4,max_ext)
 ! Geometric height of each atmosphere point above the photosphere,
-! indexed like atmo_struct (1 = outermost): the cumulative sum of
+! indexed like atm_points (1 = outermost): the cumulative sum of
 ! envint's per-step lengths, built by build_stitched_model.
       double precision :: atm_height(max_ext)
       double precision :: stx_prof(n_prof_cols, max_ext)
@@ -103,8 +103,6 @@ contains
 ! same fixed output step sizes).
 subroutine build_stitched_model(s)
       use star_info_lib, only: i_h1, i_metals
-      use envelope_structure
-      use atmosphere_structure
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm
       type(star_info), intent(inout) :: s
@@ -166,21 +164,21 @@ subroutine build_stitched_model(s)
          return
       end if
 
-! envelope: env_struct runs fitting point -> photosphere (envint
+! envelope: env_points runs fitting point -> photosphere (envint
 ! inverts it), so it appends directly. Its innermost point repeats
 ! the fitting point (to re-integration roundoff, so its radius can
 ! even land marginally BELOW the last interior point's) -- skip any
 ! envelope point not strictly outside the interior, keeping the
 ! extended radius strictly monotonic for GYRE.
-      do i = 1, env_struct%num_env_points
+      do i = 1, s%env_points%num_env_points
          if (n_ext >= max_ext) exit
-         if (env_struct%env_log10_radius(i) <= s%logR(s%nz)) cycle
+         if (s%env_points%env_log10_radius(i) <= s%logR(s%nz)) cycle
          n_ext = n_ext + 1
          ext_region(n_ext) = 2
          ext_index(n_ext) = i
       end do
       n_ie = n_ext
-! atmosphere: atmo_struct runs outward-in, so walk it in reverse.
+! atmosphere: atm_points runs outward-in, so walk it in reverse.
 ! atmo_delta_depth(k) is the PER-STEP geometric length between tau
 ! points k-1 and k (envint's Cox p590 quadrature), not a height, so
 ! accumulate it into atm_height: point i sits sum(delta(i+1:num))
@@ -192,14 +190,14 @@ subroutine build_stitched_model(s)
 ! stale-prev_tau quirk envint notes, never enters any height. The
 ! deepest point (height 0) repeats the envelope's photosphere radius
 ! and is skipped, same as the fitting-point repeat above.
-      if (atmo_struct%num_atm_points > 0) then
-         atm_height(atmo_struct%num_atm_points) = 0.0d0
-         do i = atmo_struct%num_atm_points - 1, 1, -1
+      if (s%atm_points%num_atm_points > 0) then
+         atm_height(s%atm_points%num_atm_points) = 0.0d0
+         do i = s%atm_points%num_atm_points - 1, 1, -1
             atm_height(i) = atm_height(i+1) + &
-                 atmo_struct%atmo_delta_depth(i+1)
+                 s%atm_points%atmo_delta_depth(i+1)
          end do
       end if
-      do i = atmo_struct%num_atm_points, 1, -1
+      do i = s%atm_points%num_atm_points, 1, -1
          if (n_ext >= max_ext) exit
          if (atm_height(i) <= 0.0d0) cycle
          n_ext = n_ext + 1
@@ -301,8 +299,6 @@ end subroutine compute_seismic_columns
 double precision function ext_profile_value(s, icol, j)
       use math_lib
       use star_info_lib, only: i_h1, i_metals
-      use envelope_structure
-      use atmosphere_structure
       type(star_info), intent(inout) :: s
       integer, intent(in) :: icol, j
       integer :: i
@@ -318,66 +314,66 @@ double precision function ext_profile_value(s, icol, j)
       case (2)
          select case (icol)
          case (2);  ext_profile_value = envelope_mass_g(s, i)/s%solar_mass_cgs
-         case (3);  ext_profile_value = env_struct%env_log10_radius(i)
-         case (4);  ext_profile_value = env_struct%env_log10_temperature(i)
-         case (5);  ext_profile_value = env_struct%env_log10_density(i)
-         case (6);  ext_profile_value = env_struct%env_log10_pressure(i)
-         case (7);  ext_profile_value = env_struct%env_luminosity(i)
-         case (9);  ext_profile_value = convective_indicator(env_struct%env_convective_flag(i))
-         case (10); ext_profile_value = env_struct%env_gamma1(i)
-         case (11); ext_profile_value = env_struct%env_opacity(i)
-         case (12); ext_profile_value = env_struct%env_gradients(1,i)
+         case (3);  ext_profile_value = s%env_points%env_log10_radius(i)
+         case (4);  ext_profile_value = s%env_points%env_log10_temperature(i)
+         case (5);  ext_profile_value = s%env_points%env_log10_density(i)
+         case (6);  ext_profile_value = s%env_points%env_log10_pressure(i)
+         case (7);  ext_profile_value = s%env_points%env_luminosity(i)
+         case (9);  ext_profile_value = convective_indicator(s%env_points%env_convective_flag(i))
+         case (10); ext_profile_value = s%env_points%env_gamma1(i)
+         case (11); ext_profile_value = s%env_points%env_opacity(i)
+         case (12); ext_profile_value = s%env_points%env_gradients(1,i)
 ! env_gradients order is (1) radiative, (2) adiabatic, (3) actual
 ! (set from current_gradients in envint) -- profile columns are
 ! 13 = gradT (actual), 14 = grada. The pre-2026 mapping had these
 ! two swapped in the envelope region (found when the turnover
 ! walker started reading the stitched columns).
-         case (13); ext_profile_value = env_struct%env_gradients(3,i)
-         case (14); ext_profile_value = env_struct%env_gradients(2,i)
-         case (15); ext_profile_value = env_struct%env_convective_velocity(i)
-         case (16); ext_profile_value = env_struct%env_beta(i)
-         case (27); ext_profile_value = env_struct%env_hydrogen_fraction(i)
-         case (41); ext_profile_value = env_struct%env_metal_fraction(i)
+         case (13); ext_profile_value = s%env_points%env_gradients(3,i)
+         case (14); ext_profile_value = s%env_points%env_gradients(2,i)
+         case (15); ext_profile_value = s%env_points%env_convective_velocity(i)
+         case (16); ext_profile_value = s%env_points%env_beta(i)
+         case (27); ext_profile_value = s%env_points%env_hydrogen_fraction(i)
+         case (41); ext_profile_value = s%env_points%env_metal_fraction(i)
          case (42); ext_profile_value = s%omega(s%nz)
-         case (50); ext_profile_value = env_struct%env_specific_heat_cp(i)
-         case (51); ext_profile_value = -env_struct%env_dlnrho_dlnt(i)
+         case (50); ext_profile_value = s%env_points%env_specific_heat_cp(i)
+         case (51); ext_profile_value = -s%env_points%env_dlnrho_dlnt(i)
 ! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
 ! R/mu = beta*P/(rho*T) -- the same identity compute_blended_eos uses for its
 ! specific gas constant -- so the Ledoux column below sees a
 ! continuous mu across the interior/envelope junction instead of 0.
          case (52); ext_profile_value = ideal_gas_mu( &
-              env_struct%env_log10_pressure(i), &
-              env_struct%env_log10_temperature(i), &
-              env_struct%env_log10_density(i), env_struct%env_beta(i))
-         case (58); ext_profile_value = sound_speed_cgs(env_struct%env_gamma1(i), &
-              env_struct%env_log10_pressure(i), env_struct%env_log10_density(i))
+              s%env_points%env_log10_pressure(i), &
+              s%env_points%env_log10_temperature(i), &
+              s%env_points%env_log10_density(i), s%env_points%env_beta(i))
+         case (58); ext_profile_value = sound_speed_cgs(s%env_points%env_gamma1(i), &
+              s%env_points%env_log10_pressure(i), s%env_points%env_log10_density(i))
          case default; ext_profile_value = 0.0d0
          end select
       case (3)
          select case (icol)
          case (2);  ext_profile_value = s%star_mass
-         case (3);  ext_profile_value = log10(atmosphere_radius_cm(i))
-         case (4);  ext_profile_value = atmo_struct%atmo_log10_temperature(i)
-         case (5);  ext_profile_value = atmo_struct%atmo_log10_density(i)
-         case (6);  ext_profile_value = atmo_struct%atmo_log10_pressure(i)
+         case (3);  ext_profile_value = log10(atmosphere_radius_cm(s, i))
+         case (4);  ext_profile_value = s%atm_points%atmo_log10_temperature(i)
+         case (5);  ext_profile_value = s%atm_points%atmo_log10_density(i)
+         case (6);  ext_profile_value = s%atm_points%atmo_log10_pressure(i)
          case (7);  ext_profile_value = exp(ln10*s%log_L)
-         case (10); ext_profile_value = atmo_struct%atmo_gamma1(i)
-         case (11); ext_profile_value = atmo_struct%atmo_opacity(i)
-         case (12); ext_profile_value = atmo_struct%atmo_gradients(1,i)
-         case (13); ext_profile_value = atmo_struct%atmo_gradients(2,i)
-         case (14); ext_profile_value = atmo_struct%atmo_gradients(3,i)
-         case (16); ext_profile_value = atmo_struct%atmo_beta(i)
+         case (10); ext_profile_value = s%atm_points%atmo_gamma1(i)
+         case (11); ext_profile_value = s%atm_points%atmo_opacity(i)
+         case (12); ext_profile_value = s%atm_points%atmo_gradients(1,i)
+         case (13); ext_profile_value = s%atm_points%atmo_gradients(2,i)
+         case (14); ext_profile_value = s%atm_points%atmo_gradients(3,i)
+         case (16); ext_profile_value = s%atm_points%atmo_beta(i)
          case (27); ext_profile_value = s%xa(i_h1,s%nz)
          case (41); ext_profile_value = s%xa(i_metals,s%nz)
          case (42); ext_profile_value = s%omega(s%nz)
-         case (50); ext_profile_value = atmo_struct%atmo_specific_heat_cp(i)
-         case (51); ext_profile_value = -atmo_struct%atmo_dlnrho_dlnt(i)
+         case (50); ext_profile_value = s%atm_points%atmo_specific_heat_cp(i)
+         case (51); ext_profile_value = -s%atm_points%atmo_dlnrho_dlnt(i)
          case (52); ext_profile_value = ideal_gas_mu( &
-              atmo_struct%atmo_log10_pressure(i), &
-              atmo_struct%atmo_log10_temperature(i), &
-              atmo_struct%atmo_log10_density(i), atmo_struct%atmo_beta(i))
-         case (58); ext_profile_value = sound_speed_cgs(atmo_struct%atmo_gamma1(i), &
-              atmo_struct%atmo_log10_pressure(i), atmo_struct%atmo_log10_density(i))
+              s%atm_points%atmo_log10_pressure(i), &
+              s%atm_points%atmo_log10_temperature(i), &
+              s%atm_points%atmo_log10_density(i), s%atm_points%atmo_beta(i))
+         case (58); ext_profile_value = sound_speed_cgs(s%atm_points%atmo_gamma1(i), &
+              s%atm_points%atmo_log10_pressure(i), s%atm_points%atmo_log10_density(i))
          case default; ext_profile_value = 0.0d0
          end select
       case default
@@ -391,7 +387,7 @@ end function ext_profile_value
 ! build_pulse_points evaluate at more than one site, each written
 ! once. Every body is token-for-token what each site had; the sites
 ! only differ in which array they read (interior star%, envelope
-! env_struct, atmosphere atmo_struct). Not shared, because the sites
+! env_points, atmosphere atm_points). Not shared, because the sites
 ! differ in operand order: the interior gravity of profile column 18,
 ! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs below; and the
 ! Brunt-Vaisala N^2 of compute_seismic_columns, grav*(dlnp_dr/g1 -
@@ -425,19 +421,18 @@ end function convective_indicator
 ! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
 ! the total mass).
 double precision function envelope_mass_g(s, i)
-      use envelope_structure
       type(star_info), intent(inout) :: s
       integer, intent(in) :: i
-      envelope_mass_g = exp(ln10*(env_struct%env_log10_mass(i) + s%log_total_mass))
+      envelope_mass_g = exp(ln10*(s%env_points%env_log10_mass(i) + s%log_total_mass))
 end function envelope_mass_g
 
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
-double precision function atmosphere_radius_cm(i)
-      use envelope_structure
+double precision function atmosphere_radius_cm(s, i)
+      type(star_info), intent(inout) :: s
       integer, intent(in) :: i
       atmosphere_radius_cm = exp(ln10* &
-           env_struct%env_log10_radius(env_struct%num_env_points)) + atm_height(i)
+           s%env_points%env_log10_radius(s%env_points%num_env_points)) + atm_height(i)
 end function atmosphere_radius_cm
 
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
@@ -552,8 +547,6 @@ end function profile_value
 subroutine build_pulse_points(s, pts)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
-      use envelope_structure
-      use atmosphere_structure
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: pts(n_pulse_cols, n_ext)
       integer :: j, i, k
@@ -619,15 +612,15 @@ subroutine gather_interior_point()
 end subroutine gather_interior_point
 
 ! ---------------------------------------------------------------
-! Envelope point i: its structure and the columns env_struct holds; the
+! Envelope point i: its structure and the columns env_points holds; the
 ! rotation and composition are the surface's.
 subroutine gather_envelope_point()
-      r = exp(ln10*env_struct%env_log10_radius(i))
+      r = exp(ln10*s%env_points%env_log10_radius(i))
       m = envelope_mass_g(s, i)
-      P = exp(ln10*env_struct%env_log10_pressure(i))
-      T = exp(ln10*env_struct%env_log10_temperature(i))
-      rho = exp(ln10*env_struct%env_log10_density(i))
-      delta = -env_struct%env_dlnrho_dlnt(i)
+      P = exp(ln10*s%env_points%env_log10_pressure(i))
+      T = exp(ln10*s%env_points%env_log10_temperature(i))
+      rho = exp(ln10*s%env_points%env_log10_density(i))
+      delta = -s%env_points%env_dlnrho_dlnt(i)
 ! 2026 sweep fix: env_gradients order is (1) radiative, (2) ADIABATIC,
 ! (3) ACTUAL (see the profile-column mapping above and
 ! envelope_derivs' current_gradients stores) -- unlike atmo_gradients,
@@ -635,43 +628,43 @@ subroutine gather_envelope_point()
 ! slots swapped (the pulse-side twin of the pre-2026 profile-column
 ! swap), flipping the thermal N^2 sign across the envelope region of
 ! every pulse file and swapping the grad/grad_ad pulse columns there.
-      nab = env_struct%env_gradients(3,i)
-      nab_ad = env_struct%env_gradients(2,i)
-      pts(ipul_L,j) = env_struct%env_luminosity(i)*s%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = env_struct%env_gamma1(i)
-      pts(ipul_kap,j) = env_struct%env_opacity(i)
+      nab = s%env_points%env_gradients(3,i)
+      nab_ad = s%env_points%env_gradients(2,i)
+      pts(ipul_L,j) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
+      pts(ipul_gamma1,j) = s%env_points%env_gamma1(i)
+      pts(ipul_kap,j) = s%env_points%env_opacity(i)
 ! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
 ! used for the interior above
-      pts(ipul_kap_kap_T,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = env_struct%env_opacity(i)*env_struct%env_dlnkap_dlnrho(i)
+      pts(ipul_kap_kap_T,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnrho(i)
       pts(ipul_omega,j) = s%omega(s%nz)
-      pts(ipul_cp,j) = env_struct%env_specific_heat_cp(i)
-      pts(ipul_h1,j) = env_struct%env_hydrogen_fraction(i)
-      pts(ipul_z,j) = env_struct%env_metal_fraction(i)
+      pts(ipul_cp,j) = s%env_points%env_specific_heat_cp(i)
+      pts(ipul_h1,j) = s%env_points%env_hydrogen_fraction(i)
+      pts(ipul_z,j) = s%env_points%env_metal_fraction(i)
       do k = 1, 11
          pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_envelope_point
 
 ! ---------------------------------------------------------------
-! Atmosphere point i: its structure and the columns atmo_struct holds;
+! Atmosphere point i: its structure and the columns atm_points holds;
 ! the luminosity, rotation and composition are the surface's.
 subroutine gather_atmosphere_point()
-      r = atmosphere_radius_cm(i)
+      r = atmosphere_radius_cm(s, i)
       m = exp(ln10*s%log_total_mass)
-      P = exp(ln10*atmo_struct%atmo_log10_pressure(i))
-      T = exp(ln10*atmo_struct%atmo_log10_temperature(i))
-      rho = exp(ln10*atmo_struct%atmo_log10_density(i))
-      delta = -atmo_struct%atmo_dlnrho_dlnt(i)
-      nab = atmo_struct%atmo_gradients(2,i)
-      nab_ad = atmo_struct%atmo_gradients(3,i)
+      P = exp(ln10*s%atm_points%atmo_log10_pressure(i))
+      T = exp(ln10*s%atm_points%atmo_log10_temperature(i))
+      rho = exp(ln10*s%atm_points%atmo_log10_density(i))
+      delta = -s%atm_points%atmo_dlnrho_dlnt(i)
+      nab = s%atm_points%atmo_gradients(2,i)
+      nab_ad = s%atm_points%atmo_gradients(3,i)
       pts(ipul_L,j) = exp(ln10*s%log_L)*s%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = atmo_struct%atmo_gamma1(i)
-      pts(ipul_kap,j) = atmo_struct%atmo_opacity(i)
-      pts(ipul_kap_kap_T,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = atmo_struct%atmo_opacity(i)*atmo_struct%atmo_dlnkap_dlnrho(i)
+      pts(ipul_gamma1,j) = s%atm_points%atmo_gamma1(i)
+      pts(ipul_kap,j) = s%atm_points%atmo_opacity(i)
+      pts(ipul_kap_kap_T,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)
+      pts(ipul_kap_kap_rho,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnrho(i)
       pts(ipul_omega,j) = s%omega(s%nz)
-      pts(ipul_cp,j) = atmo_struct%atmo_specific_heat_cp(i)
+      pts(ipul_cp,j) = s%atm_points%atmo_specific_heat_cp(i)
       pts(ipul_h1,j) = s%xa(i_h1,s%nz)
       pts(ipul_z,j) = s%xa(i_metals,s%nz)
       do k = 1, 11

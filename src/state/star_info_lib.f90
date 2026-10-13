@@ -37,10 +37,12 @@ module star_info_lib
 ! (they live in constants-only modules so that the physics domains can
 ! share them without using this module)
       use composition_layout
+      use envelope_points, only: envelope_structure_state, &
+           atmosphere_structure_state, atmosphere_point_state
       use neutrino_flux_layout
       implicit none
       private
-      integer, parameter, public :: json = 5000
+      public :: json
 
 ! ---- named indices for the positional array slots (2026) ----
 ! The composition array xa(15,json) and its species counts:
@@ -488,6 +490,14 @@ module star_info_lib
 ! like star%job -- the two input bundles are the only nested
 ! sub-structs in the target shape.
             type(controls_state) :: ctrl
+! The outer layers of the latest envelope integration (envelope_points):
+! the envelope and the atmosphere point by point, and the atmosphere
+! integration's current point. Written by the integration kernel through
+! atm_get; read by the stitched model, the envelope refit and rebuild,
+! read_starting_model and the mass change.
+            type(envelope_structure_state) :: env_points
+            type(atmosphere_structure_state) :: atm_points
+            type(atmosphere_point_state) :: atm_point
       end type star_info
 
 ! the one star this process evolves (no handles -- see header)

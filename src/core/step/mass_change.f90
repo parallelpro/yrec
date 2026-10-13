@@ -26,7 +26,6 @@
 ! mass_change_kernel.f90.
 module mass_change
       use atm_lib, only: atm_get_surface_pt
-      use atmosphere_structure, only: atm_point
       use star_info_lib, only: json, star_info
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
@@ -55,7 +54,7 @@ contains
 !     log10_solar_luminosity, log_L, log_Teff, log_total_mass, logP,
 !     logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
-!   star writes: convective_turnover_timescale,
+!   star writes: atm_point, convective_turnover_timescale,
 !     envelope_specific_entropy, jcz, job%use_mass_accretion
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
@@ -247,16 +246,16 @@ end subroutine average_envelope_energies
 ! formed from this state.
 subroutine find_accreted_surface_state()
 ! The Allard tables (atm_choice 4) at log g = log G + log M - 2 log R.
-! The lookup writes atm_point (atmosphere_structure's current point);
+! The lookup writes s%atm_point (the atmosphere integration's current point);
 ! when it fails, atm_point keeps its last values (allard_surface_failed
 ! is not checked).
       log10_gravity = cgl+s%log_total_mass-2.0d0*log10_radius
       call atm_get_surface_pt(4, s%log_Teff, log10_gravity, &
-           atm_point%log10_pressure, atm_point%log10_temperature, &
+           s%atm_point%log10_pressure, s%atm_point%log10_temperature, &
            allard_surface_failed, ierr)
       if (ierr /= 0) return
-      log10_temperature_local = atm_point%log10_temperature
-      log10_pressure_local = atm_point%log10_pressure
+      log10_temperature_local = s%atm_point%log10_temperature
+      log10_pressure_local = s%atm_point%log10_pressure
       hydrogen_fraction_local = s%xa(1,nz)
       metal_fraction_local = s%xa(3,nz)
       eos_deriv_flag = .false.

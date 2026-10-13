@@ -195,7 +195,8 @@ contains
                  temperature_rotation_factor, log10_gravity, log10_star_mass, &
                  vidx, print_flag, save_boundary_flag, log10_pressure_limit, &
                  log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-                 state, sidx, saha_state, logp, logr, logt, ierr)
+                 state, sidx, saha_state, logp, logr, logt, &
+                 s%env_points, s%atm_points, s%atm_point, ierr)
       end subroutine run_kernel
 
 end subroutine atm_get

@@ -23,6 +23,9 @@ module composition_layout
            i_li6 = 13, i_li7 = 14, i_be9 = 15
       integer, parameter, public :: &
            n_species_basic = 11, n_species_extended = 15
+! The most mesh points a model may have (the size of every per-zone
+! array; star_info_lib re-exports it).
+      integer, parameter, public :: json = 5000
 ! The 12-species surface mixture (job%mixture_weights,
 ! ctrl%mixture_weights_seed, fxenv, read_starting_model's atomic
 ! weights, read_laol_tables's table read): element per slot. H and He are

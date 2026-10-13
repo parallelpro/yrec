@@ -68,7 +68,6 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
-      use envelope_structure
       use io_units
       use model_files, only: read_mod_model, read_yrec7, read_model2
       use physical_constants
@@ -878,7 +877,7 @@ end subroutine integrate_envelope_to_new_fit
 subroutine append_envelope_as_shells
       use math_lib
 ! Stop if the envelope points would overflow the json-point arrays.
-            if (s%nz+env_struct%num_env_points.ge.json) then
+            if (s%nz+s%env_points%num_env_points.ge.json) then
                write(*,*) 'read_starting_model: grid overflow (json too small)'
                ierr = 1
                return
@@ -889,23 +888,23 @@ subroutine append_envelope_as_shells
 ! the interior continuously, and drop point 1. The convective flag moves
 ! with the rest (the F77 starin.f left it unshifted, one point off;
 ! fixed 2026-10).
-            pressure_offset = s%logP(s%nz) - env_struct%env_log10_pressure(1)
-            density_offset = s%logRho(s%nz) - env_struct%env_log10_density(1)
+            pressure_offset = s%logP(s%nz) - s%env_points%env_log10_pressure(1)
+            density_offset = s%logRho(s%nz) - s%env_points%env_log10_density(1)
             temperature_offset = s%logT(s%nz) - &
-                 env_struct%env_log10_temperature(1)
-            radius_offset = s%logR(s%nz) - env_struct%env_log10_radius(1)
-            do j = 1,env_struct%num_env_points - 1
-               env_struct%env_log10_density(j) = env_struct%env_log10_density(j+1)+density_offset
-               env_struct%env_log10_pressure(j) = env_struct%env_log10_pressure(j+1)+pressure_offset
-               env_struct%env_log10_radius(j) = env_struct%env_log10_radius(j+1)+radius_offset
-               env_struct%env_log10_mass(j) = env_struct%env_log10_mass(j+1)
-               env_struct%env_log10_temperature(j) = env_struct%env_log10_temperature(j+1)+ &
+                 s%env_points%env_log10_temperature(1)
+            radius_offset = s%logR(s%nz) - s%env_points%env_log10_radius(1)
+            do j = 1,s%env_points%num_env_points - 1
+               s%env_points%env_log10_density(j) = s%env_points%env_log10_density(j+1)+density_offset
+               s%env_points%env_log10_pressure(j) = s%env_points%env_log10_pressure(j+1)+pressure_offset
+               s%env_points%env_log10_radius(j) = s%env_points%env_log10_radius(j+1)+radius_offset
+               s%env_points%env_log10_mass(j) = s%env_points%env_log10_mass(j+1)
+               s%env_points%env_log10_temperature(j) = s%env_points%env_log10_temperature(j+1)+ &
                     temperature_offset
-               env_struct%env_hydrogen_fraction(j) = env_struct%env_hydrogen_fraction(j+1)
-               env_struct%env_metal_fraction(j) = env_struct%env_metal_fraction(j+1)
-               env_struct%env_convective_flag(j) = env_struct%env_convective_flag(j+1)
+               s%env_points%env_hydrogen_fraction(j) = s%env_points%env_hydrogen_fraction(j+1)
+               s%env_points%env_metal_fraction(j) = s%env_points%env_metal_fraction(j+1)
+               s%env_points%env_convective_flag(j) = s%env_points%env_convective_flag(j+1)
             end do
-            env_struct%num_env_points = env_struct%num_env_points - 1
+            s%env_points%num_env_points = s%env_points%num_env_points - 1
 ! Append the envelope points inside the new fitting mass as shells
 ! and interpolate the last one onto it (append_envelope_points, shared
 ! with rebuild_envelope; here a point exactly at the fitting mass is

@@ -6,7 +6,7 @@
 ! (atmosphere_derivs / envelope_derivs, via their eos/kap/gradient
 ! calls) and henyey_coefficients publish the physics of the point
 ! they just evaluated, and through which envelope_integration_kernel's recorder reads
-! it into atmo_struct / env_struct.
+! it into atm_points / env_points.
 !
 ! Formerly star%pulse (the pulsation_diagnostics_state q* scratch,
 ! ex common/pulse1/pulse2) and the flat star%current_* members --

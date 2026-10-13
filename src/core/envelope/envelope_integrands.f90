@@ -31,11 +31,11 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, atm_choice, atm_hras, ierr)
+     saha_state, atm_choice, atm_hras, atm_point, ierr)
 
       use eos_lib
       use kap_lib
-      use atmosphere_structure, only: atm_point
+      use envelope_points, only: atmosphere_point_state
       use atm_lib, only: ttau_log10_temperature
       use point_scratch_lib
       use physical_constants
@@ -62,6 +62,8 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       integer, intent(in) :: atm_choice
 ! atm_hras: the HSRA T(tau) relation's offset.
       double precision, intent(in) :: atm_hras
+! atm_point: the integration's current point, written here.
+      type(atmosphere_point_state), intent(inout) :: atm_point
 ! ierr: nonzero when the EOS or the opacity fails; bsstep passes it up
 ! to the kernel.
       integer, intent(out) :: ierr
@@ -94,7 +96,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
            (eos_res%pressure*kap_res(i_kap))
 ! Store the point for the kernel: log P and log T of the last point
 ! start the envelope integration, and the rest is output for
-! atmo_struct.
+! atm_points.
       atm_point%log10_pressure = log10_pressure
       atm_point%log10_temperature = log10_temperature
       atm_point%log10_density = eos_res%log10_density
@@ -140,7 +142,7 @@ end subroutine compute_atmosphere_derivs
 ! from compute_temperature_gradients (legacy TPGRAD). f_P and f_T
 ! (pressure_rotation_factor, temperature_rotation_factor; legacy FPL,
 ! FTL) are the rotational distortion factors, 1 without rotation. Also
-! stores the point and its physics in pt_scr for env_struct.
+! stores the point and its physics in pt_scr for env_points.
 subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &

@@ -50,7 +50,7 @@ Its subdirectories follow the layers of `docs/TARGET_ARCHITECTURE.md` §4.1:
 | `envelope_integration`, `envelope_integration_kernel` | The atmosphere and envelope integrations from the surface to the fitting point (the kernel is star-blind). |
 | `envelope_integrands` | Their right-hand sides, in optical depth and in pressure. |
 | `envelope_refit`, `envelope_rebuild` | Refitting the envelope, and moving the fitting point outward when the star accretes (the envelope above it thickens). |
-| `envelope_structure`, `atmosphere_structure` | The outer layers of the current model, point by point. |
+| (state/envelope_points) | The outer layers of the latest envelope integration, point by point: records the kernel fills and the star holds (`s%env_points`, `s%atm_points`, `s%atm_point`). |
 | **model/** | |
 | `starting_model` | `read_starting_model`: each card's starting model, read or reused, rescaled if asked. |
 | `model_rescaling` | `rescale_model`: a new mass, composition or core. |
