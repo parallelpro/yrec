@@ -131,13 +131,13 @@ subroutine write_run_summaries(monte_carlo_run_number, &
 
 ! A Monte-Carlo run that failed to converge: rewind the output units
 ! and write the model with its cycle count.
-      if (star%ctrl%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_active) then
+      if (star%ctrl%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.star%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(log_r_rsun, convergence_iterations, &
               star%job%nk, monte_carlo_run_number)
-      else if (star%ctrl%calibrate_solar_model .and. star%ctrl%calc_neutrinos .and. star%solar_calibration_active) then
+      else if (star%ctrl%calibrate_solar_model .and. star%ctrl%calc_neutrinos .and. star%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(star%ctrl%first_unit)
          rewind(run_log_unit)

@@ -142,7 +142,7 @@ subroutine write_profile(iprof, ierr)
 ! time_step are in years, matching MESA's profile header.
       write(u, '(2(1x,i40),6(1x,es40.16e3))') star%model_number, &
            n_ext, star%pulsation_mass_msun, &
-           star%job%initial_envelope_z, star%dage*1.0d9, &
+           star%job%initial_envelope_z, star%age_gyr*1.0d9, &
            star%timestep_yr, star%log_Teff, star%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)

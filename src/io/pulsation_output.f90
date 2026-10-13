@@ -66,7 +66,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(5) = pts(ipul_h1, n)
 ! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
 ! derivatives) not tracked here -- zero, as tools tolerate.
-      glob(13) = star%dage*1.0d9
+      glob(13) = star%age_gyr*1.0d9
       glob(14) = exp10(star%log_Teff)
       glob(15) = grav_const_cgs
 
@@ -76,7 +76,7 @@ subroutine write_fgong_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       write(u,'(a)') 'FGONG file'
       write(u,'(a)') 'Created by YREC'
       write(u,'(a,i8,a,1pe16.9,a,0pf10.6)') 'model_number ', &
-           star%model_number, '  star_age_yr ', star%dage*1.0d9, &
+           star%model_number, '  star_age_yr ', star%age_gyr*1.0d9, &
            '  log_Teff ', star%log_Teff
       write(u,'(a)') ''
       write(u,'(4I10)') n, iconst, ivar, ivers

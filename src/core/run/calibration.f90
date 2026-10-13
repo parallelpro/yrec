@@ -58,12 +58,12 @@ subroutine check_solar_calibration(log_l_lsun, log_r_rsun, run_index, current_zx
          if(star%ctrl%calibrate_solar_zx .and.star%ctrl%target_solar_zx.gt.0.0d0)then
             log_zx_mismatch = log10(current_zx)-log10(star%ctrl%target_solar_zx)
             if(abs(log_zx_mismatch).lt.star%ctrl%zx_tolerance)then
-               star%solar_calibration_active = .true.
+               star%solar_calibration_converged = .true.
                return
             endif
          else
 ! A calibrated solar model: flag it and return.
-            star%solar_calibration_active = .true.
+            star%solar_calibration_converged = .true.
             return
          endif
       endif
@@ -173,7 +173,7 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 !                                         log_r_* names of the model
 !                                         values)
 !   r_rsun_current                        R/Rsun of this model (linear)
-!   star%log_r_prev_model                 R/Rsun of the previous model
+!   star%r_rsun_prev_model                 R/Rsun of the previous model
 !                                         (linear)
 !   current_age, star%age_prev_model      age of this and of the
 !                                         previous model (Gyr)
@@ -191,20 +191,20 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
       teff_current = exp10(log_teff)
       r_rsun_current = sqrt((exp10(log_l_lsun))*star%solar_luminosity_cgs/ &
            (c4pi*csig))/(teff_current*teff_current*star%solar_radius_cgs)
-      if(r_rsun_current.gt.star%log_r_prev_model) then
+      if(r_rsun_current.gt.star%r_rsun_prev_model) then
          if(.not.(r_rsun_current.gt.star%job%target_radius_rsun.and. &
-              star%log_r_prev_model.le.star%job%target_radius_rsun)) then
+              star%r_rsun_prev_model.le.star%job%target_radius_rsun)) then
               star%log_l_prev_model = log_l_lsun
               star%age_prev_model = current_age
-              star%log_r_prev_model = r_rsun_current
+              star%r_rsun_prev_model = r_rsun_current
               return
           end if
       else
           if (.not.(r_rsun_current.lt.star%job%target_radius_rsun.and. &
-               star%log_r_prev_model.ge.star%job%target_radius_rsun)) then
+               star%r_rsun_prev_model.ge.star%job%target_radius_rsun)) then
               star%log_l_prev_model = log_l_lsun
               star%age_prev_model = current_age
-              star%log_r_prev_model = r_rsun_current
+              star%r_rsun_prev_model = r_rsun_current
               return
            end if
       endif
@@ -220,11 +220,11 @@ subroutine check_star_calibration(log_l_lsun, log_teff, current_age, run_index)
 ! (Despite their names, dlogl_dlogr and dage_dlogr are derivatives with
 ! respect to the linear R/Rsun.)
       dlogl_dlogr = (log_l_lsun-star%log_l_prev_model)/ &
-           (r_rsun_current-star%log_r_prev_model)
+           (r_rsun_current-star%r_rsun_prev_model)
       star%log_l_at_target_radius = log_l_lsun + &
            dlogl_dlogr*(star%job%target_radius_rsun-r_rsun_current)
       dage_dlogr = (current_age-star%age_prev_model)/ &
-           (r_rsun_current-star%log_r_prev_model)
+           (r_rsun_current-star%r_rsun_prev_model)
       star%age_at_target_radius = current_age + &
            dage_dlogr*(star%job%target_radius_rsun-r_rsun_current)
       write(*,*) ' X, LogL/Lsun at R* =', star%job%rescale_params(2,run_index-1), &
@@ -369,7 +369,7 @@ subroutine setup_solar_calibration(age_scale_factor)
          star%job%timestep_override(i) = star%job%timestep_override(3)
          star%job%timestep_override_active(i) = star%job%timestep_override_active(3)
       end do
-      star%solar_calibration_active = .false.
+      star%solar_calibration_converged = .false.
       return
 end subroutine setup_solar_calibration
 
@@ -411,7 +411,7 @@ subroutine setup_star_calibration
               star%solar_radius_cgs*star%solar_radius_cgs), 0.25d0)
       end if
 ! No previous model yet.
-      star%log_r_prev_model = 0
+      star%r_rsun_prev_model = 0
 ! Use all max_runs = 50 cards, copying the seed cards' parameters to
 ! the 48 calibration cards that follow.
       star%job%num_runs = max_runs

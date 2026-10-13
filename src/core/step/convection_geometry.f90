@@ -86,9 +86,10 @@ end function first_zone_above
 ! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
 ! cz_base_zone is kept in star%envelope_cz_base_zone_prev, the starting
 ! zone of the next call within the step.
-!   star reads: grada, gradr, job%envelope_overshoot_active,
-!     job%instability_transport_active, job%rotation_active, logR_start,
-!     pressure_scale_height_end, pressure_scale_height_start
+!   star reads: envelope_overshoot_depth_end,
+!     envelope_overshoot_depth_start, grada, gradr,
+!     job%envelope_overshoot_active, job%instability_transport_active,
+!     job%rotation_active, logR_start
 !   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
 subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_zones, &
      cz_base_zone, cz_base_zone_old, cz_base_frac)
@@ -142,7 +143,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
                if (env_cz_zone_old.gt.1) then
                   star%cz_base_radius_prev = 0.5d0*(exp(ln10*star%logR_start(env_cz_zone_old)) &
                            +exp(ln10*star%logR_start(env_cz_zone_old-1)))
-                  search_radius = star%cz_base_radius_prev - star%pressure_scale_height_start
+                  search_radius = star%cz_base_radius_prev - star%envelope_overshoot_depth_start
                   cz_base_zone_old = first_zone_above(star%logR_start, env_cz_zone_old-1, &
                        search_radius)
                else
@@ -162,7 +163,7 @@ subroutine locate_surface_mixing_base(radius, env_cz_zone, env_cz_zone_old, num_
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
             star%cz_base_radius_prev = cz_base_radius
-            search_radius = cz_base_radius - star%pressure_scale_height_end
+            search_radius = cz_base_radius - star%envelope_overshoot_depth_end
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
 ! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),

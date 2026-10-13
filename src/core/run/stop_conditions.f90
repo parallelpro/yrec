@@ -92,7 +92,7 @@ logical function converged_model_is_nan()
          what = 'log_L'
       else if (ieee_is_nan(star%log_Teff)) then
          what = 'log_Teff'
-      else if (ieee_is_nan(star%dage) .or. ieee_is_nan(star%dt)) then
+      else if (ieee_is_nan(star%age_gyr) .or. ieee_is_nan(star%dt)) then
          what = 'age/timestep'
       else
          do k = 1, nz
@@ -158,7 +158,7 @@ subroutine check_stop_conditions(model_iteration, step_status)
       if (star%ctrl%calibrate_star_flag .and. .not. star%star_found_flag) then
          if (mod(star%job%nk,2).eq.0 .and. model_iteration.ne.1) then
             call check_star_calibration(star%log_L, star%log_Teff, &
-                 star%dage, star%job%nk)
+                 star%age_gyr, star%job%nk)
             if (star%just_passed_target_radius_flag) then
                step_status = step_leave_run_loop
             end if
@@ -223,7 +223,7 @@ logical function reached_end_age(nk)
       integer, intent(in) :: nk
       reached_end_age = star%job%end_age_stop_active(nk) .and. &
            star%job%target_end_age(nk).gt.0.0d0 .and. &
-           (star%job%target_end_age(nk)-star%dage*1.0d9).le.1.0d0
+           (star%job%target_end_age(nk)-star%age_gyr*1.0d9).le.1.0d0
 end function reached_end_age
 
 ! ---------------------------------------------------------------

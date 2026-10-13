@@ -182,7 +182,7 @@ subroutine add_shell_energy_budget()
                  star%solar_luminosity_cgs)*diag%burn%eps_alpha_capture
        end if
        if (diag%has_eps_grav) then
-            star%gravitational_luminosity(im) = diag%eps_grav
+            star%eps_grav(im) = diag%eps_grav
             star%luminosity_breakdown(i_lum_grav) = star%luminosity_breakdown(i_lum_grav) + &
                  (star%dm(im)/star%solar_luminosity_cgs)*diag%eps_grav
        end if
@@ -227,7 +227,7 @@ end subroutine eliminate_shell_pair
 subroutine store_zone_energy_channels()
          if (star%logT(im).lt.star%ctrl%nuclear_logT_cutoffs(1)) then
             star%eps_total(im) = 0.0d0
-            star%eps_channels(i_eps_grav,im) = star%gravitational_luminosity(im)
+            star%eps_channels(i_eps_grav,im) = star%eps_grav(im)
             do j = 1,6
                star%eps_channels(j,im) = 0.0d0
            end do
@@ -236,7 +236,7 @@ subroutine store_zone_energy_channels()
                  diag%energy_gen_component(3)+diag%energy_gen_component(4)+ &
                  diag%energy_gen_component(5)
             star%eps_channels(i_eps_neu,im) = diag%energy_gen_component(6)
-            star%eps_channels(i_eps_grav,im) = star%gravitational_luminosity(im)
+            star%eps_channels(i_eps_grav,im) = star%eps_grav(im)
             if (star%eps_total(im).gt.1.0d-22) then
                energy_sum_inverse = 1.0d0/star%eps_total(im)
             else

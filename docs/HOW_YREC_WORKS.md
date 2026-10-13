@@ -62,9 +62,9 @@ YREC evaluates it from the per-shell changes of log T and log P since the
 start of the step (`star%log_temperature_delta`, `star%log_pressure_delta`,
 accumulated with every Newton correction) and the local EOS derivatives.
 Separately, after the second iteration level it stores per-shell rates of
-change of (log T, log P, L, log R) (`star%temperature_entropy_term`,
-`star%pressure_entropy_term`, `star%luminosity_entropy_term`,
-`star%radius_entropy_term`) and uses them to extrapolate the first guess of
+change of (log T, log P, L, log R) (`star%dlog_temperature_dt`,
+`star%dlog_pressure_dt`, `star%dln_luminosity_dt`,
+`star%dlog_radius_dt`) and uses them to extrapolate the first guess of
 the next model (`star%ctrl%improved_first_guess_flag`, namelist `lnews`); the
 extrapolated change also seeds the log T / log P accumulators.
 
@@ -94,7 +94,7 @@ Composition evolves by:
   accounting for the time-dependent depth of the surface convection zone
   (`burn_li_be` in `core/step/burn_step.f90`, rates from `compute_li_be_rates`, the CZ
   base from `core/step/convection_geometry.f90`; the CZ-depth history enters via the pressure-scale-height
-  bounds `star%pressure_scale_height_start`/`_end` and the previous CZ-base
+  bounds `star%envelope_overshoot_depth_start`/`_end` and the previous CZ-base
   radius `star%cz_base_radius_prev`);
 - **microscopic diffusion** (optional) — gravitational settling and
   thermal diffusion of He and metals in the Bahcall & Loeb / Michaud

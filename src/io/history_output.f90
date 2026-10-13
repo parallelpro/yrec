@@ -216,7 +216,7 @@ subroutine history_values(vals, iprof)
       vals(81) = star%h_shell_top_radius
       vals(82) = star%pphot
       vals(83) = star%star_mass
-      vals(84) = star%dage*1.0d9
+      vals(84) = star%age_gyr*1.0d9
       vals(85) = star%nu_max
       vals(86) = star%delta_nu_rho
       vals(87) = star%delta_nu

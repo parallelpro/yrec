@@ -119,7 +119,7 @@ subroutine output_write_model(ierr)
 ! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, He-core mass (g)
       if (star%ctrl%isochrone_output_active) then
-        age_yr = star%dage*1.0D9
+        age_yr = star%age_gyr*1.0D9
         luminosity_erg_s = exp10(star%log_L)*star%solar_luminosity_cgs
         radius_cm = exp10(star%log_R_surface)*star%solar_radius_cgs
         teff_k = exp10(star%log_Teff)

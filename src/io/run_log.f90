@@ -62,10 +62,10 @@ subroutine write_model_line()
          write(run_log_unit,'(a)') header
          lines_since_header = 0
       end if
-      write(terminal_unit,10) star%model_number, star%nz, star%dage, &
+      write(terminal_unit,10) star%model_number, star%nz, star%age_gyr, &
            star%timestep_yr, star%log_Teff, star%log_L, &
            star%log_R_surface, star%xa(i_h1,1), star%newton_iterations
-      write(run_log_unit,10) star%model_number, star%nz, star%dage, &
+      write(run_log_unit,10) star%model_number, star%nz, star%age_gyr, &
            star%timestep_yr, star%log_Teff, star%log_L, &
            star%log_R_surface, star%xa(i_h1,1), star%newton_iterations
    10 format(1x,i7,1x,i6,1x,es15.8,1x,es12.5,3(1x,f10.6),2x,f8.6,1x,i6)
@@ -86,8 +86,8 @@ subroutine log_run_summary(wall_seconds)
       write(run_log_unit,'(a)') ''
       write(terminal_unit,10) trim(star%termination_reason)
       write(run_log_unit,10) trim(star%termination_reason)
-      write(terminal_unit,20) star%model_number, star%dage
-      write(run_log_unit,20) star%model_number, star%dage
+      write(terminal_unit,20) star%model_number, star%age_gyr
+      write(run_log_unit,20) star%model_number, star%age_gyr
       write(terminal_unit,30) wall_seconds
    10 format(1x,'run finished: ',a)
    20 format(3x,'final model',i7,'   age ',es15.8,' Gyr')

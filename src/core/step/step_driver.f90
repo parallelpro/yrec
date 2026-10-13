@@ -179,7 +179,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
        star%dt_saved = star%dt
        disable_structure_dt_limits = .false.
        call compute_timestep(star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun,star%m,star%logT,star%xa,star%core_cz_top_index, &
-              star%h_shell_midpoint_zone,star%luminosity_breakdown,star%dage,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
+              star%h_shell_midpoint_zone,star%luminosity_breakdown,star%age_gyr,star%timestep_yr,star%job%nk,star%logP,star%logR,star%omega, &
               star%max_domega_frac,star%h_shell_zone_begin,star%log_Teff, disable_structure_dt_limits)
        if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
 ! With a fixed end age (target_end_age > 0) that this model reached,
@@ -190,7 +190,7 @@ subroutine evolve_step(model_iteration, step_status, ierr)
 ! dage taken as years, until 2026-10, as in main.f.)
        if (star%job%end_age_stop_active(star%job%nk) .and. star%job%target_end_age(star%job%nk).gt.0.0D0) then
           if (reached_end_age(star%job%nk)) then
-             star%dt = max(star%dt_saved,1.0D-3*star%dage*1.0D9*seconds_per_year)
+             star%dt = max(star%dt_saved,1.0D-3*star%age_gyr*1.0D9*seconds_per_year)
              star%timestep_yr = star%dt/seconds_per_year
           else
              star%dt_saved = star%dt
@@ -243,7 +243,7 @@ end subroutine update_output_flags_for_step
 subroutine reload_model_if_diverged
             if (star%model_diverged_flag) then
              call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, &
-                  star%trial_sign_flag, star%ikut_flag, star%istore_flag, &
+                  star%triangle_orientation, star%ikut_flag, star%stored_vertex_index, &
                   star%model_diverged_flag, star%recompute_envelope_triangle, star%job%nk, &
                   star%dlnrho_dlnp, star%dlnrho_dlnt, star%total_angular_momentum, &
                   star%total_rotational_ke, star%convective_velocity, &
@@ -297,7 +297,7 @@ subroutine advance_composition_and_age
                   return
                end if
 ! The new age, dage in Gyr.
-             star%dage = star%dage + 1.0D-9*star%timestep_yr
+             star%age_gyr = star%age_gyr + 1.0D-9*star%timestep_yr
             endif
 end subroutine advance_composition_and_age
 
@@ -313,7 +313,7 @@ subroutine rezone_or_snapshot
       use math_lib
 ! Rezone the new model, except with the helium-flash option.
           if (.not.star%ctrl%helium_flash_active) then
-             call rezone(star%istore_flag, star%reset_triangle, star%h_shell_zone_begin, &
+             call rezone(star%stored_vertex_index, star%reset_triangle, star%h_shell_zone_begin, &
                   star%has_h_shell, star%total_angular_momentum, &
                   star%total_rotational_ke, ierr)
              if (ierr /= 0) return
@@ -348,7 +348,7 @@ subroutine rezone_or_snapshot
             if (star%job%use_extended_composition) then
                star%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = star%envelope_cz_bottom_index
-               star%pressure_scale_height_start = envelope_overshoot_depth()
+               star%envelope_overshoot_depth_start = envelope_overshoot_depth()
 ! The Li/Be burning rates of the start-of-step model.
                call store_start_li_be_rates()
             endif
@@ -390,12 +390,12 @@ subroutine solve_structure
                do i = 1,star%nz
                   star%log_temperature_delta(i) = 0.0D0
                   star%log_pressure_delta(i) = 0.0D0
-                  star%temperature_entropy_term(i) = 0.0D0
-                  star%pressure_entropy_term(i) = 0.0D0
-                  star%luminosity_entropy_term(i) = 0.0D0
-                  star%radius_entropy_term(i) = 0.0D0
+                  star%dlog_temperature_dt(i) = 0.0D0
+                  star%dlog_pressure_dt(i) = 0.0D0
+                  star%dln_luminosity_dt(i) = 0.0D0
+                  star%dlog_radius_dt(i) = 0.0D0
 ! Zero the gravitational luminosity.
-                  star%gravitational_luminosity(i) = 0.0D0
+                  star%eps_grav(i) = 0.0D0
                end do
             else
 ! Improved first guess: extrapolate each variable by its rate of change
@@ -405,10 +405,10 @@ subroutine solve_structure
 !   L += L (d ln L/dt) dt,     log R += (d log R/dt) dt,
 ! and start the changes of log T and log P over the step at those values.
                do i = 1,star%nz
-                  delta_temp_step = star%temperature_entropy_term(i)*star%dt
-                  delta_pressure_step = star%pressure_entropy_term(i)*star%dt
-                  delta_lum_step = star%luminosity_lsun(i)*star%luminosity_entropy_term(i)*star%dt
-                  delta_radius_step = star%radius_entropy_term(i)*star%dt
+                  delta_temp_step = star%dlog_temperature_dt(i)*star%dt
+                  delta_pressure_step = star%dlog_pressure_dt(i)*star%dt
+                  delta_lum_step = star%luminosity_lsun(i)*star%dln_luminosity_dt(i)*star%dt
+                  delta_radius_step = star%dlog_radius_dt(i)*star%dt
                   star%log_temperature_delta(i) = delta_temp_step
                   star%log_pressure_delta(i) = delta_pressure_step
                   star%logT(i) = star%logT(i) + delta_temp_step
@@ -416,7 +416,7 @@ subroutine solve_structure
                   star%luminosity_lsun(i) = star%luminosity_lsun(i) + delta_lum_step
                   star%logR(i) = star%logR(i) + delta_radius_step
 ! Zero the gravitational luminosity.
-                  star%gravitational_luminosity(i) = 0.0D0
+                  star%eps_grav(i) = 0.0D0
                end do
             endif
 
@@ -440,10 +440,10 @@ subroutine solve_structure
 !   d log R/dt = (log R - log R_start)/dt.
             if (star%dt.gt.0.0D0) then
                do ii = 1,star%nz
-                  star%temperature_entropy_term(ii)=star%log_temperature_delta(ii)/star%dt
-                  star%pressure_entropy_term(ii)=star%log_pressure_delta(ii)/star%dt
-                  star%luminosity_entropy_term(ii)=2.0D0*(star%luminosity_lsun(ii)-star%luminosity_lsun_start(ii))/(star%luminosity_lsun(ii)+star%luminosity_lsun_start(ii))/star%dt
-                  star%radius_entropy_term(ii)=(star%logR(ii)-star%logR_start(ii))/star%dt
+                  star%dlog_temperature_dt(ii)=star%log_temperature_delta(ii)/star%dt
+                  star%dlog_pressure_dt(ii)=star%log_pressure_delta(ii)/star%dt
+                  star%dln_luminosity_dt(ii)=2.0D0*(star%luminosity_lsun(ii)-star%luminosity_lsun_start(ii))/(star%luminosity_lsun(ii)+star%luminosity_lsun_start(ii))/star%dt
+                  star%dlog_radius_dt(ii)=(star%logR(ii)-star%logR_start(ii))/star%dt
                end do
             endif
 ! Level 3: from here on, solve_level redoes the composition step on the
@@ -507,7 +507,7 @@ subroutine converge_with_rotation
       call homogenize_convection_zones(star%xa,star%dm,star%convective_flag,star%nz)
 
 ! The age (Gyr) that the disk-locking test reads.
-            star%disk_gate_age_gyr = star%dage
+            star%disk_gate_age_gyr = star%age_gyr
             if (star%job%rotation_active) then
 ! On repeat passes, restore the start-of-step angular momentum.
                if (itrot.gt.1) then
@@ -552,7 +552,7 @@ subroutine burn_light_elements
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).
                envelope_cz_zone_end = star%envelope_cz_bottom_index
-               star%pressure_scale_height_end = envelope_overshoot_depth()
+               star%envelope_overshoot_depth_end = envelope_overshoot_depth()
 ! The burning rates at the end of the step, from the converged model;
 ! then the burn.
                call store_end_li_be_rates(star%xa,star%logRho,star%logT,star%nz)
@@ -595,8 +595,8 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       if (max_iterations.le.0) return
 
       call refresh_surface_bc(iteration_level, star%recompute_envelope_triangle, &
-           star%reset_triangle, recompute_surface_bc, star%trial_sign_flag, &
-           star%istore_flag, saha_state, envelope_recomputed_flag, ierr)
+           star%reset_triangle, recompute_surface_bc, star%triangle_orientation, &
+           star%stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
       if (ierr /= 0) return
 
 ! envelope_zone_index gates the accretion correction to the entropy term

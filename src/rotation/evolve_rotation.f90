@@ -361,20 +361,20 @@ subroutine burn_light_elements_over_substep()
            num_convective_zones_burn, star%iov1, star%iov2, ierr)
       if (ierr /= 0) return
       if(rotation_settings%intermediate_overshoot .and. rot_scr%convective_flag_mid(star%nz))then
-         star%pressure_scale_height_end = rotation_settings%overshoot_alpha_envelope* &
+         star%envelope_overshoot_depth_end = rotation_settings%overshoot_alpha_envelope* &
               pressure_scale_height(rot_scr%log_pressure_mid(envelope_boundary_zone_cur), &
               rot_scr%log_radius_mid(envelope_boundary_zone_cur), &
               rot_scr%log_density_mid(envelope_boundary_zone_cur), &
               star%log_mass(envelope_boundary_zone_cur))
       else
-         star%pressure_scale_height_end = 0.0D0
+         star%envelope_overshoot_depth_end = 0.0D0
       endif
       call store_end_li_be_rates(star%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,star%nz)
       call burn_li_be(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
            star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
            envelope_boundary_zone_prev,star%nz)
       envelope_boundary_zone_prev = envelope_boundary_zone_cur
-      star%pressure_scale_height_start = star%pressure_scale_height_end
+      star%envelope_overshoot_depth_start = star%envelope_overshoot_depth_end
       do zone_index = 1,star%nz
          star%rate_li6_start(zone_index) = star%rate_li6(zone_index)
          star%rate_li7_start(zone_index) = star%rate_li7(zone_index)

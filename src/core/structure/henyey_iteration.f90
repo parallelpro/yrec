@@ -98,7 +98,7 @@ subroutine refresh_surface_bc(iteration_level, start_new_triangle, &
        metal_fraction = star%znew
        log10_pressure_limit = star%logP(star%nz)
        call eos_set_debye_huckel_composition(star%xa(:,star%nz))
-       call compute_surface_boundary(star%trial_log_temperature,star%trial_log_luminosity,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
+       call compute_surface_boundary(star%triangle_log_teff,star%triangle_log_l,star%envelope_fit_coeffs,star%fit_point_pressure,star%fit_point_temperature, &
             star%fit_point_radius,tri_orientation,stored_vertex_index, &
             star%stored_envelope_state, &
             start_new_triangle,reset_triangle,saha_state, &

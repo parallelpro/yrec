@@ -52,7 +52,7 @@ subroutine write_mod_model(iwrite)
       write(iwrite,'(a,1x,i12)')        'num_zones           ', star%nz
       write(iwrite,'(a,1x,es26.16e3)')  'star_mass_msun      ', star%star_mass
       write(iwrite,'(a,1x,es26.16e3)')  'log_total_mass      ', star%log_total_mass
-      write(iwrite,'(a,1x,es26.16e3)')  'star_age_gyr        ', star%dage
+      write(iwrite,'(a,1x,es26.16e3)')  'star_age_gyr        ', star%age_gyr
       write(iwrite,'(a,1x,es26.16e3)')  'timestep_yr         ', star%timestep_yr
       write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', star%log_L
       write(iwrite,'(a,1x,es26.16e3)')  'log_Teff            ', star%log_Teff
@@ -82,7 +82,7 @@ subroutine write_mod_model(iwrite)
          if (iwrite .eq. last_model_unit) then
           write(run_log_unit,330) star%model_number, iwrite
          else
-          write(run_log_unit,340) star%model_number, star%dage, iwrite
+          write(run_log_unit,340) star%model_number, star%age_gyr, iwrite
          endif
       end if
   330 format(' DUMPED MODEL',I5,'  FILE',I3)
@@ -159,7 +159,7 @@ subroutine read_mod_model(iread, timestep_yr, mixing_length0, &
          case ('log_total_mass')
             read(line,*) name, star%log_total_mass
          case ('star_age_gyr')
-            read(line,*) name, star%dage
+            read(line,*) name, star%age_gyr
          case ('timestep_yr')
             read(line,*) name, timestep_yr
          case ('log_L')
@@ -218,7 +218,7 @@ end subroutine read_mod_model
 
 ! ---------------------------------------------------------------
 ! A YREC7-format model; the arguments are the file's header values.
-subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
+subroutine read_yrec7(mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
      hik_code, use_diffusion_y, use_diffusion_z, &
@@ -234,7 +234,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 
       double precision, intent(out) :: mixing_length
       double precision, intent(out) :: timestep_yr
-      double precision, intent(out) :: trial_sign_flag
+      double precision, intent(out) :: triangle_orientation
       integer, intent(in) :: iread
       integer, intent(out) :: core_cz_top_index, envelope_cz_bottom_index
       logical, intent(out) :: use_extended_composition, rotation_active
@@ -316,7 +316,7 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 ! get the header record
       read(iread,10) header_keyword,star%model_number,star%nz,star%star_mass, &
            star%log_Teff,star%log_L,star%log_total_mass, &
-           star%dage,timestep_yr
+           star%age_gyr,timestep_yr
  10   format(A4,1X,2I5,3F8.5,1X,F14.10,F13.9,F13.0)
 
 ! Get the flags describing the input physics and the information that
@@ -344,14 +344,14 @@ subroutine read_yrec7(mixing_length, timestep_yr, trial_sign_flag, &
 ! Get the ENVELOPE DATA
 ! FTRI is 1,normally.  It is set to -1  if any of the record numbers
 ! for the envelope triangle records was set to -1 by WRTLST.
-      trial_sign_flag = 1D0
+      triangle_orientation = 1D0
       do i = 1,3
-       read(iread,70) envelope_record_number,star%trial_log_temperature(i), &
-            star%trial_log_luminosity(i),star%fit_point_pressure(i), &
+       read(iread,70) envelope_record_number,star%triangle_log_teff(i), &
+            star%triangle_log_l(i),star%fit_point_pressure(i), &
             star%fit_point_temperature(i),star%fit_point_radius(i), &
             (star%envelope_fit_coeffs(3*i-3+j),j = 1,3)
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
-       if(envelope_record_number.lt.0) trial_sign_flag = -1D0
+       if(envelope_record_number.lt.0) triangle_orientation = -1D0
       end do
 
 ! READ IN HENYEY POINTS IN 4 PARTS
@@ -494,7 +494,7 @@ end subroutine read_yrec7
 
 ! ---------------------------------------------------------------
 ! A MODEL2-format model: the YREC7 layout plus the MODEL2 additions.
-subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
+subroutine read_model2(mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
      hik_code, use_diffusion_y, use_diffusion_z, &
@@ -508,7 +508,7 @@ subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
 
       double precision, intent(out) :: mixing_length
       double precision, intent(out) :: timestep_yr
-      double precision, intent(out) :: trial_sign_flag
+      double precision, intent(out) :: triangle_orientation
       integer, intent(in) :: iread
       integer, intent(out) :: core_cz_top_index, envelope_cz_bottom_index
       logical, intent(out) :: use_extended_composition, rotation_active
@@ -536,7 +536,7 @@ subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
 
 ! GET THE HEADER RECORD
       read(iread,10) header_keyword,star%model_number,star%nz,star%star_mass, &
-           star%log_Teff,star%log_L,star%log_total_mass,star%dage, &
+           star%log_Teff,star%log_L,star%log_total_mass,star%age_gyr, &
            timestep_yr,star%log_mass(1),star%log_mass(star%nz)
  10   format(A5,2I8,5F16.12,1PE18.10,0P2F16.12)
 
@@ -573,13 +573,13 @@ subroutine read_model2(mixing_length, timestep_yr, trial_sign_flag, &
 ! Get the ENVELOPE DATA
 ! FTRI is 1,normally.  It is set to -1  if any of the record numbers
 ! for the envelope triangle records was set to -1 by WRTLST.
-      trial_sign_flag = 1D0
+      triangle_orientation = 1D0
       do i = 1,3
-         read(iread,50)envelope_record_number,star%trial_log_temperature(i), &
-              star%trial_log_luminosity(i),star%fit_point_pressure(i), &
+         read(iread,50)envelope_record_number,star%triangle_log_teff(i), &
+              star%triangle_log_l(i),star%fit_point_pressure(i), &
               star%fit_point_temperature(i),star%fit_point_radius(i), &
               (star%envelope_fit_coeffs(3*i-3+j),j=1,3)
-         if (envelope_record_number .lt. 0) trial_sign_flag = -1D0
+         if (envelope_record_number .lt. 0) triangle_orientation = -1D0
       enddo
 !   50 FORMAT('ENV',I2,5F16.12,1P3E20.12)
    50 format(4X,I2,5F16.12,1P3E20.12)

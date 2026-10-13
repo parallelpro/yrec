@@ -201,7 +201,7 @@ end subroutine compute_central_conditions
 ! ---------------------------------------------------------------
 ! The base of the surface convection zone, interpolated between the
 ! zones around it: star%envelope_mass (the convective envelope's mass,
-! Msun), envelope_cz_log_radius and envelope_radius (Rsun), and
+! Msun), envelope_radius (Rsun), and
 ! envelope_cz_temperature, _density, _pressure and _opacity. A fully
 ! convective star takes the central values (so compute_central_conditions
 ! runs first); without a surface convection zone all are zero.
@@ -210,7 +210,8 @@ subroutine locate_surface_cz_base
       use convection_geometry, only: cz_base_fraction
       double precision :: dd1, dd2, cz_base_mass, envelope_boundary_fx
       double precision :: envelope_cz_log_temperature, &
-           envelope_cz_log_density, envelope_cz_log_pressure
+           envelope_cz_log_density, envelope_cz_log_pressure, &
+           envelope_cz_log_radius
 
       if(star%envelope_cz_bottom_index.lt.star%nz) then
        if(star%envelope_cz_bottom_index.gt.1) then
@@ -224,9 +225,9 @@ subroutine locate_surface_cz_base
                  (star%m(star%envelope_cz_bottom_index)-star%m(star%envelope_cz_bottom_index-1))
             star%envelope_mass = (exp(ln10*star%log_total_mass) - cz_base_mass)/star%solar_mass_cgs
 ! The radius of the base (MHP 2/98).
-            star%envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
+            envelope_cz_log_radius = star%logR(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%logR(star%envelope_cz_bottom_index)-star%logR(star%envelope_cz_bottom_index-1))-star%log10_solar_radius
-            star%envelope_radius = exp(ln10*star%envelope_cz_log_radius)
+            star%envelope_radius = exp(ln10*envelope_cz_log_radius)
             star%envelope_cz_opacity = star%opacity_zone(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (star%opacity_zone(star%envelope_cz_bottom_index)-star%opacity_zone(star%envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = star%logT(star%envelope_cz_bottom_index-1)+envelope_boundary_fx* &

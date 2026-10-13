@@ -160,7 +160,7 @@ module star_info_lib
                  logT(json), logRho(json)
             logical :: convective_flag(json)
             double precision :: xa(n_species_extended,json), m(json), &
-                 dm(json), gravitational_luminosity(json)
+                 dm(json), eps_grav(json)
 ! rotation corrections to the structure equations
             double precision :: fp_rot(json), &
                  ft_rot(json)
@@ -173,8 +173,8 @@ module star_info_lib
 ! surface / envelope fit
             double precision :: surface_bc(6), stored_envelope_state(4), &
                  envelope_fit_coeffs(9), luminosity_breakdown(n_lum_channels)
-            double precision :: trial_log_luminosity(3), &
-                 trial_log_temperature(3), fit_point_pressure(3), &
+            double precision :: triangle_log_l(3), &
+                 triangle_log_teff(3), fit_point_pressure(3), &
                  fit_point_temperature(3), fit_point_radius(3)
 ! rotation state, per zone
             double precision :: omega(json), i_rot(json), &
@@ -247,7 +247,7 @@ module star_info_lib
 ! henyey_coefficients.
             double precision :: solar_luminosity_cgs, &
                  log10_solar_luminosity, ln10_over_lsun, &
-                 solar_mass_cgs, log10_solar_mass, solar_radius_cgs, &
+                 solar_mass_cgs, solar_radius_cgs, &
                  log10_solar_radius, solar_bolometric_magnitude
 ! phase C batch 2: the rotation-mixing velocity-factor work array
 ! (former common/varfc/ VFC, written per zone by getfc/seculr every
@@ -273,7 +273,7 @@ module star_info_lib
 ! is stamped per kind card by begin_kind_card.
             double precision :: age_at_target_radius, age_prev_model, &
                  log_l_at_target_radius, log_l_at_target_radius_prev_run, &
-                 log_l_prev_model, log_r_prev_model
+                 log_l_prev_model, r_rsun_prev_model
 ! run-log bookkeeping: why the (last) kind card ended -- the default
 ! set per card by init_stop_conditions, overridden by whichever stop
 ! fires; read by run_log's end-of-run summary.
@@ -318,10 +318,6 @@ module star_info_lib
             double precision :: logP_start(json), logT_start(json), &
                  logR_start(json), luminosity_lsun_start(json), logRho_start(json)
             double precision :: xa_start(n_species_extended,json)
-! NOT renamed dm_start: despite the name this slot holds LOG-MASS
-! coordinates of the pre-rezoning grid (see hpoint's spline blocks) --
-! a rezoning scratch, misnamed since the COMMON era.
-            double precision :: old_shell_mass(json)
             logical :: convective_flag_start(json)
             double precision :: log_Teff_start
 ! The start-of-step surface luminosity (Lsun), L at the outer point
@@ -332,7 +328,7 @@ module star_info_lib
 ! generation), eps_channels (SEG, per-channel via i_eps_*), beta
 ! (SBETA, gas-pressure fraction), eta (SETA, electron degeneracy),
 ! conv_vel (SVEL, MESA name), opacity_zone (SO -- per-zone OPACITY,
-! not O16: the 2026 o16_zone guess was wrong), converged_zone (LOCONS),
+! not O16: the 2026 o16_zone guess was wrong),
 ! fxion_zone (SFXION, ionization fractions), gradr/gradT/grada (the
 ! DEL_GRAD(3,:) rows, split into MESA-named arrays). scp keeps its
 ! name deliberately: it is the Henyey-solve-time specific heat that
@@ -341,7 +337,6 @@ module star_info_lib
 ! audit.
             double precision :: eps_total(json), eps_channels(7,json), &
                  beta(json), eta(json)
-            logical :: converged_zone(json)
 ! 2026 retire-legacy (.FULL): the model-grid rotational transport
 ! coefficients [cm^2/s], stored by secular_transport for the
 ! D_omega / D_mix_rot profile columns (zero when rotation is off;
@@ -365,8 +360,8 @@ module star_info_lib
                  rate_be9_start(json)
 ! former common/liov/: pressure scale heights used to search downward
 ! from the CZ base for the true (overshoot-corrected) base location.
-            double precision :: pressure_scale_height_start, &
-                 pressure_scale_height_end
+            double precision :: envelope_overshoot_depth_start, &
+                 envelope_overshoot_depth_end
 ! former common/prevcz/: previous end-of-timestep values, used as the
 ! new beginning-of-timestep values.
             double precision :: cz_base_radius_prev
@@ -418,16 +413,16 @@ module star_info_lib
                 h_shell_top_mass, h_shell_bot_radius, h_shell_mid_radius, &
                 h_shell_top_radius
 ! former common/entrop/
-           double precision :: temperature_entropy_term(json), &
-                pressure_entropy_term(json), &
-                luminosity_entropy_term(json), &
-                radius_entropy_term(json)
+           double precision :: dlog_temperature_dt(json), &
+                dlog_pressure_dt(json), &
+                dln_luminosity_dt(json), &
+                dlog_radius_dt(json)
 ! former common/theage/
-           double precision :: dage
+           double precision :: age_gyr
 ! former common/calsun/
            double precision :: dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, &
                 log_l_prev, log_r_prev, delta_x, delta_alpha
-           logical :: solar_calibration_active
+           logical :: solar_calibration_converged
 ! former common/sound/
            double precision :: adiabatic_index_gamma1(json)
 ! former common/cent/
@@ -439,7 +434,7 @@ module star_info_lib
            double precision :: central_beta, central_degeneracy_eta
            double precision :: core_cz_mass
            double precision :: envelope_cz_temperature, envelope_cz_density, &
-                envelope_cz_pressure, envelope_cz_opacity, envelope_cz_log_radius
+                envelope_cz_pressure, envelope_cz_opacity
 ! former common/origstart/
            double precision :: orig_specific_angular_momentum(json), &
                 orig_composition(n_species_extended,json)
@@ -450,7 +445,7 @@ module star_info_lib
 ! former common/oldrot/
            double precision :: old_omega(json), &
                 old_specific_angular_momentum(json), &
-                old_moment_of_inertia(json), old_hg(json), &
+                old_hg(json), &
                 old_mean_radius(json), old_eta_squared(json)
 ! former common/i2o/
            character(len=4) :: initial_composition_code
@@ -458,7 +453,7 @@ module star_info_lib
             logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
                  recompute_envelope_triangle, reset_triangle
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
-                 h_shell_zone_begin, ikut_flag, istore_flag
+                 h_shell_zone_begin, ikut_flag, stored_vertex_index
 ! chosen_dt (former DELTSH): the timestep compute_timestep adopted
 ! (the minimum over all its limiters, seconds); read_starting_model
 ! reuses the slot transiently as |delta_time|. Nothing reads it as
@@ -466,7 +461,7 @@ module star_info_lib
             double precision :: convective_velocity, dt, &
                  dt_saved, dlnrho_dlnp, dlnrho_dlnt, chosen_dt, &
                  max_domega_frac, timestep_yr, total_angular_momentum, &
-                 total_rotational_ke, trial_sign_flag
+                 total_rotational_ke, triangle_orientation
 ! -- the extended-model pulse physics arrays (former pulse%) --
 ! pulse_dlnrho_*/pulse_dlnkap_* are logarithmic derivatives;
 ! pulse_deps_dlnrho/dlnt are ABSOLUTE d eps/dln rho, d eps/dlnT in

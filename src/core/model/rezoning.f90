@@ -53,16 +53,15 @@ contains
 !     thdif, visc
 !   star writes: am_transport_convective_flag, convective_flag,
 !     convective_flag_start, core_cz_top_index,
-!     deuterium_burning_rate_start, dm, envelope_cz_bottom_index,
+!     deuterium_burning_rate_start, dln_luminosity_dt, dlog_pressure_dt,
+!     dlog_radius_dt, dlog_temperature_dt, dm, envelope_cz_bottom_index,
 !     eta_squared, fp_rot, ft_rot, i_rot, iov1, iov2, j_rot,
 !     kinetic_energy_rot, log_mass, log_Teff_start, logP, logP_start,
 !     logR, logR_start, logRho, logRho_start, logT, logT_start,
-!     luminosity_entropy_term, luminosity_lsun, luminosity_lsun_start,
-!     m, mean_gravity, mean_radius, nz, old_eta_squared, old_hg,
-!     old_mean_radius, old_moment_of_inertia, old_omega,
-!     old_specific_angular_momentum, omega, pressure_entropy_term, qiw,
-!     radius_entropy_term, senv, surface_luminosity_lsun_start,
-!     temperature_entropy_term, xa, xa_start, xnew, znew
+!     luminosity_lsun, luminosity_lsun_start, m, mean_gravity,
+!     mean_radius, nz, old_eta_squared, old_hg, old_mean_radius,
+!     old_omega, old_specific_angular_momentum, omega, qiw, senv,
+!     surface_luminosity_lsun_start, xa, xa_start, xnew, znew
 subroutine rezone(envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -115,7 +114,7 @@ subroutine rezone(envelope_store_index, point_reset_flag, &
 ! assign_new_points and adopted as star%log_mass in transfer_new_points.
 ! compact_log_mass: the buffer of drop_crowded_points. regrid_out: the
 ! regridded field of regrid_in_place. (The legacy code kept these, and
-! the copy of the field it splined, in star%old_shell_mass,
+! the copy of the field it splined, in a star member since removed,
 ! logRho_start, logP_start and logT_start; every element is written here
 ! before it is read.)
       double precision :: new_log_mass(json), compact_log_mass(json), &
@@ -767,10 +766,10 @@ subroutine regrid_composition_terms
       old_point_count = star%nz
       new_point_count = new_num_zones
 ! The entropy terms (7/91).
-      call regrid_in_place(star%temperature_entropy_term)
-      call regrid_in_place(star%pressure_entropy_term)
-      call regrid_in_place(star%luminosity_entropy_term)
-      call regrid_in_place(star%radius_entropy_term)
+      call regrid_in_place(star%dlog_temperature_dt)
+      call regrid_in_place(star%dlog_pressure_dt)
+      call regrid_in_place(star%dln_luminosity_dt)
+      call regrid_in_place(star%dlog_radius_dt)
       allocate(regridded_xa(num_species_tracked,new_point_count))
       call regrid_composition(star%log_mass(1:old_point_count), &
            star%xa(1:num_species_tracked,1:old_point_count), &
@@ -972,7 +971,6 @@ subroutine retally_angular_momentum
        do i = 1,star%nz
           star%old_omega(i) = star%omega(i)
           star%old_hg(i) = star%mean_gravity(i)
-          star%old_moment_of_inertia(i) = star%i_rot(i)
           star%old_eta_squared(i) = star%eta_squared(i)
           star%old_mean_radius(i) = star%mean_radius(i)
           star%convective_flag_start(i) = star%convective_flag(i)

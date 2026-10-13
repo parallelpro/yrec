@@ -39,7 +39,7 @@ contains
 ! only stops the run with ierr = 1.
 !
 ! Arguments: timestep_yr, delta_time (s), delta_time_abs = |delta_time|
-! and trial_sign_flag come from the model file; envelope_recomputed_flag
+! and triangle_orientation come from the model file; envelope_recomputed_flag
 ! is set when the envelope must be recomputed; total_angular_momentum
 ! and total_rotational_ke return the rotating model's totals;
 ! species_mix_weights returns the surface mixture as X_i/A_i (first
@@ -52,7 +52,7 @@ contains
 ! single-point physics in set_new_last_shell_convection uses
 ! shell_physics' log10_* names.
 subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
-     trial_sign_flag, ikut_flag, istore_flag, model_failed_flag, &
+     triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
      envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
@@ -79,9 +79,9 @@ subroutine read_starting_model(timestep_yr, delta_time, delta_time_abs, &
 
       double precision, intent(inout) :: timestep_yr
       double precision, intent(inout) :: delta_time, delta_time_abs
-      double precision, intent(inout) :: trial_sign_flag
+      double precision, intent(inout) :: triangle_orientation
       integer, intent(out) :: ikut_flag
-      integer, intent(inout) :: istore_flag
+      integer, intent(inout) :: stored_vertex_index
       logical, intent(in) :: model_failed_flag
       logical, intent(inout) :: envelope_recomputed_flag
       integer, intent(in) :: run_index
@@ -310,7 +310,7 @@ subroutine read_starting_model_file
 ! file's own header values (mixing length, timestep, flags, physics
 ! codes), which check_model_against_controls compares with the
 ! controls.
-         call read_yrec7(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+         call read_yrec7(mixing_length0,timestep_yr,triangle_orientation,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0, &
               use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
@@ -326,7 +326,7 @@ subroutine read_starting_model_file
          write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
 ! Same header values as read_yrec7 (no ierr).
-         call read_model2(mixing_length0,timestep_yr,trial_sign_flag,iread, &
+         call read_model2(mixing_length0,timestep_yr,triangle_orientation,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0, &
               use_extended_composition0,rotation_active0, &
               atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
@@ -383,8 +383,8 @@ end subroutine check_model_against_controls
 ! Reset the store and trial-sign flags, require a fresh envelope, and
 ! take the surface X and Z from the outermost interior point.
 subroutine reset_state_after_read
-      istore_flag = 0
-      trial_sign_flag = 1.0d0
+      stored_vertex_index = 0
+      triangle_orientation = 1.0d0
 ! Recompute the envelope: the envelope triangle stored with the model
 ! may not be reliable.
        envelope_recomputed_flag = .true.

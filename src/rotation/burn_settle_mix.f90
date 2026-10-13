@@ -186,7 +186,7 @@
 !            star%rate_be9_start(zone_idx) = star%rate_be9(zone_idx)
 !         end do
 !         env_cz_zone_old = env_cz_zone
-!         star%pressure_scale_height_start = star%pressure_scale_height_end
+!         star%envelope_overshoot_depth_start = star%envelope_overshoot_depth_end
 !      end if
 !      return
 !end subroutine burn_settle_mix

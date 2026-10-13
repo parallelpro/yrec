@@ -78,7 +78,6 @@ subroutine set_up_constants_and_tables(ierr)
       star%ln10_over_lsun = ln10/star%solar_luminosity_cgs
 ! Solar mass (a namelist control; default 1.9891d33 g).
       star%solar_mass_cgs = star%ctrl%solar_mass_cgs
-      star%log10_solar_mass = log10(star%solar_mass_cgs)
 ! Solar radius.
       star%log10_solar_radius = log10(star%solar_radius_cgs)
 ! Bolometric magnitude of the Sun.

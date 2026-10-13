@@ -18,7 +18,7 @@ The rest of this README describes the members of `star`: what each one is, its u
 ## 1. Conventions
 
 - **Points.** A per-zone array has `json` = 5000 entries, of which `1:star%nz` are the model. Point 1 is the innermost point (not the centre itself), point `nz` the fitting point where the envelope integration takes over; the atmosphere and envelope above it are not in `star` (`core/diagnostics/stitched_model.f90` builds them for output).
-- **Units.** CGS unless the name carries its unit (`_lsun`, `_msun`, `_gyr`, `_yr`, `_days`, `_kms`); `log` means log₁₀. The structure variables are log₁₀ P, log₁₀ T, log₁₀ r and L in L☉ against log₁₀ m. A few old names break the rule (`dage` is in Gyr, `star_mass` in M☉); the tables give every unit, with `-` for a dimensionless quantity and `log10 g` for log₁₀ of a quantity in grams.
+- **Units.** CGS unless the name carries its unit (`_lsun`, `_msun`, `_gyr`, `_yr`, `_days`, `_kms`); `log` means log₁₀. The structure variables are log₁₀ P, log₁₀ T, log₁₀ r and L in L☉ against log₁₀ m. A few old names break the rule (`age_gyr` is in Gyr, `star_mass` in M☉); the tables give every unit, with `-` for a dimensionless quantity and `log10 g` for log₁₀ of a quantity in grams.
 - **Lifetime.** Most members have no explicit lifetime: the same storage is rewritten at different stages of a step. Section 2 sorts them into classes; the tables give the exceptions.
 - **A second run in one process.** `yrec_reset` copies the whole of `star` at the first `run_yrec` call and restores that copy at every later one, so every member starts a run at its declaration default (zero, `.false.` or blank where none is given).
 
@@ -29,25 +29,25 @@ The rest of this README describes the members of `star`: what each one is, its u
 | Model | 31 | The converged model: the mesh, the structure, the composition, the global scalars, and the envelope fit that is its outer boundary condition. Persists from step to step; the core of it is written to the `.mod` file (`io/model_files.f90`, marked "in .mod"). | Between steps, and inside a step for the model being solved. The structure is overwritten in place by the Newton corrections, so during a step it holds the current iterate. |
 | Rotation state | 13 | The rotation curve and the shape of the rotating star. The specific angular momentum `j_rot` is conserved; omega, the moments of inertia and the shape factors are derived from it and the structure. | Between steps. Meaningful only with `job%rotation_active`; without rotation the shape factors are 1. |
 | Regions of the current model | 12 | Point indices and bounds of the convective core, the surface convection zone, the hydrogen-burning shell and the mixed regions. | Located again at each stage that needs them (composition step, rezone, after convergence); valid for the model they were located on. |
-| Step snapshot | 25 | Copies of model quantities at the start of the step (`*_start`, `old_*`, `*_old`, `pphot0`) or of the structure-rotation iteration (`orig_*`), mapped onto the step's mesh. | From the start-of-step copy (the rezone, or `rezone_or_snapshot` without one) to the end of the step. |
+| Step snapshot | 24 | Copies of model quantities at the start of the step (`*_start`, `old_*`, `*_old`, `pphot0`) or of the structure-rotation iteration (`orig_*`), mapped onto the step's mesh. | From the start-of-step copy (the rezone, or `rezone_or_snapshot` without one) to the end of the step. |
 | Step working state | 23 | Values one stage computes for a later stage of the same or the next step, and that are not output: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses. | From the stage that writes them; each table row says which. |
 | Newton | 10 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve. `log_pressure_delta` and `log_temperature_delta`, the changes over the step, stay valid until the next step's solve starts. |
 | Diagnostics written during the solve | 29 | Per-zone physics stored for output by `compute_henyey_coefficients` on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). | After convergence they hold the last iteration's values: the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
 | Diagnostics written after convergence | 35 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
 | Step control | 11 | The timestep and the flags that steer one step's solve. | During and between steps. |
 | Run and card bookkeeping | 28 | Per-run and per-card state: the calibration loops, the card's mixing length and mass, the surface mixture of the first card, the atmosphere switch, the reason the run ended. | From the card (or run) that sets them. |
-| Constants set at setup | 17 | Values fixed for the whole run during the controls read or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales some of them. |
-| Scratch | 5 | Values stored in `star` but used only inside the module (often the procedure) that writes them. | Only inside that module. |
-| Never referenced | 2 | Declared and not used. | — |
+| Constants set at setup | 16 | Values fixed for the whole run during the controls read or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales some of them. |
+| Scratch | 4 | Values stored in `star` but used only inside the module (often the procedure) that writes them. | Only inside that module. |
+| Never referenced | 0 | Declared and not used (the two there were removed in 2026-10). | — |
 
-241 members in all, besides `ctrl` and `job` (section 4).
+236 members in all, besides `ctrl` and `job` (section 4).
 
 ## 3. The members
 
 How to read the tables:
 
 - **member** gives the shape; `json` is the zone dimension (use `1:nz`).
-- **written by** names the procedures in which `star%member` is the target of an assignment or of a `read` statement, or an actual argument to a dummy argument declared `intent(out)`, or `intent(inout)` that the callee (directly or through its own callees) assigns. So a member written inside a callee appears under its caller: `istore_flag` is written by `compute_surface_boundary` through `refresh_surface_bc`'s argument, and the table names `step_driver (solve_level)`. With more than six procedures only the modules are listed.
+- **written by** names the procedures in which `star%member` is the target of an assignment or of a `read` statement, or an actual argument to a dummy argument declared `intent(out)`, or `intent(inout)` that the callee (directly or through its own callees) assigns. So a member written inside a callee appears under its caller: `stored_vertex_index` is written by `compute_surface_boundary` through `refresh_surface_bc`'s argument, and the table names `step_driver (solve_level)`. With more than six procedures only the modules are listed.
 - **read by** names the modules where the value of `star%member` is used: in an expression, or passed to a dummy argument that the callee reads. Passing it to an `intent(out)` dummy, or to an `intent(inout)` one that the callee never reads, is not a read. With more than seven modules the count is given by directory.
 - Module names are file names (`core/step/step_driver.f90` holds `step_driver`), except `controls_reader`, in `io/read_controls.f90`. Tests (`*/test/`) are not counted.
 - The two columns were derived from the code at commit e9c00d7f by a script, not by hand. To check one, `grep -rn 'star%member' src --include='*.f90'`.
@@ -68,8 +68,8 @@ How to read the tables:
 | `dm(json)` | mass of the shell around point i: half the span to the neighbouring points; dm(nz) reaches the total mass | g | `rezoning` (set_new_shell_masses); `starting_model` (build_shell_masses); `mass_change` (update_total_mass); `step_driver` (evolve_step) | 13 modules (core/ 10, rotation/ 3) |  |
 | `stored_envelope_state(4)` | state (log P, log T, log r, log m/M) where a vertex's envelope integration first reached tenv | log10 cgs | `henyey_iteration` (refresh_surface_bc) | `rezoning` | `rezone` uses it to add a point at the surface |
 | `envelope_fit_coeffs(9)` | coefficients c(1:9) of the envelope fit at the fitting point: log R, log L and log Teff each = c log P + c log T + c | - | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` | rebuilt by `compute_surface_boundary` when the triangle changes; read from YREC7/MODEL2 files, not written to .mod |
-| `trial_log_luminosity(3)` | log10 L of the three triangle vertices | log10 Lsun | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` |  |
-| `trial_log_temperature(3)` | log10 Teff of the three vertices of the envelope-fit triangle | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` | misnamed: it holds log Teff, not a log T |
+| `triangle_log_l(3)` | log10 L of the three triangle vertices | log10 Lsun | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` | was `trial_log_luminosity` until 2026-10 |
+| `triangle_log_teff(3)` | log10 Teff of the three vertices of the envelope-fit triangle | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` | was `trial_log_temperature` until 2026-10 |
 | `fit_point_pressure(3)` | log10 P at the fitting point of each triangle vertex's envelope integration | log10 dyn/cm^2 | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `rezoning`, `henyey_iteration` |  |
 | `fit_point_temperature(3)` | log10 T at the fitting point of each vertex | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `henyey_iteration` |  |
 | `fit_point_radius(3)` | log10 r at the fitting point of each vertex | log10 cm | `henyey_iteration` (refresh_surface_bc); `model_files` (read_yrec7, read_model2) | `rezoning`, `henyey_iteration` |  |
@@ -83,10 +83,10 @@ How to read the tables:
 | `znew` | surface Z used for the envelope integrations | - | `model_rescaling` (rescale_interior_z); `rezoning` (refresh_surface_opacity); `starting_model` (reset_state_after_read, interpolate_new_fitting_point) | `model_rescaling`, `starting_model`, `henyey_iteration` | updated with xnew |
 | `stotal` | copy of log_total_mass | log10 g | `model_rescaling` (rescale_main_sequence_mass, rescale_hb_total_mass); `starting_model` (read_starting_model_file); `mass_change` (update_total_mass) | `observables`, `envelope_integrands`, `envelope_rebuild`, `envelope_refit`, `starting_model` | kept equal to log_total_mass by its writers; read by the envelope integrations and observables |
 | `senv` | log10(m(nz)/M): the mass fraction inside the fitting point | log10 | `envelope_rebuild`, `rezoning`, `starting_model`, `mass_change`, `henyey_iteration` (7 procedures) | `envelope_integration`, `envelope_rebuild`, `envelope_refit`, `rezoning`, `starting_model` | recomputed at every solve level (`refresh_surface_bc`) |
-| `dage` | age of the model | Gyr | `step_driver` (advance_composition_and_age); `model_files` (read_mod_model, read_yrec7, read_model2) | 9 modules (io/ 6, core/ 3) | in .mod; the name lacks the `_gyr` suffix |
+| `age_gyr` | age of the model | Gyr | `step_driver` (advance_composition_and_age); `model_files` (read_mod_model, read_yrec7, read_model2) | 9 modules (io/ 6, core/ 3) | was `dage` until 2026-10 |
 | `initial_composition_code` | 4-character composition code in the header of a YREC7/MODEL2 starting model | - | `model_files` (read_yrec7, read_model2) | none | written but never read |
-| `istore_flag` | which triangle vertex stored `stored_envelope_state` (0: none) | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` | legacy name; `compute_surface_boundary` calls it stored_vertex_index |
-| `trial_sign_flag` | orientation (+1 or -1) of the envelope-fit triangle | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` | misnamed: a sign, not a flag; `compute_surface_boundary` calls it tri_orientation |
+| `stored_vertex_index` | which triangle vertex stored `stored_envelope_state` (0: none) | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` | was `istore_flag` until 2026-10 |
+| `triangle_orientation` | orientation (+1 or -1) of the envelope-fit triangle | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` | was `trial_sign_flag` until 2026-10 |
 
 ### 3.2 Rotation state
 
@@ -144,13 +144,12 @@ How to read the tables:
 | `rate_li6_start(json)` | Li6 proton-capture rate rho X lambda at the start of the step | 1/s | `burn_step` (store_li_be_rates); `evolve_rotation` (burn_light_elements_over_substep) | `burn_step` | with `job%use_extended_composition`; zero outward of log T = 6 |
 | `rate_li7_start(json)` | Li7 proton-capture rate at the start of the step | 1/s | `burn_step` (store_li_be_rates); `evolve_rotation` (burn_light_elements_over_substep) | `burn_step` | as rate_li6_start |
 | `rate_be9_start(json)` | Be9 proton-capture rate at the start of the step | 1/s | `burn_step` (store_li_be_rates); `evolve_rotation` (burn_light_elements_over_substep) | `burn_step` | as rate_li6_start |
-| `pressure_scale_height_start` | envelope-overshoot depth alpha_ov H_P below the surface convection zone at the start of the step | cm | `step_driver` (rezone_or_snapshot); `evolve_rotation` (burn_light_elements_over_substep) | `convection_geometry` | misnamed: alpha_ov H_P, not H_P; zero without envelope overshoot |
+| `envelope_overshoot_depth_start` | envelope-overshoot depth alpha_ov H_P below the surface convection zone at the start of the step | cm | `step_driver` (rezone_or_snapshot); `evolve_rotation` (burn_light_elements_over_substep) | `convection_geometry` | was `pressure_scale_height_start` until 2026-10 |
 | `deuterium_burning_rate_start(json)` | deuterium burning rate at the start of the step | 1/s | `rezoning` (regrid_composition_terms); `burn_step` (compute_burn_rates) | `rezoning`, `burn_step`, `mid_timestep_model` | stored by the composition step's predictor pass |
 | `orig_specific_angular_momentum(json)` | j_rot at the start of the structure-rotation iteration | cm^2/s | `step_driver` (converge_with_rotation) | `step_driver` | restored on each repeat pass when `job%num_rotation_structure_iters` > 1 |
 | `orig_composition(15,json)` | xa_start at the start of the structure-rotation iteration | - | `step_driver` (converge_with_rotation) | `step_driver` | as orig_specific_angular_momentum |
 | `old_omega(json)` | omega at the start of the step | rad/s | `rezoning` (regrid_rotation_variables, retally_angular_momentum); `starting_model` (snapshot_step_start) | `rezoning`, `timestep_control`, `evolve_rotation`, `transport_checks` | rezone splines omega onto the new mesh into it, then copies it back; read by the omega timestep limit and the transport |
 | `old_specific_angular_momentum(json)` | j_rot at the start of the step | cm^2/s | `rezoning` (regrid_rotation_variables, retally_angular_momentum) | `rezoning` | read only by `rezone` itself (interpolation buffer) |
-| `old_moment_of_inertia(json)` | i_rot at the start of the step | g cm^2 | `rezoning` (retally_angular_momentum) | none | written but never read |
 | `old_hg(json)` | mean_gravity at the start of the step | cm/s^2 | `rezoning` (retally_angular_momentum) | `mid_timestep_model` | legacy name (HG) |
 | `old_mean_radius(json)` | mean_radius at the start of the step | cm | `rezoning` (regrid_rotation_variables, retally_angular_momentum) | `rezoning` | read only by `rezone` itself (interpolation buffer) |
 | `old_eta_squared(json)` | eta_squared at the start of the step | - | `rezoning` (regrid_rotation_variables, retally_angular_momentum) | `rezoning` | read only by `rezone` itself (interpolation buffer) |
@@ -168,7 +167,7 @@ How to read the tables:
 | `rate_li6(json)` | Li6 proton-capture rate rho X lambda at the end of the step | 1/s | `burn_step` (store_li_be_rates) | `burn_step`, `evolve_rotation` | with `job%use_extended_composition`; computed on the converged model for the Li/Be burn |
 | `rate_li7(json)` | Li7 proton-capture rate at the end of the step | 1/s | `burn_step` (store_li_be_rates) | `burn_step`, `evolve_rotation` | as rate_li6 |
 | `rate_be9(json)` | Be9 proton-capture rate at the end of the step | 1/s | `burn_step` (store_li_be_rates) | `burn_step`, `evolve_rotation` | as rate_li6 |
-| `pressure_scale_height_end` | envelope-overshoot depth alpha_ov H_P at the end of the step | cm | `step_driver` (burn_light_elements); `evolve_rotation` (burn_light_elements_over_substep) | `convection_geometry`, `evolve_rotation` | misnamed, as pressure_scale_height_start |
+| `envelope_overshoot_depth_end` | envelope-overshoot depth alpha_ov H_P at the end of the step | cm | `step_driver` (burn_light_elements); `evolve_rotation` (burn_light_elements_over_substep) | `convection_geometry`, `evolve_rotation` | was `pressure_scale_height_end` until 2026-10 |
 | `cz_base_radius_prev` | radius of the base of the surface mixed region found by the last call within the step | cm | `convection_geometry` (locate_surface_mixing_base); `step_driver` (rezone_or_snapshot) | `convection_geometry` | with `job%use_extended_composition`; zeroed at each step start to mean 'none yet' |
 | `envelope_cz_base_zone_prev` | zone of that base, the starting zone of the next call within the step | - | `convection_geometry` (locate_surface_mixing_base) | `convection_geometry` |  |
 | `deuterium_burning_rate(json)` | deuterium burning rate of each shell above the nuclear cutoff | 1/s | `burn_step` (compute_burn_rates) | `burn_step`, `mid_timestep_model` | zero while the surface D is below 1e-11 |
@@ -178,10 +177,10 @@ How to read the tables:
 | `qdt(json)` | dln rho/dln T at constant P | - | `shell_physics` (compute_shell_physics) | `rezoning`, `mid_timestep_model` | from `compute_shell_physics`, for rotation |
 | `thdif(json)` | radiative thermal diffusivity K | cm^2/s | `viscosity` (viscos) | `rezoning`, `mid_timestep_model` | from `viscos`, for rotational mixing |
 | `visc(json)` | kinematic viscosity (radiative plus ionic) | cm^2/s | `viscosity` (viscos) | `rezoning`, `mid_timestep_model` | from `viscos`, for rotational mixing |
-| `temperature_entropy_term(json)` | d log T/dt over the last step, for the next step's first guess | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | misnamed: a rate of change, not an entropy term; used with `ctrl%improved_first_guess_flag` |
-| `pressure_entropy_term(json)` | d log P/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | as temperature_entropy_term |
-| `luminosity_entropy_term(json)` | d ln L/dt over the last step, 2 (L - L_start)/(L + L_start)/dt | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | as temperature_entropy_term |
-| `radius_entropy_term(json)` | d log r/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | as temperature_entropy_term |
+| `dlog_temperature_dt(json)` | d log T/dt over the last step, for the next step's first guess | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `temperature_entropy_term` until 2026-10 |
+| `dlog_pressure_dt(json)` | d log P/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `pressure_entropy_term` until 2026-10 |
+| `dln_luminosity_dt(json)` | d ln L/dt over the last step, 2 (L - L_start)/(L + L_start)/dt | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `luminosity_entropy_term` until 2026-10 |
+| `dlog_radius_dt(json)` | d log r/dt over the last step | 1/s | `rezoning` (regrid_composition_terms); `run_driver` (begin_kind_card); `step_driver` (solve_structure) | `rezoning`, `step_driver` | was `radius_entropy_term` until 2026-10 |
 
 ### 3.6 Newton
 
@@ -204,7 +203,7 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `gravitational_luminosity(json)` | eps_grav = -T ds/dt of each zone | erg/(g s) | `step_driver` (solve_structure); `structure_equations` (add_shell_energy_budget) | `structure_equations` | misnamed: a specific rate, not a luminosity; zero for a model not aged |
+| `eps_grav(json)` | eps_grav = -T ds/dt of each zone | erg/(g s) | `step_driver` (solve_structure); `structure_equations` (add_shell_energy_budget) | `structure_equations` | was `gravitational_luminosity` until 2026-10 |
 | `luminosity_breakdown(8)` | luminosity per channel `i_lum_*` (pp1, pp2, pp3, CNO, 3 alpha, neutrinos, gravothermal, alpha captures), scaled to sum to L(nz) | Lsun | `observables`, `henyey_iteration`, `structure_equations`, `model_files` (7 procedures) | 8 modules (core/ 6, io/ 2) | summed every iteration, rescaled again after convergence (`renormalize_luminosity_breakdown`); `compute_timestep` reads it; read from YREC7/MODEL2 files, zeroed by the .mod reader |
 | `valfmlt(json)` | always zero (an MLT pulsation-output column) | - | `structure_equations` (store_pulse_derivatives) | none | written (as zero) but never read |
 | `vphmlt(json)` | always zero | - | `structure_equations` (store_pulse_derivatives) | none | written (as zero) but never read |
@@ -301,7 +300,7 @@ How to read the tables:
 | `log_l_at_target_radius` | log(L/Lsun) interpolated at the target radius | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `log_l_at_target_radius_prev_run` | the same, from the previous calibration run | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `log_l_prev_model` | log(L/Lsun) of the previous model | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
-| `log_r_prev_model` | R/Rsun of the previous model | Rsun | `calibration` (check_star_calibration, setup_star_calibration) | `calibration` | misnamed: linear R/Rsun, not a log |
+| `r_rsun_prev_model` | R/Rsun of the previous model | Rsun | `calibration` (check_star_calibration, setup_star_calibration) | `calibration` | was `log_r_prev_model` until 2026-10 |
 | `termination_reason` | why the last run card ended | text | `run_driver` (end_of_card_calibration); `stop_conditions` (converged_model_is_nan, structure_limit_stop_triggered, abundance_stop_triggered, init_stop_conditions) | `stop_conditions`, `run_log` | default 'model budget exhausted'; read by the run summary |
 | `star_found_flag` | the star calibration found a track through the target L and R; the final run is armed | logical | `calibration` (check_star_calibration, setup_star_calibration) | `run_driver`, `stop_conditions` |  |
 | `just_passed_target_radius_flag` | this model has just crossed the target radius | logical | `calibration` (check_star_calibration, setup_star_calibration) | `stop_conditions` |  |
@@ -319,7 +318,7 @@ How to read the tables:
 | `log_r_prev` | log(R/Rsun) at the previous calibration check | log10 Rsun | `calibration` (check_solar_calibration) | `calibration` | only printed |
 | `delta_x` | the Newton correction to X | - | `calibration` (check_solar_calibration) | `calibration` |  |
 | `delta_alpha` | the Newton correction to the mixing length | - | `calibration` (check_solar_calibration) | `calibration` |  |
-| `solar_calibration_active` | the solar calibration has converged | logical | `calibration` (check_solar_calibration, setup_solar_calibration) | `monte_carlo`, `run_driver` | misnamed: it means converged, not active; ends the run list |
+| `solar_calibration_converged` | the solar calibration has converged | logical | `calibration` (check_solar_calibration, setup_solar_calibration) | `monte_carlo`, `run_driver` | was `solar_calibration_active` until 2026-10 |
 | `envelope_helium_fraction` | surface Y = 1 - X - Z - X(He3) of the first card | - | `starting_model` (update_surface_mixture) | `shell_physics`, `transport_checks` |  |
 | `envelope_he3_fraction` | surface He3 of the first card | - | `starting_model` (update_surface_mixture) | `shell_physics`, `transport_checks` |  |
 
@@ -339,7 +338,6 @@ How to read the tables:
 | `log10_solar_luminosity` | log10 Lsun | log10 erg/s | `monte_carlo` (apply_monte_carlo_parameters); `run_setup` (set_up_constants_and_tables) | `observables`, `envelope_integration`, `starting_model`, `run_driver`, `mass_change`, `magnetic_braking`, `microphysics_settings` | as solar_luminosity_cgs |
 | `ln10_over_lsun` | ln(10)/Lsun | s/erg | `monte_carlo` (apply_monte_carlo_parameters); `run_setup` (set_up_constants_and_tables) | `structure_equations` | not a logarithm |
 | `solar_mass_cgs` | Msun | g | `run_setup` (set_up_constants_and_tables) | 11 modules (core/ 8, rotation/ 2, io/ 1) | copy of `ctrl%solar_mass_cgs` |
-| `log10_solar_mass` | log10 Msun | log10 g | `run_setup` (set_up_constants_and_tables) | none | written but never read |
 | `solar_radius_cgs` | Rsun | cm | `controls_reader` (adopt_canonical_names) | 8 modules (core/ 6, io/ 1, rotation/ 1) | from the namelist crsun |
 | `log10_solar_radius` | log10 Rsun | log10 cm | `run_setup` (set_up_constants_and_tables) | `observables`, `run_driver`, `yrec_output` |  |
 | `solar_bolometric_magnitude` | M_bol of the Sun, 4.79 | mag | `run_setup` (set_up_constants_and_tables) | `yrec_output` | a constant set at run time |
@@ -353,14 +351,10 @@ How to read the tables:
 | `neutrino_flux_zone(10,json)` | each shell's contribution to the neutrino fluxes, then its normalized profile | 10^10 /(cm^2 s) | `neutrino_flux_output` (write_neutrino_flux_table) | `neutrino_flux_output` | used only inside `write_neutrino_flux_table` |
 | `vfc(json)` | Zahn (1992) coupling factor between angular-momentum transport and mixing, <= 1 | - | `circulation` (zahn_coupling_factor); `secular_transport` (compute_unperturbed_velocities) | `circulation` | rotation transport only (`circulation`, `secular_transport`) |
 | `envelope_specific_entropy` | mass-weighted mean specific entropy of the convective envelope (ideal gas, up to a constant) | erg/(g K) | `mass_change` (change_mass, average_envelope_energies) | `mass_change` | used only inside `mass_change`; `change_mass` zeroes it right after computing it, so the accretion shifts it drives are zero |
-| `envelope_cz_log_radius` | log10 radius of the base of the surface convection zone | log10 Rsun | `observables` (locate_surface_cz_base) | `observables` | used only inside `locate_surface_cz_base` (to form envelope_radius) |
 
 ### 3.13 Never referenced
 
-| member | meaning | unit | written by | read by | notes |
-|---|---|---|---|---|---|
-| `old_shell_mass(json)` | none (the comment says: log-mass coordinates of the pre-rezoning grid) | - | none | none | never referenced |
-| `converged_zone(json)` | none (legacy LOCONS) | - | none | none | never referenced |
+None: `old_shell_mass` and `converged_zone` were removed in 2026-10.
 
 ## 4. The input bundles
 
@@ -373,9 +367,9 @@ How to read the tables:
 
 None of these has been removed; each needs a look before it goes.
 
-**Never referenced** (declared only): `old_shell_mass`, `converged_zone`.
+**Removed in 2026-10**: `old_shell_mass` and `converged_zone` (never referenced), `old_moment_of_inertia` and `log10_solar_mass` (written, never read); `envelope_cz_log_radius` became a local of `locate_surface_cz_base`.
 
-**Written but never read** (no reader uses the stored value): `initial_composition_code`, `qiw`, `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds`, `old_moment_of_inertia`, `dlnrho_dlnp`, `dlnrho_dlnt`, `valfmlt`, `vphmlt`, `vcmxmlt`, `fxion_zone`, `scp`, `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone`, `pulse_dlnrho_dlnp`, `ikut_flag`, `convective_velocity`, `chosen_dt`, `log10_solar_mass`.
+**Written but never read** (no reader uses the stored value): `initial_composition_code`, `qiw`, `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds`, `dlnrho_dlnp`, `dlnrho_dlnt`, `valfmlt`, `vphmlt`, `vcmxmlt`, `fxion_zone`, `scp`, `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone`, `pulse_dlnrho_dlnp`, `ikut_flag`, `convective_velocity`, `chosen_dt`, `log10_solar_mass`.
 
 Notes on the second list:
 
@@ -384,18 +378,14 @@ Notes on the second list:
 - `dlnrho_dlnp` and `dlnrho_dlnt` reach the next coefficient pass only through `henyey_iterate`'s `intent(out)` dummies, as starting values the EOS overwrites.
 - `chosen_dt`, `ikut_flag` and `convective_velocity` are outputs of `compute_timestep` or `read_starting_model` that no caller uses; `ikut_flag` was only ever zeroed, in the Fortran 77 code too.
 - `scp` duplicates `pulse_specific_heat`; `fxion_zone`, `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone` and `pulse_dlnrho_dlnp` are stored for output that no writer emits.
-- `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds`, `old_moment_of_inertia`, `initial_composition_code` and `log10_solar_mass` are filled and never consulted.
+- `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds` and `initial_composition_code` are filled and never consulted.
 
 ## 6. Names that mislead
 
-The tables note these where they occur; they are collected here because each invites a wrong reading:
+Renamed in 2026-10 (the old name in parentheses), because each invited a wrong reading: `eps_grav` (`gravitational_luminosity`; eps_grav in erg/(g s), not a luminosity); `dlog_temperature_dt`, `dlog_pressure_dt`, `dln_luminosity_dt`, `dlog_radius_dt` (the four `*_entropy_term`; rates of change for the next step's first guess); `envelope_overshoot_depth_start`, `_end` (`pressure_scale_height_start`, `_end`; alpha_ov H_P in cm); `triangle_log_teff`, `triangle_log_l`, `triangle_orientation` (`trial_log_temperature`, `trial_log_luminosity`, `trial_sign_flag`); `stored_vertex_index` (`istore_flag`); `r_rsun_prev_model` (`log_r_prev_model`; linear R/R☉); `solar_calibration_converged` (`solar_calibration_active`); `age_gyr` (`dage`).
 
-- `gravitational_luminosity` is eps_grav in erg/(g s), not a luminosity.
-- `temperature_entropy_term`, `pressure_entropy_term`, `luminosity_entropy_term` and `radius_entropy_term` are rates of change (d log T/dt and so on) for the next step's first guess.
-- `pressure_scale_height_start` and `pressure_scale_height_end` are envelope-overshoot depths alpha_ov H_P in cm.
+Still to watch:
+
 - `max_residual` holds residuals or corrections, depending on the stage of the Newton iteration.
-- `trial_log_temperature` holds the triangle vertices' log Teff; `trial_sign_flag` is the triangle's orientation (±1); `istore_flag` is a vertex index.
-- `log_r_prev_model` is the linear R/R☉.
-- `solar_calibration_active` means the solar calibration has converged.
 - `ln10_over_lsun` is ln(10)/L☉, not a logarithm.
-- `dage` (Gyr) and `star_mass` (M☉) lack their unit suffixes.
+- `star_mass` is in M☉ without a unit suffix: MESA's name, kept.

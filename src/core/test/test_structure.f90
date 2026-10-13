@@ -101,8 +101,8 @@ subroutine load_deck_model(path)
       star%job%requested_envelope_mass = star%job%senv0_array(1)
       star%total_angular_momentum = 0.0d0
       star%total_rotational_ke = 0.0d0
-      call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, star%trial_sign_flag, &
-           star%ikut_flag, star%istore_flag, star%model_diverged_flag, &
+      call read_starting_model(star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
+           star%ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
            star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
            star%total_angular_momentum, star%total_rotational_ke, &
            star%convective_velocity, star%job%mixture_weights, ierr)
