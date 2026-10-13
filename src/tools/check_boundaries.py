@@ -101,7 +101,7 @@ PUBLIC = {
     # original routines and the newer ones, chosen by
     # use_new_diffusion_routines; diffuse_elements, the facade's one
     # entry, chooses.
-    "element_diffusion": {"diffuse_elements"},
+    "element_diffusion": {"diffuse_elements", "set_diffusion_settings"},
     # numerics is the shared numerics library: everything numerics_lib
     # re-exports is public (FACADE_ONLY_DOMAINS keeps its five topic
     # modules behind it).
@@ -205,7 +205,8 @@ def check_star_blind(src_root):
 # settings record (net: net_lib's net_settings, filled by the star
 # layer's configure_network). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
-STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics", "convection"]
+STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics", "convection",
+                  "element_diffusion"]
 
 def check_star_free(src_root):
     problems = []
@@ -264,10 +265,6 @@ def check_controls_free(src_root):
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
     "core": (124, 2),
-    # element_diffusion: +16 (2026-10) for settling_suspended_reported, the
-    # run log's latch, which outlives a step and so moved from the
-    # scratch record diff_scr into the star; -1 importer (bahcall_loeb_units)
-    "element_diffusion": (85, 8),
     # io: +2 (2026-10) for the two calls that hand the profile and pulse
     # writers the stitched model, which moved from module variables into
     # the star (s%stitched)
@@ -276,8 +273,8 @@ STAR_ACCESS_BUDGET = {
     # rest is star-free
     "rotation": (0, 0),
     # setup: +4 (2026-10) for the solar units the rotation settings record
-    # now carries
-    "setup": (156, 3),
+    # now carries, +14 for element diffusion's settings record
+    "setup": (170, 3),
     "state": (738, 1),
 }
 

@@ -29,7 +29,8 @@ program test_element_diffusion
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
            i_li7, i_be9
       use io_units, only: run_log_unit, terminal_unit
-      use element_diffusion_lib, only: diffuse_elements
+      use element_diffusion_lib, only: diffuse_elements, set_diffusion_settings
+      use microphysics_settings, only: diffusion_settings_from_star
       use element_diffusion_scratch, only: diff_scr
       implicit none
       integer, parameter :: nz = 200
@@ -198,8 +199,11 @@ subroutine settle_case(label, new_routines)
       local_m = m
       ierr = 0
       star%ctrl%use_new_diffusion_routines = new_routines
+! the controls set above, as a run card installs them
+      call set_diffusion_settings(diffusion_settings_from_star())
       call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
-           log_t, del, convective, nz, mass, ierr)
+           log_t, del, convective, nz, mass, star%job%diffuse_helium_active, &
+           star%settling_suspended_reported, ierr)
       write(*,'(/,a)') '# '//label
       write(*,'(a,i0)') 'ierr = ', ierr
       write(*,'(a)') ' zone   dX  dY  dZ  dLi7  dBe9'

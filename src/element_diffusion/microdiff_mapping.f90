@@ -7,8 +7,9 @@
 ! onto them (4-point Lagrange, numerics_lib). microdiff_etm carries the
 ! abundance changes back to the model grid.
 module microdiff_mapping
+      use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diff_scr
-      use star_info_lib, only: json
+      use composition_layout, only: json
       implicit none
 
 ! One equally spaced radial grid of the microdiff settling pipeline
@@ -28,7 +29,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
      num_zones, grid_spacing, num_eq_points, density_orig, &
      temperature_orig, eq, eq_mid)
 
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals
+      use composition_layout, only: json, i_h1, i_he4, i_metals
       use numerics_lib, only: interp, intrp2, lagrange4
       implicit none
 
@@ -94,7 +95,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
       eq_mid%hydrogen(1) = composition(i_h1,iu-1)+fx*(composition(i_h1,iu)-composition(i_h1,iu-1))
       eq_mid%helium(1) = composition(i_he4,iu-1)+fx*(composition(i_he4,iu)-composition(i_he4,iu-1))
       eq_mid%metal(1) = composition(i_metals,iu-1)+fx*(composition(i_metals,iu)-composition(i_metals,iu-1))
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq_mid%light(kk,1) = composition(ii,iu-1)+ &
@@ -147,7 +148,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
 !  MASS FRACTION OF METALS
          eq_mid%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
 !  MASS FRACTION OF LIGHT ELEMENTS
-         if(star%ctrl%diffuse_lithium)then
+         if(diffusion_settings%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
                eq_mid%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
@@ -174,7 +175,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
       eq%hydrogen(1) = composition(i_h1,zone_begin)
       eq%helium(1) = composition(i_he4,zone_begin)
       eq%metal(1) = composition(i_metals,zone_begin)
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq%light(kk,1) = composition(ii,zone_begin)
@@ -220,7 +221,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
          eq%hydrogen(i)=lagrange4(facinterp, composition(i_h1,k0:k0+3))
          eq%helium(i)=lagrange4(facinterp, composition(i_he4,k0:k0+3))
          eq%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
-         if(star%ctrl%diffuse_lithium)then
+         if(diffusion_settings%diffuse_lithium)then
             do kk=1,num_light
                ii = light_element_id(kk)
                eq%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
@@ -236,7 +237,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
       eq%hydrogen(num_eq_points) = composition(i_h1,zone_end)
       eq%helium(num_eq_points) = composition(i_he4,zone_end)
       eq%metal(num_eq_points) = composition(i_metals,zone_end)
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
          do kk=1,num_light
             ii = light_element_id(kk)
             eq%light(kk,num_eq_points) = composition(ii,zone_end)
@@ -258,7 +259,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, &
      num_zones, total_mass, num_light, light_element_id)
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, &
+      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_o18
       use numerics_lib, only: intrp2, lagrange4
       implicit none
@@ -290,7 +291,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do i = zone_begin,1,-1
             z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
             zz=min(composition(i_metals,i)+eq_delta_metal(1),z_max)
@@ -307,7 +308,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! G SOMERS 5/15; ADD LIGHT ELEMENT DIFFUSION
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
          do kk = 1,num_light
             x_min_floor = 0.0d0
             do i = zone_begin,1,-1
@@ -348,7 +349,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)
          composition(i_h1,i)=min(composition(i_h1,i) + dxmod,x_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
-         if(star%job%use_diffusion_z)then
+         if(diffusion_settings%use_diffusion_z)then
             z_max = 1.0d0 - composition(i_h1,i) - composition(i_he3,i)
             dzmod = lagrange4(facinterp, eq_delta_metal(k0:k0+3))
             zz = min(composition(i_metals,i)+dzmod,z_max)
@@ -362,7 +363,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
             composition(i_he4,i)=1.0d0-composition(i_h1,i)-composition(i_metals,i)-composition(i_he3,i)
          endif
 ! GES 5/15 ADDED LIGHT ELEMENT DIFFUSION
-         if(star%ctrl%diffuse_lithium)then
+         if(diffusion_settings%diffuse_lithium)then
             do kk = 1,num_light
                ii = light_element_id(kk)
                dxmod = lagrange4(facinterp, eq_delta_light(kk,k0:k0+3))
@@ -376,7 +377,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          composition(i_h1,i)=min(composition(i_h1,i) + eq_delta_hydrogen(num_eq_points),x_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do i = zone_end,num_zones
             zz = max(composition(i_metals,i)+eq_delta_metal(num_eq_points),0.0d0)
             zz2 = zz/composition(i_metals,i)
@@ -392,7 +393,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
          end do
       endif
 ! GES 5/15 LIGHT ELEMENT DIFFUSION
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
          do kk = 1,num_light
             do i = zone_end,num_zones
                ii = light_element_id(kk)

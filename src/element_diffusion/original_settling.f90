@@ -4,6 +4,7 @@
 ! The original settling routines (use_new_diffusion_routines false):
 ! gravitational_settling, and its setup of the diffusion coefficients.
 module original_settling
+      use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diff_scr
       use settling_grid, only: model_to_equal, equal_to_model
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
@@ -18,7 +19,7 @@ contains
 ! GRSETT SOLVES FOR THE GRAVITATIONAL SETTLING OF HELIUM USING THE
 ! FORMULISM OF BAHCALL AND LOEB 1989.  METAL SETTLING (MHP 3/94) IS
 ! CARRIED ALONGSIDE IN diff_scr%metal_abundance_change WHEN
-! star%job%use_diffusion_z IS SET.
+! diffusion_settings%use_diffusion_z IS SET.
 ! GRSETT PERFORMS THE FOLLOWING SERIES OF OPERATIONS :
 ! 1)  TRANSFORMS TO AN EQUALLY SPACED GRID IN RADIUS (AND MANIPULATES
 ! THE MODEL VARIABLES INTO BAHCALL AND LOEB UNITS).
@@ -63,9 +64,10 @@ contains
 ! (diffusion_coeff1_dx AND diffusion_coeff2_dx).
 !
 subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, log_density, &
-     mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, ierr)
+     mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, &
+     suspension_reported, ierr)
 
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -82,6 +84,8 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       integer, intent(out) :: ierr
+      ! the run log's latch: a suspension of settling is reported once
+      logical, intent(inout) :: suspension_reported
 ! --- locals ---
 ! Names below are chosen to match the dummy-argument names of the
 ! callees (gravitational_settling_setup/model_to_equal/lax_wendroff_step1/
@@ -120,7 +124,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
            log_temperature,del_grad,convective_flag,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
            temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
-           diffusion_coeff1_dx,diffusion_coeff2_dx, ierr)
+           diffusion_coeff1_dx,diffusion_coeff2_dx, suspension_reported, ierr)
       if (ierr /= 0) return
 !
 ! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
@@ -149,7 +153,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
          hydrogen_x_orig(eq_idx) = equal_hydrogen_fraction(eq_idx)
       end do
 ! MHP 3/94 METAL DIFFUSION
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do eq_idx = 1,num_equal_points
             metal_x_orig(eq_idx) = diff_scr%metal_abundance_change(eq_idx)
          end do
@@ -183,7 +187,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       end do
       hydrogen_x_prev_iter(num_equal_points) = hydrogen_x_orig(num_equal_points)
 ! MHP 3/94 METAL DIFFUSION
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do eq_idx=1,num_equal_points-1
             diff_scr%metal_diffusion_coeff1_mid(eq_idx)=diff_scr%metal_diffusion_coeff1_mid(eq_idx)+ &
                  diff_scr%metal_abundance_change_mid(eq_idx)*diff_scr%eq_metal_diffusion_coeff1_mid(eq_idx)
@@ -216,7 +220,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       alpha(num_equal_points) = alpha_prefactor/ &
            (total_mass-equal_mass_mid(num_equal_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF HYDROGEN.
-      do iter_count=1,star%ctrl%settling_num_iterations
+      do iter_count=1,diffusion_settings%settling_num_iterations
 !  FIND CHANGE IN X AT THE ZONE MIDPOINTS, GIVEN CHANGE IN X AT
 !  THE ZONE CENTERS.
          do eq_idx = 2,num_equal_points
@@ -260,12 +264,12 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
               write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
  90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_delta_x.lt.star%ctrl%settling_tolerance)exit
+         if(max_delta_x.lt.diffusion_settings%settling_tolerance)exit
       end do
-      if (iter_count > star%ctrl%settling_num_iterations) then
-      write(terminal_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations,max_delta_x, &
+      if (iter_count > diffusion_settings%settling_num_iterations) then
+      write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations,max_delta_x, &
            max_delta_x_zone
-      write(run_log_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
            max_delta_x,max_delta_x_zone
  110  format(1x,'GRSETT FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN X ',1pe9.3, &
@@ -276,7 +280,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
          equal_hydrogen_fraction(eq_idx) = equal_hydrogen_fraction(eq_idx)-hydrogen_x_orig(eq_idx)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do eq_idx = 1,num_equal_points
             diff_scr%metal_abundance_change(eq_idx) = diff_scr%metal_abundance_change(eq_idx) - &
                  metal_x_orig(eq_idx)
@@ -307,9 +311,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
      log_density, mass_grams, log_temperature, del_grad, convective_flag, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
-     settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
+     settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, &
+     suspension_reported, ierr)
 
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3
+      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3
       use species_table, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
       use bahcall_loeb_units, only: set_bahcall_loeb_scales
@@ -336,6 +341,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       integer, intent(out) :: zone_begin, zone_end
       logical, intent(out) :: settling_skipped_flag
       integer, intent(out) :: ierr
+      ! the run log's latch: a suspension of settling is reported once
+      logical, intent(inout) :: suspension_reported
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
@@ -401,10 +408,10 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
          if (solver_diagnostics() .or. &
-              .not. star%settling_suspended_reported) then
+              .not. suspension_reported) then
             write(run_log_unit,15)
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            star%settling_suspended_reported = .true.
+            suspension_reported = .true.
          end if
          return
          end if
@@ -415,17 +422,17 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do zone_idx = zone_begin,num_zones
-         if(composition(i_h1,zone_idx).gt.star%ctrl%hydrogen_diffusion_floor)exit
+         if(composition(i_h1,zone_idx).gt.diffusion_settings%hydrogen_diffusion_floor)exit
       end do
       if (zone_idx > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
-         write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
+           .not. suspension_reported) then
+         write(run_log_unit,16)diffusion_settings%hydrogen_diffusion_floor
    16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         suspension_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
@@ -444,27 +451,27 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do zone_idx=zone_end,1,-1
-         if(composition(i_he4,zone_idx).gt.star%ctrl%helium_diffusion_min) exit
+         if(composition(i_he4,zone_idx).gt.diffusion_settings%helium_diffusion_min) exit
       end do
       if (zone_idx < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
-         write(run_log_unit,17)star%ctrl%helium_diffusion_min
+           .not. suspension_reported) then
+         write(run_log_unit,17)diffusion_settings%helium_diffusion_min
    17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         suspension_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
       end if
       zone_end = zone_idx
 ! all suspension checks passed: settling proceeds this model
-      if (star%settling_suspended_reported) then
+      if (suspension_reported) then
          write(run_log_unit,916)
   916    format(1x,' SETTLING RESUMED')
-         star%settling_suspended_reported = .false.
+         suspension_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
       call set_bahcall_loeb_scales()
@@ -488,12 +495,12 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       do zone_idx = 1,num_zones
          hydrogen_fraction = composition(i_h1,zone_idx)
 ! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
-         if(star%ctrl%coulomb_log_choice.eq.2)then
+         if(diffusion_settings%coulomb_log_choice.eq.2)then
 !           Noerdlinger's formula (1977 A&A 57,407) for LN LAMBDA:
 !           Ln Lambda = -19.7 - ln[4/(3*X + 1)]/2 - ln(rho)/2 + 1.5*ln(T)
             ln_lambda=-1.97d1 - 0.5d0*log(1.0d0/(0.75d0*hydrogen_fraction+0.25d0)) &
                       -0.5d0*log_density(zone_idx)*ln10 + 1.5d0*log_temperature(zone_idx)*ln10
-         else if(star%ctrl%coulomb_log_choice.eq.3)then
+         else if(diffusion_settings%coulomb_log_choice.eq.3)then
 !           Loeb's formula (1989 Phys. Rev. D 39, 1009) for LN LAMBDA
 !           ln lambda = -19.105747 - ln(rho)/2 + 1.5*ln(T)
             ln_lambda=-1.9105747d1-0.50d0*log_density(zone_idx)*ln10+1.5d0*log_temperature(zone_idx)*ln10
@@ -501,11 +508,11 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             ln_lambda = 2.2d0
          end if
 !
-         settling_prefactor=star%ctrl%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
+         settling_prefactor=diffusion_settings%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
          z_plus_he3_fraction = composition(i_metals,zone_idx) + composition(i_he3,zone_idx)
          metal_fraction = composition(i_metals,zone_idx)
          hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
-         if(.not.star%ctrl%use_thoul_diffusion)then
+         if(.not.diffusion_settings%use_thoul_diffusion)then
             hydrogen_metal_product = hydrogen_fraction*z_plus_he3_fraction
             thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
             diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
@@ -526,8 +533,8 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             species_mass_fraction(thoul_col_h) = composition(i_h1,zone_idx)
             species_mass_fraction(thoul_col_he) = composition(i_he4,zone_idx)
             species_mass_fraction(thoul_col_metal) = composition(i_metals,zone_idx)
-            if(.not.star%ctrl%use_thoul_fit)then
-               if(star%ctrl%coulomb_log_choice.eq.4)then
+            if(.not.diffusion_settings%use_thoul_fit)then
+               if(diffusion_settings%coulomb_log_choice.eq.4)then
                   rho_local = exp(ln10*log_density(zone_idx))
                   temp_local = exp(ln10*log_temperature(zone_idx))
 !                 calculate concentrations from mass fractions:
@@ -592,19 +599,19 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
             dat_dx = del_grad(zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
             dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
 !CFD 10/09 Mimic Mixing to reduce settling.
-            diffusion_coeff1(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
+            diffusion_coeff1(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
                  hydrogen_fraction*(settling_coeff_p+settling_coeff_t)
-            diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor*helium_ah_coeff
+            diffusion_coeff2(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor*helium_ah_coeff
             diffusion_coeff1_dx(zone_idx) = settling_prefactor*dlnp_dr(zone_idx)* &
                  (settling_coeff_p+settling_coeff_t+hydrogen_fraction*(dap_dx+dat_dx))
             diffusion_coeff2_dx(zone_idx) = settling_prefactor*dac_dx
          endif
 !        METAL DIFFUSION, USING THE THOUL ET AL. COEFFICIENTS FOR FULLY
 !        IONIZED IRON.
-         if(star%job%use_diffusion_z)then
-            settling_prefactor=star%job%fgrz*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
-            if(star%ctrl%use_thoul_diffusion)then
-               if(star%ctrl%use_thoul_fit)then
+         if(diffusion_settings%use_diffusion_z)then
+            settling_prefactor=diffusion_settings%fgrz*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
+            if(diffusion_settings%use_thoul_diffusion)then
+               if(diffusion_settings%use_thoul_fit)then
                   settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
                   settling_coeff_t = del_grad(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
                        0.549d0*hydrogen_fraction_sq)
@@ -615,11 +622,11 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
                iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
 !CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)
 !         and add the uncertainties of differential mixing (constant_settling_reduction).
-               diff_scr%src_grid_metal_diffusion_coeff1(zone_idx) = star%ctrl%constant_settling_reduction*star%ctrl%constant_mixing_coeff* &
+               diff_scr%src_grid_metal_diffusion_coeff1(zone_idx) = diffusion_settings%constant_settling_reduction*diffusion_settings%constant_mixing_coeff* &
                     settling_prefactor*dlnp_dr(zone_idx)*metal_fraction*(settling_coeff_p+settling_coeff_t)
 !              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
-               diff_scr%src_grid_metal_diffusion_coeff2(zone_idx) = star%ctrl%constant_mixing_coeff*abs(settling_prefactor*iron_settling_ah)
-               diff_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = star%ctrl%constant_mixing_coeff*settling_prefactor* &
+               diff_scr%src_grid_metal_diffusion_coeff2(zone_idx) = diffusion_settings%constant_mixing_coeff*abs(settling_prefactor*iron_settling_ah)
+               diff_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor* &
                     dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
                diff_scr%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
             endif
@@ -627,7 +634,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
 !
 ! If using Noerdlinger's formula for LN LAMBDA, have a new term
 ! in D(D1)/DX
-         if(star%ctrl%coulomb_log_choice.eq.2)  then
+         if(diffusion_settings%coulomb_log_choice.eq.2)  then
            diffusion_coeff1_dx(zone_idx)=diffusion_coeff1_dx(zone_idx) + diffusion_coeff1(zone_idx)*1.5d0/ &
            (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
        end if

@@ -77,7 +77,7 @@ contains
 !     log_mass, log_Teff, log_total_mass, logP, logR, logT,
 !     luminosity_lsun, nz
 !   star writes: convective_flag, iov1, iov2, job%diffuse_helium_active,
-!     logRho, m, mixed_zone_bounds, xa
+!     logRho, m, mixed_zone_bounds, settling_suspended_reported, xa
 subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
@@ -304,7 +304,8 @@ subroutine settle
       do substep_idx = 1, num_settling_steps
          call diffuse_elements(settling_dt, s%xa, dlnp_dr, s%logR, &
               s%logRho, s%m, s%logT, s%gradT, deep_mix_flag, &
-              s%nz, total_mass_unlogged, ierr)
+              s%nz, total_mass_unlogged, s%job%diffuse_helium_active, &
+              s%settling_suspended_reported, ierr)
          if (ierr /= 0) return
       end do
 end subroutine settle

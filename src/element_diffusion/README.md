@@ -2,7 +2,7 @@
 
 This directory moves the elements through the radiative interior over a timestep: gravitational settling and the microscopic diffusion of helium, the metals and the light elements, in the Bahcall & Loeb (1990) formulation with the Thoul, Bahcall & Loeb (1994) coefficients.
 
-Code outside element_diffusion/ uses it only through `element_diffusion_lib` (enforced by `tools/check_boundaries.py`). It has two callers, and they call it the same way:
+Code outside element_diffusion/ uses it only through `element_diffusion_lib` (enforced by `tools/check_boundaries.py`). Like the microphysics domains it never touches the star (`STAR_FREE_DIRS`): its controls come from a settings record, `diffusion_settings` (module `element_diffusion_configuration`), which the star layer builds (`setup/microphysics_settings`' `diffusion_settings_from_star`) and `run_yrec` installs at the start of every run card (`set_diffusion_settings`); the two values that change within a card come in through `diffuse_elements`: whether hydrogen and helium settle (`diffuse_helium`, the star's `job%diffuse_helium_active`, which runs out with X or Y) and the run log's latch (`suspension_reported`, the star's `settling_suspended_reported`). It has two callers, and they call it the same way:
 - core's `composition_step` settles every model with settling on, rotating or not;
 - rotation's `burn_and_settle` (in `mid_timestep_model`) settles within each rotation sub-step.
 
@@ -12,7 +12,8 @@ Code outside element_diffusion/ uses it only through `element_diffusion_lib` (en
 
 | Module (file) | What it holds |
 |---|---|
-| `element_diffusion_lib` | **The public interface.** `diffuse_elements` runs one settling step: the newer routines (`microdiff`) when `use_new_diffusion_routines` is set, else the original ones (`gravitational_settling`). |
+| `element_diffusion_lib` | **The public interface.** `diffuse_elements` runs one settling step: the newer routines (`microdiff`) when `use_new_diffusion_routines` is set, else the original ones (`gravitational_settling`); `set_diffusion_settings` installs the settings record. |
+| `element_diffusion_configuration` | The settings record `diffusion_settings` (`diffusion_settings_t`): every control element diffusion reads. |
 | `original_settling` | The original routines: `gravitational_settling` and its setup of the diffusion coefficients (the Thoul et al. coefficients, their fit, or the older analytic ones). |
 | `settling_grid` | The original routines' mapping of the model onto an equally spaced grid in radius and back. |
 | `microdiff_driver` | The newer routines: `microdiff` and its setup (the diffusion region, the conversion to Bahcall & Loeb units). |
@@ -21,7 +22,7 @@ Code outside element_diffusion/ uses it only through `element_diffusion_lib` (en
 | `diffusion_scheme` | The numerical scheme both pipelines use: the two-step Lax–Wendroff advection of the first term and the coefficients of the implicit solve of the second. |
 | `thoul_solver` | `thoul_diffusion`: the solution of the Burgers equations for the coefficients (Thoul et al. 1994). |
 | `species_table`, `bahcall_loeb_units` | The species' weights and charges; the Bahcall & Loeb unit scales. |
-| `element_diffusion_scratch` | The working state (`diff_scr`): coefficient arrays and the unit scales. Nothing in it outlives a step; the "settling suspended" latch is the star's (`settling_suspended_reported`). |
+| `element_diffusion_scratch` | The working state (`diff_scr`): coefficient arrays and the unit scales. Nothing in it outlives a step; the "settling suspended" latch is the star's (`settling_suspended_reported`), passed in through `diffuse_elements`. |
 
 ## 2. Conventions
 

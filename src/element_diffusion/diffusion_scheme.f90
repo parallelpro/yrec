@@ -5,6 +5,7 @@
 ! Lax-Wendroff advection of the first term and the coefficients of the
 ! implicit solve of the second.
 module diffusion_scheme
+      use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diff_scr
       implicit none
       private
@@ -25,7 +26,7 @@ contains
 subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use physical_constants
       implicit none
 
@@ -55,7 +56,7 @@ subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points
       delta_abundance_mid = -dt_half*diffusion_coeff1(num_eq_points-1)/zone_mass
       diffused_abundance_mid(num_eq_points-1) = delta_abundance_mid
 ! metal diffusion
-      if(star%job%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
+      if(diffusion_settings%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
 ! central boundary condition
          zone_mass = eq_mass(2)
          delta_metal_abundance_mid = dt_half*diff_scr%metal_diffusion_coeff1(2)/zone_mass
@@ -84,7 +85,7 @@ subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
 
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use physical_constants
       implicit none
 
@@ -115,7 +116,7 @@ subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
       delta_abundance = -dt_full*diffusion_coeff1_mid(num_eq_points-1)/zone_mass
       diffused_abundance(num_eq_points) = diffused_abundance(num_eq_points)+delta_abundance
 ! mhp 3/94 added metal diffusion.
-      if(star%job%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
+      if(diffusion_settings%use_diffusion_z.and..not.use_generic_diffusion_vectors)then
          zone_mass = eq_mass_mid(1)
          delta_metal_abundance = dt_full*diff_scr%metal_diffusion_coeff1_mid(1)/zone_mass
          diff_scr%metal_abundance_change(1) = diff_scr%metal_abundance_change(1)+delta_metal_abundance
@@ -141,7 +142,7 @@ end subroutine lax_wendroff_step2
 ! previous iteration.
 subroutine implicit_diffusion_coeffs(alpha, diffusion_coeff_mid, delta_abundance_mid, &
      diffusion_coeff_deriv_mid, sub_diag, diag, super_diag, npt)
-      use star_info_lib, only: json
+      use composition_layout, only: json
 
       implicit none
 

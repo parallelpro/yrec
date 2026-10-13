@@ -61,9 +61,11 @@ subroutine run_yrec(ierr)
       use controls_check, only: warn_inconsistent_controls
       use convection_lib, only: set_convection_settings
       use rotation_configuration, only: set_rotation_settings
+      use element_diffusion_lib, only: set_diffusion_settings
       use rotation_settings_setup, only: rotation_settings_from_star
       use controls_reader, only: read_controls
-      use microphysics_settings, only: convection_settings_from_star
+      use microphysics_settings, only: convection_settings_from_star, &
+           diffusion_settings_from_star
       implicit none
       integer :: step_status
 
@@ -300,8 +302,9 @@ subroutine begin_kind_card
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
 ! Pass the card's mixing length to the convection domain's settings,
          call set_convection_settings(convection_settings_from_star())
-! and refresh the rotation domain's settings.
+! and refresh the rotation and element-diffusion domains' settings.
          call set_rotation_settings(rotation_settings_from_star())
+         call set_diffusion_settings(diffusion_settings_from_star())
        star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
        star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
        star%reset_triangle = .false.

@@ -11,7 +11,7 @@
 ! suspension of settling once is the star's,
 ! star%settling_suspended_reported.)
 module element_diffusion_scratch
-      use star_info_lib, only: json
+      use composition_layout, only: json
       implicit none
       private
 

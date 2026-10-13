@@ -19,7 +19,7 @@
 !
 ! Internal to element_diffusion.
 module species_table
-      use star_info_lib, only: i_li6, i_li7, i_be9
+      use composition_layout, only: i_li6, i_li7, i_be9
       use physical_constants, only: m_electron_amu
       implicit none
       private

@@ -9,15 +9,19 @@
 !     atmosphere_settings   atm (atm_init)
 !     convection_settings_from_star   convection (set_convection_settings,
 !                        at the start of every run card)
+!     diffusion_settings_from_star   element diffusion
+!                        (set_diffusion_settings, at the start of every
+!                        run card)
 module microphysics_settings
       use kap_lib, only: kap_settings_t
       use eos_lib, only: eos_settings_t
       use atm_lib, only: atm_settings_t
       use convection_lib, only: convection_settings_t
+      use element_diffusion_lib, only: diffusion_settings_t
       implicit none
       private
       public :: opacity_settings, equation_of_state_settings, atmosphere_settings, &
-           convection_settings_from_star
+           convection_settings_from_star, diffusion_settings_from_star
 
 contains
 
@@ -138,5 +142,36 @@ function convection_settings_from_star() result(s)
       s%use_extended_composition = star%job%use_extended_composition
       s%envelope_metals_no_cno = star%zenvm
 end function convection_settings_from_star
+
+!----------------------------------------------------------------------
+! diffusion_settings_from_star: element diffusion's settings from the
+! controls (the Monte-Carlo run's fgrz included).
+!   star reads: ctrl%constant_mixing_coeff,
+!     ctrl%constant_settling_reduction, ctrl%coulomb_log_choice,
+!     ctrl%diffuse_lithium, ctrl%fgry, ctrl%helium_diffusion_min,
+!     ctrl%hydrogen_diffusion_floor, ctrl%settling_num_iterations,
+!     ctrl%settling_tolerance, ctrl%use_new_diffusion_routines,
+!     ctrl%use_thoul_diffusion, ctrl%use_thoul_fit, job%fgrz,
+!     job%use_diffusion_z
+!   star writes: none
+function diffusion_settings_from_star() result(s)
+      use star_info_lib, only: star
+      type(diffusion_settings_t) :: s
+
+      s%use_new_diffusion_routines = star%ctrl%use_new_diffusion_routines
+      s%use_diffusion_z = star%job%use_diffusion_z
+      s%diffuse_lithium = star%ctrl%diffuse_lithium
+      s%fgry = star%ctrl%fgry
+      s%fgrz = star%job%fgrz
+      s%hydrogen_diffusion_floor = star%ctrl%hydrogen_diffusion_floor
+      s%helium_diffusion_min = star%ctrl%helium_diffusion_min
+      s%settling_num_iterations = star%ctrl%settling_num_iterations
+      s%settling_tolerance = star%ctrl%settling_tolerance
+      s%constant_mixing_coeff = star%ctrl%constant_mixing_coeff
+      s%coulomb_log_choice = star%ctrl%coulomb_log_choice
+      s%use_thoul_fit = star%ctrl%use_thoul_fit
+      s%use_thoul_diffusion = star%ctrl%use_thoul_diffusion
+      s%constant_settling_reduction = star%ctrl%constant_settling_reduction
+end function diffusion_settings_from_star
 
 end module microphysics_settings

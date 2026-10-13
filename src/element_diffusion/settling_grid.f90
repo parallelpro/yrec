@@ -4,6 +4,7 @@
 ! The original settling routines' grid mapping: the model onto an equally
 ! spaced grid in radius and back.
 module settling_grid
+      use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diff_scr
       implicit none
       private
@@ -22,7 +23,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
-      use star_info_lib, only: star, json, i_metals
+      use composition_layout, only: json, i_metals
       use numerics_lib
       implicit none
 
@@ -111,7 +112,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction_mid(1) = composition(1,interp_search_index-1)+ &
            interp_fraction*(composition(1,interp_search_index)- &
            composition(1,interp_search_index-1))
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          diff_scr%metal_diffusion_coeff1_mid(1)=diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
               interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index)- &
               diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1))
@@ -177,7 +178,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
               diffusion_coeff2_dx(k0:k0+3))
 ! MASS FRACTION OF HYDROGEN
          equal_hydrogen_fraction_mid(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
-         if(star%job%use_diffusion_z)then
+         if(diffusion_settings%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
          diff_scr%metal_diffusion_coeff1_mid(zone_index) = lagrange4(interp_factors, &
@@ -211,7 +212,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_mass(1) = enclosed_mass(zone_begin)
       equal_hydrogen_fraction(1) = composition(1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          diff_scr%metal_abundance_change(1) = composition(i_metals,zone_begin)
          diff_scr%metal_diffusion_coeff1(1) = diff_scr%src_grid_metal_diffusion_coeff1(zone_begin)
       endif
@@ -255,7 +256,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 
          equal_hydrogen_fraction(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
 ! METAL DIFFUSION
-         if(star%job%use_diffusion_z)then
+         if(diffusion_settings%use_diffusion_z)then
 ! D1
          diff_scr%metal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, &
               diff_scr%src_grid_metal_diffusion_coeff1(k0:k0+3))
@@ -270,7 +271,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       equal_hydrogen_fraction(num_equal_points) = composition(1,zone_end)
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          diff_scr%metal_abundance_change(num_equal_points) = composition(i_metals,zone_end)
          diff_scr%metal_diffusion_coeff1(num_equal_points)=diff_scr%src_grid_metal_diffusion_coeff1(zone_end)
       endif
@@ -281,7 +282,7 @@ end subroutine model_to_equal
 subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use numerics_lib
       implicit none
 
@@ -322,7 +323,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
 ! MHP 3/94 ADDED METAL DIFFUSION
 ! NOTE THAT BECAUSE METALS SINK, AND HYDROGEN RISES, THE FAILSAFES
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          do zone_index = zone_begin,1,-1
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
             metal_new=min(composition(3,zone_index)+diff_scr%metal_abundance_change(1),metal_max)
@@ -374,7 +375,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
          hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
          composition(1,zone_index)=min(composition(1,zone_index) + delta_x,hydrogen_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
-         if(star%job%use_diffusion_z)then
+         if(diffusion_settings%use_diffusion_z)then
             metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
             delta_z = lagrange4(interp_factors, diff_scr%metal_abundance_change(k0:k0+3))
             metal_new = min(composition(3,zone_index)+delta_z,metal_max)
@@ -396,7 +397,7 @@ subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
               equal_hydrogen_fraction(num_equal_points),hydrogen_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          metal_floor = 0.0D0
          do zone_index = zone_end,num_zones
             metal_new = max(composition(3,zone_index)+ &

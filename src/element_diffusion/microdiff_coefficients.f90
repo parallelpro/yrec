@@ -17,6 +17,7 @@
 ! microdiff_run calls it once for the zone centers and once for the
 ! midpoints.
 module microdiff_coefficients
+      use element_diffusion_configuration, only: diffusion_settings
       use thoul_solver, only: thoul_diffusion
       implicit none
 contains
@@ -26,7 +27,7 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
      diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col, ierr)
       use microdiff_mapping, only: microdiff_grid
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use species_table, only: thoul_h1, thoul_he4, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
       use physical_constants
@@ -152,10 +153,10 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
 !        to diffusion coefficients.
          fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          if(species_col.eq.thoul_col_h)then
-            fac=star%ctrl%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
+            fac=diffusion_settings%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
          if(species_col.eq.thoul_col_metal)then
-            fac=star%job%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
+            fac=diffusion_settings%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
          endif
 !        collect the first diffusion terms for hydroden.
 !        collect the third diffusion terms for everything else.

@@ -4,6 +4,7 @@
 ! The newer settling routines (use_new_diffusion_routines true): microdiff
 ! and its setup.
 module microdiff_driver
+      use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diff_scr
       implicit none
       private
@@ -64,10 +65,11 @@ contains
 ! back to the model grid).
 subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
-     convective_flag, num_zones, total_mass, ierr)
+     convective_flag, num_zones, total_mass, diffuse_helium, &
+     suspension_reported, ierr)
       use microdiff_mapping
       use microdiff_run
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use species_table, only: thoul_fe, thoul_col_h, thoul_col_he, &
            thoul_col_metal, num_light_diffused, light_diffused, light_diffused_row
       implicit none
@@ -84,6 +86,9 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       integer, intent(out) :: ierr
+      ! settle hydrogen and helium; the run log's suspension latch
+      logical, intent(in) :: diffuse_helium
+      logical, intent(inout) :: suspension_reported
 ! --- locals ---
       double precision :: radius_bl(json), temperature_bl(json)
       double precision :: density_orig(json), temperature_orig(json)
@@ -111,7 +116,8 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       call microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
            enclosed_mass, log_temperature, convective_flag, num_zones, &
            total_mass, composition, radius_bl, temperature_bl, zone_begin, &
-           zone_end, settling_skipped_flag, density_orig, temperature_orig)
+           zone_end, settling_skipped_flag, density_orig, temperature_orig, &
+           suspension_reported)
 !
 ! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
       if(settling_skipped_flag) return
@@ -147,7 +153,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !  THESE VALUES ARE USED FOR THE METAL ABUNDANCE IN THOUL.
 !
 !     DIFFUSE HYDROGEN.
-      if(star%job%diffuse_helium_active)then
+      if(diffuse_helium)then
          species_col = thoul_col_h
          atomic_weight_diffused = thoul_fe%weight
          atomic_charge_diffused = thoul_fe%charge
@@ -179,7 +185,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !----------------------------------------------------------------------
 !
 !     DIFFUSE HEAVY METALS.
-      if(star%job%use_diffusion_z)then
+      if(diffusion_settings%use_diffusion_z)then
          species_col = thoul_col_metal
          atomic_weight_diffused = thoul_fe%weight
          atomic_charge_diffused = thoul_fe%charge
@@ -207,7 +213,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !----------------------------------------------------------------------
 !
 !     DIFFUSE LIGHT ELEMENTS.
-      if(star%ctrl%diffuse_lithium)then
+      if(diffusion_settings%diffuse_lithium)then
 !        ITERATE OVER THE DIFFUSION ROUTINES FOR EACH LIGHT ELEMENT.
          species_col = thoul_col_metal
          do ii = 1,num_light
@@ -274,9 +280,10 @@ end subroutine microdiff
 subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
      enclosed_mass, log_temperature, convective_flag, num_zones, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
-     zone_end, settling_skipped_flag, density_orig, temperature_orig)
+     zone_end, settling_skipped_flag, density_orig, temperature_orig, &
+     suspension_reported)
 
-      use star_info_lib, only: star, json, i_h1, i_he4
+      use composition_layout, only: json, i_h1, i_he4
       use bahcall_loeb_units, only: set_bahcall_loeb_scales
       use io_units
       use run_log, only: solver_diagnostics
@@ -298,6 +305,8 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       logical, intent(out) :: settling_skipped_flag
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
+! the run log's latch: a suspension of settling is reported once
+      logical, intent(inout) :: suspension_reported
       integer :: i
 
 !     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
@@ -314,10 +323,10 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
          if (solver_diagnostics() .or. &
-              .not. star%settling_suspended_reported) then
+              .not. suspension_reported) then
             write(run_log_unit,15)
    15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            star%settling_suspended_reported = .true.
+            suspension_reported = .true.
          end if
          return
          end if
@@ -328,17 +337,17 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       endif
 ! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
       do i = zone_begin,num_zones
-         if(composition(i_h1,i).gt.star%ctrl%hydrogen_diffusion_floor)exit
+         if(composition(i_h1,i).gt.diffusion_settings%hydrogen_diffusion_floor)exit
       end do
       if (i > num_zones) then
 !     HYDROGEN-FREE MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
-         write(run_log_unit,16)star%ctrl%hydrogen_diffusion_floor
+           .not. suspension_reported) then
+         write(run_log_unit,16)diffusion_settings%hydrogen_diffusion_floor
    16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         suspension_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
@@ -357,27 +366,27 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
 !     CHECK FOR HELIUM-EXHAUSTED SURFACE.
 !     OUTER POINT IS SET WHEREVER Y>YMIN.
       do i=zone_end,1,-1
-         if(composition(i_he4,i).gt.star%ctrl%helium_diffusion_min) exit
+         if(composition(i_he4,i).gt.diffusion_settings%helium_diffusion_min) exit
       end do
       if (i < 1) then
 !     HELIUM-EXHAUSTED MODEL - EXIT.
 ! print once per suspension; every model only under
 ! report_solver_diagnostics
       if (solver_diagnostics() .or. &
-           .not. star%settling_suspended_reported) then
-         write(run_log_unit,17)star%ctrl%helium_diffusion_min
+           .not. suspension_reported) then
+         write(run_log_unit,17)diffusion_settings%helium_diffusion_min
    17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         star%settling_suspended_reported = .true.
+         suspension_reported = .true.
       end if
       settling_skipped_flag = .true.
       return
       end if
       zone_end = i
 ! all suspension checks passed: settling proceeds this model
-      if (star%settling_suspended_reported) then
+      if (suspension_reported) then
          write(run_log_unit,916)
   916    format(1x,' SETTLING RESUMED')
-         star%settling_suspended_reported = .false.
+         suspension_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
       call set_bahcall_loeb_scales()

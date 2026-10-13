@@ -11,6 +11,7 @@
 ! solve_tridiagonal (diffusion_scheme, numerics_lib), on the two equally
 ! spaced grids (eq, eq_mid).
 module microdiff_run
+      use element_diffusion_configuration, only: diffusion_settings
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       implicit none
 contains
@@ -21,7 +22,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
      atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
       use microdiff_mapping, only: microdiff_grid
       use microdiff_coefficients
-      use star_info_lib, only: star, json
+      use composition_layout, only: json
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -146,7 +147,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
       enddo
       alpha(num_eq_points) = fac/(total_mass-eq_mid%mass(num_eq_points-1))
 !  START ITERATION LOOP FOR THE NEW RUN OF ABUNDANCES.
-      do iter=1,star%ctrl%settling_num_iterations
+      do iter=1,diffusion_settings%settling_num_iterations
 !  FIND CHANGE IN D AT THE ZONE MIDPOINTS, GIVEN CHANGE IN D AT
 !  THE ZONE CENTERS.
          do i = 2,num_eq_points
@@ -192,12 +193,12 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
               write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_abundance_change.lt.star%ctrl%settling_tolerance)exit
+         if(max_abundance_change.lt.diffusion_settings%settling_tolerance)exit
       end do
-      if (iter > star%ctrl%settling_num_iterations) then
-      write(terminal_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      if (iter > diffusion_settings%settling_num_iterations) then
+      write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
            max_abundance_change,max_change_zone
-      write(run_log_unit,110)star%ctrl%settling_tolerance,star%ctrl%settling_num_iterations, &
+      write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
            max_abundance_change,max_change_zone
   110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
            'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &
