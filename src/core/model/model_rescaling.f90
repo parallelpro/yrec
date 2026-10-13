@@ -403,7 +403,9 @@ end subroutine set_helium_from_x_and_z
 !   Z(q) = rsclzc + (q - rsclzm1)(znew - rsclzc)/(rsclzm2 - rsclzm1);
 ! Z beyond rsclzm2 is left alone. X takes up the change, Y being kept:
 ! X = 1 - Z - X(He3) - Y. The CNO isotopes (C12..O18) are multiplied by
-! (Z_old - Z_new)/Z_old.
+! Z_new/(Z_old + 1e-30), as in rescale_interior_z. (The factor was
+! (Z_old - Z_new)/Z_old, the fraction of Z removed: right only for a
+! halved Z, zero for an unchanged one, negative for a raised one.)
 subroutine ramp_interior_z
       if(star%ctrl%use_z_ramp.and.(star%job%rsclzc(run_index).gt.0d0).and.(star%job%rsclzm1(run_index).gt.0d0) &
            .and.(star%job%rsclzm2(run_index).gt.0d0))then
@@ -411,7 +413,7 @@ subroutine ramp_interior_z
             do zone_idx = 1,num_zones
                mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*star%solar_mass_cgs)
                if (mass_fraction_local .lt. star%job%rsclzm1(run_index)) then
-                  z_rescale_factor = (composition(3,zone_idx)-star%job%rsclzc(run_index))/composition(3,zone_idx)
+                  z_rescale_factor = star%job%rsclzc(run_index)/(composition(3,zone_idx)+1.d-30)
                   composition(3,zone_idx) = star%job%rsclzc(run_index)
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)
                   do species_idx = 5,11
@@ -419,7 +421,7 @@ subroutine ramp_interior_z
                   enddo
                else if (mass_fraction_local .lt. star%job%rsclzm2(run_index)) then
                   z_ramp_value = (mass_fraction_local-star%job%rsclzm1(run_index))*z_ramp_slope+star%job%rsclzc(run_index)
-                  z_rescale_factor = (composition(3,zone_idx)-z_ramp_value)/composition(3,zone_idx)
+                  z_rescale_factor = z_ramp_value/(composition(3,zone_idx)+1.d-30)
                   composition(3, zone_idx) = z_ramp_value
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)
                   do species_idx = 5,11
