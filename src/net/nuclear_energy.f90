@@ -45,7 +45,6 @@ module nuclear_energy
          real(dp) :: triple_alpha_energy_gen = 0.0d0
          real(dp) :: eps_alpha_capture = 0.0d0
          real(dp) :: eps_neutrino_loss = 0.0d0
-         real(dp) :: eps_he3_he3 = 0.0d0, eps_he3_burning = 0.0d0
 ! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
          real(dp) :: neutrino_flux(n_nu_fluxes) = 0.0d0
@@ -98,8 +97,6 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       reactions_per_gram = reaction_counts(rate, network_mass_fractions(xa))
       call compute_reaction_energies(rate, network_mass_fractions(xa), &
            nr%frac_n15_pa, nr%frac_be7_ecap, energy_by_slot, energy_by_chain)
-      e%eps_he3_he3 = energy_by_slot(r_he3he3)
-      e%eps_he3_burning = energy_by_slot(r_he3he3)+energy_by_slot(r_he3he4)
       call sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
            deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
       call store_chain_energies(energy_by_chain, deuterium_energy, e)

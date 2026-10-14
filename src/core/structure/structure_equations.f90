@@ -176,10 +176,6 @@ subroutine add_shell_energy_budget()
                     (s%dm(im)/s%solar_luminosity_cgs)* &
                     diag%energy_gen_component(j)
             end do
-            s%he3_he3_luminosity_zone(im) = (s%dm(im)/ &
-                 s%solar_luminosity_cgs)*diag%burn%eps_he3_he3
-            s%he3_burning_luminosity_zone(im) = (s%dm(im)/ &
-                 s%solar_luminosity_cgs)*diag%burn%eps_he3_burning
             s%luminosity_breakdown(i_lum_he_c)=s%luminosity_breakdown(i_lum_he_c)+(s%dm(im)/ &
                  s%solar_luminosity_cgs)*diag%burn%eps_alpha_capture
        end if
@@ -259,11 +255,7 @@ subroutine store_zone_thermodynamics()
          s%gradr(im) = diag%radiative_gradient
          s%gradT(im) = diag%actual_gradient
          s%grada(im) = eos_res%adiabatic_gradient
-         do j = 1,3
-            s%fxion_zone(j,im) = eos_res%ion_fraction(j)
-         end do
          s%conv_vel(im) = diag%convective_velocity
-         s%scp(im) = eos_res%specific_heat_cp
          s%adiabatic_index_gamma1(im) = diag%gamma1
 
 ! Disabled with rotation's advection-diffusion transport (2026-10-12),
@@ -292,7 +284,6 @@ end subroutine store_zone_thermodynamics
 ! needs them (MHP 8/25). No other output file reads these arrays. Below
 ! the burning cutoff pulse_deps_dlnrho/dlnt are zero.
 subroutine store_pulse_derivatives()
-         s%pulse_dlnrho_dlnp(im) = dlnrho_dlnp
          s%pulse_deps_dlnrho(im) = diag%deps_dlnrho
          s%pulse_deps_dlnt(im) = diag%deps_dlnt
          s%pulse_dlnkap_dlnrho(im) = diag%kap_res(i_dlnkap_dlnrho)
@@ -307,12 +298,6 @@ subroutine store_pulse_derivatives()
          end if
          s%pulse_electron_mean_weight_inverse(im) = eos_res%electron_mean_weight_inverse
          s%pulse_dlnrho_dlnt(im) = dlnrho_dlnt
-! These MLT pulse-output arrays are always zero: the alfmlt/phmlt/cmxmlt
-! scalars they once copied were only ever zeroed, and are gone. Whether
-! to keep the arrays awaits an author decision (audit SUMMARY.md 1.1 #10).
-         s%valfmlt(im) = 0.0d0
-         s%vphmlt(im) = 0.0d0
-         s%vcmxmlt(im) = 0.0d0
 end subroutine store_pulse_derivatives
 
 end subroutine compute_henyey_coefficients

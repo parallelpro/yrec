@@ -1859,10 +1859,10 @@ the full battery runs on the series' end.
      but never read; envelope_hydrogen_fraction is read by kap_init and
      the kind cards before the first card sets it; envelope_radius is
      written twice per model; check_star_contracts does not split
-     statements at ';'. Proposed: remove the dead stores; for the
-     diagnostics stored but never written (fxion_zone, scp, the two He3
-     luminosities, pulse_dlnrho_dlnp) and the always-zero MLT pulse
-     arrays, a decision: output columns or removal; check whether
+     statements at ';'. Proposed: remove the dead stores (the diagnostics
+     stored but never written -- fxion_zone, scp, the two He3
+     luminosities, pulse_dlnrho_dlnp -- and the always-zero MLT pulse
+     arrays are removed, the author's decision of 2026-10-13); check whether
      kap_init uses the unset envelope X (likely overwritten before use)
      and set it first if it does.
   7. **Out-of-range read** (core/diagnostics/stitched_model.f90):

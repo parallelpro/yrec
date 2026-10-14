@@ -198,9 +198,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | κ | cm² g⁻¹ | `star%opacity_zone` | `SO` | as above | Rosseland opacity. Not ¹⁶O (an earlier rename guessed `o16_zone`). |
 | β | — | `star%beta` | `SBETA` | core/structure/structure_equations.f90 | Gas-pressure fraction from the EOS. |
 | η | — | `star%eta` | `SETA` | core/structure/structure_equations.f90 | Electron degeneracy parameter. |
-| — | — | `star%fxion_zone(3,:)` | `SFXION` | core/structure/structure_equations.f90 | Three ionization fractions from the EOS; the species order per slot is unconfirmed. |
 | v_conv | cm s⁻¹ | `star%conv_vel` | `SVEL` | core/structure/structure_equations.f90, core/step/shell_physics.f90 | MLT convective velocity (10⁻¹¹ placeholder where radiative). |
-| c_P | erg g⁻¹ K⁻¹ | `star%scp` | `SCP` | core/structure/structure_equations.f90:366 | Specific heat from the Henyey pass; read by the profile writers. |
 | c_P | erg g⁻¹ K⁻¹ | `star%cp` | `CP` (`/TEMP/`) | core/step/shell_physics.f90:127 | Same EOS quantity, filled by `shell_physics` for the rotation pipeline (trap 18). |
 | μ | — | `star%mu` | `HAMU` → `mean_molecular_weight` | core/step/shell_physics.f90:125 | Mean molecular weight assuming full ionization. Differs from `pulse_mean_molecular_weight` (trap 18). |
 | (∂lnρ/∂lnT) at fixed P | — | `star%qdt` | `SQDT` | core/step/shell_physics.f90:128 | Per-zone copy for the rotation pipeline. |
@@ -339,7 +337,6 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/step/burn_step.f90:318, 336 | CZ-base radius at the end of the previous step, for light-element burning. |
 | — | zone index | `star%envelope_cz_base_zone_prev`, `star%jcz` | `JENVOS`, `JCZ` | core/step/burn_step.f90:355, core/step/step_driver.f90:280 | CZ-base zone of the previous step; CZ-base zone used by deuterium burning. |
 | τ_cz | s | `star%convective_turnover_timescale`, `..._old` | `TAUCZ`, `TAUCZ0` (`/OVRTRN/`) | core/diagnostics/turnover_timescale.f90 | Convective turnover time, H_P/v_conv (or CZ width/v_conv) at the CZ base. |
-| — | — | `star%valfmlt`, `vphmlt`, `vcmxmlt` | `VALFMLT`, ... (`/PUALPHA/`) | core/structure/structure_equations.f90 | MLT pulse-output vectors; always zero (the `ALFMLT`/`PHMLT`/`CMXMLT` scalars they copied were only ever zeroed and went in 2026-10). |
 
 ### 2.10 Timestep and driver state
 
@@ -386,7 +383,6 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| (∂lnρ/∂lnP) at fixed T | — | `star%pulse_dlnrho_dlnp` | `PQDP` (`/PULSE1/`) | core/structure/structure_equations.f90 | Logarithmic (correct). |
 | (∂lnρ/∂lnT) at fixed P | — | `star%pulse_dlnrho_dlnt` | `PQDT` | core/structure/structure_equations.f90 | Logarithmic (correct); δ = −this. |
 | dε/dlnρ | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnrho` | `PQED` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_rho` as is (trap 1). |
 | dε/dlnT | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnt` | `PQET` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_T` as is (trap 1). |
@@ -526,7 +522,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - Both are log₁₀ M in g.
     - Mass loss updates the two separately (`core/step/mass_change.f90:430-431`). The envelope code reads `stotal`, and the structure code reads `log_total_mass`.
 18. **Several quantities have two copies with different fill times or definitions.**
-    - c_P: `scp` (Henyey pass) and `cp` (`shell_physics`).
+    - c_P: `pulse_specific_heat` (Henyey pass) and `cp` (`shell_physics`).
     - μ: `star%mu` (full-ionization estimate, `core/step/shell_physics.f90:125`), `pulse_mean_molecular_weight` (R/(R/μ) from the EOS, `core/structure/structure_equations.f90:412`), and the EOS slot `i_gas_constant`, which is R/μ.
 19. **The 3-row gradient carriers use two row orders, and the named constants document the wrong one.**
     - `i_grad_rad=1, i_grad_actual=2, i_grad_ad=3` (`state/star_info_lib.f90:83-87`) give the order (rad, actual, ad), the order of the former `DEL_GRAD`. Their comment says they apply to `current_gradients` and `env_gradients`, but no code uses them.
@@ -564,7 +560,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 
 **Marked "unconfirmed" in the tables.** A reviewer who knows the answer should fill these in:
 
-- the slot order of `fxion_zone(3,:)` and `eos_res(i_fxion:i_fxion+2)`;
+- the slot order of the EOS's `ion_fraction(1:3)`;
 - the physical units of `neutrino_flux`, `neutrino_flux_total` and `neutrino_flux_zone` (the code comments say "10¹⁰ ergs per gm");
 
 **Left out of the tables** because their meaning or units could not be settled from the code:

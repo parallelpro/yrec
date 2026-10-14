@@ -223,8 +223,8 @@ subroutine write_gyre_pulse(s, num_shells, mass_coordinate, &
          pressure_cgs = exp(ln10*log_pressure(i))
          temperature_k = exp(ln10*log_temperature(i))
          density_cgs = exp(ln10*log_density(i))
-! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho=1/star%pulse_dlnrho_dlnp
-! and chiT=-chiRho*star%pulse_dlnrho_dlnt (see core/structure/structure_equations.f90).
+! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho = 1/(dln rho/dln P)_T
+! and chiT = -chiRho*star%pulse_dlnrho_dlnt (see core/structure/structure_equations.f90).
          delta = -s%pulse_dlnrho_dlnt(i)
 ! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
 ! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and

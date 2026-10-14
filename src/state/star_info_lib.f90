@@ -267,7 +267,6 @@ module star_info_lib
 ! evidence (read by the output writers or across domains) flatten
 ! here; the true solver workspace moved to
 ! rotation/rotation_scratch_lib.f90.
-            double precision :: valfmlt(json), vphmlt(json), vcmxmlt(json)
             double precision :: es_circulation_velocity(json), &
                  secular_shear_velocity(json), gsf_circulation_velocity(json)
 ! phase C batch 3: working/diagnostic state evicted from the buffer
@@ -344,12 +343,8 @@ module star_info_lib
 ! (SBETA, gas-pressure fraction), eta (SETA, electron degeneracy),
 ! conv_vel (SVEL, MESA name), opacity_zone (SO -- per-zone OPACITY,
 ! not O16: the 2026 o16_zone guess was wrong),
-! fxion_zone (SFXION, ionization fractions), gradr/gradT/grada (the
-! DEL_GRAD(3,:) rows, split into MESA-named arrays). scp keeps its
-! name deliberately: it is the Henyey-solve-time specific heat that
-! the profile writers read, distinct in fill time from cp (the
-! rotation-pipeline copy) -- merging or renaming awaits a semantics
-! audit.
+! gradr/gradT/grada (the DEL_GRAD(3,:) rows, split into MESA-named
+! arrays).
             double precision :: eps_total(json), eps_channels(7,json), &
                  beta(json), eta(json)
 ! 2026 retire-legacy (.FULL): the model-grid rotational transport
@@ -359,7 +354,7 @@ module star_info_lib
             double precision :: am_diffusion_coeff(json), &
                  mixing_diffusion_coeff(json)
             double precision :: opacity_zone(json), gradr(json), gradT(json), &
-                 grada(json), fxion_zone(3,json), conv_vel(json), scp(json)
+                 grada(json), conv_vel(json)
 ! -- former turnover_state (turnover) --
             double precision :: convective_turnover_timescale, &
                  convective_turnover_timescale_old
@@ -390,10 +385,6 @@ module star_info_lib
 ! named accreted_mass_fraction until 2026-10 despite being a mass)
             double precision :: accreted_mass
             integer :: jcz
-! He3+He3 and He3+He3 + He3+He4 luminosity per shell (JVS 10/11;
-! former common/grab/)
-            double precision :: he3_he3_luminosity_zone(json), &
-                 he3_burning_luminosity_zone(json)
 ! -- former neutrino_flux_state (flux) --
             double precision :: neutrino_flux_total(n_nu_fluxes)
             double precision :: cl37_snu_rate, ga71_snu_rate
@@ -498,8 +489,7 @@ module star_info_lib
 ! pulse_dlnrho_*/pulse_dlnkap_* are logarithmic derivatives;
 ! pulse_deps_dlnrho/dlnt are ABSOLUTE d eps/dln rho, d eps/dlnT in
 ! erg/g/s (compute_zone_energy's burn%deps_*; named pulse_dlneps_* until 2026-10).
-            double precision :: pulse_dlnrho_dlnp(json), &
-                 pulse_deps_dlnrho(json)
+            double precision :: pulse_deps_dlnrho(json)
             double precision :: pulse_deps_dlnt(json), &
                  pulse_dlnkap_dlnrho(json)
             double precision :: pulse_dlnkap_dlnt(json), &

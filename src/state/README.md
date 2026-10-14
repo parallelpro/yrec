@@ -32,7 +32,7 @@ The rest of this README describes the members of `star`: what each one is, its u
 | Step snapshot | 24 | Copies of model quantities at the start of the step (`*_start`, `old_*`, `*_old`, `pphot0`) or of the structure-rotation iteration (`orig_*`), mapped onto the step's mesh. | From the start-of-step copy (the rezone, or `rezone_or_snapshot` without one) to the end of the step. |
 | Step working state | 28 | Values one stage computes for a later stage of the same or the next step, and that are not output: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses, the outer layers of the latest envelope integration, the last rotation sub-step's omega. | From the stage that writes them; each table row says which. |
 | Newton | 10 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve. `log_pressure_delta` and `log_temperature_delta`, the changes over the step, stay valid until the next step's solve starts. |
-| Diagnostics written during the solve | 29 | Per-zone physics stored for output by `compute_henyey_coefficients` on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). | After convergence they hold the last iteration's values: the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
+| Diagnostics written during the solve | 21 | Per-zone physics stored for output by `compute_henyey_coefficients` on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). | After convergence they hold the last iteration's values: the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
 | Diagnostics written after convergence | 36 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
 | Step control | 11 | The timestep and the flags that steer one step's solve. | During and between steps. |
 | Run and card bookkeeping | 29 | Per-run and per-card state: the calibration loops, the card's mixing length and mass, the surface mixture of the first card, the atmosphere switch, the reason the run ended. | From the card (or run) that sets them. |
@@ -40,7 +40,7 @@ The rest of this README describes the members of `star`: what each one is, its u
 | Scratch | 4 | Values stored in `star` but used only inside the module (often the procedure) that writes them. | Only inside that module. |
 | Never referenced | 0 | Declared and not used (the two there were removed in 2026-10). | — |
 
-243 members in all, besides `ctrl` and `job` (section 4).
+235 members in all, besides `ctrl` and `job` (section 4).
 
 ## 3. The members
 
@@ -210,9 +210,6 @@ How to read the tables:
 |---|---|---|---|---|---|
 | `eps_grav(json)` | eps_grav = -T ds/dt of each zone | erg/(g s) | `step_driver` (solve_structure); `structure_equations` (add_shell_energy_budget) | `structure_equations` | was `gravitational_luminosity` until 2026-10 |
 | `luminosity_breakdown(8)` | luminosity per channel `i_lum_*` (pp1, pp2, pp3, CNO, 3 alpha, neutrinos, gravothermal, alpha captures), scaled to sum to L(nz) | Lsun | `observables`, `henyey_iteration`, `structure_equations`, `model_files` (7 procedures) | 8 modules (core/ 6, io/ 2) | summed every iteration, rescaled again after convergence (`renormalize_luminosity_breakdown`); `compute_timestep` reads it; read from YREC7/MODEL2 files, zeroed by the .mod reader |
-| `valfmlt(json)` | always zero (an MLT pulsation-output column) | - | `structure_equations` (store_pulse_derivatives) | none | written (as zero) but never read |
-| `vphmlt(json)` | always zero | - | `structure_equations` (store_pulse_derivatives) | none | written (as zero) but never read |
-| `vcmxmlt(json)` | always zero | - | `structure_equations` (store_pulse_derivatives) | none | written (as zero) but never read |
 | `eps_total(json)` | nuclear energy generation pp1 + pp2 + pp3 + CNO + 3 alpha | erg/(g s) | `structure_equations` (store_zone_energy_channels) | `stitched_model`, `rezoning`, `structure_equations`, `pulsation_output`, `mid_timestep_model` | zero below the burning cutoff |
 | `eps_channels(7,json)` | per channel `i_eps_*`: rows 1-5 the fractions of eps_total, row 6 eps_nu, row 7 eps_grav | rows 1-5: -; 6-7: erg/(g s) | `structure_equations` (store_zone_energy_channels) | `stitched_model`, `rezoning`, `mid_timestep_model` | mixed units by row |
 | `beta(json)` | gas-pressure fraction P_gas/P | - | `structure_equations` (store_zone_thermodynamics) | `stitched_model` |  |
@@ -221,19 +218,14 @@ How to read the tables:
 | `gradr(json)` | radiative temperature gradient grad_rad | - | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `observables`, `stitched_model`, `rezoning`, `convection_geometry`, `mid_timestep_model` | as opacity_zone |
 | `gradT(json)` | actual temperature gradient d ln T/d ln P | - | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `observables`, `stitched_model`, `rezoning`, `composition_step`, `pulsation_output`, `mid_timestep_model` | as opacity_zone |
 | `grada(json)` | adiabatic gradient grad_ad | - | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `observables`, `stitched_model`, `rezoning`, `convection_geometry`, `pulsation_output`, `mid_timestep_model` | as opacity_zone |
-| `fxion_zone(3,json)` | ionization fractions of H, He+ and He++ | - | `structure_equations` (store_zone_thermodynamics) | none | written but never read |
 | `conv_vel(json)` | convective velocity from mixing-length theory | cm/s | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `stitched_model`, `rezoning`, `mid_timestep_model` | as opacity_zone |
-| `scp(json)` | c_P at solve time | erg/(g K) | `structure_equations` (store_zone_thermodynamics) | none | written but never read (the declaration comment says the profile writers read it; none does) |
-| `he3_he3_luminosity_zone(json)` | He3+He3 luminosity of each shell | Lsun | `structure_equations` (add_shell_energy_budget) | none | written but never read |
-| `he3_burning_luminosity_zone(json)` | He3+He3 plus He3+He4 luminosity of each shell | Lsun | `structure_equations` (add_shell_energy_budget) | none | written but never read |
 | `neutrino_flux_total(10)` | solar-neutrino fluxes at the Earth by slot `i_nu_*` (slots 9-10: He3+He3 and He3+He4 rates in the same units) | 10^10 /(cm^2 s) | `neutrino_flux_output` (write_neutrino_flux_table); `observables` (compute_snu_rates); `structure_equations` (start_energy_bookkeeping, add_shell_energy_budget) | `neutrino_flux_output`, `observables`, `monte_carlo`, `structure_equations`, `history_output` | only with `ctrl%calc_neutrinos`; also overwritten by the card-start neutrino table; unit from `neutrino_flux_output`'s header |
 | `adiabatic_index_gamma1(json)` | first adiabatic exponent Gamma_1 | - | `structure_equations` (store_zone_thermodynamics) | `stitched_model`, `pulsation_output` |  |
-| `pulse_dlnrho_dlnp(json)` | dln rho/dln P at constant T | - | `structure_equations` (store_pulse_derivatives) | none | written but never read |
 | `pulse_deps_dlnrho(json)` | d eps/dln rho (absolute, not logarithmic) | erg/(g s) | `structure_equations` (store_pulse_derivatives) | `stitched_model`, `pulsation_output` | zero below the burning cutoff |
 | `pulse_deps_dlnt(json)` | d eps/dln T (absolute) | erg/(g s) | `structure_equations` (store_pulse_derivatives) | `stitched_model`, `pulsation_output` | as pulse_deps_dlnrho |
 | `pulse_dlnkap_dlnrho(json)` | dln kappa/dln rho | - | `structure_equations` (store_pulse_derivatives) | `stitched_model`, `pulsation_output` |  |
 | `pulse_dlnkap_dlnt(json)` | dln kappa/dln T | - | `structure_equations` (store_pulse_derivatives) | `stitched_model`, `pulsation_output` |  |
-| `pulse_specific_heat(json)` | c_P | erg/(g K) | `structure_equations` (store_pulse_derivatives) | `stitched_model` | the same value as scp |
+| `pulse_specific_heat(json)` | c_P | erg/(g K) | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
 | `pulse_mean_molecular_weight(json)` | mean molecular weight mu = R/(specific gas constant) | - | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
 | `pulse_dlnrho_dlnt(json)` | dln rho/dln T at constant P | - | `structure_equations` (store_pulse_derivatives) | `stitched_model`, `pulsation_output` | for the pulsation output |
 | `pulse_electron_mean_weight_inverse(json)` | 1/mu_e | - | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
@@ -374,17 +366,15 @@ None: `old_shell_mass` and `converged_zone` were removed in 2026-10.
 
 None of these has been removed; each needs a look before it goes.
 
-**Removed in 2026-10**: `old_shell_mass` and `converged_zone` (never referenced), `old_moment_of_inertia` and `log10_solar_mass` (written, never read); `envelope_cz_log_radius` became a local of `locate_surface_cz_base`.
+**Removed in 2026-10**: `old_shell_mass` and `converged_zone` (never referenced), `old_moment_of_inertia` and `log10_solar_mass` (written, never read); the diagnostics no writer emitted, `fxion_zone`, `scp` (a copy of `pulse_specific_heat`), `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone` and `pulse_dlnrho_dlnp`, and the always-zero `valfmlt`, `vphmlt` and `vcmxmlt` (zero in the F77 code too: their source scalars were only ever zeroed, for a pulsation format since retired); `envelope_cz_log_radius` became a local of `locate_surface_cz_base`.
 
-**Written but never read** (no reader uses the stored value): `initial_composition_code`, `qiw`, `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds`, `dlnrho_dlnp`, `dlnrho_dlnt`, `valfmlt`, `vphmlt`, `vcmxmlt`, `fxion_zone`, `scp`, `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone`, `pulse_dlnrho_dlnp`, `ikut_flag`, `convective_velocity`, `chosen_dt`, `log10_solar_mass`.
+**Written but never read** (no reader uses the stored value): `initial_composition_code`, `qiw`, `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds`, `dlnrho_dlnp`, `dlnrho_dlnt`, `ikut_flag`, `convective_velocity`, `chosen_dt`, `log10_solar_mass`.
 
 Notes on the second list:
 
-- `valfmlt`, `vphmlt` and `vcmxmlt` are only ever set to zero.
 - `qiw` is recomputed by every routine that uses it (`solid_body_omega` calls `zone_moments_of_inertia` first), so the copy in `star` carries nothing from one call to the next; it could be a local of the rotation code.
 - `dlnrho_dlnp` and `dlnrho_dlnt` reach the next coefficient pass only through `henyey_iterate`'s `intent(out)` dummies, as starting values the EOS overwrites.
 - `chosen_dt`, `ikut_flag` and `convective_velocity` are outputs of `compute_timestep` or `read_starting_model` that no caller uses; `ikut_flag` was only ever zeroed, in the Fortran 77 code too.
-- `scp` duplicates `pulse_specific_heat`; `fxion_zone`, `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone` and `pulse_dlnrho_dlnp` are stored for output that no writer emits.
 - `mixed_zone_bounds_no_overshoot`, `radiative_zone_bounds` and `initial_composition_code` are filled and never consulted.
 
 ## 6. Names that mislead
