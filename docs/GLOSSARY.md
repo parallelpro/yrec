@@ -280,7 +280,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Ω | rad s⁻¹ | `star%omega` | `OMEGA` | rotation/omega_from_j.f90, rotation/solid_body_omega.f90 | Angular velocity; solid body within each convective region. |
 | j | cm² s⁻¹ | `star%j_rot` | `HJM` → `specific_angular_momentum` | rotation/evolve_angular_momentum.f90, rotation/solid_body_omega.f90 | Specific angular momentum I Ω/Δm. |
 | I | g cm² (per point) | `star%i_rot` | `HI` → `moment_of_inertia` | rotation/shape/zone_moments_of_inertia.f90 | Moment of inertia of the point's shell. |
-| dI/dΩ | g cm² s | `star%qiw`; also `di_domega` | `QIW` | rotation/shape/zone_moments_of_inertia.f90 | Used in the Newton iteration for Ω(j). |
+| dI/dΩ | g cm² s | `di_domega` (`omega_from_j`'s `qiw` argument; not kept in the star) | `QIW` | rotation/shape/zone_moments_of_inertia.f90 | Used in the Newton iteration for Ω(j). |
 | r₀ | cm | `star%mean_radius`; also `r0` | `R0` | rotation/shape/shape.f90 | Characteristic radius of the distorted isobar, r = r₀(1 − A P₂). |
 | η₂ | — | `star%eta_squared`; also `eta2` | `ETA2` | rotation/shape/shape.f90 | Radau distortion parameter from Radau's equation (not η squared). |
 | ⟨g⟩ | cm s⁻² | `star%mean_gravity`; also `hg` | `HG` | rotation/shape/rotation_shape_factors.f90:111 | Effective gravity averaged over the isobar. |
@@ -328,8 +328,6 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 |---|---|---|---|---|---|
 | α_MLT | — | `star%mixing_length_alpha` | `CMIXL` (`/CONST3/`) | core/run/run_driver.f90:270, core/run/calibration.f90 | Working mixing length in pressure scale heights, copied from `job%mixing_length_array(nk)` each kind card. |
 | — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | convection/convection_zones.f90 (`find_convection_zones`, called from core/step/composition_step.f90, core/step/step_driver.f90) | First and last zone of each mixed (convective plus overshoot) region. |
-| — | zone index | `star%mixed_zone_bounds_no_overshoot(12,2)` | `MXZON0` | core/step/composition_step.f90 | Same without overshoot. |
-| — | zone index | `star%radiative_zone_bounds(13,2)` | `MRZONE` | convection/convection_zones.f90 (`find_convection_zones`, called from core/step/step_driver.f90) | First and last zone of each radiative region. |
 | — | zone index | `star%core_cz_top_index` | `JCORE` | core/model/rezoning.f90:558, core/step/composition_step.f90 | Top zone of the convective core (1 if none). |
 | — | zone index | `star%envelope_cz_bottom_index` | `JENV` | core/model/rezoning.f90:567, core/step/composition_step.f90 | Bottom zone of the surface convection zone (`nz` if none). |
 | — | zone index | `star%iov1`, `star%iov2` | `IOV1`, `IOV2` (`/DPMIX/`) | convection/convection_zones.f90 (returned by `find_convection_zones`) | The overshoot region below the envelope; a zone inside it is `in_overshoot_region` for the adiabatic-overshoot test of `compute_temperature_gradients`. (`IOVIM`, the zone index side channel, is gone.) |
@@ -344,7 +342,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 |---|---|---|---|---|---|
 | Δt | s | `star%dt` | `DELTS` → `delta_time` | core/step/step_driver.f90, core/step/timestep_control.f90 | Timestep. Negative means "do not age" (section 1.4). |
 | Δt (saved) | s | `star%dt_saved` | `DELTS0` → `delta_time_saved` | core/step/step_driver.f90:142-160 | dt before the end-age adjustment, written to the model when stopping at a fixed age. |
-| Δt (chosen) | s | `star%chosen_dt` | `DELTSH` → `hydrogen_dt` | core/step/timestep_control.f90 | Timestep `compute_timestep` adopted (minimum over all limiters). Reused as \|dt\| in `read_starting_model` (trap 20). |
+| Δt (chosen) | s | `chosen_dt` (a local of `compute_timestep`'s callers; not kept in the star) | `DELTSH` → `hydrogen_dt` | core/step/timestep_control.f90 | Timestep `compute_timestep` adopted (minimum over all limiters). Reused as \|dt\| in `read_starting_model` (trap 20). |
 | Δt | yr | `star%timestep_yr` | `DDAGE` | core/step/step_driver.f90:261 | dt in years. |
 | t | Gyr | `star%age_gyr` | `DAGE` (`/THEAGE/`) | core/step/step_driver.f90:262 | Stellar age. |
 | — | — | `star%model_number` | `MODEL` | core/step/step_driver.f90:162 | Model counter (not advanced on rescale-only cards). |
@@ -529,9 +527,9 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - `pt%current_gradients` and `env_points%env_gradients` are in fact (rad, **ad**, actual) (`core/envelope/envelope_integrands.f90:108-110`).
     - `atm_points%atmo_gradients` is (rad, **actual**, ad) (`core/envelope/envelope_integration_kernel.f90:459-461`).
     - The output code has already mixed up the two orders once (`core/diagnostics/stitched_model.f90:598-607`).
-20. **`chosen_dt` is reused transiently.**
-    - It is the timestep adopted by `compute_timestep` (legacy `DELTSH`, later named `hydrogen_dt` although it is not a hydrogen-burning governor).
-    - `read_starting_model` is passed `star%chosen_dt` as `delta_time_abs` and sets it to |dt| (`core/model/starting_model.f90:311`; call sites `core/step/step_driver.f90:206`, `core/run/run_driver.f90:280`).
+20. **`chosen_dt` names two things.**
+    - It is the timestep adopted by `compute_timestep` (legacy `DELTSH`, later named `hydrogen_dt` although it is not a hydrogen-burning governor); `read_starting_model` returns |dt| in the same argument (`delta_time_abs`).
+    - No caller uses either value; since 2026-10 it is a local of the callers, not a star member.
 21. **`envelope_mass` and `envelope_radius` refer to the surface convection zone.**
     - They are the mass above the surface-CZ base in M☉, and that base's radius in R☉ (`core/diagnostics/observables.f90:217-221`).
     - They do not describe the envelope above the fitting point.
@@ -566,7 +564,6 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 **Left out of the tables** because their meaning or units could not be settled from the code:
 
 - `star%fracstep` (`FRACSTEP`, initialized to 0.5);
-- the scalar `star%convective_velocity` (`VEL`);
 - `rot_scr%quadrupole_moment` and `local_gravity` (`QUAD`, `GG`).
 
 **Discrepancy:** the value and comment of `dlum_dalpha` differ by a factor of 10 (`core/run/calibration.f90:51`: value 0.0139, comment "+0.139").

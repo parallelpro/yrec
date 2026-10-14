@@ -11,7 +11,7 @@ module step_driver
       use rezoning, only: rezone
       use starting_model, only: read_starting_model
       use envelope_rebuild, only: rebuild_envelope
-      use star_info_lib, only: star_info
+      use star_info_lib, only: star_info, json
       implicit none
       private
       public :: evolve_step
@@ -54,6 +54,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
       use rotating_shape, only: rotation_shape_factors
 
       use star_info_lib, only: evolve_step_reset_pending, i_h1, i_h2, &
+           max_convective_zones, max_radiative_zones, &
            i_he4, n_species_basic, n_species_extended
       use io_units
       use physical_constants
@@ -69,6 +70,15 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
       use convection_lib, only: find_convection_zones, homogenize_convection_zones
       use stop_conditions
       implicit none
+! outputs of the calls below that the step does not use: the timestep
+! compute_timestep chose, the model read's ikut flag and convective
+! velocity, the rotation's di_domega, the convection zones without
+! overshoot and the radiative zones
+      double precision :: chosen_dt, convective_velocity
+      integer :: ikut_flag
+      double precision :: qiw(json)
+      integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
+           radiative_zone_bounds(max_radiative_zones,2)
       type(star_info), intent(inout) :: s
 
 ! The run-card index is star%job%nk (legacy NK in /ZRAMP/), not an
@@ -165,7 +175,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
 ! fitting point: rebuild the envelope down to target_envelope_mass.
          if (new_atmosphere_fit_needed) then
             call rebuild_envelope(s, target_envelope_mass,s%xa,s%logRho,s%luminosity_lsun,s%logP,s%logR,s%log_mass,s%m,s%dm, &
-                            s%log_total_mass,s%logT,s%convective_flag,s%eta_squared,s%i_rot,s%j_rot,s%qiw,s%mean_radius, &
+                            s%log_total_mass,s%logT,s%convective_flag,s%eta_squared,s%i_rot,s%j_rot,qiw,s%mean_radius, &
                             s%kinetic_energy_rot,s%log_L,s%total_angular_momentum,s%total_rotational_ke,s%log_Teff,s%nz,s%recompute_envelope_triangle,ierr)
             if (ierr /= 0) return
 ! The rotational shape factors f_P and f_T (fp_rot, ft_rot) for the
@@ -180,7 +190,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
        s%dt = dabs(s%dt)
        s%dt_saved = s%dt
        disable_structure_dt_limits = .false.
-       call compute_timestep(s, s%dt,s%chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
+       call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
               s%h_shell_midpoint_zone,s%luminosity_breakdown,s%age_gyr,s%timestep_yr,s%job%nk,s%logP,s%logR,s%omega, &
               s%max_domega_frac,s%h_shell_zone_begin,s%log_Teff, disable_structure_dt_limits)
        if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
@@ -244,11 +254,11 @@ end subroutine update_output_flags_for_step
 ! on last_model_unit when the flag is set.
 subroutine reload_model_if_diverged
             if (s%model_diverged_flag) then
-             call read_starting_model(s, s%timestep_yr, s%dt, s%chosen_dt, &
-                  s%triangle_orientation, s%ikut_flag, s%stored_vertex_index, &
+             call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, &
+                  s%triangle_orientation, ikut_flag, s%stored_vertex_index, &
                   s%model_diverged_flag, s%recompute_envelope_triangle, s%job%nk, &
                   s%dlnrho_dlnp, s%dlnrho_dlnt, s%total_angular_momentum, &
-                  s%total_rotational_ke, s%convective_velocity, &
+                  s%total_rotational_ke, convective_velocity, &
                   s%job%mixture_weights, ierr)
              if (ierr /= 0) return
              call check_rotation_initialised(s, ierr)
@@ -292,7 +302,7 @@ subroutine advance_composition_and_age
 ! deliberately separate from these star copies.
                call advance_composition(s, s%dt, predictor_pass, &
                     s%core_cz_top_index, s%envelope_cz_bottom_index, &
-                    s%mixed_zone_bounds_no_overshoot, jerr)
+                    mixed_zone_bounds_no_overshoot, jerr)
                if (jerr /= 0) then
                ! Return the error to the caller.
                   ierr = jerr
@@ -548,8 +558,8 @@ subroutine burn_light_elements
 ! Only without rotation, or without rotational mixing.
             if (.not.s%job%rotation_active .or. .not.s%job%instability_transport_active) then
 ! The convection zones at the end of the step.
-               call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,s%radiative_zone_bounds,s%mixed_zone_bounds, &
-                            s%mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
+               call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,radiative_zone_bounds,s%mixed_zone_bounds, &
+                            mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
                if (ierr /= 0) return
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).

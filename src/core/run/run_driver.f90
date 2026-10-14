@@ -297,6 +297,10 @@ end subroutine end_of_card_calibration
 ! and the convection-zone edges; estimate the first timestep; and zero
 ! the entropy terms. Sets ierr on a configuration or model-read error.
 subroutine begin_kind_card
+! read_starting_model's and compute_timestep's outputs this caller
+! does not use
+      double precision :: chosen_dt, convective_velocity
+      integer :: ikut_flag
          star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
          star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
          star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
@@ -315,11 +319,11 @@ subroutine begin_kind_card
          star%total_rotational_ke = 0.0D0
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
-       call read_starting_model(star, star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
-            star%ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
+       call read_starting_model(star, star%timestep_yr, star%dt, chosen_dt, star%triangle_orientation, &
+            ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
             star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
             star%total_angular_momentum, star%total_rotational_ke, &
-            star%convective_velocity, star%job%mixture_weights, ierr)
+            convective_velocity, star%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the
@@ -371,7 +375,7 @@ subroutine begin_kind_card
               star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
 ! Estimate the first timestep of the card.
        disable_structure_dt_limits = .false.
-       call compute_timestep(star, star%dt,star%chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
+       call compute_timestep(star, star%dt,chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
             star%m,star%logT,star%xa,star%core_cz_top_index, &
             star%h_shell_midpoint_zone,star%luminosity_breakdown,star%age_gyr,star%timestep_yr,star%job%nk, &
             star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &

@@ -290,7 +290,6 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       eos_code = "    ? "
       hik_code = "  ? "
       alok_code = "  ? "
-      s%initial_composition_code = "AG93"
 
 ! Set Model2-specific flags false
       use_diffusion_y = .false.
@@ -508,6 +507,8 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
       use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, &
            i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
       implicit none
+! the model's initial-composition code, read and not used
+      character(len=4) :: composition_code
       type(star_info), intent(inout) :: s
 
       double precision, intent(out) :: mixing_length
@@ -548,7 +549,7 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
 ! is stored in the model (rotating or not?, extendec compotition, etc.)
       read(iread,30) core_cz_top_index,envelope_cz_bottom_index, &
            mixing_length,eos_code,atm_code,alok_code,hik_code, &
-           use_pure_z_table,s%initial_composition_code,use_extended_composition, &
+           use_pure_z_table,composition_code,use_extended_composition, &
            use_diffusion_y,use_diffusion_z,use_semiconvection,core_overshoot_active, &
            envelope_overshoot_active,lovstm,rotation_active, &
            instability_transport_active,use_wind_torque,disk_locking_active, &

@@ -96,8 +96,6 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       character(len=4) :: format_tag
       character(len=6) :: eos_code
       character(len=4) :: atm_code, alok_code, hik_code
-! The initial-composition code read with the model is kept in
-! star%initial_composition_code.
 ! Atomic weights of the surface-mixture elements, in ix_* slot order
 ! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He).
       double precision :: atomic_weight(n_mix_species)
@@ -949,6 +947,8 @@ end subroutine build_shell_masses
 ! inertia, and the totals of angular momentum and rotational kinetic
 ! energy, echoed beside the totals held on entry.
 subroutine initialize_rotation_state
+! di_domega of omega_from_j, which this caller does not use
+      double precision :: qiw(json)
       if (s%job%rotation_active) then
 ! Shape factors fp_rot and ft_rot, mean gravity and radius, and
 ! eta_squared, from omega.
@@ -958,7 +958,7 @@ subroutine initialize_rotation_state
        if (ierr /= 0) return
 ! Moment of inertia of each shell, i_rot (legacy HI).
        call zone_moments_of_inertia(s%eta_squared,s%logR,s%log_mass,s%dm,1,s%nz, &
-            s%omega,s%mean_radius,s%i_rot,s%qiw)
+            s%omega,s%mean_radius,s%i_rot,qiw)
 ! Per shell: angular momentum J_i = omega_i I_i, specific angular
 ! momentum j_rot = J_i/dm_i and kinetic energy (1/2) omega_i J_i;
 ! summed over the star.

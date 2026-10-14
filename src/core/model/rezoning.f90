@@ -63,8 +63,8 @@ contains
 !     mean_radius, nz, old_conv_vel, old_cp, old_eps_plus_neu_grav,
 !     old_eps_total, old_eta_squared, old_grada, old_gradr, old_gradT,
 !     old_hg, old_mean_radius, old_mu, old_omega, old_opacity, old_qdt,
-!     old_specific_angular_momentum, old_thdif, old_visc, omega, qiw,
-!     senv, surface_luminosity_lsun_start, xa, xa_start, xnew, znew
+!     old_specific_angular_momentum, old_thdif, old_visc, omega, senv,
+!     surface_luminosity_lsun_start, xa, xa_start, xnew, znew
 subroutine rezone(s, envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -917,6 +917,8 @@ end subroutine set_new_shell_masses
 ! the regions or the shape factors.
 subroutine respin_on_new_grid
       use math_lib
+! di_domega of omega_from_j, which this caller does not use
+      double precision :: qiw(json)
 ! First guess at the moments of inertia, I_i = (2/3) dm_i r_i^2
 ! (spherical shells).
        do i=1,s%nz
@@ -935,19 +937,19 @@ subroutine respin_on_new_grid
 ! 2025/09/03). It may be redundant, since the convection-zone rotation
 ! law (walpcz) runs in this version, but it is harmless.
        call zone_moments_of_inertia(s%eta_squared,s%logR,s%log_mass,s%dm,1,s%nz, &
-            s%omega,s%mean_radius,s%i_rot,s%qiw)
+            s%omega,s%mean_radius,s%i_rot,qiw)
 
 ! Omega from the specific angular momentum j (legacy HJM).
        call omega_from_j(s%logRho,s%j_rot,s%logR, &
             s%log_mass,s%dm,s%am_transport_convective_flag,s%nz, &
-            s%eta_squared,s%i_rot,s%omega,s%qiw,s%mean_radius,s%disk_gate_age_gyr)
+            s%eta_squared,s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
 ! The shape factors fp and ft, r0 and eta2 for this omega.
        call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
             s%eta_squared,s%fp_rot,s%ft_rot,s%mean_gravity,s%mean_radius,ierr)
        if (ierr /= 0) return
 ! The moments of inertia for the new shape.
        call zone_moments_of_inertia(s%eta_squared,s%logR,s%log_mass,s%dm,1,s%nz, &
-            s%omega,s%mean_radius,s%i_rot,s%qiw)
+            s%omega,s%mean_radius,s%i_rot,qiw)
 end subroutine respin_on_new_grid
 
 ! ---------------------------------------------------------------

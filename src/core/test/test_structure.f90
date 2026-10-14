@@ -82,6 +82,9 @@ contains
 ! The deck's controls, tables, network and convection settings, and its
 ! first card's starting model, as run_yrec sets them up.
 subroutine load_deck_model(path)
+! read_starting_model's outputs the test does not use
+      double precision :: chosen_dt, convective_velocity
+      integer :: ikut_flag
       character(len=*), intent(in) :: path
       ierr = 0
       control_nml_override = path
@@ -101,11 +104,11 @@ subroutine load_deck_model(path)
       star%job%requested_envelope_mass = star%job%senv0_array(1)
       star%total_angular_momentum = 0.0d0
       star%total_rotational_ke = 0.0d0
-      call read_starting_model(star, star%timestep_yr, star%dt, star%chosen_dt, star%triangle_orientation, &
-           star%ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
+      call read_starting_model(star, star%timestep_yr, star%dt, chosen_dt, star%triangle_orientation, &
+           ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
            star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
            star%total_angular_momentum, star%total_rotational_ke, &
-           star%convective_velocity, star%job%mixture_weights, ierr)
+           convective_velocity, star%job%mixture_weights, ierr)
       if (ierr /= 0) call die('read_starting_model')
 end subroutine load_deck_model
 

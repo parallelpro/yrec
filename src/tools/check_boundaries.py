@@ -264,7 +264,7 @@ def check_controls_free(src_root):
 # in the same commit.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (124, 2),
+    "core": (120, 2),
     # io (2026-10): the readers and writers take the star as an argument s
     "io": (0, 0),
     # rotation (2026-10): the drivers take the star as an argument s; the

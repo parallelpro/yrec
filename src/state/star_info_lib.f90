@@ -183,7 +183,7 @@ module star_info_lib
             double precision :: omega(json), i_rot(json), &
                  j_rot(json), kinetic_energy_rot(json), &
                  kinetic_energy_rot_old(json), mean_radius(json), &
-                 eta_squared(json), qiw(json), mean_gravity(json)
+                 eta_squared(json), mean_gravity(json)
 ! omega_mid: omega (rad/s) of the latest rotation sub-step's model, the
 ! structure interpolated to the sub-step's end (rot_scr's *_mid model).
 ! mid_timestep_model, secular_transport and the wind write it;
@@ -209,8 +209,8 @@ module star_info_lib
 ! converted routine receives exactly main's storage for these at every
 ! call site. NOT absorbed, still arguments, because call sites pass
 ! separate storage: composition_step's core_cz_edge/envelope_cz_edge
-! (its re-runs at levels >= 3 pass their own locals) and its
-! mixed_zone_bounds_no_overshoot (same reason, see step 3).
+! (its re-runs at levels >= 3 pass their own locals) and the
+! mixed_zone_bounds_no_overshoot it returns (the step driver's local).
             integer :: nz, model_number
 ! Newton iterations the last converged model took (set by
 ! henyey_iterate at convergence; shown in the run-log model line).
@@ -308,9 +308,7 @@ module star_info_lib
             double precision :: disk_gate_age_gyr, pulsation_mass_msun
             integer :: iov1, iov2
 ! mixed/radiative zone bookkeeping
-            integer :: mixed_zone_bounds(max_convective_zones,2), &
-                 mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
-                 radiative_zone_bounds(max_radiative_zones,2)
+            integer :: mixed_zone_bounds(max_convective_zones,2)
 ! 2026 (phase four, step 4): the former-COMMON model-state modules,
 ! folded in as components -- their types stay defined in their own
 ! state/ files, the single instances now live here. prev is the
@@ -471,18 +469,13 @@ module star_info_lib
                 old_eps_total(json), old_gradr(json), &
                 old_eps_plus_neu_grav(json)
 ! former common/i2o/
-           character(len=4) :: initial_composition_code
 ! -- former evolve_state (evo (driver-step state)) --
             logical :: has_h_shell, model_diverged_flag, punch_pending_flag, &
                  recompute_envelope_triangle, reset_triangle
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
-                 h_shell_zone_begin, ikut_flag, stored_vertex_index
-! chosen_dt (former DELTSH): the timestep compute_timestep adopted
-! (the minimum over all its limiters, seconds); read_starting_model
-! reuses the slot transiently as |delta_time|. Nothing reads it as
-! an H-burning governor.
-            double precision :: convective_velocity, dt, &
-                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, chosen_dt, &
+                 h_shell_zone_begin, stored_vertex_index
+            double precision :: dt, &
+                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, &
                  max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, triangle_orientation
 ! -- the extended-model pulse physics arrays (former pulse%) --

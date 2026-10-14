@@ -47,6 +47,9 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       use convection_geometry, only: pressure_scale_height
       use math_lib
       implicit none
+! di_domega of omega_from_j and enforce_rotation_profile, which the
+! step does not use
+      double precision :: qiw(json)
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: full_timestep
@@ -120,7 +123,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! zones as solid bodies.
       call omega_from_j(s%logRho,s%j_rot,s%logR,s%log_mass, &
            s%dm,am_transport_convective_flag,s%nz,s%eta_squared, &
-           s%i_rot,s%omega,s%qiw,s%mean_radius,s%disk_gate_age_gyr)
+           s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
       if (.not. full_timestep.gt.0.0D0) return
       call count_substeps()
 ! The quantities both kinds of instability need: the temperature
@@ -192,7 +195,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       end do
       call omega_from_j(s%logRho,s%j_rot,s%logR,s%log_mass, &
            s%dm,am_transport_convective_flag,s%nz,s%eta_squared, &
-           s%i_rot,s%omega,s%qiw,s%mean_radius,s%disk_gate_age_gyr)
+           s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
 
 contains
 
@@ -210,7 +213,7 @@ subroutine spin_down_without_transport()
       endif
       call omega_from_j(s%logRho,s%j_rot,s%logR, &
            s%log_mass,s%dm,am_transport_convective_flag,s%nz, &
-           s%eta_squared,s%i_rot,s%omega,s%qiw,s%mean_radius,s%disk_gate_age_gyr)
+           s%eta_squared,s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
       if(.not.disk_lock_engaged .and. rotation_settings%use_wind_torque .and. s%convective_flag(s%nz)) then
 ! the moment of inertia of the surface convection zone (the whole star
 ! under solid-body rotation), and the masses at its bottom and top
@@ -243,7 +246,7 @@ subroutine spin_down_without_transport()
          iend = s%nz
          call enforce_rotation_profile(s%logRho,s%j_rot,s%logR, &
               s%log_mass,s%dm,envelope_boundary_zone,iend,s%eta_squared, &
-              s%i_rot,s%omega,s%qiw,s%mean_radius,s%nz,s%disk_gate_age_gyr)
+              s%i_rot,s%omega,qiw,s%mean_radius,s%nz,s%disk_gate_age_gyr)
       endif
 end subroutine spin_down_without_transport
 

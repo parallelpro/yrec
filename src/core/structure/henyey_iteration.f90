@@ -34,7 +34,7 @@ module henyey_iteration
       use structure_equations, only: compute_henyey_coefficients
       use omega_profile, only: omega_from_j
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: star_info
+      use star_info_lib, only: star_info, json
       implicit none
       private
       public :: refresh_surface_bc, henyey_iterate
@@ -423,10 +423,12 @@ end subroutine apply_henyey_corrections
 ! rotational kinetic energy of the corrected structure,
 ! E_rot = 0.5 omega j dm per shell.
 subroutine update_rotation_after_corrections()
+! di_domega of omega_from_j, which this caller does not use
+      double precision :: qiw(json)
          if (s%job%rotation_active) then
             call omega_from_j(s%logRho,s%j_rot,s%logR, &
                  s%log_mass,s%dm,s%am_transport_convective_flag, &
-                 s%nz,s%eta_squared,s%i_rot,s%omega,s%qiw, &
+                 s%nz,s%eta_squared,s%i_rot,s%omega,qiw, &
                  s%mean_radius,s%disk_gate_age_gyr)
             call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
                  s%eta_squared,s%fp_rot, &
