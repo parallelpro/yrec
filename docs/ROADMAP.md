@@ -1827,6 +1827,14 @@ the full battery runs on the series' end.
      a clean error; stop with a message when the fitting points are
      near-collinear. Keep the arithmetic (pivoting would move every deck
      at round-off). Byte-identical for valid decks.
+     **DONE** (d2ff6886): the walk gives up after 1000 reflections (the
+     battery's decks need at most 11), the fit refuses a relative pivot
+     below 1e-10 (the decks never go below 6e-3, on the 0.05 and 0.1
+     Msun Allard decks), and the read refuses non-positive sizes. The
+     model-read orientation check was left out: with the walk capped, a
+     wrong orientation ends in the same clean error, and a stored
+     triangle that the run discards would have been refused for
+     nothing.
   2. **Rotation** (rotation/seculr): cz_moment_of_inertia is intent(out)
      but read before it is set (works because the caller set it); the
      dynamical-shear limit wmin in compute_shear_velocities comes from
@@ -1836,6 +1844,7 @@ the full battery runs on the series' end.
      Proposed: intent(inout) (byte-identical); wmin from the same
      gradient as the trigger and the branch from omega(i-1), after
      measuring which decks reach that branch; one measured commit.
+     **intent(inout) DONE** (2d62df76); the wmin fix remains.
   3. **Rezone** (core/model/rezoning.f90): the deuterium gate reads
      xa(h2, nz) with the pre-rezone nz; when it is false,
      deuterium_burning_rate_start stays in old-mesh order (read by
@@ -1864,7 +1873,10 @@ the full battery runs on the series' end.
      luminosities, pulse_dlnrho_dlnp -- and the always-zero MLT pulse
      arrays are removed, the author's decision of 2026-10-13); check whether
      kap_init uses the unset envelope X (likely overwritten before use)
-     and set it first if it does.
+     and set it first if it does. **Dead stores DONE** (c4f359c8,
+     452101af), except dlnrho_dlnp and dlnrho_dlnt, which reach the next
+     coefficient pass through an intent(out) dummy; the envelope X,
+     envelope_radius and the ';' split remain.
   7. **Out-of-range read** (core/diagnostics/stitched_model.f90):
      atmosphere_radius_cm reads env_log10_radius(0) when the starting
      model's stitched model is built before any envelope is stored (it
@@ -1917,10 +1929,10 @@ deck stays byte-identical, nothing in it outlives a step.
      its 20 Newton corrections except in the transport's loosened
      iterations. Proposed: a real tolerance (e.g. 1e-12), measured; it
      moves omega at round-off and saves time.
-  2. **check_angular_momentum loosens rotation_settings%shape_tolerance**
-     by writing the settings record and restoring it afterwards.
-     Proposed: pass it to the shape as inertia_tolerance is passed
-     (byte-identical).
+  2. **DONE (2d62df76): check_angular_momentum loosened
+     rotation_settings%shape_tolerance** by writing the settings record
+     and restoring it; the shape takes it as an argument now, as
+     inertia_tolerance is passed.
   3. **Core writes rotation's scratch within a step**: the rezone stores
      the previous model's physics on the new mesh in rot_scr%old_* (and
      del_grad_diff_interface), and convection_geometry reads mid_scr's
