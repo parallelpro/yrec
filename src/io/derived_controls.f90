@@ -21,7 +21,8 @@ module derived_controls
 contains
 
 ! ---------------------------------------------------------------
-! ierr = 1: semiconvection and overshoot are both on.
+! ierr = 1: semiconvection and overshoot are both on, or the envelope
+! triangle's size is not positive.
 subroutine derive_controls(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
@@ -39,6 +40,16 @@ subroutine derive_controls(s, ierr)
             ierr = 1
             return
          end if
+      end if
+! The envelope triangle needs a positive size: with zero area its walk
+! never contains the model (surface_boundary).
+      if (tri_delta_teffl <= 0.0d0 .or. tri_delta_logl <= 0.0d0) then
+         write(terminal_unit,3) tri_delta_teffl, tri_delta_logl
+         write(run_log_unit,3) tri_delta_teffl, tri_delta_logl
+      3  format(1x,'ERROR: the envelope triangle''s size must be positive:', &
+           &  ' tri_delta_teffl (TRIDT) =',1pe11.3,', tri_delta_logl (TRIDL) =',1pe11.3)
+         ierr = 1
+         return
       end if
       s%tenv = 0.5d0*(tenv0 + tenv1)
       if (rotation_active) call derive_rotation_controls

@@ -13,14 +13,14 @@
 !               map (relative, 1e-10). A plane also passes through
 !               arbitrary values at the vertices.
 !   degenerate  the fit when the vertices' (log P, log T) are collinear,
-!               and when T_2 = T_1 for a triangle that is not: nothing
-!               checks the denominators, and all nine coefficients come
-!               back infinite or NaN. A zero-area triangle in
-!               (log Teff, log L) contains the points on its line, and
-!               no reflection brings a point off the line inside; nor
-!               any point inside a triangle whose orientation is the
-!               opposite of its vertices' (a negative tri_delta_teffl):
-!               there reflect_until_inside would not return.
+!               and when T_2 = T_1 for a triangle that is not: a pivot
+!               is zero, and the fit returns ierr = 1. A zero-area
+!               triangle in (log Teff, log L) contains the points on its
+!               line, and no reflection brings a point off the line
+!               inside; nor any point inside a triangle whose
+!               orientation is the opposite of its vertices' (a
+!               negative tri_delta_teffl): reflect_until_inside gives
+!               up after max_reflections with ierr = 1.
 !   inside      vertex_to_reflect for points inside, beyond each edge,
 !               beyond two edges, on each edge, at each vertex, and
 !               just beyond an edge (with and without a tolerance), for
@@ -51,7 +51,7 @@ program test_triangle_fit
       use, intrinsic :: ieee_exceptions, only: ieee_set_flag, ieee_all
       use triangle_fit, only: start_triangle, edge_side, &
            vertex_to_reflect, reflect_vertex, reflect_until_inside, &
-           fit_triangle_coefficients
+           fit_triangle_coefficients, max_reflections
       implicit none
 
 ! The default triangle size (tri_delta_teffl, tri_delta_logl) and the
@@ -132,6 +132,7 @@ subroutine fit_section()
            r_b(3) = [11.95d0, -1.6d0, 0.47d0], &
            r_c(3) = [10.9d0, 0.7d0, -0.25d0]
       real(dp) :: p(3), t(3), r(3), c(9), resid
+      integer :: ierr
       integer :: k
 
       write(*,'(a)') '# fit: planes through linear functions of (log Teff, log L)'
@@ -152,7 +153,7 @@ subroutine fit_section()
          t(k) = linear(t_a, vt(k), vl(k))
       end do
       r = [10.91d0, 10.87d0, 10.95d0]
-      call fit_triangle_coefficients(p, t, r, vl, vt, c)
+      call fit_triangle_coefficients(p, t, r, vl, vt, c, ierr)
       resid = 0.0d0
       do k = 1,3
          resid = max(resid, abs(c(1)*p(k) + c(2)*t(k) + c(3) - r(k)) &
@@ -176,6 +177,7 @@ subroutine fit_case(name, vt, vl, pa, ta, ra)
            0.45d0, 0.45d0, 0.1d0], [3,4])
       real(dp) :: p(3), t(3), r(3), c(9), x, y, px, tx
       real(dp) :: res_vtx(3), res_int(3), exact(9), det, slope_err
+      integer :: ierr
       integer :: k, m, j
 
       do k = 1,3
@@ -183,7 +185,7 @@ subroutine fit_case(name, vt, vl, pa, ta, ra)
          t(k) = linear(ta, vt(k), vl(k))
          r(k) = linear(ra, vt(k), vl(k))
       end do
-      call fit_triangle_coefficients(p, t, r, vl, vt, c)
+      call fit_triangle_coefficients(p, t, r, vl, vt, c, ierr)
       res_vtx = 0.0d0
       do k = 1,3
          call add_residuals(c, p(k), t(k), r(k), vl(k), vt(k), res_vtx)
@@ -249,8 +251,8 @@ end subroutine add_residuals
 ! ===============================================================
 subroutine degenerate_section()
       real(dp) :: vt(3), vl(3), orientation, c(9), p(3), t(3), r(3), s
-      integer :: n_steps
-      logical :: inside
+      integer :: n_steps, n_reflections, ierr
+      logical :: inside, reflected(3)
 
       write(*,'(a)') '# degenerate: collinear fitting points, a zero-area triangle'
       call start_triangle(3.7617d0, 0.0d0, d_teff, d_logl, vt, vl, orientation)
@@ -258,18 +260,16 @@ subroutine degenerate_section()
 ! Collinear: log T = 6 + (log P - 13.5)/2 at all three, exactly.
       p = [13.5d0, 13.75d0, 14.0d0]
       t = [6.0d0, 6.125d0, 6.25d0]
-      call fit_triangle_coefficients(p, t, r, vl, vt, c)
-      call check('collinear (log P, log T): non-finite coefficients', &
-           real(count(.not.ieee_is_finite(c)), dp), &
-           count(.not.ieee_is_finite(c)) == 9)
+      call fit_triangle_coefficients(p, t, r, vl, vt, c, ierr)
+      call check('collinear (log P, log T): the fit refuses (ierr)', &
+           real(ierr, dp), ierr == 1)
 ! Not collinear, but T_2 = T_1: the plane exists, the elimination's
 ! first pivot is zero.
       p = [13.5d0, 13.75d0, 13.5d0]
       t = [6.0d0, 6.0d0, 6.25d0]
-      call fit_triangle_coefficients(p, t, r, vl, vt, c)
-      call check('T_2 = T_1, plane exists: non-finite coefficients', &
-           real(count(.not.ieee_is_finite(c)), dp), &
-           count(.not.ieee_is_finite(c)) == 9)
+      call fit_triangle_coefficients(p, t, r, vl, vt, c, ierr)
+      call check('T_2 = T_1, plane exists: the fit refuses (ierr)', &
+           real(ierr, dp), ierr == 1)
       call ieee_set_flag(ieee_all, .false.)
 ! A zero-area triangle: tri_delta_logl = 0 puts the three vertices on
 ! the line log L = 0.
@@ -285,6 +285,10 @@ subroutine degenerate_section()
            inside, n_steps)
       call check('zero area: a point off its line, reflections tried', &
            real(n_steps, dp), .not.inside)
+      call reflect_until_inside(vt, vl, orientation, 3.7617d0, 0.01d0, 0.0d0, &
+           reflected, n_reflections, ierr)
+      call check('zero area: the walk gives up (ierr) after max_reflections', &
+           real(n_reflections, dp), ierr == 1 .and. n_reflections == max_reflections)
 ! A negative tri_delta_teffl: the start triangle runs clockwise but its
 ! orientation is +1, so the three sides sum to minus twice the area and
 ! one is always negative: not even the triangle's own centre is inside.
@@ -293,6 +297,11 @@ subroutine degenerate_section()
            inside, n_steps)
       call check('orientation against the vertices: reflections tried', &
            real(n_steps, dp), .not.inside)
+      call start_triangle(3.7617d0, 0.0d0, -d_teff, d_logl, vt, vl, orientation)
+      call reflect_until_inside(vt, vl, orientation, 3.7617d0, -0.01d0, 0.0d0, &
+           reflected, n_reflections, ierr)
+      call check('orientation against the vertices: the walk gives up (ierr)', &
+           real(n_reflections, dp), ierr == 1 .and. n_reflections == max_reflections)
 end subroutine degenerate_section
 
 ! ===============================================================
@@ -517,7 +526,7 @@ subroutine checked_walk(vt, vl, orientation, x, y, reflected, &
       integer, intent(out) :: n_reflections
       real(dp) :: bt(3), bl(3), bo
       logical :: ended
-      integer :: n_steps
+      integer :: n_steps, ierr
       bt = vt
       bl = vl
       bo = orientation
@@ -527,9 +536,9 @@ subroutine checked_walk(vt, vl, orientation, x, y, reflected, &
       same = .false.
       if (.not.ended) return
       call reflect_until_inside(vt, vl, orientation, x, y, 0.0d0, &
-           reflected, n_reflections)
+           reflected, n_reflections, ierr)
       same = all(vt == bt) .and. all(vl == bl) .and. orientation == bo &
-           .and. n_reflections == n_steps
+           .and. n_reflections == n_steps .and. ierr == 0
 end subroutine checked_walk
 
 ! After a walk to (x, y): it ended as bounded_walk's did (same), the

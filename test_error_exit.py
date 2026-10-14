@@ -174,3 +174,30 @@ def test_old_group_names_refused(tmp_path):
                          capture_output=True, text=True)
     assert fix.returncode == 0, fix.stderr
     assert inlist.read_text() == current
+
+
+def test_nonpositive_triangle_size_refused(tmp_path):
+    """A zero envelope-triangle size (TRIDT = 0) once made the
+    triangle's reflection walk loop forever; the controls read now
+    refuses it with exit 1 and a message naming the control."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    nml2 = tmp_path / NML2
+    text, n = re.subn(r"(?im)^(\s*TRIDT\s*=\s*)[-+.0-9dDeE]+", r"\g<1>0.0", nml2.read_text())
+    assert n == 1, "expected one TRIDT in the solar deck"
+    nml2.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ)
+    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_START"] = str(REPO / "startmodels")
+    result = subprocess.run(
+        [str(YREC), NML1, NML2], cwd=tmp_path,
+        env=env, capture_output=True, text=True, timeout=120,
+    )
+    assert result.returncode == 1, (
+        f"TRIDT = 0 must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}"
+    )
+    assert "envelope triangle's size must be positive" in result.stdout, result.stdout[-300:]

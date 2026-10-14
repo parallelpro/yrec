@@ -17,7 +17,9 @@
 !   fit_triangle_coefficients  log R, log L and log Teff as planes in
 !                              the fitting point's (log P, log T)
 ! They take what they read as arguments, return what they compute in
-! arguments, and keep nothing between calls.
+! arguments, and keep nothing between calls. The walk and the fit
+! return ierr = 1 rather than looping forever or returning infinite
+! coefficients (max_reflections, min_relative_pivot).
 !
 ! The vertices are vtx_log_teff(k), vtx_log_l(k), k = 1, 2, 3, and
 ! orientation is +1 when 1 -> 2 -> 3 runs counterclockwise with
@@ -29,6 +31,16 @@ module triangle_fit
       private
       public :: start_triangle, edge_side, vertex_to_reflect, &
            reflect_vertex, reflect_until_inside, fit_triangle_coefficients
+
+! The longest walk reflect_until_inside takes before it gives up: a
+! valid run needs at most about a dozen reflections (the decks of the
+! test battery, 2026-10).
+      integer, parameter, public :: max_reflections = 1000
+! The smallest pivot fit_triangle_coefficients accepts, relative to the
+! differences it divides: below it the fitting points are collinear in
+! (log P, log T) for all practical purposes (the decks of the test
+! battery never go below 6e-3).
+      real(dp), parameter, public :: min_relative_pivot = 1.0d-10
 
 contains
 
@@ -135,23 +147,31 @@ end subroutine reflect_vertex
 ! that moved, and n_reflections counts the reflections. The reflections
 ! tile the plane with copies of the triangle, and for a triangle of
 ! nonzero area whose orientation matches its vertices the walk ends in
-! the copy that contains the point. For a triangle of zero area it never
-! ends unless the point lies on the triangle's line (see edge_side).
+! the copy that contains the point. For a triangle of zero area, or one
+! whose orientation is the opposite of its vertices', it would never
+! end (see edge_side): after max_reflections the walk stops with
+! ierr = 1.
 pure subroutine reflect_until_inside(vtx_log_teff, vtx_log_l, &
-     orientation, log_teff, log_l, tolerance, reflected, n_reflections)
+     orientation, log_teff, log_l, tolerance, reflected, n_reflections, ierr)
       real(dp), intent(inout) :: vtx_log_teff(3), vtx_log_l(3)
       real(dp), intent(inout) :: orientation
       real(dp), intent(in) :: log_teff, log_l, tolerance
       logical, intent(out) :: reflected(3)
       integer, intent(out) :: n_reflections
+      integer, intent(out) :: ierr
       integer :: i1
 
+      ierr = 0
       reflected = .false.
       n_reflections = 0
       do
          i1 = vertex_to_reflect(vtx_log_teff, vtx_log_l, orientation, &
               log_teff, log_l, tolerance)
          if (i1 == 0) exit
+         if (n_reflections == max_reflections) then
+            ierr = 1
+            return
+         end if
          call reflect_vertex(vtx_log_teff, vtx_log_l, orientation, i1)
          reflected(i1) = .true.
          n_reflections = n_reflections + 1
@@ -174,20 +194,33 @@ end subroutine reflect_until_inside
 !   b = [(f_2 - f_1) - a (P_2 - P_1)]/(T_2 - T_1)
 !   c = f_1 - a P_1 - b T_1
 ! Gaussian elimination with T_2 - T_1 as the first pivot, without
-! pivoting, and no check of the two denominators: when the vertices'
-! (P_k, T_k) are collinear, or T_2 = T_1, a denominator is zero and
-! every coefficient comes back infinite or NaN (a build that traps
-! floating-point exceptions, make devel, stops there instead).
+! pivoting. When a pivot is below min_relative_pivot times the
+! differences it is formed from -- the vertices' (P_k, T_k) collinear,
+! or T_2 = T_1 -- the fit returns ierr = 1 and no coefficients, where
+! it once returned infinite or NaN ones.
 pure subroutine fit_triangle_coefficients(vtx_log_p, vtx_log_t, &
-     vtx_log_r, vtx_log_l, vtx_log_teff, coeffs)
+     vtx_log_r, vtx_log_l, vtx_log_teff, coeffs, ierr)
       real(dp), intent(in) :: vtx_log_p(3), vtx_log_t(3), vtx_log_r(3)
       real(dp), intent(in) :: vtx_log_l(3), vtx_log_teff(3)
       real(dp), intent(out) :: coeffs(9)
-      real(dp) :: temp, temp1, temp2
+      integer, intent(out) :: ierr
+      real(dp) :: temp, temp1, temp2, pivot2
 
+      ierr = 0
+      if (abs(vtx_log_t(2)-vtx_log_t(1)) <= min_relative_pivot* &
+           max(abs(vtx_log_t(3)-vtx_log_t(1)), abs(vtx_log_t(2)-vtx_log_t(1)))) then
+         ierr = 1
+         return
+      end if
       temp = 1.0d0/(vtx_log_t(2)-vtx_log_t(1))
       temp1 = (vtx_log_t(3)-vtx_log_t(1))*temp
-      temp2 = 1.0d0/(vtx_log_p(3)-vtx_log_p(1)-temp1*(vtx_log_p(2)-vtx_log_p(1)))
+      pivot2 = vtx_log_p(3)-vtx_log_p(1)-temp1*(vtx_log_p(2)-vtx_log_p(1))
+      if (abs(pivot2) <= min_relative_pivot* &
+           max(abs(vtx_log_p(3)-vtx_log_p(1)), abs(vtx_log_p(2)-vtx_log_p(1)))) then
+         ierr = 1
+         return
+      end if
+      temp2 = 1.0d0/pivot2
       coeffs(1) = (vtx_log_r(3)-vtx_log_r(1)-temp1*(vtx_log_r(2)-vtx_log_r(1)))*temp2
       coeffs(4) = (vtx_log_l(3)-vtx_log_l(1)-temp1*(vtx_log_l(2)-vtx_log_l(1)))*temp2
       coeffs(7) = (vtx_log_teff(3)-vtx_log_teff(1)-temp1*(vtx_log_teff(2)-vtx_log_teff(1)))*temp2

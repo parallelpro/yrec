@@ -22,12 +22,14 @@
   C (scalene): slopes against the inverse map                        5.0E-14  ok
   C: log R plane through arbitrary values at the vertices            5.9E-17  ok
 # degenerate: collinear fitting points, a zero-area triangle
-  collinear (log P, log T): non-finite coefficients                  9.0E+00  ok
-  T_2 = T_1, plane exists: non-finite coefficients                   9.0E+00  ok
+  collinear (log P, log T): the fit refuses (ierr)                   1.0E+00  ok
+  T_2 = T_1, plane exists: the fit refuses (ierr)                    1.0E+00  ok
   zero area: a point on its line is inside                           0.0E+00  ok
   zero area: so is one on the line far outside                       0.0E+00  ok
   zero area: a point off its line, reflections tried                 1.0E+03  ok
+  zero area: the walk gives up (ierr) after max_reflections          1.0E+03  ok
   orientation against the vertices: reflections tried                1.0E+03  ok
+  orientation against the vertices: the walk gives up (ierr)         1.0E+03  ok
 # inside: vertex_to_reflect (0 inside), value the smallest edge_side
   ccw, inside -> 0                                                   4.9E-04  ok
   ccw, beyond edge 2-3 -> 1                                         -4.9E-04  ok
