@@ -96,7 +96,11 @@ subroutine apply_secular_transport(s, sub_timestep, specific_angular_momentum_sa
       integer, intent(in) :: zone_min, zone_max
       logical, intent(out) :: redo_flag
       integer, intent(inout) :: cut_count
-      double precision, intent(out) :: cz_moment_of_inertia
+! cz_moment_of_inertia: on entry the caller's moment of inertia of the
+! surface convection zone (the whole star's, for a solid body), which
+! the solid-body spin-down uses as it is; set anew where the zone's is
+! summed here
+      double precision, intent(inout) :: cz_moment_of_inertia
       double precision, intent(in) :: cz_mass_bottom
       double precision, intent(in) :: cz_mass_top
       double precision, intent(inout) :: omega_surface

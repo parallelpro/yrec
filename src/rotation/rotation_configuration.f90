@@ -29,7 +29,8 @@ module rotation_configuration
 ! the shape of the rotating star (rotating_shape): the iteration limits
 ! on the equipotential radius (outer and inner loops) and the relative
 ! tolerance on r0^3 (the former job%acfpft; check_angular_momentum
-! tightens it for one call)
+! loosens it for one omega_from_j call through its shape_tolerance
+! argument)
          integer :: shape_outer_iterations = 0, shape_inner_iterations = 0
          real(dp) :: shape_tolerance = 0.0d0
 ! the rotation law in convection zones: omega ~ r^cz_rotation_law_exponent

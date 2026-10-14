@@ -106,7 +106,7 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       integer :: max_delta_j_zone_by_iter(16)
       integer :: zone_index, scan_index
       double precision :: delta_j_fraction
-      double precision :: inertia_tolerance, saved_acc_tolerance
+      double precision :: inertia_tolerance, shape_tolerance
       integer :: zone_bottom, zone_top
       double precision :: max_fractional_dj
       integer :: max_dj_zone
@@ -200,23 +200,23 @@ end subroutine measure_convergence
 ! on omega, so omega_from_j iterates. j itself is only good to about
 ! convergence_tolerance until the transport has converged, so before
 ! the last iteration and convergence the tolerances of that iteration
-! (inertia_tolerance, otherwise zero) and of the shape
-! (rotation_settings%shape_tolerance) are loosened to at least
-! convergence_tolerance/100 for this call; the shape's is then restored.
+! (inertia_tolerance, otherwise zero) and of the shape (shape_tolerance,
+! otherwise rotation_settings%shape_tolerance) are loosened to at least
+! convergence_tolerance/100 for this call.
 subroutine update_omega()
       inertia_tolerance = default_inertia_tolerance
-      saved_acc_tolerance = rotation_settings%shape_tolerance
+      shape_tolerance = rotation_settings%shape_tolerance
       if(iteration_number.lt.rotation_settings%max_diffusion_iters.and..not.converged_flag)then
          inertia_tolerance = &
               max(rotation_settings%convergence_tolerance*1.0d-2,default_inertia_tolerance)
-         rotation_settings%shape_tolerance = max(rotation_settings%convergence_tolerance*1.0d-2,saved_acc_tolerance)
+         shape_tolerance = max(rotation_settings%convergence_tolerance*1.0d-2, &
+              rotation_settings%shape_tolerance)
       endif
       call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
            shell_mass,am_transport_convective_flag,num_zones,eta_squared, &
            moment_of_inertia,omega,qiw,mean_radius, &
            s%disk_gate_age_gyr, &
-           inertia_tolerance=inertia_tolerance)
-      rotation_settings%shape_tolerance = saved_acc_tolerance
+           inertia_tolerance=inertia_tolerance, shape_tolerance=shape_tolerance)
 end subroutine update_omega
 
 ! ---------------------------------------------------------------

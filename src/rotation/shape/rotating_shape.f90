@@ -168,11 +168,12 @@ end subroutine rotation_shape_factors
 ! solved by Newton's method in r0^3. As eta_2 depends on r0, the two
 ! are iterated in turn, at most rotation_settings%shape_outer_iterations
 ! times, each r0 solve taking at most shape_inner_iterations Newton
-! steps; shape_tolerance is the relative tolerance on r0^3, and its cube
-! root that on r0 and eta_2. For zone_start > 1 the integration starts
+! steps; shape_tolerance (the optional argument, else
+! rotation_settings%shape_tolerance) is the relative tolerance on r0^3,
+! and its cube root that on r0 and eta_2. For zone_start > 1 the integration starts
 ! from zone zone_start - 1, using its eta2 and r0 from an earlier call.
 subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
-     omega, eta2, r0)
+     omega, eta2, r0, shape_tolerance)
       use composition_layout, only: json
       use physical_constants
       use math_lib
@@ -184,7 +185,9 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
       double precision, intent(in) :: omega(json)
       double precision, intent(inout) :: eta2(json)
       double precision, intent(out) :: r0(json)
+      double precision, intent(in), optional :: shape_tolerance
 ! --- locals ---
+      double precision :: tolerance
       double precision :: cg, c1, c2, c3, c4
       integer :: j_begin, i, j, k
       double precision :: rho_bar, r_phi, density, gm, r_phi_cubed, &
@@ -197,6 +200,8 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 ! G; c1 = 3/5 and c2 = 2/35 are the coefficients of the volume relation
 ! r_psi^3 = r0^3 (1 + c1 A^2 - c2 A^3), and c3 = 3 c1, c4 = 4 c2 those of
 ! its derivative with respect to r0^3, 1 + c3 A^2 - c4 A^3.
+      tolerance = rotation_settings%shape_tolerance
+      if (present(shape_tolerance)) tolerance = shape_tolerance
       cg = exp(ln10*cgl)
       c1 = 0.6d0
       c2 = 2.0d0/3.5d1
@@ -222,7 +227,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
             delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
             (1.0d0 + c3*a_param**2 - c4*a_param**3)
             r0_cubed = r0_cubed + delta_r0_cubed
-            if(dabs(delta_r0_cubed/r0_cubed).le.rotation_settings%shape_tolerance)exit
+            if(dabs(delta_r0_cubed/r0_cubed).le.tolerance)exit
          end do
          r0(1) = pow(r0_cubed, cc13)
          if (zone_end.eq.1) return
@@ -254,7 +259,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
          r_phi_cubed = r_phi**3
          r0_cubed = r_phi_cubed
          r0_estimate = r_phi
-         acc_tol = pow(rotation_settings%shape_tolerance, cc13)
+         acc_tol = pow(tolerance, cc13)
 ! Alternate between r0 at fixed eta_2 and eta_2 at the new r0.
          do k = 1,rotation_settings%shape_outer_iterations
             fact = 5.0d0*cc13*omega(i)**2/(gm*(2.0d0+eta2(i)))
@@ -267,7 +272,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
                delta_r0_cubed = (r_phi_cubed-r0_cubed*(1.0d0 + c1*a_param**2 - c2*a_param**3))/ &
                (1.0d0 + c3*a_param**2 - c4*a_param**3)
                r0_cubed = r0_cubed + delta_r0_cubed
-               if(dabs(delta_r0_cubed/r0_cubed).lt.rotation_settings%shape_tolerance)exit
+               if(dabs(delta_r0_cubed/r0_cubed).lt.tolerance)exit
             end do
             r0(i) = pow(r0_cubed, cc13)
             err = r0(i) - r0_estimate
