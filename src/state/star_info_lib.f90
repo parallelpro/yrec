@@ -3,9 +3,12 @@
 !----------------------------------------------------------------------
 ! Added 2026 (phase four, step 3 -- docs/ROADMAP.md "Phase four: the star
 ! layer"). The single owned representation of the stellar model,
-! adapted from MESA's star_info to YREC's single-star-per-process
-! design (phase-one decision: one module-level instance, no handles --
-! the same pattern as every state/ module).
+! adapted from MESA's star_info. This module declares the type only:
+! run_yrec (core/run/run_driver.f90) owns the run's star and every
+! routine that reads or writes it takes it as an argument s (the
+! module-level instance, star, was removed in 2026-10). A process can
+! therefore hold several stars; the C API and run_yrec still evolve one
+! per call.
 !
 ! Fields are exactly the model arrays that used to be declared in
 ! `program main` and threaded through 20-60-argument positional
@@ -17,13 +20,11 @@
 ! What is deliberately NOT here:
 !  * run control (timesteps, iteration counters, convergence
 !    tolerances): driver policy, stays in arguments by design.
-!  * physics-domain state: eos/kap/atm/nuclear keep their table state
-!    in their own modules and take per-point inputs as plain
-!    arguments. They still READ their configuration from star (about
-!    60 star%ctrl/star%job members plus the rate scales, envelope X/Z
-!    and use_two_z_tables) -- no per-zone model state. Passing each
-!    domain its own controls instead is planned
-!    (docs/TARGET_ARCHITECTURE.md section 4.6).
+!  * physics-domain state: eos/kap/atm/net/convection/rotation/element
+!    diffusion keep their table state in their own modules, take
+!    per-point inputs as plain arguments, and read their configuration
+!    from a settings record the star layer installs per run card
+!    (2026-10); none of them uses this module's type.
 ! (The model-level scalars and the former-COMMON state/ modules that
 ! earlier revisions of this note listed as pending have since been
 ! absorbed -- see the "model-level scalars" block below and the
@@ -515,11 +516,8 @@ module star_info_lib
             type(stitched_model_record) :: stitched
       end type star_info
 
-! the one star this process evolves (no handles -- see header)
-      type(star_info), public, save :: star
-
-
-! Module-level (deliberately OUTSIDE the star snapshot/reset):
+! Module-level (deliberately outside the star, which run_yrec builds
+! afresh for every run):
 ! evolve_step/output_diag reset flags (set by yrec_reset's
 ! prologue) and the libyrec namelist-path overrides.
       character(len=256), public, save :: control_nml_override = ' '

@@ -25,7 +25,7 @@
 ! and the mass-weighted change of each species over the star, all at
 ! full precision. No deck pins the original routines.
 program test_element_diffusion
-      use star_info_lib, only: star, json, i_h1, i_he4, i_metals, i_he3, &
+      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
            i_li7, i_be9
       use io_units, only: run_log_unit, terminal_unit
@@ -33,6 +33,9 @@ program test_element_diffusion
       use microphysics_settings, only: diffusion_settings_from_star
       use element_diffusion_scratch, only: diff_scr
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
       integer, parameter :: nz = 200
       double precision, parameter :: msun = 1.989d33, rsun = 6.9598d10, &
            year = 3.1558d7, cgs_g = 6.6726d-8, k_over_mu_mh = 1.3806d-16/(0.62d0*1.6605d-24)

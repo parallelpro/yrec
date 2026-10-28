@@ -41,13 +41,16 @@ program test_rotation
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: star, json
+      use star_info_lib, only: star_info, json
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
       use am_transport_coefficients, only: solve_angular_momentum_transport
       use stability_coefficients, only: rotation_stability_setup
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
       double precision, parameter :: msun = 1.989d33
       double precision :: j(json), omega, dt, domega_start, domega_end
       integer :: ierr, k

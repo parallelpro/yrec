@@ -18,10 +18,13 @@
 program test_kap
       use run_setup, only: set_up_constants_and_tables
       use io_units
-      use star_info_lib, only: star
+      use star_info_lib, only: star_info
       use kap_lib
       use opacity_tables
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
       type(kap_settings_t) :: settings
       integer :: gerr
 

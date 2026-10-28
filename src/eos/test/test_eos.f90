@@ -46,13 +46,16 @@
 program test_eos
       use run_setup, only: set_up_constants_and_tables
       use io_units
-      use star_info_lib, only: star
+      use star_info_lib, only: star_info
       use eos_lib
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
       use opal_eos, only: esac06
       use mhd_eos, only: interpolate_mhd_table
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
       type(eos_settings_t) :: settings
       integer :: gerr
 

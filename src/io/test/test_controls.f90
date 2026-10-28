@@ -14,11 +14,14 @@
 ! points it at a scratch directory). test_controls.py runs this on every
 ! deck in examples/ and testsuite/.
 program test_controls
-      use star_info_lib, only: star, control_nml_override, physics_nml_override
+      use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use integration_parameters, only: tolerance_fraction, max_stage_index, extrap_order
       use io_units, only: last_model_unit, run_log_unit, terminal_unit
       use controls_reader, only: read_controls
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
       character(len=256) :: deck1, deck2
       integer :: ierr, u, i1, i2, nargs
 

@@ -19,13 +19,16 @@
 ! semiconvection deck pins it.
 program test_convection
       use run_setup, only: set_up_constants_and_tables
-      use star_info_lib, only: star, json, max_convective_zones, max_radiative_zones
+      use star_info_lib, only: star_info, json, max_convective_zones, max_radiative_zones
       use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use convection_lib, only: convection_settings_t, set_convection_settings, &
            compute_temperature_gradients, find_convection_zones, homogenize_convection_zones
       use io_units, only: run_log_unit
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
 ! the settings the cases change, installed before each use
       type(convection_settings_t) :: cs
       integer :: ov_bottom, ov_top

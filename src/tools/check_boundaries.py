@@ -279,19 +279,21 @@ def check_controls_free(src_root):
 # The star layer's access to the star object (2026-10). Routines come in
 # three kinds, never mixed in one routine:
 #   orchestration (core's drivers, io's writers): reads and writes the
-#     star (star_info_lib's star, to become an argument s);
+#     star, which it takes as an argument s (run_yrec owns the run's
+#     star; star_info_lib declares no instance since 2026-10);
 #   kernels (the physics and numerics inside core and rotation): strict
 #     intent(in)/intent(out) arguments, never the star -- listed in
 #     STAR_BLIND_FILES above once extracted;
 #   domains (eos, kap, atm, net, convection, numerics): star-free
 #     (STAR_FREE_DIRS).
 # STAR_ACCESS_BUDGET is a ratchet on the rest: per directory, the number
-# of star% references and of files that import the global star may not
-# grow. When a count drops, the check says so; lower the budget to match
-# in the same commit.
+# of star% references and of files that import a module-level star may
+# not grow. Every count reached zero in 2026-10 (the star is an argument
+# s everywhere), so the budget now keeps a global star from coming back.
 STAR_ACCESS_BUDGET = {
     # directory: (star% references, files importing the global star)
-    "core": (120, 2),
+    # core (2026-10): run_yrec owns the star; everything takes it as s
+    "core": (0, 0),
     # io (2026-10): the readers and writers take the star as an argument s
     "io": (0, 0),
     # rotation (2026-10): the drivers take the star as an argument s; the

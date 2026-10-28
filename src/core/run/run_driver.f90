@@ -31,9 +31,10 @@ contains
 !
 ! The blanket save below keeps the locals (the rescaling and
 ! calibration bookkeeping) static, as they were in the main program
-! this body came from. Repeated calls are legal because
-! yrec_run_prologue (core/run/yrec_reset.f90) first restores the star
-! state to its process-start values.
+! this body came from. The run's star, s, is one of them, and every
+! routine the run calls takes it as an argument. Repeated calls are legal
+! because yrec_run_prologue (core/run/yrec_reset.f90) first resets s to
+! its process-start state.
 !
 ! ierr: 0 on a normal end of job; positive on a configuration, read or
 ! numerical error (the command-line wrapper exits 1); negative on
@@ -46,7 +47,7 @@ subroutine run_yrec(ierr)
 
       use net_lib
       use burn_step, only: configure_network
-      use star_info_lib, only: star, i_h1, i_metals
+      use star_info_lib, only: star_info, i_h1, i_metals
       use yrec_output, only: output_run_header
       use io_units
       use model_files, only: write_mod_model
@@ -90,39 +91,42 @@ subroutine run_yrec(ierr)
       double precision :: log_r_rsun, current_zx
 
       integer, intent(out) :: ierr
+! The run's star (static with the other locals, allocated on the first
+! call); yrec_run_prologue resets it to its process-start state.
+      type(star_info), allocatable :: s
 ! Keep the locals static (see the header).
       save
       ierr = 0
 
 ! Restore the process-start state, so that a repeated call behaves like
 ! a fresh run (core/run/yrec_reset.f90).
-      call yrec_run_prologue
+      call yrec_run_prologue(s)
 
       call set_version_strings()
 
 ! punch_pending_flag (legacy LPUNCH) becomes true once a model has been
 ! computed.
-      star%punch_pending_flag = .false.
+      s%punch_pending_flag = .false.
 ! Read the controls into star%ctrl and star%job.
-      call read_controls(star, ierr)
+      call read_controls(s, ierr)
       if (ierr /= 0) return
 ! A second opacity-table set at a different Z is needed under the Z
 ! ramp or with Z diffusion; the kap table loaders read this flag from
 ! kap_init (called in prepare_run) on.
-      star%use_two_z_tables = star%ctrl%use_z_ramp .or. star%job%use_diffusion_z
-      call prepare_run(star, ierr)
+      s%use_two_z_tables = s%ctrl%use_z_ramp .or. s%job%use_diffusion_z
+      call prepare_run(s, ierr)
       if (ierr /= 0) return
 ! Warn (terminal only) about control combinations that are silently
 ! inert or cancel each other.
-      call warn_inconsistent_controls(star)
+      call warn_inconsistent_controls(s)
 
-      do monte_carlo_run_number = star%job%mc_run_start,star%job%mc_run_end
+      do monte_carlo_run_number = s%job%mc_run_start,s%job%mc_run_end
 ! Per-run setup: this run's Monte-Carlo parameters, then the network
 ! settings (which take the Monte-Carlo rate factors), then the
 ! calibration protocols.
-      call apply_monte_carlo_parameters(star, monte_carlo_run_number, &
+      call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)
-      call configure_network(star)
+      call configure_network(s)
       call begin_calibration
 
 ! Go through the kind cards in order. star%job%nk is the run list's
@@ -133,8 +137,8 @@ subroutine run_yrec(ierr)
 ! loop left it; write_run_summaries indexes from it (nk-2).
       call system_clock(clock_start, clock_rate)
       runs_complete = .false.
-      run_loop: do kind_card = 1, star%job%num_runs
-         star%job%nk = kind_card
+      run_loop: do kind_card = 1, s%job%num_runs
+         s%job%nk = kind_card
 ! Set up the card, from its initial composition to the first timestep
 ! estimate (begin_kind_card below); configuration and read errors
 ! return through ierr.
@@ -144,10 +148,10 @@ subroutine run_yrec(ierr)
 ! Evolve the card's model num_models(nk) times (legacy NMODLS). On a
 ! rescaling card, num_models is the number of times the rescaled model
 ! is relaxed.
-       do model_iteration = 1,star%job%num_models(star%job%nk)
+       do model_iteration = 1,s%job%num_models(s%job%nk)
 ! One model step per iteration (core/step/step_driver.f90; its header
 ! gives the step_status contract).
-       call evolve_step(star, model_iteration, step_status, ierr)
+       call evolve_step(s, model_iteration, step_status, ierr)
        if (ierr /= 0) return
        if (step_status == step_kind_card_done) exit
        if (step_status == step_leave_run_loop) cycle run_loop
@@ -189,17 +193,17 @@ subroutine run_yrec(ierr)
       end do run_loop
 ! The list ran out: leave nk past the last card, as the legacy DO loop
 ! did.
-      if (.not. runs_complete) star%job%nk = star%job%num_runs + 1
+      if (.not. runs_complete) s%job%nk = s%job%num_runs + 1
 
 ! End-of-run summary: why the run ended and the final model; the wall
 ! clock goes to the terminal only.
       call system_clock(clock_now)
-      call log_run_summary(star, dble(clock_now-clock_start)/dble(clock_rate))
+      call log_run_summary(s, dble(clock_now-clock_start)/dble(clock_rate))
 
 ! Monte-Carlo and solar-calibration end-of-run bookkeeping: rewind the
 ! output units and write the Monte-Carlo summary
 ! (core/run/monte_carlo.f90).
-      call write_run_summaries(star, monte_carlo_run_number, &
+      call write_run_summaries(s, monte_carlo_run_number, &
            convergence_iterations, log_r_rsun)
       end do
 
@@ -219,18 +223,18 @@ contains
 subroutine begin_calibration
 ! Automatic solar calibration (MHP 1/93). convergence_iterations counts
 ! the calibration cycles: it starts at 1, and is 0 without calibration.
-      if (star%ctrl%calibrate_solar_model) then
-         call setup_solar_calibration(star, age_scale_factor)
+      if (s%ctrl%calibrate_solar_model) then
+         call setup_solar_calibration(s, age_scale_factor)
          convergence_iterations = 1
-         saved_use_structure_dt_limits = star%job%use_structure_dt_limits   ! restored after each cycle
-         saved_atm_choice  = star%job%atm_choice    ! restored after each cycle
+         saved_use_structure_dt_limits = s%job%use_structure_dt_limits   ! restored after each cycle
+         saved_atm_choice  = s%job%atm_choice    ! restored after each cycle
       else
          convergence_iterations = 0
       endif
 ! Automatic calibration (DBG 12/94) of a star to a target L and a
 ! target Teff or radius.
-      if (star%ctrl%calibrate_star_flag) then
-         call setup_star_calibration(star)
+      if (s%ctrl%calibrate_star_flag) then
+         call setup_star_calibration(s)
       endif
 end subroutine begin_calibration
 
@@ -248,17 +252,17 @@ subroutine end_of_card_calibration(runs_complete)
 ! Solar calibration: after each completed triple, compare the model
 ! with the Sun. log_r_rsun = log(R/Rsun), with R from
 ! L = 4 pi R^2 sigma Teff^4.
-         if (star%ctrl%calibrate_solar_model) then
-            if (mod(star%job%nk,solar_calib_cards_per_cycle).eq.0) then
-               log_r_rsun = log10_radius_from_l_teff(star%log_L,star%log_Teff, &
-                    star%log10_solar_luminosity)-star%log10_solar_radius
+         if (s%ctrl%calibrate_solar_model) then
+            if (mod(s%job%nk,solar_calib_cards_per_cycle).eq.0) then
+               log_r_rsun = log10_radius_from_l_teff(s%log_L,s%log_Teff, &
+                    s%log10_solar_luminosity)-s%log10_solar_radius
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
-               current_zx = star%xa(i_metals,star%nz)/star%xa(i_h1,star%nz)
-               call check_solar_calibration(star, star%log_L,log_r_rsun,star%job%nk,current_zx)
-               star%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! restore for the next cycle
-               star%job%atm_choice  = saved_atm_choice    ! restore for the next cycle
-               if (star%solar_calibration_converged) then
-                  star%termination_reason = 'solar calibration converged'
+               current_zx = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
+               call check_solar_calibration(s, s%log_L,log_r_rsun,s%job%nk,current_zx)
+               s%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! restore for the next cycle
+               s%job%atm_choice  = saved_atm_choice    ! restore for the next cycle
+               if (s%solar_calibration_converged) then
+                  s%termination_reason = 'solar calibration converged'
                   runs_complete = .true.
                   return
                else
@@ -267,7 +271,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! Give up when the counter reaches 15. It starts at 1, so this is
 ! after 14 unconverged triples.
                   if (convergence_iterations.ge.15) then
-                     star%termination_reason = &
+                     s%termination_reason = &
                           'solar calibration NOT converged after 14 cycles'
                      runs_complete = .true.
                      return
@@ -279,8 +283,8 @@ subroutine end_of_card_calibration(runs_complete)
 ! Star calibration: the final run to the interpolated age, armed by
 ! check_star_calibration, has finished on an even card, so no more runs
 ! are needed.
-         if (star%ctrl%calibrate_star_flag .and. star%star_found_flag.and.(mod(star%job%nk,star_calib_cards_per_cycle).eq.0)) then
-            star%termination_reason = 'star calibration converged'
+         if (s%ctrl%calibrate_star_flag .and. s%star_found_flag.and.(mod(s%job%nk,star_calib_cards_per_cycle).eq.0)) then
+            s%termination_reason = 'star calibration converged'
             runs_complete = .true.
             return
          end if
@@ -301,29 +305,29 @@ subroutine begin_kind_card
 ! does not use
       double precision :: chosen_dt, convective_velocity
       integer :: ikut_flag
-         star%job%initial_envelope_x = star%job%initial_x_array(star%job%nk)
-         star%job%initial_envelope_z = star%job%initial_z_array(star%job%nk)
-         star%mixing_length_alpha = star%job%mixing_length_array(star%job%nk)
+         s%job%initial_envelope_x = s%job%initial_x_array(s%job%nk)
+         s%job%initial_envelope_z = s%job%initial_z_array(s%job%nk)
+         s%mixing_length_alpha = s%job%mixing_length_array(s%job%nk)
 ! Pass the card's mixing length to the convection domain's settings,
-         call set_convection_settings(convection_settings_from_star(star))
+         call set_convection_settings(convection_settings_from_star(s))
 ! and refresh the rotation and element-diffusion domains' settings.
-         call set_rotation_settings(rotation_settings_from_star(star))
-         call set_diffusion_settings(diffusion_settings_from_star(star))
-       star%job%change_envelope_mass_flag = star%job%has_senv0_array(star%job%nk)
-       star%job%requested_envelope_mass = star%job%senv0_array(star%job%nk)
-       star%reset_triangle = .false.
-       star%model_diverged_flag = .false.
+         call set_rotation_settings(rotation_settings_from_star(s))
+         call set_diffusion_settings(diffusion_settings_from_star(s))
+       s%job%change_envelope_mass_flag = s%job%has_senv0_array(s%job%nk)
+       s%job%requested_envelope_mass = s%job%senv0_array(s%job%nk)
+       s%reset_triangle = .false.
+       s%model_diverged_flag = .false.
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
-         star%total_angular_momentum = 0.0D0
-         star%total_rotational_ke = 0.0D0
+         s%total_angular_momentum = 0.0D0
+         s%total_rotational_ke = 0.0D0
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
-       call read_starting_model(star, star%timestep_yr, star%dt, chosen_dt, star%triangle_orientation, &
-            ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
-            star%recompute_envelope_triangle, star%job%nk, star%dlnrho_dlnp, star%dlnrho_dlnt, &
-            star%total_angular_momentum, star%total_rotational_ke, &
-            convective_velocity, star%job%mixture_weights, ierr)
+       call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, s%triangle_orientation, &
+            ikut_flag, s%stored_vertex_index, s%model_diverged_flag, &
+            s%recompute_envelope_triangle, s%job%nk, s%dlnrho_dlnp, s%dlnrho_dlnt, &
+            s%total_angular_momentum, s%total_rotational_ke, &
+            convective_velocity, s%job%mixture_weights, ierr)
        if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the
@@ -333,62 +337,62 @@ subroutine begin_kind_card
 ! for continuing a run. This comes after read_starting_model so that
 ! the stored number still gates the evolved-model consistency warnings
 ! there.
-       if (star%job%first_call_flag(star%job%nk) .and. &
-           star%ctrl%set_initial_model_number > 0) then
-          star%model_number = star%ctrl%set_initial_model_number - 1
+       if (s%job%first_call_flag(s%job%nk) .and. &
+           s%ctrl%set_initial_model_number > 0) then
+          s%model_number = s%ctrl%set_initial_model_number - 1
        end if
 
-      call check_rotation_initialised(star, ierr)
+      call check_rotation_initialised(s, ierr)
       if (ierr /= 0) return
 ! Disarm the stop conditions whose thresholds the starting model has
 ! already passed (e.g. a central-abundance stop already below its
 ! target) (MHP 10/24).
-         call init_stop_conditions(star, star%job%nk)
+         call init_stop_conditions(s, s%job%nk)
 ! Optional diagnostic: the per-shell neutrino-flux table of each card's
 ! starting model (compute_neutrino_fluxes, legacy LNUTAB;
 ! core/diagnostics/neutrino_flux_output.f90).
-      if (star%ctrl%compute_neutrino_fluxes) then
-         call write_neutrino_flux_table(star)
+      if (s%ctrl%compute_neutrino_fluxes) then
+         call write_neutrino_flux_table(s)
       endif
 ! The stellar mass in solar units, for the pulsation output.
-         star%pulsation_mass_msun=star%star_mass
+         s%pulsation_mass_msun=s%star_mass
 ! Record the starting base of the surface convection zone and zero the
 ! convective turnover timescale (MHP 08/02).
-         star%jcz = star%envelope_cz_bottom_index
-         star%convective_turnover_timescale = 0.0D0
+         s%jcz = s%envelope_cz_bottom_index
+         s%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
-      call output_run_header(star, star%star_mass)
+      call output_run_header(s, s%star_mass)
 
-       if (star%ctrl%helium_flash_active) then
+       if (s%ctrl%helium_flash_active) then
 ! Through the helium flash a timestep cut reloads the model stored on
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.
-          if (star%punch_pending_flag) then
-             call write_mod_model(star, last_model_unit)
+          if (s%punch_pending_flag) then
+             call write_mod_model(s, last_model_unit)
           endif
        endif
 
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).
-         call locate_shell_boundaries(star, star%xa,star%luminosity_lsun,star%convective_flag,star%nz, &
-              star%core_cz_top_index,star%envelope_cz_bottom_index,star%h_shell_zone_begin, &
-              star%h_shell_end_index,star%h_shell_midpoint_zone,star%has_h_shell)
+         call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
+              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_zone_begin, &
+              s%h_shell_end_index,s%h_shell_midpoint_zone,s%has_h_shell)
 ! Estimate the first timestep of the card.
        disable_structure_dt_limits = .false.
-       call compute_timestep(star, star%dt,chosen_dt,star%nz,star%logRho,star%luminosity_lsun, &
-            star%m,star%logT,star%xa,star%core_cz_top_index, &
-            star%h_shell_midpoint_zone,star%luminosity_breakdown,star%age_gyr,star%timestep_yr,star%job%nk, &
-            star%logP,star%logR,star%omega,star%max_domega_frac,star%h_shell_zone_begin, &
-            star%log_Teff, disable_structure_dt_limits)
-       if (disable_structure_dt_limits) star%job%use_structure_dt_limits = .false.
+       call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun, &
+            s%m,s%logT,s%xa,s%core_cz_top_index, &
+            s%h_shell_midpoint_zone,s%luminosity_breakdown,s%age_gyr,s%timestep_yr,s%job%nk, &
+            s%logP,s%logR,s%omega,s%max_domega_frac,s%h_shell_zone_begin, &
+            s%log_Teff, disable_structure_dt_limits)
+       if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
 
-       star%dt_saved = star%dt
+       s%dt_saved = s%dt
 ! Zero the entropy terms.
-         do i = 1,star%nz
-            star%dlog_temperature_dt(i) = 0.0D0
-            star%dlog_pressure_dt(i) = 0.0D0
-            star%dln_luminosity_dt(i) = 0.0D0
-            star%dlog_radius_dt(i) = 0.0D0
+         do i = 1,s%nz
+            s%dlog_temperature_dt(i) = 0.0D0
+            s%dlog_pressure_dt(i) = 0.0D0
+            s%dln_luminosity_dt(i) = 0.0D0
+            s%dlog_radius_dt(i) = 0.0D0
          end do
 
 end subroutine begin_kind_card
@@ -398,7 +402,7 @@ end subroutine begin_kind_card
 ! converged model, whatever the terminal_interval phase.
 subroutine end_kind_card
       use run_log, only: log_final_model_line
-      call log_final_model_line(star)
+      call log_final_model_line(s)
 end subroutine end_kind_card
 
 end subroutine run_yrec

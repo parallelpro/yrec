@@ -32,7 +32,7 @@ program test_net
       use user_inputs, only: map_user_inputs
       use controls_buffer
       use io_units
-      use star_info_lib, only: star, i_h1, i_h2, i_he3, i_he4, i_metals, &
+      use star_info_lib, only: star_info, i_h1, i_h2, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18
       use net_lib, only: compute_network_rates, deuterium_rate, &
            num_rate_rows, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
@@ -51,6 +51,9 @@ program test_net
       use thermal_neutrinos, only: sneut, azbar
       use burn_step, only: configure_network
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
 
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, dummy_path

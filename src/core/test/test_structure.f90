@@ -44,11 +44,14 @@ program test_structure
       use rotation_configuration, only: set_rotation_settings
       use rotation_settings_setup, only: rotation_settings_from_star
       use starting_model, only: read_starting_model
-      use star_info_lib, only: star, control_nml_override, physics_nml_override
+      use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use eos_lib, only: eos_result
       implicit none
+! the test's star (star_info_lib declares no instance); static, as it
+! is too large for the stack
+      type(star_info), save :: star
 
       character(len=512) :: deck
       character(len=32) :: tol_arg
