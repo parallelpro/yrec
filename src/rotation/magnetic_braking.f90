@@ -20,6 +20,9 @@
 !     compute_solid_body_braking  dOmega at the start and end of a step
 !                                 for a solid-body star (formerly mcowind
 !                                 and the Kawaler spindown)
+!     outer_point_wind_terms      the wind's terms for the outermost point
+!                                 of a transport region's grid, from
+!                                 compute_solid_body_braking
 ! A step whose first-guess loss exceeds Omega is split into sub-steps;
 ! in each, Omega solves Omega = Omega_0 - dOmega(Omega_avg) by averaging
 ! the explicit and implicit solutions (MHP 12/91).
@@ -33,7 +36,7 @@ module magnetic_braking
       use math_lib
       implicit none
       private
-      public :: brake_convection_zone, compute_solid_body_braking
+      public :: brake_convection_zone, compute_solid_body_braking, outer_point_wind_terms
 
 ! The step's state the laws read (the caller fills it from the star):
 ! the convective turnover time tau_cz (s) at the start and the end of the
@@ -224,6 +227,57 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
          domega_end = 0.5d0*(domega_end+domega_end_this_iter)
       endif
 end subroutine compute_solid_body_braking
+
+! ---------------------------------------------------------------
+! outer_point_wind_terms
+! ---------------------------------------------------------------
+! The wind's terms for the outermost point of a transport region's grid,
+! the surface boundary condition of am_diffusion_coeffs. They act only
+! when the region reaches the surface convection zone
+! (reaches_surface_cz). Under disk locking (disk_locked) the point keeps
+! its omega (fix_omega_at_surface) and loses nothing. Otherwise, with
+! use_wind_torque, wind_loss_explicit and wind_loss_implicit are the
+! drops of the surface omega over the sub-step from the torque at its
+! start (at omega_start) and at its current end (at omega_now; from the
+! second iteration on averaged with wind_loss_implicit's value on entry),
+! for the point's moment of inertia outer_point_inertia
+! (compute_solid_body_braking); cz_moment_of_inertia and omega_surface
+! are then set to the inertia and the omega the torque used. Elsewhere
+! both terms are zero. conditions: the step's tau_cz, P_phot and elapsed
+! fraction. ierr from compute_solid_body_braking.
+subroutine outer_point_wind_terms(reaches_surface_cz, disk_locked, iteration, &
+     log_luminosity_lsun, sub_timestep, outer_point_inertia, omega_now, &
+     total_mass_msun, log_teff, omega_start, conditions, &
+     wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
+     cz_moment_of_inertia, omega_surface, ierr)
+      logical, intent(in) :: reaches_surface_cz, disk_locked
+      integer, intent(in) :: iteration
+      real(dp), intent(in) :: log_luminosity_lsun, sub_timestep, outer_point_inertia, &
+           omega_now, total_mass_msun, log_teff, omega_start
+      type(wind_conditions), intent(in) :: conditions
+      real(dp), intent(out) :: wind_loss_explicit
+      real(dp), intent(inout) :: wind_loss_implicit
+      logical, intent(out) :: fix_omega_at_surface
+      real(dp), intent(inout) :: cz_moment_of_inertia, omega_surface
+      integer, intent(out) :: ierr
+
+      ierr = 0
+      fix_omega_at_surface = .false.
+      if (reaches_surface_cz .and. disk_locked) then
+         wind_loss_explicit = 0.0d0
+         wind_loss_implicit = 0.0d0
+         fix_omega_at_surface = .true.
+      else if (reaches_surface_cz .and. rotation_settings%use_wind_torque) then
+         cz_moment_of_inertia = outer_point_inertia
+         omega_surface = omega_now
+         call compute_solid_body_braking(log_luminosity_lsun, sub_timestep, &
+              cz_moment_of_inertia, iteration, omega_surface, total_mass_msun, log_teff, &
+              omega_start, wind_loss_explicit, wind_loss_implicit, conditions, ierr)
+      else
+         wind_loss_explicit = 0.0d0
+         wind_loss_implicit = 0.0d0
+      end if
+end subroutine outer_point_wind_terms
 
 ! The Matt law's saturation (scaled by the Rossby number when asked:
 ! Omega_sat(Sun) tau_cz(Sun)/tau_cz, unless the B-field scaling moves

@@ -49,10 +49,9 @@ contains
 ! (stab), and store, clear, scale, average and sum the velocities
 ! (the arguments and circ_scr).
 subroutine circulation_velocities(stab, sub_physics, circ_scr, &
-     log_radius, radius, zone_min, zone_max, iteration, &
+     log_radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
-     domega_dlnr, dynamical_shear_omega_limit, total_velocity, &
-     total_luminosity, log_pressure, mechanism_velocity)
+     total_velocity, total_luminosity, log_pressure, mechanism_velocity)
       use rotation_scratch_lib, only: stability_state, &
            substep_physics_state, circulation_velocity_state
 
@@ -63,14 +62,12 @@ subroutine circulation_velocities(stab, sub_physics, circ_scr, &
       type(substep_physics_state), intent(in) :: sub_physics
       type(circulation_velocity_state), intent(inout) :: circ_scr
 
-      double precision, intent(in) :: log_radius(json), radius(json)
+      double precision, intent(in) :: log_radius(json)
       integer, intent(in) :: zone_min, zone_max, iteration
       logical, intent(in) :: am_transport_convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(in) :: omega(json)
       logical, intent(out) :: any_transport_active
-      double precision, intent(in) :: domega_dlnr(json), &
-           dynamical_shear_omega_limit(json)
       double precision, intent(out) :: total_velocity(json)
       double precision, intent(in) :: total_luminosity, log_pressure(json)
 ! Each mechanism's velocity (cm/s; transport_mechanism_layout's slots;
@@ -86,20 +83,21 @@ subroutine circulation_velocities(stab, sub_physics, circ_scr, &
       call clear_velocities()
       call interpolate_to_interfaces()
       call compute_eddington_sweet_velocity(zone_min, zone_max, am_transport_convective_flag, &
-           radius, omega, stab%omega_interface, stab%radius_interface, &
+           stab%radius, omega, stab%omega_interface, stab%radius_interface, &
            stab%local_gravity, stab%quadrupole_moment, stab%es_velocity_coeff1, &
            stab%es_velocity_coeff2, stab%es_shear_coeff, &
            stab%circulation_correction_ratio, mechanism_velocity(i_mech_eddington_sweet,:))
       call inhibit_by_mu_gradient(zone_min, zone_max, sub_physics%mu, log_pressure, &
            stab%del_grad_diff_interface, mechanism_velocity(i_mech_eddington_sweet,:))
       call compute_gsf_velocity(zone_min, zone_max, rotation_settings%gsf_inhibition_mode, &
-           am_transport_convective_flag, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
+           am_transport_convective_flag, stab%radius, omega, stab%domega_dlnr, &
+           stab%dynamical_shear_omega_limit, &
            sub_physics%mu, stab%mean_molecular_weight_interface, stab%omega_interface, &
            stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
            stab%gravity_factor_interface, stab%gsf_kippenhahn_coeff, &
            mechanism_velocity(i_mech_gsf,:))
       call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
-           log_radius, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
+           log_radius, stab%radius, omega, stab%domega_dlnr, stab%dynamical_shear_omega_limit, &
            sub_physics%mu, stab%mean_molecular_weight_interface, stab%radius_interface, &
            stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
            stab%mu_gradient_richardson_coeff, mechanism_velocity(i_mech_shear,:), &
@@ -532,15 +530,15 @@ end subroutine zahn_coupling_factor
 ! -rho g this is
 !   Phi'' + (2/r) Phi' - 6 Phi/r^2 - 4 pi G (d rho/dr/g) Phi
 !     = -(4/3) pi G (r^2/g) d(rho omega^2)/dr,
-! which the code differences on the zone radii into the tridiagonal
-! system
+! which the code differences on the zone radii (stab%radius) into the
+! tridiagonal system
 !   sub_diag Phi(i-1) + diag Phi(i) + super_diag Phi(i+1) = rhs.
 ! Boundary conditions: Phi = 0 at the centre; at the surface no mass
 ! lies outside, so Phi varies as 1/r^3 (the exterior l = 2 solution).
 ! gravity is copied to stab%local_gravity for circulation_velocities.
 ! ierr = 1 if a pivot of the elimination is zero.
 subroutine compute_quadrupole(stab, &
-     log_density, gravity, radius, angular_velocity, num_zones, ierr)
+     log_density, gravity, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib, only: stability_state
       use star_info_lib, only: json
       use physical_constants
@@ -549,7 +547,7 @@ subroutine compute_quadrupole(stab, &
       type(stability_state), intent(inout) :: stab
 
       double precision, intent(in) :: log_density(json), gravity(json), &
-           radius(json), angular_velocity(json)
+           angular_velocity(json)
       integer, intent(in) :: num_zones
       integer, intent(out) :: ierr
 
@@ -582,55 +580,55 @@ subroutine compute_quadrupole(stab, &
 ! Zone 1: the inner neighbour is the centre, r = 0, where Phi = 0, so it
 ! drops out (sub_diag(1) = 0). There d rho/dr = (rho(2) - rho(1))/dr and
 ! d(rho omega^2)/dr is taken as omega^2 d rho/dr.
-      dr = min(radius(1),radius(2)-radius(1))
-      weight_plus = dr/(radius(2)-radius(1))
-      weight_minus = dr/radius(1)
+      dr = min(stab%radius(1),stab%radius(2)-stab%radius(1))
+      weight_plus = dr/(stab%radius(2)-stab%radius(1))
+      weight_minus = dr/stab%radius(1)
       inv_dr2 = 1.0D0/dr**2
-      dr_inv_r = 1.0D0/dr/radius(1)
+      dr_inv_r = 1.0D0/dr/stab%radius(1)
       sub_diag(1) = 0.0D0
       drho_dr = (exp(ln10*log_density(2))-exp(ln10*log_density(1)))/dr
       diag(1) = -inv_dr2*(weight_plus+weight_minus)+dr_inv_r* &
-           (weight_minus-weight_plus)-6.0D0/radius(1)**2 &
+           (weight_minus-weight_plus)-6.0D0/stab%radius(1)**2 &
            -four_pi_g*drho_dr/gravity(1)
       super_diag(1) = weight_plus*(inv_dr2+dr_inv_r)
-      rhs(1) = -four_pi_g*drho_dr*(radius(1)*angular_velocity(1))**2/3.0D0/ &
+      rhs(1) = -four_pi_g*drho_dr*(stab%radius(1)*angular_velocity(1))**2/3.0D0/ &
            gravity(1)
 ! The interior zones. The Phi'' difference divides by min(dr_minus,
 ! dr_plus) rather than their mean, so it is exact only on a uniform grid.
       do zone_index = 2,num_zones-1
-         dr_plus = radius(zone_index+1)-radius(zone_index)
-         dr_minus = radius(zone_index)-radius(zone_index-1)
+         dr_plus = stab%radius(zone_index+1)-stab%radius(zone_index)
+         dr_minus = stab%radius(zone_index)-stab%radius(zone_index-1)
          dr = min(dr_minus,dr_plus)
          weight_plus = dr/dr_plus
          weight_minus = dr/dr_minus
          inv_dr2 = 1.0D0/dr**2
-         dr_inv_r = 1.0D0/dr/radius(zone_index)
+         dr_inv_r = 1.0D0/dr/stab%radius(zone_index)
          drho_dr = 0.5D0*(weight_plus*exp(ln10*log_density(zone_index+1))+ &
               (weight_minus-weight_plus)* &
               exp(ln10*log_density(zone_index))-weight_minus* &
               exp(ln10*log_density(zone_index-1)))/dr
          sub_diag(zone_index) = weight_minus*(inv_dr2-dr_inv_r)
          diag(zone_index) = -inv_dr2*(weight_plus+weight_minus)+dr_inv_r* &
-              (weight_minus-weight_plus)-6.0D0/radius(zone_index)**2 &
+              (weight_minus-weight_plus)-6.0D0/stab%radius(zone_index)**2 &
               -four_pi_g*drho_dr/gravity(zone_index)
          super_diag(zone_index) = weight_plus*(inv_dr2+dr_inv_r)
          d_density_omega2 = 0.5D0*(weight_plus*density_omega2(zone_index+1) + &
               (weight_minus-weight_plus)*density_omega2(zone_index) - &
               weight_minus*density_omega2(zone_index-1))/dr
          rhs(zone_index) = -d_density_omega2*four_pi_g* &
-              radius(zone_index)**2/3.0D0/gravity(zone_index)
+              stab%radius(zone_index)**2/3.0D0/gravity(zone_index)
       end do
 ! The surface: Phi' + 3 Phi/r = 0, and outside the star Phi(r) =
 ! Phi(R) (R/r)^3. Phi'' uses a ghost point at R + dr with that value;
 ! (2/r) Phi' - 6 Phi/r^2 becomes -12 Phi/r^2; the density and forcing
 ! terms are dropped (rhs = 0).
-      dr = radius(num_zones) - radius(num_zones-1)
-      radius_plus = radius(num_zones)+dr
-      outer_boundary_ratio = (radius(num_zones)/radius_plus)**3
+      dr = stab%radius(num_zones) - stab%radius(num_zones-1)
+      radius_plus = stab%radius(num_zones)+dr
+      outer_boundary_ratio = (stab%radius(num_zones)/radius_plus)**3
       inv_dr2 = 1.0D0/dr**2
       sub_diag(num_zones) = inv_dr2
       diag(num_zones) = (outer_boundary_ratio-2.0D0)*inv_dr2-1.2D1/ &
-           radius(num_zones)**2
+           stab%radius(num_zones)**2
       super_diag(num_zones) = 0.0D0
       rhs(num_zones) = 0.0D0
 ! Solve by forward elimination and back substitution (the Thomas

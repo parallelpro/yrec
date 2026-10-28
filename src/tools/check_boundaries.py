@@ -173,6 +173,9 @@ STAR_BLIND_FILES = [
     # the instability velocities and the transport-region scan (2026-10)
     "rotation/seculr/instability_velocities.f90",
     "rotation/seculr/transport_regions.f90",
+    # one region's angular momentum diffusion: the system, its solve and
+    # the map back (2026-10-28)
+    "rotation/seculr/region_transport.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their

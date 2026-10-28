@@ -16,7 +16,8 @@ diffusion's eigenmodes and its convergence to the continuum's decay (h^2
 in space, dt in time); the instability velocities' laws
 (omega^2 scalings, no shear term or GSF for a solid body, the mu
 factor's bounds, the shear's onset and stabilization); the region scan;
-the transport grid and the map back's conservation; the stability
+the transport grid and the map back's conservation; one region's
+transport and the wind's terms for it; the stability
 coefficients against their formulas; and check_angular_momentum's and
 check_composition's contracts. The binary exits nonzero when a
 check fails (see the header of src/rotation/test/test_rotation_kernels.f90).

@@ -9,10 +9,11 @@
 !                           omega (sub_model);
 !   substep_physics_state   the physics interpolated to it (sub_physics);
 !   stability_state         the structure at the interfaces, the
-!                           stability coefficients and the quadrupole
-!                           moment (rotation_stability_setup,
-!                           compute_quadrupole), which the velocities
-!                           read (stab);
+!                           zones' radii, the stability coefficients,
+!                           the quadrupole moment (rotation_stability_setup,
+!                           compute_quadrupole) and the iterate's
+!                           d omega/d ln r, which the velocities read
+!                           (stab);
 !   transport_grid_state    the equally spaced grid of the current
 !                           transport region (equal_spaced_grid; chi_grid);
 !   circulation_velocity_state  the mechanisms' velocities at the
@@ -107,7 +108,11 @@ module rotation_scratch_lib
 ! 4-point Lagrange weights the interpolation uses; the Eddington-Sweet
 ! and GSF (Kippenhahn) velocity coefficients and the mu-gradient
 ! (Richardson) term; the quadrupole moment and the local gravity (at the
-! zone centres) and the circulation's correction ratio.
+! zone centres) and the circulation's correction ratio. At the zones:
+! radius, the unlogged radius (cm). At the interfaces:
+! dynamical_shear_omega_limit, the |d omega/d ln r| at which Ri = 1/4
+! (rotation_stability_setup), and domega_dlnr, d omega/d ln r of the
+! current iterate's omega (secular_transport, each iteration).
       type :: stability_state
            double precision :: lagrange_interp_weights(4,json)
            double precision :: luminosity_interface(json), &
@@ -126,6 +131,8 @@ module rotation_scratch_lib
            double precision :: quadrupole_moment(json), &
                 local_gravity(json)
            double precision :: circulation_correction_ratio(json)
+           double precision :: radius(json), dynamical_shear_omega_limit(json), &
+                domega_dlnr(json)
       end type stability_state
 
 ! ---------------------------------------------------------------

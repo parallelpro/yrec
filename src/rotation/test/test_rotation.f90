@@ -472,14 +472,15 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       circ_scr%velocity_prev = 0.0d0
       star%vfc = 0.0d0
       call rotation_stability_setup(stab, sub_physics, &
-           log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n, &
-           radius, shear_limit)
+           log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n)
+      radius = stab%radius
+      shear_limit = stab%dynamical_shear_omega_limit
       do i = zmin, zmax
          log_rc = log10(stab%radius_interface(i))
          weight = 1.0d0/log(10.0d0)/(log_r(i) - log_rc) + 1.0d0/log(10.0d0)/(log_rc - log_r(i-1))
          dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
       end do
-      call compute_quadrupole(stab, log_rho, hg, radius, w, n, ierr)
+      call compute_quadrupole(stab, log_rho, hg, w, n, ierr)
       lum_total = star%solar_luminosity_cgs*lum(n)
       do it = 1, iterations
 ! the second iteration sees omega 3% faster in the radiative interior
@@ -491,10 +492,10 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
                dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
             end do
          end if
+         stab%domega_dlnr = dw_dlnr
          call circulation_velocities(stab, sub_physics, circ_scr, &
-              log_r, radius, zmin, zmax, it, convective, n, w, active, &
-              dw_dlnr, shear_limit, v_total, lum_total, log_p, &
-              star%mechanism_velocity)
+              log_r, zmin, zmax, it, convective, n, w, active, &
+              v_total, lum_total, log_p, star%mechanism_velocity)
       end do
       if (zahn) call zahn_coupling_factor(stab, log_rho, radius, v_total, zmin, zmax, w, &
            star%vfc)

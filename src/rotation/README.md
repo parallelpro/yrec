@@ -24,7 +24,7 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `omega_profile` | The rotation curve from the angular momentum: `omega_from_j`, with convection zones as solid bodies (`enforce_rotation_profile`) and radiative shells one at a time (`solid_body_omega`). |
 | `am_regions` | `am_convective_regions`: the convection zones, with their overshoot, for angular momentum transport. |
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
-| `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
+| `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form; `outer_point_wind_terms`, the wind's boundary terms for a transport region that reaches the surface. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
 | `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`cz_rotation_law_exponent` for `walpcz`, `wind_constant` for `constfactor`, ...). |
 | `rotation_scratch_lib` | The types of the working state, one record per stage: `sub_model` (the structure interpolated to the sub-step, its convection zones, composition snapshot and starting ω), `sub_physics` (the physics interpolated to it), `stab` (the structure at the interfaces and the stability coefficients), `chi_grid` (the transport region's equally spaced grid) and `circ_scr` (the mechanisms' previous velocities). `evolve_angular_momentum` allocates them for the step and passes each routine the records it uses; the module declares no instance. Nothing in them outlives a step; what does (the last sub-step's omega, `star%omega_mid`) is on the star. |
 | **shape/** | |
@@ -34,12 +34,13 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | **seculr/** | |
 | `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear. The mechanisms' slots are `state/transport_mechanism_layout`'s. |
 | `transport_regions` | `next_transport_region`: the runs of interfaces where the total velocity U is positive. |
-| `secular_transport` | `apply_secular_transport`: one sub-step of transport. |
+| `region_transport` | `diffuse_region_angular_momentum`: one region's angular momentum diffusion over a sub-step, on its grid: the system, its solve and the map back to j/m (star-blind). |
+| `secular_transport` | `apply_secular_transport`: one sub-step of transport, the iteration; its steps (the interfaces' setup, the velocities, the restart, the uncoupled spin-down, the region loop, the checks, the mixing) are module procedures with explicit arguments. |
 | `am_transport_coefficients` | The angular momentum diffusion equation's tridiagonal system (`am_diffusion_coeffs`; and, commented out, the advection-diffusion transport) and its solve (`solve_angular_momentum_transport`). |
 | `circulation` | `circulation_velocities`: the structure at the interfaces, the mechanisms' velocities (`instability_velocities`) with their scales and averaging, their sum U; the diffusion coefficients from them (`diffusion_velocity_scales`); the Zahn coupling factor; the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
-| `stability_coefficients` | `rotation_stability_setup`: the structure at the zone interfaces and the coefficients of the circulation and instability velocities, once per sub-step. |
+| `stability_coefficients` | `rotation_stability_setup`: the structure at the zone interfaces, the zones' radii, the dynamical-shear limit and the coefficients of the circulation and instability velocities, once per sub-step (into `stab`). |
 | `transport_checks` | The angular momentum and composition checks, which can ask for a redo. |
 
 `burn_settle_mix.f90`, `burn_mix_extrapolated.f90` and `burn_li_be_midpoint.f90` hold the Bulirsch–Stoer burn-and-mix path. It is commented out by the author's decision; each file's header says how to revive it.
@@ -90,6 +91,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - the instability velocities: U_ES and U_GSF ~ ω², no shear term and no GSF for a solid body, the μ-gradient factor between 1/2 and 1, no shear velocity for a solid body or below the secular threshold, a quadratic shear onset above it, and a μ gradient's stabilization;
 - the region scan on a synthetic U profile;
 - the transport grid and the map back: equally spaced chi points, grid masses that add up to the region's, J conserved in a redistribution and a surface loss taken within 1e-5, the convection zone below the region taking its first change;
+- one region's transport (`diffuse_region_angular_momentum`): J conserved without a wind while j moves, the wind's surface term taken within 1e-5, a solid body unchanged; and the wind's terms for it (`outer_point_wind_terms`) in each case: below the surface, disk-locked, braked, no torque;
 - the stability coefficients against their formulas, on a structure for which the interpolation to the interfaces is exact;
 - the checks' contracts: convergence, ω from j and the stop on a negative j (`check_angular_momentum`); a small negative abundance repaired, a larger one a halved sub-step, the fourth cut a stop, and μ of a fully ionized gas (`check_composition`).
 

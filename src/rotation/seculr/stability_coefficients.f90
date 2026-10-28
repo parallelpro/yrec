@@ -31,8 +31,8 @@
 !     gradient of omega or of the specific angular momentum.
 !   - The dynamical shear instability: an interface is stable while
 !       Ri = (rho/P) (grad_ad - grad) g^2/(d omega/d ln r)^2 > 1/4,
-!     so dynamical_shear_omega_limit = 2 g sqrt((rho/P) max(grad_ad -
-!     grad, 1e-3)) is the largest stable |d omega/d ln r|.
+!     so stab%dynamical_shear_omega_limit = 2 g sqrt((rho/P)
+!     max(grad_ad - grad, 1e-3)) is the largest stable |d omega/d ln r|.
 !   - The mu-gradient Richardson term: the same criterion with the mu
 !     stratification in place of the thermal one,
 !       Ri_mu = (rho/P) g^2 (-d ln T/d ln mu) (d ln mu/d ln P)/(d omega/d ln r)^2,
@@ -64,8 +64,7 @@ contains
 subroutine rotation_stability_setup(stab, sub_physics, &
      log_density, local_gravity, luminosity, log_pressure, &
      log_radius, mass_unlogged, log_temperature, transport_zone_begin, &
-     transport_zone_end, num_zones, radius_unlogged, &
-     dynamical_shear_omega_limit)
+     transport_zone_end, num_zones)
       use rotation_scratch_lib, only: stability_state, &
            substep_physics_state
       use star_info_lib, only: json
@@ -80,8 +79,6 @@ subroutine rotation_stability_setup(stab, sub_physics, &
            mass_unlogged(json), log_temperature(json)
       integer, intent(in) :: transport_zone_begin, transport_zone_end, &
            num_zones
-      double precision, intent(out) :: radius_unlogged(json)
-      double precision, intent(out) :: dynamical_shear_omega_limit(json)
 ! The structure at the interfaces that only the coefficients below use
 ! (the rest is stab's): pressure, temperature and mass (cgs), the
 ! actual and adiabatic gradients, d ln rho/d ln T, eps (erg/g/s), c_P.
@@ -112,13 +109,14 @@ subroutine rotation_stability_setup(stab, sub_physics, &
 !      double precision :: mean_deps_dlnt, mean_neutrino_fraction
 !      double precision :: second_deriv_factor, dlnchi_dlnt, thermal_factor_mu
 
-! the unlogged radii of the zones, and the interfaces midway between
+! the unlogged radii of the zones (stab%radius), and the interfaces
+! midway between
       do zone_idx = 1,num_zones
-         radius_unlogged(zone_idx) = exp(ln10*log_radius(zone_idx))
+         stab%radius(zone_idx) = exp(ln10*log_radius(zone_idx))
       end do
       do zone_idx = 2,num_zones
-         stab%radius_interface(zone_idx) = 0.5d0*(radius_unlogged(zone_idx) + &
-              radius_unlogged(zone_idx-1))
+         stab%radius_interface(zone_idx) = 0.5d0*(stab%radius(zone_idx) + &
+              stab%radius(zone_idx-1))
       end do
 ! The interpolation weights and the interpolated structure. The
 ! interface between zones 1 and 2 uses zones 1-4, the one between the
@@ -217,7 +215,7 @@ subroutine rotation_stability_setup(stab, sub_physics, &
 !              rho_i(zone_idx)
 !         rot_scr%velocity_coeff2b(zone_idx) = -specific_luminosity*one_over_pi_g*r_i(zone_idx)/rho_i(zone_idx)
 ! the dynamical shear: the |d omega/d ln r| at which Ri = 1/4
-         dynamical_shear_omega_limit(zone_idx)=sqrt(rho_i(zone_idx)/p_i(zone_idx)* &
+         stab%dynamical_shear_omega_limit(zone_idx)=sqrt(rho_i(zone_idx)/p_i(zone_idx)* &
               max(grada_i(zone_idx) - grad_i(zone_idx),1.0d-3)) &
               *2.0d0*g_i(zone_idx)
 ! the mu-gradient Richardson term, (rho/P) g^2 (-d ln T/d ln mu)/d ln P
@@ -277,20 +275,20 @@ subroutine lagrange_weights(first_point, interface_idx)
       double precision :: lag_denom1, lag_denom2, lag_denom3, lag_denom4
       double precision :: lag_x1, lag_x2, lag_x3, lag_x4
 
-      dr43 = radius_unlogged(first_point+3) - radius_unlogged(first_point+2)
-      dr42 = radius_unlogged(first_point+3) - radius_unlogged(first_point+1)
-      dr41 = radius_unlogged(first_point+3) - radius_unlogged(first_point)
-      dr32 = radius_unlogged(first_point+2) - radius_unlogged(first_point+1)
-      dr31 = radius_unlogged(first_point+2) - radius_unlogged(first_point)
-      dr21 = radius_unlogged(first_point+1) - radius_unlogged(first_point)
+      dr43 = stab%radius(first_point+3) - stab%radius(first_point+2)
+      dr42 = stab%radius(first_point+3) - stab%radius(first_point+1)
+      dr41 = stab%radius(first_point+3) - stab%radius(first_point)
+      dr32 = stab%radius(first_point+2) - stab%radius(first_point+1)
+      dr31 = stab%radius(first_point+2) - stab%radius(first_point)
+      dr21 = stab%radius(first_point+1) - stab%radius(first_point)
       lag_denom1 = -dr21*dr31*dr41
       lag_denom2 = dr21*dr32*dr42
       lag_denom3 = -dr31*dr32*dr43
       lag_denom4 = dr41*dr42*dr43
-      lag_x1 = stab%radius_interface(interface_idx) - radius_unlogged(first_point)
-      lag_x2 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+1)
-      lag_x3 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+2)
-      lag_x4 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+3)
+      lag_x1 = stab%radius_interface(interface_idx) - stab%radius(first_point)
+      lag_x2 = stab%radius_interface(interface_idx) - stab%radius(first_point+1)
+      lag_x3 = stab%radius_interface(interface_idx) - stab%radius(first_point+2)
+      lag_x4 = stab%radius_interface(interface_idx) - stab%radius(first_point+3)
       stab%lagrange_interp_weights(1,interface_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
       stab%lagrange_interp_weights(2,interface_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
       stab%lagrange_interp_weights(3,interface_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3

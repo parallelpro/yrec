@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 33 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 42 |
-| Open | 23 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 26 |
+| Fixed | 34 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 43 |
+| Open | 22 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 25 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -124,7 +124,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
 | O26 | The history's total J and rotational KE lag their model by a step | Yes | Open |
 | O27 | An inner region zeroes the wind term the surface region averages | Yes | Open (latent) |
-| O28 | The transport check reads an unset convergence flag | Yes | Open (latent) |
+| O28 | The transport check reads an unset convergence flag | Yes | Fixed (byte-identical), with the restructure of `apply_secular_transport` |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1279,7 +1279,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O28. The angular momentum check reads an unset convergence flag
 
-- **Status:** open, latent (found 2026-10-28 while restructuring `apply_secular_transport`).
+- **Status:** fixed (2026-10-28) by the restructure of `apply_secular_transport` into module procedures, which passes false (`check_iterate`). Byte-identical on the 56 checked decks: the build's `-finit-local-zero` had made the unset flag false.
 - **In the original F77?** Yes. SECULR sets `LOKAD = .FALSE.` only inside a region's angular momentum solve ([seculr.f:295](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L295)) and passes it to CHECKJ after the regions ([seculr.f:342](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L342)).
 - **Now:** `diffusion_converged`, set only in `transport_angular_momentum_in_region` and read by `check_iterate` ([secular_transport.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/seculr/secular_transport.f90)).
 - **What is wrong:** under solid-body rotation (`force_solid_body_rotation` or `solid_body_mode_flag = 1`), and in an iteration whose regions are all single interfaces, no region solves for angular momentum, so the flag is never set; `check_angular_momentum` reads it, and a true value would mark the iteration converged and suppress its report. The solid-body decks print the report every sub-step, so the stack has held false.

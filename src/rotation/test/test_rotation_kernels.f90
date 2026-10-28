@@ -82,6 +82,16 @@
 !                first zone is radiative, the grid still counts a
 !                convection zone below it but the map back leaves it
 !                alone: docs/bug_sweep.md O13, open.)
+!   region       diffuse_region_angular_momentum on the grids' region:
+!                J conserved without a wind (to round-off) while j
+!                moves; the wind's surface term, -(1/2) (dOmega_exp +
+!                dOmega_imp) I_n, taken within the map back's 1e-5; a
+!                solid body unchanged;
+!   wind terms   outer_point_wind_terms: none below the surface; under
+!                disk locking the point held and no loss; with the wind,
+!                compute_solid_body_braking's terms at the point's I and
+!                omega, which become the surface state; none with the
+!                wind torque off;
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -121,7 +131,8 @@ program test_rotation_kernels
       use rotational_mixing, only: composition_diffusion_coeffs
       use numerics_lib, only: solve_tridiagonal
       use magnetic_braking, only: compute_solid_body_braking, wind_conditions
-      use magnetic_braking, only: brake_convection_zone
+      use magnetic_braking, only: brake_convection_zone, outer_point_wind_terms
+      use region_transport, only: diffuse_region_angular_momentum
       use instability_velocities, only: compute_eddington_sweet_velocity, &
            inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
       use transport_regions, only: next_transport_region
@@ -179,6 +190,8 @@ program test_rotation_kernels
       call velocity_checks()
       call region_check()
       call grid_checks()
+      call region_transport_checks()
+      call wind_terms_checks()
       call stability_check()
       call checkj_check()
       call checkc_check()
@@ -714,6 +727,118 @@ subroutine grid_checks()
 end subroutine grid_checks
 
 ! ---------------------------------------------------------------
+! diffuse_region_angular_momentum on the region of grid_checks (zones
+! 6..40 above a convection zone): without a wind the region's J is
+! unchanged (to round-off: the map back rescales to the grid's total,
+! zero) while j moves; with the wind's terms it loses (1/2) (dOmega_exp
+! + dOmega_imp) I_n, within the map back's 1e-5; a solid body stays one.
+! D is chosen for diffusion numbers dt D/(dchi I) of order 1 or below
+! (j moves by up to 1e-3), so that round-off stays round-off.
+subroutine region_transport_checks()
+      integer, parameter :: zb = 6, ze = 40
+      type(transport_grid_state), save :: chi_grid
+      type(substep_physics_state), save :: sub_physics
+      real(dp) :: lum(json), lp(json), m(json), inertia(json), jm(json), w(json), &
+           d_am(json), d_mix(json), jm1(json), j0, err, loss, dwe, dwi
+      logical :: conv(json)
+      integer :: k, ierr
+      do k = 1, n
+         f = dble(k - 1)/dble(n - 1)
+         lum(k) = 1.0d0 - exp(-(f/0.1d0)**2) + 1.0d-6
+         lp(k) = 17.0d0 - 8.0d0*f
+         m(k) = 10.0d0**log_m(k)
+         inertia(k) = 2.0d0/3.0d0*r(k)**2*dm(k)
+         w(k) = 3.0d-5*(1.0d0 + 0.5d0*f)
+         jm(k) = w(k)*inertia(k)/dm(k)
+         d_am(k) = 1.0d3*(1.0d0 + f)
+         d_mix(k) = 1.0d23*(1.0d0 + f)
+         conv(k) = k <= zb
+         sub_physics%eps_plus_neu_grav(k) = 1.0d0
+      end do
+      j0 = sum(jm(1:n)*dm(1:n))
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+! no wind
+      jm1 = jm
+      call diffuse_region_angular_momentum(chi_grid, 1.0d13, 0.0d0, 0.0d0, .false., &
+           dm, zb, ze, conv, n, jm1, ierr)
+      err = abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)))/j0
+      if (ierr /= 0 .or. maxval(abs(jm1(zb:ze)/jm(zb:ze) - 1.0d0)) < 1.0d-4) err = 1.0d0
+      call report("region: J conserved without a wind, j moves", err, 1.0d-13)
+! the wind's terms: 1e-3 and 2e-3 of the outermost point's omega
+      dwe = 1.0d-3*chi_grid%eq_omega(chi_grid%num_eq_points)
+      dwi = 2.0d-3*chi_grid%eq_omega(chi_grid%num_eq_points)
+      loss = -0.5d0*(dwe + dwi)*chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points)
+      jm1 = jm
+      call diffuse_region_angular_momentum(chi_grid, 1.0d13, dwe, dwi, .false., &
+           dm, zb, ze, conv, n, jm1, ierr)
+      err = abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)) - loss)/abs(loss)
+      if (ierr /= 0) err = 1.0d0
+      call report("region: the wind's surface term, within 1e-5", err, 1.0d-5)
+! a solid body
+      do k = 1, n
+         w(k) = 3.0d-5
+         jm(k) = w(k)*inertia(k)/dm(k)
+      end do
+      call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+      jm1 = jm
+      call diffuse_region_angular_momentum(chi_grid, 1.0d13, 0.0d0, 0.0d0, .false., &
+           dm, zb, ze, conv, n, jm1, ierr)
+      err = maxval(abs(jm1(1:n)/jm(1:n) - 1.0d0))
+      if (ierr /= 0) err = 1.0d0
+      call report("region: a solid body stays one", err, 1.0d-13)
+end subroutine region_transport_checks
+
+! ---------------------------------------------------------------
+! outer_point_wind_terms (Kawaler law, the settings of wind_law_check):
+! a region below the surface gets no terms (disk locking or not); at the surface under disk
+! locking the point is held and loses nothing; with the wind, the terms
+! are compute_solid_body_braking's for the point's inertia and omega,
+! which become the surface state; with use_wind_torque off, none.
+subroutine wind_terms_checks()
+      real(dp), parameter :: inertia_n = 1.0d52, w_now = 2.0d-5, w_start = 2.1d-5
+      real(dp) :: e, i_term, cz_i, w_s, e_ref, i_ref, err
+      logical :: fixed
+      integer :: ierr
+      type(wind_conditions) :: no_rossby
+      rotation_settings%use_wind_torque = .true.
+! below the surface, even under disk locking
+      cz_i = -1.0d0; w_s = -1.0d0; e = 9.0d0; i_term = 9.0d0
+      call outer_point_wind_terms(.false., .true., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      err = 0.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed .or. cz_i /= -1.0d0 .or. w_s /= -1.0d0) err = 1.0d0
+      call report("wind terms: none below the surface", err, 0.0d0)
+! disk locking
+      e = 9.0d0; i_term = 9.0d0
+      call outer_point_wind_terms(.true., .true., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      err = 0.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. .not. fixed .or. cz_i /= -1.0d0) err = 1.0d0
+      call report("wind terms: disk locking holds the point", err, 0.0d0)
+! the wind, at the second iteration (the implicit term averaged)
+      i_ref = 1.0d-9; i_term = 1.0d-9
+      call compute_solid_body_braking(0.0d0, 1.0d13, inertia_n, 2, w_now, 1.0d0, 3.762d0, &
+           w_start, e_ref, i_ref, no_rossby, ierr)
+      call outer_point_wind_terms(.true., .false., 2, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      err = 0.0d0
+      if (e /= e_ref .or. i_term /= i_ref .or. fixed .or. cz_i /= inertia_n .or. w_s /= w_now &
+           .or. e_ref <= 0.0d0) err = 1.0d0
+      call report("wind terms: the braking's, at the point's I and omega", err, 0.0d0)
+! no wind torque
+      rotation_settings%use_wind_torque = .false.
+      e = 9.0d0; i_term = 9.0d0
+      call outer_point_wind_terms(.true., .false., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      err = 0.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed) err = 1.0d0
+      call report("wind terms: none without the wind torque", err, 0.0d0)
+end subroutine wind_terms_checks
+
+! ---------------------------------------------------------------
 ! rotation_stability_setup against its formulas (see the header).
 subroutine stability_check()
       use physical_constants, only: cpi, radiation_constant_over_3
@@ -746,7 +871,9 @@ subroutine stability_check()
          phys%mu(k) = 0.62d0 + 0.2d0*(1.0d0 - x)**3
       end do
       call rotation_stability_setup(stab, phys, lrho, grav, lum, lp, log_r, mass, lt, &
-           zmin, zmax, n, radius, shear_limit)
+           zmin, zmax, n)
+      radius = stab%radius
+      shear_limit = stab%dynamical_shear_omega_limit
       err = 0.0d0
       do i = zmin, zmax
          rc = 0.5d0*(r(i) + r(i-1)); xc = rc/rsun
