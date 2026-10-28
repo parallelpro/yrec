@@ -200,9 +200,10 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
               law%conditions)
          wind_coefficient = (full_timestep/cz_moment_of_inertia)*rotation_settings%wind_constant* &
               law%structure_factor
-! the solar centrifugal term, without the 1/G of brake_convection_zone's:
-! the original divided by exp(ln10*gl) with gl an unset local (zero)
-         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/rotation_settings%solar_mass_cgs
+! the solar centrifugal term, (1/2) Omega_sun^2 R_sun^3/(G M_sun), as
+! brake_convection_zone's (the original divided by exp(ln10*gl) with gl
+! an unset local, zero, so it lacked the 1/G; docs/bug_sweep.md O17)
+         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/exp(ln10*cgl)/rotation_settings%solar_mass_cgs
          law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
               rotation_settings%log10_solar_luminosity)
          fcen1 = matt_centrifugal_factor(omega_old, law%fsun, law%log10_radius, total_mass_msun)

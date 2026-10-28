@@ -97,6 +97,8 @@
 !                averaged with the surface region's earlier one only
 !                (fresh when there is none); none with the wind torque
 !                off;
+!   Matt forms   the Matt law's solid-body and convection-zone forms
+!                agree for one star over a short step (to 1e-5);
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -207,6 +209,7 @@ program test_rotation_kernels
       call grid_checks()
       call region_transport_checks()
       call wind_terms_checks()
+      call matt_forms_check()
       call stability_check()
       call mechanism_slot_check()
       call checkj_check()
@@ -911,6 +914,50 @@ subroutine wind_terms_checks()
       if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed .or. stored /= -3.0d0) err = 1.0d0
       call report("wind terms: none without the wind torque", err, 0.0d0)
 end subroutine wind_terms_checks
+
+! ---------------------------------------------------------------
+! The Matt law's two forms (magnetic_braking) for one star: over a short
+! step, the solid-body form's drop of omega at the step's start
+! (compute_solid_body_braking) equals the convection zone's loss
+! (brake_convection_zone, from its change of j) up to the implicit
+! midpoint rule's first-order term. The solid-body form once lacked the
+! 1/G of the solar centrifugal term (docs/bug_sweep.md O17), 0.17% here.
+subroutine matt_forms_check()
+! dt for a drop of about 2e-6 of omega (with these settings the torque
+! is weak), where the midpoint and explicit losses differ by 1.5 times
+! that (the torque goes as omega^3)
+      real(dp), parameter :: i_cz = 1.0d54, m_cz = 1.0d32, omega = 1.0d-5, dt = 2.0d17
+      real(dp) :: jm(json), d_start, d_end, d_cz
+      type(wind_conditions) :: cond
+      integer :: ierr
+      rotation_settings%use_pmm_wind_law = .true.
+      rotation_settings%scale_by_rossby_number = .false.
+      rotation_settings%scale_by_b_field = .false.
+      rotation_settings%wind_constant = 3.4d47
+      rotation_settings%wind_law_omega_exponent = 3.0d0
+      rotation_settings%wind_mass_exponent = -0.5d0
+      rotation_settings%wind_radius_exponent = 3.1d0
+      rotation_settings%wind_luminosity_exponent = 0.0d0
+      rotation_settings%wind_pressure_exponent = 0.44d0
+      rotation_settings%wind_turnover_exponent = 0.0d0
+      rotation_settings%wind_centrifugal_exponent = 0.5d0
+      rotation_settings%wind_centrifugal_constant = 0.0506d0
+      rotation_settings%pmm_solar_omega = 2.6d-6
+      rotation_settings%pmm_solar_pressure = 4.9752d0
+      rotation_settings%pmm_solar_turnover_timescale = 9.6132d5
+      rotation_settings%wind_saturation_omega = 3.0d-5
+      cond = wind_conditions(turnover_timescale_start=1.0d6, turnover_timescale_end=1.0d6, &
+           log_pphot_start=4.9752d0, log_pphot_end=4.9752d0, step_fraction=0.5d0)
+      d_end = 0.0d0
+      call compute_solid_body_braking(0.0d0, dt, i_cz, 1, omega, 1.0d0, 3.762d0, omega, &
+           d_start, d_end, cond, ierr)
+      jm(1) = omega*i_cz/m_cz
+      call brake_convection_zone(0.0d0, dt, 0.0d0, m_cz, 1, 1, .true., omega, 1.0d0, 3.762d0, &
+           i_cz, jm, cond, ierr)
+      d_cz = omega - jm(1)*m_cz/i_cz
+      call report("wind law: the Matt law's two forms agree", abs(d_cz/d_start - 1.0d0), 1.0d-5)
+      rotation_settings%use_pmm_wind_law = .false.
+end subroutine matt_forms_check
 
 ! ---------------------------------------------------------------
 ! rotation_stability_setup against its formulas (see the header).
