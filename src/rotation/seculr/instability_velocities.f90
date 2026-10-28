@@ -306,8 +306,7 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
       double precision, intent(inout) :: secular_shear_velocity(:), &
            gsf_circulation_velocity(:)
       integer :: i
-      double precision :: qwr, dr, rmid, wmin, dlnwdr0, dlnjmdr0, dlnjmdr, &
-           dlnwdr, fx, qwrmx_dyn, qwrmx, qwrmx2
+      double precision :: qwr, dr, rmid, wmin, qwrmx, qwrmx2
       do i = zone_min,zone_max
 ! Dynamical shear operates where |d omega/d ln r| > dynamical_shear_omega_limit
 ! (Ri < 1/4). The shear velocity is then the large dynamical value,
@@ -318,33 +317,21 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
                  thermal_diffusivity_interface(i)* &
                  (qwr/dynamical_shear_omega_limit(i))**2/radius_interface(i)
 ! Correct the GSF velocity for the shear the dynamical instability
-! leaves behind: wmin is the omega of zone i-1 that puts
-! |d omega/d ln r| exactly at the limit, and U_GSF is scaled by its
-! gradient term (Kippenhahn 1980) evaluated with wmin over the same
-! term evaluated with omega(i-1). Each such interface is reported.
+! leaves behind: wmin is the omega of zone i-1 at which the trigger's
+! own (centred) d omega/d ln r equals the limit,
+!   wmin = omega(i) - (omega(i) - omega(i-1)) limit/|d omega/d ln r|,
+! which lies strictly between omega(i) and omega(i-1) whenever the
+! trigger fires (docs/bug_sweep.md O11), and U_GSF is scaled by its
+! gradient term (Kippenhahn 1980, as compute_gsf_velocity forms it for
+! each profile) evaluated with wmin over the same term evaluated with
+! omega(i-1). Each such interface is reported.
             dr = radius(i)-radius(i-1)
             rmid = 0.5d0*(radius(i)+radius(i-1))
-            if (omega(i).lt.omega(i-1)) then
-               wmin = omega(i) + dynamical_shear_omega_limit(i)*ln10* &
-                    (log_radius(i)-log_radius(i-1))
-            else
-               wmin = omega(i) - dynamical_shear_omega_limit(i)*ln10* &
-                    (log_radius(i)-log_radius(i-1))
-            end if
-            dlnwdr0 = abs(log(omega(i))-log(omega(i-1)))/dr
-            dlnjmdr0 = abs(2.0d0/rmid+(log(omega(i))- &
-                         log(omega(i-1)))/dr)
-            dlnjmdr = abs(2.0d0/rmid+(log(omega(i))-log(wmin))/dr)
-            dlnwdr = abs(log(omega(i))-log(wmin))/dr
-            if (omega(i)*radius(i)**2 .lt. wmin*radius(i-1)**2) then
-               fx = max(2.0d0*dlnjmdr,0.25d0*dlnwdr)
-               qwrmx_dyn = max(2.0d0*dlnjmdr0,0.25d0*dlnwdr0)
-               gsf_circulation_velocity(i) = gsf_circulation_velocity(i)* &
-                    fx/qwrmx_dyn
-            else
-               gsf_circulation_velocity(i)=gsf_circulation_velocity(i)* &
-                    dlnwdr/dlnwdr0
-            end if
+            wmin = omega(i) - (omega(i) - omega(i-1))* &
+                 dynamical_shear_omega_limit(i)/qwr
+            gsf_circulation_velocity(i) = gsf_circulation_velocity(i)* &
+                 gsf_gradient_term(omega(i), wmin, radius(i), radius(i-1), dr, rmid)/ &
+                 gsf_gradient_term(omega(i), omega(i-1), radius(i), radius(i-1), dr, rmid)
             write(6,9911) i,omega(i),omega(i-1),wmin
  9911       format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
                  ' WBOT',e11.3,' LIMIT',e11.3)
@@ -397,5 +384,26 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
          end if
       end do
 end subroutine compute_shear_velocities
+
+! ---------------------------------------------------------------
+! The GSF velocity's gradient term (Kippenhahn 1980) across an interface
+! with omega_top above and omega_bottom below, radii r_top and r_bottom,
+! dr = r_top - r_bottom and rmid their mean: where the specific angular
+! momentum omega r^2 decreases outward, max(2 |d ln j/dr|, |d ln
+! omega/dr|/4); otherwise |d ln omega/dr|/4 (compute_gsf_velocity's two
+! forms).
+pure double precision function gsf_gradient_term(omega_top, omega_bottom, r_top, &
+     r_bottom, dr, rmid)
+      use math_lib
+      double precision, intent(in) :: omega_top, omega_bottom, r_top, r_bottom, dr, rmid
+      double precision :: dlnwdr, dlnjmdr
+      dlnwdr = abs(log(omega_top)-log(omega_bottom))/dr
+      if (omega_top*r_top**2 .lt. omega_bottom*r_bottom**2) then
+         dlnjmdr = abs(2.0d0/rmid+(log(omega_top)-log(omega_bottom))/dr)
+         gsf_gradient_term = max(2.0d0*dlnjmdr, 0.25d0*dlnwdr)
+      else
+         gsf_gradient_term = 0.25d0*dlnwdr
+      end if
+end function gsf_gradient_term
 
 end module instability_velocities

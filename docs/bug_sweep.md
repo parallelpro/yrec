@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 37 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 46 |
-| Open | 19 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 22 |
+| Fixed | 38 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 47 |
+| Open | 18 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 21 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -107,7 +107,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O9 | Surface ⁷Li noise floor of ~0.005 dex | Yes | Open |
 | O10 | Overshoot edge width from two models; wrong overshoot gate | Width yes, gate no | Open |
 | **O** | **Open: rotation, wind, microphysics and output (§6)** | | |
-| O11 | Dynamical-shear limit can overshoot or go negative | Yes | Open |
+| O11 | Dynamical-shear limit can overshoot or go negative | Yes | Fixed |
 | O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
 | O13 | Transport region ends: sums and write-back disagree | Yes | Open |
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Open |
@@ -1017,7 +1017,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O11. The dynamical-shear limit can overshoot the neighbouring Ω or go negative (VCIRC)
 
-- **Status:** open.
+- **Status:** fixed (2026-10-28). `compute_shear_velocities` takes wmin = Ω_i − (Ω_i − Ω_{i−1}) · limit/|dΩ/d ln r|, the Ω_{i−1} at which the trigger's own centred gradient is at the limit (strictly between Ω_i and Ω_{i−1} whenever the trigger fires), and scales U_GSF by the gradient term with wmin over the term with Ω_{i−1}, each in the form its own profile selects (`gsf_gradient_term`). `test_rotation_kernels` checks that on zones uneven in ln r, with the limit between the plain quotient and the centred gradient, the correction lowers U_GSF at every interface; the old wmin raised it at all 11. Measured on the 26 rotating decks: the five that report dynamical shear move, 21 are byte-identical; the testsuite's `Test_solarGS98_difrotmixper18p4d0p1` by 5e-5 dex in log L at most (1e-7 at 4.57 Gyr), the variants by up to 1e-4, and the solid-core variant rv_sbm2, which reports it 6438 times, by 3.6e-4 in log L and 4% in the surface omega.
 - **In the original F77?** Yes. The trigger tests the centred gradient `QWLNR` (seculr.f:92-94), but `WMIN` is built from the plain difference quotient ([vcirc.f:378-407](https://github.com/parallelpro/yrec/blob/6cd56739/src/vcirc.f#L378-L407)):
   ```fortran
            IF(ABS(QWLNR(I)).GT.QWRMAX(I))THEN

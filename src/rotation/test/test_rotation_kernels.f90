@@ -64,6 +64,9 @@
 !                threshold; above it, quadratic in the excess (ratio 4
 !                from an excess e to 2 e); zero where a mu gradient's
 !                limit exceeds the shear (mu falling linearly outward);
+!                where the shear is dynamical, its correction lowers
+!                U_GSF even when the trigger's centred gradient exceeds
+!                the plain difference quotient (zones uneven in ln r);
 !   regions      next_transport_region on a synthetic U: the regions
 !                (2,4), (6,7) and (8,12), then none;
 !   grids        on the region of zones 6..40, whose first zone is the
@@ -199,6 +202,7 @@ program test_rotation_kernels
       call spindown_check()
       call decay_checks()
       call velocity_checks()
+      call dynamical_shear_check()
       call region_check()
       call grid_checks()
       call region_transport_checks()
@@ -642,6 +646,42 @@ subroutine velocity_checks()
            qdyn, mu_lin, mui_lin, ri, nu, kt, 0.0d0*rmu + 1.0d0, u1, u2)
       call report("velocities: a mu gradient stabilizes the shear", maxval(abs(u1(z1:z2))), 0.0d0)
 end subroutine velocity_checks
+
+! ---------------------------------------------------------------
+! The dynamical shear's correction of U_GSF (compute_shear_velocities,
+! docs/bug_sweep.md O11): on zones unevenly spaced in ln r, with each
+! interface midway in r, the centred d omega/d ln r exceeds the plain
+! difference quotient (Delta omega)/(Delta ln r); with the limit set
+! between the two, the trigger fires while Delta omega is below limit
+! Delta ln r. The corrected inner omega must still lie between the two
+! zones' values, so the correction lowers U_GSF at every such interface
+! (an inner omega beyond omega(i-1) would raise it).
+subroutine dynamical_shear_check()
+      integer, parameter :: m = 12
+      real(dp) :: rr(m), lr(m), w(m), dw(m), lim(m), mu(m), mui(m), rint(m), visc(m), &
+           kt(m), rich(m), uss(m), gsf(m), lnc, plain, centred
+      integer :: k, bad
+      do k = 1, m
+         rr(k) = 1.0d10*(1.0d0 + 0.3d0*dble(k))**2
+         lr(k) = log10(rr(k))
+         w(k) = 1.0d-5*(1.0d0 + 0.2d0*dble(k))
+      end do
+      dw = 0.0d0; lim = 1.0d0; rint = 0.0d0
+      do k = 2, m
+         rint(k) = 0.5d0*(rr(k) + rr(k-1))
+         lnc = log(rint(k))
+         centred = 0.25d0*(w(k) - w(k-1))*(1.0d0/(log(rr(k)) - lnc) + 1.0d0/(lnc - log(rr(k-1))))
+         plain = (w(k) - w(k-1))/(log(rr(k)) - log(rr(k-1)))
+         dw(k) = centred
+         lim(k) = 0.5d0*(abs(centred) + abs(plain))
+      end do
+      mu = 0.6d0; mui = 0.6d0; visc = 1.0d0; kt = 1.0d7; rich = 0.0d0
+      uss = 0.0d0; gsf = 1.0d0
+      call compute_shear_velocities(2, m, 1.0d3, lr, rr, w, dw, lim, mu, mui, rint, visc, &
+           kt, rich, uss, gsf)
+      bad = count(gsf(2:m) >= 1.0d0 .or. gsf(2:m) <= 0.0d0)
+      call report("velocities: the dynamical correction lowers U_GSF", dble(bad), 0.0d0)
+end subroutine dynamical_shear_check
 
 ! ---------------------------------------------------------------
 ! next_transport_region on U = (0, 0, 1, 1, 0, 0, 2, 0, 3, 3, 3, 3) at
