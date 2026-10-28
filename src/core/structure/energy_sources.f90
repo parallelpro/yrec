@@ -21,8 +21,8 @@
 !
 ! What a source sees (energy_point): the shell's enclosed mass and its
 ! own mass (g), log10 of T, P, rho and r (cgs), L in Lsun, the mass
-! fractions (composition_layout's slots), and the step dt (s; zero or
-! negative when the model is not being aged).
+! fractions (composition_layout's slots), and the step dt (s; zero when
+! the model is not being aged).
 !
 ! Limits:
 !  * The envelope above the fitting point is integrated at constant L,

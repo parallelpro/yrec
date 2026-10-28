@@ -184,9 +184,8 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
             if (ierr /= 0) return
             new_atmosphere_fit_needed = .false.
          endif
-! The timestep of the next model. star%dt is made positive again (a
-! negative dt marked a model that is solved but not aged; see
-! solve_structure).
+! The timestep of the next model (by its magnitude, as a stored model's
+! timestep is taken).
        s%dt = dabs(s%dt)
        s%dt_saved = s%dt
        disable_structure_dt_limits = .false.
@@ -380,13 +379,13 @@ subroutine solve_structure
 ! computed on the first iteration (the previous model's is ignored);
 ! converged and star%model_diverged_flag report the outcome.
           if (s%ctrl%lnew0) s%recompute_envelope_triangle = .true.
-! "Do not age this model" is encoded as a negative star%dt: the Henyey
-! pass (delta_time > 0 gates the entropy terms), the improved-first-guess
-! test just below and the rotation step (evolve_angular_momentum, which
-! also does arithmetic on it) all read the sign. It is made positive
-! again after convergence (star%dt = dabs(star%dt) before
-! compute_timestep).
-            if (.not.evolve_model_flag) s%dt = -dabs(s%dt)
+! A model that is solved but not aged (evolve_model_flag false) keeps
+! its s%dt; the stages that age read the flag: the first guess below,
+! the rates of change after level 2, the composition rerun and the
+! Henyey pass (solve_level, which hands the pass a zero step), the
+! light-element burn and the rotation step. (Until 2026-10 the flag was
+! encoded as a negative s%dt, made positive again before
+! compute_timestep.)
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
 ! ctrl%fcorr0 selects whether henyey_iterate raises it by fcorri per
 ! iteration, up to 1 (fcorr0 > 0), or holds it fixed.
@@ -398,7 +397,8 @@ subroutine solve_structure
 ! the previous model: zero the changes of log T and log P over the step
 ! (from which the energy equation builds the entropy term T dS/dt) and
 ! the rates of change of the previous step.
-            if (.not.s%ctrl%improved_first_guess_flag .or. s%dt.le.0.0D0) then
+            if (.not.s%ctrl%improved_first_guess_flag .or. .not.evolve_model_flag &
+                 .or. s%dt.le.0.0D0) then
                do i = 1,s%nz
                   s%log_temperature_delta(i) = 0.0D0
                   s%log_pressure_delta(i) = 0.0D0
@@ -450,7 +450,7 @@ subroutine solve_structure
 !   d log T/dt = log_temperature_delta/dt,  d log P/dt = log_pressure_delta/dt,
 !   d ln L/dt = 2 (L - L_start)/(L + L_start)/dt,
 !   d log R/dt = (log R - log R_start)/dt.
-            if (s%dt.gt.0.0D0) then
+            if (evolve_model_flag .and. s%dt.gt.0.0D0) then
                do ii = 1,s%nz
                   s%dlog_temperature_dt(ii)=s%log_temperature_delta(ii)/s%dt
                   s%dlog_pressure_dt(ii)=s%log_pressure_delta(ii)/s%dt
@@ -528,9 +528,15 @@ subroutine converge_with_rotation
                   end do
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
-! the wind torque when job%use_wind_torque is set).
+! the wind torque when job%use_wind_torque is set). A model not aged
+! passes its step negated, as the negative-dt encoding did: the rotation
+! step skips its sub-steps for a non-positive step, but without
+! instability transport the wind brake still applies it, which spins the
+! surface convection zone up (inherited from GETW; docs/bug_sweep.md O24,
+! open).
                wind_loss_active = s%job%use_wind_torque
-               call evolve_angular_momentum(s, s%dt, s%max_domega_frac, wind_loss_active, &
+               call evolve_angular_momentum(s, merge(s%dt, -dabs(s%dt), evolve_model_flag), &
+                    s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
                ! Return the error to the caller.
@@ -554,7 +560,8 @@ end subroutine converge_with_rotation
 subroutine burn_light_elements
       use math_lib
 ! Only with the extended composition, for a model being aged.
-         if (s%job%use_extended_composition .and. s%model_number.ge.0 .and. s%dt.gt.0.0D0) then
+         if (s%job%use_extended_composition .and. s%model_number.ge.0 .and. &
+              evolve_model_flag .and. s%dt.gt.0.0D0) then
 ! Only without rotation, or without rotational mixing.
             if (.not.s%job%rotation_active .or. .not.s%job%instability_transport_active) then
 ! The convection zones at the end of the step.
@@ -621,7 +628,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       envelope_zone_index = 0
       core_cz_edge_rerun = 0
       mixed_zone_bounds_rerun = 0
-      if (iteration_level.gt.2 .and. s%dt.gt.0.0d0) then
+      if (iteration_level.gt.2 .and. evolve_model_flag .and. s%dt.gt.0.0d0) then
          num_species = n_species_basic
          if (s%job%use_extended_composition) num_species = n_species_extended
          do i = 1,s%nz
@@ -635,7 +642,9 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
          if (ierr /= 0) return
       end if
 
-      call henyey_iterate(s, s%dt, max_iterations, converged, &
+! The pass gets the step only for a model being aged (a zero step: no
+! time derivatives).
+      call henyey_iterate(s, merge(s%dt, 0.0d0, evolve_model_flag), max_iterations, converged, &
            s%model_diverged_flag, recompute_surface_bc, &
            envelope_recomputed_flag, saha_state, envelope_zone_index, &
            iterations_done, ierr)
