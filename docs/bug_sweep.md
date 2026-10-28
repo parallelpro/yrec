@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 31 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 40 |
-| Open | 20 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 23 |
+| Fixed | 33 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 42 |
+| Open | 23 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 26 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -122,6 +122,9 @@ These open items depend on what the code was meant to do, not only on what it do
 | O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
 | O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
 | O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
+| O26 | The history's total J and rotational KE lag their model by a step | Yes | Open |
+| O27 | An inner region zeroes the wind term the surface region averages | Yes | Open (latent) |
+| O28 | The transport check reads an unset convergence flag | Yes | Open (latent) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1255,3 +1258,31 @@ These are found, recorded and left as they are, because each fix changes results
 - **What is wrong:** with uniform j, ω = j/(I/dm) ∝ r⁻². When the surface convection zone reaches the centre (a fully convective pre-main-sequence star), the innermost zone's ω is huge, the shape factors go non-physical, and the temperature gradient takes a square root of a negative number: the run stops at its first model with NaN. Measured: the testsuite's `Test_solarGS98_difrotmixper18p4d1p0` deck with `new_zone_omega_weight = -2.0` (walpcz) stops at once.
 - **Expected behaviour, and why:** a rotation law should give a finite ω everywhere. Uniform j cannot hold down to r = 0.
 - **Proposed fix (authors' choice):** treat a convection zone that reaches the centre as a solid body under this law (as zones below the surface already are), or reject walpcz ≤ -2 at read time with a message. Either is one measured commit; no shipped deck moves.
+
+### O26. The history's total angular momentum and rotational kinetic energy lag their model by a step
+
+- **Status:** open (found 2026-10-28 by the sub-step convergence study, `src/tools/substep_convergence.py`).
+- **In the original F77?** Yes. HPOINT, the rezone at the start of the step, sets `SJTOT = SUMJ` ([hpoint.f:715-719](https://github.com/parallelpro/yrec/blob/6cd56739/src/hpoint.f#L715-L719)); GETW then moves and removes angular momentum, and nothing re-totals it before WRTOUT writes `SJTOT` to the track file ([wrtout.f:579](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtout.f#L579)).
+- **Now:** `retally_angular_momentum` in the rezone sets `s%total_angular_momentum` and `s%total_rotational_ke` ([rezoning.f90:956-972](https://github.com/parallelpro/yrec/blob/e214d9cf/src/core/model/rezoning.f90#L956-L972)); `evolve_step` then runs the structure and the rotation step and writes the model ([step_driver.f90:150-226](https://github.com/parallelpro/yrec/blob/e214d9cf/src/core/step/step_driver.f90#L150-L226)) without re-totalling; the history columns `total_angular_momentum` and `total_rotational_ke` read the stale values ([history_output.f90:206-207](https://github.com/parallelpro/yrec/blob/e214d9cf/src/io/history_output.f90#L206-L207)).
+- **What is wrong:** each history row's J is the start of its step's (after the rezone), the end of the previous model's, while omega and the rest are the end of the step's. Seen in the rotating reference variant: the last step to the 300 Myr stop, cut to a third of the previous step, loses the full previous step's 3.3% of J in the history.
+- **Expected behaviour, and why:** a row describes one model; its J should be the sum of j dm of the model it prints.
+- **Proposed fix:** re-total J and E_rot after the rotation step, before the output. Only the two history columns (and the rezone's diagnostic line, whose "previous" becomes the end of the last step) change; nothing computes with the totals.
+
+### O27. An inner transport region zeroes the wind term that the surface region averages
+
+- **Status:** open, latent (found 2026-10-28 while restructuring `apply_secular_transport`). No shipped deck reaches it: instrumented, the rotating decks (the rotating reference variants, the testsuite's rotating solar decks, the 3 Msun TAMS deck) never had an inner region before the surface region in an iteration after the first.
+- **In the original F77?** Yes. SECULR sets `WIND1 = WIND2 = 0` for every region that does not reach the surface ([seculr.f:290-293](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L290-L293)); MCOWIND, for the surface region, averages `WIND2` with its value on entry from the second iteration on ([mcowind.f:121-125](https://github.com/parallelpro/yrec/blob/6cd56739/src/mcowind.f#L121-L125)).
+- **Now:** `set_surface_wind_terms` in [secular_transport.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/seculr/secular_transport.f90), and `compute_solid_body_braking`'s `domega_end` average ([magnetic_braking.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/magnetic_braking.f90)).
+- **What is wrong:** the implicit wind term is meant to be averaged with the previous iteration's (MHP's damping of the iteration). When another region lies below the surface region in the same iteration, it has just set the term to zero, so the average is with zero: the surface's implicit loss is halved in that iteration. The same holds when the first iteration had no surface region: the average is then with whatever the term held.
+- **Expected behaviour, and why:** the surface region's implicit term should average with the surface region's previous iterate, or start afresh when there is none.
+- **Proposed fix:** keep the surface region's previous implicit term apart from the per-region terms the solve gets, and average only with a value from an earlier iteration of the same sub-step. Byte-identical on the shipped decks.
+
+### O28. The angular momentum check reads an unset convergence flag
+
+- **Status:** open, latent (found 2026-10-28 while restructuring `apply_secular_transport`).
+- **In the original F77?** Yes. SECULR sets `LOKAD = .FALSE.` only inside a region's angular momentum solve ([seculr.f:295](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L295)) and passes it to CHECKJ after the regions ([seculr.f:342](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L342)).
+- **Now:** `diffusion_converged`, set only in `transport_angular_momentum_in_region` and read by `check_iterate` ([secular_transport.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/seculr/secular_transport.f90)).
+- **What is wrong:** under solid-body rotation (`force_solid_body_rotation` or `solid_body_mode_flag = 1`), and in an iteration whose regions are all single interfaces, no region solves for angular momentum, so the flag is never set; `check_angular_momentum` reads it, and a true value would mark the iteration converged and suppress its report. The solid-body decks print the report every sub-step, so the stack has held false.
+- **Expected behaviour, and why:** the flag belongs to the commented-out advection-diffusion solve, which could report its own convergence; without that solve it is always false.
+- **Proposed fix:** pass false. Byte-identical.
+

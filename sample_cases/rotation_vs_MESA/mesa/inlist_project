@@ -1,0 +1,45 @@
+! A 1 Msun star from the pre-main sequence to 1 Gyr, rotating as a solid
+! body with no wind and no mass loss, so that J is conserved: the MESA
+! side of YREC's cross-code check of the rotation curve under J
+! conservation (YREC: solid_body_no_wind.inlist). Composition, mixture and mixing
+! length as YREC's deck; no element diffusion in either.
+&star_job
+   create_pre_main_sequence_model = .true.
+   pre_ms_T_c = 3d5
+   new_rotation_flag = .true.
+   change_rotation_flag = .true.
+   change_initial_rotation_flag = .true.
+   ! the fast case; 4.567162d-07 for the slow one (the same J as YREC's
+   ! initial_omega = 3.95D-6 and 1.0D-7 at its starting radius)
+   new_omega = 1.804029d-05
+   set_initial_omega = .true.
+   history_columns_file = 'history_columns.list'
+   pgstar_flag = .false.
+/ ! end of star_job namelist
+
+&eos
+/ ! end of eos namelist
+
+&kap
+   kap_file_prefix = 'gs98'
+   Zbase = 0.018126d0
+   use_Type2_opacities = .false.
+/ ! end of kap namelist
+
+&controls
+   initial_mass = 1.0d0
+   initial_z = 0.018126d0
+   initial_y = 0.269664d0
+   mixing_length_alpha = 1.825d0
+   MLT_option = 'Cox'
+   do_element_diffusion = .false.
+   ! rigid rotation: a uniform, very large angular momentum viscosity
+   set_uniform_am_nu_non_rot = .true.
+   uniform_am_nu_non_rot = 1d20
+   max_age = 1d9
+   max_years_for_timestep = 5d6
+   history_interval = 1
+   write_profiles_flag = .false.
+   photo_interval = 10000
+   terminal_interval = 100
+/ ! end of controls namelist
