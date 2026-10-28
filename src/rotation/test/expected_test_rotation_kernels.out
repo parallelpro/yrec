@@ -26,3 +26,8 @@ velocities: no shear velocity below the threshold        0.00E+00  ok
 velocities: shear onset quadratic (ratio 4)              1.92E-14  ok
 velocities: a mu gradient stabilizes the shear           0.00E+00  ok
 regions: (2,4), (6,7), (8,12), then none                 0.00E+00  ok
+grids: chi points equally spaced, end to end             1.48E-15  ok
+grids: the grid masses add up to the region's            0.00E+00  ok
+grids: the map back conserves J in a redistribution      5.15E-17  ok
+grids: the convection zone below takes the first change  2.22E-16  ok
+grids: the map back takes a loss to 1e-5                 5.52E-15  ok

@@ -48,7 +48,23 @@
 !                from an excess e to 2 e); zero where a mu gradient's
 !                limit exceeds the shear (mu falling linearly outward);
 !   regions      next_transport_region on a synthetic U: the regions
-!                (2,4), (6,7) and (8,12), then none.
+!                (2,4), (6,7) and (8,12), then none;
+!   grids        on the region of zones 6..40, whose first zone is the
+!                top of a convection zone (zones 1..6): equal_spaced_grid's points are
+!                equally spaced in chi from the region's first chi to
+!                its last; am_transport_grid's grid zone masses add up to
+!                the region's mass, half-shells at its ends and the
+!                convection zone below included (exactly: the sum
+!                telescopes; the grid's J is a point quadrature, a few
+!                percent off the model's here, which the map back's
+!                fractional changes do not feel); equal_grid_to_model conserves J
+!                in a pure redistribution (to round-off: it then always
+!                rescales), matches a surface loss within its documented
+!                1e-5, and gives the convection zone below the region the
+!                region's first fractional change. (When the region's
+!                first zone is radiative, the grid still counts a
+!                convection zone below it but the map back leaves it
+!                alone: docs/bug_sweep.md O13, open.)
 ! Each check prints its relative error and ok (below its tolerance) or
 ! FAIL; the program stops with status 1 on any FAIL.
 program test_rotation_kernels
@@ -67,6 +83,9 @@ program test_rotation_kernels
       use instability_velocities, only: compute_eddington_sweet_velocity, &
            inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
       use transport_regions, only: next_transport_region
+      use rotation_scratch_lib, only: transport_grid_state, substep_physics_state
+      use equal_grid, only: equal_spaced_grid
+      use am_grid, only: am_transport_grid, equal_grid_to_model
       implicit none
 
       integer, parameter :: n = 60
@@ -110,6 +129,7 @@ program test_rotation_kernels
       call wind_law_check()
       call velocity_checks()
       call region_check()
+      call grid_checks()
       if (failures > 0) then
          write(*,'(i0,a)') failures, " check(s) failed"
          stop 1
@@ -424,5 +444,74 @@ subroutine region_check()
       if (found) mismatches = mismatches + 1
       call report("regions: (2,4), (6,7), (8,12), then none", dble(mismatches), 0.0d0)
 end subroutine region_check
+
+! ---------------------------------------------------------------
+! The transport grid and the map back (see the header).
+subroutine grid_checks()
+      integer, parameter :: zb = 6, ze = 40
+      type(transport_grid_state), save :: chi_grid
+      type(substep_physics_state), save :: sub_physics
+      real(dp) :: lum(json), lp(json), m(json), inertia(json), jm(json), w(json), &
+           d_am(json), d_mix(json), eq_d_am(json), eq_d_mix(json), eq_i(json), eq_j(json), &
+           eq_m(json), eq_w(json), dj(json), jm1(json), spacing, region_mass, &
+           grid_j, s_loss, err, ratio_cz, ratio_first
+      logical :: conv(json), single
+      integer :: k
+      rotation_settings%chi_mass_scale = 8.0d-2
+      rotation_settings%chi_luminosity_scale = 2.0d-2
+      rotation_settings%chi_pressure_scale = 5.0d-2
+      rotation_settings%solar_luminosity_cgs = 3.828d33
+      do k = 1, n
+         f = dble(k - 1)/dble(n - 1)
+         lum(k) = 1.0d0 - exp(-(f/0.1d0)**2) + 1.0d-6
+         lp(k) = 17.0d0 - 8.0d0*f
+         m(k) = 10.0d0**log_m(k)
+         inertia(k) = 2.0d0/3.0d0*r(k)**2*dm(k)
+         w(k) = 3.0d-5*(1.0d0 + 0.5d0*f)
+         jm(k) = w(k)*inertia(k)/dm(k)
+         d_am(k) = 1.0d24*(1.0d0 + f)
+         d_mix(k) = 1.0d23*(1.0d0 + f)
+         conv(k) = k <= zb
+         sub_physics%eps_plus_neu_grav(k) = 1.0d0
+      end do
+! the chi grid
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      spacing = chi_grid%eq_chi_spacing
+      err = 0.0d0
+      do k = 2, chi_grid%num_eq_points
+         err = max(err, abs(chi_grid%eq_chi(k) - chi_grid%eq_chi(k-1) - spacing)/abs(spacing))
+      end do
+      err = max(err, abs(chi_grid%eq_chi(chi_grid%num_eq_points) - chi_grid%chi(ze - zb + 1))/ &
+           abs(chi_grid%chi(ze - zb + 1) - chi_grid%chi(1)))
+      call report("grids: chi points equally spaced, end to end", err, 1.0d-12)
+! the momentum grid's zone masses and J
+      call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, spacing, eq_d_am, eq_d_mix, &
+           eq_i, eq_j, eq_m, eq_w, single)
+      region_mass = 0.5d0*(m(ze) + m(ze+1)) - 0.5d0*(m(zb) + m(zb-1)) + sum(dm(1:zb-1))
+      call report("grids: the grid masses add up to the region's", &
+           abs(sum(eq_m(1:chi_grid%num_eq_points)) - region_mass)/region_mass, 1.0d-13)
+      grid_j = sum(eq_j(1:chi_grid%num_eq_points))
+! the map back: a redistribution, then a loss of 1e-3 of the grid's J
+      do k = 1, chi_grid%num_eq_points
+         dj(k) = 1.0d-3*eq_j(k)*sin(6.0d0*dble(k)/dble(chi_grid%num_eq_points))
+      end do
+      dj(chi_grid%num_eq_points) = dj(chi_grid%num_eq_points) - sum(dj(1:chi_grid%num_eq_points))
+      jm1 = jm
+      call equal_grid_to_model(chi_grid, dj, eq_j, dm, zb, ze, conv, n, 0.0d0, jm1)
+      call report("grids: the map back conserves J in a redistribution", &
+           abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)))/sum(jm(1:n)*dm(1:n)), 1.0d-13)
+      ratio_first = jm1(zb)/jm(zb)
+      ratio_cz = maxval(abs(jm1(1:zb-1)/jm(1:zb-1) - ratio_first))
+      call report("grids: the convection zone below takes the first change", ratio_cz, 1.0d-15)
+      s_loss = -1.0d-3*grid_j
+      do k = 1, chi_grid%num_eq_points
+         dj(k) = s_loss*eq_j(k)/grid_j
+      end do
+      jm1 = jm
+      call equal_grid_to_model(chi_grid, dj, eq_j, dm, zb, ze, conv, n, s_loss, jm1)
+      call report("grids: the map back takes a loss to 1e-5", &
+           abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)) - s_loss)/abs(s_loss), 1.0d-5)
+end subroutine grid_checks
 
 end program test_rotation_kernels
