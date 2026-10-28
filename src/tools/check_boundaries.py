@@ -170,6 +170,9 @@ STAR_BLIND_FILES = [
     "rotation/magnetic_braking.f90",
     "rotation/viscosity.f90",
     "rotation/am_regions.f90",
+    # the instability velocities and the transport-region scan (2026-10)
+    "rotation/seculr/instability_velocities.f90",
+    "rotation/seculr/transport_regions.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their

@@ -14,3 +14,15 @@ mixing: sum m X conserved                                2.79E-16  ok
 mixing: a uniform X stays                                3.17E-16  ok
 wind law: dOmega ~ Omega^n below saturation              0.00E+00  ok
 wind law: dOmega ~ Omega above saturation                0.00E+00  ok
+velocities: U_ES ~ omega^2 (ratio 4)                     0.00E+00  ok
+velocities: solid body, U_ES without a shear term        0.00E+00  ok
+velocities: a uniform mu leaves U_ES alone               0.00E+00  ok
+velocities: a stabilizing mu cuts U_ES by 1/2 to 1       0.00E+00  ok
+velocities: U_GSF = 0 for a solid body                   0.00E+00  ok
+velocities: U_GSF ~ omega^2 (ratio 4)                    2.43E-13  ok
+velocities: viscosity stabilizes the GSF                 0.00E+00  ok
+velocities: no shear velocity for a solid body           0.00E+00  ok
+velocities: no shear velocity below the threshold        0.00E+00  ok
+velocities: shear onset quadratic (ratio 4)              1.92E-14  ok
+velocities: a mu gradient stabilizes the shear           0.00E+00  ok
+regions: (2,4), (6,7), (8,12), then none                 0.00E+00  ok

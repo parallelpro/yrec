@@ -28,7 +28,27 @@
 !                points (diffusion numbers of order 1): sum m X is unchanged, and a uniform X stays;
 !   wind law     compute_solid_body_braking, Kawaler: dOmega ~ Omega^n
 !                below saturation (ratio 2^n from Omega to 2 Omega),
-!                ~ Omega Omega_sat^(n-1) above it (ratio 2).
+!                ~ Omega Omega_sat^(n-1) above it (ratio 2);
+!   velocities   instability_velocities on the radiative interfaces
+!                2..40, omega rising outward (a shear):
+!                Eddington-Sweet: U_ES ~ omega^2 (ratio 4 from omega to
+!                2 omega, the quadrupole moment scaled with omega^2, the
+!                omega^4 coefficient zero), and a solid body has no
+!                shear term (U_ES does not depend on es_shear_coeff);
+!                the mu gradient: a uniform mu leaves U_ES alone, and a
+!                stabilizing one (mu rising inward) multiplies it by
+!                1/2 to 1 (grad_mu enters twice; the author's decision,
+!                docs/HOW_YREC_WORKS.md 4.6);
+!                GSF (no inhibition): zero for a solid body, ~ omega^2
+!                at a fixed shape of omega(r) (ratio 4); with viscous
+!                inhibition, zero below 2 sqrt(nu/K) of the dynamical
+!                limit;
+!                shear: zero for a solid body and below the secular
+!                threshold; above it, quadratic in the excess (ratio 4
+!                from an excess e to 2 e); zero where a mu gradient's
+!                limit exceeds the shear (mu falling linearly outward);
+!   regions      next_transport_region on a synthetic U: the regions
+!                (2,4), (6,7) and (8,12), then none.
 ! Each check prints its relative error and ok (below its tolerance) or
 ! FAIL; the program stops with status 1 on any FAIL.
 program test_rotation_kernels
@@ -44,6 +64,9 @@ program test_rotation_kernels
       use rotational_mixing, only: composition_diffusion_coeffs
       use numerics_lib, only: solve_tridiagonal
       use magnetic_braking, only: compute_solid_body_braking, wind_conditions
+      use instability_velocities, only: compute_eddington_sweet_velocity, &
+           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
+      use transport_regions, only: next_transport_region
       implicit none
 
       integer, parameter :: n = 60
@@ -85,6 +108,8 @@ program test_rotation_kernels
       call am_diffusion_check()
       call mixing_check()
       call wind_law_check()
+      call velocity_checks()
+      call region_check()
       if (failures > 0) then
          write(*,'(i0,a)') failures, " check(s) failed"
          stop 1
@@ -258,5 +283,146 @@ subroutine wind_law_check()
            2.0d-4, d2, dend, no_rossby, ierr)
       call report("wind law: dOmega ~ Omega above saturation", abs(d2/d1/2.0d0 - 1.0d0), 1.0d-13)
 end subroutine wind_law_check
+
+! ---------------------------------------------------------------
+! The instability velocities on interfaces z1..z2 of the radiative
+! interior (see the header).
+subroutine velocity_checks()
+      integer, parameter :: z1 = 2, z2 = 40
+      real(dp), parameter :: g_cgs = 6.674d-8, ln10 = 2.302585092994046d0
+      real(dp) :: w(json), wi(json), ri(json), grav(json), phi(json), c1(json), &
+           c2(json), c3(json), ratio(json), u1(json), u2(json), mu(json), &
+           mu_flat(json), mu_lin(json), mui_lin(json), lp(json), del(json), dw(json), qdyn(json), mui(json), &
+           nu(json), kt(json), gf(json), kgsf(json), rmu(json), u0(json), q
+      logical :: conv(json)
+      integer :: k
+      conv = .false.
+      c2 = 0.0d0
+      do k = 1, n
+         w(k) = 3.0d-5*(1.0d0 + 0.5d0*r(k)/rsun)
+         grav(k) = g_cgs*10.0d0**log_m(k)/r(k)**2
+         phi(k) = 0.1d0*w(k)**2*r(k)**2
+         c1(k) = 1.0d10*(1.0d0 + r(k)/rsun)
+         c3(k) = 1.0d11
+         lp(k) = 17.0d0 - 8.0d0*r(k)/rsun
+         mu(k) = 0.62d0 + 0.25d0*exp(-(r(k)/(0.12d0*rsun))**2)
+         mu_flat(k) = 0.62d0
+         mu_lin(k) = 0.8d0 - 0.15d0*r(k)/rsun
+         nu(k) = 10.0d0
+         kt(k) = 1.0d7
+         gf(k) = grav(k)
+         kgsf(k) = 1.0d-3
+         rmu(k) = 1.0d-4
+         qdyn(k) = 1.0d-4
+      end do
+      do k = 2, n
+         ri(k) = 0.5d0*(r(k) + r(k-1))
+         wi(k) = 0.5d0*(w(k) + w(k-1))
+         mui(k) = 0.5d0*(mu(k) + mu(k-1))
+         mui_lin(k) = 0.5d0*(mu_lin(k) + mu_lin(k-1))
+      end do
+! Eddington-Sweet: omega -> 2 omega with the quadrupole moment ~ omega^2
+      u1 = 0.0d0; u2 = 0.0d0
+      call compute_eddington_sweet_velocity(z1, z2, conv, r, w, wi, ri, grav, phi, &
+           c1, c2, c3, ratio, u1)
+      call compute_eddington_sweet_velocity(z1, z2, conv, r, 2.0d0*w, 2.0d0*wi, ri, grav, &
+           4.0d0*phi, c1, c2, c3, ratio, u2)
+      call report("velocities: U_ES ~ omega^2 (ratio 4)", &
+           maxval(abs(u2(z1:z2)/u1(z1:z2) - 4.0d0))/4.0d0, 1.0d-13)
+! a solid body: no shear term
+      u1 = 0.0d0; u2 = 0.0d0
+      call compute_eddington_sweet_velocity(z1, z2, conv, r, 0.0d0*w + 3.0d-5, 0.0d0*wi + 3.0d-5, &
+           ri, grav, phi, c1, c2, c3, ratio, u1)
+      call compute_eddington_sweet_velocity(z1, z2, conv, r, 0.0d0*w + 3.0d-5, 0.0d0*wi + 3.0d-5, &
+           ri, grav, phi, c1, c2, 0.0d0*c3, ratio, u2)
+      call report("velocities: solid body, U_ES without a shear term", &
+           maxval(abs(u2(z1:z2) - u1(z1:z2))/u1(z1:z2)), 0.0d0)
+! the mu gradient: uniform mu, then a stabilizing one with
+! del_grad_diff = 0.1 + grad_mu
+      do k = 2, n
+         del(k) = 0.1d0 + (log(mu(k)) - log(mu(k-1)))/(ln10*(lp(k) - lp(k-1)))
+      end do
+      u0 = 1.0d0; u1 = 1.0d0
+      call inhibit_by_mu_gradient(z1, z2, mu_flat, lp, del, u1)
+      call report("velocities: a uniform mu leaves U_ES alone", &
+           maxval(abs(u1(z1:z2) - 1.0d0)), 0.0d0)
+      u1 = 1.0d0
+      call inhibit_by_mu_gradient(z1, z2, mu, lp, del, u1)
+      q = max(0.0d0, 0.5d0 - minval(u1(z1:z2))) + max(0.0d0, maxval(u1(z1:z2)) - 1.0d0)
+      if (minval(u1(z1:z2)) > 0.999d0) q = 1.0d0
+      call report("velocities: a stabilizing mu cuts U_ES by 1/2 to 1", q, 0.0d0)
+! GSF without inhibition: a solid body, then omega -> 2 omega
+      do k = 2, n
+         dw(k) = (w(k) - w(k-1))/(log(r(k)) - log(r(k-1)))
+      end do
+      u1 = 0.0d0
+      call compute_gsf_velocity(z1, z2, 1, conv, r, 0.0d0*w + 3.0d-5, 0.0d0*dw, qdyn, mu, mui, &
+           0.0d0*wi + 3.0d-5, nu, kt, gf, kgsf, u1)
+      call report("velocities: U_GSF = 0 for a solid body", maxval(abs(u1(z1:z2))), 0.0d0)
+      u1 = 0.0d0; u2 = 0.0d0
+      call compute_gsf_velocity(z1, z2, 1, conv, r, w, dw, qdyn, mu, mui, wi, nu, kt, gf, kgsf, u1)
+      call compute_gsf_velocity(z1, z2, 1, conv, r, 2.0d0*w, 2.0d0*dw, qdyn, mu, mui, 2.0d0*wi, &
+           nu, kt, gf, kgsf, u2)
+! (d ln omega/dr is a difference of logs of nearby omegas, which loses
+! about three digits to cancellation, hence the looser tolerance)
+      call report("velocities: U_GSF ~ omega^2 (ratio 4)", &
+           maxval(abs(u2(z1:z2)/u1(z1:z2) - 4.0d0))/4.0d0, 1.0d-11)
+! viscous inhibition (mode 2): nu/K so large that every |d omega/d ln r|
+! is below 2 sqrt(nu/K) q_dyn
+      u1 = 1.0d0
+      call compute_gsf_velocity(z1, z2, 2, conv, r, w, dw, qdyn, mu, mui, wi, &
+           0.0d0*nu + 1.0d7, kt, gf, kgsf, u1)
+      call report("velocities: viscosity stabilizes the GSF", maxval(abs(u1(z1:z2))), 0.0d0)
+! shear: a solid body, below the threshold, the quadratic onset, a mu
+! gradient's limit. The threshold is sqrt(nu/K Re_c/8) q_dyn.
+      q = sqrt(nu(1)/kt(1)*0.125d0*1.0d3)*qdyn(1)
+      u1 = 0.0d0; u2 = 0.0d0
+      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw, qdyn, mu_flat, &
+           0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
+      call report("velocities: no shear velocity for a solid body", maxval(abs(u1(z1:z2))), 0.0d0)
+      u1 = 0.0d0
+      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + 0.5d0*q, qdyn, &
+           mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
+      call report("velocities: no shear velocity below the threshold", maxval(abs(u1(z1:z2))), 0.0d0)
+      u1 = 0.0d0; u0 = 0.0d0
+      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
+           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
+      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 2.0d-2), &
+           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u0, u2)
+      call report("velocities: shear onset quadratic (ratio 4)", &
+           maxval(abs(u0(z1:z2)/u1(z1:z2) - 4.0d0))/4.0d0, 1.0d-10)
+      u1 = 0.0d0
+      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
+           qdyn, mu_lin, mui_lin, ri, nu, kt, 0.0d0*rmu + 1.0d0, u1, u2)
+      call report("velocities: a mu gradient stabilizes the shear", maxval(abs(u1(z1:z2))), 0.0d0)
+end subroutine velocity_checks
+
+! ---------------------------------------------------------------
+! next_transport_region on U = (0, 0, 1, 1, 0, 0, 2, 0, 3, 3, 3, 3) at
+! interfaces 2..12: regions (2,4), (6,7), (8,12), then none; and none
+! for U = 0.
+subroutine region_check()
+      real(dp) :: u(12)
+      integer :: expected(2,3), got(2,3), scan_start, zone_begin, zone_end, k, mismatches
+      logical :: in_region, found
+      u = [0.0d0, 0.0d0, 1.0d0, 1.0d0, 0.0d0, 0.0d0, 2.0d0, 0.0d0, 3.0d0, 3.0d0, 3.0d0, 3.0d0]
+      expected = reshape([2, 4, 6, 7, 8, 12], [2, 3])
+      got = 0
+      scan_start = 2; in_region = .false.; zone_begin = 0; zone_end = 0
+      mismatches = 0
+      do k = 1, 3
+         call next_transport_region(u, 12, scan_start, in_region, zone_begin, zone_end, found)
+         if (.not.found) mismatches = mismatches + 1
+         got(:,k) = [zone_begin, zone_end]
+      end do
+      mismatches = mismatches + count(got /= expected)
+      if (scan_start <= 12) mismatches = mismatches + 1
+      call next_transport_region(u, 12, scan_start, in_region, zone_begin, zone_end, found)
+      if (found) mismatches = mismatches + 1
+      u = 0.0d0; scan_start = 2; in_region = .false.
+      call next_transport_region(u, 12, scan_start, in_region, zone_begin, zone_end, found)
+      if (found) mismatches = mismatches + 1
+      call report("regions: (2,4), (6,7), (8,12), then none", dble(mismatches), 0.0d0)
+end subroutine region_check
 
 end program test_rotation_kernels

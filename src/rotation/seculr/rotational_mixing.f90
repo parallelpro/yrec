@@ -63,6 +63,7 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
      final_iteration_flag, num_zones, composition, species_begin, species_end, ierr)
       use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use star_info_lib, only: json
+      use transport_regions, only: next_transport_region
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
       type(midstep_physics_state), intent(in) :: mid_scr
@@ -84,7 +85,7 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
       integer, intent(out) :: ierr
       logical :: unstable_region_active, unstable_zone_found, &
            two_zone_region
-      integer :: search_start, zone_idx
+      integer :: search_start
 
       ierr = 0
       if (.not.final_iteration_flag) then
@@ -95,34 +96,14 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
          if (ierr /= 0) return
       else
 ! Scan the interfaces from zone_min outward and mix each transport
-! region in turn. unstable_zone_found is set when the scan meets a
-! positive velocity; zone_begin is the zone below the region's first
-! positive velocity, zone_end the zone above its last.
+! region in turn (next_transport_region: zone_begin is the zone below
+! the region's first positive velocity, zone_end the zone above its
+! last).
          unstable_region_active = .false.
          search_start = zone_min
          region_loop: do
-         unstable_zone_found = .false.
-         do zone_idx = search_start,zone_max
-            if (velocity(zone_idx).gt.0.0d0) then
-               unstable_zone_found = .true.
-               if (.not.unstable_region_active) then
-! The start of a region.
-                  unstable_region_active = .true.
-                  zone_begin = zone_idx - 1
-               end if
-            else if (unstable_region_active) then
-! The end of a region.
-               zone_end = zone_idx - 1
-               unstable_region_active = .false.
-               search_start = zone_idx + 1
-               exit
-            end if
-         end do
-         if (zone_idx > zone_max) then
-! The scan reached zone_max: a region still open ends there.
-         if (unstable_region_active) zone_end = zone_max
-         search_start = zone_max + 1
-         end if
+         call next_transport_region(velocity, zone_max, search_start, &
+              unstable_region_active, zone_begin, zone_end, unstable_zone_found)
 ! Stop when the scan finds no further positive velocity.
          if (unstable_zone_found) then
 ! The equally spaced chi grid of the region.

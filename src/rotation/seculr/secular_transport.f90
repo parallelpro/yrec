@@ -47,6 +47,7 @@ module secular_transport
            solve_angular_momentum_transport
       use omega_profile, only: solid_body_omega
       use stability_coefficients, only: rotation_stability_setup
+      use transport_regions, only: next_transport_region
       implicit none
       private :: compute_omega_gradients
 contains
@@ -458,26 +459,8 @@ end subroutine transport_unstable_regions
 ! scan_start_zone moves past it. region_found is false when the scan
 ! meets no U > 0.
 subroutine find_unstable_region()
-      region_found = .false.
-      do j = scan_start_zone,zone_max
-         if(diffusion_velocity(j).gt.0.0D0) then
-            region_found = .true.
-            if(.not.in_unstable_region) then
-               in_unstable_region = .true.
-               zone_begin = j - 1
-            endif
-         else if(in_unstable_region) then
-            zone_end = j - 1
-            in_unstable_region = .false.
-            scan_start_zone = j + 1
-            exit
-         endif
-      end do
-      if (j .gt. zone_max) then
-! The scan reached zone_max: a region still open ends there.
-      if(in_unstable_region) zone_end = zone_max
-      scan_start_zone = zone_max + 1
-      end if
+      call next_transport_region(diffusion_velocity, zone_max, scan_start_zone, &
+           in_unstable_region, zone_begin, zone_end, region_found)
 end subroutine find_unstable_region
 
 ! ---------------------------------------------------------------
