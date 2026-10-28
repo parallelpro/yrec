@@ -36,6 +36,37 @@ BINARY = REPO / "src" / "test_rotation_kernels"
 EXPECTED = REPO / "src" / "rotation" / "test" / "expected_test_rotation_kernels.out"
 
 
+def test_mechanism_controls():
+    """Each transport mechanism's two controls, as
+    src/state/transport_mechanism_layout.f90 names them, are registry
+    controls, and rotation_settings_from_star copies them into the
+    mechanism's slot of velocity_scale and mixing_scale."""
+    layout = (REPO / "src" / "state" / "transport_mechanism_layout.f90").read_text()
+    slots = {int(k): name for name, k in
+             re.findall(r"(i_mech_\w+)\s*=\s*(\d+)", layout)}
+
+    def names(array):
+        m = re.search(array + r"\(n_transport_mechanisms\)\s*=\s*&?\s*"
+                      r"\[character\(len=32\) ::([^\]]*)\]", layout)
+        assert m, array
+        return re.findall(r"'([^']+)'", m.group(1))
+
+    velocity = names("transport_mechanism_velocity_scale_control")
+    mixing = names("transport_mechanism_mixing_scale_control")
+    assert len(velocity) == len(mixing) == len(slots)
+    registry = (REPO / "src" / "defaults" / "controls_registry.tsv").read_text()
+    canonical = {line.split("\t")[3] for line in registry.splitlines()
+                 if line.count("\t") >= 3 and not line.startswith("#")}
+    setup = (REPO / "src" / "setup" / "rotation_settings_setup.f90").read_text()
+    for k, slot in sorted(slots.items()):
+        for field, control in (("velocity_scale", velocity[k - 1]),
+                               ("mixing_scale", mixing[k - 1])):
+            assert control in canonical, f"{control} is not a registry control"
+            copy = rf"settings%{field}\({slot}\)\s*=\s*s%ctrl%{control}\b"
+            assert re.search(copy, setup), \
+                f"rotation_settings_from_star does not copy {control} into {field}({slot})"
+
+
 def test_rotation_kernels(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_rotation_kernels not built (run `make tests` in src/)")

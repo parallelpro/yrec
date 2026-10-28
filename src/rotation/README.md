@@ -32,7 +32,8 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |
 | `shell_quadrature` | The two quadratures of the distortion integral. |
 | **seculr/** | |
-| `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear. The mechanisms' slots are `state/transport_mechanism_layout`'s. |
+| `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear. |
+| `transport_mechanisms` | `compute_mechanism_velocity`: one slot's mechanism, its kernel called with what it reads from the interface record (star-blind). The slots, with each mechanism's name, the slot it corrects and its two controls, are `state/transport_mechanism_layout`'s. |
 | `transport_regions` | `next_transport_region`: the runs of interfaces where the total velocity U is positive. |
 | `region_transport` | `diffuse_region_angular_momentum`: one region's angular momentum diffusion over a sub-step, on its grid: the system, its solve and the map back to j/m (star-blind). |
 | `secular_transport` | `apply_secular_transport`: one sub-step of transport, the iteration; its steps (the interfaces' setup, the velocities, the restart, the uncoupled spin-down, the region loop, the checks, the mixing) are module procedures with explicit arguments. |
@@ -106,10 +107,10 @@ The decks pin the full step: the rotating solar deck, the five rotating configur
 **Add a control:** add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
 
 **Add a transport mechanism** (a new instability or circulation that transports angular momentum and mixes as a diffusion):
-1. Give it the next slot in `state/transport_mechanism_layout.f90` (`i_mech_<name>`, `n_transport_mechanisms` + 1, its name). The coefficients sum the mechanisms in slot order, so the next slot leaves the present ones' sums unchanged bit for bit.
+1. Declare it in `state/transport_mechanism_layout.f90`: the next slot (`i_mech_<name>`, `n_transport_mechanisms` + 1), its name, the slot it corrects (0 for none; an earlier one) and the names of its two controls. The coefficients sum the mechanisms in slot order, so the next slot leaves the present ones' sums unchanged bit for bit.
 2. Write its velocity as a kernel in `seculr/instability_velocities.f90`: arguments in, its velocity at interfaces `zone_min..zone_max` out, star-free. Give it a check in `test_rotation_kernels` that a mistake would break (a limit, a scaling, a stability criterion).
-3. Call it from `circulation_velocities` with `mechanism_velocity(i_mech_<name>,:)`. Clearing, scaling, averaging between iterations, summing into U and the diffusion coefficients loop over the slots already.
-4. Give it a velocity scale and a mixing efficiency: two controls, copied into `rotation_settings%velocity_scale(i_mech_<name>)` and `%mixing_scale(i_mech_<name>)` in `rotation_settings_from_star`.
+3. Add its case to `compute_mechanism_velocity` (`seculr/transport_mechanisms.f90`): the call of its kernel with what it reads from `stab`, `sub_physics` and ω, into `mechanism_velocity(i_mech_<name>,:)`. Clearing, scaling, averaging between iterations, summing into U and the diffusion coefficients loop over the slots already; `test_rotation_kernels` checks that it writes no slot it has not declared.
+4. Add its two controls to the registry (`defaults/controls_registry.tsv`, then the generators) and copy them into `rotation_settings%velocity_scale(i_mech_<name>)` and `%mixing_scale(i_mech_<name>)` in `rotation_settings_from_star`; `test_rotation_kernels.py` checks both against the names the layout declares.
 5. For output, add a profile column that reads `s%mechanism_velocity(i_mech_<name>,k)` (`core/diagnostics/stitched_model.f90`, `io/profile_output.f90`).
 
 **Add any other kernel:** keep it star-free (arguments in, results out), add its file to `STAR_BLIND_FILES`, and give it a check in `test_rotation_kernels` that a mistake would break (a conservation law, a limit, a scaling).

@@ -104,6 +104,12 @@
 !                sqrt((rho/P) (grad_ad - grad)), the mu-gradient
 !                Richardson term, and the margins Delta and
 !                del_grad_diff with the end interfaces' floors;
+!   mechanisms   compute_mechanism_velocity on the stability check's
+!                structure with a sheared omega: each slot's mechanism
+!                writes its own slot and the one it declares it corrects
+!                (transport_mechanism_corrects), and no other; a
+!                corrected slot comes earlier; a slot out of range does
+!                nothing;
 !   checkj       check_angular_momentum: converged when the largest
 !                |dj/j| since the previous iterate is within
 !                convergence_tolerance, not converged above it; the
@@ -136,6 +142,9 @@ program test_rotation_kernels
       use instability_velocities, only: compute_eddington_sweet_velocity, &
            inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
       use transport_regions, only: next_transport_region
+      use transport_mechanisms, only: compute_mechanism_velocity
+      use transport_mechanism_layout, only: n_transport_mechanisms, transport_mechanism_corrects
+      use circulation, only: compute_quadrupole
       use rotation_scratch_lib, only: transport_grid_state, substep_physics_state
       use equal_grid, only: equal_spaced_grid
       use am_grid, only: am_transport_grid, equal_grid_to_model
@@ -193,6 +202,7 @@ program test_rotation_kernels
       call region_transport_checks()
       call wind_terms_checks()
       call stability_check()
+      call mechanism_slot_check()
       call checkj_check()
       call checkc_check()
       if (failures > 0) then
@@ -961,6 +971,80 @@ subroutine checkj_check()
       if (ierr == 0) err = 1.0d0
       call report("checkj: a negative j stops the run", err, 0.0d0)
 end subroutine checkj_check
+
+! ---------------------------------------------------------------
+! compute_mechanism_velocity's slots (see the header): every element of
+! mechanism_velocity starts at a sentinel no kernel writes, and after
+! slot m's call only rows m and transport_mechanism_corrects(m) may
+! differ from it; slots 0 and n + 1 write nothing.
+subroutine mechanism_slot_check()
+      integer, parameter :: zmin = 5, zmax = 50
+      real(dp), parameter :: sentinel = -123.456d0
+      type(stability_state), save :: stab
+      type(substep_physics_state), save :: phys
+      real(dp) :: lrho(json), lt(json), lp(json), grav(json), lum(json), mass(json), &
+           w(json), v(n_transport_mechanisms, json), x
+      logical :: conv(json)
+      integer :: k, m, row, mismatches, written, ierr
+      do k = 1, n
+         x = r(k)/rsun
+         lp(k) = poly(x, [17.2d0, -3.0d0, 1.5d0, -2.0d0])
+         lt(k) = poly(x, [7.2d0, -1.2d0, 0.3d0, -0.2d0])
+         lrho(k) = poly(x, [2.2d0, -4.0d0, 1.5d0, -0.5d0])
+         grav(k) = poly(x, [3.0d4, 6.0d4, -3.0d4, 1.5d4])
+         lum(k) = poly(x, [0.1d0, 0.8d0, 0.2d0, -0.1d0])
+         mass(k) = poly(x, [1.0d32, 1.8d33, 4.0d32, -3.0d32])
+         phys%gradr(k) = poly(x, [0.30d0, 0.05d0, 0.02d0, -0.01d0])
+         phys%grada(k) = poly(x, [0.40d0, -0.02d0, 0.01d0, 0.005d0])
+         phys%gradT(k) = min(phys%gradr(k), phys%grada(k))
+         phys%qdt(k) = poly(x, [-1.0d0, -0.1d0, 0.0d0, 0.0d0])
+         phys%eps_total(k) = poly(x, [5.0d0, -4.0d0, 1.0d0, 0.5d0])
+         phys%cp(k) = poly(x, [3.0d8, 1.5d8, 3.0d7, -1.5d7])
+! a uniform mu, so that no mu gradient stabilizes the shear: all three
+! mechanisms act somewhere
+         phys%mu(k) = 0.62d0
+         w(k) = 3.0d-5*(1.0d0 + 2.0d0*x**2)
+         conv(k) = .false.
+      end do
+      call rotation_stability_setup(stab, phys, lrho, grav, lum, lp, log_r, mass, lt, &
+           zmin, zmax, n)
+      call compute_quadrupole(stab, lrho, grav, w, n, ierr)
+      do k = 2, n
+         stab%omega_interface(k) = 0.5d0*(w(k) + w(k-1))
+         stab%mean_molecular_weight_interface(k) = 0.5d0*(phys%mu(k) + phys%mu(k-1))
+         stab%kinematic_viscosity_interface(k) = 30.0d0
+         stab%thermal_diffusivity_interface(k) = 1.0d7
+         stab%domega_dlnr(k) = (w(k) - w(k-1))/(log(r(k)) - log(r(k-1)))
+      end do
+! two interfaces dynamically unstable, where the shear corrects the GSF
+! velocity
+      stab%dynamical_shear_omega_limit(30:31) = 1.0d-3*stab%dynamical_shear_omega_limit(30:31)
+      mismatches = 0
+      written = 0
+      do m = 0, n_transport_mechanisms + 1
+         v = sentinel
+         call compute_mechanism_velocity(m, zmin, zmax, stab, phys, w, log_r, lp, conv, v)
+         do row = 1, n_transport_mechanisms
+            if (m >= 1 .and. m <= n_transport_mechanisms) then
+               if (row == m) then
+                  if (any(v(row, zmin:zmax) /= sentinel)) written = written + 1
+                  cycle
+               end if
+               if (row == transport_mechanism_corrects(m)) cycle
+            end if
+            if (any(v(row, 1:n) /= sentinel)) mismatches = mismatches + 1
+         end do
+      end do
+! every mechanism wrote its own slot (here all three act somewhere)
+      if (written /= n_transport_mechanisms) mismatches = mismatches + 1
+      call report("mechanisms: each writes its slot and what it corrects", dble(mismatches), 0.0d0)
+      mismatches = 0
+      do m = 1, n_transport_mechanisms
+         if (transport_mechanism_corrects(m) >= m .or. transport_mechanism_corrects(m) < 0) &
+              mismatches = mismatches + 1
+      end do
+      call report("mechanisms: a corrected slot comes earlier", dble(mismatches), 0.0d0)
+end subroutine mechanism_slot_check
 
 ! check_composition (see the header): a small negative interior
 ! abundance repaired, a larger one a cut, the fourth cut a stop, and mu

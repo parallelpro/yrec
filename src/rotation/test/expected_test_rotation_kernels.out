@@ -56,6 +56,14 @@ stability: dynamical-shear limit                         7.97E-15  ok
 stability: mu-gradient Richardson term                   1.53E-14  ok
 stability: del_grad_diff with the end floors             1.91E-15  ok
 stability: interfaces midway in r                        5.53E-15  ok
+    5 RAT -8.219E+01 POT SPH,CYL,QUA 1.546E-04 7.328E-05-1.278E-02
+ QUA,G,R    2.100E+12   1.543E+12   3.404E+04   3.308E+04   4.848E+09   3.671E+09
+    6 RAT -3.253E+01 POT SPH,CYL,QUA 1.938E-04 9.073E-05-6.394E-03
+ QUA,G,R    2.421E+12   2.100E+12   3.498E+04   3.404E+04   6.026E+09   4.848E+09
+ DYNAMICAL SHEAR-SHELL   30 WTOP  4.456E-05 WBOT  4.357E-05 LIMIT  4.453E-05
+ DYNAMICAL SHEAR-SHELL   31 WTOP  4.557E-05 WBOT  4.456E-05 LIMIT  4.555E-05
+mechanisms: each writes its slot and what it corrects    0.00E+00  ok
+mechanisms: a corrected slot comes earlier               0.00E+00  ok
  MAX D(J/M)/(J/M)   1.000E-06 AT PT.   54 BY ITERATION
    0.000E+00   0   1.000E-06   6
 checkj: within the tolerance: converged, omega from j    2.01E-16  ok

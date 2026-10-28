@@ -7,13 +7,14 @@
 ! (1992) coupling factor (zahn_coupling_factor) and the quadrupole
 ! moment of the distorted star (compute_quadrupole). Each mechanism's
 ! velocity is a star-blind kernel in instability_velocities, which
-! circulation_velocities calls with the structure at the interfaces.
+! circulation_velocities has computed slot by slot
+! (transport_mechanisms' compute_mechanism_velocity); everything after
+! that (scales, averaging, the sum, the diffusion coefficients) loops
+! over the slots.
 module circulation
       use rotation_configuration, only: rotation_settings
-      use instability_velocities, only: compute_eddington_sweet_velocity, &
-           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
-      use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
-           i_mech_shear, n_transport_mechanisms
+      use transport_mechanisms, only: compute_mechanism_velocity
+      use transport_mechanism_layout, only: n_transport_mechanisms
       implicit none
       private
       public :: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
@@ -26,14 +27,15 @@ contains
 ! zones i-1 and i). Each stability criterion is a structural coefficient
 ! (rotation_stability_setup, stability_coefficients) times a gradient
 ! across the interface, compared with a critical value; where the
-! interface is unstable the mechanism gets a velocity:
-!  - es_circulation_velocity, the Eddington-Sweet circulation (Zahn
+! interface is unstable the mechanism gets a velocity, in its slot of
+! mechanism_velocity (transport_mechanism_layout):
+!  - i_mech_eddington_sweet, the Eddington-Sweet circulation (Zahn
 !    1991, 1992), corrected for the quadrupole moment and reduced by the
 !    mu gradient (Maeder & Zahn 1998);
-!  - gsf_circulation_velocity, the GSF instability (Kippenhahn
-!    1980), optionally inhibited by viscosity and mu gradients;
-!  - secular_shear_velocity, the secular shear instability, or the
-!    dynamical one where Ri < 1/4 (Endal & Sofia 1978).
+!  - i_mech_gsf, the GSF instability (Kippenhahn 1980), optionally
+!    inhibited by viscosity and mu gradients;
+!  - i_mech_shear, the secular shear instability, or the dynamical one
+!    where Ri < 1/4 (Endal & Sofia 1978).
 ! The Eddington-Sweet and GSF velocities are skipped at interfaces with
 ! convective zones on both sides. From the second iteration on, each
 ! velocity is averaged with the previous iteration's. Their sum is
@@ -82,26 +84,13 @@ subroutine circulation_velocities(stab, sub_physics, circ_scr, &
       if (iteration.gt.1) call store_previous_velocities()
       call clear_velocities()
       call interpolate_to_interfaces()
-      call compute_eddington_sweet_velocity(zone_min, zone_max, am_transport_convective_flag, &
-           stab%radius, omega, stab%omega_interface, stab%radius_interface, &
-           stab%local_gravity, stab%quadrupole_moment, stab%es_velocity_coeff1, &
-           stab%es_velocity_coeff2, stab%es_shear_coeff, &
-           stab%circulation_correction_ratio, mechanism_velocity(i_mech_eddington_sweet,:))
-      call inhibit_by_mu_gradient(zone_min, zone_max, sub_physics%mu, log_pressure, &
-           stab%del_grad_diff_interface, mechanism_velocity(i_mech_eddington_sweet,:))
-      call compute_gsf_velocity(zone_min, zone_max, rotation_settings%gsf_inhibition_mode, &
-           am_transport_convective_flag, stab%radius, omega, stab%domega_dlnr, &
-           stab%dynamical_shear_omega_limit, &
-           sub_physics%mu, stab%mean_molecular_weight_interface, stab%omega_interface, &
-           stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
-           stab%gravity_factor_interface, stab%gsf_kippenhahn_coeff, &
-           mechanism_velocity(i_mech_gsf,:))
-      call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
-           log_radius, stab%radius, omega, stab%domega_dlnr, stab%dynamical_shear_omega_limit, &
-           sub_physics%mu, stab%mean_molecular_weight_interface, stab%radius_interface, &
-           stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
-           stab%mu_gradient_richardson_coeff, mechanism_velocity(i_mech_shear,:), &
-           mechanism_velocity(i_mech_gsf,:))
+! Each mechanism's velocity, in slot order (a mechanism that corrects
+! another follows it).
+      do m = 1, n_transport_mechanisms
+         call compute_mechanism_velocity(m, zone_min, zone_max, stab, sub_physics, &
+              omega, log_radius, log_pressure, am_transport_convective_flag, &
+              mechanism_velocity)
+      end do
       call apply_velocity_scales()
       if (iteration.gt.1) call average_with_previous()
       call sum_velocities()
