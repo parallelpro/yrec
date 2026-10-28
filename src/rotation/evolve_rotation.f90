@@ -213,7 +213,10 @@ contains
 ! ---------------------------------------------------------------
 ! Without instability transport: the rotation curve (solid body
 ! everywhere if forced), and the wind's spin-down of the surface
-! convection zone over the whole step.
+! convection zone over the whole step, if the step has a duration (a
+! model solved but not aged gets a zero step and loses nothing; until
+! 2026-10 it got its step negated, which the brake applied as a spin-up,
+! docs/bug_sweep.md O24).
 subroutine spin_down_without_transport()
       omega_surface = s%omega(s%nz)
 ! solid_body_mode_flag = 1 acts like force_solid_body_rotation
@@ -225,7 +228,8 @@ subroutine spin_down_without_transport()
       call omega_from_j(s%logRho,s%j_rot,s%logR, &
            s%log_mass,s%dm,am_transport_convective_flag,s%nz, &
            s%eta_squared,s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
-      if(.not.disk_lock_engaged .and. rotation_settings%use_wind_torque .and. s%convective_flag(s%nz)) then
+      if(full_timestep.gt.0.0D0 .and. .not.disk_lock_engaged .and. &
+           rotation_settings%use_wind_torque .and. s%convective_flag(s%nz)) then
 ! the moment of inertia of the surface convection zone (the whole star
 ! under solid-body rotation), and the masses at its bottom and top
          moment_of_inertia_cz = 0.0D0

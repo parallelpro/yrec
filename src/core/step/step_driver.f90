@@ -529,13 +529,12 @@ subroutine converge_with_rotation
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
 ! the wind torque when job%use_wind_torque is set). A model not aged
-! passes its step negated, as the negative-dt encoding did: the rotation
-! step skips its sub-steps for a non-positive step, but without
-! instability transport the wind brake still applies it, which spins the
-! surface convection zone up (inherited from GETW; docs/bug_sweep.md O24,
-! open).
+! gets a zero step, as the Henyey pass does: it spans no time, so no
+! angular momentum moves or leaves. (Until 2026-10 it got its step
+! negated, and without instability transport the wind brake applied it,
+! spinning the surface convection zone up; docs/bug_sweep.md O24.)
                wind_loss_active = s%job%use_wind_torque
-               call evolve_angular_momentum(s, merge(s%dt, -dabs(s%dt), evolve_model_flag), &
+               call evolve_angular_momentum(s, merge(s%dt, 0.0d0, evolve_model_flag), &
                     s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
                if (jerr /= 0) then
