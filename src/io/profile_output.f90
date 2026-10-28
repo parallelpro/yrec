@@ -111,6 +111,7 @@ subroutine profile_column_names(names)
       names(58) = 'csound'
       names(59) = 'D_omega'
       names(60) = 'D_mix_rot'
+      names(61) = 'eps_extra'
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------

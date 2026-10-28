@@ -321,6 +321,18 @@ test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+# examples/other_energy (2026-10): YREC with an extra energy source
+# (core/structure/energy_sources.f90), the template for a program that
+# registers its own sources before run_yrec. `make other_energy` builds
+# examples/other_energy/yrec_extra_heat.
+OTHER_ENERGY_DIR := ../examples/other_energy
+$(OTHER_ENERGY_DIR)/yrec_extra_heat.o: core/run/run_driver.o core/structure/energy_sources.o
+$(OTHER_ENERGY_DIR)/yrec_extra_heat: FFLAGS += $(REL_FFLAGS)
+$(OTHER_ENERGY_DIR)/yrec_extra_heat: $(OTHER_ENERGY_DIR)/yrec_extra_heat.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+.PHONY: other_energy
+other_energy: $(OTHER_ENERGY_DIR)/yrec_extra_heat
+
 .PHONY: tests
 tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
 
@@ -373,6 +385,7 @@ clean:
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
+	@rm -f $(OTHER_ENERGY_DIR)/yrec_extra_heat $(OTHER_ENERGY_DIR)/*.o
 	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
 
 install:

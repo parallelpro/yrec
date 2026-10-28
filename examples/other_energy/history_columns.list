@@ -1,0 +1,10 @@
+! The history columns of examples/other_energy (see src/defaults/history_columns.list
+! for every column).
+model_number
+star_age
+log_L
+log_Teff
+log_R
+center_h1
+lum_grav
+lum_extra

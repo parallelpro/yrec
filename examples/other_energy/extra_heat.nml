@@ -1,0 +1,8 @@
+! The extra energy source of yrec_extra_heat (see yrec_extra_heat.f90):
+! a uniform heating rate eps_extra (erg/g/s) between m_inner_msun and
+! m_outer_msun. eps_extra = 0 reproduces the plain yrec run exactly.
+&extra_heat
+  eps_extra = 0.5d0
+  m_inner_msun = 0.3d0
+  m_outer_msun = 0.6d0
+/

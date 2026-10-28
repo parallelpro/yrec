@@ -7,7 +7,10 @@ byte-compares its report with the pinned baselines in src/core/test/:
     tolerance 3e-3 (the tables' own derivatives);
   - testsuite/Test_solarGS98_yaleeos.inlist: the 1 Msun birthline model
     with the Yale EOS, tolerance 1e-4, which also checks the eps_grav
-    partials.
+    partials;
+  - extra: the TAMS deck again with a test energy source registered
+    (src/core/structure/energy_sources.f90), which checks its partials
+    and the size of the term it adds.
 The binary exits nonzero when an entry outside the documented
 approximations fails (see the header of src/core/test/test_structure.f90).
 See test_eos.py for the conventions.
@@ -25,6 +28,7 @@ BINARY = REPO / "src" / "test_structure"
 CASES = [
     ("tams", REPO / "src" / "core" / "test" / "test_structure_tams.inlist", "3e-3"),
     ("yale", REPO / "testsuite" / "Test_solarGS98_yaleeos.inlist", "1e-4"),
+    ("extra", REPO / "src" / "core" / "test" / "test_structure_tams.inlist", "3e-3"),
 ]
 
 
@@ -36,7 +40,8 @@ def test_structure_jacobian(label, deck, tolerance, tmp_path):
     env["YREC_OUTPUT"] = "output"
     (tmp_path / "output").mkdir()
     result = subprocess.run(
-        [str(BINARY), str(deck), tolerance], cwd=tmp_path, env=env,
+        [str(BINARY), str(deck), tolerance] + (["extra"] if label == "extra" else []),
+        cwd=tmp_path, env=env,
         capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stdout[-3000:] + result.stderr

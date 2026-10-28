@@ -19,7 +19,7 @@ module history_output
       private
       public :: history_output_init, write_history_row
 
-      integer, parameter :: n_hist_cols = 88
+      integer, parameter :: n_hist_cols = 89
 
       character(len=256) :: hist_path = ' '
       integer :: hist_nsel = 0
@@ -149,11 +149,12 @@ subroutine history_column_names(names)
       names(86) = 'delta_nu_rho'
       names(87) = 'delta_nu'
       names(88) = 'delta_Pg'
+      names(89) = 'lum_extra'
 end subroutine history_column_names
 
 subroutine history_values(s, vals, iprof)
       use star_info_lib, only: star_info, i_h1, i_he4, i_lum_grav, &
-           i_lum_he_c, i_lum_neu, i_metals
+           i_lum_he_c, i_lum_neu, i_lum_extra, i_metals
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: vals(n_hist_cols)
       integer, intent(in) :: iprof
@@ -224,6 +225,7 @@ subroutine history_values(s, vals, iprof)
       vals(86) = s%delta_nu_rho
       vals(87) = s%delta_nu
       vals(88) = s%delta_Pg
+      vals(89) = s%luminosity_breakdown(i_lum_extra)
 end subroutine history_values
 
 subroutine write_history_row(s, iprof, ierr)

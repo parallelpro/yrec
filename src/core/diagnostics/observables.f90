@@ -27,7 +27,8 @@ module observables
       use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: i_h1, i_metals, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
            i_lum_cno, i_lum_3alpha, i_lum_neu, i_lum_grav, i_lum_he_c, &
-           n_lum_channels, star_info
+           i_lum_extra, n_lum_channels, star_info
+      use energy_sources, only: num_energy_sources
       use eos_lib
       use physical_constants
       implicit none
@@ -125,6 +126,8 @@ subroutine renormalize_luminosity_breakdown(s)
        total_luminosity_sum = s%luminosity_breakdown(i_lum_pp1)+s%luminosity_breakdown(i_lum_pp2)+ &
             s%luminosity_breakdown(i_lum_pp3)+s%luminosity_breakdown(i_lum_cno)+s%luminosity_breakdown(i_lum_3alpha)+ &
             s%luminosity_breakdown(i_lum_neu)+s%luminosity_breakdown(i_lum_grav)+s%luminosity_breakdown(i_lum_he_c)
+       if (num_energy_sources() > 0) total_luminosity_sum = total_luminosity_sum + &
+            s%luminosity_breakdown(i_lum_extra)
        temp_value = s%luminosity_lsun(s%nz)/total_luminosity_sum
        do i = 1,n_lum_channels
           s%luminosity_breakdown(i) = s%luminosity_breakdown(i)*temp_value

@@ -47,6 +47,7 @@ center_z
 !lum_heC
 !lum_grav
 !lum_neu
+!lum_extra                 ! luminosity of the extra energy sources [Lsun] (core/structure/energy_sources.f90)
 !snu_cl37
 !snu_ga71
 !neut_pp

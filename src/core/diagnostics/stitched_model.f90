@@ -35,7 +35,7 @@ module stitched_model
            ipul_mu_e_inv, ipul_h1, ipul_z, ipul_species_base, &
            ipul_eps_grav, ipul_gyre_last
 
-      integer, parameter :: n_prof_cols = 60
+      integer, parameter :: n_prof_cols = 61
       integer, parameter :: n_pulse_cols = 35
 ! Named pulse-column indices (2026 audit, section 8: the pts(35,*)
 ! map was bare numbers in every writer -- reverse-engineered once
@@ -519,6 +519,7 @@ double precision function profile_value(s, icol, k)
               s%logP(k), s%logRho(k))
       case (59); profile_value = s%am_diffusion_coeff(k)
       case (60); profile_value = s%mixing_diffusion_coeff(k)
+      case (61); profile_value = s%eps_extra(k)
       case default
          profile_value = 0.0d0
       end select

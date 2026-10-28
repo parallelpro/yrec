@@ -57,6 +57,16 @@ the hydrostatic and radiative-transport terms respectively. This is the
 standard 1.5-D scheme: the star remains a 1-D object, but each shell is an
 oblate equipotential.
 
+**Extra energy sources** (2026-10) add to equation 4: a program that
+embeds YREC registers subroutines with `add_energy_source`
+(`core/structure/energy_sources.f90`) before it calls `run_yrec`, and
+every shell of the interior adds their sum ε_extra, with its partials in
+ρ and T, to dL/dm. It reports to its own luminosity channel
+(`i_lum_extra`, history column `lum_extra`; profile column `eps_extra`).
+With no source registered nothing is evaluated. The envelope above the
+fitting point is integrated at constant L, so a source there has no
+effect. `examples/other_energy` is a complete program.
+
 The **entropy term** deserves note: rather than differencing S directly,
 YREC evaluates it from the per-shell changes of log T and log P since the
 start of the step (`star%log_temperature_delta`, `star%log_pressure_delta`,

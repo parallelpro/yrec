@@ -261,6 +261,7 @@ end interface
 - **Built-in entries:** nuclear, neutrino losses, gravitational (the entropy terms), rotational kinetic energy.
 - **User hook:** `other_energy`, for tidal or magnetic heating and similar.
 - **Luminosity channels:** each source reports to its own channel. This removes the trap where the luminosity renormalization in `henyey_iterate` folds unknown heating into the nuclear channels.
+- **Status (2026-10): the user hook exists in a first form.** `core/structure/energy_sources.f90` keeps a list of extra sources that a program registers before `run_yrec` (`add_energy_source`); the shell kernel adds their sum and its ρ and T partials to the luminosity equation, they report to their own channel (`i_lum_extra`), and both renormalizations count it. The interface takes (ln ρ, ln T) partials rather than the four above, and the built-in terms (nuclear, neutrino, gravothermal, rotational) are not yet entries of the list. `examples/other_energy` and the `extra` case of `test_structure` exercise it.
 
 #### (b) Reactions and the network
 
@@ -430,6 +431,7 @@ Each phase leaves the code working and producing science. Every phase also does 
   - coupling iterations moved into the step driver (section 4.3);
   - the `aging` flag replaces the negative `dt`.
 - **Exit criteria:** tier S on the configuration matrix; an `other_energy` example in `examples/`.
+- **Status (2026-10):** explicit state passing is done (the star is an argument everywhere, and no module holds a star); the per-shell kernel `evaluate_shell_equations` has a finite-difference test, though its terms still carry only today's nonzero partials; the extra energy sources and the `other_energy` example exist (section 4.5a). Open: the diagnostics pass after convergence, the coupling iterations in the step driver, the `aging` flag.
 
 ### Phase 3: microphysics
 

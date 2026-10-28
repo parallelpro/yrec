@@ -17,8 +17,10 @@
 !   qt = dlog T/dlog m = grad qp,   grad = dln T/dln P
 !   qr = dlog R/dlog m = m/(4 pi r^3 rho)
 !   ql = dL/dlog m     = (ln10 m/Lsun) eps,
-!        eps = eps_nuc + eps_grav - d(e_rot)/dt   (erg/g/s)
-! with fp the rotational correction to hydrostatic equilibrium. The
+!        eps = eps_nuc + eps_grav - d(e_rot)/dt + eps_extra   (erg/g/s)
+! with fp the rotational correction to hydrostatic equilibrium and
+! eps_extra the sum of the registered extra energy sources
+! (energy_sources.f90; zero, and not evaluated, when there are none). The
 ! partials q_dp, q_dt, q_dr are dq/dln P, dq/dln T, dq/dln R (natural
 ! log) at fixed values of the other variables, and qt_dl = (dqt/dL)/ln10.
 ! Since ql is linear in eps, ql_dp and ql_dt carry the absolute
@@ -33,6 +35,8 @@ module shell_equations
            i_dlnkap_dlnt
       use convection_lib, only: compute_temperature_gradients
       use net_lib, only: compute_nuclear_energy, nuclear_energy_result
+      use energy_sources, only: energy_point, num_energy_sources, &
+           evaluate_energy_sources
       implicit none
       private
       public :: henyey_shell_terms, shell_state, structure_settings, &
@@ -88,7 +92,8 @@ module shell_equations
 ! velocity, the opacity results, Gamma1; above the burning cutoff
 ! (burned) the nuclear energy record, its six channels
 ! (pp1, pp2, pp3, CNO, triple alpha, neutrino loss) and its derivatives;
-! and, when the step has a duration (has_eps_grav), eps_grav (erg/g/s).
+! and, when the step has a duration (has_eps_grav), eps_grav (erg/g/s);
+! eps_extra, the extra energy sources' sum (erg/g/s; zero without any).
       type :: shell_diagnostics
          double precision :: log_density = 0.0d0
          logical :: convective = .false.
@@ -102,6 +107,7 @@ module shell_equations
          double precision :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
          logical :: has_eps_grav = .false.
          double precision :: eps_grav = 0.0d0
+         double precision :: eps_extra = 0.0d0
       end type shell_diagnostics
 
 contains
@@ -115,13 +121,14 @@ contains
 !   form_radius_pressure_temperature_terms
 !   form_nuclear_energy_terms        above the burning cutoff
 !   form_gravitational_energy_terms  when the step has a duration
+!   form_extra_energy_terms          the registered extra sources, if any
 !   scale_luminosity_terms           ql to dL/dlog m in Lsun
 !   compute_gamma1
 ! eos is the eos result: on entry the previous shell's, which the eos
 ! takes as its starting point (with the density set to sh%log_density);
 ! on return this shell's. saha_state is the eos's Saha-solver state,
-! carried from shell to shell. ierr is nonzero when the eos, the opacity
-! or the gradients fail.
+! carried from shell to shell. ierr is nonzero when the eos, the opacity,
+! the gradients or an extra energy source fail.
 subroutine evaluate_shell_equations(sh, cfg, eos, saha_state, terms, diag, ierr)
       use physical_constants
       use math_lib
@@ -156,6 +163,8 @@ subroutine evaluate_shell_equations(sh, cfg, eos, saha_state, terms, diag, ierr)
       call form_radius_pressure_temperature_terms()
       call form_nuclear_energy_terms()
       call form_gravitational_energy_terms()
+      call form_extra_energy_terms()
+      if (ierr /= 0) return
       call scale_luminosity_terms()
       call compute_gamma1()
 
@@ -327,6 +336,36 @@ subroutine form_gravitational_energy_terms()
 ! sh%log_*_delta.
          end if
 end subroutine form_gravitational_energy_terms
+
+! ---------------------------------------------------------------
+! Add the registered extra energy sources (energy_sources.f90) and their
+! partials, as the nuclear term's are added: before the ln10 m/Lsun
+! scaling,
+!   ql += eps_extra,
+!   ql_dt += d eps_extra/dln T + (d eps_extra/dln rho)(dln rho/dln T),
+!   ql_dp += (d eps_extra/dln rho)(dln rho/dln P).
+! With no source registered nothing is evaluated or added.
+subroutine form_extra_energy_terms()
+         type(energy_point) :: pt
+         double precision :: eps_extra, deps_dlnrho, deps_dlnt
+         diag%eps_extra = 0.0d0
+         if (num_energy_sources() == 0) return
+         pt%mass = sh%mass
+         pt%shell_mass = sh%shell_mass
+         pt%log_temperature = sh%log_temperature
+         pt%log_pressure = sh%log_pressure
+         pt%log_density = diag%log_density
+         pt%log_radius = sh%log_radius
+         pt%luminosity_lsun = sh%luminosity_lsun
+         pt%xa = sh%xa
+         pt%dt = cfg%dt
+         call evaluate_energy_sources(pt, eps_extra, deps_dlnrho, deps_dlnt, ierr)
+         if (ierr /= 0) return
+         diag%eps_extra = eps_extra
+         terms%ql = terms%ql + eps_extra
+         terms%ql_dt = terms%ql_dt + deps_dlnt + deps_dlnrho*eos%dlnrho_dlnt
+         terms%ql_dp = terms%ql_dp + deps_dlnrho*eos%dlnrho_dlnp
+end subroutine form_extra_energy_terms
 
 ! ---------------------------------------------------------------
 ! Scale the luminosity terms by cccql = ln10 m/Lsun, so ql = dL/dlog m

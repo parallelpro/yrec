@@ -12,10 +12,15 @@
 ! checked too (the step is set to 1e6 yr, with changes of 5e-4 in log P
 ! and 2e-4 in log T).
 !
-! Usage: test_structure DECK.inlist [TOLERANCE]   (run with YREC_INPUT,
-! YREC_START and YREC_OUTPUT set, in a directory where the deck may write
-! output). TOLERANCE (default 3e-3) bounds the relative difference of an
-! entry marked ok.
+! Usage: test_structure DECK.inlist [TOLERANCE [extra]]   (run with
+! YREC_INPUT, YREC_START and YREC_OUTPUT set, in a directory where the
+! deck may write output). TOLERANCE (default 3e-3) bounds the relative
+! difference of an entry marked ok. With 'extra', a test energy source
+! (energy_sources.f90),
+!   eps_extra = 1e-3 rho^1.3 (T/1e7)^4.2 erg/g/s,
+! is registered, so the ql partials include its partials; and at each
+! shell the change of ql it makes is checked against
+! (ln10 m/Lsun) eps_extra (to 1e-10 of ql).
 ! Prints, after the line 'test_structure report', per shell the 16
 ! entries of dq/dx: the analytic value, the finite difference (step 1e-4)
 ! and their relative difference |f - a|/max(|a|, |f|, 1e-6 |q|) at the
@@ -35,6 +40,25 @@
 !            the adiabat rest on the EOS's derivatives of grad_ad, known
 !            to be inaccurate (docs/ROADMAP.md, the eos follow-up);
 !   FAIL   anything else; the program then stops with status 1.
+! The test energy source of the 'extra' case.
+module test_structure_source
+      use energy_sources, only: energy_point
+      implicit none
+      private
+      public :: test_heat
+contains
+subroutine test_heat(pt, eps, deps_dlnrho, deps_dlnt, ierr)
+      type(energy_point), intent(in) :: pt
+      double precision, intent(out) :: eps, deps_dlnrho, deps_dlnt
+      integer, intent(out) :: ierr
+      double precision, parameter :: ln10 = 2.302585092994046d0
+      ierr = 0
+      eps = 1.0d-3*exp(ln10*(1.3d0*pt%log_density + 4.2d0*(pt%log_temperature - 7.0d0)))
+      deps_dlnrho = 1.3d0*eps
+      deps_dlnt = 4.2d0*eps
+end subroutine test_heat
+end module test_structure_source
+
 program test_structure
       use controls_reader, only: read_controls
       use run_setup, only: set_up_constants_and_tables
@@ -48,26 +72,39 @@ program test_structure
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use eos_lib, only: eos_result
+      use energy_sources, only: add_energy_source, clear_energy_sources
+      use test_structure_source, only: test_heat
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
       type(star_info), save :: star
 
       character(len=512) :: deck
-      character(len=32) :: tol_arg
+      character(len=32) :: tol_arg, mode_arg
+      logical :: extra_source
       integer :: ierr, nfail
       double precision :: tolerance
       type(structure_settings) :: cfg
 
-      if (command_argument_count() < 1 .or. command_argument_count() > 2) then
-         write(*,'(a)') 'usage: test_structure DECK.inlist [TOLERANCE]'
+      if (command_argument_count() < 1 .or. command_argument_count() > 3) then
+         write(*,'(a)') 'usage: test_structure DECK.inlist [TOLERANCE [extra]]'
          stop 2
       end if
       call get_command_argument(1, deck)
       tolerance = 3.0d-3
-      if (command_argument_count() == 2) then
+      if (command_argument_count() >= 2) then
          call get_command_argument(2, tol_arg)
          read(tol_arg,*) tolerance
+      end if
+      extra_source = .false.
+      if (command_argument_count() == 3) then
+         call get_command_argument(3, mode_arg)
+         if (trim(mode_arg) /= 'extra') then
+            write(*,'(a)') 'test_structure: the third argument is extra'
+            stop 2
+         end if
+         extra_source = .true.
+         call register_test_source()
       end if
       call load_deck_model(deck)
       call set_settings()
@@ -114,6 +151,12 @@ subroutine load_deck_model(path)
            convective_velocity, star%job%mixture_weights, ierr)
       if (ierr /= 0) call die('read_starting_model')
 end subroutine load_deck_model
+
+! Register the 'extra' case's source.
+subroutine register_test_source()
+      call add_energy_source('test_heat', test_heat, ierr)
+      if (ierr /= 0) call die('add_energy_source')
+end subroutine register_test_source
 
 subroutine die(what)
       character(len=*), intent(in) :: what
@@ -288,6 +331,7 @@ subroutine check_shell(label, im)
       write(*,'(a,a,a,i5,a,l2,a,l2,a,f8.4)') '# shell ', label, ' (', im, ') convective', &
            d0%convective, ' burning', d0%burned, ' log T', sh0%log_temperature
       write(*,'(a,4(1pe12.4))') '  q = ', q0
+      if (extra_source) call check_extra_term(sh0, eos_base, t0, d0)
       write(*,'(a)') '  term/var     analytic        f.d.   rel.diff  status'
       do k = 1, 4
          do v = 1, 4
@@ -305,6 +349,30 @@ subroutine check_shell(label, im)
          end do
       end do
 end subroutine check_shell
+
+! The 'extra' case: the change of ql the source makes is
+! (ln10 m/Lsun) eps_extra, to 1e-10 of ql.
+subroutine check_extra_term(sh, eos0, t_with, d_with)
+      type(shell_state), intent(in) :: sh
+      type(eos_result), intent(in) :: eos0
+      type(henyey_shell_terms), intent(in) :: t_with
+      type(shell_diagnostics), intent(in) :: d_with
+      type(henyey_shell_terms) :: t_without
+      type(shell_diagnostics) :: d_without
+      double precision :: q(4), expected, diff
+      call clear_energy_sources()
+      call evaluate(sh, eos0, q, t_without, d_without)
+      call register_test_source()
+      expected = cfg%ln10_over_lsun*sh%mass*d_with%eps_extra
+      diff = t_with%ql - t_without%ql
+      write(*,'(a,1pe12.4,a,1pe12.4,a,1pe9.1)') '  eps_extra', d_with%eps_extra, &
+           '  ql change', diff, '  rel.diff', &
+           abs(diff - expected)/max(abs(t_with%ql), tiny(1.0d0))
+      if (abs(diff - expected) > 1.0d-10*max(abs(t_with%ql), abs(expected))) then
+         write(*,'(a)') '  ql change FAIL'
+         nfail = nfail + 1
+      end if
+end subroutine check_extra_term
 
 ! The relative difference of an analytic partial a and a finite
 ! difference f of a term with value q: |f - a|/max(|a|, |f|, 1e-6 |q|).

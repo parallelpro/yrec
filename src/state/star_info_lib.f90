@@ -81,11 +81,13 @@ module star_info_lib
            i_eps_grav = 7
 
 ! luminosity_breakdown(n_lum_channels): integrated luminosity per
-! channel [Lsun].
+! channel [Lsun]; i_lum_extra is the extra energy sources'
+! (core/structure/energy_sources.f90), zero without any.
       integer, parameter, public :: &
            i_lum_pp1 = 1, i_lum_pp2 = 2, i_lum_pp3 = 3, &
            i_lum_cno = 4, i_lum_3alpha = 5, i_lum_neu = 6, &
-           i_lum_grav = 7, i_lum_he_c = 8, n_lum_channels = 8
+           i_lum_grav = 7, i_lum_he_c = 8, i_lum_extra = 9, &
+           n_lum_channels = 9
 
 ! The neutrino-flux slots: neutrino_flux_layout.
       public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
@@ -165,6 +167,9 @@ module star_info_lib
             logical :: convective_flag(json)
             double precision :: xa(n_species_extended,json), m(json), &
                  dm(json), eps_grav(json)
+! eps_extra: the extra energy sources' sum at each zone (erg/g/s; zero
+! without any), stored by compute_henyey_coefficients
+            double precision :: eps_extra(json)
 ! rotation corrections to the structure equations
             double precision :: fp_rot(json), &
                  ft_rot(json)

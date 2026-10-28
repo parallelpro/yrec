@@ -72,3 +72,4 @@ omega                     ! angular velocity (rad/s)
 !csound           ! adiabatic sound speed sqrt(Gamma1*P/rho) [cm/s]
 !D_omega          ! angular-momentum transport diffusion coefficient [cm^2/s] (0 when rotation off; interior only)
 !D_mix_rot        ! rotational-mixing composition diffusion coefficient [cm^2/s] (0 when rotation off; interior only)
+!eps_extra        ! extra energy sources' sum [erg/g/s] (core/structure/energy_sources.f90; interior only)

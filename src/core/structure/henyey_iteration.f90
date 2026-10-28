@@ -137,7 +137,8 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      iterations_done, ierr)
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, &
            i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
-           n_lum_channels
+           i_lum_extra, n_lum_channels
+      use energy_sources, only: num_energy_sources
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -229,6 +230,10 @@ subroutine renormalize_luminosity_channels()
        total_luminosity_terms = s%luminosity_breakdown(i_lum_pp1)+s%luminosity_breakdown(i_lum_pp2)+ &
             s%luminosity_breakdown(i_lum_pp3)+s%luminosity_breakdown(i_lum_cno)+s%luminosity_breakdown(i_lum_3alpha)+ &
             s%luminosity_breakdown(i_lum_neu)+s%luminosity_breakdown(i_lum_grav)+s%luminosity_breakdown(i_lum_he_c)
+! the extra energy sources' channel, when there are any (so that they
+! are not folded into the others)
+       if (num_energy_sources() > 0) total_luminosity_terms = total_luminosity_terms + &
+            s%luminosity_breakdown(i_lum_extra)
        if (.not.s%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = s%luminosity_lsun(s%nz)/total_luminosity_terms

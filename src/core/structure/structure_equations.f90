@@ -38,7 +38,7 @@ subroutine compute_henyey_coefficients(s, delta_time, dlnrho_dlnt, dlnrho_dlnp, 
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
-           i_lum_he_c, n_lum_channels, n_nu_fluxes
+           i_lum_he_c, i_lum_extra, n_lum_channels, n_nu_fluxes
       use eos_lib, only: eos_result
       use kap_lib, only: i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use physical_constants
@@ -160,7 +160,9 @@ end subroutine store_shell_structure
 ! The shell's share of the luminosity channels (dm eps_j/Lsun: pp1, pp2,
 ! pp3, CNO, triple alpha, the neutrino losses, alpha captures in
 ! i_lum_he_c, eps_grav in i_lum_grav), its He3+He3 and He3-burning
-! luminosities (Lsun), and its solar-neutrino fluxes: burn%neutrino_flux
+! luminosities (Lsun), the extra energy sources' eps_extra (erg/g/s, in
+! s%eps_extra) and its share dm eps_extra/Lsun in i_lum_extra, and its
+! solar-neutrino fluxes: burn%neutrino_flux
 ! is the flux at the Earth per gram of the shell (10^10 cm^-2 s^-1 g^-1,
 ! nuclear_energy.f90), so times dm it is the shell's flux.
 subroutine add_shell_energy_budget()
@@ -184,6 +186,9 @@ subroutine add_shell_energy_budget()
             s%luminosity_breakdown(i_lum_grav) = s%luminosity_breakdown(i_lum_grav) + &
                  (s%dm(im)/s%solar_luminosity_cgs)*diag%eps_grav
        end if
+       s%eps_extra(im) = diag%eps_extra
+       s%luminosity_breakdown(i_lum_extra) = s%luminosity_breakdown(i_lum_extra) + &
+            (s%dm(im)/s%solar_luminosity_cgs)*diag%eps_extra
 end subroutine add_shell_energy_budget
 
 ! ---------------------------------------------------------------

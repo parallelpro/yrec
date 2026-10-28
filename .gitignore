@@ -37,3 +37,4 @@ fort.*
 src/.crmath_mode_*
 src/.hdf5_mode_*
 src/*/test/test_*.short
+examples/other_energy/yrec_extra_heat
