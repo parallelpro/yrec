@@ -128,6 +128,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       if(disk_locking_engaged(s%disk_gate_age_gyr)) disk_lock_engaged = .true.
       if(.not.rotation_settings%instability_transport_active)then
          call spin_down_without_transport()
+         if (ierr == 0) call total_rotation_state(s)
          return
       end if
 ! The rotation curve of the angular momentum distribution, convection
@@ -135,7 +136,10 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call omega_from_j(s%logRho,s%j_rot,s%logR,s%log_mass, &
            s%dm,am_transport_convective_flag,s%nz,s%eta_squared, &
            s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
-      if (.not. full_timestep.gt.0.0D0) return
+      if (.not. full_timestep.gt.0.0D0) then
+         call total_rotation_state(s)
+         return
+      end if
       call count_substeps()
 ! The quantities both kinds of instability need: the temperature
 ! gradients, opacities, viscosities, thermal diffusivity and heat
@@ -209,6 +213,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call omega_from_j(s%logRho,s%j_rot,s%logR,s%log_mass, &
            s%dm,am_transport_convective_flag,s%nz,s%eta_squared, &
            s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
+      call total_rotation_state(s)
 
 contains
 
@@ -444,5 +449,29 @@ function wind_now() result(conditions)
 end function wind_now
 
 end subroutine evolve_angular_momentum
+
+! ---------------------------------------------------------------
+! The star's angular momentum and rotational kinetic energy for the j
+! and omega the step ends with,
+!   J = sum_i j_i dm_i,   E_rot = sum_i (1/2) omega_i j_i dm_i,
+! summed from the centre out as the rezone's re-total
+! (compute_angular_momentum_totals) sums them. The rezone totals the
+! start of the step's, before this step moves and removes angular
+! momentum; the history writes these for the model the step ends with
+! (docs/bug_sweep.md O26). Each zone's E_i, which the structure
+! equations read, is left to the Henyey pass and the rezone.
+subroutine total_rotation_state(s)
+      use star_info_lib, only: star_info
+      type(star_info), intent(inout) :: s
+      integer :: i
+      double precision :: shell_angular_momentum
+      s%total_angular_momentum = 0.0d0
+      s%total_rotational_ke = 0.0d0
+      do i = 1, s%nz
+         shell_angular_momentum = s%j_rot(i)*s%dm(i)
+         s%total_angular_momentum = s%total_angular_momentum + shell_angular_momentum
+         s%total_rotational_ke = s%total_rotational_ke + 0.5d0*s%omega(i)*shell_angular_momentum
+      end do
+end subroutine total_rotation_state
 
 end module evolve_rotation

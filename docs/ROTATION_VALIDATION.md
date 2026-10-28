@@ -53,9 +53,11 @@ successive factors:
   (6.6e-3, 3.4e-3, 1.5e-3, 7.6e-4 and 2.7e-4 for 0.04 to 0.0025):
   first order, as the operator splitting of wind, transport and
   burning implies.
-- **Compare J only after O26 is fixed.** The history's J column lags
-  its model by a step (docs/bug_sweep.md O26), so its value at the
-  stop depends on the last step's length.
+- **The J figures above predate the fix of O26**, when the history's
+  J column lagged its model by a step (docs/bug_sweep.md O26), so its
+  value at the stop depended on the last step's length; the age-matched
+  figures at 200 Myr, where every run takes steps of about the same
+  length, were affected far less.
 
 ## 3. Against MESA
 

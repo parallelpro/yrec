@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 34 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 43 |
-| Open | 22 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 25 |
+| Fixed | 35 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 44 |
+| Open | 21 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 24 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -122,7 +122,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
 | O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
 | O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
-| O26 | The history's total J and rotational KE lag their model by a step | Yes | Open |
+| O26 | The history's total J and rotational KE lag their model by a step | Yes | Fixed (history columns only) |
 | O27 | An inner region zeroes the wind term the surface region averages | Yes | Open (latent) |
 | O28 | The transport check reads an unset convergence flag | Yes | Fixed (byte-identical), with the restructure of `apply_secular_transport` |
 
@@ -1261,7 +1261,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O26. The history's total angular momentum and rotational kinetic energy lag their model by a step
 
-- **Status:** open (found 2026-10-28 by the sub-step convergence study, `src/tools/substep_convergence.py`).
+- **Status:** fixed (2026-10-28). Found the same day by the sub-step convergence study (`src/tools/substep_convergence.py`).
+- **What we did:** `evolve_angular_momentum` re-totals J and E_rot (`total_rotation_state`) for the j and omega it ends with, at each of its exits. Measured on the 26 rotating decks: only the history columns `total_angular_momentum` and `total_rotational_ke` change; every other column, and every pinned `.log` and `.mod`, is byte-identical. The history's J at the final model moves by -2.5% typically (one step's wind loss; -3e-4 to -2% for the testsuite's solar decks at 4.57 Gyr), and by up to 3-5% at any model. The MESA-format baseline of the rotating solar model, which pins history.data, is reseeded.
 - **In the original F77?** Yes. HPOINT, the rezone at the start of the step, sets `SJTOT = SUMJ` ([hpoint.f:715-719](https://github.com/parallelpro/yrec/blob/6cd56739/src/hpoint.f#L715-L719)); GETW then moves and removes angular momentum, and nothing re-totals it before WRTOUT writes `SJTOT` to the track file ([wrtout.f:579](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtout.f#L579)).
 - **Now:** `retally_angular_momentum` in the rezone sets `s%total_angular_momentum` and `s%total_rotational_ke` ([rezoning.f90:956-972](https://github.com/parallelpro/yrec/blob/e214d9cf/src/core/model/rezoning.f90#L956-L972)); `evolve_step` then runs the structure and the rotation step and writes the model ([step_driver.f90:150-226](https://github.com/parallelpro/yrec/blob/e214d9cf/src/core/step/step_driver.f90#L150-L226)) without re-totalling; the history columns `total_angular_momentum` and `total_rotational_ke` read the stale values ([history_output.f90:206-207](https://github.com/parallelpro/yrec/blob/e214d9cf/src/io/history_output.f90#L206-L207)).
 - **What is wrong:** each history row's J is the start of its step's (after the rezone), the end of the previous model's, while omega and the rest are the end of the step's. Seen in the rotating reference variant: the last step to the 300 Myr stop, cut to a third of the previous step, loses the full previous step's 3.3% of J in the history.
