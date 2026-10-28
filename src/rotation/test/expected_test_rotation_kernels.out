@@ -47,6 +47,7 @@ region: a solid body stays one                           2.22E-16  ok
 wind terms: none below the surface                       0.00E+00  ok
 wind terms: disk locking holds the point                 0.00E+00  ok
 wind terms: the braking's, at the point's I and omega    0.00E+00  ok
+wind terms: a first surface term starts afresh           0.00E+00  ok
 wind terms: none without the wind torque                 0.00E+00  ok
 stability: GSF coefficient (32/3) H_P r^3/(G m Delta)    3.67E-14  ok
 stability: Eddington-Sweet coefficient                   2.65E-14  ok

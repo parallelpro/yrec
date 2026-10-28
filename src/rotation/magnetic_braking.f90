@@ -238,16 +238,20 @@ end subroutine compute_solid_body_braking
 ! its omega (fix_omega_at_surface) and loses nothing. Otherwise, with
 ! use_wind_torque, wind_loss_explicit and wind_loss_implicit are the
 ! drops of the surface omega over the sub-step from the torque at its
-! start (at omega_start) and at its current end (at omega_now; from the
-! second iteration on averaged with wind_loss_implicit's value on entry),
-! for the point's moment of inertia outer_point_inertia
-! (compute_solid_body_braking); cz_moment_of_inertia and omega_surface
-! are then set to the inertia and the omega the torque used. Elsewhere
-! both terms are zero. conditions: the step's tau_cz, P_phot and elapsed
-! fraction. ierr from compute_solid_body_braking.
+! start (at omega_start) and at its current end (at omega_now), for the
+! point's moment of inertia outer_point_inertia
+! (compute_solid_body_braking); the implicit one is averaged with the
+! surface region's previous one, surface_implicit, when an earlier
+! iteration set it (surface_implicit_set), and becomes the new
+! surface_implicit. cz_moment_of_inertia and omega_surface are then set
+! to the inertia and the omega the torque used. Elsewhere both terms are
+! zero and surface_implicit is left alone. conditions: the step's
+! tau_cz, P_phot and elapsed fraction. ierr from
+! compute_solid_body_braking.
 subroutine outer_point_wind_terms(reaches_surface_cz, disk_locked, iteration, &
      log_luminosity_lsun, sub_timestep, outer_point_inertia, omega_now, &
      total_mass_msun, log_teff, omega_start, conditions, &
+     surface_implicit, surface_implicit_set, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      cz_moment_of_inertia, omega_surface, ierr)
       logical, intent(in) :: reaches_surface_cz, disk_locked
@@ -255,8 +259,9 @@ subroutine outer_point_wind_terms(reaches_surface_cz, disk_locked, iteration, &
       real(dp), intent(in) :: log_luminosity_lsun, sub_timestep, outer_point_inertia, &
            omega_now, total_mass_msun, log_teff, omega_start
       type(wind_conditions), intent(in) :: conditions
-      real(dp), intent(out) :: wind_loss_explicit
-      real(dp), intent(inout) :: wind_loss_implicit
+      real(dp), intent(inout) :: surface_implicit
+      logical, intent(inout) :: surface_implicit_set
+      real(dp), intent(out) :: wind_loss_explicit, wind_loss_implicit
       logical, intent(out) :: fix_omega_at_surface
       real(dp), intent(inout) :: cz_moment_of_inertia, omega_surface
       integer, intent(out) :: ierr
@@ -270,9 +275,16 @@ subroutine outer_point_wind_terms(reaches_surface_cz, disk_locked, iteration, &
       else if (reaches_surface_cz .and. rotation_settings%use_wind_torque) then
          cz_moment_of_inertia = outer_point_inertia
          omega_surface = omega_now
+! compute_solid_body_braking averages with its domega_end on entry
+! from the second iteration on: start afresh when no earlier iteration
+! gave the surface region a term.
+         wind_loss_implicit = surface_implicit
          call compute_solid_body_braking(log_luminosity_lsun, sub_timestep, &
-              cz_moment_of_inertia, iteration, omega_surface, total_mass_msun, log_teff, &
+              cz_moment_of_inertia, merge(iteration, 1, surface_implicit_set), &
+              omega_surface, total_mass_msun, log_teff, &
               omega_start, wind_loss_explicit, wind_loss_implicit, conditions, ierr)
+         surface_implicit = wind_loss_implicit
+         surface_implicit_set = .true.
       else
          wind_loss_explicit = 0.0d0
          wind_loss_implicit = 0.0d0

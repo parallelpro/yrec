@@ -58,13 +58,18 @@ module secular_transport
 ! an uncoupled surface convection zone and the region that reaches the
 ! surface share: whether the model has a surface convection zone
 ! (cz_active) and disk locking is engaged (disk_locked), the surface
-! omega at the sub-step's start, and the wind's terms for the outermost
-! grid point (outer_point_wind_terms; loss_implicit carries from one
-! iteration to the next, which compute_solid_body_braking averages).
+! omega at the sub-step's start, and the wind's terms for a region's
+! outermost grid point (outer_point_wind_terms). surface_implicit is the
+! surface region's implicit term from an earlier iteration of the
+! sub-step, if surface_implicit_set, with which the next one is
+! averaged; the per-region terms of a region below the surface (zero)
+! do not touch it (docs/bug_sweep.md O27).
       type :: surface_wind_state
          logical :: cz_active = .false., disk_locked = .false.
          double precision :: omega_start = 0.0d0
          double precision :: loss_explicit = 0.0d0, loss_implicit = 0.0d0
+         double precision :: surface_implicit = 0.0d0
+         logical :: surface_implicit_set = .false.
       end type surface_wind_state
 
 contains
@@ -506,6 +511,7 @@ subroutine transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid,
                  wind%disk_locked, iteration, s%log_L, sub_timestep, &
                  chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points), s%omega_mid(s%nz), &
                  s%star_mass, s%log_Teff, wind%omega_start, wind_now(s), &
+                 wind%surface_implicit, wind%surface_implicit_set, &
                  wind%loss_explicit, wind%loss_implicit, fix_omega_at_surface, &
                  cz_moment_of_inertia, omega_surface, ierr)
             if (ierr /= 0) return

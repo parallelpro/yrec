@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 35 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 44 |
-| Open | 21 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 24 |
+| Fixed | 36 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 45 |
+| Open | 20 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 23 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -123,7 +123,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
 | O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
 | O26 | The history's total J and rotational KE lag their model by a step | Yes | Fixed (history columns only) |
-| O27 | An inner region zeroes the wind term the surface region averages | Yes | Open (latent) |
+| O27 | An inner region zeroes the wind term the surface region averages | Yes | Fixed |
 | O28 | The transport check reads an unset convergence flag | Yes | Fixed (byte-identical), with the restructure of `apply_secular_transport` |
 
 
@@ -1271,7 +1271,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O27. An inner transport region zeroes the wind term that the surface region averages
 
-- **Status:** open, latent (found 2026-10-28 while restructuring `apply_secular_transport`). No shipped deck reaches it: instrumented, the rotating decks (the rotating reference variants, the testsuite's rotating solar decks, the 3 Msun TAMS deck) never had an inner region before the surface region in an iteration after the first.
+- **Status:** fixed (2026-10-28). Found the same day while restructuring `apply_secular_transport`. Instrumented, the rotating decks (the rotating reference variants, the testsuite's rotating solar decks, the 3 Msun TAMS deck) never had an inner region before the surface region in an iteration after the first.
+- **What we did:** the sub-step's `surface_wind_state` keeps the surface region's implicit term (`surface_implicit`, with `surface_implicit_set`) apart from the per-region terms the solve gets; `outer_point_wind_terms` averages with it only when an earlier iteration of the sub-step set it, and otherwise starts afresh (it passes iteration 1 to `compute_solid_body_braking`). Measured on the 26 rotating decks: 25 byte-identical; the GSF-inhibition-mode-2 variant moves (log L by 4.4e-7 at most, surface omega by 0.5% at most and 5e-4 at 300 Myr, J by 4e-4): there the surface region first appears in a later iteration of some sub-steps, whose implicit term was averaged with zero.
 - **In the original F77?** Yes. SECULR sets `WIND1 = WIND2 = 0` for every region that does not reach the surface ([seculr.f:290-293](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L290-L293)); MCOWIND, for the surface region, averages `WIND2` with its value on entry from the second iteration on ([mcowind.f:121-125](https://github.com/parallelpro/yrec/blob/6cd56739/src/mcowind.f#L121-L125)).
 - **Now:** `set_surface_wind_terms` in [secular_transport.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/seculr/secular_transport.f90), and `compute_solid_body_braking`'s `domega_end` average ([magnetic_braking.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/magnetic_braking.f90)).
 - **What is wrong:** the implicit wind term is meant to be averaged with the previous iteration's (MHP's damping of the iteration). When another region lies below the surface region in the same iteration, it has just set the term to zero, so the average is with zero: the surface's implicit loss is halved in that iteration. The same holds when the first iteration had no surface region: the average is then with whatever the term held.

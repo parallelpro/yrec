@@ -90,8 +90,10 @@
 !   wind terms   outer_point_wind_terms: none below the surface; under
 !                disk locking the point held and no loss; with the wind,
 !                compute_solid_body_braking's terms at the point's I and
-!                omega, which become the surface state; none with the
-!                wind torque off;
+!                omega, which become the surface state, the implicit term
+!                averaged with the surface region's earlier one only
+!                (fresh when there is none); none with the wind torque
+!                off;
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -803,48 +805,70 @@ end subroutine region_transport_checks
 
 ! ---------------------------------------------------------------
 ! outer_point_wind_terms (Kawaler law, the settings of wind_law_check):
-! a region below the surface gets no terms (disk locking or not); at the surface under disk
-! locking the point is held and loses nothing; with the wind, the terms
-! are compute_solid_body_braking's for the point's inertia and omega,
-! which become the surface state; with use_wind_torque off, none.
+! a region below the surface gets no terms (disk locking or not), and
+! leaves the surface region's stored implicit term alone; at the surface
+! under disk locking the point is held and loses nothing; with the wind,
+! the terms are compute_solid_body_braking's for the point's inertia and
+! omega, which become the surface state, the implicit term averaged with
+! the stored one when an earlier iteration set it and fresh otherwise
+! (docs/bug_sweep.md O27), and stored; with use_wind_torque off, none.
 subroutine wind_terms_checks()
       real(dp), parameter :: inertia_n = 1.0d52, w_now = 2.0d-5, w_start = 2.1d-5
-      real(dp) :: e, i_term, cz_i, w_s, e_ref, i_ref, err
-      logical :: fixed
+      real(dp) :: e, i_term, cz_i, w_s, e_ref, i_ref, err, stored
+      logical :: fixed, stored_set
       integer :: ierr
       type(wind_conditions) :: no_rossby
       rotation_settings%use_wind_torque = .true.
 ! below the surface, even under disk locking
       cz_i = -1.0d0; w_s = -1.0d0; e = 9.0d0; i_term = 9.0d0
-      call outer_point_wind_terms(.false., .true., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
-           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      stored = -3.0d0; stored_set = .true.
+      call outer_point_wind_terms(.false., .true., 2, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, stored, stored_set, e, i_term, fixed, &
+           cz_i, w_s, ierr)
       err = 0.0d0
-      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed .or. cz_i /= -1.0d0 .or. w_s /= -1.0d0) err = 1.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed .or. cz_i /= -1.0d0 .or. w_s /= -1.0d0 &
+           .or. stored /= -3.0d0 .or. .not. stored_set) err = 1.0d0
       call report("wind terms: none below the surface", err, 0.0d0)
 ! disk locking
       e = 9.0d0; i_term = 9.0d0
-      call outer_point_wind_terms(.true., .true., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
-           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+      call outer_point_wind_terms(.true., .true., 2, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, stored, stored_set, e, i_term, fixed, &
+           cz_i, w_s, ierr)
       err = 0.0d0
-      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. .not. fixed .or. cz_i /= -1.0d0) err = 1.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. .not. fixed .or. cz_i /= -1.0d0 &
+           .or. stored /= -3.0d0) err = 1.0d0
       call report("wind terms: disk locking holds the point", err, 0.0d0)
-! the wind, at the second iteration (the implicit term averaged)
-      i_ref = 1.0d-9; i_term = 1.0d-9
+! the wind, at the second iteration, with a stored implicit term
+      i_ref = 1.0d-9
       call compute_solid_body_braking(0.0d0, 1.0d13, inertia_n, 2, w_now, 1.0d0, 3.762d0, &
            w_start, e_ref, i_ref, no_rossby, ierr)
+      stored = 1.0d-9; stored_set = .true.
       call outer_point_wind_terms(.true., .false., 2, 0.0d0, 1.0d13, inertia_n, w_now, &
-           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+           1.0d0, 3.762d0, w_start, no_rossby, stored, stored_set, e, i_term, fixed, &
+           cz_i, w_s, ierr)
       err = 0.0d0
       if (e /= e_ref .or. i_term /= i_ref .or. fixed .or. cz_i /= inertia_n .or. w_s /= w_now &
-           .or. e_ref <= 0.0d0) err = 1.0d0
+           .or. e_ref <= 0.0d0 .or. stored /= i_ref) err = 1.0d0
       call report("wind terms: the braking's, at the point's I and omega", err, 0.0d0)
+! the wind at the second iteration with no stored term: fresh, as the
+! first iteration's
+      call compute_solid_body_braking(0.0d0, 1.0d13, inertia_n, 1, w_now, 1.0d0, 3.762d0, &
+           w_start, e_ref, i_ref, no_rossby, ierr)
+      stored = 7.0d0; stored_set = .false.
+      call outer_point_wind_terms(.true., .false., 2, 0.0d0, 1.0d13, inertia_n, w_now, &
+           1.0d0, 3.762d0, w_start, no_rossby, stored, stored_set, e, i_term, fixed, &
+           cz_i, w_s, ierr)
+      err = 0.0d0
+      if (i_term /= i_ref .or. stored /= i_ref .or. .not. stored_set) err = 1.0d0
+      call report("wind terms: a first surface term starts afresh", err, 0.0d0)
 ! no wind torque
       rotation_settings%use_wind_torque = .false.
-      e = 9.0d0; i_term = 9.0d0
+      e = 9.0d0; i_term = 9.0d0; stored = -3.0d0
       call outer_point_wind_terms(.true., .false., 1, 0.0d0, 1.0d13, inertia_n, w_now, &
-           1.0d0, 3.762d0, w_start, no_rossby, e, i_term, fixed, cz_i, w_s, ierr)
+           1.0d0, 3.762d0, w_start, no_rossby, stored, stored_set, e, i_term, fixed, &
+           cz_i, w_s, ierr)
       err = 0.0d0
-      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed) err = 1.0d0
+      if (e /= 0.0d0 .or. i_term /= 0.0d0 .or. fixed .or. stored /= -3.0d0) err = 1.0d0
       call report("wind terms: none without the wind torque", err, 0.0d0)
 end subroutine wind_terms_checks
 
