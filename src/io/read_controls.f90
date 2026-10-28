@@ -39,10 +39,10 @@ subroutine read_controls(s, ierr)
       ierr = 0
       s%ctrl = controls_state()
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
-      call seed_controls_buffer
+      call seed_controls_buffer(s)
       call read_input(s, ierr)
       if (ierr /= 0) return
-      call store_controls_to_star
+      call store_controls_to_star(s)
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
 
       return
@@ -90,7 +90,7 @@ subroutine read_input(s, ierr)
       call adopt_canonical_names(s)
       call map_user_inputs(s)
 ! open_run_files' output_init_mesa reads its controls from star%ctrl
-      call store_controls_to_star
+      call store_controls_to_star(s)
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call expand_paths
       call open_run_files(s, ierr)

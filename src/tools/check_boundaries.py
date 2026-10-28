@@ -273,7 +273,8 @@ STAR_ACCESS_BUDGET = {
     # setup (2026-10): the settings builders and map_user_inputs take the
     # star as an argument s
     "setup": (0, 0),
-    "state": (738, 1),
+    # state (2026-10): controls_sync takes the star as an argument s
+    "state": (0, 0),
 }
 
 

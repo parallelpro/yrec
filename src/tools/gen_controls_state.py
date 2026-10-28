@@ -197,29 +197,33 @@ def main():
             "! The two copies between controls_buffer, the buffer the decks\n"
             "! are read into, and star%ctrl and star%job. read_controls runs:\n"
             "!   star%ctrl = controls_state()   (pristine defaults)\n"
-            "!   call seed_controls_buffer      (buffer <- star%ctrl)\n"
-            "!   call read_input(ierr)          (the deck read over the buffer)\n"
-            "!   call store_controls_to_star    (star%ctrl, star%job <- buffer)\n"
+            "!   call seed_controls_buffer(s)   (buffer <- s%ctrl)\n"
+            "!   call read_input(s, ierr)       (the deck read over the buffer)\n"
+            "!   call store_controls_to_star(s) (s%ctrl, s%job <- buffer)\n"
+            "! Both take the star as an argument s; nothing here names the\n"
+            "! global.\n"
             "module controls_sync\n"
             "      use controls_buffer\n"
-            "      use star_info_lib, only: star\n"
+            "      use star_info_lib, only: star_info\n"
             "      implicit none\n"
             "\n"
             "contains\n"
             "\n"
-            "subroutine seed_controls_buffer\n"
+            "subroutine seed_controls_buffer(s)\n"
+            "      type(star_info), intent(in) :: s\n"
         )
         for _, name, _, _ in members:
             home = "job" if name in JOB_MEMBERS else "ctrl"
-            f.write(f"      {name} = star%{home}%{name}\n")
+            f.write(f"      {name} = s%{home}%{name}\n")
         f.write(
             "end subroutine seed_controls_buffer\n"
             "\n"
-            "subroutine store_controls_to_star\n"
+            "subroutine store_controls_to_star(s)\n"
+            "      type(star_info), intent(inout) :: s\n"
         )
         for _, name, _, _ in members:
             home = "job" if name in JOB_MEMBERS else "ctrl"
-            f.write(f"      star%{home}%{name} = {name}\n")
+            f.write(f"      s%{home}%{name} = {name}\n")
         f.write(
             "end subroutine store_controls_to_star\n"
             "\n"
