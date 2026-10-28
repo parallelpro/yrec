@@ -455,6 +455,7 @@ double precision function profile_value(s, icol, k)
            i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
            i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, &
            i_o17, i_o18
+      use star_info_lib, only: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
       type(star_info), intent(inout) :: s
       integer, intent(in) :: icol, k
 
@@ -506,9 +507,9 @@ double precision function profile_value(s, icol, k)
       case (44); profile_value = s%i_rot(k)
       case (45); profile_value = s%fp_rot(k)
       case (46); profile_value = s%ft_rot(k)
-      case (47); profile_value = s%es_circulation_velocity(k)
-      case (48); profile_value = s%gsf_circulation_velocity(k)
-      case (49); profile_value = s%secular_shear_velocity(k)
+      case (47); profile_value = s%mechanism_velocity(i_mech_eddington_sweet,k)
+      case (48); profile_value = s%mechanism_velocity(i_mech_gsf,k)
+      case (49); profile_value = s%mechanism_velocity(i_mech_shear,k)
       case (50); profile_value = s%pulse_specific_heat(k)
       case (51); profile_value = -s%pulse_dlnrho_dlnt(k)
       case (52); profile_value = s%pulse_mean_molecular_weight(k)

@@ -10,6 +10,7 @@
 module rotation_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_he3, n_species_basic, n_species_extended
+      use transport_mechanism_layout, only: n_transport_mechanisms
       implicit none
       private
       public :: rotation_settings_t, rotation_settings, set_rotation_settings, &
@@ -52,18 +53,22 @@ module rotation_configuration
          real(dp) :: cz_rotation_law_exponent = 0.0d0
          logical :: force_solid_body_rotation = .false.
          integer :: solid_body_mode_flag = 0
-! the circulation and instability velocities: their scales, the GSF
+! the circulation and instability velocities: each mechanism's scale
+! (transport_mechanism_layout's slots; the controls es_velocity_scale,
+! gsf_velocity_scale and secular_shear_velocity_scale), the GSF
 ! inhibition mode, the critical Reynolds number, the Zahn (1992)
 ! coupling factor (the former lvfc), no transport in a convective core
-         real(dp) :: es_velocity_scale = 0.0d0, gsf_velocity_scale = 0.0d0, &
-              secular_shear_velocity_scale = 0.0d0, critical_reynolds = 0.0d0
+         real(dp) :: velocity_scale(n_transport_mechanisms) = 0.0d0
+         real(dp) :: critical_reynolds = 0.0d0
          integer :: gsf_inhibition_mode = 0
          logical :: use_zahn_coupling_factor = .false.
          logical :: no_am_transport_in_core = .false.
-! the mixing of the composition: the overall scale and the scales of
-! the three mechanisms; a constant background diffusion coefficient
-         real(dp) :: mixing_velocity_scale = 0.0d0, es_mixing_scale = 0.0d0, &
-              gsf_mixing_scale = 0.0d0, secular_shear_mixing_scale = 0.0d0
+! the mixing of the composition: the overall scale and each mechanism's
+! efficiency (the controls es_mixing_scale, gsf_mixing_scale and
+! secular_shear_mixing_scale); a constant background diffusion
+! coefficient
+         real(dp) :: mixing_velocity_scale = 0.0d0
+         real(dp) :: mixing_scale(n_transport_mechanisms) = 0.0d0
          logical :: use_constant_background_diffusion = .false.
          real(dp) :: constant_background_diffusion_coeff = 0.0d0
 ! the advection-diffusion transport (Maeder & Zahn 1998), commented out:

@@ -44,6 +44,8 @@ contains
 function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       use controls_buffer, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
+      use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
+           i_mech_shear
       type(star_info), intent(in) :: s
       type(rotation_settings_t) :: settings
 
@@ -58,17 +60,17 @@ function rotation_settings_from_star(s) result(settings)
       settings%cz_rotation_law_exponent = s%ctrl%walpcz
       settings%force_solid_body_rotation = s%ctrl%force_solid_body_rotation
       settings%solid_body_mode_flag = s%ctrl%solid_body_mode_flag
-      settings%es_velocity_scale = s%ctrl%es_velocity_scale
-      settings%gsf_velocity_scale = s%ctrl%gsf_velocity_scale
-      settings%secular_shear_velocity_scale = s%ctrl%secular_shear_velocity_scale
+      settings%velocity_scale(i_mech_eddington_sweet) = s%ctrl%es_velocity_scale
+      settings%velocity_scale(i_mech_gsf) = s%ctrl%gsf_velocity_scale
+      settings%velocity_scale(i_mech_shear) = s%ctrl%secular_shear_velocity_scale
       settings%critical_reynolds = s%ctrl%critical_reynolds
       settings%gsf_inhibition_mode = s%ctrl%gsf_inhibition_mode
       settings%use_zahn_coupling_factor = s%ctrl%lvfc
       settings%no_am_transport_in_core = s%ctrl%no_am_transport_in_core
       settings%mixing_velocity_scale = s%ctrl%mixing_velocity_scale
-      settings%es_mixing_scale = s%ctrl%es_mixing_scale
-      settings%gsf_mixing_scale = s%ctrl%gsf_mixing_scale
-      settings%secular_shear_mixing_scale = s%ctrl%secular_shear_mixing_scale
+      settings%mixing_scale(i_mech_eddington_sweet) = s%ctrl%es_mixing_scale
+      settings%mixing_scale(i_mech_gsf) = s%ctrl%gsf_mixing_scale
+      settings%mixing_scale(i_mech_shear) = s%ctrl%secular_shear_mixing_scale
       settings%use_constant_background_diffusion = s%ctrl%use_constant_background_diffusion
       settings%constant_background_diffusion_coeff = s%ctrl%constant_background_diffusion_coeff
       settings%use_diffusion_advection_transport = s%ctrl%use_diffusion_advection_transport

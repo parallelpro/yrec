@@ -32,9 +32,11 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |
 | `shell_quadrature` | The two quadratures of the distortion integral. |
 | **seculr/** | |
+| `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear. The mechanisms' slots are `state/transport_mechanism_layout`'s. |
+| `transport_regions` | `next_transport_region`: the runs of interfaces where the total velocity U is positive. |
 | `secular_transport` | `apply_secular_transport`: one sub-step of transport. |
 | `am_transport_coefficients` | The angular momentum diffusion equation's tridiagonal system (`am_diffusion_coeffs`; and, commented out, the advection-diffusion transport) and its solve (`solve_angular_momentum_transport`). |
-| `circulation` | The circulation and instability velocities, their scales, the Zahn coupling factor, the quadrupole moment. |
+| `circulation` | `circulation_velocities`: the structure at the interfaces, the mechanisms' velocities (`instability_velocities`) with their scales and averaging, their sum U; the diffusion coefficients from them (`diffusion_velocity_scales`); the Zahn coupling factor; the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
 | `stability_coefficients` | `rotation_stability_setup`: the structure at the zone interfaces and the coefficients of the circulation and instability velocities, once per sub-step. |
@@ -88,6 +90,13 @@ The decks pin the full step: the rotating solar deck, the five rotating configur
 
 **Add a control:** add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
 
-**Add a transport mechanism or a kernel:** keep it star-free (arguments in, results out), add its file to `STAR_BLIND_FILES`, and give it a check in `test_rotation_kernels` that a mistake would break (a conservation law, a limit, a scaling).
+**Add a transport mechanism** (a new instability or circulation that transports angular momentum and mixes as a diffusion):
+1. Give it the next slot in `state/transport_mechanism_layout.f90` (`i_mech_<name>`, `n_transport_mechanisms` + 1, its name). The coefficients sum the mechanisms in slot order, so the next slot leaves the present ones' sums unchanged bit for bit.
+2. Write its velocity as a kernel in `seculr/instability_velocities.f90`: arguments in, its velocity at interfaces `zone_min..zone_max` out, star-free. Give it a check in `test_rotation_kernels` that a mistake would break (a limit, a scaling, a stability criterion).
+3. Call it from `circulation_velocities` with `mechanism_velocity(i_mech_<name>,:)`. Clearing, scaling, averaging between iterations, summing into U and the diffusion coefficients loop over the slots already.
+4. Give it a velocity scale and a mixing efficiency: two controls, copied into `rotation_settings%velocity_scale(i_mech_<name>)` and `%mixing_scale(i_mech_<name>)` in `rotation_settings_from_star`.
+5. For output, add a profile column that reads `s%mechanism_velocity(i_mech_<name>,k)` (`core/diagnostics/stitched_model.f90`, `io/profile_output.f90`).
+
+**Add any other kernel:** keep it star-free (arguments in, results out), add its file to `STAR_BLIND_FILES`, and give it a check in `test_rotation_kernels` that a mistake would break (a conservation law, a limit, a scaling).
 
 **Add a braking law:** give it a control (as above), set its coefficients in `magnetic_braking`'s law setup, and add its cases to `test_rotation`'s braking checks (which set `rotation_settings` directly).

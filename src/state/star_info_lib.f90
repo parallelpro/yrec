@@ -42,6 +42,7 @@ module star_info_lib
            atmosphere_structure_state, atmosphere_point_state
       use stitched_model_state, only: stitched_model_record
       use neutrino_flux_layout
+      use transport_mechanism_layout
       implicit none
       private
       public :: json
@@ -89,6 +90,9 @@ module star_info_lib
            i_lum_grav = 7, i_lum_he_c = 8, i_lum_extra = 9, &
            n_lum_channels = 9
 
+! The transport-mechanism slots: transport_mechanism_layout.
+      public :: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
+           n_transport_mechanisms, transport_mechanism_name
 ! The neutrino-flux slots: neutrino_flux_layout.
       public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17, i_nu_he3he3, i_nu_he3he4, n_nu_fluxes
@@ -273,8 +277,11 @@ module star_info_lib
 ! evidence (read by the output writers or across domains) flatten
 ! here; the true solver workspace moved to
 ! rotation/rotation_scratch_lib.f90.
-            double precision :: es_circulation_velocity(json), &
-                 secular_shear_velocity(json), gsf_circulation_velocity(json)
+! mechanism_velocity(i_mech_*, k): each rotational transport mechanism's
+! velocity at interface k (cm/s; transport_mechanism_layout's slots: the
+! Eddington-Sweet circulation, the GSF and the shear instabilities),
+! from the last iteration of the step's last rotation sub-step
+            double precision :: mechanism_velocity(n_transport_mechanisms, json)
 ! phase C batch 3: working/diagnostic state evicted from the buffer
 ! (zero read-path references -- never namelist targets). The
 ! acoustic-depth family holds calcad's OUTPUTS (read by wrtout's

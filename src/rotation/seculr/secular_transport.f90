@@ -10,9 +10,6 @@
 ! this file dispatches to. The name used here is the one most callees
 ! share (or the more descriptive one); the others are listed here,
 ! following henyey_iteration's convention:
-!  - radius_unlogged (HRU): circulation_velocities,
-!    zahn_coupling_factor, compute_quadrupole and am_transport_grid call
-!    it radius; diffusion_velocity_scales calls it radius_mid_prev.
 !  - mixing_diffusion_coeff (COD2, dummy arg): diffuse_composition_driver
 !    calls it diffusion_coeff.
 !  - diffusion_velocity (HV, dummy arg): circulation_velocities calls it
@@ -119,7 +116,7 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
       double precision :: dynamical_shear_omega_limit(json), eq_mass(json), &
            am_diffusion_coeff(json), eq_mixing_diffusion_coeff(json), &
            eq_moment_of_inertia(json), eq_angular_momentum(json), &
-           eq_am_diffusion_coeff(json), radius_unlogged(json), radius_mid(json), &
+           eq_am_diffusion_coeff(json), radius(json), radius_mid(json), &
            domega_dlnr(json), eq_delta_angular_momentum(json), &
            specific_angular_momentum_prev(json), omega_start(json), &
            eq_omega(json)
@@ -263,7 +260,7 @@ end subroutine restore_end_zone_flags
 ! ---------------------------------------------------------------
 ! Once per sub-step, what every iteration shares: the structure at the
 ! interfaces and the parts of the velocities that depend only on it
-! (rotation_stability_setup), with the unlogged radii radius_unlogged
+! (rotation_stability_setup), with the unlogged radii radius
 ! and the dynamical-shear limit on |d omega/d ln r|; the surface L,
 ! total_luminosity (erg/s); d omega/d ln r of the sub-step's omega; and
 ! the quadrupole moment of the distorted star, for the correction of
@@ -273,12 +270,12 @@ subroutine set_up_interfaces()
       call rotation_stability_setup(rot_scr, mid_scr, &
            rot_scr%log_density_mid,rot_scr%mean_gravity_mid,rot_scr%luminosity_lsun_mid,rot_scr%log_pressure_mid, &
            rot_scr%log_radius_mid,s%m,rot_scr%log_temperature_mid,zone_min,zone_max, &
-           s%nz,radius_unlogged,dynamical_shear_omega_limit)
+           s%nz,radius,dynamical_shear_omega_limit)
       total_luminosity = s%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(s%nz)
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
            rot_scr%log_radius_mid,s%omega_mid,domega_dlnr)
       call compute_quadrupole(rot_scr, &
-           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,s%omega_mid,s%nz,ierr)
+           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius,s%omega_mid,s%nz,ierr)
 end subroutine set_up_interfaces
 
 ! ---------------------------------------------------------------
@@ -316,14 +313,13 @@ end subroutine save_substep_start
 ! seculr.f, not on LDIFAD).
 subroutine compute_circulation()
       call circulation_velocities(rot_scr, mid_scr, circ_scr, &
-           rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
+           rot_scr%log_radius_mid,radius,zone_min,zone_max,iteration, &
            rot_scr%am_transport_convective_flag_mid,s%nz,s%omega_mid,transport_active, &
            domega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
-           total_luminosity,rot_scr%log_pressure_mid,s%es_circulation_velocity, &
-           s%gsf_circulation_velocity,s%secular_shear_velocity)
+           total_luminosity,rot_scr%log_pressure_mid,s%mechanism_velocity)
       if(rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(rot_scr, &
-                rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
+                rot_scr%log_density_mid,radius,diffusion_velocity, &
            zone_min,zone_max,s%omega_mid,s%vfc)
 end subroutine compute_circulation
 
@@ -405,9 +401,8 @@ end subroutine spin_down_uncoupled_surface
 ! also profile columns (D_omega, D_mix_rot), which show the step's last
 ! sub-step.
 subroutine set_diffusion_coefficients()
-      call diffusion_velocity_scales(radius_unlogged,s%nz,radius_mid, &
-           am_diffusion_coeff,mixing_diffusion_coeff,s%es_circulation_velocity, &
-           s%gsf_circulation_velocity,s%secular_shear_velocity,s%vfc)
+      call diffusion_velocity_scales(radius,s%nz,radius_mid, &
+           am_diffusion_coeff,mixing_diffusion_coeff,s%mechanism_velocity,s%vfc)
       do i = 1, s%nz
          s%am_diffusion_coeff(i) = am_diffusion_coeff(i)
          s%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
@@ -475,7 +470,7 @@ subroutine grid_unstable_region()
       call am_transport_grid(rot_scr, mid_scr, &
            am_diffusion_coeff,mixing_diffusion_coeff,rot_scr%log_density_mid, &
            rot_scr%moment_of_inertia_mid,specific_angular_momentum_saved,rot_scr%luminosity_lsun_mid, &
-           rot_scr%log_pressure_mid,rot_scr%log_radius_mid,radius_unlogged,s%log_mass,s%m, &
+           rot_scr%log_pressure_mid,rot_scr%log_radius_mid,radius,s%log_mass,s%m, &
            s%dm,s%log_total_mass,zone_begin,zone_end, &
            rot_scr%am_transport_convective_flag_mid,s%nz,omega_start,grid_spacing, &
            eq_am_diffusion_coeff,eq_mixing_diffusion_coeff, &

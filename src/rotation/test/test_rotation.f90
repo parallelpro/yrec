@@ -41,7 +41,7 @@ program test_rotation
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: star_info, json
+      use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
@@ -347,14 +347,10 @@ subroutine secular_check()
 ! the reader's defaults (the pristine star%ctrl leaves them zero)
       rotation_settings%difad_velocity_scale = 1.0d0
       rotation_settings%mixing_velocity_scale = 1.0d0
-      rotation_settings%es_velocity_scale = 1.0d0
-      rotation_settings%gsf_velocity_scale = 1.0d0
+      rotation_settings%velocity_scale = 1.0d0
       star%ctrl%mu_gradient_scale = 1.0d0
-      rotation_settings%secular_shear_velocity_scale = 1.0d0
       rotation_settings%critical_reynolds = 1.0d3
-      rotation_settings%es_mixing_scale = 1.0d0
-      rotation_settings%secular_shear_mixing_scale = 1.0d0
-      rotation_settings%gsf_mixing_scale = 1.0d0
+      rotation_settings%mixing_scale = 1.0d0
       rotation_settings%gsf_inhibition_mode = 1
       rotation_settings%constant_background_diffusion_coeff = 2.5d4
       rotation_settings%use_constant_background_diffusion = .false.
@@ -472,9 +468,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       end do
       zmin = 2
       zmax = count(.not. convective(1:n))
-      circ_scr%es_circulation_velocity_prev = 0.0d0
-      circ_scr%secular_shear_velocity_prev = 0.0d0
-      circ_scr%gsf_circulation_velocity_prev = 0.0d0
+      circ_scr%velocity_prev = 0.0d0
       star%vfc = 0.0d0
       call rotation_stability_setup(rot_scr, mid_scr, &
            log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n, &
@@ -499,22 +493,20 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          call circulation_velocities(rot_scr, mid_scr, circ_scr, &
               log_r, radius, zmin, zmax, it, convective, n, w, active, &
               dw_dlnr, shear_limit, v_total, lum_total, log_p, &
-              star%es_circulation_velocity, star%gsf_circulation_velocity, &
-              star%secular_shear_velocity)
+              star%mechanism_velocity)
       end do
       if (zahn) call zahn_coupling_factor(rot_scr, log_rho, radius, v_total, zmin, zmax, w, &
            star%vfc)
       call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix, &
-           star%es_circulation_velocity, star%gsf_circulation_velocity, &
-           star%secular_shear_velocity, star%vfc)
+           star%mechanism_velocity, star%vfc)
       write(*,'(a)') "## "//label
       write(*,'(a,i2,a,l2,a,i3)') "quadrupole ierr", ierr, "  transport active", active, &
            "  zone_max", zmax
       write(*,'(a)') "zone  shear-limit dw/dlnr es-velocity ss-velocity gsf-velocity"
       do s = 1, size(shown)
          i = shown(s)
-         write(*,'(i4,5(1pe24.15))') i, shear_limit(i), dw_dlnr(i), star%es_circulation_velocity(i), &
-              star%secular_shear_velocity(i), star%gsf_circulation_velocity(i)
+         write(*,'(i4,5(1pe24.15))') i, shear_limit(i), dw_dlnr(i), star%mechanism_velocity(i_mech_eddington_sweet,i), &
+              star%mechanism_velocity(i_mech_shear,i), star%mechanism_velocity(i_mech_gsf,i)
       end do
       write(*,'(a)') "zone  total-velocity D_omega D_mix vfc quadrupole"
       do s = 1, size(shown)

@@ -16,6 +16,7 @@
 module rotation_scratch_lib
       use rotation_configuration, only: rotation_settings
       use star_info_lib, only: json
+      use transport_mechanism_layout, only: n_transport_mechanisms
       implicit none
       private
       public :: rotation_diffusion_state, midstep_physics_state, &
@@ -184,11 +185,9 @@ module rotation_scratch_lib
             double precision :: eps_plus_neu_grav(json)
       end type midstep_physics_state
       type, public :: circulation_velocity_state
-! the circulation velocities' previous iterates (the current ones are
-! on star%, which the output reads)
-            double precision :: es_circulation_velocity_prev(json)
-            double precision :: secular_shear_velocity_prev(json)
-            double precision :: gsf_circulation_velocity_prev(json)
+! each mechanism's velocity at the previous iteration (the current ones
+! are the star's mechanism_velocity, which the output reads)
+            double precision :: velocity_prev(n_transport_mechanisms, json)
       end type circulation_velocity_state
 
 contains
