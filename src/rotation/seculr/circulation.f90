@@ -37,7 +37,7 @@ contains
 ! The Eddington-Sweet and GSF velocities are skipped at interfaces with
 ! convective zones on both sides. From the second iteration on, each
 ! velocity is averaged with the previous iteration's. Their sum is
-! total_circulation_velocity (legacy HV); any_transport_active is set if
+! total_velocity (legacy HV); any_transport_active is set if
 ! it is positive anywhere. With no_am_transport_in_core the velocities
 ! are zeroed inside the energy-generating core (zero_transport_in_core).
 ! domega_dlnr is d omega/d ln r and dynamical_shear_omega_limit its
@@ -46,21 +46,21 @@ contains
 ! give a diffusion coefficient.
 ! The formulas are the kernels of instability_velocities. Its internal steps
 ! keep the books: they interpolate the physics to the interfaces
-! (rot_scr), and store, clear, scale, average and sum the velocities
+! (stab), and store, clear, scale, average and sum the velocities
 ! (the arguments and circ_scr).
-subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
+subroutine circulation_velocities(stab, sub_physics, circ_scr, &
      log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
-     domega_dlnr, dynamical_shear_omega_limit, total_circulation_velocity, &
+     domega_dlnr, dynamical_shear_omega_limit, total_velocity, &
      total_luminosity, log_pressure, mechanism_velocity)
-      use rotation_scratch_lib, only: rotation_diffusion_state, &
-           midstep_physics_state, circulation_velocity_state
+      use rotation_scratch_lib, only: stability_state, &
+           substep_physics_state, circulation_velocity_state
 
       use star_info_lib, only: json
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(in) :: mid_scr
+      type(stability_state), intent(inout) :: stab
+      type(substep_physics_state), intent(in) :: sub_physics
       type(circulation_velocity_state), intent(inout) :: circ_scr
 
       double precision, intent(in) :: log_radius(json), radius(json)
@@ -71,7 +71,7 @@ subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
       logical, intent(out) :: any_transport_active
       double precision, intent(in) :: domega_dlnr(json), &
            dynamical_shear_omega_limit(json)
-      double precision, intent(out) :: total_circulation_velocity(json)
+      double precision, intent(out) :: total_velocity(json)
       double precision, intent(in) :: total_luminosity, log_pressure(json)
 ! Each mechanism's velocity (cm/s; transport_mechanism_layout's slots;
 ! the star's, for the output): the previous iteration's on entry, this
@@ -86,23 +86,23 @@ subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
       call clear_velocities()
       call interpolate_to_interfaces()
       call compute_eddington_sweet_velocity(zone_min, zone_max, am_transport_convective_flag, &
-           radius, omega, rot_scr%omega_interface, rot_scr%radius_interface, &
-           rot_scr%local_gravity, rot_scr%quadrupole_moment, rot_scr%es_velocity_coeff1, &
-           rot_scr%es_velocity_coeff2, rot_scr%es_shear_coeff, &
-           rot_scr%circulation_correction_ratio, mechanism_velocity(i_mech_eddington_sweet,:))
-      call inhibit_by_mu_gradient(zone_min, zone_max, mid_scr%mu, log_pressure, &
-           rot_scr%del_grad_diff_interface, mechanism_velocity(i_mech_eddington_sweet,:))
+           radius, omega, stab%omega_interface, stab%radius_interface, &
+           stab%local_gravity, stab%quadrupole_moment, stab%es_velocity_coeff1, &
+           stab%es_velocity_coeff2, stab%es_shear_coeff, &
+           stab%circulation_correction_ratio, mechanism_velocity(i_mech_eddington_sweet,:))
+      call inhibit_by_mu_gradient(zone_min, zone_max, sub_physics%mu, log_pressure, &
+           stab%del_grad_diff_interface, mechanism_velocity(i_mech_eddington_sweet,:))
       call compute_gsf_velocity(zone_min, zone_max, rotation_settings%gsf_inhibition_mode, &
            am_transport_convective_flag, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
-           mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%omega_interface, &
-           rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
-           rot_scr%gravity_factor_interface, rot_scr%gsf_kippenhahn_coeff, &
+           sub_physics%mu, stab%mean_molecular_weight_interface, stab%omega_interface, &
+           stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
+           stab%gravity_factor_interface, stab%gsf_kippenhahn_coeff, &
            mechanism_velocity(i_mech_gsf,:))
       call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
            log_radius, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
-           mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%radius_interface, &
-           rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
-           rot_scr%mu_gradient_richardson_coeff, mechanism_velocity(i_mech_shear,:), &
+           sub_physics%mu, stab%mean_molecular_weight_interface, stab%radius_interface, &
+           stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
+           stab%mu_gradient_richardson_coeff, mechanism_velocity(i_mech_shear,:), &
            mechanism_velocity(i_mech_gsf,:))
       call apply_velocity_scales()
       if (iteration.gt.1) call average_with_previous()
@@ -133,7 +133,7 @@ end subroutine store_previous_velocities
 ! pair of convective zones, a stable interface) keeps none.
 subroutine clear_velocities()
       do i = 1,num_zones
-         total_circulation_velocity(i) = 0.0d0
+         total_velocity(i) = 0.0d0
          do m = 1, n_transport_mechanisms
             mechanism_velocity(m,i) = 0.0d0
          end do
@@ -149,31 +149,31 @@ end subroutine clear_velocities
 subroutine interpolate_to_interfaces()
 ! The first interface (2) uses zones 1-4.
       if (zone_min.lt.3) then
-         rot_scr%kinematic_viscosity_interface(2)=log_lagrange4(mid_scr%visc, 1, 2)
-         rot_scr%thermal_diffusivity_interface(2)=log_lagrange4(mid_scr%thdif, 1, 2)
+         stab%kinematic_viscosity_interface(2)=log_lagrange4(sub_physics%visc, 1, 2)
+         stab%thermal_diffusivity_interface(2)=log_lagrange4(sub_physics%thdif, 1, 2)
          i0=3
       else
          i0=zone_min
       end if
 ! The last interface (num_zones) uses the last four zones.
       if (zone_max.eq.num_zones) then
-         rot_scr%kinematic_viscosity_interface(num_zones)= &
-              log_lagrange4(mid_scr%visc, num_zones-3, num_zones)
-         rot_scr%thermal_diffusivity_interface(num_zones)= &
-              log_lagrange4(mid_scr%thdif, num_zones-3, num_zones)
+         stab%kinematic_viscosity_interface(num_zones)= &
+              log_lagrange4(sub_physics%visc, num_zones-3, num_zones)
+         stab%thermal_diffusivity_interface(num_zones)= &
+              log_lagrange4(sub_physics%thdif, num_zones-3, num_zones)
          i1=num_zones-1
       else
          i1=zone_max
       end if
 ! The other interfaces.
       do i = i0,i1
-         rot_scr%kinematic_viscosity_interface(i)=log_lagrange4(mid_scr%visc, i-2, i)
-         rot_scr%thermal_diffusivity_interface(i)=log_lagrange4(mid_scr%thdif, i-2, i)
+         stab%kinematic_viscosity_interface(i)=log_lagrange4(sub_physics%visc, i-2, i)
+         stab%thermal_diffusivity_interface(i)=log_lagrange4(sub_physics%thdif, i-2, i)
       end do
 ! mu and omega: the mean of the two neighbouring zones.
       do i = 2,num_zones
-         rot_scr%mean_molecular_weight_interface(i) = 0.5d0*(mid_scr%mu(i)+mid_scr%mu(i-1))
-         rot_scr%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
+         stab%mean_molecular_weight_interface(i) = 0.5d0*(sub_physics%mu(i)+sub_physics%mu(i-1))
+         stab%omega_interface(i) = 0.5d0*(omega(i)+omega(i-1))
       end do
 end subroutine interpolate_to_interfaces
 
@@ -216,11 +216,11 @@ subroutine apply_velocity_scales()
 ! gsf_diffusion_coeff.
 !         do i = zone_min,zone_max
 !            rot_scr%es_diffusive_velocity(i) = rot_scr%es_diffusive_velocity(i)+ &
-!                 rot_scr%radius_interface(i)*(abs(gsf_circulation_velocity(i))+ &
+!                 stab%radius_interface(i)*(abs(gsf_circulation_velocity(i))+ &
 !                 abs(secular_shear_velocity(i)))
-!            rot_scr%shear_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
+!            rot_scr%shear_diffusion_coeff(i) = stab%radius_interface(i)* &
 !                 abs(secular_shear_velocity(i))
-!            rot_scr%gsf_diffusion_coeff(i) = rot_scr%radius_interface(i)* &
+!            rot_scr%gsf_diffusion_coeff(i) = stab%radius_interface(i)* &
 !                 abs(gsf_circulation_velocity(i))
 !         end do
 !      end if
@@ -248,15 +248,15 @@ subroutine average_with_previous()
 end subroutine average_with_previous
 
 ! ---------------------------------------------------------------
-! total_circulation_velocity, the sum of the mechanisms' velocities at
+! total_velocity, the sum of the mechanisms' velocities at
 ! each interface (mechanism_sum), zeroed below 1e-20 cm/s;
 ! any_transport_active if any is positive.
 subroutine sum_velocities()
       do i =zone_min,zone_max
-         total_circulation_velocity(i) = mechanism_sum(mechanism_velocity(:,i))
-         if (total_circulation_velocity(i).lt.1.0d-20) &
-              total_circulation_velocity(i)=0.0d0
-         if (total_circulation_velocity(i).gt.0.0d0) any_transport_active=.true.
+         total_velocity(i) = mechanism_sum(mechanism_velocity(:,i))
+         if (total_velocity(i).lt.1.0d-20) &
+              total_velocity(i)=0.0d0
+         if (total_velocity(i).gt.0.0d0) any_transport_active=.true.
       end do
 end subroutine sum_velocities
 
@@ -267,9 +267,9 @@ end subroutine sum_velocities
 ! numerical problems in the hydrogen-burning shell.
 subroutine zero_transport_in_core()
       do i = zone_min,zone_max
-         dell = rot_scr%luminosity_interface(i)/total_luminosity
+         dell = stab%luminosity_interface(i)/total_luminosity
          if (dell.lt.9.9d-1) then
-            total_circulation_velocity(i) = 0.0d0
+            total_velocity(i) = 0.0d0
             do m = 1, n_transport_mechanisms
                mechanism_velocity(m,i) = 0.0d0
             end do
@@ -283,17 +283,17 @@ end subroutine zero_transport_in_core
 
 
 ! 4-point Lagrange interpolation of a(k..k+3) to interface i in ln a,
-! with the weights rot_scr%lagrange_interp_weights(1:4,i) set by
+! with the weights stab%lagrange_interp_weights(1:4,i) set by
 ! rotation_stability_setup (stability_coefficients).
       function log_lagrange4(a, k, i)
       double precision, intent(in) :: a(*)
       integer, intent(in) :: k, i
       double precision :: log_lagrange4
       log_lagrange4 = exp(log(a(k))* &
-           rot_scr%lagrange_interp_weights(1,i)+log(a(k+1))* &
-           rot_scr%lagrange_interp_weights(2,i)+ &
-           log(a(k+2))*rot_scr%lagrange_interp_weights(3,i)+log(a(k+3))* &
-           rot_scr%lagrange_interp_weights(4,i))
+           stab%lagrange_interp_weights(1,i)+log(a(k+1))* &
+           stab%lagrange_interp_weights(2,i)+ &
+           log(a(k+2))*stab%lagrange_interp_weights(3,i)+log(a(k+3))* &
+           stab%lagrange_interp_weights(4,i))
       end function log_lagrange4
 
 end subroutine circulation_velocities
@@ -407,28 +407,28 @@ end subroutine diffusion_velocity_scales
 ! composition diffusion coefficients, with the prescription of Zahn
 ! (1992), at the interfaces zone_min..zone_max:
 !   vfc = min(1, f_c U/|2V - alpha U|),
-! where U is the total circulation velocity (diffusion_velocity),
+! where U is the total circulation velocity (total_velocity),
 !   V = (1/(6 rho r)) d(rho r^2 U)/dr,
 !   alpha = (1/2) d ln(r^2 omega)/d ln r,
 ! and f_c = mixing_velocity_scale (legacy FC) plays the role of C/30.
 ! vfc = 0 where U <= 0, and everywhere if f_c <= 0 (no mixing).
-subroutine zahn_coupling_factor(rot_scr, log_density, radius, diffusion_velocity, zone_min, &
+subroutine zahn_coupling_factor(stab, log_density, radius, total_velocity, zone_min, &
      zone_max, angular_velocity, vfc)
-      use rotation_scratch_lib, only: rotation_diffusion_state
+      use rotation_scratch_lib, only: stability_state
 
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(stability_state), intent(in) :: stab
 
 ! log_density: log10 rho (g/cm^3) at the zone centres.
 ! radius: the unlogged radius (cm) at the zone centres.
-! diffusion_velocity: the total velocity U at the interfaces (zone edges).
+! total_velocity: the total velocity U at the interfaces (zone edges).
 ! zone_min, zone_max: the first and last interface.
 ! angular_velocity: omega at the zone centres.
       double precision, intent(in) :: log_density(json), radius(json), &
-           diffusion_velocity(json)
+           total_velocity(json)
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: angular_velocity(json)
 ! vfc: the coupling factor, set at the interfaces zone_min..zone_max
@@ -462,26 +462,26 @@ subroutine zahn_coupling_factor(rot_scr, log_density, radius, diffusion_velocity
               radius(zone_index)**2-angular_velocity(zone_index-1)* &
               radius(zone_index-1)**2)/ &
               (radius(zone_index)-radius(zone_index-1))/ &
-              (omega_mid*rot_scr%radius_interface(zone_index))
+              (omega_mid*stab%radius_interface(zone_index))
       end do
 ! 2V = (1/(3 rho r)) d(rho r^2 U)/dr at interface i, from rho r^2 U at
 ! the zone centres i-1 and i, with U at a zone centre interpolated
 ! linearly between the interfaces on either side; rho and r at the
-! interface are rot_scr's.
-      interp_weight = (radius(zone_min)-rot_scr%radius_interface(zone_min))/ &
-           (rot_scr%radius_interface(zone_min+1)-rot_scr%radius_interface(zone_min))
-      v_minus = diffusion_velocity(zone_min)+interp_weight* &
-           (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))
+! interface are stab's.
+      interp_weight = (radius(zone_min)-stab%radius_interface(zone_min))/ &
+           (stab%radius_interface(zone_min+1)-stab%radius_interface(zone_min))
+      v_minus = total_velocity(zone_min)+interp_weight* &
+           (total_velocity(zone_min+1)-total_velocity(zone_min))
       density_r2_v_minus = exp(ln10*log_density(zone_min))* &
            radius(zone_min)**2*v_minus
       do zone_index = zone_min + 1, zone_max - 1
-         interp_weight = (radius(zone_index)-rot_scr%radius_interface(zone_index))/ &
-              (rot_scr%radius_interface(zone_index+1)-rot_scr%radius_interface(zone_index))
-         v_plus = diffusion_velocity(zone_index)+interp_weight* &
-              (diffusion_velocity(zone_index+1)-diffusion_velocity(zone_index))
+         interp_weight = (radius(zone_index)-stab%radius_interface(zone_index))/ &
+              (stab%radius_interface(zone_index+1)-stab%radius_interface(zone_index))
+         v_plus = total_velocity(zone_index)+interp_weight* &
+              (total_velocity(zone_index+1)-total_velocity(zone_index))
          density_r2_v_plus = exp(ln10*log_density(zone_index))* &
               radius(zone_index)**2*v_plus
-         density_radius = rot_scr%density_interface(zone_index)*rot_scr%radius_interface(zone_index)
+         density_radius = stab%density_interface(zone_index)*stab%radius_interface(zone_index)
          circ_velocity(zone_index) = cc13*(density_r2_v_plus-density_r2_v_minus)/ &
               density_radius/(radius(zone_index)-radius(zone_index-1))
          density_r2_v_minus = density_r2_v_plus
@@ -490,31 +490,31 @@ subroutine zahn_coupling_factor(rot_scr, log_density, radius, diffusion_velocity
 !   2V = (1/3) [U d(rho r^2)/dr/(rho r) + r dU/dr],
 ! with d(rho r^2)/dr across the interface and dU/dr the one-sided
 ! difference to the neighbouring interface.
-      density_radius = rot_scr%density_interface(zone_min)*rot_scr%radius_interface(zone_min)
+      density_radius = stab%density_interface(zone_min)*stab%radius_interface(zone_min)
       d_density_r2 = (exp(ln10*log_density(zone_min))*radius(zone_min)**2 - &
            exp(ln10*log_density(zone_min-1))*radius(zone_min-1)**2)/ &
            (radius(zone_min) - radius(zone_min-1))
-      du_dr = (diffusion_velocity(zone_min+1)-diffusion_velocity(zone_min))/ &
-           (rot_scr%radius_interface(zone_min+1)-rot_scr%radius_interface(zone_min))
-      circ_velocity(zone_min) = cc13*(diffusion_velocity(zone_min)*d_density_r2/ &
-           density_radius + rot_scr%radius_interface(zone_min)*du_dr)
-      density_radius = rot_scr%density_interface(zone_max)*rot_scr%radius_interface(zone_max)
+      du_dr = (total_velocity(zone_min+1)-total_velocity(zone_min))/ &
+           (stab%radius_interface(zone_min+1)-stab%radius_interface(zone_min))
+      circ_velocity(zone_min) = cc13*(total_velocity(zone_min)*d_density_r2/ &
+           density_radius + stab%radius_interface(zone_min)*du_dr)
+      density_radius = stab%density_interface(zone_max)*stab%radius_interface(zone_max)
       d_density_r2 = (exp(ln10*log_density(zone_max))*radius(zone_max)**2 - &
            exp(ln10*log_density(zone_max-1))*radius(zone_max-1)**2)/ &
            (radius(zone_max) - radius(zone_max-1))
-      du_dr = (diffusion_velocity(zone_max)-diffusion_velocity(zone_max-1))/ &
-           (rot_scr%radius_interface(zone_max)-rot_scr%radius_interface(zone_max-1))
-      circ_velocity(zone_max) = cc13*(diffusion_velocity(zone_max)*d_density_r2/ &
-           density_radius + rot_scr%radius_interface(zone_max)*du_dr)
+      du_dr = (total_velocity(zone_max)-total_velocity(zone_max-1))/ &
+           (stab%radius_interface(zone_max)-stab%radius_interface(zone_max-1))
+      circ_velocity(zone_max) = cc13*(total_velocity(zone_max)*d_density_r2/ &
+           density_radius + stab%radius_interface(zone_max)*du_dr)
 ! vfc, the same for all mechanisms and at most 1:
 !   vfc = f_c/max(|2V - alpha U|/U, f_c).
       do zone_index = zone_min, zone_max
-         if (diffusion_velocity(zone_index).le.0.0D0) then
+         if (total_velocity(zone_index).le.0.0D0) then
             vfc(zone_index) = 0.0D0
          else
             denom_test = max(abs(circ_velocity(zone_index)- &
-                 half_dlnj_dlnr(zone_index)*diffusion_velocity(zone_index))/ &
-                 diffusion_velocity(zone_index),rotation_settings%mixing_velocity_scale)
+                 half_dlnj_dlnr(zone_index)*total_velocity(zone_index))/ &
+                 total_velocity(zone_index),rotation_settings%mixing_velocity_scale)
             vfc(zone_index) = rotation_settings%mixing_velocity_scale/denom_test
          endif
       end do
@@ -524,7 +524,7 @@ end subroutine zahn_coupling_factor
 
 ! ---------------------------------------------------------------
 ! The quadrupole moment Phi of the rotating star at the zone centres
-! (rot_scr%quadrupole_moment, legacy QUAD), with the Sweet (1950)
+! (stab%quadrupole_moment, legacy QUAD), with the Sweet (1950)
 ! formulation as given in Zahn (1992). Phi solves
 !   (1/r) d^2(r Phi)/dr^2 - 6 Phi/r^2 + 4 pi G rho (d rho/dP) Phi
 !     = -(4/3) pi G (r^2/g) d(rho omega^2)/dr,
@@ -537,16 +537,16 @@ end subroutine zahn_coupling_factor
 !   sub_diag Phi(i-1) + diag Phi(i) + super_diag Phi(i+1) = rhs.
 ! Boundary conditions: Phi = 0 at the centre; at the surface no mass
 ! lies outside, so Phi varies as 1/r^3 (the exterior l = 2 solution).
-! gravity is copied to rot_scr%local_gravity for circulation_velocities.
+! gravity is copied to stab%local_gravity for circulation_velocities.
 ! ierr = 1 if a pivot of the elimination is zero.
-subroutine compute_quadrupole(rot_scr, &
+subroutine compute_quadrupole(stab, &
      log_density, gravity, radius, angular_velocity, num_zones, ierr)
-      use rotation_scratch_lib, only: rotation_diffusion_state
+      use rotation_scratch_lib, only: stability_state
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(stability_state), intent(inout) :: stab
 
       double precision, intent(in) :: log_density(json), gravity(json), &
            radius(json), angular_velocity(json)
@@ -659,8 +659,8 @@ subroutine compute_quadrupole(rot_scr, &
               gamma_elim(matrix_row+1)*solution(matrix_row+1)
       end do
       do zone_index = 1,num_zones
-         rot_scr%quadrupole_moment(zone_index) = solution(zone_index)
-         rot_scr%local_gravity(zone_index) = gravity(zone_index)
+         stab%quadrupole_moment(zone_index) = solution(zone_index)
+         stab%local_gravity(zone_index) = gravity(zone_index)
       end do
 
       return

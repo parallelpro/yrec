@@ -23,8 +23,8 @@ contains
 ! diffusion_solve_ok):
 !  - false, during the angular momentum iterations: mix the region
 !    zone_begin..zone_end on the grid that am_transport_grid has just
-!    built for it (rot_scr's chi grid, equally_spaced_diffusion_coeff
-!    and equally_spaced_mass). The caller passes species 1..4 here (X,
+!    built for it (chi_grid, eq_mixing_diffusion_coeff
+!    and eq_mass). The caller passes species 1..4 here (X,
 !    Z, He3, with He4 set from them), the species that set the
 !    gradient of the mean molecular weight.
 !  - true, once the iterations are done: scan the interfaces from
@@ -32,9 +32,9 @@ contains
 !    composition_grid, and mix it. The caller passes the remaining
 !    species (5 on) here.
 !
-! diffusion_coeff: the mixing coefficient 4 pi D_mix at the model
+! mixing_diffusion_coeff: the mixing coefficient 4 pi D_mix at the model
 !    interfaces (from diffusion_velocity_scales; legacy COD2).
-! equally_spaced_diffusion_coeff, equally_spaced_mass: the coefficient
+! eq_mixing_diffusion_coeff, eq_mass: the coefficient
 !    at the grid edges (with the Jacobian factor; legacy ECOD2) and the
 !    grid's zone masses (g; legacy EM). Inputs in the first mode,
 !    rebuilt for each region in the second. At a convective boundary
@@ -42,7 +42,7 @@ contains
 ! log_density, luminosity_lsun, log_pressure, log_radius, log_mass,
 !    enclosed_mass (g), shell_mass (g), log_total_mass: the model, for
 !    composition_grid.
-! velocity: the total circulation velocity (cm/s) at the interfaces,
+! total_velocity: the total circulation velocity U (cm/s) at the interfaces,
 !    element k between zones k-1 and k; transport regions are where it
 !    is positive.
 ! zone_begin, zone_end: the zone below a region's first unstable
@@ -55,27 +55,28 @@ contains
 !    momentum transport (overshoot regions included).
 ! num_zones: the number of model zones.
 ! composition(15,:): the mass fractions (legacy HCOMP).
-subroutine diffuse_composition_driver(rot_scr, mid_scr, &
-     timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
-     equally_spaced_mass, log_density, luminosity_lsun, log_pressure, &
+subroutine diffuse_composition_driver(chi_grid, sub_physics, &
+     timestep, mixing_diffusion_coeff, eq_mixing_diffusion_coeff, &
+     eq_mass, log_density, luminosity_lsun, log_pressure, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
-     velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
+     total_velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
      final_iteration_flag, num_zones, composition, species_begin, species_end, ierr)
-      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
+      use rotation_scratch_lib, only: transport_grid_state, &
+           substep_physics_state
       use star_info_lib, only: json
       use transport_regions, only: next_transport_region
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(in) :: mid_scr
+      type(transport_grid_state), intent(inout) :: chi_grid
+      type(substep_physics_state), intent(in) :: sub_physics
 
       double precision, intent(in) :: timestep
-      double precision, intent(in) :: diffusion_coeff(json)
-      double precision, intent(inout) :: equally_spaced_diffusion_coeff(json), &
-           equally_spaced_mass(json)
+      double precision, intent(in) :: mixing_diffusion_coeff(json)
+      double precision, intent(inout) :: eq_mixing_diffusion_coeff(json), &
+           eq_mass(json)
       double precision, intent(in) :: log_density(json), luminosity_lsun(json), &
            log_pressure(json), log_radius(json), log_mass(json), &
            enclosed_mass(json), shell_mass(json), log_total_mass
-      double precision, intent(in) :: velocity(json)
+      double precision, intent(in) :: total_velocity(json)
       integer, intent(inout) :: zone_begin, zone_end
       integer, intent(in) :: zone_max, zone_min
       logical, intent(in) :: convective_flag(json), final_iteration_flag
@@ -89,8 +90,8 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
 
       ierr = 0
       if (.not.final_iteration_flag) then
-         call diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
-              equally_spaced_mass, zone_begin, zone_end, &
+         call diffuse_composition(chi_grid, timestep, eq_mixing_diffusion_coeff, &
+              eq_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
          if (ierr /= 0) return
@@ -102,15 +103,15 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
          unstable_region_active = .false.
          search_start = zone_min
          region_loop: do
-         call next_transport_region(velocity, zone_max, search_start, &
+         call next_transport_region(total_velocity, zone_max, search_start, &
               unstable_region_active, zone_begin, zone_end, unstable_zone_found)
 ! Stop when the scan finds no further positive velocity.
          if (unstable_zone_found) then
 ! The equally spaced chi grid of the region.
-         call composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, luminosity_lsun, &
+         call composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_density, luminosity_lsun, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
               log_total_mass, zone_begin, zone_end, convective_flag, &
-              num_zones, equally_spaced_diffusion_coeff, equally_spaced_mass, &
+              num_zones, eq_mixing_diffusion_coeff, eq_mass, &
               two_zone_region)
 ! A region of two zones (a single unstable interface) is skipped.
          if (two_zone_region) then
@@ -121,8 +122,8 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
             end if
          end if
 ! Mix species species_begin..species_end over the region.
-         call diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
-              equally_spaced_mass, zone_begin, zone_end, &
+         call diffuse_composition(chi_grid, timestep, eq_mixing_diffusion_coeff, &
+              eq_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
          if (ierr /= 0) return
@@ -139,7 +140,7 @@ end subroutine diffuse_composition_driver
 ! ---------------------------------------------------------------
 ! Mixes species species_begin..species_end over one transport region
 ! (zone_begin..zone_end) for a time timestep (s), on the equally spaced
-! chi grid already in rot_scr (built by am_transport_grid or
+! chi grid already in chi_grid (built by am_transport_grid or
 ! composition_grid). For each species that varies over the region:
 !  1. interpolate X from the model points to the grid points;
 !  2. solve the implicit diffusion equation on the grid
@@ -151,10 +152,10 @@ end subroutine diffuse_composition_driver
 ! passes species 1..4; He4 is not solved for but reset to
 ! 1 - X - Z - He3.
 !
-! equally_spaced_diffusion_coeff: the coefficient at the grid edges,
+! eq_mixing_diffusion_coeff: the coefficient at the grid edges,
 !    element i at the edge between grid points i-1 and i (g/s, the
 !    Jacobian factor included).
-! equally_spaced_mass: the grid's zone masses (g). At a convective
+! eq_mass: the grid's zone masses (g). At a convective
 !    boundary the end point's mass includes the adjacent convection
 !    zone.
 ! zone_begin, zone_end: the zone below the region's first unstable
@@ -163,19 +164,19 @@ end subroutine diffuse_composition_driver
 !    momentum transport (overshoot regions included).
 ! num_zones: the number of model zones.
 ! composition(15,:): the mass fractions, updated in place.
-subroutine diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
-     equally_spaced_mass, zone_begin, zone_end, &
+subroutine diffuse_composition(chi_grid, timestep, eq_mixing_diffusion_coeff, &
+     eq_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end, ierr)
-      use rotation_scratch_lib, only: rotation_diffusion_state
+      use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use numerics_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(transport_grid_state), intent(in) :: chi_grid
 
       double precision, intent(in) :: timestep
-      double precision, intent(in) :: equally_spaced_diffusion_coeff(json), &
-           equally_spaced_mass(json)
+      double precision, intent(in) :: eq_mixing_diffusion_coeff(json), &
+           eq_mass(json)
       integer, intent(in) :: zone_begin, zone_end
       logical, intent(in) :: convective_flag(json), final_iteration_flag
       integer, intent(in) :: num_zones
@@ -188,7 +189,7 @@ subroutine diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff
       double precision :: sub_diag(json), diag(json), super_diag(json), &
            rhs(json), solution(json)
 
-      double precision :: equally_spaced_composition(json)
+      double precision :: eq_composition(json)
 ! The splines' tables and evaluation points (model to grid and back).
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
       integer :: varying_species_id(15)
@@ -223,33 +224,33 @@ subroutine diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff
       do species_num = 1, num_varying_species
          do zone_idx = 1, ntab
             orig_zone_idx = zone_idx + zone_begin - 1
-            table_x(zone_idx) = rot_scr%chi(zone_idx)
+            table_x(zone_idx) = chi_grid%chi(zone_idx)
             table_y(zone_idx) = composition(varying_species_id(species_num), &
                  orig_zone_idx)
          end do
-         call osplin(rot_scr%eq_chi, equally_spaced_composition, table_x, table_y, ntab, &
-              rot_scr%num_eq_points)
+         call osplin(chi_grid%eq_chi, eq_composition, table_x, table_y, ntab, &
+              chi_grid%num_eq_points)
 ! The implicit difference equations for X at the end of the sub-step.
-         call composition_diffusion_coeffs(equally_spaced_diffusion_coeff, rot_scr%eq_chi_spacing, timestep, &
-              equally_spaced_composition, equally_spaced_mass, rot_scr%num_eq_points, &
+         call composition_diffusion_coeffs(eq_mixing_diffusion_coeff, chi_grid%eq_chi_spacing, timestep, &
+              eq_composition, eq_mass, chi_grid%num_eq_points, &
               sub_diag, diag, super_diag, rhs)
 ! Solve for X at the end of the sub-step on the grid.
-         call solve_tridiagonal(sub_diag, diag, super_diag, rhs, rot_scr%num_eq_points, solution, ierr)
+         call solve_tridiagonal(sub_diag, diag, super_diag, rhs, chi_grid%num_eq_points, solution, ierr)
          if (ierr /= 0) return
 ! Map back to the model points. Extrapolating the new X past the end
 ! grid points can give large errors at the region's boundary points, so
 ! the change X_new - X_old at the grid points is interpolated and added
 ! to composition, rather than composition being replaced by X_new.
-         do zone_idx = 1, rot_scr%num_eq_points
-            table_x(zone_idx) = rot_scr%eq_chi(zone_idx)
+         do zone_idx = 1, chi_grid%num_eq_points
+            table_x(zone_idx) = chi_grid%eq_chi(zone_idx)
             table_y(zone_idx) = solution(zone_idx) - &
-                 equally_spaced_composition(zone_idx)
+                 eq_composition(zone_idx)
          end do
          do zone_idx = 1, ntab
-            eval_x(zone_idx) = rot_scr%chi(zone_idx)
+            eval_x(zone_idx) = chi_grid%chi(zone_idx)
          end do
 ! eval_y: the change in X at the model points of the region.
-         call osplin(eval_x, eval_y, table_x, table_y, rot_scr%num_eq_points, ntab)
+         call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, ntab)
 ! i0: the bottom of the convection zone that contains zone_begin
 ! (zone_begin itself when it is radiative or zone 1).
          if (convective_flag(zone_begin).and.zone_begin.gt.1) then
@@ -377,29 +378,30 @@ end subroutine composition_diffusion_coeffs
 ! ---------------------------------------------------------------
 ! The equally spaced chi grid of one transport region for
 ! diffuse_composition. Calls equal_spaced_grid for the grid itself (in
-! rot_scr), then forms the grid's zone masses (equally_spaced_mass, g)
+! chi_grid), then forms the grid's zone masses (eq_mass, g)
 ! and the mixing coefficient at the grid edges,
-!   equally_spaced_diffusion_coeff = diffusion_coeff rho r^2 d chi/dr,
+!   eq_mixing_diffusion_coeff = diffusion_coeff rho r^2 d chi/dr,
 ! with diffusion_coeff = 4 pi D at the model interfaces (from
 ! diffusion_velocity_scales), so that the edge coefficient is
 ! 4 pi r^2 rho D d chi/dr (g/s). When the region has only two zones (a
 ! single unstable interface) it sets single_interface_flag and does
 ! nothing else. am_transport_grid is the angular momentum counterpart.
-subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, luminosity_lsun, &
+subroutine composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
-     equally_spaced_diffusion_coeff, equally_spaced_mass, &
+     eq_mixing_diffusion_coeff, eq_mass, &
      single_interface_flag)
-      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
+      use rotation_scratch_lib, only: transport_grid_state, &
+           substep_physics_state
       use equal_grid
       use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(in) :: mid_scr
+      type(transport_grid_state), intent(inout) :: chi_grid
+      type(substep_physics_state), intent(in) :: sub_physics
 
-      double precision, intent(in) :: diffusion_coeff(json), &
+      double precision, intent(in) :: mixing_diffusion_coeff(json), &
            log_density(json), luminosity_lsun(json), log_pressure(json), &
            log_radius(json), log_mass(json), enclosed_mass(json), &
            shell_mass(json)
@@ -407,8 +409,8 @@ subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, lumi
       integer, intent(in) :: zone_begin, zone_end
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
-      double precision, intent(out) :: equally_spaced_diffusion_coeff(json), &
-           equally_spaced_mass(json)
+      double precision, intent(out) :: eq_mixing_diffusion_coeff(json), &
+           eq_mass(json)
       logical, intent(out) :: single_interface_flag
       integer :: idx, search_idx, ntab, ntabb
       double precision :: em_top, em_bot
@@ -423,12 +425,12 @@ subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, lumi
          single_interface_flag = .false.
       end if
 ! The equally spaced grid: chi, eq_chi and eq_enclosed_mass.
-      call equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, zone_begin, &
+      call equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, zone_begin, &
            zone_end, num_zones)
 ! The zone mass of each grid point. An interior point's zone runs from
 ! halfway to the point below to halfway to the point above.
-      do idx = 2, rot_scr%num_eq_points-1
-         equally_spaced_mass(idx) = 0.5d0*(rot_scr%eq_enclosed_mass(idx+1) - rot_scr%eq_enclosed_mass(idx-1))
+      do idx = 2, chi_grid%num_eq_points-1
+         eq_mass(idx) = 0.5d0*(chi_grid%eq_enclosed_mass(idx+1) - chi_grid%eq_enclosed_mass(idx-1))
       end do
 ! An end point's zone runs from halfway to its neighbouring grid point
 ! out to the model zone boundary beyond the region (halfway in enclosed
@@ -436,38 +438,38 @@ subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, lumi
 ! the surface), and takes in any convection zone directly beyond.
 !
 ! The bottom point.
-      em_top = 0.5d0*(rot_scr%eq_enclosed_mass(2) + rot_scr%eq_enclosed_mass(1))
+      em_top = 0.5d0*(chi_grid%eq_enclosed_mass(2) + chi_grid%eq_enclosed_mass(1))
       if (zone_begin.gt.1) then
          em_bot = 0.5d0*(enclosed_mass(zone_begin) + &
               enclosed_mass(zone_begin-1))
       else
          em_bot = 0.0d0
       end if
-      equally_spaced_mass(1) = em_top - em_bot
+      eq_mass(1) = em_top - em_bot
 ! Add the convective shells directly below zone_begin, down to the first
 ! radiative one.
       if (zone_begin.gt.1) then
          do search_idx = zone_begin-1, 1, -1
             if (.not.convective_flag(search_idx)) exit
-            equally_spaced_mass(1) = equally_spaced_mass(1) + &
+            eq_mass(1) = eq_mass(1) + &
                  shell_mass(search_idx)
          end do
       end if
 ! The top point.
-      em_bot = 0.5d0*(rot_scr%eq_enclosed_mass(rot_scr%num_eq_points) + rot_scr%eq_enclosed_mass(rot_scr%num_eq_points-1))
+      em_bot = 0.5d0*(chi_grid%eq_enclosed_mass(chi_grid%num_eq_points) + chi_grid%eq_enclosed_mass(chi_grid%num_eq_points-1))
       if (zone_end.lt.num_zones) then
          em_top = 0.5d0*(enclosed_mass(zone_end) + &
               enclosed_mass(zone_end+1))
       else
          em_top = exp(ln10*log_total_mass)
       end if
-      equally_spaced_mass(rot_scr%num_eq_points) = em_top - em_bot
+      eq_mass(chi_grid%num_eq_points) = em_top - em_bot
 ! Add the convective shells directly above zone_end, up to the first
 ! radiative one.
       if (zone_end.lt.num_zones) then
          do search_idx = zone_end+1, num_zones
             if (.not.convective_flag(search_idx)) exit
-            equally_spaced_mass(rot_scr%num_eq_points) = equally_spaced_mass(rot_scr%num_eq_points) + &
+            eq_mass(chi_grid%num_eq_points) = eq_mass(chi_grid%num_eq_points) + &
                  shell_mass(search_idx)
          end do
       end if
@@ -475,20 +477,20 @@ subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, lumi
 ! in chi, not in radius, so the coefficient carries the Jacobian factor
 ! of that change of variable.
       ntab = zone_end - zone_begin + 1
-      call edge_grid_abscissae(rot_scr%chi, rot_scr%eq_chi, rot_scr%eq_chi_spacing, ntab, &
-           rot_scr%num_eq_points, table_x, eval_x, ntabb)
+      call edge_grid_abscissae(chi_grid%chi, chi_grid%eq_chi, chi_grid%eq_chi_spacing, ntab, &
+           chi_grid%num_eq_points, table_x, eval_x, ntabb)
 ! The model coefficient at the edges, held constant below the bottom
 ! unstable interface and above the top one.
-      call interp_edge_coeff(diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
-           rot_scr%num_eq_points, eval_x, table_x, table_y, &
-           equally_spaced_diffusion_coeff)
+      call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
+           chi_grid%num_eq_points, eval_x, table_x, table_y, &
+           eq_mixing_diffusion_coeff)
 ! log10(rho r^2 d chi/dr) at the edges, in eval_y.
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
-           enclosed_mass, mid_scr%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
-           ntab, rot_scr%num_eq_points, rot_scr%chi, eval_x, table_x, &
+           enclosed_mass, sub_physics%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
+           ntab, chi_grid%num_eq_points, chi_grid%chi, eval_x, table_x, &
            table_y, eval_y)
-! Apply the factor (diffusion_coeff already carries the 4 pi).
-      call multiply_by_exp10(equally_spaced_diffusion_coeff, eval_y, rot_scr%num_eq_points)
+! Apply the factor (mixing_diffusion_coeff already carries the 4 pi).
+      call multiply_by_exp10(eq_mixing_diffusion_coeff, eval_y, chi_grid%num_eq_points)
       return
 end subroutine composition_grid
 

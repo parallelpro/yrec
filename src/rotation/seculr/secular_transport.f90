@@ -6,28 +6,20 @@
 ! sub-step (apply_secular_transport, legacy SECULR), and the tridiagonal
 ! solve of its diffusion equation (solve_angular_momentum_transport).
 !
-! A few local and dummy quantities have different names in the callees
-! this file dispatches to. The name used here is the one most callees
-! share (or the more descriptive one); the others are listed here,
-! following henyey_iteration's convention:
-!  - mixing_diffusion_coeff (COD2, dummy arg): diffuse_composition_driver
-!    calls it diffusion_coeff.
-!  - diffusion_velocity (HV, dummy arg): circulation_velocities calls it
-!    total_circulation_velocity.
-!  - eq_mixing_diffusion_coeff (ECOD2): diffuse_composition_driver calls it
-!    equally_spaced_diffusion_coeff.
-!  - eq_angular_momentum (EJ): equal_grid_to_model calls it angular_momentum.
-!  - eq_am_diffusion_coeff (ECOD): am_diffusion_coeffs calls it diffusion_coeff.
-!  - eq_delta_angular_momentum (DJ): equal_grid_to_model calls it
-!    delta_angular_momentum; solve_angular_momentum_transport calls it dj.
-!  - eq_mass (EM): diffuse_composition_driver calls it equally_spaced_mass.
-!  - diffusion_converged (LOKAD): check_angular_momentum calls it
-!    already_converged_flag.
-!  - wind_loss_explicit/wind_loss_implicit (WIND1/WIND2):
-!    magnetic_braking's compute_solid_body_braking calls the same pair
-!    domega_start/domega_end.
-! The sub-step's interpolated structure is read from rot_scr
+! Each quantity has one name in rotation's drivers and their helpers
+! (total_velocity is U, the sum of the mechanisms' velocities, legacy
+! HV; the eq_ prefix marks a value on the transport region's equally
+! spaced grid: eq_mass EM, eq_mixing_diffusion_coeff ECOD2,
+! eq_am_diffusion_coeff ECOD, eq_angular_momentum EJ,
+! eq_delta_angular_momentum DJ). The star-blind kernels keep generic
+! names for what they are handed: am_diffusion_coeffs' diffusion_coeff,
+! solve_angular_momentum_transport's dj, and magnetic_braking's
+! domega_start/domega_end for wind_loss_explicit/wind_loss_implicit
+! (WIND1/WIND2).
+! The sub-step's interpolated structure is read from sub_model
 ! (rotation_scratch_lib, filled by mid_timestep_model each sub-step),
+! the interface structure and coefficients from stab, the transport
+! grid from chi_grid,
 ! and the model's arrays and scalars (log_mass, m, dm, j_rot, xa, nz,
 ! log_L, log_total_mass, star_mass, log_Teff) from star. The arguments
 ! carry only per-call data: the sub-step, the angular momentum saved at
@@ -55,7 +47,7 @@ contains
 ! lies between zones i-1 and i; mid_timestep_model's core_boundary_zone
 ! and envelope_boundary_zone).
 ! Method: the circulation and instability velocities U at the
-! interfaces (diffusion_velocity: Eddington-Sweet circulation, secular
+! interfaces (total_velocity: Eddington-Sweet circulation, secular
 ! and dynamical shear, the GSF instability) give the diffusion
 ! coefficients D_omega and D_mix. Each run of interfaces with U > 0 is
 ! an unstable region, solved on its own grid, equally spaced in chi:
@@ -71,17 +63,18 @@ contains
 ! the new j; redo_flag, with sub_timestep halved and cut_count raised,
 ! when a check asks for a shorter sub-step; diffusion_solve_ok;
 ! omega_surface and cz_moment_of_inertia of the surface convection zone;
-! mixing_diffusion_coeff and diffusion_velocity; star%am_diffusion_coeff
+! mixing_diffusion_coeff and total_velocity; star%am_diffusion_coeff
 ! and star%mixing_diffusion_coeff for the profile. A nonzero ierr stops
 ! the run.
-subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
+subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, circ_scr, &
      sub_timestep, specific_angular_momentum_saved, &
      zone_min, zone_max, redo_flag, cut_count, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
-     surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
+     surface_cz_active, mixing_diffusion_coeff, total_velocity, &
      diffusion_solve_ok, ierr)
-      use rotation_scratch_lib, only: rotation_diffusion_state, &
-           midstep_physics_state, circulation_velocity_state
+      use rotation_scratch_lib, only: substep_model_state, &
+           substep_physics_state, stability_state, transport_grid_state, &
+           circulation_velocity_state
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use convection_lib, only: homogenize_convection_zones
       use star_info_lib, only: star_info, json
@@ -90,8 +83,10 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(substep_model_state), intent(inout) :: sub_model
+      type(stability_state), intent(inout) :: stab
+      type(transport_grid_state), intent(inout) :: chi_grid
+      type(substep_physics_state), intent(inout) :: sub_physics
       type(circulation_velocity_state), intent(inout) :: circ_scr
       double precision, intent(inout) :: sub_timestep
       double precision, intent(in) :: specific_angular_momentum_saved(json)
@@ -108,7 +103,7 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
       double precision, intent(inout) :: omega_surface
       logical, intent(in) :: surface_cz_active
       double precision, intent(inout) :: mixing_diffusion_coeff(json)
-      double precision, intent(inout) :: diffusion_velocity(json)
+      double precision, intent(inout) :: total_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
       integer, intent(out) :: ierr
 
@@ -239,22 +234,22 @@ end subroutine refuse_advection_diffusion
 ! (flag_end_zones_convective). Their own flags are kept here and
 ! restored after each pass (restore_end_zone_flags).
 subroutine save_end_zone_flags()
-      lcz_first_zone = rot_scr%am_transport_convective_flag_mid(1)
-      lcz_last_zone = rot_scr%am_transport_convective_flag_mid(s%nz)
+      lcz_first_zone = sub_model%am_transport_convective_flag(1)
+      lcz_last_zone = sub_model%am_transport_convective_flag(s%nz)
 end subroutine save_end_zone_flags
 
 ! ---------------------------------------------------------------
 ! The central and surface zones count as convective in the solve.
 subroutine flag_end_zones_convective()
-      rot_scr%am_transport_convective_flag_mid(1) = .true.
-      rot_scr%am_transport_convective_flag_mid(s%nz) = .true.
+      sub_model%am_transport_convective_flag(1) = .true.
+      sub_model%am_transport_convective_flag(s%nz) = .true.
 end subroutine flag_end_zones_convective
 
 ! ---------------------------------------------------------------
 ! The first and last zones get their own convective flags back.
 subroutine restore_end_zone_flags()
-      rot_scr%am_transport_convective_flag_mid(1) = lcz_first_zone
-      rot_scr%am_transport_convective_flag_mid(s%nz) = lcz_last_zone
+      sub_model%am_transport_convective_flag(1) = lcz_first_zone
+      sub_model%am_transport_convective_flag(s%nz) = lcz_last_zone
 end subroutine restore_end_zone_flags
 
 ! ---------------------------------------------------------------
@@ -267,15 +262,15 @@ end subroutine restore_end_zone_flags
 ! the Eddington-Sweet circulation (compute_quadrupole, which sets ierr
 ! on a zero pivot).
 subroutine set_up_interfaces()
-      call rotation_stability_setup(rot_scr, mid_scr, &
-           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,rot_scr%luminosity_lsun_mid,rot_scr%log_pressure_mid, &
-           rot_scr%log_radius_mid,s%m,rot_scr%log_temperature_mid,zone_min,zone_max, &
+      call rotation_stability_setup(stab, sub_physics, &
+           sub_model%log_density,sub_model%mean_gravity,sub_model%luminosity_lsun,sub_model%log_pressure, &
+           sub_model%log_radius,s%m,sub_model%log_temperature,zone_min,zone_max, &
            s%nz,radius,dynamical_shear_omega_limit)
-      total_luminosity = s%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(s%nz)
-      call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,s%omega_mid,domega_dlnr)
-      call compute_quadrupole(rot_scr, &
-           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius,s%omega_mid,s%nz,ierr)
+      total_luminosity = s%solar_luminosity_cgs*sub_model%luminosity_lsun(s%nz)
+      call compute_omega_gradients(zone_min,zone_max,stab%radius_interface, &
+           sub_model%log_radius,s%omega_mid,domega_dlnr)
+      call compute_quadrupole(stab, &
+           sub_model%log_density,sub_model%mean_gravity,radius,s%omega_mid,s%nz,ierr)
 end subroutine set_up_interfaces
 
 ! ---------------------------------------------------------------
@@ -300,26 +295,26 @@ subroutine save_substep_start()
          specific_angular_momentum_prev(i) = specific_angular_momentum_saved(i)
          omega_start(i) = s%omega_mid(i)
       end do
-      omega_surface_start = rot_scr%omega_substep_start(s%nz)
+      omega_surface_start = sub_model%omega_start(s%nz)
       diffusion_solve_ok = .false.
 end subroutine save_substep_start
 
 ! ---------------------------------------------------------------
 ! The circulation and instability velocities of this iteration
-! (diffusion_velocity) and whether any transport acts
+! (total_velocity) and whether any transport acts
 ! (transport_active). Under use_zahn_coupling_factor (legacy LVFC),
 ! also the Zahn (1992) coupling factor star%vfc, by which
 ! diffusion_velocity_scales scales D_mix (gated on LVFC as in the F77
 ! seculr.f, not on LDIFAD).
 subroutine compute_circulation()
-      call circulation_velocities(rot_scr, mid_scr, circ_scr, &
-           rot_scr%log_radius_mid,radius,zone_min,zone_max,iteration, &
-           rot_scr%am_transport_convective_flag_mid,s%nz,s%omega_mid,transport_active, &
-           domega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
-           total_luminosity,rot_scr%log_pressure_mid,s%mechanism_velocity)
+      call circulation_velocities(stab, sub_physics, circ_scr, &
+           sub_model%log_radius,radius,zone_min,zone_max,iteration, &
+           sub_model%am_transport_convective_flag,s%nz,s%omega_mid,transport_active, &
+           domega_dlnr,dynamical_shear_omega_limit,total_velocity, &
+           total_luminosity,sub_model%log_pressure,s%mechanism_velocity)
       if(rotation_settings%use_zahn_coupling_factor) &
-           call zahn_coupling_factor(rot_scr, &
-                rot_scr%log_density_mid,radius,diffusion_velocity, &
+           call zahn_coupling_factor(stab, &
+                sub_model%log_density,radius,total_velocity, &
            zone_min,zone_max,s%omega_mid,s%vfc)
 end subroutine compute_circulation
 
@@ -328,7 +323,7 @@ end subroutine compute_circulation
 ! its value at the start of the sub-step,
 !   omega_mid = (omega_mid + omega_start)/2,
 ! and the velocities are recomputed from it. Then j/m goes back to its
-! start, composition slots 1-4 to rot_scr%composition_snapshot, and the
+! start, composition slots 1-4 to sub_model%composition_snapshot, and the
 ! convection zones are remixed to their proper depth (MHP 10/91):
 ! otherwise a deepening convection zone takes the local abundance at its
 ! old base.
@@ -336,16 +331,16 @@ subroutine restart_iteration()
       do i = 1,s%nz
          s%omega_mid(i) = 0.5D0*(s%omega_mid(i)+omega_start(i))
       end do
-      call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,s%omega_mid,domega_dlnr)
+      call compute_omega_gradients(zone_min,zone_max,stab%radius_interface, &
+           sub_model%log_radius,s%omega_mid,domega_dlnr)
       call compute_circulation()
       do i = 1,s%nz
          s%j_rot(i) = specific_angular_momentum_saved(i)
          do j = 1,last_mu_species
-            s%xa(j,i) = rot_scr%composition_snapshot(j,i)
+            s%xa(j,i) = sub_model%composition_snapshot(j,i)
          end do
       end do
-      call homogenize_convection_zones(s%xa,s%dm,rot_scr%am_transport_convective_flag_mid, &
+      call homogenize_convection_zones(s%xa,s%dm,sub_model%am_transport_convective_flag, &
            s%nz)
 end subroutine restart_iteration
 
@@ -360,12 +355,12 @@ end subroutine restart_iteration
 !    whose omega and shape are then recomputed. This branch does not
 !    test disk locking.
 subroutine spin_down_uncoupled_surface()
-      if(surface_cz_active.and.diffusion_velocity(zone_max).eq.0.0D0 &
+      if(surface_cz_active.and.total_velocity(zone_max).eq.0.0D0 &
            .and. .not.disk_lock_active)then
 ! The moment of inertia of the surface convection zone.
          cz_moment_of_inertia = 0.0D0
          do i = zone_max,s%nz
-            cz_moment_of_inertia = cz_moment_of_inertia + rot_scr%moment_of_inertia_mid(i)
+            cz_moment_of_inertia = cz_moment_of_inertia + sub_model%moment_of_inertia(i)
          end do
          wind_loss_active = rotation_settings%use_wind_torque
          call brake_convection_zone(s%log_L,sub_timestep,cz_mass_bottom, &
@@ -388,9 +383,9 @@ subroutine spin_down_uncoupled_surface()
 ! One omega for the whole star from its new j.
          solid_body_zone_start = 1
          solid_body_zone_end = s%nz
-         call solid_body_omega(rot_scr%log_density_mid,s%j_rot,rot_scr%log_radius_mid, &
+         call solid_body_omega(sub_model%log_density,s%j_rot,sub_model%log_radius, &
               s%log_mass,s%dm,solid_body_zone_start,solid_body_zone_end, &
-              rot_scr%eta_squared_mid,rot_scr%moment_of_inertia_mid,s%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,s%nz,s%disk_gate_age_gyr)
+              sub_model%eta_squared,sub_model%moment_of_inertia,s%omega_mid,sub_model%di_domega,sub_model%mean_radius,s%nz,s%disk_gate_age_gyr)
       endif
 end subroutine spin_down_uncoupled_surface
 
@@ -454,7 +449,7 @@ end subroutine transport_unstable_regions
 ! scan_start_zone moves past it. region_found is false when the scan
 ! meets no U > 0.
 subroutine find_unstable_region()
-      call next_transport_region(diffusion_velocity, zone_max, scan_start_zone, &
+      call next_transport_region(total_velocity, zone_max, scan_start_zone, &
            in_unstable_region, zone_begin, zone_end, region_found)
 end subroutine find_unstable_region
 
@@ -467,12 +462,12 @@ end subroutine find_unstable_region
 ! (am_transport_grid), with its spacing grid_spacing.
 ! single_interface_flag marks a region of a single unstable interface.
 subroutine grid_unstable_region()
-      call am_transport_grid(rot_scr, mid_scr, &
-           am_diffusion_coeff,mixing_diffusion_coeff,rot_scr%log_density_mid, &
-           rot_scr%moment_of_inertia_mid,specific_angular_momentum_saved,rot_scr%luminosity_lsun_mid, &
-           rot_scr%log_pressure_mid,rot_scr%log_radius_mid,radius,s%log_mass,s%m, &
+      call am_transport_grid(chi_grid, sub_physics, &
+           am_diffusion_coeff,mixing_diffusion_coeff,sub_model%log_density, &
+           sub_model%moment_of_inertia,specific_angular_momentum_saved,sub_model%luminosity_lsun, &
+           sub_model%log_pressure,sub_model%log_radius,radius,s%log_mass,s%m, &
            s%dm,s%log_total_mass,zone_begin,zone_end, &
-           rot_scr%am_transport_convective_flag_mid,s%nz,omega_start,grid_spacing, &
+           sub_model%am_transport_convective_flag,s%nz,omega_start,grid_spacing, &
            eq_am_diffusion_coeff,eq_mixing_diffusion_coeff, &
            eq_moment_of_inertia,eq_angular_momentum,eq_mass,eq_omega, &
            single_interface_flag)
@@ -480,7 +475,7 @@ end subroutine grid_unstable_region
 
 ! ---------------------------------------------------------------
 ! Angular momentum transport across one unstable region, on its equally
-! spaced grid of n = rot_scr%num_eq_points points: the implicit
+! spaced grid of n = chi_grid%num_eq_points points: the implicit
 ! diffusion equation for omega at the end of the sub-step (primed),
 !   I_k (omega'_k - omega_k) = (dt/dchi) [D_{k+1} (omega'_{k+1} - omega'_k)
 !                                        - D_k (omega'_k - omega'_{k-1})],
@@ -499,12 +494,12 @@ subroutine transport_angular_momentum_in_region()
       diffusion_converged = .false.
 ! The diffusion equation's tridiagonal system.
       call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-           eq_moment_of_inertia,eq_angular_momentum,eq_omega,rot_scr%num_eq_points, &
+           eq_moment_of_inertia,eq_angular_momentum,eq_omega,chi_grid%num_eq_points, &
            wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
            sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 ! Its solve: eq_delta_angular_momentum = I (omega' - omega) at each
 ! grid point, sum_delta_angular_momentum their sum.
-      call solve_angular_momentum_transport(rot_scr%num_eq_points,eq_moment_of_inertia, &
+      call solve_angular_momentum_transport(chi_grid%num_eq_points,eq_moment_of_inertia, &
            eq_delta_angular_momentum,sum_delta_angular_momentum, &
            sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
            surface_wind_loss_term, ierr)
@@ -512,7 +507,7 @@ subroutine transport_angular_momentum_in_region()
 ! (commented out: the advection-diffusion branch)
 !      else
 !         call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-!              eq_omega,rot_scr%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
+!              eq_omega,chi_grid%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
 !              eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
 !              sum_delta_angular_momentum,fix_omega_at_surface, &
 !              diffusion_converged, ierr)
@@ -522,8 +517,8 @@ subroutine transport_angular_momentum_in_region()
 ! zones (and any convection zone adjoining it), rescaled if needed so
 ! that the total change is sum_delta_angular_momentum
 ! (equal_grid_to_model).
-      call equal_grid_to_model(rot_scr, eq_delta_angular_momentum,eq_angular_momentum, &
-           s%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
+      call equal_grid_to_model(chi_grid, eq_delta_angular_momentum,eq_angular_momentum, &
+           s%dm,zone_begin,zone_end,sub_model%am_transport_convective_flag, &
            s%nz,sum_delta_angular_momentum,s%j_rot)
 end subroutine transport_angular_momentum_in_region
 
@@ -547,7 +542,7 @@ subroutine set_surface_wind_terms()
 ! its start (wind_loss_explicit) and at its current end
 ! (wind_loss_implicit, averaged with its previous value from the second
 ! iteration on), for the outermost grid point's moment of inertia.
-               cz_moment_of_inertia = eq_moment_of_inertia(rot_scr%num_eq_points)
+               cz_moment_of_inertia = eq_moment_of_inertia(chi_grid%num_eq_points)
                omega_surface = s%omega_mid(s%nz)
                call compute_solid_body_braking(s%log_L,sub_timestep, &
                     cz_moment_of_inertia,iteration,omega_surface, &
@@ -577,15 +572,15 @@ end subroutine set_surface_wind_terms
 ! (no_am_transport_in_core; diffusion_velocity_scales zeros D_omega)
 ! accepts the first iteration (MHP 9/93).
 subroutine check_iterate()
-      call check_angular_momentum(s, rot_scr%log_density_mid,specific_angular_momentum_prev, &
-           specific_angular_momentum_saved,rot_scr%log_radius_mid,s%log_mass,s%dm, &
+      call check_angular_momentum(s, sub_model%log_density,specific_angular_momentum_prev, &
+           specific_angular_momentum_saved,sub_model%log_radius,s%log_mass,s%dm, &
            iteration, &
-           rot_scr%am_transport_convective_flag_mid,s%nz,sub_timestep,rot_scr%eta_squared_mid, &
-           rot_scr%moment_of_inertia_mid,s%j_rot,cut_count, &
-           diffusion_solve_ok,redo_flag,s%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid, &
+           sub_model%am_transport_convective_flag,s%nz,sub_timestep,sub_model%eta_squared, &
+           sub_model%moment_of_inertia,s%j_rot,cut_count, &
+           diffusion_solve_ok,redo_flag,s%omega_mid,sub_model%di_domega,sub_model%mean_radius, &
            diffusion_converged, ierr)
       if (ierr /= 0) return
-      if(.not.redo_flag)call check_composition(s, mid_scr, s%xa,iteration, &
+      if(.not.redo_flag)call check_composition(s, sub_physics, s%xa,iteration, &
            s%nz,sub_timestep,cut_count, &
            diffusion_solve_ok,redo_flag, ierr)
       if (ierr /= 0) return
@@ -607,11 +602,11 @@ end subroutine mix_remaining_species
 ! its grid, during the iterations; across every region once
 ! diffusion_solve_ok is set.
 subroutine mix_composition()
-      call diffuse_composition_driver(rot_scr, mid_scr, sub_timestep,mixing_diffusion_coeff, &
-           eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
-           rot_scr%log_pressure_mid,rot_scr%log_radius_mid,s%log_mass,s%m,s%dm, &
-           s%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
-           zone_min,rot_scr%am_transport_convective_flag_mid,diffusion_solve_ok, &
+      call diffuse_composition_driver(chi_grid, sub_physics, sub_timestep,mixing_diffusion_coeff, &
+           eq_mixing_diffusion_coeff,eq_mass,sub_model%log_density,sub_model%luminosity_lsun, &
+           sub_model%log_pressure,sub_model%log_radius,s%log_mass,s%m,s%dm, &
+           s%log_total_mass,total_velocity,zone_begin,zone_end,zone_max, &
+           zone_min,sub_model%am_transport_convective_flag,diffusion_solve_ok, &
            s%nz,s%xa,species_begin,species_end, ierr)
 end subroutine mix_composition
 

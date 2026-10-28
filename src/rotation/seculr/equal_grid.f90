@@ -162,21 +162,21 @@ end subroutine multiply_by_exp10
 ! spacings in log M, L/L_tot and log P that the rezoner allows
 ! (rotation_settings' chi_mass_scale, chi_luminosity_scale, chi_pressure_scale),
 ! so that the transport grid follows the structural grid. Sets in
-! rot_scr: chi at the region's model points; num_eq_points values
+! chi_grid: chi at the region's model points; num_eq_points values
 ! eq_chi, equally spaced (eq_chi_spacing) from chi(1) to the last chi;
 ! and eq_enclosed_mass, the enclosed mass (g) at the eq_chi points.
-subroutine equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, zone_begin, &
+subroutine equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
-      use rotation_scratch_lib, only: rotation_diffusion_state
+      use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json
       use physical_constants
       use numerics_lib
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(transport_grid_state), intent(inout) :: chi_grid
 
 ! luminosity_lsun (legacy HL) is the luminosity itself in solar units,
-! not its log: both callers pass rot_scr%luminosity_lsun_mid,
+! not its log: both callers pass sub_model%luminosity_lsun,
 ! star%luminosity_lsun interpolated to the sub-step. The luminosity
 ! term of chi is therefore linear, the mass and pressure terms
 ! logarithmic.
@@ -195,31 +195,31 @@ subroutine equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, z
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1
-         rot_scr%chi(range_index) = log_mass(zone_index)/mass_scale + &
+         chi_grid%chi(range_index) = log_mass(zone_index)/mass_scale + &
               luminosity_lsun(zone_index)/luminosity_scale - &
               log_pressure(zone_index)/pressure_scale
       end do
 ! As many grid points as model points in the region. (The alternative,
 ! int(chi(last) - chi(1)) + 1 points, one per unit of chi, is not used.)
-      rot_scr%num_eq_points = num_points_in_range
+      chi_grid%num_eq_points = num_points_in_range
 ! At least three grid points.
-      rot_scr%num_eq_points = max(rot_scr%num_eq_points,3)
+      chi_grid%num_eq_points = max(chi_grid%num_eq_points,3)
 ! The grid spacing in chi.
-      rot_scr%eq_chi_spacing = (rot_scr%chi(num_points_in_range)-rot_scr%chi(1))/dfloat(rot_scr%num_eq_points-1)
+      chi_grid%eq_chi_spacing = (chi_grid%chi(num_points_in_range)-chi_grid%chi(1))/dfloat(chi_grid%num_eq_points-1)
 ! The equally spaced chi values, from chi(1).
-      rot_scr%eq_chi(1) = rot_scr%chi(1)
-      do zone_index = 2, rot_scr%num_eq_points
-         rot_scr%eq_chi(zone_index) = rot_scr%eq_chi(zone_index-1)+rot_scr%eq_chi_spacing
+      chi_grid%eq_chi(1) = chi_grid%chi(1)
+      do zone_index = 2, chi_grid%num_eq_points
+         chi_grid%eq_chi(zone_index) = chi_grid%eq_chi(zone_index-1)+chi_grid%eq_chi_spacing
       end do
 ! The enclosed mass at the grid points, interpolated in log M, as chi is
 ! built from log M and log P.
       do zone_index = 1, num_points_in_range
          log_mass_table(zone_index) = log_mass(zone_begin+zone_index-1)
       end do
-      call osplin(rot_scr%eq_chi,rot_scr%eq_enclosed_mass,rot_scr%chi,log_mass_table,num_points_in_range,rot_scr%num_eq_points)
+      call osplin(chi_grid%eq_chi,chi_grid%eq_enclosed_mass,chi_grid%chi,log_mass_table,num_points_in_range,chi_grid%num_eq_points)
 ! From log10 M to M (g).
-      do zone_index = 1, rot_scr%num_eq_points
-         rot_scr%eq_enclosed_mass(zone_index) = exp(ln10*rot_scr%eq_enclosed_mass(zone_index))
+      do zone_index = 1, chi_grid%num_eq_points
+         chi_grid%eq_enclosed_mass(zone_index) = exp(ln10*chi_grid%eq_enclosed_mass(zone_index))
       end do
       return
 end subroutine equal_spaced_grid

@@ -226,7 +226,7 @@ end subroutine average_li_be_over_cz
 ! Abundances below 1e-24 are set to zero.
 ! The model arrays are arguments because the two callers burn different
 ! models: burn_light_elements the converged end-of-step model,
-! evolve_angular_momentum each rotation sub-step's midpoint (rot_scr).
+! evolve_angular_momentum each rotation sub-step's model (sub_model).
 !   star reads: accreted_mass, ctrl%accreted_composition,
 !     ctrl%mass_accretion_rate, job%use_mass_accretion, rate_be9,
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
@@ -485,7 +485,7 @@ end subroutine store_end_li_be_rates
 ! 1 - X - Y - He3.
 ! log_temperature, rate_by_zone and composition are arguments because
 ! the two callers differ: burn_network passes the model's, burn_and_settle the
-! rotation sub-step's midpoint temperatures (rot_scr). If the Newton
+! rotation sub-step's temperatures (sub_model). If the Newton
 ! iteration fails, ierr = 1 and the run stops.
 !   star reads: ctrl%absolute_tolerance, ctrl%max_burn_iterations,
 !     ctrl%min_abundance, ctrl%nuclear_logT_cutoffs,
@@ -619,7 +619,7 @@ end function burn_regions
 ! The composition rate vector (net_lib's compute_network_rates) of every
 ! shell of a model hotter than the nuclear cutoff; zero in the cooler
 ! shells. The model is in the arguments: compute_burn_rates passes the
-! star's, mid_timestep_model a rotation sub-step's midpoint (rot_scr).
+! star's, mid_timestep_model a rotation sub-step's (sub_model).
 !   star reads: ctrl%nuclear_logT_cutoffs
 !   star writes: none
 subroutine network_rates_of_model(s, log_density, log_temperature, &

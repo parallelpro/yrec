@@ -385,8 +385,9 @@ end subroutine secular_check
 ! One case of secular_check: the model (with a band of steep shear if
 ! steep = 1), then the transport pieces, printed.
 subroutine secular_case(label, iterations, steep, zahn, chain)
-      use rotation_scratch_lib, only: rotation_diffusion_state, &
-           midstep_physics_state, circulation_velocity_state
+      use rotation_scratch_lib, only: substep_physics_state, &
+           stability_state, transport_grid_state, &
+           circulation_velocity_state
       use circulation, only: circulation_velocities, diffusion_velocity_scales, &
            zahn_coupling_factor, compute_quadrupole
       use am_grid, only: am_transport_grid, equal_grid_to_model
@@ -414,8 +415,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       integer :: i, it, s
 ! the case's scratch records, static so that the fields the case does
 ! not set are zero (as the module variables they replaced were)
-      type(rotation_diffusion_state), save :: rot_scr
-      type(midstep_physics_state), save :: mid_scr
+      type(stability_state), save :: stab
+      type(transport_grid_state), save :: chi_grid
+      type(substep_physics_state), save :: sub_physics
       type(circulation_velocity_state), save :: circ_scr
       star%nz = n
       star%solar_luminosity_cgs = 3.8515d33
@@ -430,15 +432,15 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          convective(i) = f > 0.71d0
          lum(i) = 1.0d0 - exp(-(f/0.1d0)**2)
          w(i) = 2.9d-6*(1.0d0 + 0.5d0*(1.0d0 - f)**2)
-         mid_scr%mu(i) = 0.62d0 + 0.25d0*exp(-(f/0.12d0)**2)
-         mid_scr%cp(i) = 3.0d8*(1.0d0 + f)
-         mid_scr%grada(i) = 0.4d0
-         mid_scr%gradT(i) = merge(0.4d0, 0.25d0 + 0.1d0*f, convective(i))
-         mid_scr%gradr(i) = mid_scr%gradT(i)
-         mid_scr%eps_total(i) = 20.0d0*exp(-(f/0.1d0)**2)
-         mid_scr%qdt(i) = 1.0d0
-         mid_scr%visc(i) = 10.0d0*(1.0d0 + 3.0d0*f)
-         mid_scr%thdif(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
+         sub_physics%mu(i) = 0.62d0 + 0.25d0*exp(-(f/0.12d0)**2)
+         sub_physics%cp(i) = 3.0d8*(1.0d0 + f)
+         sub_physics%grada(i) = 0.4d0
+         sub_physics%gradT(i) = merge(0.4d0, 0.25d0 + 0.1d0*f, convective(i))
+         sub_physics%gradr(i) = sub_physics%gradT(i)
+         sub_physics%eps_total(i) = 20.0d0*exp(-(f/0.1d0)**2)
+         sub_physics%qdt(i) = 1.0d0
+         sub_physics%visc(i) = 10.0d0*(1.0d0 + 3.0d0*f)
+         sub_physics%thdif(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
       end do
 ! shear bands: omega falls by a factor across a few zones
       select case (steep)
@@ -448,8 +450,8 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          w(26:n) = 0.8d0*w(26:n)
       case (2)
          w(1:n) = 30.0d0*w(1:n)
-         mid_scr%gradT(36:42) = 0.3999d0
-         mid_scr%gradr(36:42) = 0.3999d0
+         sub_physics%gradT(36:42) = 0.3999d0
+         sub_physics%gradr(36:42) = 0.3999d0
          w(39) = 0.75d0*w(39)
          w(40:n) = 0.5d0*w(40:n)
       case (3)
@@ -470,32 +472,32 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       zmax = count(.not. convective(1:n))
       circ_scr%velocity_prev = 0.0d0
       star%vfc = 0.0d0
-      call rotation_stability_setup(rot_scr, mid_scr, &
+      call rotation_stability_setup(stab, sub_physics, &
            log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n, &
            radius, shear_limit)
       do i = zmin, zmax
-         log_rc = log10(rot_scr%radius_interface(i))
+         log_rc = log10(stab%radius_interface(i))
          weight = 1.0d0/log(10.0d0)/(log_r(i) - log_rc) + 1.0d0/log(10.0d0)/(log_rc - log_r(i-1))
          dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
       end do
-      call compute_quadrupole(rot_scr, log_rho, hg, radius, w, n, ierr)
+      call compute_quadrupole(stab, log_rho, hg, radius, w, n, ierr)
       lum_total = star%solar_luminosity_cgs*lum(n)
       do it = 1, iterations
 ! the second iteration sees omega 3% faster in the radiative interior
          if (it > 1) then
             w(2:zmax) = 1.03d0*w(2:zmax)
             do i = zmin, zmax
-               log_rc = log10(rot_scr%radius_interface(i))
+               log_rc = log10(stab%radius_interface(i))
                weight = 1.0d0/log(10.0d0)/(log_r(i) - log_rc) + 1.0d0/log(10.0d0)/(log_rc - log_r(i-1))
                dw_dlnr(i) = 0.25d0*(w(i) - w(i-1))*weight
             end do
          end if
-         call circulation_velocities(rot_scr, mid_scr, circ_scr, &
+         call circulation_velocities(stab, sub_physics, circ_scr, &
               log_r, radius, zmin, zmax, it, convective, n, w, active, &
               dw_dlnr, shear_limit, v_total, lum_total, log_p, &
               star%mechanism_velocity)
       end do
-      if (zahn) call zahn_coupling_factor(rot_scr, log_rho, radius, v_total, zmin, zmax, w, &
+      if (zahn) call zahn_coupling_factor(stab, log_rho, radius, v_total, zmin, zmax, w, &
            star%vfc)
       call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix, &
            star%mechanism_velocity, star%vfc)
@@ -512,7 +514,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       do s = 1, size(shown)
          i = shown(s)
          write(*,'(i4,5(1pe24.15))') i, v_total(i), d_am(i), d_mix(i), star%vfc(i), &
-              rot_scr%quadrupole_moment(i)
+              stab%quadrupole_moment(i)
       end do
       if (chain) then
 ! the transport itself, as apply_secular_transport does it for one
@@ -543,21 +545,21 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
                zend = i
             end if
          end do
-         call am_transport_grid(rot_scr, mid_scr, &
+         call am_transport_grid(chi_grid, sub_physics, &
               d_am, d_mix, log_rho, inertia, jm, lum, log_p, log_r, radius, &
               log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w, grid_spacing, &
               eq_d_am, eq_d_mix, eq_i, eq_j, eq_m, eq_w, single_interface)
-         call am_diffusion_coeffs(eq_d_am, grid_spacing, 3.0d13, eq_i, eq_j, eq_w, rot_scr%num_eq_points, &
+         call am_diffusion_coeffs(eq_d_am, grid_spacing, 3.0d13, eq_i, eq_j, eq_w, chi_grid%num_eq_points, &
               0.0d0, 0.0d0, .false., sub_diag, diag, super_diag, rhs, wind_term)
-         call solve_angular_momentum_transport(rot_scr%num_eq_points, eq_i, dj, sum_dj, sub_diag, diag, &
+         call solve_angular_momentum_transport(chi_grid%num_eq_points, eq_i, dj, sum_dj, sub_diag, diag, &
               super_diag, rhs, solution, wind_term, ierr)
-         call equal_grid_to_model(rot_scr, dj, eq_j, dm, zbeg, zend, convective, n, sum_dj, jm)
+         call equal_grid_to_model(chi_grid, dj, eq_j, dm, zbeg, zend, convective, n, sum_dj, jm)
          mixed_ok = .false.
-         call diffuse_composition_driver(rot_scr, mid_scr, &
+         call diffuse_composition_driver(chi_grid, sub_physics, &
               3.0d13, d_mix, eq_d_mix, eq_m, log_rho, lum, log_p, &
               log_r, log_m, m, dm, log10(m(n)), v_total, zbeg, zend, zmax, zmin, convective, &
               mixed_ok, n, xa, 1, 4, ierr)
-         write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", rot_scr%num_eq_points, &
+         write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", chi_grid%num_eq_points, &
               "  one interface", single_interface, "  ierr", ierr
          write(*,'(a,1pe24.15)') "sum dJ", sum_dj
          write(*,'(a)') "zone  d(j/m)/(j/m) dX dHe4"

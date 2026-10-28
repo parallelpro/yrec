@@ -1018,7 +1018,8 @@ subroutine rerun_physics_on_new_grid
             s%old_thdif(zone_index) = s%thdif(zone_index)
 ! The start-of-step eps sum (legacy ESUMO) is splined in
 ! regrid_start_of_step_eps (MHP 6/00). (Until 2026-10 this loop also
-! stored grad_ad - grad (MHP 06/02) in rot_scr%del_grad_diff_interface,
+! stored grad_ad - grad (MHP 06/02) in the rotation scratch's
+! del_grad_diff_interface,
 ! which rotation_stability_setup overwrites before anything reads it.)
          end do
 ! The theta term of the advection-diffusion transport on the new mesh,

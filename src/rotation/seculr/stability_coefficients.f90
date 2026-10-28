@@ -60,18 +60,19 @@ module stability_coefficients
 
 contains
 
-subroutine rotation_stability_setup(rot_scr, mid_scr, &
+subroutine rotation_stability_setup(stab, sub_physics, &
      log_density, local_gravity, luminosity, log_pressure, &
      log_radius, mass_unlogged, log_temperature, transport_zone_begin, &
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
-      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
+      use rotation_scratch_lib, only: stability_state, &
+           substep_physics_state
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
-      type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(in) :: mid_scr
+      type(stability_state), intent(inout) :: stab
+      type(substep_physics_state), intent(in) :: sub_physics
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &
            luminosity(json), log_pressure(json), log_radius(json), &
@@ -80,6 +81,12 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
            num_zones
       double precision, intent(out) :: radius_unlogged(json)
       double precision, intent(out) :: dynamical_shear_omega_limit(json)
+! The structure at the interfaces that only the coefficients below use
+! (the rest is stab's): pressure, temperature and mass (cgs), the
+! actual and adiabatic gradients, d ln rho/d ln T, eps (erg/g/s), c_P.
+      double precision :: pressure_interface(json), temperature_interface(json), &
+           mass_interface(json), gradT_interface(json), grada_interface(json), &
+           qdt_interface(json), eps_total_interface(json)
       double precision :: specific_heat_interface(json)
       integer :: zone_idx, interior_begin, interior_end
       double precision :: grav_const
@@ -109,7 +116,7 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
          radius_unlogged(zone_idx) = exp(ln10*log_radius(zone_idx))
       end do
       do zone_idx = 2,num_zones
-         rot_scr%radius_interface(zone_idx) = 0.5d0*(radius_unlogged(zone_idx) + &
+         stab%radius_interface(zone_idx) = 0.5d0*(radius_unlogged(zone_idx) + &
               radius_unlogged(zone_idx-1))
       end do
 ! The interpolation weights and the interpolated structure. The
@@ -139,14 +146,14 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
       end do
 ! the actual gradient: grad_rad was interpolated
       do zone_idx = transport_zone_begin,transport_zone_end
-         rot_scr%gradT_interface(zone_idx) = min(rot_scr%gradT_interface(zone_idx),rot_scr%grada_interface(zone_idx))
+         gradT_interface(zone_idx) = min(gradT_interface(zone_idx),grada_interface(zone_idx))
       end do
       do zone_idx = 1,num_zones
-         rot_scr%es_velocity_coeff1(zone_idx) = 0.0d0
-         rot_scr%es_velocity_coeff2(zone_idx) = 0.0d0
-         rot_scr%es_shear_coeff(zone_idx) = 0.0d0
-         rot_scr%gsf_kippenhahn_coeff(zone_idx) = 0.0d0
-         rot_scr%mu_gradient_richardson_coeff(zone_idx) = 0.0d0
+         stab%es_velocity_coeff1(zone_idx) = 0.0d0
+         stab%es_velocity_coeff2(zone_idx) = 0.0d0
+         stab%es_shear_coeff(zone_idx) = 0.0d0
+         stab%gsf_kippenhahn_coeff(zone_idx) = 0.0d0
+         stab%mu_gradient_richardson_coeff(zone_idx) = 0.0d0
 ! (commented out with the advection-diffusion transport)
 !         rot_scr%es_relaxation_factor(zone_idx) = 0.0d0
 !         rot_scr%theta_mean(zone_idx) = 0.0d0
@@ -163,28 +170,28 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
 !      end do
 ! the coefficients at every interface of the transport region
       one_over_pi_g = 4.0d0/c4pi/grav_const
-      associate (p_i => rot_scr%pressure_interface, t_i => rot_scr%temperature_interface, &
-           rho_i => rot_scr%density_interface, m_i => rot_scr%mass_interface, &
-           r_i => rot_scr%radius_interface, l_i => rot_scr%luminosity_interface, &
-           g_i => rot_scr%gravity_factor_interface, eps_i => rot_scr%eps_total_interface, &
-           grada_i => rot_scr%grada_interface, grad_i => rot_scr%gradT_interface)
+      associate (p_i => pressure_interface, t_i => temperature_interface, &
+           rho_i => stab%density_interface, m_i => mass_interface, &
+           r_i => stab%radius_interface, l_i => stab%luminosity_interface, &
+           g_i => stab%gravity_factor_interface, eps_i => eps_total_interface, &
+           grada_i => grada_interface, grad_i => gradT_interface)
       do zone_idx = transport_zone_begin,transport_zone_end
 ! (the commented-out advection-diffusion transport set it to zero)
-         dlnmu_dlnp = (log10(mid_scr%mu(zone_idx))-log10(mid_scr%mu(zone_idx-1)))/ &
+         dlnmu_dlnp = (log10(sub_physics%mu(zone_idx))-log10(sub_physics%mu(zone_idx-1)))/ &
               (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          if(zone_idx.eq.transport_zone_begin)then
-            delta_grad_floor=max(1.0d-3,0.5d0*(mid_scr%grada(transport_zone_begin+1)- &
-                 mid_scr%gradT(transport_zone_begin+1)) &
+            delta_grad_floor=max(1.0d-3,0.5d0*(sub_physics%grada(transport_zone_begin+1)- &
+                 sub_physics%gradT(transport_zone_begin+1)) &
                  +dlnmu_dlnp)
          else if(zone_idx.eq.transport_zone_end)then
-            delta_grad_floor=max(1.0d-3,0.5d0*(mid_scr%grada(transport_zone_end-1)- &
-                 mid_scr%gradT(transport_zone_end-1)) &
+            delta_grad_floor=max(1.0d-3,0.5d0*(sub_physics%grada(transport_zone_end-1)- &
+                 sub_physics%gradT(transport_zone_end-1)) &
                  +dlnmu_dlnp)
          else
             delta_grad_floor = 1.0d-3
          endif
          delta_grad = max(grada_i(zone_idx)-grad_i(zone_idx),delta_grad_floor)
-         rot_scr%del_grad_diff_interface(zone_idx) = &
+         stab%del_grad_diff_interface(zone_idx) = &
               max(grada_i(zone_idx)-grad_i(zone_idx)+dlnmu_dlnp,delta_grad_floor)
 ! (commented out with the advection-diffusion transport: the theta
 ! relaxation factor P/(g Delta rho))
@@ -192,19 +199,19 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
          pressure_scale_height = p_i(zone_idx)*r_i(zone_idx)**2/rho_i(zone_idx)/m_i(zone_idx)/grav_const
 !         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
          rotation_factor = 2.0d0*cc23*r_i(zone_idx)**3/grav_const/m_i(zone_idx)
-         rot_scr%gsf_kippenhahn_coeff(zone_idx)= 8.0d0*pressure_scale_height*rotation_factor/delta_grad
+         stab%gsf_kippenhahn_coeff(zone_idx)= 8.0d0*pressure_scale_height*rotation_factor/delta_grad
          thermal_factor = p_i(zone_idx)/(g_i(zone_idx)*delta_grad*specific_heat_interface(zone_idx)* &
               rho_i(zone_idx)*t_i(zone_idx))
          es_prefactor = 2.0d0*rotation_factor*thermal_factor
          specific_luminosity = l_i(zone_idx)/m_i(zone_idx)
-         rot_scr%es_velocity_coeff1(zone_idx) = es_prefactor*(specific_luminosity-eps_i(zone_idx))
-         rot_scr%es_velocity_coeff2(zone_idx)= -0.5d0*es_prefactor*specific_luminosity*one_over_pi_g/rho_i(zone_idx)
-         rot_scr%es_shear_coeff(zone_idx) = specific_luminosity*thermal_factor*cc13*one_over_pi_g*r_i(zone_idx)/ &
+         stab%es_velocity_coeff1(zone_idx) = es_prefactor*(specific_luminosity-eps_i(zone_idx))
+         stab%es_velocity_coeff2(zone_idx)= -0.5d0*es_prefactor*specific_luminosity*one_over_pi_g/rho_i(zone_idx)
+         stab%es_shear_coeff(zone_idx) = specific_luminosity*thermal_factor*cc13*one_over_pi_g*r_i(zone_idx)/ &
               rho_i(zone_idx)
 ! (commented out with the advection-diffusion transport)
 !         rot_scr%velocity_coeff0(zone_idx) = thermal_factor
-!         rot_scr%velocity_coeff1a(zone_idx) = rot_scr%es_velocity_coeff1(zone_idx)/thermal_factor
-!         rot_scr%velocity_coeff1b(zone_idx) = rot_scr%es_velocity_coeff2(zone_idx)/thermal_factor
+!         rot_scr%velocity_coeff1a(zone_idx) = stab%es_velocity_coeff1(zone_idx)/thermal_factor
+!         rot_scr%velocity_coeff1b(zone_idx) = stab%es_velocity_coeff2(zone_idx)/thermal_factor
 !         rot_scr%velocity_coeff2a(zone_idx) = specific_luminosity*one_over_pi_g*3.0d0*temperature_scale_height/ &
 !              rho_i(zone_idx)
 !         rot_scr%velocity_coeff2b(zone_idx) = -specific_luminosity*one_over_pi_g*r_i(zone_idx)/rho_i(zone_idx)
@@ -213,7 +220,7 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
               max(grada_i(zone_idx) - grad_i(zone_idx),1.0d-3)) &
               *2.0d0*g_i(zone_idx)
 ! the mu-gradient Richardson term, (rho/P) g^2 (-d ln T/d ln mu)/d ln P
-         rot_scr%mu_gradient_richardson_coeff(zone_idx) = rho_i(zone_idx)*g_i(zone_idx)**2/ &
+         stab%mu_gradient_richardson_coeff(zone_idx) = rho_i(zone_idx)*g_i(zone_idx)**2/ &
               p_i(zone_idx)/ln10/(log_pressure(zone_idx)-log_pressure(zone_idx-1))* &
               (radiation_constant_over_3*t_i(zone_idx)**4/p_i(zone_idx)-1.0d0)/ &
               (1.0d0 + 3.0d0*radiation_constant_over_3*t_i(zone_idx)**4/p_i(zone_idx))
@@ -223,18 +230,18 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
 !      if(rotation_settings%use_diffusion_advection_transport)then
 !         temperature_scale_height_below = exp(ln10*(log_pressure(transport_zone_begin-1)+ &
 !              2.0d0*log_radius(transport_zone_begin-1)-log_density(transport_zone_begin-1))) &
-!              /mass_unlogged(transport_zone_begin-1)/grav_const/mid_scr%gradr(transport_zone_begin-1)
+!              /mass_unlogged(transport_zone_begin-1)/grav_const/sub_physics%gradr(transport_zone_begin-1)
 !         rot_scr%third_deriv_geom_factor(transport_zone_begin-1) = temperature_scale_height_below
 !         do zone_idx = transport_zone_begin,transport_zone_end
 !         pressure_scale_height = p_i(zone_idx)*r_i(zone_idx)**2/rho_i(zone_idx)/m_i(zone_idx)/grav_const
 !         temperature_scale_height = pressure_scale_height/grad_i(zone_idx)
-!         thermal_factor_mu = p_i(zone_idx)/(g_i(zone_idx)*rot_scr%del_grad_diff_interface(zone_idx)* &
+!         thermal_factor_mu = p_i(zone_idx)/(g_i(zone_idx)*stab%del_grad_diff_interface(zone_idx)* &
 !              specific_heat_interface(zone_idx)*rho_i(zone_idx)*t_i(zone_idx))
 !         second_deriv_factor = cc23*r_i(zone_idx)**4/grav_const/m_i(zone_idx)
 !         rot_scr%second_deriv_geom_factor(zone_idx) = second_deriv_factor
 !         dlnchi_dlnt = 3.0d0 - 0.5d0*(rot_scr%dlnkappa_dlnt(zone_idx)+rot_scr%dlnkappa_dlnt(zone_idx-1))
 !         temperature_scale_height_zone = exp(ln10*(log_pressure(zone_idx)+2.0d0*log_radius(zone_idx)- &
-!              log_density(zone_idx)))/mass_unlogged(zone_idx)/grav_const/mid_scr%gradT(zone_idx)
+!              log_density(zone_idx)))/mass_unlogged(zone_idx)/grav_const/sub_physics%gradT(zone_idx)
 !         rot_scr%third_deriv_geom_factor(zone_idx) = temperature_scale_height_zone
 !         mean_deps_dlnt = 0.5d0*(rot_scr%deps_dlnt(zone_idx)+rot_scr%deps_dlnt(zone_idx-1))
 !         mean_neutrino_fraction = 0.5d0*(rot_scr%neutrino_loss_fraction(zone_idx)+ &
@@ -260,9 +267,9 @@ contains
 ! lagrange_weights
 !----------------------------------------------------------------------
 ! The 4-point Lagrange interpolation weights at interface interface_idx
-! (radius rot_scr%radius_interface(interface_idx)) from zones
+! (radius stab%radius_interface(interface_idx)) from zones
 ! first_point..first_point+3, into
-! rot_scr%lagrange_interp_weights(1:4,interface_idx).
+! stab%lagrange_interp_weights(1:4,interface_idx).
 subroutine lagrange_weights(first_point, interface_idx)
       integer, intent(in) :: first_point, interface_idx
       double precision :: dr43, dr42, dr41, dr32, dr31, dr21
@@ -279,14 +286,14 @@ subroutine lagrange_weights(first_point, interface_idx)
       lag_denom2 = dr21*dr32*dr42
       lag_denom3 = -dr31*dr32*dr43
       lag_denom4 = dr41*dr42*dr43
-      lag_x1 = rot_scr%radius_interface(interface_idx) - radius_unlogged(first_point)
-      lag_x2 = rot_scr%radius_interface(interface_idx) - radius_unlogged(first_point+1)
-      lag_x3 = rot_scr%radius_interface(interface_idx) - radius_unlogged(first_point+2)
-      lag_x4 = rot_scr%radius_interface(interface_idx) - radius_unlogged(first_point+3)
-      rot_scr%lagrange_interp_weights(1,interface_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
-      rot_scr%lagrange_interp_weights(2,interface_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
-      rot_scr%lagrange_interp_weights(3,interface_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
-      rot_scr%lagrange_interp_weights(4,interface_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+      lag_x1 = stab%radius_interface(interface_idx) - radius_unlogged(first_point)
+      lag_x2 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+1)
+      lag_x3 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+2)
+      lag_x4 = stab%radius_interface(interface_idx) - radius_unlogged(first_point+3)
+      stab%lagrange_interp_weights(1,interface_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
+      stab%lagrange_interp_weights(2,interface_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
+      stab%lagrange_interp_weights(3,interface_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
+      stab%lagrange_interp_weights(4,interface_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
 end subroutine lagrange_weights
 
 !----------------------------------------------------------------------
@@ -297,10 +304,10 @@ end subroutine lagrange_weights
 double precision function interp4(field, first_point, interface_idx)
       double precision, intent(in) :: field(json)
       integer, intent(in) :: first_point, interface_idx
-      interp4 = field(first_point)*rot_scr%lagrange_interp_weights(1,interface_idx)+ &
-           field(first_point+1)*rot_scr%lagrange_interp_weights(2,interface_idx)+ &
-           field(first_point+2)*rot_scr%lagrange_interp_weights(3,interface_idx)+ &
-           field(first_point+3)*rot_scr%lagrange_interp_weights(4,interface_idx)
+      interp4 = field(first_point)*stab%lagrange_interp_weights(1,interface_idx)+ &
+           field(first_point+1)*stab%lagrange_interp_weights(2,interface_idx)+ &
+           field(first_point+2)*stab%lagrange_interp_weights(3,interface_idx)+ &
+           field(first_point+3)*stab%lagrange_interp_weights(4,interface_idx)
 end function interp4
 
 !----------------------------------------------------------------------
@@ -314,18 +321,18 @@ end function interp4
 subroutine interpolate_to_interface(first_point, interface_idx)
       integer, intent(in) :: first_point, interface_idx
 
-      rot_scr%pressure_interface(interface_idx)=exp(ln10*interp4(log_pressure, first_point, interface_idx))
-      rot_scr%temperature_interface(interface_idx)=exp(ln10*interp4(log_temperature, first_point, interface_idx))
-      rot_scr%density_interface(interface_idx)=exp(ln10*interp4(log_density, first_point, interface_idx))
-      rot_scr%gradT_interface(interface_idx)=interp4(mid_scr%gradr, first_point, interface_idx)
-      rot_scr%grada_interface(interface_idx)=interp4(mid_scr%grada, first_point, interface_idx)
-      rot_scr%qdt_interface(interface_idx)=interp4(mid_scr%qdt, first_point, interface_idx)
-      rot_scr%mass_interface(interface_idx)=interp4(mass_unlogged, first_point, interface_idx)
-      rot_scr%eps_total_interface(interface_idx)=interp4(mid_scr%eps_total, first_point, interface_idx)
-      rot_scr%luminosity_interface(interface_idx)=rotation_settings%solar_luminosity_cgs*(interp4(luminosity, first_point, &
+      pressure_interface(interface_idx)=exp(ln10*interp4(log_pressure, first_point, interface_idx))
+      temperature_interface(interface_idx)=exp(ln10*interp4(log_temperature, first_point, interface_idx))
+      stab%density_interface(interface_idx)=exp(ln10*interp4(log_density, first_point, interface_idx))
+      gradT_interface(interface_idx)=interp4(sub_physics%gradr, first_point, interface_idx)
+      grada_interface(interface_idx)=interp4(sub_physics%grada, first_point, interface_idx)
+      qdt_interface(interface_idx)=interp4(sub_physics%qdt, first_point, interface_idx)
+      mass_interface(interface_idx)=interp4(mass_unlogged, first_point, interface_idx)
+      eps_total_interface(interface_idx)=interp4(sub_physics%eps_total, first_point, interface_idx)
+      stab%luminosity_interface(interface_idx)=rotation_settings%solar_luminosity_cgs*(interp4(luminosity, first_point, &
            interface_idx))
-      rot_scr%gravity_factor_interface(interface_idx)=interp4(local_gravity, first_point, interface_idx)
-      specific_heat_interface(interface_idx)=interp4(mid_scr%cp, first_point, interface_idx)
+      stab%gravity_factor_interface(interface_idx)=interp4(local_gravity, first_point, interface_idx)
+      specific_heat_interface(interface_idx)=interp4(sub_physics%cp, first_point, interface_idx)
 end subroutine interpolate_to_interface
 
 end subroutine rotation_stability_setup

@@ -195,7 +195,7 @@ module star_info_lib
                  kinetic_energy_rot_old(json), mean_radius(json), &
                  eta_squared(json), mean_gravity(json)
 ! omega_mid: omega (rad/s) of the latest rotation sub-step's model, the
-! structure interpolated to the sub-step's end (rot_scr's *_mid model).
+! structure interpolated to the sub-step's end (rotation's sub_model).
 ! mid_timestep_model, secular_transport and the wind write it;
 ! evolve_rotation copies it into omega at the end of the step. It
 ! outlives the step: the next step's first solid-body sub-step

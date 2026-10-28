@@ -40,7 +40,7 @@ contains
 !   am_transport_convective_flag : true where a zone is convective for
 !      angular momentum transport (overshoot regions included).
 !   num_zones : the number of zones.
-!   already_converged_flag : true if the solve had converged before
+!   diffusion_converged : true if the solve had converged before
 !      this check (the advection-diffusion solve can say so); it marks
 !      the iteration converged and suppresses the summary line.
 ! In/out:
@@ -70,7 +70,7 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
      moment_of_inertia, specific_angular_momentum, cut_count, &
      converged_flag, redo_flag, omega, &
      qiw, mean_radius, &
-     already_converged_flag, ierr)
+     diffusion_converged, ierr)
       use omega_profile, only: solid_body_omega, omega_from_j, &
            default_inertia_tolerance
       use star_info_lib, only: star_info, json
@@ -95,7 +95,7 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       logical, intent(out) :: redo_flag
       double precision, intent(inout) :: omega(json)
       double precision, intent(inout) :: qiw(json), mean_radius(json)
-      logical, intent(in) :: already_converged_flag
+      logical, intent(in) :: diffusion_converged
       integer, intent(out) :: ierr
 ! locals
 ! The history of measure_convergence, one entry per iteration: room for
@@ -113,7 +113,7 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
 
       converged_flag = .false.
       redo_flag = .false.
-      if(already_converged_flag)then
+      if(diffusion_converged)then
          converged_flag = .true.
          redo_flag = .false.
       endif
@@ -344,7 +344,7 @@ subroutine report_largest_change()
             max_dj_zone = zone_index
          endif
       end do
-      if(.not.already_converged_flag)then
+      if(.not.diffusion_converged)then
          write(*,160)max_fractional_dj,max_dj_zone, &
               (max_delta_j_by_iter(scan_index), &
               max_delta_j_zone_by_iter(scan_index),scan_index=1, &
@@ -390,17 +390,17 @@ end subroutine check_angular_momentum
 !   converged_flag : set false on a cut.
 ! Outputs:
 !   redo_flag : true if the sub-step must be redone with the halved dt.
-!   mid_scr%mu : the new mean molecular weight (from the second
+!   sub_physics%mu : the new mean molecular weight (from the second
 !      iteration on).
 !   ierr : nonzero stops the run.
-subroutine check_composition(s, mid_scr, composition, iteration_number, num_zones, &
+subroutine check_composition(s, sub_physics, composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
-      use rotation_scratch_lib, only: midstep_physics_state
+      use rotation_scratch_lib, only: substep_physics_state
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, n_species_basic
       use io_units
       implicit none
       type(star_info), intent(in) :: s
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(substep_physics_state), intent(inout) :: sub_physics
 
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: iteration_number
@@ -513,7 +513,7 @@ subroutine check_composition(s, mid_scr, composition, iteration_number, num_zone
                  + composition(i_he4,zone_index)/atomic_weight(2)) + &
                  0.5d0*composition(i_metals,zone_index)
             electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            mid_scr%mu(zone_index) = ion_mean_weight_inverse* &
+            sub_physics%mu(zone_index) = ion_mean_weight_inverse* &
                  electron_mean_weight_inverse/ &
                  (ion_mean_weight_inverse+electron_mean_weight_inverse)
          end do

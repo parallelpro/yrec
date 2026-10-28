@@ -37,8 +37,9 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
      envelope_boundary_zone_prev, ierr)
       use am_regions, only: am_convective_regions
       use omega_profile, only: enforce_rotation_profile, omega_from_j
-      use rotation_scratch_lib, only: rotation_diffusion_state, &
-           midstep_physics_state, circulation_velocity_state
+      use rotation_scratch_lib, only: substep_model_state, &
+           substep_physics_state, stability_state, transport_grid_state, &
+           circulation_velocity_state
       use mid_timestep_model
       use secular_transport
       use magnetic_braking, only: brake_convection_zone, wind_conditions
@@ -53,13 +54,15 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! step does not use
       double precision :: qiw(json)
       type(star_info), intent(inout) :: s
-! The step's rotation scratch (rotation_scratch_lib): the solver's
-! working arrays and the structure interpolated to the sub-step
-! (rot_scr), the physics interpolated to it (mid_scr) and the
-! circulation's previous iterates (circ_scr). On the heap for the step,
-! passed down as arguments.
-      type(rotation_diffusion_state), allocatable :: rot_scr
-      type(midstep_physics_state), allocatable :: mid_scr
+! The step's rotation scratch (rotation_scratch_lib), on the heap for
+! the step and passed down as arguments: the structure interpolated to
+! the sub-step (sub_model) and its physics (sub_physics); the structure
+! at the interfaces and the stability coefficients (stab); the transport
+! grid (chi_grid); the circulation's previous iterates (circ_scr).
+      type(substep_model_state), allocatable :: sub_model
+      type(substep_physics_state), allocatable :: sub_physics
+      type(stability_state), allocatable :: stab
+      type(transport_grid_state), allocatable :: chi_grid
       type(circulation_velocity_state), allocatable :: circ_scr
 
       double precision, intent(in) :: full_timestep
@@ -72,12 +75,11 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! transport-purposes flag, set by am_convective_regions below.
       logical :: am_transport_convective_flag(json)
       double precision :: specific_angular_momentum_saved(json)
-! The "_mid" midpoint-in-time structure arrays (computed by
-! mid_timestep_model each diffusion sub-step) live in rot_scr
-! (rotation_scratch_lib) -- see rot_scr%*_mid uses below.
-! cod2 and diffusion_velocity (HV): produced by secular_transport for
+! The structure interpolated to each sub-step (mid_timestep_model) is
+! sub_model's (rotation_scratch_lib).
+! cod2 and total_velocity (HV): produced by secular_transport for
 ! the commented-out burn_settle_mix, their only consumer.
-      double precision :: cod2(json), diffusion_velocity(json)
+      double precision :: cod2(json), total_velocity(json)
       integer :: convective_zone_bounds(12,2), &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
@@ -141,7 +143,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun,s%logP, &
            s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,s%log_Teff, ierr)
       if (ierr /= 0) return
-      allocate(rot_scr, mid_scr, circ_scr)
+      allocate(sub_model, sub_physics, stab, chi_grid, circ_scr)
 ! The sub-steps: the structure is interpolated between the start and the
 ! end of the step; a sub-step whose transport asks for a redo is
 ! repeated from its start, halved.
@@ -154,7 +156,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call record_substep_start_omega()
       fx = elapsed_substep_time/full_timestep
       s%fracstep = fx
-      call advance_rotation_substep(s, rot_scr, mid_scr, &
+      call advance_rotation_substep(s, sub_model, sub_physics, &
            full_timestep, sub_timestep, fx, first_call, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            core_boundary_zone, envelope_boundary_zone, &
@@ -188,11 +190,11 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! and the model not fully convective; while it was on, the xa_start
 ! updates above were skipped:
 !     if(rotation_settings%instability_transport_active .and. .not.fully_convective_flag)then
-!       call burn_settle_mix(cod2,sub_timestep,star%xa,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
-!            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,star%log_mass,star%m,star%dm,star%log_total_mass, &
-!            rot_scr%log_temperature_mid,diffusion_velocity,envelope_boundary_zone,core_boundary_zone, &
+!       call burn_settle_mix(cod2,sub_timestep,star%xa,sub_model%log_density,sub_model%luminosity_lsun, &
+!            sub_model%log_pressure,sub_model%log_radius,star%log_mass,star%m,star%dm,star%log_total_mass, &
+!            sub_model%log_temperature,total_velocity,envelope_boundary_zone,core_boundary_zone, &
 !            envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
-!            rot_scr%am_transport_convective_flag_mid,star%nz,radiative_zone_bounds, &
+!            sub_model%am_transport_convective_flag,star%nz,radiative_zone_bounds, &
 !            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
 !       if (ierr /= 0) return
 !     endif
@@ -299,20 +301,20 @@ end subroutine advance_substep_clock
 subroutine record_substep_start_omega()
       if(first_call)then
 !         rot_scr%theta_prev(1) = rot_scr%theta_rezoned(1)
-         rot_scr%omega_substep_start(1) = s%old_omega(1)
+         sub_model%omega_start(1) = s%old_omega(1)
          do zone_index = 2,s%nz
 !            rot_scr%theta_prev(zone_index) = rot_scr%theta_rezoned(zone_index)
-            rot_scr%omega_substep_start(zone_index) = s%old_omega(zone_index)
+            sub_model%omega_start(zone_index) = s%old_omega(zone_index)
          end do
       else
-         rot_scr%omega_substep_start(1) = s%omega(1)
+         sub_model%omega_start(1) = s%omega(1)
          do zone_index = 2,s%nz
 !            omega_avg = 0.5D0*(star%omega(zone_index)+star%omega(zone_index-1))
-!            delta_radius_step = exp10(rot_scr%log_radius_mid(zone_index))- &
-!                 exp10(rot_scr%log_radius_mid(zone_index-1))
+!            delta_radius_step = exp10(sub_model%log_radius(zone_index))- &
+!                 exp10(sub_model%log_radius(zone_index-1))
 !            domega_dr = (star%omega(zone_index)-star%omega(zone_index-1))/delta_radius_step
 !            rot_scr%theta_prev(zone_index) = rot_scr%theta_mean(zone_index)*omega_avg*domega_dr
-            rot_scr%omega_substep_start(zone_index) = s%omega(zone_index)
+            sub_model%omega_start(zone_index) = s%omega(zone_index)
          end do
       endif
 end subroutine record_substep_start_omega
@@ -329,9 +331,9 @@ subroutine brake_surface_convection_zone()
               s%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
          iend = s%nz
-         call enforce_rotation_profile(rot_scr%log_density_mid,s%j_rot,rot_scr%log_radius_mid, &
-              s%log_mass,s%dm,envelope_boundary_zone,iend,rot_scr%eta_squared_mid, &
-              rot_scr%moment_of_inertia_mid,s%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid,s%nz,s%disk_gate_age_gyr)
+         call enforce_rotation_profile(sub_model%log_density,s%j_rot,sub_model%log_radius, &
+              s%log_mass,s%dm,envelope_boundary_zone,iend,sub_model%eta_squared, &
+              sub_model%moment_of_inertia,s%omega_mid,sub_model%di_domega,sub_model%mean_radius,s%nz,s%disk_gate_age_gyr)
       endif
 end subroutine brake_surface_convection_zone
 
@@ -342,24 +344,24 @@ end subroutine brake_surface_convection_zone
 ! mean molecular weight and composition go back to the sub-step's start
 ! and the clock back two sub-steps.
 subroutine apply_instability_transport()
-      call homogenize_convection_zones(s%xa,s%dm,rot_scr%am_transport_convective_flag_mid,s%nz)
+      call homogenize_convection_zones(s%xa,s%dm,sub_model%am_transport_convective_flag,s%nz)
       do zone_index = 1,s%nz
          specific_angular_momentum_saved(zone_index) = s%j_rot(zone_index)
       end do
-      call apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
+      call apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, circ_scr, &
            sub_timestep, specific_angular_momentum_saved, &
            core_boundary_zone, envelope_boundary_zone, &
            redo_needed_flag, redo_count, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            omega_surface, surface_cz_active, &
-           cod2, diffusion_velocity, diffusion_solve_ok, ierr)
+           cod2, total_velocity, diffusion_solve_ok, ierr)
       if (ierr /= 0) return
       if(redo_needed_flag)then
          fx = 2.0D0*sub_timestep/full_timestep
          elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
          do zone_index = 1,s%nz
             s%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-            mid_scr%mu(zone_index) = mid_scr%mu(zone_index) - fx*(s%mu(zone_index)-s%old_mu(zone_index))
+            sub_physics%mu(zone_index) = sub_physics%mu(zone_index) - fx*(s%mu(zone_index)-s%old_mu(zone_index))
             do species_index = 1,num_species_tracked
                s%xa(species_index,zone_index) = s%xa_start(species_index,zone_index)
             end do
@@ -373,33 +375,33 @@ end subroutine apply_instability_transport
 ! the mid-sub-step model, the burn, then the convection zones mixed, the
 ! tiny abundances zeroed and the start of the next sub-step stored.
 subroutine burn_light_elements_over_substep()
-      call find_convection_zones(s%xa,rot_scr%log_density_mid,rot_scr%log_pressure_mid,rot_scr%log_radius_mid, &
-           s%log_mass,rot_scr%log_temperature_mid,rot_scr%convective_flag_mid,s%nz, &
+      call find_convection_zones(s%xa,sub_model%log_density,sub_model%log_pressure,sub_model%log_radius, &
+           s%log_mass,sub_model%log_temperature,sub_model%convective_flag,s%nz, &
            radiative_zone_bounds,convective_zone_bounds, &
            convective_zone_bounds_burn,core_boundary_zone_cur, &
            envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
            num_convective_zones_burn, s%iov1, s%iov2, ierr)
       if (ierr /= 0) return
-      if(rotation_settings%intermediate_overshoot .and. rot_scr%convective_flag_mid(s%nz))then
+      if(rotation_settings%intermediate_overshoot .and. sub_model%convective_flag(s%nz))then
          s%envelope_overshoot_depth_end = rotation_settings%overshoot_alpha_envelope* &
-              pressure_scale_height(rot_scr%log_pressure_mid(envelope_boundary_zone_cur), &
-              rot_scr%log_radius_mid(envelope_boundary_zone_cur), &
-              rot_scr%log_density_mid(envelope_boundary_zone_cur), &
+              pressure_scale_height(sub_model%log_pressure(envelope_boundary_zone_cur), &
+              sub_model%log_radius(envelope_boundary_zone_cur), &
+              sub_model%log_density(envelope_boundary_zone_cur), &
               s%log_mass(envelope_boundary_zone_cur))
       else
          s%envelope_overshoot_depth_end = 0.0D0
       endif
-      call store_end_li_be_rates(s, s%xa,rot_scr%log_density_mid,rot_scr%log_temperature_mid,s%nz)
+      call store_end_li_be_rates(s, s%xa,sub_model%log_density,sub_model%log_temperature,s%nz)
 ! The base of the surface mixed region is located on the sub-step's
 ! interpolated model's gradients with rotational mixing, else on the
 ! model's own.
       if (rotation_settings%instability_transport_active) then
-         call burn_li_be(s, sub_timestep,s%xa,rot_scr%log_radius_mid,s%m, &
-              s%dm,rot_scr%log_temperature_mid,mid_scr%grada,mid_scr%gradr, &
+         call burn_li_be(s, sub_timestep,s%xa,sub_model%log_radius,s%m, &
+              s%dm,sub_model%log_temperature,sub_physics%grada,sub_physics%gradr, &
               envelope_boundary_zone_cur,envelope_boundary_zone_prev,s%nz)
       else
-         call burn_li_be(s, sub_timestep,s%xa,rot_scr%log_radius_mid,s%m, &
-              s%dm,rot_scr%log_temperature_mid,s%grada,s%gradr, &
+         call burn_li_be(s, sub_timestep,s%xa,sub_model%log_radius,s%m, &
+              s%dm,sub_model%log_temperature,s%grada,s%gradr, &
               envelope_boundary_zone_cur,envelope_boundary_zone_prev,s%nz)
       end if
       envelope_boundary_zone_prev = envelope_boundary_zone_cur
@@ -412,10 +414,10 @@ subroutine burn_light_elements_over_substep()
 ! The commented-out Bulirsch-Stoer path (rotation/burn_settle_mix.f90)
 ! burned here instead, when instability transport was on and the model
 ! not fully convective, and left the start-of-step rates alone:
-!           call burn_li_be_midpoint(sub_timestep,star%xa,rot_scr%log_radius_mid,star%m, &
-!                star%dm,rot_scr%log_temperature_mid,envelope_boundary_zone_cur, &
+!           call burn_li_be_midpoint(sub_timestep,star%xa,sub_model%log_radius,star%m, &
+!                star%dm,sub_model%log_temperature,envelope_boundary_zone_cur, &
 !                envelope_boundary_zone_prev,star%nz)
-      call homogenize_convection_zones(s%xa,s%dm,rot_scr%am_transport_convective_flag_mid,s%nz)
+      call homogenize_convection_zones(s%xa,s%dm,sub_model%am_transport_convective_flag,s%nz)
       do zone_index = 1,s%nz
          do species_index = n_species_basic+1,n_species_extended
             if(s%xa(species_index,zone_index).lt.1.0D-24)s%xa(species_index,zone_index)=0.0D0
