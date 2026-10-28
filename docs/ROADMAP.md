@@ -2057,6 +2057,20 @@ the unit tests, test_reentry and (for the global star) test_pyyrec.
   the light-element burn read evolve_model_flag, and the Henyey pass
   gets a zero step. The rotation step still gets the step negated, so
   as to keep O24 (below) byte-identical until its own commit.
+- **DONE: the binary's version line follows the commit** (31bbd69b).
+  core/run/yrec_version.o depends on src/.git_hash_stamp, which make
+  rewrites only when the hash changes; before, the main tree's binary
+  reported e669801a long after that commit (the pinned logs carry it;
+  every comparator skips the line).
+- **Extra check.** 31 more decks, run with the bd56b718 binary and with
+  88b32a90's, are byte-identical (outputs and terminal text): the 28
+  ZAHB to TAHB decks (rescale-only cards, so the un-aged path) and the 3
+  giant differential-rotation decks. Five of them fail the same way with
+  both binaries, not investigated: the three giant decks stop at once
+  ("LROT set to TRUE, but OMEGA(1) = 0": their shipped starting models
+  carry no rotation), Solar_m1p0feh+0p0_PARSEC_TAHB stops while setting
+  up its second card, and ZAHB_m0p7feh+0p0_TAHB goes NaN in the
+  convection routine after about 190 s.
 - **Found: O24** (docs/bug_sweep.md). An un-aged rotating model without
   instability transport passes its negative step to the wind brake,
   which spins the surface convection zone up. Inherited from GETW. No
