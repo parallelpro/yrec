@@ -215,6 +215,14 @@ ifeq ($(strip $(SHORT_HASH)),)
   REPO_HASH=unknown
 endif
 
+# The hash reaches the binary through -DGIT_HASH in yrec_version.o, which
+# nothing else would rebuild when only the commit changes (the binary then
+# reported a stale hash). The stamp file is rewritten only when the hash
+# changes, and yrec_version.o depends on it.
+HASH_STAMP := .git_hash_stamp
+$(shell echo '$(REPO_HASH)' | cmp -s - $(HASH_STAMP) || echo '$(REPO_HASH)' > $(HASH_STAMP))
+core/run/yrec_version.o: $(HASH_STAMP)
+
 # Explicit rule for free-form modern Fortran sources (.f90); GNU Make's
 # built-in implicit rules don't reliably cover this suffix.
 %.o: %.f90
@@ -381,7 +389,7 @@ lib: $(SHLIB)
 # star%ctrl%report_solver_diagnostics this way).
 clean:
 	@rm -f $(NAME)
-	@rm -f *.mod
+	@rm -f *.mod $(HASH_STAMP)
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
