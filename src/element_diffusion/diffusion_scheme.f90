@@ -6,7 +6,7 @@
 ! implicit solve of the second.
 module diffusion_scheme
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
       private
       public :: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
@@ -23,12 +23,13 @@ contains
 ! eq_mass is the run of masses, and diffused_abundance_mid is the run
 ! of changes in the diffused species' abundance at the zone midpoints.
 ! MHP 3/94 added metal diffusion.
-subroutine lax_wendroff_step1(timestep, diffusion_coeff1, eq_mass, num_eq_points, &
+subroutine lax_wendroff_step1(diff_scr, timestep, diffusion_coeff1, eq_mass, num_eq_points, &
      total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 
       use composition_layout, only: json
       use physical_constants
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff1(json), eq_mass(json)
@@ -81,13 +82,14 @@ end subroutine lax_wendroff_step1
 ! lax_wendroff_step1's provisional solution, updates diffused_abundance in
 ! place with the full-step change in the diffused species' abundance.
 ! MHP 3/94 added metal diffusion.
-subroutine lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mass_mid, &
+subroutine lax_wendroff_step2(diff_scr, timestep, diffusion_coeff1_mid, eq_mass_mid, &
      diffused_abundance, num_eq_points, total_mass, &
      use_generic_diffusion_vectors)
 
       use composition_layout, only: json
       use physical_constants
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff1_mid(json), &

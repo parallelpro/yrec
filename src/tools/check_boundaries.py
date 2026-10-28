@@ -194,7 +194,8 @@ def check_scratch_private(src_root):
 # keeps the instances for the step and passes them down as arguments, so
 # the module holds no state at all. Any declaration outside a type
 # block, other than a parameter, is a module variable.
-SCRATCH_TYPES_ONLY = ["rotation/rotation_scratch_lib.f90"]
+SCRATCH_TYPES_ONLY = ["rotation/rotation_scratch_lib.f90",
+                      "element_diffusion/element_diffusion_scratch.f90"]
 
 def check_scratch_types_only(src_root):
     problems = []

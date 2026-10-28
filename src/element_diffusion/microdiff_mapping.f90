@@ -8,7 +8,7 @@
 ! abundance changes back to the model grid.
 module microdiff_mapping
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       use composition_layout, only: json
       implicit none
 
@@ -255,7 +255,7 @@ end subroutine map_microdiff_to_equal_grid
 ! reads it afterwards).
 !  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 !  SPACED GRID.
-subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
+subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
      composition, dlnp_dr, radius_bl, enclosed_mass, &
      num_zones, total_mass, num_light, light_element_id)
@@ -263,6 +263,7 @@ subroutine microdiff_etm(timestep, eq_radius, eq_delta_hydrogen, &
            i_c12, i_o18
       use numerics_lib, only: intrp2, lagrange4
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(inout) :: timestep
       double precision, intent(in) :: eq_radius(json), &

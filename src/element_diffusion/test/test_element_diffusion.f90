@@ -31,7 +31,6 @@ program test_element_diffusion
       use io_units, only: run_log_unit, terminal_unit
       use element_diffusion_lib, only: diffuse_elements, set_diffusion_settings
       use microphysics_settings, only: diffusion_settings_from_star
-      use element_diffusion_scratch, only: diff_scr
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack

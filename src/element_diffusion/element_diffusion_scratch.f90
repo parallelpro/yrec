@@ -1,15 +1,15 @@
 !----------------------------------------------------------------------
 ! element_diffusion_scratch
 !----------------------------------------------------------------------
-! The settling routines' own working state, one module-level instance
-! (diff_scr): the metal diffusion coefficients on the model and the
-! equally spaced grids, the change of the metal abundance, and the
-! Bahcall & Loeb (1990) unit scales. Nothing in it outlives a step: each
-! settling call writes what it reads (diff_scr poisoned with NaN at
-! every step start, 2026-10-13: every pinned deck byte-identical), so an
-! in-process rerun needs no restore. (The run-log latch that reports a
-! suspension of settling once is the star's,
-! star%settling_suspended_reported.)
+! The settling routines' own working state (diff_scr): the metal
+! diffusion coefficients on the model and the equally spaced grids, the
+! change of the metal abundance, and the Bahcall & Loeb (1990) unit
+! scales. diffuse_elements owns the step's instance and passes it down
+! as an argument; this module holds only the type. Nothing in it
+! outlives a step: each settling call writes what it reads (poisoned at
+! every step start, 2026-10-13 and 2026-10-28: every pinned deck
+! byte-identical). (The run-log latch that reports a suspension of
+! settling once is the star's, star%settling_suspended_reported.)
 module element_diffusion_scratch
       use composition_layout, only: json
       implicit none
@@ -35,7 +35,5 @@ module element_diffusion_scratch
            double precision :: bl_radius_scale, bl_mass_scale, &
                 bl_temp_scale, bl_time_scale
       end type diffusion_scratch
-
-      type(diffusion_scratch), public, save :: diff_scr
 
 end module element_diffusion_scratch

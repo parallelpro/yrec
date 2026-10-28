@@ -5,13 +5,14 @@
 ! microdiff_etm and equal_to_model read them back to undo the in-place
 ! conversion of the callers' arrays.
 module bahcall_loeb_units
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
 contains
 
-subroutine set_bahcall_loeb_scales()
+subroutine set_bahcall_loeb_scales(diff_scr)
       use physical_constants, only: rsun_cgs_legacy
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 !     solar_radius_bl = SOLAR RADIUS (CM)
 !     seconds_per_year_bl = NUMBER OF SECONDS IN A YEAR.
       double precision, parameter :: solar_radius_bl = rsun_cgs_legacy

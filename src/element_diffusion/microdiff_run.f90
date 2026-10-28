@@ -11,12 +11,13 @@
 ! solve_tridiagonal (diffusion_scheme, numerics_lib), on the two equally
 ! spaced grids (eq, eq_mid).
 module microdiff_run
+      use element_diffusion_scratch, only: diffusion_scratch
       use element_diffusion_configuration, only: diffusion_settings
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       implicit none
 contains
 
-subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
+subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_points, &
      eq, species_fraction, hydrogen_dlnc_dr, &
      eq_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
      atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
@@ -28,6 +29,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
       use physical_constants
       use numerics_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
       double precision, intent(in) :: grid_spacing
       double precision, intent(in) :: timestep
       double precision, intent(in) :: total_mass
@@ -98,7 +100,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
 ! WHERE N IS THE TIME VARIABLE, J IS THE SPATIAL ONE, AND COD1 IS THE
 ! DIFFUSION COEFFICIENT.
 !
-      call lax_wendroff_step1(timestep, diffusion_coeff1, eq%mass, num_eq_points, &
+      call lax_wendroff_step1(diff_scr, timestep, diffusion_coeff1, eq%mass, num_eq_points, &
            total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
 !
 ! UPDATE ESPEC WITH THE NEW RUN OF ED_H, FOR THE PURPOSE OF
@@ -126,7 +128,7 @@ subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
 ! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
 ! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
 !
-      call lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mid%mass, &
+      call lax_wendroff_step2(diff_scr, timestep, diffusion_coeff1_mid, eq_mid%mass, &
            diffused_abundance, num_eq_points, total_mass, &
            use_generic_diffusion_vectors)
 !

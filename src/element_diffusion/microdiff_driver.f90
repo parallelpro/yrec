@@ -5,7 +5,7 @@
 ! and its setup.
 module microdiff_driver
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
       private
       public :: microdiff
@@ -63,7 +63,7 @@ contains
 ! coefficients from microdiff_coefficients) once each for hydrogen, the
 ! metals and each light element, and microdiff_etm (microdiff_mapping:
 ! back to the model grid).
-subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
+subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
      convective_flag, num_zones, total_mass, diffuse_helium, &
      suspension_reported, ierr)
@@ -73,6 +73,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
       use species_table, only: thoul_fe, thoul_col_h, thoul_col_he, &
            thoul_col_metal, num_light_diffused, light_diffused, light_diffused_row
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
       integer, parameter :: num_light = num_light_diffused
 
@@ -113,7 +114,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 !  COLLECT PHYSICAL VARIABLES FOR DIFFCO CALCULATION.
 !
       ierr = 0
-      call microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
+      call microdiff_setup(diff_scr, timestep, dlnp_dr, log_radius, log_density, &
            enclosed_mass, log_temperature, convective_flag, num_zones, &
            total_mass, composition, radius_bl, temperature_bl, zone_begin, &
            zone_end, settling_skipped_flag, density_orig, temperature_orig, &
@@ -164,7 +165,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call run_microdiff(grid_spacing, timestep, total_mass, &
+         call run_microdiff(diff_scr, grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
@@ -196,7 +197,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call run_microdiff(grid_spacing, timestep, total_mass, &
+         call run_microdiff(diff_scr, grid_spacing, timestep, total_mass, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
@@ -226,7 +227,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
             enddo
             species_fraction(thoul_col_metal,num_eq_points) = eq%light(ii,num_eq_points)
 !           PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-            call run_microdiff(grid_spacing, timestep, total_mass, &
+            call run_microdiff(diff_scr, grid_spacing, timestep, total_mass, &
                  num_eq_points, eq, species_fraction, &
                  hydrogen_dlnc_dr, eq_mid, &
                  species_fraction_mid, hydrogen_dlnc_dr_mid, &
@@ -244,7 +245,7 @@ subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
 ! TRANSFORM BACK TO ORIGINAL MODEL GRID; UPDATE HELIUM ARRAY USING
 ! X+Y+Z=1.  PRINT DIAGNOSTIC OUTPUT.
 !
-      call microdiff_etm(timestep, eq%radius, eq_delta_hydrogen, &
+      call microdiff_etm(diff_scr, timestep, eq%radius, eq_delta_hydrogen, &
            eq_delta_metal, eq_delta_light, zone_begin, zone_end, &
            num_eq_points, composition, dlnp_dr, radius_bl, enclosed_mass, &
            num_zones, total_mass, num_light, light_diffused_row)
@@ -277,7 +278,7 @@ end subroutine microdiff
 !
 ! enclosed_mass (HS1) is the enclosed mass at the model points,
 ! unlogged, not the per-shell mass.
-subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
+subroutine microdiff_setup(diff_scr, timestep, dlnp_dr, log_radius, log_density, &
      enclosed_mass, log_temperature, convective_flag, num_zones, &
      total_mass, composition, radius_bl, temperature_bl, zone_begin, &
      zone_end, settling_skipped_flag, density_orig, temperature_orig, &
@@ -290,6 +291,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
       use physical_constants
       use math_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: dlnp_dr(json)
@@ -389,7 +391,7 @@ subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
          suspension_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
-      call set_bahcall_loeb_scales()
+      call set_bahcall_loeb_scales(diff_scr)
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do i=1,num_zones

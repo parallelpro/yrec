@@ -5,7 +5,7 @@
 ! spaced grid in radius and back.
 module settling_grid
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
       private
       public :: model_to_equal, equal_to_model
@@ -14,7 +14,7 @@ contains
 
 ! ---------------------------------------------------------------
 ! MHP 3/94 added metal diffusion.
-subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
+subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composition, &
      radius, enclosed_mass, &
      zone_begin, zone_end, num_zones, diffusion_coeff1_dx, &
      diffusion_coeff2_dx, grid_spacing, &
@@ -26,6 +26,7 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
       use composition_layout, only: json, i_metals
       use numerics_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(in) :: diffusion_coeff1(json), &
            diffusion_coeff2(json)
@@ -279,12 +280,13 @@ subroutine model_to_equal(diffusion_coeff1, diffusion_coeff2, composition, &
 end subroutine model_to_equal
 
 ! ---------------------------------------------------------------
-subroutine equal_to_model(timestep, equal_radius, equal_hydrogen_fraction, &
+subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
       use composition_layout, only: json
       use numerics_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(inout) :: timestep
       double precision, intent(in) :: equal_radius(json), &

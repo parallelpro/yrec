@@ -346,16 +346,16 @@ core/test/test_structure.o: burn_step.mod controls_reader.mod convection_lib.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod
 element_diffusion/diffusion_scheme.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod physical_constants.mod
-element_diffusion/element_diffusion_lib.o: composition_layout.mod element_diffusion_configuration.mod microdiff_driver.mod original_settling.mod
+element_diffusion/element_diffusion_lib.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod microdiff_driver.mod original_settling.mod
 element_diffusion/element_diffusion_scratch.o: composition_layout.mod
 element_diffusion/microdiff_coefficients.o: composition_layout.mod element_diffusion_configuration.mod math_lib.mod microdiff_mapping.mod physical_constants.mod species_table.mod thoul_solver.mod
 element_diffusion/microdiff_driver.o: bahcall_loeb_units.mod composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod io_units.mod math_lib.mod microdiff_mapping.mod microdiff_run.mod physical_constants.mod run_log.mod species_table.mod
 element_diffusion/microdiff_mapping.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod numerics_lib.mod
-element_diffusion/microdiff_run.o: composition_layout.mod diffusion_scheme.mod element_diffusion_configuration.mod io_units.mod microdiff_coefficients.mod microdiff_mapping.mod numerics_lib.mod physical_constants.mod run_log.mod
+element_diffusion/microdiff_run.o: composition_layout.mod diffusion_scheme.mod element_diffusion_configuration.mod element_diffusion_scratch.mod io_units.mod microdiff_coefficients.mod microdiff_mapping.mod numerics_lib.mod physical_constants.mod run_log.mod
 element_diffusion/original_settling.o: bahcall_loeb_units.mod composition_layout.mod diffusion_scheme.mod element_diffusion_configuration.mod element_diffusion_scratch.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod settling_grid.mod species_table.mod thoul_solver.mod
 element_diffusion/settling_grid.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod numerics_lib.mod
 element_diffusion/species_table.o: composition_layout.mod physical_constants.mod
-element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod element_diffusion_scratch.mod io_units.mod microphysics_settings.mod star_info_lib.mod
+element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod io_units.mod microphysics_settings.mod star_info_lib.mod
 element_diffusion/thoul_solver.o: numerics_lib.mod
 eos/blended_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod opal_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod
 eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod eos_results.mod math_lib.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod

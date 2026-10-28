@@ -5,7 +5,7 @@
 ! gravitational_settling, and its setup of the diffusion coefficients.
 module original_settling
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diff_scr
+      use element_diffusion_scratch, only: diffusion_scratch
       use settling_grid, only: model_to_equal, equal_to_model
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       use thoul_solver, only: thoul_diffusion
@@ -63,7 +63,8 @@ contains
 ! diffusion_coeff2) AND THEIR DERIVATIVES WITH RESPECT TO X
 ! (diffusion_coeff1_dx AND diffusion_coeff2_dx).
 !
-subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, log_density, &
+subroutine gravitational_settling(diff_scr, &
+     timestep, composition, dlnp_dr, log_radius, log_density, &
      mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, &
      suspension_reported, ierr)
 
@@ -73,6 +74,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
       use physical_constants
       use numerics_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: composition(15,json)
@@ -120,7 +122,8 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 
       ierr = 0
 
-      call gravitational_settling_setup(timestep,dlnp_dr,log_radius,log_density,mass_grams, &
+      call gravitational_settling_setup(diff_scr, &
+           timestep,dlnp_dr,log_radius,log_density,mass_grams, &
            log_temperature,del_grad,convective_flag,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
            temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
@@ -134,7 +137,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
 !         SPACED GRID POINTS.(BOTH ARE NEEDED FOR THE DIFFUSION TECHNIQUE).
 !
-      call model_to_equal(diffusion_coeff1,diffusion_coeff2,composition, &
+      call model_to_equal(diff_scr, diffusion_coeff1,diffusion_coeff2,composition, &
            radius_bl,mass_grams, &
            zone_begin,zone_end,num_zones,diffusion_coeff1_dx, &
            diffusion_coeff2_dx,grid_spacing, &
@@ -169,7 +172,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 ! SHOULD DIFFUSE Z.
 !
       use_generic_diffusion_vectors = .false.
-      call lax_wendroff_step1(timestep,equal_diffusion_coeff1,equal_mass, &
+      call lax_wendroff_step1(diff_scr, timestep,equal_diffusion_coeff1,equal_mass, &
            num_equal_points,total_mass,equal_hydrogen_fraction_mid, &
            use_generic_diffusion_vectors)
 !
@@ -200,7 +203,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 ! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
 ! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
 !
-      call lax_wendroff_step2(timestep,equal_diffusion_coeff1_mid,equal_mass_mid, &
+      call lax_wendroff_step2(diff_scr, timestep,equal_diffusion_coeff1_mid,equal_mass_mid, &
            equal_hydrogen_fraction,num_equal_points,total_mass, &
            use_generic_diffusion_vectors)
 !
@@ -289,7 +292,7 @@ subroutine gravitational_settling(timestep, composition, dlnp_dr, log_radius, lo
 ! TRANSFORM BACK TO ORIGINAL MODEL GRID; UPDATE HELIUM ARRAY USING
 ! X+Y+Z=1.  PRINT DIAGNOSTIC OUTPUT.
 
-      call equal_to_model(timestep,equal_radius,equal_hydrogen_fraction, &
+      call equal_to_model(diff_scr, timestep,equal_radius,equal_hydrogen_fraction, &
            zone_begin,zone_end,num_equal_points,composition,dlnp_dr, &
            radius_bl,mass_grams,num_zones,total_mass)
 
@@ -307,7 +310,7 @@ end subroutine gravitational_settling
 ! (LTHOUL false) or the full Thoul et al. (1994) coefficients (via
 ! thoul_diffusion, LTHOUL true) with a choice of Coulomb-logarithm prescription
 ! selected by coulomb_log_choice.
-subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
+subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log_radius, &
      log_density, mass_grams, log_temperature, del_grad, convective_flag, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
      composition, radius_bl, temperature_bl, zone_begin, zone_end, &
@@ -323,6 +326,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
       use physical_constants
       use math_lib
       implicit none
+      type(diffusion_scratch), intent(inout) :: diff_scr
 
       double precision, intent(inout) :: timestep_seconds
       double precision, intent(inout) :: dlnp_dr(json)
@@ -474,7 +478,7 @@ subroutine gravitational_settling_setup(timestep_seconds, dlnp_dr, log_radius, &
          suspension_reported = .false.
       end if
 !     SET THE star%bl_*_scale CONVERSION FACTORS.
-      call set_bahcall_loeb_scales()
+      call set_bahcall_loeb_scales(diff_scr)
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do zone_idx=1,num_zones

@@ -13,6 +13,7 @@ module element_diffusion_lib
       use microdiff_driver, only: microdiff
       use element_diffusion_configuration, only: diffusion_settings_t, &
            diffusion_settings, set_diffusion_settings
+      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
       private
       public :: diffuse_elements, diffusion_settings_t, set_diffusion_settings
@@ -47,14 +48,18 @@ subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
       logical, intent(in) :: diffuse_helium
       logical, intent(inout) :: suspension_reported
       integer, intent(out) :: ierr
+! the settling routines' working arrays for this step
+! (element_diffusion_scratch), passed down as an argument
+      type(diffusion_scratch), allocatable :: diff_scr
 
+      allocate(diff_scr)
       if (diffusion_settings%use_new_diffusion_routines) then
-         call microdiff(timestep, composition, dlnp_dr, log_radius, &
+         call microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
               log_density, enclosed_mass, log_temperature, del_grad, &
               convective_flag, num_zones, total_mass, diffuse_helium, &
               suspension_reported, ierr)
       else
-         call gravitational_settling(timestep, composition, dlnp_dr, log_radius, &
+         call gravitational_settling(diff_scr, timestep, composition, dlnp_dr, log_radius, &
               log_density, enclosed_mass, log_temperature, del_grad, &
               convective_flag, num_zones, total_mass, suspension_reported, ierr)
       end if
