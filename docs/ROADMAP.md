@@ -2055,8 +2055,9 @@ the unit tests, test_reentry and (for the global star) test_pyyrec.
   item). solve_structure no longer negates s%dt for a model that is not
   aged: the first guess, the rates of change, the composition rerun,
   the light-element burn read evolve_model_flag, and the Henyey pass
-  gets a zero step. The rotation step still gets the step negated, so
-  as to keep O24 (below) byte-identical until its own commit.
+  gets a zero step. The rotation step kept the step negated, so as to
+  keep O24 (below) byte-identical until its own commit (2bdbfbad), which gives
+  it a zero step too.
 - **DONE: the binary's version line follows the commit** (31bbd69b).
   core/run/yrec_version.o depends on src/.git_hash_stamp, which make
   rewrites only when the hash changes; before, the main tree's binary
@@ -2071,11 +2072,15 @@ the unit tests, test_reentry and (for the global star) test_pyyrec.
   carry no rotation), Solar_m1p0feh+0p0_PARSEC_TAHB stops while setting
   up its second card, and ZAHB_m0p7feh+0p0_TAHB goes NaN in the
   convection routine after about 190 s.
-- **Found: O24** (docs/bug_sweep.md). An un-aged rotating model without
-  instability transport passes its negative step to the wind brake,
-  which spins the surface convection zone up. Inherited from GETW. No
-  pinned deck reaches it; the fix is to skip the wind for a non-positive
-  step, one measured commit.
+- **Found and FIXED: O24** (2bdbfbad; docs/bug_sweep.md). An un-aged
+  rotating model without instability transport passed its negative step
+  to the wind brake, which spun the surface convection zone up.
+  Inherited from GETW. The rotation call now gets a zero step for a
+  model not aged, and the no-transport branch applies the wind only over
+  a positive step. No pinned deck reaches it (40 decks byte-identical);
+  on a deck built to reach it (a rescale-only card at 0.1 Gyr, solid
+  body, transport off) J no longer rises by 3.5% over the two un-aged
+  models, and five models later J and Omega are 3% lower than before.
 - **Method.** scratchpad check.py builds a worktree, runs the deck set
   in it in parallel, and byte-compares every output against the base
   snapshot and the main tree's pins (ignoring the version line);

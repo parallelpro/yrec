@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28). There are 64 items: 41 fixed and 23 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28). There are 64 items: 42 fixed and 22 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -119,7 +119,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O21 | Settling stencil out of bounds for a 2-point grid | Yes | Open |
 | O22 | Profile N² column disagrees with the pulse files | No (2026) | Open |
 | O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
-| O24 | Un-aged rotating model without transport spun up by the wind | Yes | Open |
+| O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1229,7 +1229,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O24. An un-aged rotating model without instability transport is spun up by the wind
 
-- **Status:** open (latent; found 2026-10-28 while tracing the negative `dt`). No pinned deck reaches it, and it has not been measured.
+- **Status:** fixed (2026-10-28), [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad). Found the same day while tracing the negative `dt`. No pinned deck reaches it: the 40 checked decks are byte-identical before and after.
+- **What we did:** a model that is not aged now gets a zero step in the rotation call, as the Henyey pass does, and `spin_down_without_transport` applies the wind only over a positive step. Measured on a deck built to reach the bug (the testsuite's solid-body solar deck with instability transport off and a rescale-only card at 0.1 Gyr, two un-aged models): before the fix the total angular momentum rose by 3.5% over the two un-aged models (2.042 to 2.114 × 10⁴⁹ g cm² s⁻¹) and the surface Ω by 3.5%; after it, J is unchanged to all printed digits. Five models later J is 3.2% lower and Ω 3.1% lower than before the fix, log L differs by 3 × 10⁻⁵ dex and log T_eff by 9 × 10⁻⁶.
 - **In the original F77?** Yes. MAIN marks a model that is solved but not aged with a negative timestep, `IF(.NOT.LAGE) DELTS = -DABS(DELTS)` ([main.f:644](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L644)), and calls GETW with it ([main.f:816](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L816)). GETW's branch without instability transport calls MWIND with `DELTS` whatever its sign ([getw.f:107-161](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L107-L161)); only the transport branch skips a non-positive step ([getw.f:166-167](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L166-L167)):
   ```fortran
             CALL MWIND(BL,DELTS,HSBOT,HSTOP,IMAX,M,LJDOT,OMEGAS,      ! getw.f:151, LINSTB = F
