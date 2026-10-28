@@ -23,7 +23,8 @@
 !            = (8/3) (omega^2 r^3/(G m)) P/(g Delta c_P rho T)
 !              [ (L/m) (1 - omega^2/(2 pi G rho)) - eps ],
 !     then corrects it for the quadrupole and subtracts
-!     es_shear_coeff * omega d omega/dr.
+!     es_shear_coeff * omega d omega/dr, with
+!       es_shear_coeff = (L/m) P/(g Delta c_P rho T) r/(3 pi G rho).
 !   - The GSF instability (Kippenhahn 1980):
 !     gsf_kippenhahn_coeff = (32/3) H_P r^3/(G m Delta). circulation
 !     multiplies it by the thermal diffusivity, omega^2/r and the

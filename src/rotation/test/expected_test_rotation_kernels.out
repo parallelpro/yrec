@@ -14,6 +14,16 @@ mixing: sum m X conserved                                2.79E-16  ok
 mixing: a uniform X stays                                3.17E-16  ok
 wind law: dOmega ~ Omega^n below saturation              0.00E+00  ok
 wind law: dOmega ~ Omega above saturation                0.00E+00  ok
+spin-down: saturated, error = (KT)^3/(12 N^2)            6.18E-04  ok
+spin-down: saturated, error ~ 1/N^2                      1.76E-03  ok
+spin-down: unsaturated, Omega_0 (1+2K Omega_0^2 T)^-1/2  6.10E-05  ok
+spin-down: unsaturated, error ~ 1/N^2                    3.82E-03  ok
+spin-down: a long step = its sub-steps                   1.42E-15  ok
+decay: mode 1 is the step's eigenvector                  0.00E+00  ok
+decay: mode 3 is the step's eigenvector                  2.22E-16  ok
+decay: grid rate -> kappa (pi/L)^2 as h^2                2.22E-04  ok
+decay: amplitude at T within 1% of exp(-1) (M = 64)      7.77E-03  ok
+decay: amplitude error ~ 1/M                             9.74E-03  ok
 velocities: U_ES ~ omega^2 (ratio 4)                     0.00E+00  ok
 velocities: solid body, U_ES without a shear term        0.00E+00  ok
 velocities: a uniform mu leaves U_ES alone               0.00E+00  ok
@@ -31,3 +41,31 @@ grids: the grid masses add up to the region's            0.00E+00  ok
 grids: the map back conserves J in a redistribution      5.15E-17  ok
 grids: the convection zone below takes the first change  2.22E-16  ok
 grids: the map back takes a loss to 1e-5                 5.52E-15  ok
+stability: GSF coefficient (32/3) H_P r^3/(G m Delta)    3.67E-14  ok
+stability: Eddington-Sweet coefficient                   2.65E-14  ok
+stability: Eddington-Sweet omega^4 coefficient           2.78E-14  ok
+stability: Eddington-Sweet shear coefficient             2.04E-14  ok
+stability: dynamical-shear limit                         7.97E-15  ok
+stability: mu-gradient Richardson term                   1.53E-14  ok
+stability: del_grad_diff with the end floors             1.91E-15  ok
+stability: interfaces midway in r                        5.53E-15  ok
+ MAX D(J/M)/(J/M)   1.000E-06 AT PT.   54 BY ITERATION
+   0.000E+00   0   1.000E-06   6
+checkj: within the tolerance: converged, omega from j    2.01E-16  ok
+checkj: above the tolerance: not converged               0.00E+00  ok
+ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+     ERROR IN SR CHECKJ
+     NEGATIVE J/M ENCOUNTERED IN ZONE   20 AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED
+RUN STOPPED
+checkj: a negative j stops the run                       0.00E+00  ok
+checkc: a small negative X becomes its neighbours' mean  0.00E+00  ok
+ ERROR IN SR CHECKC
+ TIMESTEP CUT NUMBER  1 DUE TO ANOMALOUS COMP NUMBER 1 IN ZONE   10 ABUNDANCE   -1.000E-03
+checkc: a negative X halves the sub-step for a redo      0.00E+00  ok
+ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+ ERROR IN SR CHECKC
+ ANOMALOUS COMP NUMBER 1 IN ZONE   10 ABUNDANCE   -1.000E-03
+ 3 ATTEMPTS AT TIMESTEP CUTTING FAILED
+RUN STOPPED
+checkc: the fourth cut stops the run                     0.00E+00  ok
+checkc: mu = A/(1+Z) for ionized H, He4, C12             1.66E-16  ok

@@ -34,7 +34,10 @@ def _to_float(tok):
         return None
 
 
-def compare_output(actual: str, expected: str, label: str):
+def compare_output(actual: str, expected: str, label: str, abs_floor: float = 0.0):
+    """Byte-compare, or (YREC_TEST_TOLERANT=1) compare numbers to REL_TOL;
+    two numbers both below abs_floor in magnitude (round-off around zero)
+    count as equal."""
     if actual == expected:
         return
     if os.environ.get("YREC_TEST_TOLERANT") != "1":
@@ -59,6 +62,8 @@ def compare_output(actual: str, expected: str, label: str):
             assert af is not None and ef is not None, (
                 f"{label}:{ln}: non-numeric difference {atok!r} vs {etok!r}"
             )
+            if abs(af) < abs_floor and abs(ef) < abs_floor:
+                continue
             denom = max(abs(af), abs(ef), 1.0e-300)
             assert abs(af - ef) / denom <= REL_TOL, (
                 f"{label}:{ln}: {atok} vs {etok} beyond rel tol {REL_TOL}"

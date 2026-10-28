@@ -26,4 +26,6 @@ def test_rotation_standalone(tmp_path):
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    compare_output(result.stdout, EXPECTED.read_text(), "test_rotation")
+    # a few printed values are round-off around zero (|x| < 1e-12), which
+    # another platform's libm may move: they count as equal
+    compare_output(result.stdout, EXPECTED.read_text(), "test_rotation", abs_floor=1.0e-12)

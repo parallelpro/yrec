@@ -54,7 +54,7 @@ jobs:
         run: make -C src -j4
 
       - name: Build standalone test programs
-        run: make -C src -j4 test_eos test_kap test_atm test_net
+        run: make -C src -j4 test_eos test_kap test_atm test_net test_rotation test_rotation_kernels
       - name: Build the extra-energy-source example (examples/other_energy)
         run: make -C src -j4 other_energy
       - name: Build libyrec (shared)
@@ -65,7 +65,7 @@ jobs:
       - name: Run per-module tests and boundary checker
         env:
           YREC_TEST_TOLERANT: "1"
-        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_net.py test_boundaries.py test_other_energy.py -v
+        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_net.py test_boundaries.py test_other_energy.py test_rotation.py test_rotation_kernels.py -v
 
   # Stage-0 solar regression (2026, test-depth item): runs the standard
   # solar case TWICE in-job -- the first run seeds the reference, the
