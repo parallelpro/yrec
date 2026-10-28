@@ -345,34 +345,20 @@ subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_m
 ! at the model zones.
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
 
-! i0..i1: the zones changed, the region widened through the convection
-! zones that zone_begin and zone_end lie in, if they do.
-      if (.not.convective_flag(zone_begin) .or. zone_begin.eq.1) then
-         i0 = zone_begin
-      else
-         do i = zone_begin - 1, 1, -1
-            if (.not.convective_flag(i)) then
-               i0 = i + 1
-               exit
-            end if
-         end do
-         if (i < (1)) then
-         i0 = 1
-         end if
-      end if
-      if (.not.convective_flag(zone_end) .or. zone_end.eq.num_points) then
-         i1 = zone_end
-      else
-         do i = zone_end+1, num_points
-            if (.not.convective_flag(i)) then
-               i1 = i - 1
-               exit
-            end if
-         end do
-         if (i > num_points) then
-         i1 = num_points
-         end if
-      end if
+! i0..i1: the zones changed: the region, widened through the convection
+! zones directly below zone_begin and above zone_end, the zones that
+! sum_zone_contents adds to the end cells, whether or not the end zone
+! is convective itself (docs/bug_sweep.md O13).
+      i0 = zone_begin
+      do i = zone_begin - 1, 1, -1
+         if (.not.convective_flag(i)) exit
+         i0 = i
+      end do
+      i1 = zone_end
+      do i = zone_end + 1, num_points
+         if (.not.convective_flag(i)) exit
+         i1 = i
+      end do
 ! dJ/J, splined in chi from the grid points to the region's model zones
 ! (eval_y(1:nmod)).
       nmod = zone_end - zone_begin + 1

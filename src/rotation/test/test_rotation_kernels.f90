@@ -81,10 +81,7 @@
 !                in a pure redistribution (to round-off: it then always
 !                rescales), matches a surface loss within its documented
 !                1e-5, and gives the convection zone below the region the
-!                region's first fractional change. (When the region's
-!                first zone is radiative, the grid still counts a
-!                convection zone below it but the map back leaves it
-!                alone: docs/bug_sweep.md O13, open.)
+!                region's first fractional change.
 !   region       diffuse_region_angular_momentum on the grids' region:
 !                J conserved without a wind (to round-off) while j
 !                moves; the wind's surface term, -(1/2) (dOmega_exp +
@@ -101,6 +98,10 @@
 !                agree for one star over a short step (to 1e-5), also
 !                with B-field scaling alone; with the wind off neither
 !                law brakes the convection zone;
+!   radiative end  a region whose first zone is radiative above a
+!                convection zone: the convection zone takes the region's
+!                first change, of j (equal_grid_to_model) and of the
+!                abundances (diffuse_composition_driver's final mixing);
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -143,7 +144,7 @@ program test_rotation_kernels
       use rotating_shape, only: rotation_shape_factors
       use am_transport_coefficients, only: am_diffusion_coeffs
       use am_transport_coefficients, only: solve_angular_momentum_transport
-      use rotational_mixing, only: composition_diffusion_coeffs
+      use rotational_mixing, only: composition_diffusion_coeffs, diffuse_composition_driver
       use numerics_lib, only: solve_tridiagonal
       use magnetic_braking, only: compute_solid_body_braking, wind_conditions
       use magnetic_braking, only: brake_convection_zone, outer_point_wind_terms
@@ -209,6 +210,7 @@ program test_rotation_kernels
       call dynamical_shear_check()
       call region_check()
       call grid_checks()
+      call radiative_end_checks()
       call region_transport_checks()
       call wind_terms_checks()
       call matt_forms_check()
@@ -782,6 +784,72 @@ subroutine grid_checks()
       call report("grids: the map back takes a loss to 1e-5", &
            abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)) - s_loss)/abs(s_loss), 1.0d-5)
 end subroutine grid_checks
+
+! ---------------------------------------------------------------
+! A transport region whose first zone is radiative, above a convection
+! zone (zones 1..5 below the region 6..40): the end cell's sums take the
+! convection zone in, and so does its write-back (docs/bug_sweep.md
+! O13). The map back gives the convection zone the region's first
+! change, of j as of each species' abundance (the composition's final
+! mixing). (The composition's map back is a spline of the grid's change
+! without a rescale, so sum m X is conserved only approximately, 2%
+! here.)
+subroutine radiative_end_checks()
+      integer, parameter :: zb = 6, ze = 40
+      type(transport_grid_state), save :: chi_grid
+      type(substep_physics_state), save :: sub_physics
+      real(dp) :: lum(json), lp(json), m(json), inertia(json), jm(json), w(json), &
+           d_am(json), d_mix(json), dj(json), jm1(json), comp(15, json), comp0(15, json), &
+           u(json), ratio_cz, err
+      logical :: conv(json)
+      integer :: k, zb_scan, ze_scan, ierr
+      do k = 1, n
+         f = dble(k - 1)/dble(n - 1)
+         lum(k) = 1.0d0 - exp(-(f/0.1d0)**2) + 1.0d-6
+         lp(k) = 17.0d0 - 8.0d0*f
+         m(k) = 10.0d0**log_m(k)
+         inertia(k) = 2.0d0/3.0d0*r(k)**2*dm(k)
+         w(k) = 3.0d-5*(1.0d0 + 0.5d0*f)
+         jm(k) = w(k)*inertia(k)/dm(k)
+         d_am(k) = 1.0d3*(1.0d0 + f)
+         d_mix(k) = 1.0d2*(1.0d0 + f)
+         conv(k) = k < zb
+         sub_physics%eps_plus_neu_grav(k) = 1.0d0
+      end do
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+! a redistribution: the convection zone below takes the first change
+      do k = 1, chi_grid%num_eq_points
+         dj(k) = 1.0d-3*chi_grid%eq_angular_momentum(k)*sin(6.0d0*dble(k)/dble(chi_grid%num_eq_points))
+      end do
+      dj(chi_grid%num_eq_points) = dj(chi_grid%num_eq_points) - sum(dj(1:chi_grid%num_eq_points))
+      jm1 = jm
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1)
+      ratio_cz = maxval(abs(jm1(1:zb-1)/jm(1:zb-1) - jm1(zb)/jm(zb)))
+      if (abs(jm1(1)/jm(1) - 1.0d0) < 1.0d-8) ratio_cz = 1.0d0
+      call report("grids: below a radiative first zone, the CZ takes it", ratio_cz, 1.0d-15)
+! the composition: a slope in slot 7 over the region, U > 0 on its
+! interfaces, the final mixing of slots 5..11 (D_mix for diffusion
+! numbers of order 1: much larger ones lose the tridiagonal solve's
+! pivots to cancellation)
+      comp = 0.0d0
+      do k = 1, n
+         comp(1, k) = 0.7d0; comp(2, k) = 0.28d0; comp(3, k) = 0.02d0
+         comp(5:11, k) = 1.0d-6*(1.0d0 + dble(k)/dble(n))
+         if (k < zb) comp(5:11, k) = comp(5:11, zb)
+      end do
+      comp0 = comp
+      u = 0.0d0
+      u(zb+1:ze) = 1.0d0
+      zb_scan = 0; ze_scan = 0
+      call diffuse_composition_driver(chi_grid, sub_physics, 3.0d14, d_mix, log_rho, lum, lp, &
+           log_r, log_m, m, dm, log_m(n), u, zb_scan, ze_scan, ze, zb + 1, conv, .true., n, &
+           comp, 5, 11, ierr)
+      err = maxval(abs(comp(7, 1:zb-1) - comp(7, zb)))/comp(7, zb)
+      if (ierr /= 0 .or. abs(comp(7, zb) - comp0(7, zb)) < 1.0d-12) err = 1.0d0
+      call report("mixing: below a radiative first zone, the CZ takes it", err, 1.0d-15)
+end subroutine radiative_end_checks
 
 ! ---------------------------------------------------------------
 ! diffuse_region_angular_momentum on the region of grid_checks (zones

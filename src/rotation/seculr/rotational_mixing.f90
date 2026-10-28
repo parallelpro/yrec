@@ -245,34 +245,20 @@ subroutine diffuse_composition(chi_grid, timestep, &
          end do
 ! eval_y: the change in X at the model points of the region.
          call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, ntab)
-! i0: the bottom of the convection zone that contains zone_begin
-! (zone_begin itself when it is radiative or zone 1).
-         if (convective_flag(zone_begin).and.zone_begin.gt.1) then
-            do zone_idx = zone_begin-1, 1, -1
-               if (.not.convective_flag(zone_idx)) then
-                  i0 = zone_idx + 1
-                  exit
-               end if
-            end do
-            if (zone_idx .lt. 1) i0 = 1
-         else
-            i0 = zone_begin
-         end if
-! i1: the top of the convection zone that contains zone_end (zone_end
-! itself when it is radiative or the surface zone).
-         if (convective_flag(zone_end).and.zone_end.lt.num_zones) then
-            do zone_idx = zone_end+1, num_zones
-               if (.not.convective_flag(zone_idx)) then
-                  i1 = zone_idx - 1
-                  exit
-               end if
-            end do
-            if (zone_idx .gt. num_zones) i1 = num_zones
-         else
-! (The F77 mixcom.f left i1 unset on this branch, so the He4 reset
-! below covered no zones there.)
-            i1 = zone_end
-         end if
+! i0..i1: the zones that take the region's change: the region and the
+! convection zones directly below zone_begin and above zone_end, whose
+! masses composition_grid adds to the end cells, whether or not the end
+! zone is convective itself (docs/bug_sweep.md O13).
+         i0 = zone_begin
+         do zone_idx = zone_begin-1, 1, -1
+            if (.not.convective_flag(zone_idx)) exit
+            i0 = zone_idx
+         end do
+         i1 = zone_end
+         do zone_idx = zone_end+1, num_zones
+            if (.not.convective_flag(zone_idx)) exit
+            i1 = zone_idx
+         end do
 ! Add the change to the model points of the region.
          do zone_idx = 1, ntab
             j_idx = zone_begin + zone_idx - 1

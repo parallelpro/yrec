@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 39 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 48 |
-| Open | 17 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 20 |
+| Fixed | 40 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 49 |
+| Open | 16 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 19 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -44,7 +44,6 @@ These open items depend on what the code was meant to do, not only on what it do
 - **O20:** is the calibration's dL/dα 0.0139 or 0.139?
 - **O15:** is the gradient-reversal safeguard wanted? It has been inactive since the F77 code.
 - **O12:** what tolerance should the solid-body Newton iteration stop at?
-- **O13:** should the end cell of a transport region include an adjacent convection zone, both in its sums and in its write-back?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
 - **O25:** under walpcz ≤ -2, should a convection zone that reaches the centre rotate as a solid body, or should the control be rejected?
 
@@ -109,7 +108,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | **O** | **Open: rotation, wind, microphysics and output (§6)** | | |
 | O11 | Dynamical-shear limit can overshoot or go negative | Yes | Fixed |
 | O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
-| O13 | Transport region ends: sums and write-back disagree | Yes | Open |
+| O13 | Transport region ends: sums and write-back disagree | Yes | Fixed |
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Open |
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Open |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Open |
@@ -1052,7 +1051,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O13. At a transport region's ends, the cell sums and the write-back disagree about a neighbouring convection zone
 
-- **Status:** open.
+- **Status:** fixed (2026-10-28), by the proposal below, as the default the authors can revisit: the end cell includes an adjacent convection zone in both its sums and its write-back, as the sums (the F77 code's fuller treatment) always did. `equal_grid_to_model` and `diffuse_composition` widen the zones changed through the convection zones directly beyond the region, whether or not the end zone is convective itself. `test_rotation_kernels` checks a region whose first zone is radiative above a convection zone: the convection zone takes the region's first change of j and of each abundance (both caught under the old rule). No rotating deck reaches this case: the 26 are byte-identical; `test_rotation`'s synthetic transport case, whose region ends below the convective envelope at a radiative zone, changes (the envelope now takes the end zone's change). The composition's map back remains a spline without a rescale, so species are conserved only approximately there (2% in the test's coarse region).
 - **In the original F77?** Yes. The sums are in ROTGRID and MIXGRID ([rotgrid.f:104-145](https://github.com/parallelpro/yrec/blob/6cd56739/src/rotgrid.f#L104-L145), [mixgrid.f:55-88](https://github.com/parallelpro/yrec/blob/6cd56739/src/mixgrid.f#L55-L88)), and the write-back in EQ2MOD and MIXCOM ([eq2mod.f:46-69](https://github.com/parallelpro/yrec/blob/6cd56739/src/eq2mod.f#L46-L69), [mixcom.f:97-119](https://github.com/parallelpro/yrec/blob/6cd56739/src/mixcom.f#L97-L119)):
   ```fortran
         IF(IBEG.GT.1)THEN
