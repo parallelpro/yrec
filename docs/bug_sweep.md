@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28). There are 64 items: 42 fixed and 22 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28). There are 65 items: 42 fixed and 23 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -46,6 +46,7 @@ These open items depend on what the code was meant to do, not only on what it do
 - **O12:** what tolerance should the solid-body Newton iteration stop at?
 - **O13:** should the end cell of a transport region include an adjacent convection zone, both in its sums and in its write-back?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
+- **O25:** under walpcz ≤ -2, should a convection zone that reaches the centre rotate as a solid body, or should the control be rejected?
 
 ### Summary
 
@@ -120,6 +121,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O22 | Profile N² column disagrees with the pulse files | No (2026) | Open |
 | O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
 | O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
+| O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1240,3 +1242,16 @@ These are found, recorded and left as they are, because each fix changes results
 - **What is wrong:** with a negative step the wind's ΔΩ changes sign, so the surface convection zone gains the angular momentum one step of wind would remove. It happens when all of these hold: rotation on, instability transport off, the wind torque on, no disk locking, a convective surface, and a model that is not aged (a rescale-only card, `run_kind = 2`, once log T_c ≥ 6.6, or a negative model number).
 - **Expected behaviour, and why:** a model that is not aged spans no time, so the wind should remove nothing, as the transport branch already ensures.
 - **Proposed fix:** pass `merge(s%dt, 0.0d0, evolve_model_flag)` to `evolve_angular_momentum`, as the Henyey pass already gets, so that the brake removes nothing over a zero step (or skip the wind in `spin_down_without_transport` for a non-positive step). One measured commit; only decks with the conditions above can move.
+
+### O25. Constant specific angular momentum in a fully convective star diverges at the centre
+
+- **Status:** open (found 2026-10-28 by a rotation variant deck). No shipped deck sets the law; the fix needs the authors' choice.
+- **In the original F77?** Yes. WCZ imposes a uniform j on the convection zone when `WALPCZ .LE. -2` ([wcz.f:18-30](https://github.com/parallelpro/yrec/blob/6cd56739/src/wcz.f#L18-L30)):
+  ```fortran
+        ELSE IF(WALPCZ.LE.-2.0D0)THEN
+  C  CONSTANT SPECIFIC ANGULAR MOMENTUM PER UNIT MASS IN THE C.Z.
+  ```
+- **Now:** [omega_profile.f90:401](https://github.com/parallelpro/yrec/blob/f0e8b4b6/src/rotation/omega_profile.f90#L401), `enforce_rotation_profile`'s constant-j branch.
+- **What is wrong:** with uniform j, ω = j/(I/dm) ∝ r⁻². When the surface convection zone reaches the centre (a fully convective pre-main-sequence star), the innermost zone's ω is huge, the shape factors go non-physical, and the temperature gradient takes a square root of a negative number: the run stops at its first model with NaN. Measured: the testsuite's `Test_solarGS98_difrotmixper18p4d1p0` deck with `new_zone_omega_weight = -2.0` (walpcz) stops at once.
+- **Expected behaviour, and why:** a rotation law should give a finite ω everywhere. Uniform j cannot hold down to r = 0.
+- **Proposed fix (authors' choice):** treat a convection zone that reaches the centre as a solid body under this law (as zones below the surface already are), or reject walpcz ≤ -2 at read time with a message. Either is one measured commit; no shipped deck moves.

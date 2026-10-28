@@ -2091,3 +2091,83 @@ the unit tests, test_reentry and (for the global star) test_pyyrec.
   (YREC_REGEN_CONTROLS=1 python3 -m pytest test_controls.py; check that
   only its line is added), and a new module or use statement needs
   `python3 tools/gen_makefile_deps.py`.
+
+### rotation/ Stage C: tested kernels, a mechanism list, records by stage (yrec-next, 2026-10-28)
+
+From the 2026-10-28 evaluation of rotation/ (readability 3.5, organization
+2.5, maintainability 2.5, extensibility 2, out of 5): the drivers read as
+named steps and the comments are good, but the three mechanisms were
+hard-wired through about ten places, one 70-field scratch record coupled
+seven modules, the velocities had no physics tests, and names misled.
+Every commit is byte-identical on 56 decks: the 40-deck set, 15 variants
+of `Test_solarGS98_difrotmixper18p4d1p0` stopped at 0.3 Gyr that switch
+on the options no shipped deck uses (the Zahn factor, GSF inhibition
+modes 0 and 2, solid-body modes 1 to 3 with a negative cz exponent,
+walpcz = -0.5, no transport in the core, no background diffusion, the
+basic composition, one iteration, no disk, the Kawaler law, no
+transport), and a rescale-only rotating deck. The unit tests and the
+MESA baselines pass on each.
+
+- **DONE: hygiene** (effa1b10): the species ranges named
+  (`last_mu_species`, `num_tracked_species()`); `solid_body_everywhere()`
+  for the six copies of the solid-body test; the chi scales named
+  settings (rotation no longer imports io's controls_buffer); the
+  double-meaning `unstable_zone_found` split; `dlnomega_dlnr`, which held
+  dω/d ln r, renamed; 17 never-written inout dummies made intent(in); the
+  registry's descriptions of walpcz (an exponent, not a weight) and lvfc
+  corrected.
+- **DONE: tested kernels** (8c1a7f33): `instability_velocities` (the
+  four velocity kernels, out of the 1043-line circulation.f90) and
+  `transport_regions` (the region scan, which two routines had copied),
+  both star-blind, with physics checks in `test_rotation_kernels`: ω²
+  scalings, no shear term or GSF for a solid body, the μ factor between
+  1/2 and 1, the shear's quadratic onset and its stabilization. Each
+  check fails under a mutation of its kernel.
+- **DONE: a mechanism list** (09d9c730): `state/transport_mechanism_layout`
+  slots, `star%mechanism_velocity(n, json)`, per-mechanism
+  `velocity_scale(:)` and `mixing_scale(:)`; the bookkeeping loops over
+  the slots, and `mechanism_sum` reproduces both former sums bit for bit.
+  Adding a mechanism is now five steps (rotation/README.md §4).
+- **DONE: records by stage, one name per quantity** (f0e8b4b6): `rot_scr`
+  split into `sub_model`, `stab` and `chi_grid` (with `sub_physics`, the
+  former `mid_scr`, and `circ_scr`), each routine taking the records it
+  uses; the `_mid` suffixes gone from the sub-step model; seven setup-only
+  interface fields made locals; the secular_transport alias table
+  emptied (`total_velocity`, `eq_*`, `diffusion_converged`).
+- **DONE: tests of the transport grid and the map back** (d793d630):
+  equally spaced chi points, grid masses that telescope to the region's,
+  J conserved by the map back in a redistribution and a loss taken to
+  its documented 1e-5, the convection zone below taking the region's
+  first change.
+- **DONE: the region's grid quantities in chi_grid** (78cb3b43): the six
+  `eq_*` arrays and `single_interface` live in the grid record, so
+  `am_transport_grid` (28 arguments to 20), the composition routines and
+  `apply_secular_transport` stop passing them; `grid_spacing`, a copy of
+  `eq_chi_spacing`, is gone.
+- **Found: O25** (docs/bug_sweep.md): walpcz ≤ -2 (constant j) in a fully
+  convective star gives ω ∝ r⁻² at the centre and NaN at the first model.
+  Inherited from WCZ; needs the authors' choice of fix.
+- **Seen: O13** in the grid test: with a radiative first zone the grid
+  counts a convection zone below it and the map back leaves it alone.
+- **Still open:**
+  1. `apply_secular_transport` (558 lines): 16 internal procedures share
+     about 20 host locals. Proposed: the per-region transport (grid,
+     solve, map back, mixing) as a module procedure with explicit
+     records, and the surface wind terms beside magnetic_braking.
+  2. The sub-step re-burns, settles and burns deuterium on the
+     interpolated model, calling back into core (rotation and core
+     depend on each other). Proposed: a core service "advance the
+     composition over an interval on a given model", which both the
+     step and the sub-steps call.
+  3. Argument lists of 15 to 26 remain where the drivers pass model
+     arrays one by one to routines that tests call with synthetic
+     arrays.
+  4. `star%omega_mid` keeps the misleading `_mid` (it is the sub-step
+     end's omega).
+  5. Physics checks for `rotation_stability_setup`'s coefficients and
+     `check_angular_momentum`.
+- **Method.** scratchpad `decks/rv_*` (the variants) and `check.py --set
+  rot|all`; `tighten.py` (every inout dummy flipped to intent(in),
+  compiled, and the ones gfortran names as written put back, per
+  procedure); each new check confirmed by a mutation of the code it
+  covers.

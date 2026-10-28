@@ -85,6 +85,11 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - the angular momentum diffusion conserves J without a wind, loses exactly the wind's surface term with one, and keeps a solid body;
 - the composition mixing conserves each species and keeps a uniform composition;
 - the Kawaler law's ω exponents below and above saturation.
+- the instability velocities: U_ES and U_GSF ~ ω², no shear term and no GSF for a solid body, the μ-gradient factor between 1/2 and 1, no shear velocity for a solid body or below the secular threshold, a quadratic shear onset above it, and a μ gradient's stabilization;
+- the region scan on a synthetic U profile;
+- the transport grid and the map back: equally spaced chi points, grid masses that add up to the region's, J conserved in a redistribution and a surface loss taken within 1e-5, the convection zone below the region taking its first change.
+
+Each of these checks was confirmed to fail under a mutation of the code it covers.
 
 The decks pin the full step: the rotating solar deck, the five rotating configuration-matrix decks, and the three testsuite rotating-mixing decks (differential and solid body). A deliberate change means regenerating `rotation/test/expected_test_rotation.out`.
 
