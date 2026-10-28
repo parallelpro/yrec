@@ -257,7 +257,7 @@ subroutine reload_model_if_diverged
              call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, &
                   s%triangle_orientation, ikut_flag, s%stored_vertex_index, &
                   s%model_diverged_flag, s%recompute_envelope_triangle, s%job%nk, &
-                  s%dlnrho_dlnp, s%dlnrho_dlnt, s%total_angular_momentum, &
+                  s%total_angular_momentum, &
                   s%total_rotational_ke, convective_velocity, &
                   s%job%mixture_weights, ierr)
              if (ierr /= 0) return
@@ -638,7 +638,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       call henyey_iterate(s, s%dt, max_iterations, converged, &
            s%model_diverged_flag, recompute_surface_bc, &
            envelope_recomputed_flag, saha_state, envelope_zone_index, &
-           s%dlnrho_dlnt, s%dlnrho_dlnp, iterations_done, ierr)
+           iterations_done, ierr)
 end subroutine solve_level
 
 ! ---------------------------------------------------------------

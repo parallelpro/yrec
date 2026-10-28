@@ -30,10 +30,13 @@ contains
 ! adiabatic_index_gamma1, the pulse_* arrays, the luminosity channels and
 ! the neutrino fluxes. The equations themselves, with their units and
 ! partials, are in shell_equations.f90's header.
-! dlnrho_dlnt and dlnrho_dlnp: on entry the starting point of the first
-! shell's eos; on return the last shell's values.
-subroutine compute_henyey_coefficients(s, delta_time, dlnrho_dlnt, dlnrho_dlnp, &
-     saha_state, envelope_zone_index, ierr)
+! Each shell's eos starts from the previous shell's result, the first
+! from a fresh eos_result. (Until 2026-10 the last pass's dln rho/dln P
+! and dln rho/dln T were carried into the next pass through the star, as
+! a starting value every eos family overwrites before reading it;
+! docs/bug_sweep.md O23.)
+subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
+     envelope_zone_index, ierr)
       use henyey_elimination
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
@@ -47,7 +50,6 @@ subroutine compute_henyey_coefficients(s, delta_time, dlnrho_dlnt, dlnrho_dlnp, 
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: delta_time
-      double precision, intent(inout) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: saha_state
       integer, intent(in) :: envelope_zone_index
       integer, intent(out) :: ierr
@@ -63,14 +65,15 @@ subroutine compute_henyey_coefficients(s, delta_time, dlnrho_dlnt, dlnrho_dlnp, 
 ! previous pass of the loop, at the shell below (prev).
       type(henyey_shell_terms) :: prev, cur
       double precision :: energy_sum_inverse
+! the current shell's dln rho/dln P and dln rho/dln T (the central
+! boundary condition and the pulse arrays)
+      double precision :: dlnrho_dlnt, dlnrho_dlnp
       integer :: im, im1, j
 
       ierr = 0
 
       call start_energy_bookkeeping()
       call set_structure_settings()
-      eos_res%dlnrho_dlnt = dlnrho_dlnt
-      eos_res%dlnrho_dlnp = dlnrho_dlnp
       do im = 1,s%nz
        call gather_shell_state()
        call evaluate_shell_equations(sh, cfg, eos_res, saha_state, cur, diag, ierr)

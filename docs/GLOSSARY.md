@@ -175,8 +175,8 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | ∂q_L/∂ln P | L☉ | `cur%ql_dp` | `QLP` | core/structure/structure_equations.f90 | `cccql`·(dε/dlnρ · ∂lnρ/∂lnP + entropy-term partials); absolute dε. |
 | ∂q_L/∂ln T | L☉ | `cur%ql_dt` | `QLT` | core/structure/structure_equations.f90 | `cccql`·(dε/dlnT + dε/dlnρ · ∂lnρ/∂lnT + entropy-term partials). |
 | ln10 m/L☉ | g s erg⁻¹ | `cccql` (local) | `CCCQL` | core/structure/structure_equations.f90:308 | `ln10_over_lsun · m`; converts ε to q_L. |
-| (∂lnρ/∂lnP) at fixed T | — | `dlnrho_dlnp` (henyey argument; also `star%dlnrho_dlnp`, `eos_res(i_dlnrho_dlnp)`) | `QDP` | eos/eos_lib.f90 (via `eos_get`) | Logarithmic density derivative; 1/χ_ρ. |
-| (∂lnρ/∂lnT) at fixed P | — | `dlnrho_dlnt` (also `star%dlnrho_dlnt`, `eos_res(i_dlnrho_dlnt)`) | `QDT` | eos/eos_lib.f90 | Logarithmic density derivative; −δ. |
+| (∂lnρ/∂lnP) at fixed T | — | `dlnrho_dlnp` (a local of `compute_henyey_coefficients`; `eos_res%dlnrho_dlnp`) | `QDP` | eos/eos_lib.f90 (via `eos_get`) | Logarithmic density derivative; 1/χ_ρ. |
+| (∂lnρ/∂lnT) at fixed P | — | `dlnrho_dlnt` (a local of `compute_henyey_coefficients`; `eos_res%dlnrho_dlnt`) | `QDT` | eos/eos_lib.f90 | Logarithmic density derivative; −δ. |
 | ∂ln∇/∂ln{T,P,R} | — | `dgrad_dt_component`, `dgrad_dp_component`, `dgrad_dr_component` | `QACT`, `QACP`, `QACR` | convection/temperature_gradients.f90 | Logarithmic derivatives of the convective gradient. |
 | — | mixed | `star%elim_coeff(4,2,json)` | `HHA` | core/structure/henyey_elimination.f90 | Recursion coefficients expressing (P,T)-row unknowns of shell *i* in terms of (R,L). |
 | — | dex / L☉ | `star%elim_rhs(4,json)` | `HHB` | core/structure/henyey_elimination.f90, core/structure/henyey_elimination.f90 | Residuals during elimination; overwritten in place with the corrections (ΔlogP, ΔlogT, ΔlogR, ΔL) by `henyey_solve` (trap 11). |

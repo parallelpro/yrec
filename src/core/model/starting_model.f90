@@ -54,7 +54,7 @@ contains
 ! shell_physics' log10_* names.
 subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
      triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
-     envelope_recomputed_flag, run_index, dlnrho_dlnp, dlnrho_dlnt, &
+     envelope_recomputed_flag, run_index, &
      total_angular_momentum, total_rotational_ke, convective_velocity, &
      species_mix_weights, ierr)
       use am_regions, only: am_convective_regions
@@ -86,7 +86,6 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       logical, intent(in) :: model_failed_flag
       logical, intent(inout) :: envelope_recomputed_flag
       integer, intent(in) :: run_index
-      double precision, intent(out) :: dlnrho_dlnp, dlnrho_dlnt
       double precision, intent(inout) :: total_angular_momentum, &
            total_rotational_ke
       double precision, intent(out) :: convective_velocity
@@ -190,11 +189,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       ikut_flag = 0
       iread = s%ctrl%first_unit
 
-! Initial values: no convective velocity, and the ideal-gas
-! dlnrho/dlnT = -1 and dlnrho/dlnP = 1.
+! Initial value: no convective velocity.
       convective_velocity = 0.0d0
-      dlnrho_dlnt = -1.0d0
-      dlnrho_dlnp = 1.0d0
 
       call acquire_starting_model
       if (ierr /= 0) return

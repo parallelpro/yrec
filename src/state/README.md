@@ -195,8 +195,6 @@ How to read the tables:
 | `max_correction_index(4)` | point of the largest correction of each variable | - | `henyey_iteration` (find_largest_corrections) | `henyey_iteration` | only for the convergence log |
 | `surface_bc(6)` | outer boundary-condition rows from the envelope fit, in `henyey_solve`'s form | - | `henyey_iteration` (form_surface_bc_rows) | `henyey_iteration` |  |
 | `newton_iterations` | Newton iterations of the step's solve, counted over its levels up to the last convergence | - | `henyey_iteration` (accept_small_residuals, set_henyey_correction_factor) | `run_log` | for the run-log model line |
-| `dlnrho_dlnp` | dln rho/dln P of the outermost shell of the last coefficient pass | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | none | effectively write-only: it reaches the next pass only through `henyey_iterate`'s intent(out) dummy, as an eos starting value the eos overwrites; set to 1 by a model read |
-| `dlnrho_dlnt` | dln rho/dln T of the outermost shell of the last coefficient pass | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | none | as dlnrho_dlnp (set to -1 by a model read) |
 
 ### 3.7 Diagnostics written during the solve
 
@@ -360,13 +358,7 @@ None: `old_shell_mass` and `converged_zone` were removed in 2026-10.
 
 None of these has been removed; each needs a look before it goes.
 
-**Removed in 2026-10**: `old_shell_mass` and `converged_zone` (never referenced), `old_moment_of_inertia` and `log10_solar_mass` (written, never read); the diagnostics no writer emitted, `fxion_zone`, `scp` (a copy of `pulse_specific_heat`), `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone` and `pulse_dlnrho_dlnp`, and the always-zero `valfmlt`, `vphmlt` and `vcmxmlt` (zero in the F77 code too: their source scalars were only ever zeroed, for a pulsation format since retired); the outputs no caller used, now locals of the callers: `qiw` (`omega_from_j`'s di_domega, recomputed by every user), `chosen_dt`, `ikut_flag` and `convective_velocity` (of `compute_timestep` and `read_starting_model`), `mixed_zone_bounds_no_overshoot` and `radiative_zone_bounds` (of the convection-zone search), and `initial_composition_code` (read with a Model2 file); `envelope_cz_log_radius` became a local of `locate_surface_cz_base`.
-
-**Written but never read** (no reader uses the stored value): `dlnrho_dlnp`, `dlnrho_dlnt`.
-
-Notes on the second list:
-
-- `dlnrho_dlnp` and `dlnrho_dlnt` reach the next coefficient pass only through `henyey_iterate`'s `intent(out)` dummies, as starting values the EOS overwrites.
+**Removed in 2026-10**: `old_shell_mass` and `converged_zone` (never referenced), `old_moment_of_inertia` and `log10_solar_mass` (written, never read); the diagnostics no writer emitted, `fxion_zone`, `scp` (a copy of `pulse_specific_heat`), `he3_he3_luminosity_zone`, `he3_burning_luminosity_zone` and `pulse_dlnrho_dlnp`, and the always-zero `valfmlt`, `vphmlt` and `vcmxmlt` (zero in the F77 code too: their source scalars were only ever zeroed, for a pulsation format since retired); the outputs no caller used, now locals of the callers: `qiw` (`omega_from_j`'s di_domega, recomputed by every user), `chosen_dt`, `ikut_flag` and `convective_velocity` (of `compute_timestep` and `read_starting_model`), `mixed_zone_bounds_no_overshoot` and `radiative_zone_bounds` (of the convection-zone search), and `initial_composition_code` (read with a Model2 file); `envelope_cz_log_radius` became a local of `locate_surface_cz_base`; `dlnrho_dlnp` and `dlnrho_dlnt`, which reached the next coefficient pass only as an EOS starting value every EOS family overwrites, became locals of `compute_henyey_coefficients` (`docs/bug_sweep.md` O23).
 
 ## 6. Names that mislead
 

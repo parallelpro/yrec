@@ -481,7 +481,7 @@ module star_info_lib
             integer :: h_shell_end_index, h_shell_midpoint_zone, &
                  h_shell_zone_begin, stored_vertex_index
             double precision :: dt, &
-                 dt_saved, dlnrho_dlnp, dlnrho_dlnt, &
+                 dt_saved, &
                  max_domega_frac, timestep_yr, total_angular_momentum, &
                  total_rotational_ke, triangle_orientation
 ! -- the extended-model pulse physics arrays (former pulse%) --

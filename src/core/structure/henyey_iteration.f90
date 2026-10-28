@@ -133,8 +133,7 @@ end subroutine refresh_surface_bc
 !----------------------------------------------------------------------
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
-     saha_state, envelope_zone_index, dlnrho_dlnt, dlnrho_dlnp, &
-     iterations_done, ierr)
+     saha_state, envelope_zone_index, iterations_done, ierr)
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, &
            i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
            i_lum_extra, n_lum_channels
@@ -153,7 +152,6 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
       integer, intent(inout) :: saha_state
       integer, intent(in) :: envelope_zone_index
-      double precision, intent(out) :: dlnrho_dlnt, dlnrho_dlnp
       integer, intent(inout) :: iterations_done
       integer, intent(out) :: ierr
 
@@ -209,7 +207,7 @@ subroutine linearize_structure_equations()
        s%max_residual(2) = 0.0d0
        s%max_residual(3) = 0.0d0
        s%max_residual(4) = 0.0d0
-       call compute_henyey_coefficients(s, delta_time,dlnrho_dlnt,dlnrho_dlnp,saha_state, &
+       call compute_henyey_coefficients(s, delta_time, saha_state, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! Propagate the failure to the caller.
