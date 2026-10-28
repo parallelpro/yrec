@@ -1123,7 +1123,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O17. Magnetic braking: the solid-body Matt factor lacks 1/G, the Matt law ignores the wind switch, and B-field scaling without Rossby scaling gives zero torque
 
-- **Status:** item 1 fixed (2026-10-28); items 2 and 3 open. `test_braking` pins the behaviour.
+- **Status:** items 1 and 2 fixed (2026-10-28); item 3 open. `test_braking` pins the behaviour.
+- **Item 2, what we did:** `brake_convection_zone` returns without braking when the wind is off, for the Matt law as for Kawaler's. `test_rotation_kernels` checks both laws (a mutation that drops the test is caught). No rotating deck runs the Matt law with the wind off: the 26 are byte-identical; `test_rotation`'s wind-off case now keeps j.
 - **Item 1, what we did:** `compute_solid_body_braking`'s solar centrifugal term divides by G, as `brake_convection_zone`'s does. `test_rotation_kernels` checks that the two forms give one star the same drop of omega over a short step (to 3e-6; 1.7e-3 apart before). Measured on the 26 rotating decks: the 14 Matt-law decks whose transport reaches the surface move (the Kawaler and solid-body decks do not use this form); the solid-body form's drop of omega rises by 0.17%, and J at 4.57 Gyr falls by 4e-4 in the testsuite's rotating solar decks (surface omega by 4e-4, log L by 2e-5 at most), by up to 1.6e-3 in the variants.
 - **In the original F77?** Yes, all three:
   - MCOWIND divides by `EXP(CLN*GL)`, where `GL` is an undeclared, never-set local (zero, so the factor is 1). MWIND uses `CGL` ([mcowind.f:107](https://github.com/parallelpro/yrec/blob/6cd56739/src/mcowind.f#L107), [mwind.f:86](https://github.com/parallelpro/yrec/blob/6cd56739/src/mwind.f#L86)).

@@ -100,7 +100,10 @@ subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bot
       law%conditions = conditions
       law%cz_moment_of_inertia = cz_moment_of_inertia
       law%total_mass_msun = total_mass_msun
+! Neither law removes angular momentum with the wind off (the Matt law
+! once did; docs/bug_sweep.md O17).
       if (rotation_settings%use_pmm_wind_law) then
+         if (.not. wind_loss_active) return
          call set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       else
          call set_kawaler_law(.true., law, ierr)

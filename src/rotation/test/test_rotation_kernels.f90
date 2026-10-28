@@ -98,7 +98,8 @@
 !                (fresh when there is none); none with the wind torque
 !                off;
 !   Matt forms   the Matt law's solid-body and convection-zone forms
-!                agree for one star over a short step (to 1e-5);
+!                agree for one star over a short step (to 1e-5); with
+!                the wind off neither law brakes the convection zone;
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -956,7 +957,18 @@ subroutine matt_forms_check()
            i_cz, jm, cond, ierr)
       d_cz = omega - jm(1)*m_cz/i_cz
       call report("wind law: the Matt law's two forms agree", abs(d_cz/d_start - 1.0d0), 1.0d-5)
+! with the wind off neither law brakes the convection zone
+! (docs/bug_sweep.md O17: the Matt law once did)
+      jm(1) = omega*i_cz/m_cz
+      call brake_convection_zone(0.0d0, dt, 0.0d0, m_cz, 1, 1, .false., omega, 1.0d0, 3.762d0, &
+           i_cz, jm, cond, ierr)
+      d_cz = abs(jm(1) - omega*i_cz/m_cz)
       rotation_settings%use_pmm_wind_law = .false.
+      jm(1) = omega*i_cz/m_cz
+      call brake_convection_zone(0.0d0, dt, 0.0d0, m_cz, 1, 1, .false., omega, 1.0d0, 3.762d0, &
+           i_cz, jm, cond, ierr)
+      d_cz = d_cz + abs(jm(1) - omega*i_cz/m_cz)
+      call report("wind law: neither law brakes with the wind off", d_cz, 0.0d0)
 end subroutine matt_forms_check
 
 ! ---------------------------------------------------------------
