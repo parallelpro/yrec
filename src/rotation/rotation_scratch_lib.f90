@@ -142,6 +142,17 @@ module rotation_scratch_lib
                 eq_enclosed_mass(json)
            double precision :: eq_chi_spacing
            integer :: num_eq_points
+! The region's quantities on the grid (am_transport_grid, or
+! composition_grid for the composition): the diffusion coefficients of
+! angular momentum and of the composition at the grid edges (with the
+! Jacobian factor of the change to chi; legacy ECOD, ECOD2), each grid
+! zone's mass (g; EM), moment of inertia, angular momentum (EJ) and
+! omega; and single_interface, a region of a single unstable interface,
+! which the transport skips (legacy LDUM2).
+           double precision :: eq_am_diffusion_coeff(json), &
+                eq_mixing_diffusion_coeff(json), eq_moment_of_inertia(json), &
+                eq_angular_momentum(json), eq_mass(json), eq_omega(json)
+           logical :: single_interface
       end type transport_grid_state
 
 ! ---------------------------------------------------------------

@@ -406,10 +406,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       logical :: convective(json), active
       integer :: zmin, zmax
       double precision :: log_m(json), dm(json), inertia(json), di_dw(json), jm(json), jm0(json), &
-           eta2(json), xa(15,json), xa0(15,json), eq_d_am(json), eq_d_mix(json), eq_i(json), &
-           eq_j(json), eq_m(json), eq_w(json), sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), dj(json), solution(json), grid_spacing, sum_dj, wind_term
-      logical :: single_interface, mixed_ok
+           eta2(json), xa(15,json), xa0(15,json), sub_diag(json), diag(json), super_diag(json), &
+           rhs(json), dj(json), solution(json), sum_dj, wind_term
+      logical :: mixed_ok
       integer :: zbeg, zend
       double precision :: log_rc, weight, lum_total, f, p
       integer :: i, it, s
@@ -547,20 +546,19 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          end do
          call am_transport_grid(chi_grid, sub_physics, &
               d_am, d_mix, log_rho, inertia, jm, lum, log_p, log_r, radius, &
-              log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w, grid_spacing, &
-              eq_d_am, eq_d_mix, eq_i, eq_j, eq_m, eq_w, single_interface)
-         call am_diffusion_coeffs(eq_d_am, grid_spacing, 3.0d13, eq_i, eq_j, eq_w, chi_grid%num_eq_points, &
+              log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w)
+         call am_diffusion_coeffs(chi_grid%eq_am_diffusion_coeff, chi_grid%eq_chi_spacing, 3.0d13, chi_grid%eq_moment_of_inertia, chi_grid%eq_angular_momentum, chi_grid%eq_omega, chi_grid%num_eq_points, &
               0.0d0, 0.0d0, .false., sub_diag, diag, super_diag, rhs, wind_term)
-         call solve_angular_momentum_transport(chi_grid%num_eq_points, eq_i, dj, sum_dj, sub_diag, diag, &
+         call solve_angular_momentum_transport(chi_grid%num_eq_points, chi_grid%eq_moment_of_inertia, dj, sum_dj, sub_diag, diag, &
               super_diag, rhs, solution, wind_term, ierr)
-         call equal_grid_to_model(chi_grid, dj, eq_j, dm, zbeg, zend, convective, n, sum_dj, jm)
+         call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zbeg, zend, convective, n, sum_dj, jm)
          mixed_ok = .false.
          call diffuse_composition_driver(chi_grid, sub_physics, &
-              3.0d13, d_mix, eq_d_mix, eq_m, log_rho, lum, log_p, &
+              3.0d13, d_mix, log_rho, lum, log_p, &
               log_r, log_m, m, dm, log10(m(n)), v_total, zbeg, zend, zmax, zmin, convective, &
               mixed_ok, n, xa, 1, 4, ierr)
          write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", chi_grid%num_eq_points, &
-              "  one interface", single_interface, "  ierr", ierr
+              "  one interface", chi_grid%single_interface, "  ierr", ierr
          write(*,'(a,1pe24.15)') "sum dJ", sum_dj
          write(*,'(a)') "zone  d(j/m)/(j/m) dX dHe4"
          do s = 1, size(shown)

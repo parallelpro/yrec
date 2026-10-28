@@ -108,13 +108,10 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
       integer, intent(out) :: ierr
 
 ! --- locals (arrays of size json) ---
-      double precision :: dynamical_shear_omega_limit(json), eq_mass(json), &
-           am_diffusion_coeff(json), eq_mixing_diffusion_coeff(json), &
-           eq_moment_of_inertia(json), eq_angular_momentum(json), &
-           eq_am_diffusion_coeff(json), radius(json), radius_mid(json), &
+      double precision :: dynamical_shear_omega_limit(json), &
+           am_diffusion_coeff(json), radius(json), radius_mid(json), &
            domega_dlnr(json), eq_delta_angular_momentum(json), &
-           specific_angular_momentum_prev(json), omega_start(json), &
-           eq_omega(json)
+           specific_angular_momentum_prev(json), omega_start(json)
 
 ! The tridiagonal system of the angular momentum diffusion equation:
 ! am_diffusion_coeffs fills it and solve_angular_momentum_transport
@@ -141,8 +138,6 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
 ! region_found: the region scan found another unstable region
       logical :: transport_active, region_found
       integer :: zone_begin, zone_end
-      double precision :: grid_spacing
-      logical :: single_interface_flag
       logical :: fix_omega_at_surface
       logical :: diffusion_converged
       double precision :: wind_loss_explicit, wind_loss_implicit
@@ -422,7 +417,7 @@ subroutine transport_unstable_regions()
          call grid_unstable_region()
 ! A region of a single unstable interface (zone_end - zone_begin <= 1;
 ! legacy LDUM2) is skipped.
-         if(single_interface_flag) then
+         if(chi_grid%single_interface) then
             if(scan_start_zone.le.zone_max) then
                cycle region_loop
             else
@@ -459,18 +454,15 @@ end subroutine find_unstable_region
 !   chi = log M/dm + L/(L_tot dl) - log P/dp
 ! (rotation_scratch_lib), so that the angular momentum grid stays close
 ! to the structure's: D_omega, D_mix, I, J, m and omega on that grid
-! (am_transport_grid), with its spacing grid_spacing.
-! single_interface_flag marks a region of a single unstable interface.
+! (am_transport_grid), with its spacing chi_grid%eq_chi_spacing.
+! chi_grid%single_interface marks a region of a single unstable interface.
 subroutine grid_unstable_region()
       call am_transport_grid(chi_grid, sub_physics, &
            am_diffusion_coeff,mixing_diffusion_coeff,sub_model%log_density, &
            sub_model%moment_of_inertia,specific_angular_momentum_saved,sub_model%luminosity_lsun, &
            sub_model%log_pressure,sub_model%log_radius,radius,s%log_mass,s%m, &
            s%dm,s%log_total_mass,zone_begin,zone_end, &
-           sub_model%am_transport_convective_flag,s%nz,omega_start,grid_spacing, &
-           eq_am_diffusion_coeff,eq_mixing_diffusion_coeff, &
-           eq_moment_of_inertia,eq_angular_momentum,eq_mass,eq_omega, &
-           single_interface_flag)
+           sub_model%am_transport_convective_flag,s%nz,omega_start)
 end subroutine grid_unstable_region
 
 ! ---------------------------------------------------------------
@@ -479,7 +471,7 @@ end subroutine grid_unstable_region
 ! diffusion equation for omega at the end of the sub-step (primed),
 !   I_k (omega'_k - omega_k) = (dt/dchi) [D_{k+1} (omega'_{k+1} - omega'_k)
 !                                        - D_k (omega'_k - omega'_{k-1})],
-! with D_k = eq_am_diffusion_coeff(k) at the edge between points k-1
+! with D_k = chi_grid%eq_am_diffusion_coeff(k) at the edge between points k-1
 ! and k and no flux through the region's ends (am_diffusion_coeffs).
 ! When the region reaches the surface convection zone, its outermost
 ! point also loses the wind's I_n (wind_loss_explicit +
@@ -493,22 +485,22 @@ subroutine transport_angular_momentum_in_region()
       if (ierr /= 0) return
       diffusion_converged = .false.
 ! The diffusion equation's tridiagonal system.
-      call am_diffusion_coeffs(eq_am_diffusion_coeff,grid_spacing,sub_timestep, &
-           eq_moment_of_inertia,eq_angular_momentum,eq_omega,chi_grid%num_eq_points, &
+      call am_diffusion_coeffs(chi_grid%eq_am_diffusion_coeff,chi_grid%eq_chi_spacing,sub_timestep, &
+           chi_grid%eq_moment_of_inertia,chi_grid%eq_angular_momentum,chi_grid%eq_omega,chi_grid%num_eq_points, &
            wind_loss_explicit,wind_loss_implicit,fix_omega_at_surface, &
            sub_diag,diag,super_diag,rhs,surface_wind_loss_term)
 ! Its solve: eq_delta_angular_momentum = I (omega' - omega) at each
 ! grid point, sum_delta_angular_momentum their sum.
-      call solve_angular_momentum_transport(chi_grid%num_eq_points,eq_moment_of_inertia, &
+      call solve_angular_momentum_transport(chi_grid%num_eq_points,chi_grid%eq_moment_of_inertia, &
            eq_delta_angular_momentum,sum_delta_angular_momentum, &
            sub_diag,diag,super_diag,rhs,unused_tridia_solution, &
            surface_wind_loss_term, ierr)
       if (ierr /= 0) return
 ! (commented out: the advection-diffusion branch)
 !      else
-!         call am_advection_diffusion_coeffs(grid_spacing,sub_timestep,eq_moment_of_inertia, &
-!              eq_omega,chi_grid%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
-!              eq_delta_angular_momentum,eq_mixing_diffusion_coeff, &
+!         call am_advection_diffusion_coeffs(chi_grid%eq_chi_spacing,sub_timestep,chi_grid%eq_moment_of_inertia, &
+!              chi_grid%eq_omega,chi_grid%num_eq_points,wind_loss_explicit,wind_loss_implicit, &
+!              eq_delta_angular_momentum,chi_grid%eq_mixing_diffusion_coeff, &
 !              sum_delta_angular_momentum,fix_omega_at_surface, &
 !              diffusion_converged, ierr)
 !         if (ierr /= 0) return
@@ -517,7 +509,7 @@ subroutine transport_angular_momentum_in_region()
 ! zones (and any convection zone adjoining it), rescaled if needed so
 ! that the total change is sum_delta_angular_momentum
 ! (equal_grid_to_model).
-      call equal_grid_to_model(chi_grid, eq_delta_angular_momentum,eq_angular_momentum, &
+      call equal_grid_to_model(chi_grid, eq_delta_angular_momentum,chi_grid%eq_angular_momentum, &
            s%dm,zone_begin,zone_end,sub_model%am_transport_convective_flag, &
            s%nz,sum_delta_angular_momentum,s%j_rot)
 end subroutine transport_angular_momentum_in_region
@@ -542,7 +534,7 @@ subroutine set_surface_wind_terms()
 ! its start (wind_loss_explicit) and at its current end
 ! (wind_loss_implicit, averaged with its previous value from the second
 ! iteration on), for the outermost grid point's moment of inertia.
-               cz_moment_of_inertia = eq_moment_of_inertia(chi_grid%num_eq_points)
+               cz_moment_of_inertia = chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points)
                omega_surface = s%omega_mid(s%nz)
                call compute_solid_body_braking(s%log_L,sub_timestep, &
                     cz_moment_of_inertia,iteration,omega_surface, &
@@ -603,7 +595,7 @@ end subroutine mix_remaining_species
 ! diffusion_solve_ok is set.
 subroutine mix_composition()
       call diffuse_composition_driver(chi_grid, sub_physics, sub_timestep,mixing_diffusion_coeff, &
-           eq_mixing_diffusion_coeff,eq_mass,sub_model%log_density,sub_model%luminosity_lsun, &
+           sub_model%log_density,sub_model%luminosity_lsun, &
            sub_model%log_pressure,sub_model%log_radius,s%log_mass,s%m,s%dm, &
            s%log_total_mass,total_velocity,zone_begin,zone_end,zone_max, &
            zone_min,sub_model%am_transport_convective_flag,diffusion_solve_ok, &

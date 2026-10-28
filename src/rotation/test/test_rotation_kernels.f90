@@ -452,10 +452,9 @@ subroutine grid_checks()
       type(transport_grid_state), save :: chi_grid
       type(substep_physics_state), save :: sub_physics
       real(dp) :: lum(json), lp(json), m(json), inertia(json), jm(json), w(json), &
-           d_am(json), d_mix(json), eq_d_am(json), eq_d_mix(json), eq_i(json), eq_j(json), &
-           eq_m(json), eq_w(json), dj(json), jm1(json), spacing, region_mass, &
+           d_am(json), d_mix(json), dj(json), jm1(json), spacing, region_mass, &
            grid_j, s_loss, err, ratio_cz, ratio_first
-      logical :: conv(json), single
+      logical :: conv(json)
       integer :: k
       rotation_settings%chi_mass_scale = 8.0d-2
       rotation_settings%chi_luminosity_scale = 2.0d-2
@@ -486,19 +485,18 @@ subroutine grid_checks()
       call report("grids: chi points equally spaced, end to end", err, 1.0d-12)
 ! the momentum grid's zone masses and J
       call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
-           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, spacing, eq_d_am, eq_d_mix, &
-           eq_i, eq_j, eq_m, eq_w, single)
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
       region_mass = 0.5d0*(m(ze) + m(ze+1)) - 0.5d0*(m(zb) + m(zb-1)) + sum(dm(1:zb-1))
       call report("grids: the grid masses add up to the region's", &
-           abs(sum(eq_m(1:chi_grid%num_eq_points)) - region_mass)/region_mass, 1.0d-13)
-      grid_j = sum(eq_j(1:chi_grid%num_eq_points))
+           abs(sum(chi_grid%eq_mass(1:chi_grid%num_eq_points)) - region_mass)/region_mass, 1.0d-13)
+      grid_j = sum(chi_grid%eq_angular_momentum(1:chi_grid%num_eq_points))
 ! the map back: a redistribution, then a loss of 1e-3 of the grid's J
       do k = 1, chi_grid%num_eq_points
-         dj(k) = 1.0d-3*eq_j(k)*sin(6.0d0*dble(k)/dble(chi_grid%num_eq_points))
+         dj(k) = 1.0d-3*chi_grid%eq_angular_momentum(k)*sin(6.0d0*dble(k)/dble(chi_grid%num_eq_points))
       end do
       dj(chi_grid%num_eq_points) = dj(chi_grid%num_eq_points) - sum(dj(1:chi_grid%num_eq_points))
       jm1 = jm
-      call equal_grid_to_model(chi_grid, dj, eq_j, dm, zb, ze, conv, n, 0.0d0, jm1)
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1)
       call report("grids: the map back conserves J in a redistribution", &
            abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)))/sum(jm(1:n)*dm(1:n)), 1.0d-13)
       ratio_first = jm1(zb)/jm(zb)
@@ -506,10 +504,10 @@ subroutine grid_checks()
       call report("grids: the convection zone below takes the first change", ratio_cz, 1.0d-15)
       s_loss = -1.0d-3*grid_j
       do k = 1, chi_grid%num_eq_points
-         dj(k) = s_loss*eq_j(k)/grid_j
+         dj(k) = s_loss*chi_grid%eq_angular_momentum(k)/grid_j
       end do
       jm1 = jm
-      call equal_grid_to_model(chi_grid, dj, eq_j, dm, zb, ze, conv, n, s_loss, jm1)
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, s_loss, jm1)
       call report("grids: the map back takes a loss to 1e-5", &
            abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)) - s_loss)/abs(s_loss), 1.0d-5)
 end subroutine grid_checks
