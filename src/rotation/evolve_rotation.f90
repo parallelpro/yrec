@@ -36,7 +36,8 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
      envelope_boundary_zone_prev, ierr)
       use am_regions, only: am_convective_regions
       use omega_profile, only: enforce_rotation_profile, omega_from_j
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, &
+           midstep_physics_state, circulation_velocity_state
       use mid_timestep_model
       use secular_transport
       use magnetic_braking, only: brake_convection_zone, wind_conditions
@@ -51,6 +52,14 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! step does not use
       double precision :: qiw(json)
       type(star_info), intent(inout) :: s
+! The step's rotation scratch (rotation_scratch_lib): the solver's
+! working arrays and the structure interpolated to the sub-step
+! (rot_scr), the physics interpolated to it (mid_scr) and the
+! circulation's previous iterates (circ_scr). On the heap for the step,
+! passed down as arguments.
+      type(rotation_diffusion_state), allocatable :: rot_scr
+      type(midstep_physics_state), allocatable :: mid_scr
+      type(circulation_velocity_state), allocatable :: circ_scr
 
       double precision, intent(in) :: full_timestep
       double precision, intent(inout) :: max_domega_step
@@ -132,6 +141,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun,s%logP, &
            s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,s%log_Teff, ierr)
       if (ierr /= 0) return
+      allocate(rot_scr, mid_scr, circ_scr)
 ! The sub-steps: the structure is interpolated between the start and the
 ! end of the step; a sub-step whose transport asks for a redo is
 ! repeated from its start, halved.
@@ -144,7 +154,8 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call record_substep_start_omega()
       fx = elapsed_substep_time/full_timestep
       s%fracstep = fx
-      call advance_rotation_substep(s, full_timestep, sub_timestep, fx, first_call, &
+      call advance_rotation_substep(s, rot_scr, mid_scr, &
+           full_timestep, sub_timestep, fx, first_call, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            core_boundary_zone, envelope_boundary_zone, &
            fully_convective_flag, surface_cz_active, &
@@ -331,7 +342,8 @@ subroutine apply_instability_transport()
       do zone_index = 1,s%nz
          specific_angular_momentum_saved(zone_index) = s%j_rot(zone_index)
       end do
-      call apply_secular_transport(s, sub_timestep, specific_angular_momentum_saved, &
+      call apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
+           sub_timestep, specific_angular_momentum_saved, &
            core_boundary_zone, envelope_boundary_zone, &
            redo_needed_flag, redo_count, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &

@@ -190,6 +190,33 @@ def check_scratch_private(src_root):
     return problems
 
 
+# Scratch modules that declare types only (2026-10): their owner's driver
+# keeps the instances for the step and passes them down as arguments, so
+# the module holds no state at all. Any declaration outside a type
+# block, other than a parameter, is a module variable.
+SCRATCH_TYPES_ONLY = ["rotation/rotation_scratch_lib.f90"]
+
+def check_scratch_types_only(src_root):
+    problems = []
+    for rel in SCRATCH_TYPES_ONLY:
+        code = strip_comments((src_root / rel).read_text(errors="replace"))
+        depth = 0
+        for line in join_continuations(code):
+            s = line.strip().lower()
+            if re.match(r"type\b\s*(,.*)?::", s) or re.match(r"type\s+\w+\s*$", s):
+                depth += 1
+                continue
+            if re.match(r"end\s*type\b", s):
+                depth -= 1
+                continue
+            if s.startswith("contains"):
+                break
+            if depth == 0 and "::" in s and not re.match(r"(public|private)\b", s) \
+                    and "parameter" not in s:
+                problems.append(f"{rel}: module variable ({line.strip()})")
+    return problems
+
+
 def check_star_blind(src_root):
     problems = []
     for rel in STAR_BLIND_FILES:
@@ -512,6 +539,14 @@ def main():
         print("Scratch used outside its domain (SCRATCH_OWNERS; pass the "
               "values as arguments or keep them on the star):")
         for b in scratch_problems:
+            print(f"  {b}")
+        return 1
+
+    types_problems = check_scratch_types_only(SRC)
+    if types_problems:
+        print("Scratch module holds state (SCRATCH_TYPES_ONLY; the driver "
+              "owns the instances and passes them down):")
+        for b in types_problems:
             print(f"  {b}")
         return 1
 

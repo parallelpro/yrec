@@ -60,15 +60,18 @@ module stability_coefficients
 
 contains
 
-subroutine rotation_stability_setup(log_density, local_gravity, luminosity, log_pressure, &
+subroutine rotation_stability_setup(rot_scr, mid_scr, &
+     log_density, local_gravity, luminosity, log_pressure, &
      log_radius, mass_unlogged, log_temperature, transport_zone_begin, &
      transport_zone_end, num_zones, radius_unlogged, &
      dynamical_shear_omega_limit)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &
            luminosity(json), log_pressure(json), log_radius(json), &

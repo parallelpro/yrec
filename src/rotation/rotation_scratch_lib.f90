@@ -7,17 +7,19 @@
 ! previous iterates of the circulation velocities
 ! (circ_scr). These are working arrays, not properties of the star (what
 ! the output or other domains read, and what outlives a step, lives on
-! star%). One module-level instance each. Nothing in them outlives a
-! step: every field is written within a step before it is read (all
-! three poisoned with NaN at every step start, 2026-10-13: every pinned
-! deck byte-identical), so an in-process rerun needs no restore.
+! star%). evolve_angular_momentum owns one instance of each for the
+! step and passes them down as arguments (rot_scr, mid_scr, circ_scr);
+! this module holds only the types. Nothing in them outlives a step:
+! every field is written within a step before it is read (all three
+! poisoned at every step start, 2026-10-13 and 2026-10-28: every pinned
+! deck byte-identical), so a step starts from unset records.
 module rotation_scratch_lib
       use rotation_configuration, only: rotation_settings
       use star_info_lib, only: json
       implicit none
       private
       public :: rotation_diffusion_state, midstep_physics_state, &
-           circulation_velocity_state, rot_scr, mid_scr, circ_scr
+           circulation_velocity_state
 
 ! (commented out with the advection-diffusion transport: the row
 ! capacity of the 10-column banded system of
@@ -188,10 +190,6 @@ module rotation_scratch_lib
             double precision :: secular_shear_velocity_prev(json)
             double precision :: gsf_circulation_velocity_prev(json)
       end type circulation_velocity_state
-
-      type(rotation_diffusion_state), save :: rot_scr
-      type(midstep_physics_state), save :: mid_scr
-      type(circulation_velocity_state), save :: circ_scr
 
 contains
 

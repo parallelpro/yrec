@@ -43,20 +43,23 @@ contains
 ! eq_mixing_diffusion_coeff; grid_spacing, the chi spacing. A region with
 ! a single unstable interface (zone_end - zone_begin <= 1) is not
 ! mapped: single_interface_flag is set, the other outputs are not.
-subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
+subroutine am_transport_grid(rot_scr, mid_scr, &
+     am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      moment_of_inertia, specific_angular_momentum, luminosity_lsun, &
      log_pressure, log_radius, radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, am_transport_convective_flag, &
      num_zones, omega, grid_spacing, eq_am_diffusion_coeff, &
      eq_mixing_diffusion_coeff, eq_moment_of_inertia, eq_angular_momentum, &
      eq_mass, eq_omega, single_interface_flag)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use equal_grid
       use star_info_lib, only: json
       use physical_constants
       use numerics_lib
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
 ! Inputs
       double precision, intent(in) :: am_diffusion_coeff(json), &
@@ -92,7 +95,7 @@ subroutine am_transport_grid(am_diffusion_coeff, mixing_diffusion_coeff, log_den
          single_interface_flag = .false.
       end if
 ! The grid equally spaced in chi.
-      call equal_spaced_grid(luminosity_lsun,log_pressure,log_mass,zone_begin, &
+      call equal_spaced_grid(rot_scr, luminosity_lsun,log_pressure,log_mass,zone_begin, &
            zone_end,num_zones)
       call interpolate_to_grid_centers()
       call sum_zone_contents()
@@ -327,13 +330,14 @@ end subroutine am_transport_grid
 ! and the grid points in chi.
 ! In/out:
 !   specific_angular_momentum : j at the model zones (cm^2/s).
-subroutine equal_grid_to_model(delta_angular_momentum, angular_momentum, shell_mass, &
+subroutine equal_grid_to_model(rot_scr, delta_angular_momentum, angular_momentum, shell_mass, &
      zone_begin, zone_end, convective_flag, num_points, &
      total_delta_angular_momentum, specific_angular_momentum)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state
       use star_info_lib, only: json
       use numerics_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
 
       double precision, intent(in) :: delta_angular_momentum(json), &
            angular_momentum(json), shell_mass(json)

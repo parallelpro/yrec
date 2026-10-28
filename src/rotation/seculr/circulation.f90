@@ -45,16 +45,21 @@ contains
 ! keep the books: they interpolate the physics to the interfaces
 ! (rot_scr), and store, clear, scale, average and sum the velocities
 ! (the arguments and circ_scr).
-subroutine circulation_velocities(log_radius, radius, zone_min, zone_max, iteration, &
+subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
+     log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
      dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
      total_luminosity, log_pressure, es_circulation_velocity, &
      gsf_circulation_velocity, secular_shear_velocity)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, &
+           midstep_physics_state, circulation_velocity_state
 
       use star_info_lib, only: json
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(circulation_velocity_state), intent(inout) :: circ_scr
 
       double precision, intent(in) :: log_radius(json), radius(json)
       integer, intent(in) :: zone_min, zone_max, iteration
@@ -781,14 +786,15 @@ end subroutine diffusion_velocity_scales
 !   alpha = (1/2) d ln(r^2 omega)/d ln r,
 ! and f_c = mixing_velocity_scale (legacy FC) plays the role of C/30.
 ! vfc = 0 where U <= 0, and everywhere if f_c <= 0 (no mixing).
-subroutine zahn_coupling_factor(log_density, radius, diffusion_velocity, zone_min, &
+subroutine zahn_coupling_factor(rot_scr, log_density, radius, diffusion_velocity, zone_min, &
      zone_max, angular_velocity, vfc)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state
 
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
 
 ! log_density: log10 rho (g/cm^3) at the zone centres.
 ! radius: the unlogged radius (cm) at the zone centres.
@@ -907,12 +913,14 @@ end subroutine zahn_coupling_factor
 ! lies outside, so Phi varies as 1/r^3 (the exterior l = 2 solution).
 ! gravity is copied to rot_scr%local_gravity for circulation_velocities.
 ! ierr = 1 if a pivot of the elimination is zero.
-subroutine compute_quadrupole(log_density, gravity, radius, angular_velocity, num_zones, ierr)
-      use rotation_scratch_lib
+subroutine compute_quadrupole(rot_scr, &
+     log_density, gravity, radius, angular_velocity, num_zones, ierr)
+      use rotation_scratch_lib, only: rotation_diffusion_state
       use star_info_lib, only: json
       use physical_constants
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
 
       double precision, intent(in) :: log_density(json), gravity(json), &
            radius(json), angular_velocity(json)

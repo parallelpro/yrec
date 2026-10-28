@@ -39,13 +39,14 @@ contains
 ! surface convection zone (surface_cz_active, cz_mass_bottom and
 ! cz_mass_top in g, moment_of_inertia_cz in g cm^2); the radiative and
 ! convective zone tables. A nonzero ierr stops the run.
-subroutine advance_rotation_substep(s, full_timestep, sub_timestep, time_fraction, first_call, &
+subroutine advance_rotation_substep(s, rot_scr, mid_scr, &
+     full_timestep, sub_timestep, time_fraction, first_call, &
      moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
      core_boundary_zone, envelope_boundary_zone, fully_convective_flag, &
      surface_cz_active, &
      radiative_zone_bounds, convective_zone_bounds, num_radiative_zones, &
      num_convective_zones, ierr)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use star_info_lib, only: star_info, i_eps_grav, i_eps_neu, i_h2, json
       use net_lib, only: burn_deuterium_region, min_deuterium_substep, &
            num_rate_rows
@@ -54,6 +55,8 @@ subroutine advance_rotation_substep(s, full_timestep, sub_timestep, time_fractio
            network_rates_of_model
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: full_timestep, sub_timestep
@@ -105,7 +108,7 @@ subroutine advance_rotation_substep(s, full_timestep, sub_timestep, time_fractio
 ! the step's end.
       call network_rates_of_model(s, rot_scr%log_density_mid, &
            rot_scr%log_temperature_mid, s%xa, s%nz, rate_by_zone)
-      call burn_and_settle(s, sub_timestep,s%xa,s%dm,rot_scr%log_temperature_mid, &
+      call burn_and_settle(s, mid_scr, sub_timestep,s%xa,s%dm,rot_scr%log_temperature_mid, &
            rate_by_zone, s%nz,radiative_zone_bounds,convective_zone_bounds, &
            num_radiative_zones,num_convective_zones &
            ,s%log_total_mass,rot_scr%log_density_mid,s%log_mass,rot_scr%log_radius_mid, &
@@ -377,13 +380,12 @@ end subroutine advance_rotation_substep
 ! 2. While diffuse_helium_active, settle helium (settle_helium).
 ! 3. Clip and renormalize the abundances (renormalize_composition).
 ! A nonzero ierr stops the run.
-subroutine burn_and_settle(s, timestep, composition, shell_mass, log_temperature, &
+subroutine burn_and_settle(s, mid_scr, timestep, composition, shell_mass, log_temperature, &
      rate_by_zone, num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
      log_density, log_mass, log_radius, log_pressure, convective_flag, &
      enclosed_mass, ierr)
-      use rotation_scratch_lib
-
+      use rotation_scratch_lib, only: midstep_physics_state
       use star_info_lib, only: star_info, json
       use io_units
       use run_log, only: solver_diagnostics
@@ -394,6 +396,7 @@ subroutine burn_and_settle(s, timestep, composition, shell_mass, log_temperature
       use net_lib, only: num_rate_rows
       implicit none
       type(star_info), intent(inout) :: s
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(inout) :: composition(15,json)

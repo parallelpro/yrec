@@ -166,15 +166,16 @@ end subroutine multiply_by_exp10
 ! rot_scr: chi at the region's model points; num_eq_points values
 ! eq_chi, equally spaced (eq_chi_spacing) from chi(1) to the last chi;
 ! and eq_enclosed_mass, the enclosed mass (g) at the eq_chi points.
-subroutine equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
+subroutine equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, zone_begin, &
      zone_end, num_zones)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state
       use star_info_lib, only: json
       use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use physical_constants
       use numerics_lib
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
 
 ! luminosity_lsun (legacy HL) is the luminosity itself in solar units,
 ! not its log: both callers pass rot_scr%luminosity_lsun_mid,

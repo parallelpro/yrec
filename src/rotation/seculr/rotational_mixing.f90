@@ -55,13 +55,17 @@ contains
 !    momentum transport (overshoot regions included).
 ! num_zones: the number of model zones.
 ! composition(15,:): the mass fractions (legacy HCOMP).
-subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
+subroutine diffuse_composition_driver(rot_scr, mid_scr, &
+     timestep, diffusion_coeff, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, log_density, luminosity_lsun, log_pressure, &
      log_radius, log_mass, enclosed_mass, shell_mass, log_total_mass, &
      velocity, zone_begin, zone_end, zone_max, zone_min, convective_flag, &
      final_iteration_flag, num_zones, composition, species_begin, species_end, ierr)
+      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use star_info_lib, only: json
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff(json)
@@ -84,7 +88,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 
       ierr = 0
       if (.not.final_iteration_flag) then
-         call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
+         call diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
@@ -122,7 +126,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
 ! Stop when the scan finds no further positive velocity.
          if (unstable_zone_found) then
 ! The equally spaced chi grid of the region.
-         call composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
+         call composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, luminosity_lsun, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
               log_total_mass, zone_begin, zone_end, convective_flag, &
               num_zones, equally_spaced_diffusion_coeff, equally_spaced_mass, &
@@ -136,7 +140,7 @@ subroutine diffuse_composition_driver(timestep, diffusion_coeff, equally_spaced_
             end if
          end if
 ! Mix species species_begin..species_end over the region.
-         call diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
+         call diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
               equally_spaced_mass, zone_begin, zone_end, &
               convective_flag, final_iteration_flag, num_zones, composition, &
               species_begin, species_end, ierr)
@@ -178,14 +182,15 @@ end subroutine diffuse_composition_driver
 !    momentum transport (overshoot regions included).
 ! num_zones: the number of model zones.
 ! composition(15,:): the mass fractions, updated in place.
-subroutine diffuse_composition(timestep, equally_spaced_diffusion_coeff, &
+subroutine diffuse_composition(rot_scr, timestep, equally_spaced_diffusion_coeff, &
      equally_spaced_mass, zone_begin, zone_end, &
      convective_flag, final_iteration_flag, num_zones, composition, &
      species_begin, species_end, ierr)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use numerics_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: equally_spaced_diffusion_coeff(json), &
@@ -399,17 +404,19 @@ end subroutine composition_diffusion_coeffs
 ! 4 pi r^2 rho D d chi/dr (g/s). When the region has only two zones (a
 ! single unstable interface) it sets single_interface_flag and does
 ! nothing else. am_transport_grid is the angular momentum counterpart.
-subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
+subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, convective_flag, num_zones, &
      equally_spaced_diffusion_coeff, equally_spaced_mass, &
      single_interface_flag)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, midstep_physics_state
       use equal_grid
       use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib
       implicit none
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(in) :: diffusion_coeff(json), &
            log_density(json), luminosity_lsun(json), log_pressure(json), &
@@ -435,7 +442,7 @@ subroutine composition_grid(diffusion_coeff, log_density, luminosity_lsun, &
          single_interface_flag = .false.
       end if
 ! The equally spaced grid: chi, eq_chi and eq_enclosed_mass.
-      call equal_spaced_grid(luminosity_lsun, log_pressure, log_mass, zone_begin, &
+      call equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, zone_begin, &
            zone_end, num_zones)
 ! The zone mass of each grid point. An interior point's zone runs from
 ! halfway to the point below to halfway to the point above.

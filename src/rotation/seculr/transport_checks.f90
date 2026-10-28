@@ -73,8 +73,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
      already_converged_flag, ierr)
       use omega_profile, only: solid_body_omega, omega_from_j, &
            default_inertia_tolerance
-      use rotation_scratch_lib
-
       use star_info_lib, only: star_info, json
       use io_units
       implicit none
@@ -395,14 +393,14 @@ end subroutine check_angular_momentum
 !   mid_scr%mu : the new mean molecular weight (from the second
 !      iteration on).
 !   ierr : nonzero stops the run.
-subroutine check_composition(s, composition, iteration_number, num_zones, &
+subroutine check_composition(s, mid_scr, composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
-      use rotation_scratch_lib
-
+      use rotation_scratch_lib, only: midstep_physics_state
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3
       use io_units
       implicit none
       type(star_info), intent(inout) :: s
+      type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: iteration_number

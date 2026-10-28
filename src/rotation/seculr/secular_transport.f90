@@ -77,12 +77,14 @@ contains
 ! mixing_diffusion_coeff and diffusion_velocity; star%am_diffusion_coeff
 ! and star%mixing_diffusion_coeff for the profile. A nonzero ierr stops
 ! the run.
-subroutine apply_secular_transport(s, sub_timestep, specific_angular_momentum_saved, &
+subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
+     sub_timestep, specific_angular_momentum_saved, &
      zone_min, zone_max, redo_flag, cut_count, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
      surface_cz_active, mixing_diffusion_coeff, diffusion_velocity, &
      diffusion_solve_ok, ierr)
-      use rotation_scratch_lib
+      use rotation_scratch_lib, only: rotation_diffusion_state, &
+           midstep_physics_state, circulation_velocity_state
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use convection_lib, only: homogenize_convection_zones
       use star_info_lib, only: star_info, json
@@ -91,6 +93,9 @@ subroutine apply_secular_transport(s, sub_timestep, specific_angular_momentum_sa
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
+      type(rotation_diffusion_state), intent(inout) :: rot_scr
+      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(circulation_velocity_state), intent(inout) :: circ_scr
       double precision, intent(inout) :: sub_timestep
       double precision, intent(in) :: specific_angular_momentum_saved(json)
       integer, intent(in) :: zone_min, zone_max
@@ -263,13 +268,15 @@ end subroutine restore_end_zone_flags
 ! the Eddington-Sweet circulation (compute_quadrupole, which sets ierr
 ! on a zero pivot).
 subroutine set_up_interfaces()
-      call rotation_stability_setup(rot_scr%log_density_mid,rot_scr%mean_gravity_mid,rot_scr%luminosity_lsun_mid,rot_scr%log_pressure_mid, &
+      call rotation_stability_setup(rot_scr, mid_scr, &
+           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,rot_scr%luminosity_lsun_mid,rot_scr%log_pressure_mid, &
            rot_scr%log_radius_mid,s%m,rot_scr%log_temperature_mid,zone_min,zone_max, &
            s%nz,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = s%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(s%nz)
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
            rot_scr%log_radius_mid,s%omega_mid,dlnomega_dlnr)
-      call compute_quadrupole(rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,s%omega_mid,s%nz,ierr)
+      call compute_quadrupole(rot_scr, &
+           rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,s%omega_mid,s%nz,ierr)
 end subroutine set_up_interfaces
 
 ! ---------------------------------------------------------------
@@ -306,13 +313,15 @@ end subroutine save_substep_start
 ! diffusion_velocity_scales scales D_mix (gated on LVFC as in the F77
 ! seculr.f, not on LDIFAD).
 subroutine compute_circulation()
-      call circulation_velocities(rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
+      call circulation_velocities(rot_scr, mid_scr, circ_scr, &
+           rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
            rot_scr%am_transport_convective_flag_mid,s%nz,s%omega_mid,unstable_zone_found, &
            dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,rot_scr%log_pressure_mid,s%es_circulation_velocity, &
            s%gsf_circulation_velocity,s%secular_shear_velocity)
       if(rotation_settings%use_zahn_coupling_factor) &
-           call zahn_coupling_factor(rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
+           call zahn_coupling_factor(rot_scr, &
+                rot_scr%log_density_mid,radius_unlogged,diffusion_velocity, &
            zone_min,zone_max,s%omega_mid,s%vfc)
 end subroutine compute_circulation
 
@@ -481,7 +490,8 @@ end subroutine find_unstable_region
 ! (am_transport_grid), with its spacing grid_spacing.
 ! single_interface_flag marks a region of a single unstable interface.
 subroutine grid_unstable_region()
-      call am_transport_grid(am_diffusion_coeff,mixing_diffusion_coeff,rot_scr%log_density_mid, &
+      call am_transport_grid(rot_scr, mid_scr, &
+           am_diffusion_coeff,mixing_diffusion_coeff,rot_scr%log_density_mid, &
            rot_scr%moment_of_inertia_mid,specific_angular_momentum_saved,rot_scr%luminosity_lsun_mid, &
            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,radius_unlogged,s%log_mass,s%m, &
            s%dm,s%log_total_mass,zone_begin,zone_end, &
@@ -535,7 +545,7 @@ subroutine transport_angular_momentum_in_region()
 ! zones (and any convection zone adjoining it), rescaled if needed so
 ! that the total change is sum_delta_angular_momentum
 ! (equal_grid_to_model).
-      call equal_grid_to_model(eq_delta_angular_momentum,eq_angular_momentum, &
+      call equal_grid_to_model(rot_scr, eq_delta_angular_momentum,eq_angular_momentum, &
            s%dm,zone_begin,zone_end,rot_scr%am_transport_convective_flag_mid, &
            s%nz,sum_delta_angular_momentum,s%j_rot)
 end subroutine transport_angular_momentum_in_region
@@ -598,7 +608,7 @@ subroutine check_iterate()
            diffusion_solve_ok,redo_flag,s%omega_mid,rot_scr%di_domega_mid,rot_scr%mean_radius_mid, &
            diffusion_converged, ierr)
       if (ierr /= 0) return
-      if(.not.redo_flag)call check_composition(s, s%xa,iteration, &
+      if(.not.redo_flag)call check_composition(s, mid_scr, s%xa,iteration, &
            s%nz,sub_timestep,cut_count, &
            diffusion_solve_ok,redo_flag, ierr)
       if (ierr /= 0) return
@@ -624,7 +634,7 @@ end subroutine mix_remaining_species
 ! its grid, during the iterations; across every region once
 ! diffusion_solve_ok is set.
 subroutine mix_composition()
-      call diffuse_composition_driver(sub_timestep,mixing_diffusion_coeff, &
+      call diffuse_composition_driver(rot_scr, mid_scr, sub_timestep,mixing_diffusion_coeff, &
            eq_mixing_diffusion_coeff,eq_mass,rot_scr%log_density_mid,rot_scr%luminosity_lsun_mid, &
            rot_scr%log_pressure_mid,rot_scr%log_radius_mid,s%log_mass,s%m,s%dm, &
            s%log_total_mass,diffusion_velocity,zone_begin,zone_end,zone_max, &
