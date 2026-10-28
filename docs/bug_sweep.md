@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 38 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 47 |
-| Open | 18 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 21 |
+| Fixed | 39 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 48 |
+| Open | 17 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 20 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -113,7 +113,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Open |
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Open |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Open |
-| O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Open |
+| O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
 | O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open |
 | O19 | Allard reader's misspelled flag; failed lookup used | Yes | Open |
 | O20 | Calibration dL/dα 0.0139 against the recorded 0.139 | Yes | Open |
@@ -1123,7 +1123,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O17. Magnetic braking: the solid-body Matt factor lacks 1/G, the Matt law ignores the wind switch, and B-field scaling without Rossby scaling gives zero torque
 
-- **Status:** items 1 and 2 fixed (2026-10-28); item 3 open. `test_braking` pins the behaviour.
+- **Status:** fixed (2026-10-28), one commit per item. `test_braking` pins the behaviour.
+- **Item 3, what we did:** τ_cz is interpolated whenever B-field scaling is on, with or without Rossby scaling, in both forms; the solid-body form scales Ω by τ_cz/τ_cz,⊙ in that case too, with a fixed saturation. `test_rotation_kernels` checks that both forms brake and agree with B-field scaling alone (two mutations, one per form, are caught). No rotating deck uses B-field scaling without Rossby scaling: the 26 are byte-identical; `test_rotation`'s case now removes angular momentum.
 - **Item 2, what we did:** `brake_convection_zone` returns without braking when the wind is off, for the Matt law as for Kawaler's. `test_rotation_kernels` checks both laws (a mutation that drops the test is caught). No rotating deck runs the Matt law with the wind off: the 26 are byte-identical; `test_rotation`'s wind-off case now keeps j.
 - **Item 1, what we did:** `compute_solid_body_braking`'s solar centrifugal term divides by G, as `brake_convection_zone`'s does. `test_rotation_kernels` checks that the two forms give one star the same drop of omega over a short step (to 3e-6; 1.7e-3 apart before). Measured on the 26 rotating decks: the 14 Matt-law decks whose transport reaches the surface move (the Kawaler and solid-body decks do not use this form); the solid-body form's drop of omega rises by 0.17%, and J at 4.57 Gyr falls by 4e-4 in the testsuite's rotating solar decks (surface omega by 4e-4, log L by 2e-5 at most), by up to 1.6e-3 in the variants.
 - **In the original F77?** Yes, all three:

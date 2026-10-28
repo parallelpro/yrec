@@ -98,8 +98,9 @@
 !                (fresh when there is none); none with the wind torque
 !                off;
 !   Matt forms   the Matt law's solid-body and convection-zone forms
-!                agree for one star over a short step (to 1e-5); with
-!                the wind off neither law brakes the convection zone;
+!                agree for one star over a short step (to 1e-5), also
+!                with B-field scaling alone; with the wind off neither
+!                law brakes the convection zone;
 !   stability    rotation_stability_setup on a structure whose logs of
 !                P, T and rho and whose other inputs are cubics in r, so
 !                that its 4-point Lagrange interpolation to the interfaces
@@ -969,6 +970,25 @@ subroutine matt_forms_check()
            i_cz, jm, cond, ierr)
       d_cz = d_cz + abs(jm(1) - omega*i_cz/m_cz)
       call report("wind law: neither law brakes with the wind off", d_cz, 0.0d0)
+! B-field scaling without Rossby scaling: both forms scale omega by
+! tau_cz/tau_cz(Sun) (here 2), and still agree (docs/bug_sweep.md O17:
+! tau_cz was left zero, which zeroed the convection zone's torque), over
+! a quarter of the step, since the scaling quadruples this torque
+      rotation_settings%use_pmm_wind_law = .true.
+      rotation_settings%scale_by_b_field = .true.
+      cond%turnover_timescale_start = 2.0d0*rotation_settings%pmm_solar_turnover_timescale
+      cond%turnover_timescale_end = cond%turnover_timescale_start
+      d_end = 0.0d0
+      call compute_solid_body_braking(0.0d0, 0.25d0*dt, i_cz, 1, omega, 1.0d0, 3.762d0, omega, &
+           d_start, d_end, cond, ierr)
+      jm(1) = omega*i_cz/m_cz
+      call brake_convection_zone(0.0d0, 0.25d0*dt, 0.0d0, m_cz, 1, 1, .true., omega, 1.0d0, 3.762d0, &
+           i_cz, jm, cond, ierr)
+      d_cz = omega - jm(1)*m_cz/i_cz
+      call report("wind law: B-field scaling alone, the two forms agree", &
+           abs(d_cz/d_start - 1.0d0), 1.0d-5)
+      rotation_settings%scale_by_b_field = .false.
+      rotation_settings%use_pmm_wind_law = .false.
 end subroutine matt_forms_check
 
 ! ---------------------------------------------------------------

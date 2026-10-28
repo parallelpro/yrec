@@ -63,6 +63,7 @@ wind terms: a first surface term starts afresh           0.00E+00  ok
 wind terms: none without the wind torque                 0.00E+00  ok
 wind law: the Matt law's two forms agree                 2.65E-06  ok
 wind law: neither law brakes with the wind off           0.00E+00  ok
+wind law: B-field scaling alone, the two forms agree     2.65E-06  ok
 stability: GSF coefficient (32/3) H_P r^3/(G m Delta)    3.67E-14  ok
 stability: Eddington-Sweet coefficient                   2.65E-14  ok
 stability: Eddington-Sweet omega^4 coefficient           2.78E-14  ok

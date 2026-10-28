@@ -183,8 +183,9 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
       omega_first = omega_old
       omega_now = omega_surface
       if (rotation_settings%use_pmm_wind_law) then
+         if (rotation_settings%scale_by_rossby_number .or. rotation_settings%scale_by_b_field) &
+              law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
          if (rotation_settings%scale_by_rossby_number) then
-            law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
             law%omega_saturation = rotation_settings%wind_saturation_omega*rotation_settings%pmm_solar_turnover_timescale/ &
                  law%turnover_timescale
 ! with B-field scaling, Omega and Omega_sat both carry tau_cz/tau_cz(Sun)
@@ -197,7 +198,16 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
                     rotation_settings%pmm_solar_turnover_timescale
             endif
          else
+! without Rossby scaling the saturation is fixed; B-field scaling
+! still scales Omega (as brake_convection_zone does; docs/bug_sweep.md
+! O17)
             law%omega_saturation = rotation_settings%wind_saturation_omega
+            if (rotation_settings%scale_by_b_field) then
+               omega_first = omega_first*law%turnover_timescale/ &
+                    rotation_settings%pmm_solar_turnover_timescale
+               omega_now = omega_now*law%turnover_timescale/ &
+                    rotation_settings%pmm_solar_turnover_timescale
+            endif
          endif
          law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff, &
               law%conditions)
@@ -304,8 +314,11 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       type(braking_law), intent(inout) :: law
 
       law%matt = .true.
+! B-field scaling needs tau_cz too, with or without Rossby scaling (it
+! was left zero without, which zeroed the torque; docs/bug_sweep.md O17)
+      if (rotation_settings%scale_by_rossby_number .or. rotation_settings%scale_by_b_field) &
+           law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
       if (rotation_settings%scale_by_rossby_number) then
-         law%turnover_timescale = interpolated_turnover_timescale(law%conditions)
          if (rotation_settings%scale_by_b_field) then
             law%omega_saturation = rotation_settings%wind_saturation_omega
          else
