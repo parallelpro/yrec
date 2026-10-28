@@ -152,7 +152,7 @@ physics	fk	real	wind_law_constant	verified		Kawaler/PMM wind-law constant factor
 physics	fw	real	difad_velocity_scale	canonical		
 physics	fc	real	mixing_velocity_scale	canonical		
 physics	fo	real	coupling_factor	verified		Echoed as COUPLING in the .short header; no other functional use found
-physics	fmu	real	mu_gradient_scale	canonical		
+physics	fmu	real	mu_gradient_scale	canonical		No effect: the mu-gradient velocity it scaled is zeroed (docs/bug_sweep.md O15)
 physics	fes	real	es_velocity_scale	canonical		
 physics	fcore	real	core_mass_reduction_factor	canonical		
 physics	fgsf	real	gsf_velocity_scale	canonical		

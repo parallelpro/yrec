@@ -566,7 +566,7 @@ subroutine check_iterate(s, sub_model, sub_physics, iteration, &
       integer, intent(out) :: ierr
       call check_angular_momentum(s, sub_model%log_density, specific_angular_momentum_prev, &
            specific_angular_momentum_saved, sub_model%log_radius, s%log_mass, s%dm, &
-           iteration, sub_model%am_transport_convective_flag, s%nz, sub_timestep, &
+           iteration, sub_model%am_transport_convective_flag, s%nz, &
            sub_model%eta_squared, sub_model%moment_of_inertia, s%j_rot, cut_count, &
            diffusion_solve_ok, redo_flag, s%omega_mid, sub_model%di_domega, &
            sub_model%mean_radius, .false., ierr)

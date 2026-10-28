@@ -155,6 +155,7 @@
       ! (legacy name: fo)
       coupling_factor = 1.0d0
 
+      ! No effect: the mu-gradient velocity it scaled is zeroed (docs/bug_sweep.md O15)
       ! (legacy name: fmu)
       mu_gradient_scale = 1.0d0
 

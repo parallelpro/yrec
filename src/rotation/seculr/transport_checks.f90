@@ -24,9 +24,7 @@ contains
 !     at most rotation_settings%convergence_tolerance.
 !  3. update_omega: omega and the moments of inertia for the new j
 !     (omega_from_j).
-!  4. smooth_gradient_reversals: forces solid-body rotation where
-!     d omega/dr has turned positive (in practice it never acts).
-!  5. report_largest_change: on the last iteration, or at convergence,
+!  4. report_largest_change: on the last iteration, or at convergence,
 !     prints the largest fractional change of j over the sub-step and
 !     the history of measure_convergence.
 !
@@ -45,13 +43,10 @@ contains
 !      the iteration converged and suppresses the summary line.
 ! In/out:
 !   specific_angular_momentum : j after this iteration (cm^2/s);
-!      update_omega and smooth_gradient_reversals reset it to I omega/m
-!      for the omega they find.
+!      update_omega resets it to I omega/m for the omega it finds.
 !   specific_angular_momentum_prev : j after the previous iteration;
 !      set to j once compared with it.
 !   cut_count : the number of sub-step cuts so far.
-!   dt : the sub-step (s), which a cut would halve (see
-!      reject_negative_j).
 ! Outputs:
 !   omega : the angular velocity (rad/s).
 !   moment_of_inertia, qiw : each zone's moment of inertia and its
@@ -59,14 +54,13 @@ contains
 !   eta_squared, mean_radius : the shape quantities (eta_2 and r0) that
 !      omega_from_j finds along with omega.
 !   converged_flag : true if the iteration has converged.
-!   redo_flag : true if the sub-step must be redone with a smaller dt;
-!      in practice always false on return (see reject_negative_j and
-!      smooth_gradient_reversals).
+!   redo_flag : false: a negative j stops the run rather than asking
+!      for a redo (see reject_negative_j).
 !   ierr : nonzero stops the run.
 subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev, &
      specific_angular_momentum_start, log_radius, log_mass, shell_mass, &
      iteration_number, &
-     am_transport_convective_flag, num_zones, dt, eta_squared, &
+     am_transport_convective_flag, num_zones, eta_squared, &
      moment_of_inertia, specific_angular_momentum, cut_count, &
      converged_flag, redo_flag, omega, &
      qiw, mean_radius, &
@@ -86,7 +80,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       integer, intent(in) :: iteration_number
       logical, intent(in) :: am_transport_convective_flag(json)
       integer, intent(in) :: num_zones
-      double precision, intent(inout) :: dt
       double precision, intent(inout) :: eta_squared(json), &
            moment_of_inertia(json)
       double precision, intent(inout) :: specific_angular_momentum(json)
@@ -105,7 +98,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       integer :: zone_index, scan_index
       double precision :: delta_j_fraction
       double precision :: inertia_tolerance, shape_tolerance
-      integer :: zone_bottom, zone_top
       double precision :: max_fractional_dj
       integer :: max_dj_zone
 
@@ -121,41 +113,28 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       if (ierr /= 0 .or. redo_flag) return
       call measure_convergence()
       call update_omega()
-      call smooth_gradient_reversals()
       if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
            call report_largest_change()
 
 contains
 
 ! ---------------------------------------------------------------
-! The first zone with j <= 0 stops the run (ierr = 1). The original
-! halved dt and redid the sub-step, up to three times, before stopping;
-! here cut_count > 0 always holds after the increment (it starts each
-! sub-step at 0), so that branch (redo_flag, dt/2) is unreachable, and
-! the stop message's "3 attempts" were not made.
+! The first zone with j <= 0 stops the run (ierr = 1), as the F77
+! CHECKJ in effect did: its cut-and-redo branch was unreachable
+! (cut_count > 0 always held after the increment), so the stop
+! message's "3 attempts" were never made.
 subroutine reject_negative_j()
       do zone_index = 1,num_zones
          if(specific_angular_momentum(zone_index).le.0.0d0) then
             cut_count = cut_count + 1
-            if(cut_count.gt.0)then
-               write(6,1000) zone_index
-               write(run_log_unit,1000) zone_index
- 1000          format(1x,39('>'),39('<')/5x,'ERROR IN SR CHECKJ'/ &
-                       5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
-                       ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
-                       'RUN STOPPED')
-               ! a nonzero ierr stops the run
-               ierr = 1
-               return
-            else
-               redo_flag = .true.
-               dt = 0.5d0*dt
-               write(6,1005)cut_count,zone_index
-               write(run_log_unit,1005)cut_count,zone_index
- 1005          format(5x,'ERROR IN SR CHECKJ'/5x,'TIMESTEP CUT,',1x, &
-                       'NUMBER',i5,' DUE TO NEGATIVE J/M IN ZONE',i5)
-               return
-            endif
+            write(6,1000) zone_index
+            write(run_log_unit,1000) zone_index
+ 1000       format(1x,39('>'),39('<')/5x,'ERROR IN SR CHECKJ'/ &
+                    5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
+                    ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
+                    'RUN STOPPED')
+            ierr = 1
+            return
          endif
       end do
 end subroutine reject_negative_j
@@ -217,114 +196,13 @@ subroutine update_omega()
            inertia_tolerance=inertia_tolerance, shape_tolerance=shape_tolerance)
 end subroutine update_omega
 
-! ---------------------------------------------------------------
-! A safeguard against reversals of the omega gradient, which the
-! transport (a diffusion) should not create. Scanning inward from the
-! surface: where omega rises outward across an interface,
-! omega(i) - omega(i-1) > 0, but did not in the previous model
-! (star%old_omega), the two zones, together with the rest of any
-! convection zone either lies in, are forced to rotate as one solid
-! body (solid_body_omega). The region then widens by a zone (and that
-! zone's convection zone) at each edge where the new omega has made a
-! fresh reversal, and the solid body is redone, until no edge moves.
-! The entry test is omega(i) - omega(i-1) > 1 rad/s, inherited from the
-! F77 checkj.f. Stellar rotation rates are far below 1 rad/s (the
-! Sun's is 2.9e-6 rad/s), so the safeguard practically never fires.
-! The test on the previous model and the edge tests use 1e-15 rad/s.
-subroutine smooth_gradient_reversals()
-! zone_index is the outer zone of the interface tested; zone_bottom the
-! inner edge of the last region treated, below which the scan resumes.
-      zone_index = num_zones
-      zone_bottom = num_zones
-      zone_scan: do
-! omega rises outward across the interface (by more than 1 rad/s).
-      if(omega(zone_index)-omega(zone_index-1).gt.1.0d0)then
-! It did in the previous model too: leave it and move one zone in.
-         if(s%old_omega(zone_index)-s%old_omega(zone_index-1).gt.1.0d-15)then
-            zone_index = zone_bottom-1
-            zone_bottom = zone_index
-            if(zone_index.gt.1) cycle zone_scan
-         else
-! d omega/dr has changed sign, which signals an error in the transport:
-! force the offending zones to solid-body rotation. zone_top is the
-! upper one, extended to the top of its convection zone if it lies in
-! one.
-         zone_top = zone_index
-         if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
-            do scan_index = zone_top + 1,num_zones
-               if(.not.am_transport_convective_flag(scan_index)) exit
-            end do
-            zone_top = scan_index - 1
-         endif
-! zone_bottom is the lower one, extended likewise to the bottom of its
-! convection zone.
-         zone_bottom = zone_index - 1
-         if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
-            do scan_index = zone_bottom - 1,1,-1
-               if(.not.am_transport_convective_flag(scan_index)) exit
-            end do
-            zone_bottom = scan_index + 1
-         endif
-! Solid-body rotation from zone_bottom to zone_top.
-         call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
-                    shell_mass,zone_bottom,zone_top,eta_squared, &
-                    moment_of_inertia,omega,qiw,mean_radius,num_zones,s%disk_gate_age_gyr)
-! Widen the region while the redistribution makes new reversals at its
-! edges. redo_flag serves here as the flag that an edge moved; it ends
-! false, so it never asks for a redo of the sub-step.
-         do
-         redo_flag = .false.
-! A new reversal at the interface below zone_bottom: take in the zone
-! below (and its convection zone).
-         if(zone_bottom.gt.1) then
-            if(omega(zone_bottom)-omega(zone_bottom-1).gt.1.0d-15)then
-               if(s%old_omega(zone_bottom)-s%old_omega(zone_bottom-1).lt.1.0d-15)then
-                  redo_flag = .true.
-                  zone_bottom = zone_bottom - 1
-                  if(am_transport_convective_flag(zone_bottom) .and. zone_bottom.gt.1) then
-                     do scan_index = zone_bottom - 1,1,-1
-                        if(.not.am_transport_convective_flag(scan_index)) exit
-                     end do
-                     zone_bottom = scan_index + 1
-                  endif
-               endif
-            endif
-         endif
-! A new reversal at the interface above zone_top: take in the zone
-! above (and its convection zone).
-         if(zone_top.lt.num_zones) then
-            if(omega(zone_top+1)-omega(zone_top).gt.1.0d-15)then
-               if(s%old_omega(zone_top+1)-s%old_omega(zone_top).lt.1.0d-15)then
-                  redo_flag = .true.
-                  zone_top = zone_top+1
-                  if(am_transport_convective_flag(zone_top) .and. zone_top.lt.num_zones) then
-                     do scan_index = zone_top+1,num_zones
-                        if(.not.am_transport_convective_flag(scan_index)) exit
-                     end do
-                     zone_top = scan_index - 1
-                  endif
-               endif
-            endif
-         endif
-! Done when neither edge moved; otherwise redo the solid body over the
-! widened region.
-         if(.not. redo_flag) exit
-            call solid_body_omega(log_density,specific_angular_momentum,log_radius,log_mass, &
-                       shell_mass,zone_bottom,zone_top,eta_squared, &
-                       moment_of_inertia,omega,qiw,mean_radius,num_zones,s%disk_gate_age_gyr)
-         end do
-         if(iteration_number.eq.rotation_settings%max_diffusion_iters.or.converged_flag) &
-              write(*,120)zone_bottom,zone_top,iteration_number
-  120    format(5x,'OMEGA GRADIENT REVERSAL BETWEEN ZONES ', &
-                 i5,' AND ',i5,' ITERATION ',i5)
-         endif
-      endif
-! Continue the scan below the region just treated.
-      zone_index = zone_bottom - 1
-      zone_bottom = zone_index
-      if(zone_index.le.1) exit zone_scan
-      end do zone_scan
-end subroutine smooth_gradient_reversals
+! (The safeguard against reversals of the omega gradient, the F77
+! CHECKJ's solid-body smoothing where omega had come to rise outward,
+! is gone, 2026-10-28: its entry test, omega(i) - omega(i-1) > 1 rad/s,
+! never held for a star, so it never acted, and at the 1e-15 rad/s of
+! its other tests it would act on the map back's interpolation noise.
+! docs/bug_sweep.md O15; git history keeps it.)
+
 
 ! ---------------------------------------------------------------
 ! Prints the largest fractional change of j over the sub-step,
@@ -415,7 +293,7 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
       double precision :: atomic_weight(4)
       data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
 ! locals
-      integer :: num_diffused_species, species_index, zone_index
+      integer :: num_diffused_species, zone_index
       double precision :: delta_hydrogen, delta_helium, delta_metal, &
            delta_helium3
 ! amu_calc_temp holds 1/mu_ion and then 1/mu_e. Despite their names,

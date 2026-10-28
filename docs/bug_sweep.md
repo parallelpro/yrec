@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 41 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 50 |
-| Open | 15 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 18 |
+| Fixed | 42 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 51 |
+| Open | 14 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 17 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -42,7 +42,6 @@ In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 These open items depend on what the code was meant to do, not only on what it does:
 
 - **O20:** is the calibration's dL/dα 0.0139 or 0.139?
-- **O15:** is the gradient-reversal safeguard wanted? It has been inactive since the F77 code.
 - **O12:** what tolerance should the solid-body Newton iteration stop at?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
 - **O25:** under walpcz ≤ -2, should a convection zone that reaches the centre rotate as a solid body, or should the control be rejected?
@@ -110,7 +109,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
 | O13 | Transport region ends: sums and write-back disagree | Yes | Fixed |
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Fixed |
-| O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Open |
+| O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Fixed (removed; documented) |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Open |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
 | O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open |
@@ -1090,7 +1089,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O15. The gradient-reversal safeguard acts only above 1 rad/s, and `mu_gradient_scale` does nothing (CHECKJ)
 
-- **Status:** open.
+- **Status:** fixed (2026-10-28), as the default the authors can revisit: the safeguard is removed (git history keeps it; `check_angular_momentum`'s header says where it was), since it never acted and at the 1e-15 rad/s of its other tests it would act on the map back's interpolation noise. With it went reject_negative_j's unreachable cut-and-redo branch and `check_angular_momentum`'s unused `dt` argument. `mu_gradient_scale` stays readable (decks that set it still parse; legacy decks get FMU = 1 by default, so a warning would fire on every one) and its registry description says it has no effect. Byte-identical on the 26 rotating decks.
 - **In the original F77?** Yes. The entry test uses 1 rad/s, and the routine's other tests use 1e-15 rad/s ([checkj.f:146-160](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkj.f#L146-L160)). `FMU` appears only in commented-out formulas, and the μ-gradient velocity it scaled is zeroed ([vcirc.f:87-93](https://github.com/parallelpro/yrec/blob/6cd56739/src/vcirc.f#L87-L93)).
   ```fortran
         IF(OMEGA(I)-OMEGA(I-1).GT.1.0d0)THEN
