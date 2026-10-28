@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [e8549036](https://github.com/parallelpro/yrec/commit/e8549036) (2026-10-14). There are 63 items: 40 fixed and 23 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28). There are 64 items: 41 fixed and 23 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -118,7 +118,8 @@ These open items depend on what the code was meant to do, not only on what it do
 | O20 | Calibration dL/dα 0.0139 against the recorded 0.139 | Yes | Open |
 | O21 | Settling stencil out of bounds for a 2-point grid | Yes | Open |
 | O22 | Profile N² column disagrees with the pulse files | No (2026) | Open |
-| O23 | Two EOS derivatives threaded through but unused | Yes | Open |
+| O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
+| O24 | Un-aged rotating model without transport spun up by the wind | Yes | Open |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1220,9 +1221,21 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O23. Two EOS derivatives are threaded through the Newton driver but carry nothing
 
-- **Status:** open (harmless dead state).
+- **Status:** fixed (2026-10-28), [6252b537](https://github.com/parallelpro/yrec/commit/6252b537): the derivatives are locals of `compute_henyey_coefficients`, and the arguments and star members are gone. Seeding the first shell's EOS with NaN left all 40 checked decks byte-identical, so the seed was dead, as stated below.
 - **In the original F77?** Yes, structurally. MAIN passes `QDT` and `QDP` through CRRECT to COEFFT ([crrect.f:121-123](https://github.com/parallelpro/yrec/blob/6cd56739/src/crrect.f#L121-L123)), and STARIN seeds them as −1 and 1 ([starin.f:145-146](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L145-L146)). EQSTAT lists them only as outputs ([eqstat.f:13-22](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat.f#L13-L22)).
 - **Now:** [henyey_iteration.f90:134-157](https://github.com/parallelpro/yrec/blob/e8549036/src/core/structure/henyey_iteration.f90#L134-L157) (`intent(out)` at line 155) and [structure_equations.f90:33-79](https://github.com/parallelpro/yrec/blob/e8549036/src/core/structure/structure_equations.f90#L33-L79).
 - **What is wrong:** the coefficient pass reads an `intent(out)` dummy on entry, whose value is formally undefined. In practice nothing depends on it: every EOS family assigns these derivatives before using them. So `s%dlnrho_dlnp`, `s%dlnrho_dlnt` and the starting model's seeds are dead state.
 - **Proposed fix:** make them locals of the coefficient pass and drop the arguments and the two star members. This is expected to be byte-identical.
 
+### O24. An un-aged rotating model without instability transport is spun up by the wind
+
+- **Status:** open (latent; found 2026-10-28 while tracing the negative `dt`). No pinned deck reaches it, and it has not been measured.
+- **In the original F77?** Yes. MAIN marks a model that is solved but not aged with a negative timestep, `IF(.NOT.LAGE) DELTS = -DABS(DELTS)` ([main.f:644](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L644)), and calls GETW with it ([main.f:816](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L816)). GETW's branch without instability transport calls MWIND with `DELTS` whatever its sign ([getw.f:107-161](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L107-L161)); only the transport branch skips a non-positive step ([getw.f:166-167](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L166-L167)):
+  ```fortran
+            CALL MWIND(BL,DELTS,HSBOT,HSTOP,IMAX,M,LJDOT,OMEGAS,      ! getw.f:151, LINSTB = F
+      IF(LSKIP.OR.DELTS.LE.0.0D0) GOTO 9999                         ! getw.f:167, LINSTB = T
+  ```
+- **Now:** since [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) the aging flag replaces the negative `s%dt`, but the rotation call keeps the negated step for a model not aged, explicitly, so that the fix is a commit of its own ([step_driver.f90:538](https://github.com/parallelpro/yrec/blob/88b32a90/src/core/step/step_driver.f90#L538)); `spin_down_without_transport` hands it to `brake_convection_zone` ([evolve_rotation.f90:206-251](https://github.com/parallelpro/yrec/blob/4dd2a637/src/rotation/evolve_rotation.f90#L206-L251)), whose change of Ω is linear in the step ([magnetic_braking.f90:111-128](https://github.com/parallelpro/yrec/blob/4dd2a637/src/rotation/magnetic_braking.f90#L111-L128)).
+- **What is wrong:** with a negative step the wind's ΔΩ changes sign, so the surface convection zone gains the angular momentum one step of wind would remove. It happens when all of these hold: rotation on, instability transport off, the wind torque on, no disk locking, a convective surface, and a model that is not aged (a rescale-only card, `run_kind = 2`, once log T_c ≥ 6.6, or a negative model number).
+- **Expected behaviour, and why:** a model that is not aged spans no time, so the wind should remove nothing, as the transport branch already ensures.
+- **Proposed fix:** pass `merge(s%dt, 0.0d0, evolve_model_flag)` to `evolve_angular_momentum`, as the Henyey pass already gets, so that the brake removes nothing over a zero step (or skip the wind in `spin_down_without_transport` for a non-positive step). One measured commit; only decks with the conditions above can move.

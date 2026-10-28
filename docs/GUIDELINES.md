@@ -198,18 +198,18 @@ which replaces them).
 
 ## The star object: six rules (2026-10)
 
-The star (`state/star_info_lib.f90`'s `star_info`, ~240 members) is
-global storage, and nothing in Fortran stops a procedure that can see it
-from reading or writing any member. Since 2026-10 the star layer
-receives it as an argument: every procedure in core/, io/, rotation/
-and setup/ that touches the star takes `type(star_info) :: s` as its
-first argument (`intent(inout)`, or `intent(in)` for the settings
-builders) and reads `s%member`; only the owners -- `run_yrec`
-(core/run/run_driver.f90), `yrec_reset`, the generated copy module
-`controls_sync` and the test programs -- name the global `star`, and pass
-it down (`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` holds every
-other directory at zero). In the rules below, `star` means the star either way.
-What makes a reader unable to follow the code is not the global itself
+The star (`state/star_info_lib.f90`'s `star_info`, ~240 members) is a
+large record, and nothing in Fortran stops a procedure that can see it
+from reading or writing any member. Since 2026-10 there is no global
+star: `run_yrec` (core/run/run_driver.f90) owns the run's star, and
+every procedure in core/, io/, rotation/, setup/ and state/ that touches
+it takes `type(star_info) :: s` as its first argument (`intent(inout)`,
+or `intent(in)` for the settings builders) and reads `s%member`. The
+test programs declare a star of their own. `STAR_ACCESS_BUDGET` in
+`tools/check_boundaries.py` holds every directory at zero `star%`
+references, so a module-level star cannot come back. In the rules below,
+`star` means the star argument.
+What makes a reader unable to follow the code is not a large record
 but using it without rules: signatures that show a fraction of what a
 routine touches, results handed back through `star`, and names that say
 where data lives but not when it is valid. These rules apply to new code
@@ -250,10 +250,14 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    procedure's own body; a `star%` field passed to an `intent(inout)`
    dummy counts as written, so a loose intent in a callee shows up here --
    tighten it rather than editing the list.
-5. **Diagnostics are written once, after convergence; scratch stays in
-   its module.** Values computed inside the Newton iterations and kept
-   only for output belong in a pass over the converged model, not in
-   `star` members overwritten on every iteration.
+5. **Diagnostics are written once, after convergence; scratch stays
+   with its driver.** Values computed inside the Newton iterations and
+   kept only for output belong in a pass over the converged model, not
+   in `star` members overwritten on every iteration. A domain's working
+   arrays are a record its driver allocates for the step and passes
+   down as an argument (rotation's `rot_scr`, `mid_scr` and `circ_scr`,
+   element diffusion's `diff_scr`); the scratch module declares only the
+   type (`SCRATCH_TYPES_ONLY` in `tools/check_boundaries.py`).
 6. **Equations and algorithms live in star-blind kernels.** A routine
    that holds something a reader could get wrong -- the structure
    equations and their partials, a conservation sum, a regridding, a
@@ -265,10 +269,11 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    bookkeeping (call this stage, copy that array, accumulate output) stay
    in drivers that use `star`.
 
-`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` is a ratchet on the
-rest: per directory, the number of `star%` references and of files that
-import the global `star` may not grow. When a change lowers a count the
-check says so; lower the budget in the same commit.
+`STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` was the ratchet
+that took the star layer from the global to the argument: per directory,
+the number of `star%` references and of files that import a module-level
+`star` could not grow. Every count reached zero in 2026-10, and the
+budget now keeps them there.
 
 
 ## Declarations and interfaces (2026-10)

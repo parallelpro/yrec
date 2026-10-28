@@ -189,7 +189,7 @@ What this changes:
 - **No fixed shell cap.** Arrays are allocatable, sized when a model is loaded or rezoned. This removes the `json = 5000` limit and the static storage that blocks running several stars, or threads, in one process.
 - **Flags become fields.** `s%step%aging` replaces the negative `dt`.
 - **Diagnostics are separate from state.** They live in `s%diag` and are filled by a pass after convergence, not during Newton iterations.
-- **The global goes away.** `star` stops being a module variable. `run_yrec` owns a `type(star_t)` and passes it down; the C API (`yrec_capi`) and `pyyrec` hold a handle to it. (2026-10: core/ takes the star as an argument `s` of the present `star_info` type, and only `run_yrec`, `yrec_reset`, the C API and the tests name the global; io/, rotation/, element_diffusion/ and setup/ still use it.)
+- **The global goes away.** `star` stops being a module variable. `run_yrec` owns a `type(star_t)` and passes it down; the C API (`yrec_capi`) and `pyyrec` hold a handle to it. (Done 2026-10 for the present `star_info` type: `star_info_lib` declares no instance, `run_yrec` owns the run's star, and every routine takes it as an argument `s`; the C API still runs one star per call, and the arrays are still fixed-size.)
 
 ### 4.3 Stage contracts
 

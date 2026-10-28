@@ -11,7 +11,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 
 Rotation reads its controls, and the solar units, from a settings record, `rotation_settings` (module `rotation_configuration`), never from `s%ctrl` or `s%job` (the checker enforces this). The star layer builds the record from the controls (`setup/rotation_settings_setup`), and `run_yrec` installs it at the start of every run card.
 
-The star comes in as an argument: the four drivers (`evolve_angular_momentum`, `advance_rotation_substep` and `burn_and_settle`, `apply_secular_transport`, `check_angular_momentum` and `check_composition`) take `type(star_info) :: s`, as core's procedures do, and nothing in rotation names the global `star`. Everything else is star-free: the drivers pass what it needs as arguments (the wind laws, for one, get the step's turnover times and photospheric pressures in a `wind_conditions` record). The kernels that touch no scratch either are listed in `check_boundaries.py`'s `STAR_BLIND_FILES` and tested by `test_rotation_kernels` (§4). `rotation_scratch_lib` is rotation's alone: no file outside `rotation/` may use it.
+The star comes in as an argument: the four drivers (`evolve_angular_momentum`, `advance_rotation_substep` and `burn_and_settle`, `apply_secular_transport`, `check_angular_momentum` and `check_composition`) take `type(star_info) :: s`, as core's procedures do, and nothing in rotation names a module-level star. Everything else is star-free: the drivers pass what it needs as arguments (the wind laws, for one, get the step's turnover times and photospheric pressures in a `wind_conditions` record). The kernels that touch no scratch either are listed in `check_boundaries.py`'s `STAR_BLIND_FILES` and tested by `test_rotation_kernels` (§4). `rotation_scratch_lib` is rotation's alone: no file outside `rotation/` may use it.
 
 ---
 
@@ -26,7 +26,7 @@ The star comes in as an argument: the four drivers (`evolve_angular_momentum`, `
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
 | `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
 | `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`cz_rotation_law_exponent` for `walpcz`, `wind_constant` for `constfactor`, ...). |
-| `rotation_scratch_lib` | The working state: `rot_scr` (coefficients, grids, the structure interpolated to the sub-step), `mid_scr` (the physics interpolated to the sub-step) and `circ_scr`. Nothing in it outlives a step; what does (the last sub-step's omega, `star%omega_mid`) is on the star. |
+| `rotation_scratch_lib` | The types of the working state: `rot_scr` (coefficients, grids, the structure interpolated to the sub-step), `mid_scr` (the physics interpolated to the sub-step) and `circ_scr`. `evolve_angular_momentum` allocates the three records for the step and passes them down as arguments; the module declares no instance. Nothing in them outlives a step; what does (the last sub-step's omega, `star%omega_mid`) is on the star. |
 | **shape/** | |
 | `rotating_shape` | `rotation_shape_factors`: each shell's fp, ft, distortion, mean radius and mean gravity (Kippenhahn & Thomas / Endal & Sofia). |
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |

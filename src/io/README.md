@@ -7,7 +7,7 @@ This directory holds the run's input and output:
 
 The physics never reads a deck or writes a file itself. It reads its controls from `star%ctrl` and `star%job`, and the output reads what the step computed.
 
-Every io procedure that touches the star takes it as an argument, `s` (`type(star_info)`), as core's procedures do: the readers and writers are called with the caller's `s`, the controls read (`read_controls`) with `star` by `run_yrec`, and nothing in io names the global `star` (`tools/check_boundaries.py`, `STAR_ACCESS_BUDGET`). `solver_diagnostics()`, the gate for the solver forensics that star-free code asks too, reads the run log's own copy of the control, which the controls read installs (`set_solver_diagnostics`).
+Every io procedure that touches the star takes it as an argument, `s` (`type(star_info)`), as core's procedures do: the readers and writers are called with the caller's `s`, the controls read (`read_controls`) with the run's star by `run_yrec`, and nothing in io names a module-level star (`tools/check_boundaries.py`, `STAR_ACCESS_BUDGET`). `solver_diagnostics()`, the gate for the solver forensics that star-free code asks too, reads the run log's own copy of the control, which the controls read installs (`set_solver_diagnostics`).
 
 ---
 

@@ -566,53 +566,55 @@ modules.
 ```
 main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
   └─ run_yrec(ierr)                            └─ yrec_capi: yrec_run()
-       ├─ yrec_run_prologue     (re-entrancy: snapshot/restore all state;
-       │                         core/run/yrec_reset.f90)
+       ├─ yrec_run_prologue     (re-entrancy: the run's star from a
+       │                         pristine template; core/run/yrec_reset.f90)
        ├─ read_controls         (io/read_controls.f90; read_input (parmin):
        │                         a legacy $CONTROL/$PHYSICS pair or a
        │                         single-file &control/&physics inlist)
        ├─ star_setup            (eos_init/kap_init/atm_init table loads)
        └─ run loop (kind cards) ── model loop ── evolve_step
                                                     │
-     star layer (owns type(star_info) star): read_starting_model (starin),
+     star layer (takes run_yrec's star as s): read_starting_model (starin),
        henyey_iterate (crrect), henyey_coefficients (coefft),
        henyey_eliminate (reduce), henyey_solve (hsolve), envelope_integration,
        surfbc, burn_step, composition_step, rezone (hpoint), evolve_angular_momentum
        (getw), wind
                                                     │
      physics services: eos_get, kap_get, net_lib kernels, atm tables,
-       numerics_lib (per-point inputs explicit; configuration still read
-       from star%ctrl / star%job, see below)
+       numerics_lib (per-point inputs explicit; configuration from a
+       settings record per domain, see below)
                                                     │
      io: yrec_output (MESA-style history.data / profile{N}.data /
        GYRE/FGONG pulse files; legacy .short/.track/.store retired)
 ```
 
-All model state hangs off one root — `star` (`state/star_info_lib.f90`),
-flat MESA-style: the start-of-step snapshot is the `*_start` family
+All model state hangs off one root, the run's star (type `star_info`,
+`state/star_info_lib.f90`), which `run_yrec` owns and passes to every
+star-layer routine as `s` (there is no module-level star since 2026-10).
+It is flat MESA-style: the start-of-step snapshot is the `*_start` family
 (`star%xa_start`, `star%logP_start`, …) and driver-step scalars are plain
 members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
 bundles are nested: `star%job` (run list and calibration cards) and
 `star%ctrl` (namelist controls, fixed after `read_controls`). Solver
-scratch lives in `rotation/rotation_scratch_lib.f90` (the envelope
-integration's point values are the kernel's own, 2026-10), table state
-inside each physics domain. Two
+scratch with a one-step lifetime is a record its driver allocates and
+passes down (rotation's `rot_scr`, `mid_scr`, `circ_scr`; element
+diffusion's `diff_scr`; the envelope integration's point values are the
+kernel's own), and table state lives inside each physics domain. Two
 `run_yrec` calls in one process are byte-identical to two fresh processes
 (the re-entrancy contract), which is what makes the Python embedding sound.
 
 **The physics boundary today.** Per-point evaluation takes explicit
-inputs: `eos_get`, `kap_get` and `net_lib`'s `compute_reaction_rates` receive T, P or ρ and
-the composition as arguments, and the envelope kernel
-`core/envelope/envelope_integration_kernel.f90` is star-blind (enforced by
-`tools/check_boundaries.py`). Configuration is still read from `star`: 26
-files under `eos/`, `kap/`, `atm/` and `net/` `use star_info_lib, only:
-star` and read about 60 distinct members — 54 `star%ctrl`/`star%job`
-controls (table choices, paths, units, thresholds, the mixture) plus
-derived configuration scalars (`star%cross_section_scale` and the other
-rate scales, the envelope X/Z used to prepare tables,
-`star%use_two_z_tables`), but no per-zone model state. The target, in
-which each library receives its controls once in `*_init` and never
-imports `star`, is `TARGET_ARCHITECTURE.md` §4.1 and §4.6.
+inputs: `eos_get`, `kap_get` and `net_lib`'s `compute_reaction_rates`
+receive T, P or ρ and the composition as arguments, and the envelope
+kernel `core/envelope/envelope_integration_kernel.f90` is star-blind.
+Configuration comes from one settings record per domain, which the star
+layer installs at the start of a run or of each run card (`net_settings`,
+`convection_settings`, `rotation_settings`, `diffusion_settings`, and
+those of eos, kap and atm); the domains in `STAR_FREE_DIRS` of
+`tools/check_boundaries.py` (eos, kap, atm, net, numerics, convection,
+element_diffusion) do not use `star_info_lib` at all (2026-10). The
+remaining target, per-domain controls types and table-source lists, is
+`TARGET_ARCHITECTURE.md` §4.1 and §4.6.
 
 ## 8. Key lineage references
 

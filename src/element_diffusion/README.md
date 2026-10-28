@@ -22,7 +22,7 @@ Code outside element_diffusion/ uses it only through `element_diffusion_lib` (en
 | `diffusion_scheme` | The numerical scheme both pipelines use: the two-step Lax–Wendroff advection of the first term and the coefficients of the implicit solve of the second. |
 | `thoul_solver` | `thoul_diffusion`: the solution of the Burgers equations for the coefficients (Thoul et al. 1994). |
 | `species_table`, `bahcall_loeb_units` | The species' weights and charges; the Bahcall & Loeb unit scales. |
-| `element_diffusion_scratch` | The working state (`diff_scr`): coefficient arrays and the unit scales. Nothing in it outlives a step; the "settling suspended" latch is the star's (`settling_suspended_reported`), passed in through `diffuse_elements`. |
+| `element_diffusion_scratch` | The type of the working state (`diff_scr`): coefficient arrays and the unit scales. `diffuse_elements` allocates the record for the step and passes it down as an argument; the module declares no instance. Nothing in it outlives a step; the "settling suspended" latch is the star's (`settling_suspended_reported`), passed in through `diffuse_elements`. |
 
 ## 2. Conventions
 

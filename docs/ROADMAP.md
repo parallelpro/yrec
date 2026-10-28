@@ -1983,7 +1983,8 @@ tests; the full battery runs on the series' end.
   are star-free in fact.
 - Now only run_yrec, yrec_reset, controls_sync and the tests name the
   global star.
-- **Open, with proposed fixes.**
+- **Open, with proposed fixes.** (Items 1-3 done 2026-10-28, apart
+  from item 1's kernels and tests; see the next section.)
   1. **Rotation's module scratch.** secular_transport,
      mid_timestep_model, circulation, stability_coefficients, am_grid,
      equal_grid and rotational_mixing still share rot_scr, mid_scr and
@@ -2001,3 +2002,73 @@ tests; the full battery runs on the series' end.
      become run_yrec's local (or a handle table), which the C API and a
      binary or multi-star driver would need (docs/TARGET_ARCHITECTURE.md
      section 4.2).
+
+### No module-level state in the star layer; extra energy sources (yrec-next, 2026-10-28)
+
+An overnight series. Every refactor commit is byte-identical on a
+40-deck set (the config matrix, an accretion variant of
+cm_massloss_const, the 12 testsuite pins, the four solar decks, the
+m0030 chain, the two light-element decks, a ZAHB to TAHB run and the
+3 Msun rotating TAMS deck) against a snapshot of bd56b718, and passes
+the unit tests, test_reentry and (for the global star) test_pyyrec.
+
+- **DONE: controls_sync takes s** (4dd2a637; the previous section's
+  open item 2). The generator emits seed_controls_buffer(s) and
+  store_controls_to_star(s); state/ is at (0, 0).
+- **DONE: rotation's scratch records are arguments** (174a54a4; open
+  item 1, the records part). evolve_angular_momentum allocates rot_scr,
+  mid_scr and circ_scr for the step and passes them down;
+  rotation_scratch_lib declares the types only, which the new
+  SCRATCH_TYPES_ONLY rule in check_boundaries.py enforces. Filling the
+  records with 0xff bytes, then zero bytes, at every allocation left
+  every rotating deck byte-identical. Still open from item 1: the
+  routines that take the records (circulation, stability_coefficients,
+  am_grid, equal_grid, rotational_mixing) are not yet star-blind kernels
+  with physics checks in test_rotation_kernels (no shear velocity for a
+  solid body, U_ES ~ omega^2 at fixed structure); they still take json
+  from star_info_lib.
+- **DONE: element diffusion's scratch record is an argument**
+  (7219c426), the same way: diffuse_elements allocates diff_scr.
+- **DONE: no global star** (c35778aa; open item 3). run_yrec owns the
+  run's star as an allocatable local; yrec_run_prologue copies a
+  never-written static template into it (zero plus the declaration
+  defaults, what the module variable was at process start), replacing
+  the first-entry snapshot. The test programs declare their own star,
+  with SAVE (8 MB overflows the stack otherwise; the first try
+  segfaulted). Every directory's STAR_ACCESS_BUDGET is (0, 0).
+- **DONE: extra energy sources** (6fc1a3f8; TARGET_ARCHITECTURE 4.5a,
+  the Phase 2 exit criterion). core/structure/energy_sources.f90, a
+  star-blind registry a program fills with add_energy_source before
+  run_yrec; form_extra_energy_terms in the shell kernel; the
+  i_lum_extra channel (n_lum_channels 9), counted by both
+  renormalizations; history column lum_extra, profile column eps_extra;
+  examples/other_energy (yrec_extra_heat, `make other_energy`);
+  test_structure's 'extra' case and test_other_energy. Not yet: the
+  built-in terms as list entries, the (lnP, lnT, lnR, L) partials of
+  the design, and a warning for a source above the fitting point.
+- **DONE: O23, the two dead EOS derivatives** (6252b537). dlnrho_dlnp and
+  dlnrho_dlnt are locals of compute_henyey_coefficients; the star
+  members and the arguments of henyey_iterate and read_starting_model
+  are gone. Seeding the first shell's EOS with NaN left all 40 decks
+  byte-identical, which confirmed that the seed was dead.
+- **DONE: the aging flag replaces the negative dt** (88b32a90; a Phase 2
+  item). solve_structure no longer negates s%dt for a model that is not
+  aged: the first guess, the rates of change, the composition rerun,
+  the light-element burn read evolve_model_flag, and the Henyey pass
+  gets a zero step. The rotation step still gets the step negated, so
+  as to keep O24 (below) byte-identical until its own commit.
+- **Found: O24** (docs/bug_sweep.md). An un-aged rotating model without
+  instability transport passes its negative step to the wind brake,
+  which spins the surface convection zone up. Inherited from GETW. No
+  pinned deck reaches it; the fix is to skip the wind for a non-positive
+  step, one measured commit.
+- **Method.** scratchpad check.py builds a worktree, runs the deck set
+  in it in parallel, and byte-compares every output against the base
+  snapshot and the main tree's pins (ignoring the version line);
+  tests.sh builds the test programs (`make tests`; without them the
+  domain tests skip) and runs every pytest file the tree has. The poison
+  tests fill an allocated record through c_loc with 0xff or 0x00 bytes
+  under YREC_POISON. A new deck under examples/ needs its controls hash
+  (YREC_REGEN_CONTROLS=1 python3 -m pytest test_controls.py; check that
+  only its line is added), and a new module or use statement needs
+  `python3 tools/gen_makefile_deps.py`.
