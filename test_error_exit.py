@@ -201,3 +201,26 @@ def test_nonpositive_triangle_size_refused(tmp_path):
         f"stdout tail: {result.stdout[-300:]}"
     )
     assert "envelope triangle's size must be positive" in result.stdout, result.stdout[-300:]
+
+
+def test_too_many_transport_iterations_exits_nonzero(tmp_path):
+    """A rotating run's max_diffusion_iters (ITDIF2) must be 1 to 16:
+    check_angular_momentum's iteration history holds 16
+    (docs/bug_sweep.md O14). 17 is a clean nonzero exit at read time,
+    with the message in the run output."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    rot = "Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10"
+    for ext in ("nml1", "nml2"):
+        shutil.copy(CASE_DIR / f"{rot}.{ext}", tmp_path / f"{rot}.{ext}")
+    nml2 = tmp_path / f"{rot}.nml2"
+    text, n = re.subn(r"ITDIF2\s*=\s*10", "ITDIF2=17", nml2.read_text())
+    assert n == 1
+    nml2.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), f"{rot}.nml1", f"{rot}.nml2"], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"ITDIF2 = 17 must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
+    assert "max_diffusion_iters (ITDIF2) must be 1 to 16" in result.stdout + result.stderr

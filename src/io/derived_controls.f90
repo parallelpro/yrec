@@ -21,8 +21,9 @@ module derived_controls
 contains
 
 ! ---------------------------------------------------------------
-! ierr = 1: semiconvection and overshoot are both on, or the envelope
-! triangle's size is not positive.
+! ierr = 1: semiconvection and overshoot are both on, the envelope
+! triangle's size is not positive, or a rotating run's
+! max_diffusion_iters is outside 1..16.
 subroutine derive_controls(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
@@ -48,6 +49,16 @@ subroutine derive_controls(s, ierr)
          write(run_log_unit,3) tri_delta_teffl, tri_delta_logl
       3  format(1x,'ERROR: the envelope triangle''s size must be positive:', &
            &  ' tri_delta_teffl (TRIDT) =',1pe11.3,', tri_delta_logl (TRIDL) =',1pe11.3)
+         ierr = 1
+         return
+      end if
+! The rotation transport's iterations: its history holds 16
+! (rotation/seculr/transport_checks' max_recorded_iterations;
+! docs/bug_sweep.md O14).
+      if (rotation_active .and. (max_diffusion_iters < 1 .or. max_diffusion_iters > 16)) then
+         write(terminal_unit,4) max_diffusion_iters
+         write(run_log_unit,4) max_diffusion_iters
+      4  format(1x,'ERROR: max_diffusion_iters (ITDIF2) must be 1 to 16, not ',i0)
          ierr = 1
          return
       end if

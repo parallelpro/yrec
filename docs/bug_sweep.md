@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 40 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 49 |
-| Open | 16 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 19 |
+| Fixed | 41 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 50 |
+| Open | 15 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 18 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -109,7 +109,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O11 | Dynamical-shear limit can overshoot or go negative | Yes | Fixed |
 | O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
 | O13 | Transport region ends: sums and write-back disagree | Yes | Fixed |
-| O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Open |
+| O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Fixed |
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Open |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Open |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
@@ -1068,7 +1068,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O14. The rotational mixing checks miss species 5-15, and an iteration history has 16 slots with no cap (CHECKC, CHECKJ)
 
-- **Status:** open.
+- **Status:** fixed (2026-10-28). `apply_secular_transport` checks the species mixed after the iterations (5 to 11, or 15) with `check_mixed_species`, the repair-or-cut of slots 1-4 (`check_species_range`, now shared; a cut there is redone by the caller, which restores every tracked species); a rotating run's `max_diffusion_iters` outside 1..16 stops at read time (`derive_controls`, exit 1, `test_error_exit`). `test_rotation_kernels` checks the late species' repair and cut. The 26 rotating decks are byte-identical (none sets more than 16 iterations, and no late species goes anomalous in them). check_composition's last-iteration check of slots 5-11 before their mixing is kept, and harmless.
 - **In the original F77?** Yes. CHECKC checks species 1-11 only on the last iteration ([checkc.f:48-54](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkc.f#L48-L54)), inside the loop. SECULR mixes species 5-11 (5-15 with extended composition) after the loop ([seculr.f:340-376](https://github.com/parallelpro/yrec/blob/6cd56739/src/seculr.f#L340-L376)). CHECKJ declares `DELJI(16)` and `IMAXI(16)` and indexes them by iteration ([checkj.f:27-30](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkj.f#L27-L30)); the iteration count is never bounded.
   ```fortran
         IF(IT.EQ.ITDIF2)THEN

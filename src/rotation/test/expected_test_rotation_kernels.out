@@ -102,3 +102,7 @@ checkc: a negative X halves the sub-step for a redo      0.00E+00  ok
 RUN STOPPED
 checkc: the fourth cut stops the run                     0.00E+00  ok
 checkc: mu = A/(1+Z) for ionized H, He4, C12             1.66E-16  ok
+checkc: the late species, a small negative repaired      0.00E+00  ok
+ ERROR IN SR CHECKC
+ TIMESTEP CUT NUMBER  1 DUE TO ANOMALOUS COMP NUMBER 7 IN ZONE   12 ABUNDANCE   -1.000E-08
+checkc: the late species, a negative halves the step     0.00E+00  ok

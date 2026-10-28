@@ -131,7 +131,9 @@
 !                neighbours' mean, with no cut; a larger one halves dt
 !                and asks for a redo; the fourth cut stops the run; from
 !                the second iteration, mu of a fully ionized gas: A/2
-!                for H1, A/3 for He4, 12/7 for C12.
+!                for H1, A/3 for He4, 12/7 for C12; the same checks of
+!                the species mixed after the iterations
+!                (check_mixed_species).
 ! Each check prints its relative error and ok (below its tolerance) or
 ! FAIL; the program stops with status 1 on any FAIL.
 program test_rotation_kernels
@@ -160,7 +162,7 @@ program test_rotation_kernels
       use am_grid, only: am_transport_grid, equal_grid_to_model
       use stability_coefficients, only: rotation_stability_setup
       use rotation_scratch_lib, only: stability_state
-      use transport_checks, only: check_angular_momentum, check_composition
+      use transport_checks, only: check_angular_momentum, check_composition, check_mixed_species
       use composition_layout, only: i_h1, i_he4, i_metals, i_he3
       use star_info_lib, only: star_info
       implicit none
@@ -1311,6 +1313,23 @@ subroutine checkc_check()
            relerr(phys%mu(4), 12.0d0/7.0d0))
       if (redo .or. ierr /= 0) err = 1.0d0
       call report("checkc: mu = A/(1+Z) for ionized H, He4, C12", err, 1.0d-14)
+! the species mixed after the iterations (check_mixed_species, slots
+! 5..11; docs/bug_sweep.md O14): a small negative abundance repaired, a
+! larger one a halved sub-step
+      do k = 1, nz
+         comp(5:11, k) = 1.0d-6
+      end do
+      comp(8, 12) = -1.0d-13
+      dt = 1.0d13; cuts = 0; redo = .false.
+      call check_mixed_species(comp, 5, 11, nz, dt, cuts, redo, ierr)
+      err = abs(comp(8, 12) - 1.0d-6)/1.0d-6
+      if (redo .or. cuts /= 0 .or. ierr /= 0) err = 1.0d0
+      call report("checkc: the late species, a small negative repaired", err, 1.0d-15)
+      comp(7, 12) = -1.0d-8
+      call check_mixed_species(comp, 5, 11, nz, dt, cuts, redo, ierr)
+      err = 0.0d0
+      if (.not. redo .or. cuts /= 1 .or. dt /= 0.5d13 .or. ierr /= 0) err = 1.0d0
+      call report("checkc: the late species, a negative halves the step", err, 0.0d0)
 end subroutine checkc_check
 
 ! a cubic c(1) + c(2) x + c(3) x^2 + c(4) x^3

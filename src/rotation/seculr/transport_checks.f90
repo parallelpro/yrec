@@ -10,7 +10,7 @@ module transport_checks
       use rotation_configuration, only: rotation_settings, last_mu_species
       implicit none
       private
-      public :: check_angular_momentum, check_composition
+      public :: check_angular_momentum, check_composition, check_mixed_species
 
 contains
 
@@ -434,7 +434,84 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
          num_diffused_species = last_mu_species
       endif
       redo_flag = .false.
-      do species_index = 1,num_diffused_species
+      call check_species_range(composition, 1, num_diffused_species, num_zones, &
+           dt, cut_count, converged_flag, redo_flag, ierr)
+      if (ierr /= 0 .or. redo_flag) return
+! The mean molecular weight of a fully ionized gas (the equations in
+! the header), from the second iteration on. star%amuenv is 1/mu_ion of
+! the envelope mixture. Partial ionization is ignored; the original
+! notes that massive stars need a correction for it.
+      if(iteration_number.gt.1)then
+         do zone_index = 1,num_zones
+            delta_hydrogen = composition(i_h1,zone_index)- &
+                 s%envelope_hydrogen_fraction
+            delta_helium = composition(i_he4,zone_index)- &
+                 s%envelope_helium_fraction
+            delta_metal = composition(i_metals,zone_index)- &
+                 s%envelope_metal_fraction
+            delta_helium3 = composition(i_he3,zone_index)- &
+                 s%envelope_he3_fraction
+            amu_calc_temp = s%amuenv + delta_hydrogen/atomic_weight(1) + &
+                 delta_helium/atomic_weight(2) + &
+                 delta_metal/atomic_weight(3) + &
+                 delta_helium3/atomic_weight(4)
+            ion_mean_weight_inverse = 1.0d0/amu_calc_temp
+            amu_calc_temp = composition(i_h1,zone_index)/atomic_weight(1)+ &
+                 2.0d0*(composition(i_he3,zone_index)/atomic_weight(4) &
+                 + composition(i_he4,zone_index)/atomic_weight(2)) + &
+                 0.5d0*composition(i_metals,zone_index)
+            electron_mean_weight_inverse = 1.0d0/amu_calc_temp
+            sub_physics%mu(zone_index) = ion_mean_weight_inverse* &
+                 electron_mean_weight_inverse/ &
+                 (ion_mean_weight_inverse+electron_mean_weight_inverse)
+         end do
+      endif
+
+      return
+end subroutine check_composition
+
+! ---------------------------------------------------------------
+! The species species_begin..species_end checked after their mixing as
+! check_composition checks slots 1-4 (secular_transport calls it for
+! the species mixed once, after the iterations; docs/bug_sweep.md O14):
+! a small negative interior abundance repaired, a larger one a halved
+! sub-step and a redo, the fourth cut of the sub-step a stop (ierr = 1).
+subroutine check_mixed_species(composition, species_begin, species_end, num_zones, &
+     dt, cut_count, redo_flag, ierr)
+      use star_info_lib, only: json
+      double precision, intent(inout) :: composition(15,json)
+      integer, intent(in) :: species_begin, species_end, num_zones
+      double precision, intent(inout) :: dt
+      integer, intent(inout) :: cut_count
+      logical, intent(inout) :: redo_flag
+      integer, intent(out) :: ierr
+      logical :: converged_flag
+      converged_flag = .true.
+      call check_species_range(composition, species_begin, species_end, num_zones, &
+           dt, cut_count, converged_flag, redo_flag, ierr)
+end subroutine check_mixed_species
+
+! ---------------------------------------------------------------
+! Each species species_begin..species_end except Z (slot i_metals, not
+! mixed as a unit), at the interior zones 2..num_zones-1: a mass
+! fraction below 0 or above 1 is replaced by the mean of its
+! neighbours (at least 0) when it is below zero by less than 1e-5 of
+! the surface value; otherwise the sub-step is halved for a redo
+! (redo_flag, converged_flag false), and the fourth cut of the sub-step
+! stops the run (ierr = 1). Returns at the first cut.
+subroutine check_species_range(composition, species_begin, species_end, num_zones, &
+     dt, cut_count, converged_flag, redo_flag, ierr)
+      use star_info_lib, only: json, i_metals
+      use io_units
+      double precision, intent(inout) :: composition(15,json)
+      integer, intent(in) :: species_begin, species_end, num_zones
+      double precision, intent(inout) :: dt
+      integer, intent(inout) :: cut_count
+      logical, intent(inout) :: converged_flag, redo_flag
+      integer, intent(out) :: ierr
+      integer :: species_index, zone_index
+      ierr = 0
+      do species_index = species_begin,species_end
 ! Slot i_metals holds Z, which is not mixed as a unit.
          if(species_index.eq.i_metals)cycle
          do zone_index = 2,num_zones-1
@@ -443,19 +520,13 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
 ! A species mixed into a region that destroys it quickly can come out
 ! slightly negative from the interplay of mixing and burning. A value
 ! below 1e-5 of the surface abundance in size is replaced by the mean
-! of its neighbours (at least 0) instead of cutting the sub-step. (The
-! end-zone branch is unreachable: the loop covers zones 2 to
-! num_zones-1.)
+! of its neighbours (at least 0) instead of cutting the sub-step.
                if(abs(composition(species_index,zone_index)).lt. &
                     1.0d-5*composition(species_index,num_zones))then
-                  if(zone_index.eq.1.or.zone_index.eq.num_zones)then
-                     composition(species_index,zone_index) = 0.0d0
-                  else
-                     composition(species_index,zone_index) = &
-                          max(0.0d0,0.5d0* &
-                          (composition(species_index,zone_index+1)+ &
-                          composition(species_index,zone_index-1)))
-                  endif
+                  composition(species_index,zone_index) = &
+                       max(0.0d0,0.5d0* &
+                       (composition(species_index,zone_index+1)+ &
+                       composition(species_index,zone_index-1)))
                   cycle
                endif
 ! Otherwise halve the sub-step and redo it; the fourth cut of the
@@ -489,37 +560,6 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
             endif
          end do
       end do
-! The mean molecular weight of a fully ionized gas (the equations in
-! the header), from the second iteration on. star%amuenv is 1/mu_ion of
-! the envelope mixture. Partial ionization is ignored; the original
-! notes that massive stars need a correction for it.
-      if(iteration_number.gt.1)then
-         do zone_index = 1,num_zones
-            delta_hydrogen = composition(i_h1,zone_index)- &
-                 s%envelope_hydrogen_fraction
-            delta_helium = composition(i_he4,zone_index)- &
-                 s%envelope_helium_fraction
-            delta_metal = composition(i_metals,zone_index)- &
-                 s%envelope_metal_fraction
-            delta_helium3 = composition(i_he3,zone_index)- &
-                 s%envelope_he3_fraction
-            amu_calc_temp = s%amuenv + delta_hydrogen/atomic_weight(1) + &
-                 delta_helium/atomic_weight(2) + &
-                 delta_metal/atomic_weight(3) + &
-                 delta_helium3/atomic_weight(4)
-            ion_mean_weight_inverse = 1.0d0/amu_calc_temp
-            amu_calc_temp = composition(i_h1,zone_index)/atomic_weight(1)+ &
-                 2.0d0*(composition(i_he3,zone_index)/atomic_weight(4) &
-                 + composition(i_he4,zone_index)/atomic_weight(2)) + &
-                 0.5d0*composition(i_metals,zone_index)
-            electron_mean_weight_inverse = 1.0d0/amu_calc_temp
-            sub_physics%mu(zone_index) = ion_mean_weight_inverse* &
-                 electron_mean_weight_inverse/ &
-                 (ion_mean_weight_inverse+electron_mean_weight_inverse)
-         end do
-      endif
-
-      return
-end subroutine check_composition
+end subroutine check_species_range
 
 end module transport_checks

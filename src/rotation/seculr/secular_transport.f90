@@ -46,6 +46,7 @@
 module secular_transport
       use rotation_configuration, only: rotation_settings, disk_locking_engaged, &
            solid_body_everywhere, num_tracked_species, last_mu_species
+      use transport_checks, only: check_mixed_species
       use rotation_scratch_lib, only: substep_model_state, substep_physics_state, &
            stability_state, transport_grid_state, circulation_velocity_state
       use star_info_lib, only: star_info, json
@@ -229,6 +230,12 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
            mixing_diffusion_coeff, total_velocity, zone_min, zone_max, &
            final_zone_begin, final_zone_end, diffusion_solve_ok, &
            last_mu_species + 1, num_tracked_species(), ierr)
+      if (ierr /= 0) return
+! Those species get the checks the iterations give slots 1-4: an
+! anomalous abundance halves the sub-step for the caller to redo
+! (docs/bug_sweep.md O14).
+      call check_mixed_species(s%xa, last_mu_species + 1, num_tracked_species(), s%nz, &
+           sub_timestep, cut_count, redo_flag, ierr)
       if (ierr /= 0) return
       call restore_end_zone_flags(sub_model, s%nz, first_zone_convective, &
            last_zone_convective)
