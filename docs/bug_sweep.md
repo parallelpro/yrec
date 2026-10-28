@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 36 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 45 |
-| Open | 20 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 23 |
+| Fixed | 37 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 46 |
+| Open | 19 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 22 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -108,7 +108,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O10 | Overshoot edge width from two models; wrong overshoot gate | Width yes, gate no | Open |
 | **O** | **Open: rotation, wind, microphysics and output (§6)** | | |
 | O11 | Dynamical-shear limit can overshoot or go negative | Yes | Open |
-| O12 | Solid-body Newton tolerance never set | Yes | Open |
+| O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
 | O13 | Transport region ends: sums and write-back disagree | Yes | Open |
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Open |
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Open |
@@ -1038,7 +1038,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O12. The solid-body Newton iteration's tolerance (`TOLERI`) is never set
 
-- **Status:** open. The plumbing changed; the behaviour did not.
+- **Status:** fixed (2026-10-28): `default_inertia_tolerance` is 1e-14, near round-off (the bug's example was 1e-12; the smaller value keeps J within 1e-14 of the input, since the iteration ends by resetting j to I omega/dm). Measured on the 26 rotating decks: every one moves. In the fully convective configuration-matrix decks, which run few calls, by 2e-11 in log L and 3e-13 in J: the direct effect. Elsewhere the round-off differences are amplified, as by the marginal zones of O9, to at most 2e-4 dex in log L and 1e-3 in the surface omega (2-3% in the solid-core variant rv_sbm2), and the rescale-only deck, which stops at a model count, ends at another age. rv_ref runs 4% faster.
 - **In the original F77?** Yes. `COMMON /ERRMOM/ TOLERI` appears only in CHECKJ and SOLID, and nothing sets it. CHECKJ only loosens it temporarily ([checkj.f:135-142](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkj.f#L135-L142)); SOLID reads it ([solid.f:56-65](https://github.com/parallelpro/yrec/blob/6cd56739/src/solid.f#L56-L65)):
   ```fortran
         IF(DABS(DELJ/CZJ).GT.TOLERI) THEN

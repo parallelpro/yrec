@@ -14,11 +14,14 @@ module omega_profile
            default_inertia_tolerance
 
 ! The relative tolerance on J of solid_body_omega's Newton iteration
-! when the caller gives none: zero, so the iteration always takes its
-! 20 corrections. It is the F77 TOLERI, which nothing ever set;
+! when the caller gives none: 1e-14, near round-off. The iteration
+! converges quadratically, so it stops a correction or two after
+! reaching it, where the F77 TOLERI, which nothing ever set (zero),
+! made it take all 20 (docs/bug_sweep.md O12). The final j is reset to
+! I omega/dm, so it moves J by at most this fraction.
 ! check_angular_momentum loosens it (inertia_tolerance) for the
 ! transport's iterations before the last.
-      double precision, parameter :: default_inertia_tolerance = 0.0d0
+      double precision, parameter :: default_inertia_tolerance = 1.0d-14
 
 contains
 

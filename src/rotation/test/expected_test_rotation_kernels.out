@@ -2,8 +2,8 @@ inertia: I = (2/3) r^2 dm at omega = 0                   1.93E-14  ok
 shape: fp = ft = 1 as omega -> 0                         1.64E-14  ok
 shape: 1 - fp ~ omega^2 (ratio 4)                        1.88E-05  ok
 shape: 1 - ft ~ omega^4 (ratio 16)                       5.51E-05  ok
-omega_from_j: radiative zones keep I omega = j dm        1.81E-16  ok
-omega_from_j: the envelope keeps its J                   1.86E-16  ok
+omega_from_j: radiative zones keep I omega = j dm        7.74E-15  ok
+omega_from_j: the envelope keeps its J                   0.00E+00  ok
 omega_from_j: the envelope rotates as a solid body       0.00E+00  ok
 AM diffusion: J conserved without wind                   0.00E+00  ok
 AM diffusion: sumdj = 0 without wind                     1.39E-17  ok
@@ -65,9 +65,9 @@ stability: interfaces midway in r                        5.53E-15  ok
  DYNAMICAL SHEAR-SHELL   31 WTOP  4.557E-05 WBOT  4.456E-05 LIMIT  4.555E-05
 mechanisms: each writes its slot and what it corrects    0.00E+00  ok
 mechanisms: a corrected slot comes earlier               0.00E+00  ok
- MAX D(J/M)/(J/M)   1.000E-06 AT PT.   54 BY ITERATION
+ MAX D(J/M)/(J/M)   1.000E-06 AT PT.   60 BY ITERATION
    0.000E+00   0   1.000E-06   6
-checkj: within the tolerance: converged, omega from j    2.01E-16  ok
+checkj: within the tolerance: converged, omega from j    1.91E-15  ok
 checkj: above the tolerance: not converged               0.00E+00  ok
  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
      ERROR IN SR CHECKJ
