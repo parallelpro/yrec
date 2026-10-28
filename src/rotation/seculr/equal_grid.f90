@@ -97,7 +97,6 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
      enclosed_mass, epsm, surface_luminosity_lsun, zone_begin, ntab, num_eq_points, &
      chi, eval_x, table_x, table_y, eval_y)
       use star_info_lib, only: json
-      use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use physical_constants
       use numerics_lib, only: osplin
       use math_lib
@@ -114,10 +113,10 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
 
 ! The scales of chi (see equal_spaced_grid), with the luminosity scale
 ! dl L_tot in erg/s.
-      mass_scale = rotation_settings%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = rotation_settings%chi_grid_scale(ichi_dl_max)*surface_luminosity_lsun* &
+      mass_scale = rotation_settings%chi_mass_scale
+      luminosity_scale = rotation_settings%chi_luminosity_scale*surface_luminosity_lsun* &
            rotation_settings%solar_luminosity_cgs
-      pressure_scale = rotation_settings%chi_grid_scale(ichi_dp_core_max)
+      pressure_scale = rotation_settings%chi_pressure_scale
       do i = 1, ntab
          ii = zone_begin + i - 1
          table_x(i) = chi(i)
@@ -161,7 +160,7 @@ end subroutine multiply_by_exp10
 !   chi = log M/dm + L/(L_tot dl) - log P/dp,
 ! with L_tot the surface luminosity and dm, dl, dp the largest point
 ! spacings in log M, L/L_tot and log P that the rezoner allows
-! (chi_grid_scale slots ichi_dm_max, ichi_dl_max, ichi_dp_core_max),
+! (rotation_settings' chi_mass_scale, chi_luminosity_scale, chi_pressure_scale),
 ! so that the transport grid follows the structural grid. Sets in
 ! rot_scr: chi at the region's model points; num_eq_points values
 ! eq_chi, equally spaced (eq_chi_spacing) from chi(1) to the last chi;
@@ -170,7 +169,6 @@ subroutine equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, z
      zone_end, num_zones)
       use rotation_scratch_lib, only: rotation_diffusion_state
       use star_info_lib, only: json
-      use controls_buffer, only: ichi_dl_max, ichi_dm_max, ichi_dp_core_max
       use physical_constants
       use numerics_lib
       use math_lib
@@ -191,9 +189,9 @@ subroutine equal_spaced_grid(rot_scr, luminosity_lsun, log_pressure, log_mass, z
       double precision :: mass_scale, luminosity_scale, pressure_scale
 
 ! The scales of chi: dm, dl L_tot (in solar units) and dp.
-      mass_scale = rotation_settings%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = rotation_settings%chi_grid_scale(ichi_dl_max)*luminosity_lsun(num_zones)
-      pressure_scale = rotation_settings%chi_grid_scale(ichi_dp_core_max)
+      mass_scale = rotation_settings%chi_mass_scale
+      luminosity_scale = rotation_settings%chi_luminosity_scale*luminosity_lsun(num_zones)
+      pressure_scale = rotation_settings%chi_pressure_scale
       num_points_in_range = zone_end - zone_begin + 1
       do range_index = 1, num_points_in_range
          zone_index = zone_begin + range_index - 1

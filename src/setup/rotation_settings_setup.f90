@@ -43,6 +43,7 @@ contains
 !   star writes: none
 function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
+      use controls_buffer, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
       type(star_info), intent(in) :: s
       type(rotation_settings_t) :: settings
 
@@ -72,7 +73,9 @@ function rotation_settings_from_star(s) result(settings)
       settings%constant_background_diffusion_coeff = s%ctrl%constant_background_diffusion_coeff
       settings%use_diffusion_advection_transport = s%ctrl%use_diffusion_advection_transport
       settings%difad_velocity_scale = s%ctrl%difad_velocity_scale
-      settings%chi_grid_scale = s%ctrl%chi_grid_scale
+      settings%chi_mass_scale = s%ctrl%chi_grid_scale(ichi_dm_max)
+      settings%chi_luminosity_scale = s%ctrl%chi_grid_scale(ichi_dl_max)
+      settings%chi_pressure_scale = s%ctrl%chi_grid_scale(ichi_dp_core_max)
       settings%use_wind_torque = s%job%use_wind_torque
       settings%wind_constant = s%ctrl%constfactor
       settings%wind_law_omega_exponent = s%ctrl%wind_law_omega_exponent

@@ -7,7 +7,7 @@
 ! on the new abundances, from which they also derive the new mean
 ! molecular weight (check_composition).
 module transport_checks
-      use rotation_configuration, only: rotation_settings
+      use rotation_configuration, only: rotation_settings, last_mu_species
       implicit none
       private
       public :: check_angular_momentum, check_composition
@@ -76,12 +76,12 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       use star_info_lib, only: star_info, json
       use io_units
       implicit none
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
 
-      double precision, intent(inout) :: log_density(json)
+      double precision, intent(in) :: log_density(json)
       double precision, intent(inout) :: specific_angular_momentum_prev(json)
       double precision, intent(in) :: specific_angular_momentum_start(json)
-      double precision, intent(inout) :: log_radius(json), log_mass(json), &
+      double precision, intent(in) :: log_radius(json), log_mass(json), &
            shell_mass(json)
       integer, intent(in) :: iteration_number
       logical, intent(in) :: am_transport_convective_flag(json)
@@ -396,10 +396,10 @@ end subroutine check_angular_momentum
 subroutine check_composition(s, mid_scr, composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib, only: midstep_physics_state
-      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3
+      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, n_species_basic
       use io_units
       implicit none
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       type(midstep_physics_state), intent(inout) :: mid_scr
 
       double precision, intent(inout) :: composition(15,json)
@@ -429,9 +429,9 @@ subroutine check_composition(s, mid_scr, composition, iteration_number, num_zone
 ! The species checked: 1-4 before the last iteration, whose mixing
 ! covers only those, and 1-11 on it.
       if(iteration_number.eq.rotation_settings%max_diffusion_iters)then
-         num_diffused_species = 11
+         num_diffused_species = n_species_basic
       else
-         num_diffused_species = 4
+         num_diffused_species = last_mu_species
       endif
       redo_flag = .false.
       do species_index = 1,num_diffused_species

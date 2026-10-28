@@ -59,7 +59,7 @@ subroutine am_transport_grid(rot_scr, mid_scr, &
       use math_lib
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(midstep_physics_state), intent(in) :: mid_scr
 
 ! Inputs
       double precision, intent(in) :: am_diffusion_coeff(json), &

@@ -71,7 +71,7 @@ subroutine rotation_stability_setup(rot_scr, mid_scr, &
       use math_lib
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(midstep_physics_state), intent(in) :: mid_scr
 
       double precision, intent(in) :: log_density(json), local_gravity(json), &
            luminosity(json), log_pressure(json), log_radius(json), &

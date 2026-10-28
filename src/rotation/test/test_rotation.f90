@@ -361,8 +361,9 @@ subroutine secular_check()
       rotation_settings%no_am_transport_in_core = .false.
       rotation_settings%use_zahn_coupling_factor = .false.
       rotation_settings%use_diffusion_advection_transport = .false.
-      rotation_settings%chi_grid_scale = [1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, &
-           5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1]
+      rotation_settings%chi_mass_scale = 8.0d-2
+      rotation_settings%chi_luminosity_scale = 2.0d-2
+      rotation_settings%chi_pressure_scale = 5.0d-2
       call secular_case("first iteration", 1, 0, .false., .true.)
       call secular_case("second iteration", 2, 0, .false., .false.)
       call secular_case("secular shear band (10x solar rotation)", 1, 1, .false., .true.)

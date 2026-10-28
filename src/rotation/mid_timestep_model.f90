@@ -14,7 +14,8 @@
 ! names of the star% fields they interpolate; the rest of the sub-step
 ! reads it from there.
 module mid_timestep_model
-      use rotation_configuration, only: rotation_settings
+      use rotation_configuration, only: rotation_settings, solid_body_everywhere, &
+           num_tracked_species
       use am_regions, only: am_convective_regions
       use omega_profile, only: solid_body_omega, omega_from_j
       implicit none
@@ -86,8 +87,7 @@ subroutine advance_rotation_substep(s, rot_scr, mid_scr, &
 
       ierr = 0
 
-      num_species_tracked = 11
-      if (rotation_settings%use_extended_composition) num_species_tracked = 15
+      num_species_tracked = num_tracked_species()
       call start_substep_composition()
       call interpolate_structure()
       call settle_convective_state()
@@ -323,7 +323,7 @@ end subroutine locate_convection_zones
 ! radii, and the moment of inertia of the surface convection zone.
 ! solid_body_mode_flag = 1 acts like force_solid_body_rotation.
 subroutine rotate_midpoint_model()
-      if (.not.rotation_settings%force_solid_body_rotation .and. (rotation_settings%solid_body_mode_flag.ne.1)) then
+      if (.not.solid_body_everywhere()) then
 ! Differential rotation: j/m = (I/m) omega shell by shell. First guess,
 ! the thin spherical shell: I/m = (2/3) r^2, omega = j/(I/m), and
 ! I = dm (I/m).
@@ -430,11 +430,7 @@ subroutine burn_and_settle(s, mid_scr, timestep, composition, shell_mass, log_te
 
       ierr = 0
 
-      if (rotation_settings%use_extended_composition) then
-         num_species = 15
-      else
-         num_species = 11
-      end if
+      num_species = num_tracked_species()
 ! The abundances at the end of the sub-step, region by region.
       regions = burn_regions(s, log_temperature, radiative_zone_bounds, &
            num_radiative_zones, convective_zone_bounds, num_convective_zones)

@@ -37,8 +37,8 @@ contains
 ! total_circulation_velocity (legacy HV); any_transport_active is set if
 ! it is positive anywhere. With no_am_transport_in_core the velocities
 ! are zeroed inside the energy-generating core (zero_transport_in_core).
-! dlnomega_dlnr is d omega/d ln r (not
-! d ln omega/d ln r) and dlnomega_dlnr_max its dynamical-shear limit.
+! domega_dlnr is d omega/d ln r and dynamical_shear_omega_limit its
+! dynamical-shear limit.
 ! Each velocity is later multiplied by r (diffusion_velocity_scales) to
 ! give a diffusion coefficient.
 ! The formulas are the kernels below this routine. Its internal steps
@@ -48,7 +48,7 @@ contains
 subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
      log_radius, radius, zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
-     dlnomega_dlnr, dlnomega_dlnr_max, total_circulation_velocity, &
+     domega_dlnr, dynamical_shear_omega_limit, total_circulation_velocity, &
      total_luminosity, log_pressure, es_circulation_velocity, &
      gsf_circulation_velocity, secular_shear_velocity)
       use rotation_scratch_lib, only: rotation_diffusion_state, &
@@ -58,7 +58,7 @@ subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
       use math_lib
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(midstep_physics_state), intent(in) :: mid_scr
       type(circulation_velocity_state), intent(inout) :: circ_scr
 
       double precision, intent(in) :: log_radius(json), radius(json)
@@ -67,8 +67,8 @@ subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
       integer, intent(in) :: num_zones
       double precision, intent(in) :: omega(json)
       logical, intent(out) :: any_transport_active
-      double precision, intent(in) :: dlnomega_dlnr(json), &
-           dlnomega_dlnr_max(json)
+      double precision, intent(in) :: domega_dlnr(json), &
+           dynamical_shear_omega_limit(json)
       double precision, intent(out) :: total_circulation_velocity(json)
       double precision, intent(in) :: total_luminosity, log_pressure(json)
 ! The three velocities (cm/s; the star's, for the output): the previous
@@ -91,13 +91,13 @@ subroutine circulation_velocities(rot_scr, mid_scr, circ_scr, &
       call inhibit_by_mu_gradient(zone_min, zone_max, mid_scr%mu, log_pressure, &
            rot_scr%del_grad_diff_interface, es_circulation_velocity)
       call compute_gsf_velocity(zone_min, zone_max, rotation_settings%gsf_inhibition_mode, &
-           am_transport_convective_flag, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
+           am_transport_convective_flag, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
            mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%omega_interface, &
            rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
            rot_scr%gravity_factor_interface, rot_scr%gsf_kippenhahn_coeff, &
            gsf_circulation_velocity)
       call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
-           log_radius, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
+           log_radius, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
            mid_scr%mu, rot_scr%mean_molecular_weight_interface, rot_scr%radius_interface, &
            rot_scr%kinematic_viscosity_interface, rot_scr%thermal_diffusivity_interface, &
            rot_scr%mu_gradient_richardson_coeff, secular_shear_velocity, &
@@ -458,13 +458,13 @@ end subroutine inhibit_by_mu_gradient
 ! Kippenhahn 1980 estimate). The inhibition factors come from later work
 ! by Spruit.
 ! Interfaces with convective zones on both sides are skipped. radius
-! (cm), omega (rad/s) and mu are at the zone centres; dlnomega_dlnr is
-! d omega/d ln r and dlnomega_dlnr_max its dynamical-shear limit; the
+! (cm), omega (rad/s) and mu are at the zone centres; domega_dlnr is
+! d omega/d ln r and dynamical_shear_omega_limit its dynamical-shear limit; the
 ! mean mu, omega, kinematic viscosity nu, thermal diffusivity K and
 ! gravity factor are at the interfaces. gsf_circulation_velocity is set
 ! at the interfaces it treats.
 pure subroutine compute_gsf_velocity(zone_min, zone_max, gsf_inhibition_mode, &
-     am_transport_convective_flag, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
+     am_transport_convective_flag, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
      mu, mean_molecular_weight_interface, omega_interface, &
      kinematic_viscosity_interface, thermal_diffusivity_interface, &
      gravity_factor_interface, gsf_kippenhahn_coeff, gsf_circulation_velocity)
@@ -472,8 +472,8 @@ pure subroutine compute_gsf_velocity(zone_min, zone_max, gsf_inhibition_mode, &
       implicit none
       integer, intent(in) :: zone_min, zone_max, gsf_inhibition_mode
       logical, intent(in) :: am_transport_convective_flag(:)
-      double precision, intent(in) :: radius(:), omega(:), dlnomega_dlnr(:), &
-           dlnomega_dlnr_max(:), mu(:), mean_molecular_weight_interface(:), &
+      double precision, intent(in) :: radius(:), omega(:), domega_dlnr(:), &
+           dynamical_shear_omega_limit(:), mu(:), mean_molecular_weight_interface(:), &
            omega_interface(:), kinematic_viscosity_interface(:), &
            thermal_diffusivity_interface(:), gravity_factor_interface(:), &
            gsf_kippenhahn_coeff(:)
@@ -484,18 +484,18 @@ pure subroutine compute_gsf_velocity(zone_min, zone_max, gsf_inhibition_mode, &
          if (am_transport_convective_flag(i).and. &
               am_transport_convective_flag(i-1)) cycle
 ! Viscous inhibition (modes 0 and 2; MHP 8/93, mu gradients neglected):
-! stable while |d omega/d ln r| < q_nu = 2 sqrt(nu/K) dlnomega_dlnr_max,
+! stable while |d omega/d ln r| < q_nu = 2 sqrt(nu/K) dynamical_shear_omega_limit,
 ! with nu the kinematic viscosity and K the thermal diffusivity. Above
 ! it the velocity is multiplied by fxx = sqrt((|d omega/d ln r| - q_nu)
 ! /q_nu); without viscous inhibition fxx = 1.
          if (gsf_inhibition_mode.eq.2 .or. gsf_inhibition_mode.eq.0) then
             qwrmx = 2.0d0*sqrt(kinematic_viscosity_interface(i)/ &
-                 thermal_diffusivity_interface(i))*dlnomega_dlnr_max(i)
-            if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
+                 thermal_diffusivity_interface(i))*dynamical_shear_omega_limit(i)
+            if (abs(domega_dlnr(i)).lt.qwrmx) then
                gsf_circulation_velocity(i) = 0.0d0
                cycle
             else
-              fxx = sqrt((abs(dlnomega_dlnr(i))-qwrmx)/qwrmx)
+              fxx = sqrt((abs(domega_dlnr(i))-qwrmx)/qwrmx)
             end if
          else
             fxx = 1.0d0
@@ -510,18 +510,18 @@ pure subroutine compute_gsf_velocity(zone_min, zone_max, gsf_inhibition_mode, &
             qwrmx=2.0d0*sqrt(gravity_factor_interface(i)* &
                  abs(mu(i)-mu(i-1)) &
                  /dr/mean_molecular_weight_interface(i))
-            if (abs(dlnomega_dlnr(i)).lt.qwrmx) then
+            if (abs(domega_dlnr(i)).lt.qwrmx) then
                gsf_circulation_velocity(i) = 0.0d0
                cycle
             else
-               qwrmx2 = 1.0d-2*dlnomega_dlnr(i)
+               qwrmx2 = 1.0d-2*domega_dlnr(i)
                if (abs(qwrmx).lt.abs(qwrmx2)) then
                   qwrmx2 = 1.0d0
                else
                   if (abs(qwrmx).lt.1.0d-20) then
                      qwrmx2 = 1.0d0
                   else
-                     qwrmx2 = sqrt((abs(dlnomega_dlnr(i))-qwrmx)/qwrmx)
+                     qwrmx2 = sqrt((abs(domega_dlnr(i))-qwrmx)/qwrmx)
                   end if
                end if
                fxx = min(fxx,qwrmx2)
@@ -567,7 +567,7 @@ end subroutine compute_gsf_velocity
 ! compute_gsf_velocity, with mu_gradient_richardson_coeff the
 ! mu-gradient Richardson term (rotation_stability_setup).
 subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
-     log_radius, radius, omega, dlnomega_dlnr, dlnomega_dlnr_max, &
+     log_radius, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
      mu, mean_molecular_weight_interface, radius_interface, &
      kinematic_viscosity_interface, thermal_diffusivity_interface, &
      mu_gradient_richardson_coeff, secular_shear_velocity, gsf_circulation_velocity)
@@ -577,7 +577,7 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: critical_reynolds
       double precision, intent(in) :: log_radius(:), radius(:), omega(:), &
-           dlnomega_dlnr(:), dlnomega_dlnr_max(:), mu(:), &
+           domega_dlnr(:), dynamical_shear_omega_limit(:), mu(:), &
            mean_molecular_weight_interface(:), radius_interface(:), &
            kinematic_viscosity_interface(:), thermal_diffusivity_interface(:), &
            mu_gradient_richardson_coeff(:)
@@ -587,14 +587,14 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
       double precision :: qwr, dr, rmid, wmin, dlnwdr0, dlnjmdr0, dlnjmdr, &
            dlnwdr, fx, qwrmx_dyn, qwrmx, qwrmx2
       do i = zone_min,zone_max
-! Dynamical shear operates where |d omega/d ln r| > dlnomega_dlnr_max
+! Dynamical shear operates where |d omega/d ln r| > dynamical_shear_omega_limit
 ! (Ri < 1/4). The shear velocity is then the large dynamical value,
-!   U_SS = (8/45) K (|d omega/d ln r|/dlnomega_dlnr_max)^2/r.
-         if (abs(dlnomega_dlnr(i)).gt.dlnomega_dlnr_max(i)) then
-            qwr = abs(dlnomega_dlnr(i))
+!   U_SS = (8/45) K (|d omega/d ln r|/dynamical_shear_omega_limit)^2/r.
+         if (abs(domega_dlnr(i)).gt.dynamical_shear_omega_limit(i)) then
+            qwr = abs(domega_dlnr(i))
             secular_shear_velocity(i)=8.0d0/4.5d1* &
                  thermal_diffusivity_interface(i)* &
-                 (qwr/dlnomega_dlnr_max(i))**2/radius_interface(i)
+                 (qwr/dynamical_shear_omega_limit(i))**2/radius_interface(i)
 ! Correct the GSF velocity for the shear the dynamical instability
 ! leaves behind: wmin is the omega of zone i-1 that puts
 ! |d omega/d ln r| exactly at the limit, and U_GSF is scaled by its
@@ -603,10 +603,10 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
             dr = radius(i)-radius(i-1)
             rmid = 0.5d0*(radius(i)+radius(i-1))
             if (omega(i).lt.omega(i-1)) then
-               wmin = omega(i) + dlnomega_dlnr_max(i)*ln10* &
+               wmin = omega(i) + dynamical_shear_omega_limit(i)*ln10* &
                     (log_radius(i)-log_radius(i-1))
             else
-               wmin = omega(i) - dlnomega_dlnr_max(i)*ln10* &
+               wmin = omega(i) - dynamical_shear_omega_limit(i)*ln10* &
                     (log_radius(i)-log_radius(i-1))
             end if
             dlnwdr0 = abs(log(omega(i))-log(omega(i-1)))/dr
@@ -629,27 +629,27 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
             cycle
          end if
 ! The largest |d omega/d ln r| stable against secular shear.
-! dlnomega_dlnr_max (legacy QWRMAX) is the dynamical-shear limit. With
+! dynamical_shear_omega_limit (legacy QWRMAX) is the dynamical-shear limit. With
 ! thermal diffusion the secular shear Richardson number is
 ! (Pr Re_c/8) Ri, with Pr = nu/K the Prandtl number and Re_c the critical
 ! Reynolds number (critical_reynolds), and the interface is unstable
 ! where it falls below 1/4, i.e. where |d omega/d ln r| exceeds
-!   qwrmx = sqrt(Pr Re_c/8) dlnomega_dlnr_max
+!   qwrmx = sqrt(Pr Re_c/8) dynamical_shear_omega_limit
 ! (the square root of Pr, not Pr; MHP 3/92). The velocity estimate is
 ! from Zahn (1991):
-!   U_SS = (8/45) K ((|d omega/d ln r| - qwrmx)/dlnomega_dlnr_max)^2/r.
+!   U_SS = (8/45) K ((|d omega/d ln r| - qwrmx)/dynamical_shear_omega_limit)^2/r.
          qwrmx = sqrt(kinematic_viscosity_interface(i)/ &
               thermal_diffusivity_interface(i)*1.25d-1*critical_reynolds)* &
-              dlnomega_dlnr_max(i)
-         if (abs(dlnomega_dlnr(i)).gt.qwrmx) then
+              dynamical_shear_omega_limit(i)
+         if (abs(domega_dlnr(i)).gt.qwrmx) then
 ! Unstable. Without a mu gradient (|Delta mu/mu| < 1e-10), U_SS as above.
             if (abs((mu(i)-mu(i-1))/mean_molecular_weight_interface(i)) &
                  .lt.1.0d-10) then
                qwrmx2 = 0.0d0
-               qwr = abs(dlnomega_dlnr(i)) - qwrmx
+               qwr = abs(domega_dlnr(i)) - qwrmx
                secular_shear_velocity(i)=8.0d0/4.5d1* &
                     thermal_diffusivity_interface(i)* &
-                    (qwr/dlnomega_dlnr_max(i))**2/radius_interface(i)
+                    (qwr/dynamical_shear_omega_limit(i))**2/radius_interface(i)
             else
 ! With a mu gradient, its Richardson number
 !   Ri_mu = (rho/P) (-d ln T/d ln mu) (d ln mu/d ln P) g^2
@@ -661,15 +661,15 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
                qwrmx2 = 2.0d0*sqrt(max(1.0d-20,mu_gradient_richardson_coeff(i)* &
                         abs((mu(i)-mu(i-1))/ &
                         mean_molecular_weight_interface(i))))
-               if (abs(dlnomega_dlnr(i)).gt.qwrmx2) then
+               if (abs(domega_dlnr(i)).gt.qwrmx2) then
 ! Unstable against both: U_SS from the excess over the larger limit (the
 ! mu limit where the mu gradient slows the transport of j). Stable
 ! against the mu gradient: U_SS stays zero.
                   qwrmx = max(qwrmx2,qwrmx)
-                  qwr = abs(dlnomega_dlnr(i)) - qwrmx
+                  qwr = abs(domega_dlnr(i)) - qwrmx
             secular_shear_velocity(i)=8.0d0/4.5d1* &
                  thermal_diffusivity_interface(i)* &
-                 (qwr/dlnomega_dlnr_max(i))**2/radius_interface(i)
+                 (qwr/dynamical_shear_omega_limit(i))**2/radius_interface(i)
                end if
             end if
          end if

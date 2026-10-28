@@ -412,11 +412,12 @@ rotation/evolve_rotation.o: am_regions.mod burn_step.mod convection_geometry.mod
 rotation/magnetic_braking.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/mid_timestep_model.o: am_regions.mod burn_step.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/omega_profile.o: composition_layout.mod math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod
+rotation/rotation_configuration.o: composition_layout.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod
 rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_transport_coefficients.o: composition_layout.mod rotation_configuration.mod
 rotation/seculr/circulation.o: math_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/equal_grid.o: controls_buffer.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/equal_grid.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/secular_transport.o: am_grid.mod am_transport_coefficients.mod circulation.mod convection_lib.mod magnetic_braking.mod math_lib.mod numerics_lib.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod
 rotation/seculr/stability_coefficients.o: math_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
@@ -428,7 +429,7 @@ rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circula
 rotation/test/test_rotation_kernels.o: am_transport_coefficients.mod composition_layout.mod magnetic_braking.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod rotational_mixing.mod
 rotation/viscosity.o: composition_layout.mod math_lib.mod physical_constants.mod
 setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod star_info_lib.mod
-setup/rotation_settings_setup.o: rotation_configuration.mod star_info_lib.mod
+setup/rotation_settings_setup.o: controls_buffer.mod rotation_configuration.mod star_info_lib.mod
 setup/user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
 state/controls_sync.o: controls_buffer.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod

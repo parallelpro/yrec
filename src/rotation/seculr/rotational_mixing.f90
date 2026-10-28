@@ -65,7 +65,7 @@ subroutine diffuse_composition_driver(rot_scr, mid_scr, &
       use star_info_lib, only: json
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(midstep_physics_state), intent(in) :: mid_scr
 
       double precision, intent(in) :: timestep
       double precision, intent(in) :: diffusion_coeff(json)
@@ -416,7 +416,7 @@ subroutine composition_grid(rot_scr, mid_scr, diffusion_coeff, log_density, lumi
       use math_lib
       implicit none
       type(rotation_diffusion_state), intent(inout) :: rot_scr
-      type(midstep_physics_state), intent(inout) :: mid_scr
+      type(midstep_physics_state), intent(in) :: mid_scr
 
       double precision, intent(in) :: diffusion_coeff(json), &
            log_density(json), luminosity_lsun(json), log_pressure(json), &

@@ -11,7 +11,7 @@ Rotation has no facade: by the author's decision, core and setup use its modules
 
 Rotation reads its controls, and the solar units, from a settings record, `rotation_settings` (module `rotation_configuration`), never from `s%ctrl` or `s%job` (the checker enforces this). The star layer builds the record from the controls (`setup/rotation_settings_setup`), and `run_yrec` installs it at the start of every run card.
 
-The star comes in as an argument: the four drivers (`evolve_angular_momentum`, `advance_rotation_substep` and `burn_and_settle`, `apply_secular_transport`, `check_angular_momentum` and `check_composition`) take `type(star_info) :: s`, as core's procedures do, and nothing in rotation names a module-level star. Everything else is star-free: the drivers pass what it needs as arguments (the wind laws, for one, get the step's turnover times and photospheric pressures in a `wind_conditions` record). The kernels that touch no scratch either are listed in `check_boundaries.py`'s `STAR_BLIND_FILES` and tested by `test_rotation_kernels` (§4). `rotation_scratch_lib` is rotation's alone: no file outside `rotation/` may use it.
+The star comes in as an argument: the drivers (`evolve_angular_momentum`; the sub-step's `advance_rotation_substep` and `burn_and_settle`; `apply_secular_transport`; the checks `check_angular_momentum` and `check_composition`) take `type(star_info) :: s`, as core's procedures do, and nothing in rotation names a module-level star. Everything else is star-free: the drivers pass what it needs as arguments (the wind laws, for one, get the step's turnover times and photospheric pressures in a `wind_conditions` record). The kernels that touch no scratch either are listed in `check_boundaries.py`'s `STAR_BLIND_FILES` and tested by `test_rotation_kernels` (§4). `rotation_scratch_lib` is rotation's alone: no file outside `rotation/` may use it.
 
 ---
 
@@ -52,8 +52,8 @@ The advection-diffusion transport (`use_diffusion_advection_transport`, legacy `
 3. **With it:**
    - computes the rotation curve, the number of sub-steps (the ω-change limit) and the shell physics (core's `shell_physics`);
    - then, for each sub-step:
-     - carry θ forward;
-     - advance the mid-sub-step model;
+     - record the sub-step's starting ω (for the wind);
+     - advance the sub-step's model (interpolated in time to the sub-step's end);
      - apply the wind (fully convective models);
      - apply the secular transport; a redo repeats the sub-step from its start;
      - store the composition at the sub-step's end, and burn the light elements;
@@ -64,7 +64,8 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 ## 3. Conventions
 
 - CGS, and log is log₁₀. ω is in rad/s, and `j_rot` is the specific angular momentum. Zones run from the center out.
-- Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one.
+- Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one; test it with `solid_body_everywhere()` (`rotation_configuration`).
+- Composition slots come from `composition_layout`: the transport mixes slots 1 to `last_mu_species` (X, Y, Z, He3, which set the μ gradient) at every iteration, the rest up to `num_tracked_species()` once.
 - Failures (a singular solve, a step cut too often) return `ierr`.
 - Kept by decision (2026-10-12): the μ gradient enters the Eddington–Sweet inhibition twice (`inhibit_by_mu_gradient`), so it cuts U_ES by at most a half, as in the F77 code. `docs/HOW_YREC_WORKS.md` §4.6 explains it.
 

@@ -176,7 +176,7 @@ physics	imu	integer	enable_mu_gradient	unused		Unused: read by the legacy reader
 physics	ilambda	integer	coulomb_log_choice	canonical		
 physics	kttau	integer	atm_choice	canonical	mesa: atm_option (int code here)	Surface boundary condition: 0 Eddington gray T(tau), 1 Krishna-Swamy T(tau), 2 Harvard-Smithsonian atmosphere, 3 Kurucz tables, 4 Allard tables, 5 Kurucz/Castelli tables
 physics	kemmax	integer	max_burn_iterations	canonical		
-physics	lvfc	logical	velocity_form_correction	verified		codiff option: alternative velocity form in diffusion coefficients
+physics	lvfc	logical	velocity_form_correction	verified		Rotational mixing: scale the composition diffusion coefficient by the Zahn (1992) coupling factor (D_mix = D_omega f_Zahn) instead of the fixed efficiencies (mixing_velocity_scale and the per-mechanism mixing scales)
 physics	ldifad	logical	use_diffusion_advection_transport	canonical		
 physics	lnoj	logical	no_am_transport_in_core	canonical		No angular momentum transport in the convective core
 physics	lnewdif	logical	use_new_diffusion_routines	canonical		Use the new diffusion routines
@@ -229,7 +229,7 @@ physics	tridt	real	tri_delta_teffl	canonical		Envelope-fit triangle: size in log
 physics	tridl	real	tri_delta_logl	canonical		Envelope-fit triangle: size in log L
 physics	tollaol	?	laol_z_tolerance	canonical		VERIFIED 2026: LAOL89 interpolators allow linear extrapolation within log(tollaol) of a table edge (gtlaol/gtlaol2/gtpurz: log_extrap_tolerance = log(tollaol)).
 physics	vnew	real(12)	mixture_weights_seed	canonical		Species mixture-weight vector seeding starin's mixture algorithm
-physics	walpcz	real	new_zone_omega_weight	verified		Omega interpolation weight for newly added envelope zones (getnewenv)
+physics	walpcz	real	new_zone_omega_weight	verified		Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes
 physics	wnew	real	initial_omega	canonical		Initial rotation rate when set_initial_omega
 physics	weakscreening	real	weak_screening_threshold	canonical		
 physics	xnewcp	real	change_species_value	verified		New abundance for change_species_name

@@ -10,8 +10,6 @@
 ! this file dispatches to. The name used here is the one most callees
 ! share (or the more descriptive one); the others are listed here,
 ! following henyey_iteration's convention:
-!  - dynamical_shear_omega_limit (QWRMAX): circulation_velocities calls
-!    the same quantity dlnomega_dlnr_max.
 !  - radius_unlogged (HRU): circulation_velocities,
 !    zahn_coupling_factor, compute_quadrupole and am_transport_grid call
 !    it radius; diffusion_velocity_scales calls it radius_mid_prev.
@@ -39,7 +37,8 @@
 ! its start, the bounds of the transport region, the surface convection
 ! zone's terms, and the outputs.
 module secular_transport
-      use rotation_configuration, only: rotation_settings, disk_locking_engaged
+      use rotation_configuration, only: rotation_settings, disk_locking_engaged, &
+           solid_body_everywhere, num_tracked_species, last_mu_species
       use transport_checks, only: check_angular_momentum, check_composition
       use am_grid, only: am_transport_grid, equal_grid_to_model
       use rotational_mixing, only: diffuse_composition_driver
@@ -120,7 +119,7 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
            am_diffusion_coeff(json), eq_mixing_diffusion_coeff(json), &
            eq_moment_of_inertia(json), eq_angular_momentum(json), &
            eq_am_diffusion_coeff(json), radius_unlogged(json), radius_mid(json), &
-           dlnomega_dlnr(json), eq_delta_angular_momentum(json), &
+           domega_dlnr(json), eq_delta_angular_momentum(json), &
            specific_angular_momentum_prev(json), omega_start(json), &
            eq_omega(json)
 
@@ -145,7 +144,9 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
       integer :: solid_body_zone_start, solid_body_zone_end
       logical :: in_unstable_region
       integer :: scan_start_zone
-      logical :: unstable_zone_found
+! transport_active: some interface has U > 0 (circulation_velocities);
+! region_found: the region scan found another unstable region
+      logical :: transport_active, region_found
       integer :: zone_begin, zone_end
       double precision :: grid_spacing
       logical :: single_interface_flag
@@ -188,7 +189,7 @@ subroutine apply_secular_transport(s, rot_scr, mid_scr, circ_scr, &
          if (ierr /= 0) return
 ! Stable against every mechanism (no U > 0, legacy LDO false): nothing
 ! to transport.
-         if(.not.unstable_zone_found) return
+         if(.not.transport_active) return
          call flag_end_zones_convective()
          call set_diffusion_coefficients()
          call transport_unstable_regions()
@@ -274,7 +275,7 @@ subroutine set_up_interfaces()
            s%nz,radius_unlogged,dynamical_shear_omega_limit)
       total_luminosity = s%solar_luminosity_cgs*rot_scr%luminosity_lsun_mid(s%nz)
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,s%omega_mid,dlnomega_dlnr)
+           rot_scr%log_radius_mid,s%omega_mid,domega_dlnr)
       call compute_quadrupole(rot_scr, &
            rot_scr%log_density_mid,rot_scr%mean_gravity_mid,radius_unlogged,s%omega_mid,s%nz,ierr)
 end subroutine set_up_interfaces
@@ -308,15 +309,15 @@ end subroutine save_substep_start
 ! ---------------------------------------------------------------
 ! The circulation and instability velocities of this iteration
 ! (diffusion_velocity) and whether any transport acts
-! (unstable_zone_found). Under use_zahn_coupling_factor (legacy LVFC),
+! (transport_active). Under use_zahn_coupling_factor (legacy LVFC),
 ! also the Zahn (1992) coupling factor star%vfc, by which
 ! diffusion_velocity_scales scales D_mix (gated on LVFC as in the F77
 ! seculr.f, not on LDIFAD).
 subroutine compute_circulation()
       call circulation_velocities(rot_scr, mid_scr, circ_scr, &
            rot_scr%log_radius_mid,radius_unlogged,zone_min,zone_max,iteration, &
-           rot_scr%am_transport_convective_flag_mid,s%nz,s%omega_mid,unstable_zone_found, &
-           dlnomega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
+           rot_scr%am_transport_convective_flag_mid,s%nz,s%omega_mid,transport_active, &
+           domega_dlnr,dynamical_shear_omega_limit,diffusion_velocity, &
            total_luminosity,rot_scr%log_pressure_mid,s%es_circulation_velocity, &
            s%gsf_circulation_velocity,s%secular_shear_velocity)
       if(rotation_settings%use_zahn_coupling_factor) &
@@ -339,11 +340,11 @@ subroutine restart_iteration()
          s%omega_mid(i) = 0.5D0*(s%omega_mid(i)+omega_start(i))
       end do
       call compute_omega_gradients(zone_min,zone_max,rot_scr%radius_interface, &
-           rot_scr%log_radius_mid,s%omega_mid,dlnomega_dlnr)
+           rot_scr%log_radius_mid,s%omega_mid,domega_dlnr)
       call compute_circulation()
       do i = 1,s%nz
          s%j_rot(i) = specific_angular_momentum_saved(i)
-         do j = 1,4
+         do j = 1,last_mu_species
             s%xa(j,i) = rot_scr%composition_snapshot(j,i)
          end do
       end do
@@ -375,8 +376,7 @@ subroutine spin_down_uncoupled_surface()
               s%star_mass,s%log_Teff,cz_moment_of_inertia, &
               s%j_rot, wind_now(), ierr)
          if (ierr /= 0) return
-      else if(surface_cz_active .and. (rotation_settings%force_solid_body_rotation .or. &
-           (rotation_settings%solid_body_mode_flag.eq.1)))then
+      else if(surface_cz_active .and. solid_body_everywhere())then
 ! The torque on the whole star: from mass 0 to the total mass, zones
 ! 1..nz.
          wind_loss_active = rotation_settings%use_wind_torque
@@ -427,7 +427,7 @@ subroutine transport_unstable_regions()
       region_loop: do
          call find_unstable_region()
 ! No further unstable region.
-         if(.not.unstable_zone_found) exit region_loop
+         if(.not.region_found) exit region_loop
          call grid_unstable_region()
 ! A region of a single unstable interface (zone_end - zone_begin <= 1;
 ! legacy LDUM2) is skipped.
@@ -438,13 +438,12 @@ subroutine transport_unstable_regions()
                exit region_loop
             endif
          endif
-         if(.not.rotation_settings%force_solid_body_rotation .and. &
-              (rotation_settings%solid_body_mode_flag.ne.1))then
+         if(.not.solid_body_everywhere())then
             call transport_angular_momentum_in_region()
             if (ierr /= 0) return
          endif
          species_begin = 1
-         species_end = 4
+         species_end = last_mu_species
          call mix_composition()
          if (ierr /= 0) return
 ! On to the next region, unless the scan has passed zone_max.
@@ -456,13 +455,13 @@ end subroutine transport_unstable_regions
 ! The next unstable region (a run of interfaces with U > 0), scanning
 ! from scan_start_zone to zone_max: zone_begin is the zone below its
 ! first unstable interface, zone_end the zone above its last, and
-! scan_start_zone moves past it. unstable_zone_found is false when the
-! scan meets no U > 0.
+! scan_start_zone moves past it. region_found is false when the scan
+! meets no U > 0.
 subroutine find_unstable_region()
-      unstable_zone_found = .false.
+      region_found = .false.
       do j = scan_start_zone,zone_max
          if(diffusion_velocity(j).gt.0.0D0) then
-            unstable_zone_found = .true.
+            region_found = .true.
             if(.not.in_unstable_region) then
                in_unstable_region = .true.
                zone_begin = j - 1
@@ -619,12 +618,8 @@ end subroutine check_iterate
 ! The species the iterations leave alone (slots 5 to 11, or to 15 with
 ! the extended composition), mixed once across every unstable region.
 subroutine mix_remaining_species()
-      species_begin = 5
-      if(rotation_settings%use_extended_composition)then
-         species_end = 15
-      else
-         species_end = 11
-      endif
+      species_begin = last_mu_species + 1
+      species_end = num_tracked_species()
       call mix_composition()
 end subroutine mix_remaining_species
 
@@ -658,21 +653,21 @@ end function wind_now
 end subroutine apply_secular_transport
 
 ! ---------------------------------------------------------------
-! d omega/d ln r (not d ln omega/d ln r) at each interface i =
+! d omega/d ln r at each interface i =
 ! zone_min..zone_max (between zones i-1 and i), centred on the interface
 ! radius r_c = radius_interface(i) (cm):
-!   dlnomega_dlnr(i) = (omega_i - omega_{i-1})/4
+!   domega_dlnr(i) = (omega_i - omega_{i-1})/4
 !                      * (1/(ln r_i - ln r_c) + 1/(ln r_c - ln r_{i-1})),
 ! with log_radius = log10 r and omega (rad/s) at the zone centres. This
 ! is (omega_i - omega_{i-1})/(ln r_i - ln r_{i-1}) when r_c lies midway
 ! in ln r. Entries outside zone_min..zone_max are left as they are.
 pure subroutine compute_omega_gradients(zone_min, zone_max, radius_interface, log_radius, &
-     omega, dlnomega_dlnr)
+     omega, domega_dlnr)
       use physical_constants, only: ln10
       use math_lib
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: radius_interface(:), log_radius(:), omega(:)
-      double precision, intent(inout) :: dlnomega_dlnr(:)
+      double precision, intent(inout) :: domega_dlnr(:)
       integer :: i
       double precision :: log_radius_center
 ! dlnr_weight (legacy DR1): the sum of the two one-sided inverse ln r
@@ -682,7 +677,7 @@ pure subroutine compute_omega_gradients(zone_min, zone_max, radius_interface, lo
          log_radius_center = log10(radius_interface(i))
          dlnr_weight = 1.0D0/ln10/(log_radius(i)-log_radius_center)+ &
               1.0D0/ln10/(log_radius_center-log_radius(i-1))
-         dlnomega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
+         domega_dlnr(i) = 0.25D0*(omega(i)-omega(i-1))*dlnr_weight
       end do
 end subroutine compute_omega_gradients
 

@@ -6,7 +6,8 @@
 ! is solved alone (solid_body_omega), and each convection zone as a
 ! whole under the imposed rotation law (enforce_rotation_profile).
 module omega_profile
-      use rotation_configuration, only: rotation_settings, disk_locking_engaged
+      use rotation_configuration, only: rotation_settings, disk_locking_engaged, &
+           solid_body_everywhere
       implicit none
       private
       public :: omega_from_j, solid_body_omega, enforce_rotation_profile, &
@@ -43,9 +44,9 @@ subroutine omega_from_j(log_density, specific_angular_momentum, log_radius, &
 
       implicit none
 
-      double precision, intent(inout) :: log_density(json), &
-           specific_angular_momentum(json), log_radius(json), log_mass(json), &
-           shell_mass(json)
+      double precision, intent(in) :: log_density(json), log_radius(json), &
+           log_mass(json),shell_mass(json)
+      double precision, intent(inout)  :: specific_angular_momentum(json)
       logical, intent(in) :: am_transport_convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: eta_squared(json), &
@@ -268,7 +269,7 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
       double precision, intent(inout) :: specific_angular_momentum(json)
       double precision, intent(in) :: log_radius(json), log_mass(json)
       double precision, intent(in) :: shell_mass(json)
-      integer, intent(inout) :: istart, iend
+      integer, intent(in) :: istart, iend
       double precision, intent(inout) :: eta_squared(json), &
            moment_of_inertia(json)
       double precision, intent(inout) :: omega(json), qiw(json), &
@@ -288,8 +289,8 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
 ! takes this branch. A convection zone below the surface always rotates
 ! as a solid body (JNT 2015/05/07): the imposed law and modes 2 and 3
 ! act on the surface convection zone only.
-      if((rotation_settings%cz_rotation_law_exponent.ge.0.0d0) .or. (rotation_settings%force_solid_body_rotation) .or. &
-           (rotation_settings%solid_body_mode_flag.eq.1) .or. (iend.lt.num_zones)) then
+      if((rotation_settings%cz_rotation_law_exponent.ge.0.0d0) .or. solid_body_everywhere() .or. &
+           (iend.lt.num_zones)) then
          call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
               moment_of_inertia,omega,qiw,mean_radius,num_zones, &

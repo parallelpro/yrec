@@ -6,7 +6,8 @@
 ! with the wind torque, and updates omega.
 module evolve_rotation
       use shell_physics, only: compute_shell_physics
-      use rotation_configuration, only: rotation_settings, disk_locking_engaged
+      use rotation_configuration, only: rotation_settings, disk_locking_engaged, &
+           solid_body_everywhere, num_tracked_species
       implicit none
       private
       public :: evolve_angular_momentum
@@ -42,7 +43,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       use secular_transport
       use magnetic_braking, only: brake_convection_zone, wind_conditions
       use convection_lib, only: find_convection_zones, homogenize_convection_zones
-      use star_info_lib, only: star_info, json
+      use star_info_lib, only: star_info, json, n_species_basic, n_species_extended
       use physical_constants
       use burn_step, only: store_end_li_be_rates, burn_li_be
       use convection_geometry, only: pressure_scale_height
@@ -111,8 +112,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 !      double precision :: omega_avg, domega_dr, delta_radius_step
 
       ierr = 0
-      num_species_tracked = 11
-      if(rotation_settings%use_extended_composition) num_species_tracked = 15
+      num_species_tracked = num_tracked_species()
 ! The regions for angular momentum transport: the convection zones with
 ! their overshoot (am_convective_regions). With instability transport
 ! on, the overshoot region needs at least one shell, to couple the
@@ -174,7 +174,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! the start of the next sub-step (burning is accounted for in fully
 ! convective models and those without instabilities too)
       do zone_index = 1,s%nz
-         do species_index = 1,11
+         do species_index = 1,n_species_basic
             s%xa_start(species_index,zone_index) = s%xa(species_index,zone_index)
          end do
       end do
@@ -220,7 +220,7 @@ contains
 subroutine spin_down_without_transport()
       omega_surface = s%omega(s%nz)
 ! solid_body_mode_flag = 1 acts like force_solid_body_rotation
-      if(rotation_settings%force_solid_body_rotation .or. (rotation_settings%solid_body_mode_flag.eq.1))then
+      if(solid_body_everywhere())then
          do zone_index = 1,s%nz
             am_transport_convective_flag(zone_index) = .true.
          end do
@@ -233,7 +233,7 @@ subroutine spin_down_without_transport()
 ! the moment of inertia of the surface convection zone (the whole star
 ! under solid-body rotation), and the masses at its bottom and top
          moment_of_inertia_cz = 0.0D0
-         if(rotation_settings%force_solid_body_rotation.or. (rotation_settings%solid_body_mode_flag.eq.1))then
+         if(solid_body_everywhere())then
            envelope_boundary_zone = 1
          else
            envelope_boundary_zone = convective_zone_bounds(num_convective_zones,1)
@@ -417,12 +417,12 @@ subroutine burn_light_elements_over_substep()
 !                envelope_boundary_zone_prev,star%nz)
       call homogenize_convection_zones(s%xa,s%dm,rot_scr%am_transport_convective_flag_mid,s%nz)
       do zone_index = 1,s%nz
-         do species_index = 12,15
+         do species_index = n_species_basic+1,n_species_extended
             if(s%xa(species_index,zone_index).lt.1.0D-24)s%xa(species_index,zone_index)=0.0D0
          end do
       end do
       do zone_index = 1,s%nz
-         do species_index = 12,15
+         do species_index = n_species_basic+1,n_species_extended
             s%xa_start(species_index,zone_index) = s%xa(species_index,zone_index)
          end do
       end do

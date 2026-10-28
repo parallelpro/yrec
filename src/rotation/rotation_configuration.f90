@@ -9,10 +9,18 @@
 ! rotation_scratch_lib.
 module rotation_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use composition_layout, only: i_he3, n_species_basic, n_species_extended
       implicit none
       private
       public :: rotation_settings_t, rotation_settings, set_rotation_settings, &
-           disk_locking_engaged
+           disk_locking_engaged, solid_body_everywhere, num_tracked_species, &
+           last_mu_species
+
+! The composition slots the transport mixes at every iteration: those
+! that set the mean molecular weight gradient, X, Y, Z and He3
+! (composition_layout's slots 1 to i_he3). The others mix once, after
+! the iterations.
+      integer, parameter :: last_mu_species = i_he3
 
       type :: rotation_settings_t
 ! instability transport (secular_transport) on. The step is cut into
@@ -64,10 +72,15 @@ module rotation_configuration
 ! U_SS) r (legacy FW)
          logical :: use_diffusion_advection_transport = .false.
          real(dp) :: difad_velocity_scale = 0.0d0
-! the grid scales (the former hpttol, slots ichi_* in controls_buffer):
-! the chi coordinate's mass, luminosity and pressure scales are slots
-! ichi_dm_max, ichi_dl_max and ichi_dp_core_max
-         real(dp) :: chi_grid_scale(12) = 0.0d0
+! the scales of the transport grid's coordinate,
+!   chi = log M/chi_mass_scale + L/(L_tot chi_luminosity_scale)
+!         - log P/chi_pressure_scale,
+! which are the rezone's largest spacings in log m, L/L_tot and log P
+! in the radiative interior (the controls tol_dm_max, tol_dl_max and
+! tol_dp_core_max, the former hpttol slots), so that the grid follows
+! the structure's mesh
+         real(dp) :: chi_mass_scale = 0.0d0, chi_luminosity_scale = 0.0d0, &
+              chi_pressure_scale = 0.0d0
 ! the wind (magnetic_braking): applied at all; the Kawaler law's
 ! constant and exponents (omega, mass-loss rate, radius, mass), and the
 ! saturation omega
@@ -113,6 +126,24 @@ subroutine set_rotation_settings(settings)
       type(rotation_settings_t), intent(in) :: settings
       rotation_settings = settings
 end subroutine set_rotation_settings
+
+! The whole star rotates as one solid body: force_solid_body_rotation,
+! or solid_body_mode_flag = 1 (which the controls read sets when
+! force_solid_body_rotation is on).
+logical function solid_body_everywhere()
+      solid_body_everywhere = rotation_settings%force_solid_body_rotation .or. &
+           rotation_settings%solid_body_mode_flag.eq.1
+end function solid_body_everywhere
+
+! The number of composition slots rotation tracks: the extended set's
+! with use_extended_composition, else the basic set's.
+integer function num_tracked_species()
+      if (rotation_settings%use_extended_composition) then
+         num_tracked_species = n_species_extended
+      else
+         num_tracked_species = n_species_basic
+      end if
+end function num_tracked_species
 
 ! MHP 9/94 disk locking: true while the disk-locking option is on and a
 ! model of age age_gyr (Gyr; the last converged model's,
