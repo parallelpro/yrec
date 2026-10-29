@@ -1,43 +1,101 @@
 # io/ — controls in, output and models out
 
 This directory holds the run's input and output:
-- the controls reader, which turns a deck into `star%ctrl` and `star%job`;
-- the output: the run log, the history and profile files, and the pulsation files;
-- the stellar model files.
+- the controls reader, which turns a deck into `star%ctrl` and `star%job` (§7, Controls);
+- the run's files: their unit numbers and paths, the output directory, the run log, and the run plan from the kind cards;
+- the output: the history and profile files in MESA's layouts, the pulsation files, and the progress lines in the run log;
+- the stellar model files: the `.mod` model (the restart file), and the readers of the older YREC7 and MODEL2 starting models.
 
-The physics never reads a deck or writes a file itself. It reads its controls from `star%ctrl` and `star%job`, and the output reads what the step computed.
+The physics never reads a deck or writes a file itself. It reads its controls from `star%ctrl` and `star%job` (a domain, from its settings record), and the output reads what the step computed: `compute_observables` and the stitched model (`core/diagnostics/`) compute every quantity first, and the writers take the star `intent(in)`.
 
-Every io procedure that touches the star takes it as an argument, `s` (`type(star_info)`), as core's procedures do: the readers and writers are called with the caller's `s`, the controls read (`read_controls`) with the run's star by `run_yrec`, and nothing in io names a module-level star (`tools/check_boundaries.py`, `STAR_ACCESS_BUDGET`). `solver_diagnostics()`, the gate for the solver forensics that star-free code asks too, reads the run log's own copy of the control, which the controls read installs (`set_solver_diagnostics`).
+Every io procedure that touches the star takes it as an argument, `s` (`type(star_info)`), as core's procedures do, and nothing in io names a module-level star (`tools/check_boundaries.py`, `STAR_ACCESS_BUDGET`). The output's own state is one record, `output_state` (`yrec_output`), which `run_yrec` owns and passes in. `solver_diagnostics()`, the gate for the solver forensics that star-free code asks too, reads the run log's own copy of the control, which the controls read installs (`set_solver_diagnostics`).
 
 ---
 
 ## 1. What lives where
 
-**The controls reader**
+**The run's files, the output and the models**
 
 | Module (file) | What it holds |
 |---|---|
-| `controls_reader` (`read_controls.f90`) | `read_controls`, the entry point, and `read_input`, the read in order (§2). Also the namelist read itself (`read_namelist_files`, and `read_inlist` for an inlist), the copy to the canonical names (`adopt_canonical_names`) and the table paths' load and store. |
-| `legacy_controls` | The variables the namelists bind to, under their legacy spellings; the legacy `/control/` and `/physics/` groups; and `set_legacy_defaults`, which gives each variable its default at the start of every read. |
-| `controls_buffer` | Every control under its canonical name, with its default as the initializer: the buffer the deck is read into. Also the named constants `max_runs`, `itime_*` and `ichi_*`. |
-| `run_files` | The fixed unit numbers, the `{YREC_INPUT}`/`{YREC_START}`/`{YREC_OUTPUT}` placeholders in paths, the output directory with its copy of the deck (`inlist_used`), and opening the run's files. |
-| `derived_controls` | `derive_controls`: the controls computed from the ones read (rate scales, which EOS and opacity tables, the wind law's exponents, the mixture changes, the diffusion switches), the semiconvection-with-overshoot stop, and the run log's header. |
-| `run_cards` | `interpret_kind_cards`: the run plan from the kind cards (evolve, rescale, rescale and evolve). |
-| `controls_check` | Warnings about controls that are set but inert. run_yrec calls it once, after `prepare_run`. |
-| `io_units` | The three fixed units written from everywhere (the run log, the terminal and the final model), and `check_io`, the report for a failed open, read or write. |
+| `run_files` | The fixed unit numbers (`assign_unit_numbers`); the `{YREC_INPUT}`, `{YREC_START}` and `{YREC_OUTPUT}` placeholders expanded in every path control (`expand_paths`, `expand_value`); the output directory, the run log's (`directory_of`; created with its parents by `make_directory`, without a shell; returned by `output_directory`); the copy of the deck (`inlist_used`); and opening the run's files (`open_run_files`; the run log, `open_run_log`). |
+| `run_cards` | `interpret_kind_cards`: the run plan from the kind cards (`card_evolve`, `card_rescale`, `card_rescale_and_evolve`): each card's stop flags and rescale targets, and its lines in the run log. |
+| `yrec_output` | The coordinator, and the output's state, `output_state` (the output directory, the profile counter, the pulse format, the history file, the profile columns, the progress lines): `output_open` after the read, `output_run_header` at each card, `output_write_model` every converged model, `output_final_model_line` at each card's end, `output_close` at the end. |
+| `history_output` | The history file: its column table (`history_columns`, one row per column at its named index `ih_<name>`), the values (`history_values`), and the writer (`history_file`, `write_history_row`). |
+| `profile_output` | The profile files' writer (`profile_selection`, `write_profile`). The profile column table and the values are core's, in `core/diagnostics/stitched_model.f90`: `profile_columns` (named indices `ip_<name>`), and `interior_value`, `envelope_value`, `atmosphere_value`. |
+| `output_columns` | What both use: the column record (`output_column`: a name, and `real_column` or `integer_column`), and the selection from a columns file (`parse_columns`). The default selections are compiled from `defaults/{history,profile}_columns.list` into `default_columns.inc` (generated by `tools/gen_default_columns.py`). |
+| `pulsation_output` | The FGONG, GSM (HDF5) and GYRE writers, their columns ported from MESA; the point set is `stitched_model`'s (`ipul_*`). |
+| `run_log` | The progress line (`log_model_line`, `progress_lines`), the end-of-run summary, and the solver-diagnostics gate. |
+| `model_files` | The `.mod` writer and reader (`write_mod_model`, `read_mod_model`; the columns in `mod_slots` and `mod_columns`), and the YREC7 and MODEL2 readers (`read_yrec7`, `read_model2`). Its header gives each format's layout. |
+| `io_units` | The three units written from everywhere (the run log, the terminal and the final model), and io's two error reports: `check_io` after an open, read or write, and `report_error` for any other error. |
 
-**The output and the models**
+**The controls reader**: `read_controls.f90` (module `controls_reader`), `legacy_controls`, `controls_buffer`, `derived_controls`, `controls_check`, and the generated `inlist_new_decl.inc` and `inlist_new_read.inc` (§7).
 
-| Module (file) | What it holds |
-|---|---|
-| `yrec_output` | The coordinator: `output_init_mesa` opens the job's files, `output_run_header` writes each card's header, and `output_write_model` decides each model what is due. |
-| `history_output`, `profile_output` | The history and profile files in MESA's layouts: their column tables and writers. |
-| `output_columns` | The column selection both use (`history_columns_file`, `profile_columns_file`). The defaults are in `defaults/{history,profile}_columns.list`. |
-| `run_log` | The progress line, and the gate for the solver diagnostics. |
-| `pulsation_output` | The FGONG, GSM (HDF5) and GYRE writers. Their columns are ported from MESA. |
-| `model_files` | The `.mod` model writer and reader, and the readers of the older YREC7 and MODEL2 starting models. |
+## 2. A run
 
-## 2. How a deck is read
+`run_yrec` (`core/run/run_driver.f90`):
+1. `read_controls` (§7) reads the deck. Inside it, `expand_paths` expands the placeholders; `open_run_files` creates the output directory, copies the deck to `inlist_used`, and opens the starting model, the final-model file, the run log, and the Monte Carlo and isochrone files when they are on; `derive_controls` writes the run log's header, and `interpret_kind_cards` the run plan.
+2. `output_open`: the history file's path and columns, the profile columns, and the pulse format. An unknown pulse format, or GSM on a build without HDF5, stops the run here (exit 1), as does a bad columns file. A history file a previous call left open is closed.
+3. At each card, `output_run_header` writes the card's line on the terminal (and the isochrone header).
+4. Each converged model, `evolve_step` builds the stitched model (`build_stitched_model`: every profile column at every point of the interior, envelope and atmosphere, and the pulse points), computes the observables, and calls `output_write_model`: the progress line every `terminal_interval` models; the isochrone record; every `profile_interval` models, `profile<N>.data` and its pulsation file `profile<N>.data.<format>`; the history row (its `profile_number` is that N, or 0); the `.mod` model; and every `pulse_gyre_interval` models the interior GYRE file `profile<model>.data.GYRE`.
+5. At each card's end, the progress line of its last model (`output_final_model_line`).
+6. At the end, the summary (`log_run_summary`), the Monte Carlo summaries (`core/run/monte_carlo.f90`, which appends each run's model to the Monte Carlo model file), and `output_close`.
+
+A job's files, in its output directory (the run log's, from `log_output_file`):
+- the run log (`.log`; a legacy `.short` name becomes `.log`): the header, the run plan, warnings, the progress lines, the summary, and the solver forensics when `report_solver_diagnostics` is on;
+- `inlist_used`, the deck as read;
+- the history file (`star_history_name`, default `history.data`): one row per converged model;
+- `profile<N>.data` and its pulsation file, when `write_profile_flag` and `write_pulse_flag` are on;
+- the `.mod` model (`last_model_file`), rewritten every model: the restart file, and the solver's recovery source when a step fails.
+
+## 3. Conventions
+
+- Output columns keep their MESA names and layouts (`test_mesa_output`, `test_mesa_baselines`); a column's index is named after it (`ih_star_age`, `ip_logT`).
+- Units: CGS unless the name has a unit suffix (`_msun`, `_gyr`, `_yr`); log is log₁₀. The history's `star_age` is in years and its luminosities in Lsun, as MESA's.
+- Errors return `ierr = 1`, which stops the run with exit status 1. io reports them through `io_units`: `check_io` after an open, read or write (`ERROR: cannot <action> <path>: <reason>`), and `report_error` otherwise (`ERROR: <text>`), on the terminal and in the run log once it is open. A starting model whose zone count does not fit the arrays, or that ends early, is such an error, as is a profile column without a value in a region.
+- The `.mod` model holds one model, the latest (`write_mod_model(..., replace=.true.)`); the Monte Carlo model file holds one per run (`replace=.false.`).
+- Paths: every path control may start with `{YREC_INPUT}`, `{YREC_START}` or `{YREC_OUTPUT}`: that environment variable's value, or `../../input`, `../../startmodels` or `output` when it is unset.
+- `pulse_format` is GYRE, FGONG or GSM, in any case.
+
+## 4. Tests
+
+- `test_mesa_output.py`: the output contract on the solar deck: the exact file set; the history's layout, its rows against the progress lines, its integer id columns; `profile_number` against `profile_interval`; the profiles' layout (zone 1 the surface, through the atmosphere); a history columns file; FGONG files from `pulse_format = 'Fgong'`; GSM with `YREC_TEST_HDF5=1` on an HDF5 build. `test_default_columns_lists_in_sync` holds the column tables to the `.list` files: every table column in its list once, each row at the index named after it, the indices 1..n, a value for every history column, a case in each region for every profile column, and the generated include current (each of these was confirmed to fail under a mutation). `test_output_directory_is_created`: a nested output directory with a space in its path. `test_columns_file_path_is_expanded`: a placeholder in `history_columns_file`.
+- `test_mesa_baselines.py`: history.data, the profiles, the pulsation files and the `.mod` of two solar decks, byte for byte against `examples/run_standard_solar_model/standard/mesa/`.
+- `test_stop_conditions.py`: the structure-limit stops end the run with their message in the run log; the seismic history columns are opt-in.
+- `test_reentry.py`: a second `run_yrec` in the same process equals a fresh process (the previous call's history file is closed by `output_open`).
+- `test_error_exit.py`, io's cases: an unknown `pulse_format`; a MODEL2 starting model with too many zones, and one cut inside its shells; each exits 1 with its message.
+- `test_generated_files.py`: the generated files are current, and `expand_paths` covers every path control in the registry.
+- `test_controls.py` and `test_inlist_convert.py`: §7.
+
+## 5. Extending
+
+**Add a history column** `<name>`:
+1. If its value is new, add it to the star (`state/star_info_lib.f90`) and compute it in `compute_observables` (`core/diagnostics/observables.f90`), after the step's physics.
+2. In `io/history_output.f90`: its named index after the last, `ih_<name> = <n>` with `n_hist_cols = ih_<name>`; its row in `history_columns`, `cols(ih_<name>) = output_column('<name>', real_column)`; and its value in `history_values`, `vals(ih_<name>) = s%...`.
+3. Its line in `src/defaults/history_columns.list`: `<name>` to write it by default, `!<name>` to make it opt-in.
+4. Rebuild (make regenerates `io/default_columns.inc`) and run `pytest test_mesa_output.py -k lists_in_sync`, which checks the index, the row, the value and the list.
+5. A default column changes history.data: reseed `test_mesa_baselines.py` (remove `examples/run_standard_solar_model/standard/mesa/` and rerun it).
+
+**Add a profile column** `<name>`:
+1. If its value is new, add it to the star and compute it in the step, where its neighbours are computed.
+2. In `core/diagnostics/stitched_model.f90`: its named index after the last, `ip_<name> = <n>` with `n_prof_cols = ip_<name>`; its row in `profile_columns`; its case in `interior_value`; and its case in `envelope_value` and in `atmosphere_value`, with the value there, or with the column added to the group that is zero above the fitting point. A column without a case in a region stops the run at its first model (`fill_stitched_arrays`), and fails the sync test.
+3. Its line in `src/defaults/profile_columns.list` (or `!<name>`).
+4. Rebuild, run the sync test, and reseed the baselines if the column is a default one.
+
+(Both recipes were traced on 2026-10-29 by adding a column each way: the sync test passes, and the history and profile files carry the new column.)
+
+**Add a field to the `.mod` model** (`io/model_files.f90`, and the star member it holds):
+- A global value: its line in `write_mod_model` (a name padded to 20 characters, then the value) and its `case` in `read_mod_model`. An older file without it still reads (the member keeps its value); a reader that does not know a name notes it in the run log and reads on.
+- A per-shell column: its name in `mod_columns`, and its value in `write_mod_model`'s row and in `read_mod_model`'s row read, at the same place. The reader requires the columns line to be `mod_columns`, so older `.mod` files no longer read: change the tag (`YMOD 2`) and keep reading `YMOD 1` if they must.
+
+## 6. Coverage
+
+`python3 src/tools/coverage.py --work DIR --dir io --test test_controls --deck ...` measures the line coverage of io/ under the test program and the decks given (a -O0 --coverage build in DIR). With `test_controls` (every shipped deck read) and six decks (cm_base, cm_rot_base and cm_atm_krishnaswamy; cm_base with profiles and FGONG files every 2 models; cm_base with GYRE files every 3 models, the interior GYRE file every 2 models and the isochrone file; five models from a YREC7 seed model) it is 86.5% of 2065 lines (2026-10-29). The output: history_output and profile_output 100%, run_log 97%, run_files 94%, pulsation_output 93% (GSM is an HDF5 build's), yrec_output 90%, run_cards 88%; model_files 62% (its error branches, which test_error_exit runs, and read_mod_model, which these decks do not reach); output_columns 46% (the columns-file parsing, which test_mesa_output runs).
+
+## 7. Controls
+
+<!-- CONTROLS: the CTL package's text replaces this section (the
+     integrator pastes it). Until then it keeps the earlier text. -->
 
 A deck is either a single-file inlist, one file holding a `&control` and a `&physics` group under the readable names, or a legacy CONTROL/PHYSICS namelist pair (`.nml1`/`.nml2`), the same groups under the legacy names in two files. An inlist with the group names of 2026-08 to 2026-10, `&star_job` and `&controls`, stops the run with the command that renames them. `read_controls` runs:
 1. `star%ctrl = controls_state()`: the pristine defaults, generated from `controls_buffer`'s initializers.
@@ -47,15 +105,13 @@ A deck is either a single-file inlist, one file holding a `&control` and a `&phy
    - `read_namelist_files`: the namelist read, over the defaults (an inlist's through `read_inlist`, whose groups, declared in the generated `inlist_new_decl.inc`, hide `legacy_controls`' groups of the same names);
    - `adopt_canonical_names`: each legacy-spelled variable copied to its canonical name;
    - `map_user_inputs` (`setup/`): the readable timestep and zoning inputs mapped onto the code's vectors, and the cross sections from the S-factors;
-   - `store_controls_to_star` (the output setup reads `star%ctrl`);
+   - `store_controls_to_star`;
    - `expand_paths`, `open_run_files`, then storing the table paths;
    - `derive_controls`;
    - `interpret_kind_cards`.
 4. `store_controls_to_star`: `star%ctrl` and `star%job` ← buffer.
 
 Every read starts from the same state, so an in-process rerun (pyyrec, `test_reentry`) reads exactly as a fresh run does.
-
-**Errors.** Every open and namelist read in io/, and every output writer's open, checks its status. `check_io` (`io_units`) reports `cannot <action> <path>: <reason>` on the terminal, and in the run log once it is open, and returns ierr = 1, which stops the run with exit status 1. A misspelled control, for example, gives `cannot read &control from deck.inlist: Cannot match namelist object name ...`.
 
 **A control's three names.** A namelist matches a deck's entries by variable name, so the legacy decks fix the legacy spellings (`KTTAU`). Inside the code a control has its canonical name (`atm_choice`, in `controls_buffer` and `star%ctrl`). Its new-format name is usually the canonical one. `defaults/controls_registry.tsv` maps all three and documents each control. Derived code works on the canonical names; only the reader sees the legacy ones.
 
@@ -66,37 +122,17 @@ Every read starts from the same state, so an in-process rerun (pyyrec, `test_ree
 | `state/controls_state_def.inc`, `state/job_controls_def.inc`, `state/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` |
 | `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/control.defaults`, `defaults/physics.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
 | `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` declarations |
-| `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` |
+| `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` (and it checks them against the column tables) |
 
 `tools/upgrade_inlist.py` converts a legacy pair to a single-file inlist, and renames the groups of an inlist written with `&star_job` and `&controls`.
 
-## 3. Output
-
-Each job writes to its output directory (the run log's directory):
-- the history file: one row per converged model;
-- `profile<N>.data` every `profile_interval` models, with a pulsation file in `pulse_format` beside it;
-- the run log;
-- the `.mod` model every model. It is the restart file, and the solver's recovery source when a step fails.
-
-The interior-only GYRE file is written every `pulse_gyre_interval` models. The writers only read: core's `compute_observables` and `stitched_model` compute every quantity first.
-
-## 4. Tests
-
-- `test_controls` (`make tests` in `src/`, then `pytest test_controls.py`) reads every deck in `examples/` and `testsuite/` through `read_controls` and compares all of `star%ctrl` and `star%job` with `io/test/expected_controls/`. Any change to the reader shows up here. Regenerate the expected files with `YREC_REGEN_CONTROLS=1` after a deliberate change.
-- `test_generated_files.py`: the generated files are current.
-- `test_inlist_convert.py`: a converted legacy deck runs identically.
-- `test_reentry.py`: in-process reruns.
-- `test_mesa_output.py`: the history and profile contract, and GSM output with `YREC_TEST_HDF5=1` on an HDF5 build.
-
-## 5. Extending
+**Tests.** `test_controls` (`make tests` in `src/`, then `pytest test_controls.py`) reads every deck in `examples/` and `testsuite/` through `read_controls` and compares all of `star%ctrl` and `star%job` with `io/test/expected_controls/`; regenerate them with `YREC_REGEN_CONTROLS=1` after a deliberate change. `test_inlist_convert.py`: a converted legacy deck runs identically.
 
 **Add a control:**
 1. Declare it in `controls_buffer.f90`, with its default as the initializer. That is the only place its default is written; `physics.defaults` (or `control.defaults`) documents it from there.
 2. Add its row to `defaults/controls_registry.tsv` (its names, type, status and description).
 3. Run `tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
-4. Read it from `star%ctrl` (or `star%job`) where it is used.
+4. Read it from `star%ctrl` (or `star%job`) where it is used; a physics domain reads it from its settings record, filled in `setup/`.
 5. Regenerate the expected controls (`YREC_REGEN_CONTROLS=1 pytest test_controls.py`) and check that only the new control changed.
 
 The legacy CONTROL/PHYSICS namelists are frozen: a new control is read only by the new format, so it needs nothing in `legacy_controls`. Each existing control's default is written once, in `controls_buffer` or, for a control read under a legacy name with no default there, in `set_legacy_defaults`; a legacy variable whose canonical twin has a default mirrors it (`alphac = overshoot_alpha_core`). `gen_inlist` stops if a control has no default in the code.
-
-**Add an output column:** add its name and value to the table in `history_output` or `profile_output`, and list it in `defaults/*_columns.list` if it belongs in the default selection.
