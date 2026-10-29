@@ -4,7 +4,7 @@
 ! The Saumon-Chabrier-Van Horn equation of state for cool, dense
 ! H/He gas, from the pure-H, pure-He and pure-metal tables.
 !     build_scv_envelope_table  combine the three tables at the envelope
-!                               X and Z (at eos_init and when the
+!                               X and Z (eos_set_mixture, whenever the
 !                               envelope composition changes)
 !     compute_scv_envelope_eos  density, derivatives and ionization
 !                               fractions at (log T, P): from the
@@ -23,7 +23,7 @@ module scv_eos
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
-           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
+           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction, scv_tables_loaded
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
@@ -782,8 +782,10 @@ end subroutine compute_scv_eos
 ! three species combined by the additive-volume rule at the envelope
 ! composition (X = envelope_hydrogen_fraction, Z =
 ! envelope_metal_fraction) into tablenv's six columns, which
-! compute_scv_envelope_eos interpolates. The lookups' warm-start cell
-! (idtt, idp) is not touched.
+! compute_scv_envelope_eos interpolates. Nothing to do before
+! read_scv_tables has read the tables, or when the table is built for
+! this composition already. The lookups' warm-start cell (idtt, idp) is
+! not touched.
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
 
@@ -820,6 +822,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       real(dp) :: entropy_h, entropy_he, entropy_total, &
            dsmix_dlnt, dlns_dlnt, cp_gas, du_dt
 
+      if (.not. scv_tables_loaded) return
+      if (envelope_hydrogen_fraction == tablenv_hydrogen_fraction .and. &
+           envelope_metal_fraction == tablenv_metal_fraction) return
 !  Read in equation of state tables for hydrogen and helium
       do t_idx = 1, nts
          do p_idx = 1, nptsx(t_idx)
@@ -998,11 +1003,13 @@ subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path
 
       tablenv_hydrogen_fraction = -1.0d0
       tablenv_metal_fraction = -1.0d0
+      scv_tables_loaded = .false.
       units = 0
       call open_scv_table(scv_h_table_path, units(1), ierr)
       if (ierr == 0) call open_scv_table(scv_he_table_path, units(2), ierr)
       if (ierr == 0) call open_scv_table(scv_z_table_path, units(3), ierr)
       if (ierr == 0) call read_scv_rows(units, scv_h_table_path, ierr)
+      scv_tables_loaded = ierr == 0
       do k = 1, 3
          if (units(k) /= 0) close(units(k))
       end do

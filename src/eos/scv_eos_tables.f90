@@ -18,7 +18,7 @@ module scv_eos_tables
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
-           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
+           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction, scv_tables_loaded
 ! Table dimensions: scv_nt temperature rows, up to scv_np pressure
 ! points per row (nptsx holds the actual count), scv_nvar variables per
 ! point in the H and He tables, scv_nvar_z in the Z table and
@@ -34,8 +34,11 @@ module scv_eos_tables
 ! the cell (first row, first column) the last SCV lookup used, where the
 ! next one starts its search
       integer :: nptsx(scv_nt), idtt, idp
-! the envelope X and Z tablenv was built for (-1 until it is built)
+! the envelope X and Z tablenv was built for (-1 until it is built, and
+! again whenever the tables are read); whether read_scv_tables has read
+! the tables
       real(dp) :: tablenv_hydrogen_fraction = -1.0d0, tablenv_metal_fraction = -1.0d0
+      logical :: scv_tables_loaded = .false.
 ! Named table columns: only the columns some routine addresses are
 ! named. read_scv_tables reads columns 1-11 of the H and He tables and
 ! 1-13 of the Z table.

@@ -61,13 +61,13 @@ CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
 PUBLIC = {
     # eos_lib's facade: eos_init installs the settings and reads the
     # tables, eos_get evaluates a zone into an eos_result, eos_set_mixture
-    # and eos_update_envelope_tables take the envelope composition,
+    # takes the envelope composition (and builds the SCV envelope table),
     # set_eos_settings installs settings without reading tables. The
     # blended, Yale, SCV, OPAL and MHD modules are eos-internal.
     # eos_get_gamma1 is test-only: its sole caller is
     # eos/test/test_eos.f90 (the calcad diagnostic it served is gone).
     "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",
-            "eos_update_envelope_tables", "set_eos_settings"},
+            "set_eos_settings"},
     # The kap_lib facade entries (kap_get_r is the named-index
     # result-array variant of kap_get).
     # kap_get is the named-index result-array query (the former

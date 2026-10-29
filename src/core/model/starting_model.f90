@@ -951,9 +951,9 @@ end subroutine initialize_rotation_state
 ! the surface X, Y, Z and He3, build from them and the controls' metal
 ! mixture the number fractions envelope_number_fractions of the 12
 ! mixture elements, Z without C, N and O (envelope_metals_no_cno) and
-! envelope_inverse_atomic_weight, and pass them to the EOS. On every
-! card, regenerate the surface opacity tables, and the SCV envelope EOS
-! table when SCV is on, for the current surface composition.
+! envelope_inverse_atomic_weight, and pass them to the EOS (which builds
+! its SCV envelope table from them when SCV is on). On every card,
+! regenerate the surface opacity tables for the current surface X.
 subroutine update_surface_mixture
       if (run_index.le.1) then
 ! The relative mass fractions w_i of the ten metals are the controls'
@@ -1009,12 +1009,9 @@ subroutine update_surface_mixture
            s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
            s%envelope_number_fractions)
       end if
-! Regenerate the surface opacity tables for the surface X (DBG 11/95),
-! and the SCV envelope EOS table when SCV is on.
+! Regenerate the surface opacity tables for the surface X (DBG 11/95).
       call kap_update_surface_tables(s%envelope_hydrogen_fraction, ierr=ierr)
       if (ierr /= 0) return
-      call eos_update_envelope_tables(s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction)
 
 end subroutine update_surface_mixture
 

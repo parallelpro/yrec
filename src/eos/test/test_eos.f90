@@ -5,8 +5,8 @@
 ! installs the settings and the tables itself (eos_init), sets the
 ! envelope mixture a run would (eos_set_mixture: core's mixture
 ! algorithm on the default mixture seed, X = 0.70, Z = 0.016492, the Z
-! of the shipped OPAL 2006 table) and builds the SCV envelope table
-! (eos_update_envelope_tables). Its output is byte-compared with
+! of the shipped OPAL 2006 table), which builds the SCV envelope table
+! once the SCV tables are read. Its output is byte-compared with
 ! expected_test_eos.out (regenerated only on purpose). In order:
 !   the production EOS (SCV and OPAL 2006) over a (log T, log P) grid;
 !   eos_get_gamma1 on its two branches; the MHD EOS when YREC_MHD_TABLES
@@ -153,11 +153,12 @@ program test_eos
          stop 1
       end if
 ! SCV's general path before the envelope table exists (a run's first
-! card reaches it so), then the SCV envelope-mixture table, which a run
-! builds when it reads the starting model (eos_init reads the SCV tables
-! but does not build it)
+! card reaches it so), then the mixture again, which now builds the SCV
+! envelope table (the first eos_set_mixture came before eos_init read
+! the SCV tables), as a run's starting model does
       call scv_general_path_before_table(general_before_table)
-      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call eos_set_mixture(envelope_hydrogen_fraction, envelope_metal_fraction, &
+           mean_atomic_mass, species_fractions)
       call check_scv_general_path(general_before_table)
 
       x_frac = 0.70d0
@@ -351,9 +352,10 @@ contains
       end subroutine check_scv_general_path
 
 ! Set one configuration (the controls a deck would set) with eos_init,
-! the OPAL table of the vintage when one is named; with SCV, build the
-! envelope table for the program's envelope mixture again, as a run's
-! starting model does after eos_init (which reads the SCV tables anew).
+! the OPAL table of the vintage when one is named; with SCV, the
+! program's envelope mixture again, which builds the envelope table, as
+! a run's starting model does after eos_init (which reads the SCV tables
+! anew).
       subroutine configure_eos(label, opal95, opal2001, opal2006, scv, numerical, &
            diffusion_z, debye_huckel, file)
          character(len=*), intent(in) :: label
@@ -380,7 +382,7 @@ contains
          if (present(file)) paths%opal = file
          call eos_init(s, paths, ierr)
          if (ierr /= 0) write(*,'(a,i0)') "eos_init ierr = ", ierr
-         if (s%use_scv_eos) call eos_update_envelope_tables(envelope_hydrogen_fraction, &
+         if (s%use_scv_eos) call set_envelope_mixture(envelope_hydrogen_fraction, &
               envelope_metal_fraction)
       end subroutine configure_eos
 
@@ -750,8 +752,8 @@ end subroutine write_mhd_part
 !                          the cutoff) and across the OPAL 2006 table's
 !                          edge ramp
 !   atmosphere_checks      eos_get with in_atmosphere = .true.
-!   envelope_table_checks  eos_update_envelope_tables after a change of
-!                          the envelope composition
+!   envelope_table_checks  the SCV envelope table eos_set_mixture builds
+!                          for a new envelope composition
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
 !                          mixture (eos_set_debye_huckel_z)
 !   gamma1_checks          eos_get_gamma1 outside the OPAL table
@@ -796,9 +798,9 @@ subroutine scv_reader_checks()
       s = eos_settings
       call eos_init(s, table_paths, ierr)
       call eos_at(lt, lp, x, z, after_read, ierr2)
-      call eos_update_envelope_tables(0.60d0, 0.03d0)
+      call set_envelope_mixture(0.60d0, 0.03d0)
       call eos_at(lt, lp, x, z, general, ierr3)
-      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("SCV reader: after a re-read the envelope table waits for its rebuild", &
            ierr == 0 .and. ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
            after_read%log10_density == general%log10_density .and. &
@@ -1201,42 +1203,45 @@ subroutine atmosphere_checks()
       call check("in_atmosphere: the density, ionization and first derivatives of a full evaluation", ok)
 end subroutine atmosphere_checks
 
-! After the envelope composition changes (eos_set_mixture) and
-! eos_update_envelope_tables rebuilds the SCV envelope table, the table
-! at the new composition agrees with SCV's general-composition path
-! there (to 1e-4 in log rho; a table left at the old composition is off
-! by 0.05)
+! When the envelope composition changes, eos_set_mixture builds the SCV
+! envelope table for it: a lookup at the new composition is the table's
+! (not the general path's value) and agrees with SCV's general path to
+! 5e-4 in log rho (3e-4 at log T = 4.13; a table left at the old
+! composition is off by 0.05);
+! and a zone at the composition of the table before takes the general
+! path, the value it had before that table was built. Off the table's
+! nodes in log T, so that the general path's cell does not depend on
+! where its search starts.
 subroutine envelope_table_checks()
       real(dp), parameter :: x_new = 0.60d0, z_new = 0.03d0
-      real(dp), parameter :: lt(3) = [3.7d0, 3.9d0, 4.1d0], lp(3) = [5.0d0, 6.5d0, 8.0d0]
-      type(eos_result) :: table, general
+      real(dp), parameter :: lt(3) = [3.73d0, 3.93d0, 4.13d0], lp(3) = [5.0d0, 6.5d0, 8.0d0]
+      type(eos_result) :: table, general, general_before(3)
       integer :: k, ierr1, ierr2
       logical :: ok
       call configure_eos("scv_only", scv=.true.)
-      call set_envelope_mixture(x_new, z_new)
-      call eos_update_envelope_tables(x_new, z_new)
       ok = .true.
+      do k = 1, size(lt)
+         call eos_at(lt(k), lp(k), x_new, z_new, general_before(k), ierr1)
+         ok = ok .and. ierr1 == 0
+      end do
+      call set_envelope_mixture(x_new, z_new)
       do k = 1, size(lt)
          call eos_at(lt(k), lp(k), x_new, z_new, table, ierr1)
          call eos_at(lt(k), lp(k), x_new + 2.0d-5, z_new, general, ierr2)
          ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
-              abs(table%log10_density - general%log10_density) < 1.0d-4
+              abs(table%log10_density - general%log10_density) < 5.0d-4 .and. &
+              table%log10_density /= general_before(k)%log10_density
       end do
-      call check("envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path", ok)
-! a mixture changed without rebuilding the table (as a rescaled run's Z
-! does): the table, built for (x_new, z_new), is not used at the new
-! composition, which takes SCV's general path
+      call check("envelope tables: eos_set_mixture builds the SCV table for a new composition", ok)
       call set_envelope_mixture(0.65d0, 0.025d0)
       ok = .true.
       do k = 1, size(lt)
-         call eos_at(lt(k), lp(k), 0.65d0, 0.025d0, table, ierr1)
-         call eos_at(lt(k), lp(k), 0.65d0 + 2.0d-5, 0.025d0, general, ierr2)
-         ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
-              abs(table%log10_density - general%log10_density) < 1.0d-4
+         call eos_at(lt(k), lp(k), x_new, z_new, general, ierr1)
+         ok = ok .and. ierr1 == 0 .and. &
+              general%log10_density == general_before(k)%log10_density
       end do
       call check("envelope tables: a table built for another composition is not used", ok)
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
-      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine envelope_table_checks
 
 ! The envelope mixture of (x, z) by the main program's algorithm, from

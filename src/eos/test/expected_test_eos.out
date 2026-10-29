@@ -540,41 +540,41 @@ deriv debye_huckel  4.500  8.000
              cp_dt  -1.9665E+00  -1.9665E+00   4.4158E-07
              cp_dp   1.8027E-01   1.8027E-01  -4.4839E-07
 deriv debye_huckel  5.500 11.500
-       dlnrho_dlnt  -1.0300E+00  -1.0300E+00   1.4773E-09
+       dlnrho_dlnt  -1.0300E+00  -1.0300E+00   1.4902E-09
        dlnrho_dlnp   1.0087E+00   1.0087E+00  -6.3363E-11
-    dlnrho_dlnt_dt   1.0531E-01   1.0531E-01  -8.1562E-08
+    dlnrho_dlnt_dt   1.0531E-01   1.0531E-01  -8.1855E-08
     dlnrho_dlnt_dp  -2.7473E-02  -2.7473E-02   5.4554E-09
-        grad_ad_dt   5.9464E-02   5.9464E-02  -1.8269E-07
+        grad_ad_dt   5.9464E-02   5.9464E-02  -1.8283E-07
         grad_ad_dp  -1.0572E-02  -1.0572E-02   3.5263E-09
-             cp_dt  -1.3170E-01  -1.3170E-01   1.2654E-07
+             cp_dt  -1.3170E-01  -1.3170E-01   1.2667E-07
              cp_dp   2.8533E-02   2.8533E-02  -3.3378E-09
 deriv debye_huckel  5.800 12.600
-       dlnrho_dlnt  -1.0420E+00  -1.0353E+00  -6.4556E-03
-       dlnrho_dlnp   1.0114E+00   1.0113E+00   3.4378E-05
-    dlnrho_dlnt_dt   5.8297E-02   8.0621E-02  -2.7690E-01
-    dlnrho_dlnt_dp   8.0673E-03  -2.5106E-02   1.3213E+00
-        grad_ad_dt   5.2076E-02   1.2494E-02   3.1679E+00
-        grad_ad_dp  -2.0230E-02  -5.9071E-03  -2.4248E+00
-             cp_dt  -6.6128E-02  -5.4577E-02  -2.1165E-01
-             cp_dp   1.2180E-03   1.8670E-02  -9.3476E-01
+       dlnrho_dlnt  -1.0419E+00  -1.0353E+00  -6.3463E-03
+       dlnrho_dlnp   1.0113E+00   1.0113E+00   3.4363E-05
+    dlnrho_dlnt_dt   5.8191E-02   8.0624E-02  -2.7824E-01
+    dlnrho_dlnt_dp   8.0079E-03  -2.5048E-02   1.3197E+00
+        grad_ad_dt   5.1919E-02   1.2500E-02   3.1536E+00
+        grad_ad_dp  -2.0167E-02  -5.8920E-03  -2.4228E+00
+             cp_dt  -6.5981E-02  -5.4586E-02  -2.0875E-01
+             cp_dp   1.2355E-03   1.8628E-02  -9.3368E-01
 deriv debye_huckel  6.900 16.000
-       dlnrho_dlnt  -1.0080E+00  -1.0083E+00   2.9477E-04
-       dlnrho_dlnp   1.0005E+00   1.0006E+00  -1.2353E-04
-    dlnrho_dlnt_dt  -2.7398E-02  -1.2589E-02  -1.1763E+00
-    dlnrho_dlnt_dp   2.1263E-02   6.8710E-03   2.0945E+00
-        grad_ad_dt   7.7209E-03  -4.3902E-03   2.7587E+00
-        grad_ad_dp  -5.5461E-03   8.2293E-04  -7.7395E+00
-             cp_dt   2.7453E-02   2.5170E-02   9.0696E-02
-             cp_dp  -1.6024E-02  -8.2392E-03  -9.4484E-01
+       dlnrho_dlnt  -1.0079E+00  -1.0082E+00   2.9487E-04
+       dlnrho_dlnp   1.0005E+00   1.0006E+00  -1.2357E-04
+    dlnrho_dlnt_dt  -2.7441E-02  -1.2681E-02  -1.1640E+00
+    dlnrho_dlnt_dp   2.1238E-02   6.8935E-03   2.0808E+00
+        grad_ad_dt   7.6528E-03  -4.4180E-03   2.7322E+00
+        grad_ad_dp  -5.5181E-03   8.2987E-04  -7.6493E+00
+             cp_dt   2.7519E-02   2.5244E-02   9.0144E-02
+             cp_dp  -1.6017E-02  -8.2574E-03  -9.3968E-01
 deriv debye_huckel  7.161 17.350
-       dlnrho_dlnt  -9.7287E-01  -9.7330E-01   4.3635E-04
-       dlnrho_dlnp   9.8598E-01   9.8616E-01  -1.8379E-04
-    dlnrho_dlnt_dt  -1.0454E-01  -8.5527E-02  -2.2233E-01
-    dlnrho_dlnt_dp   5.7670E-02   3.8549E-02   4.9603E-01
-        grad_ad_dt   2.0859E-02   4.1580E-03   4.0165E+00
-        grad_ad_dp  -1.0535E-02  -1.5559E-03  -5.7712E+00
-             cp_dt   5.9469E-02   5.7049E-02   4.2420E-02
-             cp_dp  -3.4720E-02  -2.4226E-02  -4.3316E-01
+       dlnrho_dlnt  -9.7281E-01  -9.7324E-01   4.3675E-04
+       dlnrho_dlnp   9.8596E-01   9.8614E-01  -1.8394E-04
+    dlnrho_dlnt_dt  -1.0459E-01  -8.5636E-02  -2.2131E-01
+    dlnrho_dlnt_dp   5.7631E-02   3.8574E-02   4.9406E-01
+        grad_ad_dt   2.0764E-02   4.1190E-03   4.0409E+00
+        grad_ad_dp  -1.0496E-02  -1.5462E-03  -5.7880E+00
+             cp_dt   5.9558E-02   5.7145E-02   4.2211E-02
+             cp_dp  -3.4708E-02  -2.4249E-02  -4.3133E-01
 # MHD table lookup (synthetic table)
 lookup at 11.30  4.60 =  -5.374999999999996E+00   1.130000000000000E+01   1.138593750000000E+01
 lookup at  9.00  3.60 =  -5.750000000000002E+00   8.999999999999996E+00   7.593749999999997E+00
@@ -609,7 +609,7 @@ ok   continuity: rho and grad_ad at the OPAL 2006 table's edge (the Yale/SCV res
 # test_eos: configuration scv_only
 ok   in_atmosphere: the density, ionization and first derivatives of a full evaluation
 # test_eos: configuration scv_only
-ok   envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path
+ok   envelope tables: eos_set_mixture builds the SCV table for a new composition
 ok   envelope tables: a table built for another composition is not used
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
