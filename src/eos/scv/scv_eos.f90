@@ -24,10 +24,10 @@ module scv_eos
            iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
-           scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
+           scv_nt, smix, tablenv, tablex, tabley, tablez, &
            tlogx
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
-      use numerics_lib, only: inter3, interp, natural_spline, splint
+      use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
       use io_units, only: run_log_unit
       use eos_mixture, only: eos_mix
       use math_lib
@@ -357,12 +357,12 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
-         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
+         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
+         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
       end do
 ! interpolate in temperature
-      xtf_h2 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
-      xtf_he = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,2))
+      xtf_h2 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_he = lagrange4(temp_interp_weights, temp_grid(1:4,2))
 
 ! Get more fractions of total particles (including electrons), as follows:
 !   XTF_H1  the fraction that is neutral hydrogen atoms, and
@@ -372,12 +372,12 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_grid(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
-         temp_grid(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
       end do
 ! interpolate in temperature
-      xtf_h1 = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,1))
-      xtf_hep = scv_weighted_sum4(temp_interp_weights, temp_grid(1:4,2))
+      xtf_h1 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_hep = lagrange4(temp_interp_weights, temp_grid(1:4,2))
 
 ! At tis time we can calculate the ramaining particles fractions using
 ! conservation of particles and coservation of charge.  The variable
@@ -597,16 +597,16 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_log10_rho))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_log10_rho))
-         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_log10_rho))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_log10_rho))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_log10_rho))
+         temp_work(i,3) = lagrange4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_log10_rho))
       end do
 ! interpolate in temperature
-      log10_density_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      log10_density_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
       density_pure_h = exp(ln10*log10_density_pure_h)
-      log10_density_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      log10_density_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
       density_pure_he = exp(ln10*log10_density_pure_he)
-      log10_density_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
+      log10_density_pure_z = lagrange4(temp_interp_weights, temp_work(1:4,3))
       density_pure_z = exp(ln10*log10_density_pure_z)
 ! density
       r%density = 1.0d0/(hydrogen_fraction/density_pure_h + &
@@ -621,14 +621,14 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlnrho_dlnp))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlnrho_dlnp))
-         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_dlnrho_dlnp))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlnrho_dlnp))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlnrho_dlnp))
+         temp_work(i,3) = lagrange4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_dlnrho_dlnp))
       end do
 ! interpolate in temperature
-      dlnrho_dlnp_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
-      dlnrho_dlnp_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
-      dlnrho_dlnp_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
+      dlnrho_dlnp_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
+      dlnrho_dlnp_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
+      dlnrho_dlnp_pure_z = lagrange4(temp_interp_weights, temp_work(1:4,3))
       dlnrho_dlnp_gas = dlnrho_dlnp_pure_h*volume_frac_h + &
            dlnrho_dlnp_pure_he*volume_frac_he + dlnrho_dlnp_pure_z*volume_frac_z
       r%dlnrho_dlnp = dlnrho_dlnp_gas/r%beta
@@ -639,14 +639,14 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlnrho_dlnt))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlnrho_dlnt))
-         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_dlnrho_dlnt))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlnrho_dlnt))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlnrho_dlnt))
+         temp_work(i,3) = lagrange4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_dlnrho_dlnt))
       end do
 ! interpolate in temperature
-      dlnrho_dlnt_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
-      dlnrho_dlnt_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
-      dlnrho_dlnt_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
+      dlnrho_dlnt_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
+      dlnrho_dlnt_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
+      dlnrho_dlnt_pure_z = lagrange4(temp_interp_weights, temp_work(1:4,3))
       dlnrho_dlnt_gas = dlnrho_dlnt_pure_h*volume_frac_h + &
            dlnrho_dlnt_pure_he*volume_frac_he + dlnrho_dlnt_pure_z*volume_frac_z
       dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
@@ -664,16 +664,16 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_log10_s))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_log10_s))
-         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, smix(ii,idp:idp+3))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_log10_s))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_log10_s))
+         temp_work(i,3) = lagrange4(press_interp_weights, smix(ii,idp:idp+3))
       end do
 ! interpolate in temperature
-      log10_entropy_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
+      log10_entropy_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
       entropy_pure_h = exp(ln10*log10_entropy_pure_h)
-      log10_entropy_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      log10_entropy_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
       entropy_pure_he = exp(ln10*log10_entropy_pure_he)
-      entropy_of_mixing = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
+      entropy_of_mixing = lagrange4(temp_interp_weights, temp_work(1:4,3))
       dlnsmix_dlnt = temp_interp_weight_derivs(1)*log10(temp_work(1,3)) + &
            temp_interp_weight_derivs(2)*log10(temp_work(2,3)) &
            + temp_interp_weight_derivs(3)*log10(temp_work(3,3)) &
@@ -682,14 +682,14 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlns_dlnt))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlns_dlnt))
-         temp_work(i,3) = scv_weighted_sum4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_log10_du_dt))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_dlns_dlnt))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_dlns_dlnt))
+         temp_work(i,3) = lagrange4(press_interp_weights, tablez(ii,idp:idp+3,iscvz_log10_du_dt))
       end do
 ! interpolate in temperature
-      dlns_dlnt_pure_h = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
-      dlns_dlnt_pure_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
-      log10_du_dt_pure_z = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,3))
+      dlns_dlnt_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
+      dlns_dlnt_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
+      log10_du_dt_pure_z = lagrange4(temp_interp_weights, temp_work(1:4,3))
       du_dt_pure_z = exp(ln10*log10_du_dt_pure_z)
       dlns_dlnt_p = hydrogen_fraction*entropy_pure_h*dlns_dlnt_pure_h + &
            helium_fraction*entropy_pure_he*dlns_dlnt_pure_he + &
@@ -718,12 +718,12 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
       end do
 ! interpolate in temperature
-      xtf_h2 = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
-      xtf_he = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      xtf_h2 = lagrange4(temp_interp_weights, temp_work(1:4,1))
+      xtf_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
 
 ! Get more fractions of total particles (including electrons), as follows:
 !   XTF_H1  the fraction that is neutral hydrogen atoms, and
@@ -733,12 +733,12 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = scv_weighted_sum4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
-         temp_work(i,2) = scv_weighted_sum4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
       end do
 ! interpolate in temperature
-      xtf_h1 = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,1))
-      xtf_hep = scv_weighted_sum4(temp_interp_weights, temp_work(1:4,2))
+      xtf_h1 = lagrange4(temp_interp_weights, temp_work(1:4,1))
+      xtf_hep = lagrange4(temp_interp_weights, temp_work(1:4,2))
 
 ! At tis time we can calculate the ramaining particles fractions using
 ! conservation of particles and coservation of charge.  The variable

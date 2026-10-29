@@ -19,7 +19,7 @@ module scv_eos_tables
            iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
-           scv_nt, scv_weighted_sum4, smix, tablenv, tablex, tabley, tablez, &
+           scv_nt, smix, tablenv, tablex, tabley, tablez, &
            tlogx
 ! Table dimensions: scv_nt temperature rows, up to scv_np pressure
 ! points per row (nptsx holds the actual count), scv_nvar variables per
@@ -67,15 +67,6 @@ module scv_eos_tables
       integer, parameter :: iscvenv_dqut_dlnp = 11    ! d(du/dT)/dln(P)
       integer, parameter :: iscvenv_dqut_dlnt = 12    ! d(du/dT)/dln(T)
 
-contains
-
-! Four-point Lagrange sum used by compute_scv_envelope_eos/compute_scv_eos to interpolate a table
-! column along one axis: w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4),
-! evaluated left to right exactly as the former inline expressions.
-pure real(dp) function scv_weighted_sum4(w, y)
-      real(dp), intent(in) :: w(:), y(:)
-      scv_weighted_sum4 = w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4)
-end function scv_weighted_sum4
 
 !======================================================================
 ! Sources: Saumon, Chabrier & Van Horn (1995); the metal table was
