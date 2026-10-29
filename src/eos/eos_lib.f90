@@ -46,7 +46,7 @@ module eos_lib
       use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
            i_n14, i_n15, i_o16, i_o17, i_o18
       use physical_constants, only: ln10
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -105,6 +105,7 @@ end subroutine eos_get
 ! tables. Each file is opened on a new unit; a missing one returns
 ! ierr = 1.
 subroutine eos_init(settings, paths, ierr)
+      character(len=message_length) :: eos_lines(4)
       type(eos_settings_t), intent(in) :: settings
       type(eos_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
@@ -112,7 +113,9 @@ subroutine eos_init(settings, paths, ierr)
       ierr = 0
       if (settings%opal_vintage < opal_vintage_none .or. &
            settings%opal_vintage > opal_vintage_2006) then
-         write(run_log_unit,*) 'eos_init: more than one OPAL EOS vintage selected'
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: more than one OPAL EOS vintage selected'
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if

@@ -30,7 +30,7 @@ module opal_eos
            opal06_t6_index_lo, opal06_x_grid, opal_layout, opal_shared, &
            opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad
       use physical_constants, only: gas_constant
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: compute_mean_weights
       use math_lib
       implicit none
@@ -53,6 +53,7 @@ contains
 ! to check that the interpolated pressure reproduces P (1995).
 subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr, in_table)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
@@ -111,7 +112,9 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
               deriv_order, rad_flag, ierr, in_table)
       end select
       if (.not. in_table) then
-         write(run_log_unit, *) 'WARNNING... OPAL TBL FAIL'
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'WARNNING... OPAL TBL FAIL'
+         call eos_log(eos_lines)
          return
       end if
       if (ierr /= 0) return
@@ -128,7 +131,9 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       end select
       if (opal_layout(vintage)%checks_pressure .and. &
            abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > 0.5d-6) then
-         write(run_log_unit,*) p_e12, output(opal_layout(vintage)%i_p)
+         eos_lines = unwritten_line
+         write(eos_lines,*) p_e12, output(opal_layout(vintage)%i_p)
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -236,6 +241,7 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -410,10 +416,10 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
          pressure_trial1 = pressure_trial3
       end if
       if (refine_count < max_refine) cycle refine
-      write (run_log_unit,'("RHOOFP01: no convergence after ",I0," tries;", &
-           & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
-           max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
-           abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      eos_lines = unwritten_line
+      write(eos_lines,'("RHOOFP01: no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') max_refine, &
+           hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      call eos_log(eos_lines)
       rhoofp01 = opal_rho_not_found
       return
       end do refine
@@ -444,6 +450,7 @@ end function rhoofp01
 !   v%eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
      density, deriv_order, rad_flag, ierr, in_table)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
 
 
@@ -497,10 +504,14 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       in_table = .true.
 
       if (deriv_order > 9) then
-         write (run_log_unit,'(A, " iorder cannot exceed 9")') routine_id
+         eos_lines = unwritten_line
+         write(eos_lines,'(A, " iorder cannot exceed 9")') routine_id
+         call eos_log(eos_lines)
       end if
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
-         write (run_log_unit,'(A, " Irad must be 0 or 1")') routine_id
+         eos_lines = unwritten_line
+         write(eos_lines,'(A, " Irad must be 0 or 1")') routine_id
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -519,8 +530,12 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
          opal_shared%table_metal_fraction(vintage) = v%z_table(1)
 
          if (opal_shared%table_metal_fraction(vintage)+hydrogen_fraction-1.0d-6 > 1) then
-            write(run_log_unit,*) routine_id, "Mass fractions exceed unity (61)"
-            write(run_log_unit,*) 'Z, XH', opal_shared%table_metal_fraction(vintage), hydrogen_fraction
+            eos_lines = unwritten_line
+            write(eos_lines,*) routine_id, "Mass fractions exceed unity (61)"
+            call eos_log(eos_lines)
+            eos_lines = unwritten_line
+            write(eos_lines,*) 'Z, XH', opal_shared%table_metal_fraction(vintage), hydrogen_fraction
+            call eos_log(eos_lines)
             
             
             ierr = 1
@@ -1125,6 +1140,7 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -1283,10 +1299,10 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
          pressure_trial1 = pressure_trial3
       end if
       if (refine_count < max_refine) cycle refine
-      write (run_log_unit,'("RHOOFP06: no convergence after ",I0," tries;", &
-           & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
-           max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
-           abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      eos_lines = unwritten_line
+      write(eos_lines,'("RHOOFP06: no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') max_refine, &
+           hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      call eos_log(eos_lines)
       rhoofp06 = opal_rho_not_found
       return
       end do refine
@@ -1374,143 +1390,195 @@ end subroutine add_radiation
 ! (T6, rho) outside the table
 subroutine report_outside_table(vintage, t6, density, t6_first, t6_last, &
      density_first, density_last)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: t6, density, t6_first, t6_last, density_first, density_last
       character(len=15) :: id
       id = opal_layout(vintage)%routine_id
       if (vintage == iv_opal01) then
-         write(run_log_unit,*) id, " T6 or rho outside of table range (62)"
-         write(run_log_unit,*) "t6, t6a(1),t6a(nt):", t6, t6_first, t6_last
-         write(run_log_unit,*) "slr,r,rho(1),rho(nr):", density, density, density_first, &
-              density_last
+         eos_lines = unwritten_line
+         write(eos_lines,*) id, " T6 or rho outside of table range (62)"
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) "t6, t6a(1),t6a(nt):", t6, t6_first, t6_last
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) "slr,r,rho(1),rho(nr):", density, density, density_first, density_last
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,*) id, " T6/LogR outside of table range (62)"
-         write(run_log_unit,*) "slt, t6a(1),t6a(nt):", t6, t6_first, t6_last
-         write(run_log_unit,*) "slr, rho(1), rho(nr):", density, density_first, density_last
+         eos_lines = unwritten_line
+         write(eos_lines,*) id, " T6/LogR outside of table range (62)"
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) "slt, t6a(1),t6a(nt):", t6, t6_first, t6_last
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) "slr, rho(1), rho(nr):", density, density_first, density_last
+         call eos_log(eos_lines)
       end if
 end subroutine report_outside_table
 
 ! the T6 search found no row (the 2001 message never printed its indices)
 subroutine report_t6_search(vintage, hi_idx, lo_idx, mid_idx)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, hi_idx, lo_idx, mid_idx
       if (vintage == iv_opal01) then
-         write (run_log_unit,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id
+         eos_lines = unwritten_line
+         write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id
+         call eos_log(eos_lines)
       else
-         write (run_log_unit,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id, &
-              hi_idx, lo_idx, mid_idx
+         eos_lines = unwritten_line
+         write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id, hi_idx, lo_idx, mid_idx
+         call eos_log(eos_lines)
       end if
 end subroutine report_t6_search
 
 ! (T6, rho) in an empty region of the table
 subroutine report_empty_region(vintage, hydrogen_fraction, t6, density)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       if (vintage == iv_opal01) then
-         write(run_log_unit,*) opal_layout(vintage)%routine_id, &
-              "T6/rho in empty region of OPAL 2001 EOS", " table (65)"
+         eos_lines = unwritten_line
+         write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
+              " table (65)"
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,*) opal_layout(vintage)%routine_id, &
-              "T6/log rho in empty region of table (65)"
+         eos_lines = unwritten_line
+         write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/log rho in empty region of table (65)"
+         call eos_log(eos_lines)
       end if
-      write(run_log_unit,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, t6, density
+      eos_lines = unwritten_line
+      write(eos_lines,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, t6, density
+      call eos_log(eos_lines)
 end subroutine report_empty_region
 
 ! the X tables of the stencil are not all for one Z
 subroutine report_tables_z(vintage)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       if (vintage == iv_opal01) then
-         write(run_log_unit,'(A,"Z does not match Z in OEOS01 files you are" &
-              &," using")') opal_layout(vintage)%routine_id
+         eos_lines = unwritten_line
+         write(eos_lines,'(A,"Z does not match Z in OEOS01 files you are" ," using")') opal_layout(vintage)%routine_id
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,'(A,"Z does not match Z in OEOS06 files you are" &
-              &," using")') opal_layout(vintage)%routine_id
+         eos_lines = unwritten_line
+         write(eos_lines,'(A,"Z does not match Z in OEOS06 files you are" ," using")') opal_layout(vintage)%routine_id
+         call eos_log(eos_lines)
       end if
 end subroutine report_tables_z
 
 ! an X-interpolated value above 1e20 (an empty entry in the stencil):
 ! the stencil and the three table values from x_first
 subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, t6_idx, density_idx, x_first
       type(opal_eos_vintage), intent(in) :: v
       integer :: k
       if (vintage == iv_opal01) then
-         write(run_log_unit,'(A," problem it ir,l3,k3,iq,ip=", 6I5)') &
-              opal_layout(vintage)%routine_id, t6_idx, density_idx, v%density_index_3, &
-              v%t6_index_3, v%density_interp_order, v%t6_interp_order
+         eos_lines = unwritten_line
+         write(eos_lines,'(A," problem it ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
+              t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
+              v%t6_interp_order
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') &
-              opal_layout(vintage)%routine_id, t6_idx, density_idx, v%density_index_3, &
-              v%t6_index_3, v%density_interp_order, v%t6_interp_order
+         eos_lines = unwritten_line
+         write(eos_lines,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
+              t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
+              v%t6_interp_order
+         call eos_log(eos_lines)
       end if
-      write(run_log_unit,'(3E12.4)') (v%x_interp_workspace(k,t6_idx,density_idx), &
-           k=x_first,x_first+2)
+      eos_lines = unwritten_line
+      write(eos_lines,'(3E12.4)') (v%x_interp_workspace(k,t6_idx,density_idx), k=x_first,x_first+2)
+      call eos_log(eos_lines)
 end subroutine report_x_interpolation
 
 ! the run's Z differs from the table's
 subroutine report_run_z(vintage, v, hydrogen_fraction, t6, density)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       type(opal_eos_vintage), intent(in) :: v
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       if (vintage == iv_opal01) then
-         write(run_log_unit,*) opal_layout(vintage)%routine_id, &
-              " Z does not match Z in OPAL 2001 EOS files", " you are using (66)"
+         eos_lines = unwritten_line
+         write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in OPAL 2001 EOS files", &
+              " you are using (66)"
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,*) opal_layout(vintage)%routine_id, &
-              " Z does not match Z in EOSdata* files you ", "are using (66)"
+         eos_lines = unwritten_line
+         write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in EOSdata* files you ", &
+              "are using (66)"
+         call eos_log(eos_lines)
       end if
-      write(run_log_unit,'("mf,zz(mf)=",I5,E12.4)') v%x_index_lo, &
-           v%z_table(v%x_index_lo)
-      write(run_log_unit,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') &
-           v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
-           hydrogen_fraction, t6, density, opal_shared%table_metal_fraction(vintage)
+      eos_lines = unwritten_line
+      write(eos_lines,'("mf,zz(mf)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
+      call eos_log(eos_lines)
+      eos_lines = unwritten_line
+      write(eos_lines,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') v%t6_interp_order, &
+           v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
+           t6, density, opal_shared%table_metal_fraction(vintage)
+      call eos_log(eos_lines)
 end subroutine report_run_z
 
 ! the reader: a density block out of order
 subroutine report_record_number(vintage, record_number, density_row)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, record_number, density_row
       if (vintage == iv_opal01) then
-         write (run_log_unit,'(" Data file incorrect: numtot,jcs= ",2I5)') &
-              record_number, density_row
+         eos_lines = unwritten_line
+         write(eos_lines,'(" Data file incorrect: numtot,jcs= ",2I5)') record_number, density_row
+         call eos_log(eos_lines)
       else
-         write (run_log_unit,'(" OEOS06 Data file incorrect: numtot,jcs= " &
-              &,2I5)') record_number, density_row
+         eos_lines = unwritten_line
+         write(eos_lines,'(" OEOS06 Data file incorrect: numtot,jcs= " ,2I5)') record_number, density_row
+         call eos_log(eos_lines)
       end if
 end subroutine report_record_number
 
 ! the reader: a density column with fewer T6 rows than the table needs
 subroutine report_short_column(vintage, hydrogen_fraction, density)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, density
       if (vintage == iv_opal01) then
-         write (run_log_unit,'("problem with data files: X=",F6.4, &
-              &" density=",E14.4)') hydrogen_fraction, density
+         eos_lines = unwritten_line
+         write(eos_lines,'("problem with data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, density
+         call eos_log(eos_lines)
       else
-         write (run_log_unit,'("Problem with OEOS96 data files: X=",F6.4, &
-              &" density=",E14.4)') hydrogen_fraction, density
+         eos_lines = unwritten_line
+         write(eos_lines,'("Problem with OEOS96 data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, &
+              density
+         call eos_log(eos_lines)
       end if
 end subroutine report_short_column
 
 ! the reader: a zero T6
 subroutine report_zero_t6(vintage, t6_idx)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, t6_idx
       if (vintage == iv_opal01) then
-         write(run_log_unit,'("READCOEOS01: Error:",I4, &
-              &"-th T6 value is zero")') t6_idx
+         eos_lines = unwritten_line
+         write(eos_lines,'("READCOEOS01: Error:",I4, "-th T6 value is zero")') t6_idx
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,'("READCOEOS06: Error:",I4, &
-              &"-th T6 value is zero")') t6_idx
+         eos_lines = unwritten_line
+         write(eos_lines,'("READCOEOS06: Error:",I4, "-th T6 value is zero")') t6_idx
+         call eos_log(eos_lines)
       end if
 end subroutine report_zero_t6
 
 ! the T6-rho interpolation's indices out of range
 subroutine report_interpolation_indices(vintage)
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       if (vintage == iv_opal01) then
-         write(run_log_unit,'("Interpolation indices out of range", &
-              &";please report conditions.")')
+         eos_lines = unwritten_line
+         write(eos_lines,'("Interpolation indices out of range", ";please report conditions.")')
+         call eos_log(eos_lines)
       else
-         write(run_log_unit,'("T6RINTEOS06: Interpolation indices out", &
-              &" of range;please report conditions.")')
+         eos_lines = unwritten_line
+         write(eos_lines,'("T6RINTEOS06: Interpolation indices out", " of range;please report conditions.")')
+         call eos_log(eos_lines)
       end if
 end subroutine report_interpolation_indices
 

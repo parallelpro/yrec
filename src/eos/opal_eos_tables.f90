@@ -33,7 +33,7 @@
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_configuration, only: opal_vintage_1995, opal_vintage_2001, opal_vintage_2006
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -439,6 +439,7 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
      in_opal_table, needs_ramp, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: nt
       real(dp), intent(in) :: t6_grid(:), density_edge_at_t(:)
       integer, intent(in) :: density_index_edge(:)
@@ -468,7 +469,9 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
          if (t6_scan_idx > nt) then
          t6_top_of_table = t6_grid(nt)
 !        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, t_row_index
+         eos_lines = unwritten_line
+         write(eos_lines,5) t6, t6_top_of_table, t_row_index
+         call eos_report(eos_lines)
     5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
          ierr = 1
          return
@@ -483,7 +486,9 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
          if (t6_scan_idx < (1)) then
          t6_top_of_table = t6_grid(1)
 !        caller should have stopped outside table bounds; error exit
-         write(*,5) t6, t6_top_of_table, t_row_index
+         eos_lines = unwritten_line
+         write(eos_lines,5) t6, t6_top_of_table, t_row_index
+         call eos_report(eos_lines)
          ierr = 1
          return
          end if
@@ -658,6 +663,7 @@ end function gmass01
 ! (opal_shared%table_unit), closing one left open by an earlier
 ! eos_init. The vintage's reader reads it on first use.
 subroutine open_opal_eos_table(opal_eos_table_path, ierr)
+      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: opal_eos_table_path
       integer, intent(out) :: ierr
       logical :: is_open
@@ -669,8 +675,9 @@ subroutine open_opal_eos_table(opal_eos_table_path, ierr)
       open(newunit=opal_shared%table_unit, file=opal_eos_table_path, status='OLD', &
            iostat=ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'eos_init: cannot open the OPAL EOS table ', &
-              trim(opal_eos_table_path)
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: cannot open the OPAL EOS table ', trim(opal_eos_table_path)
+         call eos_log(eos_lines)
          ierr = 1
       end if
 end subroutine open_opal_eos_table

@@ -19,7 +19,7 @@ module yale_eos
            debye_huckel_x, debye_huckel_y, debye_huckel_z, &
            debye_huckel_z_total, yale
       use physical_constants, only: clni, cmkh, gas_constant, ln10
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
       use eos_configuration, only: eos_settings
       use math_lib
@@ -285,6 +285,7 @@ end subroutine set_saha_constants
 ! at 1e-38 in magnitude, as on the DEC-20 the code was written for.
 subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, &
      s, saha_iterations)
+      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: saha_mass_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(saha_system), intent(inout) :: s
@@ -430,8 +431,9 @@ subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_press
          if(converged) exit
       end do
       if (isaha > max_saha_iterations) then
-      write(run_log_unit,99) log10_temperature,log10_pressure, &
-           s%mean_electrons_per_ion,delta_electrons_per_ion
+      eos_lines = unwritten_line
+      write(eos_lines,99) log10_temperature,log10_pressure, s%mean_electrons_per_ion,delta_electrons_per_ion
+      call eos_log(eos_lines)
  99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
       end if
 end subroutine solve_saha_system
@@ -753,6 +755,7 @@ end subroutine start_fully_ionized_solution
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
 ! pr the radiation pressure, pdh the Debye-Hueckel term.
 subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
+      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       type(fermi_solution), intent(inout) :: f
@@ -882,7 +885,9 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
        f%dml = f%dml + corr
        f%nden = f%nden + 1
        if(f%nden <= 20) cycle density_iter
-       write(run_log_unit,40) log10_temperature,log10_pressure,ptl,f%dml,corr
+       eos_lines = unwritten_line
+       write(eos_lines,40) log10_temperature,log10_pressure,ptl,f%dml,corr
+       call eos_log(eos_lines)
    40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
                 4F10.6,F20.12)
        converged = .false.
@@ -1088,6 +1093,7 @@ end subroutine compute_internal_energy_and_cp
 ! interval index compute_fully_ionized_eos looks up. A non-increasing
 ! abscissa is a corrupt table: ierr = 1.
 subroutine read_fermi_table(fermi_table_path, ierr)
+      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: fermi_table_path
       integer, intent(out) :: ierr
       integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx
@@ -1097,8 +1103,9 @@ subroutine read_fermi_table(fermi_table_path, ierr)
       open(newunit=fermi_unit, file=fermi_table_path, form='FORMATTED', status='OLD', &
            iostat=ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'eos_init: cannot open the Fermi-Dirac table ', &
-              trim(fermi_table_path)
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: cannot open the Fermi-Dirac table ', trim(fermi_table_path)
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -1112,7 +1119,9 @@ subroutine read_fermi_table(fermi_table_path, ierr)
       do grid_idx=1,41
 ! a non-increasing abscissa is a corrupt table
        if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
-          write(run_log_unit,1000) grid_idx
+          eos_lines = unwritten_line
+          write(eos_lines,1000) grid_idx
+          call eos_log(eos_lines)
  1000       format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
            ' does not increase')
           close(fermi_unit)

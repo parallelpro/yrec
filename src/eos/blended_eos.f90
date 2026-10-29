@@ -21,7 +21,7 @@ module blended_eos
       use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, opal_layout
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, ix_c, ix_h, &
            ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings, opal_vintage_none
@@ -156,6 +156,7 @@ end subroutine compute_blended_eos
 ! metal_fraction is intent(in): no callee writes it.
 subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
      metal_fraction, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
@@ -189,9 +190,10 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       radiation_fraction = radiation_constant_over_3*(r%temperature**2)**2/r%pressure
       r%beta = 1 - radiation_fraction
       if (r%beta <= 0d0) then
-         write(run_log_unit,*) &
-              'blend_eos: beta = P_gas/P is not positive: log T, log P, beta', &
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'blend_eos: beta = P_gas/P is not positive: log T, log P, beta', &
               log10_temperature, log10_pressure, r%beta
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if

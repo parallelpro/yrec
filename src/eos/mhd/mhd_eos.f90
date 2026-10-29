@@ -24,7 +24,7 @@ module mhd_eos
            imhd_zams_c, mhd, mhd_ivarc, mhd_ivarx, mhd_n_centre, mhd_n_zams, &
            mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, mhd_nt2m, &
            mhd_ntxm, imhd_family_zams_lower, imhd_family_zams_upper, imhd_family_centre
-      use io_units, only: run_log_unit, terminal_unit
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use numerics_lib, only: lir, quint
       use eos_mixture, only: compute_mean_weights
       use math_lib
@@ -48,6 +48,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
@@ -69,9 +70,10 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            mhdpx_r10, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,'(a,2f10.5)') &
-              ' MHD EOS: (log T, log P) outside the tables or a bad table:', &
+         eos_lines = unwritten_line
+         write(eos_lines,'(a,2f10.5)') ' MHD EOS: (log T, log P) outside the tables or a bad table:', &
               log10_temperature, log10_pressure
+         call eos_log(eos_lines)
          return
       end if
       r%log10_density = mhd%mhd_output(i_mhd_log10_rho)
@@ -105,14 +107,11 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
            r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
       if (abs((r%specific_gas_constant-specific_gas_constant_check)/ &
            r%specific_gas_constant) > 5.0d-7) then
-          write(terminal_unit,*)' ERROR(MHD) IN MEAN WEIGHTS ... '
-          write(terminal_unit,*) r%specific_gas_constant, &
-               specific_gas_constant_check
-        write(terminal_unit,*) 'ERROR (MHD): CHECK MU'
-          write(run_log_unit,*)' ERROR(MHD): IN MEAN WEIGHTS ... '
-          write(run_log_unit,*) r%specific_gas_constant, &
-               specific_gas_constant_check
-        write(run_log_unit,*) 'ERROR (MHD): CHECK MU'
+         eos_lines = unwritten_line
+         write(eos_lines(1),*) ' ERROR(MHD): IN MEAN WEIGHTS ... '
+         write(eos_lines(2),*) r%specific_gas_constant, specific_gas_constant_check
+         write(eos_lines(3),*) 'ERROR (MHD): CHECK MU'
+         call eos_report(eos_lines)
           ierr = 1
           return
       end if
@@ -127,6 +126,7 @@ end subroutine compute_mhd_eos
 ! cannot be opened, or a table that fails mhdst's checks, returns
 ! ierr = 1 with a message in the run log.
 subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
+      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: zams_paths(mhd_n_zams), centre_paths(mhd_n_centre)
       integer, intent(out) :: ierr
       integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
@@ -142,8 +142,11 @@ subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
       end do
       if (ierr == 0) then
          call mhdst(unit_zams, unit_centre, ierr)
-         if (ierr /= 0) write(run_log_unit,*) &
-              'eos_init: an MHD table is corrupt or does not match its layout'
+         if (ierr /= 0) then
+            eos_lines = unwritten_line
+            write(eos_lines,*) 'eos_init: an MHD table is corrupt or does not match its layout'
+            call eos_log(eos_lines)
+         end if
       end if
       do ic = 1, mhd_n_zams
          if (unit_zams(ic) /= 0) close(unit_zams(ic))
@@ -156,12 +159,15 @@ end subroutine read_mhd_tables
 ! open one MHD table (unformatted) on a new unit; ierr = 1, with a
 ! message in the run log, when it cannot be opened
 subroutine open_mhd_table(path, table_unit, ierr)
+      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: path
       integer, intent(out) :: table_unit, ierr
       open(newunit=table_unit, file=path, status='OLD', form='UNFORMATTED', &
            iostat=ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'eos_init: cannot open the MHD table ', trim(path)
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: cannot open the MHD table ', trim(path)
+         call eos_log(eos_lines)
          table_unit = 0
          ierr = 1
       end if
@@ -553,6 +559,7 @@ end subroutine mhdpx
 !     selects: quadratic across the three ZAMS compositions, cubic
 !     across four of the five centre ones.
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
+      character(len=message_length) :: eos_lines(4)
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: ndimt = 8
 
@@ -613,10 +620,10 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
          if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing) > 1.d-4) then
-            write(terminal_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(terminal_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
-            write(run_log_unit,*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(run_log_unit,*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            eos_lines = unwritten_line
+            write(eos_lines(1),*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
+            write(eos_lines(2),*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            call eos_report(eos_lines)
             ierr = 1
             return
          end if

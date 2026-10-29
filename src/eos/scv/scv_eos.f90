@@ -28,7 +28,7 @@ module scv_eos
            tlogx
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: eos_mix
       use math_lib
       implicit none
@@ -1121,11 +1121,14 @@ subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path
 end subroutine read_scv_tables
 
 subroutine open_scv_table(path, table_unit, ierr)
+      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: path
       integer, intent(out) :: table_unit, ierr
       open(newunit=table_unit, file=path, status='OLD', iostat=ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'eos_init: cannot open the SCV table ', trim(path)
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: cannot open the SCV table ', trim(path)
+         call eos_log(eos_lines)
          ierr = 1
       end if
 end subroutine open_scv_table

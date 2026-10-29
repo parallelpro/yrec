@@ -24,7 +24,7 @@ module opal95_eos
            opal_shared, opal_eos_var_order, opal_eos_vintage95, opal_flag_set, &
            opal_rho_not_found, quad
       use physical_constants, only: gas_constant
-      use io_units, only: run_log_unit
+      use eos_messages, only: eos_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -86,6 +86,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -240,10 +241,10 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
          pressure_trial1 = pressure_trial3
       end if
       if (refine_count < max_refine) cycle refine
-      write (run_log_unit,'("RHOOFP: no convergence after ",I0," tries;", &
-           & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
-           max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
-           abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      eos_lines = unwritten_line
+      write(eos_lines,'("RHOOFP: no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') max_refine, &
+           hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      call eos_log(eos_lines)
       rhoofp = opal_rho_not_found
       return
       end do refine
@@ -281,6 +282,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, in_table)
 
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
@@ -316,10 +318,14 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       in_table = .true.
 
       if (deriv_order > 10) then
-         write(run_log_unit,'(" IORDER CANNOT EXCEED 10")')
+         eos_lines = unwritten_line
+         write(eos_lines,'(" IORDER CANNOT EXCEED 10")')
+         call eos_log(eos_lines)
       end if
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
-         write(run_log_unit,'(" IRAD MUST BE 0 OR 1")')
+         eos_lines = unwritten_line
+         write(eos_lines,'(" IRAD MUST BE 0 OR 1")')
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -345,8 +351,12 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
          opal_shared%table_metal_fraction(iv_opal95) = v%z_table(1)
 
          if (opal_shared%table_metal_fraction(iv_opal95) + hydrogen_fraction - 1.0d-6 > 1.0d0) then
-            write(run_log_unit,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-            write(run_log_unit,*) opal_shared%table_metal_fraction(iv_opal95), hydrogen_fraction
+            eos_lines = unwritten_line
+            write(eos_lines,'(" MASS FRACTIONS EXCEED UNITY (61)")')
+            call eos_log(eos_lines)
+            eos_lines = unwritten_line
+            write(eos_lines,*) opal_shared%table_metal_fraction(iv_opal95), hydrogen_fraction
+            call eos_log(eos_lines)
             ierr = 1
             return
          end if
@@ -356,16 +366,28 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
 ! ..... determine T6,rho grid points to use in the
 !       interpolation.
       if ((t6_value > v%t6_grid(1)) .or. (t6_value < v%t6_grid(nt))) then
-         write(run_log_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
-         write(run_log_unit,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
-         write(run_log_unit,*) v%density_grid(1), density_value, v%density_grid(nr)
+         eos_lines = unwritten_line
+         write(eos_lines,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) v%density_grid(1), density_value, v%density_grid(nr)
+         call eos_log(eos_lines)
          in_table = .false.
          return
       end if
       if ((density_value < v%density_grid(1)) .or. (density_value > v%density_grid(nr))) then
-         write(run_log_unit,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
-         write(run_log_unit,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
-         write(run_log_unit,*) v%density_grid(1), density_value, v%density_grid(nr)
+         eos_lines = unwritten_line
+         write(eos_lines,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) v%t6_grid(1), t6_value, v%t6_grid(nt)
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) v%density_grid(1), density_value, v%density_grid(nr)
+         call eos_log(eos_lines)
          in_table = .false.
          return
       end if
@@ -437,7 +459,9 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       v%t6_index_3 = result_idx
       v%t6_index_4 = v%t6_index_3 + 1
       if (v%t6_index_3 == 0) then
-         write(run_log_unit,'(" IHI,ILO,IMD",3I5)')
+         eos_lines = unwritten_line
+         write(eos_lines,'(" IHI,ILO,IMD",3I5)')
+         call eos_log(eos_lines)
       end if
 
 !     check to determine if interpolation indices fall within
@@ -483,9 +507,12 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
             v%density_index_2 = v%density_index_1 + 1
             v%density_index_3 = v%density_index_2 + 1
          else
-            write(run_log_unit,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
-            write(run_log_unit,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, &
-            t6_temperature, density
+            eos_lines = unwritten_line
+            write(eos_lines,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
+            call eos_log(eos_lines)
+            eos_lines = unwritten_line
+            write(eos_lines,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, t6_temperature, density
+            call eos_log(eos_lines)
             in_table = .false.
             return
          end if
@@ -515,8 +542,9 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       end do
       if ((v%z_table(x_index_2) /= v%z_table(v%x_index_lo)) .or. &
            (v%z_table(x_index_3) /= v%z_table(v%x_index_lo))) then
-         write(run_log_unit,'("Z DOES NOT MATCH Z IN EOSDATA FILES YOU ARE" &
-              &," USING")')
+         eos_lines = unwritten_line
+         write(eos_lines,'("Z DOES NOT MATCH Z IN EOSDATA FILES YOU ARE" ," USING")')
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -538,12 +566,15 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
                  v%x_grid_copy(v%x_index_lo), v%x_grid_copy(x_index_2), &
                  v%x_grid_copy(x_index_3))
             if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) then
-               write(run_log_unit,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') &
-                    t6_scan_idx, density_scan_idx, v%density_index_3, &
-                    v%t6_index_3, v%density_interp_order, v%t6_interp_order
-               write(run_log_unit,'(3E12.4)') &
-                    (v%x_interp_workspace(x_print_idx,t6_scan_idx,density_scan_idx), &
+               eos_lines = unwritten_line
+               write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_scan_idx, &
+                    density_scan_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
+                    v%t6_interp_order
+               call eos_log(eos_lines)
+               eos_lines = unwritten_line
+               write(eos_lines,'(3E12.4)') (v%x_interp_workspace(x_print_idx,t6_scan_idx,density_scan_idx), &
                     x_print_idx=v%x_index_lo,v%x_index_lo+2)
+               call eos_log(eos_lines)
             end if
             recompute_flag = 1
          end do
@@ -564,12 +595,15 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
             if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) then
-               write(run_log_unit,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') &
-                    t6_scan_idx, density_scan_idx, v%density_index_3, &
-                    v%t6_index_3, v%density_interp_order, v%t6_interp_order
-               write(run_log_unit,'(3E12.4)') &
-                    (v%x_interp_workspace(x_print_idx,t6_scan_idx,density_scan_idx), &
+               eos_lines = unwritten_line
+               write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_scan_idx, &
+                    density_scan_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
+                    v%t6_interp_order
+               call eos_log(eos_lines)
+               eos_lines = unwritten_line
+               write(eos_lines,'(3E12.4)') (v%x_interp_workspace(x_print_idx,t6_scan_idx,density_scan_idx), &
                     x_print_idx=x_index_2,x_index_2+2)
+               call eos_log(eos_lines)
             end if
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &
                  v%x_interp_result(t6_scan_idx,density_scan_idx)*x_interp_weight + &
@@ -620,13 +654,17 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       end if
       return
       end if
-      write(run_log_unit,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", &
-           &" USING (66)")')
-      write(run_log_unit,'("MF,ZZ(MF)=",I5,E12.4)') v%x_index_lo, &
-           v%z_table(v%x_index_lo)
-      write(run_log_unit,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') &
-           v%t6_interp_order, v%density_interp_order, v%t6_index_3, v%density_index_3, &
-           hydrogen_fraction, t6_temperature, density, opal_shared%table_metal_fraction(iv_opal95)
+      eos_lines = unwritten_line
+      write(eos_lines,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", " USING (66)")')
+      call eos_log(eos_lines)
+      eos_lines = unwritten_line
+      write(eos_lines,'("MF,ZZ(MF)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
+      call eos_log(eos_lines)
+      eos_lines = unwritten_line
+      write(eos_lines,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') v%t6_interp_order, &
+           v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
+           t6_temperature, density, opal_shared%table_metal_fraction(iv_opal95)
+      call eos_log(eos_lines)
       ierr = 1
 
 end subroutine esac
@@ -643,6 +681,7 @@ end subroutine esac
 subroutine t6rinterp(v, slr, slt, ierr)
 
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: slr, slt
@@ -722,8 +761,9 @@ subroutine t6rinterp(v, slr, slt, ierr)
          end if
       end if
       if (v%esact > 1.0d+15) then
-         write(run_log_unit,'("INTERPOLATION INDICES OUT OF RANGE", &
-              &";PLEASE REPORT CONDITIONS.")')
+         eos_lines = unwritten_line
+         write(eos_lines,'("INTERPOLATION INDICES OUT OF RANGE", ";PLEASE REPORT CONDITIONS.")')
+         call eos_log(eos_lines)
          ierr = 1
          return
       end if
@@ -910,6 +950,7 @@ end function gmass
 ! opal_shared%table_loaded_flag).
 subroutine readco(v, ierr)
 
+      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       integer, parameter :: mx = n_eos_mx, mv = n_eos_mv, nr = n_eos95_nr, nt = n_eos95_nt
@@ -959,8 +1000,9 @@ subroutine readco(v, ierr)
                  unused_field, unused_field, &
                  v%density_grid_table(x_loop_index,density_row)
             if (record_number /= density_row) then
-               write(run_log_unit,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') &
-                    record_number, density_row
+               eos_lines = unwritten_line
+               write(eos_lines,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') record_number, density_row
+               call eos_log(eos_lines)
                ierr = 1
                return
             end if
@@ -968,9 +1010,10 @@ subroutine readco(v, ierr)
             read(opal_shared%table_unit,'(A)') blank_line
             if (v%temperature_count_used(x_loop_index,density_row) < &
                  opal95_t6_index_lo(density_row)) then
-               write(run_log_unit,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", &
-                    &E14.4)') v%hydrogen_fraction_header(x_loop_index), &
+               eos_lines = unwritten_line
+               write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') v%hydrogen_fraction_header(x_loop_index), &
                     v%density_grid_table(x_loop_index,density_row)
+               call eos_log(eos_lines)
                ierr = 1
                return
             end if
