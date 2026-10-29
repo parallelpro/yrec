@@ -223,6 +223,8 @@ program test_numerics
       write(*,'(a,2(1pe24.15),i3)') "polint n=5", v, dv, ierr
       call polint(x20, y20, 3, 0.0d0, v, dv, ierr)
       write(*,'(a,2(1pe24.15),i3)') "polint n=3 extrapolated", v, dv, ierr
+      call polint(1.0d-25*x20, y20, 5, 0.5d-25, v, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "polint n=5, abscissae scaled by 1e-25", v, dv, ierr
       x20(2) = x20(1)
       call polint(x20, y20, 3, 0.2d0, v, dv, ierr)
       write(*,'(a,i3)') "polint, repeated abscissa: ierr", ierr

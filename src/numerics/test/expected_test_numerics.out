@@ -130,6 +130,7 @@ quint   1.688500000000000E+00
 # polint: five and three points, repeated abscissa
 polint n=5   8.003940990295114E-01   1.052550217659097E-03  0
 polint n=3 extrapolated   1.006283378996856E+00  -2.014953952435351E-02  0
+polint n=5, abscissae scaled by 1e-25   8.003940990295114E-01   1.052550217659103E-03  0
  polint: repeated abscissa (den ~ 0)
 polint, repeated abscissa: ierr  1
 # lir

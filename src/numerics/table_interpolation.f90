@@ -157,7 +157,8 @@ end subroutine quint
 !----------------------------------------------------------------------
 ! Neville's algorithm (Numerical Recipes' polint): the value y at x
 ! of the polynomial through xa/ya(1:n) and an error estimate dy.
-! Coincident abscissae return ierr = 1.
+! Coincident abscissae, equal to within coincidence_tolerance of their
+! size, return ierr = 1.
 subroutine polint(xa, ya, n, x, y, dy, ierr)
       integer, intent(in) :: n
       real(dp), intent(in) :: xa(n), ya(n)
@@ -168,6 +169,9 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
       real(dp) :: c(n), d(n)
       integer :: ns, i, j
       real(dp) :: dif, dift, ho, hp, w, den
+! two abscissae closer than this, relative to their distances from x,
+! count as coincident (a few ulp)
+      real(dp), parameter :: coincidence_tolerance = 4.0d0*epsilon(1.0d0)
 
       ierr = 0
       ns = 1
@@ -189,7 +193,7 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
           hp = xa(i+j)-x
           w = c(i+1) - d(i)
           den = ho - hp
-          if (abs(den) < 1.0d-20) then
+          if (abs(den) <= coincidence_tolerance*max(abs(ho), abs(hp))) then
              write(*,*) 'polint: repeated abscissa (den ~ 0)'
              ierr = 1
              return
