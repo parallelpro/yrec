@@ -168,11 +168,11 @@
            & debye_huckel_eta_min, debye_huckel_eta_max, &
            & solver_underrelax_start, solver_underrelax_increment, &
            & wind_law_constant, difad_velocity_scale, &
-           & mixing_velocity_scale, coupling_factor, mu_gradient_scale, &
-           & es_velocity_scale, core_mass_reduction_factor, &
-           & gsf_velocity_scale, secular_shear_velocity_scale, &
-           & es_mixing_scale, secular_shear_mixing_scale, &
-           & gsf_mixing_scale, solberg_hoiland_velocity_scale, &
+           & mixing_velocity_scale, coupling_factor, es_velocity_scale, &
+           & core_mass_reduction_factor, gsf_velocity_scale, &
+           & secular_shear_velocity_scale, es_mixing_scale, &
+           & secular_shear_mixing_scale, gsf_mixing_scale, &
+           & solberg_hoiland_velocity_scale, &
            & solberg_hoiland_mixing_scale, settling_y_factor, &
            & settling_z_factor, settling_tolerance, solver_tolerances, &
            & zoning_tolerances, fpft_iter1, fpft_iter2, max_stage_index, &

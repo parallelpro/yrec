@@ -72,7 +72,6 @@
       write(u,'(a," = ",i0)') 'ctrl%unit_centre4', star%ctrl%unit_centre4
       write(u,'(a," = ",i0)') 'ctrl%unit_centre5', star%ctrl%unit_centre5
       write(u,'(a," = ",es25.17e3)') 'ctrl%metal_fraction_match_tolerance', star%ctrl%metal_fraction_match_tolerance
-      write(u,'(a," = ",es25.17e3)') 'ctrl%zsi', star%ctrl%zsi
       write(u,'(a," = ",i0)') 'ctrl%npenv', star%ctrl%npenv
       write(u,'(a," = ",i0)') 'ctrl%first_unit', star%ctrl%first_unit
       write(u,'(a," = ",i0)') 'ctrl%run_unit', star%ctrl%run_unit
@@ -157,7 +156,6 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%mixing_velocity_scale', star%ctrl%mixing_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%es_velocity_scale', star%ctrl%es_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%gsf_velocity_scale', star%ctrl%gsf_velocity_scale
-      write(u,'(a," = ",es25.17e3)') 'ctrl%mu_gradient_scale', star%ctrl%mu_gradient_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%secular_shear_velocity_scale', star%ctrl%secular_shear_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%critical_reynolds', star%ctrl%critical_reynolds
       write(u,'(a," = ",i0)') 'ctrl%ies', star%ctrl%ies
@@ -221,8 +219,6 @@
       write(u,'(a," = ",l1)') 'ctrl%use_conductive_opacity', star%ctrl%use_conductive_opacity
       write(u,'(a," = ",i0)') 'ctrl%alex94_table_unit', star%ctrl%alex94_table_unit
       write(u,'(a," = ",i0)') 'ctrl%alex06_table_unit', star%ctrl%alex06_table_unit
-      write(u,'(a," = ",es25.17e3)') 'ctrl%alex_mixture_x', star%ctrl%alex_mixture_x
-      write(u,'(a," = ",es25.17e3)') 'ctrl%alex_mixture_z', star%ctrl%alex_mixture_z
       write(u,'(a," = ",l1)') 'ctrl%lvfc', star%ctrl%lvfc
       write(u,'(a," = ",l1)') 'ctrl%use_diffusion_advection_transport', star%ctrl%use_diffusion_advection_transport
       write(u,'(a," = ",l1)') 'ctrl%no_am_transport_in_core', star%ctrl%no_am_transport_in_core

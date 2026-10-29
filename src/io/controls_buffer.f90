@@ -196,7 +196,6 @@ module controls_buffer
 
 ! Opacity-table metallicity matching.
       double precision :: metal_fraction_match_tolerance = 1.0d-8
-      double precision :: zsi = 0.0d0
 
 ! Envelope profile print count.
       integer :: npenv = 0
@@ -360,14 +359,13 @@ module controls_buffer
       double precision :: initial_b10_fraction = 1.002d-9
       double precision :: initial_b11_fraction = 4.405d-9
 
-! Rotational mixing velocity and coefficient scales (ies and imu are
-! read and then unused).
+! Rotational mixing velocity and coefficient scales (the legacy ies, imu
+! and fmu are read and then unused).
       double precision :: fo = 1.0d0
       double precision :: difad_velocity_scale = 1.0d0
       double precision :: mixing_velocity_scale = 1.0d0
       double precision :: es_velocity_scale = 1.0d0
       double precision :: gsf_velocity_scale = 1.0d0
-      double precision :: mu_gradient_scale = 1.0d0
       double precision :: secular_shear_velocity_scale = 1.0d0
       double precision :: critical_reynolds = 1.0d3
       integer :: ies = 1
@@ -478,9 +476,6 @@ module controls_buffer
 ! their historical "95".
       integer :: alex94_table_unit
       integer :: alex06_table_unit
-
-! The composition the Alexander tables are read at.
-      double precision :: alex_mixture_x = 0.7d0, alex_mixture_z = 0.02d0
 
 ! Angular momentum transport options: the alternative velocity form in
 ! the diffusion coefficients (lvfc) and diffusion-advection transport.

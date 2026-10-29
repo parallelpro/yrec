@@ -154,7 +154,6 @@
       difad_velocity_scale = fw
       mixing_velocity_scale = fc
       coupling_factor = fo
-      mu_gradient_scale = fmu
       es_velocity_scale = fes
       core_mass_reduction_factor = fcore
       gsf_velocity_scale = fgsf
@@ -488,7 +487,6 @@
       fw = difad_velocity_scale
       fc = mixing_velocity_scale
       fo = coupling_factor
-      fmu = mu_gradient_scale
       fes = es_velocity_scale
       fcore = core_mass_reduction_factor
       fgsf = gsf_velocity_scale

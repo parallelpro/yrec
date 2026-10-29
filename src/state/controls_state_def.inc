@@ -67,7 +67,6 @@
             integer :: unit_centre4 = 0
             integer :: unit_centre5 = 0
             double precision :: metal_fraction_match_tolerance = 1.0d-8
-            double precision :: zsi = 0.0d0
             integer :: npenv = 0
             integer :: first_unit = 0
             integer :: run_unit = 0
@@ -144,7 +143,6 @@
             double precision :: mixing_velocity_scale = 1.0d0
             double precision :: es_velocity_scale = 1.0d0
             double precision :: gsf_velocity_scale = 1.0d0
-            double precision :: mu_gradient_scale = 1.0d0
             double precision :: secular_shear_velocity_scale = 1.0d0
             double precision :: critical_reynolds = 1.0d3
             integer :: ies = 1
@@ -208,8 +206,6 @@
             logical :: use_conductive_opacity = .false.
             integer :: alex94_table_unit = 0
             integer :: alex06_table_unit = 0
-            double precision :: alex_mixture_x = 0.7d0
-            double precision :: alex_mixture_z = 0.02d0
             logical :: lvfc = .false.
             logical :: use_diffusion_advection_transport = .false.
             logical :: no_am_transport_in_core = .false.

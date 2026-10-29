@@ -367,7 +367,6 @@ subroutine adopt_canonical_names(s)
       mixing_velocity_scale = fc
       es_velocity_scale = fes
       gsf_velocity_scale = fgsf
-      mu_gradient_scale = fmu
       secular_shear_velocity_scale = fss
       critical_reynolds = rcrit
       es_mixing_scale = fesc

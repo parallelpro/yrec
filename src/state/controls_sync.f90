@@ -114,7 +114,6 @@ subroutine seed_controls_buffer(s)
       unit_centre4 = s%ctrl%unit_centre4
       unit_centre5 = s%ctrl%unit_centre5
       metal_fraction_match_tolerance = s%ctrl%metal_fraction_match_tolerance
-      zsi = s%ctrl%zsi
       npenv = s%ctrl%npenv
       first_unit = s%ctrl%first_unit
       run_unit = s%ctrl%run_unit
@@ -218,7 +217,6 @@ subroutine seed_controls_buffer(s)
       mixing_velocity_scale = s%ctrl%mixing_velocity_scale
       es_velocity_scale = s%ctrl%es_velocity_scale
       gsf_velocity_scale = s%ctrl%gsf_velocity_scale
-      mu_gradient_scale = s%ctrl%mu_gradient_scale
       secular_shear_velocity_scale = s%ctrl%secular_shear_velocity_scale
       critical_reynolds = s%ctrl%critical_reynolds
       ies = s%ctrl%ies
@@ -294,8 +292,6 @@ subroutine seed_controls_buffer(s)
       use_conductive_opacity = s%ctrl%use_conductive_opacity
       alex94_table_unit = s%ctrl%alex94_table_unit
       alex06_table_unit = s%ctrl%alex06_table_unit
-      alex_mixture_x = s%ctrl%alex_mixture_x
-      alex_mixture_z = s%ctrl%alex_mixture_z
       lvfc = s%ctrl%lvfc
       use_diffusion_advection_transport = s%ctrl%use_diffusion_advection_transport
       no_am_transport_in_core = s%ctrl%no_am_transport_in_core
@@ -485,7 +481,6 @@ subroutine store_controls_to_star(s)
       s%ctrl%unit_centre4 = unit_centre4
       s%ctrl%unit_centre5 = unit_centre5
       s%ctrl%metal_fraction_match_tolerance = metal_fraction_match_tolerance
-      s%ctrl%zsi = zsi
       s%ctrl%npenv = npenv
       s%ctrl%first_unit = first_unit
       s%ctrl%run_unit = run_unit
@@ -589,7 +584,6 @@ subroutine store_controls_to_star(s)
       s%ctrl%mixing_velocity_scale = mixing_velocity_scale
       s%ctrl%es_velocity_scale = es_velocity_scale
       s%ctrl%gsf_velocity_scale = gsf_velocity_scale
-      s%ctrl%mu_gradient_scale = mu_gradient_scale
       s%ctrl%secular_shear_velocity_scale = secular_shear_velocity_scale
       s%ctrl%critical_reynolds = critical_reynolds
       s%ctrl%ies = ies
@@ -665,8 +659,6 @@ subroutine store_controls_to_star(s)
       s%ctrl%use_conductive_opacity = use_conductive_opacity
       s%ctrl%alex94_table_unit = alex94_table_unit
       s%ctrl%alex06_table_unit = alex06_table_unit
-      s%ctrl%alex_mixture_x = alex_mixture_x
-      s%ctrl%alex_mixture_z = alex_mixture_z
       s%ctrl%lvfc = lvfc
       s%ctrl%use_diffusion_advection_transport = use_diffusion_advection_transport
       s%ctrl%no_am_transport_in_core = no_am_transport_in_core

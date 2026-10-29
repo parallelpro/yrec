@@ -191,7 +191,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `difad_velocity_scale` | `fw` | `difad_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
 | `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
 | `coupling_factor` | `fo` | `fo` | ctrl | none | real | `1.0d0` | verified | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
-| `mu_gradient_scale` | `fmu` | `mu_gradient_scale` | ctrl | none | real | `1.0d0` | canonical | Inert: the mu-gradient scale has no effect (docs/bug_sweep.md O15) |
+| `(legacy only)` | `fmu` | `-` | - | - | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
 | `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | job | run | real | `1.0` | canonical | With extend_core_inward: the factor by which the innermost mass is reduced |
 | `gsf_velocity_scale` | `fgsf` | `gsf_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the GSF and ABCD instability velocities in the angular momentum transport |
@@ -430,7 +430,6 @@ or the run keeps them.
 | `unit_centre3` | ctrl | none | integer | `0` | Unit number of the third central-conditions (MHD) table (set by the reader) |
 | `unit_centre4` | ctrl | none | integer | `0` | Unit number of the fourth central-conditions (MHD) table (set by the reader) |
 | `unit_centre5` | ctrl | none | integer | `0` | Unit number of the fifth central-conditions (MHD) table (set by the reader) |
-| `zsi` | ctrl | none | real | `0.0d0` |  |
 | `first_unit` | ctrl | run | integer | `0` | Unit number of the starting model (set by the reader) |
 | `run_unit` | ctrl | read | integer | `0` | Unit number the PHYSICS namelist is read on (set by the reader) |
 | `standard_unit` | ctrl | read | integer | `0` | Unit number the CONTROL namelist or the inlist is read on (set by the reader) |
@@ -459,8 +458,6 @@ or the run keeps them.
 | `icondopacp` | ctrl | none | integer | `0` | Unit number of the conductive opacity table (set by the reader) |
 | `alex94_table_unit` | ctrl | none | integer | `0` | Unit number of the Alexander & Ferguson 1994 tables (set by the reader) |
 | `alex06_table_unit` | ctrl | none | integer | `0` | Unit number of the Ferguson et al. 2005 tables (set by the reader) |
-| `alex_mixture_x` | ctrl | none | real | `0.7d0` |  |
-| `alex_mixture_z` | ctrl | none | real | `0.02d0` |  |
 | `scv_h_unit` | ctrl | none | integer | `0` | Unit number of the SCV hydrogen EOS table (set by the reader) |
 | `scv_he_unit` | ctrl | none | integer | `0` | Unit number of the SCV helium EOS table (set by the reader) |
 | `scv_z_unit` | ctrl | none | integer | `0` | Unit number of the SCV metal EOS table (set by the reader) |

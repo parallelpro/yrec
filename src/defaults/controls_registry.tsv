@@ -152,7 +152,7 @@ physics	fk	real	wind_law_constant	verified		The constant factor of both wind law
 physics	fw	real	difad_velocity_scale	canonical		Scale of the angular momentum diffusion coefficients in the diffusion-advection transport	difad_velocity_scale	ctrl	run
 physics	fc	real	mixing_velocity_scale	canonical		Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion)	mixing_velocity_scale	ctrl	run
 physics	fo	real	coupling_factor	verified		Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header)	fo	ctrl	none
-physics	fmu	real	mu_gradient_scale	canonical		Inert: the mu-gradient scale has no effect (docs/bug_sweep.md O15)	mu_gradient_scale	ctrl	none
+physics	fmu	real	mu_gradient_scale	unused		Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format)			
 physics	fes	real	es_velocity_scale	canonical		Scale of the Eddington-Sweet circulation velocity in the angular momentum transport	es_velocity_scale	ctrl	run
 physics	fcore	real	core_mass_reduction_factor	canonical		With extend_core_inward: the factor by which the innermost mass is reduced	core_mass_reduction_factor	job	run
 physics	fgsf	real	gsf_velocity_scale	canonical		Scale of the GSF and ABCD instability velocities in the angular momentum transport	gsf_velocity_scale	ctrl	run
@@ -394,7 +394,6 @@ physics	compute_neutrino_fluxes	logical	compute_neutrino_fluxes	verified		Diagno
 -	-	integer	unit_centre3	derived		Unit number of the third central-conditions (MHD) table (set by the reader)	unit_centre3	ctrl	none
 -	-	integer	unit_centre4	derived		Unit number of the fourth central-conditions (MHD) table (set by the reader)	unit_centre4	ctrl	none
 -	-	integer	unit_centre5	derived		Unit number of the fifth central-conditions (MHD) table (set by the reader)	unit_centre5	ctrl	none
--	-	real	zsi	derived			zsi	ctrl	none
 -	-	integer	first_unit	derived		Unit number of the starting model (set by the reader)	first_unit	ctrl	run
 -	-	integer	run_unit	derived		Unit number the PHYSICS namelist is read on (set by the reader)	run_unit	ctrl	read
 -	-	integer	standard_unit	derived		Unit number the CONTROL namelist or the inlist is read on (set by the reader)	standard_unit	ctrl	read
@@ -423,8 +422,6 @@ physics	compute_neutrino_fluxes	logical	compute_neutrino_fluxes	verified		Diagno
 -	-	integer	icondopacp	derived		Unit number of the conductive opacity table (set by the reader)	icondopacp	ctrl	none
 -	-	integer	alex94_table_unit	derived		Unit number of the Alexander & Ferguson 1994 tables (set by the reader)	alex94_table_unit	ctrl	none
 -	-	integer	alex06_table_unit	derived		Unit number of the Ferguson et al. 2005 tables (set by the reader)	alex06_table_unit	ctrl	none
--	-	real	alex_mixture_x	derived			alex_mixture_x	ctrl	none
--	-	real	alex_mixture_z	derived			alex_mixture_z	ctrl	none
 -	-	integer	scv_h_unit	derived		Unit number of the SCV hydrogen EOS table (set by the reader)	scv_h_unit	ctrl	none
 -	-	integer	scv_he_unit	derived		Unit number of the SCV helium EOS table (set by the reader)	scv_he_unit	ctrl	none
 -	-	integer	scv_z_unit	derived		Unit number of the SCV metal EOS table (set by the reader)	scv_z_unit	ctrl	none

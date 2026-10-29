@@ -461,7 +461,7 @@ subroutine set_legacy_defaults
       fc = mixing_velocity_scale
       fes = es_velocity_scale
       fgsf = gsf_velocity_scale
-      fmu = mu_gradient_scale
+      fmu = 1.0d0
       fss = secular_shear_velocity_scale
       rcrit = critical_reynolds
       wmax = wind_saturation_omega

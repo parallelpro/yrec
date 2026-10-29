@@ -164,10 +164,6 @@
       ! (legacy name: fo)
       coupling_factor = 1.0d0
 
-      ! Inert: the mu-gradient scale has no effect (docs/bug_sweep.md O15)
-      ! (legacy name: fmu)
-      mu_gradient_scale = 1.0d0
-
       ! Scale of the Eddington-Sweet circulation velocity in the angular momentum transport
       ! (legacy name: fes)
       es_velocity_scale = 1.0d0
@@ -995,6 +991,6 @@
 
 ! Unused legacy controls (accepted by the legacy reader only,
 ! referenced nowhere in the code; dropped from the new format):
-!   ies, imu
+!   fmu, ies, imu
 ! Legacy-reader only, dropped from the new format: sstandard, the
 ! cross-section ratios used when use_new_nuclear_rates = .false.
