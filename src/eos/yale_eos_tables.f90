@@ -14,6 +14,11 @@ module yale_eos_tables
       private
       public :: debye_huckel_coefficient, debye_huckel_nu, debye_huckel_x, &
            debye_huckel_y, debye_huckel_z, debye_huckel_z_total, yale
+! the slots of debye_huckel_z: the metals the correction weights
+      integer, parameter, public :: idh_c = 1, idh_n = 2, idh_o = 3, idh_ne = 4, &
+           idh_na = 5, idh_mg = 6, idh_al = 7, idh_si = 8, idh_p = 9, idh_s = 10, &
+           idh_cl = 11, idh_ar = 12, idh_ca = 13, idh_ti = 14, idh_cr = 15, &
+           idh_mn = 16, idh_fe = 17, idh_ni = 18, n_debye_huckel_metals = 18
       type :: yale_eos_state
            real(dp) :: fermi_table_x_grid(43), fermi_table_eta(43), &
                 fermi_table_data(5,43,20)
@@ -23,10 +28,11 @@ module yale_eos_tables
       type(yale_eos_state) :: yale
 
 
-! The Debye-Hueckel composition: X, Y, Z and the 18 metal fractions,
-! set per zone by eos_set_debye_huckel_composition (elements 1-3) and
-! once by eos_set_debye_huckel_z.
-      real(dp) :: debye_huckel_z(18)
+! The Debye-Hueckel composition: X, Y, Z and the 18 metals' mass
+! fractions, C, N and O (idh_c..idh_o) per zone by
+! eos_set_debye_huckel_composition, the heavier ones from the envelope
+! mixture by eos_set_mixture.
+      real(dp) :: debye_huckel_z(n_debye_huckel_metals) = 0.0d0
       real(dp) :: debye_huckel_x, debye_huckel_y, &
            debye_huckel_z_total
 ! The Debye-Hueckel coefficient -sqrt(pi/(k m_H**3)) e**3/3 (cgs), and

@@ -974,13 +974,15 @@ subroutine envelope_table_checks()
       call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine envelope_table_checks
 
-! The envelope mixture of (x, z) by the main program's algorithm,
-! handed to eos_set_mixture.
-subroutine set_envelope_mixture(x, z)
+! The envelope mixture of (x, z) by the main program's algorithm, from
+! the default seed or another, handed to eos_set_mixture.
+subroutine set_envelope_mixture(x, z, seed)
       real(dp), intent(in) :: x, z
+      real(dp), intent(in), optional :: seed(:)
       real(dp) :: wm(12), ws, sc, mam, fractions(12)
       integer :: j
       wm = mixture_weights_seed
+      if (present(seed)) wm = seed
       ws = wm(1)+wm(2)+wm(3)+wm(4)+wm(5)+wm(6)+wm(8)+wm(9)+wm(10)+wm(11)
       sc = z/ws
       wm(7) = x/sc
@@ -997,13 +999,15 @@ end subroutine set_envelope_mixture
 
 ! The Debye-Hueckel correction lowers the pressure at a given density,
 ! so at a given pressure it raises the density, the more the higher
-! the metals' charges: no correction < C, N, O only < C, N, O and a
-! LAOL-like heavy-metal mixture (eos_set_debye_huckel_z).
+! the metals' charges: its rise of rho is larger when the envelope
+! mixture's metals beyond C, N and O are all Fe (eos takes those metals
+! from the envelope mixture, eos_set_mixture).
 subroutine debye_huckel_checks()
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 6.8d0, lp = 17.0d0
-      real(dp) :: comp(15), metals(18)
-      type(eos_result) :: none, cno, heavy
-      integer :: ierr1, ierr2, ierr3
+      real(dp) :: comp(15), seed(12), raise(2)
+      type(eos_result) :: none, with_dh
+      integer :: ierr1, ierr2, k
+      logical :: ok
       comp = 0.0d0
       comp(1) = x
       comp(2) = 1.0d0 - x - z
@@ -1011,19 +1015,23 @@ subroutine debye_huckel_checks()
       comp(5) = 0.17d0*z
       comp(7) = 0.05d0*z
       comp(9) = 0.48d0*z
-      call configure_eos("yale_only")
-      call eos_at(lt, lp, x, z, none, ierr1)
-      call configure_eos("debye_huckel", debye_huckel=.true.)
-      metals = 0.0d0
-      call eos_set_debye_huckel_z(metals)
-      call eos_at(lt, lp, x, z, cno, ierr2, comp=comp)
-      metals(4:18) = [1.7d-3, 3.3d-5, 6.5d-4, 5.8d-5, 7.0d-4, 6.0d-6, 4.0d-4, 7.0d-6, 1.0d-4, &
-           6.0d-5, 3.0d-6, 1.7d-5, 1.0d-5, 1.3d-3, 7.0d-5]
-      call eos_set_debye_huckel_z(metals)
-      call eos_at(lt, lp, x, z, heavy, ierr3, comp=comp)
-      call check("Debye-Hueckel: rho(none) < rho(C, N, O) < rho(C, N, O and heavy metals)", &
-           ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
-           none%density < cno%density .and. cno%density < heavy%density)
+      seed = mixture_weights_seed
+      seed([1, 2, 3, 5, 10, 11]) = 0.0d0
+      seed(4) = sum(mixture_weights_seed([1, 2, 3, 4, 5, 10, 11]))
+      ok = .true.
+      do k = 1, 2
+         if (k == 1) call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+         if (k == 2) call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction, seed)
+         call configure_eos("yale_only")
+         call eos_at(lt, lp, x, z, none, ierr1)
+         call configure_eos("debye_huckel", debye_huckel=.true.)
+         call eos_at(lt, lp, x, z, with_dh, ierr2, comp=comp)
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0
+         raise(k) = with_dh%density/none%density - 1.0d0
+      end do
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check("Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe", &
+           ok .and. raise(1) > 0.0d0 .and. raise(2) > raise(1))
 end subroutine debye_huckel_checks
 
 subroutine check(label, ok)

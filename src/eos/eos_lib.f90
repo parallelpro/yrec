@@ -11,8 +11,8 @@
 !                     derivatives at (log T, log P, X, Z), in an
 !                     eos_result record (eos_results says what each
 !                     field is)
-!     eos_set_mixture, eos_set_debye_huckel_z   the envelope mixture and
-!                     the metal mixture of the Debye-Hueckel correction
+!     eos_set_mixture the envelope mixture (and from it the heavier
+!                     metals of the Debye-Hueckel correction)
 !     eos_set_debye_huckel_composition   the zone composition the
 !                     Debye-Hueckel correction uses
 !     eos_update_envelope_tables   rebuild the SCV envelope table when
@@ -38,14 +38,16 @@ module eos_lib
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
            open_opal_eos_table
       use yale_eos_tables, only: debye_huckel_x, debye_huckel_y, debye_huckel_z, &
-           debye_huckel_z_total
+           debye_huckel_z_total, idh_ne, idh_na, idh_mg, idh_al, idh_si, idh_ar, &
+           idh_fe
+      use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, &
+           mixture_atomic_weights
       use physical_constants, only: ln10
       use math_lib
       implicit none
       private
       public :: eos_init, eos_get, eos_get_gamma1, eos_result
-      public :: eos_set_mixture, eos_set_debye_huckel_z, &
-           eos_update_envelope_tables
+      public :: eos_set_mixture, eos_update_envelope_tables
       public :: eos_settings_t, set_eos_settings
 
 contains
@@ -210,7 +212,11 @@ end subroutine eos_get_gamma1
 !----------------------------------------------------------------------
 ! The envelope mixture the Saha and SCV paths read through eos_mix: X,
 ! Z, the mean atomic mass and the species fractions. The star layer
-! sets it whenever it recomputes the envelope composition.
+! sets it whenever it recomputes the envelope composition. The
+! Debye-Hueckel correction takes its metals heavier than O from it, as
+! mass fractions X_i = fx_i amu A_i: Ne, Na, Mg, Al, Si, Ar and Fe (its
+! P, S, Cl, Ca, Ti, Cr, Mn and Ni are not in the mixture and stay zero;
+! C, N and O come from each zone's composition).
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
@@ -221,21 +227,22 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
       eos_mix%amuenv = mean_atomic_mass
       eos_mix%fxenv = species_fractions
+      debye_huckel_z(idh_ne) = mixture_mass_fraction(ix_ne)
+      debye_huckel_z(idh_na) = mixture_mass_fraction(ix_na)
+      debye_huckel_z(idh_mg) = mixture_mass_fraction(ix_mg)
+      debye_huckel_z(idh_al) = mixture_mass_fraction(ix_al)
+      debye_huckel_z(idh_si) = mixture_mass_fraction(ix_si)
+      debye_huckel_z(idh_ar) = mixture_mass_fraction(ix_ar)
+      debye_huckel_z(idh_fe) = mixture_mass_fraction(ix_fe)
+
+contains
+
+real(dp) function mixture_mass_fraction(i)
+      integer, intent(in) :: i
+      mixture_mass_fraction = species_fractions(i)*mean_atomic_mass*mixture_atomic_weights(i)
+end function mixture_mass_fraction
+
 end subroutine eos_set_mixture
-
-!----------------------------------------------------------------------
-! eos_set_debye_huckel_z
-!----------------------------------------------------------------------
-! The 18-element metal mixture (C, N, O, Ne, Na, Mg, Al, Si, P, S, Cl,
-! Ar, Ca, Ti, Cr, Mn, Fe, Ni, summing to Z) that the Debye-Hueckel
-! correction weights with debye_huckel_nu. kap_lib passes the LAOL89
-! table's mixture after reading it; eos_set_debye_huckel_composition
-! then resets elements 1-3 for each zone.
-subroutine eos_set_debye_huckel_z(metal_mixture)
-      real(dp), intent(in) :: metal_mixture(:)
-
-      debye_huckel_z = metal_mixture
-end subroutine eos_set_debye_huckel_z
 
 !----------------------------------------------------------------------
 ! eos_set_debye_huckel_composition

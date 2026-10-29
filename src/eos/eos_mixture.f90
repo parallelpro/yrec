@@ -37,6 +37,13 @@ module eos_mixture
 
       type(eos_mixture_state), public, save :: eos_mix
 
+! the atomic weights of the mixture's species, in the ix_* order (Na,
+! Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He): those core's starting model
+! builds fxenv with (fxenv(i) = X_i/A_i/amuenv)
+      real(dp), parameter, public :: mixture_atomic_weights(n_mix_species) = [23.0d0, &
+           26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
+           14.01d0, 39.96d0, 20.19d0, 4.004d0]
+
       public :: ion_mean_weight_excess, compute_mean_weights
 
 contains

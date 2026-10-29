@@ -510,7 +510,6 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
      laol_table_path, laol_table2_path, opal95_table_path, &
      opal92_table_path, opal92_table2_path, pure_z_table_path, &
      alex95_table_paths, ierr)
-      use eos_lib, only: eos_set_debye_huckel_z
       real(dp), intent(in) :: envelope_hydrogen_fraction
       real(dp), intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: alex06_table_path, &
@@ -519,6 +518,8 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
            opal92_table2_path, pure_z_table_path
       character(len=256), intent(in) :: alex95_table_paths(7)
       integer, intent(out) :: ierr
+! the LAOL table's 18-element metal mixture (read, not used: eos takes
+! the Debye-Hueckel correction's metals from its own envelope mixture)
       real(dp) :: laol_debye_huckel_z(18)
 
       ierr = 0
@@ -538,7 +539,6 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
          call read_laol_tables(laol_work_array, laol_debye_huckel_z, laol_table_path, &
               laol_table2_path, ierr)
          if (ierr /= 0) return
-         call eos_set_debye_huckel_z(laol_debye_huckel_z)
          call build_laol_splines
       end if
       if (kap_settings%use_pure_z_table) then

@@ -24,7 +24,8 @@ module blended_eos
            radiation_constant_over_3
       use io_units, only: run_log_unit
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, ix_c, ix_h, &
-           ix_he, ix_na, ix_ne, ix_o, n_mix_species
+           ix_he, ix_na, ix_ne, ix_o, n_mix_species, &
+           atomic_weights_full => mixture_atomic_weights
       use eos_configuration, only: eos_settings
       use math_lib
 
@@ -182,11 +183,6 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, &
            0.08322d0, 0.4995d0]
       real(dp), parameter :: saha_ramp_width = 0.500d0, saha_ramp_scale = 2.000d0
-! atomic weights in the ix_* species order (Na, Al, Mg, Fe, Si, C, H,
-! O, N, Ar, Ne, He)
-      real(dp), parameter :: atomic_weights_full(n_mix_species) = [23.0d0, &
-           26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
-           14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
       logical :: need_saha_solution, skip_relativistic_eos
       real(dp) :: saha_mass_fractions(n_mix_species)
