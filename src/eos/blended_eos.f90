@@ -218,6 +218,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
            saha_specific_heat_cp_dt, saha_specific_heat_cp_dp, &
            saha_adiabatic_gradient_dt, saha_adiabatic_gradient_dp
       real(dp) :: ramp_weight, ramp_weight_sq
+      real(dp) :: saha_ion_fraction(3)
 
 !     need_saha_solution = T if T low enough to require a call to
 !     compute_saha_eos to solve the Saha ionization equation; if F, a fully
@@ -355,6 +356,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       saha_dlnrho_dlnp = r%dlnrho_dlnp
       saha_specific_heat_cp = r%specific_heat_cp
       saha_adiabatic_gradient = r%adiabatic_gradient
+      saha_ion_fraction = r%ion_fraction
       if (want_derivatives) then
          saha_dlnrho_dlnt_dt = r%dlnrho_dlnt_dt
          saha_dlnrho_dlnt_dp = r%dlnrho_dlnt_dp
@@ -384,6 +386,8 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       saha_dlnrho_dlnp = saha_dlnrho_dlnp - r%dlnrho_dlnp
       saha_specific_heat_cp = saha_specific_heat_cp - r%specific_heat_cp
       saha_adiabatic_gradient = saha_adiabatic_gradient - r%adiabatic_gradient
+      saha_dlnrho_dlnt_dt = saha_dlnrho_dlnt_dt - r%dlnrho_dlnt_dt
+      saha_dlnrho_dlnt_dp = saha_dlnrho_dlnt_dp - r%dlnrho_dlnt_dp
       saha_specific_heat_cp_dt = saha_specific_heat_cp_dt - r%specific_heat_cp_dt
       saha_specific_heat_cp_dp = saha_specific_heat_cp_dp - r%specific_heat_cp_dp
       saha_adiabatic_gradient_dt = saha_adiabatic_gradient_dt - r%adiabatic_gradient_dt
@@ -393,9 +397,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       r%specific_gas_constant = r%beta*r%pressure/(r%density*r%temperature)
       r%electron_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
            r%ion_mean_weight_inverse
-      r%ion_fraction(1) = 1.0d0 + ramp_factor*(r%ion_fraction(1) - 1.0d0)
-      r%ion_fraction(2) = ramp_factor*r%ion_fraction(2)
-      r%ion_fraction(3) = 1.0d0 + ramp_factor*(r%ion_fraction(3) - 1.0d0)
+      r%ion_fraction = r%ion_fraction + ramp_factor*(saha_ion_fraction - r%ion_fraction)
       r%dlnrho_dlnt = r%dlnrho_dlnt + ramp_factor*saha_dlnrho_dlnt
       r%dlnrho_dlnp = r%dlnrho_dlnp + ramp_factor*saha_dlnrho_dlnp
       r%specific_heat_cp = r%specific_heat_cp + ramp_factor*saha_specific_heat_cp

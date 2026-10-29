@@ -855,9 +855,11 @@ subroutine ideal_gas_checks()
       call check("radiation pressure above P: beta <= 0 returns ierr", ierr == 1)
 end subroutine ideal_gas_checks
 
-! rho and grad_ad on both sides of a boundary in log T (fixed log P):
-! the jump over 2e-7 in log T, against 1e-6 (a step at the boundary
-! would be the gap between the two solutions, 1e-3 to 1e-1)
+! rho, grad_ad, the ionization fractions and d(dln rho/dln T)/dln T and
+! /dln P on both sides of a boundary in log T (fixed log P): the jump
+! over 2e-7 in log T, against 1e-6 (1e-4 for the second derivatives,
+! which carry the fully ionized iteration's tolerance; a step at the
+! boundary would be the gap between the two solutions, 1e-3 to 1e-1)
 subroutine continuity_in_t(label, lt0, lp)
       character(len=*), intent(in) :: label
       real(dp), intent(in) :: lt0, lp
@@ -868,15 +870,18 @@ subroutine continuity_in_t(label, lt0, lp)
       call eos_at(lt0 + h, lp, x, z, above, ierr2)
       call check(label, ierr1 == 0 .and. ierr2 == 0 .and. &
            abs(above%log10_density - below%log10_density) < 1.0d-6 .and. &
-           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-6)
+           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-6 .and. &
+           all(abs(above%ion_fraction - below%ion_fraction) < 1.0d-6) .and. &
+           abs(above%dlnrho_dlnt_dt - below%dlnrho_dlnt_dt) < 1.0d-4 .and. &
+           abs(above%dlnrho_dlnt_dp - below%dlnrho_dlnt_dp) < 1.0d-4)
 end subroutine continuity_in_t
 
 subroutine continuity_checks()
       call configure_eos("yale_only")
-      call continuity_in_t("continuity: rho and grad_ad at the Saha ramp's foot (cutoff - 0.5)", &
+      call continuity_in_t("continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)", &
            5.5d0, 13.0d0)
-      call continuity_in_t("continuity: rho and grad_ad at the Saha cutoff", 6.0d0, 13.0d0)
-      call continuity_in_t("continuity: rho and grad_ad at the Saha cutoff, denser", 6.0d0, 15.0d0)
+      call continuity_in_t("continuity: the blended quantities at the Saha cutoff", 6.0d0, 13.0d0)
+      call continuity_in_t("continuity: the blended quantities at the Saha cutoff, denser", 6.0d0, 15.0d0)
 ! the OPAL 2006 table's edge at log T = 5, in log P: the blend is
 ! OPAL's own result below log P = 12.87, the Yale/SCV result above
 ! 13.01, and ramps between. Each end of the ramp is bisected (to 1e-11
