@@ -113,24 +113,25 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
       ierr = numerics_ok
       h = h_step
       x_sav = indep_var
-      do i = 1,num_eqs
-       y_sav(i) = y(i)
-       dy_sav(i) = dydx(i)
+      do i = 1, num_eqs
+         y_sav(i) = y(i)
+         dy_sav(i) = dydx(i)
       end do
-      do    ! step-halving retry loop (was label 20)
-      do i = 1,max_stage_index
-       call mmid(system, y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
-            y_seq, jerr_integrand)
-       if (jerr_integrand /= 0) then
-          ierr = numerics_derivatives_failed
-          if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand
-          return
-       end if
-       x_est = (h/substep_sequence(i))**2
-       call ratext(tableau, i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
-       do j = 1,num_eqs
-          step_err(j) = abs(y_err(j)/y_scale(j))
-       end do
+! retry with a shorter step until one stage meets the tolerance
+      do
+         do i = 1, max_stage_index
+            call mmid(system, y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
+                 y_seq, jerr_integrand)
+            if (jerr_integrand /= 0) then
+               ierr = numerics_derivatives_failed
+               if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand
+               return
+            end if
+            x_est = (h/substep_sequence(i))**2
+            call ratext(tableau, i, x_est, y_seq, y, y_err, num_eqs, extrap_order)
+            do j = 1, num_eqs
+               step_err(j) = abs(y_err(j)/y_scale(j))
+            end do
 ! The largest scaled error among the components that are not NaN, and
 ! NaN only when every component is (then no stage is accepted and the
 ! step ends on underflow). This is how the compiled loop
@@ -138,30 +139,30 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
 ! first max to the bare value and used a NaN-skipping max after it. The
 ! clean stop of an atmosphere integration (one equation) that starts
 ! from NaN, the pinned 0.03 Msun case, depends on it.
-       err_max = step_err(1)
-       do j = 2,num_eqs
-          if (step_err(j) > err_max .or. ieee_is_nan(err_max)) err_max = step_err(j)
-       end do
-       err_max = err_max/tolerance
-       if(err_max < one) then
-          indep_var = indep_var + h
-          h_did = h
-          if(i == extrap_order) then
-             h_next = h*shrink_factor
-          else if (i == extrap_order-1) then
-             h_next = h*grow_factor
-          else
-             h_next = h*real(substep_sequence(extrap_order-1), dp)/ &
-                  real(substep_sequence(i), dp)
-          endif
-          return
-       endif
-      end do
-      h = 0.25d0*h/2.0d0**((max_stage_index-extrap_order)/2)
-      if(underflow_reference+h == underflow_reference) then
-       ierr = numerics_step_underflow
-       return
-      end if
+            err_max = step_err(1)
+            do j = 2, num_eqs
+               if (step_err(j) > err_max .or. ieee_is_nan(err_max)) err_max = step_err(j)
+            end do
+            err_max = err_max/tolerance
+            if (err_max < one) then
+               indep_var = indep_var + h
+               h_did = h
+               if (i == extrap_order) then
+                  h_next = h*shrink_factor
+               else if (i == extrap_order-1) then
+                  h_next = h*grow_factor
+               else
+                  h_next = h*real(substep_sequence(extrap_order-1), dp)/ &
+                       real(substep_sequence(i), dp)
+               end if
+               return
+            end if
+         end do
+         h = 0.25d0*h/2.0d0**((max_stage_index-extrap_order)/2)
+         if (underflow_reference+h == underflow_reference) then
+            ierr = numerics_step_underflow
+            return
+         end if
       end do
 
 end subroutine bsstep
@@ -181,7 +182,7 @@ subroutine mmid(system, y, dydx, n_var, x_start, h_total, n_step, y_out, ierr)
       real(dp), intent(out) :: y_out(n_var)
       integer, intent(out) :: ierr
 
-! h_sub is the size of each small step.
+! h_sub is the size of each substep
       real(dp) :: y_mid(n_var), y_new(n_var)
       real(dp) :: h_sub, h_sub2, x_current, y_swap
       integer :: i, step_index
@@ -189,29 +190,29 @@ subroutine mmid(system, y, dydx, n_var, x_start, h_total, n_step, y_out, ierr)
       ierr = 0
       h_sub = h_total/real(n_step, dp)
 ! first step
-      do i = 1,n_var
-       y_mid(i) = y(i)
-       y_new(i) = y(i) + dydx(i)*h_sub
+      do i = 1, n_var
+         y_mid(i) = y(i)
+         y_new(i) = y(i) + dydx(i)*h_sub
       end do
       x_current = x_start + h_sub
-! y_out temporarily used for storage of derivatives.
+! y_out holds the derivatives until the last step
       call system%derivatives(x_current, y_new, y_out, ierr)
       if (ierr /= 0) return
       h_sub2 = 2.0d0*h_sub
-! general step.
-      do step_index = 2,n_step
-       do i = 1,n_var
-          y_swap = y_mid(i) + h_sub2*y_out(i)
-          y_mid(i) = y_new(i)
-          y_new(i) = y_swap
-       end do
-       x_current = x_current + h_sub
-       call system%derivatives(x_current, y_new, y_out, ierr)
-       if (ierr /= 0) return
+! the general step
+      do step_index = 2, n_step
+         do i = 1, n_var
+            y_swap = y_mid(i) + h_sub2*y_out(i)
+            y_mid(i) = y_new(i)
+            y_new(i) = y_swap
+         end do
+         x_current = x_current + h_sub
+         call system%derivatives(x_current, y_new, y_out, ierr)
+         if (ierr /= 0) return
       end do
-! last step.
-      do i = 1,n_var
-       y_out(i) = 0.5d0*(y_mid(i) + y_new(i) + h_sub*y_out(i))
+! the last step
+      do i = 1, n_var
+         y_out(i) = 0.5d0*(y_mid(i) + y_new(i) + h_sub*y_out(i))
       end do
 end subroutine mmid
 
@@ -235,7 +236,7 @@ pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, 
       integer :: var_idx, k, k2, num_use
       real(dp) :: yy, v, c, b1, b, ddy
 
-! SAVE CURRENT INDEPENDENT VARIABLE.
+! the stage's (h/n)**2
       tab%x_hist(est_index) = x_est
       if (est_index == 1) then
          do var_idx = 1, num_vars
@@ -244,12 +245,12 @@ pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, 
             y_err(var_idx) = y_est(var_idx)
          end do
       else
-!        USE AT MOST max_use PREVIOUS MEMBERS.
+! at most max_use stages, the ratios of the earlier (h/n)**2 to this one
          num_use = min(est_index,max_use)
          do k = 1, num_use-1
             fx(k+1) = tab%x_hist(est_index-k)/x_est
          end do
-!        EVALUATE NEXT DIAGONAL IN TABLEAU.
+! the next diagonal of the tableau
          do var_idx=1,num_vars
             yy = y_est(var_idx)
             v = tab%tableau(var_idx,1)
@@ -258,7 +259,7 @@ pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, 
             do k2 = 2, num_use
                b1 = fx(k2)*v
                b = b1 - c
-!              CARE NEEDED TO AVOID DIVISION BY ZERO.
+! (b = 0 would divide by zero)
                if (b /= 0d0) then
                   b = (c - v)/b
                   ddy = c*b

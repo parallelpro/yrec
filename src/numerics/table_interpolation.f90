@@ -329,31 +329,28 @@ pure subroutine findex(grid_x, n_grid, x_eval, index)
 
       integer :: found_index, j
 
-! find the 'index'
-      if(index < 1.or.index > n_grid)index=1
-      found_index=index
-      if(x_eval < grid_x(found_index))then
-         do j=found_index-1,1,-1
-            if(grid_x(j) <= x_eval)then
-               found_index=j
-               index=found_index
-               
+      if (index < 1 .or. index > n_grid) index = 1
+      found_index = index
+      if (x_eval < grid_x(found_index)) then
+         do j = found_index-1, 1, -1
+            if (grid_x(j) <= x_eval) then
+               found_index = j
+               index = found_index
                return
-            endif
+            end if
          end do
-         found_index=-1
+         found_index = -1
       else
-         do j=found_index,n_grid-1
-            if(grid_x(j+1) > x_eval)then
-               found_index=j
-               index=found_index
-               
+         do j = found_index, n_grid-1
+            if (grid_x(j+1) > x_eval) then
+               found_index = j
+               index = found_index
                return
-            endif
+            end if
          end do
          found_index = -n_grid
-      endif
-      index=found_index
+      end if
+      index = found_index
 end subroutine findex
 
 !----------------------------------------------------------------------

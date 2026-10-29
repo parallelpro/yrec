@@ -63,7 +63,7 @@ MUTATIONS = [
     ('numerics/table_interpolation.f90', '      if (j == 0 .and. abs(x - xx(1)) <= slack) then\n         j = 1', '      if (j == 0 .and. abs(x - xx(1)) <= slack) then\n         j = 0', 'locate: the end nodes give 1 and n-1'),
     ('numerics/table_interpolation.f90', 'edge_slack = 0.01d0', 'edge_slack = 0.001d0', 'locate: within 1% of the span beyond an end'),
     ('numerics/table_interpolation.f90', 'edge_slack = 0.01d0', 'edge_slack = 0.1d0', 'locate: beyond the slack, 0 and n'),
-    ('numerics/table_interpolation.f90', '            if(grid_x(j+1) > x_eval)then', '            if(grid_x(j+1) >= x_eval)then', 'findex: brackets x from any guess'),
+    ('numerics/table_interpolation.f90', ['            if(grid_x(j+1) > x_eval)then', '            if (grid_x(j+1) > x_eval) then'], ['            if(grid_x(j+1) >= x_eval)then', '            if (grid_x(j+1) >= x_eval) then'], 'findex: brackets x from any guess'),
     ('numerics/table_interpolation.f90', '      if (target_value >= table(index_mid).eqv.ascending) then', '      if (target_value > table(index_mid).eqv.ascending) then', 'hunt: brackets x from any guess'),
     ('numerics/linear_solvers.f90', '          b(i) = sum/a(i,i)', '          b(i) = sum/(a(i,i)*(1.0d0+1.0d-12))', 'ludcmp/lubksb: the residual of a 6x6 solve'),
     ('numerics/linear_solvers.f90', 'if (aamax <= singular_pivot_tolerance) ierr', 'if (aamax <= 0.0d0) ierr', 'ludcmp: a round-off pivot'),
