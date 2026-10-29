@@ -388,138 +388,43 @@ end subroutine add_thermal_neutrino_loss
 end module nuclear_energy
 
 !======================================================================
-! Sources and history (the header of engeb.f, kept with the physics it
-! describes). Legacy names: EPP1/EPP2/EPP3/ECN/E3AL and EALPCA -> the
-! chain energies eps_by_chain(chain_pp1, chain_pp2, chain_pp3, chain_cno,
-! chain_triple_alpha and chain_alpha_capture); PEP/PET -> deps_dlnrho/deps_dlnt; SUM1 ->
-! total_energy_gen_rate; EG(I) -> rates_times_reactants; X, Y, XHE3, ...
-! -> the xa slots.
+! Sources and history (engeb.f: J. N. Bahcall 11/6/1990, M. H.
+! Pinsonneault, D. B. Guenther). The F77 comments are kept verbatim in
+! net/retired/f77_rate_comments.txt.
+!
+! Legacy names: EPP1, EPP2, EPP3, ECN, E3AL and EALPCA -> eps_by_chain
+! (chain_pp1, chain_pp2, chain_pp3, chain_cno, chain_triple_alpha,
+! chain_alpha_capture); PEP and PET -> deps_dlnrho and deps_dlnt; SUM1 ->
+! total_energy_gen_rate; EG(I) -> reactions_per_gram (each reaction's
+! count per gram per s); FLUX -> neutrino_flux; X, Y, XHE3, ... -> the xa
+! slots.
+!
+! Energy releases. From Bahcall & Ulrich (1988, RMP 60, 297), allowing
+! for the neutrino losses. JNB recomputed all of them on 9/23-25/97 for
+! the Solar Fusion workshop paper, from the neutral atomic mass
+! differences of the Table of Isotopes (8th ed., 1996) and the neutrino
+! losses of Bahcall (1997, Phys. Rev. C, the gallium experiments); his
+! notes, vol. 19, pp. 132-141. They are the q_mev of network's table
+! rows; the d(p,g) release is q_deuterium_mev here.
+!
+! Solar neutrino fluxes. The fluxes at the Earth per gram of the zone
+! (Bahcall's section, 1990; NA tables 3.1 and 3.3, eqs. 6.1-6.8), assuming
+! nothing happens to the neutrinos on the way; times a shell's mass they
+! are its flux. The He3 + He3 and He3 + He4 entries are fictional fluxes,
+! the reaction counts in the same units, useful diagnostics of a solar
+! model. Zero where X <= 1e-6 (MHP 9/91). pep from pp: NA eq. 3.17.
+!
+! Thermal neutrino losses. Beaudet, Petrosian & Salpeter (1967) for the
+! pair, photo and plasma losses (MHP 5/91; DBG 3/92 added new routines);
+! Itoh et al. (1996) through thermal_neutrinos (G. Newsham 9/06).
+!
+! Deuterium burning. d(p,g)3He (MHP 5/02), from CF88's fit (the
+! T9^(-2/3) form; 2026 bug sweep: it was T9^(+2/3)), capped in the surface
+! convection zone by the convective overturn.
+!
+! Earlier Yale code took the rates mostly from Fowler, Caughlan &
+! Zimmerman (1975, ARA&A), the Be7 and B8 rates from Bahcall & Sears
+! (1972, ARA&A) and some from Harris et al. (1983); Bahcall corrected its
+! numerical errors and physically wrong statements and made the cross
+! sections explicit factors (SSTANDARD = 1 for NA's value).
 !======================================================================
-! 3/92 DBG Added new neutrino loss calculation routines
-! NOVEMBER 6, 1990 (JNB)
-! THE FOLLOWING SUBROUTINE CALCULATES THE NUCLEAR REACTION RATES WITH
-!   SPECIAL ATTENTION TO DETAIL REQUIRED FOR CALCULATING SOLAR NEUTRINO
-!   FLUXES. THE NEUTRINO FLUXES ARE EVALUATED ALSO IN THIS SUBROUTINE.
-! ALL PHYSICAL QUANTITIES ARE CGS. THE REACTION RATES ARE IN
-!  GM^{-1}S^{-1}.
-!  MHP 10/97
-!
-!   On 10/13/97, JNB converted the nuclear masses from neutral nuclear
-!   masses to bare nuclear masses by subtracting Z(I)*(m_e)*c^2 from
-!   the neutral nuclear masses. This caused changes in a number of
-!   places: in ANUC(I), in Q1(I)-Q7(I), in the calculation of the Be7electron
-!   Be7proton rates, and in the calculation of the N15p branching ratio.
-!
-!   JNB made some purely cosmetic changes on 1/20/96. Revised all of the
-!   input Q's on 9/23-25/97 to agree with submitted version of Solar
-!   Fusion Workshop paper. The SStandard are fixed to agree with
-!   the Workshop paper. JNB recalculated all of the EG(I) to determine
-!   the best values for the energy generation for all the reactions,
-!   taking account of my improved calculations of neutrino energy loss.
-!   The calculations are documented in Vol. 19, 132-141, 1997 of my notes.
-!   The neutral atom mass differences are taken from Table of Isotopes,
-!   8th Ed, 1996 and the neutrino energy losses from Bahcall, Gallium
-!   solar neutrino experiments, Phys Rev C, in press, 1997.
-!
-!  All numbers in this subroutine have been calculated by John Bahcall
-!  so that they agree with the modern numbers in Neutrino
-!  Astrophysics (1989) or much more recent results, as indicated in
-!  comments lines.
-!
-!  PREVIOUS VERSIONS OF THE YALE CODE
-!  USED THE NUCLEAR REACTION RATES PRIMARILY FROM FOWLER, CAUGHLAN, AND
-!  ZIMMERMAN IN ANN. REV. ASTR. AND ASTROPHYS. (1975) OR, FOR THE BE7 AND
-!  B8 RATES, THE VALUES FROM BAHCALL AND SEARS (1972), ALSO. ANN. REV. ASTR.
-!  AND ASTROPHYS. SOME VALUES WERE FROM HARRIS ET AL (1983, ANN. REV. ASTR.
-!  IN A FEW CASES, NUMERICAL ERRORS (NOT DUE TO REVISIONS IN THE NUCLEAR DATA)
-!  HAVE BEEN CORRECTED.  IN A SMALL NUMBER OF OTHER PLACES, THE PREVIOUS
-!  PROGRAM CONTAINED PHYSICALLY INCORRECT STATEMENTS, WHICH HAVE BEEN CORRECTED
-!  IN THE PRESENT VERSION. IN THE COURSE OF THE CHECKING AND REVISIONS, I
-!  HAVE ADDED MANY COMMENT STATEMENTS IN ORDER TO MAKE THE PROGRAM MORE
-!  TRANSPARENT AND SIMPLER TO REVISE.  SOME STATEMENTS HAVE BEEN ADDED
-!  TO SIMPLIFY THE PROCESS OF REVISING THE SUBROUTINE AS IMPROVED DATA
-!  BECOME AVAILABLE.  FOR EXAMPLE, I HAVE INSERTED EXPLICITLY
-!  THE STANDARD CROSS SECTION FACTORS IN A WAY THAT IS EASY TO REVISE;
-!  SSTANDARD(I) = 1.0 WHEN THE ITH CROSS SECTION HAS THE STANDARD VALUE
-!  MEASUREMENTS USED IN NEUTRINO ASTROPHYSICS.
-!  MHP 10/97
-!
-!  The PREVIOUS standard values of SStandard(I) used were those that
-!   were given in Table 1 of Bahcall and Pinsonneault (1992).  This work
-!   was  published in the Reviews of Modern Physics, 64,885, 1992. The
-!   current version of SStandard(I) refers to Bahcall and
-!   Pinsonneault(1995) , Rev. Mod. Phys. 67, 781 (1995), Table 1, if
-!   changes have occured.  Otherwise, they are the same as in the
-!   Bahcall-Pinsonnealt (1992) Rev. Mod. Phys. article.
-!
-!  Weakscreening is a parameter set in this subroutine. To obtain
-!  the Graboske et al. and Salpeter standard results, use:
-!  weakscreening = 0.03.  To investigate the effect of always using
-!  weak screening, use a value for weakscreening greater than unity,
-!  e. g., 30. The transition region between weak and strong screening
-!  is defined by Graboske et al. as $\Lambda_{12} = 0.1$, see page
-!  ApJ 181, 465 (1973) [5/15/97].
-!
-!  The value of SStandard(17) for hep is taken from Carlson et al (1991)
-!  Phys. Rev. C 44, 619. It corresponds to an S sub 0 =
-!  1.3 E-20 keV-barns, a factor of 0.1625  smaller than indicated by the
-!  older measurements and calculations used in Neutrino Astrophysics.
-!
-! THE NUCLEAR ENERGY RELEASE TO THE STAR FROM EACH REACTION
-!  IS TAKEN FROM BAHCALL AND ULRICH, RMP 60, 297 (1988) AND TAKES ACCOUNT
-!  ACCURATELY OF NEUTRINO ENERGY LOSS.
-!
-! I HAVE ADDED A NEW SECTION AT THE END OF THE SUBROUTINE THAT
-!  CALCULATES THE SOLAR NEUTRINO FLUXES AT THE EARTH.  THESE FLUXES
-!  ARE IN THE UNITS OF CM^-2 SEC^-2 PER GM. TO GET THE FLUX
-!  FROM A SHELL, MULTIPLY BY THE MASS OF THE SHELL IN UNITS OF
-!  GRAMS.  THE FLUXES ARE STORED IN star%neutrino_flux.  I ALSO CALCULATE
-!  THE FICTIONAL NEUTRINO FLUXES ASSOCIATED WITH THE HE3 + HE3 AND WITH
-!  THE HE3 + HE4 RECTIONS; THESE FICTIONAL FLUXES ARE USEFUL DIAGNOSTICS
-!  OF THE SOLAR MODEL.
-!
-! *****************************************
-! CHANGING NUCLEAR REACTION CROSS SECTIONS.
-! *****************************************
-! NUCLEAR CROSS SECTIONS CAN BE CHANGED SIMPLY BY INSERTING NEW NUMBERS
-!  FOR THE DATA VALUES OF SSTANDARD(I), WHICH ARE THE RATIOS OF THE
-!  DESIRED CROSS SECTION FACTORS TO THE VALUES GIVEN IN TABLES 3.2 AND
-!  3.4 OF NEUTRINO ASTROPHYSICS (1989). IF THE VALUE GIVEN IN NEUTRINO
-!  ASTROPHYSICS IS USED, THEN SSTANDARD(I) = 1.0 .  TO INCREASE THE CROSS
-!  SECTION FOR REACTION K BY A FACTOR OF TWO COMPARED TO THE STANDARD
-!  VALUE, SET SSTANDARD(K) = 2.0 .  TO DETERMINE WHICH VALUE OF I GOES
-!  WITH WHICH REACTION, SEE THE SECTION JUST BELOW.
-!  THE ENERGY DERIVATIVES ENTER IN A FORM IN WHICH THEY ARE DIVIDED BY
-!  THE ABSOLUTE VALUES OF THE CROSS SECTIONS AT ZERO ENERGY.  THUS IF
-!  THE SHAPE OF THE CROSS SECTION EXTRAPOLATION IS UNCHANGED AND ONLY
-!  THE INTERCEPT OF S(E) AT ZERO ENERGY IS CHANGED, THEN NO CORRECTION
-!  NEED BE MADE FOR THE DERIVATIVES.  THEY ARE AUTOMATICALLY SCALED
-!  CORRECTLY.  THE EXACT WAY THAT THE DERIVATIVES ENTER THE
-!  CALCULATIONS IS DESCRIBED IN THE SECTION LABELED ``DEFINING THE
-!  Q(I)'' THAT IS PRESENTED BELOW.
-! ************************************
-! IDENTIFYING THE REACTIONS.
-! ************************************
-!  THE VALUE OF J DENOTES WHICH OF THE REACTIONS THE COEFFICIENTS
-!  REFER TO:
-!  J = 1, PP; J = 2, HE3+HE3; J = 3, HE3+ HE4; J =4, P + C12;  J = 5, P+C13;
-!  J = 6. P + N14; J = 7, P + O16.
-!  REACTIONS J = 8, 13 ARE NOT RELEVANT FOR THE SOLAR INTERIOR; THEY ARE
-!   HOLDOVERS FROM THE EARLIER YALE CODE.
-!  REACTION 14 IS PEP; REACTION 15 IS BE7 ELECTRON CAPTURE; REACTION 16 IS
-!   BE7 PROTON CAPTURE; REACTION 17 IS THE HEP REACTION.
-!  do not change sstandard(14) unless you want to change the ratio of
-!  pep to pp.
-!   REACTIONS 14-17 WERE NOT EXPLICITLY INCLUDED IN THE YALE
-!    PREVIOUS VERSION OF THE CODE, BUT THEY ARE IMPORTANT FOR
-!    SOLAR NEUTRINO CALCULATIONS.
-!   THE BRANCHING OF THE N15 + P REACTIONS IS TREATED IN A SERIES OF
-!    SEPARATE STATEMENTS FOLLOWING THE CALCULATION OF THE BE7 + P
-!    REACTION. SEE THE DEFINITIONS OF F3 AND F4.  IF THE CROSS-SECTION
-!    FACTORS OF THE N15 + P REACTIONS ARE REVISED, THEN THE NUMERICAL
-!    COEFFICIENTS MUST BE CHANGED IN THE DEFINITION OF C12ALPHA AND
-!    O16GAMMA.
-! FOR Q1(I), ...,Q(5(I), I = 8 CORRESPONDS TO THE BE7 +  P REACTION.
-!  THIS ASSIGNMENT FOR I = 8 IS ONLY VALID FOR THE LISTED Q'S AND NOT
-!  FOR OTHER ARRAYS IN THE PROGRAM.
-!  IU IS THE SHELL NUMBER.
