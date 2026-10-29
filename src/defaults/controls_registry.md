@@ -56,8 +56,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `scv_z_table_file` | `fscvz` | `-` | - | - | string | `''` | verified | SCV EOS: metals table |
 | `opal_eos_table_file` | `fopale` | `-` | - | - | string | `''` | verified | OPAL 1995/2001 EOS table |
 | `opal95_opacity_table_file` | `fliv95` | `-` | - | - | string | `''` | verified | OPAL/Livermore 1995 opacity tables |
-| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | ctrl | none | string | `''` | canonical | Monte Carlo runs: the file for each run's summary |
-| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | ctrl | none | string | `''` | canonical | Monte Carlo runs: the file for each run's final model |
+| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | ctrl | read | string | `''` | canonical | Monte Carlo runs: the file for each run's summary |
+| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | ctrl | read | string | `''` | canonical | Monte Carlo runs: the file for each run's final model |
 | `run_kind` | `kindrn` | `-` | - | - | integer(50) | `1` | verified | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
 | `first_call_flag` | `lfirst` | `first_call_flag` | job | run | logical(50) | `.true.` | canonical | DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly. |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | ctrl | run | integer | `1` | canonical | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |

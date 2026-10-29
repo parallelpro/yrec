@@ -32,10 +32,16 @@ NOT_PATHS = {"amix", "aiso", "anewcp", "atmp", "awind", "descrip", "pulse_format
 
 def test_every_path_control_is_expanded():
     """run_files' expand_paths expands the {YREC_...} placeholders in
-    every string control of the registry that names a file."""
-    registry = (SRC / "defaults" / "controls_registry.tsv").read_text().splitlines()
-    paths = {row.split("\t")[1].lower() for row in registry[1:]
-             if row.split("\t")[2].startswith("string")} - NOT_PATHS
+    every string control of the registry that names a file: under its
+    canonical name when it has one in the buffer (expand_paths runs after
+    adopt_canonical_names copies the legacy names there), else under its
+    legacy name."""
+    registry = [row.split("\t") for row in
+                (SRC / "defaults" / "controls_registry.tsv").read_text().splitlines()]
+    cols = registry[0]
+    rows = [dict(zip(cols, r)) for r in registry[1:]]
+    paths = {(r["canonical"] if r["home"] else r["legacy"]).lower() for r in rows
+             if r["type"].startswith("string") and r["legacy"].lower() not in NOT_PATHS}
     code = (SRC / "io" / "run_files.f90").read_text()
     body = re.search(r"subroutine expand_paths(.*?)end subroutine", code, re.S).group(1)
     expanded = {n.lower() for n in re.findall(r"expand_value\((\w+)", body)}

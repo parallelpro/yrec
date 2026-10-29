@@ -64,8 +64,9 @@ end subroutine assign_unit_numbers
 ! ---------------------------------------------------------------
 ! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
 ! every path control, expanded (expand_value): every string control
-! that names a file, by its legacy name (test_generated_files.py checks
-! the list against the registry).
+! that names a file, by its canonical name where it has one (after
+! adopt_canonical_names), else by its legacy name (test_generated_files.py
+! checks the list against the registry).
 subroutine expand_paths
       integer :: i
 
@@ -92,8 +93,8 @@ subroutine expand_paths
       call expand_value(fmhd6)
       call expand_value(fmhd7)
       call expand_value(fmhd8)
-      call expand_value(fmonte1)
-      call expand_value(fmonte2)
+      call expand_value(monte_carlo_file1_path)
+      call expand_value(monte_carlo_file2_path)
       call expand_value(fopal2)
       call expand_value(fopale)
       call expand_value(fopale01)
@@ -150,11 +151,13 @@ subroutine open_run_files(s, ierr)
          open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo dynamics file', fdyn, ierr)
          if (ierr /= 0) return
-         open(monte_carlo_unit1, file=fmonte1,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo summary file', fmonte1, ierr)
+         open(monte_carlo_unit1, file=monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
+              iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the Monte Carlo summary file', monte_carlo_file1_path, ierr)
          if (ierr /= 0) return
-         open(monte_carlo_unit2, file=fmonte2,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo model file', fmonte2, ierr)
+         open(monte_carlo_unit2, file=monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
+              iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'open the Monte Carlo model file', monte_carlo_file2_path, ierr)
          if (ierr /= 0) return
       endif
       if (isochrone_output_active) then

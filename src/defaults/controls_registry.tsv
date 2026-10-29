@@ -34,8 +34,8 @@ control	fscvhe	string	scv_he_table_file	verified		SCV EOS: helium table
 control	fscvz	string	scv_z_table_file	verified		SCV EOS: metals table			
 control	fopale	string	opal_eos_table_file	verified		OPAL 1995/2001 EOS table			
 control	fliv95	string	opal95_opacity_table_file	verified		OPAL/Livermore 1995 opacity tables			
-control	fmonte1	string	monte_carlo_file1_path	canonical		Monte Carlo runs: the file for each run's summary	monte_carlo_file1_path	ctrl	none
-control	fmonte2	string	monte_carlo_file2_path	canonical		Monte Carlo runs: the file for each run's final model	monte_carlo_file2_path	ctrl	none
+control	fmonte1	string	monte_carlo_file1_path	canonical		Monte Carlo runs: the file for each run's summary	monte_carlo_file1_path	ctrl	read
+control	fmonte2	string	monte_carlo_file2_path	canonical		Monte Carlo runs: the file for each run's final model	monte_carlo_file2_path	ctrl	read
 control	kindrn	integer(50)	run_kind	verified		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)			
 control	lfirst	logical(50)	first_call_flag	canonical		DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.	first_call_flag	job	run
 control	set_initial_model_number	integer	set_initial_model_number	canonical		Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).	set_initial_model_number	ctrl	run

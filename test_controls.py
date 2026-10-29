@@ -252,3 +252,29 @@ def test_inlist_copy_goes_to_the_output_directory(tmp_path):
             assert not (out / "inlist_used").exists()
         copy = (out / "nested" / "inlist_used") if case == "sub" else (out / "copy.txt")
         assert copy.read_text().startswith("! ==== copied verbatim from: ")
+
+
+def test_monte_carlo_paths_are_expanded(tmp_path):
+    """The Monte Carlo files' paths are path controls like the others: a
+    {YREC_OUTPUT} in monte_carlo_file1_path/file2_path reads as the
+    directory (ctrl%monte_carlo_file1_path once held the literal
+    placeholder, as the expansion ran on the legacy names only)."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_monte_carlo.inlist"
+    text = deck.read_text()
+    for k in ("1", "2"):
+        old = f'monte_carlo_file{k}_path = "output/cm_monte_carlo.mc{k}"'
+        assert old in text
+        text = text.replace(old, f'monte_carlo_file{k}_path = "{{YREC_OUTPUT}}/mc.mc{k}"')
+    mc = tmp_path / "mc.inlist"
+    mc.write_text(text)
+    out = tmp_path / "out"
+    out.mkdir()
+    r = subprocess.run([str(BINARY), str(mc)], cwd=deck.parent, capture_output=True,
+                       env=dict(os.environ, YREC_OUTPUT=str(out)))
+    dump = r.stdout.decode("latin-1").splitlines()
+    assert "ierr = 0" in dump
+    for k in ("1", "2"):
+        assert f'ctrl%monte_carlo_file{k}_path = "{out}/mc.mc{k}"' in dump
+        assert (out / f"mc.mc{k}").is_file()
