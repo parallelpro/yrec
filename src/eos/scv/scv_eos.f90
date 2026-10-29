@@ -26,7 +26,7 @@ module scv_eos
            tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: mean_weights_from_density
       use math_lib
       implicit none
@@ -982,47 +982,75 @@ end subroutine build_scv_envelope_table
 ! Reads the SCV tables (columns 1-11 of the pure-H and pure-He tables,
 ! 1-13 of the pure-metal one, computed with the Prather EOS) into
 ! tablex, tabley and tablez. The He and Z tables share the H table's
-! T grid (tlogx) and P(T) point counts (nptsx).
+! T grid (tlogx) and P(T) point counts (nptsx). The envelope table,
+! built from the tables read before, no longer stands (its composition
+! is reset; the next eos_set_mixture builds it again). A table that
+! cannot be opened, or a read that fails (a truncated or corrupt
+! table, or a row longer than the arrays), is ierr = 1 with a message;
+! every table opened is closed.
 subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path, &
      ierr)
       character(len=*), intent(in) :: scv_h_table_path, scv_he_table_path, &
            scv_z_table_path
       integer, intent(out) :: ierr
-      integer :: scv_h_unit, scv_he_unit, scv_z_unit
-      integer :: t_idx, p_idx, col_idx
-      real(dp) :: scvhe_dummy_val, scvz_dummy_val
-      integer :: scvhe_dummy_npts, scvz_dummy_npts
+! the units of the H, He and Z tables (0: not open)
+      integer :: units(3), k
 
-      call open_scv_table(scv_h_table_path, scv_h_unit, ierr)
-      if (ierr /= 0) return
-      call open_scv_table(scv_he_table_path, scv_he_unit, ierr)
-      if (ierr /= 0) return
-      call open_scv_table(scv_z_table_path, scv_z_unit, ierr)
-      if (ierr /= 0) return
-!  Read in equation of state tables for hydrogen and helium
-      do t_idx = 1, scv_nt
-         read(scv_h_unit,1) tlogx(t_idx),nptsx(t_idx)
-         read(scv_he_unit,1) scvhe_dummy_val,scvhe_dummy_npts
-         read(scv_z_unit,1) scvz_dummy_val,scvz_dummy_npts
-    1       format(f5.2,i4)
-! The He and Z tables share the H table's T grid and P(T) point
-! counts; their copies are read into dummies.
-         do p_idx = 1, nptsx(t_idx)
-            read(scv_h_unit,2) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-            read(scv_he_unit,2) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
-    2          format(f6.2,1p2e13.5,0p,8f9.4)
-         end do
-!  Read in metal equation of state table; computed using the Prather
-! equation of state in the old Yale code.
-         do p_idx = nptsx(t_idx),1,-1
-            read(scv_z_unit,3)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
- 3             format(f6.2,12f9.4)
-         end do
+      tablenv_hydrogen_fraction = -1.0d0
+      tablenv_metal_fraction = -1.0d0
+      units = 0
+      call open_scv_table(scv_h_table_path, units(1), ierr)
+      if (ierr == 0) call open_scv_table(scv_he_table_path, units(2), ierr)
+      if (ierr == 0) call open_scv_table(scv_z_table_path, units(3), ierr)
+      if (ierr == 0) call read_scv_rows(units, scv_h_table_path, ierr)
+      do k = 1, 3
+         if (units(k) /= 0) close(units(k))
       end do
-      close(scv_h_unit)
-      close(scv_he_unit)
-      close(scv_z_unit)
 end subroutine read_scv_tables
+
+! The rows of the three tables, on units(1:3) (H, He, Z): for each T row
+! its log T and point count (the He and Z tables' copies read and not
+! kept), then its points; the metal table lists them from the highest
+! pressure down.
+subroutine read_scv_rows(units, h_table_path, ierr)
+      integer, intent(in) :: units(3)
+      character(len=*), intent(in) :: h_table_path
+      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
+      integer :: t_idx, p_idx, col_idx, ios
+      real(dp) :: copy_log10_t
+      integer :: copy_npts
+
+      ierr = 0
+      do t_idx = 1, scv_nt
+         read(units(1),1,iostat=ios) tlogx(t_idx),nptsx(t_idx)
+         if (ios == 0) read(units(2),1,iostat=ios) copy_log10_t,copy_npts
+         if (ios == 0) read(units(3),1,iostat=ios) copy_log10_t,copy_npts
+    1    format(f5.2,i4)
+         if (ios == 0 .and. (nptsx(t_idx) < 4 .or. nptsx(t_idx) > size(tablex, 2))) ios = -1
+         if (ios /= 0) exit
+         do p_idx = 1, nptsx(t_idx)
+            read(units(1),2,iostat=ios) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+            if (ios == 0) read(units(2),2,iostat=ios) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
+    2       format(f6.2,1p2e13.5,0p,8f9.4)
+            if (ios /= 0) exit
+         end do
+         if (ios /= 0) exit
+         do p_idx = nptsx(t_idx),1,-1
+            read(units(3),3,iostat=ios)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
+    3       format(f6.2,12f9.4)
+            if (ios /= 0) exit
+         end do
+         if (ios /= 0) exit
+      end do
+      if (ios /= 0) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table ends early or is corrupt, at T row ', &
+              t_idx, '; the H table: ', trim(h_table_path)
+         call eos_report(eos_lines)
+         ierr = 1
+      end if
+end subroutine read_scv_rows
 
 subroutine open_scv_table(path, table_unit, ierr)
       character(len=message_length) :: eos_lines(4)
@@ -1032,7 +1060,8 @@ subroutine open_scv_table(path, table_unit, ierr)
       if (ierr /= 0) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: cannot open the SCV table ', trim(path)
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
+         table_unit = 0
          ierr = 1
       end if
 end subroutine open_scv_table

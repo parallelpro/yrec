@@ -350,8 +350,10 @@ contains
               abs(before_table(1)%log10_density - after_table(1)%log10_density) < 1.0d-12)
       end subroutine check_scv_general_path
 
-! Set one configuration (the controls a deck would set), opening an OPAL
-! file on the unit read_controls would use when one is named.
+! Set one configuration (the controls a deck would set) with eos_init,
+! the OPAL table of the vintage when one is named; with SCV, build the
+! envelope table for the program's envelope mixture again, as a run's
+! starting model does after eos_init (which reads the SCV tables anew).
       subroutine configure_eos(label, opal95, opal2001, opal2006, scv, numerical, &
            diffusion_z, debye_huckel, file)
          character(len=*), intent(in) :: label
@@ -378,6 +380,8 @@ contains
          if (present(file)) paths%opal = file
          call eos_init(s, paths, ierr)
          if (ierr /= 0) write(*,'(a,i0)') "eos_init ierr = ", ierr
+         if (s%use_scv_eos) call eos_update_envelope_tables(envelope_hydrogen_fraction, &
+              envelope_metal_fraction)
       end subroutine configure_eos
 
       subroutine evaluate_grid(x, z, with_composition)
@@ -756,6 +760,8 @@ end subroutine write_mhd_part
 !                          one where Z is the envelope's
 !   settings_checks        eos_init's check of the OPAL vintage
 !   opal_trial_call_checks the 1995 and 2001 density searches' trial calls
+!   scv_reader_checks      the SCV reader: a re-read drops the envelope
+!                          table; a missing or truncated table is ierr
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -768,7 +774,56 @@ subroutine check_physics()
       call diffusion_z_checks()
       call settings_checks()
       call opal_trial_call_checks()
+      call scv_reader_checks()
 end subroutine check_physics
+
+! The SCV reader. After eos_init reads the tables again, the envelope
+! table, built from the earlier ones, is not used: a lookup at the
+! envelope composition takes SCV's general path, the value it has when
+! the table is built for another composition (and not the envelope
+! table's, 1e-5 dex away). A missing He table, and an H table cut short,
+! return ierr = 1, and the tables opened before are closed.
+subroutine scv_reader_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.73d0, lp = 5.1d0
+      type(eos_result) :: table, after_read, general
+      type(eos_settings_t) :: s
+      type(eos_table_paths_t) :: paths
+      integer :: ierr, ierr1, ierr2, ierr3, u_in, u_out, k, ios
+      logical :: h_open
+      character(len=200) :: line
+      call configure_eos("scv_only", scv=.true.)
+      call eos_at(lt, lp, x, z, table, ierr1)
+      s = eos_settings
+      call eos_init(s, table_paths, ierr)
+      call eos_at(lt, lp, x, z, after_read, ierr2)
+      call eos_update_envelope_tables(0.60d0, 0.03d0)
+      call eos_at(lt, lp, x, z, general, ierr3)
+      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check("SCV reader: after a re-read the envelope table waits for its rebuild", &
+           ierr == 0 .and. ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
+           after_read%log10_density == general%log10_density .and. &
+           after_read%log10_density /= table%log10_density)
+      paths = table_paths
+      paths%scv_he = "scv_missing"
+      call eos_init(s, paths, ierr)
+      inquire(file=scvh_path, opened=h_open)
+      call check("SCV reader: a missing table returns ierr = 1 and leaves no table open", &
+           ierr == 1 .and. .not. h_open)
+      open(newunit=u_in, file=scvh_path, status="old", action="read")
+      open(newunit=u_out, file="scv_truncated", status="replace")
+      do k = 1, 300
+         read(u_in, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         write(u_out, '(a)') trim(line)
+      end do
+      close(u_in)
+      close(u_out)
+      paths = table_paths
+      paths%scv_h = "scv_truncated"
+      call eos_init(s, paths, ierr)
+      call check("SCV reader: a truncated table returns ierr = 1", ierr == 1)
+      call configure_eos("scv_only", scv=.true.)
+end subroutine scv_reader_checks
 
 ! The density searches of the 1995 and 2001 tables call the interpolator
 ! for the pressure alone (deriv_order = 1) with the radiation correction;
