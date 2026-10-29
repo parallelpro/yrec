@@ -257,8 +257,9 @@ end subroutine blend_eos
 ! ix_* order), from the envelope mixture eos_mix (fxenv = X_i/A_i/amuenv,
 ! set by eos_set_mixture). With use_diffusion_z all the metals scale
 ! with Z/Z_env (MHP 3/94), and H and He add their excess over the
-! envelope; otherwise the zone differs from the envelope by its excess
-! H, He and metals, the metals counted as carbon (ion_mean_weight_excess,
+! envelope; otherwise, and when the envelope has no metals to scale
+! (Z_env = 0), the zone differs from the envelope by its excess H, He
+! and metals, the metals counted as carbon (ion_mean_weight_excess,
 ! which compute_mean_weights shares).
 subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
      ion_mean_weight_inverse, saha_mass_fractions)
@@ -272,7 +273,7 @@ subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
       real(dp) :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
       logical :: use_envelope_mixture
 
-      if (eos_settings%use_diffusion_z) then
+      if (eos_settings%use_diffusion_z .and. eos_mix%envelope_metal_fraction > 0.0d0) then
          metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
          amu_correction = (metal_ratio - 1.0d0)*eos_mix%amuenv
          ion_mean_weight_inverse = eos_mix%amuenv

@@ -807,7 +807,34 @@ subroutine diffusion_z_checks()
               .and. abs(diffusion%log10_density - plain%log10_density) < 1.0d-12
       end do
       call check("diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho", ok)
+! an envelope without metals (Z_env = 0): nothing to scale, so the zone's
+! metals are counted as carbon, as without diffusion of Z (once a
+! division by Z_env = 0)
+      call set_metal_free_envelope(envelope_hydrogen_fraction)
+      ok = .true.
+      do k = 1, 2
+         call configure_eos("yale_only")
+         call eos_at(lt(k), lp(k), x, 0.01d0, plain, ierr1)
+         call configure_eos("yale_diffusion_z", diffusion_z=.true.)
+         call eos_at(lt(k), lp(k), x, 0.01d0, diffusion, ierr2)
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+              diffusion%ion_mean_weight_inverse == plain%ion_mean_weight_inverse .and. &
+              diffusion%log10_density == plain%log10_density
+      end do
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check("diffusion of Z: an envelope without metals takes the default mixture", ok)
 end subroutine diffusion_z_checks
+
+! an envelope of hydrogen (x) and helium alone, as eos_set_mixture takes it
+subroutine set_metal_free_envelope(x)
+      real(dp), intent(in) :: x
+      real(dp) :: fractions(12), inverse_weight
+      fractions = 0.0d0
+      inverse_weight = x/atomic_weight(7) + (1.0d0 - x)/atomic_weight(12)
+      fractions(7) = x/atomic_weight(7)/inverse_weight
+      fractions(12) = (1.0d0 - x)/atomic_weight(12)/inverse_weight
+      call eos_set_mixture(x, 0.0d0, inverse_weight, fractions)
+end subroutine set_metal_free_envelope
 
 ! eos_init refuses settings that select more than one OPAL vintage (the
 ! builder's opal_vintage_conflict) and installs nothing.

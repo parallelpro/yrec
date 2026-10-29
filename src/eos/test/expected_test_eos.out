@@ -631,5 +631,10 @@ ok   SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
+# test_eos: configuration yale_only
+# test_eos: configuration yale_diffusion_z
+# test_eos: configuration yale_only
+# test_eos: configuration yale_diffusion_z
+ok   diffusion of Z: an envelope without metals takes the default mixture
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
 test_eos: done
