@@ -42,7 +42,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
            i_lum_neu, i_lum_extra, n_lum_channels, n_nu_fluxes
-      use net_lib, only: n_chains, chain_alpha_capture
+      use net_lib, only: n_chains
       use eos_lib, only: eos_result
       use kap_lib, only: i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use physical_constants
@@ -227,8 +227,9 @@ end subroutine eliminate_shell_pair
 
 ! ---------------------------------------------------------------
 ! Store the shell's energy generation for output, for every model:
-!   eps_total = the sum of the chains' eps except the alpha captures'
-!     (erg/g/s),
+!   eps_total = eps_nuc, the sum of the chains' eps, alpha captures
+!     included (erg/g/s; d(p,g) is in pp I, the neutrino losses are not
+!     in it),
 !   eps_channels(i_eps_*) = the fraction of eps_total of each chain
 !     that has a slot there (pp1, pp2, pp3, CNO, triple alpha:
 !     eps_channel_of_chain),
@@ -245,7 +246,6 @@ subroutine store_zone_energy_channels()
          else
             s%eps_total(im) = 0.0d0
             do chain = 1, n_chains
-               if (chain == chain_alpha_capture) cycle
                s%eps_total(im) = s%eps_total(im) + diag%burn%eps_by_chain(chain)
             end do
             s%eps_channels(i_eps_neu,im) = diag%burn%eps_neutrino_loss
