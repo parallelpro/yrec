@@ -2320,15 +2320,17 @@ results-changing fix is its own commit, measured against its parent
 (history.data column by column, scratchpad histcmp.py). The packages
 were merged onto one integration branch in order: the audit commit,
 NET's 22 commits, STATE's 5, OUT's 17 with a regeneration of
-state/README.md's tables (fb83611d), NUM's 23, CTL's 15. CTL's
+state/README.md's tables (fb83611d), NUM's 23, CTL's 15, this
+documentation, EOS's 27, and last STATE's member renames (a568e084). CTL's
 s%job%-to-s%ctrl% rename was re-run as a script on the merged tree
 rather than merged as a diff, and check_controls takes NUM's named
 bsstep limits. On the merged tree: after NET and STATE all 56 decks
 byte-identical; after OUT and NUM only the run logs' "stop conditions"
 line differs (55 logs, M19); after CTL also the 23 rotating Matt-law
-decks (9b58f6f6, below). Unit tests: 63 passed, 1 skipped (HDF5).
-The pins in standard/ are not reseeded yet; that is done once, after
-the EOS package.
+decks (9b58f6f6, below); after EOS every deck (M37-M39, below), and
+the renames byte-identical. Unit tests: 63 passed, 1 skipped (HDF5),
+before EOS. The pins in standard/ were reseeded once, after the
+series: pins reseeded at <RESEED>.
 
 #### net/ (NET, 22 commits)
 
@@ -2380,11 +2382,11 @@ the EOS package.
   installed, the rules, recipes); 368078df: the solar calibration's
   four fixed derivatives are named parameters; 61e44415: setup/'s
   coverage, 95.2% of 252 lines.
-- Prepared, not applied: a rename script for 62 members (one
-  convention for earlier values, readable legacy names, the unit-suffix
-  rule) and the stotal duplicate merged into log_total_mass,
-  byte-identical over the 56 decks on a scratch branch. It is to be run
-  once after all merges (renames were outside this wave).
+- Prepared as a script: 62 member renames (one convention for earlier
+  values, readable legacy names, the unit-suffix rule) and the stotal
+  duplicate merged into log_total_mass, byte-identical over the 56
+  decks on a scratch branch; applied after all merges (a568e084,
+  below).
 
 #### io/: output, model files, run cards, run files (OUT, 17 commits)
 
@@ -2463,12 +2465,79 @@ the EOS package.
 - **Docs:** the controls parts of io/, setup/ and state/README.md, with
   an "add a control" recipe traced end to end on a throwaway branch.
 
-#### eos/ (EOS): to be added
+#### eos/ and the physical constants (EOS, 27 commits)
 
-Placeholder. The EOS package (eos/, the physical constants as
-compile-time parameters, the eos_init call) is still running; its
-commits, its bugs (docs/bug_sweep.md M35 on) and its open items go
-here when it is merged.
+From 43e9b717 to 72de2124. From the first fix that moved every deck
+(15af2ef3) on, deck identity was checked on 50 decks against the
+previous commit's binary (every output file, and histcmp of
+history.data), the quick set against a private baseline.
+
+- **Bugs:** M35-M46, each its own commit. Results move with three:
+  the Debye-Hueckel metals (15af2ef3, M37: every deck), the
+  diffusion-of-Z atomic weights (3db309e9, M38: the 31 decks with
+  diffusion of Z) and the Saha ramp's blend (f8114dca, M39: 49 of 50
+  decks); the rest are byte-identical (MHD, which no deck uses; latent
+  paths; tests).
+- **Constants** (d6736788, d2c578ea, e78f6898): the physical constants
+  of state/physical_constants (gas_constant, radiation_constant_over_3,
+  cmkh, csig, csigl, cdelrl, cmixl2, cmixl3) are compile-time
+  parameters, from CODATA 1986 with their sources, each checked
+  bit-identical in hex against the run-time value; ca3l and cmkhn are
+  gone. cgl (log10 G) depends on the control G_cgs, so it stays the one
+  run-time value, set by run_setup from the pure log10_newton_g;
+  convection reads it from its settings record
+  (log10_gravitational_constant). test_eos and test_convection no
+  longer boot a star. The two rotation-test commits before it made
+  test_rotation_kernels and test_rotation set log10 sigma and a/3,
+  which they had left at zero (the wind laws' radii had been 1/130 of
+  the true ones, review_state_setup bug 3), so that the constants
+  commit is byte-identical (the all set and the unit tests).
+- **Tests** (c71c3ba0, fc15b3fd): test_eos builds the SCV envelope
+  table as a run does (M46), and gains ok/FAIL checks of the physics
+  (the ideal-gas limits with the first-order Fermi-Dirac correction,
+  gas plus radiation, grad_ad -> 1/4, continuity at both ends of the
+  Saha ramp and of the OPAL 2006 edge ramp, in_atmosphere, the
+  envelope table after a composition change, the Debye-Hueckel
+  mixture), each confirmed by a mutation; a FAIL exits 1.
+- **Structure, byte-identical** (33d0dc45 to e87752bc): one table,
+  opal_layout, of what tells the OPAL vintages apart (sizes, grids,
+  slots, radiation constants, formats, windows), with one add_radiation
+  for radsub01/06; MHD's table selector a family and an index;
+  eos_init's 14 path arguments one eos_table_paths_t record, built in
+  setup/ (equation_of_state_table_paths); the numerical derivatives'
+  shifted evaluations trimmed; SCV's 4-point sums numerics' lagrange4;
+  one opal_vintage setting (two selected is an error at eos_init);
+  blend_eos as named steps (zone_mixture, the radiation, the gas, the
+  selected table, through the generic adopt_table_result and
+  blend_table_result); saha_state renamed saha_iterations, the counter
+  it always was; eos_messages (eos_log to the run log, eos_report to
+  both) for every message; beta14 one meaning, 4(1 - beta)/beta.
+- **Docs** (6927b7ce): eos/README.md to the rotation standard (what
+  lives where, the table of which source covers which log T, the two
+  blends, conventions, every module-level state with its lifetime, the
+  tests, recipes for a control, an EOS source and a blended region);
+  the eos solvers in STAR_BLIND_FILES; coverage 85.1% of 3365 lines.
+- **On the integration branch,** for decks the package did not run:
+  the 0.03 Msun dbl-to-ZAMS deck, a marginal one, stops at a different
+  age (final dlog L +6.9e-3 after 15af2ef3, +2.0e-3 after f8114dca),
+  the 1 Msun ZAHB deck ends at dlog L -5.1e-4 and +5.9e-4 after the
+  same two, and o24_rescale_rotating ends on its model budget at a
+  different age; the refactors after f8114dca are byte-identical on
+  all 56 decks.
+
+#### The member renames (a568e084)
+
+STATE's rename map applied after every package was merged, so that it
+covers their code: 62 star members renamed (one convention for earlier
+values, `<member>_start`, `<member>_prev`, `<member>_iteration_start`;
+readable names for the legacy ones, jcz, iov1, senv, pphot, ...; the
+unit suffix for the members not in CGS) and stotal merged into
+log_total_mass. Only star accesses change, so output column names keep
+their MESA spelling. Byte-identical: the 56 decks against the merged
+tree's outputs before the renames, every per-deck file, and the unit
+tests. The comments and documents that still named the old members
+followed in a documentation commit (comments only: each changed source
+compiles to the same object).
 
 #### Results-changing commits
 
@@ -2484,6 +2553,11 @@ here when it is merged.
 | 8c80883a | M20: a kind-3 card's stops | the run-plan line of 7 unpinned seed decks |
 | af946c0c | M28: the settling latch per card | multi-card decks only; on a four-card deck built to reach it, at 1.5 Gyr dlog L +5.4e-5, dX_c -1.7e-4 |
 | 9b58f6f6 | the controls' inexact single-precision defaults (sstandard, the CUS O fraction, the Matt law's solar constants, V13's m and c_2) are d0 | the 23 rotating Matt-law decks: at the logs' last line, \|dlog L\| <= 6.0e-5 (rv_sbm3), \|dlog Teff\| <= 2.7e-5, \|dX_c\| <= 5.6e-5 (rv_ref), model counts within 4; Test_solar_GS_rot final dlog L -1.2e-7 |
+| d6736788, d2c578ea | test_rotation_kernels and test_rotation set log10 sigma and a/3, which they had left at zero | those tests' pins only (3 and 22 lines) |
+| c71c3ba0 | M46: test_eos builds the SCV envelope table | test_eos's pins only (46 lines) |
+| 15af2ef3 | M37: the Debye-Hueckel metals from eos's own mixture | every deck: the OPAL and SCV solar decks final \|dlog L\| <= 2.7e-5; the Yale-EOS solar deck +1.09e-3 (dX_c -7.9e-4); the 0.03 Msun dbl-to-ZAMS deck, a marginal one, +6.9e-3, stopping at another age; the ZAHB deck -5.1e-4 |
+| 3db309e9 | M38: the diffusion-of-Z atomic weights | the 31 decks with diffusion of Z: final \|dlog L\| <= 3.0e-5, age-matched up to 3.5e-4 at 35-45 Myr |
+| f8114dca | M39: the Saha ramp's blend | 49 of 50 decks: final \|dlog L\| <= 3.0e-5, age-matched up to 3.1e-4; the 0.03 Msun deck +2.0e-3, the ZAHB deck +5.9e-4 |
 
 #### Still open
 
@@ -2504,15 +2578,15 @@ here when it is merged.
    screening_t, so that the self-check can compute z_p); adding an
    isotope still means the literal 15 in about 40 declarations and the
    model format (Phase 5).
-4. **state/ and setup/:** the rename script, then GLOSSARY's member
-   tables and the comment mentions it lists. Constants and copies on
-   the star, each with a byte-identical plan in the STATE notes:
-   solar_bolometric_magnitude (a parameter in physical_constants),
-   atm_hras (envelope_integration calls hsra_t_tau_offset), tenv and
-   use_two_z_tables (computed where they are read). timestep_yr against
-   dt/seconds_per_year is not byte-identical (the .mod header), and the
-   cp, mu, qdt pulse pairs are evaluations at different times, not
-   duplicates: decisions with measured commits. The builders under one
+4. **state/ and setup/:** constants and copies on the star, each with
+   a byte-identical plan in the STATE notes: solar_bolometric_magnitude
+   (a parameter in physical_constants), hsra_log_t_offset
+   (envelope_integration calls hsra_t_tau_offset),
+   envelope_store_log_temperature and use_two_z_tables (computed where
+   they are read). timestep_yr against dt/seconds_per_year is not
+   byte-identical (the .mod header), and the cp, mu, dlnrho_dlnt pulse
+   pairs are evaluations at different times, not duplicates: decisions
+   with measured commits. The builders under one
    name, <domain>_settings_from_star, installed from one module
    (setup/settings_install.f90: per run, per Monte Carlo run, per card),
    with check_boundaries allowing the set_* calls only there.
@@ -2537,6 +2611,28 @@ here when it is merged.
    prints its own "singular matrix" line, against rotation's message
    rule; eos/scv's two splint calls no longer print splint's message
    (the EOS package's choice).
+7. **eos/ and the constants:** cgl is still a run-time variable for
+   core/, rotation/ and io/ (proposed: a log10_gravitational_constant
+   field in rotation_settings and in the envelope kernel's cfg, from
+   log10_newton_g, then cgl core-private). The Debye-Hueckel
+   composition reaches the solver through yale_eos_tables' module
+   variables (proposed: a dh_composition record built in eos_get and
+   passed down). The Saha warm start is the previous call's solution,
+   whoever made it (proposed: a caller-owned guess record; not
+   byte-identical, so measured), and build_scv_envelope_table uses
+   SCV's warm-start cell as loop scratch (proposed: locals; measured).
+   A table-source descriptor for blend_eos (adopt_table_result and
+   blend_table_result are its start); the OPAL tables are read once per
+   process, so a rerun with another path keeps the first (proposed:
+   record the path and re-read); rhoofp01 and rhoofp06 now differ only
+   in data and could be one routine; in_atmosphere's one remaining
+   effect, skipping the Saha second derivatives, costs 13 call sites
+   outside eos to remove. Found, not fixed: R/mu jumps by 7e-4 at the
+   Saha cutoff (the ramp's effective beta P/(rho T) against the
+   composition's R(1/mu_ion + 1/mu_e); bug_sweep's "Decisions
+   needed"), a point outside SCV's table falls back to Saha's result
+   without a word, and a vintage switched on by set_eos_settings
+   without eos_init would read unit 0 (test code only).
 
 #### Learned
 
