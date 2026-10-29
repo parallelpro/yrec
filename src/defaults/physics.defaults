@@ -202,6 +202,10 @@
       ! (legacy name: htoler)
       solver_tolerances = 6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6
 
+      ! The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in controls_buffer): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead
+      ! (legacy name: hpttol)
+      zoning_tolerances = 1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1
+
       ! shape/fpft iteration bound 1
       ! (legacy name: itfp1)
       fpft_iter1 = 5
@@ -828,7 +832,7 @@
 
       time_max_dt_frac = 1.5d0
 
-      ! remap: use the new nuclear-rate variable set
+      ! Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates
       ! (legacy name: lnewvars)
       use_new_rate_variables = .false.
 
@@ -875,6 +879,6 @@
 
 ! Unused legacy controls (accepted by the legacy reader only,
 ! referenced nowhere in the code; dropped from the new format):
-!   hpttol, ies, imu
+!   ies, imu
 ! Legacy-reader only, dropped from the new format: sstandard, the
 ! cross-section ratios used when use_new_nuclear_rates = .false.

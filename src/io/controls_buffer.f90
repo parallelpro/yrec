@@ -215,10 +215,10 @@ module controls_buffer
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
       double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
       double precision :: chi_grid_scale(12)
-! Slot names for chi_grid_scale (the former hpttol vector). The
-! meaning of each slot is fixed by setup/user_inputs.f90, which
-! fills it from the like-named tol_*/flag_* namelist inputs when
-! lnewvars is set; readers subscript with these names.
+! Slot names for chi_grid_scale, the zoning tolerances: the deck's
+! hpttol (zoning_tolerances), or, when lnewvars is set, the like-named
+! tol_*/flag_* controls (setup/user_inputs.f90); readers subscript with
+! these names.
       integer, parameter, public :: &
            ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing
            ichi_dm_max = 2, &            ! tol_dm_max: max log-m spacing

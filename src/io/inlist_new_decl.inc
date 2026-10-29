@@ -72,6 +72,7 @@
       double precision :: settling_y_factor
       double precision :: settling_z_factor
       double precision :: solver_tolerances(5,2)
+      double precision :: zoning_tolerances(12)
       integer :: fpft_iter1
       integer :: fpft_iter2
       logical :: velocity_form_correction
@@ -177,7 +178,7 @@
            & gsf_mixing_scale, solberg_hoiland_velocity_scale, &
            & solberg_hoiland_mixing_scale, settling_y_factor, &
            & settling_z_factor, settling_tolerance, solver_tolerances, &
-           & fpft_iter1, fpft_iter2, max_stage_index, &
+           & zoning_tolerances, fpft_iter1, fpft_iter2, max_stage_index, &
            & num_rotation_structure_iters, max_diffusion_iters, &
            & gsf_inhibition_mode, coulomb_log_choice, atm_choice, &
            & max_burn_iterations, velocity_form_correction, &

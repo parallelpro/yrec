@@ -479,6 +479,10 @@ subroutine adopt_canonical_names(s)
 ! inlist gets the default ratios.
       if (.not. lnewnuc) call cross_section_scales_from_sstandard(sstandard, &
            s%cross_section_scale, s%extra_cross_section_scale)
+! hpttol (zoning_tolerances) is the working zoning vector, as HPTTOL was
+! in the F77 code; with lnewvars map_user_inputs overwrites it from the
+! tol_* and flag_* controls.
+      chi_grid_scale = hpttol
 ! the atmosphere choice as read; the run may change star%job%atm_choice
       s%atm_choice_initial = kttau
       s%use_ttau_relation = .false.

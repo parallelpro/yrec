@@ -108,3 +108,41 @@ def test_controls_every_deck():
             if old.get(name) != h:
                 failures.append(name)
     assert not failures, f"controls differ for {len(failures)} deck(s): {failures[:10]}"
+
+
+def test_zoning_tolerances_without_new_rate_variables():
+    """use_new_rate_variables = .false.: the zoning tolerances are the deck's
+    zoning_tolerances (legacy hpttol), at their documented defaults when the
+    deck sets none, and the timestep factors its timestep_factors (atime).
+    Every shipped deck sets the switch, so only this test reads that path."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text()
+    assert "use_new_rate_variables = .TRUE." in text
+    text = text.replace("use_new_rate_variables = .TRUE.", "use_new_rate_variables = .FALSE.")
+    defaults = (REPO / "src" / "defaults" / "physics.defaults").read_text()
+
+    def documented(name):
+        line = next(l for l in defaults.splitlines() if l.strip().startswith(name + " = "))
+        return [float(v.replace("d", "e")) for v in line.split(" = ", 1)[1].split(",")]
+
+    def dumped(dump, name):
+        vals = {}
+        for l in dump:
+            if l.startswith(f"ctrl%{name}("):
+                vals[int(l.split("(")[1].split(")")[0])] = float(l.split(" = ")[1])
+        return [vals[i] for i in sorted(vals)]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        off = pathlib.Path(tmp) / "cm_base_lnewvars_off.inlist"
+        off.write_text(text)
+        env = dict(os.environ, YREC_OUTPUT=tmp)
+        result = subprocess.run([str(BINARY), str(off)], cwd=deck.parent, env=env,
+                                capture_output=True)
+    dump = result.stdout.decode("latin-1").splitlines()
+    assert "ierr = 0" in dump
+    zoning = dumped(dump, "chi_grid_scale")
+    assert zoning == documented("zoning_tolerances"), zoning
+    assert all(v > 0 for i, v in enumerate(zoning) if i != 6), "a zero zoning tolerance"
+    assert dumped(dump, "atime") == documented("timestep_factors")

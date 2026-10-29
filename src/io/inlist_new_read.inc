@@ -166,6 +166,7 @@
       settling_z_factor = fgrz
       settling_tolerance = grtol
       solver_tolerances = htoler
+      zoning_tolerances = hpttol
       fpft_iter1 = itfp1
       fpft_iter2 = itfp2
       max_stage_index = imax
@@ -499,6 +500,7 @@
       fgrz = settling_z_factor
       grtol = settling_tolerance
       htoler = solver_tolerances
+      hpttol = zoning_tolerances
       itfp1 = fpft_iter1
       itfp2 = fpft_iter2
       imax = max_stage_index

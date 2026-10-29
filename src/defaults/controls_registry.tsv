@@ -166,7 +166,7 @@ physics	fgry	real	settling_y_factor	verified		Gravitational settling multiplier 
 physics	fgrz	real	settling_z_factor	verified		Gravitational settling multiplier for metals (microdiff)
 physics	grtol	real	settling_tolerance	canonical		Gravitational settling: solver tolerance
 physics	htoler	real(5,2)	solver_tolerances	canonical		VERIFIED 2026: htoler(5,2) Henyey thresholds: rows 1-4 = per-variable convergence (col 1) and correction-too-large (col 2) limits; row 5 = the level-5 residual test.
-physics	hpttol	real(12)	rezone_mass_spacing	unused		Unused: read by the legacy reader and ignored (the zoning tolerances are tol_*/flag_*)
+physics	hpttol	real(12)	zoning_tolerances	verified		The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in controls_buffer): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead
 physics	itfp1	integer	fpft_iter1	verified		shape/fpft iteration bound 1
 physics	itfp2	integer	fpft_iter2	verified		shape/fpft iteration bound 2
 physics	imax	integer	max_stage_index	canonical		
@@ -359,7 +359,7 @@ physics	tol_dp_env_max	real	tol_dp_env_max	keep
 physics	tol_dx_max	real	tol_dx_max	keep		
 physics	tol_dz_max	real	tol_dz_max	keep		
 physics	time_max_dt_frac	real	time_max_dt_frac	keep		
-physics	lnewvars	logical	use_new_rate_variables	verified		remap: use the new nuclear-rate variable set
+physics	lnewvars	logical	use_new_rate_variables	verified		Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates
 physics	lcalcenv	logical	calc_envelope_flag	canonical		
 control	history_columns_file	string	history_columns_file	verified	mesa: same	MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
 control	profile_columns_file	string	profile_columns_file	verified	mesa: same	MESA mode: file listing the profile columns to write; blank = all columns

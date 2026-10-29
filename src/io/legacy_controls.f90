@@ -22,7 +22,7 @@ module legacy_controls
 ! home (a controls_buffer variable or star%job); a control spelled the
 ! same in both reads straight into controls_buffer and needs no copy.
 ! defaults/controls_registry.tsv maps every legacy name to its
-! canonical and new-inlist names. hpttol, ies and imu are read and then
+! canonical and new-inlist names. ies and imu are read and then
 ! unused. version_fmt, element_id, the mixture tables, the inlist file
 ! names are the reader's own working variables.
       character(len=256) :: version_fmt
