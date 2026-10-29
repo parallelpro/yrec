@@ -430,6 +430,7 @@ net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_
 net/thermal_neutrinos.o: math_lib.mod
 numerics/bulirsch_stoer.o: numerics_status.mod
 numerics/cubic_spline.o: io_units.mod
+numerics/linear_solvers.o: numerics_status.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod numerics_status.mod quadratic_spline.mod table_interpolation.mod
 numerics/quadratic_spline.o: numerics_status.mod
 numerics/test/test_numerics.o: io_units.mod numerics_lib.mod star_info_lib.mod

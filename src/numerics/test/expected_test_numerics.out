@@ -173,6 +173,8 @@ lubksb x
    6.396396396396398E-01
  ludcmp: singular matrix
 ludcmp singular: ierr  1
+ludcmp, rows (1,2,3),(4,5,6),(7,8,9) (a round-off pivot): ierr  1
+ludcmp, a NaN column: ierr  3
 # simeqc: 3 unknowns, two right-hand sides; then singular
 simeqc
    1.000000000000000E+00   1.000000000000000E+00   2.000000000000000E+00

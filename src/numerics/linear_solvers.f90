@@ -11,6 +11,8 @@
 ! A singular system returns ierr = 1.
 module linear_solvers
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+      use numerics_status, only: numerics_ok, numerics_singular, numerics_bad_input
       implicit none
       private
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
@@ -23,9 +25,20 @@ contains
 ! Numerical Recipes' ludcmp: replaces a(1:n,1:n) (leading dimension
 ! np) with the LU decomposition of a row permutation of itself; indx
 ! records the permutation and d is +1 or -1 for an even or odd number
-! of interchanges. A zero row returns ierr = 1.
+! of interchanges. The pivot of each column is the largest candidate
+! scaled by its row's largest original element (implicit pivoting).
+! ierr (numerics_status): numerics_singular for a zero row (nothing is
+! done) or for a pivot whose scaled size is at most
+! singular_pivot_tolerance, a matrix singular to working precision; the
+! factorization then still completes, with a zero pivot replaced by
+! 1e-20 as in Numerical Recipes, so that lubksb stays finite.
+! numerics_bad_input when a column's candidate pivots are all NaN (the
+! factorization stops there).
 subroutine ludcmp(a, n, np, indx, d, ierr)
       real(dp), parameter :: tiny = 1.0d-20
+! the largest scaled pivot, |pivot|/max|row|, of a matrix singular to
+! working precision
+      real(dp), parameter :: singular_pivot_tolerance = 1.0d-14
 
       integer, intent(in) :: n, np
       real(dp), intent(inout) :: a(np,np)
@@ -37,7 +50,7 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
       real(dp) :: vv(n)
       real(dp) :: aamax, dum, sum
 
-      ierr = 0
+      ierr = numerics_ok
 
       d = 1.d0
       do i = 1, n
@@ -47,7 +60,7 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           end do
           if (aamax == 0d0) then
              write(*,*) 'ludcmp: singular matrix'
-             ierr = 1
+             ierr = numerics_singular
              return
           end if
           vv(i) = 1.d0/aamax
@@ -67,6 +80,7 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
           end if
 
           aamax = 0.d0
+          imax = j
           do i = j, n
               sum = a(i,j)
               if (j > 1) then
@@ -83,6 +97,11 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
               end if
 
           end do
+          if (ieee_is_nan(a(imax,j))) then
+             ierr = numerics_bad_input
+             return
+          end if
+          if (aamax <= singular_pivot_tolerance) ierr = numerics_singular
           if (j /= imax) then
               do k = 1, n
                   dum = a(imax,k)

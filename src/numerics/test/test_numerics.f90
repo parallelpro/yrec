@@ -57,6 +57,7 @@ end subroutine harmonic_derivatives
 end module test_numerics_callbacks
 
 program test_numerics
+      use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
       use numerics_lib
       use io_units, only: run_log_unit, terminal_unit
       use star_info_lib, only: json
@@ -268,6 +269,14 @@ program test_numerics
       a5(1,1) = 1.0d0
       call ludcmp(a5, 3, 5, indx, d, ierr)
       write(*,'(a,i3)') "ludcmp singular: ierr", ierr
+      a5 = 0.0d0
+      a5(1:3,1:3) = reshape([1.0d0, 4.0d0, 7.0d0, 2.0d0, 5.0d0, 8.0d0, 3.0d0, 6.0d0, 9.0d0], [3, 3])
+      call ludcmp(a5, 3, 5, indx, d, ierr)
+      write(*,'(a,i3)') "ludcmp, rows (1,2,3),(4,5,6),(7,8,9) (a round-off pivot): ierr", ierr
+      a5 = 1.0d0
+      a5(1:3,1) = ieee_value(1.0d0, ieee_quiet_nan)
+      call ludcmp(a5, 3, 5, indx, d, ierr)
+      write(*,'(a,i3)') "ludcmp, a NaN column: ierr", ierr
       write(*,'(a)') "# simeqc: 3 unknowns, two right-hand sides; then singular"
       sm(1:15) = [4.0d0, 1.0d0, 2.0d0, 1.0d0, 5.0d0, 1.0d0, 2.0d0, 1.0d0, 6.0d0, &
                   1.0d0, 2.0d0, 3.0d0, 0.5d0, -1.0d0, 2.0d0]
