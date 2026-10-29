@@ -85,7 +85,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use numerics_lib, only: natural_spline, splint
+      use numerics_lib, only: natural_spline, splint, numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &
            compute_shell_masses, regrid_profile, regrid_composition, &
            regrid_structure, regrid_rotation, compute_angular_momentum_totals
@@ -746,9 +746,16 @@ end subroutine locate_new_cz_edges
 subroutine interpolate_onto_new_grid
       use math_lib
       call regrid_composition_terms
-      call regrid_structure_variables
-      call regrid_rotation_variables
-      call regrid_start_of_step_eps
+      if (ierr == 0) call regrid_structure_variables
+      if (ierr == 0) call regrid_rotation_variables
+      if (ierr == 0) call regrid_start_of_step_eps
+      if (ierr /= 0) then
+! osplin could not regrid a profile (the regridding kernels' status):
+! the run stops with ierr, as for the other rezoning failures.
+         write(run_log_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         write(terminal_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         return
+      end if
       call transfer_new_points
       call set_new_shell_masses
       if (s%ctrl%rotation_active) then
@@ -780,16 +787,19 @@ subroutine regrid_composition_terms
       call regrid_in_place(s%dlog_pressure_dt)
       call regrid_in_place(s%dln_luminosity_dt)
       call regrid_in_place(s%dlog_radius_dt)
+      if (ierr /= 0) return
       allocate(regridded_xa(num_species_tracked,new_point_count))
       call regrid_composition(s%log_mass(1:old_point_count), &
            s%xa(1:num_species_tracked,1:old_point_count), &
-           new_log_mass(1:new_point_count), regridded_xa)
+           new_log_mass(1:new_point_count), regridded_xa, ierr)
+      if (ierr /= 0) return
       s%xa(1:num_species_tracked,1:new_point_count) = regridded_xa
 ! xa_start (legacy HCOMPP), the composition at the start of the step, is
 ! needed for composition diffusion in rotating models.
       call regrid_composition(s%log_mass(1:old_point_count), &
            s%xa_start(1:num_species_tracked,1:old_point_count), &
-           new_log_mass(1:new_point_count), regridded_xa)
+           new_log_mass(1:new_point_count), regridded_xa, ierr)
+      if (ierr /= 0) return
       s%xa_start(1:num_species_tracked,1:new_point_count) = regridded_xa
 ! The start-of-step deuterium burning rate, when the surface deuterium
 ! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
@@ -816,7 +826,8 @@ subroutine regrid_structure_variables
                 luminosity_lsun=s%luminosity_lsun(1:old_point_count), &
                 log_temperature=s%logT(1:old_point_count), &
                 log_density=s%logRho(1:old_point_count)), &
-           new_log_mass(1:new_point_count), regridded)
+           new_log_mass(1:new_point_count), regridded, ierr)
+      if (ierr /= 0) return
       s%logP_start(1:new_point_count) = regridded%log_pressure
       s%logR_start(1:new_point_count) = regridded%log_radius
       s%luminosity_lsun_start(1:new_point_count) = regridded%luminosity_lsun
@@ -838,7 +849,8 @@ subroutine regrid_rotation_variables
                    ft=s%ft_rot(1:old_point_count), &
                    mean_radius=s%mean_radius(1:old_point_count), &
                    eta_squared=s%eta_squared(1:old_point_count)), &
-              new_log_mass(1:new_point_count), regridded)
+              new_log_mass(1:new_point_count), regridded, ierr)
+         if (ierr /= 0) return
          s%omega_start(1:new_point_count) = regridded%omega
          s%j_rot_start(1:new_point_count) = &
               regridded%specific_angular_momentum
@@ -864,14 +876,15 @@ subroutine regrid_start_of_step_eps
            s%ctrl%envelope_overshoot_active)) then
          call regrid_profile(s%log_mass(1:old_point_count), &
               s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%eps_total_start(1:new_point_count))
+              s%eps_total_start(1:new_point_count), ierr)
+         if (ierr /= 0) return
          do zone_index = 1,s%nz
             spline_y(zone_index) = s%eps_total(zone_index)+s%eps_channels(i_eps_neu,zone_index)+ &
                  s%eps_channels(i_eps_grav,zone_index)
          end do
          call regrid_profile(s%log_mass(1:old_point_count), &
               spline_y(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%eps_plus_neu_grav_start(1:new_point_count))
+              s%eps_plus_neu_grav_start(1:new_point_count), ierr)
       endif
 end subroutine regrid_start_of_step_eps
 
@@ -1062,13 +1075,16 @@ end subroutine refresh_surface_opacity
 ! Spline one field from the old mesh (star%log_mass, old_point_count
 ! points) onto the new one (new_log_mass, new_point_count points) with
 ! regrid_profile, overwriting field(1:new_point_count). regrid_out holds
-! the result until the old values have been read (the legacy HTO).
+! the result until the old values have been read (the legacy HTO). After
+! a failure (rezone's ierr set) it does nothing, so that a run of calls
+! stops at the first.
 subroutine regrid_in_place(field)
       double precision, intent(inout) :: field(:)
 
+      if (ierr /= 0) return
       call regrid_profile(s%log_mass(1:old_point_count), field(1:old_point_count), &
-           new_log_mass(1:new_point_count), regrid_out(1:new_point_count))
-      field(1:new_point_count) = regrid_out(1:new_point_count)
+           new_log_mass(1:new_point_count), regrid_out(1:new_point_count), ierr)
+      if (ierr == 0) field(1:new_point_count) = regrid_out(1:new_point_count)
 end subroutine regrid_in_place
 
 end subroutine rezone

@@ -33,6 +33,12 @@
 ! the jump times half the mass between them, as the new points inside
 ! take interpolated values. Nor does it keep the mass fractions summing
 ! to one. core/test/test_regrid measures all three on a synthetic model.
+!
+! Each procedure returns osplin's status in ierr (numerics_status: a
+! mesh of fewer than three points, a new mesh that decreases, an end
+! interval of zero width that a new point lies beyond); after a failure
+! the outputs are not meaningful, and the multi-profile procedures stop
+! at the first.
 module regridding
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -102,13 +108,14 @@ end subroutine compute_shell_masses
 ! new_log_mass). New points outside the old mesh get the end intervals'
 ! quadratics extrapolated; rezone's new mesh starts and ends on the old
 ! one's end points.
-pure subroutine regrid_profile(old_log_mass, old_values, new_log_mass, new_values)
+pure subroutine regrid_profile(old_log_mass, old_values, new_log_mass, new_values, ierr)
       use numerics_lib, only: osplin
       real(dp), intent(in) :: old_log_mass(:), old_values(:), new_log_mass(:)
       real(dp), intent(out) :: new_values(:)
+      integer, intent(out) :: ierr
 
       call osplin(new_log_mass, new_values, old_log_mass, old_values, &
-           size(old_log_mass), size(new_log_mass))
+           size(old_log_mass), size(new_log_mass), ierr)
 end subroutine regrid_profile
 
 !----------------------------------------------------------------------
@@ -118,13 +125,16 @@ end subroutine regrid_profile
 ! (row) of old_xa, on the old mesh old_log_mass, through regrid_profile
 ! at new_log_mass, into the same row of new_xa (as many rows as old_xa,
 ! a column per new point).
-pure subroutine regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa)
+pure subroutine regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa, ierr)
       real(dp), intent(in) :: old_log_mass(:), old_xa(:,:), new_log_mass(:)
       real(dp), intent(out) :: new_xa(:,:)
+      integer, intent(out) :: ierr
       integer :: k
 
+      ierr = 0
       do k = 1,size(old_xa,1)
-         call regrid_profile(old_log_mass, old_xa(k,:), new_log_mass, new_xa(k,:))
+         call regrid_profile(old_log_mass, old_xa(k,:), new_log_mass, new_xa(k,:), ierr)
+         if (ierr /= 0) return
       end do
 end subroutine regrid_composition
 
@@ -133,22 +143,25 @@ end subroutine regrid_composition
 !----------------------------------------------------------------------
 ! The structure variables on the old mesh (old, at old_log_mass) at the
 ! new points new_log_mass, each through regrid_profile, into new.
-pure subroutine regrid_structure(old_log_mass, old, new_log_mass, new)
+pure subroutine regrid_structure(old_log_mass, old, new_log_mass, new, ierr)
       real(dp), intent(in) :: old_log_mass(:), new_log_mass(:)
       type(structure_profiles), intent(in) :: old
       type(structure_profiles), intent(out) :: new
+      integer, intent(out) :: ierr
       integer :: n
 
       n = size(new_log_mass)
       allocate(new%log_pressure(n), new%log_radius(n), new%luminosity_lsun(n), &
            new%log_temperature(n), new%log_density(n))
-      call regrid_profile(old_log_mass, old%log_pressure, new_log_mass, new%log_pressure)
-      call regrid_profile(old_log_mass, old%log_radius, new_log_mass, new%log_radius)
-      call regrid_profile(old_log_mass, old%luminosity_lsun, new_log_mass, &
-           new%luminosity_lsun)
-      call regrid_profile(old_log_mass, old%log_temperature, new_log_mass, &
-           new%log_temperature)
-      call regrid_profile(old_log_mass, old%log_density, new_log_mass, new%log_density)
+      call regrid_profile(old_log_mass, old%log_pressure, new_log_mass, new%log_pressure, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%log_radius, new_log_mass, &
+           new%log_radius, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%luminosity_lsun, new_log_mass, &
+           new%luminosity_lsun, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%log_temperature, new_log_mass, &
+           new%log_temperature, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%log_density, new_log_mass, &
+           new%log_density, ierr)
 end subroutine regrid_structure
 
 !----------------------------------------------------------------------
@@ -161,22 +174,25 @@ end subroutine regrid_structure
 ! others are starting values on the new mesh: rezone re-derives omega
 ! from j (omega_from_j, with the moments of inertia of the new shells)
 ! and then fp, ft, r0 and eta2 for that omega.
-pure subroutine regrid_rotation(old_log_mass, old, new_log_mass, new)
+pure subroutine regrid_rotation(old_log_mass, old, new_log_mass, new, ierr)
       real(dp), intent(in) :: old_log_mass(:), new_log_mass(:)
       type(rotation_profiles), intent(in) :: old
       type(rotation_profiles), intent(out) :: new
+      integer, intent(out) :: ierr
       integer :: n
 
       n = size(new_log_mass)
       allocate(new%omega(n), new%specific_angular_momentum(n), new%fp(n), &
            new%ft(n), new%mean_radius(n), new%eta_squared(n))
-      call regrid_profile(old_log_mass, old%omega, new_log_mass, new%omega)
-      call regrid_profile(old_log_mass, old%specific_angular_momentum, new_log_mass, &
-           new%specific_angular_momentum)
-      call regrid_profile(old_log_mass, old%fp, new_log_mass, new%fp)
-      call regrid_profile(old_log_mass, old%ft, new_log_mass, new%ft)
-      call regrid_profile(old_log_mass, old%mean_radius, new_log_mass, new%mean_radius)
-      call regrid_profile(old_log_mass, old%eta_squared, new_log_mass, new%eta_squared)
+      call regrid_profile(old_log_mass, old%omega, new_log_mass, new%omega, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%specific_angular_momentum, &
+           new_log_mass, new%specific_angular_momentum, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%fp, new_log_mass, new%fp, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%ft, new_log_mass, new%ft, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%mean_radius, new_log_mass, &
+           new%mean_radius, ierr)
+      if (ierr == 0) call regrid_profile(old_log_mass, old%eta_squared, new_log_mass, &
+           new%eta_squared, ierr)
 end subroutine regrid_rotation
 
 !----------------------------------------------------------------------

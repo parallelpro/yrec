@@ -18,4 +18,5 @@ old mesh  60 points, new mesh  65 points; X steps between old points 23 and 24
   J and E_rot totals = sum j dm, sum omega j dm/2   1.2E-16  1.4E-14  ok
   angular momentum J: relative change              -1.3E-03  1.5E-03  ok
   rotational kinetic energy: relative change       -1.1E-03  1.2E-03  ok
+  a failed spline is osplin's code                  0.0E+00  0.0E+00  ok
 test_regrid: done

@@ -369,7 +369,7 @@ core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib
 core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod triangle_fit.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
-core/test/test_regrid.o: math_lib.mod physical_constants.mod regridding.mod
+core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_structure.o: controls_reader.mod convection_lib.mod energy_sources.mod eos_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod

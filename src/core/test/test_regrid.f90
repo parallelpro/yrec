@@ -90,7 +90,7 @@ program test_regrid
       real(dp) :: log_total_mass, mass_from_log, eps
       real(dp) :: old_log_mass(n_old), old_q(n_old), old_mass(n_old), old_dm(n_old)
       real(dp), allocatable :: new_log_mass(:), new_mass(:), new_dm(:)
-      integer :: n_new, k_edge, nfail
+      integer :: n_new, k_edge, nfail, ierr
 
       nfail = 0
       eps = epsilon(1.0d0)
@@ -106,6 +106,7 @@ program test_regrid
       call check_linear_profiles()
       call check_species_masses()
       call check_rotation_sums()
+      call check_spline_status()
       if (nfail > 0) then
          write(*,'(a,i4,a)') 'test_regrid: ', nfail, ' FAIL'
          stop 1
@@ -219,6 +220,26 @@ subroutine report(label, value, bound)
 end subroutine report
 
 ! ---------------------------------------------------------------
+! The status: an old mesh of two points (too few for osplin) and a
+! decreasing new mesh return osplin's codes, and the profile procedures
+! stop at the first failure.
+subroutine check_spline_status()
+      use numerics_lib, only: numerics_bad_input, numerics_unsorted_points
+      type(structure_profiles) :: old_structure, new_structure
+      real(dp) :: values(n_new)
+      logical :: holds
+      call regrid_profile(old_log_mass(1:2), old_q(1:2), new_log_mass, values, ierr)
+      holds = ierr == numerics_bad_input
+      call regrid_profile(old_log_mass, old_q, new_log_mass(n_new:1:-1), values, ierr)
+      holds = holds .and. ierr == numerics_unsorted_points
+      old_structure = structure_profiles(log_pressure=old_q(1:2), log_radius=old_q(1:2), &
+           luminosity_lsun=old_q(1:2), log_temperature=old_q(1:2), log_density=old_q(1:2))
+      call regrid_structure(old_log_mass(1:2), old_structure, new_log_mass, new_structure, ierr)
+      holds = holds .and. ierr == numerics_bad_input
+      call report('a failed spline is osplin''s code', merge(0.0d0, 1.0d0, holds), 0.0d0)
+end subroutine check_spline_status
+
+! ---------------------------------------------------------------
 ! The shell masses: the sums on both meshes, and the rules on the new.
 subroutine check_shell_masses()
       real(dp) :: worst
@@ -257,7 +278,7 @@ subroutine check_linear_profiles()
            luminosity_lsun=linear(old_log_mass, 0.2d0, 0.25d0), &
            log_temperature=linear(old_log_mass, 7.2d0, -0.3d0), &
            log_density=linear(old_log_mass, 2.1d0, -0.9d0))
-      call regrid_structure(old_log_mass, old_structure, new_log_mass, new_structure)
+      call regrid_structure(old_log_mass, old_structure, new_log_mass, new_structure, ierr)
       worst = max(linear_error(new_structure%log_pressure, 17.3d0, -1.1d0), &
            linear_error(new_structure%log_radius, 9.0d0, 0.4d0), &
            linear_error(new_structure%luminosity_lsun, 0.2d0, 0.25d0), &
@@ -267,7 +288,7 @@ subroutine check_linear_profiles()
       do k = 1, n_species
          old_xa(k,:) = linear(old_log_mass, 0.1d0*k, 0.02d0*(k - 2))
       end do
-      call regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa)
+      call regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa, ierr)
       worst = 0.0d0
       do k = 1, n_species
          worst = max(worst, linear_error(new_xa(k,:), 0.1d0*k, 0.02d0*(k - 2)))
@@ -278,7 +299,7 @@ subroutine check_linear_profiles()
            fp=linear(old_log_mass, 1.0d0, -1.0d-3), ft=linear(old_log_mass, 1.0d0, -5.0d-4), &
            mean_radius=linear(old_log_mass, 3.0d10, 2.0d10), &
            eta_squared=linear(old_log_mass, 0.05d0, 0.02d0))
-      call regrid_rotation(old_log_mass, old_rotation, new_log_mass, new_rotation)
+      call regrid_rotation(old_log_mass, old_rotation, new_log_mass, new_rotation, ierr)
       worst = max(linear_error(new_rotation%omega, 3.0d-6, -1.0d-6), &
            linear_error(new_rotation%specific_angular_momentum, 1.0d15, 4.0d14), &
            linear_error(new_rotation%fp, 1.0d0, -1.0d-3), &
@@ -288,10 +309,10 @@ subroutine check_linear_profiles()
       call report('rotation: linear in log m reproduced', worst, 1.0d-13)
 ! The shared points, with the model's X (which has the step) and j.
       call model_composition(old_xa)
-      call regrid_profile(old_log_mass, old_xa(i_x,:), new_log_mass, new_values)
+      call regrid_profile(old_log_mass, old_xa(i_x,:), new_log_mass, new_values, ierr)
       worst = shared_point_error(old_xa(i_x,:), new_values)
       call model_rotation(omega, radius, old_values)
-      call regrid_profile(old_log_mass, old_values, new_log_mass, new_values)
+      call regrid_profile(old_log_mass, old_values, new_log_mass, new_values, ierr)
       worst = max(worst, shared_point_error(old_values, new_values))
       call report('shared points keep their values (X, j)', worst, eps)
 end subroutine check_linear_profiles
@@ -348,7 +369,7 @@ subroutine check_species_masses()
       real(dp) :: old_total, new_total, lo, hi, worst
       integer :: k
       call model_composition(old_xa)
-      call regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa)
+      call regrid_composition(old_log_mass, old_xa, new_log_mass, new_xa, ierr)
       do k = 1, n_species
          old_total = sum(old_xa(k,:)*old_dm)
          new_total = sum(new_xa(k,:)*new_dm)
@@ -380,7 +401,7 @@ subroutine check_rotation_sums()
       old_rotation = rotation_profiles(omega=omega, specific_angular_momentum=j_rot, &
            fp=1.0d0 - 1.0d-3*old_q, ft=1.0d0 - 5.0d-4*old_q, mean_radius=radius, &
            eta_squared=0.05d0*old_q)
-      call regrid_rotation(old_log_mass, old_rotation, new_log_mass, new_rotation)
+      call regrid_rotation(old_log_mass, old_rotation, new_log_mass, new_rotation, ierr)
       call compute_angular_momentum_totals(old_rotation%specific_angular_momentum, &
            old_rotation%omega, old_dm, old_ke, old_j_total, old_ke_total)
       call compute_angular_momentum_totals(new_rotation%specific_angular_momentum, &
