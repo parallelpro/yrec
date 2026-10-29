@@ -8,7 +8,7 @@
 ! constants and composition.
 module yale_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants, only: cpi, boltzmann_constant_cgs, electron_charge_esu
+      use physical_constants, only: cpi, boltzmann_constant_cgs, electron_charge_esu, amu_cgs
       implicit none
 
       private
@@ -37,10 +37,10 @@ module yale_eos_tables
            debye_huckel_z_total
 ! The Debye-Hueckel coefficient -sqrt(pi/(k m_u**3)) e**3/3 (cgs), and
 ! the charges of the 18 metals it weights (C, N, O, Ne, Na, Mg, Al, Si,
-! P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni). The mass unit is 1/N_A with
-! the digits of Avogadro's number transposed (6.0222137e23 for
-! 6.0221367e23), as the F77 code wrote it.
-      real(dp), parameter :: debye_huckel_mass_unit = 1.0d0/6.0222137d23
+! P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni). The mass unit is the atomic
+! mass unit, 1/N_A g (the F77 code wrote 1/6.0222137e23, Avogadro's
+! digits transposed).
+      real(dp), parameter :: debye_huckel_mass_unit = amu_cgs
       real(dp), parameter :: debye_huckel_coefficient = -sqrt(cpi/(boltzmann_constant_cgs* &
            debye_huckel_mass_unit*debye_huckel_mass_unit*debye_huckel_mass_unit))* &
            electron_charge_esu*electron_charge_esu*electron_charge_esu/3.0d0
