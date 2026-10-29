@@ -23,7 +23,7 @@ module mhd_eos
            imhd_centre_4, imhd_centre_5, imhd_zams_a, imhd_zams_b, &
            imhd_zams_c, mhd, mhd_ivarc, mhd_ivarx, mhd_n_centre, mhd_n_zams, &
            mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, mhd_nt2m, &
-           mhd_ntxm
+           mhd_ntxm, imhd_family_zams_lower, imhd_family_zams_upper, imhd_family_centre
       use io_units, only: run_log_unit, terminal_unit
       use numerics_lib, only: lir, quint
       use eos_mixture, only: compute_mean_weights
@@ -52,7 +52,9 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 
-      real(dp), parameter :: cnvs = 0.434294481d0
+! log10 e to the original's nine digits (clni is the exact 1/ln 10):
+! turns the tables' d/dlog10 rho and d/dlog10 T of grad_ad into d/dln
+      real(dp), parameter :: log10_e = 0.434294481d0
       real(dp) :: mhdpx_r10
       real(dp) :: chi_rho, chi_t, log10_specific_heat_cp
       real(dp) :: specific_gas_constant_check
@@ -83,9 +85,9 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       r%specific_heat_cp_dp = r%dlnrho_dlnp*mhd%mhd_output(i_mhd_dlogcp_dlogrho)
       r%specific_heat_cp_dt = mhd%mhd_output(i_mhd_dlogcp_dlogt) + mhd%mhd_output(i_mhd_dlogcp_dlogrho)*r%dlnrho_dlnt
       r%adiabatic_gradient = mhd%mhd_output(i_mhd_grad_ad)
-      r%adiabatic_gradient_dp = r%dlnrho_dlnp*mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*cnvs/r%adiabatic_gradient
+      r%adiabatic_gradient_dp = r%dlnrho_dlnp*mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*log10_e/r%adiabatic_gradient
       r%adiabatic_gradient_dt = (mhd%mhd_output(i_mhd_dgrad_ad_dlog10_t) + mhd%mhd_output(i_mhd_dgrad_ad_dlog10_rho)*r%dlnrho_dlnt)* &
-           cnvs/r%adiabatic_gradient
+           log10_e/r%adiabatic_gradient
       r%dlnrho_dlnt_dp = r%dlnrho_dlnt*(r%adiabatic_gradient_dp - 1.0d0 + &
            r%dlnrho_dlnp + r%specific_heat_cp_dp)
       r%dlnrho_dlnt_dt = r%dlnrho_dlnt*(r%adiabatic_gradient_dt + 1.0d0 + &
@@ -575,7 +577,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !     and fill arrays varout and XC
 !     CAN WE DO IT?
 !
-      integer :: i, itbl, iv, ixmin, num_vars, var_leading_dim, &
+      integer :: i, family, n_tables, iv, ixmin, num_vars, var_leading_dim, &
            num_points, interp_mode
       real(dp) :: x_grid_origin, x_grid_spacing, &
            var_at_x0, var_at_x1, var_at_x2
@@ -592,32 +594,22 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       table_vars = 0.0d0
       table_hfrac = 0.0d0
       use_centre_tables = log10_temperature >= mhd%zams_centre_boundary_log10t
-!     Lower ZAMS tables
+! the family the temperature selects, each of its compositions in turn
       if (log10_temperature < mhd%zams_lower_upper_boundary_log10t) then
-         do i=1,3
-         itbl = -i
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
-              in_range)
-         if (.not. in_range) exit
-         end do
+         family = imhd_family_zams_lower
+         n_tables = mhd_n_zams
       else if (.not. use_centre_tables) then
-!     Upper ZAMS tables
-         do i=1,3
-         itbl = i
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
-              in_range)
-         if (.not. in_range) exit
-         end do
+         family = imhd_family_zams_upper
+         n_tables = mhd_n_zams
       else
-!     CENTRE TABLES
-         do i=1,5
-!        Offset (+3) to access center tables
-         itbl = i + 3
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
-              in_range)
-         if (.not. in_range) exit
-         end do
+         family = imhd_family_centre
+         n_tables = mhd_n_centre
       end if
+      do i = 1, n_tables
+         call mhdpx2(log10_pressure, log10_temperature, family, i, table_vars, table_hfrac, &
+              ndimt, in_range)
+         if (.not. in_range) exit
+      end do
       if (.not. in_range) then
          ierr = 1
          return
@@ -678,15 +670,14 @@ end subroutine mhdpx1
 !
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 !$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-! Interpolates one table (selected by table_selector: -1/-2/-3 lower
-! ZAMS A/B/C, 1/2/3 upper ZAMS A/B/C, 4..8 centre 1..5) at
-! (log10 P, log10 T) and stores the result as row |table_selector|
-! (ZAMS) or table_selector (centre) of table_vars, with that table's
-! hydrogen mass fraction in table_hfrac; in_range is false when log P
-! is above the highest of a row the interpolation uses. The tables are the
-! composition-indexed arrays of mhd (imhd_zams_a..c,
-! imhd_centre_1..5 in mhd_eos_tables).
-subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
+! Interpolates table ic of a family (imhd_family_zams_lower or _upper,
+! compositions A, B, C; imhd_family_centre, compositions 1..5) at
+! (log10 P, log10 T) and stores the result as row ic (ZAMS) or
+! mhd_n_zams + ic (centre) of table_vars, with that table's hydrogen
+! mass fraction in table_hfrac; in_range is false when log P is above
+! the highest of a row the interpolation uses. The tables are the
+! composition-indexed arrays of mhd (mhd_eos_tables).
+subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
      table_vars, table_hfrac, ndimt, in_range)
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
@@ -696,50 +687,32 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       integer, parameter :: nr1m = mhd_nr1m
       integer, parameter :: nr2m = mhd_nr2m
       integer, parameter :: nrxm = mhd_nrxm
-!     ZAMS tables (labelled by a,b,c)
-      integer, intent(in) :: table_selector, ndimt
+      integer, intent(in) :: family, ic, ndimt
       real(dp), intent(in) :: log10_pressure, log10_temperature
       real(dp), intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
       logical, intent(out) :: in_range
-!     Nomenclature for accessing the tables
-!     ZAMS TABLES
-!     contral (variable X) tables
-!     note: The same output variables varout(itbl,.) is used
-!           for itbl=1 and -1, 2 and -2, 3 and -3, respectively.
       real(dp) :: intpt_work1(ivarx,4), intpt_work2(ivarx,4), &
            intpt_y(ivarx), interpolated_vars(ivarx)
 
-      integer :: i, ic
+      integer :: i
 
       interpolated_vars = 0.0d0
       in_range = .true.
-!     Main selection of tables
-!     selector -ic is lower ZAMS composition ic (row ic), +ic is upper
-!     ZAMS composition ic (row ic), and mhd_n_zams+ic is centre
-!     composition ic (row mhd_n_zams+ic); any other selector does
-!     nothing.
-!     ZAMS TABLES
-      if (table_selector <= -1 .and. table_selector >= -mhd_n_zams) then
-         ic = -table_selector
+      select case (family)
+      case (imhd_family_zams_lower)
          call interpolate_and_store(mhd%zams_lower_table(:,:,:,ic), &
               nt1m, nr1m, ivarc, mhd%zams_lower_log10t, mhd%zams_lower_num_t, &
               mhd%zams_lower_num_r, ic, mhd%zams_mass_fraction(1,ic))
-      else if (table_selector >= 1 .and. table_selector <= mhd_n_zams) then
-         ic = table_selector
+      case (imhd_family_zams_upper)
          call interpolate_and_store(mhd%zams_upper_table(:,:,:,ic), &
               nt2m, nr2m, ivarc, mhd%zams_upper_log10t, mhd%zams_upper_num_t, &
               mhd%zams_upper_num_r, ic, mhd%zams_mass_fraction(1,ic))
-!     CENTER TABLES
-      else if (table_selector >= mhd_n_zams+1 .and. &
-           table_selector <= mhd_n_zams+mhd_n_centre) then
-         ic = table_selector - mhd_n_zams
+      case (imhd_family_centre)
          call interpolate_and_store(mhd%centre_table(:,:,:,ic), &
               ntxm, nrxm, ivarx, mhd%centre_log10t, mhd%centre_num_t, &
-              mhd%centre_num_r, table_selector, mhd%centre_mass_fraction(1,ic))
-      end if
-!     End selection of tables
-      return
+              mhd%centre_num_r, mhd_n_zams + ic, mhd%centre_mass_fraction(1,ic))
+      end select
 
 contains
 
@@ -793,7 +766,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       real(dp) :: x_nodes(4)
 
       integer :: n, i, m, j, t_col, iv, t_idx, r_idx, t_idx_max, r_idx_max
-      real(dp) :: p_min, p_max
+      real(dp) :: p_max
       integer :: lir_num_vars, lir_leading_dim, lir_num_points, lir_interp_mode
 
 ! Bracket the temperature: the original's GOTO 101 out of this scan
@@ -816,7 +789,6 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       do i=1,4
          r_lo_guess(i)=1
          t_idx=t_indices(i)
-         p_min=table_data(t_idx, 1,2)
          p_max=table_data(t_idx,num_r,2)
          if(log10_pressure.gt.p_max) then
             in_range = .false.

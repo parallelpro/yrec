@@ -20,7 +20,8 @@ module mhd_eos_tables
            imhd_centre_3, imhd_centre_4, imhd_centre_5, imhd_zams_a, &
            imhd_zams_b, imhd_zams_c, mhd, mhd_ivarc, mhd_ivarx, mhd_n_centre, &
            mhd_n_zams, mhd_nchem0, mhd_nr1m, mhd_nr2m, mhd_nrxm, mhd_nt1m, &
-           mhd_nt2m, mhd_ntxm
+           mhd_nt2m, mhd_ntxm, imhd_family_zams_lower, imhd_family_zams_upper, &
+           imhd_family_centre
       integer, parameter :: mhd_ivarc = 20
       integer, parameter :: mhd_ivarx = 25
       integer, parameter :: mhd_nchem0 = 6
@@ -31,14 +32,15 @@ module mhd_eos_tables
       integer, parameter :: mhd_nr2m = 21
       integer, parameter :: mhd_nrxm = 21
 ! Composition index of the ZAMS-type tables (three compositions A, B,
-! C read from unit_zams_a/b/c) and of the centre-type tables (up to
-! five, read from unit_centre1..5). mhdpx2's table_selector is
-! -ic (lower ZAMS), +ic (upper ZAMS) or 3+ic (centre) for these.
+! C) and of the centre-type tables (five); the three table families
+! (mhdpx2 interpolates composition ic of a family).
       integer, parameter :: mhd_n_zams = 3
       integer, parameter :: mhd_n_centre = 5
       integer, parameter :: imhd_zams_a = 1, imhd_zams_b = 2, imhd_zams_c = 3
       integer, parameter :: imhd_centre_1 = 1, imhd_centre_2 = 2, &
            imhd_centre_3 = 3, imhd_centre_4 = 4, imhd_centre_5 = 5
+      integer, parameter :: imhd_family_zams_lower = 1, imhd_family_zams_upper = 2, &
+           imhd_family_centre = 3
 ! Slots of mhd_output (the interpolated MHD table row) that compute_mhd_eos
 ! reads. The MHD table documentation is not part of this repository;
 ! these meanings follow from how compute_mhd_eos consumes each slot. Slots 21-24
