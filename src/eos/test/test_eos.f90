@@ -1024,6 +1024,18 @@ subroutine envelope_table_checks()
               abs(table%log10_density - general%log10_density) < 1.0d-4
       end do
       call check("envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path", ok)
+! a mixture changed without rebuilding the table (as a rescaled run's Z
+! does): the table, built for (x_new, z_new), is not used at the new
+! composition, which takes SCV's general path
+      call set_envelope_mixture(0.65d0, 0.025d0)
+      ok = .true.
+      do k = 1, size(lt)
+         call eos_at(lt(k), lp(k), 0.65d0, 0.025d0, table, ierr1)
+         call eos_at(lt(k), lp(k), 0.65d0 + 2.0d-5, 0.025d0, general, ierr2)
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+              abs(table%log10_density - general%log10_density) < 1.0d-4
+      end do
+      call check("envelope tables: a table built for another composition is not used", ok)
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine envelope_table_checks

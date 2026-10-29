@@ -20,7 +20,7 @@ module scv_eos_tables
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
-           tlogx
+           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
 ! Table dimensions: scv_nt temperature rows, up to scv_np pressure
 ! points per row (nptsx holds the actual count), scv_nvar variables per
 ! point in the H, He and envelope tables and scv_nvar_z in the Z table.
@@ -32,6 +32,8 @@ module scv_eos_tables
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
            tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
       integer :: nptsx(scv_nt), idtt, idp
+! the envelope X and Z tablenv was built for (-1 until it is built)
+      real(dp) :: tablenv_hydrogen_fraction = -1.0d0, tablenv_metal_fraction = -1.0d0
 ! Named table columns: only the columns some routine addresses are
 ! named. read_scv_tables reads columns 1-11 of the H and He tables and
 ! 1-13 of the Z table.

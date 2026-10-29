@@ -25,11 +25,10 @@ module scv_eos
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
-           tlogx
+           tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
       use eos_messages, only: eos_log, message_length, unwritten_line
-      use eos_mixture, only: eos_mix
       use math_lib
       implicit none
       private
@@ -43,8 +42,9 @@ contains
 ! Interpolates in the surface (envelope) abundance table of the
 ! Saumon-Chabrier-Van Horn (SCV) equation of state -- i.e. the table
 ! built specifically for the envelope composition (X, Z). If the
-! requested composition differs from the envelope composition, falls
-! back to compute_scv_eos (the general-abundance SCV table). Locates the SCV
+! requested composition differs from the one the table was built for
+! (by more than 1e-5 in X or Z), falls back to compute_scv_eos (the
+! general-abundance SCV table). Locates the SCV
 ! table cell in (log10 T, log10 Pgas), interpolates density and its
 ! logarithmic derivatives, the specific heat, adiabatic gradient, and
 ! ionization fractions, with an additional smoothing pass across
@@ -93,8 +93,8 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, jj, jjj, k
       ierr = 0
-      if (abs(hydrogen_fraction-eos_mix%envelope_hydrogen_fraction) > 1.0d-5 &
-           .or. abs(metal_fraction-eos_mix%envelope_metal_fraction) > 1.0d-5) then
+      if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > 1.0d-5 &
+           .or. abs(metal_fraction-tablenv_metal_fraction) > 1.0d-5) then
          call compute_scv_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
               r, valid_table_point)
          return
@@ -1069,6 +1069,8 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
            tablenv(t_idx,p_idx,iscvenv_dqut_dlnt) = dqut_dlnt
         end do
       end do
+      tablenv_hydrogen_fraction = envelope_hydrogen_fraction
+      tablenv_metal_fraction = envelope_metal_fraction
 
 end subroutine build_scv_envelope_table
 
