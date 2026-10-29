@@ -52,6 +52,7 @@ program test_eos
       use opal_eos_tables, only: opal06
       use opal_eos, only: esac06
       use mhd_eos, only: interpolate_mhd_table
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -94,6 +95,9 @@ program test_eos
 
       integer, parameter :: ng1 = 4
       double precision :: g1_t6(ng1), g1_rho(ng1), g1_p(ng1)
+! the synthetic MHD tables' variable count and X step (check_mhd_reader)
+      integer, parameter :: mhd_ivarc_test = 20
+      real(dp), parameter :: dx_centre_test = 0.01d0
       data g1_t6  /0.006d0, 0.10d0,  2.0d0,   12.0d0/
       data g1_rho /1.0d-7,  1.0d-4,  1.0d-1,  80.0d0/
       data g1_p   /3.16d4,  1.0d8,   3.16d13, 1.6d17/
@@ -332,6 +336,7 @@ program test_eos
       call check_configurations()
       call check_derivatives()
       call check_mhd_table_lookup()
+      call check_mhd_reader()
 
       close(run_log_unit)
       write(*,'(a)') "test_eos: done"
@@ -564,6 +569,7 @@ subroutine check_mhd_table_lookup()
       integer, parameter :: nt = 7, nr = 6, nv = 3
       double precision :: table(nt,nr,nv), tlog(nt), w1(nv,4), w2(nv,4), yw(nv), &
            out(nv), log_p(4), log_t(4)
+      logical :: in_range(4)
       integer :: it, ir, i
       write(*,'(a)') "# MHD table lookup (synthetic table)"
       do it = 1, nt
@@ -581,9 +587,180 @@ subroutine check_mhd_table_lookup()
          w1 = 0.0d0
          w2 = 0.0d0
          yw = 0.0d0
-         call interpolate_mhd_table(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, out)
+         call interpolate_mhd_table(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, &
+              out, in_range(i))
          write(*,'(a,2f6.2,a,3(1pe24.15))') "lookup at", log_p(i), log_t(i), " =", out
       end do
+      call check("mhd lookup: in range inside and at the corners, not above the table", &
+           all(in_range(1:3)) .and. .not. in_range(4))
 end subroutine check_mhd_table_lookup
+
+! The MHD reader on a synthetic table set (the real tables are not
+! shipped): eight unformatted files in the layout mhdst reads, written
+! into the working directory -- three ZAMS-type compositions (X = 0.6,
+! 0.7, 0.8; lower rows log T = 3.5-4.75, upper 4.5-5.75) and five
+! centre-type ones (X = 0.1-0.9, log T = 5.5-6.75), each with its X -+ dX
+! companions. Every row tabulates an ideal gas, log P = log rho + log T
+! + c(X) with c = 7.9 + 0.3 X, so the interpolation in log P, log T and
+! X reproduces log rho = log P - log T - c(X) exactly. Checks: eos_init
+! reads the set, eos_get returns that density in each family (and at
+! the ZAMS/centre boundary), and points outside the tables, a missing
+! file and a truncated file return ierr.
+subroutine check_mhd_reader()
+      real(dp), parameter :: x_zams(3) = [0.6d0, 0.7d0, 0.8d0]
+      real(dp), parameter :: x_centre(5) = [0.1d0, 0.3d0, 0.5d0, 0.7d0, 0.9d0]
+      real(dp), parameter :: z_mhd = 0.02d0
+      character(len=16), parameter :: zams_names(3) = [character(len=16) :: &
+           "mhd_zams_a", "mhd_zams_b", "mhd_zams_c"]
+      character(len=16), parameter :: centre_names(5) = [character(len=16) :: &
+           "mhd_centre1", "mhd_centre2", "mhd_centre3", "mhd_centre4", "mhd_centre5"]
+      real(dp), parameter :: test_log_t(4) = [4.1d0, 5.1d0, 6.1d0, 5.5d0]
+      real(dp), parameter :: x_test = 0.65d0, log_rho_test = -6.0d0
+      type(eos_settings_t) :: s
+      type(eos_result) :: res
+      integer :: i, u, ierr, ks
+      real(dp) :: lp
+      logical :: ok_read, ok_rho, ok_grad, ok_out_t, ok_out_p
+
+      write(*,'(a)') "# MHD reader (synthetic tables)"
+      do i = 1, 3
+         call write_mhd_table(trim(zams_names(i)), 0, x_zams(i))
+      end do
+      do i = 1, 5
+         call write_mhd_table(trim(centre_names(i)), 1, x_centre(i))
+      end do
+      s = eos_settings
+      s%use_mhd_eos = .true.
+      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
+           zams_names(1), zams_names(2), zams_names(3), centre_names(1), &
+           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
+           opal06_path, ierr)
+      ok_read = ierr == 0
+      call check("mhd reader: eos_init reads the eight tables", ok_read)
+      ok_rho = ok_read
+      ok_grad = ok_read
+      do i = 1, size(test_log_t)
+         if (.not. ok_read) exit
+         lp = log_rho_test + test_log_t(i) + mhd_c(x_test)
+         ks = 0
+         res = eos_result()
+         call eos_get(test_log_t(i), lp, x_test, z_mhd, res, .true., .false., ks, ierr=ierr)
+         ok_rho = ok_rho .and. ierr == 0 .and. abs(res%log10_density - log_rho_test) < 1.0d-10
+         ok_grad = ok_grad .and. ierr == 0 .and. abs(res%adiabatic_gradient - 0.4d0) < 1.0d-12 &
+              .and. abs(res%dlnrho_dlnt + 1.0d0) < 1.0d-12 .and. abs(res%dlnrho_dlnp - 1.0d0) < 1.0d-12
+      end do
+      call check("mhd reader: log rho = log P - log T - c(X) in each family and at the boundary", ok_rho)
+      call check("mhd reader: grad_ad, dln rho/dln T and dln rho/dln P as tabulated", ok_grad)
+! Each point outside the tables follows one inside at the same log P,
+! so that a stale result would pass the mean-weight check as success.
+      ks = 0
+      res = eos_result()
+      call eos_get(6.9d0, lp, x_test, z_mhd, res, .true., .false., ks, ierr=ierr)
+      ok_out_t = ierr /= 0
+      call check("mhd reader: log T above the tables returns ierr", ok_out_t)
+      lp = 5.6d0 + mhd_c(x_test)
+      ks = 0
+      res = eos_result()
+      call eos_get(6.1d0, lp, x_test, z_mhd, res, .true., .false., ks, ierr=ierr)
+      ok_out_p = ierr == 0 .and. abs(res%log10_density + 0.5d0) < 1.0d-10
+      ks = 0
+      res = eos_result()
+      call eos_get(5.1d0, lp, x_test, z_mhd, res, .true., .false., ks, ierr=ierr)
+      ok_out_p = ok_out_p .and. ierr /= 0
+      call check("mhd reader: log P above the tables returns ierr", ok_out_p)
+      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
+           zams_names(1), "mhd_missing", zams_names(3), centre_names(1), &
+           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
+           opal06_path, ierr)
+      call check("mhd reader: a missing table returns ierr = 1", ierr == 1)
+      open(newunit=u, file="mhd_truncated", form="unformatted", status="replace")
+      write(u) mhd_ivarc_test, 0, 0, 0.0d0
+      close(u)
+      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
+           zams_names(1), "mhd_truncated", zams_names(3), centre_names(1), &
+           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
+           opal06_path, ierr)
+      call check("mhd reader: a truncated table returns ierr = 1", ierr == 1)
+      s%use_mhd_eos = .false.
+      call set_eos_settings(s)
+end subroutine check_mhd_reader
+
+! the synthetic tables' log P - log rho - log T at hydrogen fraction x
+pure real(dp) function mhd_c(x)
+      real(dp), intent(in) :: x
+      mhd_c = 7.9d0 + 0.3d0*x
+end function mhd_c
+
+! One synthetic MHD table file: kind 0 (ZAMS: one composition, a lower
+! and an upper part) or kind 1 (centre: the composition and its X -+ dX
+! companions, each one part).
+subroutine write_mhd_table(path, kind, x)
+      character(len=*), intent(in) :: path
+      integer, intent(in) :: kind
+      real(dp), intent(in) :: x
+      integer, parameter :: n_rows = 6
+      integer :: u, pass, n_pass
+      real(dp) :: xp, yp, dx
+      open(newunit=u, file=path, form="unformatted", status="replace")
+      n_pass = merge(1, 3, kind == 0)
+      dx = merge(0.0d0, dx_centre_test, kind == 0)
+      do pass = 1, n_pass
+         xp = x
+         if (pass == 2) xp = x - dx
+         if (pass == 3) xp = x + dx
+         yp = 1.0d0 - xp - 0.02d0
+         write(u) mhd_ivarc_test, kind, merge(0, merge(-1, 1, pass == 2), pass == 1), dx
+         write(u) 3, 1.008d0, xp, xp, 4.003d0, yp, yp, 16.0d0, 0.02d0, 0.02d0, 0.6d0
+         if (kind == 0) then
+            write(u) n_rows, n_rows, 0.0d0, 0.0d0
+            call write_mhd_part(u, 3.5d0, xp)
+            call write_mhd_part(u, 4.5d0, xp)
+         else
+            write(u) 0, n_rows, 0.0d0, 0.0d0
+            call write_mhd_part(u, 5.5d0, xp)
+         end if
+      end do
+      close(u)
+end subroutine write_mhd_table
+
+! n_rows T rows from log T = log_t0 in steps of 0.25, each with six
+! densities (log rho = -8.5 + 1.5 j) of an ideal gas at hydrogen
+! fraction x: the 20 tabulated variables, of which compute_mhd_eos reads
+! log rho, log P, chi_rho, chi_T, grad_ad, log cp, the ionization
+! fractions, eta and log P_gas
+subroutine write_mhd_part(u, log_t0, x)
+      integer, intent(in) :: u
+      real(dp), intent(in) :: log_t0, x
+      integer, parameter :: n_rows = 6, n_rho = 6
+      real(dp) :: v(mhd_ivarc_test), lt, lr
+      integer :: it, j
+      do it = 1, n_rows
+         lt = log_t0 + 0.25d0*(it - 1)
+         write(u) n_rho, lt
+         do j = 1, n_rho
+            lr = -8.5d0 + 1.5d0*j
+            v = 0.0d0
+            v(1) = lr
+            v(2) = lr + lt + mhd_c(x)
+            v(3) = 12.0d0 + 0.1d0*lt
+            v(4) = 1.0d0
+            v(5) = 1.0d0
+            v(8) = 0.4d0
+            v(9) = 8.5d0
+            v(14) = 1.0d0
+            v(15) = 0.5d0
+            v(16) = 0.25d0
+            v(18) = -3.0d0
+            v(20) = v(2)
+            write(u) v
+         end do
+      end do
+end subroutine write_mhd_part
+
+subroutine check(label, ok)
+      character(len=*), intent(in) :: label
+      logical, intent(in) :: ok
+      write(*,'(a,1x,a)') merge("ok  ", "FAIL", ok), label
+end subroutine check
 
 end program test_eos

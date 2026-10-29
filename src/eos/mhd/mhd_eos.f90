@@ -41,7 +41,9 @@ contains
 ! March 7, 1990. Given log10(T), log10(P), X, and Z, calls the MHD
 ! table interpolator (mhdpx) and converts its output
 ! (mhd%mhd_output) into the same thermodynamic derivative set
-! used by the rest of the EOS machinery.
+! used by the rest of the EOS machinery. A point outside the tables
+! (log T outside their range, or log P above a row's highest) returns
+! ierr = 1, with a message in the run log.
 subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr)
 
@@ -64,7 +66,12 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       r%pressure = exp10(log10_pressure)
       call mhdpx(log10_pressure, log10_temperature, hydrogen_fraction, &
            mhdpx_r10, ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         write(run_log_unit,'(a,2f10.5)') &
+              ' MHD EOS: (log T, log P) outside the tables or a bad table:', &
+              log10_temperature, log10_pressure
+         return
+      end if
       r%log10_density = mhd%mhd_output(i_mhd_log10_rho)
       r%density = exp10(r%log10_density)
       r%dlnrho_dlnp = 1.0d0/mhd%mhd_output(i_mhd_chi_rho)
@@ -112,11 +119,11 @@ end subroutine compute_mhd_eos
 !----------------------------------------------------------------------
 ! read_mhd_tables (formerly mhdtbl)
 !----------------------------------------------------------------------
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! Opens the 8 MHD equation-of-state table files (3 ZAMS-type tables
-! and optionally 5 centre-type tables) on the unit numbers held in
-! star%ctrl, calls mhdst to read them, and closes the files again.
+! for the compositions A, B and C, and 5 centre-type tables), each on a
+! new unit, reads them with mhdst and closes them. A file that cannot
+! be opened, or a table that fails mhdst's checks, returns ierr = 1
+! with a message in the run log.
 subroutine read_mhd_tables(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
      centre1_table_path, centre2_table_path, centre3_table_path, &
      centre4_table_path, centre5_table_path, ierr)
@@ -125,49 +132,55 @@ subroutine read_mhd_tables(zams_a_table_path, zams_b_table_path, zams_c_table_pa
            zams_c_table_path, centre1_table_path, centre2_table_path, &
            centre3_table_path, centre4_table_path, centre5_table_path
       integer, intent(out) :: ierr
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, unit_centre2, unit_centre3, unit_centre4, unit_centre5
+      integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
+
       ierr = 0
-
-      open(newunit=unit_zams_a, file=zams_a_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_zams_b, file=zams_b_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_zams_c, file=zams_c_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_centre1, file=centre1_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_centre2, file=centre2_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_centre3, file=centre3_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_centre4, file=centre4_table_path, status='OLD', &
-          form='UNFORMATTED')
-      open(newunit=unit_centre5, file=centre5_table_path, status='OLD', &
-          form='UNFORMATTED')
-
-      call mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-                 unit_centre2, unit_centre3, unit_centre4, unit_centre5, ierr)
-      if (ierr /= 0) return
-      close(unit_zams_a)
-      close(unit_zams_b)
-      close(unit_zams_c)
-      close(unit_centre1)
-      close(unit_centre2)
-      close(unit_centre3)
-      close(unit_centre4)
-      close(unit_centre5)
+      unit_zams = 0
+      unit_centre = 0
+      call open_mhd_table(zams_a_table_path, unit_zams(imhd_zams_a), ierr)
+      if (ierr == 0) call open_mhd_table(zams_b_table_path, unit_zams(imhd_zams_b), ierr)
+      if (ierr == 0) call open_mhd_table(zams_c_table_path, unit_zams(imhd_zams_c), ierr)
+      if (ierr == 0) call open_mhd_table(centre1_table_path, unit_centre(imhd_centre_1), ierr)
+      if (ierr == 0) call open_mhd_table(centre2_table_path, unit_centre(imhd_centre_2), ierr)
+      if (ierr == 0) call open_mhd_table(centre3_table_path, unit_centre(imhd_centre_3), ierr)
+      if (ierr == 0) call open_mhd_table(centre4_table_path, unit_centre(imhd_centre_4), ierr)
+      if (ierr == 0) call open_mhd_table(centre5_table_path, unit_centre(imhd_centre_5), ierr)
+      if (ierr == 0) then
+         call mhdst(unit_zams, unit_centre, ierr)
+         if (ierr /= 0) write(run_log_unit,*) &
+              'eos_init: an MHD table is corrupt or does not match its layout'
+      end if
+      do ic = 1, mhd_n_zams
+         if (unit_zams(ic) /= 0) close(unit_zams(ic))
+      end do
+      do ic = 1, mhd_n_centre
+         if (unit_centre(ic) /= 0) close(unit_centre(ic))
+      end do
 end subroutine read_mhd_tables
+
+! open one MHD table (unformatted) on a new unit; ierr = 1, with a
+! message in the run log, when it cannot be opened
+subroutine open_mhd_table(path, table_unit, ierr)
+      character(len=*), intent(in) :: path
+      integer, intent(out) :: table_unit, ierr
+      open(newunit=table_unit, file=path, status='OLD', form='UNFORMATTED', &
+           iostat=ierr)
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'eos_init: cannot open the MHD table ', trim(path)
+         table_unit = 0
+         ierr = 1
+      end if
+end subroutine open_mhd_table
 
 !----------------------------------------------------------------------
 ! mhdst
 !----------------------------------------------------------------------
-!
-! Reads the 8 MHD equation-of-state table files (3 ZAMS-type unit
-! numbers covering compositions A, B, C, plus up to 5 optional
-! centre-type unit numbers) into mhd_eos_tables's mhd state and sets
-! the table temperature limits used by mhdpx1.
-subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
-     unit_centre2, unit_centre3, unit_centre4, unit_centre5, ierr)
+! Reads the 3 ZAMS-type tables (compositions A, B, C; unit_zams) and the
+! 5 centre-type tables (unit_centre) into mhd_eos_tables's mhd and sets
+! the temperature limits mhdpx1 uses: the lower ZAMS tables up to their
+! last row, the upper ZAMS tables up to the first centre row, the
+! centre tables above.
+subroutine mhdst(unit_zams, unit_centre, ierr)
 
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
@@ -179,9 +192,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       integer, parameter :: nr2m = mhd_nr2m
       integer, parameter :: nrxm = mhd_nrxm
 
-      integer, intent(in) :: unit_zams_a, unit_zams_b, unit_zams_c, &
-           unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
+      integer, intent(in) :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre)
 
       real(dp) :: unused_zams_table(nt1m,nr1m,ivarc), unused_zams_log10t(nt1m)
 !     Working storage for numerical X-derivatives. Common to all
@@ -198,9 +209,7 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
 !     calls do not need (the ZAMS lower-table slots).
       integer :: num_chem_species, unused_num_t, unused_num_r, table_index
       real(dp) :: unused_drho
-!     the table units by family, so the mhdst1 calls loop over the
-!     composition index of mhd's arrays
-      integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
+      integer :: ic
 
       integer, intent(out) :: ierr
 
@@ -210,57 +219,47 @@ subroutine mhdst(unit_zams_a, unit_zams_b, unit_zams_c, unit_centre1, &
       unused_drho = 0.d0
       unused_num_t = 0
       unused_num_r = 0
-      unit_zams(imhd_zams_a) = unit_zams_a
-      unit_zams(imhd_zams_b) = unit_zams_b
-      unit_zams(imhd_zams_c) = unit_zams_c
-      unit_centre(imhd_centre_1) = unit_centre1
-      unit_centre(imhd_centre_2) = unit_centre2
-      unit_centre(imhd_centre_3) = unit_centre3
-      unit_centre(imhd_centre_4) = unit_centre4
-      unit_centre(imhd_centre_5) = unit_centre5
 !     Read ZAMS tables
       do ic = 1, mhd_n_zams
-         if (unit_zams(ic) > 0) then
-            table_index = 0
-            call mhdst1(unit_zams(ic),table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
-                        mhd%zams_lower_num_t,mhd%zams_lower_num_r,mhd%zams_upper_num_t,mhd%zams_upper_num_r, &
-                        mhd%zams_lower_log10t,mhd%zams_upper_log10t, &
-                        mhd%zams_lower_table(:,:,:,ic),mhd%zams_upper_table(:,:,:,ic), &
-                        mhd%zams_lower_drho,mhd%zams_upper_drho,num_chem_species, &
-                        mhd%zams_atomic_weight(:,ic),mhd%zams_number_abundance(:,ic), &
-                        mhd%zams_mass_fraction(:,ic),mhd%zams_mean_molecular_weight(ic), &
-                        log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                        atomic_weight_down,atomic_weight_up, &
-                        number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-            if (ierr /= 0) return
-         end if
+         table_index = 0
+         call mhdst1(unit_zams(ic),table_index,nt1m,nr1m,ivarc,nt2m,nr2m,ivarc,nchem0, &
+                     mhd%zams_lower_num_t,mhd%zams_lower_num_r,mhd%zams_upper_num_t,mhd%zams_upper_num_r, &
+                     mhd%zams_lower_log10t,mhd%zams_upper_log10t, &
+                     mhd%zams_lower_table(:,:,:,ic),mhd%zams_upper_table(:,:,:,ic), &
+                     mhd%zams_lower_drho,mhd%zams_upper_drho,num_chem_species, &
+                     mhd%zams_atomic_weight(:,ic),mhd%zams_number_abundance(:,ic), &
+                     mhd%zams_mass_fraction(:,ic),mhd%zams_mean_molecular_weight(ic), &
+                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
+                     atomic_weight_down,atomic_weight_up, &
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end do
 !     Read centre tables
       do ic = 1, mhd_n_centre
-         if (unit_centre(ic) > 0) then
-            table_index = 1
-            call mhdst1(unit_centre(ic),table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
-                        unused_num_t,unused_num_r,mhd%centre_num_t,mhd%centre_num_r,unused_zams_log10t, &
-                        mhd%centre_log10t,unused_zams_table,mhd%centre_table(:,:,:,ic), &
-                        unused_drho,mhd%centre_drho,num_chem_species, &
-                        mhd%centre_atomic_weight(:,ic),mhd%centre_number_abundance(:,ic), &
-                        mhd%centre_mass_fraction(:,ic),mhd%centre_mean_molecular_weight(ic), &
-                        log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
-                        atomic_weight_down,atomic_weight_up, &
-                        number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
-            if (ierr /= 0) return
-         end if
+         table_index = 1
+         call mhdst1(unit_centre(ic),table_index,nt1m,nr1m,ivarc,ntxm,nrxm,ivarx,nchem0, &
+                     unused_num_t,unused_num_r,mhd%centre_num_t,mhd%centre_num_r,unused_zams_log10t, &
+                     mhd%centre_log10t,unused_zams_table,mhd%centre_table(:,:,:,ic), &
+                     unused_drho,mhd%centre_drho,num_chem_species, &
+                     mhd%centre_atomic_weight(:,ic),mhd%centre_number_abundance(:,ic), &
+                     mhd%centre_mass_fraction(:,ic),mhd%centre_mean_molecular_weight(ic), &
+                     log10t_down,log10t_up,table_centre_vars,table_down_vars,table_up_vars, &
+                     atomic_weight_down,atomic_weight_up, &
+                     number_abundance_down,number_abundance_up,mass_fraction_down,mass_fraction_up, ierr)
+         if (ierr /= 0) return
       end do
-!     Temperature limits
-      mhd%table_log10t_min = mhd%zams_lower_log10t(  1)
-      mhd%zams_lower_upper_boundary_log10t = mhd%zams_lower_log10t(mhd%zams_lower_num_t)
-      if (unit_centre1 <= 0) then
-         mhd%zams_centre_boundary_log10t = mhd%zams_upper_log10t(mhd%zams_upper_num_t)
-         mhd%table_log10t_max = mhd%zams_centre_boundary_log10t
-      else
-         mhd%zams_centre_boundary_log10t = mhd%centre_log10t(  1)
-         mhd%table_log10t_max = mhd%centre_log10t(mhd%centre_num_t)
+! every family needs 4 rows and 4 density points for its 4-point
+! interpolation
+      if (min(mhd%zams_lower_num_t, mhd%zams_upper_num_t, mhd%centre_num_t, &
+           mhd%zams_lower_num_r, mhd%zams_upper_num_r, mhd%centre_num_r) < 4) then
+         ierr = 1
+         return
       end if
+!     Temperature limits
+      mhd%table_log10t_min = mhd%zams_lower_log10t(1)
+      mhd%zams_lower_upper_boundary_log10t = mhd%zams_lower_log10t(mhd%zams_lower_num_t)
+      mhd%zams_centre_boundary_log10t = mhd%centre_log10t(1)
+      mhd%table_log10t_max = mhd%centre_log10t(mhd%centre_num_t)
 end subroutine mhdst
 
 !----------------------------------------------------------------------
@@ -316,7 +315,11 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
           num_composition_reads = 3
       end if
       do composition_pass=1,num_composition_reads
-      read(table_unit,   end=1000) num_vars_read,table_kind_read,composition_flag_read,delta_x
+      read(table_unit, iostat=ierr) num_vars_read,table_kind_read,composition_flag_read,delta_x
+      if (ierr /= 0) then
+         ierr = 1
+         return
+      end if
       if (ivar1 < num_vars_read) then
          ierr = 1
          return
@@ -340,7 +343,11 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       if (composition_pass == 2) call rabu(table_unit,nchem0,num_chem,atomic_weight_down,number_abundance_down,mass_fraction_down,unused_mean_molecular_weight_down,ierr)
       if (composition_pass == 3) call rabu(table_unit,nchem0,num_chem,atomic_weight_up,number_abundance_up,mass_fraction_up,unused_mean_molecular_weight_up,ierr)
       if (ierr /= 0) return
-      read(table_unit     ) num_t1,num_t2,drho1,drho2
+      read(table_unit, iostat=ierr) num_t1,num_t2,drho1,drho2
+      if (ierr /= 0) then
+         ierr = 1
+         return
+      end if
       if (table_kind == 1 .and. num_t1 /= 0) then
           ierr = 1
           return
@@ -409,10 +416,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       end do
       end do
       end if
-      return
-!     EOF while reading a table header
- 1000 continue
-      ierr = 1
 end subroutine mhdst1
 
 !----------------------------------------------------------------------
@@ -420,7 +423,8 @@ end subroutine mhdst1
 !----------------------------------------------------------------------
 ! Reads one composition-table record (element count, atomic weights,
 ! number abundances, mass fractions, and mean molecular weight) from
-! an unformatted file unit.
+! an unformatted file unit; a short record or more than nchem0
+! elements is ierr = 1.
 subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
      number_abundance, mass_fraction, mean_molecular_weight, ierr)
 
@@ -436,9 +440,9 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
 
       ierr = 0
 
-      read(table_unit   ) num_chem,(atomic_weight(ic),number_abundance(ic), &
+      read(table_unit, iostat=ierr) num_chem,(atomic_weight(ic),number_abundance(ic), &
            mass_fraction(ic), ic=1,num_chem),mean_molecular_weight
-      if (nchem0 < num_chem) then
+      if (ierr /= 0 .or. nchem0 < num_chem) then
          ierr = 1
          return
       end if
@@ -452,7 +456,8 @@ end subroutine rabu
 ! (num_t_points, num_rho_points, num_vars) from file_unit: for each of
 ! num_t_points temperature records, reads the record's density-point
 ! count (asserted equal for every record) and log10(T), then reads
-! num_vars variables at each of its density points.
+! num_vars variables at each of its density points. A short record, a
+! table larger than its arrays or a ragged one is ierr = 1.
 subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
      num_t_points,num_rho_points,log_t,table_data, ierr)
 
@@ -471,7 +476,11 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       ierr = 0
 
       do t_idx = 1, num_t_points
-      read(file_unit     ) rho_count_read,log_t(t_idx)
+      read(file_unit, iostat=ierr) rho_count_read,log_t(t_idx)
+      if (ierr /= 0) then
+         ierr = 1
+         return
+      end if
       if(t_idx == 1) num_rho_points=rho_count_read
 !     Check limits and number of density points of table
       if ( num_t_points > max_t_points .or.  num_rho_points > max_rho_points ) then
@@ -483,7 +492,11 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
          return
       end if
       do rho_idx = 1, num_rho_points
-      read(file_unit     ) (table_data(t_idx,rho_idx,var_idx),var_idx=1,num_vars)
+      read(file_unit, iostat=ierr) (table_data(t_idx,rho_idx,var_idx),var_idx=1,num_vars)
+      if (ierr /= 0) then
+         ierr = 1
+         return
+      end if
       end do
       end do
 end subroutine rtab
@@ -503,7 +516,9 @@ end subroutine rtab
 !             OTHER (SEE SEPARATE INSTRUCTIONS)    : mhd%mhd_output
 !
 !     Error   ierr = 1 signals PGL,TL outside the domain of tables
-!             (otherwise ierr = 0).
+!             (log T outside the tables' range, or log P above the
+!             highest of a row the interpolation uses), or
+!             non-equidistant ZAMS tables; otherwise ierr = 0.
 !
 ! Top-level entry point to the MHD (Mihalas, Hummer, Dappen)
 ! equation-of-state table interpolator. S/R MHDST (via read_mhd_tables) must
@@ -538,8 +553,10 @@ end subroutine mhdpx
 !                         BY THE TABLES
 !     (TLIM1/TLIM2/TMINI/TMAXI are mhd%zams_lower_upper_boundary_log10t,
 !     zams_centre_boundary_log10t, table_log10t_min, table_log10t_max.)
-!     An out-of-range TL returns silently with ierr = 0 and
-!     mhd%mhd_output untouched (historical behaviour, preserved).
+!     A point outside the tables returns ierr = 1 (mhd%mhd_output is
+!     then undefined). The X interpolation follows the family the T
+!     selects: quadratic across the three ZAMS compositions, cubic
+!     across four of the five centre ones.
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: ndimt = 8
@@ -548,6 +565,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
            hydrogen_fraction
 
       real(dp) :: table_vars(ndimt,ivarx), table_hfrac(ndimt)
+      logical :: in_range, use_centre_tables
 
 !     Quantities for interpolation in X
       real(dp) :: cubic_vars(ivarx,4), cubic_x_nodes(4)
@@ -568,30 +586,44 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 
       if (log10_temperature < mhd%table_log10t_min .or. &
            log10_temperature > mhd%table_log10t_max) then
-          return
+         ierr = 1
+         return
       end if
+      table_vars = 0.0d0
+      table_hfrac = 0.0d0
+      use_centre_tables = log10_temperature >= mhd%zams_centre_boundary_log10t
 !     Lower ZAMS tables
       if (log10_temperature < mhd%zams_lower_upper_boundary_log10t) then
          do i=1,3
          itbl = -i
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
+         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
+              in_range)
+         if (.not. in_range) exit
          end do
-      else if (log10_temperature < mhd%zams_centre_boundary_log10t) then
+      else if (.not. use_centre_tables) then
 !     Upper ZAMS tables
          do i=1,3
          itbl = i
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
+         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
+              in_range)
+         if (.not. in_range) exit
          end do
       else
 !     CENTRE TABLES
          do i=1,5
 !        Offset (+3) to access center tables
          itbl = i + 3
-         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt)
+         call mhdpx2(log10_pressure, log10_temperature, itbl, table_vars, table_hfrac, ndimt, &
+              in_range)
+         if (.not. in_range) exit
          end do
       end if
+      if (.not. in_range) then
+         ierr = 1
+         return
+      end if
 !     Interpolation in X
-      if (log10_temperature <= mhd%zams_centre_boundary_log10t) then
+      if (.not. use_centre_tables) then
 !        Quadratic Newton (equidistant XC's)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
@@ -650,11 +682,12 @@ end subroutine mhdpx1
 ! ZAMS A/B/C, 1/2/3 upper ZAMS A/B/C, 4..8 centre 1..5) at
 ! (log10 P, log10 T) and stores the result as row |table_selector|
 ! (ZAMS) or table_selector (centre) of table_vars, with that table's
-! hydrogen mass fraction in table_hfrac. The tables are the
+! hydrogen mass fraction in table_hfrac; in_range is false when log P
+! is above the highest of a row the interpolation uses. The tables are the
 ! composition-indexed arrays of mhd (imhd_zams_a..c,
 ! imhd_centre_1..5 in mhd_eos_tables).
 subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
-     table_vars, table_hfrac, ndimt)
+     table_vars, table_hfrac, ndimt, in_range)
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: nt1m = mhd_nt1m
@@ -668,6 +701,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       real(dp), intent(in) :: log10_pressure, log10_temperature
       real(dp), intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
+      logical, intent(out) :: in_range
 !     Nomenclature for accessing the tables
 !     ZAMS TABLES
 !     contral (variable X) tables
@@ -679,6 +713,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, table_selector, &
       integer :: i, ic
 
       interpolated_vars = 0.0d0
+      in_range = .true.
 !     Main selection of tables
 !     selector -ic is lower ZAMS composition ic (row ic), +ic is upper
 !     ZAMS composition ic (row ic), and mhd_n_zams+ic is centre
@@ -721,7 +756,7 @@ subroutine interpolate_and_store(table_data, table_dim_t, table_dim_r, &
 
       call interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
            table_dim_t, table_dim_r, num_vars, table_log10t, num_t, &
-           num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars)
+           num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars, in_range)
       do i=1,num_vars
          table_vars(row,i) = interpolated_vars(i)
       end do
@@ -739,10 +774,11 @@ end subroutine mhdpx2
 ! numerics' 4-point lir: at each of the 4 bracketing T rows, in log P
 ! (work1 -> work2); then across the 4 rows in log T (work2 ->
 ! interp_vars). Above the highest log P of a row it returns with
-! interp_vars unset.
+! in_range false and interp_vars unset; below the lowest, and outside
+! the T rows, the stencils clamp to the table's edge.
 subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
      table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
-     work1, work2, y_work, interp_vars)
+     work1, work2, y_work, interp_vars, in_range)
       integer, intent(in) :: table_dim_t, table_dim_r, num_vars
       real(dp), intent(in) :: log10_pressure, log10_temperature
       real(dp), intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
@@ -751,6 +787,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       real(dp), intent(inout) :: work1(num_vars,4), work2(num_vars,4)
       real(dp), intent(inout) :: y_work(num_vars)
       real(dp), intent(out) :: interp_vars(num_vars)
+      logical, intent(out) :: in_range
 
       integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
       real(dp) :: x_nodes(4)
@@ -764,6 +801,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
 ! in-range temperature).  t_indices(1) starts at 1 so a temperature
 ! below the first table row clamps to the bottom stencil instead of
 ! reading a stale/zero index.
+      in_range = .true.
       t_indices(1)=1
       do n=1,num_t
          if (table_log10t(n).ge.log10_temperature) exit
@@ -781,6 +819,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
          p_min=table_data(t_idx, 1,2)
          p_max=table_data(t_idx,num_r,2)
          if(log10_pressure.gt.p_max) then
+            in_range = .false.
             return
          end if
          do m=1,num_r
