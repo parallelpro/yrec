@@ -4,7 +4,7 @@ This note explains how YREC computes nuclear reaction rates, energy generation a
 
 Two layers are involved:
 
-- **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never touch `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (in `reaction_rates`), which the star layer fills at the start of every run (`configure_network`). `tools/check_boundaries.py` enforces this.
+- **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never touch `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (in `net_configuration`), which the star layer builds at the start of every run (`net_settings_from_star`, `setup/net_settings_setup.f90`) and installs with `set_net_settings`. `tools/check_boundaries.py` enforces this.
 - **`core/step/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
 
 Callers elsewhere in the code (the composition step `core/step/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC uses from the five modules below, and nothing more. The individual reaction rates, the reaction table and the neutrino routines stay internal. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
@@ -93,7 +93,6 @@ Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. T
 
 | Routine | Called from | What it does |
 |---|---|---|
-| `configure_network` | `run_yrec`, at the start of every run | Fills `net_settings` from `star%ctrl` and the rate factors (after the Monte Carlo factors are applied) and calls `set_net_settings`. |
 | `network_rates_of_model` | `compute_burn_rates`, `mid_timestep_model` | The composition rate vector of every shell of the model passed in that is hotter than the nuclear cutoff; zero below. |
 | `compute_burn_rates` | `advance_composition` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
 | `burn_regions` | `burn_network`, `burn_deuterium`, `mid_timestep_model` (`advance_rotation_substep`, `burn_and_settle`) | The regions a burn visits, in order: each radiative shell above the nuclear cutoff, then each mixed region as a unit. It takes the temperatures and region tables as arguments, so the rotation sub-steps pass their midpoint model's. |

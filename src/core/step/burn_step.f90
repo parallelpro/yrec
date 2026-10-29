@@ -3,11 +3,10 @@
 !----------------------------------------------------------------------
 ! The star-layer side of nuclear burning: the code that reads the model,
 ! calls the net/ physics and stores the results in star. The physics
-! itself lives in net/: the rates (net_lib's compute_reaction_rates), the
-! energy generation (nuclear_energy), the network and its implicit and
-! equilibrium burns (network), and the light elements (light_elements).
+! itself lives in net/ (net_lib): the composition rate vector, the
+! energy generation, the implicit burn and the light elements. net/'s
+! settings are built in setup/net_settings_setup.
 ! Here:
-!   configure_network     net/'s settings, from the run's controls
 !   surface_accretion_now the step's surface accretion, for the
 !                         deuterium burn
 !   compute_zone_energy   one shell's energy generation
@@ -26,7 +25,7 @@ module burn_step
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: configure_network, surface_accretion_now, &
+      public :: surface_accretion_now, &
            compute_zone_energy, burn_regions, network_rates_of_model, &
            compute_burn_rates, burn_network, burn_deuterium, burn_network_region, store_start_li_be_rates, &
            store_end_li_be_rates, burn_li_be, average_li_be_over_cz
@@ -34,46 +33,6 @@ module burn_step
 contains
 
 
-
-!----------------------------------------------------------------------
-! configure_network
-!----------------------------------------------------------------------
-! Fills net/'s settings (net_lib's net_settings_t) from the run's
-! controls and rate factors, and installs them (set_net_settings). run_yrec
-! calls it at the start of every run, after the Monte Carlo rate
-! factors are applied; net/ reads no other configuration.
-!   star reads: be7p_qqs0ee_scale, be7p_qs0e_scale, c12_alpha_scale,
-!     cross_section_scale, ctrl%be9_palpha_rate_scale,
-!     ctrl%be9_pd_rate_scale, ctrl%be9_pg_rate_scale,
-!     ctrl%calc_neutrinos, ctrl%li6_rate_scale, ctrl%li7_rate_scale,
-!     ctrl%nuclear_logT_cutoffs, ctrl%use_itoh_neutrino_loss,
-!     ctrl%weak_screening_threshold, extra_cross_section_scale,
-!     o16_gamma_scale, qqs0ee_scale, qs0e_scale
-!   star writes: none
-subroutine configure_network(s)
-      use net_lib, only: net_settings_t, set_net_settings
-      type(star_info), intent(inout) :: s
-      type(net_settings_t) :: settings
-
-      settings%logT_cutoffs = s%ctrl%nuclear_logT_cutoffs
-      settings%weak_screening_threshold = s%ctrl%weak_screening_threshold
-      settings%cross_section_scale = s%cross_section_scale
-      settings%s_prime_scale = s%qs0e_scale
-      settings%s_double_prime_scale = s%qqs0ee_scale
-      settings%extra_cross_section_scale = s%extra_cross_section_scale
-      settings%be7p_s_prime_scale = s%be7p_qs0e_scale
-      settings%be7p_s_double_prime_scale = s%be7p_qqs0ee_scale
-      settings%n15_pg_scale = s%o16_gamma_scale
-      settings%n15_pa_scale = s%c12_alpha_scale
-      settings%li6_rate_scale = s%ctrl%li6_rate_scale
-      settings%li7_rate_scale = s%ctrl%li7_rate_scale
-      settings%be9_pg_rate_scale = s%ctrl%be9_pg_rate_scale
-      settings%be9_pd_rate_scale = s%ctrl%be9_pd_rate_scale
-      settings%be9_palpha_rate_scale = s%ctrl%be9_palpha_rate_scale
-      settings%calc_neutrinos = s%ctrl%calc_neutrinos
-      settings%use_itoh_neutrino_loss = s%ctrl%use_itoh_neutrino_loss
-      call set_net_settings(settings)
-end subroutine configure_network
 
 !----------------------------------------------------------------------
 ! surface_accretion_now

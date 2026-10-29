@@ -220,8 +220,8 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
 1. **Physics domains never use `star`.** Their state comes in as
    arguments and their configuration as one settings record filled by
    the star layer at the start of a run (`net/`: `net_lib`'s
-   `net_settings`, filled by `configure_network` in
-   `core/step/burn_step.f90`). They take the slot constants from the
+   `net_settings`, built by `net_settings_from_star` in
+   `setup/net_settings_setup.f90` and installed by `set_net_settings`). They take the slot constants from the
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in

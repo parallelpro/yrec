@@ -21,8 +21,9 @@
 ! stay inside; net/test/test_net reaches them through the internal
 ! modules.
 ! net/ reads no model state and no star%ctrl: its configuration is the
-! net_settings record, filled at the start of every run by the star
-! layer (configure_network in core/step/burn_step.f90). How the pieces are
+! net_settings record, built at the start of every run by the star
+! layer (net_settings_from_star, setup/net_settings_setup.f90) and
+! installed with set_net_settings. How the pieces are
 ! called during a timestep: net/README.md.
 !----------------------------------------------------------------------
 module net_lib

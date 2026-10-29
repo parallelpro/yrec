@@ -56,11 +56,12 @@ module reaction_rates
 ! S-factor reactions are in network's reaction table, one row each.
       real(dp), parameter, private :: &
            be7_pcapture_fit(5) = [.040572d0, -0.2095d0, -0.0595d0, 0.16762d0, 0.12114d0]
-! The rate laws a reaction-table row can name (compute_screened_rate).
-! shares_rate marks a second outcome of the reaction in the row above.
+! The rate laws a reaction-table row can name (compute_screened_rate),
+! 1 to num_rate_laws. shares_rate marks a second outcome of the reaction
+! in the row above.
       integer, parameter, public :: shares_rate = 0, s_factor_fit = 1, &
            cf88_c13_alpha_n = 2, cf88_c12_alpha_gamma = 3, &
-           cf88_n14_alpha_gamma = 4, cf88_triple_alpha = 5
+           cf88_n14_alpha_gamma = 4, cf88_triple_alpha = 5, num_rate_laws = 5
 ! A reaction's screening constants: the charge product Z1 Z2 and the
 ! Graboske et al. (1973, table 4) factors of the intermediate (z86) and
 ! strong (z53, z43, z23) forms.

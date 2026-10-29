@@ -45,8 +45,8 @@ subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings
 
-      use net_lib
-      use burn_step, only: configure_network
+      use net_lib, only: set_net_settings
+      use net_settings_setup, only: net_settings_from_star
       use star_info_lib, only: star_info, i_h1, i_metals
       use yrec_output, only: output_run_header
       use io_units
@@ -126,7 +126,8 @@ subroutine run_yrec(ierr)
 ! calibration protocols.
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)
-      call configure_network(s)
+      call set_net_settings(net_settings_from_star(s), ierr)
+      if (ierr /= 0) return
       call begin_calibration
 
 ! Go through the kind cards in order. star%job%nk is the run list's

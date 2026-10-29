@@ -62,7 +62,8 @@ end module test_structure_source
 program test_structure
       use controls_reader, only: read_controls
       use run_setup, only: set_up_constants_and_tables
-      use burn_step, only: configure_network
+      use net_lib, only: set_net_settings
+      use net_settings_setup, only: net_settings_from_star
       use convection_lib, only: set_convection_settings
       use microphysics_settings, only: convection_settings_from_star
       use rotation_configuration, only: set_rotation_settings
@@ -133,7 +134,8 @@ subroutine load_deck_model(path)
       if (ierr /= 0) call die('read_controls')
       call set_up_constants_and_tables(star, ierr)
       if (ierr /= 0) call die('set_up_constants_and_tables')
-      call configure_network(star)
+      call set_net_settings(net_settings_from_star(star), ierr)
+      if (ierr /= 0) call die('set_net_settings')
       star%job%nk = 1
       star%job%initial_envelope_x = star%job%initial_x_array(1)
       star%job%initial_envelope_z = star%job%initial_z_array(1)

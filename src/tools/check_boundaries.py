@@ -242,7 +242,7 @@ def check_star_blind(src_root):
 # Physics domains whose code may not touch the star object (2026-10):
 # their state comes in as arguments and their configuration as a
 # settings record (net: net_lib's net_settings, filled by the star
-# layer's configure_network). Index constants from star_info_lib (the
+# layer's net_settings_from_star, setup/). Index constants from star_info_lib (the
 # composition slots i_*, json, ...) are allowed; `star` itself is not.
 STAR_FREE_DIRS = ["net", "kap", "eos", "atm", "numerics", "convection",
                   "element_diffusion"]

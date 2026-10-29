@@ -50,15 +50,18 @@ module net_configuration
            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
            xs_pep, xs_be7e, xs_be7p, xs_hep]
 
-! Everything net/ needs from the run's configuration.
+! Everything net/ needs from the run's configuration. The declared
+! defaults are the controls' (defaults/physics.defaults), so a record
+! nobody filled in gives a run's default network.
       type, public :: net_settings_t
 ! log10 T at or below which: (1) nothing burns; (4) helium burning is
 ! off; (5) the thermal neutrino losses are skipped. (2) and (3) gated
 ! the level-1 equilibrium burn, removed 2026-10; they are read and
-! unused.
-         real(dp) :: logT_cutoffs(5) = 0.0d0
+! unused. (nuclear_logT_cutoffs)
+         real(dp) :: logT_cutoffs(5) = [6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0]
 ! the weak-screening exponent below which screening is weak
-         real(dp) :: weak_screening_threshold = 0.0d0
+! (weak_screening_threshold; 0.03 reproduces Graboske et al. 1973)
+         real(dp) :: weak_screening_threshold = 0.03d0
 ! multipliers of each reaction's S-factor (cross_section_scale) and of
 ! its first and second energy derivatives (s_prime_scale,
 ! s_double_prime_scale), by reaction slot; only the S-factor rate law

@@ -6,7 +6,7 @@
 ! conventions). net/ is a function of (log T, log rho, composition)
 ! once its settings are installed, so each piece is tested on its own:
 !   * the cross-section scales (setup/user_inputs.f90, newcross
-!     defaults) and configure_network,
+!     defaults) and net_settings_from_star,
 !   * compute_network_rates on a (log T, log rho) grid, and
 !     compute_reaction_rates' analytic derivatives against centred
 !     differences,
@@ -49,7 +49,7 @@ program test_net
            r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings
       use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates
       use thermal_neutrinos, only: sneut, azbar
-      use burn_step, only: configure_network
+      use net_settings_setup, only: net_settings_from_star
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -179,7 +179,11 @@ program test_net
 
 ! cross-section scales via the real remap, then the network's settings
       call map_user_inputs(star)
-      call configure_network(star)
+      call set_net_settings(net_settings_from_star(star), setups_ierr)
+      if (setups_ierr /= 0) then
+         write(*,'(a)') "test_net: FAIL (set_net_settings)"
+         stop 1
+      end if
       write(*,'(a)') "# test_net: cross_section_scale (reaction slots), then " // &
            "extra_cross_section_scale (pep, Be7+e, Be7+p, hep), from map_user_inputs " // &
            "(newcross defaults)"
@@ -453,6 +457,7 @@ contains
 ! light-element rate scales 1), keeping the cross-section scales.
       subroutine install_production_settings()
          type(net_settings_t) :: s
+         integer :: ierr
          s = net_settings
          s%logT_cutoffs = [6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0]
          s%weak_screening_threshold = 0.03d0
@@ -463,7 +468,7 @@ contains
          s%be9_pg_rate_scale = 1.0d0
          s%be9_pd_rate_scale = 1.0d0
          s%be9_palpha_rate_scale = 1.0d0
-         call set_net_settings(s)
+         call set_net_settings(s, ierr)
       end subroutine install_production_settings
 
 ! compute_abundance_rates, dX_i/dt / A_i of the network species (s_*
