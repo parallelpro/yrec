@@ -38,9 +38,6 @@ contains
 !   am_transport_convective_flag : true where a zone is convective for
 !      angular momentum transport (overshoot regions included).
 !   num_zones : the number of zones.
-!   diffusion_converged : true if the solve had converged before
-!      this check (the advection-diffusion solve can say so); it marks
-!      the iteration converged and suppresses the summary line.
 ! In/out:
 !   specific_angular_momentum : j after this iteration (cm^2/s);
 !      update_omega resets it to I omega/m for the omega it finds.
@@ -63,8 +60,7 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
      am_transport_convective_flag, num_zones, eta_squared, &
      moment_of_inertia, specific_angular_momentum, cut_count, &
      converged_flag, redo_flag, omega, &
-     qiw, mean_radius, &
-     diffusion_converged, ierr)
+     qiw, mean_radius, ierr)
       use omega_profile, only: solid_body_omega, omega_from_j, &
            default_inertia_tolerance
       use star_info_lib, only: star_info, json
@@ -88,7 +84,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       logical, intent(out) :: redo_flag
       double precision, intent(inout) :: omega(json)
       double precision, intent(inout) :: qiw(json), mean_radius(json)
-      logical, intent(in) :: diffusion_converged
       integer, intent(out) :: ierr
 ! locals
 ! The history of measure_convergence, one entry per iteration: room for
@@ -105,10 +100,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
 
       converged_flag = .false.
       redo_flag = .false.
-      if(diffusion_converged)then
-         converged_flag = .true.
-         redo_flag = .false.
-      endif
       call reject_negative_j()
       if (ierr /= 0 .or. redo_flag) return
       call measure_convergence()
@@ -222,14 +213,12 @@ subroutine report_largest_change()
             max_dj_zone = zone_index
          endif
       end do
-      if(.not.diffusion_converged)then
-         write(*,160)max_fractional_dj,max_dj_zone, &
-              (max_delta_j_by_iter(scan_index), &
-              max_delta_j_zone_by_iter(scan_index),scan_index=1, &
-              iteration_number)
+      write(*,160)max_fractional_dj,max_dj_zone, &
+           (max_delta_j_by_iter(scan_index), &
+           max_delta_j_zone_by_iter(scan_index),scan_index=1, &
+           iteration_number)
   160       format(' MAX D(J/M)/(J/M)',1pe12.3,' AT PT.',i5, &
-                 ' BY ITERATION'/5(1x,e11.3,i4))
-      endif
+              ' BY ITERATION'/5(1x,e11.3,i4))
 end subroutine report_largest_change
 
 end subroutine check_angular_momentum

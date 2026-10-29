@@ -37,16 +37,16 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `transport_regions` | `next_transport_region`: the runs of interfaces where the total velocity U is positive. |
 | `region_transport` | `diffuse_region_angular_momentum`: one region's angular momentum diffusion over a sub-step, on its grid: the system, its solve and the map back to j/m (star-blind). |
 | `secular_transport` | `apply_secular_transport`: one sub-step of transport, the iteration; its steps (the interfaces' setup, the velocities, the restart, the uncoupled spin-down, the region loop, the checks, the mixing) are module procedures with explicit arguments. |
-| `am_transport_coefficients` | The angular momentum diffusion equation's tridiagonal system (`am_diffusion_coeffs`; and, commented out, the advection-diffusion transport) and its solve (`solve_angular_momentum_transport`). |
+| `am_transport_coefficients` | The angular momentum diffusion equation's tridiagonal system (`am_diffusion_coeffs`) and its solve (`solve_angular_momentum_transport`). |
 | `circulation` | `circulation_velocities`: the structure at the interfaces, the mechanisms' velocities (`instability_velocities`) with their scales and averaging, their sum U; the diffusion coefficients from them (`diffusion_velocity_scales`); the Zahn coupling factor; the quadrupole moment. |
 | `rotational_mixing` | The mixing of the composition: its grid, coefficients and solve. |
 | `am_grid`, `equal_grid` | The equally spaced grids and the maps back to the model. |
 | `stability_coefficients` | `rotation_stability_setup`: the structure at the zone interfaces, the zones' radii, the dynamical-shear limit and the coefficients of the circulation and instability velocities, once per sub-step (into `stab`). |
 | `transport_checks` | The angular momentum and composition checks, which can ask for a redo. |
 
-`burn_settle_mix.f90`, `burn_mix_extrapolated.f90` and `burn_li_be_midpoint.f90` hold the Bulirsch–Stoer burn-and-mix path. It is commented out by the author's decision; each file's header says how to revive it.
+The commented-out code, kept by the author's decision, lives in `retired/` (not compiled): the Bulirsch–Stoer burn-and-mix path (`burn_settle_mix.f90.txt`, `burn_mix_extrapolated.f90.txt`, `burn_li_be_midpoint.f90.txt`, and its call sites in `bulirsch_stoer_calls.f90.txt`) and the advection-diffusion transport (`advection_diffusion.f90.txt`, every fragment with the place it came from). Each file's header says how to revive it.
 
-The advection-diffusion transport (`use_diffusion_advection_transport`, legacy `LDIFAD`; Maeder & Zahn 1998) is commented out too (2026-10-12, the author's decision): it never worked, because most of its coefficient arrays were never filled. `am_advection_diffusion_coeffs`' banner lists the pieces to uncomment; a rotating run that sets the flag stops.
+The advection-diffusion transport (`use_diffusion_advection_transport`, legacy `LDIFAD`; Maeder & Zahn 1998) is commented out too (2026-10-12, the author's decision): it never worked, because most of its coefficient arrays were never filled. its banner in `retired/advection_diffusion.f90.txt` lists the pieces to restore; a rotating run that sets the flag stops.
 
 ## 2. A step
 
@@ -100,7 +100,7 @@ Each of these checks was confirmed to fail under a mutation of the code it cover
 
 `docs/ROTATION_VALIDATION.md` collects the validation: the analytic checks' measured orders, a sub-step convergence study (`src/tools/substep_convergence.py`), and a comparison with MESA for a solid body under J conservation (`sample_cases/rotation_vs_MESA`).
 
-`python3 src/tools/coverage.py --work DIR --deck ...` measures the line coverage of rotation/ under the two test programs and the decks given (a -O0 --coverage build in DIR). With the configuration-matrix rotating decks, the rotating-variant decks (radiative cores, 50 Myr) and the rescale-only deck it was 92.7% (2026-10-28); the unrun lines are the checks' unreachable branches and the gradient-reversal safeguard (docs/bug_sweep.md O15).
+`python3 src/tools/coverage.py --work DIR --deck ...` measures the line coverage of rotation/ under the two test programs and the decks given (a -O0 --coverage build in DIR). With the configuration-matrix rotating decks, the rotating-variant decks (radiative cores, 50 Myr) and the rescale-only deck it was 92.7% (2026-10-28); the unrun lines were the checks' unreachable branches and the gradient-reversal safeguard, both since removed (docs/bug_sweep.md O15).
 
 The decks pin the full step: the rotating solar deck, the five rotating configuration-matrix decks, and the three testsuite rotating-mixing decks (differential and solid body). A deliberate change means regenerating `rotation/test/expected_test_rotation.out`.
 

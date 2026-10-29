@@ -1180,7 +1180,7 @@ subroutine checkj_check()
 ! a change of 1e-6 (within the tolerance)
       jprev = j0; jnew = j0*(1.0d0 + 1.0d-6); dt = 1.0d13; cuts = 0
       call check_angular_momentum(st, log_rho, jprev, j0, log_r, log_m, dm, 2, conv, n, &
-           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, .false., ierr)
+           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, ierr)
       err = 0.0d0
       if (.not. converged .or. redo .or. ierr /= 0) err = 1.0d0
       err = err + maxval(abs(jprev(1:n) - jnew(1:n))/jnew(1:n))
@@ -1191,14 +1191,14 @@ subroutine checkj_check()
 ! a change of 1e-3 (above it)
       jprev = j0; jnew = j0*(1.0d0 + 1.0d-3*sin(dble([(k, k = 1, json)])))
       call check_angular_momentum(st, log_rho, jprev, j0, log_r, log_m, dm, 2, conv, n, &
-           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, .false., ierr)
+           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, ierr)
       err = 0.0d0
       if (converged .or. redo .or. ierr /= 0) err = 1.0d0
       call report("checkj: above the tolerance: not converged", err, 0.0d0)
 ! a negative j stops the run
       jprev = j0; jnew = j0; jnew(20) = -jnew(20)
       call check_angular_momentum(st, log_rho, jprev, j0, log_r, log_m, dm, 2, conv, n, &
-           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, .false., ierr)
+           eta2, inertia, jnew, cuts, converged, redo, w, qiw, r0, ierr)
       err = 0.0d0
       if (ierr == 0) err = 1.0d0
       call report("checkj: a negative j stops the run", err, 0.0d0)

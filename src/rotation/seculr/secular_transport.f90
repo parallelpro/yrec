@@ -97,15 +97,13 @@ contains
 ! the new j; redo_flag, with sub_timestep halved and cut_count raised,
 ! when a check asks for a shorter sub-step; diffusion_solve_ok;
 ! omega_surface and cz_moment_of_inertia of the surface convection zone;
-! mixing_diffusion_coeff and total_velocity; star%am_diffusion_coeff
-! and star%mixing_diffusion_coeff for the profile. A nonzero ierr stops
-! the run.
+! star%am_diffusion_coeff and star%mixing_diffusion_coeff for the
+! profile. A nonzero ierr stops the run.
 subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, circ_scr, &
      sub_timestep, specific_angular_momentum_saved, &
      zone_min, zone_max, redo_flag, cut_count, &
      cz_moment_of_inertia, cz_mass_bottom, cz_mass_top, omega_surface, &
-     surface_cz_active, mixing_diffusion_coeff, total_velocity, &
-     diffusion_solve_ok, ierr)
+     surface_cz_active, diffusion_solve_ok, ierr)
       type(star_info), intent(inout) :: s
       type(substep_model_state), intent(inout) :: sub_model
       type(substep_physics_state), intent(inout) :: sub_physics
@@ -126,10 +124,11 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
       double precision, intent(in) :: cz_mass_top
       double precision, intent(inout) :: omega_surface
       logical, intent(in) :: surface_cz_active
-      double precision, intent(inout) :: mixing_diffusion_coeff(json)
-      double precision, intent(inout) :: total_velocity(json)
       logical, intent(inout) :: diffusion_solve_ok
       integer, intent(out) :: ierr
+! U, the sum of the mechanisms' velocities, and D_mix at the interfaces
+! (the commented-out Bulirsch-Stoer path took both from the caller)
+      double precision :: total_velocity(json), mixing_diffusion_coeff(json)
 ! D_omega at the interfaces (diffusion_velocity_scales); j/m after the
 ! previous iterate (check_angular_momentum's reference); omega at the
 ! sub-step's start
@@ -540,10 +539,7 @@ end subroutine transport_unstable_regions
 ! ---------------------------------------------------------------
 ! The end of an iteration. check_angular_momentum stops the run on a
 ! negative j/m, tests convergence against the previous iterate, finds
-! omega and the shape from the new j, and smooths any new reversal of
-! the omega gradient. Its diffusion_converged argument, the
-! commented-out advection-diffusion solve's own convergence, is false
-! (docs/bug_sweep.md O28). Unless it asked for a redo,
+! omega and the shape from the new j. Unless it asked for a redo,
 ! check_composition checks the mixed composition (an anomalous
 ! abundance halves sub_timestep and asks for a redo) and recomputes the
 ! mean molecular weight. Mixing without angular momentum transport
@@ -569,7 +565,7 @@ subroutine check_iterate(s, sub_model, sub_physics, iteration, &
            iteration, sub_model%am_transport_convective_flag, s%nz, &
            sub_model%eta_squared, sub_model%moment_of_inertia, s%j_rot, cut_count, &
            diffusion_solve_ok, redo_flag, s%omega_mid, sub_model%di_domega, &
-           sub_model%mean_radius, .false., ierr)
+           sub_model%mean_radius, ierr)
       if (ierr /= 0) return
       if (.not. redo_flag) call check_composition(s, sub_physics, s%xa, iteration, &
            s%nz, sub_timestep, cut_count, diffusion_solve_ok, redo_flag, ierr)

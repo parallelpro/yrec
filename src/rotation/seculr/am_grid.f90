@@ -229,22 +229,7 @@ subroutine edge_coefficients()
 ! Eddington-Sweet velocities rot_scr%es_advective_velocity and
 ! es_diffusive_velocity times 0.2 * 4 pi * difad_velocity_scale,
 ! splined the same way)
-!      if (rotation_settings%use_diffusion_advection_transport) then
-!         scale_factor = 0.2d0*c4pi*rotation_settings%difad_velocity_scale
-!         table_y(1) = scale_factor*rot_scr%es_advective_velocity(zone_begin + 1)
-!         do i = 2,ntab
-!            ii = zone_begin + i - 1
-!            table_y(i) = scale_factor*rot_scr%es_advective_velocity(ii)
-!         end do
-!         table_y(ntabb) = scale_factor*rot_scr%es_advective_velocity(zone_end)
-!         call osplin(eval_x,rot_scr%am_advective_coeff,table_x,table_y,ntabb,chi_grid%num_eq_points)
-!         table_y(1) = scale_factor*rot_scr%es_diffusive_velocity(zone_begin + 1)
-!         do i = 2,ntab
-!            ii = zone_begin + i - 1
-!            table_y(i) = scale_factor*rot_scr%es_diffusive_velocity(ii)
-!         end do
-!         table_y(ntabb) = scale_factor*rot_scr%es_diffusive_velocity(zone_end)
-!         call osplin(eval_x,rot_scr%am_diffusive_coeff,table_x,table_y,ntabb,chi_grid%num_eq_points)
+! (now in rotation/retired/advection_diffusion.f90.txt)
 ! The composition diffusion coefficient is added to the diffusive part,
 ! cf. Zahn 1992, A&A 265, 115: the Eddington-Sweet term
 ! (es_diffusive_velocity) is the diffusion from horizontal transport,
@@ -286,10 +271,7 @@ subroutine apply_jacobians()
 ! The angular momentum coefficient times rho r^4 (I/m r^2) dchi/dr.
       call multiply_by_exp10(chi_grid%eq_am_diffusion_coeff, eval_y, chi_grid%num_eq_points)
 ! (commented out: the advection-diffusion coefficients by the same factor)
-!      if (rotation_settings%use_diffusion_advection_transport) then
-!         call multiply_by_exp10(rot_scr%am_advective_coeff, eval_y, chi_grid%num_eq_points)
-!         call multiply_by_exp10(rot_scr%am_diffusive_coeff, eval_y, chi_grid%num_eq_points)
-!      end if
+! (now in rotation/retired/advection_diffusion.f90.txt)
 end subroutine apply_jacobians
 
 end subroutine am_transport_grid

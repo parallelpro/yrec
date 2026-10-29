@@ -107,12 +107,7 @@ subroutine store_previous_velocities()
          end do
       end do
 ! (commented out: the advection-diffusion transport's velocities)
-!      if (rotation_settings%use_diffusion_advection_transport) then
-!         do i = zone_min,zone_max
-!            rot_scr%es_advective_velocity_prev(i) = rot_scr%es_advective_velocity(i)
-!            rot_scr%es_diffusive_velocity_prev(i) = rot_scr%es_diffusive_velocity(i)
-!         end do
-!      end if
+! (now in rotation/retired/advection_diffusion.f90.txt)
 end subroutine store_previous_velocities
 
 ! ---------------------------------------------------------------
@@ -224,14 +219,7 @@ subroutine average_with_previous()
          end do
       end do
 ! (commented out: the same for the advection-diffusion parts)
-!      if (rotation_settings%use_diffusion_advection_transport) then
-!         do i = zone_min,zone_max
-!            rot_scr%es_advective_velocity(i) = 0.5d0*(rot_scr%es_advective_velocity(i) &
-!                 + rot_scr%es_advective_velocity_prev(i))
-!            rot_scr%es_diffusive_velocity(i) = 0.5d0*(rot_scr%es_diffusive_velocity(i) &
-!                 + rot_scr%es_diffusive_velocity_prev(i))
-!         end do
-!      end if
+! (now in rotation/retired/advection_diffusion.f90.txt)
 end subroutine average_with_previous
 
 ! ---------------------------------------------------------------

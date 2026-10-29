@@ -41,7 +41,7 @@ module rotation_scratch_lib
 ! capacity of the 10-column banded system of
 ! am_advection_diffusion_coeffs and banded_solver, 4*num_eq_points - 2
 ! rows, room for 2000 points, not checked against num_eq_points)
-!      integer, parameter, public :: band_nmax = 8000
+! (now in rotation/retired/advection_diffusion.f90.txt)
 
 ! ---------------------------------------------------------------
 ! The structure interpolated in time to the current sub-step, at the
@@ -170,65 +170,7 @@ module rotation_scratch_lib
       end type circulation_velocity_state
 
 ! ---------------------------------------------------------------
-! Kept commented out by the author's decision, for the paths they
-! served:
-! the commented-out Bulirsch-Stoer burn-and-mix path's tables, commented
-! out with it:
-!          double precision :: bs_extrapolation_table(11,15,json), &
-!               bs_extrapolated_composition(15,json), &
-!               bs_extrapolation_increment(15,json)
-! The commented-out advection-diffusion transport's arrays (2026-10-12,
-! the author's decision; see am_transport_coefficients), commented out
-! with it. Those marked "unset" were never filled, which is why that
-! transport never worked; facd2/facd3 were filled and read by nothing.
-! The advective and diffusive coefficients on the equal grid; the
-! Eddington-Sweet advective and diffusive velocities and their previous
-! iterates; the Maeder & Zahn coefficients on the model grid and (unset)
-! on the equal grid; the shear and GSF diffusion coefficients on the
-! model grid and (unset) on the equal grid; the (unset) geometric
-! factors, mixing velocity estimate and equatorial radius; d chi/dr at
-! the grid edges (unset); the second- and third-derivative geometric
-! factors; the theta term (Maeder & Zahn 1998) on the new mesh, now,
-! mean and previous, and its relaxation factor; the order d omega/dr
-! shear terms; henyey_coefficients' copies of d ln kappa/d ln T,
-! d eps/d ln T and (eps - eps_nu - eps_grav)/eps.
-!           double precision :: am_advective_coeff(json), &
-!                am_diffusive_coeff(json)
-!           double precision :: es_advective_velocity(json), &
-!                es_advective_velocity_prev(json), &
-!                es_diffusive_velocity(json), &
-!                es_diffusive_velocity_prev(json)
-!           double precision :: facd2(json), facd3(json), &
-!                am_2nd_deriv_coeff(json), &
-!                am_3rd_deriv_coeff(json), &
-!                geometric_factor(json), &
-!                velocity_coeff0(json), &
-!                velocity_coeff1a(json), &
-!                velocity_coeff1b(json), &
-!                velocity_coeff2a(json), &
-!                velocity_coeff2b(json), &
-!                eq_velocity_coeff0(json), &
-!                eq_velocity_coeff1a(json), &
-!                eq_velocity_coeff1b(json), &
-!                eq_velocity_coeff2a(json), &
-!                eq_velocity_coeff2b(json), &
-!                shear_diffusion_coeff(json), &
-!                gsf_diffusion_coeff(json), &
-!                shear_diffusion_coeff_eqgrid(json), &
-!                gsf_diffusion_coeff_eqgrid(json)
-!           double precision :: mixing_geometric_factor(json), &
-!                mixing_velocity_estimate(json), &
-!                equatorial_radius(json)
-!           double precision :: dchi_dr_edge(json)
-!           double precision :: second_deriv_geom_factor_eqgrid(json), &
-!                third_deriv_geom_factor_eqgrid(json), &
-!                second_deriv_geom_factor(json), &
-!                third_deriv_geom_factor(json)
-!           double precision :: theta_rezoned(json), theta_new(json), &
-!                theta_mean(json), es_relaxation_factor(json), &
-!                theta_prev(json)
-!           double precision :: difad_shear_coeff1(json), difad_shear_coeff2(json)
-!           double precision :: dlnkappa_dlnt(json), &
-!                deps_dlnt(json), neutrino_loss_fraction(json)
-
+! The fields of the commented-out paths (the Bulirsch-Stoer burn-and-mix
+! and the advection-diffusion transport) are in
+! rotation/retired/advection_diffusion.f90.txt.
 end module rotation_scratch_lib

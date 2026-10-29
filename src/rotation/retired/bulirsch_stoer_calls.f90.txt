@@ -1,0 +1,28 @@
+! The commented-out Bulirsch-Stoer burn-and-mix path's call sites in
+! rotation/evolve_rotation.f90, retired 2026-10-28 (the path itself is
+! in burn_settle_mix.f90.txt, burn_mix_extrapolated.f90.txt and
+! burn_li_be_midpoint.f90.txt here). Not compiled.
+
+! ===== In evolve_angular_momentum's sub-step loop, before `exit retry` =====
+! The commented-out Bulirsch-Stoer path (MHP 6/00) extrapolated mixing
+! plus burning to zero timestep here, when instability transport was on
+! and the model not fully convective; while it was on, the xa_start
+! updates above were skipped:
+!     if(rotation_settings%instability_transport_active .and. .not.fully_convective_flag)then
+!       call burn_settle_mix(cod2,sub_timestep,star%xa,sub_model%log_density,sub_model%luminosity_lsun, &
+!            sub_model%log_pressure,sub_model%log_radius,star%log_mass,star%m,star%dm,star%log_total_mass, &
+!            sub_model%log_temperature,total_velocity,envelope_boundary_zone,core_boundary_zone, &
+!            envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
+!            sub_model%am_transport_convective_flag,star%nz,radiative_zone_bounds, &
+!            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
+!       if (ierr /= 0) return
+!     endif
+
+! ===== In burn_light_elements_over_substep, after the start-of-step rates are stored =====
+! The commented-out Bulirsch-Stoer path (rotation/burn_settle_mix.f90)
+! burned here instead, when instability transport was on and the model
+! not fully convective, and left the start-of-step rates alone:
+!           call burn_li_be_midpoint(sub_timestep,star%xa,sub_model%log_radius,star%m, &
+!                star%dm,sub_model%log_temperature,envelope_boundary_zone_cur, &
+!                envelope_boundary_zone_prev,star%nz)
+

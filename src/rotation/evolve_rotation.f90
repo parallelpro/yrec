@@ -77,9 +77,6 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       double precision :: specific_angular_momentum_saved(json)
 ! The structure interpolated to each sub-step (mid_timestep_model) is
 ! sub_model's (rotation_scratch_lib).
-! cod2 and total_velocity (HV): produced by secular_transport for
-! the commented-out burn_settle_mix, their only consumer.
-      double precision :: cod2(json), total_velocity(json)
       integer :: convective_zone_bounds(12,2), &
            convective_zone_bounds_burn(12,2), radiative_zone_bounds(13,2)
       double precision :: cz_mass_bottom, cz_mass_top
@@ -111,7 +108,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       integer :: num_convective_zones_burn
       integer :: iend
 ! (commented out with the advection-diffusion transport's theta term)
-!      double precision :: omega_avg, domega_dr, delta_radius_step
+! (now in rotation/retired/advection_diffusion.f90.txt)
 
       ierr = 0
       num_species_tracked = num_tracked_species()
@@ -189,19 +186,8 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
          call burn_light_elements_over_substep()
          if (ierr /= 0) return
       endif
-! The commented-out Bulirsch-Stoer path (MHP 6/00) extrapolated mixing
-! plus burning to zero timestep here, when instability transport was on
-! and the model not fully convective; while it was on, the xa_start
-! updates above were skipped:
-!     if(rotation_settings%instability_transport_active .and. .not.fully_convective_flag)then
-!       call burn_settle_mix(cod2,sub_timestep,star%xa,sub_model%log_density,sub_model%luminosity_lsun, &
-!            sub_model%log_pressure,sub_model%log_radius,star%log_mass,star%m,star%dm,star%log_total_mass, &
-!            sub_model%log_temperature,total_velocity,envelope_boundary_zone,core_boundary_zone, &
-!            envelope_boundary_zone_prev,envelope_boundary_zone_cur,diffusion_solve_ok, &
-!            sub_model%am_transport_convective_flag,star%nz,radiative_zone_bounds, &
-!            convective_zone_bounds,num_radiative_zones,num_convective_zones, ierr)
-!       if (ierr /= 0) return
-!     endif
+! (The commented-out Bulirsch-Stoer path extrapolated mixing plus burning
+! here: rotation/retired/bulirsch_stoer_calls.f90.txt.)
       exit retry
       end do retry
       if (elapsed_substep_time.ge.full_timestep) exit
@@ -359,7 +345,7 @@ subroutine apply_instability_transport()
            redo_needed_flag, redo_count, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
            omega_surface, surface_cz_active, &
-           cod2, total_velocity, diffusion_solve_ok, ierr)
+           diffusion_solve_ok, ierr)
       if (ierr /= 0) return
       if(redo_needed_flag)then
          fx = 2.0D0*sub_timestep/full_timestep
@@ -416,12 +402,7 @@ subroutine burn_light_elements_over_substep()
          s%rate_li7_start(zone_index) = s%rate_li7(zone_index)
          s%rate_be9_start(zone_index) = s%rate_be9(zone_index)
       end do
-! The commented-out Bulirsch-Stoer path (rotation/burn_settle_mix.f90)
-! burned here instead, when instability transport was on and the model
-! not fully convective, and left the start-of-step rates alone:
-!           call burn_li_be_midpoint(sub_timestep,star%xa,sub_model%log_radius,star%m, &
-!                star%dm,sub_model%log_temperature,envelope_boundary_zone_cur, &
-!                envelope_boundary_zone_prev,star%nz)
+! (The commented-out Bulirsch-Stoer path burned here instead: rotation/retired/bulirsch_stoer_calls.f90.txt.)
       call homogenize_convection_zones(s%xa,s%dm,sub_model%am_transport_convective_flag,s%nz)
       do zone_index = 1,s%nz
          do species_index = n_species_basic+1,n_species_extended

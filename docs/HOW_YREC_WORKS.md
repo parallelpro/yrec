@@ -505,11 +505,12 @@ interpolated in both directions with edge-validity bookkeeping
   (`tridia`)) — then mapped back (`equal_grid_to_model` (`eq2mod`)).
   The advective-diffusive variant (`LDIFAD`: `am_advection_diffusion_coeffs`
   (`dadcoeft`) + `banded_solver`) never worked (its coefficient arrays
-  were never filled) and is commented out; a rotating run that sets
+  were never filled) and is commented out, kept in
+  `src/rotation/retired/advection_diffusion.f90.txt`; a rotating run that sets
   `LDIFAD` stops. `check_angular_momentum` (`checkj`) stops the run at a
-  negative j, tests convergence on j, and smooths ω-gradient reversals
-  only where ω exceeds 1 rad/s (as in the F77 code), so that safeguard
-  practically never acts. Composition mixing uses the same grid
+  negative j and tests convergence on j (the F77 code's ω-gradient
+  reversal safeguard, which acted only above 1 rad/s and so never did,
+  was removed in 2026-10). Composition mixing uses the same grid
   (`diffuse_composition_driver`/`diffuse_composition` (`ndifcom`/`mixcom`),
   species-by-species with conservation-checked updates);
   `check_composition` (`checkc`) validates and can force timestep cuts.
@@ -538,7 +539,7 @@ None of the numerics keeps `save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files
 (`core/run/run_driver.f90`, `core/step/step_driver.f90`) and
-`rotation/burn_mix_extrapolated.f90` (commented out). `numerics/README.md` describes the
+`rotation/retired/burn_mix_extrapolated.f90.txt` (commented out, not compiled). `numerics/README.md` describes the
 modules.
 
 ## 6. Calibration modes
