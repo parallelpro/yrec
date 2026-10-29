@@ -26,14 +26,20 @@ The rate physics: the formulas `network`'s table rows name, and the run's settin
 | the rate laws | `compute_s_factor_rate` (reactions 1–7: the S-factor expansion with the row's q1..q8) and the Caughlan & Fowler forms `compute_c13_alpha_n_rate`, `compute_c12_alpha_gamma_rate`, `compute_n14_alpha_gamma_rate`, `compute_triple_alpha_rate`, each with its exact derivatives. |
 | `compute_be7_branching`, `compute_n15_branching`, `compute_hep_rate` | The fates of Be7 and N15 + p, and the screened hep factor for the neutrino flux. |
 | `deuterium_proton_capture_rate` | The d(p,γ)³He fit, shared by the energy and deuterium code. |
-| `set_net_settings` | Installs the run's settings (`net_settings_t`: temperature cutoffs, screening threshold, cross-section and S-factor scales, Li/Be rate scales, neutrino switches). Called once per run by `configure_network`. |
-
-It also holds the index families and data the network uses:
-- `r_*`: reaction slots 1–13, used by the rate record, the composition rate vector and the cross-section scales alike;
-- `rv_frac_n15_pa`, `rv_frac_be7_ecap`: the two branching fractions that follow the reactions in the composition rate vector;
-- `xs_pep`, `xs_be7e`, `xs_be7p`, `xs_hep`: the four cross-section scale slots after the reactions;
+It also holds the data the rate laws use:
 - `iso_*`: isotopes in the rate and screening composition;
 - the rate-law names (`s_factor_fit`, `cf88_*`, `shares_rate`), the screening constants' type, the Be7(p,γ) fit, and the isotope masses and charges.
+
+### `net/net_configuration.f90` (module `net_configuration`)
+
+The layout and the settings:
+- `r_*`: the reaction slots 1–`num_reactions` (11), used by the rate record, the composition rate vector, the energies and the per-reaction scales alike; each belongs to exactly one table row that computes its rate;
+- `rv_frac_n15_pa`, `rv_frac_be7_ecap`: the two branching fractions that follow the reactions in the composition rate vector;
+- `xs_pep`, `xs_be7e`, `xs_be7p`, `xs_hep`: the extra cross-section scales, of the rates outside the table;
+- `net_settings_t` and the run's `net_settings`: temperature cutoffs, screening threshold, the per-reaction S-factor scales and their derivative scales, the extra scales, Be7 + p's derivative scales, the N15 + p branch scales, Li/Be rate scales, neutrino switches;
+- `cross_section_scales_from_sstandard`: the legacy `sstandard` vector onto the scales (a warning for its entries 9 and 13, which belong to no reaction).
+
+`network`'s `set_net_settings` installs the settings (warning about a scale set on a reaction whose rate law takes none).
 
 ### `net/nuclear_energy.f90` (module `nuclear_energy`)
 

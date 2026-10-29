@@ -14,11 +14,12 @@
 !
 ! Rates. Each row names how its rate is computed: a rate law of
 ! reaction_rates (the S-factor fit, with the row's coefficients, or one
-! of the Caughlan & Fowler alpha-capture forms), its cross-section scale
-! slot, its screening constants and whether it burns with hydrogen or in
-! helium burning. compute_reaction_rates evaluates every row that owns a
-! rate; a second outcome of the same reaction (shares_rate) uses the
-! rate of the row above. The rates land at the rows' slots r_*.
+! of the Caughlan & Fowler alpha-capture forms), its screening constants
+! and whether it burns with hydrogen or in helium burning.
+! compute_reaction_rates evaluates every row that owns a rate; a second
+! outcome of the same reaction (shares_rate) uses the rate of the row
+! above. The rates land at the rows' slots r_* (net_configuration),
+! where the settings' scales of each reaction are too.
 !
 ! Reactions. Reaction j proceeds at
 !     R_j = b_j * g_j * prod_m X(reactants_j(m))    [per s per amu]
@@ -54,20 +55,23 @@
 ! by Newton iteration on J_ik = dF_i/dX_k.
 !
 ! Adding a reaction means adding a row to the table, and naming its rate
-! slot r_* in reaction_rates (raising num_reactions); a rate of a new
-! functional form also needs its rate law there. Adding a species means
-! adding it to the species list and to the rows that touch it.
+! slot r_* in net_configuration (raising num_reactions); a rate of a new
+! functional form also needs its rate law in reaction_rates. Adding a
+! species means adding it to the species list and to the rows that
+! touch it.
 module network
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, &
            i_o16, i_o18
-      use reaction_rates, only: r_pp, r_he3he3, r_he3he4, &
+      use net_configuration, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap, &
-           num_reactions, num_rate_rows, iso_h1, num_isotopes, &
+           num_reactions, num_rate_rows, net_settings, net_settings_t, &
+           store_net_settings
+      use reaction_rates, only: iso_h1, num_isotopes, &
            nuclear_rates, zone_conditions, screening_t, shares_rate, &
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
-           cf88_n14_alpha_gamma, cf88_triple_alpha, net_settings, &
+           cf88_n14_alpha_gamma, cf88_triple_alpha, &
            compute_zone_conditions, compute_screened_rate, &
            compute_be7_branching, compute_n15_branching, compute_hep_rate, &
            screening_mass_fractions
@@ -122,9 +126,9 @@ module network
 ! never more than the mass-energy released. network_table_errors checks
 ! both; net/test/test_net pins the table. The rate: rate_law (a rate law
 ! of reaction_rates, or shares_rate), burns_in (hydrogen_burning or
-! helium_burning), fit (the S-factor law's q1..q8), scale_slot (its
-! multipliers in net_settings' cross_section_scale, qs0e_scale and
-! qqs0ee_scale; 0: none) and screening (Z1 Z2 and the Graboske factors).
+! helium_burning), fit (the S-factor law's q1..q8; its multipliers are
+! the settings' scales at the row's slot) and screening (Z1 Z2 and the
+! Graboske factors).
       integer, parameter :: max_reactants = 3, max_change = 5
       type :: reaction_t
          character(len=24) :: name
@@ -141,7 +145,6 @@ module network
          integer :: rate_law = shares_rate
          integer :: burns_in = hydrogen_burning
          real(dp) :: fit(8) = 0.0d0
-         integer :: scale_slot = 0
          type(screening_t) :: screening = screening_t()
       end type reaction_t
 
@@ -152,19 +155,19 @@ module network
            reaction_t('pp chain to He3',     r_pp,      unbranched,           [s_h1, s_h1, 0],          &
                       [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0], &
                       q_mev=6.664d0, chain=chain_pp1, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_pp, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[0.12317d0, 1.08749d0, .93833d0, 0.d0, 0.d0, -3.3804d0, 20.8964d0, 0.d0], &
                       screening=screening_t(1.d0, 1.630d0, 1.175d0, 0.52d0, -0.413d0)), &
            reaction_t('He3(He3,2p)He4',      r_he3he3,  unbranched,           [s_he3, s_he3, 0],        &
                       [s_h1, 2, s_he3, -2, s_he4, 1, 0, 0, 0, 0], &
                       q_mev=12.860d0, chain=chain_pp1, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_he3he3, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.03392d0, -.273d0, -.0648d0, 0.d0, 0.d0, -12.2757d0, 76.6003d0, 0.d0], &
                       screening=screening_t(4.d0, 5.917d0, 3.73d0, 1.31d0, -0.655d0)), &
            reaction_t('He3(He4,g) Be7(e) ppII', r_he3he4, be7_electron_capture, [s_he3, s_he4, 0],      &
                       [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0], &
                       q_mev=1.586d0+17.394d0, chain=chain_pp2, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_he3he4, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.0325d0, -.2085d0, -.0474d0, 0.d0, 0.d0, -12.826d0, 67.8036d0, 0.d0], &
                       screening=screening_t(4.d0, 5.917d0, 3.73d0, 1.31d0, -0.655d0)), &
            reaction_t('He3(He4,g) Be7(p) ppIII', r_he3he4, be7_proton_capture, [s_he3, s_he4, 0],      &
@@ -173,19 +176,19 @@ module network
            reaction_t('C12(p,g) to C13',     r_pc12,    unbranched,           [s_h1, s_c12, 0],         &
                       [s_h1, -1, s_c12, -1, s_c13, 1, 0, 0, 0, 0], &
                       q_mev=3.457372d0, chain=chain_cno, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_pc12, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.0304d0, .7630d0, .1626d0, 4.79d0, 2.595d0, -13.6899d0, 69.130d0, 0.0d0], &
                       screening=screening_t(6.d0, 8.302d0, 4.804d0, 1.488d0, -0.643d0)), &
            reaction_t('C13(p,g)N14',         r_pc13,    unbranched,           [s_h1, s_c13, 0],         &
                       [s_h1, -1, s_c13, -1, s_n14, 1, 0, 0, 0, 0], &
                       q_mev=7.550628d0, chain=chain_cno, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_pc13, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.03035d0, -0.4044d0, -.08598d0, 7.456d0, 4.032d0, -13.7173d0, 70.3809d0, 0.0d0], &
                       screening=screening_t(6.d0, 8.302d0, 4.804d0, 1.488d0, -0.643d0)), &
            reaction_t('N14(p,g) N15(p,a)C12', r_pn14,   n15_to_c12,           [s_h1, s_n14, 0],         &
                       [s_h1, -2, s_n14, -1, s_c12, 1, s_he4, 1, 0, 0], &
                       q_mev=9.054d0+4.966d0, chain=chain_cno, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_pn14, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.0273d0, -1.60d0, -.3064d0, 0.0d0, 0.0d0, -15.2281d0, 69.8517d0, 0.0d0], &
                       screening=screening_t(7.d0, 9.520d0, 5.385d0, 1.61d0, -0.659d0)), &
            reaction_t('N14(p,g) N15(p,g)O16', r_pn14,   n15_to_o16,           [s_h1, s_n14, 0],         &
@@ -194,7 +197,7 @@ module network
            reaction_t('O16(p,g) O17(p,a)N14', r_po16,   unbranched,           [s_h1, s_o16, 0],         &
                       [s_h1, -2, s_o16, -1, s_n14, 1, s_he4, 1, 0, 0], &
                       q_mev=3.553d0, chain=chain_cno, &
-                      rate_law=s_factor_fit, burns_in=hydrogen_burning, scale_slot=r_po16, &
+                      rate_law=s_factor_fit, burns_in=hydrogen_burning, &
                       fit=[.02494d0, -1.224d0, -.2139d0, .69703d0, 0.3097d0, -16.6925d0, 70.8012d0, 0.d0], &
                       screening=screening_t(8.d0, 10.716d0, 5.941d0, 1.721d0, -0.673d0)), &
            reaction_t('C12(a,g)O16',         r_ac12,    unbranched,           [s_he4, s_c12, 0],        &
@@ -220,9 +223,39 @@ module network
 
       public :: burn_implicitly, network_table_errors, write_network_table, &
            compute_abundance_rates, compute_reaction_energies, &
-           compute_reaction_rates, compute_network_rates, reaction_counts
+           compute_reaction_rates, compute_network_rates, reaction_counts, &
+           set_net_settings
 
 contains
+
+!----------------------------------------------------------------------
+! set_net_settings: install the run's settings (net_configuration's
+! net_settings_t). The star layer calls it at the start of every run,
+! with the record it builds from the controls. A reaction scale set to
+! anything but 1 on a reaction whose rate law takes none (only the
+! S-factor law reads the per-reaction scales) gets a warning: it has no
+! effect.
+subroutine set_net_settings(settings)
+      use net_messages, only: net_report, message_length
+      type(net_settings_t), intent(in) :: settings
+      character(len=message_length) :: line(1)
+      integer :: j, k
+
+      do j = 1, n_rows
+         k = reactions(j)%rate_row
+         if (reactions(j)%rate_law == shares_rate .or. &
+              reactions(j)%rate_law == s_factor_fit) cycle
+         if (settings%cross_section_scale(k) /= 1.0d0 .or. &
+              settings%s_prime_scale(k) /= 1.0d0 .or. &
+              settings%s_double_prime_scale(k) /= 1.0d0) then
+            write(line(1), '(4a)') ' WARNING: net: a cross-section scale of ', &
+                 trim(reactions(j)%name), ' is not 1, but its rate law', &
+                 ' takes no scale; it has no effect'
+            call net_report(line)
+         end if
+      end do
+      call store_net_settings(settings)
+end subroutine set_net_settings
 
 !----------------------------------------------------------------------
 ! compute_reaction_rates: the H/He reaction rates of one zone and their
@@ -259,7 +292,7 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, &
               .not. helium_burning_temperature) cycle
          k = reactions(j)%rate_row
          call compute_screened_rate(reactions(j)%rate_law, reactions(j)%fit, &
-              reactions(j)%scale_slot, reactions(j)%screening, zone, &
+              k, reactions(j)%screening, zone, &
               nr%rate(k), nr%dlnrate_dlnrho(k), nr%dlnrate_dlnt(k))
       end do
       if (hydrogen) then
@@ -452,7 +485,6 @@ end function branch_fraction
 ! omitted) and x the network species' mass fractions.
 pure subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
      energy_by_slot, energy_by_chain)
-      use reaction_rates, only: num_reactions
       real(dp), intent(in) :: rate(num_reactions), x(n_network), &
            frac_n15_pa, frac_be7_ecap
       real(dp), intent(out) :: energy_by_slot(num_reactions), &

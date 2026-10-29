@@ -33,11 +33,9 @@ subroutine map_user_inputs(s)
       use star_info_lib, only: star_info
       use controls_buffer
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
-           xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
+           xs_pep, xs_be7e, xs_be7p, xs_hep
       implicit none
       type(star_info), intent(inout) :: s
-
-      integer :: i
 
 ! The reference S0 values (keV b) against which the input S0 values are
 ! scaled: those of Bahcall & Ulrich (1988), the normalization of the
@@ -125,10 +123,10 @@ contains
 ! Reset the rate-derivative scales and the N15 + p branching scales to
 ! unity.
 subroutine reset_rate_scale_defaults
-      do i = 1,8
-         s%qs0e_scale(i) = 1.0d0
-         s%qqs0ee_scale(i) = 1.0d0
-      end do
+      s%qs0e_scale = 1.0d0
+      s%qqs0ee_scale = 1.0d0
+      s%be7p_qs0e_scale = 1.0d0
+      s%be7p_qqs0ee_scale = 1.0d0
       s%c12_alpha_scale = 1.0d0
       s%o16_gamma_scale = 1.0d0
 end subroutine reset_rate_scale_defaults
@@ -137,9 +135,8 @@ end subroutine reset_rate_scale_defaults
 ! Set each reaction's cross-section scale, S0/S0_ref, and the scales
 ! of the two N15 + p branches.
 subroutine set_cross_section_scales
-         do i = 1,17
-            s%cross_section_scale(i) = 1.0d0
-         end do
+         s%cross_section_scale = 1.0d0
+         s%extra_cross_section_scale = 1.0d0
 ! compute_zone_energy multiplies each rate by cross_section_scale
 ! (legacy SSTANDARD), the ratio of the desired S0 to that of Bahcall &
 ! Ulrich (1988). Here the namelist vector is replaced by explicit S0
@@ -155,13 +152,13 @@ subroutine set_cross_section_scales
          s%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
          s%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
          s%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
-! Slots 8-13 keep unit scale: C13 + He4, C12 + He4, N14 + He4 and
-! triple alpha are resonant and not fit by a simple S0, and O16 + He4
-! and C12 + C12 are not used.
-         s%cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
-         s%cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
-         s%cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
-         s%cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
+! The helium-burning reactions (C13 + He4, C12 + He4, N14 + He4, triple
+! alpha) keep unit scale: they are resonant and not fit by a simple S0,
+! and their rate laws take no scale.
+         s%extra_cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
+         s%extra_cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
+         s%extra_cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
+         s%extra_cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
 ! The scales of the N15 + p branches, N15(p,alpha)C12 and
 ! N15(p,gamma)O16.
          s%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
@@ -214,12 +211,12 @@ subroutine set_first_derivative_scales
          else
             s%qs0e_scale(r_po16) = 0.0d0
          end if
-! Slot iq_be7p (8) of the derivative scales holds Be7 + p.
+! Be7 + p, outside the reaction table, has its own.
          if (s0_be7_p.gt.0.0d0) then
-            s%qs0e_scale(iq_be7p) = (s0p_be7_p/s0_be7_p)/ &
+            s%be7p_qs0e_scale = (s0p_be7_p/s0_be7_p)/ &
                  (qs0e_be7_p_a98/s0_be7_p_a98)
          else
-            s%qs0e_scale(iq_be7p) = 0.0d0
+            s%be7p_qs0e_scale = 0.0d0
          end if
 end subroutine set_first_derivative_scales
 
@@ -250,10 +247,10 @@ subroutine set_second_derivative_scales
             s%qqs0ee_scale(r_po16) = 0.0d0
          end if
          if (s0_be7_p.gt.0.0d0) then
-            s%qqs0ee_scale(iq_be7p) = (s0pp_be7_p/s0_be7_p)/ &
+            s%be7p_qqs0ee_scale = (s0pp_be7_p/s0_be7_p)/ &
                  (qqs0ee_be7_p_a98/s0_be7_p_a98)
          else
-            s%qqs0ee_scale(iq_be7p) = 0.0d0
+            s%be7p_qqs0ee_scale = 0.0d0
          end if
 end subroutine set_second_derivative_scales
 

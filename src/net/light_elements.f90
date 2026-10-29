@@ -8,12 +8,13 @@
 ! a step (burn_deuterium_region, for the main step and the rotation
 ! sub-steps). Li6/Li7/Be9: compute_li_be_rates, the
 ! proton-capture rates (the star-layer store_li_be_rates/burn_li_be store and
-! integrate them). Their configuration is reaction_rates' net_settings; the
+! integrate them). Their configuration is net_configuration's net_settings; the
 ! accreted gas comes in as an argument (surface_accretion).
 module light_elements
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use net_configuration, only: net_settings
       use reaction_rates, only: deuterium_proton_capture_rate, avogadro_dpg, &
-           deuteron_mass_amu, net_settings
+           deuteron_mass_amu
       implicit none
       private
       public :: deuterium_rate, burn_deuterium_region, compute_li_be_rates, &

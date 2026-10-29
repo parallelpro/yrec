@@ -7,8 +7,10 @@
 ! module). It holds no code of its own: it re-exports what the rest of
 ! the code uses from net/'s modules, and nothing more.
 !
-!   reaction_rates     the composition rate vector, the run's settings
-!   network            the implicit and equilibrium burns
+!   net_configuration  the reaction slots and the scale slots, the
+!                      run's settings record
+!   network            the reaction table, the rate evaluation, the
+!                      implicit burn, set_net_settings
 !   nuclear_energy     the energy generation of a zone
 !   light_elements     deuterium and Li/Be in the trace approximation,
 !                      and the trace-element integrator
@@ -25,12 +27,15 @@
 !----------------------------------------------------------------------
 module net_lib
 ! the composition rate vector (num_rate_rows rows per zone) and the
-! settings record; the slots of the cross-section scales the run may
-! set (r_pp ... r_po16 for the S-factor reactions, xs_* for the
-! neutrino-producing branches, iq_be7p for the Be7(p,g) Q-value)
-      use reaction_rates, only: num_rate_rows, net_settings_t, set_net_settings, &
-           r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
-           xs_pep, xs_be7e, xs_be7p, xs_hep, iq_be7p
+! settings record; the reaction slots (r_*: num_reactions, the size of
+! the per-reaction scales) and the extra cross-section scales (xs_*:
+! pep, the Be7 captures, hep; num_extra_scales); the legacy sstandard
+! map
+      use net_configuration, only: num_rate_rows, net_settings_t, &
+           num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
+           r_po16, num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep, &
+           num_sstandard, cross_section_scales_from_sstandard
+      use network, only: set_net_settings
 ! the implicit burn, with the network species a caller maps its
 ! abundances onto, and the network's dX/dt
       use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &

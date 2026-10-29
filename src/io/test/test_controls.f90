@@ -82,6 +82,10 @@ program test_controls
          write(u,'(a," = ",es25.17e3)') 'star%cross_section_scale('//itoa(i1)//')', &
               star%cross_section_scale(i1)
       end do
+      do i1 = 1, size(star%extra_cross_section_scale)
+         write(u,'(a," = ",es25.17e3)') 'star%extra_cross_section_scale('//itoa(i1)//')', &
+              star%extra_cross_section_scale(i1)
+      end do
       write(u,'(a," = ",es25.17e3)') 'star%envelope_hydrogen_fraction', star%envelope_hydrogen_fraction
       write(u,'(a," = ",es25.17e3)') 'star%envelope_metal_fraction', star%envelope_metal_fraction
       write(u,'(a," = ",es25.17e3)') 'star%solar_luminosity_cgs', star%solar_luminosity_cgs

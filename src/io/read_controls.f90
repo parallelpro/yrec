@@ -248,6 +248,7 @@ end subroutine read_inlist
 ! which runs next, reads use_new_nuclear_rates and the s0_* values.
 subroutine adopt_canonical_names(s)
       use star_info_lib, only: star_info
+      use net_lib, only: cross_section_scales_from_sstandard
       type(star_info), intent(inout) :: s
       tolerance_fraction = stolr0
       max_stage_index = imax
@@ -473,9 +474,11 @@ subroutine adopt_canonical_names(s)
       s0pp_be7_p = s0pp_1_be7p
       use_scv_eos = lscv
 ! lnewnuc = .false. takes the cross sections from sstandard (ratios to
-! Bahcall & Ulrich 1988); map_user_inputs sets them from the s0_* inputs
-! otherwise. An inlist gets the default ratios.
-      if (.not. lnewnuc) s%cross_section_scale = sstandard
+! Bahcall & Ulrich 1988, mapped onto the reaction and extra scales by
+! net); map_user_inputs sets them from the s0_* inputs otherwise. An
+! inlist gets the default ratios.
+      if (.not. lnewnuc) call cross_section_scales_from_sstandard(sstandard, &
+           s%cross_section_scale, s%extra_cross_section_scale)
 ! the atmosphere choice as read; the run may change star%job%atm_choice
       s%atm_choice_initial = kttau
       s%use_ttau_relation = .false.

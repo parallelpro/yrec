@@ -16,11 +16,10 @@
 !     compute_be7_branching, compute_n15_branching, compute_hep_rate
 !                              the branchings and the hep factor
 !     deuterium_proton_capture_rate   the shared d(p,g) fit
-!     set_net_settings         installs the run's settings (net_settings)
-! It also holds the index families (r_* reaction slots, rv_* fraction
-! slots, xs_* cross-section slots, iso_* isotopes) and the settings
-! record. The rest of net/ builds on it; code outside net/ reaches it
-! through net_lib.
+! It also holds the screening isotopes (iso_*) and their masses and
+! charges, the rate-law names a table row can give, and the screening
+! constants' type. The reaction slots and the settings it reads are
+! net_configuration's.
 !
 ! (History: these routines were once separate files, nuclear/<name>.f90,
 ! concatenated into net_lib with their per-file conversion notes kept
@@ -30,29 +29,11 @@
 ! ---------------------------------------------------------------------
 module reaction_rates
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use net_configuration, only: num_reactions, xs_be7e, xs_be7p, xs_hep, &
+           net_settings
       implicit none
       private
 
-! The reaction slots: the index of every per-reaction array (rates,
-! derivatives, screening, energies, cross_section_scale(1:13)). Slots 9
-! (O16 + alpha) and 13 (C12 + C12) are carried but never computed.
-      integer, parameter, public :: &
-           r_pp = 1, r_he3he3 = 2, r_he3he4 = 3, r_pc12 = 4, r_pc13 = 5, &
-           r_pn14 = 6, r_po16 = 7, r_ac13 = 8, r_ao16_unused = 9, &
-           r_ac12 = 10, r_an14 = 11, r_3alpha = 12, r_c12c12_unused = 13, &
-           num_reactions = 13
-! The composition rate vector (compute_network_rates): the reactions at
-! their r_* slots, per s per amu, then the N15(p,alpha) and Be7
-! electron-capture fractions.
-      integer, parameter, public :: rv_frac_n15_pa = num_reactions + 1, &
-           rv_frac_be7_ecap = num_reactions + 2, num_rate_rows = num_reactions + 2
-! cross_section_scale(14:17): the four cross-section factors after the
-! reactions -- pep, the Be7 electron and proton captures, hep.
-      integer, parameter, public :: &
-           xs_pep = 14, xs_be7e = 15, xs_be7p = 16, xs_hep = 17
-! In qs0e_scale and qqs0ee_scale, slot 8 holds Be7 + p (in these arrays
-! only; reaction slot 8 is He4 + C13).
-      integer, parameter, public :: iq_be7p = 8
 ! The isotopes of the screening composition and of the mass and charge
 ! tables.
       integer, parameter, public :: &
@@ -62,7 +43,7 @@ module reaction_rates
            num_isotopes = 13
 ! S0 (keV-b) of the two N15 + p branches (compute_n15_branching); integers,
 ! as the original literals were (both exact when promoted).
-      integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
+      integer, parameter :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
 ! d(p,g)3He: Avogadro's number over the deuteron mass (amu) turns CF88's
 ! N_A<sigma v> into the per-gram rate of both the deuterium depletion and
@@ -141,48 +122,12 @@ module reaction_rates
          type(screening_plasma) :: plasma
       end type zone_conditions
 
-! ---- the network's settings (2026-10) ----
-! Everything net/ needs from the run's configuration, in one record. The
-! star layer fills it at the start of every run, after the controls are
-! read and the Monte Carlo rate factors applied (configure_network,
-! core/step/burn_step.f90), by calling set_net_settings; nothing else writes it.
-      integer, parameter, public :: num_cross_section_scales = xs_hep
-      type, public :: net_settings_t
-! log10 T at or below which: (1) nothing burns; (4) helium burning is
-! off; (5) the solar neutrino fluxes and thermal neutrino losses are
-! skipped. (2) and (3) gated the level-1 equilibrium burn, removed
-! 2026-10; they are read and unused.
-         real(dp) :: logT_cutoffs(5) = 0.0d0
-! the screening parameter below which screening is weak
-         real(dp) :: weak_screening_threshold = 0.0d0
-! multipliers on the S-factors (r_* slots 1-13, then xs_pep..xs_hep), on
-! their first and second energy derivatives (slots 1-7 and iq_be7p),
-! and on the two N15 + p branches
-         real(dp) :: cross_section_scale(num_cross_section_scales) = 1.0d0
-         real(dp) :: qs0e_scale(iq_be7p) = 1.0d0, qqs0ee_scale(iq_be7p) = 1.0d0
-         real(dp) :: o16_gamma_scale = 1.0d0, c12_alpha_scale = 1.0d0
-! Li6(p,a), Li7(p,a), Be9(p,g), Be9(p,d), Be9(p,a) rate multipliers
-         real(dp) :: li6_rate_scale = 1.0d0, li7_rate_scale = 1.0d0, &
-              be9_pg_rate_scale = 1.0d0, be9_pd_rate_scale = 1.0d0, &
-              be9_palpha_rate_scale = 1.0d0
-! compute the solar neutrino fluxes; use the Itoh et al. (1996) thermal
-! neutrino losses
-         logical :: calc_neutrinos = .false., use_itoh_neutrino_loss = .false.
-      end type net_settings_t
-      type(net_settings_t), public, protected :: net_settings
-      public :: set_net_settings, screening_mass_fractions, &
+      public :: screening_mass_fractions, &
            deuterium_proton_capture_rate, compute_zone_conditions, &
            compute_screened_rate, compute_be7_branching, &
            compute_n15_branching, compute_hep_rate
 
 contains
-
-! set_net_settings: install the run's settings (net_settings_t above).
-subroutine set_net_settings(settings)
-      type(net_settings_t), intent(in) :: settings
-      net_settings = settings
-end subroutine set_net_settings
-
 
 !----------------------------------------------------------------------
 ! deuterium_proton_capture_rate
@@ -393,12 +338,13 @@ end function weak_intermediate_screening
 ! compute_screened_rate: the screened rate of one reaction of network's
 ! table, per gram per second with the abundance factors omitted, and
 ! its logarithmic derivatives, from its row's rate law, fit
-! coefficients, cross-section scale slot and screening constants. Each
-! law applies the screening exponent where its formula has always put it
-! (inside the fit's exponential for the S-factor and triple-alpha laws).
-pure subroutine compute_screened_rate(rate_law, fit, scale_slot, s, zone, &
+! coefficients, reaction slot (the S-factor law's scales are the
+! settings' at that slot) and screening constants. Each law applies the
+! screening exponent where its formula has always put it (inside the
+! fit's exponential for the S-factor and triple-alpha laws).
+pure subroutine compute_screened_rate(rate_law, fit, slot, s, zone, &
      rate, dlnrate_dlnrho, dlnrate_dlnt)
-      integer, intent(in) :: rate_law, scale_slot
+      integer, intent(in) :: rate_law, slot
       real(dp), intent(in) :: fit(:)
       type(screening_t), intent(in) :: s
       type(zone_conditions), intent(in) :: zone
@@ -409,7 +355,7 @@ pure subroutine compute_screened_rate(rate_law, fit, scale_slot, s, zone, &
            dscreen_dlnt)
       select case (rate_law)
       case (s_factor_fit)
-         call compute_s_factor_rate(fit, scale_slot, zone%density, zone%t, &
+         call compute_s_factor_rate(fit, slot, zone%density, zone%t, &
               screen, dscreen_dlnrho, dscreen_dlnt, rate, dlnrate_dlnrho, &
               dlnrate_dlnt)
       case (cf88_c13_alpha_n)
@@ -437,30 +383,26 @@ end subroutine compute_screened_rate
 ! rate = rho * [T9^(-2/3) S_eff/S0] * exp(tau + q7 + (q8 T9)^2 + screening)
 ! (Neutrino Astrophysics eq. 3.14, Fowler, Caughlan & Zimmerman 1967 eq.
 ! 52), with S_eff/S0 = 1 + q1 T9^(1/3) + q2.. q5 terms and tau = q6
-! T9^(-1/3). scale_slot picks the reaction's multipliers in net_settings:
-! cross_section_scale on the rate, qs0e_scale and qqs0ee_scale on the
-! first and second energy derivatives of S (0: unscaled). The
-! T-derivative is exact for this form. (2026-10: the q3 term lacked
-! qs0e_scale and the q4, q5 terms qqs0ee_scale.)
-pure subroutine compute_s_factor_rate(q, scale_slot, density, t, screen, &
+! T9^(-1/3). The reaction's multipliers in net_settings, at its slot:
+! cross_section_scale on the rate, s_prime_scale and
+! s_double_prime_scale on the first and second energy derivatives of S
+! (the q2, q3 and the q4, q5 terms). The T-derivative is exact for this
+! form. (2026-10: the q3 term lacked the first-derivative scale and the
+! q4, q5 terms the second.)
+pure subroutine compute_s_factor_rate(q, slot, density, t, screen, &
      dscreen_dlnrho, dscreen_dlnt, rate, dlnrate_dlnrho, dlnrate_dlnt)
       use math_lib
       real(dp), intent(in) :: q(:), density, screen, dscreen_dlnrho, &
            dscreen_dlnt
-      integer, intent(in) :: scale_slot
+      integer, intent(in) :: slot
       type(t9_powers), intent(in) :: t
       real(dp), intent(out) :: rate, dlnrate_dlnrho, dlnrate_dlnt
 ! T9^(-2/3) S_eff/S0, and the three multipliers
       real(dp) :: s_ratio, qs0e, qqs0ee, xs
 
-      qs0e = 1.0d0
-      qqs0ee = 1.0d0
-      xs = 1.0d0
-      if (scale_slot > 0) then
-         qs0e = net_settings%qs0e_scale(scale_slot)
-         qqs0ee = net_settings%qqs0ee_scale(scale_slot)
-         xs = net_settings%cross_section_scale(scale_slot)
-      end if
+      qs0e = net_settings%s_prime_scale(slot)
+      qqs0ee = net_settings%s_double_prime_scale(slot)
+      xs = net_settings%cross_section_scale(slot)
       s_ratio=t%m23+q(1)*t%m13+qs0e*(q(2)+q(3)*t%p13)+ &
            qqs0ee*(q(4)*t%p23+q(5)*t%t9)
       rate=density*s_ratio*exp(q(6)*t%m13+q(7)+(q(8)*t%t9)**2+screen)
@@ -474,8 +416,9 @@ end subroutine compute_s_factor_rate
 
 !----------------------------------------------------------------------
 ! The fate of Be7: electron capture (Neutrino Astrophysics eq. 3.18) or
-! proton capture (table 3.2, eq. 3.12, with the S_eff/S0 corrections of
-! slot iq_be7p and weak/intermediate screening), both per gram (rho over
+! proton capture (table 3.2, eq. 3.12, with the S_eff/S0 corrections,
+! their scales be7p_s_prime_scale and be7p_s_double_prime_scale, and
+! weak/intermediate screening), both per gram (rho over
 ! the bare Be7 mass, JNB 10/14/97), and the fraction burned each way.
 pure subroutine compute_be7_branching(zone, hydrogen_fraction, nr)
       use math_lib
@@ -487,12 +430,12 @@ pure subroutine compute_be7_branching(zone, hydrogen_fraction, nr)
       associate (density => zone%density, t => zone%t, plasma => zone%plasma)
 
       nr%be7_electron = (1.752d-10)*t%m12*(1.0d0 + 0.004d0*(1000.d0*t%t9 - 16.d0))
-      nr%be7_electron = nr%be7_electron*plasma%inv_mu_e*net_settings%cross_section_scale(xs_be7e)
+      nr%be7_electron = nr%be7_electron*plasma%inv_mu_e*net_settings%extra_cross_section_scale(xs_be7e)
       tau_be7p = (-10.2625d0*t%m13)
-      nr%be7_proton = (3.128813d+5)*hydrogen_fraction*net_settings%cross_section_scale(xs_be7p)*exp(tau_be7p)
+      nr%be7_proton = (3.128813d+5)*hydrogen_fraction*net_settings%extra_cross_section_scale(xs_be7p)*exp(tau_be7p)
       s_ratio_be7p = t%m23 + be7_pcapture_fit(1)*t%m13 + &
-           net_settings%qs0e_scale(iq_be7p)*(be7_pcapture_fit(2)+ be7_pcapture_fit(3)*t%p13) &
-           + net_settings%qqs0ee_scale(iq_be7p)*(be7_pcapture_fit(4)*t%p23 + be7_pcapture_fit(5)*t%t9)
+           net_settings%be7p_s_prime_scale*(be7_pcapture_fit(2)+ be7_pcapture_fit(3)*t%p13) &
+           + net_settings%be7p_s_double_prime_scale*(be7_pcapture_fit(4)*t%p23 + be7_pcapture_fit(5)*t%t9)
       nr%be7_proton = nr%be7_proton*s_ratio_be7p
       nr%be7_proton = nr%be7_proton*exp(weak_intermediate_screening(plasma, 4.0d0, 5.7790d0))
       per_gram_be7 = density*8.584981d+22
@@ -517,10 +460,10 @@ pure subroutine compute_n15_branching(zone, nr)
 
       pg_strength = t%m23 + 0.0273016d0*t%m13 + 0.14374d0 + 0.027490d0*t%p13 &
                 + 6.14685d0*t%p23 + 2.98940d0*t%t9
-      pg_strength = pg_strength*s0_n15pg_kevb*net_settings%o16_gamma_scale
+      pg_strength = pg_strength*s0_n15pg_kevb*net_settings%n15_pg_scale
       pa_strength = t%m23 + 0.0273016d0*t%m13 + 2.01186d0 + 0.384763d0*t%p13 &
                 + 17.0579d0*t%p23 + 8.29580d0*t%t9
-      pa_strength = pa_strength*s0_n15pa_kevb*net_settings%c12_alpha_scale
+      pa_strength = pa_strength*s0_n15pa_kevb*net_settings%n15_pa_scale
       nr%frac_n15_pa = pa_strength/(pa_strength + pg_strength)
       nr%frac_n15_pg = 1.0d0 - nr%frac_n15_pa
       end associate
@@ -642,7 +585,7 @@ pure subroutine compute_hep_rate(zone, nr)
       associate (density => zone%density, t => zone%t, plasma => zone%plasma)
 
       nr%hep = (1.71724d+11)*density*t%m23*exp(-6.1399d0*t%m13)
-      nr%hep = (1.0d0 + 0.067862d0*t%p13)*net_settings%cross_section_scale(xs_hep)*nr%hep
+      nr%hep = (1.0d0 + 0.067862d0*t%p13)*net_settings%extra_cross_section_scale(xs_hep)*nr%hep
       nr%hep = nr%hep*exp(weak_intermediate_screening(plasma, 2.0d0, 3.08687d0))
       end associate
 end subroutine compute_hep_rate

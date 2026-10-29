@@ -19,12 +19,10 @@
 module nuclear_energy
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use neutrino_flux_layout, only: n_nu_fluxes
-      use reaction_rates, only: nuclear_rates, &
-           net_settings, screening_mass_fractions, &
-           deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu, &
-           num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
-           r_po16, r_ac13, r_ao16_unused, r_ac12, r_an14, r_3alpha, &
-           r_c12c12_unused, xs_pep
+      use net_configuration, only: net_settings, num_reactions, r_pp, &
+           r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
+      use reaction_rates, only: nuclear_rates, screening_mass_fractions, &
+           deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, n_chains, n_network, &
@@ -195,11 +193,6 @@ pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dl
       real(dp) :: sum_rho, sum_t
       integer :: i
 
-! reactions 9 (O16 + alpha) and 13 (C12 + C12) are never computed
-      dlnrate_dlnrho(r_ao16_unused) = 0.0d0
-      dlnrate_dlnt(r_ao16_unused) = 0.0d0
-      dlnrate_dlnrho(r_c12c12_unused) = 0.0d0
-      dlnrate_dlnt(r_c12c12_unused) = 0.0d0
       e%total_energy_gen_rate = 0.0d0
       sum_rho = 0.0d0
       sum_t = 0.0d0
@@ -268,7 +261,7 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
 ! ratio, so leave it at 1 unless that ratio is meant to change
       e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*nr%t9_m12* &
            (1.0d0 + 20.d0*nr%t9)*eg(r_pp)
-      e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%cross_section_scale(xs_pep)/four_pi_au2
+      e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%extra_cross_section_scale(xs_pep)/four_pi_au2
 ! hep (eq. 3.12), from the screened rate factor of compute_reaction_rates
       e%neutrino_flux(i_nu_hep) = nr%hep
       e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &

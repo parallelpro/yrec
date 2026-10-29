@@ -43,6 +43,8 @@ module star_info_lib
       use stitched_model_state, only: stitched_model_record
       use neutrino_flux_layout
       use transport_mechanism_layout
+! the sizes of the reaction-rate scales
+      use net_lib, only: num_reactions, num_extra_scales
       implicit none
       private
       public :: json
@@ -239,14 +241,21 @@ module star_info_lib
             double precision :: atm_hras, tenv
             integer :: atm_choice_initial
             logical :: use_ttau_relation
-! phase A batch 2: the nuclear cross-section scale family -- fully
-! recomputed by setup/user_inputs.f90 from the s0_* namelist inputs after
-! every controls read (never namelist values themselves), and
-! cross_section_scale(1:3,16) is overwritten per Monte-Carlo run by
-! apply_monte_carlo_parameters. Consumed by net_lib's compute_network_rates and
-! burn_lib's compute_zone_energy.
-            double precision :: cross_section_scale(17), qs0e_scale(8), &
-                 qqs0ee_scale(8), o16_gamma_scale, c12_alpha_scale
+! The nuclear cross-section scales, rebuilt after every controls read by
+! setup/user_inputs.f90 from the s0_* inputs (or, with
+! use_new_nuclear_rates off, from the legacy sstandard), never namelist
+! values themselves; apply_monte_carlo_parameters overwrites those of
+! pp, He3 + He3, He3 + He4 and Be7 + p per Monte-Carlo run. By net_lib's
+! reaction slot r_*: the S-factor (cross_section_scale) and its first
+! and second derivatives (qs0e_scale, qqs0ee_scale); by its extra slot
+! xs_* (pep, Be7 + e, Be7 + p, hep): extra_cross_section_scale; Be7 + p's
+! derivative scales; the N15(p,gamma)O16 and N15(p,alpha)C12 scales.
+! The network's settings record takes them (net_settings_from_star).
+            double precision :: cross_section_scale(num_reactions), &
+                 qs0e_scale(num_reactions), qqs0ee_scale(num_reactions), &
+                 extra_cross_section_scale(num_extra_scales), &
+                 be7p_qs0e_scale, be7p_qqs0ee_scale, &
+                 o16_gamma_scale, c12_alpha_scale
 ! phase A batch 4: the working mixing length (former CMIXL, the one
 ! mutable member physical_constants carried) -- copied from the per-card
 ! control mixing_length_array(nk) at every kind-card start

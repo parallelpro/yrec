@@ -42,11 +42,12 @@ contains
 ! controls and rate factors, and installs them (set_net_settings). run_yrec
 ! calls it at the start of every run, after the Monte Carlo rate
 ! factors are applied; net/ reads no other configuration.
-!   star reads: c12_alpha_scale, cross_section_scale,
-!     ctrl%be9_palpha_rate_scale, ctrl%be9_pd_rate_scale,
-!     ctrl%be9_pg_rate_scale, ctrl%calc_neutrinos, ctrl%li6_rate_scale,
-!     ctrl%li7_rate_scale, ctrl%nuclear_logT_cutoffs,
-!     ctrl%use_itoh_neutrino_loss, ctrl%weak_screening_threshold,
+!   star reads: be7p_qqs0ee_scale, be7p_qs0e_scale, c12_alpha_scale,
+!     cross_section_scale, ctrl%be9_palpha_rate_scale,
+!     ctrl%be9_pd_rate_scale, ctrl%be9_pg_rate_scale,
+!     ctrl%calc_neutrinos, ctrl%li6_rate_scale, ctrl%li7_rate_scale,
+!     ctrl%nuclear_logT_cutoffs, ctrl%use_itoh_neutrino_loss,
+!     ctrl%weak_screening_threshold, extra_cross_section_scale,
 !     o16_gamma_scale, qqs0ee_scale, qs0e_scale
 !   star writes: none
 subroutine configure_network(s)
@@ -57,10 +58,13 @@ subroutine configure_network(s)
       settings%logT_cutoffs = s%ctrl%nuclear_logT_cutoffs
       settings%weak_screening_threshold = s%ctrl%weak_screening_threshold
       settings%cross_section_scale = s%cross_section_scale
-      settings%qs0e_scale = s%qs0e_scale
-      settings%qqs0ee_scale = s%qqs0ee_scale
-      settings%o16_gamma_scale = s%o16_gamma_scale
-      settings%c12_alpha_scale = s%c12_alpha_scale
+      settings%s_prime_scale = s%qs0e_scale
+      settings%s_double_prime_scale = s%qqs0ee_scale
+      settings%extra_cross_section_scale = s%extra_cross_section_scale
+      settings%be7p_s_prime_scale = s%be7p_qs0e_scale
+      settings%be7p_s_double_prime_scale = s%be7p_qqs0ee_scale
+      settings%n15_pg_scale = s%o16_gamma_scale
+      settings%n15_pa_scale = s%c12_alpha_scale
       settings%li6_rate_scale = s%ctrl%li6_rate_scale
       settings%li7_rate_scale = s%ctrl%li7_rate_scale
       settings%be9_pg_rate_scale = s%ctrl%be9_pg_rate_scale

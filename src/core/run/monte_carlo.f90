@@ -61,8 +61,9 @@ end subroutine setup_monte_carlo_runs
 
 ! ---------------------------------------------------------------
 ! For a Monte-Carlo run, apply the current run's sampled values: the
-! S-factor scales of p+p, He3+He3, He3+He4 and Be7+p
-! (cross_section_scale slots 1, 2, 3 and 16), each times the factor
+! S-factor scales of p+p, He3+He3, He3+He4 and Be7+p (the
+! cross-section scales r_pp, r_he3he3, r_he3he4 and the extra scale
+! xs_be7p), each times the factor
 ! that takes the code's reference S0 to the Bahcall & Pinsonneault
 ! (1996) value; the metal diffusion factor; the solar luminosity; and
 ! the age scale factor. Outside Monte Carlo it only sets
@@ -71,26 +72,28 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
      age_scale_factor)
       use math_lib
       use physical_constants
+      use net_lib, only: r_pp, r_he3he3, r_he3he4, xs_be7p
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number
       double precision, intent(out) :: age_scale_factor
 ! The ratios of the Bahcall & Pinsonneault (1996) S0 values to the
-! code's reference ones, by cross_section_scale slot (only slots 1, 2,
-! 3 and 16 are used). The literals are default (single-precision)
-! reals on purpose: they reproduce the original data statement's values
-! exactly, and appending d0 would shift them in the 8th decimal.
-      double precision, parameter :: bp96_scale_factor(17) = &
-           [0.9558,0.9690,0.9712,1.0,1.0,0.992,1.0,1.0, &
-           1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.92088,0.1625]
+! code's reference ones, for the four sampled reactions. (The original
+! data statement also had 0.992 for N14 + p and 0.1625 for hep, which
+! are not sampled.) The literals are default (single-precision) reals on
+! purpose: they reproduce the original data statement's values exactly,
+! and appending d0 would shift them in the 8th decimal.
+      double precision, parameter :: bp96_pp_factor = 0.9558, &
+           bp96_he3he3_factor = 0.9690, bp96_he3he4_factor = 0.9712, &
+           bp96_be7p_factor = 0.92088
 ! The base solar luminosity in erg/s (MHP 3/96), which
 ! luminosity_target scales.
       double precision, parameter :: reference_solar_luminosity = 3.844D33
 
       if (s%ctrl%monte_carlo_active) then
-         s%cross_section_scale(1) = s%job%s11_rate(monte_carlo_run_number)*bp96_scale_factor(1)
-         s%cross_section_scale(2) = s%job%s33_rate(monte_carlo_run_number)*bp96_scale_factor(2)
-         s%cross_section_scale(3) = s%job%s34_rate(monte_carlo_run_number)*bp96_scale_factor(3)
-         s%cross_section_scale(16) = s%job%s17_rate(monte_carlo_run_number)*bp96_scale_factor(16)
+         s%cross_section_scale(r_pp) = s%job%s11_rate(monte_carlo_run_number)*bp96_pp_factor
+         s%cross_section_scale(r_he3he3) = s%job%s33_rate(monte_carlo_run_number)*bp96_he3he3_factor
+         s%cross_section_scale(r_he3he4) = s%job%s34_rate(monte_carlo_run_number)*bp96_he3he4_factor
+         s%extra_cross_section_scale(xs_be7p) = s%job%s17_rate(monte_carlo_run_number)*bp96_be7p_factor
 ! The sampled diffusion factor (helium_fraction_param, legacy FHE,
 ! copied to diffusion_factor) sets the metal diffusion factor fgrz
 ! only; the helium factor fgry keeps its control value. (The F77 code

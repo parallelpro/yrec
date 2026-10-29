@@ -80,7 +80,10 @@ PUBLIC = {
             "hsra_t_tau_offset"},
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
     # Timmes' sneut/azbar/ifermi12/zfermim12 keep theirs).
+    # cross_section_scales_from_sstandard: the controls read maps the
+    # legacy sstandard vector onto the reaction scales with it.
     "net": {"compute_network_rates", "set_net_settings",
+            "cross_section_scales_from_sstandard",
             "burn_implicitly", "compute_abundance_rates",
             "compute_nuclear_energy",
             "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},

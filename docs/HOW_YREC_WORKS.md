@@ -432,10 +432,9 @@ cap.
 The routines, their call order and how to extend them are described in
 `src/net/README.md`. In brief:
 
-- 13 reaction slots: pp, He3+He3, He3+He4, p-captures on C12, C13,
+- 11 reaction slots: pp, He3+He3, He3+He4, p-captures on C12, C13,
   N14 and O16, plus He burning (3α and α-captures on C12, C13 and N14);
-  two slots (O16+α, C12+C12) are reserved and never computed, and the
-  Be7(e⁻,ν) and Be7(p,γ) branches of He3+He4 enter as a branching
+  the Be7(e⁻,ν) and Be7(p,γ) branches of He3+He4 enter as a branching
   fraction — rates in the Caughlan & Fowler (1988) / Bahcall parameterized
   forms with the N15 branching computed explicitly; an optional
   newer-rate set with **Solar Fusion II** S-factors and per-reaction

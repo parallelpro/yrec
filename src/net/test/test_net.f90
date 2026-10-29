@@ -44,9 +44,9 @@ program test_net
            network_species_slot, chain_pp1, chain_cno, chain_triple_alpha
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
-           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, &
-           nuclear_rates, num_reactions, r_3alpha, r_ac12, r_ac13, r_an14, &
-           rv_frac_be7_ecap, net_settings
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, nuclear_rates
+      use net_configuration, only: num_reactions, num_extra_scales, r_3alpha, &
+           r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings
       use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates
       use thermal_neutrinos, only: sneut, azbar
       use burn_step, only: configure_network
@@ -180,9 +180,11 @@ program test_net
 ! cross-section scales via the real remap, then the network's settings
       call map_user_inputs(star)
       call configure_network(star)
-      write(*,'(a)') "# test_net: cross_section_scale from map_user_inputs " // &
+      write(*,'(a)') "# test_net: cross_section_scale (reaction slots), then " // &
+           "extra_cross_section_scale (pep, Be7+e, Be7+p, hep), from map_user_inputs " // &
            "(newcross defaults)"
-      write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, 16)
+      write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, num_reactions)
+      write(*,'(4(1pe20.12))') (star%extra_cross_section_scale(i), i = 1, num_extra_scales)
 
 ! reaction rates over a (logT, logRho) grid at a solar-ish mixture
       write(*,'(a)') "# test_net: rates, X=0.70 Y3=3e-5 C12=3.5e-3 " // &
