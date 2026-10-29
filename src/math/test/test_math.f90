@@ -13,8 +13,12 @@
 !   real paths     pow(x, y) and exp10(x) against x**y and 10**x to a
 !                  few ulp of y ln x, the composition's error (bit for
 !                  bit under the intrinsic backend);
-!                  pow with a single-precision exponent is pow with it
-!                  promoted;
+!                  a single-precision exponent is its exact binary value
+!                  promoted (0.6666667 is 0.66666668653488159...), not
+!                  its decimal 0.6666667d0: pow(x, y_sp) matches
+!                  x**dble(y_sp) to the composition's error (bit for
+!                  bit under the intrinsic backend) and differs from
+!                  x**0.6666667d0 by about 2e-8;
 !   negative bases pow(-2, 3) = -8, pow(-2, 101) = -2**101 and
 !                  pow(-2, 100) = 2**100; pow(-2, 0.5) is NaN;
 !   pow(0, y)      0 for y > 0 under both backends; for y = 0 and y < 0
@@ -91,8 +95,14 @@ program test_math
          end do
          call report_true("pow, exp10: the intrinsic backend is x**y, bit for bit", holds)
       end if
-      call report_true("pow: a single-precision exponent is promoted", &
-           pow(3.7d0, 0.6666667) == pow(3.7d0, dble(0.6666667)))
+      y = dble(0.6666667)
+      if (crmath_backend) then
+         holds = abs(pow(3.7d0, 0.6666667) - 3.7d0**y) <= ulp_tolerance*abs(3.7d0**y)
+      else
+         holds = pow(3.7d0, 0.6666667) == 3.7d0**y
+      end if
+      holds = holds .and. abs(pow(3.7d0, 0.6666667) - 3.7d0**0.6666667d0) > 1.0d-8*3.7d0**y
+      call report_true("pow: a single-precision exponent is its binary value promoted", holds)
 
 ! negative bases
       call report_true("pow: (-2)**3 = -8", pow(-2.0d0, 3.0d0) == -8.0d0)

@@ -2,40 +2,15 @@
 ! math_lib
 !----------------------------------------------------------------------
 ! The one place YREC gets its elementary math (2026, reproducibility
-! campaign; modeled on MESA's math_lib; src/math/README.md). Two
-! backends, chosen at build time:
-!
-!   make USE_CRMATH=1   correctly-rounded backend: crmath (Townsend's
-!                       Fortran wrapper over crlibm, shipped in the
-!                       MESA SDK). Every elementary function returns
-!                       the IEEE-nearest result, so results are
-!                       bit-identical across platforms and architectures
-!                       with -ffp-contract=off (set unconditionally in
-!                       the Makefile) and the same gfortran major
-!                       version.
-!   make                intrinsic backend: pow and exp10 are ** and the
-!                       compiler's functions, verbatim -- the historical
-!                       behaviour bit for bit, so converting a call site
-!                       leaves the pins unchanged. Fast, and
-!                       platform-dependent in the last bits.
-!
-! Usage contract (enforced by tools/check_boundaries.py):
-!   * every procedure that calls an elementary transcendental
-!     (exp, log, log10, sin, cos, ...) has `use math_lib` in scope:
-!     under the crmath backend the module procedures shadow the
-!     intrinsics, so call sites are unchanged;
-!   * no real exponent after **: x**y with real y is a hidden libm pow,
-!     written pow(x, y); 10**x is written exp10(x). Integer exponents
-!     (x**2, x**n with integer n) stay as **.
-!
-! Under crmath, pow and exp10 follow MESA's definitions: an
-! integer-valued exponent below 100 in magnitude takes repeated
-! multiplication, anything else pow(x,y) = exp(log(x)*y) and exp10(x) =
-! exp(x*ln10), which crmath's exp and log determine completely. Under
-! the intrinsic backend they are passthroughs (x**y, 10**x) with no
-! fast path. Where the two differ (pow(0, y <= 0), integer exponents,
-! negative bases) is listed in src/math/README.md and checked by
-! test_math.
+! campaign; modeled on MESA's math_lib): pow, exp10, math_backend and,
+! under the crmath backend, crmath's correctly-rounded elementary
+! functions, which shadow the intrinsics. The backend is chosen at build
+! time (make: intrinsic; make USE_CRMATH=1: crmath). src/math/README.md
+! states the contract once: what each backend computes and where they
+! differ (section 2), the usage rule that tools/check_boundaries.py
+! enforces (section 3: use math_lib wherever an elementary function is
+! called; pow(x, y), not x**y, for a real y), and how to add a function
+! (section 4). test_math checks each backend against it.
 module math_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
 #ifdef YREC_CRMATH

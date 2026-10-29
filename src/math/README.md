@@ -51,4 +51,16 @@ A function crmath lacks would need a definition in both branches of the `#ifdef`
 
 ## 5. Its test
 
-`test_math` (`make tests` in `src/`, then `pytest test_math.py`) checks math_lib under the build's backend, and `test_math_crmath` under crmath whenever the MESA SDK is installed (the Makefile builds that copy of math_lib in `math/test/crmath/`, apart from the main build). The checks: the integer paths (repeated multiplication and exact powers of ten under crmath; `x**y`, `x**n`, `10**x` verbatim under the intrinsic backend), the real paths against `x**y` within the composition's error, a single-precision exponent, negative bases (`(-2)**3`, `(-2)**101`, `(-2)**100`, `(-2)**0.5`), `pow(0, y)` under each backend, and an exponent beyond the default integer range. Each prints ok or FAIL, and the program stops with status 1 on a FAIL. The negative-base check fails on the math_lib of 2c88d896, whose crmath `pow` gave NaN for `(-2)**101`.
+`test_math` (`make tests` in `src/`, then `pytest test_math.py`) checks math_lib under the build's backend, and `test_math_crmath` under crmath (the Makefile builds that copy of math_lib in `math/test/crmath/`, apart from the main build). Each check prints ok or FAIL, and the program stops with status 1 on a FAIL; the output, which holds no numbers, is compared with the pinned list for its backend (`math/test/expected_test_math_<backend>.out`). The checks:
+- the integer paths: repeated multiplication and exact powers of ten (0 ≤ n ≤ 22, 1/10ⁿ below) under crmath; `x**y`, `x**n`, `10**x` verbatim under the intrinsic backend;
+- the real paths: `x**y` and `10**x` within the composition's error (bit for bit under the intrinsic backend);
+- a single-precision exponent: its binary value promoted (0.6666667 is 0.66666668653488159...), so `pow(x, y_sp)` is `x**dble(y_sp)` to the composition's error and differs from `x**0.6666667d0` by about 2e-8;
+- negative bases: `(-2)**3 = -8`, `(-2)**101` and `(-2)**100` to a few ulp, `(-2)**0.5` NaN (the check fails on the math_lib of 2c88d896, whose crmath `pow` gave NaN for `(-2)**101`);
+- `pow(0, y)` under each backend (§2's table);
+- an exponent beyond the default integer range (3e9) takes the composition.
+
+Each check was confirmed to fail under a mutation of the math_lib code it covers: `python3 src/math/test/mutate_math.py [--only REGEX]` (from the repository root, after `make tests`) applies each of its 17 mutations to `math_lib.f90`, rebuilds the program of the mutated backend, expects the check to print FAIL and restores the file whatever happens; the crmath mutations are reported as skipped without the MESA SDK (17 of 17 caught on 2026-10-29).
+
+**Where it runs.** Locally, both backends whenever the MESA SDK is installed (`include/crmath.mod` under `MESASDK_DIR`, else `MESASDK_ROOT`, else `/Applications/mesasdk`, the Makefile's rule). Without the SDK, `pytest test_math.py` skips the crmath leg with the reason "crmath backend NOT TESTED: no MESA SDK". CI (`.github/workflows/ci.yml`) builds `test_math` and runs `test_math.py` on Linux without the SDK: there only the intrinsic backend is tested, and the crmath leg shows as skipped.
+
+**Coverage.** Every executable line of `math_lib.f90` runs under the test of its backend (gcov, 2026-10-29): the intrinsic branch's 12 lines under `test_math`, the crmath branch's 36 under `test_math_crmath`. `python3 src/tools/coverage.py --work DIR --dir math --test test_math` measures the intrinsic build (the main build's backend) the same way.

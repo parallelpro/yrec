@@ -2,7 +2,7 @@ math_lib backend: crmath
 pow: integer exponents are repeated multiplication               ok
 exp10: exact for 0 <= n <= 22, 1/10**n below                     ok
 pow, exp10: x**y and 10**x to a few ulp of y ln x                ok
-pow: a single-precision exponent is promoted                     ok
+pow: a single-precision exponent is its binary value promoted    ok
 pow: (-2)**3 = -8                                                ok
 pow: (-2)**101 and (-2)**100 to a few ulp of y ln 2              ok
 pow: (-2)**0.5 is NaN                                            ok
