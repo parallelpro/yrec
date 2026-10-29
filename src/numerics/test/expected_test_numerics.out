@@ -87,6 +87,22 @@ osplin
 # osplin: decreasing points (meval refuses, output untouched)
 osplin
    0.000000000000000E+00   0.000000000000000E+00
+# osplin: runs outside the table, a node then points above
+osplin
+   1.000000000000000E+00   0.000000000000000E+00  -1.250000000000000E-01
+osplin
+   5.631250000000000E+01   6.416666666666669E+01   8.150000000000018E+01
+osplin
+   0.000000000000000E+00   5.631250000000000E+01   6.416666666666669E+01
+osplin
+   4.900000000000000E+01   5.631250000000000E+01   6.416666666666669E+01
+osplin
+   3.600000000000000E+01   4.900000000000000E+01   4.900000000000000E+01
+   6.416666666666669E+01
+# osplin: error codes (n < 3; decreasing points; none)
+osplin n = 2: ierr, yval untouched  3  -1.0  -1.0
+osplin decreasing: ierr, yval untouched  5  -1.0  -1.0
+osplin on nodes: ierr  0   1.0   4.0
 # inter3/interp/intrp2/lagrange4/quint
 inter3 w
   -2.800000000000000E-01   1.120000000000000E+00   1.600000000000000E-01

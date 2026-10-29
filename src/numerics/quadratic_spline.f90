@@ -13,6 +13,8 @@
 ! cases 1 and 2.
 module quadratic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use numerics_status, only: numerics_ok, numerics_bad_input, &
+           numerics_unsorted_points
       implicit none
       private
       public :: osplin
@@ -22,25 +24,37 @@ contains
 !----------------------------------------------------------------------
 ! osplin
 !----------------------------------------------------------------------
-! The spline through xtab/ytab(1:n) at the k nondecreasing points
-! xval, into yval; outside the table it extrapolates the end
-! intervals' quadratics.
-pure subroutine osplin(xval, yval, xtab, ytab, n, k)
+! The spline through xtab/ytab(1:n), n >= 3 points with xtab
+! increasing, at the k nondecreasing points xval, into yval; outside the
+! table it extrapolates the end intervals' quadratics.
+! ierr (numerics_status): numerics_bad_input for n < 3,
+! numerics_unsorted_points when xval decreases somewhere; on either
+! yval is left as it was.
+pure subroutine osplin(xval, yval, xtab, ytab, n, k, ierr)
       integer, intent(in) :: n, k
       real(dp), intent(in) :: xval(k)
-      real(dp), intent(out) :: yval(k)
+      real(dp), intent(inout) :: yval(k)
       real(dp), intent(in) :: xtab(n), ytab(n)
+      integer, intent(out), optional :: ierr
 
       real(dp) :: first_derivs(n)
 ! error tolerance used in subroutine 'choose' (via meval)
       real(dp), parameter :: eps = 1.d-04
       integer :: err
 
+      if (present(ierr)) ierr = numerics_ok
+      if (n < 3) then
+         if (present(ierr)) ierr = numerics_bad_input
+         return
+      end if
+      if (k < 1) return
+
 ! calculate the slopes at each data point.
       call slopes(xtab, ytab, first_derivs, n)
 
 ! call meval to evaluate the spline at the run of points xval.
       call meval(xval, yval, xtab, ytab, first_derivs, n, k, eps, err)
+      if (err == 2 .and. present(ierr)) ierr = numerics_unsorted_points
 end subroutine osplin
 
 !----------------------------------------------------------------------
@@ -522,7 +536,7 @@ pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
       real(dp), intent(in) :: eval_x(num_eval_points), &
            table_x(num_table_points), table_y(num_table_points), &
            table_slope(num_table_points), eps_tol
-      real(dp), intent(out) :: eval_y(num_eval_points)
+      real(dp), intent(inout) :: eval_y(num_eval_points)
       integer, intent(out) :: err_code
 
       real(dp) :: spline_v1, spline_v2, spline_w1, spline_w2, &
@@ -583,16 +597,16 @@ pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
             table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
             spline_e2, spline_w2, spline_v2, spline_case)
       end do
-      if (num_eval_points == 1) then
+      if (start_idx > num_eval_points) then
          return
       end if
       end if
 
 ! search locates the interval in which the first in-range point of
-! evaluation lies. The single-out-of-range-high case skips straight
-! to the high-extrapolation tail.
+! evaluation lies. Without in-range points (all above the table, or
+! some below and the rest above) the high-extrapolation tail follows.
       recompute_tail_params = .true.
-      if (num_eval_points /= 1 .or. end_idx == num_eval_points) then
+      if (start_idx <= end_idx) then
       call search(table_x, num_table_points, eval_x(start_idx), &
            table_idx, found_flag)
 
@@ -619,6 +633,8 @@ pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! (Restructured 2026 from the original arithmetic-IF web at labels
 ! 100/110/120; comparisons and order of assignment are unchanged.)
       do
+! the points left lie above the table (after one on its last node)
+         if (start_idx > end_idx) exit
          if (eval_x(start_idx) < table_x(table_idx1)) exit
          if (eval_x(start_idx) == table_x(table_idx1)) then
             do
@@ -638,6 +654,7 @@ pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
 ! Calculate the images of all the points which lie within range of
 ! the data.
       end if
+      if (start_idx <= end_idx) then
       if (table_idx /= 1 .or. err_code /= 1) then
       call choose(table_x(table_idx), table_y(table_idx), &
            table_slope(table_idx), table_slope(table_idx1), &
@@ -685,6 +702,7 @@ pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
            table_y(table_idx1), spline_y1, spline_y2, spline_e2, &
            spline_w2, spline_v2, spline_case)
       end do
+      end if
 
 ! Calculate the images of the points of evaluation whose abscissas
 ! are greater than the abscissa of the last data point.

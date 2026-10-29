@@ -163,6 +163,22 @@ program test_numerics
       call osplin_case(8, [6.5d0, 7.5d0])
       write(*,'(a)') "# osplin: decreasing points (meval refuses, output untouched)"
       call osplin_case(8, [2.0d0, 1.0d0])
+      write(*,'(a)') "# osplin: runs outside the table, a node then points above"
+      call osplin_case(8, [-2.0d0, -1.0d0, -0.5d0])
+      call osplin_case(8, [7.5d0, 8.0d0, 9.0d0])
+      call osplin_case(8, [-1.0d0, 7.5d0, 8.0d0])
+      call osplin_case(8, [7.0d0, 7.5d0, 8.0d0])
+      call osplin_case(8, [6.0d0, 7.0d0, 7.0d0, 8.0d0])
+      write(*,'(a)') "# osplin: error codes (n < 3; decreasing points; none)"
+      jout = -1.0d0
+      call osplin(jval, jout, jx, jy, 2, 2, ierr)
+      write(*,'(a,i3,2f6.1)') "osplin n = 2: ierr, yval untouched", ierr, jout(1:2)
+      jval(1:2) = [2.0d0, 1.0d0]
+      call osplin(jval, jout, jx, jy, 8, 2, ierr)
+      write(*,'(a,i3,2f6.1)') "osplin decreasing: ierr, yval untouched", ierr, jout(1:2)
+      jval(1:2) = [1.0d0, 2.0d0]
+      call osplin(jval, jout, jx, jy, 8, 2, ierr)
+      write(*,'(a,i3,2f6.1)') "osplin on nodes: ierr", ierr, jout(1:2)
 
 ! ---------------- interpolation
       write(*,'(a)') "# inter3/interp/intrp2/lagrange4/quint"
