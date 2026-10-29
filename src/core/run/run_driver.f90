@@ -369,7 +369,7 @@ subroutine begin_kind_card
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.
           if (s%punch_pending_flag) then
-             call write_mod_model(s, last_model_unit)
+             call write_mod_model(s, last_model_unit, replace=.true.)
           endif
        endif
 

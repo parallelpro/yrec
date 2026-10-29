@@ -158,7 +158,7 @@ subroutine output_write_model(s, ierr)
       call write_history_row(s, iprof, ierr)
       if (ierr /= 0) return
 ! The .mod model file: restart + in-run divergence recovery.
-      call write_mod_model(s, last_model_unit)
+      call write_mod_model(s, last_model_unit, replace=.true.)
 
 ! interval GYRE pulse output (independent of write_pulse_flag);
 ! model-numbered (zero-padded), same prefix and directory as the

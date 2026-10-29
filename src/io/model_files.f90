@@ -28,9 +28,11 @@ contains
 ! (one per line; readers ignore unknown names), a named column-header
 ! line, then one row per shell at full double precision, so a model
 ! reloaded between run cards round-trips exactly. Everything is read
-! from star%; the unit is rewound first, since the file always holds one
-! model, the latest.
-subroutine write_mod_model(s, iwrite)
+! from star%. With replace, the unit is rewound first, so the file holds
+! one model, the latest (the final-model file); without it the model is
+! appended after the ones already written (the Monte Carlo model file,
+! one model per run).
+subroutine write_mod_model(s, iwrite, replace)
       use star_info_lib, only: star_info, i_h1, i_he4, i_metals, i_he3, i_c12, &
            i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
@@ -40,13 +42,14 @@ subroutine write_mod_model(s, iwrite)
       type(star_info), intent(inout) :: s
 
       integer, intent(in) :: iwrite
+      logical, intent(in) :: replace
 
       integer :: k
       integer, parameter :: slots(15) = [i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
            i_li6, i_li7, i_be9]
 
-      rewind iwrite
+      if (replace) rewind iwrite
       write(iwrite,'(a)') 'YMOD 1'
       write(iwrite,'(a,1x,i12)')        'model_number        ', s%model_number
       write(iwrite,'(a,1x,i12)')        'num_zones           ', s%nz

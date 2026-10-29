@@ -157,8 +157,8 @@ end subroutine write_run_summaries
 
 ! ---------------------------------------------------------------
 ! write_monte_carlo_model (legacy wrtmonte)
-! Stores the last converged model on monte_carlo_unit2
-! (write_mod_model) and appends a seven-record summary to
+! Appends the last converged model to monte_carlo_unit2
+! (write_mod_model, one model per run) and a seven-record summary to
 ! monte_carlo_unit1: the run's sampled parameters; the calibration
 ! cycle count and partial derivatives; the neutrino fluxes; the central
 ! conditions; the shell count, alpha, initial composition and final
@@ -177,9 +177,9 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
       integer :: iwrite, j
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
-! Store the last converged model on monte_carlo_unit2 (legacy IMONTE2).
+! Append the last converged model to monte_carlo_unit2 (legacy IMONTE2).
       iwrite = s%ctrl%monte_carlo_unit2
-      call write_mod_model(s, iwrite)
+      call write_mod_model(s, iwrite, replace=.false.)
 ! The summary on monte_carlo_unit1. The surface Z/X:
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
 ! Record 1: the run number and its sampled parameters.
