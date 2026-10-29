@@ -510,6 +510,13 @@ subroutine interior_value(s, icol, k, value, found)
       case (ip_beta);         value = s%beta(k)
       case (ip_eta);          value = s%eta(k)
       case (ip_grav);         value = exp(ln10*(cgl - 2.0d0*s%logR(k)))*s%m(k)
+! eps_ppI .. eps_he3 are fractions of eps_nuc, one per chain with a
+! slot (eps_he3 is the triple-alpha share); the alpha captures have none,
+! so where they burn the five add up to 1 minus their share: in a 1 Msun
+! core-helium-burning model that share is 4% at the centre at Yc = 0.76,
+! 18% at Yc = 0.30 and 99% at Yc = 0.002, and nearly all of eps_nuc
+! toward the convective core's edge, where 12C(alpha,gamma) outruns the
+! triple alpha. eps_nuc, eps_neu and eps_grav are erg/g/s.
       case (ip_eps_ppI);      value = s%eps_channels(i_eps_pp1,k)
       case (ip_eps_ppII);     value = s%eps_channels(i_eps_pp2,k)
       case (ip_eps_ppIII);    value = s%eps_channels(i_eps_pp3,k)

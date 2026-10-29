@@ -233,7 +233,8 @@ end subroutine eliminate_shell_pair
 !     in it),
 !   eps_channels(i_eps_*) = the fraction of eps_total of each chain
 !     that has a slot there (pp1, pp2, pp3, CNO, triple alpha:
-!     eps_channel_of_chain),
+!     eps_channel_of_chain); the alpha captures have none, so where they
+!     burn the five fractions add up to less than 1,
 !   eps_channels(i_eps_neu) = eps_nu and eps_channels(i_eps_grav) =
 !   eps_grav (erg/g/s).
 ! Below net's burning cutoff (diag%burn%burning false) only eps_grav is
