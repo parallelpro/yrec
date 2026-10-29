@@ -13,7 +13,10 @@
 !   Kawaler (1988): dOmega/dt = C (Mdot/1e-14)**exmd Omega (R/Rsun)**exr
 !       (M/Msun)**exm min(Omega, Omega_sat)**(n-1) / I_cz, with Mdot fixed
 !       at 2e-14 Msun/yr.
-! The constant C, the exponents and Omega_sat are controls.
+! The constant C, the exponents and Omega_sat follow from the controls
+! (derive_wind_law).
+!     derive_wind_law             the law's constant, exponents and
+!                                 saturation from its controls
 !     brake_convection_zone       remove the angular momentum lost over
 !                                 a step from the convection zone's j/m
 !                                 (formerly mwind and the Kawaler wind)
@@ -38,6 +41,52 @@ module magnetic_braking
       implicit none
       private
       public :: brake_convection_zone, compute_solid_body_braking, outer_point_wind_terms
+      public :: derive_wind_law
+
+! The wind law's controls (setup's rotation_settings_from_star fills
+! them): the Matt law or the Kawaler law; the Matt law's name (K97, V13
+! or CUS); the Kawaler index alfa (wind_law_index) and the constant
+! factor fk of both laws (wind_law_constant); the Matt exponents a, b,
+! c, d, m as read (CUS keeps them); the solar torque (erg) and the solar
+! omega (rad/s) that normalize the Matt law; the saturation omega
+! (rad/s) and the same in units of the solar omega (solar_omega_sat,
+! which wins below solar_units_saturation_limit); the field scaling as
+! read.
+      type, public :: wind_law_inputs
+         logical :: use_pmm_wind_law = .false.
+         character(len=3) :: law_name = '   '
+         real(dp) :: law_index = 0.0d0, law_constant = 0.0d0
+         real(dp) :: exponent_a = 0.0d0, exponent_b = 0.0d0, exponent_c = 0.0d0, &
+              exponent_d = 0.0d0, exponent_m = 0.0d0
+         real(dp) :: solar_torque = 0.0d0, solar_omega = 0.0d0
+         real(dp) :: saturation_omega = 0.0d0, saturation_omega_solar = 0.0d0
+         logical :: scale_by_b_field = .false.
+      end type wind_law_inputs
+
+! The law in force: the constant C and the exponents of omega, the
+! mass-loss rate, R, M, L, the photospheric pressure, the turnover time
+! and the centrifugal term, the centrifugal constant, the saturation
+! omega (rad/s) and the field scaling (rotation_settings' wind fields).
+      type, public :: wind_law_coefficients
+         real(dp) :: constant = 0.0d0, omega_exponent = 0.0d0, &
+              mass_loss_exponent = 0.0d0, radius_exponent = 0.0d0, &
+              mass_exponent = 0.0d0, luminosity_exponent = 0.0d0, &
+              pressure_exponent = 0.0d0, turnover_exponent = 0.0d0, &
+              centrifugal_exponent = 0.0d0, centrifugal_constant = 0.0d0, &
+              saturation_omega = 0.0d0
+         logical :: scale_by_b_field = .false.
+      end type wind_law_coefficients
+
+! The Kawaler (1988) law's normalization: Jdot = fk kawaler_torque_scale
+! kawaler_omega_scale**alfa ... (cgs). The Matt law's centrifugal
+! constant c_2 (Matt et al. 2012, ApJ 754, L26); V13's torque exponent m
+! (van Saders & Pinsonneault 2013). Both keep the single-precision
+! values the F77 DATA gave them. solar_omega_sat below
+! solar_units_saturation_limit gives the saturation omega in units of
+! the solar omega.
+      real(dp), parameter :: kawaler_torque_scale = 2.036d33, kawaler_omega_scale = 1.452d9
+      real(dp), parameter :: matt_centrifugal_constant = 0.0506, v13_exponent_m = 0.22
+      real(dp), parameter :: solar_units_saturation_limit = 1.0d3
 
 ! The step's state the laws read (the caller fills it from the star):
 ! the convective turnover time tau_cz (s) at the start and the end of the
@@ -75,6 +124,82 @@ module magnetic_braking
       double precision, parameter :: kawaler_mass_loss_rate_msun_yr = 2.0d-14, &
            kawaler_mass_loss_unit_msun_yr = 1.0d-14
 contains
+
+!----------------------------------------------------------------------
+! derive_wind_law
+!----------------------------------------------------------------------
+! The wind law's coefficients from its controls (formerly computed by
+! the controls read, derive_rotation_controls).
+! The Kawaler (1988) law, for an index alfa:
+!   Jdot = fk 2.036e33 1.452e9**alfa (Mdot/1e-14)**(1-2alfa/3)
+!          Omega**(1+4alfa/3) (R/Rsun)**(2-alfa) (M/Msun)**(-alfa/3),
+! so the exponents of Mdot, Omega, R and M; fk = 1 reproduces the
+! observed solar angular momentum loss.
+! The Matt (PMM) law: K97 is Krishnamurthi et al. (1997) (m = alfa/3,
+! a = 2, b = 1, c = 2, d = 0, no field scaling), V13 van Saders &
+! Pinsonneault (2013, after Matt et al. 2008, 2012) (m = 0.22, a = 2,
+! b = 1, c = 0, d = 1, field scaling), and CUS keeps the exponents
+! given. With every term scaled to solar,
+!   Jdot = w Bmag**4m Mdot**(1-2m) R**(5m+2) M**(-m) Fcen**md
+!   Bmag = Pphot**0.5 (w R**c)**b Tcz**d
+!   Mdot = R M**-1 Lbol w**a  (from GM/R Mdot = Lx, Lx/Lbol ~ w**a)
+! so Jdot ~ w**(1+a-2ma+4mb) Tcz**(4md) Lbol**(1-2m) Pphot**(2m) Fcen**md,
+! and, ignoring the GM/R term in Mdot, R**(2+5m+4mbc) M**(-m). The
+! centrifugal term {K2**2/(K2**2 + 0.5 w**2 R**3/GM)} has the exponent
+! m d; d switches the Tcz and centrifugal terms off. The Tcz term is
+! computed in the braking itself, so its exponent here is 0. The
+! constant makes the torque at the solar omega fk times the solar
+! torque.
+pure function derive_wind_law(inputs) result(law)
+      type(wind_law_inputs), intent(in) :: inputs
+      type(wind_law_coefficients) :: law
+      real(dp), parameter :: one_third = 1.0d0/3.0d0, two_thirds = 2.0d0/3.0d0
+      real(dp) :: a, b, c, d, m, alfa
+
+      alfa = inputs%law_index
+      law%saturation_omega = inputs%saturation_omega
+      law%scale_by_b_field = inputs%scale_by_b_field
+      if (.not. inputs%use_pmm_wind_law) then
+         law%constant = inputs%law_constant*kawaler_torque_scale*pow(kawaler_omega_scale, alfa)
+         law%mass_loss_exponent = 1.0d0 - two_thirds*alfa
+         law%omega_exponent = 1.0d0 + 2.0d0*two_thirds*alfa
+         law%radius_exponent = 2.0d0 - alfa
+         law%mass_exponent = -one_third*alfa
+         return
+      end if
+      a = inputs%exponent_a
+      b = inputs%exponent_b
+      c = inputs%exponent_c
+      d = inputs%exponent_d
+      m = inputs%exponent_m
+      select case (inputs%law_name)
+      case ('K97')
+         m = alfa/3.0d0
+         a = 2.0d0
+         b = 1.0d0
+         c = 2.0d0
+         d = 0.0d0
+         law%scale_by_b_field = .false.
+      case ('V13')
+         m = v13_exponent_m
+         a = 2.0d0
+         b = 1.0d0
+         c = 0.0d0
+         d = 1.0d0
+         law%scale_by_b_field = .true.
+      end select
+      law%omega_exponent = 1.0d0 + a - 2.0d0*a*m + 4.0d0*m*b
+      law%turnover_exponent = 0.0d0
+      law%radius_exponent = 2.0d0 + 5.0d0*m - 4.0d0*m*c
+      law%mass_exponent = -m
+      law%luminosity_exponent = 1.0d0 - 2.0d0*m
+      law%pressure_exponent = 2.0d0*m*d
+      law%centrifugal_exponent = m*d
+      law%centrifugal_constant = matt_centrifugal_constant
+      law%constant = inputs%law_constant*inputs%solar_torque/pow(inputs%solar_omega, law%omega_exponent)
+      if (inputs%saturation_omega_solar < solar_units_saturation_limit) &
+           law%saturation_omega = inputs%saturation_omega_solar*inputs%solar_omega
+end function derive_wind_law
 
 !----------------------------------------------------------------------
 ! brake_convection_zone (formerly mwind and the Kawaler wind)

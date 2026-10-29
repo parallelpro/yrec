@@ -394,7 +394,7 @@ eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod 
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
-io/derived_controls.o: io_units.mod legacy_controls.mod math_lib.mod physical_constants.mod star_info_lib.mod
+io/derived_controls.o: io_units.mod legacy_controls.mod physical_constants.mod star_info_lib.mod
 io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod physical_constants.mod star_info_lib.mod
 io/legacy_controls.o: controls_buffer.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
@@ -461,7 +461,7 @@ rotation/test/test_rotation_kernels.o: am_grid.mod am_transport_coefficients.mod
 rotation/viscosity.o: composition_layout.mod math_lib.mod physical_constants.mod
 setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod star_info_lib.mod
 setup/net_settings_setup.o: net_lib.mod star_info_lib.mod
-setup/rotation_settings_setup.o: controls_buffer.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
+setup/rotation_settings_setup.o: controls_buffer.mod magnetic_braking.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
 setup/user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
 state/controls_sync.o: controls_buffer.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod

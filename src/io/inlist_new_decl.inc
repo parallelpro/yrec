@@ -59,7 +59,6 @@
       character(len=3) :: new_species_value_mode
       double precision :: fpft_average_weight
       double precision :: timestep_factors(14)
-      double precision :: wind_law_index
       double precision :: overshoot_alpha_min
       double precision :: overshoot_beta_core
       double precision :: solar_luminosity_cgs
@@ -67,7 +66,6 @@
       double precision :: envelope_logP_step
       double precision :: solver_underrelax_start
       double precision :: solver_underrelax_increment
-      double precision :: wind_law_constant
       double precision :: coupling_factor
       double precision :: settling_y_factor
       double precision :: settling_z_factor
@@ -94,7 +92,6 @@
       logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
       double precision :: pmm_omega_sat
-      double precision :: solar_omega_sat
       double precision :: li6_rate_value
       double precision :: li7_rate_value
       double precision :: be9_rate_value1

@@ -31,6 +31,13 @@
 !   wind law     compute_solid_body_braking, Kawaler: dOmega ~ Omega^n
 !                below saturation (ratio 2^n from Omega to 2 Omega),
 !                ~ Omega Omega_sat^(n-1) above it (ratio 2);
+!   wind coefficients derive_wind_law: K97 is the Kawaler law recast
+!                (m = alfa/3), so it has the Kawaler law's R and M
+!                exponents at any alfa, and omega exponent 3, which the
+!                Kawaler law has at alfa = 1.5; a Matt law's torque at the
+!                solar omega is fk times the solar torque; solar_omega_sat
+!                below 1000 is the saturation in solar units; K97 drops
+!                the field scaling and V13 sets it;
 !   spin-down    brake_convection_zone (Kawaler) over T in N = 2..16
 !                calls, against the analytic laws: saturated, Omega_0
 !                exp(-K Omega_sat^(n-1) T), with the implicit midpoint
@@ -161,6 +168,7 @@ program test_rotation_kernels
       use numerics_lib, only: solve_tridiagonal
       use magnetic_braking, only: compute_solid_body_braking, wind_conditions
       use magnetic_braking, only: brake_convection_zone, outer_point_wind_terms
+      use magnetic_braking, only: derive_wind_law, wind_law_inputs, wind_law_coefficients
       use region_transport, only: diffuse_region_angular_momentum
       use instability_velocities, only: compute_eddington_sweet_velocity, &
            inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities, &
@@ -221,6 +229,7 @@ program test_rotation_kernels
       call am_diffusion_check()
       call mixing_check()
       call wind_law_check()
+      call wind_coefficients_check()
       call spindown_check()
       call decay_checks()
       call velocity_checks()
@@ -426,6 +435,48 @@ subroutine wind_law_check()
            2.0d-4, d2, dend, no_rossby, ierr)
       call report("wind law: dOmega ~ Omega above saturation", abs(d2/d1/2.0d0 - 1.0d0), 1.0d-13)
 end subroutine wind_law_check
+
+! derive_wind_law against the relations between the laws (see the
+! header): K97 against the Kawaler law at an arbitrary index, the
+! Kawaler law at alfa = 1.5, and the Matt normalization and saturation.
+subroutine wind_coefficients_check()
+      real(dp), parameter :: alfa = 1.37d0, fk = 1.3d0, omega_sun = 2.836d-6, &
+           jdot_sun = 1.32d30, omega_sat_solar = 10.0d0
+      type(wind_law_inputs) :: inputs
+      type(wind_law_coefficients) :: kawaler, k97, v13
+      logical :: field_scaling_ok
+
+      inputs = wind_law_inputs(use_pmm_wind_law = .false., law_name = 'K97', &
+           law_index = alfa, law_constant = fk, exponent_a = 0.3d0, exponent_b = 0.7d0, &
+           exponent_c = 1.1d0, exponent_d = 0.5d0, exponent_m = 0.9d0, &
+           solar_torque = jdot_sun, solar_omega = omega_sun, saturation_omega = 3.0d-4, &
+           saturation_omega_solar = 1.0d3, scale_by_b_field = .true.)
+      kawaler = derive_wind_law(inputs)
+      inputs%use_pmm_wind_law = .true.
+      k97 = derive_wind_law(inputs)
+      call report("wind coefficients: K97 has Kawaler's R and M exponents", &
+           max(abs(k97%radius_exponent - kawaler%radius_exponent), &
+           abs(k97%mass_exponent - kawaler%mass_exponent)), 1.0d-14)
+      call report("wind coefficients: K97's omega exponent is 3", &
+           abs(k97%omega_exponent - 3.0d0), 1.0d-14)
+      inputs%use_pmm_wind_law = .false.
+      inputs%law_index = 1.5d0
+      kawaler = derive_wind_law(inputs)
+      call report("wind coefficients: Kawaler's omega exponent is 3 at 1.5", &
+           abs(kawaler%omega_exponent - 3.0d0), 1.0d-14)
+      inputs%use_pmm_wind_law = .true.
+      inputs%law_name = 'V13'
+      inputs%saturation_omega_solar = omega_sat_solar
+      v13 = derive_wind_law(inputs)
+      call report("wind coefficients: Matt torque at the Sun = fk Jdot", &
+           abs(v13%constant*omega_sun**v13%omega_exponent/(fk*jdot_sun) - 1.0d0), 1.0d-13)
+      call report("wind coefficients: solar_omega_sat in solar units", &
+           abs(v13%saturation_omega/(omega_sat_solar*omega_sun) - 1.0d0), 1.0d-15)
+      field_scaling_ok = kawaler%scale_by_b_field .and. .not. k97%scale_by_b_field &
+           .and. v13%scale_by_b_field
+      call report("wind coefficients: K97 and V13 set the field scaling", &
+           merge(0.0d0, 1.0d0, field_scaling_ok), 0.0d0)
+end subroutine wind_coefficients_check
 
 ! The wind's spin-down over T in N calls of brake_convection_zone
 ! (Kawaler law, the settings of wind_law_check) against the analytic

@@ -15,6 +15,12 @@ mixing: sum m X conserved                                2.79E-16  ok
 mixing: a uniform X stays                                3.17E-16  ok
 wind law: dOmega ~ Omega^n below saturation              0.00E+00  ok
 wind law: dOmega ~ Omega above saturation                0.00E+00  ok
+wind coefficients: K97 has Kawaler's R and M exponents   4.44E-16  ok
+wind coefficients: K97's omega exponent is 3             0.00E+00  ok
+wind coefficients: Kawaler's omega exponent is 3 at 1.5  0.00E+00  ok
+wind coefficients: Matt torque at the Sun = fk Jdot      0.00E+00  ok
+wind coefficients: solar_omega_sat in solar units        0.00E+00  ok
+wind coefficients: K97 and V13 set the field scaling     0.00E+00  ok
 spin-down: saturated, error = (KT)^3/(12 N^2)            6.18E-04  ok
 spin-down: saturated, error ~ 1/N^2                      1.76E-03  ok
 spin-down: unsaturated, Omega_0 (1+2K Omega_0^2 T)^-1/2  6.10E-05  ok

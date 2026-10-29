@@ -2,14 +2,13 @@
 ! derived_controls
 !----------------------------------------------------------------------
 ! The controls computed from the ones read: the light-element rate
-! scales, one OPAL EOS and one low-temperature opacity source, the wind
-! law's coefficients and exponents, the starting model's mixture
+! scales, one OPAL EOS and one low-temperature opacity source, a fresh
+! envelope triangle for rotating runs, the starting model's mixture
 ! changes, and the switches that diffusion options imply. It also
 ! rejects semiconvection with overshoot and writes the run log's
 ! header. Everything here works on the canonical names, after
-! adopt_canonical_names; the legacy names it reads (alfa, fk, wmax_sun,
-! amix, aiso, anewcp, atmp, descrip, the Li/Be inputs) have no
-! canonical home.
+! adopt_canonical_names; the legacy names it reads (amix, aiso,
+! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
 module derived_controls
       use physical_constants
       use io_units
@@ -134,72 +133,11 @@ subroutine select_eos_and_opacity_tables(s)
 end subroutine select_eos_and_opacity_tables
 
 ! ---------------------------------------------------------------
-! Rotating runs: a fresh envelope-fit triangle, walpcz clamped to
-! [-2, 0], solid-body rotation, and the wind law's coefficients.
+! Rotating runs start with a fresh envelope-fit triangle. (The wind
+! law's coefficients, the walpcz clamp and the solid-body flag are the
+! rotation settings builder's, setup/rotation_settings_setup.f90.)
 subroutine derive_rotation_controls
-      use math_lib
-      double precision :: one_third, two_thirds
-
       lnew0 = .true.
-      if (walpcz < -2.0d0) walpcz = -2.0d0
-      if (walpcz > 0.0d0) walpcz = 0.0d0
-      if (force_solid_body_rotation) solid_body_mode_flag = 1
-      if (.not. use_pmm_wind_law) then
-! The Kawaler (1988) law. For an index alfa,
-!   Jdot = fk 2.036e33 1.452e9**alfa (Mdot/1e-14)**(1-2alfa/3)
-!          Omega**(1+4alfa/3) (R/Rsun)**(2-alfa) (M/Msun)**(-alfa/3);
-! exmd, wind_law_omega_exponent, exr and exm are the exponents of Mdot,
-! Omega, R and M. fk = 1 reproduces the observed solar angular momentum
-! loss.
-         one_third = 1.0d0/3.0d0
-         two_thirds = 2.0d0/3.0d0
-         constfactor = fk*2.036d33*pow(1.452d9, alfa)
-         exmd = 1.0d0 - two_thirds*alfa
-         wind_law_omega_exponent = 1.0d0 + 2.0d0*two_thirds*alfa
-         exr = 2.0d0 - alfa
-         exm = -one_third*alfa
-      else
-! The PMM law: wind_law_name 'K97' is Krishnamurthi et al. (1997), 'V13'
-! van Saders & Pinsonneault (2013, after Matt et al. 2008, 2012), and
-! 'CUS' keeps the pmm_exponent_* given. With every term scaled to solar,
-!   Jdot = w Bmag**4m Mdot**(1-2m) R**(5m+2) M**(-m) Fcen**md
-!   Bmag = Pphot**0.5 (w R**c)**b Tcz**d
-!   Mdot = R M**-1 Lbol w**a  (from GM/R Mdot = Lx, Lx/Lbol ~ w**a)
-! so Jdot ~ w**(1+a-2ma+4mb) Tcz**(4md) Lbol**(1-2m) Pphot**(2m) Fcen**md,
-! and, ignoring the GM/R term in Mdot, R**(2+5m+4mbc) M**(-m). excen is
-! the exponent of the centrifugal term {K2**2/(K2**2 + 0.5 w**2 R**3/GM)};
-! d switches the Tcz and centrifugal terms off. The Tcz term is
-! computed in the braking itself, so extau is 0.
-         if (wind_law_name == 'K97') then
-            pmm_exponent_m = alfa/3.0
-            pmm_exponent_a = 2.0
-            pmm_exponent_b = 1.0
-            pmm_exponent_c = 2.0
-            pmm_exponent_d = 0.0
-            scale_by_b_field = .false.
-         else if (wind_law_name == 'V13') then
-            pmm_exponent_m = 0.22
-            pmm_exponent_a = 2.0
-            pmm_exponent_b = 1.0
-            pmm_exponent_c = 0.0
-            pmm_exponent_d = 1.0
-            scale_by_b_field = .true.
-         end if
-         associate (a => pmm_exponent_a, b => pmm_exponent_b, c => pmm_exponent_c, &
-                    d => pmm_exponent_d, m => pmm_exponent_m)
-         wind_law_omega_exponent = 1.0d0 + a - 2.0d0*a*m + 4.0d0*m*b
-         extau = 0.0
-         exr = 2.0d0 + 5.0d0*m - 4.0d0*m*c
-         exm = -m
-         exl = 1.0d0 - 2.0d0*m
-         expr = 2.0d0*m*d
-         excen = m*d
-         end associate
-         c_2 = 0.0506
-         constfactor = fk*pmm_norm_jdot/pow(pmm_solar_omega, wind_law_omega_exponent)
-! wmax_sun < 1000 gives the saturation rate in units of the solar rate
-         if (wmax_sun < 1.0e3) wind_saturation_omega = wmax_sun*pmm_solar_omega
-      end if
 end subroutine derive_rotation_controls
 
 ! ---------------------------------------------------------------

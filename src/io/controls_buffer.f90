@@ -452,18 +452,19 @@ module controls_buffer
 ! The timestep limit from the envelope-fit triangle.
       logical :: use_envelope_triangle_dt
 
-! Magnetic braking: the Matt/PMM wind law (the reader overrides its
-! parameters for the K97 and V13 laws).
+! Magnetic braking: the Matt/PMM wind law (K97 and V13 set their own
+! exponents; rotation/magnetic_braking.f90's derive_wind_law).
       double precision :: pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
            pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
            pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale
       logical :: use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field
       character(len=3) :: wind_law_name
 
-! Magnetic braking: the Kawaler (1988) wind law and its saturation.
-      double precision :: exmd, extau, exr, exm, exl, expr, constfactor, &
-           excen, c_2, wind_law_omega_exponent
-      double precision :: wind_saturation_omega
+! Magnetic braking: the Kawaler (1988) law's index alfa and the constant
+! factor fk of both laws; the saturation omega (rad/s), or, below 1000,
+! the same in units of the solar omega.
+      double precision :: wind_law_index, wind_law_constant
+      double precision :: wind_saturation_omega, solar_omega_sat
       logical :: use_wind_torque = .true.
 
 ! Constant background diffusion.

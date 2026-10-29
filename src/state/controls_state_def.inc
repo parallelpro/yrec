@@ -239,16 +239,9 @@
             logical :: scale_by_rossby_number = .false.
             logical :: scale_by_b_field = .false.
             character(len=3) :: wind_law_name = ' '
-            double precision :: exmd = 0.0d0
-            double precision :: extau = 0.0d0
-            double precision :: exr = 0.0d0
-            double precision :: exm = 0.0d0
-            double precision :: exl = 0.0d0
-            double precision :: expr = 0.0d0
-            double precision :: constfactor = 0.0d0
-            double precision :: excen = 0.0d0
-            double precision :: c_2 = 0.0d0
-            double precision :: wind_law_omega_exponent = 0.0d0
+            double precision :: wind_law_index = 0.0d0
+            double precision :: wind_law_constant = 0.0d0
+            double precision :: solar_omega_sat = 0.0d0
             double precision :: constant_background_diffusion_coeff = 0.0d0
             logical :: use_constant_background_diffusion = .false.
             double precision :: flag_dx = 0.05d0

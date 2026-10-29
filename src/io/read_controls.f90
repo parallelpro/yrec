@@ -447,6 +447,9 @@ subroutine adopt_canonical_names(s)
       scale_by_b_field = lbscale
       wind_law_name = awind
       wind_saturation_omega = wmax
+      wind_law_index = alfa
+      wind_law_constant = fk
+      solar_omega_sat = wmax_sun
       constant_background_diffusion_coeff = codm
       use_constant_background_diffusion = lcodm
       s0_pp = s0_1_1
