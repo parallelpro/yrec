@@ -19,7 +19,7 @@ module blended_eos
       use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
       use scv_eos, only: compute_scv_envelope_eos
       use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, iv_opal95, &
-           iv_opal01, iv_opal06
+           iv_opal01, iv_opal06, opal_layout
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
       use io_units, only: run_log_unit
@@ -197,18 +197,6 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       logical :: in_opal_table, needs_ramp
       logical :: opal_covers_point
       integer :: vintage
-! (T, rho) window inside which each OPAL vintage is consulted at all
-! (the table edge itself is then handled by find_opal95_ramp/find_opal2001_ramp/
-! find_opal2006_ramp). The three gates are not the same test: 1995 bounds
-! log10 T by 8.0 where 2001/2006 bound T by 100e6 / 200e6 K, and 1995
-! caps log10 rho at 5.0 against 7.0 for the other two -- the values
-! are the original literals, kept as written.
-      real(dp), parameter :: opal95_t_min = 5.0d3, &
-           opal95_log10_t_max = 8.0d0, opal95_log10_rho_max = 5.0d0
-      real(dp), parameter :: opal01_t_min = 2.0d3, &
-           opal01_t_max = 100d6, opal01_log10_rho_max = 7.0d0
-      real(dp), parameter :: opal06_t_min = 1.870d3, &
-           opal06_t_max = 200d6, opal06_log10_rho_max = 7.0d0
 
 ! values saved across the compute_saha_eos/compute_fully_ionized_eos interpolation
 ! near the ionization cutoff
@@ -457,22 +445,15 @@ logical function opal_selected(vintage)
       end select
 end function opal_selected
 
-! the (T, rho) window inside which a vintage is consulted (its own test:
-! 1995 bounds log T, the others T)
+! the (T, rho) window inside which a vintage is consulted at all (the
+! table's edge is then find_opal_edge_ramp's): its row of opal_layout,
+! where 1995 bounds log10 T and the others T
 logical function inside_opal_window(vintage)
       integer, intent(in) :: vintage
-      select case (vintage)
-      case (iv_opal95)
-         inside_opal_window = r%temperature >= opal95_t_min .and. &
-              log10_temperature <= opal95_log10_t_max .and. &
-              r%log10_density <= opal95_log10_rho_max
-      case (iv_opal01)
-         inside_opal_window = r%temperature >= opal01_t_min .and. &
-              r%temperature <= opal01_t_max .and. r%log10_density <= opal01_log10_rho_max
-      case default
-         inside_opal_window = r%temperature >= opal06_t_min .and. &
-              r%temperature <= opal06_t_max .and. r%log10_density <= opal06_log10_rho_max
-      end select
+      inside_opal_window = r%temperature >= opal_layout(vintage)%window_t_min .and. &
+           r%temperature <= opal_layout(vintage)%window_t_max .and. &
+           log10_temperature <= opal_layout(vintage)%window_log10_t_max .and. &
+           r%log10_density <= opal_layout(vintage)%window_log10_rho_max
 end function inside_opal_window
 
 subroutine adopt_or_blend_opal_result()

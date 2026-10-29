@@ -6,8 +6,10 @@
 ! share: the table unit, the loaded flags and each table's Z. The
 ! interpolation routines take the instance as their first argument,
 ! "v". Also here: each vintage's read-only grids (x_grid,
-! eos_var_order, t6_index_lo, density_index_edge), the slots of
-! eos_output (i_opal_*, i_opal01_*), and the helpers the vintages share:
+! eos_var_order, t6_index_lo, density_index_edge) and its row of
+! opal_layout (everything the code tells the vintages apart by), the
+! slots of eos_output (i_opal_*, i_opal01_*), and the helpers the
+! vintages share:
 !     open_opal_eos_table      open the selected table (at eos_init)
 !     interpolate_opal_t6_rho  the T6-rho interpolation of the 2001 and
 !                              2006 tables
@@ -46,7 +48,8 @@ module opal_eos_tables
            opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
            opal95, opal95_density_index_edge, opal95_t6_index_lo, &
            opal95_x_grid, opal_shared, opal_eos_var_order, opal_eos_vintage, &
-           opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad
+           opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad, &
+           n_eos_nt_max
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
       integer, parameter :: n_eos01_nr = 169, n_eos01_nt = 191
@@ -144,6 +147,77 @@ module opal_eos_tables
             (102,i=1,16),(100,i=1,21),(99,i=1,9),(98,i=1,6),(97,i=1,4), &
             95,94,(87,i=1,6)]
 
+! ==================== what tells the vintages apart ====================
+! One row per vintage (opal_layout(iv_opal95), (iv_opal01),
+! (iv_opal06)); the code reads its vintage's row instead of branching
+! on the vintage. The 1995 interpolator, with its own state layout, is
+! in opal95_eos and reads only the compute_opal_eos and window fields.
+      type, public :: opal_vintage_layout
+! the table's density columns and T6 rows, and its hydrogen-fraction grid
+         integer :: nr, nt
+         real(dp) :: x_grid(n_eos_mx)
+! the row of the lowest tabulated T6 at each density column, and the
+! column of the highest density at each T6 row (zero past nr, nt)
+         integer :: t6_index_lo(n_eos_nr_max), density_index_edge(n_eos_nt_max)
+! how many variables an entry carries (esac's deriv_order for a full
+! evaluation), and their eos_output slots (0 where the table lacks the
+! variable: the 2001 table has no dE/dRho, so its later slots are one
+! lower, and only the 1995 and 2001 ones carry gamma3 - 1)
+         integer :: n_vars
+         integer :: i_p, i_e, i_s, i_dedrho, i_cv, i_chi_rho, i_chi_t, i_gamma1, &
+              i_gamma2_ratio, i_gamma3m1
+! the radiation correction's a/c [Mb/T6^4] and molar gas constant
+! [Mb cm^3/(mol T6)], as each vintage's code writes them (the 2001
+! code's are single-precision literals, widened)
+         real(dp) :: rad_const_over_c, molar_gas_constant_mbcc
+! the reader's format for a T6 row, and the columns it skips before the
+! nine variables (2001: log10 R; 2006: amu and log10 n_e)
+         character(len=48) :: row_format
+         integer :: n_skipped_columns
+! the prefix of the interpolator's messages
+         character(len=15) :: routine_id
+! compute_opal_eos's T6 range, and whether it checks that the
+! interpolated pressure reproduces P (1995)
+         real(dp) :: t6_min, t6_max
+         logical :: checks_pressure
+! blend_eos's window, inside which the vintage is consulted at all: T in
+! K, and the 1995 test of log10 T (the original literals, kept as
+! written: 1995 bounds log10 T by 8, the others T by 1e8 and 2e8 K)
+         real(dp) :: window_t_min, window_t_max, window_log10_t_max, window_log10_rho_max
+      end type opal_vintage_layout
+      type(opal_vintage_layout), parameter, public :: opal_layout(n_opal_vintages) = [ &
+           opal_vintage_layout(nr=n_eos95_nr, nt=n_eos95_nt, x_grid=opal95_x_grid, &
+                t6_index_lo=[opal95_t6_index_lo, (0, i=n_eos95_nr+1, n_eos_nr_max)], &
+                density_index_edge=[opal95_density_index_edge, (0, i=n_eos95_nt+1, n_eos_nt_max)], &
+                n_vars=10, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &
+                i_gamma1=8, i_gamma2_ratio=9, i_gamma3m1=10, &
+                rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.1446304d0, &
+                row_format="", n_skipped_columns=0, routine_id="", &
+                t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
+                window_t_min=5.0d3, window_t_max=huge(1.0d0), window_log10_t_max=8.0d0, &
+                window_log10_rho_max=5.0d0), &
+           opal_vintage_layout(nr=n_eos01_nr, nt=n_eos01_nt, x_grid=opal01_x_grid, &
+                t6_index_lo=opal01_t6_index_lo, &
+                density_index_edge=[opal01_density_index_edge, (0, i=n_eos01_nt+1, n_eos_nt_max)], &
+                n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=0, i_cv=4, i_chi_rho=5, i_chi_t=6, &
+                i_gamma1=7, i_gamma2_ratio=8, i_gamma3m1=9, &
+                rad_const_over_c=real(1.8914785e-3, dp), molar_gas_constant_mbcc=real(83.14510, dp), &
+                row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
+                routine_id="OPALEOS/ESAC01:", &
+                t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
+                window_t_min=2.0d3, window_t_max=100d6, window_log10_t_max=huge(1.0d0), &
+                window_log10_rho_max=7.0d0), &
+           opal_vintage_layout(nr=n_eos06_nr, nt=n_eos06_nt, x_grid=opal06_x_grid, &
+                t6_index_lo=opal06_t6_index_lo, density_index_edge=opal06_density_index_edge, &
+                n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &
+                i_gamma1=8, i_gamma2_ratio=9, i_gamma3m1=0, &
+                rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.14510d0, &
+                row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
+                routine_id="OPALEOS/ESAC06:", &
+                t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
+                window_t_min=1.870d3, window_t_max=200d6, window_log10_t_max=huge(1.0d0), &
+                window_log10_rho_max=7.0d0)]
+
 ! ==================== mutable state ====================
 ! quad's per-slot Lagrange-coefficient cache (recomputed when
 ! recompute_flag == 0, read on every other call); one per vintage.
@@ -166,11 +240,10 @@ module opal_eos_tables
                 x_grid_spacing_inv(n_eos_mx), t6_grid_spacing_inv(n_eos_nt_max), &
                 density_grid_spacing_inv(n_eos_nr_max)
            integer :: x_index_lo
-! density-interpolation weights (xxh is unused)
-           real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
-! each table's Z, and the eos_output slot of each table variable
+! density-interpolation weights
+           real(dp) :: rho_interp_hi(4), rho_interp_lo(4)
+! each table's Z
            real(dp) :: z_table(n_eos_mx)
-           integer :: eos_index_inverse(10)
 ! the interpolation stencil and orders
            integer :: density_index_1, density_index_2, density_index_3, &
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &
@@ -180,16 +253,10 @@ module opal_eos_tables
 ! the X-interpolation workspace
            real(dp) :: x_interp_workspace(n_eos_mx,n_eos_nt_max,n_eos_nr_max), &
                 x_grid_copy(n_eos_mx)
-! the table headers (amu_grid and log10_ne_grid only in the 2006
-! tables)
-           real(dp) :: moles_per_gram_table(n_eos_mx), &
-                hydrogen_fraction_header(n_eos_mx), &
-                mean_molecular_weight_header(n_eos_mx), &
-                amu_grid(n_eos_nr_max,n_eos_nt_max), &
-                log10_ne_grid(n_eos_nr_max,n_eos_nt_max), &
-                density_grid_table(n_eos_mx,n_eos_nr_max), &
-                species_fraction_header(n_eos_mx,6), &
-                log10_r_value(n_eos_nr_max,n_eos_nt_max)
+! each block's X (for the reader's messages), each X table's densities
+! and the number of T6 rows each density column has
+           real(dp) :: hydrogen_fraction_header(n_eos_mx), &
+                density_grid_table(n_eos_mx,n_eos_nr_max)
            integer :: temperature_count_used(n_eos_mx,n_eos_nr_max)
 ! the table edge at each T6 row and the cached row (find_opal_ramp;
 ! find_opal2006_ramp works from density_index_edge directly)
