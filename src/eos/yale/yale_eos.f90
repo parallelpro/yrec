@@ -45,13 +45,31 @@ module yale_eos
            .60, .49, .08, .11, .0, -.04, .64, .99, 1.03, .6, .0]
       integer, parameter :: nz = 11
       integer, parameter :: max_saha_iterations = 20
+! the smallest E (free electrons per ion) an iterate may take
+      real(dp), parameter :: min_electrons_per_ion = 1.0d-11
+! a Saha exponent beyond +-saha_exponent_tol is a neutral (ending the
+! list) or a fully ionized species, whose K is then
+! fully_ionized_saha_ratio; helium below helium_presence_floor (mass
+! fraction) is left out
       real(dp), parameter :: saha_exponent_tol = 4.0D1
+      real(dp), parameter :: fully_ionized_saha_ratio = 1.0d16, helium_presence_floor = 1.0d-10
+! the products of the elimination are dropped (or floored) below this
+! magnitude, as on the DEC-20 the code was written for
+      real(dp), parameter :: log10_smallest_product = -38.0d0
       real(dp), save :: saha_e_guess = 0.1D0, saha_x1_guess = 0.0D0, saha_x2_guess = 0.0D0
       real(dp), parameter :: saha_convergence_tol = 1.0D-09
 
 ! The Saha system of one compute_saha_eos call: its constants, the
 ! solution (E and the He fractions) and the reduced Newton matrix, which
-! the derivative steps reuse.
+! the derivative steps reuse. The unknowns are x2 (He++), x1 (He+) and
+! E; the equations the He++ balance (res_he2 = x1 K2 - x2 E/(1+E)), the
+! He+ balance (res_he1 = K1 (1 - x1 - x2) - x1 E/(1+E)) and charge
+! (res_charge = E - sum_i n_i K_i/(K_i + E/(1+E)) - Y (x1 + 2 x2)). The
+! Jacobian's entries are jac_<equation>_<unknown> (jac_he2_x2 =
+! d res_he2/d x2, ...; signs as each Newton step uses them), after the
+! elimination below the diagonal, whose multipliers are
+! elim_<row>_by_<row> (res_he1 -= elim_he1_by_he2 res_he2, ...); ep1 =
+! 1/(1 + E), ep1e = ep1/E, ep12 = ep1^2.
       type :: saha_system
          real(dp) :: helium_mass_fraction = 0.0d0
          real(dp) :: max_electrons_per_ion = 0.0d0
@@ -70,15 +88,15 @@ module yale_eos
          real(dp) :: ep1 = 0.0d0
          real(dp) :: ep1e = 0.0d0
          real(dp) :: ep12 = 0.0d0
-         real(dp) :: c11 = 0.0d0
-         real(dp) :: c12 = 0.0d0
-         real(dp) :: c13 = 0.0d0
-         real(dp) :: c22 = 0.0d0
-         real(dp) :: c23 = 0.0d0
-         real(dp) :: c33 = 0.0d0
-         real(dp) :: cr12 = 0.0d0
-         real(dp) :: cr13 = 0.0d0
-         real(dp) :: cr23 = 0.0d0
+         real(dp) :: jac_he2_x2 = 0.0d0
+         real(dp) :: jac_he2_x1 = 0.0d0
+         real(dp) :: jac_he2_e = 0.0d0
+         real(dp) :: jac_he1_x1 = 0.0d0
+         real(dp) :: jac_he1_e = 0.0d0
+         real(dp) :: jac_charge_e = 0.0d0
+         real(dp) :: elim_he1_by_he2 = 0.0d0
+         real(dp) :: elim_charge_by_he2 = 0.0d0
+         real(dp) :: elim_charge_by_he1 = 0.0d0
          real(dp) :: species_ion_fraction(11) = 0.0d0
          real(dp) :: species_weighted_term(11) = 0.0d0
       end type saha_system
@@ -177,8 +195,8 @@ contains
 ! the He+ and He++ fractions; K_i (saha_ratio) the Saha constants
 ! n+ n_e/n0, scaled by 1/beta, for the 11 species and He. Each Newton
 ! step solves C (dx2, dx1, dE) = R for the residuals of the He++ and He+
-! balances and of charge (r1, r2, r3); c11..c33 are C after reduction to
-! triangular form, with multipliers cr12, cr13, cr23. The derivative
+! balances and of charge (res_he2, res_he1, res_charge), with C reduced
+! to triangular form (saha_system's jac_* and elim_*). The derivative
 ! steps differentiate the converged system: sqet = dE/dln T,
 ! sqep = dE/dln P, sx1qt = dx1/dln T, and so on.
 subroutine compute_saha_eos(saha_number_fractions, log10_temperature, &
@@ -231,49 +249,48 @@ subroutine set_saha_constants(log10_temperature, log10_pressure, r, s)
       type(eos_result), intent(in) :: r
       type(saha_system), intent(inout) :: s
       integer :: i
-      real(dp) :: stemp
+      real(dp) :: log10_saha_base
 
-! compute Saha K's
-      stemp = 2.50d0*log10_temperature - log10_pressure + cmkh
+! the Saha constants' common part, log10[(2 pi m_e)^(3/2) (kT)^(5/2)/(h^3 P)]
+      log10_saha_base = 2.50d0*log10_temperature - log10_pressure + cmkh
       s%nz1 = 1
       do i=1,nz
          s%ionization_temp_over_t(i) = ionization_temp(i)*s%temperature_inverse
-         s%saha_ratio(i) = ln10*(saha_weight_term(i) + stemp) - &
+         s%saha_ratio(i) = ln10*(saha_weight_term(i) + log10_saha_base) - &
               s%ionization_temp_over_t(i)
-         if(s%saha_ratio(i) < -saha_exponent_tol) exit
+         if (s%saha_ratio(i) < -saha_exponent_tol) exit
          if (s%saha_ratio(i) <= +saha_exponent_tol) then
-         s%saha_ratio(i) = r%beta_inverse*exp(s%saha_ratio(i))
-         cycle
+            s%saha_ratio(i) = r%beta_inverse*exp(s%saha_ratio(i))
+         else
+            s%saha_ratio(i) = fully_ionized_saha_ratio
+            s%nz1 = i + 1
          end if
-         s%saha_ratio(i) = 1.0d16
-         s%nz1 = i + 1
       end do
       s%nz0 = i - 1
       s%nz1 = min0(nz,s%nz1)
+! helium: skipped when absent, and when neutral (its fractions zero);
+! He++ skipped when its exponent is below the tolerance (x2 zero)
       s%skip_helium_i = .true.
-      s%skip_helium_ii= .true.
-      if (s%helium_mass_fraction >= 1.0d-10) then
-      s%helium_saha_ratio_1 = ln10*(saha_weight_term(12) + stemp) - &
-           helium_ionization_temp_1/r%temperature
-      if (s%helium_saha_ratio_1 >= -saha_exponent_tol) then
-      s%skip_helium_i = .false.
-      s%helium_saha_ratio_1 = r%beta_inverse*exp(s%helium_saha_ratio_1)
-      s%helium_saha_ratio_2 = ln10*(saha_weight_term(13) + stemp) - &
-           helium_ionization_temp_2/r%temperature
-      if(s%helium_saha_ratio_2 < -saha_exponent_tol) then
-      s%helium_ion_fraction_2 = 0.0d0
-      else
-      s%skip_helium_ii= .false.
-      s%helium_saha_ratio_2 = r%beta_inverse*exp(s%helium_saha_ratio_2)
+      s%skip_helium_ii = .true.
+      if (s%helium_mass_fraction >= helium_presence_floor) then
+         s%helium_saha_ratio_1 = ln10*(saha_weight_term(12) + log10_saha_base) - &
+              helium_ionization_temp_1/r%temperature
+         if (s%helium_saha_ratio_1 >= -saha_exponent_tol) then
+            s%skip_helium_i = .false.
+            s%helium_saha_ratio_1 = r%beta_inverse*exp(s%helium_saha_ratio_1)
+            s%helium_saha_ratio_2 = ln10*(saha_weight_term(13) + log10_saha_base) - &
+                 helium_ionization_temp_2/r%temperature
+            if (s%helium_saha_ratio_2 < -saha_exponent_tol) then
+               s%helium_ion_fraction_2 = 0.0d0
+            else
+               s%skip_helium_ii = .false.
+               s%helium_saha_ratio_2 = r%beta_inverse*exp(s%helium_saha_ratio_2)
+            end if
+            return
+         end if
       end if
-      else
       s%helium_ion_fraction_1 = 0.0d0
       s%helium_ion_fraction_2 = 0.0d0
-      end if
-      else
-      s%helium_ion_fraction_1 = 0.0d0
-      s%helium_ion_fraction_2 = 0.0d0
-      end if
 end subroutine set_saha_constants
 
 !----------------------------------------------------------------------
@@ -281,8 +298,12 @@ end subroutine set_saha_constants
 !----------------------------------------------------------------------
 ! Newton iteration on E and the He fractions (at most
 ! max_saha_iterations, each added to saha_iterations), from the previous
-! call's solution. The products in the elimination are floored
-! at 1e-38 in magnitude, as on the DEC-20 the code was written for.
+! call's solution: each step forms the charge balance (charge_balance)
+! and, with helium, its two balances and the elimination of their
+! columns (eliminate_helium), then solves the triangular system from the
+! bottom up, each fraction clamped to [0, 1] and E to
+! [min_electrons_per_ion, 1 + Y]. A run of max_saha_iterations without
+! convergence is written to the run log, and the last iterate stands.
 subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, &
      s, saha_iterations)
       real(dp), intent(in) :: saha_number_fractions(:)
@@ -290,153 +311,136 @@ subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pre
       type(saha_system), intent(inout) :: s
       integer, intent(inout) :: saha_iterations
       character(len=message_length) :: eos_lines(4)
-      real(dp) :: c12l
-      real(dp) :: c13l
-      real(dp) :: c21
-      real(dp) :: c31
-      real(dp) :: c32
+! the residuals of the He++ and He+ balances and of charge, E/(1 + E),
+! and the Newton step in E, x1 and x2
+      real(dp) :: res_he2, res_he1, res_charge, eep1
+      real(dp) :: delta_electrons_per_ion, deltx1, deltx2
       logical :: converged
-      real(dp) :: cr12l
-      real(dp) :: cr13l
-      real(dp) :: delta_electrons_per_ion
-      real(dp) :: deltel
-      real(dp) :: deltx1
-      real(dp) :: deltx2
-      real(dp) :: delx1l
-      real(dp) :: div
-      real(dp) :: eep1
-      real(dp) :: fact
-      real(dp) :: fact1
-      real(dp) :: fact2
-      integer :: i
       integer :: isaha
-      real(dp) :: r1
-      real(dp) :: r1l
-      real(dp) :: r2
-      real(dp) :: r3
-      real(dp) :: temp8
 
-      do isaha=1,max_saha_iterations
+      res_he2 = 0.0d0
+      do isaha = 1, max_saha_iterations
          saha_iterations = saha_iterations + 1
-         s%ep1 = 1.0d0/(1.0d0 + s%mean_electrons_per_ion)
-         s%ep1e = s%ep1/s%mean_electrons_per_ion
-         s%ep12 = s%ep1*s%ep1
-         eep1 = s%mean_electrons_per_ion*s%ep1
-         s%c33 = -s%mean_electrons_per_ion*(1.0d0 + s%mean_electrons_per_ion)
-         r3 = s%mean_electrons_per_ion
-         if (s%nz0 > 0) then
-         do i=1,s%nz0
-            div = 1.0d0/(s%saha_ratio(i) + eep1)
-            temp8 = s%saha_ratio(i)*div
-            s%species_ion_fraction(i) = temp8
-            temp8 = temp8*saha_number_fractions(i)
-            r3 = r3 - temp8
-            temp8 = temp8*eep1*div
-            s%c33 = s%c33 - temp8
-            s%species_weighted_term(i) = temp8
-         end do
-         end if
-         s%c33 = s%c33*s%ep1e
-         r3 = r3 - s%helium_mass_fraction*(s%helium_ion_fraction_1 + &
-              s%helium_ion_fraction_2+s%helium_ion_fraction_2)
-         converged = abs(r3) < saha_convergence_tol
+         call charge_balance(saha_number_fractions, s, eep1, res_charge)
+         converged = abs(res_charge) < saha_convergence_tol
+         if (.not. s%skip_helium_i) call eliminate_helium(s, eep1, res_he2, res_he1, res_charge)
+! back substitution: E, then x1, then x2
+         delta_electrons_per_ion = res_charge/s%jac_charge_e
          if (.not. s%skip_helium_i) then
-         s%c22 = s%helium_saha_ratio_1 + eep1
-         s%c23 = s%helium_ion_fraction_1*s%ep12
-         c32 = s%helium_mass_fraction
-         r2 = s%helium_saha_ratio_1*(1.0d0-s%helium_ion_fraction_1- &
-              s%helium_ion_fraction_2) - s%helium_ion_fraction_1*eep1
-         if (.not. s%skip_helium_ii) then
-         s%c11 = eep1
-         s%c12 = -s%helium_saha_ratio_2
-         s%c13 = s%helium_ion_fraction_2*s%ep12
-         c21 = s%helium_saha_ratio_1
-         c31 = 2.0d0*s%helium_mass_fraction
-         r1 = s%helium_ion_fraction_1*s%helium_saha_ratio_2 - &
-              s%helium_ion_fraction_2*eep1
-! Reduction of Saha matrix to diagonal form
-         s%cr12 = - c21/s%c11
-         s%cr13 = - c31/s%c11
-         s%c22 = s%c22 + s%cr12*s%c12
-         c32 = c32 + s%cr13*s%c12
-         s%c23 = s%c23 + s%cr12*s%c13
-         s%c33 = s%c33 + s%cr13*s%c13
-         if (r1 /= 0.0d0) then
-         r1l=log10(abs(r1))
-         if (s%cr12 /= 0.0d0) then
-         cr12l=log10(abs(s%cr12))
-         fact=cr12l+r1l
-         if (fact >= -38.0d0) then
-         r2 = r2 + s%cr12*r1
-         end if
-         end if
-         if (s%cr13 /= 0.0d0) then
-         cr13l=log10(abs(s%cr13))
-         fact=cr13l+r1l
-         if (fact >= -38.0d0) then
-         r3 = r3 + s%cr13*r1
-         end if
-         end if
-         end if
-! Entry for no fully ionized helium (SAHEX2 = 0.0)
-         end if
-         s%cr23 = - c32/s%c22
-         s%c33 = s%c33 + s%cr23*s%c23
-         r3 = r3 + s%cr23*r2
-! Entry for neutral helium
-         end if
-         delta_electrons_per_ion = r3/s%c33
-         if (.not. s%skip_helium_i) then
-         deltx1 = (r2 - s%c23*delta_electrons_per_ion)/s%c22
-         s%helium_ion_fraction_1 = s%helium_ion_fraction_1 + deltx1
-         s%helium_ion_fraction_1 = max(0.0d0,min(1.0d0,s%helium_ion_fraction_1))
-         if (.not. s%skip_helium_ii) then
-! c12*deltx1, floored at 1e-38 in magnitude (written for the DEC-20's
-! single-precision range)
-         if (s%c12 /= 0.d0 .and. deltx1 /= 0.d0) then
-         c12l=log10(abs(s%c12))
-         delx1l=log10(abs(deltx1))
-         fact1=c12l+delx1l
-         if (fact1 < -38.0d0) then
-         fact1=-38.0d0
-         fact1=exp(ln10*fact1)*sign(1.0d0,s%c12)*sign(1.0d0,deltx1)
-         else
-         fact1=s%c12*deltx1
-         end if
-         else
-         fact1=s%c12*deltx1
-         end if
-         if (s%c13 /= 0.d0 .and. delta_electrons_per_ion /= 0.d0) then
-         c13l=log10(abs(s%c13))
-         deltel=log10(abs(delta_electrons_per_ion))
-         fact2=c13l+deltel
-         if (fact2 < -38.0d0) then
-         fact2=-38.0d0
-         fact2=exp(ln10*fact2)*sign(1.0d0,s%c13)*sign(1.0d0,delta_electrons_per_ion)
-         else
-         fact2=s%c13*delta_electrons_per_ion
-         end if
-         else
-         fact2=s%c13*delta_electrons_per_ion
-         end if
-         deltx2=(r1-fact1-fact2)/s%c11
-         s%helium_ion_fraction_2 = s%helium_ion_fraction_2 + deltx2
-         s%helium_ion_fraction_2 = max(0.0d0,min(1.0d0,s%helium_ion_fraction_2))
-         end if
+            deltx1 = (res_he1 - s%jac_he1_e*delta_electrons_per_ion)/s%jac_he1_x1
+            s%helium_ion_fraction_1 = s%helium_ion_fraction_1 + deltx1
+            s%helium_ion_fraction_1 = max(0.0d0, min(1.0d0, s%helium_ion_fraction_1))
+            if (.not. s%skip_helium_ii) then
+               deltx2 = (res_he2 - floored_product(s%jac_he2_x1, deltx1) - &
+                    floored_product(s%jac_he2_e, delta_electrons_per_ion))/s%jac_he2_x2
+               s%helium_ion_fraction_2 = s%helium_ion_fraction_2 + deltx2
+               s%helium_ion_fraction_2 = max(0.0d0, min(1.0d0, s%helium_ion_fraction_2))
+            end if
          end if
          s%mean_electrons_per_ion = s%mean_electrons_per_ion + delta_electrons_per_ion
-         s%mean_electrons_per_ion = max(1.0d-11,min(s%max_electrons_per_ion, &
+         s%mean_electrons_per_ion = max(min_electrons_per_ion, min(s%max_electrons_per_ion, &
               s%mean_electrons_per_ion))
          converged = converged .and. abs(delta_electrons_per_ion) < saha_convergence_tol
-         if(converged) exit
+         if (converged) exit
       end do
       if (isaha > max_saha_iterations) then
-      eos_lines = unwritten_line
-      write(eos_lines,99) log10_temperature,log10_pressure, s%mean_electrons_per_ion,delta_electrons_per_ion
-      call eos_log(eos_lines)
- 99   format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
+         eos_lines = unwritten_line
+         write(eos_lines,99) log10_temperature, log10_pressure, s%mean_electrons_per_ion, &
+              delta_electrons_per_ion
+         call eos_log(eos_lines)
+ 99      format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
       end if
 end subroutine solve_saha_system
+
+! The charge row at the current E: 1/(1 + E) and its kin, each ionizing
+! species' ion fraction K_i/(K_i + E/(1+E)) and its weighted term (the
+! charge Jacobian's sum), the residual res_charge and jac_charge_e.
+subroutine charge_balance(saha_number_fractions, s, eep1, res_charge)
+      real(dp), intent(in) :: saha_number_fractions(:)
+      type(saha_system), intent(inout) :: s
+      real(dp), intent(out) :: eep1, res_charge
+      real(dp) :: div, electrons, weighted
+      integer :: i
+
+      s%ep1 = 1.0d0/(1.0d0 + s%mean_electrons_per_ion)
+      s%ep1e = s%ep1/s%mean_electrons_per_ion
+      s%ep12 = s%ep1*s%ep1
+      eep1 = s%mean_electrons_per_ion*s%ep1
+      s%jac_charge_e = -s%mean_electrons_per_ion*(1.0d0 + s%mean_electrons_per_ion)
+      res_charge = s%mean_electrons_per_ion
+      do i = 1, s%nz0
+         div = 1.0d0/(s%saha_ratio(i) + eep1)
+         s%species_ion_fraction(i) = s%saha_ratio(i)*div
+         electrons = s%species_ion_fraction(i)*saha_number_fractions(i)
+         res_charge = res_charge - electrons
+         weighted = electrons*eep1*div
+         s%jac_charge_e = s%jac_charge_e - weighted
+         s%species_weighted_term(i) = weighted
+      end do
+      s%jac_charge_e = s%jac_charge_e*s%ep1e
+      res_charge = res_charge - s%helium_mass_fraction*(s%helium_ion_fraction_1 + &
+           s%helium_ion_fraction_2+s%helium_ion_fraction_2)
+end subroutine charge_balance
+
+! The He+ row and, with He++, the He++ row; the He++ column eliminated
+! from the He+ and charge rows, then the He+ column from the charge row
+! (the triangular system back substitution solves). A product of the
+! elimination below 1e-38 in magnitude is dropped (add_unless_tiny).
+subroutine eliminate_helium(s, eep1, res_he2, res_he1, res_charge)
+      type(saha_system), intent(inout) :: s
+      real(dp), intent(in) :: eep1
+      real(dp), intent(inout) :: res_he2, res_charge
+      real(dp), intent(out) :: res_he1
+! the Jacobian's entries no later step reads
+      real(dp) :: jac_he1_x2, jac_charge_x2, jac_charge_x1
+
+      s%jac_he1_x1 = s%helium_saha_ratio_1 + eep1
+      s%jac_he1_e = s%helium_ion_fraction_1*s%ep12
+      jac_charge_x1 = s%helium_mass_fraction
+      res_he1 = s%helium_saha_ratio_1*(1.0d0-s%helium_ion_fraction_1- &
+           s%helium_ion_fraction_2) - s%helium_ion_fraction_1*eep1
+      if (.not. s%skip_helium_ii) then
+         s%jac_he2_x2 = eep1
+         s%jac_he2_x1 = -s%helium_saha_ratio_2
+         s%jac_he2_e = s%helium_ion_fraction_2*s%ep12
+         jac_he1_x2 = s%helium_saha_ratio_1
+         jac_charge_x2 = 2.0d0*s%helium_mass_fraction
+         res_he2 = s%helium_ion_fraction_1*s%helium_saha_ratio_2 - &
+              s%helium_ion_fraction_2*eep1
+         s%elim_he1_by_he2 = - jac_he1_x2/s%jac_he2_x2
+         s%elim_charge_by_he2 = - jac_charge_x2/s%jac_he2_x2
+         s%jac_he1_x1 = s%jac_he1_x1 + s%elim_he1_by_he2*s%jac_he2_x1
+         jac_charge_x1 = jac_charge_x1 + s%elim_charge_by_he2*s%jac_he2_x1
+         s%jac_he1_e = s%jac_he1_e + s%elim_he1_by_he2*s%jac_he2_e
+         s%jac_charge_e = s%jac_charge_e + s%elim_charge_by_he2*s%jac_he2_e
+         call add_unless_tiny(res_he1, s%elim_he1_by_he2, res_he2)
+         call add_unless_tiny(res_charge, s%elim_charge_by_he2, res_he2)
+      end if
+      s%elim_charge_by_he1 = - jac_charge_x1/s%jac_he1_x1
+      s%jac_charge_e = s%jac_charge_e + s%elim_charge_by_he1*s%jac_he1_e
+      res_charge = res_charge + s%elim_charge_by_he1*res_he1
+end subroutine eliminate_helium
+
+! acc + a b, unless a or b is zero or |a b| is below 1e-38 (then acc)
+pure subroutine add_unless_tiny(acc, a, b)
+      real(dp), intent(inout) :: acc
+      real(dp), intent(in) :: a, b
+      if (b == 0.0d0 .or. a == 0.0d0) return
+      if (log10(abs(a)) + log10(abs(b)) >= log10_smallest_product) acc = acc + a*b
+end subroutine add_unless_tiny
+
+! a b, its magnitude floored at 1e-38 (with a's and b's signs) unless a
+! or b is zero
+pure real(dp) function floored_product(a, b)
+      real(dp), intent(in) :: a, b
+      if (a /= 0.d0 .and. b /= 0.d0) then
+         if (log10(abs(a)) + log10(abs(b)) < log10_smallest_product) then
+            floored_product = exp(ln10*log10_smallest_product)*sign(1.0d0,a)*sign(1.0d0,b)
+            return
+         end if
+      end if
+      floored_product = a*b
+end function floored_product
 
 !----------------------------------------------------------------------
 ! differentiate_saha_solution
@@ -449,72 +453,72 @@ subroutine differentiate_saha_solution(s, r, d)
       type(saha_sensitivities), intent(inout) :: d
       integer :: i
       real(dp) :: qut
-      real(dp) :: r1p
-      real(dp) :: r1t
-      real(dp) :: r2p
-      real(dp) :: r2t
-      real(dp) :: r3p
-      real(dp) :: r3t
-      real(dp) :: stemp
+      real(dp) :: res_he2_p
+      real(dp) :: res_he2_t
+      real(dp) :: res_he1_p
+      real(dp) :: res_he1_t
+      real(dp) :: res_charge_p
+      real(dp) :: res_charge_t
+      real(dp) :: dlnk_dlnt_common
       real(dp) :: temp
       real(dp) :: usum
 
-      r3t = 0.0d0
-      r3p = 0.0d0
+      res_charge_t = 0.0d0
+      res_charge_p = 0.0d0
       if (s%nz0 > 0) then
-      do i=s%nz1,s%nz0
-         r3p = r3p - s%species_weighted_term(i)
-         r3t = r3t -s%species_weighted_term(i)*(2.5d0 + r%beta14 + &
-              s%ionization_temp_over_t(i))
-      end do
-      r3p = -r%beta_inverse*r3p
+         do i=s%nz1,s%nz0
+            res_charge_p = res_charge_p - s%species_weighted_term(i)
+            res_charge_t = res_charge_t -s%species_weighted_term(i)*(2.5d0 + r%beta14 + &
+                 s%ionization_temp_over_t(i))
+         end do
+         res_charge_p = -r%beta_inverse*res_charge_p
       end if
       if (.not. s%skip_helium_i) then
-      d%helium_neutral_fraction = 1.0d0 - s%helium_ion_fraction_1 - s%helium_ion_fraction_2
-      d%sk0qt = 2.5d0 + r%beta14 + helium_ionization_temp_1*s%temperature_inverse
-      temp = s%helium_saha_ratio_1*d%helium_neutral_fraction
-      r2t = temp*d%sk0qt
-      r2p = -temp*r%beta_inverse
-      if (.not. s%skip_helium_ii) then
-      d%sk1qt = 2.5d0 + r%beta14 + helium_ionization_temp_2*s%temperature_inverse
-      temp = s%helium_saha_ratio_2*s%helium_ion_fraction_1
-      r1t = temp*d%sk1qt
-      r1p = -temp*r%beta_inverse
-      r2t = r2t + s%cr12*r1t
-      r2p = r2p + s%cr12*r1p
-      r3t = r3t + s%cr13*r1t
-      r3p = r3p + s%cr13*r1p
+         d%helium_neutral_fraction = 1.0d0 - s%helium_ion_fraction_1 - s%helium_ion_fraction_2
+         d%sk0qt = 2.5d0 + r%beta14 + helium_ionization_temp_1*s%temperature_inverse
+         temp = s%helium_saha_ratio_1*d%helium_neutral_fraction
+         res_he1_t = temp*d%sk0qt
+         res_he1_p = -temp*r%beta_inverse
+         if (.not. s%skip_helium_ii) then
+            d%sk1qt = 2.5d0 + r%beta14 + helium_ionization_temp_2*s%temperature_inverse
+            temp = s%helium_saha_ratio_2*s%helium_ion_fraction_1
+            res_he2_t = temp*d%sk1qt
+            res_he2_p = -temp*r%beta_inverse
+            res_he1_t = res_he1_t + s%elim_he1_by_he2*res_he2_t
+            res_he1_p = res_he1_p + s%elim_he1_by_he2*res_he2_p
+            res_charge_t = res_charge_t + s%elim_charge_by_he2*res_he2_t
+            res_charge_p = res_charge_p + s%elim_charge_by_he2*res_he2_p
+         end if
+         res_charge_t = res_charge_t + s%elim_charge_by_he1*res_he1_t
+         res_charge_p = res_charge_p + s%elim_charge_by_he1*res_he1_p
       end if
-      r3t = r3t + s%cr23*r2t
-      r3p = r3p + s%cr23*r2p
-      end if
-      d%sqet = r3t/s%c33
-      d%sqep = r3p/s%c33
+      d%sqet = res_charge_t/s%jac_charge_e
+      d%sqep = res_charge_p/s%jac_charge_e
       r%dlnrho_dlnt = -1.0d0 - r%beta14 - s%ep1*d%sqet
       r%dlnrho_dlnp = r%beta_inverse - s%ep1*d%sqep
 ! Compute internal energy temperature derivative(qut)
       usum = 0.0d0
       if (.not. s%skip_helium_i) then
-      d%sx1qt = (r2t - s%c23*d%sqet)/s%c22
-      d%sx1qp = (r2p - s%c23*d%sqep)/s%c22
-      d%sx2qt = 0.0d0
-      d%sx2qp = 0.0d0
-      if (.not. s%skip_helium_ii) then
-      d%sx2qt = (r1t - s%c12*d%sx1qt - s%c13*d%sqet)/s%c11
-      d%sx2qp = (r1p - s%c12*d%sx1qp - s%c13*d%sqep)/s%c11
-      end if
-      d%sx0qt = -(d%sx1qt + d%sx2qt)
-      d%sx0qp = -(d%sx1qp + d%sx2qp)
-      usum = s%helium_mass_fraction*(d%sx1qt*helium_ionization_temp_1 + &
-           d%sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
+         d%sx1qt = (res_he1_t - s%jac_he1_e*d%sqet)/s%jac_he1_x1
+         d%sx1qp = (res_he1_p - s%jac_he1_e*d%sqep)/s%jac_he1_x1
+         d%sx2qt = 0.0d0
+         d%sx2qp = 0.0d0
+         if (.not. s%skip_helium_ii) then
+            d%sx2qt = (res_he2_t - s%jac_he2_x1*d%sx1qt - s%jac_he2_e*d%sqet)/s%jac_he2_x2
+            d%sx2qp = (res_he2_p - s%jac_he2_x1*d%sx1qp - s%jac_he2_e*d%sqep)/s%jac_he2_x2
+         end if
+         d%sx0qt = -(d%sx1qt + d%sx2qt)
+         d%sx0qp = -(d%sx1qp + d%sx2qp)
+         usum = s%helium_mass_fraction*(d%sx1qt*helium_ionization_temp_1 + &
+              d%sx2qt*(helium_ionization_temp_1 + helium_ionization_temp_2))
       end if
       if (s%nz0 > 0) then
-      stemp = 2.50d0 + r%beta14 - s%ep1e*d%sqet
-      do i=s%nz1,s%nz0
-         d%species_temp_deriv_term(i) = s%species_weighted_term(i)*(stemp + &
-              s%ionization_temp_over_t(i))
-         usum = usum + d%species_temp_deriv_term(i)*ionization_temp(i)
-      end do
+         dlnk_dlnt_common = 2.50d0 + r%beta14 - s%ep1e*d%sqet
+         do i=s%nz1,s%nz0
+            d%species_temp_deriv_term(i) = s%species_weighted_term(i)*(dlnk_dlnt_common + &
+                 s%ionization_temp_over_t(i))
+            usum = usum + d%species_temp_deriv_term(i)*ionization_temp(i)
+         end do
       end if
       d%betaut = 0.75d0*(2.0d0 + r%beta14)
       d%ramu = gas_constant*r%ion_mean_weight_inverse
@@ -543,22 +547,27 @@ subroutine differentiate_saha_solution_twice(s, d, r)
       integer :: i
       real(dp) :: qqutp
       real(dp) :: qqutt
-      real(dp) :: r1p
-      real(dp) :: r1t
-      real(dp) :: r2p
-      real(dp) :: r2t
-      real(dp) :: r3p
-      real(dp) :: r3t
+      real(dp) :: res_he2_p
+      real(dp) :: res_he2_t
+      real(dp) :: res_he1_p
+      real(dp) :: res_he1_t
+      real(dp) :: res_charge_p
+      real(dp) :: res_charge_t
       real(dp) :: sqetp
       real(dp) :: sqett
-      real(dp) :: stemp
-      real(dp) :: stemp1
-      real(dp) :: stemp2
-      real(dp) :: stemp3
-      real(dp) :: stemp4
-      real(dp) :: stemp5
-      real(dp) :: stemp6
-      real(dp) :: stemp7
+      real(dp) :: helium_e_term
+      real(dp) :: dlnk_dlnt_common
+      real(dp) :: dlnk_dlnp_common
+! the terms the 11 species share: d ln(K (1+E)/E)/d ln T without the
+! species' ionization term (dlnk_dlnt_common) and d/d ln P
+! (dlnk_dlnp_common), and the second-derivative terms in T and P
+! (d2_tt_common, d2_tp_common); then each species' factor and its T-T
+! and T-P terms
+      real(dp) :: d2_tp_common
+      real(dp) :: d2_tt_common
+      real(dp) :: species_t_factor
+      real(dp) :: species_tt_term
+      real(dp) :: species_tp_term
       real(dp) :: sx1qtp
       real(dp) :: sx1qtt
       real(dp) :: sx2qtp
@@ -567,78 +576,78 @@ subroutine differentiate_saha_solution_twice(s, d, r)
       real(dp) :: utsum
 
       beta16 = 4.0d0*r%beta_inverse*r%beta14
-      r3t = 0.0d0
-      r3p = 0.0d0
+      res_charge_t = 0.0d0
+      res_charge_p = 0.0d0
       utsum = 0.0d0
       upsum = 0.0d0
       if (s%nz0 > 0) then
-      etemp = (1.0d0+s%mean_electrons_per_ion+s%mean_electrons_per_ion)/ &
-           (s%mean_electrons_per_ion*(1.0d0+s%mean_electrons_per_ion))**2
-      stemp1 = 2.5d0 + r%beta14 - d%sqet*s%ep1e
-      stemp2 = -r%beta_inverse - d%sqep*s%ep1e
-      stemp3 = etemp*d%sqep*d%sqet - r%beta_inverse*r%beta14
-      stemp4 = etemp*d%sqet**2 + beta16
-      do i=s%nz1,s%nz0
-         stemp5 = (stemp1 + s%ionization_temp_over_t(i))* &
-              (1.0d0 - 2.0d0*s%species_ion_fraction(i))
-         stemp6 = s%species_weighted_term(i)*(stemp4 - s%ionization_temp_over_t(i)) &
-              + d%species_temp_deriv_term(i)*stemp5
-         r3t = r3t - stemp6
-         utsum = utsum + ionization_temp(i)*(stemp6 - d%species_temp_deriv_term(i))
-         stemp7 = s%species_weighted_term(i)*(stemp3 + stemp2*stemp5)
-         r3p = r3p - stemp7
-         upsum = upsum + ionization_temp(i)*stemp7
-      end do
+         etemp = (1.0d0+s%mean_electrons_per_ion+s%mean_electrons_per_ion)/ &
+              (s%mean_electrons_per_ion*(1.0d0+s%mean_electrons_per_ion))**2
+         dlnk_dlnt_common = 2.5d0 + r%beta14 - d%sqet*s%ep1e
+         dlnk_dlnp_common = -r%beta_inverse - d%sqep*s%ep1e
+         d2_tp_common = etemp*d%sqep*d%sqet - r%beta_inverse*r%beta14
+         d2_tt_common = etemp*d%sqet**2 + beta16
+         do i=s%nz1,s%nz0
+            species_t_factor = (dlnk_dlnt_common + s%ionization_temp_over_t(i))* &
+                 (1.0d0 - 2.0d0*s%species_ion_fraction(i))
+            species_tt_term = s%species_weighted_term(i)*(d2_tt_common - s%ionization_temp_over_t(i)) &
+                 + d%species_temp_deriv_term(i)*species_t_factor
+            res_charge_t = res_charge_t - species_tt_term
+            utsum = utsum + ionization_temp(i)*(species_tt_term - d%species_temp_deriv_term(i))
+            species_tp_term = s%species_weighted_term(i)*(d2_tp_common + dlnk_dlnp_common*species_t_factor)
+            res_charge_p = res_charge_p - species_tp_term
+            upsum = upsum + ionization_temp(i)*species_tp_term
+         end do
       end if
       if (.not. s%skip_helium_i) then
-      stemp = 2.0d0*s%helium_ion_fraction_1*s%ep1*d%sqet
-      r2t = s%helium_saha_ratio_1*(d%helium_neutral_fraction*(beta16- &
-           helium_ionization_temp_1*s%temperature_inverse+d%sk0qt**2)+2d0*d%sx0qt*d%sk0qt) &
-           +s%ep12*(stemp*d%sqet - 2.0d0*d%sx1qt*d%sqet)
-      r2p = s%helium_saha_ratio_1*(d%helium_neutral_fraction*r%beta_inverse* &
-           (-r%beta14-d%sk0qt)+d%sx0qp*d%sk0qt-r%beta_inverse* &
-           d%sx0qt) + s%ep12*(stemp*d%sqep - d%sx1qp*d%sqet - d%sx1qt*d%sqep)
-      if (.not. s%skip_helium_ii) then
-      stemp = 2.0d0*s%helium_ion_fraction_2*s%ep1*d%sqet
-      r1t = s%helium_saha_ratio_2*(s%helium_ion_fraction_1*(beta16- &
-           helium_ionization_temp_2*s%temperature_inverse+d%sk1qt**2)+2d0*d%sx1qt*d%sk1qt) &
-           +s%ep12*(stemp*d%sqet - 2.0d0*d%sx2qt*d%sqet)
-      r1p = s%helium_saha_ratio_2*(s%helium_ion_fraction_1*r%beta_inverse* &
-           (-r%beta14-d%sk1qt)+d%sx1qp*d%sk1qt-r%beta_inverse* &
-           d%sx1qt) + s%ep12*(stemp*d%sqep - d%sx2qp*d%sqet - d%sx2qt*d%sqep)
-      r2t = r2t + s%cr12*r1t
-      r2p = r2p + s%cr12*r1p
-      r3p = r3p + s%cr13*r1p
-      r3t = r3t + s%cr13*r1t
+         helium_e_term = 2.0d0*s%helium_ion_fraction_1*s%ep1*d%sqet
+         res_he1_t = s%helium_saha_ratio_1*(d%helium_neutral_fraction*(beta16- &
+              helium_ionization_temp_1*s%temperature_inverse+d%sk0qt**2)+2d0*d%sx0qt*d%sk0qt) &
+              +s%ep12*(helium_e_term*d%sqet - 2.0d0*d%sx1qt*d%sqet)
+         res_he1_p = s%helium_saha_ratio_1*(d%helium_neutral_fraction*r%beta_inverse* &
+              (-r%beta14-d%sk0qt)+d%sx0qp*d%sk0qt-r%beta_inverse* &
+              d%sx0qt) + s%ep12*(helium_e_term*d%sqep - d%sx1qp*d%sqet - d%sx1qt*d%sqep)
+         if (.not. s%skip_helium_ii) then
+            helium_e_term = 2.0d0*s%helium_ion_fraction_2*s%ep1*d%sqet
+            res_he2_t = s%helium_saha_ratio_2*(s%helium_ion_fraction_1*(beta16- &
+                 helium_ionization_temp_2*s%temperature_inverse+d%sk1qt**2)+2d0*d%sx1qt*d%sk1qt) &
+                 +s%ep12*(helium_e_term*d%sqet - 2.0d0*d%sx2qt*d%sqet)
+            res_he2_p = s%helium_saha_ratio_2*(s%helium_ion_fraction_1*r%beta_inverse* &
+                 (-r%beta14-d%sk1qt)+d%sx1qp*d%sk1qt-r%beta_inverse* &
+                 d%sx1qt) + s%ep12*(helium_e_term*d%sqep - d%sx2qp*d%sqet - d%sx2qt*d%sqep)
+            res_he1_t = res_he1_t + s%elim_he1_by_he2*res_he2_t
+            res_he1_p = res_he1_p + s%elim_he1_by_he2*res_he2_p
+            res_charge_p = res_charge_p + s%elim_charge_by_he2*res_he2_p
+            res_charge_t = res_charge_t + s%elim_charge_by_he2*res_he2_t
+         end if
+         res_charge_p = res_charge_p + s%elim_charge_by_he1*res_he1_p
+         res_charge_t = res_charge_t + s%elim_charge_by_he1*res_he1_t
       end if
-      r3p = r3p + s%cr23*r2p
-      r3t = r3t + s%cr23*r2t
-      end if
-      sqett = r3t/s%c33
-      sqetp = r3p/s%c33
+      sqett = res_charge_t/s%jac_charge_e
+      sqetp = res_charge_p/s%jac_charge_e
       r%dlnrho_dlnt_dt = -beta16 + (s%ep1*d%sqet)**2 - s%ep1*sqett
       r%dlnrho_dlnt_dp = r%beta_inverse*r%beta14 + s%ep12*d%sqet*d%sqep - s%ep1*sqetp
       if (s%nz0 > 0) then
-      stemp = s%ep1e*sqett
-      stemp1 = s%ep1e*sqetp
-      do i=s%nz1,s%nz0
-         utsum = utsum - s%species_weighted_term(i)*ionization_temp(i)*stemp
-         upsum = upsum - s%species_weighted_term(i)*ionization_temp(i)*stemp1
-      end do
+         helium_e_term = s%ep1e*sqett
+         dlnk_dlnt_common = s%ep1e*sqetp
+         do i=s%nz1,s%nz0
+            utsum = utsum - s%species_weighted_term(i)*ionization_temp(i)*helium_e_term
+            upsum = upsum - s%species_weighted_term(i)*ionization_temp(i)*dlnk_dlnt_common
+         end do
       end if
       if (.not. s%skip_helium_i) then
-      sx1qtt = (r2t - s%c23*sqett)/s%c22
-      sx1qtp = (r2p - s%c23*sqetp)/s%c22
-      if (.not. s%skip_helium_ii) then
-      sx2qtt = (r1t - s%c12*sx1qtt - s%c13*sqett)/s%c11
-      sx2qtp = (r1p - s%c12*sx1qtp - s%c13*sqetp)/s%c11
-      utsum = utsum + s%helium_mass_fraction*(helium_ionization_temp_1+ &
-           helium_ionization_temp_2)*(sx2qtt - d%sx2qt)
-      upsum = upsum + s%helium_mass_fraction*(helium_ionization_temp_1+ &
-           helium_ionization_temp_2)*sx2qtp
-      end if
-      utsum = utsum + s%helium_mass_fraction*helium_ionization_temp_1*(sx1qtt - d%sx1qt)
-      upsum = upsum + s%helium_mass_fraction*helium_ionization_temp_1*sx1qtp
+         sx1qtt = (res_he1_t - s%jac_he1_e*sqett)/s%jac_he1_x1
+         sx1qtp = (res_he1_p - s%jac_he1_e*sqetp)/s%jac_he1_x1
+         if (.not. s%skip_helium_ii) then
+            sx2qtt = (res_he2_t - s%jac_he2_x1*sx1qtt - s%jac_he2_e*sqett)/s%jac_he2_x2
+            sx2qtp = (res_he2_p - s%jac_he2_x1*sx1qtp - s%jac_he2_e*sqetp)/s%jac_he2_x2
+            utsum = utsum + s%helium_mass_fraction*(helium_ionization_temp_1+ &
+                 helium_ionization_temp_2)*(sx2qtt - d%sx2qt)
+            upsum = upsum + s%helium_mass_fraction*(helium_ionization_temp_1+ &
+                 helium_ionization_temp_2)*sx2qtp
+         end if
+         utsum = utsum + s%helium_mass_fraction*helium_ionization_temp_1*(sx1qtt - d%sx1qt)
+         upsum = upsum + s%helium_mass_fraction*helium_ionization_temp_1*sx1qtp
       end if
       btemp = (1.0d0+s%mean_electrons_per_ion)*r%beta14*r%beta_inverse* &
            (24.0d0*r%beta_inverse - 9.0d0)
