@@ -22,6 +22,7 @@ module controls_check
       use io_units, only: terminal_unit, run_log_unit
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
+      use controls_buffer, only: max_runs
       implicit none
       private
       public :: check_controls, warn_inert_controls, warn_inconsistent_controls, &
@@ -65,12 +66,14 @@ end subroutine warn
 !   - a rotating run's max_diffusion_iters is outside 1 to 16;
 !   - the Bulirsch-Stoer controls are outside the integrator's limits
 !     (1 <= max_stage_index <= 11, 2 <= extrap_order <= 7, extrap_order
-!     <= max_stage_index) or the tolerance is not positive.
+!     <= max_stage_index) or the tolerance is not positive;
+!   - num_runs is outside 0 to max_runs (the run cards' arrays).
 !   star reads: ctrl%core_overshoot_active,
 !     ctrl%envelope_overshoot_active, ctrl%extrap_order, ctrl%lovstm,
 !     ctrl%max_diffusion_iters, ctrl%max_stage_index,
 !     ctrl%rotation_active, ctrl%tolerance_fraction,
-!     ctrl%tri_delta_logl, ctrl%tri_delta_teffl, ctrl%use_semiconvection
+!     ctrl%tri_delta_logl, ctrl%tri_delta_teffl,
+!     ctrl%use_semiconvection, job%num_runs
 !   star writes: none
 subroutine check_controls(s, ierr)
       type(star_info), intent(in) :: s
@@ -111,6 +114,13 @@ subroutine check_controls(s, ierr)
               //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to 11 and' &
               //' extrap_order (NUSE) 2 to 7 and at most IMAX, not', &
               s%ctrl%tolerance_fraction, ', ', s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
+         call report_control(line)
+         ierr = 1
+         return
+      end if
+      if (s%job%num_runs < 0 .or. s%job%num_runs > max_runs) then
+         write(line,'(1x,a,i0,a,i0)') 'ERROR: num_runs (NUMRUN) must be 0 to ', max_runs, &
+              ', not ', s%job%num_runs
          call report_control(line)
          ierr = 1
          return

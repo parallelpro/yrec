@@ -309,3 +309,26 @@ def test_bulirsch_stoer_controls_out_of_range(tmp_path, control, value):
     assert result.returncode == 1, (
         f"{control} = {value} must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
     assert "the Bulirsch-Stoer controls need" in result.stdout, result.stdout[-300:]
+
+
+@pytest.mark.parametrize("value", ["51", "-1"])
+def test_num_runs_out_of_range(tmp_path, value):
+    """num_runs (NUMRUN) indexes the run cards' arrays, which hold
+    max_runs = 50 cards: outside 0 to 50 the controls read stops with
+    exit 1 and names the control (without -fcheck the card loops once
+    wrote past the arrays)."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    nml1 = tmp_path / NML1
+    text, n = re.subn(r"(?im)^(\s*NUMRUN\s*=\s*)\d+", rf"\g<1>{value}", nml1.read_text())
+    assert n == 1, "expected one NUMRUN in the solar deck"
+    nml1.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"NUMRUN = {value} must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
+    assert f"num_runs (NUMRUN) must be 0 to 50, not {value}" in result.stdout, result.stdout[-300:]
