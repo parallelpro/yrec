@@ -2,47 +2,34 @@
 ! net_configuration
 !----------------------------------------------------------------------
 ! The network's layout and the run's settings, in one place:
-!   - the reaction slots r_*: the index of every per-reaction array (the
-!     rates and their derivatives, the energies, the first num_reactions
-!     rows of the composition rate vector, and the per-reaction scales
-!     of the settings). Each slot belongs to exactly one row of network's
-!     reaction table that computes its rate (network_table_errors checks
-!     it), so a new reaction takes a new slot: raise num_reactions;
-!   - the two branching rows of the composition rate vector after the
-!     reactions (rv_*);
-!   - the extra cross-section scales (xs_*): the rates outside the
-!     reaction table, pep, Be7 electron and proton capture, and hep;
+!   - the slots of the per-reaction arrays, state/reaction_layout's
+!     (re-exported here for net/'s modules): the reaction slots r_* (1 to
+!     num_reactions), the branching rows rv_* of the composition rate
+!     vector after them (num_rate_rows), the extra cross-section scales
+!     xs_* (num_extra_scales), num_sstandard;
 !   - the settings record net_settings (net_settings_t), the only
 !     configuration net/ reads. The star layer builds it from the
-!     controls and installs it at the start of every run (network's
-!     set_net_settings, which checks it first).
+!     controls and installs it at the start of every Monte-Carlo run
+!     (network_checks' set_net_settings, which checks it first).
 ! It also maps the legacy cross-section vector sstandard onto the
 ! scales (cross_section_scales_from_sstandard).
 module net_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use reaction_layout, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, &
+           r_pn14, r_po16, r_ac13, r_ac12, r_an14, r_3alpha, num_reactions, &
+           rv_frac_n15_pa, rv_frac_be7_ecap, num_rate_rows, xs_pep, xs_be7e, &
+           xs_be7p, xs_hep, num_extra_scales, num_sstandard
       implicit none
       private
-
-! The reaction slots.
-      integer, parameter, public :: &
-           r_pp = 1, r_he3he3 = 2, r_he3he4 = 3, r_pc12 = 4, r_pc13 = 5, &
-           r_pn14 = 6, r_po16 = 7, r_ac13 = 8, r_ac12 = 9, r_an14 = 10, &
-           r_3alpha = 11, num_reactions = 11
-! The composition rate vector (network's compute_network_rates): the
-! reactions at their r_* slots, per s per amu, then the N15(p,alpha) and
-! Be7 electron-capture fractions.
-      integer, parameter, public :: rv_frac_n15_pa = num_reactions + 1, &
-           rv_frac_be7_ecap = num_reactions + 2, num_rate_rows = num_reactions + 2
-! The extra cross-section scales: pep (its ratio to pp), the Be7
-! electron and proton captures, and hep.
-      integer, parameter, public :: xs_pep = 1, xs_be7e = 2, xs_be7p = 3, &
-           xs_hep = 4, num_extra_scales = 4
+      public :: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
+           r_ac13, r_ac12, r_an14, r_3alpha, num_reactions, rv_frac_n15_pa, &
+           rv_frac_be7_ecap, num_rate_rows, xs_pep, xs_be7e, xs_be7p, xs_hep, &
+           num_extra_scales, num_sstandard
 
 ! The legacy cross-section vector sstandard (17 ratios to Bahcall &
 ! Ulrich 1988; used when use_new_nuclear_rates is off): the reaction
 ! slot or the extra slot of each of its entries. Entries 9 (O16 + alpha)
 ! and 13 (C12 + C12) belong to reactions YREC never computed.
-      integer, parameter, public :: num_sstandard = 17
       integer, parameter :: sstandard_reaction_slot(num_sstandard) = &
            [r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            r_ac13, 0, r_ac12, r_an14, r_3alpha, 0, 0, 0, 0, 0]

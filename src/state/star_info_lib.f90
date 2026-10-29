@@ -48,7 +48,7 @@ module star_info_lib
       use neutrino_flux_layout
       use transport_mechanism_layout
 ! the sizes of the reaction-rate scales
-      use net_lib, only: num_reactions, num_extra_scales
+      use reaction_layout, only: num_reactions, num_extra_scales
       implicit none
       private
       public :: json
@@ -189,7 +189,7 @@ module star_info_lib
 ! log10 Rsun [log10 cm]; run_setup
             double precision :: log10_solar_radius
 ! per-reaction scale of the cross section S0 against Bahcall & Ulrich
-! (1988), by net_lib's reaction slot r_* [-]; user_inputs,
+! (1988), by reaction_layout's slot r_* [-]; user_inputs,
 ! controls_reader, monte_carlo. Those of pp, He3 + He3 and He3 + He4 are
 ! rescaled per Monte-Carlo run.
             double precision :: cross_section_scale(num_reactions)
@@ -199,9 +199,9 @@ module star_info_lib
 ! scale of each reaction's S''/S against Solar Fusion I, by reaction slot
 ! r_* [-]; user_inputs
             double precision :: qqs0ee_scale(num_reactions)
-! scale of the rates outside the reaction table, by net_lib's extra slot
-! xs_* (pep, Be7 + e, Be7 + p, hep) [-]; user_inputs, controls_reader,
-! monte_carlo. Be7 + p's is rescaled per Monte-Carlo run.
+! scale of the rates outside the reaction table, by reaction_layout's
+! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; user_inputs,
+! controls_reader, monte_carlo. Be7 + p's is rescaled per Monte-Carlo run.
             double precision :: extra_cross_section_scale(num_extra_scales)
 ! scale of Be7 + p's S'/S against Solar Fusion I [-]; user_inputs
             double precision :: be7p_qs0e_scale
