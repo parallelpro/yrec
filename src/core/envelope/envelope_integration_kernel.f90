@@ -165,7 +165,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use io_units
       use physical_constants
       use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
-           numerics_bad_input, numerics_step_underflow
+           numerics_bad_input, numerics_status_text
       use run_log, only: solver_diagnostics
       implicit none
 
@@ -544,7 +544,7 @@ subroutine take_atmosphere_step()
           ierr = jerr
           return
        else if (jerr /= 0) then
-          if (jerr == numerics_step_underflow) write(*,*) 'ERROR IN BSSTEP'
+          write(*,*) 'bsstep: '//numerics_status_text(jerr)
           ierr = envelope_termination
           return
        end if
@@ -853,7 +853,7 @@ subroutine take_envelope_step()
           ierr = jerr
           return
        else if (jerr /= 0) then
-          if (jerr == numerics_step_underflow) write(*,*) 'ERROR IN BSSTEP'
+          write(*,*) 'bsstep: '//numerics_status_text(jerr)
           ierr = envelope_termination
           return
        end if

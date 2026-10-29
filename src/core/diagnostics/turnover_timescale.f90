@@ -115,7 +115,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      num_interior_points, convective_velocity, radiative_gradient, &
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
-      use numerics_lib, only: natural_spline, splint
+      use numerics_lib, only: natural_spline, splint, numerics_status_text
       use io_units, only: run_log_unit
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
@@ -377,7 +377,7 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_velocity, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
                   return
                end if
                spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
@@ -387,7 +387,7 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_pscale, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
                   return
                end if
 ! tau = H_p/v_c.
@@ -444,7 +444,7 @@ subroutine time_bottom_cell_crossing()
       call natural_spline(spline_x_radius, spline_y_velocity, 4, spline_deriv)
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
          return
       end if
 ! tau = width/v_c.

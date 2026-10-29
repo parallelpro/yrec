@@ -72,7 +72,7 @@ subroutine gravitational_settling(diff_scr, &
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use numerics_lib, only: solve_tridiagonal
+      use numerics_lib, only: solve_tridiagonal, numerics_status_text
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -250,7 +250,7 @@ subroutine gravitational_settling(diff_scr, &
          call solve_tridiagonal(sub_diag,diag,super_diag,hydrogen_x_prime, &
               num_equal_points,equal_hydrogen_fraction, ierr)
          if (ierr /= 0) then
-            write(*,*) 'solve_tridiagonal: singular matrix'
+            write(*,*) 'solve_tridiagonal: '//numerics_status_text(ierr)
             return
          end if
 !

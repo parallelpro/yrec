@@ -33,7 +33,8 @@ contains
 !        fp = 4 pi r_psi^4 / (G m S <1/g>),
 !        ft = (4 pi r_psi^2 / S)^2 / (<g> <1/g>),
 !      and mean_gravity = <g> (cm/s^2).
-! Also returns eta2 and r0 (cm); ierr comes from polint.
+! Also returns eta2 and r0 (cm); ierr is polint's code (numerics_status),
+! after a report (rotation_numerics_report).
 subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points, omega, &
      eta2, pressure_rotation_factor, temperature_rotation_factor, &
      mean_gravity, r0, ierr)
@@ -42,6 +43,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
       use composition_layout, only: json
       use physical_constants
       use numerics_lib, only: polint
+      use rotation_messages, only: rotation_numerics_report
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
       use math_lib
       implicit none
@@ -122,7 +124,10 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
                   n1 = n1 + 1
                end do
                call polint(xa, ya, k, 0.0d0, aint1, dint, ierr)
-               if (ierr /= 0) return
+               if (ierr /= 0) then
+                  call rotation_numerics_report('rotation_shape_factors: polint', ierr)
+                  return
+               end if
                if (dabs(dint).lt.eps*dabs(aint1)) exit
             end if
             aint0(j+1) = aint0(j)

@@ -16,7 +16,7 @@ module kurucz_opacity
       use opacity_tables, only: kap_settings, kurucz_max_num_densities, &
            kurucz_max_num_temps, kurucz_table_set, opacity_table
       use numerics_lib, only: findex, natural_spline, splint, &
-           compute_spline_coefficients
+           compute_spline_coefficients, numerics_status_text
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -351,7 +351,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       ! 2026 numerics-gate opt-in: interpolation failure returns via
       ! ierr (diagnostic printed at the gate) instead of stopping.
       if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
          ierr = jerr_gate
          return
       end if
@@ -364,7 +364,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       call splint(temp_subset_logt, temp_subset_dlnkap_dlnrho, num_valid_temps, &
            temp_subset_second_derivs, log10_temperature, dlnkap_dlnrho, jerr_gate)
       if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
          ierr = jerr_gate
          return
       end if

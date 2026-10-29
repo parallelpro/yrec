@@ -18,7 +18,7 @@ module laol_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings, laol_opacity_cap, &
            laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
-      use numerics_lib, only: natural_spline, locate, splint
+      use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -295,7 +295,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   ! 2026 numerics-gate opt-in: interpolation failure returns via
                   ! ierr (diagnostic printed at the gate) instead of stopping.
                   if (jerr_gate /= 0) then
-                     write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                     write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                      ierr = jerr_gate
                      return
                   end if
@@ -349,7 +349,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                  logt_d2opacity, log10_temperature, log10_opacity_value, &
                  jerr_gate, spline_index_lo, spline_index_hi)
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                ierr = jerr_gate
                return
             end if
@@ -542,7 +542,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                ! 2026 numerics-gate opt-in: interpolation failure returns via
                ! ierr (diagnostic printed at the gate) instead of stopping.
                if (jerr_gate /= 0) then
-                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                   ierr = jerr_gate
                   return
                end if
@@ -590,7 +590,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
               logt_d2opacity, log10_temperature, log10_opacity_value, &
               jerr_gate, spline_index_lo, spline_index_hi)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
             ierr = jerr_gate
             return
          end if

@@ -59,7 +59,7 @@ contains
 subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
      coulomb_log, pressure_coeff, temp_coeff, conc_coeff, ierr)
 
-      use numerics_lib, only: lubksb, ludcmp
+      use numerics_lib, only: lubksb, ludcmp, numerics_status_text
       implicit none
       integer, parameter :: mmax=20, nmax=42
 
@@ -286,7 +286,7 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
 
       call ludcmp(delta,n,nmax,indx,d,ierr)
       if (ierr /= 0) then
-         write(*,*) 'ludcmp: singular matrix'
+         write(*,*) 'ludcmp: '//numerics_status_text(ierr)
          return
       end if
 

@@ -16,7 +16,7 @@ module opal92_opacity
            n_opal92_x, opacity_table, opal92_missing_opacity, &
            opal92_table_set, opal92_x_match_tol
       use numerics_lib, only: findex, natural_spline, splint, &
-           compute_spline_coefficients
+           compute_spline_coefficients, numerics_status_text
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -509,7 +509,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       call natural_spline(xt, yto, jt, second_derivs)
       call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
          return
       end if
       log10_opacity = ol00
@@ -519,7 +519,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       call natural_spline(xt, aqod, jt, second_derivs)
       call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
          return
       end if
 ! QODF = D LN(O)/D LN(D)

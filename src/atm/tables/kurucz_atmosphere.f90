@@ -15,7 +15,7 @@ module kurucz_atmosphere
       use atm_tables, only: atm_table, atm_table_ng, atm_table_nt, &
            surface_p_table
       use io_units, only: run_log_unit, terminal_unit
-      use numerics_lib, only: inter3, natural_spline, splint
+      use numerics_lib, only: inter3, natural_spline, splint, numerics_status_text
       implicit none
       private
       public :: read_surface_pressure_table, interpolate_surface_pressure
@@ -122,7 +122,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             ! 2026 numerics-gate opt-in: interpolation failure returns via
             ! ierr (diagnostic printed at the gate) instead of stopping.
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                ierr = jerr_gate
                return
             end if
@@ -146,7 +146,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                call splint(gravity_nodes, pressure_table_vals, 4, &
                     gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
                if (jerr_gate /= 0) then
-                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                   ierr = jerr_gate
                   return
                end if
@@ -165,7 +165,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          call splint(gravity_nodes, pressure_table_vals, 4, &
               gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
             ierr = jerr_gate
             return
          end if
@@ -177,7 +177,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       call splint(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv, &
            log10_teff, interpolated_value, jerr_gate)
       if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
          ierr = jerr_gate
          return
       end if

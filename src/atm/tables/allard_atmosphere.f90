@@ -16,7 +16,7 @@ module allard_atmosphere
       use atm_tables, only: atm_settings, atm_table, atm_table_nga, &
            atm_table_nta
       use io_units, only: run_log_unit
-      use numerics_lib, only: locate, polint
+      use numerics_lib, only: locate, polint, numerics_status_text
       use math_lib
       implicit none
       private
@@ -253,17 +253,17 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
          j1 = gl_index(i)
          call polint(atm_table%allard_gl_grid(j1),pressure_row,4,log_g,pressure_col(i),unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
          call polint(atm_table%allard_gl_grid(j1),pressure_tau100_row,4,log_g,pressure_tau100_col(i),unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
          call polint(atm_table%allard_gl_grid(j1),temp_tau100_row,4,log_g,temp_tau100_col(i),unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
       enddo
@@ -272,19 +272,19 @@ subroutine interpolate_allard_surface(log_teff, log_g, print_to_files, lookup_fa
 !        Current standard alternative. PL for TEFFL,GL, TL=TEFFL
          call polint(atm_table%allard_teffl_grid(teffl_index),pressure_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
          atm_table%atm_log10_temperature = log_teff
       else
          call polint(atm_table%allard_teffl_grid(teffl_index),pressure_tau100_col,4,log_teff,atm_table%atm_log10_pressure,unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
          call polint(atm_table%allard_teffl_grid(teffl_index),temp_tau100_col,4,log_teff,atm_table%atm_log10_temperature,unused_dy, ierr)
          if (ierr /= 0) then
-            write(*,*) 'polint: repeated abscissa (den ~ 0)'
+            write(*,*) 'polint: '//numerics_status_text(ierr)
             return
          end if
       endif

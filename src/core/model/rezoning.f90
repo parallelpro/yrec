@@ -523,7 +523,7 @@ subroutine place_points_along_chi
                  spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
             ! A spline failure returns through ierr, after its message.
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
                ierr = jerr_gate
                return
             end if
@@ -552,7 +552,7 @@ subroutine add_points_for_x_jumps
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
             ierr = jerr_gate
             return
          end if
@@ -619,7 +619,7 @@ subroutine add_points_for_z_jumps
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
             ierr = jerr_gate
             return
          end if
