@@ -62,11 +62,9 @@ module stitched_model
       integer, parameter :: region_interior = 1, region_envelope = 2, &
            region_atmosphere = 3
       integer, parameter :: n_pulse_cols = 35
-! Named pulse-column indices (2026 audit, section 8: the pts(35,*)
-! map was bare numbers in every writer -- reverse-engineered once
-! per bug fix). Columns 1..18 are the GYRE schema-101 set, in file
-! order (ipul_gyre_last marks the end of that block); 19..34 the
-! FGONG extras. 23..33 are the 11 FGONG-ordered species at
+! The pulse columns' named indices. Columns 1..18 are the GYRE
+! schema-101 set, in file order (ipul_gyre_last marks the end of that
+! block); 19..34 the FGONG extras. 23..33 are the 11 FGONG-ordered species at
 ! ipul_species_base + k, k = 1..11 (see species_slot).
       integer, parameter :: ipul_r = 1, ipul_m = 2, ipul_L = 3, &
            ipul_P = 4, ipul_T = 5, ipul_rho = 6, ipul_grad = 7, &
@@ -138,9 +136,8 @@ subroutine build_stitched_model(s, ierr)
          return
       end if
 
-! ---- re-integrate at the converged model (stitch's recipe) ----
-! fixed output step sizes for this atm_get call only (2026 W2: passed
-! in instead of overwriting and restoring star%job%{atm,env}_step_*)
+! ---- re-integrate at the converged model ----
+! with the fixed output step sizes, for this atm_get call only
       atm_steps = fixed_envint_step(s%ctrl%atm_step_size)
       env_steps = fixed_envint_step(s%ctrl%envelope_step_size)
 
@@ -159,10 +156,10 @@ subroutine build_stitched_model(s, ierr)
          ateffl = s%log_Teff
       end if
       jerr = 0
-! The stitch is the ONE writer of star%pphot: atm_get sets it from
+! The stitch is the one writer of star%pphot: atm_get sets it from
 ! this integration at the converged model, and no other path
-! recomputes it (the former gettau/wrtout own atm_get calls are
-! gone). The stitch runs every step, so pphot is always current.
+! recomputes it. The stitch runs every step, so pphot is always
+! current.
       call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
            s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
            s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), ksaha, jerr, &
@@ -192,12 +189,9 @@ subroutine build_stitched_model(s, ierr)
 ! atmo_delta_depth(k) is the PER-STEP geometric length between tau
 ! points k-1 and k (envint's Cox p590 quadrature), not a height, so
 ! accumulate it into atm_height: point i sits sum(delta(i+1:num))
-! above the deepest point (tau = 2/3, the photosphere). The legacy
-! .store stitch added the raw per-step value to the photosphere
-! radius -- a longstanding bug that left the atmosphere radii
-! non-monotonic (and made every atmosphere point hug r_phot); it is
-! fixed here, not preserved. delta(1), the one value polluted by the
-! stale-prev_tau quirk envint notes, never enters any height. The
+! above the deepest point (tau = 2/3, the photosphere) (Sources, 1).
+! delta(1), the one value polluted by the stale-prev_tau quirk envint
+! notes, never enters any height. The
 ! deepest point (height 0) repeats the envelope's photosphere radius
 ! and is skipped, same as the fitting-point repeat above.
       if (s%atm_points%num_atm_points > 0) then
@@ -282,10 +276,7 @@ subroutine compute_seismic_columns(s)
          else
             s%stitched%seismic(1,j) = 0.0d0
          end if
-! 2026 (bugsweep sec-11): column 52 is now the real mu everywhere
-! (it was R/mu in the interior -- wrong-signed composition term --
-! and 0 in the envelope, a log(1e-30) spike at the junction); where
-! mu is still unavailable the term is dropped rather than faked.
+! the mu gradient's term, dropped where mu is unavailable (Sources, 2)
          if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0 .and. &
               mu_ok(j-1) .and. mu_ok(j+1)) then
             dlnmu_dlnp = (lnmu(j+1) - lnmu(j-1))/(lnp(j+1) - lnp(j-1))
@@ -414,18 +405,16 @@ double precision function ext_profile_value(s, icol, j)
 end function ext_profile_value
 
 ! ---------------------------------------------------------------
-! Column kernels (2026 W3): the expressions the profile-column mapping
-! (profile_value / ext_profile_value), compute_seismic_columns and
-! build_pulse_points evaluate at more than one site, each written
-! once. Every body is token-for-token what each site had; the sites
-! only differ in which array they read (interior star%, envelope
-! env_points, atmosphere atm_points). Not shared, because the sites
-! differ in operand order: the interior gravity of profile column 18,
-! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs below; and the
-! Brunt-Vaisala N^2 of compute_seismic_columns, grav*(dlnp_dr/g1 -
-! dlnrho_dr) with the two derivatives divided by dr first, versus
-! build_pulse_points' second pass, which divides the bracket by dr
-! last.
+! Column kernels: the expressions the region values, compute_seismic_columns
+! and build_pulse_points evaluate at more than one site, each written
+! once; the sites differ only in which array they read (the interior's
+! star%, the envelope's env_points, the atmosphere's atm_points). Two
+! are not shared, because their sites differ in operand order (and so
+! in the last bit): the interior gravity of column ip_grav,
+! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs; and the N^2 of
+! compute_seismic_columns, grav*(dlnp_dr/g1 - dlnrho_dr) with the two
+! derivatives divided by dr first, versus build_pulse_points' second
+! pass, which divides the bracket by dr last.
 
 ! Local gravity G*m/r^2 [cgs] from mass [g] and radius [cm].
 double precision function local_gravity_cgs(mass_g, radius_cm)
@@ -683,19 +672,10 @@ end subroutine atmosphere_value
 ! (interior + envelope + atmosphere; build_stitched_model must have run).
 ! Columns 1-18 are the GYRE schema-101 set; 19-34 the extras FGONG
 ! needs. Envelope/atmosphere points carry what those integrations
-! store. The opacity derivatives (kap_kap_T, kap_kap_rho) are among
-! them since 2026: the envelope and atmosphere integrations always
-! computed dlnkap/dlnT and dlnkap/dlnrho (pt%qqot, qqod) but did
-! not keep them, so these two columns were written as zero above the
-! fitting point -- which, for a nonadiabatic pulsation code reading
-! the file, removes the kappa mechanism of the hydrogen ionisation
-! zone and the radiative damping of the atmosphere (found with GYRE
-! and nap on the standard solar model: the frozen-convection solar p
-! modes came out marginal instead of driven/damped). The energy
-! generation derivative columns stay zero there (no burning above
-! the fitting point), and the composition above the fitting point is
-! the surface composition, as io/write_stitched_profile.f90 also
-! writes.
+! store, the opacity derivatives (kap_kap_T, kap_kap_rho) among them
+! (Sources, 3). The energy generation derivative columns are zero there
+! (no burning above the fitting point), and the composition above the
+! fitting point is the surface composition.
 subroutine build_pulse_points(s, pts)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
@@ -741,10 +721,8 @@ subroutine gather_interior_point()
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
 ! GYRE runs read these columns. pulse_dlnkap_* are true log-derivatives,
 ! so they are multiplied by kap here. pulse_deps_* already hold the
-! absolute deps/dln (compute_zone_energy's burn%deps_*), so they are written as they
-! are: multiplying them by eps as well (2ed398ca, misled by their former
-! pulse_dlneps_* names) made these columns wrong by a factor eps until
-! the 2026-10 audit.
+! absolute deps/dln (compute_zone_energy's burn%deps_*), so they are
+! written as they are (Sources, 4).
       pts(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
       pts(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
       pts(ipul_eps,j) = s%eps_total(i)
@@ -752,8 +730,7 @@ subroutine gather_interior_point()
       pts(ipul_eps_eps_rho,j) = s%pulse_deps_dlnrho(i)
       pts(ipul_omega,j) = s%omega(i)
       pts(ipul_cp,j) = s%pulse_specific_heat(i)
-! 2026 (bugsweep sec-11): 1/mu_e is what the array holds -- FGONG
-! var(14) wants exactly that (it used to be inverted a second time).
+! (the array holds 1/mu_e, which FGONG's var(14) wants)
       pts(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
       pts(ipul_h1,j) = s%xa(i_h1,i)
       pts(ipul_z,j) = s%xa(i_metals,i)
@@ -773,13 +750,10 @@ subroutine gather_envelope_point()
       T = exp(ln10*s%env_points%env_log10_temperature(i))
       rho = exp(ln10*s%env_points%env_log10_density(i))
       delta = -s%env_points%env_dlnrho_dlnt(i)
-! 2026 sweep fix: env_gradients order is (1) radiative, (2) ADIABATIC,
-! (3) ACTUAL (see the profile-column mapping above and
-! envelope_derivs' current_gradients stores) -- unlike atmo_gradients,
-! whose order is (rad, actual, adiabatic). This block had the two
-! slots swapped (the pulse-side twin of the pre-2026 profile-column
-! swap), flipping the thermal N^2 sign across the envelope region of
-! every pulse file and swapping the grad/grad_ad pulse columns there.
+! env_gradients holds (1) the radiative, (2) the adiabatic and (3) the
+! actual gradient (envelope_derivs' current_gradients), unlike
+! atmo_gradients, whose order is (radiative, actual, adiabatic)
+! (Sources, 5).
       nab = s%env_points%env_gradients(3,i)
       nab_ad = s%env_points%env_gradients(2,i)
       pts(ipul_L,j) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
@@ -942,4 +916,26 @@ function region_name(region) result(name)
       end select
 end function region_name
 
+! ---------------------------------------------------------------
+! Sources (the fixes behind some of the lines above)
+! 1. The atmosphere heights: the legacy .store stitch added
+!    atmo_delta_depth's raw per-step value to the photosphere radius,
+!    which left the atmosphere radii non-monotonic (every atmosphere
+!    point hugged r_phot); fixed in 2026, not preserved.
+! 2. Column mu (ip_mu) is the real mu everywhere since 2026 (it was R/mu
+!    in the interior, a wrong-signed composition term, and 0 in the
+!    envelope, a log(1e-30) spike at the junction).
+! 3. The envelope and atmosphere integrations always computed
+!    dlnkap/dlnT and dlnkap/dlnrho but did not keep them before 2026,
+!    so kap_kap_T and kap_kap_rho were zero above the fitting point,
+!    which removed the kappa mechanism of the hydrogen ionisation zone
+!    and the atmosphere's radiative damping for a nonadiabatic
+!    pulsation code (found with GYRE and nap on the standard solar
+!    model).
+! 4. 2ed398ca multiplied pulse_deps_* by eps as well (misled by their
+!    former pulse_dlneps_* names): wrong by a factor eps until the
+!    2026-10 audit.
+! 5. The envelope's two gradient slots were swapped here before 2026
+!    (as in the profile columns), which flipped the thermal N^2 across
+!    the envelope of every pulse file.
 end module stitched_model
