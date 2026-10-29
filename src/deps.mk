@@ -391,7 +391,7 @@ eos/opal/opal95_eos.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_co
 eos/opal/opal_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod opal95_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/opal_eos_tables.o: io_units.mod math_lib.mod
 eos/scv/scv_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod
+eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod legacy_controls.mod numerics_lib.mod star_info_lib.mod

@@ -586,4 +586,27 @@ ok   mhd reader: log T above the tables returns ierr
 ok   mhd reader: log P above the tables returns ierr
 ok   mhd reader: a missing table returns ierr = 1
 ok   mhd reader: a truncated table returns ierr = 1
+# test_eos: physics checks
+# test_eos: configuration yale_only
+ok   ideal gas, neutral: rho = mu P_gas/(R T)
+ok   ideal gas, neutral: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)
+ok   ideal gas, fully ionized: rho = mu P_gas/(R T) with the Fermi-Dirac correction
+ok   ideal gas, fully ionized: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)
+ok   radiation-dominated: grad_ad and cp of the gas plus radiation
+ok   radiation-dominated: grad_ad -> 1/4
+# test_eos: configuration yale_only
+ok   continuity: rho and grad_ad at the Saha ramp's foot (cutoff - 0.5)
+ok   continuity: rho and grad_ad at the Saha cutoff
+ok   continuity: rho and grad_ad at the Saha cutoff, denser
+# test_eos: configuration production
+ok   continuity: rho and grad_ad where the OPAL 2006 edge ramp reaches OPAL
+ok   continuity: rho and grad_ad at the OPAL 2006 table's edge (the Yale/SCV result beyond)
+# test_eos: configuration yale_only
+# test_eos: configuration scv_only
+ok   in_atmosphere: the density, beta and ionization fractions of a full evaluation
+# test_eos: configuration scv_only
+ok   envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path
+# test_eos: configuration yale_only
+# test_eos: configuration debye_huckel
+ok   Debye-Hueckel: rho(none) < rho(C, N, O) < rho(C, N, O and heavy metals)
 test_eos: done

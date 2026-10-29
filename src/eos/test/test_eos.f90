@@ -1,59 +1,44 @@
 !----------------------------------------------------------------------
 ! test_eos
 !----------------------------------------------------------------------
-! Standalone eos-domain test program (2026, phase three -- docs/ROADMAP.md
-! stage 2), following MESA's per-module test convention: boot only
-! what the eos domain needs, evaluate the public facade entries over
-! a fixed grid of points, and print the results in a stable format
-! for byte-comparison against the checked-in expected output
-! (expected_test_eos.out, regenerated deliberately and reviewed like
-! any other diff).
-!
-! Initialization notes -- everything here replicates what the full
-! code does at startup, with the source of each piece cited:
-!  * unit numbers: core/read_input.f90's assignments (run_log_unit=20,
-!    fermi_unit=15, scv units 72-74, iopale=49).
-!  * flags/cutoffs: explicit assignments below (TSCUT=6.0 matching
-!    the reference solar-model namelists; all kap table flags false
-!    so setups' kap_init is a no-op; atm_choice=0 so atm_init is a
-!    no-op).
-!  * constants + eos table loads: the real core/run/run_setup.f90 +
-!    eos_lib's eos_init, with real Fermi/SCV table paths and dummy
-!    paths for everything gated off.
-!  * env_comp (the envelope-composition state blend_eos consumes):
-!    core/model/starting_model.f90's exact mixture algorithm (its statements at the
-!    "COMPUTE SURFACE MIX VALUES" block), seeded from const_lib's
-!    mixture_weights_seed defaults (the G&N93 12-species mixture) and starin's
-!    atomic_weight data, for X=0.70, Z=0.016492 (matching the shipped
-!    EOSOPAL06Z0.016492 table).
-!  * the OPAL-2006 EOS file is opened on iopale exactly as
-!    core/read_input.f90 does; the table itself is lazily read by esac06
-!    on first use, as in production.
-!
-! The MHD path is exercised only if YREC_MHD_TABLES is set to a
-! directory holding the 8 MHD table files -- the repository ships no
-! MHD tables, so by default that section reports SKIPPED. This is
-! the infrastructure half of closing docs/ROADMAP.md's LMHD coverage gap;
-! the data half needs tables from outside the repo.
-!
-! Then (2026-10, check_configurations) every EOS configuration a deck
-! can choose, over the same grid: the OPAL 1995 and 2001 tables over
-! SCV, SCV alone, the Yale solvers alone, numerical derivatives,
-! use_diffusion_z, and the Debye-Hueckel correction.
-!
-! And the MHD table interpolation on a synthetic table
-! (check_mhd_table_lookup), which runs without the MHD tables.
+! The equation of state, through eos_lib, without a star: the program
+! installs the settings and the tables itself (eos_init), sets the
+! envelope mixture a run would (eos_set_mixture: core's mixture
+! algorithm on the default mixture seed, X = 0.70, Z = 0.016492, the Z
+! of the shipped OPAL 2006 table) and builds the SCV envelope table
+! (eos_update_envelope_tables). Its output is byte-compared with
+! expected_test_eos.out (regenerated only on purpose). In order:
+!   the production EOS (SCV and OPAL 2006) over a (log T, log P) grid;
+!   eos_get_gamma1 on its two branches; the MHD EOS when YREC_MHD_TABLES
+!   names a directory with the real tables (none ship with YREC: SKIPPED
+!   otherwise); the error paths; every configuration a deck can choose
+!   (check_configurations); the derivatives against finite differences
+!   (check_derivatives); the MHD table lookup on a synthetic table; then
+!   the ok/FAIL checks:
+!   check_mhd_reader  the MHD reader on eight synthetic tables written
+!                     to the working directory (densities in each family,
+!                     the out-of-range errors, a missing or truncated file)
+!   check_physics     the ideal-gas and radiation limits, continuity
+!                     across the Saha ramp and the OPAL edge ramp,
+!                     in_atmosphere, the envelope table after a change
+!                     of composition, the Debye-Hueckel correction
+! Each ok/FAIL check was confirmed to fail under a mutation of the code
+! it covers; a failed check makes the program stop with status 1. The
+! run log (test_eos.short) gets eos's messages.
 program test_eos
       use io_units
       use eos_lib
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
-      use opal_eos, only: esac06
+      use opal_eos, only: esac06, compute_opal_eos, iv_opal06
+      use physical_constants, only: gas_constant
       use mhd_eos, only: interpolate_mhd_table
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
       integer :: gerr
+! the ok/FAIL checks that failed (the program then stops with status 1)
+      integer :: failures = 0
 
       character(len=256) :: yrec_input, mhd_dir
       character(len=256) :: fermi_path, scvh_path, scvhe_path, scvz_path, &
@@ -257,7 +242,7 @@ program test_eos
 ! design here -- in_table flags and sentinels -- unlike kap), so
 ! with healthy tables the facade cannot be driven to ierr /= 0. The
 ! first check asserts the success path threads ierr = 0 end to end
-! through compute_blended_eos/blend_eos/compute_opal2006_eos/esac06. The second drives esac06 (a
+! through compute_blended_eos/blend_eos/compute_opal_eos/esac06. The second drives esac06 (a
 ! domain internal -- this test is in-domain, white-box by design)
 ! with an invalid rad_flag, the same class of internal error the
 ! converted stops guarded, and asserts ierr = 1 with no crash; its
@@ -280,8 +265,13 @@ program test_eos
       call check_derivatives()
       call check_mhd_table_lookup()
       call check_mhd_reader()
+      call check_physics()
 
       close(run_log_unit)
+      if (failures > 0) then
+         write(*,'(i0,a)') failures, " check(s) failed"
+         stop 1
+      end if
       write(*,'(a)') "test_eos: done"
 contains
 
@@ -700,10 +690,321 @@ subroutine write_mhd_part(u, log_t0, x)
       end do
 end subroutine write_mhd_part
 
+! ---------------------------------------------------------------
+! The EOS against the physics it must reproduce (ok/FAIL), each check
+! confirmed to fail under a mutation of the code it covers:
+!   ideal_gas_checks       the limits of the Yale solvers: a neutral
+!                          gas and a weakly degenerate fully ionized one
+!                          (rho = mu P_gas/(R T), with the first-order
+!                          Fermi-Dirac correction), grad_ad and cp
+!                          against the ideal gas plus radiation, and
+!                          grad_ad -> 1/4 when radiation dominates
+!   continuity_checks      rho and grad_ad across the edges of the
+!                          Saha-to-fully-ionized ramp (cutoff - 0.5 and
+!                          the cutoff) and across the OPAL 2006 table's
+!                          edge ramp
+!   atmosphere_checks      eos_get with in_atmosphere = .true.
+!   envelope_table_checks  eos_update_envelope_tables after a change of
+!                          the envelope composition
+!   debye_huckel_checks    the Debye-Hueckel correction and its metal
+!                          mixture (eos_set_debye_huckel_z)
+subroutine check_physics()
+      write(*,'(a)') "# test_eos: physics checks"
+      call ideal_gas_checks()
+      call continuity_checks()
+      call atmosphere_checks()
+      call envelope_table_checks()
+      call debye_huckel_checks()
+end subroutine check_physics
+
+! One eos_get at (log T, log P) and (x, z), from a fresh record.
+subroutine eos_at(lt, lp, x, z, res, ierr, atmosphere, comp)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: res
+      integer, intent(out) :: ierr
+      logical, intent(in), optional :: atmosphere
+      real(dp), intent(in), optional :: comp(:)
+      integer :: iterations
+      logical :: atm
+      atm = .false.
+      if (present(atmosphere)) atm = atmosphere
+      res = eos_result()
+      iterations = 0
+      call eos_get(lt, lp, x, z, res, .true., atm, iterations, &
+           composition_at_zone=comp, ierr=ierr)
+end subroutine eos_at
+
+! cp and grad_ad of an ideal gas plus radiation with gas-pressure
+! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b and alpha = 1/b,
+! cp = (R/mu)(3/2 + 12(1 - b)/b + delta^2) and grad_ad = (R/mu) delta/(b cp)
+! (Kippenhahn & Weigert sec. 13.2)
+subroutine ideal_radiation_gas(b, r_mu, cp, grad_ad)
+      real(dp), intent(in) :: b, r_mu
+      real(dp), intent(out) :: cp, grad_ad
+      real(dp) :: delta
+      delta = (4.0d0 - 3.0d0*b)/b
+      cp = r_mu*(1.5d0 + 12.0d0*(1.0d0 - b)/b + delta*delta)
+      grad_ad = r_mu*delta/(b*cp)
+end subroutine ideal_radiation_gas
+
+subroutine ideal_gas_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+! weakly degenerate, fully ionized points (eta from -4.9 to -2.6)
+      real(dp), parameter :: fi_lt(4) = [6.0d0, 6.3d0, 6.5d0, 7.0d0]
+      real(dp), parameter :: fi_lp(4) = [13.0d0, 14.3d0, 15.0d0, 16.5d0]
+      type(eos_result) :: r
+      real(dp) :: mu_e_inv, mu_inv, rho_ideal, correction, cp, grad, worst
+      integer :: k, ierr
+      logical :: ok
+      call configure_eos("yale_only")
+! a neutral gas (log T = 3.5): rho = mu P_gas/(R T) with 1/mu = 1/mu_ion +
+! 1/mu_e, the ions' from the envelope mixture and few free electrons;
+! grad_ad and cp of an ideal monatomic gas plus its little radiation,
+! but for the metals' partial ionization (1e-3)
+      call eos_at(3.5d0, 3.0d0, x, z, r, ierr)
+      rho_ideal = r%beta*r%pressure/(gas_constant*(mean_atomic_mass + &
+           r%electron_mean_weight_inverse)*r%temperature)
+      call ideal_radiation_gas(r%beta, r%specific_gas_constant, cp, grad)
+      call check("ideal gas, neutral: rho = mu P_gas/(R T)", ierr == 0 .and. &
+           abs(r%density/rho_ideal - 1.0d0) < 1.0d-12 .and. &
+           r%electron_mean_weight_inverse < 1.0d-4*mean_atomic_mass)
+      call check("ideal gas, neutral: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)", ierr == 0 .and. &
+           abs(r%adiabatic_gradient - 0.4d0) < 1.0d-3 .and. &
+           abs(r%adiabatic_gradient/grad - 1.0d0) < 2.0d-3 .and. &
+           abs(r%specific_heat_cp/cp - 1.0d0) < 2.0d-3)
+! fully ionized: rho = mu beta P/(R T) (1 - 2^(-5/2) e^eta P_e/P_gas),
+! the weak-degeneracy expansion of the electron pressure, with 1/mu_e
+! from the composition (X/1.008 + (1 - X)/2.002)
+      mu_e_inv = x/1.008d0 + (1.0d0 - x)/2.002d0
+      mu_inv = mean_atomic_mass + mu_e_inv
+      worst = 0.0d0
+      ok = .true.
+      do k = 1, size(fi_lt)
+         call eos_at(fi_lt(k), fi_lp(k), x, z, r, ierr)
+         ok = ok .and. ierr == 0
+         correction = 2.0d0**(-2.5d0)*exp(r%electron_degeneracy_parameter)*mu_e_inv/mu_inv
+         rho_ideal = r%beta*r%pressure/(gas_constant*mu_inv*r%temperature)*(1.0d0 - correction)
+         worst = max(worst, abs(r%density/rho_ideal - 1.0d0))
+      end do
+      call check("ideal gas, fully ionized: rho = mu P_gas/(R T) with the Fermi-Dirac correction", &
+           ok .and. worst < 2.0d-4)
+! grad_ad and cp against the ideal gas plus radiation: nearly ideal
+! (beta = 0.9997, eta = -4.9) and radiation-dominated (beta = 0.1)
+      call eos_at(6.0d0, 13.0d0, x, z, r, ierr)
+      call ideal_radiation_gas(r%beta, r%specific_gas_constant, cp, grad)
+      call check("ideal gas, fully ionized: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)", &
+           ierr == 0 .and. abs(r%adiabatic_gradient/grad - 1.0d0) < 5.0d-4 .and. &
+           abs(r%specific_heat_cp/cp - 1.0d0) < 2.0d-3 .and. abs(r%adiabatic_gradient - 0.4d0) < 1.0d-3)
+      call eos_at(7.5d0, 15.45d0, x, z, r, ierr)
+      call ideal_radiation_gas(r%beta, r%specific_gas_constant, cp, grad)
+      call check("radiation-dominated: grad_ad and cp of the gas plus radiation", &
+           ierr == 0 .and. r%beta < 0.2d0 .and. abs(r%adiabatic_gradient/grad - 1.0d0) < 1.0d-4 .and. &
+           abs(r%specific_heat_cp/cp - 1.0d0) < 1.0d-4)
+      call eos_at(7.5d0, 15.41d0, x, z, r, ierr)
+      call check("radiation-dominated: grad_ad -> 1/4", ierr == 0 .and. r%beta < 0.03d0 .and. &
+           abs(r%adiabatic_gradient - 0.25d0) < 1.0d-3)
+end subroutine ideal_gas_checks
+
+! rho and grad_ad on both sides of a boundary in log T (fixed log P):
+! the jump over 2e-7 in log T, against 1e-6 (a step at the boundary
+! would be the gap between the two solutions, 1e-3 to 1e-1)
+subroutine continuity_in_t(label, lt0, lp)
+      character(len=*), intent(in) :: label
+      real(dp), intent(in) :: lt0, lp
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, h = 1.0d-7
+      type(eos_result) :: below, above
+      integer :: ierr1, ierr2
+      call eos_at(lt0 - h, lp, x, z, below, ierr1)
+      call eos_at(lt0 + h, lp, x, z, above, ierr2)
+      call check(label, ierr1 == 0 .and. ierr2 == 0 .and. &
+           abs(above%log10_density - below%log10_density) < 1.0d-6 .and. &
+           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-6)
+end subroutine continuity_in_t
+
+subroutine continuity_checks()
+      call configure_eos("yale_only")
+      call continuity_in_t("continuity: rho and grad_ad at the Saha ramp's foot (cutoff - 0.5)", &
+           5.5d0, 13.0d0)
+      call continuity_in_t("continuity: rho and grad_ad at the Saha cutoff", 6.0d0, 13.0d0)
+      call continuity_in_t("continuity: rho and grad_ad at the Saha cutoff, denser", 6.0d0, 15.0d0)
+! the OPAL 2006 table's edge at log T = 5, in log P: the blend is
+! OPAL's own result below log P = 12.87, the Yale/SCV result above
+! 13.01, and ramps between. Each end of the ramp is bisected (to 1e-11
+! in log P) and the two sides compared: rho to 1e-8 and grad_ad to 1e-7
+! in the log (the gap between the two results there is 1e-3 to 1e-2).
+      call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
+      call check("continuity: rho and grad_ad where the OPAL 2006 edge ramp reaches OPAL", &
+           ramp_end_is_continuous(12.80d0, 12.94d0, .true.))
+      call check("continuity: rho and grad_ad at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
+           ramp_end_is_continuous(13.05d0, 12.94d0, .false.))
+end subroutine continuity_checks
+
+! At log T = 5 between log P = lp_equal (where the blend equals the
+! reference) and lp_differ (inside the ramp, where it does not), bisect
+! for the end of the OPAL 2006 edge ramp and compare rho and grad_ad on
+! its two sides. The reference is OPAL's own result (compute_opal_eos)
+! at the ramp's inner end (inner_end), and the Yale/SCV result (OPAL
+! switched off) at the table's edge.
+logical function ramp_end_is_continuous(lp_equal, lp_differ, inner_end)
+      real(dp), intent(in) :: lp_equal, lp_differ
+      logical, intent(in) :: inner_end
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 5.0d0
+      real(dp) :: a, b, m
+      type(eos_result) :: below, above
+      integer :: k, ierr1, ierr2
+      logical :: ok
+      a = lp_equal
+      b = lp_differ
+      ok = blend_equals_reference(a, inner_end) .and. .not. blend_equals_reference(b, inner_end)
+      do k = 1, 40
+         m = 0.5d0*(a + b)
+         if (blend_equals_reference(m, inner_end)) then
+            a = m
+         else
+            b = m
+         end if
+      end do
+      call eos_at(lt, a, x, z, below, ierr1)
+      call eos_at(lt, b, x, z, above, ierr2)
+      ramp_end_is_continuous = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+           abs(above%log10_density - below%log10_density) < 1.0d-8 .and. &
+           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-7
+end function ramp_end_is_continuous
+
+! Whether the production blend at (log T = 5, lp) equals OPAL's own
+! result (opal_reference) or the Yale/SCV result, to 1e-12 in log rho.
+logical function blend_equals_reference(lp, opal_reference)
+      real(dp), intent(in) :: lp
+      logical, intent(in) :: opal_reference
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 5.0d0
+      type(eos_result) :: blend, reference
+      type(eos_settings_t) :: s
+      integer :: ierr
+      logical :: covers
+      call eos_at(lt, lp, x, z, blend, ierr)
+      if (opal_reference) then
+         reference = eos_result()
+         call compute_opal_eos(iv_opal06, lt, lp, x, z, reference, ierr, covers)
+      else
+         s = eos_settings
+         s%use_opal2006_eos = .false.
+         call set_eos_settings(s)
+         call eos_at(lt, lp, x, z, reference, ierr)
+         s%use_opal2006_eos = .true.
+         call set_eos_settings(s)
+      end if
+      blend_equals_reference = abs(blend%log10_density - reference%log10_density) < 1.0d-12
+end function blend_equals_reference
+
+! in_atmosphere = .true. at Saha points, in the ramp and below it, with
+! and without SCV: the same density, beta and ionization fractions as a
+! full evaluation (to 1e-10: the Saha solver starts from the previous
+! call's solution)
+subroutine atmosphere_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+      real(dp), parameter :: lt(3) = [3.7d0, 4.6d0, 5.8d0], lp(3) = [4.5d0, 9.0d0, 12.6d0]
+      type(eos_result) :: full, atm
+      integer :: k, c, ierr1, ierr2
+      logical :: ok
+      ok = .true.
+      do c = 1, 2
+         if (c == 1) call configure_eos("yale_only")
+         if (c == 2) call configure_eos("scv_only", scv=.true.)
+         do k = 1, size(lt)
+            call eos_at(lt(k), lp(k), x, z, full, ierr1)
+            call eos_at(lt(k), lp(k), x, z, atm, ierr2, atmosphere=.true.)
+            ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+                 abs(atm%log10_density - full%log10_density) < 1.0d-10 .and. &
+                 atm%beta == full%beta .and. &
+                 all(abs(atm%ion_fraction - full%ion_fraction) < 1.0d-10)
+         end do
+      end do
+      call check("in_atmosphere: the density, beta and ionization fractions of a full evaluation", ok)
+end subroutine atmosphere_checks
+
+! After the envelope composition changes (eos_set_mixture) and
+! eos_update_envelope_tables rebuilds the SCV envelope table, the table
+! at the new composition agrees with SCV's general-composition path
+! there (to 1e-4 in log rho; a table left at the old composition is off
+! by 0.05)
+subroutine envelope_table_checks()
+      real(dp), parameter :: x_new = 0.60d0, z_new = 0.03d0
+      real(dp), parameter :: lt(3) = [3.7d0, 3.9d0, 4.1d0], lp(3) = [5.0d0, 6.5d0, 8.0d0]
+      type(eos_result) :: table, general
+      integer :: k, ierr1, ierr2
+      logical :: ok
+      call configure_eos("scv_only", scv=.true.)
+      call set_envelope_mixture(x_new, z_new)
+      call eos_update_envelope_tables(x_new, z_new)
+      ok = .true.
+      do k = 1, size(lt)
+         call eos_at(lt(k), lp(k), x_new, z_new, table, ierr1)
+         call eos_at(lt(k), lp(k), x_new + 2.0d-5, z_new, general, ierr2)
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+              abs(table%log10_density - general%log10_density) < 1.0d-4
+      end do
+      call check("envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path", ok)
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
+end subroutine envelope_table_checks
+
+! The envelope mixture of (x, z) by the main program's algorithm,
+! handed to eos_set_mixture.
+subroutine set_envelope_mixture(x, z)
+      real(dp), intent(in) :: x, z
+      real(dp) :: wm(12), ws, sc, mam, fractions(12)
+      integer :: j
+      wm = mixture_weights_seed
+      ws = wm(1)+wm(2)+wm(3)+wm(4)+wm(5)+wm(6)+wm(8)+wm(9)+wm(10)+wm(11)
+      sc = z/ws
+      wm(7) = x/sc
+      wm(12) = (1.0d0 - x - z)/sc
+      ws = 0.0d0
+      do j = 1, 12
+         wm(j) = sc*wm(j)/atomic_weight(j)
+         ws = ws + wm(j)
+      end do
+      mam = ws
+      fractions = wm/mam
+      call eos_set_mixture(x, z, mam, fractions)
+end subroutine set_envelope_mixture
+
+! The Debye-Hueckel correction lowers the pressure at a given density,
+! so at a given pressure it raises the density, the more the higher
+! the metals' charges: no correction < C, N, O only < C, N, O and a
+! LAOL-like heavy-metal mixture (eos_set_debye_huckel_z).
+subroutine debye_huckel_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 6.8d0, lp = 17.0d0
+      real(dp) :: comp(15), metals(18)
+      type(eos_result) :: none, cno, heavy
+      integer :: ierr1, ierr2, ierr3
+      comp = 0.0d0
+      comp(1) = x
+      comp(2) = 1.0d0 - x - z
+      comp(3) = z
+      comp(5) = 0.17d0*z
+      comp(7) = 0.05d0*z
+      comp(9) = 0.48d0*z
+      call configure_eos("yale_only")
+      call eos_at(lt, lp, x, z, none, ierr1)
+      call configure_eos("debye_huckel", debye_huckel=.true.)
+      metals = 0.0d0
+      call eos_set_debye_huckel_z(metals)
+      call eos_at(lt, lp, x, z, cno, ierr2, comp=comp)
+      metals(4:18) = [1.7d-3, 3.3d-5, 6.5d-4, 5.8d-5, 7.0d-4, 6.0d-6, 4.0d-4, 7.0d-6, 1.0d-4, &
+           6.0d-5, 3.0d-6, 1.7d-5, 1.0d-5, 1.3d-3, 7.0d-5]
+      call eos_set_debye_huckel_z(metals)
+      call eos_at(lt, lp, x, z, heavy, ierr3, comp=comp)
+      call check("Debye-Hueckel: rho(none) < rho(C, N, O) < rho(C, N, O and heavy metals)", &
+           ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
+           none%density < cno%density .and. cno%density < heavy%density)
+end subroutine debye_huckel_checks
+
 subroutine check(label, ok)
       character(len=*), intent(in) :: label
       logical, intent(in) :: ok
       write(*,'(a,1x,a)') merge("ok  ", "FAIL", ok), label
+      if (.not. ok) failures = failures + 1
 end subroutine check
 
 end program test_eos
