@@ -19,7 +19,7 @@ splint at  1.50 =   7.260841836734694E-01  0
 splint at  4.00 =   2.500000000000000E-01  0
 splint at  6.50 =   1.662946428571428E-01  0
 splint (4 points), repeated abscissa: ierr  2
-# natural_spline/splint: seven points in json-sized arrays
+# natural_spline/splint: seven points in arrays of 100
 natural_spline y2
    0.000000000000000E+00   6.531649206209781E-01   1.886032333071000E-01
    1.640267709256824E-01   8.710562698595546E-02   7.490486348979628E-02
@@ -254,3 +254,61 @@ bsstep limits   3  11   1: ierr  3 deriv calls  0  0.0
 bsstep limits   3  11   8: ierr  3 deriv calls  0  0.0
 bsstep limits   3   5   7: ierr  3 deriv calls  0  0.0
 test_numerics: done
+# checks
+cspline/splint: clamped spline exact on a cubic                            2.90E-16  ok
+splint: its dy exact on the clamped cubic                                  1.54E-16  ok
+compute_spline_coefficients: the power form is splint's                    1.45E-16  ok
+natural_spline: zero second derivatives at the ends                        0.00E+00  ok
+natural_spline/splint: exact on a line, extrapolated too                   1.97E-16  ok
+cspline: the error falls as h^4 (order to 0.2)                             1.03E-01  ok
+splint: the slope's error falls as h^3 (order to 0.3)                      5.20E-02  ok
+ysplin/intpol: the natural spline, n = 2                                   0.00E+00  ok
+ysplin/intpol: the natural spline, n = 3                                   0.00E+00  ok
+ysplin/intpol: the natural spline, n = 4                                   0.00E+00  ok
+ysplin/intpol: the natural spline, n = 8                                   0.00E+00  ok
+ysplin: slope 1/2 at the middle of (0,0),(1,1),(3,0)                       0.00E+00  ok
+osplin: monotone data give a monotone spline                               0.00E+00  ok
+osplin: convex data give a convex spline                                   0.00E+00  ok
+osplin: interpolates the nodes                                             0.00E+00  ok
+osplin: exact on a line, extrapolated too                                  1.05E-14  ok
+osplin: a run equals its points one at a time                              0.00E+00  ok
+osplin: n < 3 is numerics_bad_input, yval untouched                        0.00E+00  ok
+osplin: decreasing points are numerics_unsorted_points                     0.00E+00  ok
+inter3: exact on a quadratic                                               3.55E-16  ok
+inter3: its derivative weights exact on a quadratic                        1.78E-16  ok
+interp/lagrange4: exact on a cubic                                         1.42E-16  ok
+interp: its derivative weights exact on a cubic                            1.42E-16  ok
+interp: weights sum to 1, derivatives to 0; intrp2's                       2.22E-16  ok
+intrp2: interp's weights bit for bit                                       0.00E+00  ok
+quint: exact on a quadratic                                                7.77E-16  ok
+polint: exact on a quartic through five points                             4.44E-16  ok
+polint: scale-free (abscissae of 1e-25)                                    5.55E-17  ok
+polint: coincident abscissae are numerics_coincident_points                0.00E+00  ok
+lir: exact on a cubic and a line (6 points)                                4.79E-16  ok
+lir: a decreasing table as the same table increasing                       1.11E-16  ok
+lir: linear below four points, exact on a line                             8.88E-17  ok
+lir: on a node, the tabulated values (flag 1)                              0.00E+00  ok
+lir: outside the table, flag 0                                             0.00E+00  ok
+lir: one point is numerics_bad_input, result untouched                     0.00E+00  ok
+lir: a flat table is numerics_coincident_points                            0.00E+00  ok
+locate: brackets x in increasing and decreasing tables                     0.00E+00  ok
+locate: the end nodes give 1 and n-1, either direction                     0.00E+00  ok
+locate: within 1% of the span beyond an end, the end interval              0.00E+00  ok
+locate: beyond the slack, 0 and n, either direction                        0.00E+00  ok
+findex: brackets x from any guess; -1 below, -n at the top                 0.00E+00  ok
+ludcmp/lubksb: the residual of a 6x6 solve                                 2.93E-17  ok
+ludcmp: a round-off pivot (rows 1..9) is numerics_singular                 0.00E+00  ok
+ludcmp: a zero pivot (row 3 = row 1 + row 2) is numerics_singular          0.00E+00  ok
+ludcmp: a zero row is numerics_singular, the matrix untouched              0.00E+00  ok
+ludcmp: a NaN column is numerics_bad_input                                 0.00E+00  ok
+simeqc: LU's solution for two right-hand sides                             1.19E-16  ok
+simeqc: a singular matrix is numerics_singular                             0.00E+00  ok
+solve_tridiagonal: a dense solve's solution                                1.27E-16  ok
+solve_tridiagonal: a zero first pivot is numerics_singular                 0.00E+00  ok
+solve_tridiagonal: a zero later pivot is numerics_singular                 0.00E+00  ok
+bsstep: sin x, cos x and exp(-0.3x) to x = 5                               7.28E-13  ok
+bsstep: x advances by h_did on every step                                  0.00E+00  ok
+bsstep: limits out of range are numerics_bad_input, no step                0.00E+00  ok
+bsstep: failed derivatives are numerics_derivatives_failed                 0.00E+00  ok
+bsstep: zero tolerance ends in numerics_step_underflow                     0.00E+00  ok
+numerics_status: distinct codes, each with its own text                    0.00E+00  ok
