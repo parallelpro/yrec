@@ -230,7 +230,7 @@ module network
                       [s_he4, -3, s_c12, 1, 0, 0, 0, 0, 0, 0], &
                       q_mev=7.275d0, chain=chain_triple_alpha, &
                       rate_law=cf88_triple_alpha, burns_in=helium_burning, &
-                      screening=screening_t(12.d0, 16.192d0, 9.104d0, 2.577d0, -0.889d0)) ]
+                      screening=screening_t(12.d0, 16.192d0, 9.014d0, 2.577d0, -0.889d0)) ]
 
       public :: burn_implicitly, network_table_errors, write_network_table, &
            compute_abundance_rates, compute_reaction_energies, &

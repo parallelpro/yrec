@@ -98,7 +98,7 @@ below the burning cutoff: nothing burns, everything zero: ok
 # test_net: strong screening, log T 7, log rho 6: Lambda_0 z_tilde, pp rate (strong, weak), worst derivative error
   6.004914067295E+00  4.729201068481E+10  1.704871349166E+12  8.78E-09
 strong screening: in the strong regime, below weak, derivatives vs centred differences (1e-6): ok
-strong screening: the exponent is Graboske et al.'s (1e-10): ok
+strong screening: the exponent is Graboske et al.'s, pp and triple alpha (1e-10): ok
 # test_net: compute_abundance_rates, dX/dt / A: H He3 He4 C12 C13 N14 O16 O18
  -1.097958344069E-15 -3.014892365009E-16  1.703542417370E-16 -1.259259469469E-15
   1.197061996450E-15  6.242140095209E-17 -2.239279325898E-19  0.000000000000E+00
