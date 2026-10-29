@@ -56,7 +56,7 @@ contains
 ! (stab), and store, clear, scale, average and sum the velocities
 ! (the arguments and circ_scr).
 subroutine circulation_velocities(stab, sub_physics, circ_scr, &
-     log_radius, zone_min, zone_max, iteration, &
+     zone_min, zone_max, iteration, &
      am_transport_convective_flag, num_zones, omega, any_transport_active, &
      total_velocity, total_luminosity, log_pressure, mechanism_velocity)
       use rotation_scratch_lib, only: stability_state, &
@@ -69,7 +69,6 @@ subroutine circulation_velocities(stab, sub_physics, circ_scr, &
       type(substep_physics_state), intent(in) :: sub_physics
       type(circulation_velocity_state), intent(inout) :: circ_scr
 
-      double precision, intent(in) :: log_radius(json)
       integer, intent(in) :: zone_min, zone_max, iteration
       logical, intent(in) :: am_transport_convective_flag(json)
       integer, intent(in) :: num_zones
@@ -93,7 +92,7 @@ subroutine circulation_velocities(stab, sub_physics, circ_scr, &
 ! another follows it).
       do m = 1, n_transport_mechanisms
          call compute_mechanism_velocity(m, zone_min, zone_max, stab, sub_physics, &
-              omega, log_radius, log_pressure, am_transport_convective_flag, &
+              omega, log_pressure, am_transport_convective_flag, &
               mechanism_velocity)
       end do
       call apply_velocity_scales()

@@ -293,31 +293,37 @@ end subroutine compute_gsf_velocity
 ! U_SS (cm/s) at the interfaces zone_min..zone_max. Where the shear is
 ! dynamical it also corrects gsf_circulation_velocity
 ! (compute_gsf_velocity's) for the shear the instability leaves behind,
-! and reports the interface. log_radius (log10 r), radius (cm), omega
+! and marks the interface (dynamical, with the inner omega at the limit
+! in dynamical_inner_omega) for the caller's report. radius (cm), omega
 ! (rad/s) and mu are at the zone centres; critical_reynolds is the
 ! critical Reynolds number of the secular shear; the other inputs as in
 ! compute_gsf_velocity, with mu_gradient_richardson_coeff the
 ! mu-gradient Richardson term (rotation_stability_setup).
-subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
-     log_radius, radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
+pure subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
+     radius, omega, domega_dlnr, dynamical_shear_omega_limit, &
      mu, mean_molecular_weight_interface, radius_interface, &
      kinematic_viscosity_interface, thermal_diffusivity_interface, &
-     mu_gradient_richardson_coeff, secular_shear_velocity, gsf_circulation_velocity)
-      use physical_constants, only: ln10
+     mu_gradient_richardson_coeff, secular_shear_velocity, gsf_circulation_velocity, &
+     dynamical, dynamical_inner_omega)
       use math_lib
       implicit none
       integer, intent(in) :: zone_min, zone_max
       double precision, intent(in) :: critical_reynolds
-      double precision, intent(in) :: log_radius(:), radius(:), omega(:), &
+      double precision, intent(in) :: radius(:), omega(:), &
            domega_dlnr(:), dynamical_shear_omega_limit(:), mu(:), &
            mean_molecular_weight_interface(:), radius_interface(:), &
            kinematic_viscosity_interface(:), thermal_diffusivity_interface(:), &
            mu_gradient_richardson_coeff(:)
       double precision, intent(inout) :: secular_shear_velocity(:), &
            gsf_circulation_velocity(:)
+! the interfaces where the shear is dynamical, and the inner omega at
+! the limit there (wmin), for the caller's report
+      logical, intent(inout) :: dynamical(:)
+      double precision, intent(inout) :: dynamical_inner_omega(:)
       integer :: i
       double precision :: qwr, dr, rmid, wmin, qwrmx, qwrmx2
       do i = zone_min,zone_max
+         dynamical(i) = .false.
 ! Dynamical shear operates where |d omega/d ln r| > dynamical_shear_omega_limit
 ! (Ri < 1/4). The shear velocity is then the large dynamical value,
 !   U_SS = (8/45) K (|d omega/d ln r|/dynamical_shear_omega_limit)^2/r.
@@ -334,7 +340,7 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
 ! trigger fires (docs/bug_sweep.md O11), and U_GSF is scaled by its
 ! gradient term (Kippenhahn 1980, as compute_gsf_velocity forms it for
 ! each profile) evaluated with wmin over the same term evaluated with
-! omega(i-1). Each such interface is reported.
+! omega(i-1). Each such interface is marked.
             dr = radius(i)-radius(i-1)
             rmid = 0.5d0*(radius(i)+radius(i-1))
             wmin = omega(i) - (omega(i) - omega(i-1))* &
@@ -342,9 +348,8 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
             gsf_circulation_velocity(i) = gsf_circulation_velocity(i)* &
                  gsf_gradient_term(omega(i), wmin, radius(i), radius(i-1), dr, rmid)/ &
                  gsf_gradient_term(omega(i), omega(i-1), radius(i), radius(i-1), dr, rmid)
-            write(6,9911) i,omega(i),omega(i-1),wmin
- 9911       format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
-                 ' WBOT',e11.3,' LIMIT',e11.3)
+            dynamical(i) = .true.
+            dynamical_inner_omega(i) = wmin
             cycle
          end if
 ! The largest |d omega/d ln r| stable against secular shear.

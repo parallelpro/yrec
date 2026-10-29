@@ -36,18 +36,8 @@ velocities: no shear velocity for a solid body           0.00E+00  ok
 velocities: no shear velocity below the threshold        0.00E+00  ok
 velocities: shear onset quadratic (ratio 4)              1.92E-14  ok
 velocities: a mu gradient stabilizes the shear           0.00E+00  ok
- DYNAMICAL SHEAR-SHELL    2 WTOP  1.400E-05 WBOT  1.200E-05 LIMIT  1.201E-05
- DYNAMICAL SHEAR-SHELL    3 WTOP  1.600E-05 WBOT  1.400E-05 LIMIT  1.401E-05
- DYNAMICAL SHEAR-SHELL    4 WTOP  1.800E-05 WBOT  1.600E-05 LIMIT  1.601E-05
- DYNAMICAL SHEAR-SHELL    5 WTOP  2.000E-05 WBOT  1.800E-05 LIMIT  1.800E-05
- DYNAMICAL SHEAR-SHELL    6 WTOP  2.200E-05 WBOT  2.000E-05 LIMIT  2.000E-05
- DYNAMICAL SHEAR-SHELL    7 WTOP  2.400E-05 WBOT  2.200E-05 LIMIT  2.200E-05
- DYNAMICAL SHEAR-SHELL    8 WTOP  2.600E-05 WBOT  2.400E-05 LIMIT  2.400E-05
- DYNAMICAL SHEAR-SHELL    9 WTOP  2.800E-05 WBOT  2.600E-05 LIMIT  2.600E-05
- DYNAMICAL SHEAR-SHELL   10 WTOP  3.000E-05 WBOT  2.800E-05 LIMIT  2.800E-05
- DYNAMICAL SHEAR-SHELL   11 WTOP  3.200E-05 WBOT  3.000E-05 LIMIT  3.000E-05
- DYNAMICAL SHEAR-SHELL   12 WTOP  3.400E-05 WBOT  3.200E-05 LIMIT  3.200E-05
 velocities: the dynamical correction lowers U_GSF        0.00E+00  ok
+velocities: the inner omega at the limit lies between    0.00E+00  ok
 regions: (2,4), (6,7), (8,12), then none                 0.00E+00  ok
 grids: chi points equally spaced, end to end             1.48E-15  ok
 grids: the grid masses add up to the region's            0.00E+00  ok

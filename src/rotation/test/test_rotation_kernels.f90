@@ -567,6 +567,8 @@ end function mode_amplitude
 ! interior (see the header).
 subroutine velocity_checks()
       integer, parameter :: z1 = 2, z2 = 40
+      logical :: dyn(json)
+      real(dp) :: dynw(json)
       real(dp), parameter :: g_cgs = 6.674d-8, ln10 = 2.302585092994046d0
       real(dp) :: w(json), wi(json), ri(json), grav(json), phi(json), c1(json), &
            c2(json), c3(json), ratio(json), u1(json), u2(json), mu(json), &
@@ -655,23 +657,23 @@ subroutine velocity_checks()
 ! gradient's limit. The threshold is sqrt(nu/K Re_c/8) q_dyn.
       q = sqrt(nu(1)/kt(1)*0.125d0*1.0d3)*qdyn(1)
       u1 = 0.0d0; u2 = 0.0d0
-      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw, qdyn, mu_flat, &
-           0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
+      call compute_shear_velocities(z1, z2, 1.0d3, r, w, 0.0d0*dw, qdyn, mu_flat, &
+           0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2, dyn, dynw)
       call report("velocities: no shear velocity for a solid body", maxval(abs(u1(z1:z2))), 0.0d0)
       u1 = 0.0d0
-      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + 0.5d0*q, qdyn, &
-           mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
+      call compute_shear_velocities(z1, z2, 1.0d3, r, w, 0.0d0*dw + 0.5d0*q, qdyn, &
+           mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2, dyn, dynw)
       call report("velocities: no shear velocity below the threshold", maxval(abs(u1(z1:z2))), 0.0d0)
       u1 = 0.0d0; u0 = 0.0d0
-      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
-           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2)
-      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 2.0d-2), &
-           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u0, u2)
+      call compute_shear_velocities(z1, z2, 1.0d3, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
+           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u1, u2, dyn, dynw)
+      call compute_shear_velocities(z1, z2, 1.0d3, r, w, 0.0d0*dw + q*(1.0d0 + 2.0d-2), &
+           qdyn, mu_flat, 0.0d0*mui + 0.62d0, ri, nu, kt, rmu, u0, u2, dyn, dynw)
       call report("velocities: shear onset quadratic (ratio 4)", &
            maxval(abs(u0(z1:z2)/u1(z1:z2) - 4.0d0))/4.0d0, 1.0d-10)
       u1 = 0.0d0
-      call compute_shear_velocities(z1, z2, 1.0d3, log_r, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
-           qdyn, mu_lin, mui_lin, ri, nu, kt, 0.0d0*rmu + 1.0d0, u1, u2)
+      call compute_shear_velocities(z1, z2, 1.0d3, r, w, 0.0d0*dw + q*(1.0d0 + 1.0d-2), &
+           qdyn, mu_lin, mui_lin, ri, nu, kt, 0.0d0*rmu + 1.0d0, u1, u2, dyn, dynw)
       call report("velocities: a mu gradient stabilizes the shear", maxval(abs(u1(z1:z2))), 0.0d0)
 end subroutine velocity_checks
 
@@ -683,11 +685,13 @@ end subroutine velocity_checks
 ! between the two, the trigger fires while Delta omega is below limit
 ! Delta ln r. The corrected inner omega must still lie between the two
 ! zones' values, so the correction lowers U_GSF at every such interface
-! (an inner omega beyond omega(i-1) would raise it).
+! (an inner omega beyond omega(i-1) would raise it), and every interface
+! is marked dynamical with an inner omega strictly between.
 subroutine dynamical_shear_check()
       integer, parameter :: m = 12
       real(dp) :: rr(m), lr(m), w(m), dw(m), lim(m), mu(m), mui(m), rint(m), visc(m), &
-           kt(m), rich(m), uss(m), gsf(m), lnc, plain, centred
+           kt(m), rich(m), uss(m), gsf(m), lnc, plain, centred, dynw(m)
+      logical :: dyn(m)
       integer :: k, bad
       do k = 1, m
          rr(k) = 1.0d10*(1.0d0 + 0.3d0*dble(k))**2
@@ -705,10 +709,16 @@ subroutine dynamical_shear_check()
       end do
       mu = 0.6d0; mui = 0.6d0; visc = 1.0d0; kt = 1.0d7; rich = 0.0d0
       uss = 0.0d0; gsf = 1.0d0
-      call compute_shear_velocities(2, m, 1.0d3, lr, rr, w, dw, lim, mu, mui, rint, visc, &
-           kt, rich, uss, gsf)
+      call compute_shear_velocities(2, m, 1.0d3, rr, w, dw, lim, mu, mui, rint, visc, &
+           kt, rich, uss, gsf, dyn, dynw)
       bad = count(gsf(2:m) >= 1.0d0 .or. gsf(2:m) <= 0.0d0)
       call report("velocities: the dynamical correction lowers U_GSF", dble(bad), 0.0d0)
+      bad = 0
+      do k = 2, m
+         if (.not. dyn(k) .or. dynw(k) <= min(w(k), w(k-1)) .or. dynw(k) >= max(w(k), w(k-1))) &
+              bad = bad + 1
+      end do
+      call report("velocities: the inner omega at the limit lies between", dble(bad), 0.0d0)
 end subroutine dynamical_shear_check
 
 ! ---------------------------------------------------------------
@@ -1255,7 +1265,7 @@ subroutine mechanism_slot_check()
       written = 0
       do m = 0, n_transport_mechanisms + 1
          v = sentinel
-         call compute_mechanism_velocity(m, zmin, zmax, stab, phys, w, log_r, lp, conv, v)
+         call compute_mechanism_velocity(m, zmin, zmax, stab, phys, w, lp, conv, v)
          do row = 1, n_transport_mechanisms
             if (m >= 1 .and. m <= n_transport_mechanisms) then
                if (row == m) then

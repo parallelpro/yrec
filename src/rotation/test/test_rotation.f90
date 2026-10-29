@@ -494,7 +494,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          end if
          stab%domega_dlnr = dw_dlnr
          call circulation_velocities(stab, sub_physics, circ_scr, &
-              log_r, zmin, zmax, it, convective, n, w, active, &
+              zmin, zmax, it, convective, n, w, active, &
               v_total, lum_total, log_p, star%mechanism_velocity)
       end do
       if (zahn) call zahn_coupling_factor(stab, log_rho, radius, v_total, zmin, zmax, w, &

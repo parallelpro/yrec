@@ -327,7 +327,7 @@ subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
       double precision, intent(out) :: total_velocity(json)
       logical, intent(out) :: transport_active
       call circulation_velocities(stab, sub_physics, circ_scr, &
-           sub_model%log_radius, zone_min, zone_max, iteration, &
+           zone_min, zone_max, iteration, &
            sub_model%am_transport_convective_flag, s%nz, s%omega_mid, transport_active, &
            total_velocity, s%solar_luminosity_cgs*sub_model%luminosity_lsun(s%nz), &
            sub_model%log_pressure, s%mechanism_velocity)

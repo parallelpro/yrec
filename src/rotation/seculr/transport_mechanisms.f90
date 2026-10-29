@@ -32,7 +32,7 @@ contains
 ! zone_min..zone_max, into mechanism_velocity(slot,:), and into the slot
 ! it corrects, if any. It reads stab (the interfaces' structure, the
 ! zones' radii, d omega/d ln r, the dynamical-shear limit and the
-! coefficients), sub_physics%mu, omega and the zones' log r, log P and
+! coefficients), sub_physics%mu, omega and the zones' log P and
 ! convective flags, and the settings gsf_inhibition_mode and
 ! critical_reynolds.
 !   i_mech_eddington_sweet  U_ES corrected for the quadrupole moment
@@ -43,13 +43,17 @@ contains
 !                           corrects U_GSF where both act.
 ! A slot outside 1..n_transport_mechanisms does nothing.
 subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physics, &
-     omega, log_radius, log_pressure, am_transport_convective_flag, mechanism_velocity)
+     omega, log_pressure, am_transport_convective_flag, mechanism_velocity)
       integer, intent(in) :: slot, zone_min, zone_max
       type(stability_state), intent(inout) :: stab
       type(substep_physics_state), intent(in) :: sub_physics
-      double precision, intent(in) :: omega(json), log_radius(json), log_pressure(json)
+      double precision, intent(in) :: omega(json), log_pressure(json)
       logical, intent(in) :: am_transport_convective_flag(json)
       double precision, intent(inout) :: mechanism_velocity(n_transport_mechanisms, json)
+! where the shear is dynamical, and the inner omega at the limit there
+      logical :: dynamical(json)
+      double precision :: dynamical_inner_omega(json)
+      integer :: i
 
       select case (slot)
       case (i_mech_eddington_sweet)
@@ -70,11 +74,18 @@ subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physic
               mechanism_velocity(i_mech_gsf,:))
       case (i_mech_shear)
          call compute_shear_velocities(zone_min, zone_max, rotation_settings%critical_reynolds, &
-              log_radius, stab%radius, omega, stab%domega_dlnr, stab%dynamical_shear_omega_limit, &
+              stab%radius, omega, stab%domega_dlnr, stab%dynamical_shear_omega_limit, &
               sub_physics%mu, stab%mean_molecular_weight_interface, stab%radius_interface, &
               stab%kinematic_viscosity_interface, stab%thermal_diffusivity_interface, &
               stab%mu_gradient_richardson_coeff, mechanism_velocity(i_mech_shear,:), &
-              mechanism_velocity(i_mech_gsf,:))
+              mechanism_velocity(i_mech_gsf,:), dynamical, dynamical_inner_omega)
+! The report of each dynamically unstable interface (the kernel is
+! pure): the zones' omega and the inner omega at the limit.
+         do i = zone_min, zone_max
+            if (dynamical(i)) write(6,9911) i, omega(i), omega(i-1), dynamical_inner_omega(i)
+         end do
+ 9911    format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
+              ' WBOT',e11.3,' LIMIT',e11.3)
       end select
 end subroutine compute_mechanism_velocity
 
