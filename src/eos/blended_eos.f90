@@ -45,10 +45,9 @@ contains
 !   dlnrho_dlnt_dt = d(dln rho/dln T)/dln T, dlnrho_dlnt_dp the same
 !   in P; adiabatic_gradient_dt/_dp and specific_heat_cp_dt/_dp the log
 !   derivatives of grad_ad and cp.
-! The shifted evaluations share beta, the ionization fractions and the
-! mean weights with r (they are overwritten by the final call), carry
-! their own density guess from one to the next, and use a copy of
-! saha_state.
+! The shifted evaluations start from a copy of r, carry their own
+! density guess from one to the next (the fully ionized iteration's
+! starting point), use a copy of saha_state, and leave r as it was.
 subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
      metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
@@ -61,12 +60,12 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
 ! intervals (0.03, 0.15), which worked best empirically
       real(dp), parameter :: dtl = 0.030d0*0.01d0, dpl = 0.150d0*0.01d0
       real(dp), parameter :: dtl2 = 2.0d0*dtl, dpl2 = 2.0d0*dpl
-! the shifted evaluations: their record, their density guess, the first
-! derivatives (dln rho/dln T, dln rho/dln P, cp, grad_ad) above and
-! below, and their unused second derivatives
+! the shifted evaluations: their record, their density guess, and the
+! first derivatives (dln rho/dln T, dln rho/dln P, cp, grad_ad) above
+! and below
       type(eos_result) :: shifted
       real(dp) :: shifted_log10_density, shifted_density
-      real(dp) :: above(4), below(4), unused(6)
+      real(dp) :: above(4), below(4)
       real(dp) :: kept(6)
       integer :: saha_state_local
 
@@ -75,9 +74,6 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
          saha_state_local = saha_state
          shifted_log10_density = r%log10_density
          shifted_density = r%density
-         above = 0.0d0
-         below = 0.0d0
-         unused = 0.0d0
          call evaluate_shifted(log10_temperature + dtl, log10_pressure, above)
          if (ierr /= 0) return
          call evaluate_shifted(log10_temperature - dtl, log10_pressure, below)
@@ -114,42 +110,20 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
 
 contains
 
-! One shifted evaluation (no second derivatives). first carries this
-! side's first derivatives in and out.
+! One shifted evaluation (no second derivatives): this side's first
+! derivatives, in first.
 subroutine evaluate_shifted(lt, lp, first)
       real(dp), intent(in) :: lt, lp
-      real(dp), intent(inout) :: first(4)
+      real(dp), intent(out) :: first(4)
       shifted = r
       shifted%log10_density = shifted_log10_density
       shifted%density = shifted_density
-      shifted%dlnrho_dlnt = first(1)
-      shifted%dlnrho_dlnp = first(2)
-      shifted%specific_heat_cp = first(3)
-      shifted%adiabatic_gradient = first(4)
-      shifted%dlnrho_dlnt_dt = unused(1)
-      shifted%dlnrho_dlnt_dp = unused(2)
-      shifted%adiabatic_gradient_dt = unused(3)
-      shifted%adiabatic_gradient_dp = unused(4)
-      shifted%specific_heat_cp_dt = unused(5)
-      shifted%specific_heat_cp_dp = unused(6)
       call blend_eos(lt, lp, hydrogen_fraction, metal_fraction, shifted, &
            .false., in_atmosphere, saha_state_local, ierr)
-      r%temperature = shifted%temperature
-      r%pressure = shifted%pressure
-      r%beta = shifted%beta
-      r%beta_inverse = shifted%beta_inverse
-      r%beta14 = shifted%beta14
-      r%ion_fraction = shifted%ion_fraction
-      r%specific_gas_constant = shifted%specific_gas_constant
-      r%ion_mean_weight_inverse = shifted%ion_mean_weight_inverse
-      r%electron_mean_weight_inverse = shifted%electron_mean_weight_inverse
-      r%electron_degeneracy_parameter = shifted%electron_degeneracy_parameter
       shifted_log10_density = shifted%log10_density
       shifted_density = shifted%density
       first = [shifted%dlnrho_dlnt, shifted%dlnrho_dlnp, shifted%specific_heat_cp, &
            shifted%adiabatic_gradient]
-      unused = [shifted%dlnrho_dlnt_dt, shifted%dlnrho_dlnt_dp, shifted%adiabatic_gradient_dt, &
-           shifted%adiabatic_gradient_dp, shifted%specific_heat_cp_dt, shifted%specific_heat_cp_dp]
 end subroutine evaluate_shifted
 
 end subroutine compute_blended_eos
