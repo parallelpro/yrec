@@ -181,10 +181,10 @@ contains
 ! triangular form, with multipliers cr12, cr13, cr23. The derivative
 ! steps differentiate the converged system: sqet = dE/dln T,
 ! sqep = dE/dln P, sx1qt = dx1/dln T, and so on.
-subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
+subroutine compute_saha_eos(saha_number_fractions, log10_temperature, &
      log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
 
-      real(dp), intent(in) :: saha_mass_fractions(:)
+      real(dp), intent(in) :: saha_number_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
@@ -192,14 +192,14 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
       type(saha_system) :: s
       type(saha_sensitivities) :: d
 
-      s%helium_mass_fraction = saha_mass_fractions(ix_he)
+      s%helium_mass_fraction = saha_number_fractions(ix_he)
       s%max_electrons_per_ion = 1.0d0 + s%helium_mass_fraction
       s%temperature_inverse = 1.0d0/r%temperature
       s%mean_electrons_per_ion = saha_e_guess
       s%helium_ion_fraction_1 = saha_x1_guess
       s%helium_ion_fraction_2 = saha_x2_guess
       call set_saha_constants(log10_temperature, log10_pressure, r, s)
-      call solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, s, saha_iterations)
+      call solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, s, saha_iterations)
       saha_e_guess = s%mean_electrons_per_ion
       saha_x1_guess = s%helium_ion_fraction_1
       saha_x2_guess = s%helium_ion_fraction_2
@@ -283,10 +283,10 @@ end subroutine set_saha_constants
 ! max_saha_iterations, each added to saha_iterations), from the previous
 ! call's solution. The products in the elimination are floored
 ! at 1e-38 in magnitude, as on the DEC-20 the code was written for.
-subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, &
+subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, &
      s, saha_iterations)
       character(len=message_length) :: eos_lines(4)
-      real(dp), intent(in) :: saha_mass_fractions(:)
+      real(dp), intent(in) :: saha_number_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(saha_system), intent(inout) :: s
       integer, intent(inout) :: saha_iterations
@@ -329,7 +329,7 @@ subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_press
             div = 1.0d0/(s%saha_ratio(i) + eep1)
             temp8 = s%saha_ratio(i)*div
             s%species_ion_fraction(i) = temp8
-            temp8 = temp8*saha_mass_fractions(i)
+            temp8 = temp8*saha_number_fractions(i)
             r3 = r3 - temp8
             temp8 = temp8*eep1*div
             s%c33 = s%c33 - temp8

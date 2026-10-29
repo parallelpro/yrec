@@ -201,7 +201,8 @@ end subroutine eos_get_gamma1
 ! eos_set_mixture
 !----------------------------------------------------------------------
 ! The envelope mixture the Saha and SCV paths read through eos_mix: X,
-! Z, the mean atomic mass and the species fractions. The star layer
+! Z, the inverse mean atomic weight sum_i X_i/A_i and the species'
+! number fractions (X_i/A_i over that sum). The star layer
 ! sets it whenever it recomputes the envelope composition, and with SCV
 ! on the SCV envelope table is built for its X and Z here (once the
 ! tables are read; a table already built for them stays). The
@@ -213,15 +214,15 @@ end subroutine eos_get_gamma1
 ! zone's Z less its C, N and O for their sum
 ! (eos_set_debye_huckel_composition).
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
-     envelope_metal_fraction, mean_atomic_mass, species_fractions)
+     envelope_metal_fraction, inverse_atomic_weight, number_fractions)
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
-           envelope_metal_fraction, mean_atomic_mass
-      real(dp), intent(in) :: species_fractions(:)
+           envelope_metal_fraction, inverse_atomic_weight
+      real(dp), intent(in) :: number_fractions(:)
 
       eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
-      eos_mix%amuenv = mean_atomic_mass
-      eos_mix%fxenv = species_fractions
+      eos_mix%inverse_atomic_weight = inverse_atomic_weight
+      eos_mix%number_fractions = number_fractions
       call set_debye_huckel_heavy_metals()
       if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
            envelope_hydrogen_fraction, envelope_metal_fraction)
@@ -258,7 +259,7 @@ contains
 
 real(dp) function envelope_mass_fraction(i)
       integer, intent(in) :: i
-      envelope_mass_fraction = eos_mix%fxenv(i)*eos_mix%amuenv*mixture_atomic_weights(i)
+      envelope_mass_fraction = eos_mix%number_fractions(i)*eos_mix%inverse_atomic_weight*mixture_atomic_weights(i)
 end function envelope_mass_fraction
 
 end subroutine set_debye_huckel_heavy_metals

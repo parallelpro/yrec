@@ -61,7 +61,7 @@ program test_eos
            0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.0d0]
 ! the envelope mixture handed to eos_set_mixture
       double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
-           mean_atomic_mass, species_fractions(12)
+           inverse_atomic_weight, number_fractions(12)
 
       double precision :: w(12), wsum, scale
       integer :: i, ipt, eos_ierr
@@ -72,7 +72,7 @@ program test_eos
       double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
       double precision :: qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp
       logical :: lderiv, latmo, in_table
-      integer :: ksaha
+      integer :: saha_iterations
 
 ! SCV's general path at a cool point before the envelope table is
 ! built, and the Saha result there (scv_general_path_before_table)
@@ -128,13 +128,13 @@ program test_eos
          w(i) = scale*w(i)/atomic_weight(i)
          wsum = wsum + w(i)
       end do
-      mean_atomic_mass = wsum
-      scale = 1.0d0/mean_atomic_mass
+      inverse_atomic_weight = wsum
+      scale = 1.0d0/inverse_atomic_weight
       do i = 1, 12
-         species_fractions(i) = w(i)*scale
+         number_fractions(i) = w(i)*scale
       end do
       call eos_set_mixture(envelope_hydrogen_fraction, envelope_metal_fraction, &
-           mean_atomic_mass, species_fractions)
+           inverse_atomic_weight, number_fractions)
 
 ! the production EOS (SCV and OPAL 2006, the Saha cutoff at log T = 6,
 ! as in the reference solar decks), installed with the tables it reads;
@@ -158,7 +158,7 @@ program test_eos
 ! the SCV tables), as a run's starting model does
       call scv_general_path_before_table(general_before_table)
       call eos_set_mixture(envelope_hydrogen_fraction, envelope_metal_fraction, &
-           mean_atomic_mass, species_fractions)
+           inverse_atomic_weight, number_fractions)
       call check_scv_general_path(general_before_table)
 
       x_frac = 0.70d0
@@ -171,7 +171,7 @@ program test_eos
          logp = grid_logp(ipt)
          logd = 0.0d0
          d = 0.0d0
-         ksaha = 0
+         saha_iterations = 0
          lderiv = .true.
          latmo = .false.
          fxion = 0.0d0
@@ -183,7 +183,7 @@ program test_eos
          write(*,'(4(1pe24.15))') rmu, amu, emu, eta
          write(*,'(3(1pe24.15))') fxion(1), fxion(2), fxion(3)
          write(*,'(4(1pe24.15))') qdtt, qdtp, qat, qap
-         write(*,'(2(1pe24.15),i4)') qcpt, qcpp, ksaha
+         write(*,'(2(1pe24.15),i4)') qcpt, qcpp, saha_iterations
       end do
 
       write(*,'(a)') "# test_eos: eos_get_gamma1, OPAL2006 branch"
@@ -191,9 +191,9 @@ program test_eos
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
          pres = g1_p(ipt)
-         ksaha = 0
+         saha_iterations = 0
          call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
-              grad_ad, ksaha, ierr=gerr)
+              grad_ad, saha_iterations, ierr=gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
@@ -209,9 +209,9 @@ program test_eos
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
          pres = g1_p(ipt)
-         ksaha = 0
+         saha_iterations = 0
          call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
-              grad_ad, ksaha, ierr=gerr)
+              grad_ad, saha_iterations, ierr=gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
@@ -240,7 +240,7 @@ program test_eos
             logt = grid_logt(ipt)
             logp = grid_logp(ipt)
             logd = 0.0d0
-            ksaha = 0
+            saha_iterations = 0
             lderiv = .true.
             latmo = .false.
             fxion = 0.0d0
@@ -268,7 +268,7 @@ program test_eos
       logp = 14.0d0
       logd = 0.0d0
       d = 0.0d0
-      ksaha = 0
+      saha_iterations = 0
       lderiv = .true.
       latmo = .false.
       fxion = 0.0d0
@@ -403,7 +403,7 @@ contains
             logp = grid_logp(k)
             logd = 0.0d0
             d = 0.0d0
-            ksaha = 0
+            saha_iterations = 0
             fxion = 0.0d0
             if (present(with_composition)) then
                call eval_eos(x, z, .true., .false., ierr, comp)
@@ -414,7 +414,7 @@ contains
                write(*,'(a,2f7.3,a,i0)') "eos logT logP", logt, logp, " ierr ", ierr
             else
                write(*,'(a,2f7.3,4(1pe23.15))') "eos", logt, logp, logd, beta, qdt, qdp
-               write(*,'(a,14x,3(1pe23.15),i3)') "   ", qcp, dela, eta, ksaha
+               write(*,'(a,14x,3(1pe23.15),i3)') "   ", qcp, dela, eta, saha_iterations
             end if
          end do
       end subroutine evaluate_grid
@@ -435,7 +435,7 @@ contains
               adiabatic_gradient=dela, dlnrho_dlnt_dt=qdtt, dlnrho_dlnt_dp=qdtp, &
               adiabatic_gradient_dt=qat, adiabatic_gradient_dp=qap, &
               specific_heat_cp_dt=qcpt, specific_heat_cp_dp=qcpp)
-         call eos_get(logt, logp, x, z, res, want, atm, ksaha, &
+         call eos_get(logt, logp, x, z, res, want, atm, saha_iterations, &
               composition_at_zone=comp, ierr=ierr)
          t = res%temperature
          p = res%pressure
@@ -531,7 +531,7 @@ contains
             logp = lp
             logd = 0.0d0
             d = 0.0d0
-            ksaha = 0
+            saha_iterations = 0
             fxion = 0.0d0
             call eval_eos(0.70d0, 0.016492d0, want, .false., ierr)
             if (ierr /= 0) write(*,'(a,2f8.4,a,i0)') "eos logT logP", lt, lp, " ierr ", ierr
@@ -1029,12 +1029,12 @@ subroutine ideal_gas_checks()
 ! grad_ad and cp of an ideal monatomic gas plus its little radiation,
 ! but for the metals' partial ionization (1e-3)
       call eos_at(3.5d0, 3.0d0, x, z, r, ierr)
-      rho_ideal = r%beta*r%pressure/(gas_constant*(mean_atomic_mass + &
+      rho_ideal = r%beta*r%pressure/(gas_constant*(inverse_atomic_weight + &
            r%electron_mean_weight_inverse)*r%temperature)
       call ideal_radiation_gas(r%beta, r%specific_gas_constant, cp, grad)
       call check("ideal gas, neutral: rho = mu P_gas/(R T)", ierr == 0 .and. &
            abs(r%density/rho_ideal - 1.0d0) < 1.0d-12 .and. &
-           r%electron_mean_weight_inverse < 1.0d-4*mean_atomic_mass)
+           r%electron_mean_weight_inverse < 1.0d-4*inverse_atomic_weight)
       call check("ideal gas, neutral: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)", ierr == 0 .and. &
            abs(r%adiabatic_gradient - 0.4d0) < 1.0d-3 .and. &
            abs(r%adiabatic_gradient/grad - 1.0d0) < 2.0d-3 .and. &
@@ -1043,7 +1043,7 @@ subroutine ideal_gas_checks()
 ! the weak-degeneracy expansion of the electron pressure, with 1/mu_e
 ! from the composition (X/1.008 + (1 - X)/2.002)
       mu_e_inv = x/1.008d0 + (1.0d0 - x)/2.002d0
-      mu_inv = mean_atomic_mass + mu_e_inv
+      mu_inv = inverse_atomic_weight + mu_e_inv
       worst = 0.0d0
       ok = .true.
       do k = 1, size(fi_lt)

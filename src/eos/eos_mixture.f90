@@ -2,8 +2,9 @@
 ! eos_mixture
 !----------------------------------------------------------------------
 ! The envelope mixture the EOS evaluates with (eos_mix): the envelope X
-! and Z, the mean atomic mass and the 12 species number fractions read
-! by the Saha and SCV paths of blend_eos and by compute_mean_weights.
+! and Z, the inverse mean atomic weight sum_i X_i/A_i (1/mu_ion of the
+! envelope) and the 12 species' number fractions, read by the Saha and
+! SCV paths of blend_eos and by compute_mean_weights.
 ! The star layer sets it through eos_set_mixture whenever it
 ! recomputes the envelope composition. Also here:
 !     ion_mean_weight_excess  1/mu_ion of a mixture with other X and Z
@@ -21,28 +22,29 @@ module eos_mixture
       private
 
 ! The 12-species surface mixture layout (composition_layout's ix_*,
-! re-exported): element per slot of fxenv, blend_eos's
-! atomic_weights_full table and the saha_mass_fractions vector handed
-! to eos/yale/compute_saha_eos.
+! re-exported): element per slot of number_fractions, of
+! mixture_atomic_weights and of the saha_number_fractions vector
+! blend_eos hands to eos/yale/compute_saha_eos.
       public :: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, &
            ix_ar, ix_ne, ix_he, n_mix_species
 
       type, public :: eos_mixture_state
             real(dp) :: envelope_hydrogen_fraction, &
                  envelope_metal_fraction
-            real(dp) :: amuenv
-! fxenv(i): number fraction of species i in the envelope mixture,
+! sum_i X_i/A_i over the envelope's species [1/amu]
+            real(dp) :: inverse_atomic_weight
+! number_fractions(i): number fraction of species i in the envelope mixture,
 ! in the ix_* order above (the metals Na..Si, C, then H, O..Ne, He;
 ! slots ix_h and ix_he are set from X and Y directly, the metals from
 ! the mixture_weights_seed control scaled to Z).
-            real(dp) :: fxenv(n_mix_species)
+            real(dp) :: number_fractions(n_mix_species)
       end type eos_mixture_state
 
       type(eos_mixture_state), public, save :: eos_mix
 
 ! the atomic weights of the mixture's species, in the ix_* order (Na,
 ! Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He): those core's starting model
-! builds fxenv with (fxenv(i) = X_i/A_i/amuenv)
+! builds number_fractions with (X_i/A_i over sum_j X_j/A_j)
       real(dp), parameter, public :: mixture_atomic_weights(n_mix_species) = [23.0d0, &
            26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
            14.01d0, 39.96d0, 20.19d0, 4.004d0]
@@ -53,10 +55,10 @@ contains
 
 ! ion_mean_weight_excess: the inverse ion mean molecular weight of a
 ! mixture with hydrogen fraction x and metal fraction z, as the envelope
-! value eos_mix%amuenv plus the excess of each of H, He and metals
+! value eos_mix%inverse_atomic_weight plus the excess of each of H, He and metals
 ! (excess metals taken to be carbon-12) over the envelope mixture.
 ! use_envelope is .true. when x and z are within 1e-5 of the envelope
-! values: then mu_ion_inv = amuenv and dfx1/dfx12 hold the raw
+! values: then mu_ion_inv = inverse_atomic_weight and dfx1/dfx12 hold the raw
 ! (unweighted) differences; otherwise dfx1/dfx12/dfx4 are the
 ! weighted H/metal/He excesses that compute_blended_eos also needs for its Saha
 ! number fractions (dfx4 is defined only in that branch).  Shared by
@@ -76,14 +78,14 @@ pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
       use_envelope = abs(dfx1) + abs(dfx12) < 1.0d-5
       if (use_envelope) then
 ! Use envelope abundances
-         mu_ion_inv = eos_mix%amuenv
+         mu_ion_inv = eos_mix%inverse_atomic_weight
       else
          dfx1 = dfx1*inverse_atomic_weights(1)
          dfx12 = dfx12*inverse_atomic_weights(3)
          dfx4 = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
               x - z)*inverse_atomic_weights(2)
 ! Assume excess Z(metals) is in the form of carbon(12)
-         mu_ion_inv = eos_mix%amuenv + dfx1 + dfx4 + dfx12
+         mu_ion_inv = eos_mix%inverse_atomic_weight + dfx1 + dfx4 + dfx12
       end if
 end subroutine ion_mean_weight_excess
 

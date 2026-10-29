@@ -167,7 +167,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
 ! maps it onto a weight from 1 (its foot) to 0 (the cutoff)
       real(dp), parameter :: saha_ramp_width = 0.500d0, saha_ramp_scale = 1.0d0/saha_ramp_width
       logical :: need_saha_solution, skip_fully_ionized, valid_table_point
-      real(dp) :: saha_mass_fractions(n_mix_species), radiation_fraction
+      real(dp) :: saha_number_fractions(n_mix_species), radiation_fraction
 ! the Saha (or SCV) result, blended into the fully ionized one
       type(eos_result) :: saha
 ! the OPAL result, adopted or blended in
@@ -182,7 +182,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       skip_fully_ionized = log10_temperature <= &
            (eos_settings%saha_log10t_cutoff - saha_ramp_width)
       call zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
-           r%ion_mean_weight_inverse, saha_mass_fractions)
+           r%ion_mean_weight_inverse, saha_number_fractions)
 
 ! radiation: its share of P, beta = P_gas/P, and beta14 = 4(1 - beta)/beta
       r%temperature = exp(ln10*log10_temperature)
@@ -205,7 +205,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       if (.not. need_saha_solution) then
          call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
       else
-         call compute_saha_eos(saha_mass_fractions, log10_temperature, &
+         call compute_saha_eos(saha_number_fractions, log10_temperature, &
               log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
 ! SCV replaces Saha's density, the mean weights that density implies,
 ! the ionization fractions and the first derivatives (Saha's second
@@ -254,78 +254,79 @@ end subroutine blend_eos
 !----------------------------------------------------------------------
 ! The zone's 1/mu_ion and, when the Saha equations are solved, the
 ! abundances they take (X_i/A_i over 1/mu_ion, the 12 species in the
-! ix_* order), from the envelope mixture eos_mix (fxenv = X_i/A_i/amuenv,
-! set by eos_set_mixture). With use_diffusion_z all the metals scale
+! ix_* order), from the envelope mixture eos_mix (number_fractions =
+! X_i/A_i over inverse_atomic_weight = sum_j X_j/A_j, set by
+! eos_set_mixture). With use_diffusion_z all the metals scale
 ! with Z/Z_env (MHP 3/94), and H and He add their excess over the
 ! envelope; otherwise, and when the envelope has no metals to scale
 ! (Z_env = 0), the zone differs from the envelope by its excess H, He
 ! and metals, the metals counted as carbon (ion_mean_weight_excess,
 ! which compute_mean_weights shares).
 subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
-     ion_mean_weight_inverse, saha_mass_fractions)
+     ion_mean_weight_inverse, saha_number_fractions)
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(in) :: need_saha_solution
       real(dp), intent(out) :: ion_mean_weight_inverse
-      real(dp), intent(inout) :: saha_mass_fractions(n_mix_species)
+      real(dp), intent(inout) :: saha_number_fractions(n_mix_species)
       integer :: species_idx
-      real(dp) :: metal_ratio, amu_correction, h_excess, y_excess
-      real(dp) :: envelope_amu_over_amu
-      real(dp) :: dfx1, dfx12, dfx4, amu_inverse, envelope_amu_frac
+      real(dp) :: metal_ratio, metal_weight_excess, h_excess, y_excess
+      real(dp) :: metal_number_scale
+      real(dp) :: dfx1, dfx12, dfx4, ion_mean_weight, envelope_number_scale
       logical :: use_envelope_mixture
 
       if (eos_settings%use_diffusion_z .and. eos_mix%envelope_metal_fraction > 0.0d0) then
          metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
-         amu_correction = (metal_ratio - 1.0d0)*eos_mix%amuenv
-         ion_mean_weight_inverse = eos_mix%amuenv
+         metal_weight_excess = (metal_ratio - 1.0d0)*eos_mix%inverse_atomic_weight
+         ion_mean_weight_inverse = eos_mix%inverse_atomic_weight
          do species_idx = ix_na, ix_c
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 amu_correction*eos_mix%fxenv(species_idx)
+                 metal_weight_excess*eos_mix%number_fractions(species_idx)
          end do
          h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
               inverse_atomic_weights(1)
          ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
          do species_idx = ix_o, ix_ne
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 amu_correction*eos_mix%fxenv(species_idx)
+                 metal_weight_excess*eos_mix%number_fractions(species_idx)
          end do
          y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
               hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
          ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
          if (.not. need_saha_solution) return
-         envelope_amu_over_amu = metal_ratio*eos_mix%amuenv/ion_mean_weight_inverse
+         metal_number_scale = metal_ratio*eos_mix%inverse_atomic_weight/ion_mean_weight_inverse
          do species_idx = ix_na, ix_c
-            saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
-                 eos_mix%fxenv(species_idx)
+            saha_number_fractions(species_idx) = metal_number_scale* &
+                 eos_mix%number_fractions(species_idx)
          end do
-         saha_mass_fractions(ix_h) = (eos_mix%fxenv(ix_h)* &
-              eos_mix%amuenv + h_excess)/ion_mean_weight_inverse
+         saha_number_fractions(ix_h) = (eos_mix%number_fractions(ix_h)* &
+              eos_mix%inverse_atomic_weight + h_excess)/ion_mean_weight_inverse
          do species_idx = ix_o, ix_ne
-            saha_mass_fractions(species_idx) = envelope_amu_over_amu* &
-                 eos_mix%fxenv(species_idx)
+            saha_number_fractions(species_idx) = metal_number_scale* &
+                 eos_mix%number_fractions(species_idx)
          end do
-         saha_mass_fractions(ix_he) = (eos_mix%fxenv(ix_he)* &
-              eos_mix%amuenv + y_excess)/ion_mean_weight_inverse
+         saha_number_fractions(ix_he) = (eos_mix%number_fractions(ix_he)* &
+              eos_mix%inverse_atomic_weight + y_excess)/ion_mean_weight_inverse
       else
          call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
               ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope_mixture)
          if (.not. need_saha_solution) return
          if (use_envelope_mixture) then
             do species_idx = 1, n_mix_species
-               saha_mass_fractions(species_idx) = eos_mix%fxenv(species_idx)
+               saha_number_fractions(species_idx) = eos_mix%number_fractions(species_idx)
             end do
          else
-            amu_inverse = 1.0d0/ion_mean_weight_inverse
-            envelope_amu_frac = eos_mix%amuenv*amu_inverse
+            ion_mean_weight = 1.0d0/ion_mean_weight_inverse
+            envelope_number_scale = eos_mix%inverse_atomic_weight*ion_mean_weight
             do species_idx = 1, n_mix_species
-               saha_mass_fractions(species_idx) = envelope_amu_frac* &
-                    eos_mix%fxenv(species_idx)
+               saha_number_fractions(species_idx) = envelope_number_scale* &
+                    eos_mix%number_fractions(species_idx)
             end do
-            saha_mass_fractions(ix_c) = saha_mass_fractions(ix_c) + &
-                 dfx12*amu_inverse
-            saha_mass_fractions(ix_h) = saha_mass_fractions(ix_h) + &
-                 dfx1*amu_inverse
-            saha_mass_fractions(ix_he) = saha_mass_fractions(ix_he) + &
-                 dfx4*amu_inverse
+            saha_number_fractions(ix_c) = saha_number_fractions(ix_c) + &
+                 dfx12*ion_mean_weight
+            saha_number_fractions(ix_h) = saha_number_fractions(ix_h) + &
+                 dfx1*ion_mean_weight
+            saha_number_fractions(ix_he) = saha_number_fractions(ix_he) + &
+                 dfx4*ion_mean_weight
          end if
       end if
 end subroutine zone_mixture
