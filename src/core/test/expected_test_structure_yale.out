@@ -1,6 +1,6 @@
 tolerance  1.0E-04
 # shell centre (    1) convective T burning T log T  6.2752
-  q =  -4.7551E-04 -1.8881E-04  3.3565E-01  8.8588E-01
+  q =  -4.7551E-04 -1.8881E-04  3.3565E-01  8.8575E-01
   term/var     analytic        f.d.   rel.diff  status
   qp/lnP   4.7551E-04  4.7551E-04  1.5E-10  ok
   qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
@@ -14,12 +14,12 @@ tolerance  1.0E-04
   qr/lnT   3.4131E-01  3.4130E-01  5.0E-05  ok
   qr/lnR  -1.0069E+00 -1.0069E+00  3.2E-10  ok
   qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
-  ql/lnP   8.8955E-01  8.8953E-01  2.1E-05  ok
-  ql/lnT   7.4380E+00  7.4380E+00  6.1E-06  ok
+  ql/lnP   8.8942E-01  8.8940E-01  2.1E-05  ok
+  ql/lnT   7.4369E+00  7.4370E+00  6.1E-06  ok
   ql/lnR   0.0000E+00  0.0000E+00  0.0E+00  ok
   ql/L     0.0000E+00  0.0000E+00  0.0E+00  ok
 # shell mid mass (  530) convective T burning T log T  6.0035
-  q =  -1.7014E+00 -6.7521E-01  5.1207E-01  2.7060E+01
+  q =  -1.7014E+00 -6.7521E-01  5.1207E-01  2.7056E+01
   term/var     analytic        f.d.   rel.diff  status
   qp/lnP   1.7014E+00  1.7014E+00  1.9E-10  ok
   qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok
@@ -33,8 +33,8 @@ tolerance  1.0E-04
   qr/lnT   5.2379E-01  5.2377E-01  4.5E-05  ok
   qr/lnR  -1.5362E+00 -1.5362E+00  3.2E-10  ok
   qr/L     0.0000E+00  0.0000E+00  0.0E+00  ok
-  ql/lnP   2.9841E+01  2.9840E+01  1.6E-05  ok
-  ql/lnT   2.8306E+02  2.8306E+02  4.2E-06  ok
+  ql/lnP   2.9837E+01  2.9836E+01  1.6E-05  ok
+  ql/lnT   2.8302E+02  2.8302E+02  4.2E-06  ok
   ql/lnR   0.0000E+00  0.0000E+00  0.0E+00  ok
   ql/L     0.0000E+00  0.0000E+00  0.0E+00  ok
 # shell outer convection zone (  992) convective T burning F log T  4.1507

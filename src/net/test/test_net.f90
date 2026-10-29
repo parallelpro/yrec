@@ -62,7 +62,6 @@ program test_net
       use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates, &
            network_table_errors, inert_scale_count
       use thermal_neutrinos, only: sneut, azbar
-      use physical_constants, only: amu_cgs
       use net_settings_setup, only: net_settings_from_star
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
@@ -526,7 +525,8 @@ contains
 ! the threshold; each prints the region's new X, He3 and D.
 ! compute_li_be_rates at three temperatures; deuterium_rate inside and
 ! outside the surface convection zone where the turnover cap binds (the
-! capped rate is N_A/(m_d tau) amu_cgs, exactly).
+! capped rate is N_A/(m_d tau) per gram, times amu_cgs = 1/N_A: one
+! deuteron mass per turnover time, 1/(m_d tau) per amu).
       subroutine check_light_elements()
          integer, parameter :: nz = 3
          double precision, parameter :: t9(3) = [3.0d-3, 5.0d-3, 1.0d-2]
@@ -565,7 +565,7 @@ contains
               deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6)
          call report("deuterium_rate capped at N_A/(m_d tau) in the surface CZ (1e-12)", &
               abs(deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6)/ &
-              (6.023d23/2.013553d0/1.0d6*amu_cgs) - 1.0d0) < 1.0d-12 .and. &
+              (1.0d0/(2.013553d0*1.0d6)) - 1.0d0) < 1.0d-12 .and. &
               deuterium_rate(1.5d0, 6.5d0, 0.70d0, .false., 1.0d6) > &
               deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6))
       end subroutine check_light_elements

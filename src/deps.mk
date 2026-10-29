@@ -435,7 +435,7 @@ net/network.o: composition_layout.mod net_configuration.mod net_messages.mod num
 net/nuclear_energy.o: composition_layout.mod math_lib.mod net_configuration.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_rates.mod screening.mod thermal_neutrinos.mod
 net/reaction_rates.o: math_lib.mod net_configuration.mod physical_constants.mod screening.mod
 net/screening.o: composition_layout.mod math_lib.mod net_configuration.mod physical_constants.mod
-net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod physical_constants.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
+net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/bulirsch_stoer.o: numerics_status.mod
 numerics/cubic_spline.o: numerics_status.mod

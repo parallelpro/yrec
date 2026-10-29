@@ -27,6 +27,7 @@
 ! ---------------------------------------------------------------------
 module reaction_rates
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use physical_constants, only: amu_cgs
       use net_configuration, only: num_reactions, xs_be7e, xs_be7p, xs_hep, &
            net_settings
       use screening, only: num_isotopes, screening_t, screening_plasma, &
@@ -39,11 +40,18 @@ module reaction_rates
 ! as the original literals were (both exact when promoted).
       integer, parameter :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
-! d(p,g)3He: Avogadro's number over the deuteron mass (amu) turns CF88's
-! N_A<sigma v> into the per-gram rate of both the deuterium depletion and
-! its energy release, and sets the convective-overturn cap. (The two
-! former copies differed by 0.68%: one divided by A = 2.)
-      real(dp), parameter :: avogadro_dpg = 6.023d23
+! Avogadro's number [1/mol]: N_A = 1/m_u, with m_u = amu_cgs (g), the
+! CODATA 1986 value of physical_constants. One value for every rate of
+! this file, so that a per-gram rate times amu_cgs (the per-amu units of
+! the composition rate vector and the deuterium burning rate) is
+! rho N_A<sigma v>/(A1 A2) exactly. (2026-10: the d(p,g) rate and its cap
+! took 6.023e23, the Caughlan & Fowler prefactors 6.0225e23, the Be7
+! captures 6.0221367e23.)
+      real(dp), parameter :: avogadro_number = 1.0d0/amu_cgs
+! d(p,g)3He: N_A over the deuteron mass (amu) turns CF88's N_A<sigma v>
+! into the per-gram rate of both the deuterium depletion and its energy
+! release, and sets the convective-overturn cap. (The two former copies
+! differed by 0.68%: one divided by A = 2.)
       real(dp), parameter :: deuteron_mass_amu = 2.013553d0
 ! The overturn cap applies in the surface convection zone when the
 ! turnover time exceeds min_cap_turnover_time (s) and X(H) exceeds
@@ -65,14 +73,20 @@ module reaction_rates
 ! N_A<sigma v> (cm^3/mol/s; N_A^2<sigma v> for triple alpha) becomes the
 ! rate per gram per second with the abundance factors omitted through
 ! rho N_A/(A1 A2), and rho^2 N_A/(3! A_He4^3) for triple alpha, with the
-! neutral atomic masses (4.002603, 12, 13.003355, 14.003074; VandenBerg's
-! notes) -- unlike the bare nuclear masses of the screening and Be7.
-      real(dp), parameter :: per_gram_c13_alpha = 1.157126d22, &
-           per_gram_c12_alpha = 1.25388d22, per_gram_n14_alpha = 1.07452d22, &
-           per_gram_triple_alpha = 1.565315d21
-! N_A/m(Be7) per gram, the bare nuclear mass 7.014735 amu (JNB 10/14/97):
-! the Be7 capture rates per unit Be7 abundance, per gram.
-      real(dp), parameter :: per_gram_be7 = 8.584981d+22
+! reactants' neutral atomic masses (amu; VandenBerg's notes) -- unlike
+! the bare nuclear masses of the screening and Be7.
+      real(dp), parameter :: he4_atomic_mass = 4.002603d0, &
+           c12_atomic_mass = 12.0d0, c13_atomic_mass = 13.003355d0, &
+           n14_atomic_mass = 14.003074d0
+      real(dp), parameter :: &
+           per_gram_c13_alpha = avogadro_number/(he4_atomic_mass*c13_atomic_mass), &
+           per_gram_c12_alpha = avogadro_number/(he4_atomic_mass*c12_atomic_mass), &
+           per_gram_n14_alpha = avogadro_number/(he4_atomic_mass*n14_atomic_mass), &
+           per_gram_triple_alpha = avogadro_number/(6.0d0*he4_atomic_mass**3)
+! N_A/m(Be7) per gram, with the bare nuclear mass of Be7 (amu; JNB
+! 10/14/97): the Be7 capture rates per unit Be7 abundance, per gram.
+      real(dp), parameter :: be7_nuclear_mass = 7.014735d0, &
+           per_gram_be7 = avogadro_number/be7_nuclear_mass
 
 ! T9 = T/10^9 K and the powers of it the rate formulas use (p13 = T9^1/3,
 ! m23 = T9^-2/3, m12 = T9^-1/2, ...)
@@ -140,7 +154,7 @@ pure subroutine compute_deuterium_proton_capture(density, t, rate, dlnrate_dlnt)
 
       zz = -3.72d0*t%m13
       tfac = 1.0d0+0.112d0*t%p13+3.38d0*t%p23+2.65d0*t%t9
-      rate = density*2.240d3*t%m23*exp(zz)*tfac*avogadro_dpg/ &
+      rate = density*2.240d3*t%m23*exp(zz)*tfac*avogadro_number/ &
            deuteron_mass_amu
       tfac_deriv = 0.112d0*t%p13+6.76d0*t%p23+7.95d0*t%t9
       dlnrate_dlnt = cc13*((tfac_deriv/tfac) -2.0d0 - zz)
@@ -163,7 +177,7 @@ pure subroutine cap_deuterium_rate(hydrogen_fraction, in_surface_cz, &
 
       capped = .false.
       if (.not. in_surface_cz .or. turnover_timescale <= min_cap_turnover_time) return
-      max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
+      max_rate = avogadro_number/deuteron_mass_amu/turnover_timescale
       if (rate*hydrogen_fraction > max_rate .and. hydrogen_fraction > min_cap_hydrogen) then
          rate = max_rate/hydrogen_fraction
          capped = .true.
@@ -543,7 +557,8 @@ end module reaction_rates
 ! per NA table 3.2 and eq. 3.12, with the S_eff/S0 corrections of
 ! be7_pcapture_fit and weak or intermediate screening; both per gram
 ! through rho/(m_u A_Be7) (inserted 11/6/1990), with the bare mass
-! 7.014735 since 10/14/97 (7.016930 and the factor 8.582295e22 before;
+! 7.014735 since 10/14/97 (the factor 8.584981e22 until 2026-10, now
+! N_A/7.014735; 7.016930 and 8.582295e22 before;
 ! tau_be7p's coefficient was -10.26202). The S0 change of the electron
 ! capture is carried by its scale, not its coefficient (3.126571e5
 ! before). The Yale code's Be7 expression had a physically wrong term and
@@ -560,7 +575,9 @@ end module reaction_rates
 !
 ! Alpha captures. The Caughlan & Fowler (1988) rates (MHP 3/91), in the
 ! form Caughlan & Zimmerman used, with the prefactors from VandenBerg's
-! notes. The linear coefficient of the N14(a,g)F18 polynomial is 0.117
+! notes; since 2026-10 they are N_A/(A1 A2) computed from his neutral
+! atomic masses and N_A = 1/m_u (his literals implied N_A = 6.0225e23,
+! 6.9e-5 above it). The linear coefficient of the N14(a,g)F18 polynomial is 0.117
 ! (1 + 0.012 T9^(1/3) + 1.45 T9^(2/3) + 0.117 T9 + 1.97 T9^(4/3) + 0.406
 ! T9^(5/3)); both former copies had 0.177, a digit transposition from the
 ! F77 source, about 0.5% of the rate at T9 = 0.15 (2026 bug sweep).
