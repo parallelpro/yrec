@@ -1,7 +1,7 @@
 tolerance  3.0E-03
 # shell centre (    1) convective F burning T log T  7.2851
   q =  -1.6503E-03 -5.9816E-06  3.3032E-01  7.3367E-04
-  eps_extra  7.0284E+01  ql change  7.3238E-04  rel.diff  1.5E-16
+  eps_extra  7.0284E+01  ql change  7.3238E-04  rel.diff  0.0E+00
   term/var     analytic        f.d.   rel.diff  status
   qp/lnP   1.6503E-03  1.6503E-03  2.0E-10  ok
   qp/lnT   0.0000E+00  0.0000E+00  0.0E+00  ok

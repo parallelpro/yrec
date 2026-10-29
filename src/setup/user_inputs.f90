@@ -51,7 +51,7 @@ subroutine map_user_inputs(s)
       double precision :: s0_p_n14_ref, s0_p_o16_ref, s0_pep_ref, &
            s0_be7_electron_ref
       data s0_p_n14_ref,s0_p_o16_ref,s0_pep_ref,s0_be7_electron_ref/ &
-           3.32D0,9.4E0,3.4848D-6,1.752D-10/
+           3.32D0,9.4D0,3.4848D-6,1.752D-10/
       double precision :: s0_be7_p_ref, s0_hep_ref, s0_n15_p_c12_branch_ref, &
            s0_n15_p_o16_branch_ref
       data s0_be7_p_ref,s0_hep_ref,s0_n15_p_c12_branch_ref, &
