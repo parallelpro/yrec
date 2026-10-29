@@ -300,11 +300,13 @@ end subroutine store_zone_thermodynamics
 ! pulsation output, for every model: the GYRE-format writer
 ! (pulsation_output's write_gyre_pulse) runs every pulse_gyre_interval
 ! models, independently of the older OPAL pulsation writer's flag, and
-! needs them (MHP 8/25). No other output file reads these arrays. Below
-! the burning cutoff pulse_deps_dlnrho/dlnt are zero.
+! needs them (MHP 8/25). No other output file reads these arrays.
+! pulse_deps_dlnrho/dlnt are the derivatives of eps_total (eps_nuc,
+! without the thermal neutrino loss), the eps the pulsation files write
+! beside them (MESA's convention); zero below the burning cutoff.
 subroutine store_pulse_derivatives()
-         s%pulse_deps_dlnrho(im) = diag%deps_dlnrho
-         s%pulse_deps_dlnt(im) = diag%deps_dlnt
+         s%pulse_deps_dlnrho(im) = diag%burn%deps_nuc_dlnrho
+         s%pulse_deps_dlnt(im) = diag%burn%deps_nuc_dlnt
          s%pulse_dlnkap_dlnrho(im) = diag%kap_res(i_dlnkap_dlnrho)
          s%pulse_dlnkap_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
          s%pulse_specific_heat(im) = eos_res%specific_heat_cp

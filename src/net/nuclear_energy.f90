@@ -4,7 +4,9 @@
 ! The nuclear energy generation of one zone. compute_nuclear_energy
 ! returns, in a nuclear_energy_result:
 !   - eps (erg/g/s) and its absolute derivatives d eps/d ln rho and
-!     d eps/d ln T, for the Henyey Jacobian;
+!     d eps/d ln T, for the Henyey Jacobian, and the derivatives of
+!     eps_nuc, eps without the thermal neutrino loss, for the pulsation
+!     files;
 !   - the energy of each chain (eps_by_chain, network's chain_* slots:
 !     pp I with d(p,g), the two Be7 branches, CNO, the alpha captures,
 !     triple alpha);
@@ -44,6 +46,10 @@ module nuclear_energy
 ! erg/g/s; derivatives absolute (d eps/dln rho, d eps/dln T)
          real(dp) :: total_energy_gen_rate = 0.0d0
          real(dp) :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
+! the same derivatives before the thermal neutrino loss: those of eps_nuc
+! = total_energy_gen_rate - eps_neutrino_loss, the chains' sum (GYRE's
+! eps_eps_rho and eps_eps_T, MESA's d_epsnuc_dlnd and d_epsnuc_dlnT)
+         real(dp) :: deps_nuc_dlnrho = 0.0d0, deps_nuc_dlnt = 0.0d0
 ! each chain's energy generation, erg/g/s (network's chain_* slots)
          real(dp) :: eps_by_chain(n_chains) = 0.0d0
          real(dp) :: eps_neutrino_loss = 0.0d0
@@ -130,6 +136,8 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       call store_chain_energies(energy_by_chain, deuterium_energy, e)
       if (net_settings%calc_neutrinos) &
            call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
+      e%deps_nuc_dlnrho = e%deps_dlnrho
+      e%deps_nuc_dlnt = e%deps_dlnt
       if (log_temperature > net_settings%logT_cutoffs(5)) &
            call add_thermal_neutrino_loss(log_density, log_temperature, nr%zone%t%t9, xa, e)
 end subroutine compute_nuclear_energy

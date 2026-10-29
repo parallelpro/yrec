@@ -722,8 +722,10 @@ subroutine gather_interior_point()
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
 ! GYRE runs read these columns. pulse_dlnkap_* are true log-derivatives,
 ! so they are multiplied by kap here. pulse_deps_* already hold the
-! absolute deps/dln (compute_zone_energy's burn%deps_*), so they are
-! written as they are (Sources, 4).
+! absolute derivatives of eps_total, the eps written beside them
+! (nuclear_energy's deps_nuc_*: eps_nuc's, without the thermal neutrino
+! loss, as MESA writes eps_nuc with d_epsnuc_dlnT and d_epsnuc_dlnd), so
+! they are written as they are (Sources, 4).
       pts(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
       pts(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
       pts(ipul_eps,j) = s%eps_total(i)
@@ -935,7 +937,10 @@ end function region_name
 !    model).
 ! 4. 2ed398ca multiplied pulse_deps_* by eps as well (misled by their
 !    former pulse_dlneps_* names): wrong by a factor eps until the
-!    2026-10 audit.
+!    2026-10 audit. Until 2026-10-29 they were the Henyey's derivatives,
+!    which include the thermal neutrino loss that eps_total leaves out,
+!    so above log T = 7.5 (where the loss is computed) eps and its
+!    derivatives described two different eps.
 ! 5. The envelope's two gradient slots were swapped here before 2026
 !    (as in the profile columns), which flipped the thermal N^2 across
 !    the envelope of every pulse file.
