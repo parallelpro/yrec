@@ -42,7 +42,7 @@ program test_rotation
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
-      use physical_constants, only: csig, csigl, cgl
+      use physical_constants, only: csig, csigl, cgl, radiation_constant_over_3
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
       use am_transport_coefficients, only: solve_angular_momentum_transport
@@ -58,6 +58,7 @@ program test_rotation
 ! the constants setups computes at run time (its default G)
       csig = 5.67051d-5
       csigl = log10(csig)
+      radiation_constant_over_3 = csig*4.0d0/(3.0d0*2.99792458d10)
       cgl = -7.17571d0
       star%solar_mass_cgs = msun
       star%solar_radius_cgs = 6.957d10
