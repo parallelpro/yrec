@@ -5,8 +5,9 @@
 ! returns, in a nuclear_energy_result:
 !   - eps (erg/g/s) and its absolute derivatives d eps/d ln rho and
 !     d eps/d ln T, for the Henyey Jacobian;
-!   - the energy of each chain (pp I with d(p,g), the two Be7 branches,
-!     CNO, triple alpha) and of the alpha captures;
+!   - the energy of each chain (eps_by_chain, network's chain_* slots:
+!     pp I with d(p,g), the two Be7 branches, CNO, the alpha captures,
+!     triple alpha);
 !   - the thermal neutrino loss (included in eps) and the He3 energy
 !     diagnostics;
 !   - when net_settings%calc_neutrinos, the solar neutrino fluxes and the
@@ -27,8 +28,7 @@ module nuclear_energy
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, n_chains, n_network, &
-           network_species_slot, chain_pp1, chain_pp2, chain_pp3, chain_cno, chain_alpha_capture, &
-           chain_triple_alpha
+           network_species_slot, chain_pp1
       implicit none
       private
 
@@ -38,12 +38,8 @@ module nuclear_energy
 ! erg/g/s; derivatives absolute (d eps/dln rho, d eps/dln T)
          real(dp) :: total_energy_gen_rate = 0.0d0
          real(dp) :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
-         real(dp) :: pp_chain_energy_gen = 0.0d0
-         real(dp) :: he3he4_be7_electron_energy_gen = 0.0d0
-         real(dp) :: he3he4_be7_proton_energy_gen = 0.0d0
-         real(dp) :: cno_cycle_energy_gen = 0.0d0
-         real(dp) :: triple_alpha_energy_gen = 0.0d0
-         real(dp) :: eps_alpha_capture = 0.0d0
+! each chain's energy generation, erg/g/s (network's chain_* slots)
+         real(dp) :: eps_by_chain(n_chains) = 0.0d0
          real(dp) :: eps_neutrino_loss = 0.0d0
 ! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
          logical :: fluxes_set = .false., be7_set = .false.
@@ -227,12 +223,8 @@ pure subroutine store_chain_energies(energy_by_chain, deuterium_energy, e)
       real(dp), intent(in) :: energy_by_chain(n_chains), deuterium_energy
       type(nuclear_energy_result), intent(inout) :: e
 
-      e%pp_chain_energy_gen = energy_by_chain(chain_pp1) + deuterium_energy
-      e%he3he4_be7_electron_energy_gen = energy_by_chain(chain_pp2)
-      e%he3he4_be7_proton_energy_gen = energy_by_chain(chain_pp3)
-      e%cno_cycle_energy_gen = energy_by_chain(chain_cno)
-      e%triple_alpha_energy_gen = energy_by_chain(chain_triple_alpha)
-      e%eps_alpha_capture = energy_by_chain(chain_alpha_capture)
+      e%eps_by_chain = energy_by_chain
+      e%eps_by_chain(chain_pp1) = e%eps_by_chain(chain_pp1) + deuterium_energy
 end subroutine store_chain_energies
 
 !----------------------------------------------------------------------
@@ -380,10 +372,9 @@ end module nuclear_energy
 
 !======================================================================
 ! Sources and history (the header of engeb.f, kept with the physics it
-! describes). Legacy names: EPP1/EPP2/EPP3/ECN/E3AL -> the chain energies
-! (pp_chain_energy_gen, he3he4_be7_electron_energy_gen,
-! he3he4_be7_proton_energy_gen, cno_cycle_energy_gen,
-! triple_alpha_energy_gen); PEP/PET -> deps_dlnrho/deps_dlnt; SUM1 ->
+! describes). Legacy names: EPP1/EPP2/EPP3/ECN/E3AL and EALPCA -> the
+! chain energies eps_by_chain(chain_pp1, chain_pp2, chain_pp3, chain_cno,
+! chain_triple_alpha and chain_alpha_capture); PEP/PET -> deps_dlnrho/deps_dlnt; SUM1 ->
 ! total_energy_gen_rate; EG(I) -> rates_times_reactants; X, Y, XHE3, ...
 ! -> the xa slots.
 !======================================================================

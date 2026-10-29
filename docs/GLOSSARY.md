@@ -238,10 +238,10 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | ε_extra | erg g⁻¹ s⁻¹ | `star%eps_extra(k)`, `diag%eps_extra`; channel `luminosity_breakdown(i_lum_extra)` | — | core/structure/energy_sources.f90, core/structure/shell_equations.f90 (form_extra_energy_terms) | The sum of the extra energy sources a program registers (`add_energy_source`); zero, and not evaluated, without any. Interior only. |
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%eps_grav(k)` | `SEG(7)`, `HHC` | core/structure/structure_equations.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `eps_grav` is a specific rate, not a luminosity (trap 7). |
 | ε | erg g⁻¹ s⁻¹ | `burn%total_energy_gen_rate` (local `energy_gen_rate`) | `SUM1` (`engeb`), `E` (`coefft`) | net/nuclear_energy.f90 (`sum_energy_generation`) | Total nuclear rate including deuterium burning and (negative) ν losses; the ε in q_L. |
-| ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%pp_chain_energy_gen`, `he3he4_be7_electron_energy_gen`, `he3he4_be7_proton_energy_gen`, `cno_cycle_energy_gen`, `triple_alpha_energy_gen` | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | net/nuclear_energy.f90:423-437 | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
+| ε_ppI, ε_ppII, ε_ppIII, ε_CNO, ε_3α | erg g⁻¹ s⁻¹ | `burn%eps_by_chain(chain_pp1)`, `(chain_pp2)`, `(chain_pp3)`, `(chain_cno)`, `(chain_triple_alpha)` (`net/network.f90`'s chain slots, named in `chain_name`) | `EPP1`, `EPP2`, `EPP3`, `ECN`, `E3AL` | net/nuclear_energy.f90 (`store_chain_energies`) | Chain energy rates. ppI includes d(p,γ). ppII is the ⁷Be electron-capture branch, ppIII the ⁷Be proton-capture branch. |
 | dε/dln ρ | erg g⁻¹ s⁻¹ | `burn%deps_dlnrho`; also `zone_deps_dlnrho`, `star%pulse_deps_dlnrho` | `PEP`; `QED`, `PQED`, `SQED` | net/nuclear_energy.f90:356 | **Absolute** Σ εⱼ dln rⱼ/dlnρ (minus ν-loss term). The copies were named `*dlneps*`/`*dlnepsilon*` until 2026-10 (trap 1). |
 | dε/dln T | erg g⁻¹ s⁻¹ | `burn%deps_dlnt`; also `zone_deps_dlnt`, `star%pulse_deps_dlnt` | `PET`; `QET`, `PQET`, `SQET` | net/nuclear_energy.f90:357 | **Absolute** dε/dlnT (trap 1). |
-| ε_αcap | erg g⁻¹ s⁻¹ | `burn%eps_alpha_capture` | `EALPCA` (`/NEWEPS/`) | net/nuclear_energy.f90 (`store_chain_energies`) | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
+| ε_αcap | erg g⁻¹ s⁻¹ | `burn%eps_by_chain(chain_alpha_capture)` | `EALPCA` (`/NEWEPS/`) | net/nuclear_energy.f90 (`store_chain_energies`) | Energy from ¹³C, ¹²C and ¹⁴N α captures. |
 | L_channel | L☉ | `star%luminosity_breakdown(8)` (`i_lum_pp1`, `i_lum_pp2`, `i_lum_pp3`, `i_lum_cno`, `i_lum_3alpha`, `i_lum_neu`, `i_lum_grav`, `i_lum_he_c`) | `TLUMX` | core/structure/structure_equations.f90; renormalized in core/structure/henyey_iteration.f90:173-182 | Integrated luminosity per channel. Rescaled each iteration so the sum equals L(nz) (trap 15). |
 | ε_rot | erg g⁻¹ s⁻¹ | `rotational_energy_term` (local) | `DEROT` (`/ROTEN/`) | core/structure/structure_equations.f90 | (E_rot − E_rot,old)/(Δt Δm), subtracted from ε in q_L. |
 | E_rot | erg (per point) | `star%kinetic_energy_rot` | `HKEROT` | core/structure/henyey_iteration.f90:320, rotation/* | ½ Ω j Δm of the point. |
@@ -477,10 +477,10 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - The local `dynamical_shear_omega_limit` and `dlnomega_dlnr_max` (legacy `QWRMAX`) are the limiting |dΩ/d ln r|, not dΩ/dr (`rotation/seculr/stability_coefficients.f90`).
 4. **`eps_channels(1:5,:)` are fractions, but slots 6 and 7 are rates.**
    - The `star_info` comment says "[erg/g/s]" (`state/star_info_lib.f90:89`).
-   - `compute_henyey_coefficients` stores `energy_gen_component(j)/eps_total` in slots 1–5 (`:346-354`), and erg g⁻¹ s⁻¹ in slots 6 (ν) and 7 (grav).
+   - `compute_henyey_coefficients` stores each chain's `eps_by_chain/eps_total` in slots 1–5 (`store_zone_energy_channels`), and erg g⁻¹ s⁻¹ in slots 6 (ν) and 7 (grav).
    - The profile columns `eps_ppI`…`eps_he3` (`core/diagnostics/stitched_model.f90:483-487`) are therefore fractions of `eps_nuc`, while `eps_neu` and `eps_grav` are rates.
 5. **`i_eps_he3` (slot 5) and the profile column `eps_he3` hold the triple-α share.**
-   - Slot 5 is filled from `burn%triple_alpha_energy_gen` (`core/structure/structure_equations.f90:227`).
+   - Slot 5 is filled from `burn%eps_by_chain(chain_triple_alpha)` (`eps_channel_of_chain` in `core/structure/structure_equations.f90`).
    - The luminosity twin is correctly named `i_lum_3alpha`.
 6. **`old_shell_mass` is not a mass and is unused.**
    - The `star_info` comment (`state/star_info_lib.f90:339-342`) says it holds log-mass coordinates of the pre-rezoning grid. `core/model/rezoning.f90:67-74` says `HSS` was the *new* log-mass grid, and that this use moved to locals.

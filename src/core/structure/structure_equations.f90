@@ -41,7 +41,8 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
-           i_lum_he_c, i_lum_extra, n_lum_channels, n_nu_fluxes
+           i_lum_neu, i_lum_extra, n_lum_channels, n_nu_fluxes
+      use net_lib, only: n_chains, chain_alpha_capture
       use eos_lib, only: eos_result
       use kap_lib, only: i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use physical_constants
@@ -68,7 +69,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
 ! the current shell's dln rho/dln P and dln rho/dln T (the central
 ! boundary condition and the pulse arrays)
       double precision :: dlnrho_dlnt, dlnrho_dlnp
-      integer :: im, im1, j
+      integer :: im, im1, j, chain
 
       ierr = 0
 
@@ -160,10 +161,10 @@ subroutine store_shell_structure()
 end subroutine store_shell_structure
 
 ! ---------------------------------------------------------------
-! The shell's share of the luminosity channels (dm eps_j/Lsun: pp1, pp2,
-! pp3, CNO, triple alpha, the neutrino losses, alpha captures in
-! i_lum_he_c, eps_grav in i_lum_grav), its He3+He3 and He3-burning
-! luminosities (Lsun), the extra energy sources' eps_extra (erg/g/s, in
+! The shell's share of the luminosity channels (dm eps_j/Lsun: each
+! nuclear chain in its channel, luminosity_channel_of_chain; the neutrino
+! losses in i_lum_neu; eps_grav in i_lum_grav), the extra energy
+! sources' eps_extra (erg/g/s, in
 ! s%eps_extra) and its share dm eps_extra/Lsun in i_lum_extra, and its
 ! solar-neutrino fluxes: burn%neutrino_flux
 ! is the flux at the Earth per gram of the shell (10^10 cm^-2 s^-1 g^-1,
@@ -176,13 +177,14 @@ subroutine add_shell_energy_budget()
                        diag%burn%neutrino_flux(j)*s%dm(im)
                end do
             end if
-            do j = 1,6
+            do chain = 1, n_chains
+               j = luminosity_channel_of_chain(chain)
                s%luminosity_breakdown(j) = s%luminosity_breakdown(j) + &
                     (s%dm(im)/s%solar_luminosity_cgs)* &
-                    diag%energy_gen_component(j)
+                    diag%burn%eps_by_chain(chain)
             end do
-            s%luminosity_breakdown(i_lum_he_c)=s%luminosity_breakdown(i_lum_he_c)+(s%dm(im)/ &
-                 s%solar_luminosity_cgs)*diag%burn%eps_alpha_capture
+            s%luminosity_breakdown(i_lum_neu) = s%luminosity_breakdown(i_lum_neu) + &
+                 (s%dm(im)/s%solar_luminosity_cgs)*diag%burn%eps_neutrino_loss
        end if
        if (diag%has_eps_grav) then
             s%eps_grav(im) = diag%eps_grav
@@ -225,8 +227,11 @@ end subroutine eliminate_shell_pair
 
 ! ---------------------------------------------------------------
 ! Store the shell's energy generation for output, for every model:
-!   eps_total = eps_pp1 + eps_pp2 + eps_pp3 + eps_cno + eps_3alpha (erg/g/s),
-!   eps_channels(1:5) = the fraction of eps_total in each of those,
+!   eps_total = the sum of the chains' eps except the alpha captures'
+!     (erg/g/s),
+!   eps_channels(i_eps_*) = the fraction of eps_total of each chain
+!     that has a slot there (pp1, pp2, pp3, CNO, triple alpha:
+!     eps_channel_of_chain),
 !   eps_channels(i_eps_neu) = eps_nu and eps_channels(i_eps_grav) =
 !   eps_grav (erg/g/s).
 ! Below the burning cutoff only eps_grav is nonzero.
@@ -238,19 +243,23 @@ subroutine store_zone_energy_channels()
                s%eps_channels(j,im) = 0.0d0
            end do
          else
-            s%eps_total(im) = diag%energy_gen_component(1)+diag%energy_gen_component(2)+ &
-                 diag%energy_gen_component(3)+diag%energy_gen_component(4)+ &
-                 diag%energy_gen_component(5)
-            s%eps_channels(i_eps_neu,im) = diag%energy_gen_component(6)
+            s%eps_total(im) = 0.0d0
+            do chain = 1, n_chains
+               if (chain == chain_alpha_capture) cycle
+               s%eps_total(im) = s%eps_total(im) + diag%burn%eps_by_chain(chain)
+            end do
+            s%eps_channels(i_eps_neu,im) = diag%burn%eps_neutrino_loss
             s%eps_channels(i_eps_grav,im) = s%eps_grav(im)
             if (s%eps_total(im).gt.1.0d-22) then
                energy_sum_inverse = 1.0d0/s%eps_total(im)
             else
                energy_sum_inverse = 0.0d0
             end if
-            do j = 1,5
-               s%eps_channels(j,im) = diag%energy_gen_component(j)*energy_sum_inverse
-              end do
+            do chain = 1, n_chains
+               j = eps_channel_of_chain(chain)
+               if (j /= 0) s%eps_channels(j,im) = &
+                    diag%burn%eps_by_chain(chain)*energy_sum_inverse
+            end do
          end if
 end subroutine store_zone_energy_channels
 
@@ -309,5 +318,59 @@ subroutine store_pulse_derivatives()
 end subroutine store_pulse_derivatives
 
 end subroutine compute_henyey_coefficients
+
+!----------------------------------------------------------------------
+! Where each nuclear chain (net_lib's chain_*, the slots of
+! nuclear_energy_result%eps_by_chain) is stored: its luminosity channel
+! (star%luminosity_breakdown's i_lum_* slot), and its eps channel
+! (star%eps_channels' i_eps_* slot; 0 for the alpha captures, which have
+! none).
+pure integer function luminosity_channel_of_chain(chain)
+      use net_lib, only: chain_pp1, chain_pp2, chain_pp3, chain_cno, &
+           chain_alpha_capture, chain_triple_alpha
+      use star_info_lib, only: i_lum_pp1, i_lum_pp2, i_lum_pp3, i_lum_cno, &
+           i_lum_he_c, i_lum_3alpha
+      integer, intent(in) :: chain
+
+      select case (chain)
+      case (chain_pp1)
+         luminosity_channel_of_chain = i_lum_pp1
+      case (chain_pp2)
+         luminosity_channel_of_chain = i_lum_pp2
+      case (chain_pp3)
+         luminosity_channel_of_chain = i_lum_pp3
+      case (chain_cno)
+         luminosity_channel_of_chain = i_lum_cno
+      case (chain_alpha_capture)
+         luminosity_channel_of_chain = i_lum_he_c
+      case (chain_triple_alpha)
+         luminosity_channel_of_chain = i_lum_3alpha
+      case default
+         luminosity_channel_of_chain = 0
+      end select
+end function luminosity_channel_of_chain
+
+pure integer function eps_channel_of_chain(chain)
+      use net_lib, only: chain_pp1, chain_pp2, chain_pp3, chain_cno, &
+           chain_triple_alpha
+      use star_info_lib, only: i_eps_pp1, i_eps_pp2, i_eps_pp3, i_eps_cno, &
+           i_eps_he3
+      integer, intent(in) :: chain
+
+      select case (chain)
+      case (chain_pp1)
+         eps_channel_of_chain = i_eps_pp1
+      case (chain_pp2)
+         eps_channel_of_chain = i_eps_pp2
+      case (chain_pp3)
+         eps_channel_of_chain = i_eps_pp3
+      case (chain_cno)
+         eps_channel_of_chain = i_eps_cno
+      case (chain_triple_alpha)
+         eps_channel_of_chain = i_eps_he3
+      case default
+         eps_channel_of_chain = 0
+      end select
+end function eps_channel_of_chain
 
 end module structure_equations

@@ -35,8 +35,10 @@ module net_lib
 ! abundances onto, and the network's dX/dt
       use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4, compute_abundance_rates
-! the energy generation
+! the energy generation, by chain (eps_by_chain(chain_*))
       use nuclear_energy, only: nuclear_energy_result, compute_nuclear_energy
+      use network, only: n_chains, chain_name, chain_pp1, chain_pp2, chain_pp3, &
+           chain_cno, chain_alpha_capture, chain_triple_alpha
 ! the light elements
       use light_elements, only: &
            deuterium_rate, burn_deuterium_region, surface_accretion, &

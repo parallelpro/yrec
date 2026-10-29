@@ -90,8 +90,8 @@ module shell_equations
 ! The shell's values for output: the eos density, whether the shell is
 ! convective, the radiative and actual gradients and the convective
 ! velocity, the opacity results, Gamma1; above the burning cutoff
-! (burned) the nuclear energy record, its six channels
-! (pp1, pp2, pp3, CNO, triple alpha, neutrino loss) and its derivatives;
+! (burned) the nuclear energy record (its chains' energies, the neutrino
+! loss) and its derivatives, all zero below;
 ! and, when the step has a duration (has_eps_grav), eps_grav (erg/g/s);
 ! eps_extra, the extra energy sources' sum (erg/g/s; zero without any).
       type :: shell_diagnostics
@@ -103,7 +103,6 @@ module shell_equations
          double precision :: gamma1 = 0.0d0
          logical :: burned = .false.
          type(nuclear_energy_result) :: burn
-         double precision :: energy_gen_component(6) = 0.0d0
          double precision :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
          logical :: has_eps_grav = .false.
          double precision :: eps_grav = 0.0d0
@@ -250,8 +249,8 @@ end subroutine form_radius_pressure_temperature_terms
 !   ql = eps_nuc,
 !   ql_dt = d eps/dln T + (d eps/dln rho)(dln rho/dln T),
 !   ql_dp = (d eps/dln rho)(dln rho/dln P).
-! Below the cutoff the burn values (deps_*, energy_gen_component) are
-! zero. (The F77 coefft.f left them at the last burning shell's values,
+! Below the cutoff the burn values (deps_*, the record burn, which keeps
+! its default) are zero. (The F77 coefft.f left them at the last burning shell's values,
 ! which reached the pulse output's d eps columns of every cooler shell,
 ! and eps_total of a shell exactly at the cutoff; fixed 2026-10.)
 subroutine form_nuclear_energy_terms()
@@ -260,19 +259,12 @@ subroutine form_nuclear_energy_terms()
        terms%ql_dp = 0.0d0
        diag%deps_dlnrho = 0.0d0
        diag%deps_dlnt = 0.0d0
-       diag%energy_gen_component = 0.0d0
        diag%burned = sh%log_temperature.gt.cfg%burning_log_temperature_cutoff
        if (diag%burned) then
             call compute_nuclear_energy(diag%log_density, sh%log_temperature, &
                  sh%xa, sh%in_surface_cz, cfg%turnover_timescale, diag%burn)
             diag%deps_dlnrho = diag%burn%deps_dlnrho
             diag%deps_dlnt = diag%burn%deps_dlnt
-            diag%energy_gen_component(1) = diag%burn%pp_chain_energy_gen
-            diag%energy_gen_component(2) = diag%burn%he3he4_be7_electron_energy_gen
-            diag%energy_gen_component(3) = diag%burn%he3he4_be7_proton_energy_gen
-            diag%energy_gen_component(4) = diag%burn%cno_cycle_energy_gen
-            diag%energy_gen_component(5) = diag%burn%triple_alpha_energy_gen
-            diag%energy_gen_component(6) = diag%burn%eps_neutrino_loss
             terms%ql = diag%burn%total_energy_gen_rate
             terms%ql_dt = terms%ql_dt + diag%deps_dlnt + &
                  diag%deps_dlnrho*eos%dlnrho_dlnt

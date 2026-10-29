@@ -102,10 +102,14 @@ module network
 ! temperatures (log T >= logT_cutoffs(4))
       integer, parameter :: hydrogen_burning = 1, helium_burning = 2
 
-! the chain a reaction's energy is counted under
+! the chain a reaction's energy is counted under, and its name
+! (nuclear_energy_result%eps_by_chain is indexed by these)
       integer, parameter, public :: chain_pp1 = 1, chain_pp2 = 2, &
            chain_pp3 = 3, chain_cno = 4, chain_alpha_capture = 5, &
            chain_triple_alpha = 6, n_chains = 6
+      character(len=*), parameter, public :: chain_name(n_chains) = [ &
+           'pp I          ', 'pp II         ', 'pp III        ', &
+           'CNO           ', 'alpha capture ', 'triple alpha  ']
 
 ! One reaction. reactants lists the species whose mass fractions multiply
 ! the rate (repeat a species for a square or cube; 0 = unused). change lists

@@ -354,7 +354,7 @@ core/structure/energy_sources.o: composition_layout.mod
 core/structure/henyey_elimination.o: physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/henyey_iteration.o: energy_sources.mod henyey_elimination.mod io_units.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_log.mod star_info_lib.mod structure_equations.mod surface_boundary.mod
 core/structure/shell_equations.o: composition_layout.mod convection_lib.mod energy_sources.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod
-core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
+core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod io_units.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod triangle_fit.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod

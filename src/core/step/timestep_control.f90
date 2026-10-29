@@ -497,7 +497,7 @@ end subroutine timestep_limit_hburn
 subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
-      use net_lib, only: nuclear_energy_result
+      use net_lib, only: nuclear_energy_result, chain_triple_alpha
       use star_info_lib, only: json, i_he4, i_h2, i_metals
       use controls_buffer, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
@@ -519,7 +519,7 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
 ! the extended composition is used.
       double precision :: zone_xa(15)
 ! burn: the zone's energy record, of which only the triple-alpha term
-! (burn%triple_alpha_energy_gen) is used here.
+! (burn%eps_by_chain(chain_triple_alpha)) is used here.
       type(nuclear_energy_result) :: burn
       double precision :: helium_energy_gen
       double precision :: core_helium_fraction
@@ -545,7 +545,7 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
        if (.not.s%job%use_extended_composition) zone_xa(i_h2) = 0.0d0
        call compute_zone_energy(s, local_log_density, local_log_temperature, &
             zone_xa, max_temp_zone, burn)
-         helium_energy_gen = burn%triple_alpha_energy_gen
+         helium_energy_gen = burn%eps_by_chain(chain_triple_alpha)
        if(helium_energy_gen.lt.1.d-22) helium_energy_gen = 1.d-22
        helium_dt=1.0d15/helium_energy_gen
       else

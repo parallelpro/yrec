@@ -41,7 +41,7 @@ program test_net
            linear_in_log, compute_nuclear_energy, nuclear_energy_result, &
            net_settings_t, set_net_settings, compute_abundance_rates, &
            burn_deuterium_region, surface_accretion, compute_li_be_rates, &
-           network_species_slot
+           network_species_slot, chain_pp1, chain_cno, chain_triple_alpha
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, &
@@ -432,8 +432,8 @@ contains
          do k = 1, npoint
             call compute_nuclear_energy(logd(k), logt(k), xa(:,k), .false., 0.0d0, e)
             write(*,'(a,i2,f7.3,f7.3)') "point", k, logt(k), logd(k)
-            write(*,'(5(1pe20.12))') e%total_energy_gen_rate, e%pp_chain_energy_gen, &
-                 e%cno_cycle_energy_gen, e%triple_alpha_energy_gen, e%eps_neutrino_loss
+            write(*,'(5(1pe20.12))') e%total_energy_gen_rate, e%eps_by_chain(chain_pp1), &
+                 e%eps_by_chain(chain_cno), e%eps_by_chain(chain_triple_alpha), e%eps_neutrino_loss
             call compute_nuclear_energy(logd(k), logt(k)+h, xa(:,k), .false., 0.0d0, ep)
             call compute_nuclear_energy(logd(k), logt(k)-h, xa(:,k), .false., 0.0d0, em)
             fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
