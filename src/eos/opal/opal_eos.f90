@@ -901,7 +901,6 @@ subroutine readcoeos(v, vintage, ierr)
          opal_shared%readco_init_flag(vintage) = opal_flag_set
       end if
 
-      close (2)
 ! .....read  tables (on the unit open_opal_eos_table opened)
       do x_loop_index = 1, mx
          read (opal_shared%table_unit,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
@@ -1152,8 +1151,8 @@ end subroutine find_opal2006_ramp
 ! only converges from a valid bracket), the refinement cap is raised
 ! from 11 to 30 (regula falsi is linear once an endpoint sticks), and
 ! the non-convergence message is written to the run log instead of
-! silently returning -999 (which compute_blended_eos turns into a Yale/SCV
-! fallback with ierr = 0).
+! silently returning -999 (which blend_eos's opal_step turns into the
+! Yale/SCV result with ierr = 0).
 real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 

@@ -86,7 +86,7 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp) :: radiation_pressure
       real(dp) :: change_t1, change_t2
       real(dp) :: dlnrho_dlnp_gas, dlnrho_dlnt_gas, dlnp_dlnt_gas, &
-           dlnp_dlnt, specific_heat_cp_gas, du_dt, &
+           dlnp_dlnt, du_dt, &
            radiation_energy_density_term
       real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
            xtf_he_e, xtf_hepp, xhp, xhep, xhepp
@@ -320,13 +320,9 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       dlnp_dlnt_gas = -dlnrho_dlnt_gas/dlnrho_dlnp_gas
       dlnp_dlnt = dlnp_dlnt_gas*r%beta + 4.0d0*beta_complement
       r%dlnrho_dlnt = -dlnp_dlnt*r%dlnrho_dlnp
-!  cp = s*(d ln s/ d ln t)|p is tabulated. use
-!  cp = du/dt + p*(d ln rho/d ln t)**2/rho/t/(d ln rho/ d ln p)
-!  to find du/dt.  then include the effects of radiation pressure
-!  on du/dt and the otehr terms and get a corrected cp.
-! cp (gas pressure only).
-      specific_heat_cp_gas = interp_result(4)
-! now find du/dt from the original table.
+!  cp = du/dt + p*(d ln rho/d ln t)**2/rho/t/(d ln rho/ d ln p), with
+!  du/dt from the table (its gas-only cp, interp_result(4), is not
+!  needed) corrected for radiation pressure, as are the other terms.
       du_dt = interp_result(5)
 ! correct du/dt for radiation
       radiation_energy_density_term = 3.0d0*radiation_pressure/r%density

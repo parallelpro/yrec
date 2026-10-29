@@ -64,11 +64,10 @@ module opal_eos_tables
       integer, parameter :: iv_opal95 = opal_vintage_1995, iv_opal01 = opal_vintage_2001, &
            iv_opal06 = opal_vintage_2006
 ! Variable numbers of the OPAL EOS results (the slots of
-! opal95%eos_output / opal06%eos_output and the arguments of their
-! eos_index_inverse): the 1995 and 2006 tables carry the same ten
-! variables in the same order -- this block is the layout descriptor
-! of both vintages' eos_output. Units as documented in esac
-! (pressure in 1e12 dyn/cm**2, energy in 1e12 erg/g, ...).
+! opal95%eos_output and opal06%eos_output): the 1995 and 2006 tables
+! carry the same variables in the same order (2006 without gamma3 - 1).
+! Units as documented in esac (pressure in 1e12 dyn/cm**2, energy in
+! 1e12 erg/g, ...).
       integer, parameter :: i_opal_p = 1            ! pressure
       integer, parameter :: i_opal_e = 2            ! internal energy
       integer, parameter :: i_opal_s = 3            ! entropy
@@ -79,9 +78,8 @@ module opal_eos_tables
       integer, parameter :: i_opal_gamma1 = 8       ! gamma1
       integer, parameter :: i_opal_gamma2_ratio = 9 ! gamma2/(gamma2-1)
       integer, parameter :: i_opal_gamma3m1 = 10    ! gamma3-1
-! The 2001 tables (opal01%eos_output / eos_index_inverse) carry no
-! dE/dRho variable, so every slot after entropy is one lower -- the
-! layout descriptor of the 2001 eos_output.
+! The 2001 tables (opal01%eos_output) carry no dE/dRho variable, so
+! every slot after entropy is one lower.
       integer, parameter :: i_opal01_p = 1
       integer, parameter :: i_opal01_e = 2
       integer, parameter :: i_opal01_s = 3
@@ -271,10 +269,9 @@ module opal_eos_tables
            integer :: t_row_index
       end type opal_eos_vintage
 
-! State of the OPAL 1995 table set: the same members as
-! opal_eos_vintage (minus the 2006-only amu/log10_ne grids) at the
-! 1995 dimensions, in the member order the 1995 stencil overruns rely
-! on (header note).
+! State of the OPAL 1995 table set: the members of opal_eos_vintage at
+! the 1995 dimensions, with the 1995 table headers, in the member order
+! the 1995 stencil overruns rely on (header note).
       type :: opal_eos_vintage95
             type(opal_quad_cache) :: quad
 ! the tables, their grids and inverse spacings, the X-interpolated slices

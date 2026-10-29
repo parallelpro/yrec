@@ -311,7 +311,7 @@ contains
 !   debye_huckel       the Yale solvers with the Debye-Hueckel correction,
 !                      the composition passed per zone
 ! Each point prints log rho, beta, dln rho/dln T, dln rho/dln P, cp,
-! grad_ad, eta and the Saha state.
+! grad_ad, eta and the Saha iteration count.
       subroutine check_configurations()
          character(len=256) :: legacy
          legacy = trim(yrec_input)//"/eos/legacy/"
@@ -771,7 +771,8 @@ end subroutine write_mhd_part
 !   envelope_table_checks  the SCV envelope table eos_set_mixture builds
 !                          for a new envelope composition
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
-!                          mixture (eos_set_debye_huckel_z)
+!                          mixture (the envelope's, eos_set_mixture,
+!                          scaled to the zone's Z)
 !   gamma1_checks          eos_get_gamma1 outside the OPAL table
 !   scv_mean_weight_checks R/mu and 1/mu_e where SCV gives the density
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
@@ -897,10 +898,6 @@ subroutine eos_at(lt, lp, x, z, res, ierr, atmosphere, comp)
            composition_at_zone=comp, ierr=ierr)
 end subroutine eos_at
 
-! cp and grad_ad of an ideal gas plus radiation with gas-pressure
-! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b and alpha = 1/b,
-! cp = (R/mu)(3/2 + 12(1 - b)/b + delta^2) and grad_ad = (R/mu) delta/(b cp)
-! (Kippenhahn & Weigert sec. 13.2)
 ! With use_diffusion_z the metals scale with Z/Z_env; where Z is the
 ! envelope's and only X differs (X = 0.65 against 0.70), the zone's
 ! 1/mu_ion is the default mixture's (the same H and He terms), on the
@@ -1034,6 +1031,10 @@ subroutine scv_mean_weight_checks()
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
 end subroutine scv_mean_weight_checks
 
+! cp and grad_ad of an ideal gas plus radiation with gas-pressure
+! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b,
+! cp = (R/mu)(3/2 + 12(1 - b)/b + delta^2) and grad_ad = (R/mu) delta/(b cp)
+! (Kippenhahn & Weigert sec. 13.2)
 subroutine ideal_radiation_gas(b, r_mu, cp, grad_ad)
       real(dp), intent(in) :: b, r_mu
       real(dp), intent(out) :: cp, grad_ad

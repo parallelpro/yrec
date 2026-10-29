@@ -60,9 +60,9 @@ contains
 ! use_envelope is .true. when x and z are within 1e-5 of the envelope
 ! values: then mu_ion_inv = inverse_atomic_weight and dfx1/dfx12 hold the raw
 ! (unweighted) differences; otherwise dfx1/dfx12/dfx4 are the
-! weighted H/metal/He excesses that compute_blended_eos also needs for its Saha
-! number fractions (dfx4 is defined only in that branch).  Shared by
-! compute_mean_weights and compute_blended_eos.
+! weighted H/metal/He excesses that blend_eos's zone_mixture also needs
+! for the Saha number fractions (dfx4 is defined only in that branch).
+! Shared by compute_mean_weights and zone_mixture.
 pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
      use_envelope)
       real(dp), intent(in) :: x, z

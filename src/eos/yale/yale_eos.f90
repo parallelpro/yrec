@@ -660,16 +660,15 @@ end subroutine differentiate_saha_solution_twice
 !----------------------------------------------------------------------
 ! Fully-ionized-gas equation of state ("relativistic" electron gas via
 ! the tabulated Fermi-Dirac integrals in yale_eos_tables's
-! yale%fermi_table_data, following Prather's thesis). Given log10(T), log10(P), and the mean molecular
-! weights, iterates on density until the electron+ion+radiation
-! pressure sum matches the given P, then returns density and (if
-! in_atmosphere is false, via blend_eos.f90's call) thermodynamic
-! derivatives. Called from blend_eos.f90 both for the T >= saha cutoff
-! branch (fully ionized gas assumed) and to interpolate against the
-! compute_saha_eos/compute_scv_envelope_eos result near the ionization cutoff.
-!
-!          Qdtt,qdtp = nat-log derivatives of qdt=d(log d )/d(log T )
-!          qat,qap = nat-log derivatives of the adiabatic derivative
+! yale%fermi_table_data, following Prather's thesis). Given log10(T),
+! log10(P), beta and the mean molecular weights in r, iterates on
+! density until the electron, ion and radiation pressures (and the
+! Debye-Hueckel term) add up to P, then sets the density, its first and
+! second derivatives, cp, grad_ad and their derivatives, and eta (the
+! second derivatives always: the caller keeps or discards them). The
+! density iteration starts from r's density. Called by blend_eos's
+! gas_eos at and above the Saha cutoff, and below it within the ramp,
+! where the Saha (or SCV) result is blended into it.
 ! DBG 7/92 modified to include Debye-Hueckel correction.
 !     Correction is applied to pressure and all thermodynamic variables.
 !     Treatment is also valid for electron degeneracy.  A ramp function
