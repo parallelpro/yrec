@@ -182,7 +182,8 @@ which replaces them).
    domain uses only that module; it re-exports what the rest of the code
    may see, so reading it shows the domain's whole interface.
    `tools/check_boundaries.py` enforces this for the domains listed in
-   `FACADE_ONLY_DOMAINS` (net, kap, eos, atm, numerics and convection so far).
+   `FACADE_ONLY_DOMAINS` (net, kap, eos, atm, numerics, convection and
+   element_diffusion so far).
 3. **Every other module has no suffix and is named as a noun for what it
    holds**: `network`, `nuclear_energy`, `light_elements`,
    `convection_geometry`, `composition_step`.
@@ -219,9 +220,11 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
 
 1. **Physics domains never use `star`.** Their state comes in as
    arguments and their configuration as one settings record filled by
-   the star layer at the start of a run (`net/`: `net_lib`'s
+   the star layer at the start of a run, of a Monte-Carlo run or of a
+   run card, from builders in `setup/` (`net/`: `net_lib`'s
    `net_settings`, built by `net_settings_from_star` in
-   `setup/net_settings_setup.f90` and installed by `set_net_settings`). They take the slot constants from the
+   `setup/net_settings_setup.f90` and installed by `set_net_settings`,
+   which checks the reaction table first and returns `ierr`). They take the slot constants from the
    constants-only modules `composition_layout` (`i_h1`, ...) and
    `neutrino_flux_layout`, and do not use `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
@@ -278,14 +281,17 @@ budget now keeps them there.
 
 ## Declarations and interfaces (2026-10)
 
-net/ follows these five rules; other code follows them as it is
-rewritten, each conversion a byte-identical commit.
+net/ and numerics/ follow these five rules (numerics/README.md lists the
+routines not yet `pure`); other code follows them as it is rewritten,
+each conversion a byte-identical commit.
 
 1. **Modules are `private` by default** and list what they export
    (`public :: ...`), so the top of a module shows its interface.
-2. **Every `use` names what it takes** (`use net_lib, only: ...`). The
-   exception is `use math_lib`: under `USE_CRMATH` its procedures shadow
-   the intrinsic `exp`, `log`, ..., which an `only:` list cannot express.
+2. **Every `use` names what it takes** (`use net_lib, only: ...`;
+   `tools/check_boundaries.py` enforces it for `numerics_lib`,
+   `ONLY_LIST_MODULES`). The exception is `use math_lib`: under
+   `USE_CRMATH` its procedures shadow the intrinsic `exp`, `log`, ...,
+   which an `only:` list cannot express.
 3. **Reals are `real(dp)`**, with
    `use, intrinsic :: iso_fortran_env, only: dp => real64` at the top
    of the module. `dp` doesn't come from a project module, because a
@@ -304,7 +310,7 @@ rewritten, each conversion a byte-identical commit.
 
 ## Code style (2026-10)
 
-net/ follows these six rules, with the five above; other code follows
+net/ follows these seven rules, with the five above; other code follows
 them as it is rewritten.
 
 1. **A routine is a short sequence of named steps.** Each step is a
@@ -339,6 +345,15 @@ them as it is rewritten.
    (`net/test/test_net`), then refactor against it. Checks that can
    pass or fail print `ok` or `FAIL`. Expected output is regenerated
    only on purpose, in a commit that says why.
+7. **Failures return `ierr`; kernels print nothing.** A routine that can
+   fail returns `ierr`, positive for an error (named codes where callers
+   tell them apart: numerics' `numerics_status`), never reports a success
+   it did not have, and does not stop the run. The caller that knows what
+   the failure means writes the message, and a domain writes its
+   messages through one module (`net_messages`, `rotation_messages`; io's
+   `report_error`, the controls' `report_control`), to the terminal and
+   the run log. numerics/ and math/ hold no I/O statement at all
+   (`NO_IO_DIRS` in `tools/check_boundaries.py`).
 
 ## Verification tiers (2026): match the gate to the blast radius
 

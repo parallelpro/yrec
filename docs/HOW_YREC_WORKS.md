@@ -88,11 +88,10 @@ Composition evolves by:
   region, Newton iteration on the coupled H/He3/CNO abundances
   (`burn_implicitly`, `net/network.f90`, driven per region by
   `burn_network_region` in `core/step/burn_step.f90`: the equations and
-  Jacobian come from a reaction table, solved by `simeqc` in
-  `numerics/numerics_lib.f90`), plus explicit updates: equilibrium-He3/CN
-  hydrogen and helium burning rates on the first iteration level
-  (`compute_equilibrium_burn_rates`) and sub-stepped deuterium burning
-  (`burn_deuterium_region`, `net/light_elements.f90`). `src/net/README.md`
+  Jacobian come from a reaction table, solved by `simeqc` through
+  `numerics/numerics_lib.f90`), and deuterium burning per region with
+  the closed-form trace integrator (`burn_deuterium_region`,
+  `net/light_elements.f90`). `src/net/README.md`
   walks through these routines and their call order;
 - **instantaneous convective mixing** — convective zones (plus overshoot
   extensions) are homogenized every step (inside `advance_composition`,
@@ -243,10 +242,14 @@ the timestep and retry.
 Both integrations use the **Bulirsch–Stoer method** —
 `numerics/numerics_lib.f90: bsstep` (modified-midpoint `mmid` sub-stepping
 + `ratext` diagonal rational-function extrapolation to zero step size,
-Numerical Recipes RZEXTR), with adaptive step-size memory carried between
-calls (one of the six deliberately retained `save` states) and per-step
-error control against `y_scale`. Up to 2000 steps; step-halving retry on
-error-budget failure.
+Numerical Recipes RZEXTR), with the step size carried from one step to
+the next and per-step error control against `y_scale`. Its stage count,
+extrapolation order and tolerance are the controls `max_stage_index`,
+`extrap_order` and `tolerance_fraction` (legacy `IMAX`, `NUSE`,
+`STOLR0`), which the controls read checks against bsstep's limits
+(`io/controls_check.f90`) and the envelope integration passes in its
+kernel's settings (`envint_config`). Up to 2000 steps; step-halving
+retry on error-budget failure.
 
 ### 2.6 Timestep control
 
@@ -441,8 +444,9 @@ The routines, their call order and how to extend them are described in
   namelist scale factors (`s0_*` controls, turned into
   `star%cross_section_scale` by `map_user_inputs` (`remap`) in
   `setup/user_inputs.f90`);
-- **weak and intermediate screening** (Salpeter/Graboske) selected by a
-  threshold; the code's own comment notes strong screening is untested;
+- **weak, intermediate and strong screening** (Salpeter; Graboske et al.
+  1973), the form chosen from the weak exponent (`net/screening.f90`);
+  `test_net` checks the strong form against Graboske's formula;
 - **neutrino energy losses** from each pp/CNO chain branch, plus
   plasma/photo/pair/bremsstrahlung losses from **Itoh et al. (1996)**
   (`sneut`, `net/thermal_neutrinos.f90`) for advanced stages; the solar-neutrino
@@ -535,17 +539,22 @@ interpolated in both directions with edge-validity bookkeeping
 |---|---|---|
 | `bsstep` (with `mmid`, `ratext`) | Bulirsch–Stoer with modified midpoint + rational extrapolation, for an `ode_system` | atmosphere & envelope integration (`envelope_equations`) |
 | `henyey_solve` (`hsolve`; in `core/structure/henyey_elimination.f90`) | Henyey surface closure + back-substitution (elimination lives in `henyey_eliminate` (`reduce`)) | structure solve |
-| `simeqc` | Gauss-Jordan with pivoting | `burn_implicitly`'s Newton systems |
+| `simeqc` | Gaussian elimination with pivoting and back substitution | `burn_implicitly`'s Newton systems |
 | `ludcmp`/`lubksb` | LU with partial pivoting | Thoul diffusion coefficients |
-| `solve_tridiagonal` (`tridiag_gs`, `ctridi`) | tridiagonal (Thomas) solver | gravitational settling, rotational composition diffusion |
-| `solve_angular_momentum_transport` (`tridia`; in `rotation/seculr/secular_transport.f90`) | Thomas solver with the angular-momentum bookkeeping | AM diffusion |
+| `solve_tridiagonal` (`tridiag_gs`, `ctridi`) | tridiagonal (Thomas) solver, in two public halves (`tridiagonal_forward_sweep`, `tridiagonal_back_substitution`) | gravitational settling, rotational composition diffusion |
+| `solve_angular_momentum_transport` (`tridia`; in `rotation/seculr/am_transport_coefficients.f90`) | numerics' two halves of the Thomas solve around the wind's term, with the angular-momentum bookkeeping | AM diffusion |
 | `cspline`/`splint`, `natural_spline` (`kspline`, `splinc`), `osplin`→`meval`/`choose`/`cases`/`spline` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
 | `lir` | 4-point Lagrange / linear table interpolation (`lir1` was removed as dead code) | MHD EOS table lookups |
-| `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (`hunt` lives in `kap/conductive/conductive_opacity.f90`) | all table families |
+| `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (each with its own convention at the nodes, in its header) | all table families |
 | `average_over_equipotential` (`qgauss`; in `rotation/shape/shell_quadrature.f90`) | 10-point Gauss–Legendre quadrature | shape integrals |
-| `intpol` | spline interpolation with derivative | OPAL 1992 and Kurucz 1990 opacity interpolation |
+| `natural_spline` + `splint(..., dy=)`, `compute_spline_coefficients` | natural cubic spline with its derivative; the spline as a cubic per interval | OPAL 1992 and Kurucz 1990 opacity interpolation (`ysplin` and `intpol` are kept for now as wrappers of these) |
 
-None of the numerics keeps `save` state (2026-10: the six that did were
+Every numerics routine returns its status in `ierr`, as `numerics_status`'s
+named codes (0 ok; singular, coincident points, bad input, step underflow,
+unsorted points, derivatives failed), and prints nothing: the caller that
+can meet a failure reports it (`tools/check_boundaries.py` checks that
+numerics/ and math/ hold no I/O statement). None of the numerics keeps
+`save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files
 (`core/run/run_driver.f90`, `core/step/step_driver.f90`) and
@@ -558,9 +567,9 @@ modules.
   triples; cards prepared by `setup_solar_calibration` (`setcal`)): runs
   the model to the solar age, compares (log L, log R) — and optionally
   Z/X — to solar targets, and updates (X₀, α_MLT) (and Z₀ for Z/X) with
-  stored empirical partial derivatives (∂logL/∂X = −3.78 etc., hardwired
-  from experiment in `check_solar_calibration` (`chkcal`,
-  `core/run/calibration.f90`)), iterating whole evolutionary runs
+  stored empirical partial derivatives (∂logL/∂X = −3.78 etc., the
+  named parameters `dlogl_dx_fixed`, ... of `core/run/calibration.f90`,
+  which `check_solar_calibration` (`chkcal`) uses), iterating whole evolutionary runs
   to tolerance (`toll/tolr` ≈ 3×10⁻⁵). Yields the classic calibrated solar
   model in a handful of runs.
 - **Star calibration** (`star%ctrl%calibrate_star_flag`, namelist `lcalst`;
@@ -569,8 +578,9 @@ modules.
 - **Monte-Carlo mode** (`star%ctrl%monte_carlo_active`, namelist `lmonte`;
   `core/run/monte_carlo.f90`): repeated runs drawing physics
   parameters (rate S-factors, diffusion factors, Z/X…) per realization —
-  the classic solar-model uncertainty machinery (compile-verified only: no
-  regression deck enables it).
+  the classic solar-model uncertainty machinery (the configuration-matrix
+  deck `cm_monte_carlo` runs it; it does not calibrate, so it writes no
+  Monte Carlo model file).
 
 ## 7. Program architecture (2026)
 
@@ -605,8 +615,10 @@ star-layer routine as `s` (there is no module-level star since 2026-10).
 It is flat MESA-style: the start-of-step snapshot is the `*_start` family
 (`star%xa_start`, `star%logP_start`, …) and driver-step scalars are plain
 members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
-bundles are nested: `star%job` (run list and calibration cards) and
-`star%ctrl` (namelist controls, fixed after `read_controls`). Solver
+bundles are nested: `star%ctrl` (the controls, fixed after
+`read_controls`) and `star%job` (the controls the run changes: the
+run-card arrays the calibration rewrites, the stop thresholds, the
+latches; and the table paths and Monte-Carlo samples). Solver
 scratch with a one-step lifetime is a record its driver allocates and
 passes down (rotation's `rot_scr`, `mid_scr`, `circ_scr`; element
 diffusion's `diff_scr`; the envelope integration's point values are the
@@ -618,10 +630,12 @@ kernel's own), and table state lives inside each physics domain. Two
 inputs: `eos_get`, `kap_get` and `net_lib`'s `compute_reaction_rates`
 receive T, P or ρ and the composition as arguments, and the envelope
 kernel `core/envelope/envelope_integration_kernel.f90` is star-blind.
-Configuration comes from one settings record per domain, which the star
-layer installs at the start of a run or of each run card (`net_settings`,
-`convection_settings`, `rotation_settings`, `diffusion_settings`, and
-those of eos, kap and atm); the domains in `STAR_FREE_DIRS` of
+Configuration comes from one settings record per domain, which the
+builders in `setup/` make from the controls and the star layer installs
+at the start of a run, of each Monte-Carlo run (`net_settings`, from
+`net_settings_from_star`) or of each run card (`convection_settings`,
+`rotation_settings`, `diffusion_settings`; those of eos, kap and atm
+per run); the domains in `STAR_FREE_DIRS` of
 `tools/check_boundaries.py` (eos, kap, atm, net, numerics, convection,
 element_diffusion) do not use `star_info_lib` at all (2026-10). The
 remaining target, per-domain controls types and table-source lists, is
@@ -657,5 +671,4 @@ structurally, not rederived, during modernization — the description in
 `compute_henyey_coefficients` (`coefft`) equation forms. The MHD EOS path
 is unexercised (no tables ship). Legacy output (`wrtout`) was retired on
 2026-08-28, so the Monte-Carlo and helium-flash paths now write through
-`io/yrec_output.f90` like every other run; the Monte-Carlo path is
-compile-verified only.*
+`io/yrec_output.f90` like every other run.*
