@@ -293,6 +293,11 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       end if
       ierr = 0
       log10_ion_charge=log10(ion_charge)
+! hunt's guesses: none (each call bisects; the indices are locals, so
+! there is no previous call's index to start from)
+      z_index = 0
+      t_index = 0
+      r_index = 0
       call hunt(cond_table%z_grid,cond_n_z,log10_ion_charge,z_index)
       if (z_index == 0.or.z_index == cond_n_z) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;

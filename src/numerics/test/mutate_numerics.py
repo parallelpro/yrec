@@ -6,8 +6,9 @@ of the code it covers.
 
 from the repository root, after `make tests` in src/. For each mutation
 it edits one source file, rebuilds test_numerics, runs it and expects the
-named check to print FAIL (a crash or a nonzero exit also counts as
-caught); the file is restored afterwards, whatever happens. make uses
+named check to print FAIL (a crash, a nonzero exit or a run longer than
+120 s also counts as caught); the file is restored afterwards, whatever
+happens. make uses
 1 s mtimes, so the script sleeps a second around each write. Exit status
 1 if any mutation survives.
 """
@@ -67,7 +68,8 @@ MUTATIONS = [
     ('numerics/table_interpolation.f90', 'edge_slack = 0.01d0', 'edge_slack = 0.001d0', 'locate: within 1% of the span beyond an end'),
     ('numerics/table_interpolation.f90', 'edge_slack = 0.01d0', 'edge_slack = 0.1d0', 'locate: beyond the slack, 0 and n'),
     ('numerics/table_interpolation.f90', ['            if(grid_x(j+1) > x_eval)then', '            if (grid_x(j+1) > x_eval) then'], ['            if(grid_x(j+1) >= x_eval)then', '            if (grid_x(j+1) >= x_eval) then'], 'findex: brackets x from any guess'),
-    ('numerics/table_interpolation.f90', '      if (target_value >= table(index_mid).eqv.ascending) then', '      if (target_value > table(index_mid).eqv.ascending) then', 'hunt: brackets x from any guess'),
+    ('numerics/table_interpolation.f90', ['      if (target_value >= table(index_mid).eqv.ascending) then', '         if ((x >= table(index_mid)) .eqv. ascending) then'], ['      if (target_value > table(index_mid).eqv.ascending) then', '         if ((x > table(index_mid)) .eqv. ascending) then'], 'hunt: brackets x from any guess'),
+    ('numerics/table_interpolation.f90', '         index = 0\n         index_hi = n + 1', '         index = 0\n         index_hi = n', 'hunt: brackets x from any guess'),
     ('numerics/linear_solvers.f90', '          b(i) = sum/a(i,i)', '          b(i) = sum/(a(i,i)*(1.0d0+1.0d-12))', 'ludcmp/lubksb: the residual of a 6x6 solve'),
     ('numerics/linear_solvers.f90', 'if (aamax <= singular_pivot_tolerance) ierr', 'if (aamax <= 0.0d0) ierr', 'ludcmp: a round-off pivot'),
     ('numerics/linear_solvers.f90', 'if (aamax <= singular_pivot_tolerance) ierr', 'if (aamax < 0.0d0) ierr', 'ludcmp: a zero pivot'),
@@ -114,7 +116,11 @@ def main():
                 print(f"BUILD FAILED  {label}\n{b.stdout[-800:]}{b.stderr[-800:]}")
                 survived += 1
                 continue
-            r = run([str(BINARY)], cwd=SRC)
+            try:
+                r = run([str(BINARY)], cwd=SRC, timeout=120)
+            except subprocess.TimeoutExpired:
+                print(f"caught    {label}  ({path}; the mutant did not finish in 120 s)")
+                continue
             lines = [l for l in r.stdout.splitlines() if l.startswith(label)]
             caught = any(l.rstrip().endswith("FAIL") for l in lines) or \
                 (not lines and r.returncode != 0)

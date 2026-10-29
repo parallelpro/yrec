@@ -394,68 +394,71 @@ end subroutine locate
 !----------------------------------------------------------------------
 ! hunt
 !----------------------------------------------------------------------
-!   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling
-!   Numerical Receipes(Cambridge Univ., 1986)
-!     Given an array XX of length N, and given a value X,
-!     returns a value JLO such that X is between XX(JLO) and XX(JLO+1).
-!     XX must be monotonic, either increasing or decreasing.
-!     JLO=0 or JLO=N is returned to indicate that X is out of range.
-!     JLO on input is taken as the initial guess for JLO on output.
-pure subroutine hunt(table,n,target_value,index)
-
-
+! Numerical Recipes' hunt (Press et al. 1986): the index such that x
+! lies between table(index) and table(index+1), for a monotone table,
+! increasing or decreasing, starting from the incoming index as a guess
+! (outside 1..n it is ignored). From the guess the search steps up or
+! down by 1, 2, 4, ... until x is bracketed, then bisects: for a
+! sequence of nearby x it costs O(1) per call. For an increasing table,
+! table(index) <= x < table(index+1); for a decreasing one,
+! table(index) > x >= table(index+1). Outside the table it returns 0
+! (before the first point) or n (at or beyond the last). The result does
+! not depend on the guess, only the cost does.
+pure subroutine hunt(table, n, x, index)
       integer, intent(in) :: n
-      real(dp), intent(in) :: table(*)
-      real(dp), intent(in) :: target_value
+      real(dp), intent(in) :: table(n)
+      real(dp), intent(in) :: x
       integer, intent(inout) :: index
 
       logical :: ascending
       integer :: index_hi, increment, index_mid
 
-      ascending=table(n) > table(1) ! true if ascending order, false otherwise
-      if (index <= 0.or.index > n) then ! Input guess not useful.
-         index=0
-         index_hi=n+1  ! go immediately to bisection
-      else
-      increment=1 ! set the hunting increment
-      if (target_value >= table(index).eqv.ascending) then ! Hunt up:
-        do
-          index_hi=index+increment
-        if (index_hi > n) then ! Done hunting, since off end of table
-           index_hi=n+1
-           exit
-        elseif (target_value >= table(index_hi).eqv.ascending) then ! Not done hunting
-           index=index_hi
-           increment=increment+increment
-        else
-           exit
-        endif
-        end do
-      else ! Hunt down:
-         index_hi=index
+      ascending = table(n) > table(1)
+      if (index <= 0 .or. index > n) then
+! no useful guess: bisect the whole table
+         index = 0
+         index_hi = n + 1
+      else if ((x >= table(index)) .eqv. ascending) then
+! hunt up
+         increment = 1
          do
-          index=index_hi-increment
-        if (index < 1) then ! Done hunting, since off end of table
-           index=0
-           exit
-        elseif (target_value < table(index).eqv.ascending) then ! Not done hunting
-           index_hi=index
-           increment=increment+increment ! so double the increment
-        else
-           exit
-        endif ! Done hunting, value bracketed
+            index_hi = index + increment
+            if (index_hi > n) then
+               index_hi = n + 1
+               exit
+            else if ((x >= table(index_hi)) .eqv. ascending) then
+               index = index_hi
+               increment = increment + increment
+            else
+               exit
+            end if
          end do
-      endif
-      endif
-!   Hunt is done, so begin the final bisection phase:
-      do
-      if (index_hi-index == 1) return
-      index_mid=(index_hi+index)/2
-      if (target_value >= table(index_mid).eqv.ascending) then
-         index=index_mid
       else
-         index_hi=index_mid
-      endif
+! hunt down
+         increment = 1
+         index_hi = index
+         do
+            index = index_hi - increment
+            if (index < 1) then
+               index = 0
+               exit
+            else if ((x < table(index)) .eqv. ascending) then
+               index_hi = index
+               increment = increment + increment
+            else
+               exit
+            end if
+         end do
+      end if
+! bisect between index and index_hi
+      do
+         if (index_hi - index == 1) return
+         index_mid = (index_hi + index)/2
+         if ((x >= table(index_mid)) .eqv. ascending) then
+            index = index_mid
+         else
+            index_hi = index_mid
+         end if
       end do
 end subroutine hunt
 
