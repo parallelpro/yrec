@@ -241,8 +241,9 @@ end subroutine find_opal2001_ramp
 ! rhoofp01
 !----------------------------------------------------------------------
 ! OPAL 2001 EOS analogue of rhoofp (see there for the general
-! description), with the same convergence tolerance (0.5d-7) as rhoofp
-! and rhoofp06.
+! description: the bracket, at most 30 regula falsi steps, the run-log
+! message on failure), with the same convergence tolerance (0.5d-7) as
+! rhoofp and rhoofp06.
 real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
@@ -271,7 +272,8 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_max, pressure_min
       real(dp) :: density_trial1, density_trial2, density_trial3
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
-      integer :: refine_count
+      integer :: refine_count, shrink_count
+      integer, parameter :: max_refine = 30, max_shrink = 20
 
 ! The highest valid density column at each T6 row. These are the
 ! values of opal01_density_index_edge except at rows 78-80 (113 here,
@@ -366,15 +368,23 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
       if (pressure_trial1 > pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
-         density_trial1 = 0.2d0*density_trial1
-         if (density_trial1 < 1.0d-14) density_trial1 = 1.0d-14
-         call esac01(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
-              rad_flag, ierr, in_table)
-         if (ierr /= 0 .or. .not. in_table) then
-            rhoofp01 = opal_rho_not_found
-            return
-         end if
-         pressure_trial1 = v%eos_output(i_opal01_p)
+! shrink the lower density until it brackets the root (regula falsi
+! converges only from a bracket), down to the table's floor
+         shrink_count = 0
+         shrink: do
+            shrink_count = shrink_count + 1
+            density_trial1 = 0.2d0*density_trial1
+            if (density_trial1 < 1.0d-14) density_trial1 = 1.0d-14
+            call esac01(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
+                 rad_flag, ierr, in_table)
+            if (ierr /= 0 .or. .not. in_table) then
+               rhoofp01 = opal_rho_not_found
+               return
+            end if
+            pressure_trial1 = v%eos_output(i_opal01_p)
+            if (pressure_trial1 <= pressure_no_rad) exit shrink
+            if (density_trial1 <= 1.0d-14 .or. shrink_count >= max_shrink) exit shrink
+         end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
          if (density_trial2 > v%density_grid(density_index_edge(t6_bisect_idx))) &
@@ -407,18 +417,17 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
       if (pressure_trial3 > pressure_no_rad) then
          density_trial2 = density_trial3
          pressure_trial2 = pressure_trial3
-         if (refine_count < 11) cycle refine
-!        no convergence after 10 tries
-         rhoofp01 = opal_rho_not_found
-         return
       else
          density_trial1 = density_trial3
          pressure_trial1 = pressure_trial3
-         if (refine_count < 11) cycle refine
-!        no convergence after 10 tries
-         rhoofp01 = opal_rho_not_found
-         return
       end if
+      if (refine_count < max_refine) cycle refine
+      write (run_log_unit,'("RHOOFP01: no convergence after ",I0," tries;", &
+           & " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
+           max_refine, hydrogen_fraction, t6_temperature, pressure_e12, &
+           abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+      rhoofp01 = opal_rho_not_found
+      return
       end do refine
 end function rhoofp01
 
