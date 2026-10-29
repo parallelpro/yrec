@@ -144,7 +144,7 @@ It also pins the composition rate vector at four temperatures, the cross-section
 
 Each check was confirmed to fail under a mutation of the code it covers (26 mutations, 2026-10-29: the table, a dead slot, a slot computed twice, the derivatives of each rate law and of the neutrino losses, the deuterium cap, the cutoff, the screening regime and constants, the burn's equation and error, the integrator, the legacy map, the no-effect report). A deliberate change to the output means regenerating `expected_test_net.out` in a commit that says why. The decks pin the rest: every solar and testsuite deck runs the network, the energy and the light elements.
 
-`python3 src/tools/coverage.py --work DIR --dir net --test test_net --deck ...` measures the line coverage of net/ under `test_net` and the decks given (a -O0 --coverage build in DIR). COVERAGE_FIGURE
+`python3 src/tools/coverage.py --work DIR --dir net --test test_net --deck ...` measures the line coverage of net/ under `test_net` and the decks given (a -O0 --coverage build in DIR). With `test_net` and five decks (`cm_accretion`, `cm_monte_carlo`, the 0.3 M☉ pre-main-sequence deck, the 1 M☉ ZAHB deck and a 0.05 M☉ Allard-atmosphere deck) it is 90.6% of 1582 lines (2026-10-29): 96.7% outside Timmes' `thermal_neutrinos` (84.7%, the regimes YREC does not reach). The lines not run are the self-check's error reports (run only under the mutations), the branch where the intermediate form is the smaller one between weak exponents 2 and 5, an unknown rate law's zero, and `surviving_fraction`'s underflow.
 
 ## 5. Extending
 
