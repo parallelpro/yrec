@@ -380,6 +380,9 @@ subroutine tridiagonal_check()
       jb(2) = ja(2)*jc(1)/jb(1)
       call solve_tridiagonal(ja, jb, jc, jr, n, jsol, ierr)
       write(*,'(a,i3)') "solve_tridiagonal singular: ierr", ierr
+      jb(1) = 0.0d0
+      call solve_tridiagonal(ja, jb, jc, jr, n, jsol, ierr)
+      write(*,'(a,i3)') "solve_tridiagonal, zero first pivot: ierr", ierr
 end subroutine tridiagonal_check
 
 ! bsstep: four accepted steps of the harmonic system from x = 0; large

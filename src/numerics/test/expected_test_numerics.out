@@ -193,6 +193,8 @@ solve_tridiagonal, first n-2 rows
    2.494978278483916E+00
  solve_tridiagonal: singular matrix
 solve_tridiagonal singular: ierr  1
+ solve_tridiagonal: singular matrix
+solve_tridiagonal, zero first pivot: ierr  1
 # bsstep (mmid, ratext)
 step 1 ierr  0 deriv calls    33
   y, x, h_did, h_next

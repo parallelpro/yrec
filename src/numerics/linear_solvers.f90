@@ -268,6 +268,11 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
 
       ierr = 0
       bet = b(1)
+      if (bet == 0) then
+         write(*,*) 'solve_tridiagonal: singular matrix'
+         ierr = 1
+         return
+      end if
       ex(1) = ex_prime(1)/bet
       do j = 2, npt
          gama(j) = c(j-1)/bet
