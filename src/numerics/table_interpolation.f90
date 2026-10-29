@@ -11,7 +11,7 @@
 !                           a set of tabulated functions
 !   locate, hunt, findex    the interval holding a point: by bisection,
 !                           and from a starting guess (Numerical Recipes'
-!                           hunt; YCK's findex)
+!                           hunt; findex, hunt with YCK's codes outside)
 module table_interpolation
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use numerics_status, only: numerics_ok, numerics_bad_input, &
@@ -307,40 +307,23 @@ end subroutine lir
 !----------------------------------------------------------------------
 ! findex
 !----------------------------------------------------------------------
-! YCK 3/91, for the OPAL92 and Kurucz 1990 opacities: index such that
-! grid_x(index) <= x_eval < grid_x(index+1), searching outward from the
-! incoming index (reset to 1 when outside [1, n_grid]). Below the grid
-! it returns -1, at or above its last point -n_grid.
+! YCK 3/91, for the OPAL92 and Kurucz 1990 opacities: the index such
+! that grid_x(index) <= x_eval < grid_x(index+1) in an increasing grid,
+! starting from the incoming index as a guess; below the grid it
+! returns -1, at or above its last point -n_grid. It is hunt with these
+! two codes for "outside" (hunt's 0 and n), so the two warm-started
+! searches are one; findex's own linear walk from the guess went in
+! 2026-10 (the index found is the same; a NaN x_eval, which the walk
+! sent to -n_grid, now gets whatever interval the bisection ends in).
 pure subroutine findex(grid_x, n_grid, x_eval, index)
       integer, intent(in) :: n_grid
       real(dp), intent(in) :: grid_x(n_grid)
       real(dp), intent(in) :: x_eval
       integer, intent(inout) :: index
 
-      integer :: found_index, j
-
-      if (index < 1 .or. index > n_grid) index = 1
-      found_index = index
-      if (x_eval < grid_x(found_index)) then
-         do j = found_index-1, 1, -1
-            if (grid_x(j) <= x_eval) then
-               found_index = j
-               index = found_index
-               return
-            end if
-         end do
-         found_index = -1
-      else
-         do j = found_index, n_grid-1
-            if (grid_x(j+1) > x_eval) then
-               found_index = j
-               index = found_index
-               return
-            end if
-         end do
-         found_index = -n_grid
-      end if
-      index = found_index
+      call hunt(grid_x, n_grid, x_eval, index)
+      if (index == 0) index = -1
+      if (index == n_grid) index = -n_grid
 end subroutine findex
 
 !----------------------------------------------------------------------
