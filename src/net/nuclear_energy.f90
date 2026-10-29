@@ -19,6 +19,8 @@
 module nuclear_energy
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use neutrino_flux_layout, only: n_nu_fluxes
+      use composition_layout, only: i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, &
+           i_be9, i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_metals
       use net_configuration, only: net_settings, num_reactions, r_pp, &
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
       use screening, only: screening_mass_fractions
@@ -64,6 +66,25 @@ module nuclear_energy
       real(dp), parameter :: min_eps_with_derivatives = 1.0d-12
 ! X(H) at or below which the solar neutrino fluxes are zero (MHP 9/91)
       real(dp), parameter :: min_flux_hydrogen = 1.0d-6
+! The mixture the Itoh et al. losses see (its mean A and Z, azbar):
+! every nucleus the composition carries, at its xa slot, with its
+! nucleon number and charge; then the metals no slot holds (Z less its
+! tracers C12 to O18 and Li6 to Be9) as one species with Ne20's, the
+! screening's stand-in for the heavier metals. (2026-10: the mixture was
+! H, He4, C12 + C13 and O16 + O18 alone, which left He3, N14 and the
+! rest of Z out of A and Z.)
+      integer, parameter :: num_itoh_slots = 14
+      integer, parameter :: itoh_slots(num_itoh_slots) = [i_h1, i_h2, i_he3, &
+           i_he4, i_li6, i_li7, i_be9, i_c12, i_c13, i_n14, i_n15, i_o16, &
+           i_o17, i_o18]
+      real(dp), parameter :: itoh_nucleon_number(num_itoh_slots+1) = [1.0d0, &
+           2.0d0, 3.0d0, 4.0d0, 6.0d0, 7.0d0, 9.0d0, 12.0d0, 13.0d0, 14.0d0, &
+           15.0d0, 16.0d0, 17.0d0, 18.0d0, 20.0d0], &
+           itoh_charge(num_itoh_slots+1) = [1.0d0, 1.0d0, 2.0d0, 2.0d0, 3.0d0, &
+           3.0d0, 4.0d0, 6.0d0, 6.0d0, 7.0d0, 7.0d0, 8.0d0, 8.0d0, 8.0d0, 10.0d0]
+! the tracers carried inside Z (composition_layout)
+      integer, parameter :: metal_tracer_slots(10) = [i_li6, i_li7, i_be9, &
+           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18]
 
 contains
 
@@ -142,7 +163,6 @@ end subroutine energy_path_rates
 ! derivatives are zero. Zero at or below min_deuterium.
 pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
      energy, dlneps_dlnrho, dlneps_dlnt)
-      use composition_layout, only: i_h1, i_h2
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(in) :: xa(:), turnover_timescale
       logical, intent(in) :: in_surface_cz
@@ -244,7 +264,6 @@ end subroutine store_chain_energies
 ! from sum_energy_generation, has the zone's eps), so that only the hep
 ! flux, from its own rate factor, is left there.
 pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
-      use composition_layout, only: i_h1, i_he3
       use neutrino_flux_layout, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, &
            i_nu_n13, i_nu_o15, i_nu_pep, i_nu_pp, i_nu_he3he3, i_nu_he3he4
       type(nuclear_rates), intent(in) :: nr
@@ -302,7 +321,6 @@ end subroutine compute_solar_neutrino_fluxes
 ! Newsham 9/06), otherwise the Beaudet, Petrosian & Salpeter (1967) fits
 ! for the pair, photo and plasma losses.
 pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
-      use composition_layout, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
       use physical_constants, only: cc13, ln10
       use math_lib
       real(dp), intent(in) :: log_density, log_temperature, t9, xa(:)
@@ -318,7 +336,8 @@ pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, 
            6.023d10, 6.290d-3, 7.483d-3, 3.061d-4, 1.5654d0]
       real(dp), parameter :: plasma_fit(7) = [2.320d-7, 8.449d-8, &
            1.787d-8, 2.581d-2, 1.734d-2, 6.990d-4, 0.56457d0]
-      real(dp) :: temperature, density, snu, dsnu_dt, dsnu_drho
+      real(dp) :: temperature, density, snu, dsnu_dt, dsnu_drho, &
+           mixture(num_itoh_slots+1)
       real(dp) :: el, eli, ez, ez3, emue, ex1, ex2, ex3, el2
       real(dp) :: polx10, polx11, polx12, polx21, polx22, polx31, &
            polx32, qedn, qetn, qetnx, qednx
@@ -330,9 +349,10 @@ pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, 
 ! loss contributes d(-snu)/d ln T = -T d snu/dT (2026 bugsweep Batch 2:
 ! the original converted to log-derivatives, the wrong units here, and
 ! built the T line from the updated rho line)
-         call compute_thermal_neutrino_losses(temperature, density, xa(i_h1), &
-              xa(i_he4), xa(i_c12)+xa(i_c13), xa(i_o16)+xa(i_o18), &
-              snu, dsnu_dt, dsnu_drho)
+         mixture(1:num_itoh_slots) = xa(itoh_slots)
+         mixture(num_itoh_slots+1) = max(0.0d0, xa(i_metals) - sum(xa(metal_tracer_slots)))
+         call compute_thermal_neutrino_losses(temperature, density, mixture, &
+              itoh_nucleon_number, itoh_charge, snu, dsnu_dt, dsnu_drho)
          e%eps_neutrino_loss = -snu
          e%total_energy_gen_rate = e%total_energy_gen_rate + e%eps_neutrino_loss
          e%deps_dlnrho = e%deps_dlnrho - density*dsnu_drho

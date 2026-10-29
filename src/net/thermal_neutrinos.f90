@@ -8,15 +8,16 @@
 ! zfermim12) for comparison with his codes and MESA; YREC's wrapper is
 ! compute_thermal_neutrino_losses (formerly neutrino and nulosses).
 ! nuclear_energy is the only user, so net_lib exports none of it. The
-! routines are as their authors wrote them, apart from free source form,
-! real(dp), and the expansion coefficients of ifermi12 and zfermim12 as
-! parameter arrays (they were data statements), which lets the whole
-! chain be pure.
+! routines keep their authors' algorithms and names, in free source
+! form with real(dp) and the expansion coefficients of ifermi12 and
+! zfermim12 as parameter arrays (they were data statements), which lets
+! the whole chain be pure; two of sneut's derivatives were corrected
+! (the 2026 bug sweep's tfac2, and d c00/d nu of the recombination term,
+! 2026-10), and some locals renamed.
 module thermal_neutrinos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
-      integer, parameter, public :: nu_ionmax = 4
       public :: compute_thermal_neutrino_losses, azbar, sneut, ifermi12, &
            zfermim12
 contains
@@ -27,23 +28,23 @@ contains
 !----------------------------------------------------------------------
 ! The thermal neutrino energy-loss rate snu (erg/g/s, >= 0) and its
 ! derivatives with respect to temperature and density (dsnudt, dsnudd:
-! absolute, per K and per g/cm^3) of a four-species mixture: H (x), He4
-! (y), C12 (zc) and O16 (zo), by mass fraction. It takes the mean A and
-! Z of the mixture (azbar) and calls sneut. The bremsstrahlung losses use
-! the carbon coefficients only (the differences for other elements are
+! absolute, per K and per g/cm^3) of a mixture given by its mass
+! fractions, nucleon numbers and charges: it takes the mixture's mean A
+! and Z (azbar) and calls sneut. The bremsstrahlung losses use the
+! carbon coefficients only (the differences for other elements are
 ! slight); the Fermi-temperature cutoff at 0.01 T_F suits helium but
 ! will need amending for carbon-oxygen white dwarfs and AGB cores.
-pure subroutine compute_thermal_neutrino_losses(temp, den, x, y, zc, zo, &
-     snu, dsnudt, dsnudd)
-      real(dp), intent(in) :: temp, den, x, y, zc, zo
+pure subroutine compute_thermal_neutrino_losses(temp, den, mass_fraction, &
+     nucleon_number, charge, snu, dsnudt, dsnudd)
+      real(dp), intent(in) :: temp, den, mass_fraction(:), nucleon_number(:), &
+           charge(:)
       real(dp), intent(out) :: snu, dsnudt, dsnudd
-! the species' nucleon numbers and charges: H, He4, C12, O16
-      real(dp), parameter :: aion(nu_ionmax) = [1.0d0, 4.0d0, 12.0d0, 16.0d0], &
-           zion(nu_ionmax) = [1.0d0, 2.0d0, 6.0d0, 8.0d0]
-      real(dp) :: xmass(nu_ionmax), ymass(nu_ionmax), abar, zbar, dsnuda, dsnudz
+! azbar's molar abundances (unused), the mean A and Z, and sneut's
+! derivatives with respect to them (unused)
+      real(dp) :: ymass(size(mass_fraction)), abar, zbar, dsnuda, dsnudz
 
-      xmass = [x, y, zc, zo]
-      call azbar(xmass, aion, zion, nu_ionmax, ymass, abar, zbar)
+      call azbar(mass_fraction, nucleon_number, charge, size(mass_fraction), &
+           ymass, abar, zbar)
       call sneut(temp, den, abar, zbar, snu, dsnudt, dsnudd, dsnuda, dsnudz)
 end subroutine compute_thermal_neutrino_losses
 
