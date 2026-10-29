@@ -22,8 +22,8 @@
 ! no star.
 module kap_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, kap_settings_t, opacity_table, &
-           set_kap_settings
+      use opacity_tables, only: kap_settings, kap_settings_t, kap_table_paths_t, &
+           opacity_table, set_kap_settings
       use opal95_opacity, only: compute_opal95_opacity, read_opal95_tables, &
            build_opal95_surface_table
       use conductive_opacity, only: compute_conductive_opacity
@@ -47,8 +47,8 @@ module kap_lib
       private
       public :: kap_get, kap_init, kap_update_surface_tables
       public :: kap_eval
-! the settings record (opacity_tables) and its setter
-      public :: kap_settings_t, set_kap_settings
+! the settings record (opacity_tables), its setter, and the paths record
+      public :: kap_settings_t, set_kap_settings, kap_table_paths_t
 ! the envelope metal fraction the surface-table machinery was
 ! initialized with (set by kap_init, checked by kap_eval's
 ! single-Z-table range test)
@@ -407,28 +407,19 @@ end subroutine kap_eval
 ! startup-time table-load lifecycle entry, following MESA's
 ! <mod>_init convention: installs the settings, reads the conductive
 ! table when it is on, and loads the tables the settings select
-! (load_opacity_tables).
-subroutine kap_init(settings, envelope_hydrogen_fraction, &
-     envelope_metal_fraction, laol_work_array, &
-     alex06_table_path, kurucz_table_path, kurucz_table2_path, &
-     laol_table_path, laol_table2_path, opal95_table_path, &
-     opal92_table_path, opal92_table2_path, pure_z_table_path, &
-     alex95_table_paths, conductive_table_path, ierr)
+! (load_opacity_tables), from the paths record.
+subroutine kap_init(settings, paths, envelope_hydrogen_fraction, &
+     envelope_metal_fraction, ierr)
 
       use conductive_opacity, only: read_conductive_table
 
 ! the run's opacity settings (installed here: kap reads no other
 ! configuration)
       type(kap_settings_t), intent(in) :: settings
+! the tables' paths
+      type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction
-      real(dp), intent(inout) :: laol_work_array(12)
-      character(len=256), intent(in) :: alex06_table_path, &
-           kurucz_table_path, kurucz_table2_path, laol_table_path, &
-           laol_table2_path, opal95_table_path, opal92_table_path, &
-           opal92_table2_path, pure_z_table_path
-      character(len=256), intent(in) :: alex95_table_paths(7)
-      character(len=*), intent(in) :: conductive_table_path
 ! 2026 (docs/ROADMAP.md stage 3): same ierr contract as kap_eval's.
 ! Table-load failures print their diagnostic at the point of failure
 ! and surface here as ierr /= 0.
@@ -440,17 +431,13 @@ subroutine kap_init(settings, envelope_hydrogen_fraction, &
       call set_kap_settings(settings)
       kap_envelope_metal_fraction = envelope_metal_fraction
       if (settings%use_conductive_opacity) then
-         call read_conductive_table(conductive_table_path, jerr)
+         call read_conductive_table(paths%conductive, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
       end if
-      call load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
-           alex06_table_path, kurucz_table_path, kurucz_table2_path, &
-           laol_table_path, laol_table2_path, opal95_table_path, &
-           opal92_table_path, opal92_table2_path, pure_z_table_path, &
-           alex95_table_paths, jerr)
+      call load_opacity_tables(envelope_hydrogen_fraction, paths, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -505,57 +492,51 @@ end subroutine blend_in_z
 ! molecular tables (Alexander 2006, else Alexander 1994/95 and its
 ! surface table, else Kurucz 1990). A second Z table is read when
 ! use_two_z_tables is set.
-subroutine load_opacity_tables(envelope_hydrogen_fraction, laol_work_array, &
-     alex06_table_path, kurucz_table_path, kurucz_table2_path, &
-     laol_table_path, laol_table2_path, opal95_table_path, &
-     opal92_table_path, opal92_table2_path, pure_z_table_path, &
-     alex95_table_paths, ierr)
+subroutine load_opacity_tables(envelope_hydrogen_fraction, paths, ierr)
       real(dp), intent(in) :: envelope_hydrogen_fraction
-      real(dp), intent(inout) :: laol_work_array(12)
-      character(len=256), intent(in) :: alex06_table_path, &
-           kurucz_table_path, kurucz_table2_path, laol_table_path, &
-           laol_table2_path, opal95_table_path, opal92_table_path, &
-           opal92_table2_path, pure_z_table_path
-      character(len=256), intent(in) :: alex95_table_paths(7)
+      type(kap_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
-! the LAOL table's 18-element metal mixture (read, not used: eos takes
-! the Debye-Hueckel correction's metals from its own envelope mixture)
-      real(dp) :: laol_debye_huckel_z(18)
+! the LAOL table header's 12-element metal mixture and its 18-element
+! one (read, not used: eos takes the Debye-Hueckel correction's metals
+! from its own envelope mixture, the star its surface mixture from the
+! controls)
+      real(dp) :: laol_header_mixture(12), laol_debye_huckel_z(18)
 
       ierr = 0
 ! the interior tables
       if (kap_settings%use_opal95_tables) then
-         call read_opal95_tables(opal95_table_path, ierr)
+         call read_opal95_tables(paths%opal95, ierr)
          if (ierr /= 0) return
          call build_opal95_surface_table(envelope_hydrogen_fraction)
       end if
       if (kap_settings%use_opal92_tables) then
-         call read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
+         call read_opal92_tables(paths%opal92, paths%opal92_z2, ierr)
          if (ierr /= 0) return
          call build_opal92_surface_table(envelope_hydrogen_fraction, ierr)
          if (ierr /= 0) return
       end if
       if (kap_settings%use_laol89_tables) then
-         call read_laol_tables(laol_work_array, laol_debye_huckel_z, laol_table_path, &
-              laol_table2_path, ierr)
+         laol_header_mixture = 0.0d0
+         call read_laol_tables(laol_header_mixture, laol_debye_huckel_z, paths%laol, &
+              paths%laol_z2, ierr)
          if (ierr /= 0) return
          call build_laol_splines
       end if
       if (kap_settings%use_pure_z_table) then
-         call read_pure_z_table(pure_z_table_path, ierr)
+         call read_pure_z_table(paths%pure_z, ierr)
          if (ierr /= 0) return
          call build_pure_z_splines
       end if
 ! the molecular tables
       if (kap_settings%use_alex06_tables) then
-         call read_alex06_tables(alex06_table_path, ierr)
+         call read_alex06_tables(paths%alex06, ierr)
          if (ierr /= 0) return
       else if (kap_settings%use_alex95_tables) then
-         call read_alex94_tables(alex95_table_paths, ierr)
+         call read_alex94_tables(paths%alex94, ierr)
          if (ierr /= 0) return
          call build_alex94_surface_table(envelope_hydrogen_fraction)
       else if (kap_settings%use_kurucz90_tables) then
-         call read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
+         call read_kurucz_tables(paths%kurucz, paths%kurucz_z2, ierr)
          if (ierr /= 0) return
       end if
 end subroutine load_opacity_tables

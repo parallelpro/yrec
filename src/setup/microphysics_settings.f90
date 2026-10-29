@@ -5,25 +5,28 @@
 ! run's controls by the star layer (2026-10, Phase 3); each domain reads
 ! no other configuration. setup/settings_install.f90 installs them:
 !     kap_settings_from_star          kap (kap_init, per run)
+!     kap_table_paths_from_star       kap's table paths (kap_init)
 !     eos_settings_from_star          eos (eos_init, per run)
-!     equation_of_state_table_paths   eos's table paths (eos_init)
+!     eos_table_paths_from_star       eos's table paths (eos_init)
 !     atm_settings_from_star          atm (atm_init, per run)
+!     atm_table_paths_from_star       atm's table paths (atm_init)
 !     convection_settings_from_star   convection (set_convection_settings,
 !                                     per run card)
 !     diffusion_settings_from_star    element diffusion
 !                                     (set_diffusion_settings, per run card)
 module microphysics_settings
-      use kap_lib, only: kap_settings_t
+      use kap_lib, only: kap_settings_t, kap_table_paths_t
       use eos_lib, only: eos_settings_t, eos_table_paths_t, opal_vintage_none, &
            opal_vintage_1995, opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict
-      use atm_lib, only: atm_settings_t
+      use atm_lib, only: atm_settings_t, atm_table_paths_t
       use convection_lib, only: convection_settings_t
       use element_diffusion_lib, only: diffusion_settings_t
       implicit none
       private
-      public :: kap_settings_from_star, eos_settings_from_star, atm_settings_from_star, &
-           equation_of_state_table_paths, convection_settings_from_star, &
-           diffusion_settings_from_star
+      public :: kap_settings_from_star, kap_table_paths_from_star, &
+           eos_settings_from_star, eos_table_paths_from_star, &
+           atm_settings_from_star, atm_table_paths_from_star, &
+           convection_settings_from_star, diffusion_settings_from_star
 
 contains
 
@@ -69,6 +72,34 @@ function kap_settings_from_star(s) result(settings)
 end function kap_settings_from_star
 
 !----------------------------------------------------------------------
+! kap_table_paths_from_star: the tables kap_init reads, from the
+! controls.
+!   star reads: ctrl%alex06_table_path, ctrl%alex95_table_paths,
+!     ctrl%conductive_table_path, ctrl%kurucz_table2_path,
+!     ctrl%kurucz_table_path, ctrl%laol_table2_path,
+!     ctrl%laol_table_path, ctrl%opal92_table2_path,
+!     ctrl%opal92_table_path, ctrl%opal95_table_path,
+!     ctrl%pure_z_table_path
+!   star writes: none
+function kap_table_paths_from_star(s) result(paths)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(kap_table_paths_t) :: paths
+
+      paths%opal95 = s%ctrl%opal95_table_path
+      paths%opal92 = s%ctrl%opal92_table_path
+      paths%opal92_z2 = s%ctrl%opal92_table2_path
+      paths%laol = s%ctrl%laol_table_path
+      paths%laol_z2 = s%ctrl%laol_table2_path
+      paths%pure_z = s%ctrl%pure_z_table_path
+      paths%alex06 = s%ctrl%alex06_table_path
+      paths%alex94 = s%ctrl%alex95_table_paths
+      paths%kurucz = s%ctrl%kurucz_table_path
+      paths%kurucz_z2 = s%ctrl%kurucz_table2_path
+      paths%conductive = s%ctrl%conductive_table_path
+end function kap_table_paths_from_star
+
+!----------------------------------------------------------------------
 ! eos_settings_from_star: eos's settings from the controls; the one
 ! derived field is opal_vintage, from the three OPAL-vintage flags.
 !   star reads: ctrl%debye_huckel_eta_max, ctrl%debye_huckel_eta_min,
@@ -107,31 +138,31 @@ function eos_settings_from_star(s) result(settings)
 end function eos_settings_from_star
 
 !----------------------------------------------------------------------
-! equation_of_state_table_paths: the tables eos_init reads, from the
-! job's paths.
-!   star reads: job%centre1_table_path, job%centre2_table_path,
-!     job%centre3_table_path, job%centre4_table_path,
-!     job%centre5_table_path, job%fermi_table_path,
-!     job%opal_eos_table_path, job%scv_h_table_path,
-!     job%scv_he_table_path, job%scv_z_table_path,
-!     job%zams_a_table_path, job%zams_b_table_path,
-!     job%zams_c_table_path
+! eos_table_paths_from_star: the tables eos_init reads, from the
+! controls.
+!   star reads: ctrl%centre1_table_path, ctrl%centre2_table_path,
+!     ctrl%centre3_table_path, ctrl%centre4_table_path,
+!     ctrl%centre5_table_path, ctrl%fermi_table_path,
+!     ctrl%opal_eos_table_path, ctrl%scv_h_table_path,
+!     ctrl%scv_he_table_path, ctrl%scv_z_table_path,
+!     ctrl%zams_a_table_path, ctrl%zams_b_table_path,
+!     ctrl%zams_c_table_path
 !   star writes: none
-function equation_of_state_table_paths(s) result(paths)
+function eos_table_paths_from_star(s) result(paths)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       type(eos_table_paths_t) :: paths
 
-      paths%fermi = s%job%fermi_table_path
-      paths%scv_h = s%job%scv_h_table_path
-      paths%scv_he = s%job%scv_he_table_path
-      paths%scv_z = s%job%scv_z_table_path
-      paths%mhd_zams = [s%job%zams_a_table_path, s%job%zams_b_table_path, &
-           s%job%zams_c_table_path]
-      paths%mhd_centre = [s%job%centre1_table_path, s%job%centre2_table_path, &
-           s%job%centre3_table_path, s%job%centre4_table_path, s%job%centre5_table_path]
-      paths%opal = s%job%opal_eos_table_path
-end function equation_of_state_table_paths
+      paths%fermi = s%ctrl%fermi_table_path
+      paths%scv_h = s%ctrl%scv_h_table_path
+      paths%scv_he = s%ctrl%scv_he_table_path
+      paths%scv_z = s%ctrl%scv_z_table_path
+      paths%mhd_zams = [s%ctrl%zams_a_table_path, s%ctrl%zams_b_table_path, &
+           s%ctrl%zams_c_table_path]
+      paths%mhd_centre = [s%ctrl%centre1_table_path, s%ctrl%centre2_table_path, &
+           s%ctrl%centre3_table_path, s%ctrl%centre4_table_path, s%ctrl%centre5_table_path]
+      paths%opal = s%ctrl%opal_eos_table_path
+end function eos_table_paths_from_star
 
 !----------------------------------------------------------------------
 ! atm_settings_from_star: atm's settings from the controls.
@@ -148,6 +179,20 @@ function atm_settings_from_star(s) result(settings)
       settings%allard_target_feh = s%ctrl%allard_target_feh
       settings%allard_target_alpha = s%ctrl%allard_target_alpha
 end function atm_settings_from_star
+
+!----------------------------------------------------------------------
+! atm_table_paths_from_star: the tables atm_init reads, from the
+! controls.
+!   star reads: ctrl%allard_table_path, ctrl%atm_table_path
+!   star writes: none
+function atm_table_paths_from_star(s) result(paths)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(atm_table_paths_t) :: paths
+
+      paths%surface_pressure = s%ctrl%atm_table_path
+      paths%allard = s%ctrl%allard_table_path
+end function atm_table_paths_from_star
 
 !----------------------------------------------------------------------
 ! convection_settings_from_star: convection's settings from the

@@ -37,40 +37,28 @@ contains
 ! (eos_init: the Fermi-Dirac degenerate-electron table always, and the
 ! OPAL, MHD and SCVH tables when the settings select them) and the
 ! tabulated surface boundary conditions (atm_init: the Kurucz (atm_choice
-! 3 and 4), Allard (4) and Kurucz/Castelli (5) tables). The table paths
-! are star%job's, so the controls read must have run; kap_init also
-! leaves the LAOL tables' mixture in job%mixture_weights. Errors return
-! through ierr.
-!   star reads: envelope_hydrogen_fraction, envelope_metal_fraction,
-!     job%alex06_table_path, job%alex95_table_paths,
-!     job%allard_table_path, job%atm_table_path,
-!     job%conductive_table_path, job%kurucz_table2_path,
-!     job%kurucz_table_path, job%laol_table2_path, job%laol_table_path,
-!     job%opal92_table2_path, job%opal92_table_path,
-!     job%opal95_table_path, job%pure_z_table_path
-!   star writes: job%mixture_weights
+! 3 and 4), Allard (4) and Kurucz/Castelli (5) tables), each with its
+! table paths. The table paths are controls, so the controls read must
+! have run. Errors return through ierr.
+!   star reads: envelope_hydrogen_fraction, envelope_metal_fraction
+!   star writes: none
 subroutine install_run_settings(s, ierr)
       use kap_lib, only: kap_init
       use eos_lib, only: eos_init
       use atm_lib, only: atm_init
-      use microphysics_settings, only: kap_settings_from_star, eos_settings_from_star, &
-           equation_of_state_table_paths, atm_settings_from_star
-      type(star_info), intent(inout) :: s
+      use microphysics_settings, only: kap_settings_from_star, kap_table_paths_from_star, &
+           eos_settings_from_star, eos_table_paths_from_star, atm_settings_from_star, &
+           atm_table_paths_from_star
+      type(star_info), intent(in) :: s
       integer, intent(out) :: ierr
 
       ierr = 0
-      call kap_init(kap_settings_from_star(s), s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction, s%job%mixture_weights, &
-           s%job%alex06_table_path,s%job%kurucz_table_path,s%job%kurucz_table2_path, &
-           s%job%laol_table_path,s%job%laol_table2_path, &
-           s%job%opal95_table_path,s%job%opal92_table_path,s%job%opal92_table2_path, &
-           s%job%pure_z_table_path,s%job%alex95_table_paths, &
-           s%job%conductive_table_path, ierr)
+      call kap_init(kap_settings_from_star(s), kap_table_paths_from_star(s), &
+           s%envelope_hydrogen_fraction, s%envelope_metal_fraction, ierr)
       if (ierr /= 0) return
-      call eos_init(eos_settings_from_star(s), equation_of_state_table_paths(s), ierr)
+      call eos_init(eos_settings_from_star(s), eos_table_paths_from_star(s), ierr)
       if (ierr /= 0) return
-      call atm_init(atm_settings_from_star(s), s%job%atm_table_path, &
-           s%job%allard_table_path, ierr)
+      call atm_init(atm_settings_from_star(s), atm_table_paths_from_star(s), ierr)
 end subroutine install_run_settings
 
 !----------------------------------------------------------------------

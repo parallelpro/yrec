@@ -65,7 +65,6 @@ subroutine read_input(s, ierr)
       ierr = 0
       call set_legacy_defaults
       call assign_unit_numbers
-      call load_table_paths(s)
 
       print *,''
       print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
@@ -88,7 +87,6 @@ subroutine read_input(s, ierr)
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call expand_paths
       call open_run_files(s, ierr)
-      call store_table_paths(s)
       if (ierr /= 0) return
       call check_controls(s, ierr)
       if (ierr /= 0) return
@@ -98,67 +96,6 @@ subroutine read_input(s, ierr)
 
 end subroutine read_input
 
-
-! ---------------------------------------------------------------
-! The table paths between star%job and their namelist variables. The
-! load comes first, so a deck that names no table keeps the previous
-! read's path; the store follows the read and the path expansion.
-subroutine load_table_paths(s)
-      type(star_info), intent(inout) :: s
-      falex06 = s%job%alex06_table_path
-      fallard = s%job%allard_table_path
-      fatm = s%job%atm_table_path
-      ffermi = s%job%fermi_table_path
-      fkur = s%job%kurucz_table_path
-      fkur2 = s%job%kurucz_table2_path
-      flaol = s%job%laol_table_path
-      flaol2 = s%job%laol_table2_path
-      fliv95 = s%job%opal95_table_path
-      flldat = s%job%opal92_table_path
-      fmhd1 = s%job%zams_a_table_path
-      fmhd2 = s%job%zams_b_table_path
-      fmhd3 = s%job%zams_c_table_path
-      fmhd4 = s%job%centre1_table_path
-      fmhd5 = s%job%centre2_table_path
-      fmhd6 = s%job%centre3_table_path
-      fmhd7 = s%job%centre4_table_path
-      fmhd8 = s%job%centre5_table_path
-      fopal2 = s%job%opal92_table2_path
-      fpurez = s%job%pure_z_table_path
-      fscvh = s%job%scv_h_table_path
-      fscvhe = s%job%scv_he_table_path
-      fscvz = s%job%scv_z_table_path
-      opecalex = s%job%alex95_table_paths
-end subroutine load_table_paths
-
-subroutine store_table_paths(s)
-      type(star_info), intent(inout) :: s
-      s%job%alex06_table_path = falex06
-      s%job%allard_table_path = fallard
-      s%job%atm_table_path = fatm
-      s%job%fermi_table_path = ffermi
-      s%job%kurucz_table_path = fkur
-      s%job%kurucz_table2_path = fkur2
-      s%job%laol_table_path = flaol
-      s%job%laol_table2_path = flaol2
-      s%job%opal95_table_path = fliv95
-      s%job%opal92_table_path = flldat
-      s%job%zams_a_table_path = fmhd1
-      s%job%zams_b_table_path = fmhd2
-      s%job%zams_c_table_path = fmhd3
-      s%job%centre1_table_path = fmhd4
-      s%job%centre2_table_path = fmhd5
-      s%job%centre3_table_path = fmhd6
-      s%job%centre4_table_path = fmhd7
-      s%job%centre5_table_path = fmhd8
-      s%job%opal92_table2_path = fopal2
-      s%job%pure_z_table_path = fpurez
-      s%job%scv_h_table_path = fscvh
-      s%job%scv_he_table_path = fscvhe
-      s%job%scv_z_table_path = fscvz
-      s%job%alex95_table_paths = opecalex
-      s%job%conductive_table_path = fcondopacp
-end subroutine store_table_paths
 
 ! ---------------------------------------------------------------
 ! Read the deck. A file that holds both a &control and a &physics group

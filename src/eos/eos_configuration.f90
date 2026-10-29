@@ -37,8 +37,8 @@ module eos_configuration
 ! The tables eos_init reads, by path: the Fermi-Dirac table (always), the
 ! SCV tables (use_scv_eos), the MHD tables (use_mhd_eos: the three
 ! ZAMS-type compositions and the five centre-type ones) and the OPAL
-! table of the selected vintage. The star layer fills it from its job
-! paths (equation_of_state_table_paths, setup/microphysics_settings.f90).
+! table of the selected vintage. The star layer fills it from the
+! controls (eos_table_paths_from_star, setup/microphysics_settings.f90).
       type, public :: eos_table_paths_t
          character(len=256) :: fermi = ''
          character(len=256) :: scv_h = '', scv_he = '', scv_z = ''

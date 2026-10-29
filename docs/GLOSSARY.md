@@ -98,7 +98,7 @@ Declared in `state/star_info_lib.f90:40-55`. The composition array is `star%xa(n
 | `i_li7` | 14 | ⁷Li | extended only |
 | `i_be9` | 15 | ⁹Be | extended only |
 
-The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`, `ix_mg`, `ix_fe`, `ix_si`, `ix_c`, `ix_h`=7, `ix_o`, `ix_n`, `ix_ar`, `ix_ne`, `ix_he`=12 (`n_mix_species = 12`; `star_info_lib.f90:61-64`). It is used by `job%mixture_weights`, `ctrl%mixture_weights_seed` and `envelope_number_fractions`.
+The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`, `ix_mg`, `ix_fe`, `ix_si`, `ix_c`, `ix_h`=7, `ix_o`, `ix_n`, `ix_ar`, `ix_ne`, `ix_he`=12 (`n_mix_species = 12`; `star_info_lib.f90:61-64`). It is used by `ctrl%mixture_weights_seed`, `envelope_number_fractions` and `read_starting_model`'s weights.
 
 ### 1.6 Snapshot families
 
@@ -225,7 +225,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Z − Z_CNO | mass fraction | `star%envelope_metals_no_cno` | `ZENVM` | core/model/starting_model.f90:901 | Surface Z excluding C, N and O. |
 | 1/μ_ion | — | `star%envelope_inverse_atomic_weight` | `AMUENV` | core/model/starting_model.f90:915 | Σ X_i/A_i of the 12-element surface mixture (the inverse mean ion weight; a nearby comment calls it "mean atomic weight"). |
 | — | number fraction | `star%envelope_number_fractions(12)` | `FXENV` | core/model/starting_model.f90 | Number fractions of the surface-mixture elements (`ix_*` order) for the EOS. |
-| — | — | `star%job%mixture_weights(12)`, `star%ctrl%mixture_weights_seed(12)` | `V` | core/run/run_setup.f90, core/model/starting_model.f90 | Relative abundances of the 12-element surface mixture. |
+| — | — | `star%ctrl%mixture_weights_seed(12)` | `V` | core/model/starting_model.f90 | Relative abundances of the 12-element surface mixture. |
 
 ### 2.5 Energy generation and nuclear network
 

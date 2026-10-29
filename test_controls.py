@@ -160,7 +160,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     derived = re.compile(r"^(ctrl%(\w*_unit\d?|unit_\w+|iopale|icondopacp|"
-                         r"npenv)|job%(opal_eos_table_path|rescale_kind))(\(|$)")
+                         r"npenv|opal_eos_table_path)|job%rescale_kind)(\(|$)")
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))

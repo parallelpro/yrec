@@ -26,9 +26,9 @@ module composition_layout
 ! The most mesh points a model may have (the size of every per-zone
 ! array; star_info_lib re-exports it).
       integer, parameter, public :: json = 5000
-! The 12-species surface mixture (job%mixture_weights,
-! ctrl%mixture_weights_seed, envelope_number_fractions, read_starting_model's
-! atomic weights, read_laol_tables's table read): element per slot. H and
+! The 12-species surface mixture (ctrl%mixture_weights_seed,
+! envelope_number_fractions, read_starting_model's weights and atomic
+! weights, read_laol_tables's table read): element per slot. H and
 ! He are computed from the envelope X/Z, the ten metals are the mixture.
       integer, parameter, public :: &
            ix_na = 1, ix_al = 2, ix_mg = 3, ix_fe = 4, ix_si = 5, &

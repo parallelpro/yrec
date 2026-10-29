@@ -150,7 +150,7 @@ subroutine load_deck_model(path)
            ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
            star%recompute_envelope_triangle, star%job%nk, &
            star%total_angular_momentum, star%total_rotational_ke, &
-           convective_velocity, star%job%mixture_weights, ierr)
+           convective_velocity, ierr)
       if (ierr /= 0) call die('read_starting_model')
 end subroutine load_deck_model
 

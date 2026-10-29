@@ -35,13 +35,15 @@ def test_every_path_control_is_expanded():
     every string control of the registry that names a file: under its
     canonical name when it has one in the buffer (expand_paths runs after
     adopt_canonical_names copies the legacy names there), else under its
-    legacy name."""
+    legacy name. A derived path (opal_eos_table_path) is made from expanded
+    ones."""
     registry = [row.split("\t") for row in
                 (SRC / "defaults" / "controls_registry.tsv").read_text().splitlines()]
     cols = registry[0]
     rows = [dict(zip(cols, r)) for r in registry[1:]]
     paths = {(r["canonical"] if r["home"] else r["legacy"]).lower() for r in rows
-             if r["type"].startswith("string") and r["legacy"].lower() not in NOT_PATHS}
+             if r["type"].startswith("string") and r["legacy"].lower() not in NOT_PATHS
+             and r["status"] != "derived"}
     code = (SRC / "io" / "run_files.f90").read_text()
     body = re.search(r"subroutine expand_paths(.*?)end subroutine", code, re.S).group(1)
     expanded = {n.lower() for n in re.findall(r"expand_value\((\w+)", body)}

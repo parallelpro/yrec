@@ -51,8 +51,8 @@ end subroutine prepare_run
 ! (settings_install's install_run_settings: the opacities, the equation
 ! of state and the tabulated surface boundary conditions).
 !
-! The table paths are read from star%job, so the caller must fill
-! star%job (read_controls) first. Errors return through ierr.
+! The table paths are controls (star%ctrl), so the caller must run
+! read_controls first. Errors return through ierr.
 !   star reads: ctrl%G_cgs, ctrl%solar_mass_cgs, solar_luminosity_cgs,
 !     solar_radius_cgs
 !   star writes: ln10_over_lsun, log10_solar_luminosity,

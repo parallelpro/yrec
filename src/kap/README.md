@@ -37,7 +37,7 @@ For one zone (log ρ, log T, X, Z):
 
 ## 4. Configuration
 
-`kap_settings_t` (in `opacity_tables`) is everything kap reads: which tables, the tables' Z values, the ramp limits, the Z tolerance of the surface table and the LAOL89 extrapolation limit. The star layer fills it from the controls (`opacity_settings` in `setup/microphysics_settings.f90`) and passes it to `kap_init`, together with the table paths from `star%job`. Every table file, the conductive one included, is opened by kap itself with `newunit`.
+`kap_settings_t` (in `opacity_tables`) is everything kap reads: which tables, the tables' Z values, the ramp limits, the Z tolerance of the surface table and the LAOL89 extrapolation limit. The star layer fills it from the controls (`opacity_settings` in `setup/microphysics_settings.f90`) and passes it to `kap_init`, together with the table paths (`kap_table_paths_t`, from the controls: `kap_table_paths_from_star`). Every table file, the conductive one included, is opened by kap itself with `newunit`.
 
 ## 5. Tests and extending
 

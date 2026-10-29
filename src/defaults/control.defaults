@@ -58,7 +58,7 @@
       ! (legacy name: fdyn)
       dynamics_file = ''
 
-      ! Livermore opacity auxiliary data file
+      ! OPAL 1992 opacity table (use_opal92_tables)
       ! (legacy name: flldat)
       ll_data_file = ''
 
@@ -66,39 +66,39 @@
       ! (legacy name: fscomp)
       surface_composition_file = ''
 
-      ! Kurucz model-atmosphere boundary-condition table
+      ! Kurucz 1990 low-temperature opacity table (use_kurucz90_tables)
       ! (legacy name: fkur)
       kurucz_atm_table_file = ''
 
-      ! MHD EOS table 1 of 8
+      ! MHD EOS table 1 of 8: the first ZAMS-type composition
       ! (legacy name: fmhd1)
       mhd_table_file_1 = ''
 
-      ! MHD EOS table 2 of 8
+      ! MHD EOS table 2 of 8: the second ZAMS-type composition
       ! (legacy name: fmhd2)
       mhd_table_file_2 = ''
 
-      ! MHD EOS table 3 of 8
+      ! MHD EOS table 3 of 8: the third ZAMS-type composition
       ! (legacy name: fmhd3)
       mhd_table_file_3 = ''
 
-      ! MHD EOS table 4 of 8
+      ! MHD EOS table 4 of 8: the first centre-type composition
       ! (legacy name: fmhd4)
       mhd_table_file_4 = ''
 
-      ! MHD EOS table 5 of 8
+      ! MHD EOS table 5 of 8: the second centre-type composition
       ! (legacy name: fmhd5)
       mhd_table_file_5 = ''
 
-      ! MHD EOS table 6 of 8
+      ! MHD EOS table 6 of 8: the third centre-type composition
       ! (legacy name: fmhd6)
       mhd_table_file_6 = ''
 
-      ! MHD EOS table 7 of 8
+      ! MHD EOS table 7 of 8: the fourth centre-type composition
       ! (legacy name: fmhd7)
       mhd_table_file_7 = ''
 
-      ! MHD EOS table 8 of 8
+      ! MHD EOS table 8 of 8: the fifth centre-type composition
       ! (legacy name: fmhd8)
       mhd_table_file_8 = ''
 
@@ -106,11 +106,11 @@
       ! (legacy name: fiso)
       isochrone_file = ''
 
-      ! Atmosphere P(T) boundary-condition table
+      ! Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table
       ! (legacy name: fatm)
       atm_table_file = ''
 
-      ! Castelli-Kurucz model-atmosphere table
+      ! Kurucz 1990 low-temperature opacity table, second Z
       ! (legacy name: fkur2)
       kurucz_castelli_atm_table_file = ''
 
@@ -130,11 +130,11 @@
       ! (legacy name: fscvz)
       scv_z_table_file = ''
 
-      ! OPAL 1995/2001 EOS table
+      ! OPAL 1995 EOS table (use_opal95_eos)
       ! (legacy name: fopale)
       opal_eos_table_file = ''
 
-      ! OPAL/Livermore 1995 opacity tables
+      ! OPAL 1995-format opacity table (use_opal95_tables)
       ! (legacy name: fliv95)
       opal95_opacity_table_file = ''
 
@@ -341,7 +341,7 @@
       ! (legacy name: zkur2)
       kurucz_table_z2 = 0
 
-      ! OPAL 2001 EOS table
+      ! OPAL 2001 EOS table (use_opal2001_eos)
       ! (legacy name: fopale01)
       opal01_eos_table_file = ''
 
@@ -349,7 +349,7 @@
       ! (legacy name: fcondopacp)
       conductive_opacity_table_file = ''
 
-      ! OPAL 2006 EOS table
+      ! OPAL 2006 EOS table (use_opal2006_eos)
       ! (legacy name: fopale06)
       opal06_eos_table_file = ''
 

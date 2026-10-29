@@ -53,7 +53,7 @@ program test_atm
 
 ! --- Kurucz (1993), atm_choice=3 ---
       settings%atm_choice = 3
-      call atm_init(settings, kurucz_atm_path, "", gerr)
+      call atm_init(settings, atm_table_paths_t(kurucz_atm_path, ""), gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Kurucz (choice 3), surfp lookups"
       do ipt = 1, npts
@@ -63,7 +63,7 @@ program test_atm
 
 ! --- Castelli & Kurucz (2003), atm_choice=5 ---
       settings%atm_choice = 5
-      call atm_init(settings, castelli_path, "", gerr)
+      call atm_init(settings, atm_table_paths_t(castelli_path, ""), gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Castelli/Kurucz (choice 5), " // &
            "kcsurfp lookups"
@@ -74,7 +74,7 @@ program test_atm
 
 ! --- Allard NextGen 2, atm_choice=4 ---
       settings%atm_choice = 4
-      call atm_init(settings, kurucz_atm_path, allard_path, gerr)
+      call atm_init(settings, atm_table_paths_t(kurucz_atm_path, allard_path), gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard (choice 4), " // &
            "atm_get_surface_pt lookups"
@@ -85,7 +85,7 @@ program test_atm
 
 ! --- Allard NextGen 2 with P and T at tau = 100 (allard_use_tau100) ---
       settings%allard_use_tau100 = .true.
-      call atm_init(settings, kurucz_atm_path, allard_path, gerr)
+      call atm_init(settings, atm_table_paths_t(kurucz_atm_path, allard_path), gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard at tau = 100, atm_get_surface_pt lookups"
       do ipt = 1, npts
@@ -95,7 +95,7 @@ program test_atm
       settings%allard_use_tau100 = .false.
 
 ! --- Allard NextGen 1, the old table format ---
-      call atm_init(settings, kurucz_atm_path, allard_old_path, gerr)
+      call atm_init(settings, atm_table_paths_t(kurucz_atm_path, allard_old_path), gerr)
       if (gerr /= 0) stop 1
       write(*,'(a)') "# test_atm: Allard NextGen 1 (old format), atm_get_surface_pt lookups"
       do ipt = 1, npts
@@ -129,7 +129,7 @@ program test_atm
 ! lookup inside it returns 0
       write(*,'(a)') "# test_atm: error paths via ierr"
       settings%atm_choice = 3
-      call atm_init(settings, kurucz_atm_path, "", gerr)
+      call atm_init(settings, atm_table_paths_t(kurucz_atm_path, ""), gerr)
       if (gerr /= 0) stop 1
       teffl = 3.40d0
       gl = 4.5d0

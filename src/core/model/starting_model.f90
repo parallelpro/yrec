@@ -42,9 +42,7 @@ contains
 ! Arguments: timestep_yr, delta_time (s), delta_time_abs = |delta_time|
 ! and triangle_orientation come from the model file; envelope_recomputed_flag
 ! is set when the envelope must be recomputed; total_angular_momentum
-! and total_rotational_ke return the rotating model's totals;
-! species_mix_weights returns the surface mixture as X_i/A_i (first
-! card only).
+! and total_rotational_ke return the rotating model's totals.
 !
 ! Naming: the star% arrays use henyey_iterate's names (luminosity_lsun
 ! is the linear L/Lsun; m is the unlogged mass coordinate and dm the
@@ -55,8 +53,7 @@ contains
 subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
      triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
      envelope_recomputed_flag, run_index, &
-     total_angular_momentum, total_rotational_ke, convective_velocity, &
-     species_mix_weights, ierr)
+     total_angular_momentum, total_rotational_ke, convective_velocity, ierr)
       use am_regions, only: am_convective_regions
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
@@ -90,7 +87,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       double precision, intent(inout) :: total_angular_momentum, &
            total_rotational_ke
       double precision, intent(out) :: convective_velocity
-      double precision, intent(inout) :: species_mix_weights(n_mix_species)
+! the surface mixture, from the controls' weights to X_i/A_i (first card)
+      double precision :: species_mix_weights(n_mix_species)
 
       integer :: saha_state
       character(len=4) :: format_tag

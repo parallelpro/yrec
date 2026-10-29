@@ -4,8 +4,9 @@
 ! Reads one deck through read_controls, exactly as a run does, and
 ! prints every resulting control: each element of star%ctrl and
 ! star%job (controls_dump.inc, generated from their declarations), the
-! star fields read_controls sets directly and the unit numbers. Doubles print at full precision, so two dumps
-! agree exactly when the controls are bit-identical.
+! star fields read_controls sets directly and the unit numbers. Doubles
+! print at full precision, so two dumps agree exactly when the controls
+! are bit-identical.
 !   test_controls                  the pristine defaults (no deck read)
 !   test_controls deck.inlist      a single-file inlist
 !   test_controls deck.nml1 deck.nml2   a legacy CONTROL/PHYSICS pair
@@ -40,39 +41,6 @@ program test_controls
          write(u,'(a)') "# controls (pristine defaults)"
       end if
       include 'controls_dump.inc'
-! the table paths and mixture weights read_controls stores in star%job
-      call path('alex06_table_path', star%job%alex06_table_path)
-      call path('allard_table_path', star%job%allard_table_path)
-      call path('atm_table_path', star%job%atm_table_path)
-      call path('fermi_table_path', star%job%fermi_table_path)
-      call path('kurucz_table_path', star%job%kurucz_table_path)
-      call path('kurucz_table2_path', star%job%kurucz_table2_path)
-      call path('laol_table_path', star%job%laol_table_path)
-      call path('laol_table2_path', star%job%laol_table2_path)
-      call path('opal95_table_path', star%job%opal95_table_path)
-      call path('opal92_table_path', star%job%opal92_table_path)
-      call path('zams_a_table_path', star%job%zams_a_table_path)
-      call path('zams_b_table_path', star%job%zams_b_table_path)
-      call path('zams_c_table_path', star%job%zams_c_table_path)
-      call path('centre1_table_path', star%job%centre1_table_path)
-      call path('centre2_table_path', star%job%centre2_table_path)
-      call path('centre3_table_path', star%job%centre3_table_path)
-      call path('centre4_table_path', star%job%centre4_table_path)
-      call path('centre5_table_path', star%job%centre5_table_path)
-      call path('opal92_table2_path', star%job%opal92_table2_path)
-      call path('pure_z_table_path', star%job%pure_z_table_path)
-      call path('scv_h_table_path', star%job%scv_h_table_path)
-      call path('scv_he_table_path', star%job%scv_he_table_path)
-      call path('scv_z_table_path', star%job%scv_z_table_path)
-      call path('conductive_table_path', star%job%conductive_table_path)
-      call path('opal_eos_table_path', star%job%opal_eos_table_path)
-      do i1 = 1, size(star%job%alex95_table_paths)
-         call path('alex95_table_paths('//itoa(i1)//')', star%job%alex95_table_paths(i1))
-      end do
-      do i1 = 1, size(star%job%mixture_weights)
-         write(u,'(a," = ",es25.17e3)') 'job%mixture_weights('//itoa(i1)//')', &
-              star%job%mixture_weights(i1)
-      end do
       write(u,'(a," = ",i0)') 'star%atm_choice_initial', star%atm_choice_initial
       write(u,'(a," = ",l1)') 'star%use_ttau_relation', star%use_ttau_relation
       write(u,'(a," = ",es25.17e3)') 'star%tenv', star%envelope_store_log_temperature
@@ -93,11 +61,6 @@ program test_controls
       write(u,'(a," = ",i0)') 'terminal_unit', terminal_unit
 
 contains
-
-subroutine path(name, value)
-      character(len=*), intent(in) :: name, value
-      write(u,'(a," = ",a)') 'job%'//name, '"'//trim(value)//'"'
-end subroutine path
 
 function itoa(i) result(s)
       integer, intent(in) :: i

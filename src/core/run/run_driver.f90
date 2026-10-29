@@ -58,14 +58,13 @@ contains
 !     envelope_cz_bottom_index_start, h_shell_bot_index,
 !     h_shell_mid_index, h_shell_top_index, has_h_shell, job%atm_choice,
 !     job%change_envelope_mass_flag, job%initial_envelope_x,
-!     job%initial_envelope_z, job%mixture_weights, job%nk,
-!     job%requested_envelope_mass, job%use_structure_dt_limits,
-!     max_domega_frac, mixing_length_alpha, model_diverged_flag,
-!     model_number, pulsation_mass_msun, punch_pending_flag,
-!     recompute_envelope_triangle, reset_triangle, settling_active,
-!     stored_vertex_index, termination_reason, timestep_yr,
-!     total_angular_momentum, total_rotational_ke, triangle_orientation,
-!     use_two_z_tables
+!     job%initial_envelope_z, job%nk, job%requested_envelope_mass,
+!     job%use_structure_dt_limits, max_domega_frac, mixing_length_alpha,
+!     model_diverged_flag, model_number, pulsation_mass_msun,
+!     punch_pending_flag, recompute_envelope_triangle, reset_triangle,
+!     settling_active, stored_vertex_index, termination_reason,
+!     timestep_yr, total_angular_momentum, total_rotational_ke,
+!     triangle_orientation, use_two_z_tables
 subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings
@@ -355,7 +354,7 @@ subroutine begin_kind_card
             ikut_flag, s%stored_vertex_index, s%model_diverged_flag, &
             s%recompute_envelope_triangle, s%job%nk, &
             s%total_angular_momentum, s%total_rotational_ke, &
-            convective_velocity, s%job%mixture_weights, ierr)
+            convective_velocity, ierr)
        if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the

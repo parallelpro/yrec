@@ -80,7 +80,6 @@ program test_net
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, dummy_path
       character(len=256) :: dummy_paths7(7)
-      double precision :: laol_work(12)
       integer :: setups_ierr, ipt, i
 
       integer, parameter :: npts = 4
@@ -120,7 +119,6 @@ program test_net
       fermi_path = trim(yrec_input)//"/eos/yale/FERMI.TAB"
       dummy_path = ""
       dummy_paths7 = ""
-      laol_work = 0.0d0
 
 ! the run log's unit, as io/run_files.f90 assigns it
       run_log_unit = 20
@@ -143,32 +141,30 @@ program test_net
       star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
       star%job%atm_choice = 0
-
-      star%job%mixture_weights = laol_work
-      star%job%alex06_table_path = dummy_path
-      star%job%allard_table_path = dummy_path
-      star%job%atm_table_path = dummy_path
-      star%job%fermi_table_path = fermi_path
-      star%job%kurucz_table_path = dummy_path
-      star%job%kurucz_table2_path = dummy_path
-      star%job%laol_table_path = dummy_path
-      star%job%laol_table2_path = dummy_path
-      star%job%opal95_table_path = dummy_path
-      star%job%opal92_table_path = dummy_path
-      star%job%zams_a_table_path = dummy_path
-      star%job%zams_b_table_path = dummy_path
-      star%job%zams_c_table_path = dummy_path
-      star%job%centre1_table_path = dummy_path
-      star%job%centre2_table_path = dummy_path
-      star%job%centre3_table_path = dummy_path
-      star%job%centre4_table_path = dummy_path
-      star%job%centre5_table_path = dummy_path
-      star%job%opal92_table2_path = dummy_path
-      star%job%pure_z_table_path = dummy_path
-      star%job%scv_h_table_path = dummy_path
-      star%job%scv_he_table_path = dummy_path
-      star%job%scv_z_table_path = dummy_path
-      star%job%alex95_table_paths = dummy_paths7
+      star%ctrl%alex06_table_path = dummy_path
+      star%ctrl%allard_table_path = dummy_path
+      star%ctrl%atm_table_path = dummy_path
+      star%ctrl%fermi_table_path = fermi_path
+      star%ctrl%kurucz_table_path = dummy_path
+      star%ctrl%kurucz_table2_path = dummy_path
+      star%ctrl%laol_table_path = dummy_path
+      star%ctrl%laol_table2_path = dummy_path
+      star%ctrl%opal95_table_path = dummy_path
+      star%ctrl%opal92_table_path = dummy_path
+      star%ctrl%zams_a_table_path = dummy_path
+      star%ctrl%zams_b_table_path = dummy_path
+      star%ctrl%zams_c_table_path = dummy_path
+      star%ctrl%centre1_table_path = dummy_path
+      star%ctrl%centre2_table_path = dummy_path
+      star%ctrl%centre3_table_path = dummy_path
+      star%ctrl%centre4_table_path = dummy_path
+      star%ctrl%centre5_table_path = dummy_path
+      star%ctrl%opal92_table2_path = dummy_path
+      star%ctrl%pure_z_table_path = dummy_path
+      star%ctrl%scv_h_table_path = dummy_path
+      star%ctrl%scv_he_table_path = dummy_path
+      star%ctrl%scv_z_table_path = dummy_path
+      star%ctrl%alex95_table_paths = dummy_paths7
       call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_net: FAIL (setups error)"

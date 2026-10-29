@@ -11,7 +11,7 @@ module atm_tables
       private
       public :: atm_settings, atm_settings_t, atm_table, atm_table_ng, &
            atm_table_nga, atm_table_nt, atm_table_nta, atm_table_ntc, &
-           set_atm_settings, surface_p_table
+           set_atm_settings, surface_p_table, atm_table_paths_t
 ! The settings record of atm/: which tables atm_init loads (atm_choice
 ! 3 and 4 the Kurucz table, 4 also the Allard tables, 5 the
 ! Castelli/Kurucz table), whether the Allard lookups return P and T at
@@ -22,6 +22,13 @@ module atm_tables
          real(dp) :: allard_target_feh = 0.0d0, allard_target_alpha = 0.0d0
       end type atm_settings_t
       type(atm_settings_t), protected :: atm_settings
+! The tables atm_init reads, by path: the Kurucz or Castelli/Kurucz
+! surface-pressure table (atm_choice 3 and 4, or 5) and the Allard
+! tables (4). The star layer fills it from the controls
+! (atm_table_paths_from_star, setup/microphysics_settings.f90).
+      type :: atm_table_paths_t
+         character(len=256) :: surface_pressure = '', allard = ''
+      end type atm_table_paths_t
 ! Kurucz (nt) and Kurucz-Castelli (ntc) atmosphere tables: rows in
 ! log Teff, atm_table_ng columns in log g.
       integer, parameter :: atm_table_nt = 57, atm_table_ntc = 76

@@ -31,7 +31,6 @@ program test_kap
       character(len=256) :: yrec_input
       character(len=256) :: fermi_path, opal95_path, dummy_path
       character(len=256) :: dummy_paths7(7)
-      double precision :: laol_work(12)
 
       integer :: setups_ierr, ipt, kap_ierr
       double precision :: logt, logd, x_frac, z_frac
@@ -51,7 +50,6 @@ program test_kap
       opal95_path = trim(yrec_input)//"/opacity/atomic/legacy/opal95/GS98.OP17"
       dummy_path = ""
       dummy_paths7 = ""
-      laol_work = 0.0d0
 
 ! unit numbers, per core/read_input.f90
       run_log_unit = 20
@@ -89,32 +87,31 @@ program test_kap
 
 ! constants + table loads (real setups; kap_init inside it reads the
 ! OPAL95 table and builds the surface-X slice)
-      star%job%mixture_weights = laol_work
-      star%job%alex06_table_path = dummy_path
-      star%job%allard_table_path = dummy_path
-      star%job%atm_table_path = dummy_path
-      star%job%fermi_table_path = fermi_path
-      star%job%kurucz_table_path = dummy_path
-      star%job%kurucz_table2_path = dummy_path
-      star%job%laol_table_path = dummy_path
-      star%job%laol_table2_path = dummy_path
-      star%job%opal95_table_path = opal95_path
-      star%job%opal92_table_path = dummy_path
-      star%job%zams_a_table_path = dummy_path
-      star%job%zams_b_table_path = dummy_path
-      star%job%zams_c_table_path = dummy_path
-      star%job%centre1_table_path = dummy_path
-      star%job%centre2_table_path = dummy_path
-      star%job%centre3_table_path = dummy_path
-      star%job%centre4_table_path = dummy_path
-      star%job%centre5_table_path = dummy_path
-      star%job%opal92_table2_path = dummy_path
-      star%job%pure_z_table_path = dummy_path
-      star%job%conductive_table_path = dummy_path
-      star%job%scv_h_table_path = dummy_path
-      star%job%scv_he_table_path = dummy_path
-      star%job%scv_z_table_path = dummy_path
-      star%job%alex95_table_paths = dummy_paths7
+      star%ctrl%alex06_table_path = dummy_path
+      star%ctrl%allard_table_path = dummy_path
+      star%ctrl%atm_table_path = dummy_path
+      star%ctrl%fermi_table_path = fermi_path
+      star%ctrl%kurucz_table_path = dummy_path
+      star%ctrl%kurucz_table2_path = dummy_path
+      star%ctrl%laol_table_path = dummy_path
+      star%ctrl%laol_table2_path = dummy_path
+      star%ctrl%opal95_table_path = opal95_path
+      star%ctrl%opal92_table_path = dummy_path
+      star%ctrl%zams_a_table_path = dummy_path
+      star%ctrl%zams_b_table_path = dummy_path
+      star%ctrl%zams_c_table_path = dummy_path
+      star%ctrl%centre1_table_path = dummy_path
+      star%ctrl%centre2_table_path = dummy_path
+      star%ctrl%centre3_table_path = dummy_path
+      star%ctrl%centre4_table_path = dummy_path
+      star%ctrl%centre5_table_path = dummy_path
+      star%ctrl%opal92_table2_path = dummy_path
+      star%ctrl%pure_z_table_path = dummy_path
+      star%ctrl%conductive_table_path = dummy_path
+      star%ctrl%scv_h_table_path = dummy_path
+      star%ctrl%scv_he_table_path = dummy_path
+      star%ctrl%scv_z_table_path = dummy_path
+      star%ctrl%alex95_table_paths = dummy_paths7
       call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_kap: FAIL (setups error)"
@@ -242,7 +239,7 @@ contains
               opal92_path2, laol_path, laol_path2, alex06_path, kurucz_path, &
               kurucz_path2, pure_z_path
          character(len=256), intent(in), optional :: alex95_paths(7)
-         character(len=256) :: p(9), p7(7)
+         type(kap_table_paths_t) :: p
          type(kap_settings_t) :: s
          integer :: ierr
 
@@ -268,22 +265,18 @@ contains
          s%molecular_opacity_logt_min = 4.0d0
          s%molecular_opacity_logt_max = 4.1d0
          s%laol_extrapolation_tolerance = 10.0d0
-         p = ""
-         p7 = ""
-         if (present(alex06_path)) p(1) = alex06_path
-         if (present(kurucz_path)) p(2) = kurucz_path
-         if (present(kurucz_path2)) p(3) = kurucz_path2
-         if (present(laol_path)) p(4) = laol_path
-         if (present(laol_path2)) p(5) = laol_path2
-         if (present(opal95_path)) p(6) = opal95_path
-         if (present(opal92_path)) p(7) = opal92_path
-         if (present(opal92_path2)) p(8) = opal92_path2
-         if (present(pure_z_path)) p(9) = pure_z_path
-         if (present(alex95_paths)) p7 = alex95_paths
-         laol_work = 0.0d0
-         call kap_init(s, 0.70d0, z1, laol_work, p(1), p(2), p(3), p(4), p(5), &
-              p(6), p(7), p(8), p(9), p7, &
-              trim(yrec_input)//"/opacity/conductive/potekhin/condall06.d", ierr)
+         if (present(alex06_path)) p%alex06 = alex06_path
+         if (present(kurucz_path)) p%kurucz = kurucz_path
+         if (present(kurucz_path2)) p%kurucz_z2 = kurucz_path2
+         if (present(laol_path)) p%laol = laol_path
+         if (present(laol_path2)) p%laol_z2 = laol_path2
+         if (present(opal95_path)) p%opal95 = opal95_path
+         if (present(opal92_path)) p%opal92 = opal92_path
+         if (present(opal92_path2)) p%opal92_z2 = opal92_path2
+         if (present(pure_z_path)) p%pure_z = pure_z_path
+         if (present(alex95_paths)) p%alex94 = alex95_paths
+         p%conductive = trim(yrec_input)//"/opacity/conductive/potekhin/condall06.d"
+         call kap_init(s, p, 0.70d0, z1, ierr)
          if (ierr /= 0) write(*,'(a,i0)') "kap_init ierr = ", ierr
       end subroutine configure
 

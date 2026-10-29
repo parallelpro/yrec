@@ -24,11 +24,11 @@ module atm_lib
       use t_tau_relations, only: ttau_log10_temperature, &
            ttau_start_log10_temperature, ttau_photosphere_x_limit, hsra_t_tau_offset
       use atm_tables, only: atm_settings_t, atm_table, atm_table_nt, &
-           atm_table_ntc, set_atm_settings
+           atm_table_ntc, set_atm_settings, atm_table_paths_t
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
-      public :: atm_settings_t, set_atm_settings
+      public :: atm_settings_t, set_atm_settings, atm_table_paths_t
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, hsra_t_tau_offset
 contains
@@ -40,28 +40,27 @@ contains
 ! table (atm_choice 3 and 4), the Allard tables (4) or the
 ! Castelli/Kurucz table (5). A table that cannot be read returns
 ! ierr = 1, with the diagnostic printed.
-subroutine atm_init(settings, atm_table_path, allard_table_path, ierr)
+subroutine atm_init(settings, paths, ierr)
       type(atm_settings_t), intent(in) :: settings
-      character(len=*), intent(in) :: atm_table_path
-      character(len=*), intent(in) :: allard_table_path
+      type(atm_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
 
       ierr = 0
       call set_atm_settings(settings)
 
       if (settings%atm_choice == 3 .or. settings%atm_choice == 4) then
-         call read_surface_pressure_table(atm_table_path, atm_table%kurucz_surface_p, &
+         call read_surface_pressure_table(paths%surface_pressure, atm_table%kurucz_surface_p, &
               atm_table_nt, ierr)
          if (ierr /= 0) return
 ! MHP 6/97: the Allard model atmospheres, used instead of Kurucz below
 ! Teff = 10,000 K
          if (settings%atm_choice == 4) then
-            call read_allard_tables(allard_table_path, ierr)
+            call read_allard_tables(paths%allard, ierr)
             if (ierr /= 0) return
          end if
 ! JNT 6/14: the Kurucz/Castelli atmospheres
       else if (settings%atm_choice == 5) then
-         call read_surface_pressure_table(atm_table_path, atm_table%castelli_surface_p, &
+         call read_surface_pressure_table(paths%surface_pressure, atm_table%castelli_surface_p, &
               atm_table_ntc, ierr)
          if (ierr /= 0) return
       end if

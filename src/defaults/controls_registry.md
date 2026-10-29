@@ -27,35 +27,35 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | ctrl | run | real | `0.02292d0` | canonical | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
 | `run_description` | `descrip` | `-` | - | - | string(2) | `''` | verified | Per-run description strings echoed in output headers |
 | `max_age` | `endage` | `target_end_age` | job | run | real(50) | `0.0d0` | canonical | Stop the run card at this age (yr); 0 = no age limit |
-| `laol_opacity_table_file` | `flaol` | `-` | - | - | string | `''` | verified | LAOL 1989 opacity table |
-| `pure_z_opacity_table_file` | `fpurez` | `-` | - | - | string | `''` | verified | Pure-Z opacity table (metal diffusion support) |
-| `laol_opacity_table2_file` | `flaol2` | `-` | - | - | string | `''` | verified | LAOL 1989 opacity table, second Z |
-| `opal92_opacity_table2_file` | `fopal2` | `-` | - | - | string | `''` | verified | OPAL 1992 opacity table, second Z |
+| `laol_opacity_table_file` | `flaol` | `laol_table_path` | ctrl | run | string | `''` | verified | LAOL 1989 opacity table |
+| `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | ctrl | run | string | `''` | verified | Pure-Z opacity table (metal diffusion support) |
+| `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | ctrl | run | string | `''` | verified | LAOL 1989 opacity table, second Z |
+| `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | ctrl | run | string | `''` | verified | OPAL 1992 opacity table, second Z |
 | `last_model_file` | `flast` | `-` | - | - | string | `'{YREC_OUTPUT}/final.mod'` | verified | Path for the final model (.mod) written every model; reloadable |
 | `first_model_file` | `ffirst` | `-` | - | - | string | `''` | verified | Starting model read when read_first_model is set for a run |
-| `fermi_table_file` | `ffermi` | `-` | - | - | string | `''` | verified | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
+| `fermi_table_file` | `ffermi` | `fermi_table_path` | ctrl | run | string | `''` | verified | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
 | `(legacy only)` | `fstch` | `-` | - | - | string | `''` | unused | Unused: read by the legacy reader and ignored |
 | `dynamics_file` | `fdyn` | `-` | - | - | string | `''` | verified | Opened on the dynamics unit (formatted, STATUS=OLD) |
-| `ll_data_file` | `flldat` | `-` | - | - | string | `''` | verified | Livermore opacity auxiliary data file |
+| `ll_data_file` | `flldat` | `opal92_table_path` | ctrl | run | string | `''` | verified | OPAL 1992 opacity table (use_opal92_tables) |
 | `surface_composition_file` | `fscomp` | `-` | - | - | string | `''` | verified | Inert: the path is expanded and used nowhere; the controls read warns when it is set |
-| `kurucz_atm_table_file` | `fkur` | `-` | - | - | string | `''` | verified | Kurucz model-atmosphere boundary-condition table |
-| `mhd_table_file_1` | `fmhd1` | `-` | - | - | string | `''` | verified | MHD EOS table 1 of 8 |
-| `mhd_table_file_2` | `fmhd2` | `-` | - | - | string | `''` | verified | MHD EOS table 2 of 8 |
-| `mhd_table_file_3` | `fmhd3` | `-` | - | - | string | `''` | verified | MHD EOS table 3 of 8 |
-| `mhd_table_file_4` | `fmhd4` | `-` | - | - | string | `''` | verified | MHD EOS table 4 of 8 |
-| `mhd_table_file_5` | `fmhd5` | `-` | - | - | string | `''` | verified | MHD EOS table 5 of 8 |
-| `mhd_table_file_6` | `fmhd6` | `-` | - | - | string | `''` | verified | MHD EOS table 6 of 8 |
-| `mhd_table_file_7` | `fmhd7` | `-` | - | - | string | `''` | verified | MHD EOS table 7 of 8 |
-| `mhd_table_file_8` | `fmhd8` | `-` | - | - | string | `''` | verified | MHD EOS table 8 of 8 |
+| `kurucz_atm_table_file` | `fkur` | `kurucz_table_path` | ctrl | run | string | `''` | verified | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
+| `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 1 of 8: the first ZAMS-type composition |
+| `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 2 of 8: the second ZAMS-type composition |
+| `mhd_table_file_3` | `fmhd3` | `zams_c_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 3 of 8: the third ZAMS-type composition |
+| `mhd_table_file_4` | `fmhd4` | `centre1_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 4 of 8: the first centre-type composition |
+| `mhd_table_file_5` | `fmhd5` | `centre2_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 5 of 8: the second centre-type composition |
+| `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 6 of 8: the third centre-type composition |
+| `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 7 of 8: the fourth centre-type composition |
+| `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | ctrl | run | string | `''` | verified | MHD EOS table 8 of 8: the fifth centre-type composition |
 | `isochrone_file` | `fiso` | `-` | - | - | string | `''` | verified | Isochrone output file |
-| `atm_table_file` | `fatm` | `-` | - | - | string | `''` | verified | Atmosphere P(T) boundary-condition table |
-| `kurucz_castelli_atm_table_file` | `fkur2` | `-` | - | - | string | `''` | verified | Castelli-Kurucz model-atmosphere table |
-| `allard_atm_table_file` | `fallard` | `-` | - | - | string | `''` | verified | Allard NextGen model-atmosphere table |
-| `scv_h_table_file` | `fscvh` | `-` | - | - | string | `''` | verified | Saumon-Chabrier-Van Horn EOS: hydrogen table |
-| `scv_he_table_file` | `fscvhe` | `-` | - | - | string | `''` | verified | SCV EOS: helium table |
-| `scv_z_table_file` | `fscvz` | `-` | - | - | string | `''` | verified | SCV EOS: metals table |
-| `opal_eos_table_file` | `fopale` | `-` | - | - | string | `''` | verified | OPAL 1995/2001 EOS table |
-| `opal95_opacity_table_file` | `fliv95` | `-` | - | - | string | `''` | verified | OPAL/Livermore 1995 opacity tables |
+| `atm_table_file` | `fatm` | `atm_table_path` | ctrl | run | string | `''` | verified | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
+| `kurucz_castelli_atm_table_file` | `fkur2` | `kurucz_table2_path` | ctrl | run | string | `''` | verified | Kurucz 1990 low-temperature opacity table, second Z |
+| `allard_atm_table_file` | `fallard` | `allard_table_path` | ctrl | run | string | `''` | verified | Allard NextGen model-atmosphere table |
+| `scv_h_table_file` | `fscvh` | `scv_h_table_path` | ctrl | run | string | `''` | verified | Saumon-Chabrier-Van Horn EOS: hydrogen table |
+| `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | ctrl | run | string | `''` | verified | SCV EOS: helium table |
+| `scv_z_table_file` | `fscvz` | `scv_z_table_path` | ctrl | run | string | `''` | verified | SCV EOS: metals table |
+| `opal_eos_table_file` | `fopale` | `opal95_eos_table_path` | ctrl | read | string | `''` | verified | OPAL 1995 EOS table (use_opal95_eos) |
+| `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | ctrl | run | string | `''` | verified | OPAL 1995-format opacity table (use_opal95_tables) |
 | `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | ctrl | read | string | `''` | canonical | Monte Carlo runs: the file for each run's summary |
 | `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | ctrl | read | string | `''` | canonical | Monte Carlo runs: the file for each run's final model |
 | `run_kind` | `kindrn` | `-` | - | - | integer(50) | `1` | verified | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
@@ -78,7 +78,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `envelope_print_points` | `npenv` | `npenv` | ctrl | read | integer | `0` | verified | Envelope profile print count (values <= 0 become 9999 = off) |
 | `num_runs` | `numrun` | `num_runs` | job | run | integer | `1` | canonical | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | job | run | integer(50) | `0` | canonical | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
-| `alex95_table_z_list` | `opecalex` | `-` | - | - | string(7) | `''` | canonical | The seven Alexander & Ferguson 1994 low-temperature opacity table files (the historical name says z_list) |
+| `alex95_table_z_list` | `opecalex` | `alex95_table_paths` | ctrl | run | string(7) | `''` | canonical | The seven Alexander & Ferguson 1994 low-temperature opacity table files (the historical name says z_list) |
 | `rescale_mass` | `rsclm` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target mass (Msun) for rescale runs |
 | `rescale_x` | `rsclx` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target hydrogen fraction for rescale runs |
 | `rescale_z` | `rsclz` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target metallicity for rescale runs |
@@ -107,10 +107,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `alex_z2` | `zalex2` | `-` | - | - | real | `0` | verified | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
 | `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | ctrl | run | real | `0` | canonical | Z of the first Kurucz 1990 opacity table |
 | `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | ctrl | run | real | `0` | canonical | Z of the second Kurucz 1990 opacity table |
-| `opal01_eos_table_file` | `fopale01` | `-` | - | - | string | `''` | verified | OPAL 2001 EOS table |
-| `conductive_opacity_table_file` | `fcondopacp` | `-` | - | - | string | `''` | verified | Potekhin conductive opacity table |
-| `opal06_eos_table_file` | `fopale06` | `-` | - | - | string | `''` | verified | OPAL 2006 EOS table |
-| `alex06_opacity_table_file` | `falex06` | `-` | - | - | string | `''` | verified | Ferguson/Alexander 2006 low-T opacity tables |
+| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | ctrl | read | string | `''` | verified | OPAL 2001 EOS table (use_opal2001_eos) |
+| `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | ctrl | run | string | `''` | verified | Potekhin conductive opacity table |
+| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | ctrl | read | string | `''` | verified | OPAL 2006 EOS table (use_opal2006_eos) |
+| `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | ctrl | run | string | `''` | verified | Ferguson/Alexander 2006 low-T opacity tables |
 | `use_alex06_tables` | `lalex06` | `use_alex06_tables` | ctrl | run | logical | `.false.` | canonical | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
 | `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | job | run | real(50) | `0.0d0` | canonical | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
 | `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | job | run | real(50) | `0.0d0` | canonical | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
@@ -420,6 +420,7 @@ or the run keeps them.
 
 | code name | home | used | type | default | description |
 |---|---|---|---|---|---|
+| `opal_eos_table_path` | ctrl | run | string | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
 | `end_age_stop_active` | job | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | job | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
 | `unit_zams_a` | ctrl | none | integer | `0` | Unit number of the first ZAMS (MHD) table (set by the reader) |

@@ -233,6 +233,35 @@
             logical :: use_alex95_tables = .false.
             double precision :: tollaol = 10.0d0
             logical :: use_pure_z_table = .false.
+            character(len=256) :: laol_table_path = repeat(achar(0), 256)
+            character(len=256) :: laol_table2_path = repeat(achar(0), 256)
+            character(len=256) :: opal95_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal92_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal92_table2_path = repeat(achar(0), 256)
+            character(len=256) :: pure_z_table_path = repeat(achar(0), 256)
+            character(len=256) :: alex06_table_path = repeat(achar(0), 256)
+            character(len=256) :: alex95_table_paths(7) = repeat(achar(0), 256)
+            character(len=256) :: kurucz_table_path = repeat(achar(0), 256)
+            character(len=256) :: kurucz_table2_path = repeat(achar(0), 256)
+            character(len=256) :: conductive_table_path = repeat(achar(0), 256)
+            character(len=256) :: fermi_table_path = repeat(achar(0), 256)
+            character(len=256) :: scv_h_table_path = repeat(achar(0), 256)
+            character(len=256) :: scv_he_table_path = repeat(achar(0), 256)
+            character(len=256) :: scv_z_table_path = repeat(achar(0), 256)
+            character(len=256) :: zams_a_table_path = repeat(achar(0), 256)
+            character(len=256) :: zams_b_table_path = repeat(achar(0), 256)
+            character(len=256) :: zams_c_table_path = repeat(achar(0), 256)
+            character(len=256) :: centre1_table_path = repeat(achar(0), 256)
+            character(len=256) :: centre2_table_path = repeat(achar(0), 256)
+            character(len=256) :: centre3_table_path = repeat(achar(0), 256)
+            character(len=256) :: centre4_table_path = repeat(achar(0), 256)
+            character(len=256) :: centre5_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal95_eos_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal2001_eos_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal2006_eos_table_path = repeat(achar(0), 256)
+            character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
+            character(len=256) :: atm_table_path = repeat(achar(0), 256)
+            character(len=256) :: allard_table_path = repeat(achar(0), 256)
             integer :: kurucz_table2_unit = 0
             integer :: icondopacp = 0
             logical :: use_conductive_opacity = .false.

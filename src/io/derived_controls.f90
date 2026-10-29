@@ -39,7 +39,7 @@ subroutine derive_controls(s)
       type(star_info), intent(inout) :: s
 
       call derive_rate_scales
-      call select_eos_and_opacity_tables(s)
+      call select_eos_and_opacity_tables
       s%envelope_store_log_temperature = 0.5d0*(tenv0 + tenv1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
@@ -69,20 +69,19 @@ end subroutine derive_rate_scales
 
 ! ---------------------------------------------------------------
 ! The newest OPAL EOS and Alexander opacities requested win; eos_init
-! opens star%job%opal_eos_table_path.
-subroutine select_eos_and_opacity_tables(s)
-      type(star_info), intent(inout) :: s
-      s%job%opal_eos_table_path = ""
+! opens opal_eos_table_path.
+subroutine select_eos_and_opacity_tables
+      opal_eos_table_path = ""
       if (use_opal2006_eos) then
          use_opal2001_eos = .false.
          use_opal95_eos = .false.
-         s%job%opal_eos_table_path = fopale06
+         opal_eos_table_path = opal2006_eos_table_path
       end if
       if (use_opal2001_eos) then
-         s%job%opal_eos_table_path = fopale01
+         opal_eos_table_path = opal2001_eos_table_path
          use_opal95_eos = .false.
       else if (use_opal95_eos) then
-         s%job%opal_eos_table_path = fopale
+         opal_eos_table_path = opal95_eos_table_path
       end if
       if (use_alex06_tables) then
          use_alex95_tables = .false.

@@ -98,7 +98,17 @@ module controls_sync
            molecular_opacity_logt_min, molecular_opacity_logt_max, &
            use_alex06_tables, use_laol89_tables, use_opal92_tables, &
            use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
-           tollaol, use_pure_z_table, kurucz_table2_unit, icondopacp, &
+           tollaol, use_pure_z_table, laol_table_path, laol_table2_path, &
+           opal95_table_path, opal92_table_path, opal92_table2_path, &
+           pure_z_table_path, alex06_table_path, alex95_table_paths, &
+           kurucz_table_path, kurucz_table2_path, conductive_table_path, &
+           fermi_table_path, scv_h_table_path, scv_he_table_path, &
+           scv_z_table_path, zams_a_table_path, zams_b_table_path, &
+           zams_c_table_path, centre1_table_path, centre2_table_path, &
+           centre3_table_path, centre4_table_path, centre5_table_path, &
+           opal95_eos_table_path, opal2001_eos_table_path, &
+           opal2006_eos_table_path, opal_eos_table_path, atm_table_path, &
+           allard_table_path, kurucz_table2_unit, icondopacp, &
            use_conductive_opacity, alex94_table_unit, alex06_table_unit, &
            lvfc, use_diffusion_advection_transport, &
            no_am_transport_in_core, scv_h_unit, scv_he_unit, scv_z_unit, &
@@ -404,6 +414,35 @@ subroutine seed_controls_buffer(s)
       use_alex95_tables = s%ctrl%use_alex95_tables
       tollaol = s%ctrl%tollaol
       use_pure_z_table = s%ctrl%use_pure_z_table
+      laol_table_path = s%ctrl%laol_table_path
+      laol_table2_path = s%ctrl%laol_table2_path
+      opal95_table_path = s%ctrl%opal95_table_path
+      opal92_table_path = s%ctrl%opal92_table_path
+      opal92_table2_path = s%ctrl%opal92_table2_path
+      pure_z_table_path = s%ctrl%pure_z_table_path
+      alex06_table_path = s%ctrl%alex06_table_path
+      alex95_table_paths = s%ctrl%alex95_table_paths
+      kurucz_table_path = s%ctrl%kurucz_table_path
+      kurucz_table2_path = s%ctrl%kurucz_table2_path
+      conductive_table_path = s%ctrl%conductive_table_path
+      fermi_table_path = s%ctrl%fermi_table_path
+      scv_h_table_path = s%ctrl%scv_h_table_path
+      scv_he_table_path = s%ctrl%scv_he_table_path
+      scv_z_table_path = s%ctrl%scv_z_table_path
+      zams_a_table_path = s%ctrl%zams_a_table_path
+      zams_b_table_path = s%ctrl%zams_b_table_path
+      zams_c_table_path = s%ctrl%zams_c_table_path
+      centre1_table_path = s%ctrl%centre1_table_path
+      centre2_table_path = s%ctrl%centre2_table_path
+      centre3_table_path = s%ctrl%centre3_table_path
+      centre4_table_path = s%ctrl%centre4_table_path
+      centre5_table_path = s%ctrl%centre5_table_path
+      opal95_eos_table_path = s%ctrl%opal95_eos_table_path
+      opal2001_eos_table_path = s%ctrl%opal2001_eos_table_path
+      opal2006_eos_table_path = s%ctrl%opal2006_eos_table_path
+      opal_eos_table_path = s%ctrl%opal_eos_table_path
+      atm_table_path = s%ctrl%atm_table_path
+      allard_table_path = s%ctrl%allard_table_path
       kurucz_table2_unit = s%ctrl%kurucz_table2_unit
       icondopacp = s%ctrl%icondopacp
       use_conductive_opacity = s%ctrl%use_conductive_opacity
@@ -771,6 +810,35 @@ subroutine store_controls_to_star(s)
       s%ctrl%use_alex95_tables = use_alex95_tables
       s%ctrl%tollaol = tollaol
       s%ctrl%use_pure_z_table = use_pure_z_table
+      s%ctrl%laol_table_path = laol_table_path
+      s%ctrl%laol_table2_path = laol_table2_path
+      s%ctrl%opal95_table_path = opal95_table_path
+      s%ctrl%opal92_table_path = opal92_table_path
+      s%ctrl%opal92_table2_path = opal92_table2_path
+      s%ctrl%pure_z_table_path = pure_z_table_path
+      s%ctrl%alex06_table_path = alex06_table_path
+      s%ctrl%alex95_table_paths = alex95_table_paths
+      s%ctrl%kurucz_table_path = kurucz_table_path
+      s%ctrl%kurucz_table2_path = kurucz_table2_path
+      s%ctrl%conductive_table_path = conductive_table_path
+      s%ctrl%fermi_table_path = fermi_table_path
+      s%ctrl%scv_h_table_path = scv_h_table_path
+      s%ctrl%scv_he_table_path = scv_he_table_path
+      s%ctrl%scv_z_table_path = scv_z_table_path
+      s%ctrl%zams_a_table_path = zams_a_table_path
+      s%ctrl%zams_b_table_path = zams_b_table_path
+      s%ctrl%zams_c_table_path = zams_c_table_path
+      s%ctrl%centre1_table_path = centre1_table_path
+      s%ctrl%centre2_table_path = centre2_table_path
+      s%ctrl%centre3_table_path = centre3_table_path
+      s%ctrl%centre4_table_path = centre4_table_path
+      s%ctrl%centre5_table_path = centre5_table_path
+      s%ctrl%opal95_eos_table_path = opal95_eos_table_path
+      s%ctrl%opal2001_eos_table_path = opal2001_eos_table_path
+      s%ctrl%opal2006_eos_table_path = opal2006_eos_table_path
+      s%ctrl%opal_eos_table_path = opal_eos_table_path
+      s%ctrl%atm_table_path = atm_table_path
+      s%ctrl%allard_table_path = allard_table_path
       s%ctrl%kurucz_table2_unit = kurucz_table2_unit
       s%ctrl%icondopacp = icondopacp
       s%ctrl%use_conductive_opacity = use_conductive_opacity

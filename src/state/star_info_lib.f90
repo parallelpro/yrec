@@ -108,40 +108,30 @@ module star_info_lib
             include 'controls_state_def.inc'
       end type controls_state
 
-! The run's job (star%job): what the controls read stores besides
-! star%ctrl. The table paths and the surface-mixture weights are set by
-! the read; the Monte-Carlo samples by setup_monte_carlo_runs; nk by
-! run_yrec's card loop; the run-card arrays and latches of
-! job_controls_def.inc by the read, after which the run changes some of
-! them (the calibrations rewrite the next cycle's cards, the stop
-! conditions disarm thresholds, the atmosphere switch changes
-! atm_choice, the solver ramps fcorr).
+! The run's job (star%job): the controls the run changes
+! (job_controls_def.inc, generated from the registry's home column: the
+! read sets them, then the calibrations rewrite the next cycle's cards,
+! the stop conditions disarm thresholds, the atmosphere switch changes
+! atm_choice, the solver ramps fcorr), the Monte-Carlo samples and the
+! run-card cursor. The table paths are controls (star%ctrl).
       type, public :: star_job
-            character(len=256) :: alex06_table_path, allard_table_path, &
-                 atm_table_path, fermi_table_path, kurucz_table_path, &
-                 kurucz_table2_path, laol_table_path, laol_table2_path, &
-                 opal95_table_path, opal92_table_path
-            character(len=256) :: zams_a_table_path, zams_b_table_path, &
-                 zams_c_table_path, centre1_table_path, centre2_table_path, &
-                 centre3_table_path, centre4_table_path, centre5_table_path
-            character(len=256) :: opal92_table2_path, pure_z_table_path, &
-                 scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-                 conductive_table_path, opal_eos_table_path
-            character(len=256) :: alex95_table_paths(7)
-            double precision :: mixture_weights(n_mix_species)
-! The Monte-Carlo samples, one entry per Monte-Carlo run, read from the
-! sample file by setup_monte_carlo_runs (core/run/monte_carlo.f90).
-            double precision :: s11_rate(max_mc_runs), s33_rate(max_mc_runs), &
-                 s34_rate(max_mc_runs), s17_rate(max_mc_runs), &
-                 metal_to_h_ratio(max_mc_runs), &
-                 helium_fraction_param(max_mc_runs), &
-                 diffusion_factor(max_mc_runs), &
-                 luminosity_target(max_mc_runs), age_target(max_mc_runs)
-! The current run card's index, the run list's cursor: set by run_yrec's
-! card loop (which runs a local index, as a structure component cannot
-! be a DO variable, and leaves num_runs+1 after the last card); read by
-! the step, the writers and the calibrations' cycle arithmetic.
-            integer :: nk
+! the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample
+! file: the S-factor scales of p+p, 3He+3He, 3He+4He and 7Be+p, Z/X,
+! the helium (diffusion) parameter and its copy diffusion_factor, the
+! solar-luminosity and age factors [-]; monte_carlo
+! (setup_monte_carlo_runs). Read by apply_monte_carlo_parameters and the
+! Monte-Carlo summary.
+            double precision :: s11_rate(max_mc_runs) = 0.0d0, &
+                 s33_rate(max_mc_runs) = 0.0d0, s34_rate(max_mc_runs) = 0.0d0, &
+                 s17_rate(max_mc_runs) = 0.0d0, metal_to_h_ratio(max_mc_runs) = 0.0d0, &
+                 helium_fraction_param(max_mc_runs) = 0.0d0, &
+                 diffusion_factor(max_mc_runs) = 0.0d0, &
+                 luminosity_target(max_mc_runs) = 0.0d0, age_target(max_mc_runs) = 0.0d0
+! the current run card's index, the run list's cursor [-]; run_driver
+! (run_yrec's card loop runs a local index, as a structure component
+! cannot be a DO variable, and leaves num_runs+1 after the last card).
+! Read by the step, the writers and the calibrations' cycle arithmetic.
+            integer :: nk = 0
 ! The run-card arrays and latches. GENERATED component list; regenerate
 ! with tools/gen_controls_state.py.
             include 'job_controls_def.inc'
@@ -159,12 +149,12 @@ module star_info_lib
 ! controls_sync. Reset to the declared defaults before each read; members:
 ! src/defaults/controls_registry.md, generated into controls_state_def.inc.
             type(controls_state) :: ctrl
-! the run's job: the table paths, the surface-mixture weights, the
-! Monte-Carlo samples, the run-card cursor nk and the run-card arrays and
-! latches [-]; controls_reader, controls_sync, run_driver, calibration,
-! monte_carlo. Changed by the run: the calibrations rewrite the next
-! cards, the stop conditions disarm thresholds, the atmosphere switch
-! changes atm_choice, the solver ramps fcorr.
+! the run's job: the run-card arrays and latches (the controls the run
+! changes), the Monte-Carlo samples and the run-card cursor nk [-];
+! controls_sync, run_driver, calibration, monte_carlo. Changed by the
+! run: the calibrations rewrite the next cards, the stop conditions
+! disarm thresholds, the atmosphere switch changes atm_choice, the
+! solver ramps fcorr.
             type(star_job) :: job
 
 ! ==== Constants set at setup ===========================================

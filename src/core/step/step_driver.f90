@@ -68,15 +68,14 @@ contains
 !     envelope_overshoot_top_index, eps_grav, eta_squared, fp_rot,
 !     ft_rot, h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
 !     has_h_shell, i_rot, j_rot, j_rot_iteration_start, job%fcorr,
-!     job%mixture_weights, job%num_rotation_structure_iters,
-!     job%use_structure_dt_limits, kinetic_energy_rot,
-!     kinetic_energy_rot_start, log_mass, log_pressure_delta,
-!     log_Teff_start, log_temperature_delta, logP, logP_start, logR,
-!     logR_start, logRho, logRho_start, logT, logT_start,
-!     luminosity_lsun, luminosity_lsun_start, m, max_domega_frac,
-!     mean_gravity, mean_radius, mixed_zone_bounds, model_diverged_flag,
-!     model_number, nz, punch_pending_flag, recompute_envelope_triangle,
-!     reset_triangle, stored_vertex_index,
+!     job%num_rotation_structure_iters, job%use_structure_dt_limits,
+!     kinetic_energy_rot, kinetic_energy_rot_start, log_mass,
+!     log_pressure_delta, log_Teff_start, log_temperature_delta, logP,
+!     logP_start, logR, logR_start, logRho, logRho_start, logT,
+!     logT_start, luminosity_lsun, luminosity_lsun_start, m,
+!     max_domega_frac, mean_gravity, mean_radius, mixed_zone_bounds,
+!     model_diverged_flag, model_number, nz, punch_pending_flag,
+!     recompute_envelope_triangle, reset_triangle, stored_vertex_index,
 !     surface_luminosity_lsun_start, timestep_yr,
 !     total_angular_momentum, total_rotational_ke, triangle_orientation,
 !     xa, xa_iteration_start, xa_start
@@ -292,8 +291,7 @@ subroutine reload_model_if_diverged
                   s%triangle_orientation, ikut_flag, s%stored_vertex_index, &
                   s%model_diverged_flag, s%recompute_envelope_triangle, s%job%nk, &
                   s%total_angular_momentum, &
-                  s%total_rotational_ke, convective_velocity, &
-                  s%job%mixture_weights, ierr)
+                  s%total_rotational_ke, convective_velocity, ierr)
              if (ierr /= 0) return
              call check_rotation_initialised(s, ierr)
              if (ierr /= 0) return

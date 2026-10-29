@@ -440,6 +440,48 @@ module controls_buffer
       real(dp) :: tollaol = 10.0d0
       logical :: use_pure_z_table = .false.
 
+! The table files, by the domain that reads them; a path the deck
+! leaves unset holds NUL bytes (the legacy reader's no-default).
+! kap: the LAOL 1989, OPAL 1995-format and OPAL 1992 tables (and the
+! second-Z tables), the pure-Z table, the Alexander 2006 and the seven
+! Alexander & Ferguson 1994 low-temperature tables, the Kurucz 1990
+! tables, the Potekhin conductive table. eos: the Fermi-Dirac table,
+! the SCV tables, the MHD tables (three ZAMS-type and five centre-type
+! compositions) and the OPAL EOS table of each vintage, of which
+! derive_controls puts the one the run uses in opal_eos_table_path.
+! atm: the Kurucz or Castelli/Kurucz surface-pressure table and the
+! Allard tables. The builders in setup/microphysics_settings.f90 copy
+! them into each domain's paths record.
+      character(len=256) :: laol_table_path = repeat(achar(0), 256)
+      character(len=256) :: laol_table2_path = repeat(achar(0), 256)
+      character(len=256) :: opal95_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal92_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal92_table2_path = repeat(achar(0), 256)
+      character(len=256) :: pure_z_table_path = repeat(achar(0), 256)
+      character(len=256) :: alex06_table_path = repeat(achar(0), 256)
+      character(len=256) :: alex95_table_paths(7) = repeat(achar(0), 256)
+      character(len=256) :: kurucz_table_path = repeat(achar(0), 256)
+      character(len=256) :: kurucz_table2_path = repeat(achar(0), 256)
+      character(len=256) :: conductive_table_path = repeat(achar(0), 256)
+      character(len=256) :: fermi_table_path = repeat(achar(0), 256)
+      character(len=256) :: scv_h_table_path = repeat(achar(0), 256)
+      character(len=256) :: scv_he_table_path = repeat(achar(0), 256)
+      character(len=256) :: scv_z_table_path = repeat(achar(0), 256)
+      character(len=256) :: zams_a_table_path = repeat(achar(0), 256)
+      character(len=256) :: zams_b_table_path = repeat(achar(0), 256)
+      character(len=256) :: zams_c_table_path = repeat(achar(0), 256)
+      character(len=256) :: centre1_table_path = repeat(achar(0), 256)
+      character(len=256) :: centre2_table_path = repeat(achar(0), 256)
+      character(len=256) :: centre3_table_path = repeat(achar(0), 256)
+      character(len=256) :: centre4_table_path = repeat(achar(0), 256)
+      character(len=256) :: centre5_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal95_eos_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal2001_eos_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal2006_eos_table_path = repeat(achar(0), 256)
+      character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
+      character(len=256) :: atm_table_path = repeat(achar(0), 256)
+      character(len=256) :: allard_table_path = repeat(achar(0), 256)
+
 ! Conductive opacities, and the second Kurucz table's unit (icondopacp is
 ! a unit too).
       integer :: kurucz_table2_unit, icondopacp

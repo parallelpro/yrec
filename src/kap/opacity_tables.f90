@@ -300,6 +300,21 @@ module opacity_tables
       type(kap_settings_t), public, protected :: kap_settings
       public :: set_kap_settings
 
+! The tables kap_init reads, by path (blank: not given): the interior
+! tables (OPAL 1995-format; OPAL 1992 and LAOL 1989, each with a second-Z
+! table for use_two_z_tables; the pure-Z table), the molecular tables
+! (Alexander 2006; the seven Alexander & Ferguson 1994 tables; Kurucz
+! 1990 and its second Z) and the Potekhin conductive table. The star
+! layer fills it from the controls (kap_table_paths_from_star,
+! setup/microphysics_settings.f90).
+      type, public :: kap_table_paths_t
+         character(len=256) :: opal95 = '', opal92 = '', opal92_z2 = '', &
+              laol = '', laol_z2 = '', pure_z = ''
+         character(len=256) :: alex06 = '', alex94(7) = '', kurucz = '', &
+              kurucz_z2 = ''
+         character(len=256) :: conductive = ''
+      end type kap_table_paths_t
+
 contains
 
 ! set_kap_settings: install the run's opacity settings.
