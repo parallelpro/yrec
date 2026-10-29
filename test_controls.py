@@ -278,3 +278,23 @@ def test_monte_carlo_paths_are_expanded(tmp_path):
     for k in ("1", "2"):
         assert f'ctrl%monte_carlo_file{k}_path = "{out}/mc.mc{k}"' in dump
         assert (out / f"mc.mc{k}").is_file()
+
+
+def test_a_second_read_starts_from_the_defaults(tmp_path):
+    """read_controls resets star%job as well as star%ctrl: a deck read into a
+    star that a run has used (the Newton factor ramped, a card's envelope X
+    set, a Monte-Carlo sample read) dumps exactly as a fresh read, as an
+    embedding host or a second in-process run needs."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    dumps = []
+    for twice in ("0", "1"):
+        out = tmp_path / twice
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out), YREC_TEST_READ_TWICE=twice))
+        lines = r.stdout.decode("latin-1").splitlines()
+        dumps.append(lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):])
+    assert "ierr = 0" in dumps[1]
+    assert dumps[1] == dumps[0], [l for l in dumps[1] if l not in dumps[0]][:5]

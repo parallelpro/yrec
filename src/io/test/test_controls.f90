@@ -10,6 +10,7 @@
 !   test_controls                  the pristine defaults (no deck read)
 !   test_controls deck.inlist      a single-file inlist
 !   test_controls deck.nml1 deck.nml2   a legacy CONTROL/PHYSICS pair
+! (with YREC_TEST_READ_TWICE=1, the deck read twice into the same star).
 ! The output files a run opens go under $YREC_OUTPUT (test_controls.py
 ! points it at a scratch directory). test_controls.py runs this on every
 ! deck in examples/ and testsuite/.
@@ -22,6 +23,7 @@ program test_controls
 ! is too large for the stack
       type(star_info), save :: star
       character(len=256) :: deck1, deck2
+      character(len=8) :: twice
       integer :: ierr, u, i1, i2, nargs
 
       u = 6
@@ -35,6 +37,22 @@ program test_controls
 ! read_controls writes its banner to standard output; the dump goes to
 ! unit 6 after a marker so the two can be told apart
          call read_controls(star, ierr)
+! YREC_TEST_READ_TWICE=1: scribble on star%job as a run would (the
+! Newton factor, a card's envelope X, a Monte-Carlo sample), close the
+! run's files, then read the deck again into the same star; the dump
+! must be a single read's
+         call get_environment_variable("YREC_TEST_READ_TWICE", twice)
+         if (twice == "1") then
+            star%job%fcorr = 7.0d0
+            star%job%initial_envelope_x = 7.0d0
+            star%job%s11_rate = 7.0d0
+! the run's files closed, as run_yrec's prologue closes them
+            do i1 = 7, 99
+               close(i1)
+            end do
+            call read_controls(star, ierr)
+            if (any(star%job%s11_rate /= 0.0d0)) write(u,'(a)') "job%s11_rate kept"
+         end if
          write(u,'(a)') "# controls"
          write(u,'(a,i0)') "ierr = ", ierr
       else

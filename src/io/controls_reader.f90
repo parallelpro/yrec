@@ -2,10 +2,10 @@
 ! controls_reader
 !----------------------------------------------------------------------
 ! Reads a deck into star%ctrl and star%job. Each read starts from the
-! pristine defaults: star%ctrl = controls_state() (generated from
-! controls_buffer's declarations), seeded into the buffer
-! (seed_controls_buffer); read_input reads the deck over the buffer,
-! and store_controls_to_star copies the result back. The read's steps
+! pristine defaults: star%ctrl = controls_state() and star%job =
+! star_job() (generated from controls_buffer's declarations), seeded
+! into the buffer (seed_controls_buffer); read_input reads the deck over
+! the buffer, and store_controls_to_star copies the result back. The read's steps
 ! live in legacy_controls (the namelist variables and their defaults),
 ! run_files, controls_check (the errors and warnings), derived_controls
 ! and run_cards; the copies between the legacy and the canonical names
@@ -16,8 +16,8 @@ module controls_reader
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
       use net_lib, only: cross_section_scales_from_sstandard
-      use star_info_lib, only: star_info, controls_state, control_nml_override, &
-           physics_nml_override
+      use star_info_lib, only: star_info, controls_state, star_job, &
+           control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: check_io
@@ -39,7 +39,9 @@ subroutine read_controls(s, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
+! the declared defaults, whatever an earlier read or run left on s
       s%ctrl = controls_state()
+      s%job = star_job()
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call seed_controls_buffer(s)
       call read_input(s, ierr)
