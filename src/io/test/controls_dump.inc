@@ -112,6 +112,9 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_error_tol', star%ctrl%atm_error_tol
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_initial', star%ctrl%atm_step_initial
       write(u,'(a," = ",es25.17e3)') 'ctrl%env_error_tol', star%ctrl%env_error_tol
+      write(u,'(a," = ",es25.17e3)') 'ctrl%tolerance_fraction', star%ctrl%tolerance_fraction
+      write(u,'(a," = ",i0)') 'ctrl%max_stage_index', star%ctrl%max_stage_index
+      write(u,'(a," = ",i0)') 'ctrl%extrap_order', star%ctrl%extrap_order
       do i1 = 1, 12
       write(u,'(a," = ",es25.17e3)') 'ctrl%mixture_weights_seed('//itoa(i1)//')', star%ctrl%mixture_weights_seed(i1)
       end do

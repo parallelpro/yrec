@@ -284,3 +284,27 @@ def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
         f"stdout tail: {result.stdout[-300:]}")
     assert needle in result.stdout, result.stdout[-300:]
     assert "bad.first" in result.stdout, result.stdout[-300:]
+
+
+@pytest.mark.parametrize("control, value", [("NUSE", "1"), ("NUSE", "8"), ("IMAX", "12"),
+                                            ("STOLR0", "0.0")])
+def test_bulirsch_stoer_controls_out_of_range(tmp_path, control, value):
+    """The envelope's Bulirsch-Stoer controls must fit the integrator
+    (numerics/bulirsch_stoer.f90): 1 to 11 stages (IMAX), an order of 2
+    to 7 (NUSE), a positive tolerance (STOLR0). Outside, the controls
+    read stops with exit 1 and names them."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    nml2 = tmp_path / NML2
+    text, n = re.subn(rf"(?im)^(\s*{control}\s*=\s*)[-+.0-9dDeE]+", rf"\g<1>{value}", nml2.read_text())
+    assert n == 1, f"expected one {control} in the solar deck"
+    nml2.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"{control} = {value} must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
+    assert "the Bulirsch-Stoer controls need" in result.stdout, result.stdout[-300:]

@@ -118,7 +118,6 @@ def main():
         "derived_controls.f90", "run_cards.f90"))
     decls = joined_decl_lines(parmin)
     for extra in ("io/controls_buffer.f90", "state/physical_constants.f90",
-                  "state/integration_parameters.f90",
                   "kap/opacity_tables.f90"):
         decls += joined_decl_lines((SRC / extra).read_text())
     code_default = reader_defaults(joined_decl_lines)

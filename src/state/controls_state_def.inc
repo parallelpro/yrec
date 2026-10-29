@@ -101,6 +101,9 @@
             double precision :: atm_error_tol = 0.0d0
             double precision :: atm_step_initial = 0.0d0
             double precision :: env_error_tol = 0.0d0
+            double precision :: tolerance_fraction = 0.0d0
+            integer :: max_stage_index = 0
+            integer :: extrap_order = 0
             double precision :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
             character(len=256) :: monte_carlo_file1_path = ' '
             character(len=256) :: monte_carlo_file2_path = ' '

@@ -159,6 +159,9 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%tenv = s%tenv
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
       cfg%calc_envelope = s%job%calc_envelope_flag
+      cfg%tolerance_fraction = s%ctrl%tolerance_fraction
+      cfg%max_stage_index = s%ctrl%max_stage_index
+      cfg%extrap_order = s%ctrl%extrap_order
 
       if (present(vertex_index)) then
          call run_kernel(vertex_index, stored_envelope_state, &

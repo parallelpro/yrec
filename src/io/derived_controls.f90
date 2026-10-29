@@ -18,12 +18,18 @@ module derived_controls
       private
       public :: derive_controls
 
+! The Bulirsch-Stoer integrator's limits (numerics/bulirsch_stoer.f90):
+! its stage sequence has 11 entries and its extrapolation tableau 7
+! columns; order 1 would index the stage sequence at 0.
+      integer, parameter :: bulirsch_stoer_max_stages = 11, bulirsch_stoer_max_order = 7
+
 contains
 
 ! ---------------------------------------------------------------
 ! ierr = 1: semiconvection and overshoot are both on, the envelope
-! triangle's size is not positive, or a rotating run's
-! max_diffusion_iters is outside 1..16.
+! triangle's size is not positive, a rotating run's max_diffusion_iters
+! is outside 1..16, or the Bulirsch-Stoer controls are outside the
+! integrator's limits.
 subroutine derive_controls(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
@@ -59,6 +65,18 @@ subroutine derive_controls(s, ierr)
          write(terminal_unit,4) max_diffusion_iters
          write(run_log_unit,4) max_diffusion_iters
       4  format(1x,'ERROR: max_diffusion_iters (ITDIF2) must be 1 to 16, not ',i0)
+         ierr = 1
+         return
+      end if
+! The Bulirsch-Stoer integrator's limits.
+      if (tolerance_fraction <= 0.0d0 .or. max_stage_index < 1 .or. &
+           max_stage_index > bulirsch_stoer_max_stages .or. extrap_order < 2 .or. &
+           extrap_order > bulirsch_stoer_max_order) then
+         write(terminal_unit,5) tolerance_fraction, max_stage_index, extrap_order
+         write(run_log_unit,5) tolerance_fraction, max_stage_index, extrap_order
+      5  format(1x,'ERROR: the Bulirsch-Stoer controls need tolerance_fraction (STOLR0) > 0,', &
+           &  ' max_stage_index (IMAX) 1 to 11 and extrap_order (NUSE) 2 to 7, not', &
+           &  1pe11.3,', ',i0,', ',i0)
          ierr = 1
          return
       end if

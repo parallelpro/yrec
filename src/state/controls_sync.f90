@@ -162,6 +162,9 @@ subroutine seed_controls_buffer(s)
       env_step_begin = s%job%env_step_begin
       env_step_min = s%job%env_step_min
       env_step_max = s%job%env_step_max
+      tolerance_fraction = s%ctrl%tolerance_fraction
+      max_stage_index = s%ctrl%max_stage_index
+      extrap_order = s%ctrl%extrap_order
       atm_choice = s%job%atm_choice
       mixture_weights_seed = s%ctrl%mixture_weights_seed
       monte_carlo_file1_path = s%ctrl%monte_carlo_file1_path
@@ -537,6 +540,9 @@ subroutine store_controls_to_star(s)
       s%job%env_step_begin = env_step_begin
       s%job%env_step_min = env_step_min
       s%job%env_step_max = env_step_max
+      s%ctrl%tolerance_fraction = tolerance_fraction
+      s%ctrl%max_stage_index = max_stage_index
+      s%ctrl%extrap_order = extrap_order
       s%job%atm_choice = atm_choice
       s%ctrl%mixture_weights_seed = mixture_weights_seed
       s%ctrl%monte_carlo_file1_path = monte_carlo_file1_path

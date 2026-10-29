@@ -258,6 +258,13 @@ module controls_buffer
       double precision :: atm_step_min, atm_step_max
       double precision :: env_error_tol, env_step_begin, env_step_min
       double precision :: env_step_max
+! The Bulirsch-Stoer integrator of both: the tolerance on the fitting
+! mass, as a fraction of |senv|, which is also the atmosphere's step
+! tolerance; the number of stages; and the extrapolation order
+! (numerics/bulirsch_stoer.f90 takes 1 to 11 stages and orders 2 to 7;
+! the controls read checks them).
+      double precision :: tolerance_fraction
+      integer :: max_stage_index, extrap_order
 
 ! The atmosphere choice as read. The run's working copy is
 ! star%job%atm_choice (the surface boundary condition and the

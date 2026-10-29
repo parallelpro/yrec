@@ -11,7 +11,6 @@ This directory defines the star and the records and slot constants it is made of
 | `envelope_points` | The records of the outer layers the envelope integration fills: the envelope and the atmosphere point by point, and the atmosphere integration's current point (`star%env_points`, `star%atm_points`, `star%atm_point`). |
 | `stitched_model_state` | The record of the stitched model, the converged star on one grid from the centre to the atmosphere (`star%stitched`). |
 | `physical_constants` | The mathematical and physical constants (its header says which are compile-time parameters and which `core/run/run_setup.f90` sets once per run). |
-| `integration_parameters` | The Bulirsch-Stoer integrator's controls (`tolerance_fraction`, `max_stage_index`, `extrap_order`), set by the controls read. |
 | `controls_state_def.inc`, `job_controls_def.inc`, `controls_sync` | Generated (see above): the components of `star%ctrl`, the run-card arrays of `star%job`, and the copies between `controls_buffer` and the star. |
 
 The rest of this README describes the members of `star_info`: what each one is, its unit, who writes and reads it, and when its value can be trusted. Sections 2 and 3 are generated (below).

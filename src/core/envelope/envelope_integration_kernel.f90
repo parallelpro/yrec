@@ -39,7 +39,11 @@ module envelope_integration_kernel
 ! the log T at which the envelope state is stored for the surface
 ! boundary; log10 Lsun; log10 of the total mass in g, the origin of the
 ! envelope's mass coordinate log(m/M) (star%stotal); and calc_envelope
-! (false: the photosphere only).
+! (false: the photosphere only); and the Bulirsch-Stoer controls: the
+! tolerance fraction (the atmosphere's step tolerance, and the envelope's
+! stop at tolerance_fraction |senv| of senv), the number of stages and
+! the extrapolation order (ctrl%tolerance_fraction, ctrl%max_stage_index,
+! ctrl%extrap_order).
       type, public :: envint_config
             integer :: atm_choice
             double precision :: atm_step_begin, atm_step_min, atm_step_max
@@ -51,6 +55,8 @@ module envelope_integration_kernel
 ! Debye-Hueckel correction
             double precision :: surface_composition(n_species_extended)
             logical :: calc_envelope
+            double precision :: tolerance_fraction
+            integer :: max_stage_index, extrap_order
       end type envint_config
 
 ! The largest fitting mass senv = log10(m_fit/M) the code allows
@@ -158,7 +164,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
            ttau_photosphere_x_limit
       use io_units
       use physical_constants
-      use integration_parameters
       use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
            numerics_bad_input, numerics_step_underflow
       use run_log, only: solver_diagnostics
@@ -464,7 +469,7 @@ subroutine integrate_to_photosphere()
       h_max = cfg%atm_step_max
       h_min = cfg%atm_step_min
       h_step = cfg%atm_step_begin
-      step_tolerance = tolerance_fraction
+      step_tolerance = cfg%tolerance_fraction
       num_ok = 0
       num_bad = 0
 
@@ -529,7 +534,7 @@ subroutine take_atmosphere_step()
 ! h_did the step taken and h_next the predicted next step.
        call load_equations(.true.)
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-            h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
+            h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
 ! A bsstep limit out of range is a configuration error; any other
 ! bsstep failure (the solution diverged) returns envelope_termination,
@@ -686,7 +691,7 @@ subroutine start_envelope_integration()
       h_max = cfg%env_step_max
       h_min = cfg%env_step_min
       h_step = cfg%env_step_begin
-      step_tolerance = dabs(tolerance_fraction*cfg%senv)
+      step_tolerance = dabs(cfg%tolerance_fraction*cfg%senv)
 ! Forget a stored envelope state that belongs to this vertex. The
 ! pressure limit applies only when the boundary is not being saved.
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
@@ -840,7 +845,7 @@ subroutine take_envelope_step()
 ! h_did the step taken and h_next the predicted next step.
        call load_equations(.false.)
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-              h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
+              h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
 ! A bsstep failure returns as in the atmosphere.
        if (jerr == numerics_bad_input) then
@@ -875,10 +880,10 @@ subroutine report_bsstep_limits()
        character(len=*), parameter :: fmt = &
             '(1x,a,i0,a,i0,a,i0,a,i0)'
        write(terminal_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
-            max_stage_index, ', nuse = ', extrap_order, '; need 2 <= nuse <= ', &
+            cfg%max_stage_index, ', nuse = ', cfg%extrap_order, '; need 2 <= nuse <= ', &
             bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
        write(run_log_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
-            max_stage_index, ', nuse = ', extrap_order, '; need 2 <= nuse <= ', &
+            cfg%max_stage_index, ', nuse = ', cfg%extrap_order, '; need 2 <= nuse <= ', &
             bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
 end subroutine report_bsstep_limits
 

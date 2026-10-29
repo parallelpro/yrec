@@ -244,7 +244,7 @@ end subroutine read_inlist
 
 ! ---------------------------------------------------------------
 ! Copy each control read under a legacy name into its canonical home
-! (controls_buffer, integration_parameters or star). map_user_inputs,
+! (controls_buffer or star). map_user_inputs,
 ! which runs next, reads use_new_nuclear_rates and the s0_* values.
 subroutine adopt_canonical_names(s)
       use star_info_lib, only: star_info

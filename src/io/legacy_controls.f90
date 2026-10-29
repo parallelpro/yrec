@@ -12,7 +12,6 @@
 ! reset_legacy_controls clears everything at the start of each read.
 module legacy_controls
       use controls_buffer
-      use integration_parameters
       implicit none
 
 ! The legacy namelists' binding targets, under their original spellings.

@@ -4,8 +4,7 @@
 ! Reads one deck through read_controls, exactly as a run does, and
 ! prints every resulting control: each element of star%ctrl and
 ! star%job (controls_dump.inc, generated from their declarations), the
-! star fields read_controls sets directly, the Bulirsch-Stoer settings
-! and the unit numbers. Doubles print at full precision, so two dumps
+! star fields read_controls sets directly and the unit numbers. Doubles print at full precision, so two dumps
 ! agree exactly when the controls are bit-identical.
 !   test_controls                  the pristine defaults (no deck read)
 !   test_controls deck.inlist      a single-file inlist
@@ -15,7 +14,6 @@
 ! deck in examples/ and testsuite/.
 program test_controls
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
-      use integration_parameters, only: tolerance_fraction, max_stage_index, extrap_order
       use io_units, only: last_model_unit, run_log_unit, terminal_unit
       use controls_reader, only: read_controls
       implicit none
@@ -90,9 +88,6 @@ program test_controls
       write(u,'(a," = ",es25.17e3)') 'star%envelope_metal_fraction', star%envelope_metal_fraction
       write(u,'(a," = ",es25.17e3)') 'star%solar_luminosity_cgs', star%solar_luminosity_cgs
       write(u,'(a," = ",es25.17e3)') 'star%solar_radius_cgs', star%solar_radius_cgs
-      write(u,'(a," = ",es25.17e3)') 'tolerance_fraction', tolerance_fraction
-      write(u,'(a," = ",i0)') 'max_stage_index', max_stage_index
-      write(u,'(a," = ",i0)') 'extrap_order', extrap_order
       write(u,'(a," = ",i0)') 'last_model_unit', last_model_unit
       write(u,'(a," = ",i0)') 'run_log_unit', run_log_unit
       write(u,'(a," = ",i0)') 'terminal_unit', terminal_unit
