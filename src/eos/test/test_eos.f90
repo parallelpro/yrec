@@ -14,7 +14,9 @@
 !   otherwise); the error paths; every configuration a deck can choose
 !   (check_configurations); the derivatives against finite differences
 !   (check_derivatives); the MHD table lookup on a synthetic table; then
-!   the ok/FAIL checks:
+!   the ok/FAIL checks (the first, check_scv_general_path, before the
+!   others: SCV's general path before and after the envelope table is
+!   built, which needs the program's first evaluations):
 !   check_mhd_reader  the MHD reader on eight synthetic tables written
 !                     to the working directory (densities in each family,
 !                     the out-of-range errors, a missing or truncated file)
@@ -69,6 +71,10 @@ program test_eos
       double precision :: qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp
       logical :: lderiv, latmo, in_table
       integer :: ksaha
+
+! SCV's general path at a cool point before the envelope table is
+! built, and the Saha result there (scv_general_path_before_table)
+      type(eos_result) :: general_before_table(2)
 
 ! eos_get_gamma1 argument set
       double precision :: t6, rho, pres, gamma1, grad_ad
@@ -144,9 +150,13 @@ program test_eos
          write(*,'(a)') "test_eos: FAIL (eos_init error)"
          stop 1
       end if
-! the SCV envelope-mixture table, which a run builds when it reads the
-! starting model (eos_init reads the SCV tables but does not build it)
+! SCV's general path before the envelope table exists (a run's first
+! card reaches it so), then the SCV envelope-mixture table, which a run
+! builds when it reads the starting model (eos_init reads the SCV tables
+! but does not build it)
+      call scv_general_path_before_table(general_before_table)
       call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check_scv_general_path(general_before_table)
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
@@ -307,6 +317,36 @@ contains
          call configure_eos("debye_huckel", debye_huckel=.true.)
          call evaluate_grid(0.70d0, 0.016492d0, with_composition=.true.)
       end subroutine check_configurations
+
+! SCV's general path (a composition off the envelope table's) at a cool
+! point SCV covers, before the envelope table is built: kept in
+! results(1), with the Saha result there (SCV off) in results(2).
+      subroutine scv_general_path_before_table(results)
+         type(eos_result), intent(out) :: results(2)
+         type(eos_settings_t) :: s, before
+         integer :: ierr
+         before = eos_settings
+         s = eos_settings
+         s%opal_vintage = opal_vintage_none
+         call set_eos_settings(s)
+         call eos_at(3.7d0, 5.0d0, 0.70d0 + 2.0d-5, 0.016492d0, results(1), ierr)
+         s%use_scv_eos = .false.
+         call set_eos_settings(s)
+         call eos_at(3.7d0, 5.0d0, 0.70d0 + 2.0d-5, 0.016492d0, results(2), ierr)
+         call set_eos_settings(before)
+      end subroutine scv_general_path_before_table
+
+! SCV's general path reads the three tables, not the envelope table: before
+! that table is built it covers the point (it is not the Saha result,
+! 9e-4 dex away there) and gives what it gives after the build.
+      subroutine check_scv_general_path(before_table)
+         type(eos_result), intent(in) :: before_table(2)
+         type(eos_result) :: after_table(2)
+         call scv_general_path_before_table(after_table)
+         call check("SCV general path: before the envelope table is built, SCV's result, as after", &
+              abs(before_table(1)%log10_density - before_table(2)%log10_density) > 1.0d-4 .and. &
+              abs(before_table(1)%log10_density - after_table(1)%log10_density) < 1.0d-12)
+      end subroutine check_scv_general_path
 
 ! Set one configuration (the controls a deck would set), opening an OPAL
 ! file on the unit read_controls would use when one is named.

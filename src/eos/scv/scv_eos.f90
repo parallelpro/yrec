@@ -545,12 +545,14 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
          idtt = max(1,ii)
          idtt = min(nts-3,idtt)
       end if
-! find nearest points in pressure.
+! find nearest points in pressure, on the H table's log P_gas grid (the
+! He and Z tables share it; the envelope table, which this path must
+! not need, copies it)
       jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure < tablenv(idtt,jjj+1,iscvenv_log10_p)) then
+      if (log10_gas_pressure < tablex(idtt,jjj+1,iscv_log10_p)) then
 ! search down to find nearest 4 table elements
          do j = jjj, 1, -1
-            if (log10_gas_pressure > tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure > tablex(idtt,j,iscv_log10_p)) then
                jj = j - 1
                exit
             end if
@@ -565,7 +567,7 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
 ! search up for nearest 4 table elements.  note search is done at lowest
 ! temperature point (with the minimum range in p).
          do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure < tablenv(idtt,j,iscvenv_log10_p)) then
+            if (log10_gas_pressure < tablex(idtt,j,iscv_log10_p)) then
                jj = j - 2
                exit
             end if
@@ -584,8 +586,7 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       call interp(interp_nodes, temp_interp_weights, &
            temp_interp_weight_derivs, log10_temperature)
       do k = 1,4
-         interp_nodes(k) = tablenv(idtt, &
-              idp+k-1, iscvenv_log10_p)
+         interp_nodes(k) = tablex(idtt,idp+k-1,iscv_log10_p)
       end do
       call interp(interp_nodes, press_interp_weights, &
            press_interp_weight_derivs, log10_gas_pressure)
