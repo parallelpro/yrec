@@ -251,8 +251,9 @@ module star_info_lib
 ! read and kap_init use it earlier, while it is still 0.
             double precision :: envelope_hydrogen_fraction
 ! surface Z of the EOS mixture: the first card's, or the last Z
-! rescale's [-]; starting_model, model_rescaling, run_cards. The controls
-! read (interpret_kind_cards) also sets it from a card's rescale Z.
+! rescale's [-]; starting_model, model_rescaling, run_setup. The run
+! setup (set_run_plan_envelope_z) first sets it from the run plan's
+! rescale Z, before kap_init.
             double precision :: envelope_metal_fraction
 ! surface Y = 1 - X - Z - X(He3) of the first card [-]; starting_model
             double precision :: envelope_helium_fraction

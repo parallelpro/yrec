@@ -356,7 +356,7 @@ core/model/starting_model.o: am_regions.mod controls_buffer.mod convection_lib.m
 core/run/calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/run/monte_carlo.o: io_units.mod math_lib.mod model_files.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod io_units.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
-core/run/run_setup.o: math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
+core/run/run_setup.o: eos_lib.mod math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod io_units.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
 core/run/yrec_reset.o: star_info_lib.mod
@@ -416,7 +416,7 @@ io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod
 io/profile_output.o: io_units.mod output_columns.mod star_info_lib.mod stitched_model.mod
 io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-io/run_cards.o: controls_buffer.mod eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
+io/run_cards.o: controls_buffer.mod io_units.mod legacy_controls.mod star_info_lib.mod
 io/run_files.o: io_units.mod legacy_controls.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod run_files.mod star_info_lib.mod

@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! run_setup
 !----------------------------------------------------------------------
-! The setup before the run cards: the physical constants and the
-! microphysics tables (set_up_constants_and_tables), and the Monte-Carlo
-! run range (prepare_run).
+! The setup before the run cards: the run plan's envelope Z, the
+! physical constants and the microphysics tables
+! (set_up_constants_and_tables), and the Monte-Carlo run range
+! (prepare_run).
 module run_setup
       use star_info_lib, only: star_info
       implicit none
@@ -16,10 +17,11 @@ contains
 !----------------------------------------------------------------------
 ! prepare_run (formerly star_setup)
 !----------------------------------------------------------------------
-! The setup step before the run cards: the constants and the table
-! loads (set_up_constants_and_tables, which passes ierr through the
-! kap, eos and atm initializations), then the Monte-Carlo run range and
-! each run's sampled parameters. Errors return through ierr.
+! The setup step before the run cards: the run plan's envelope Z
+! (set_run_plan_envelope_z), the constants and the table loads
+! (set_up_constants_and_tables, which passes ierr through the kap, eos
+! and atm initializations), then the Monte-Carlo run range and each
+! run's sampled parameters. Errors return through ierr.
 !   star reads: none
 !   star writes: none
 subroutine prepare_run(s, ierr)
@@ -31,6 +33,9 @@ subroutine prepare_run(s, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
+! The envelope Z the run plan asks for, which the opacity tables are
+! read for, and the EOS mixture with it.
+      call set_run_plan_envelope_z(s)
 ! Set the constants and read the tables.
       call set_up_constants_and_tables(s, ierr)
       if (ierr /= 0) return
@@ -40,6 +45,30 @@ subroutine prepare_run(s, ierr)
 
       return
 end subroutine prepare_run
+
+! ---------------------------------------------------------------
+! The envelope Z of the run plan: each card with a positive rescale Z
+! sets it (0, the default, keeps it), so the last such card's wins, as
+! PARMIN's did; kap_init reads it, and the EOS mixture takes it with the
+! star's envelope mixture as it stands (the starting model sets both
+! again).
+!   star reads: envelope_hydrogen_fraction,
+!     envelope_inverse_atomic_weight, envelope_number_fractions,
+!     job%num_runs, job%rescale_params
+!   star writes: envelope_metal_fraction
+subroutine set_run_plan_envelope_z(s)
+      use eos_lib, only: eos_set_mixture
+      type(star_info), intent(inout) :: s
+      integer :: n
+
+      do n = 1, s%job%num_runs
+         if (s%job%rescale_params(3,n) > 0.0d0) &
+              s%envelope_metal_fraction = s%job%rescale_params(3,n)
+      end do
+      call eos_set_mixture(s%envelope_hydrogen_fraction, &
+           s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
+           s%envelope_number_fractions)
+end subroutine set_run_plan_envelope_z
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------

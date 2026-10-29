@@ -7,7 +7,6 @@
 module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: terminal_unit, log_line
-      use eos_lib, only: eos_set_mixture
       use legacy_controls, only: numrun, kindrn, nmodls, endage, &
            setdt, end_dcen, end_xcen, end_ycen, rsclm, rsclx, rsclz, rsclcm
       use controls_buffer, only: rescale_kind, rescale_params, first_call_flag, &
@@ -27,7 +26,7 @@ contains
 
 ! ---------------------------------------------------------------
 ! Every card's stop flags and rescale targets, and its line of the run
-! plan; then the envelope mixture for the rescaled Z.
+! plan. (The envelope Z a rescale card asks for is prepare_run's.)
 subroutine interpret_kind_cards(s)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
@@ -45,11 +44,6 @@ subroutine interpret_kind_cards(s)
          if (evolves(n)) call set_stop_flags(n)
          if (rescales(n)) rescale_params(:,n) = [rsclm(n), rsclx(n), rsclz(n), rsclcm(n)]
          call echo_card(n)
-! a positive rescale target sets the envelope Z (0, the default, keeps
-! it), and the eos-side mixture follows it
-         if (rescale_params(3,n) > 0.0_dp) s%envelope_metal_fraction = rescale_params(3,n)
-         call eos_set_mixture(s%envelope_hydrogen_fraction, &
-              s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, s%envelope_number_fractions)
       end do
 end subroutine interpret_kind_cards
 
