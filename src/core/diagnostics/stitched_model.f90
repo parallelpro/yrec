@@ -18,6 +18,7 @@
 ! the output path integrates or stitches anything. compute_observables
 ! reads them too (the turnover time, the seismic observables).
 module stitched_model
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants
       use math_lib
       use star_info_lib, only: json, star_info
@@ -103,7 +104,7 @@ subroutine build_stitched_model(s, ierr)
       integer, intent(out) :: ierr
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
-      double precision :: b, gl, rl, ateffl, plim
+      real(dp) :: b, gl, rl, ateffl, plim
       integer :: ksaha
       logical :: lprt, lsbc0
 
@@ -226,10 +227,10 @@ subroutine compute_seismic_columns(s)
       use math_lib
       type(star_info), intent(inout) :: s
       integer :: j
-      double precision :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
+      real(dp) :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
            lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
            gradr_(max_ext), mass_g(max_ext)
-      double precision :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
+      real(dp) :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
       logical :: mu_ok(max_ext)
 
       mu_ok = .true.
@@ -371,7 +372,7 @@ end function profile_columns
 subroutine extended_point_value(s, icol, j, value, found)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, j
-      double precision, intent(out) :: value
+      real(dp), intent(out) :: value
       logical, intent(out) :: found
       integer :: i
 
@@ -397,7 +398,7 @@ end subroutine extended_point_value
 ! Profile column icol at extended point j, for compute_seismic_columns,
 ! which reads only columns every region has (fill_stitched_arrays
 ! reports any that is missing).
-double precision function ext_profile_value(s, icol, j)
+real(dp) function ext_profile_value(s, icol, j)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, j
       logical :: found
@@ -417,20 +418,20 @@ end function ext_profile_value
 ! pass, which divides the bracket by dr last.
 
 ! Local gravity G*m/r^2 [cgs] from mass [g] and radius [cm].
-double precision function local_gravity_cgs(mass_g, radius_cm)
-      double precision, intent(in) :: mass_g, radius_cm
+real(dp) function local_gravity_cgs(mass_g, radius_cm)
+      real(dp), intent(in) :: mass_g, radius_cm
       local_gravity_cgs = exp(ln10*cgl)*mass_g/(radius_cm*radius_cm)
 end function local_gravity_cgs
 
 ! Sound speed sqrt(Gamma1*P/rho) [cm/s] from Gamma1, log10 P, log10 rho
 ! (profile column 58).
-double precision function sound_speed_cgs(gamma1, log10_p, log10_rho)
-      double precision, intent(in) :: gamma1, log10_p, log10_rho
+real(dp) function sound_speed_cgs(gamma1, log10_p, log10_rho)
+      real(dp), intent(in) :: gamma1, log10_p, log10_rho
       sound_speed_cgs = sqrt(gamma1*exp(ln10*(log10_p - log10_rho)))
 end function sound_speed_cgs
 
 ! Profile column 9: 1 in a convective shell, 0 otherwise.
-double precision function convective_indicator(is_convective)
+real(dp) function convective_indicator(is_convective)
       logical, intent(in) :: is_convective
       if (is_convective) then
          convective_indicator = 1.0d0
@@ -441,7 +442,7 @@ end function convective_indicator
 
 ! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
 ! the total mass).
-double precision function envelope_mass_g(s, i)
+real(dp) function envelope_mass_g(s, i)
       type(star_info), intent(in) :: s
       integer, intent(in) :: i
       envelope_mass_g = exp(ln10*(s%env_points%env_log10_mass(i) + s%log_total_mass))
@@ -449,7 +450,7 @@ end function envelope_mass_g
 
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
-double precision function atmosphere_radius_cm(s, i)
+real(dp) function atmosphere_radius_cm(s, i)
       type(star_info), intent(in) :: s
       integer, intent(in) :: i
       atmosphere_radius_cm = exp(ln10* &
@@ -459,10 +460,10 @@ end function atmosphere_radius_cm
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
 ! gas pressure (compute_blended_eos's own specific-gas-constant identity). Zero
 ! when the inputs cannot support it.
-double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
+real(dp) function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
       use math_lib
       use physical_constants, only: gas_constant
-      double precision, intent(in) :: log10_p, log10_t, log10_rho, beta
+      real(dp), intent(in) :: log10_p, log10_t, log10_rho, beta
       if (beta > 0.0d0) then
          ideal_gas_mu = gas_constant*exp(ln10*(log10_rho + log10_t - log10_p))/beta
       else
@@ -484,7 +485,7 @@ subroutine interior_value(s, icol, k, value, found)
            i_mech_solberg_hoiland
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, k
-      double precision, intent(out) :: value
+      real(dp), intent(out) :: value
       logical, intent(out) :: found
 
       found = .true.
@@ -564,7 +565,7 @@ end subroutine interior_value
 subroutine envelope_value(s, icol, i, value, found)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, i
-      double precision, intent(out) :: value
+      real(dp), intent(out) :: value
       logical, intent(out) :: found
 
       found = .true.
@@ -623,7 +624,7 @@ subroutine atmosphere_value(s, icol, i, value, found)
       use star_info_lib, only: i_h1, i_metals
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, i
-      double precision, intent(out) :: value
+      real(dp), intent(out) :: value
       logical, intent(out) :: found
 
       found = .true.
@@ -680,9 +681,9 @@ subroutine build_pulse_points(s, pts)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
       type(star_info), intent(inout) :: s
-      double precision, intent(out) :: pts(n_pulse_cols, s%stitched%n_ext)
+      real(dp), intent(out) :: pts(n_pulse_cols, s%stitched%n_ext)
       integer :: j, i, k
-      double precision :: r, m, P, T, rho, delta, nab, nab_ad, grav
+      real(dp) :: r, m, P, T, rho, delta, nab, nab_ad, grav
 
       do j = 1, s%stitched%n_ext
          i = s%stitched%index(j)
@@ -882,7 +883,7 @@ subroutine fill_stitched_arrays(s, ierr)
       integer, intent(out) :: ierr
       type(output_column) :: cols(n_prof_cols)
       integer :: j, icol
-      double precision :: value
+      real(dp) :: value
       logical :: found
 
       ierr = 0
