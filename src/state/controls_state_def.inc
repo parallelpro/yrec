@@ -86,7 +86,7 @@
             integer :: max_iter_level2 = 20
             integer :: max_iter_level3 = 2
             double precision :: convergence_tolerance = 0.0d0
-            integer :: max_diffusion_iters = 1
+            integer :: max_diffusion_iters = 10
             double precision :: settling_tolerance = 0.0d0
             integer :: coulomb_log_choice = 0
             integer :: settling_num_iterations = 0

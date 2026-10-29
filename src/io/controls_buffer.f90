@@ -238,7 +238,7 @@ module controls_buffer
 ! and convergence tolerance.
       double precision :: diffusion_timestep_factor = 1.0d-2
       double precision :: convergence_tolerance
-      integer :: num_rotation_structure_iters = 1, max_diffusion_iters = 1
+      integer :: num_rotation_structure_iters = 1, max_diffusion_iters = 10
 
 ! Gravitational settling.
       double precision :: settling_tolerance

@@ -71,7 +71,6 @@ ctrl%chi_grid_scale(12) =  1.00000000000000006E-001
 ctrl%max_iter_level2 = 40
 ctrl%max_iter_level3 = 40
 ctrl%convergence_tolerance =  1.00000000000000005E-004
-ctrl%max_diffusion_iters = 10
 ctrl%settling_tolerance =  1.99999999999999991E-007
 ctrl%coulomb_log_choice = 4
 ctrl%settling_num_iterations = 10

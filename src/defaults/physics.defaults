@@ -213,7 +213,7 @@
 
       ! Rotation diffusion-solve iteration limit (seculr/checkj)
       ! (legacy name: itdif2)
-      max_diffusion_iters = 1
+      max_diffusion_iters = 10
 
       ! (legacy name: igsf)
       gsf_inhibition_mode = 1
