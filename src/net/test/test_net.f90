@@ -64,9 +64,9 @@ program test_net
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
       use reaction_rates, only: nuclear_rates, zone_conditions, &
            compute_zone_conditions
-      use net_configuration, only: num_reactions, num_extra_scales, r_3alpha, &
-           r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings, num_sstandard, &
-           cross_section_scales_from_sstandard
+      use reaction_layout, only: num_reactions, num_extra_scales, r_3alpha, &
+           r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, num_sstandard
+      use net_configuration, only: net_settings, cross_section_scales_from_sstandard
       use network, only: s_c12, s_o16, compute_reaction_rates
       use network_checks, only: write_network_table, network_table_errors, &
            inert_scale_count

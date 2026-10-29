@@ -433,14 +433,14 @@ kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod run_setup.mod s
 math/test/test_math.o: math_lib.mod
 net/light_elements.o: composition_layout.mod math_lib.mod net_configuration.mod physical_constants.mod reaction_rates.mod
 net/net_configuration.o: net_messages.mod reaction_layout.mod
-net/net_lib.o: light_elements.mod net_configuration.mod network.mod network_checks.mod nuclear_energy.mod reaction_rates.mod
+net/net_lib.o: light_elements.mod net_configuration.mod network.mod network_checks.mod nuclear_energy.mod reaction_layout.mod reaction_rates.mod
 net/net_messages.o: io_units.mod
-net/network.o: composition_layout.mod net_configuration.mod numerics_lib.mod physical_constants.mod reaction_rates.mod screening.mod
-net/network_checks.o: net_configuration.mod net_messages.mod network.mod reaction_rates.mod screening.mod
-net/nuclear_energy.o: composition_layout.mod light_elements.mod math_lib.mod net_configuration.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_rates.mod thermal_neutrinos.mod
-net/reaction_rates.o: math_lib.mod net_configuration.mod physical_constants.mod screening.mod
+net/network.o: composition_layout.mod net_configuration.mod numerics_lib.mod physical_constants.mod reaction_layout.mod reaction_rates.mod screening.mod
+net/network_checks.o: net_configuration.mod net_messages.mod network.mod reaction_layout.mod reaction_rates.mod screening.mod
+net/nuclear_energy.o: composition_layout.mod light_elements.mod math_lib.mod net_configuration.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_layout.mod reaction_rates.mod thermal_neutrinos.mod
+net/reaction_rates.o: math_lib.mod net_configuration.mod physical_constants.mod reaction_layout.mod screening.mod
 net/screening.o: math_lib.mod net_configuration.mod physical_constants.mod
-net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod network_checks.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
+net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod network_checks.mod reaction_layout.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/bulirsch_stoer.o: numerics_status.mod
 numerics/cubic_spline.o: numerics_status.mod

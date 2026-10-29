@@ -13,8 +13,8 @@
 ! The tables themselves are network's.
 module network_checks
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use net_configuration, only: num_reactions, net_settings_t, &
-           store_net_settings
+      use reaction_layout, only: num_reactions
+      use net_configuration, only: net_settings_t, store_net_settings
       use screening, only: max_screening_charge
       use reaction_rates, only: shares_rate, s_factor_fit, num_rate_laws
       use network, only: reactions, n_rows, n_solved, n_network, n_chains, &

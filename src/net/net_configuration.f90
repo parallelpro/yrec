@@ -1,30 +1,22 @@
 !----------------------------------------------------------------------
 ! net_configuration
 !----------------------------------------------------------------------
-! The network's layout and the run's settings, in one place:
-!   - the slots of the per-reaction arrays, state/reaction_layout's
-!     (re-exported here for net/'s modules): the reaction slots r_* (1 to
-!     num_reactions), the branching rows rv_* of the composition rate
-!     vector after them (num_rate_rows), the extra cross-section scales
-!     xs_* (num_extra_scales), num_sstandard;
+! The run's settings, and the map of the legacy cross-section vector:
 !   - the settings record net_settings (net_settings_t), the only
 !     configuration net/ reads. The star layer builds it from the
 !     controls and installs it at the start of every Monte-Carlo run
-!     (network_checks' set_net_settings, which checks it first).
-! It also maps the legacy cross-section vector sstandard onto the
-! scales (cross_section_scales_from_sstandard).
+!     (network_checks' set_net_settings, which checks it first);
+!   - cross_section_scales_from_sstandard, the legacy vector sstandard
+!     onto the scales.
+! The slots of the per-reaction arrays (r_*, rv_*, xs_*) are
+! state/reaction_layout's, which net/'s modules use directly.
 module net_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use reaction_layout, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, &
            r_pn14, r_po16, r_ac13, r_ac12, r_an14, r_3alpha, num_reactions, &
-           rv_frac_n15_pa, rv_frac_be7_ecap, num_rate_rows, xs_pep, xs_be7e, &
-           xs_be7p, xs_hep, num_extra_scales, num_sstandard
+           xs_pep, xs_be7e, xs_be7p, xs_hep, num_extra_scales, num_sstandard
       implicit none
       private
-      public :: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
-           r_ac13, r_ac12, r_an14, r_3alpha, num_reactions, rv_frac_n15_pa, &
-           rv_frac_be7_ecap, num_rate_rows, xs_pep, xs_be7e, xs_be7p, xs_hep, &
-           num_extra_scales, num_sstandard
 
 ! The legacy cross-section vector sstandard (17 ratios to Bahcall &
 ! Ulrich 1988; used when use_new_nuclear_rates is off): the reaction
@@ -79,7 +71,7 @@ contains
 
 !----------------------------------------------------------------------
 ! store_net_settings: make settings the run's net_settings, unchecked
-! (network's set_net_settings checks them first and is what the star
+! (network_checks' set_net_settings checks them first and is what the star
 ! layer calls).
 subroutine store_net_settings(settings)
       type(net_settings_t), intent(in) :: settings

@@ -71,10 +71,11 @@ module network
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_h1, i_h2, i_he3, i_he4, i_c12, i_c13, &
            i_n14, i_o16, i_o18
-      use net_configuration, only: r_pp, r_he3he3, r_he3he4, &
+      use reaction_layout, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap, &
-           num_reactions, num_rate_rows, net_settings
+           num_reactions, num_rate_rows
+      use net_configuration, only: net_settings
       use screening, only: num_isotopes, screening_t, iso_h1, iso_h2, &
            iso_he3, iso_he4, iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
       use reaction_rates, only: nuclear_rates, shares_rate, &

@@ -7,8 +7,9 @@
 ! module). It holds no code of its own: it re-exports what the rest of
 ! the code uses from net/'s modules, and nothing more.
 !
-!   net_configuration  the reaction slots and the scale slots, the
-!                      run's settings record, the legacy sstandard map
+!   reaction_layout    (state/) the reaction slots and the scale slots
+!   net_configuration  the run's settings record, the legacy sstandard
+!                      map
 !   network            the rate evaluation, the implicit burn and its
 !                      error codes, the chains, each reaction's reference
 !                      S0
@@ -37,9 +38,10 @@ module net_lib
 ! the per-reaction scales) and the extra cross-section scales (xs_*:
 ! pep, the Be7 captures, hep; num_extra_scales); the legacy sstandard
 ! map
-      use net_configuration, only: num_rate_rows, net_settings_t, &
-           num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
-           r_po16, num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep, &
+      use reaction_layout, only: num_rate_rows, num_reactions, r_pp, &
+           r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
+           num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep
+      use net_configuration, only: net_settings_t, &
            cross_section_scales_from_sstandard
       use network_checks, only: set_net_settings
 ! the values the input S0 of each rate is scaled against (map_user_inputs):

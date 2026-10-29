@@ -28,8 +28,8 @@
 module reaction_rates
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: amu_cgs
-      use net_configuration, only: num_reactions, xs_be7e, xs_be7p, xs_hep, &
-           net_settings
+      use reaction_layout, only: num_reactions, xs_be7e, xs_be7p, xs_hep
+      use net_configuration, only: net_settings
       use screening, only: num_isotopes, screening_t, screening_plasma, &
            compute_composition_moments, compute_screening_plasma, &
            compute_reaction_screening, weak_intermediate_screening, &

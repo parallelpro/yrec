@@ -21,8 +21,9 @@ module nuclear_energy
       use neutrino_flux_layout, only: n_nu_fluxes
       use composition_layout, only: i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, &
            i_be9, i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_metals
-      use net_configuration, only: net_settings, num_reactions, r_pp, &
-           r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
+      use reaction_layout, only: num_reactions, r_pp, r_he3he3, r_he3he4, &
+           r_pc12, r_pn14, r_po16, xs_pep
+      use net_configuration, only: net_settings
       use reaction_rates, only: nuclear_rates, &
            compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor, &
            erg_per_mev, pep_coefficient
