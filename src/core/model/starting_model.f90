@@ -320,7 +320,7 @@ subroutine read_starting_model_file
       else if (format_tag .eq. 'MOD2 ') then
          write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
-! Same header values as read_yrec7 (no ierr).
+! Same header values as read_yrec7.
          call read_model2(s, mixing_length0,timestep_yr,triangle_orientation,iread, &
               core_cz_top_index0,envelope_cz_bottom_index0, &
               use_extended_composition0,rotation_active0, &
@@ -328,7 +328,8 @@ subroutine read_starting_model_file
               disk_locking_active0,instability_transport_active0,ljdot00, &
               alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
               use_pure_z_table0,lsemic0,disk_pressure0, &
-              disk_temperature0,wind_saturation_omega0)
+              disk_temperature0,wind_saturation_omega0, ierr)
+         if (ierr /= 0) return
 
       else
          write(run_log_unit,20)

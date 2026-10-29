@@ -247,3 +247,40 @@ def test_unknown_pulse_format_exits_nonzero(tmp_path):
         f"pulse_format = 'GYR' must exit 1 (got {result.returncode}); "
         f"stdout tail: {result.stdout[-300:]}")
     assert "pulse_format = 'GYR' is not GYRE, FGONG or GSM" in result.stdout, result.stdout[-300:]
+
+
+@pytest.mark.parametrize("damage, needle", [
+    ("zones", "zones, not 1 to 5000"),
+    ("truncated", "cannot read the shells of the starting model"),
+])
+def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
+    """A MODEL2 starting model whose zone count does not fit the star's
+    arrays, or that ends inside its shells, is a clean exit 1 with a
+    message naming the file (model_files' read_model2), where it once
+    wrote past the arrays or ended in a Fortran runtime error."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    model = REPO / "startmodels" / "dbl" / "m1000gs98z018804_Dbl.first"
+    lines = model.read_text().splitlines(keepends=True)
+    assert lines[0].startswith("MOD2")
+    if damage == "zones":
+        lines[0] = lines[0][:13] + f"{99999:8d}" + lines[0][21:]
+    else:
+        lines = lines[:20]
+    bad = tmp_path / "bad.first"
+    bad.write_text("".join(lines))
+    nml1 = tmp_path / NML1
+    text, n = re.subn(r'FFIRST\s*=\s*"[^"]*"', f'FFIRST = "{bad}"', nml1.read_text())
+    assert n == 1
+    nml1.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"a {damage} starting model must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}")
+    assert needle in result.stdout, result.stdout[-300:]
+    assert "bad.first" in result.stdout, result.stdout[-300:]
