@@ -496,11 +496,10 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, paths, ierr)
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(kap_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
-! the LAOL table header's 12-element metal mixture and its 18-element
-! one (read, not used: eos takes the Debye-Hueckel correction's metals
-! from its own envelope mixture, the star its surface mixture from the
-! controls)
-      real(dp) :: laol_header_mixture(12), laol_debye_huckel_z(18)
+! the LAOL table header's 12-element metal mixture (read, not used: the
+! star takes its surface mixture from the controls; the header's
+! Debye-Hueckel mixture stays inside the LAOL reader)
+      real(dp) :: laol_header_mixture(12)
 
       ierr = 0
 ! the interior tables
@@ -517,7 +516,7 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, paths, ierr)
       end if
       if (kap_settings%use_laol89_tables) then
          laol_header_mixture = 0.0d0
-         call read_laol_tables(laol_header_mixture, laol_debye_huckel_z, paths%laol, &
+         call read_laol_tables(laol_header_mixture, paths%laol, &
               paths%laol_z2, ierr)
          if (ierr /= 0) return
          call build_laol_splines

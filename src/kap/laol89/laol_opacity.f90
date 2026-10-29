@@ -41,34 +41,30 @@ contains
 ! ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe), so one read list serves
 ! both. The run-log message "SECOND OPACITY ARRAY TOO LARGE." is
 ! kept verbatim for table 2.
-subroutine read_laol_tables(laol_work_array, laol_debye_huckel_z, laol_table_path, &
+subroutine read_laol_tables(laol_work_array, laol_table_path, &
      laol_table2_path, ierr)
       use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
       integer, intent(out) :: ierr
-! the 18-element metal mixture from the table header (see the read
-! below); the caller hands it to the eos domain (eos_set_debye_huckel_z)
-      real(dp), intent(out) :: laol_debye_huckel_z(18)
       real(dp), intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
 
-!     THE work_array2/zdh2 TWINS OF laol_work_array/laol_debye_huckel_z
-!     are read-list targets for the second table that are never used
-!     AFTERWARDS.
-      real(dp) :: work_array2(12), zdh2(18)
+! work_array2: the second table's Cox & Stewart mixture, read and not
+! used
+      real(dp) :: work_array2(12)
       integer :: ii, ix, ir, it
 
       ierr = 0
       opacity_table%laol(2)%table_number = 2
       call read_laol_table(laol_table_path, opacity_table%laol(1), &
-           laol_work_array, laol_debye_huckel_z, ierr)
+           laol_work_array, ierr)
       if (ierr /= 0) return
 
 ! DBG 4/94 New stuff follows
       if (kap_settings%use_two_z_tables) then
          call read_laol_table(laol_table2_path, opacity_table%laol(2), &
-              work_array2, zdh2, ierr)
+              work_array2, ierr)
          if (ierr /= 0) return
       end if
       return
@@ -78,18 +74,20 @@ contains
 ! read_laol_table: read one LAOL89 table file at `path` into tbl. The
 ! header's Cox & Stewart metal mixture goes to work_array (the
 ! caller's laol_work_array for table 1, a discarded local for table
-! 2) and its 18-element Debye-Huckel mixture to debye_huckel_z.
-subroutine read_laol_table(path, tbl, work_array, debye_huckel_z, ierr)
+! 2); its 18-element mixture for the EOS's Debye-Hueckel correction is
+! read and not kept (eos takes those metals from its own envelope
+! mixture since 2026-10, M37).
+subroutine read_laol_table(path, tbl, work_array, ierr)
       character(len=256), intent(in) :: path
       type(laol_table_set), intent(inout) :: tbl
       real(dp), intent(inout) :: work_array(12)
-      real(dp), intent(out) :: debye_huckel_z(18)
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
 ! runtime-allocated unit for the table (formerly the fixed iolaol =
 ! 61 for table 1, io_units's fixed iolaol2 = 63 for table 2)
       integer :: laol_unit
-!     Zlot/zhit are read-list targets that are never used afterwards.
-      real(dp) :: zlot, zhit
+!     Zlot/zhit and the Debye-Hueckel mixture are read-list targets
+!     that are never used afterwards.
+      real(dp) :: zlot, zhit, debye_huckel_z(18)
 
       open(newunit=laol_unit,file=path, form='FORMATTED', &
            status='OLD')
