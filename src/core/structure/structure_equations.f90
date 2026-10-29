@@ -179,6 +179,7 @@ subroutine add_shell_energy_budget()
             end if
             do chain = 1, n_chains
                j = luminosity_channel_of_chain(chain)
+               if (j == 0) cycle
                s%luminosity_breakdown(j) = s%luminosity_breakdown(j) + &
                     (s%dm(im)/s%solar_luminosity_cgs)* &
                     diag%burn%eps_by_chain(chain)
@@ -324,7 +325,8 @@ end subroutine compute_henyey_coefficients
 ! nuclear_energy_result%eps_by_chain) is stored: its luminosity channel
 ! (star%luminosity_breakdown's i_lum_* slot), and its eps channel
 ! (star%eps_channels' i_eps_* slot; 0 for the alpha captures, which have
-! none).
+! none). A chain without a case here maps to 0 and is left out of the
+! breakdown (eps_total still has it): a new chain needs its case.
 pure integer function luminosity_channel_of_chain(chain)
       use net_lib, only: chain_pp1, chain_pp2, chain_pp3, chain_cno, &
            chain_alpha_capture, chain_triple_alpha
