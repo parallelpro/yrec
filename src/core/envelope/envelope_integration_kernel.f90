@@ -37,8 +37,9 @@ module envelope_integration_kernel
 ! atmosphere integration (atm_step_initial, legacy ATMD0, g/cm^3); the
 ! HSRA offset atm_hras; the fitting mass senv = log10(m_fit/M); tenv,
 ! the log T at which the envelope state is stored for the surface
-! boundary; log10 Lsun; log10 of the total mass in g, the origin of the
-! envelope's mass coordinate log(m/M) (star%log_total_mass); and calc_envelope
+! boundary; log10 Lsun; log10 G (cgs); log10 of the total mass in g, the
+! origin of the envelope's mass coordinate log(m/M) (star%log_total_mass);
+! and calc_envelope
 ! (false: the photosphere only); and the Bulirsch-Stoer controls: the
 ! tolerance fraction (the atmosphere's step tolerance, and the envelope's
 ! stop at tolerance_fraction |senv| of senv), the number of stages and
@@ -50,6 +51,7 @@ module envelope_integration_kernel
             double precision :: env_step_begin, env_step_min, env_step_max
             double precision :: atm_error_tol, env_error_tol, atm_step_initial
             double precision :: atm_hras, senv, tenv, log10_solar_luminosity
+            double precision :: log10_gravitational_constant
             double precision :: log10_total_mass
 ! the outer shell's composition (star%xa layout), for the EOS's
 ! Debye-Hueckel correction
@@ -88,10 +90,11 @@ module envelope_integration_kernel
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
             integer :: saha_state = 0
 ! the T(tau) relation of the atmosphere integration (cfg%atm_choice,
-! gray after a failed Allard lookup), its HSRA offset, and log10 of the
-! total mass in g
+! gray after a failed Allard lookup), its HSRA offset, log10 of the
+! total mass in g, and log10 G (cgs)
             integer :: atm_choice = 0
             double precision :: atm_hras = 0.0d0, log10_total_mass = 0.0d0
+            double precision :: log10_gravitational_constant = 0.0d0
             double precision :: surface_composition(n_species_extended) = 0.0d0
 ! the atmosphere integration's current point, which the atmosphere
 ! integrand writes (copied in and out around each step), and the
@@ -125,7 +128,8 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%log10_total_mass, self%surface_composition, self%pt, ierr)
+              self%log10_total_mass, self%log10_gravitational_constant, &
+              self%surface_composition, self%pt, ierr)
       end if
 end subroutine equation_derivatives
 
@@ -617,7 +621,7 @@ subroutine store_atmosphere_gradients()
 ! with 10^cdelrl = 3/(64 pi sigma), L = luminosity_linear Lsun and M the
 ! total mass. The gradient is grad_rad where grad_rad <= grad_ad + 1e-6,
 ! and grad_ad above.
-       pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl+cfg%log10_solar_luminosity-cgl+ &
+       pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl+cfg%log10_solar_luminosity-cfg%log10_gravitational_constant+ &
               cdelrl))*temperature_rotation_factor/pressure_rotation_factor
        if (pulse_radiative_gradient-pt%qdela .le. 1.0d-6) then
          pulse_gradient = pulse_radiative_gradient
@@ -706,7 +710,8 @@ subroutine start_envelope_integration()
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-           cfg%log10_total_mass, cfg%surface_composition, pt, jerr)
+           cfg%log10_total_mass, cfg%log10_gravitational_constant, &
+           cfg%surface_composition, pt, jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -866,7 +871,8 @@ subroutine take_envelope_step()
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-              cfg%log10_total_mass, cfg%surface_composition, pt, jerr)
+              cfg%log10_total_mass, cfg%log10_gravitational_constant, &
+              cfg%surface_composition, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
@@ -1011,6 +1017,7 @@ subroutine load_equations(atmosphere)
       equations%atm_choice = cfg%atm_choice
       equations%atm_hras = cfg%atm_hras
       equations%log10_total_mass = cfg%log10_total_mass
+      equations%log10_gravitational_constant = cfg%log10_gravitational_constant
       equations%surface_composition = cfg%surface_composition
       equations%atm_point = atm_point
       equations%pt = pt

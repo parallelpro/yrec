@@ -46,7 +46,7 @@ subroutine zone_moments_of_inertia(eta_squared, log_radius, log_mass, shell_mass
            rotation_param, eta_squared_zone, moment_of_inertia_per_mass, &
            di_domega_per_mass
 
-      rotation_param_const = cc13*5.0d0/exp(ln10*cgl)
+      rotation_param_const = cc13*5.0d0/exp(ln10*rotation_settings%log10_gravitational_constant)
 ! An imposed convection-zone law: spherical shells, and a sphere for
 ! zone 1 (mean_zone_radius is log10 r there).
       if (rotation_settings%cz_rotation_law_exponent.ne.0.0d0) then

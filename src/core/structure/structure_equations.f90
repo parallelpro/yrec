@@ -110,8 +110,8 @@ end subroutine start_energy_bookkeeping
 
 ! ---------------------------------------------------------------
 ! The settings every shell shares: the time step, the burning cutoff,
-! log Teff (spots), the turnover time (the deuterium cap), ln10/Lsun and
-! the rotation switch.
+! log Teff (spots), the turnover time (the deuterium cap), ln10/Lsun,
+! the rotation switch and log10 G.
 subroutine set_structure_settings()
       cfg%dt = delta_time
       cfg%burning_log_temperature_cutoff = s%ctrl%nuclear_logT_cutoffs(1)
@@ -119,6 +119,7 @@ subroutine set_structure_settings()
       cfg%turnover_timescale = s%convective_turnover_timescale
       cfg%ln10_over_lsun = s%ln10_over_lsun
       cfg%rotation_active = s%ctrl%rotation_active
+      cfg%log10_gravitational_constant = cgl
 end subroutine set_structure_settings
 
 ! ---------------------------------------------------------------

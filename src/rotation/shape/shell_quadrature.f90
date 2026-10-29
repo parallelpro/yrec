@@ -15,6 +15,7 @@
 module shell_quadrature
       use composition_layout, only: json
       use physical_constants
+      use rotation_configuration, only: rotation_settings
       use math_lib
       implicit none
       private
@@ -174,7 +175,7 @@ subroutine equipotential_integrand(colatitude, local_gravity, area_element, r0, 
       const = c4pi*cc13/(r2*r2)
 ! dPsi/dr = G m/r^2 - (4 pi/3) P2 (3 aint - r q qr0r)/r^4
 !           - omega^2 r sin^2(theta).
-      qphir = exp(ln10*(cgl+log_mass(i)))/r2 - const*p2*(3.0d0*aint &
+      qphir = exp(ln10*(rotation_settings%log10_gravitational_constant+log_mass(i)))/r2 - const*p2*(3.0d0*aint &
            - r*q*qr0r) - w2*r*ss
 ! (1/r) dPsi/dtheta = (4 pi/3)(P2 q qr0t - 3 aint cos(theta) sin(theta))/r^4
 !                     - omega^2 r cos(theta) sin(theta).

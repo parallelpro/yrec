@@ -30,6 +30,7 @@
 ! differences of these terms.
 module shell_equations
       use composition_layout, only: i_h1, i_metals, n_species_extended
+      use physical_constants, only: log10_newton_g_default
       use eos_lib, only: eos_result, eos_get
       use kap_lib, only: kap_get, num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
@@ -76,8 +77,8 @@ module shell_equations
 ! The settings the shells share: the time step dt (s; zero or negative
 ! means no time derivatives), the log T above which nuclear burning is
 ! computed, the model's log Teff (the depth-varying spot contrast), the
-! convective turnover time (s, the deuterium cap), ln10/Lsun, and
-! whether the star rotates.
+! convective turnover time (s, the deuterium cap), ln10/Lsun, whether
+! the star rotates, and log10 G (cgs).
       type :: structure_settings
          double precision :: dt = 0.0d0
          double precision :: burning_log_temperature_cutoff = 0.0d0
@@ -85,6 +86,7 @@ module shell_equations
          double precision :: turnover_timescale = 0.0d0
          double precision :: ln10_over_lsun = 0.0d0
          logical :: rotation_active = .false.
+         double precision :: log10_gravitational_constant = log10_newton_g_default
       end type structure_settings
 
 ! The shell's values for output: the eos density, whether the shell is
@@ -212,7 +214,7 @@ subroutine form_radius_pressure_temperature_terms()
 ! The rotation factors fp and ft are held fixed. A legacy variant
 ! subtracted their radius derivatives (legacy QFPR, QFTR):
 ! qp_dr = -qp (4 - QFPR), qt_dr = -qt (4 - QFTR).
-       qp =-exp(ln10*(cgl + sh%log_mass + sh%log_mass - &
+       qp =-exp(ln10*(cfg%log10_gravitational_constant + sh%log_mass + sh%log_mass - &
             sh%log_pressure - qtemp - sh%log_radius ))*sh%fp
        terms%qp_dr = -qp - qp - qp - qp
        terms%qp_dp = -qp

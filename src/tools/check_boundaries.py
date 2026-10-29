@@ -269,6 +269,27 @@ def check_star_blind(src_root):
     return problems
 
 
+# log10 G (2026-10-29): physical_constants' cgl is the star layer's
+# (run_setup sets it from the control G_cgs). The physics domains, rotation
+# and the star-blind kernels take it from their settings records
+# (log10_gravitational_constant), so they give the right answer without
+# run_setup having run.
+GLOBAL_G_RE = re.compile(r"(?i)(?<![\w%])cgl\b")
+
+def check_no_global_g(src_root):
+    problems = []
+    files = set(STAR_BLIND_FILES)
+    for d in STAR_FREE_DIRS + sorted(CONTROLS_FREE_DIRS):
+        files |= {f.relative_to(src_root).as_posix() for f in (src_root / d).rglob("*.f90")
+                  if "/test/" not in f.relative_to(src_root).as_posix()}
+    for rel in sorted(files):
+        code = strip_comments((src_root / rel).read_text(errors="replace"))
+        if GLOBAL_G_RE.search(code):
+            problems.append(f"{rel}: reads physical_constants' cgl (take log10 G from "
+                            "the settings record)")
+    return problems
+
+
 # Physics domains whose code may not touch the star object (2026-10):
 # their state comes in as arguments and their configuration as a
 # settings record (net: net_lib's net_settings, filled by the star
@@ -695,6 +716,13 @@ def main():
     if blind_problems:
         print("STAR-BLIND CONTRACT VIOLATIONS:")
         for b in blind_problems:
+            print("  " + b)
+        return 1
+
+    g_problems = check_no_global_g(SRC)
+    if g_problems:
+        print("GLOBAL-G CONTRACT VIOLATIONS (physical_constants' cgl):")
+        for b in g_problems:
             print("  " + b)
         return 1
 

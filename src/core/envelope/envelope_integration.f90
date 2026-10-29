@@ -97,6 +97,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! replace the star%job%{atm,env}_step_* triples for this call only
 ! (the drivers that used to overwrite and restore star%job).
       use envelope_integration_kernel
+      use physical_constants, only: cgl
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -158,6 +159,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%senv = s%log_fit_point_mass_fraction
       cfg%tenv = s%envelope_store_log_temperature
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
+      cfg%log10_gravitational_constant = cgl
       cfg%calc_envelope = s%ctrl%calc_envelope_flag
       cfg%tolerance_fraction = s%ctrl%tolerance_fraction
       cfg%max_stage_index = s%ctrl%max_stage_index

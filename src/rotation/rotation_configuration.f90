@@ -11,6 +11,7 @@ module rotation_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_he3, n_species_basic, n_species_extended
       use transport_mechanism_layout, only: n_transport_mechanisms
+      use physical_constants, only: log10_newton_g_default
       implicit none
       private
       public :: rotation_settings_t, rotation_settings, set_rotation_settings, &
@@ -125,6 +126,8 @@ module rotation_configuration
 ! arrays, and its log10; the radius (cm) and the mass (g)
          real(dp) :: solar_luminosity_cgs = 0.0d0, log10_solar_luminosity = 0.0d0
          real(dp) :: solar_radius_cgs = 0.0d0, solar_mass_cgs = 0.0d0
+! log10 G (cgs): the control G_cgs, or the CODATA 1986 value
+         real(dp) :: log10_gravitational_constant = log10_newton_g_default
       end type rotation_settings_t
 
       type(rotation_settings_t), save :: rotation_settings

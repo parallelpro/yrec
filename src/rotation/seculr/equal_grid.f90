@@ -137,7 +137,7 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
          four_pi_rho_r2 = c4pi*exp(ln10*(log_density(ii)+2.0d0*log_radius(ii)))
          dchi_dr = four_pi_rho_r2/(ln10*mass_scale*enclosed_mass(ii))+ &
               four_pi_rho_r2*epsm(ii)/luminosity_scale+ &
-              exp(ln10*(cgl+log_density(ii)+log_mass(ii)-log_pressure(ii)- &
+              exp(ln10*(rotation_settings%log10_gravitational_constant+log_density(ii)+log_mass(ii)-log_pressure(ii)- &
               2.0d0*log_radius(ii)))/(ln10*pressure_scale)
          table_y(i) = log_density(ii) + log10(dchi_dr) + 2.0d0*log_radius(ii)
       end do

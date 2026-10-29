@@ -46,10 +46,13 @@ module physical_constants
 ! rounded to five decimals (G = 6.67252e-8); the value unless the
 ! control G_cgs sets another (log10_newton_g)
       double precision, parameter :: log10_newton_g_default = -7.17571d0
-! log10 G for the run, set by run_setup (former common/const2/; the
-! star-free domains take it from their settings records: convection's
-! log10_gravitational_constant)
-      double precision :: cgl
+! log10 G for the run: the default until run_setup sets it from the
+! control G_cgs (former common/const2/). Only the star layer reads it;
+! the domains and the star-blind kernels take log10 G from their
+! settings records (log10_gravitational_constant: convection's,
+! rotation's, the envelope kernel's and the shell equations'), and
+! tools/check_boundaries.py keeps them off this variable.
+      double precision :: cgl = log10_newton_g_default
 
 ! ---- named physical constants (2026 readability sweep) ----
 ! Each keeps exactly the literal value of the site it replaced; the

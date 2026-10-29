@@ -79,7 +79,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 ! jmax = k, the result is always the j = 2 extrapolation (Simpson's
 ! rule); the eps test cannot change it.
       b_coefficient = 0.125d0*c4pi
-      newton_g = exp(ln10*cgl)
+      newton_g = exp(ln10*rotation_settings%log10_gravitational_constant)
       eps = 1.0d-6
       jmax = 2
       k = 2
@@ -143,7 +143,7 @@ subroutine rotation_shape_factors(log_density, log_radius, log_mass, num_points,
 ! f0 = log10(4 pi r_psi^4 / (S <1/g>)); fp and ft as in the header.
          ginv = log10(ginv0)
          f0 = c4pil + 4.0d0*log_radius(i) - ginv
-         pressure_rotation_factor(i) = exp(ln10*(f0 - cgl - log_mass(i)))
+         pressure_rotation_factor(i) = exp(ln10*(f0 - rotation_settings%log10_gravitational_constant - log_mass(i)))
          temperature_rotation_factor(i) = exp(ln10*(f0 + c4pil))/g0
 ! This zone becomes the inner edge of the next shell.
          prev_aint = aint
@@ -207,7 +207,7 @@ subroutine shape(log_density, log_radius, log_mass, zone_start, zone_end, &
 ! its derivative with respect to r0^3, 1 + c3 A^2 - c4 A^3.
       tolerance = rotation_settings%shape_tolerance
       if (present(shape_tolerance)) tolerance = shape_tolerance
-      cg = exp(ln10*cgl)
+      cg = exp(ln10*rotation_settings%log10_gravitational_constant)
       c1 = 0.6d0
       c2 = 2.0d0/3.5d1
       c3 = 3.0d0*c1

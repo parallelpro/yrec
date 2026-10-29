@@ -555,7 +555,7 @@ subroutine compute_quadrupole(stab, &
          density_omega2(zone_index) = exp(ln10*log_density(zone_index))* &
               angular_velocity(zone_index)**2
       end do
-      four_pi_g = exp(ln10*(c4pil+cgl))
+      four_pi_g = exp(ln10*(c4pil+rotation_settings%log10_gravitational_constant))
 ! The derivatives are centred, with dr the smaller of the left and right
 ! intervals dr_minus, dr_plus and weights w_plus = dr/dr_plus,
 ! w_minus = dr/dr_minus:

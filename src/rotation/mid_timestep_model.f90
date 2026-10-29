@@ -498,7 +498,7 @@ subroutine settle_helium()
          total_mass=exp(ln10*log_total_mass)
          do zone_idx = 1,num_zones
             dlnp_dr_settling(zone_idx)=-exp(ln10*(log_density(zone_idx)+ &
-                 cgl+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
+                 rotation_settings%log10_gravitational_constant+log_mass(zone_idx)-2.0d0*log_radius(zone_idx)- &
                  log_pressure(zone_idx)))
          end do
 ! The settling step is limited only when the outer boundary lies above

@@ -445,7 +445,7 @@ rotation/evolve_rotation.o: am_regions.mod burn_step.mod convection_geometry.mod
 rotation/magnetic_braking.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod
 rotation/mid_timestep_model.o: am_regions.mod burn_step.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/omega_profile.o: composition_layout.mod math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod
-rotation/rotation_configuration.o: composition_layout.mod transport_mechanism_layout.mod
+rotation/rotation_configuration.o: composition_layout.mod physical_constants.mod transport_mechanism_layout.mod
 rotation/rotation_messages.o: io_units.mod numerics_lib.mod run_log.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
 rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod
@@ -461,13 +461,13 @@ rotation/seculr/transport_checks.o: io_units.mod omega_profile.mod rotation_conf
 rotation/seculr/transport_mechanisms.o: composition_layout.mod instability_velocities.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod transport_mechanism_layout.mod
 rotation/shape/moments_of_inertia.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/shape/rotating_shape.o: composition_layout.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod shell_quadrature.mod
-rotation/shape/shell_quadrature.o: composition_layout.mod math_lib.mod physical_constants.mod
-rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotation_settings_setup.mod rotational_mixing.mod shell_quadrature.mod stability_coefficients.mod star_info_lib.mod viscosity.mod
+rotation/shape/shell_quadrature.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
+rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotation_settings_setup.mod rotational_mixing.mod shell_quadrature.mod stability_coefficients.mod star_info_lib.mod viscosity.mod
 rotation/test/test_rotation_kernels.o: am_grid.mod am_transport_coefficients.mod circulation.mod composition_layout.mod equal_grid.mod instability_velocities.mod magnetic_braking.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod region_transport.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod transport_mechanism_layout.mod transport_mechanisms.mod transport_regions.mod
 rotation/viscosity.o: composition_layout.mod math_lib.mod physical_constants.mod
 setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod star_info_lib.mod
 setup/net_settings_setup.o: net_lib.mod star_info_lib.mod
-setup/rotation_settings_setup.o: controls_buffer.mod magnetic_braking.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
+setup/rotation_settings_setup.o: controls_buffer.mod magnetic_braking.mod physical_constants.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
 setup/user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod
 state/physical_constants.o: math_lib.mod

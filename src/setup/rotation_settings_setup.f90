@@ -27,7 +27,7 @@ contains
 !     ctrl%disk_locking_active, ctrl%disk_locking_age_gyr,
 !     ctrl%disk_omega_rad_s, ctrl%es_mixing_scale,
 !     ctrl%es_velocity_scale, ctrl%force_solid_body_rotation,
-!     ctrl%gsf_inhibition_mode, ctrl%gsf_mixing_scale,
+!     ctrl%G_cgs, ctrl%gsf_inhibition_mode, ctrl%gsf_mixing_scale,
 !     ctrl%gsf_velocity_scale, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%instability_transport_active,
 !     ctrl%itfp1, ctrl%itfp2, ctrl%lovstm, ctrl%lvfc,
@@ -53,6 +53,7 @@ contains
 !   star writes: none
 function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
+      use physical_constants, only: log10_newton_g
       use controls_buffer, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
       use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
            i_mech_shear, i_mech_solberg_hoiland
@@ -142,6 +143,7 @@ function rotation_settings_from_star(s) result(settings)
       settings%log10_solar_luminosity = s%log10_solar_luminosity
       settings%solar_radius_cgs = s%solar_radius_cgs
       settings%solar_mass_cgs = s%solar_mass_cgs
+      settings%log10_gravitational_constant = log10_newton_g(s%ctrl%G_cgs)
 end function rotation_settings_from_star
 
 end module rotation_settings_setup

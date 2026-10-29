@@ -158,7 +158,7 @@ program test_rotation_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: json
       use rotation_configuration, only: rotation_settings
-      use physical_constants, only: cgl, log10_radius_from_l_teff
+      use physical_constants, only: log10_radius_from_l_teff
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
@@ -198,9 +198,8 @@ program test_rotation_kernels
       integer :: i, failures
 
       failures = 0
-! G and the settings the shape and the wind laws read (the controls'
-! defaults where a run would take them).
-      cgl = -7.17571d0
+! The settings the shape and the wind laws read (the controls' defaults
+! where a run would take them; log10 G is the record's default).
       rotation_settings%shape_outer_iterations = 5
       rotation_settings%shape_inner_iterations = 20
       rotation_settings%shape_tolerance = 1.0d-36
@@ -1282,7 +1281,7 @@ subroutine stability_check()
            expect, got
       integer :: k, i
       rotation_settings%solar_luminosity_cgs = lsun
-      gconst = 10.0d0**cgl
+      gconst = 10.0d0**rotation_settings%log10_gravitational_constant
       do k = 1, n
          x = r(k)/rsun
          lp(k) = poly(x, [17.2d0, -3.0d0, 1.5d0, -2.0d0])

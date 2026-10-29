@@ -171,7 +171,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, log10_total_mass, composition, pt, ierr)
+     saha_state, log10_total_mass, log10_gravitational_constant, composition, pt, ierr)
 
       use convection_lib, only: compute_temperature_gradients
       use eos_lib
@@ -193,6 +193,8 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       integer, intent(inout) :: saha_state
 ! log10_total_mass: log10 M (g), the origin of y(1) = log(m/M).
       double precision, intent(in) :: log10_total_mass
+! log10_gravitational_constant: log10 G (cgs).
+      double precision, intent(in) :: log10_gravitational_constant
 ! composition: the outer shell's composition, for the EOS's
 ! Debye-Hueckel correction.
       double precision, intent(in) :: composition(:)
@@ -241,7 +243,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
          return
       end if
 ! Hydrostatic equilibrium: d log m / d log P = -4 pi r^4 P / (G m^2 f_P).
-      dydx(1) = -exp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-cgl- &
+      dydx(1) = -exp(ln10*(c4pil+4.0d0*log10_radius+log10_pressure-log10_gravitational_constant- &
            log10_mass-log10_mass))/pressure_rotation_factor
 ! d log T / d log P = grad.
       dydx(2) = actual_gradient
@@ -250,7 +252,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
 ! Thomas 1970). (The legacy qenv multiplied by f_P instead, which broke
 ! mass continuity by a factor f_P^2 in rotating envelopes; bugsweep
 ! 2026.)
-      dydx(3) = -exp(ln10*(log10_pressure+log10_radius-cgl-log10_mass- &
+      dydx(3) = -exp(ln10*(log10_pressure+log10_radius-log10_gravitational_constant-log10_mass- &
            eos_res%log10_density))/pressure_rotation_factor
 ! Store the point for the kernel: the structure variables (log m as
 ! log(m/M)),

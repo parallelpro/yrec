@@ -135,7 +135,7 @@ subroutine rotation_stability_setup(stab, sub_physics, &
       do zone_idx = interior_begin,interior_end
          call lagrange_weights(zone_idx-2, zone_idx)
       end do
-      grav_const = exp(ln10*cgl)
+      grav_const = exp(ln10*rotation_settings%log10_gravitational_constant)
       do zone_idx = interior_begin,interior_end
          call interpolate_to_interface(zone_idx-2, zone_idx)
       end do
