@@ -180,6 +180,15 @@ STAR_BLIND_FILES = [
     "rotation/seculr/region_transport.f90",
     # the mechanisms' velocities, slot by slot (2026-10-28)
     "rotation/seculr/transport_mechanisms.f90",
+    # the equation of state's solvers and interpolators (2026-10-29;
+    # test_eos): the blend, the mixture, the Yale, SCV, OPAL and MHD EOS
+    "eos/blended_eos.f90",
+    "eos/eos_mixture.f90",
+    "eos/yale/yale_eos.f90",
+    "eos/scv/scv_eos.f90",
+    "eos/opal/opal_eos.f90",
+    "eos/opal/opal95_eos.f90",
+    "eos/mhd/mhd_eos.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their
