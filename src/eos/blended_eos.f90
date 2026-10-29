@@ -23,6 +23,7 @@ module blended_eos
            radiation_constant_over_3
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, mean_weights_from_density, &
+           inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings, opal_vintage_none
       use math_lib
@@ -31,11 +32,6 @@ module blended_eos
       private
       public :: compute_blended_eos, blend_eos
 
-! 1/A of H and He (the H and He excesses of 1/mu_ion, and 1/mu_e's H
-! term), 1/A of C, and the electrons per nucleon of He and the metals,
-! Z/A = 1/2 (0.4995 = 2/4.004)
-      real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, &
-           0.08322d0, 0.4995d0]
 
 contains
 
@@ -332,14 +328,14 @@ subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
                  metal_weight_excess*eos_mix%number_fractions(species_idx)
          end do
          h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
-              inverse_atomic_weights(1)
+              inverse_a_hydrogen
          ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
          do species_idx = ix_o, ix_ne
             ion_mean_weight_inverse = ion_mean_weight_inverse + &
                  metal_weight_excess*eos_mix%number_fractions(species_idx)
          end do
          y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
+              hydrogen_fraction - metal_fraction)*inverse_a_helium
          ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
          if (.not. need_saha_solution) return
          metal_number_scale = metal_ratio*eos_mix%inverse_atomic_weight/ion_mean_weight_inverse
@@ -389,8 +385,8 @@ end subroutine zone_mixture
 subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
       real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction
       type(eos_result), intent(inout) :: r
-      r%electron_mean_weight_inverse = hydrogen_fraction*inverse_atomic_weights(1) &
-           + (1.0d0 - hydrogen_fraction)*inverse_atomic_weights(4)
+      r%electron_mean_weight_inverse = hydrogen_fraction*inverse_a_hydrogen &
+           + (1.0d0 - hydrogen_fraction)*electrons_per_nucleon_metals
       r%specific_gas_constant = gas_constant*(r%ion_mean_weight_inverse + &
            r%electron_mean_weight_inverse)
       r%ion_fraction(1) = 1.0d0

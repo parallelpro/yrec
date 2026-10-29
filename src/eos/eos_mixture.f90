@@ -51,6 +51,15 @@ module eos_mixture
 
       public :: ion_mean_weight_excess, compute_mean_weights, mean_weights_from_density
 
+! The composition terms' constants (EQSTAT's ATOMWT): 1/A of H, He and
+! C [1/amu] (0.9921 ~ 1/1.008, 0.24975 = 1/4.004, 0.08322 ~ 1/12.015),
+! for the zone's excess H, He and metals (the metals counted as carbon)
+! over the envelope mixture, and the electrons per nucleon of fully
+! ionized He and metals, Z/A = 1/2 (0.4995 = 2/4.004), for 1/mu_e
+      real(dp), parameter, public :: inverse_a_hydrogen = 0.9921d0, &
+           inverse_a_helium = 0.24975d0, inverse_a_carbon = 0.08322d0, &
+           electrons_per_nucleon_metals = 0.4995d0
+
 contains
 
 ! ion_mean_weight_excess: the inverse ion mean molecular weight of a
@@ -68,9 +77,6 @@ pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
       real(dp), intent(in) :: x, z
       real(dp), intent(out) :: mu_ion_inv, dfx1, dfx12, dfx4
       logical, intent(out) :: use_envelope
-! inverse_atomic_weights: 1/A for H, He and C(12), and Z/A = 1/2 of He
-! and the metals (blend_eos's 1/mu_e; unused here)
-      real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0]
 
 ! Set up fractional abundances
       dfx1 = (x - eos_mix%envelope_hydrogen_fraction)
@@ -80,10 +86,10 @@ pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
 ! Use envelope abundances
          mu_ion_inv = eos_mix%inverse_atomic_weight
       else
-         dfx1 = dfx1*inverse_atomic_weights(1)
-         dfx12 = dfx12*inverse_atomic_weights(3)
+         dfx1 = dfx1*inverse_a_hydrogen
+         dfx12 = dfx12*inverse_a_carbon
          dfx4 = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              x - z)*inverse_atomic_weights(2)
+              x - z)*inverse_a_helium
 ! Assume excess Z(metals) is in the form of carbon(12)
          mu_ion_inv = eos_mix%inverse_atomic_weight + dfx1 + dfx4 + dfx12
       end if
