@@ -33,7 +33,7 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `moments_of_inertia` | `zone_moments_of_inertia`: I and dI/dω per zone (Law 1980). |
 | `shell_quadrature` | The two quadratures of the distortion integral. |
 | **seculr/** | |
-| `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear. |
+| `instability_velocities` | The velocity of each transport mechanism, as star-blind kernels: the Eddington–Sweet circulation and its μ-gradient inhibition, the GSF instability, the secular and dynamical shear, and the Solberg–Høiland instability. |
 | `transport_mechanisms` | `compute_mechanism_velocity`: one slot's mechanism, its kernel called with what it reads from the interface record (star-blind). The slots, with each mechanism's name, the slot it corrects and its two controls, are `state/transport_mechanism_layout`'s. |
 | `transport_regions` | `next_transport_region`: the runs of interfaces where the total velocity U is positive. |
 | `region_transport` | `diffuse_region_angular_momentum`: one region's angular momentum diffusion over a sub-step, on its grid: the system, its solve and the map back to j/m (star-blind). |
@@ -90,7 +90,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - the Kawaler law's ω exponents below and above saturation;
 - the wind's spin-down against the analytic laws (exponential when saturated, Ω₀(1 + 2KΩ₀²t)^(-1/2) below), with the error falling as 1/N² in N calls, the implicit midpoint rule's order;
 - the angular momentum diffusion against its eigenmodes: the cosine modes are the implicit step's eigenvectors exactly, and the decay converges to the continuum's exp(−κ(π/L)²t) as h² in space and dt in time;
-- the instability velocities: U_ES and U_GSF ~ ω², no shear term and no GSF for a solid body, the μ-gradient factor between 1/2 and 1, no shear velocity for a solid body or below the secular threshold, a quadratic shear onset above it, and a μ gradient's stabilization;
+- the instability velocities: U_ES and U_GSF ~ ω², no shear term and no GSF for a solid body, the μ-gradient factor between 1/2 and 1, no shear velocity for a solid body or below the secular threshold, a quadratic shear onset above it, and a μ gradient's stabilization; the Solberg–Høiland criterion N² + κ² ≥ 0 on single interfaces (a solid body and a uniform j stable, Ω ~ r⁻⁴ unstable with its velocity, a μ gradient's stabilization, Ω reversed, convective pairs skipped) and, on a grid of N_T, N_μ, Ω and dΩ/d ln r, that it is unstable only where the shear is dynamical, with U_SH ≤ U_DSI;
 - the region scan on a synthetic U profile;
 - the transport grid and the map back: equally spaced chi points, grid masses that add up to the region's, J conserved in a redistribution and a surface loss taken within 1e-5, the convection zone below the region taking its first change;
 - one region's transport (`diffuse_region_angular_momentum`): J conserved without a wind while j moves, the wind's surface term taken within 1e-5, a solid body unchanged; and the wind's terms for it (`outer_point_wind_terms`) in each case: below the surface, disk-locked, braked, no torque;

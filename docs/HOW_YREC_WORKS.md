@@ -485,6 +485,17 @@ interpolated in both directions with edge-validity bookkeeping
   the large value U = (8/45) K (|dΩ/d ln r| / limit)²/r, with the limit the
   |dΩ/d ln r| at Ri = 1/4. It goes into the same implicit diffusion solve,
   and the code prints "DYNAMICAL SHEAR-SHELL" for each such interface.
+- **Solberg–Høiland** (the third dynamical instability of Pinsonneault
+  1988, with convection and the dynamical shear; off unless
+  `solberg_hoiland_velocity_scale` is set, 2026-10). An axisymmetric
+  adiabatic displacement in the equatorial plane is stable while
+  N² + κ² ≥ 0, κ² = 4Ω² + 2Ω dΩ/d ln r, with N² = N_T² + N_μ², N_T the
+  dynamical shear's limit over 2 and N_μ² the secular shear's μ term.
+  Since N² + 4Ω² ≥ 4 N_T |Ω|, an interface unstable to it is always
+  dynamically shear-unstable as well: it can only add a velocity
+  U_SH = (8/45) K (|dΩ/d ln r|/q_SH)²/r ≤ U_DSI, q_SH = (N² + 4Ω²)/(2|Ω|),
+  where the dynamical shear already acts. MESA's D_SH (D_SH_factor,
+  default 0) is its counterpart.
 - **μ-gradient inhibition of the circulation** (Maeder & Zahn 1998): U_ES
   carries 1/Δ, Δ = ∇_ad − ∇, and a μ gradient should replace Δ by
   Δ + ∇_μ (∇_μ = d ln μ/d ln P). The code multiplies U_ES by

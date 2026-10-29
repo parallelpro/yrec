@@ -29,7 +29,8 @@ contains
 !     ctrl%pmm_solar_turnover_timescale, ctrl%scale_by_b_field,
 !     ctrl%scale_by_rossby_number, ctrl%secular_shear_mixing_scale,
 !     ctrl%secular_shear_velocity_scale,
-!     ctrl%settling_timestep_fraction, ctrl%solid_body_mode_flag,
+!     ctrl%settling_timestep_fraction, ctrl%solberg_hoiland_mixing_scale,
+!     ctrl%solberg_hoiland_velocity_scale, ctrl%solid_body_mode_flag,
 !     ctrl%use_constant_background_diffusion,
 !     ctrl%use_diffusion_advection_transport, ctrl%use_pmm_wind_law,
 !     ctrl%walpcz, ctrl%wind_law_omega_exponent, job%acfpft,
@@ -45,7 +46,7 @@ function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       use controls_buffer, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
       use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
-           i_mech_shear
+           i_mech_shear, i_mech_solberg_hoiland
       type(star_info), intent(in) :: s
       type(rotation_settings_t) :: settings
 
@@ -63,6 +64,7 @@ function rotation_settings_from_star(s) result(settings)
       settings%velocity_scale(i_mech_eddington_sweet) = s%ctrl%es_velocity_scale
       settings%velocity_scale(i_mech_gsf) = s%ctrl%gsf_velocity_scale
       settings%velocity_scale(i_mech_shear) = s%ctrl%secular_shear_velocity_scale
+      settings%velocity_scale(i_mech_solberg_hoiland) = s%ctrl%solberg_hoiland_velocity_scale
       settings%critical_reynolds = s%ctrl%critical_reynolds
       settings%gsf_inhibition_mode = s%ctrl%gsf_inhibition_mode
       settings%use_zahn_coupling_factor = s%ctrl%lvfc
@@ -71,6 +73,7 @@ function rotation_settings_from_star(s) result(settings)
       settings%mixing_scale(i_mech_eddington_sweet) = s%ctrl%es_mixing_scale
       settings%mixing_scale(i_mech_gsf) = s%ctrl%gsf_mixing_scale
       settings%mixing_scale(i_mech_shear) = s%ctrl%secular_shear_mixing_scale
+      settings%mixing_scale(i_mech_solberg_hoiland) = s%ctrl%solberg_hoiland_mixing_scale
       settings%use_constant_background_diffusion = s%ctrl%use_constant_background_diffusion
       settings%constant_background_diffusion_coeff = s%ctrl%constant_background_diffusion_coeff
       settings%use_diffusion_advection_transport = s%ctrl%use_diffusion_advection_transport

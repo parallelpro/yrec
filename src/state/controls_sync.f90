@@ -223,6 +223,8 @@ subroutine seed_controls_buffer(s)
       es_mixing_scale = s%ctrl%es_mixing_scale
       secular_shear_mixing_scale = s%ctrl%secular_shear_mixing_scale
       gsf_mixing_scale = s%ctrl%gsf_mixing_scale
+      solberg_hoiland_velocity_scale = s%ctrl%solberg_hoiland_velocity_scale
+      solberg_hoiland_mixing_scale = s%ctrl%solberg_hoiland_mixing_scale
       gsf_inhibition_mode = s%ctrl%gsf_inhibition_mode
       min_abundance = s%ctrl%min_abundance
       absolute_tolerance = s%ctrl%absolute_tolerance
@@ -596,6 +598,8 @@ subroutine store_controls_to_star(s)
       s%ctrl%es_mixing_scale = es_mixing_scale
       s%ctrl%secular_shear_mixing_scale = secular_shear_mixing_scale
       s%ctrl%gsf_mixing_scale = gsf_mixing_scale
+      s%ctrl%solberg_hoiland_velocity_scale = solberg_hoiland_velocity_scale
+      s%ctrl%solberg_hoiland_mixing_scale = solberg_hoiland_mixing_scale
       s%ctrl%gsf_inhibition_mode = gsf_inhibition_mode
       s%ctrl%min_abundance = min_abundance
       s%ctrl%absolute_tolerance = absolute_tolerance

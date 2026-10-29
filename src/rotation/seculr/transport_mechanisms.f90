@@ -16,11 +16,12 @@
 module transport_mechanisms
       use composition_layout, only: json
       use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
-           i_mech_shear, n_transport_mechanisms
+           i_mech_shear, i_mech_solberg_hoiland, n_transport_mechanisms
       use rotation_configuration, only: rotation_settings
       use rotation_scratch_lib, only: stability_state, substep_physics_state
       use instability_velocities, only: compute_eddington_sweet_velocity, &
-           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
+           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities, &
+           compute_solberg_hoiland_velocity
       use rotation_messages, only: rotation_note, message_length, unwritten_line
       implicit none
       private
@@ -41,7 +42,9 @@ contains
 !                           then inhibited by the mu gradient;
 !   i_mech_gsf              U_GSF (Kippenhahn), with its inhibition;
 !   i_mech_shear            the secular and dynamical shear, which also
-!                           corrects U_GSF where both act.
+!                           corrects U_GSF where both act;
+!   i_mech_solberg_hoiland  the Solberg-Hoiland instability, which can
+!                           act only where the shear is dynamical.
 ! A slot outside 1..n_transport_mechanisms does nothing.
 subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physics, &
      omega, log_pressure, am_transport_convective_flag, mechanism_velocity)
@@ -91,6 +94,14 @@ subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physic
          end do
  9911    format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
               ' WBOT',e11.3,' LIMIT',e11.3)
+      case (i_mech_solberg_hoiland)
+         call compute_solberg_hoiland_velocity(zone_min, zone_max, &
+              am_transport_convective_flag, stab%domega_dlnr, &
+              stab%dynamical_shear_omega_limit, sub_physics%mu, &
+              stab%mean_molecular_weight_interface, stab%omega_interface, &
+              stab%radius_interface, stab%thermal_diffusivity_interface, &
+              stab%mu_gradient_richardson_coeff, &
+              mechanism_velocity(i_mech_solberg_hoiland,:))
       end select
 end subroutine compute_mechanism_velocity
 

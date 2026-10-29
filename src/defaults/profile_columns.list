@@ -61,6 +61,7 @@ omega                     ! angular velocity (rad/s)
 !v_es
 !v_gsf
 !v_ss
+!v_sh                      ! Solberg-Hoiland velocity [cm/s] (0 unless solberg_hoiland_velocity_scale is set)
 !cp                        ! specific heat at constant P
 !delta                     ! -dlnRho/dlnT
 !mu                        ! mean molecular weight

@@ -4,7 +4,8 @@
 ! The velocities of the rotational instabilities at the interfaces of a
 ! transport region (interface i lies between zones i-1 and i): the
 ! Eddington-Sweet circulation and its inhibition by the mu gradient, the
-! GSF instability, and the secular and dynamical shear instabilities.
+! GSF instability, the secular and dynamical shear instabilities, and
+! the Solberg-Hoiland instability.
 ! Star-blind kernels (tools/check_boundaries.py STAR_BLIND_FILES): every
 ! input is an argument, from circulation_velocities, which interpolates
 ! the structure to the interfaces, and rotation_stability_setup, which
@@ -15,7 +16,8 @@ module instability_velocities
       implicit none
       private
       public :: compute_eddington_sweet_velocity, inhibit_by_mu_gradient, &
-           compute_gsf_velocity, compute_shear_velocities
+           compute_gsf_velocity, compute_shear_velocities, &
+           compute_solberg_hoiland_velocity
 
 ! The GSF velocity's mu-gradient inhibition is ignored where its limit
 ! is below gsf_mu_negligible_fraction of |d omega/d ln r| or below
@@ -399,6 +401,73 @@ pure subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, 
          end if
       end do
 end subroutine compute_shear_velocities
+
+! ---------------------------------------------------------------
+! The Solberg-Hoiland instability velocity U_SH (cm/s) at the interfaces
+! zone_min..zone_max: one of the three dynamical instabilities of
+! Pinsonneault (1988, section II.E.1), with convection and the dynamical
+! shear. An axisymmetric adiabatic displacement in the equatorial plane
+! feels buoyancy and the centrifugal restoring force together, and the
+! interface is stable while (Wasiutynski 1946)
+!   N^2 + kappa^2 >= 0,
+!   kappa^2 = r^-3 d(r^2 omega)^2/dr = 4 omega^2 + 2 omega d omega/d ln r,
+! kappa being the epicyclic frequency. N^2 = N_T^2 + N_mu^2 takes its
+! thermal part from the dynamical shear's limit, N_T =
+! dynamical_shear_omega_limit/2 (where Ri = 1/4, with the same floor of
+! the margin grad_ad - grad), and its mu part from the secular shear's
+! mu Richardson term, N_mu^2 = mu_gradient_richardson_coeff |Delta
+! mu/mu|. The interface is unstable where the specific angular momentum
+! falls outward fast enough: omega d omega/d ln r < 0 with
+!   |d omega/d ln r| > q_SH = (N^2 + 4 omega^2)/(2 |omega|).
+! Since N^2 + 4 omega^2 >= 4 N_T |omega| (equality at N_T = 2 |omega|),
+! q_SH >= 2 N_T = dynamical_shear_omega_limit: an interface unstable
+! here is dynamically shear-unstable too (compute_shear_velocities),
+! which is why the thesis found the instability "of secondary
+! importance". The velocity has the dynamical shear's form with this
+! instability's own limit,
+!   U_SH = (8/45) K (|d omega/d ln r|/q_SH)^2/r,
+! no larger than the dynamical shear's at the same interface.
+! Interfaces with convective zones on both sides are skipped; the others
+! get U_SH, zero where stable. domega_dlnr, the dynamical-shear limit
+! and mu_gradient_richardson_coeff as in compute_shear_velocities; mu
+! at the zone centres; the mean mu, omega (rad/s), the radius r (cm)
+! and the thermal diffusivity K at the interfaces.
+pure subroutine compute_solberg_hoiland_velocity(zone_min, zone_max, &
+     am_transport_convective_flag, domega_dlnr, dynamical_shear_omega_limit, mu, &
+     mean_molecular_weight_interface, omega_interface, radius_interface, &
+     thermal_diffusivity_interface, mu_gradient_richardson_coeff, &
+     solberg_hoiland_velocity)
+      use math_lib
+      implicit none
+      integer, intent(in) :: zone_min, zone_max
+      logical, intent(in) :: am_transport_convective_flag(:)
+      double precision, intent(in) :: domega_dlnr(:), dynamical_shear_omega_limit(:), &
+           mu(:), mean_molecular_weight_interface(:), omega_interface(:), &
+           radius_interface(:), thermal_diffusivity_interface(:), &
+           mu_gradient_richardson_coeff(:)
+      double precision, intent(inout) :: solberg_hoiland_velocity(:)
+      integer :: i
+! N^2, kappa^2 (s^-2) and q_SH (rad/s)
+      double precision :: buoyancy, epicyclic, qsh
+      do i = zone_min,zone_max
+         if (am_transport_convective_flag(i).and. &
+              am_transport_convective_flag(i-1)) cycle
+         solberg_hoiland_velocity(i) = 0.0d0
+! N^2 >= N_T^2 >= 0, so an unstable interface has omega /= 0 and q_SH > 0.
+         buoyancy = 0.25d0*dynamical_shear_omega_limit(i)**2 + &
+              max(0.0d0, mu_gradient_richardson_coeff(i)* &
+              abs((mu(i)-mu(i-1))/mean_molecular_weight_interface(i)))
+         epicyclic = 4.0d0*omega_interface(i)**2 + &
+              2.0d0*omega_interface(i)*domega_dlnr(i)
+         if (buoyancy + epicyclic .lt. 0.0d0) then
+            qsh = (buoyancy + 4.0d0*omega_interface(i)**2)/ &
+                 (2.0d0*abs(omega_interface(i)))
+            solberg_hoiland_velocity(i) = 8.0d0/4.5d1* &
+                 thermal_diffusivity_interface(i)* &
+                 (abs(domega_dlnr(i))/qsh)**2/radius_interface(i)
+         end if
+      end do
+end subroutine compute_solberg_hoiland_velocity
 
 ! ---------------------------------------------------------------
 ! The GSF velocity's gradient term (Kippenhahn 1980) across an interface

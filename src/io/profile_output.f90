@@ -112,6 +112,7 @@ subroutine profile_column_names(names)
       names(59) = 'D_omega'
       names(60) = 'D_mix_rot'
       names(61) = 'eps_extra'
+      names(62) = 'v_sh'
 end subroutine profile_column_names
 
 ! ---------------------------------------------------------------

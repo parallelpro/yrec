@@ -180,6 +180,12 @@
       ! (legacy name: fgsfc)
       gsf_mixing_scale = 1.0d0
 
+      ! Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor)
+      solberg_hoiland_velocity_scale = 0.0d0
+
+      ! Rotational mixing: the Solberg-Hoiland instability's mixing efficiency
+      solberg_hoiland_mixing_scale = 1.0d0
+
       ! Gravitational settling multiplier for helium (microdiff)
       ! (legacy name: fgry)
       settling_y_factor = 1.0d0

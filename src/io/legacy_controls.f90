@@ -275,6 +275,7 @@ module legacy_controls
            &    enverr, envmax, envmin, envbeg, envstp,etadh0,etadh1, &
            &    fcorr0, fcorri, fk,  fw, fc, fo, fmu, fes, &
            &    fcore, fgsf, fss, fesc, fssc, fgsfc, fgry, fgrz, &
+           &    solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
            &    grtol, &
            &    htoler, hpttol, &
            &    itfp1, itfp2, imax, itdif1, itdif2, ies, igsf, imu, ilambda, &

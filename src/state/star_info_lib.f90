@@ -92,7 +92,7 @@ module star_info_lib
 
 ! The transport-mechanism slots: transport_mechanism_layout.
       public :: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
-           n_transport_mechanisms, transport_mechanism_name
+           i_mech_solberg_hoiland, n_transport_mechanisms, transport_mechanism_name
 ! The neutrino-flux slots: neutrino_flux_layout.
       public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17, i_nu_he3he3, i_nu_he3he4, n_nu_fluxes

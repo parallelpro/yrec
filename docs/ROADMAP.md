@@ -2247,3 +2247,26 @@ settling fix, on the 50 self-contained decks of the set.
   4. The constant-j law (walpcz <= -2) spins a convection zone's base
      beyond break-up once a small radiative core forms (O25's variant
      stops at 1.67 Myr): physics for the authors.
+
+### rotation/ Stage E: the Solberg-Hoiland instability (yrec-next, 2026-10-28)
+
+Asked for the full list of hydrodynamic mechanisms against
+Pinsonneault's thesis (section II.E: convection, Solberg-Hoiland and
+the dynamical shear; Eddington-Sweet, GSF and the secular shear), the
+2025 code lacked Solberg-Hoiland. Added as the fourth transport slot,
+following the rotation README's recipe: the kernel
+`compute_solberg_hoiland_velocity`, its dispatcher case, the controls
+`solberg_hoiland_velocity_scale` (default 0, off) and
+`solberg_hoiland_mixing_scale` (1), and the opt-in profile column v_sh.
+With the shear's own N, its threshold is never below the
+dynamical-shear limit, so it acts only where the dynamical shear does
+(docs/ROTATION_VALIDATION.md section 5): off, the 50 self-contained
+decks are byte-identical; on, 23 of the 26 rotating decks are, and the
+three with the most dynamical shear move by at most 3.1e-4 dex in log
+L. Seven kernel checks, each confirmed by a mutation (eight mutations,
+all caught). The thesis's other exclusions stay out: ABCD and the triply
+diffusive instability (no diffusion coefficient; YREC's GSF note equates
+ABCD with the uninhibited GSF, its default), Schatzman's turbulent
+diffusion, magnetic fields. The thesis's mu currents (eqs. 14-16) were
+replaced by the Maeder & Zahn (1998) inhibition in 2002 (MHP 06/02).
+

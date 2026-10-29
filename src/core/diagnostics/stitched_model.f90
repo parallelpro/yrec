@@ -35,7 +35,7 @@ module stitched_model
            ipul_mu_e_inv, ipul_h1, ipul_z, ipul_species_base, &
            ipul_eps_grav, ipul_gyre_last
 
-      integer, parameter :: n_prof_cols = 61
+      integer, parameter :: n_prof_cols = 62
       integer, parameter :: n_pulse_cols = 35
 ! Named pulse-column indices (2026 audit, section 8: the pts(35,*)
 ! map was bare numbers in every writer -- reverse-engineered once
@@ -455,7 +455,8 @@ double precision function profile_value(s, icol, k)
            i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
            i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, &
            i_o17, i_o18
-      use star_info_lib, only: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
+      use star_info_lib, only: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
+           i_mech_solberg_hoiland
       type(star_info), intent(inout) :: s
       integer, intent(in) :: icol, k
 
@@ -521,6 +522,7 @@ double precision function profile_value(s, icol, k)
       case (59); profile_value = s%am_diffusion_coeff(k)
       case (60); profile_value = s%mixing_diffusion_coeff(k)
       case (61); profile_value = s%eps_extra(k)
+      case (62); profile_value = s%mechanism_velocity(i_mech_solberg_hoiland,k)
       case default
          profile_value = 0.0d0
       end select

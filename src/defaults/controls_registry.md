@@ -213,6 +213,8 @@ assignment before the namelist read; pinned by -finit-local-zero).
 | `fesc` | real | `0.0*` | **`es_mixing_scale`** | canonical |  |  |
 | `fssc` | real | `0.0*` | **`secular_shear_mixing_scale`** | canonical |  |  |
 | `fgsfc` | real | `0.0*` | **`gsf_mixing_scale`** | canonical |  |  |
+| `solberg_hoiland_velocity_scale` | real | `0.0d0` | **`solberg_hoiland_velocity_scale`** | keep |  | Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor) |
+| `solberg_hoiland_mixing_scale` | real | `1.0d0` | **`solberg_hoiland_mixing_scale`** | keep |  | Rotational mixing: the Solberg-Hoiland instability's mixing efficiency |
 | `fgry` | real | `0.0*` | **`settling_y_factor`** | todo |  | TODO verify: gravitational settling factor (Y) |
 | `fgrz` | real | `0.0*` | **`settling_z_factor`** | todo |  | TODO verify: gravitational settling factor (Z) |
 | `grtol` | real | `0.0*` | **`settling_tolerance`** | canonical |  | former common/gravst/: all 4 members are NAMELIST /physics/ values, each with a different canonical spelling t |

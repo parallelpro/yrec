@@ -38,6 +38,13 @@ velocities: shear onset quadratic (ratio 4)              1.92E-14  ok
 velocities: a mu gradient stabilizes the shear           0.00E+00  ok
 velocities: the dynamical correction lowers U_GSF        0.00E+00  ok
 velocities: the inner omega at the limit lies between    0.00E+00  ok
+velocities: Solberg-Hoiland, solid body stable           0.00E+00  ok
+velocities: Solberg-Hoiland, uniform j stable            0.00E+00  ok
+velocities: Solberg-Hoiland, omega ~ r^-4 unstable       0.00E+00  ok
+velocities: Solberg-Hoiland, a mu gradient stabilizes    0.00E+00  ok
+velocities: Solberg-Hoiland, omega reversed              0.00E+00  ok
+velocities: Solberg-Hoiland skips convective pairs       0.00E+00  ok
+velocities: Solberg-Hoiland only where dynamical         0.00E+00  ok
 regions: (2,4), (6,7), (8,12), then none                 0.00E+00  ok
 grids: chi points equally spaced, end to end             1.48E-15  ok
 grids: the grid masses add up to the region's            0.00E+00  ok

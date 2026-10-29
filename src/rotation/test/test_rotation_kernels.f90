@@ -69,6 +69,15 @@
 !                where the shear is dynamical, its correction lowers
 !                U_GSF even when the trigger's centred gradient exceeds
 !                the plain difference quotient (zones uneven in ln r);
+!                Solberg-Hoiland (N^2 + kappa^2 >= 0, kappa^2 = 4 omega^2
+!                + 2 omega d omega/d ln r): a solid body and a uniform j
+!                stable; omega ~ r^-4 with N_T = omega unstable, with
+!                U_SH = (8/45) K (|d omega/d ln r|/q_SH)^2/r, q_SH = (N^2
+!                + 4 omega^2)/(2 |omega|); the same made stable by a mu
+!                gradient; the same with omega reversed; a pair of
+!                convective zones skipped; and on a grid of N_T, N_mu,
+!                omega and d omega/d ln r, every unstable interface also
+!                dynamically shear-unstable, U_SH no larger than U_DSI;
 !   regions      next_transport_region on a synthetic U: the regions
 !                (2,4), (6,7) and (8,12), then none;
 !   grids        on the region of zones 6..40, whose first zone is the
@@ -154,7 +163,8 @@ program test_rotation_kernels
       use magnetic_braking, only: brake_convection_zone, outer_point_wind_terms
       use region_transport, only: diffuse_region_angular_momentum
       use instability_velocities, only: compute_eddington_sweet_velocity, &
-           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
+           inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities, &
+           compute_solberg_hoiland_velocity
       use transport_regions, only: next_transport_region
       use transport_mechanisms, only: compute_mechanism_velocity
       use transport_mechanism_layout, only: n_transport_mechanisms, transport_mechanism_corrects
@@ -171,6 +181,9 @@ program test_rotation_kernels
 
       integer, parameter :: n = 60
       real(dp), parameter :: rsun = 6.9598d10
+! solberg_hoiland_check's interface: its radius (cm), thermal
+! diffusivity (cm^2/s), and the value the kernel leaves where it skips
+      real(dp), parameter :: sh_radius = 1.0d10, sh_diffusivity = 1.0d7, sh_unset = -1.0d0
       real(dp) :: log_rho(json), log_r(json), log_m(json), dm(json), r(json), &
            rho(json), f
       logical :: convective(json)
@@ -212,6 +225,7 @@ program test_rotation_kernels
       call decay_checks()
       call velocity_checks()
       call dynamical_shear_check()
+      call solberg_hoiland_check()
       call region_check()
       call grid_checks()
       call radiative_end_checks()
@@ -720,6 +734,105 @@ subroutine dynamical_shear_check()
       end do
       call report("velocities: the inner omega at the limit lies between", dble(bad), 0.0d0)
 end subroutine dynamical_shear_check
+
+! ---------------------------------------------------------------
+! compute_solberg_hoiland_velocity (see the header) on one interface
+! (2, between zones 1 and 2) at a time (solberg_hoiland_at), r = 1e10
+! cm, K = 1e7 cm^2/s, omega = 1e-5 rad/s; N_T = omega unless stated, so
+! the dynamical-shear limit is 2 omega.
+subroutine solberg_hoiland_check()
+      real(dp), parameter :: w0 = 1.0d-5
+      real(dp) :: u, expected, q, n2, nt, nmu2, w, dw, ush, udsi
+      logical :: dyn
+      integer :: a, b, c, d, bad, unstable
+      real(dp), parameter :: nts(4) = [1.0d-6, 1.0d-5, 3.0d-5, 1.0d-4], &
+           nmus(3) = [0.0d0, 1.0d-11, 1.0d-9], ws(4) = [3.0d-7, 3.0d-6, 1.0d-5, 6.0d-5], &
+           slopes(9) = [-50.0d0, -12.0d0, -6.0d0, -4.0d0, -2.5d0, -1.0d0, 0.0d0, 2.0d0, 8.0d0]
+! a solid body; a uniform j (d omega/d ln r = -2 omega: kappa = 0)
+      u = solberg_hoiland_at(w0, 0.0d0, w0, 0.0d0, .false.)
+      call report("velocities: Solberg-Hoiland, solid body stable", abs(u), 0.0d0)
+      u = solberg_hoiland_at(w0, -2.0d0*w0, w0, 0.0d0, .false.)
+      call report("velocities: Solberg-Hoiland, uniform j stable", abs(u), 0.0d0)
+! omega ~ r^-4: kappa^2 = -4 omega^2, N^2 = omega^2, unstable
+      u = solberg_hoiland_at(w0, -4.0d0*w0, w0, 0.0d0, .false.)
+      q = (w0**2 + 4.0d0*w0**2)/(2.0d0*w0)
+      expected = 8.0d0/45.0d0*sh_diffusivity*(4.0d0*w0/q)**2/sh_radius
+      call report("velocities: Solberg-Hoiland, omega ~ r^-4 unstable", &
+           abs(u/expected - 1.0d0), 1.0d-14)
+! the same, stabilized by N_mu^2 = 4 omega^2 (N^2 + kappa^2 = omega^2)
+      u = solberg_hoiland_at(w0, -4.0d0*w0, w0, 4.0d0*w0**2, .false.)
+      call report("velocities: Solberg-Hoiland, a mu gradient stabilizes", abs(u), 0.0d0)
+! omega and its gradient reversed: the same U_SH
+      u = solberg_hoiland_at(-w0, 4.0d0*w0, w0, 0.0d0, .false.)
+      call report("velocities: Solberg-Hoiland, omega reversed", &
+           abs(u/expected - 1.0d0), 1.0d-14)
+! a pair of convective zones: not treated (U_SH left as it was)
+      u = solberg_hoiland_at(w0, -4.0d0*w0, w0, 0.0d0, .true.)
+      call report("velocities: Solberg-Hoiland skips convective pairs", &
+           abs(u - sh_unset), 0.0d0)
+! the grid: the criterion decides, and unstable here implies dynamically
+! shear-unstable, with U_SH <= U_DSI
+      bad = 0
+      unstable = 0
+      do a = 1, size(nts)
+         do b = 1, size(nmus)
+            do c = 1, size(ws)
+               do d = 1, size(slopes)
+                  nt = nts(a); nmu2 = nmus(b); w = ws(c); dw = slopes(d)*w
+                  ush = solberg_hoiland_at(w, dw, nt, nmu2, .false.)
+                  n2 = nt**2 + nmu2
+                  if ((n2 + (4.0d0*w**2 + 2.0d0*w*dw) < 0.0d0) .neqv. (ush > 0.0d0)) &
+                       bad = bad + 1
+                  if (ush <= 0.0d0) cycle
+                  unstable = unstable + 1
+                  call dynamical_shear_at(w, dw, nt, udsi, dyn)
+                  if (.not. dyn .or. ush > udsi) bad = bad + 1
+               end do
+            end do
+         end do
+      end do
+! (enough grid points unstable for the implication to say something)
+      if (unstable < 10) bad = bad + 1
+      call report("velocities: Solberg-Hoiland only where dynamical", dble(bad), 0.0d0)
+end subroutine solberg_hoiland_check
+
+! U_SH at interface 2 for omega, d omega/d ln r, N_T and N_mu^2 (the
+! dynamical-shear limit 2 N_T; mu falling outward, 0.70 to 0.60, with
+! the mu Richardson term set to give N_mu^2), r = sh_radius and K =
+! sh_diffusivity; sh_unset if the kernel leaves the interface alone.
+real(dp) function solberg_hoiland_at(omega, domega, n_t, n_mu2, convective)
+      real(dp), intent(in) :: omega, domega, n_t, n_mu2
+      logical, intent(in) :: convective
+      real(dp) :: v(2), om(2), dwl(2), limit(2), m(2), mm(2), ri(2), k(2), rc(2)
+      logical :: conv(2)
+      m = [0.70d0, 0.60d0]; mm = 0.65d0
+      om = omega; dwl = domega; limit = 2.0d0*n_t
+      rc = n_mu2/abs((m(2) - m(1))/mm(2))
+      ri = sh_radius; k = sh_diffusivity; conv = convective; v = sh_unset
+      call compute_solberg_hoiland_velocity(2, 2, conv, dwl, limit, m, mm, om, ri, k, rc, v)
+      solberg_hoiland_at = v(2)
+end function solberg_hoiland_at
+
+! compute_shear_velocities on the same interface: U_SS and whether it
+! is dynamical (the dynamical branch reads d omega/d ln r and the limit;
+! the zones' omega, positive, only enter its correction of U_GSF).
+subroutine dynamical_shear_at(omega, domega, n_t, velocity, dynamical)
+      real(dp), intent(in) :: omega, domega, n_t
+      real(dp), intent(out) :: velocity
+      logical, intent(out) :: dynamical
+      real(dp) :: rr(2), wz(2), dwv(2), lim(2), mu(2), mui(2), rint(2), visc(2), &
+           kt(2), rich(2), uss(2), gsf(2), dynw(2)
+      logical :: dyn(2)
+      rr = [0.9d0*sh_radius, 1.1d0*sh_radius]
+      wz = [1.2d0*abs(omega), abs(omega)]
+      dwv = domega; lim = 2.0d0*n_t; mu = 0.6d0; mui = 0.6d0; rint = sh_radius
+      visc = 1.0d0; kt = sh_diffusivity; rich = 0.0d0; uss = 0.0d0; gsf = 1.0d0
+      dyn = .false.; dynw = 0.0d0
+      call compute_shear_velocities(2, 2, 1.0d3, rr, wz, dwv, lim, mu, mui, rint, visc, &
+           kt, rich, uss, gsf, dyn, dynw)
+      velocity = uss(2)
+      dynamical = dyn(2)
+end subroutine dynamical_shear_at
 
 ! ---------------------------------------------------------------
 ! next_transport_region on U = (0, 0, 1, 1, 0, 0, 2, 0, 3, 3, 3, 3) at
@@ -1242,8 +1355,9 @@ subroutine mechanism_slot_check()
          phys%qdt(k) = poly(x, [-1.0d0, -0.1d0, 0.0d0, 0.0d0])
          phys%eps_total(k) = poly(x, [5.0d0, -4.0d0, 1.0d0, 0.5d0])
          phys%cp(k) = poly(x, [3.0d8, 1.5d8, 3.0d7, -1.5d7])
-! a uniform mu, so that no mu gradient stabilizes the shear: all three
-! mechanisms act somewhere
+! a uniform mu, so that no mu gradient stabilizes the shear: the first
+! three mechanisms act somewhere (omega rises outward, so
+! Solberg-Hoiland is stable everywhere and writes zeros)
          phys%mu(k) = 0.62d0
          w(k) = 3.0d-5*(1.0d0 + 2.0d0*x**2)
          conv(k) = .false.
@@ -1277,7 +1391,7 @@ subroutine mechanism_slot_check()
             if (any(v(row, 1:n) /= sentinel)) mismatches = mismatches + 1
          end do
       end do
-! every mechanism wrote its own slot (here all three act somewhere)
+! every mechanism wrote its own slot
       if (written /= n_transport_mechanisms) mismatches = mismatches + 1
       call report("mechanisms: each writes its slot and what it corrects", dble(mismatches), 0.0d0)
       mismatches = 0

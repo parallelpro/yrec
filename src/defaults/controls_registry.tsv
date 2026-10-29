@@ -160,6 +160,8 @@ physics	fss	real	secular_shear_velocity_scale	canonical
 physics	fesc	real	es_mixing_scale	canonical		
 physics	fssc	real	secular_shear_mixing_scale	canonical		
 physics	fgsfc	real	gsf_mixing_scale	canonical		
+physics	solberg_hoiland_velocity_scale	real	solberg_hoiland_velocity_scale	keep		Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor)
+physics	solberg_hoiland_mixing_scale	real	solberg_hoiland_mixing_scale	keep		Rotational mixing: the Solberg-Hoiland instability's mixing efficiency
 physics	fgry	real	settling_y_factor	verified		Gravitational settling multiplier for helium (microdiff)
 physics	fgrz	real	settling_z_factor	verified		Gravitational settling multiplier for metals (microdiff)
 physics	grtol	real	settling_tolerance	canonical		Gravitational settling: solver tolerance

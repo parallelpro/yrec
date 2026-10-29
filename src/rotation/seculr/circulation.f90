@@ -40,9 +40,12 @@ contains
 !  - i_mech_gsf, the GSF instability (Kippenhahn 1980), optionally
 !    inhibited by viscosity and mu gradients;
 !  - i_mech_shear, the secular shear instability, or the dynamical one
-!    where Ri < 1/4 (Endal & Sofia 1978).
-! The Eddington-Sweet and GSF velocities are skipped at interfaces with
-! convective zones on both sides. From the second iteration on, each
+!    where Ri < 1/4 (Endal & Sofia 1978);
+!  - i_mech_solberg_hoiland, the Solberg-Hoiland instability, which can
+!    act only where the shear is dynamical (off unless
+!    solberg_hoiland_velocity_scale is set).
+! The Eddington-Sweet, GSF and Solberg-Hoiland velocities are skipped at
+! interfaces with convective zones on both sides. From the second iteration on, each
 ! velocity is averaged with the previous iteration's. Their sum is
 ! total_velocity (legacy HV); any_transport_active is set if
 ! it is positive anywhere. With no_am_transport_in_core the velocities
@@ -167,10 +170,12 @@ end subroutine interpolate_to_interfaces
 ! Multiply each mechanism's velocity by its efficiency factor
 ! (rotation_settings%velocity_scale: the controls es_velocity_scale,
 ! gsf_velocity_scale and secular_shear_velocity_scale, legacy FES, FGSF,
-! FSS). The mu-gradient inhibition is already applied. A velocity is a
-! magnitude, so the product is taken in absolute value (it always was for
-! U_ES; the GSF and shear velocities are positive, and every shipped deck
-! sets the scales to 1).
+! FSS, and solberg_hoiland_velocity_scale). The mu-gradient inhibition
+! is already applied. A velocity is a magnitude, so the product is taken
+! in absolute value (it always was for U_ES; the other velocities are
+! positive). Every shipped deck sets the first three scales to 1; the
+! Solberg-Hoiland scale is 0 unless set, which leaves the sum of the
+! other three unchanged bit for bit.
 subroutine apply_velocity_scales()
       do i = zone_min,zone_max
          do m = 1, n_transport_mechanisms

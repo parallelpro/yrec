@@ -20,17 +20,17 @@ module transport_mechanism_layout
       implicit none
       private
       integer, parameter, public :: i_mech_eddington_sweet = 1, i_mech_gsf = 2, &
-           i_mech_shear = 3, n_transport_mechanisms = 3
+           i_mech_shear = 3, i_mech_solberg_hoiland = 4, n_transport_mechanisms = 4
       character(len=16), parameter, public :: &
            transport_mechanism_name(n_transport_mechanisms) = &
-           [character(len=16) :: 'Eddington-Sweet', 'GSF', 'shear']
+           [character(len=16) :: 'Eddington-Sweet', 'GSF', 'shear', 'Solberg-Hoiland']
       integer, parameter, public :: &
-           transport_mechanism_corrects(n_transport_mechanisms) = [0, 0, i_mech_gsf]
+           transport_mechanism_corrects(n_transport_mechanisms) = [0, 0, i_mech_gsf, 0]
       character(len=32), parameter, public :: &
            transport_mechanism_velocity_scale_control(n_transport_mechanisms) = &
            [character(len=32) :: 'es_velocity_scale', 'gsf_velocity_scale', &
-           'secular_shear_velocity_scale'], &
+           'secular_shear_velocity_scale', 'solberg_hoiland_velocity_scale'], &
            transport_mechanism_mixing_scale_control(n_transport_mechanisms) = &
            [character(len=32) :: 'es_mixing_scale', 'gsf_mixing_scale', &
-           'secular_shear_mixing_scale']
+           'secular_shear_mixing_scale', 'solberg_hoiland_mixing_scale']
 end module transport_mechanism_layout

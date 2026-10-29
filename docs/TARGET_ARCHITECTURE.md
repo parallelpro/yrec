@@ -332,7 +332,7 @@ end interface
 ```
 
 - **The interface state is built once per Picard iteration.** Today it is assembled across `mid_timestep_model`, `rotation_stability_setup`, `rezone` and `mix`.
-- **Each mechanism returns diffusion coefficients directly.** The existing mechanisms (Eddington–Sweet, GSF, secular shear, dynamical shear) each convert their velocity to D inside their own routine, using today's formula from `diffusion_velocity_scales`.
+- **Each mechanism returns diffusion coefficients directly.** The existing mechanisms (Eddington–Sweet, GSF, secular shear, dynamical shear, Solberg–Høiland) each convert their velocity to D inside their own routine, using today's formula from `diffusion_velocity_scales`.
 - **The solver takes only the summed `nu_am` and `d_mix` arrays.** Transport regions are found from D > 0, not from the summed velocity.
 - **The control logic lives in the rotation stage driver,** not inside the physics or the solver:
   - sub-stepping, with a criterion that includes D·Δt/Δr² as well as ΔΩ;

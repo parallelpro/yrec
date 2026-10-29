@@ -149,6 +149,8 @@
             double precision :: es_mixing_scale = 0.0d0
             double precision :: secular_shear_mixing_scale = 0.0d0
             double precision :: gsf_mixing_scale = 0.0d0
+            double precision :: solberg_hoiland_velocity_scale = 0.0d0
+            double precision :: solberg_hoiland_mixing_scale = 1.0d0
             integer :: gsf_inhibition_mode = 0
             double precision :: min_abundance = 0.0d0
             double precision :: absolute_tolerance = 0.0d0

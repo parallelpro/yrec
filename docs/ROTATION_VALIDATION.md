@@ -2,7 +2,9 @@
 
 How rotation/ is checked beyond the pinned decks: against analytic
 solutions and physical laws (unit tests), in its sub-step (a
-convergence study), against another code (MESA), and by line coverage.
+convergence study), against another code (MESA), and by line coverage;
+and why the Solberg-Hoiland instability, added in 2026, is off by
+default.
 Measured on yrec-next, 2026-10-28.
 
 ## 1. Laws and analytic solutions
@@ -87,3 +89,35 @@ rescale-only rotating deck: 96.9% of 2150 executable lines (92.7% of
 safeguard, which acted only above 1 rad/s, were removed: O15). Every
 file is above 90%; the checks, the braking, the mechanisms' dispatcher
 and the region's transport are at 100%.
+
+## 5. Solberg-Hoiland
+
+Pinsonneault (1988, section II.E) lists six mechanisms: three dynamical
+(convection, the Solberg-Hoiland instability, the dynamical shear) and
+three secular (Eddington-Sweet circulation, GSF, the secular shear).
+The 2025 code had all but Solberg-Hoiland. It is now the fourth
+transport slot, `compute_solberg_hoiland_velocity`, off unless
+`solberg_hoiland_velocity_scale` is set (2026-10-28).
+
+An interface is unstable where N^2 + kappa^2 < 0, with kappa^2 = 4
+omega^2 + 2 omega d omega/d ln r and N^2 = N_T^2 + N_mu^2 (N_T is half
+the dynamical-shear limit, N_mu^2 the secular shear's mu term). The
+threshold, |d omega/d ln r| > (N^2 + 4 omega^2)/(2 |omega|), is never
+below the dynamical-shear limit 2 N_T, since N^2 + 4 omega^2 >= 4 N_T
+|omega|. So the instability can act only where the dynamical shear
+already does, and its velocity there, (8/45) K (|d omega/d ln r|/q_SH)^2/r,
+is at most the dynamical shear's. `test_rotation_kernels` checks the
+criterion on single interfaces and the implication on a grid of 432
+interfaces (N_T, N_mu, omega and d omega/d ln r).
+
+- **Off (the default):** the 50 self-contained decks of the check set
+  are byte-identical to the build before the slot, every output file.
+- **On (scale 1):** 23 of the 26 rotating decks are byte-identical,
+  among them two that report dynamical shear (3 and 4 times). The
+  three that report it most move: rv_alpham05 (231 reports) by 1.7e-4
+  dex in log L at most and 0.2% in the surface omega; rv_nocore (820)
+  by 8.5e-5 dex and 0.3%; the solid-core rv_sbm2 (6591) by 3.1e-4 dex,
+  4.4% in the final surface omega and 0.6% in J.
+
+MESA's D_SH (D_SH_factor, default 0) is the counterpart; its source
+notes that Langer's code said "DO NOT USE".

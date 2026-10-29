@@ -338,6 +338,10 @@ module controls_buffer
       integer :: imu = 1
       double precision :: es_mixing_scale, secular_shear_mixing_scale, &
            gsf_mixing_scale
+! The Solberg-Hoiland instability's velocity scale (0: off) and mixing
+! efficiency; new in 2026, with no legacy names.
+      double precision :: solberg_hoiland_velocity_scale = 0.0d0
+      double precision :: solberg_hoiland_mixing_scale = 1.0d0
       integer :: gsf_inhibition_mode
 
 ! The burning network's integration tolerances.

@@ -41,7 +41,8 @@ program test_rotation
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
+      use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
+           i_mech_solberg_hoiland
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
@@ -344,10 +345,12 @@ end subroutine structure_check
 ! mixing of H, He3 and He4 (printed: the change of j/m, X and He4).
 subroutine secular_check()
       write(*,'(a)') "# secular transport"
-! the reader's defaults (the pristine star%ctrl leaves them zero)
+! the reader's defaults (the pristine star%ctrl leaves them zero; the
+! Solberg-Hoiland instability is off by default)
       rotation_settings%difad_velocity_scale = 1.0d0
       rotation_settings%mixing_velocity_scale = 1.0d0
       rotation_settings%velocity_scale = 1.0d0
+      rotation_settings%velocity_scale(i_mech_solberg_hoiland) = 0.0d0
       star%ctrl%mu_gradient_scale = 1.0d0
       rotation_settings%critical_reynolds = 1.0d3
       rotation_settings%mixing_scale = 1.0d0

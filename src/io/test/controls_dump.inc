@@ -162,6 +162,8 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%es_mixing_scale', star%ctrl%es_mixing_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%secular_shear_mixing_scale', star%ctrl%secular_shear_mixing_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%gsf_mixing_scale', star%ctrl%gsf_mixing_scale
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solberg_hoiland_velocity_scale', star%ctrl%solberg_hoiland_velocity_scale
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solberg_hoiland_mixing_scale', star%ctrl%solberg_hoiland_mixing_scale
       write(u,'(a," = ",i0)') 'ctrl%gsf_inhibition_mode', star%ctrl%gsf_inhibition_mode
       write(u,'(a," = ",es25.17e3)') 'ctrl%min_abundance', star%ctrl%min_abundance
       write(u,'(a," = ",es25.17e3)') 'ctrl%absolute_tolerance', star%ctrl%absolute_tolerance

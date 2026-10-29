@@ -174,12 +174,13 @@
            & es_velocity_scale, core_mass_reduction_factor, &
            & gsf_velocity_scale, secular_shear_velocity_scale, &
            & es_mixing_scale, secular_shear_mixing_scale, &
-           & gsf_mixing_scale, settling_y_factor, settling_z_factor, &
-           & settling_tolerance, solver_tolerances, fpft_iter1, &
-           & fpft_iter2, max_stage_index, num_rotation_structure_iters, &
-           & max_diffusion_iters, gsf_inhibition_mode, &
-           & coulomb_log_choice, atm_choice, max_burn_iterations, &
-           & velocity_form_correction, &
+           & gsf_mixing_scale, solberg_hoiland_velocity_scale, &
+           & solberg_hoiland_mixing_scale, settling_y_factor, &
+           & settling_z_factor, settling_tolerance, solver_tolerances, &
+           & fpft_iter1, fpft_iter2, max_stage_index, &
+           & num_rotation_structure_iters, max_diffusion_iters, &
+           & gsf_inhibition_mode, coulomb_log_choice, atm_choice, &
+           & max_burn_iterations, velocity_form_correction, &
            & use_diffusion_advection_transport, no_am_transport_in_core, &
            & use_new_diffusion_routines, diffuse_helium_active, &
            & use_diffusion_z, diffuse_lithium, calc_neutrinos, &
