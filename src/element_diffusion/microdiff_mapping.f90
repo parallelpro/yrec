@@ -30,7 +30,7 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
      temperature_orig, eq, eq_mid)
 
       use composition_layout, only: json, i_h1, i_he4, i_metals
-      use numerics_lib, only: interp, intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       implicit none
 
       integer, intent(in) :: num_light
@@ -261,7 +261,7 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
      num_zones, total_mass, num_light, light_element_id)
       use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_o18
-      use numerics_lib, only: intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -344,7 +344,7 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
          end do
          radmod=radius_bl(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-         call intrp2(tabler,facinterp,radmod)
+         call interp(tabler, facinterp, x_eval=radmod)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
          dxmod = lagrange4(facinterp, eq_delta_hydrogen(k0:k0+3))
          x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)

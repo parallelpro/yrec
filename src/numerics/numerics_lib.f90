@@ -5,11 +5,10 @@
 ! 2): it re-exports the generic numerical routines, which live in five
 ! modules by topic, and the status codes (numerics/README.md):
 !   cubic_spline         cspline, natural_spline, splint,
-!                        compute_spline_coefficients; ysplin, intpol
-!                        (kept for now)
+!                        compute_spline_coefficients
 !   quadratic_spline     osplin (shape-preserving, ACM 574)
 !   table_interpolation  inter3, interp, lagrange4, quint, polint, lir,
-!                        locate, hunt, findex; intrp2 (kept for now)
+!                        locate, hunt, findex
 !   linear_solvers       ludcmp, lubksb, simeqc, solve_tridiagonal,
 !                        tridiagonal_forward_sweep,
 !                        tridiagonal_back_substitution
@@ -17,14 +16,12 @@
 !   numerics_status      the codes returned in ierr, numerics_status_text
 ! None of them reads the star, keeps state between calls or prints.
 ! They report failure through ierr, as numerics_status's codes, and the
-! caller reports it. numerics_termination is kept for now: the envelope
-! integration's status is envelope_termination
-! (core/envelope/envelope_integration_kernel).
+! caller reports it.
 module numerics_lib
       use cubic_spline, only: cspline, natural_spline, splint, &
-           compute_spline_coefficients, ysplin, intpol
+           compute_spline_coefficients
       use quadratic_spline, only: osplin
-      use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
+      use table_interpolation, only: inter3, interp, lagrange4, quint, &
            polint, lir, findex, locate, hunt
       use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal, &
            tridiagonal_forward_sweep, tridiagonal_back_substitution
@@ -37,9 +34,8 @@ module numerics_lib
       implicit none
       private
       public :: cspline, natural_spline, splint, compute_spline_coefficients
-      public :: ysplin, intpol
       public :: osplin
-      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate, hunt
+      public :: inter3, interp, lagrange4, quint, polint, lir, findex, locate, hunt
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
       public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
       public :: ode_system, bsstep, bsstep_max_equations, bsstep_max_stages, &
@@ -47,6 +43,4 @@ module numerics_lib
       public :: numerics_ok, numerics_singular, numerics_coincident_points, &
            numerics_bad_input, numerics_step_underflow, numerics_unsorted_points, &
            numerics_derivatives_failed, numerics_status_text
-! kept for now: use envelope_termination (envelope_integration_kernel)
-      integer, parameter, public :: numerics_termination = -2
 end module numerics_lib

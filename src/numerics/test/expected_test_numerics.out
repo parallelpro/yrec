@@ -25,13 +25,13 @@ natural_spline y2
    1.640267709256824E-01   8.710562698595546E-02   7.490486348979628E-02
    0.000000000000000E+00
 splint at 1.234 =   6.818676406005715E-01  3  4  0
-# ysplin/intpol: eight points
-intpol at  0.20 =  -4.734650635520440E+00   5.693895568533150E+00  0
-intpol at  0.50 =  -2.875000000000000E+00   6.451305393335623E+00  0
-intpol at  1.90 =   1.896518378564067E+00   1.060580556509791E+00  0
-intpol at  3.30 =   5.457739264857436E+00   6.053586396427343E+00  0
-intpol at  4.60 =   1.788119340432841E+01   6.869553418069398E+00  0
-ysplin c(2:4,1:7)
+# natural_spline/splint(dy=): eight points; the coefficients
+natural spline at  0.20 =  -4.734650635520440E+00   5.693895568533150E+00  0
+natural spline at  0.50 =  -2.875000000000000E+00   6.451305393335623E+00  0
+natural spline at  1.90 =   1.896518378564067E+00   1.060580556509791E+00  0
+natural spline at  3.30 =   5.457739264857436E+00   6.053586396427343E+00  0
+natural spline at  4.60 =   1.788119340432841E+01   6.869553418069398E+00  0
+natural compute_spline_coefficients c(2:4,1:7)
    6.451305393335623E+00   0.000000000000000E+00  -2.805221573342494E+00
    4.347389213328753E+00  -4.207832360013741E+00   2.026107866712470E+00
    1.659137753349365E+00  -1.168670559945036E+00   7.007901064926142E-01
@@ -39,10 +39,10 @@ ysplin c(2:4,1:7)
    1.776623153555479E+00   1.638612160769495E+00   6.162830642390933E-01
    3.877447612504294E+00   2.563036757128135E+00   2.364136035726554E+00
    8.213586396427345E+00   6.109240810717966E+00  -4.072827207145311E+00
-# ysplin/intpol: three and two points (the natural spline's slopes)
-intpol (0,0),(1,1),(3,0) at 1: value, slope 1/2   1.000000000000000E+00   5.000000000000000E-01  0
-intpol (0,0),(1,1),(3,0) at 2   8.750000000000000E-01  -6.250000000000000E-01  0
-intpol (0,1),(2,5) at 0.5: value 2, slope 2   2.000000000000000E+00   2.000000000000000E+00  0
+# natural_spline/splint(dy=): three and two points (the slopes)
+natural (0,0),(1,1),(3,0) at 1: value, slope 1/2   1.000000000000000E+00   5.000000000000000E-01  0
+natural (0,0),(1,1),(3,0) at 2   8.750000000000000E-01  -6.250000000000000E-01  0
+natural (0,1),(2,5) at 0.5: value 2, slope 2   2.000000000000000E+00   2.000000000000000E+00  0
 # osplin: monotone convex data, points below, on, between and above
 osplin
   -1.250000000000000E-01   0.000000000000000E+00   0.000000000000000E+00
@@ -110,7 +110,7 @@ osplin n = 2: ierr, yval untouched  3  -1.0  -1.0
 osplin decreasing: ierr, yval untouched  5  -1.0  -1.0
 osplin on nodes: ierr  0   1.0   4.0
 osplin, repeated last abscissa, a point above: ierr, yval untouched  2  -1.0  -1.0
-# inter3/interp/intrp2/lagrange4/quint
+# inter3/interp/lagrange4/quint
 inter3 w
   -2.800000000000000E-01   1.120000000000000E+00   1.600000000000000E-01
 inter3 dw
@@ -121,7 +121,7 @@ interp w
 interp dw
    1.392592592592593E-01  -7.114285714285715E-01   5.755555555555555E-01
   -3.386243386243352E-03
-intrp2 w (extrapolated)
+interp w, no dweight (extrapolated)
   -2.962962962962963E-01   7.142857142857143E-01  -1.111111111111111E+00
    1.693121693121693E+00
 lagrange4  -5.190476190476191E+00
@@ -258,16 +258,13 @@ test_numerics: done
 # checks
 cspline/splint: clamped spline exact on a cubic                            2.90E-16  ok
 splint: its dy exact on the clamped cubic                                  1.54E-16  ok
-compute_spline_coefficients: the power form is splint's                    1.45E-16  ok
+compute_spline_coefficients: the power form is splint's, column n too      1.45E-16  ok
 natural_spline: zero second derivatives at the ends                        0.00E+00  ok
 natural_spline/splint: exact on a line, extrapolated too                   1.97E-16  ok
 cspline: the error falls as h^4 (order to 0.2)                             1.03E-01  ok
 splint: the slope's error falls as h^3 (order to 0.3)                      5.20E-02  ok
-ysplin/intpol: the natural spline, n = 2                                   0.00E+00  ok
-ysplin/intpol: the natural spline, n = 3                                   0.00E+00  ok
-ysplin/intpol: the natural spline, n = 4                                   0.00E+00  ok
-ysplin/intpol: the natural spline, n = 8                                   0.00E+00  ok
-ysplin: slope 1/2 at the middle of (0,0),(1,1),(3,0)                       0.00E+00  ok
+natural_spline: two points give their line, value and slope                4.44E-16  ok
+natural_spline: slope 1/2 at the middle of (0,0),(1,1),(3,0)               0.00E+00  ok
 osplin: monotone data give a monotone spline                               0.00E+00  ok
 osplin: convex data give a convex spline                                   0.00E+00  ok
 osplin: interpolates the nodes                                             0.00E+00  ok
@@ -280,8 +277,8 @@ inter3: exact on a quadratic                                               3.55E
 inter3: its derivative weights exact on a quadratic                        1.78E-16  ok
 interp/lagrange4: exact on a cubic                                         1.42E-16  ok
 interp: its derivative weights exact on a cubic                            1.42E-16  ok
-interp: weights sum to 1, derivatives to 0; intrp2's                       2.22E-16  ok
-intrp2: interp's weights bit for bit                                       0.00E+00  ok
+interp: weights sum to 1, derivatives to 0                                 2.22E-16  ok
+interp: the weights without dweight are those with it, bit for bit         0.00E+00  ok
 quint: exact on a quadratic                                                7.77E-16  ok
 polint: exact on a quartic through five points                             4.44E-16  ok
 polint: scale-free (abscissae of 1e-25)                                    5.55E-17  ok

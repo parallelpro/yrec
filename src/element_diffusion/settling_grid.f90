@@ -24,7 +24,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
       use composition_layout, only: json, i_metals
-      use numerics_lib, only: intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -161,7 +161,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
          target_radius=equal_radius(zone_index)
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR POINT target_radius
 ! GIVEN THE 4 TABLE RADII IN radius_table.
-         call intrp2(radius_table,interp_factors,target_radius)
+         call interp(radius_table, interp_factors, x_eval=target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
          equal_mass_mid(zone_index) = lagrange4(interp_factors, enclosed_mass(k0:k0+3))
@@ -247,7 +247,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
 
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS FOR POINT target_radius
 ! GIVEN THE 4 TABLE RADII IN radius_table.
-         call intrp2(radius_table,interp_factors,target_radius)
+         call interp(radius_table, interp_factors, x_eval=target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
 ! MASS WITHIN THE RADIUS ER
          equal_mass(zone_index) = lagrange4(interp_factors, enclosed_mass(k0:k0+3))
@@ -284,7 +284,7 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
       use composition_layout, only: json
-      use numerics_lib, only: intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -371,7 +371,7 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
          end do
          target_radius=radius(zone_index)
 ! FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-         call intrp2(radius_table,interp_factors,target_radius)
+         call interp(radius_table, interp_factors, x_eval=target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
          delta_x = lagrange4(interp_factors, equal_hydrogen_fraction(k0:k0+3))
          hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)

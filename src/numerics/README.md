@@ -10,9 +10,9 @@ This directory holds the general-purpose numerical methods the physics uses: spl
 |---|---|
 | `numerics_lib` (`numerics_lib.f90`) | **The public interface.** It re-exports what the modules below make public, the status codes and the bsstep limits. |
 | `numerics_status` | The status codes every routine returns in `ierr` (§3), and `numerics_status_text`, a short description of each for a caller's message. |
-| `cubic_spline` | `cspline` and `splint` (Numerical Recipes): the second derivatives of the cubic spline for given end slopes, and its value at x, with its first derivative when asked (`dy=`). `natural_spline`: `cspline` with both ends natural. `compute_spline_coefficients`: the spline's cubic on each interval in powers of x − x(i), for tables that store it (OPAL92 and Kurucz 1990 opacities). `ysplin`, `intpol`: kept for now (§5). |
+| `cubic_spline` | `cspline` and `splint` (Numerical Recipes): the second derivatives of the cubic spline for given end slopes, and its value at x, with its first derivative when asked (`dy=`). `natural_spline`: `cspline` with both ends natural. `compute_spline_coefficients`: the spline's cubic on each interval in powers of x − x(i), for tables that store it (OPAL92 and Kurucz 1990 opacities). |
 | `quadratic_spline` | `osplin`: the shape-preserving osculatory quadratic spline of ACM Algorithm 574 (McAllister & Roulier 1981), which keeps the data's monotonicity and convexity. Its steps (`slopes`, `meval`, `choose`, `cases`, `search`, `spline`, `safedivide`) are private. |
-| `table_interpolation` | Lagrange weights for 3 and 4 points with their derivatives (`inter3`, `interp`; `intrp2` kept for now), applied by `lagrange4`; `quint` for three equidistant points; Neville's `polint` for any number; `lir`, cubic interpolation of several tabulated functions at once; and the searches `locate` (bisection), `hunt` (warm-started, Numerical Recipes) and `findex` (warm-started, YCK). |
+| `table_interpolation` | Lagrange weights for 3 and 4 points with their derivatives (`inter3`, `interp`), applied by `lagrange4`; `quint` for three equidistant points; Neville's `polint` for any number; `lir`, cubic interpolation of several tabulated functions at once; and the searches `locate` (bisection), `hunt` (warm-started, Numerical Recipes) and `findex` (warm-started, YCK). |
 | `linear_solvers` | `ludcmp`/`lubksb` (LU with partial pivoting, Numerical Recipes), `simeqc` (Gaussian elimination for one or more right-hand sides, IBM SSP's SIMQ), `solve_tridiagonal` (the Thomas algorithm), and its two halves `tridiagonal_forward_sweep` and `tridiagonal_back_substitution`. |
 | `bulirsch_stoer` | `bsstep`: one adaptive Bulirsch–Stoer step (modified midpoint rule with rational extrapolation, Numerical Recipes) of an `ode_system`; its limits `bsstep_max_equations`, `bsstep_max_stages`, `bsstep_max_extrap_order`. |
 
@@ -71,23 +71,16 @@ and call `bsstep(system, y, dydx, num_eqs, x, h_try, tolerance, y_scale, h_did, 
 
 The step's error is the largest scaled error among the components that are not NaN; it is NaN only when every component is. That reproduces how the original compiled loop behaved, and `test_numerics` pins it.
 
-## 5. Kept for now
+## 5. Removed names
 
-These public names stay until the callers outside numerics/ move off them (no rename or removal in the 2026-10-29 wave); new code uses the replacement.
-
-| Name | Replacement | Callers left |
-|---|---|---|
-| `ysplin` | `natural_spline` + `compute_spline_coefficients` (ysplin is now that) | none (test only) |
-| `intpol` | `natural_spline` + `splint(..., dy=)` (intpol is now that) | none (test only) |
-| `intrp2` | `interp` without `dweight` (intrp2 calls it) | kap (alex94, alex06, opal95), element_diffusion (settling_grid, microdiff_mapping) |
-| `numerics_termination` | `envelope_termination` (`core/envelope/envelope_integration_kernel`), the envelope integration's status | none |
+`ysplin` and `intpol` (2026-10: wrappers of `natural_spline` with `compute_spline_coefficients`, and with `splint(..., dy=)`), `intrp2` (`interp` without `dweight`) and `numerics_termination` (the envelope's status is `envelope_termination`, `core/envelope/envelope_integration_kernel`) went once their callers had moved, bit for bit.
 
 ## 6. Tests
 
 `test_numerics` (`make tests` in `src/`, then `pytest test_numerics.py` from the repository root) has two parts. The pins print what every public routine returns on small polynomial and rational data, error paths included, for a byte comparison with `numerics/test/expected_test_numerics.out`; they guard refactors. The checks test behaviour, each printing its error and `ok` or `FAIL` (the program stops with status 1 on a FAIL; the pytest compares a check's line by label and status):
-- **cubic splines:** the clamped spline is exact on a cubic, value and `dy`; `compute_spline_coefficients`' power form is `splint`'s; natural ends have zero second derivatives and a line is reproduced, extrapolation included; the clamped spline's error falls as h⁴ (its slope's as h³) on 1/(1+x²); `ysplin`/`intpol` are the natural spline for n = 2, 3, 4 and 8, with the slope 1/2 at the middle of (0,0), (1,1), (3,0);
+- **cubic splines:** the clamped spline is exact on a cubic, value and `dy`; `compute_spline_coefficients`' power form is `splint`'s; natural ends have zero second derivatives and a line is reproduced, extrapolation included; the clamped spline's error falls as h⁴ (its slope's as h³) on 1/(1+x²); the natural spline through two points is their line, and through (0,0), (1,1), (3,0) has the slope 1/2 at the middle;
 - **osplin:** monotone data give a monotone spline and convex data a convex one; it interpolates the nodes and reproduces a line; a run of points equals its points one at a time (below the table, on nodes, on the last node, above, an interior point then points above); n < 3 and decreasing points give their codes and leave the output untouched;
-- **Lagrange:** `inter3` exact on a quadratic and `interp`/`lagrange4` on a cubic, with their derivative weights; `interp`'s weights sum to 1 and their derivatives to 0, and `intrp2`'s are `interp`'s bit for bit; `quint` exact on a quadratic; `polint` exact on a quartic, free of scale (abscissae of 1e-25), and coincident abscissae give their code;
+- **Lagrange:** `inter3` exact on a quadratic and `interp`/`lagrange4` on a cubic, with their derivative weights; `interp`'s weights sum to 1 and their derivatives to 0, and they are the same bit for bit without `dweight`; `quint` exact on a quadratic; `polint` exact on a quartic, free of scale (abscissae of 1e-25), and coincident abscissae give their code;
 - **lir:** exact on a cubic and a line, a decreasing table the same as the increasing one (on a rational function, where the stencil matters), linear below four points, the nodes' values on a node, outside the table flag 0, and its error codes;
 - **searches:** `locate` brackets x in increasing and decreasing tables, gives 1 and n−1 on the end nodes, the end interval within 1% of the span beyond an end and 0 or n beyond that; `findex` and `hunt` bracket x from any starting guess, nodes included, with their codes outside;
 - **linear algebra:** an LU solve's residual; rank-deficient matrices (a round-off pivot, a zero pivot) and a zero row (the matrix untouched) are singular, a NaN column is bad input; `simeqc` gives LU's solution and flags a singular matrix; `solve_tridiagonal`, and its two halves, give a dense solve's solution, and a zero first or later pivot is singular;

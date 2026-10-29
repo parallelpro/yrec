@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Interpolation in tables and the searches that bracket a point
 ! (YREC's numerics_lib, split 2026-10):
-!   inter3, interp, intrp2  Lagrange weights (and their derivatives) for
+!   inter3, interp          Lagrange weights (and their derivatives) for
 !                           3 and 4 points; lagrange4 applies 4 weights
 !   quint                   quadratic interpolation at equidistant points
 !   polint                  Neville's algorithm (Numerical Recipes)
@@ -18,7 +18,7 @@ module table_interpolation
            numerics_coincident_points
       implicit none
       private
-      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate, hunt
+      public :: inter3, interp, lagrange4, quint, polint, lir, findex, locate, hunt
 
 contains
 
@@ -99,23 +99,10 @@ pure subroutine interp(x_nodes, weight, dweight, x_eval)
 end subroutine interp
 
 !----------------------------------------------------------------------
-! intrp2
-!----------------------------------------------------------------------
-! interp without the derivatives (kept for now; new code calls interp
-! without dweight).
-pure subroutine intrp2(x_nodes, weight, x_eval)
-      real(dp), intent(in) :: x_nodes(4)
-      real(dp), intent(out) :: weight(4)
-      real(dp), intent(in) :: x_eval
-
-      call interp(x_nodes, weight, x_eval=x_eval)
-end subroutine intrp2
-
-!----------------------------------------------------------------------
 ! lagrange4
 !----------------------------------------------------------------------
 ! w(1)*y(1) + w(2)*y(2) + w(3)*y(3) + w(4)*y(4), summed left to right:
-! the 4-point weights of interp/intrp2 applied to a stencil y(k0:k0+3).
+! the 4-point weights of interp applied to a stencil y(k0:k0+3).
 pure function lagrange4(w, y) result(s)
       real(dp), intent(in) :: w(4), y(4)
       real(dp) :: s

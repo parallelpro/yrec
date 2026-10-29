@@ -14,7 +14,7 @@ module alex06_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex_composition_tol, n_alex06_d, n_alex06_t, &
            n_alex06_x, n_alex06_z, opacity_table, stencil4_locate
-      use numerics_lib, only: interp, intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use math_lib
       implicit none
@@ -219,7 +219,7 @@ subroutine build_alex06_composition_table(ierr)
          interp_nodes(i) = opacity_table%alex06_grid_z(iz+i-1)
       end do
       interp_target = opacity_table%alex06_cached_z
-      call intrp2(interp_nodes, weight_z, interp_target)
+      call interp(interp_nodes, weight_z, x_eval=interp_target)
 !     The difference in the number of tables for the Z=0.1 case requires some
 !     care in X interpolation.  First 3 X cases can be treated normally.
 !     (2026 R3: the four Z tables kk, kk+1, kk+2, kk+3 are consecutive
@@ -266,7 +266,7 @@ subroutine build_alex06_composition_table(ierr)
          interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
       endif
       interp_target = opacity_table%alex06_cached_x
-      call intrp2(interp_nodes, weight_x, interp_target)
+      call interp(interp_nodes, weight_x, x_eval=interp_target)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
             opacity_table%alex06_opacity(i,j) = lagrange4(weight_x, opacity_by_x(1:4,i,j))

@@ -13,17 +13,15 @@
 !                     the spline's cubic on each interval in powers of
 !                     x - x(i), for tables that store it (OPAL92 and
 !                     Kurucz 1990 opacities)
-!   ysplin, intpol    the natural spline in coefficient form, and its
-!                     value and slope at x: kept for now on top of the
-!                     routines above (YCK's 3/91 slope-form solve they
-!                     replaced was wrong for 2 and 3 points)
+! (ysplin and intpol, YCK's 3/91 natural spline in slope form, wrong for
+! 2 and 3 points, became wrappers of these in 2026-10 and went once their
+! callers had moved to them.)
 module cubic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use numerics_status, only: numerics_ok, numerics_coincident_points
       implicit none
       private
       public :: cspline, natural_spline, splint, compute_spline_coefficients
-      public :: ysplin, intpol
 
 contains
 
@@ -168,45 +166,5 @@ pure subroutine compute_spline_coefficients(x, y, y2, n, c)
       c(3,n) = 0.5d0*y2(n)
       c(4,n) = 0.0d0
 end subroutine compute_spline_coefficients
-
-!----------------------------------------------------------------------
-! ysplin
-!----------------------------------------------------------------------
-! The natural cubic spline through xi(1:n) in coefficient form (kept for
-! now; new code calls natural_spline and compute_spline_coefficients).
-! On entry c(1,i) holds the values; on exit c(2,i), c(3,i) and c(4,i)
-! hold the first-, second- and third-order coefficients of the cubic on
-! [xi(i), xi(i+1)], and c(2,n) the slope at xi(n).
-pure subroutine ysplin(xi, c, n)
-      integer, intent(in) :: n
-      real(dp), intent(in) :: xi(n)
-      real(dp), intent(inout) :: c(4,n)
-
-      real(dp) :: values(n), y2(n)
-
-      values = c(1,1:n)
-      call natural_spline(xi, values, n, y2)
-      call compute_spline_coefficients(xi, values, y2, n, c)
-end subroutine ysplin
-
-!----------------------------------------------------------------------
-! intpol
-!----------------------------------------------------------------------
-! The value y_eval and slope dy_eval at x_eval of the natural cubic
-! spline through x_grid/y_grid(1:n_grid) (kept for now; new code calls
-! natural_spline and splint with dy). Outside the grid it extrapolates
-! the end cubic. ierr: splint's.
-subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
-      integer, intent(in) :: n_grid
-      real(dp), intent(in) :: x_grid(n_grid), y_grid(n_grid)
-      real(dp), intent(in) :: x_eval
-      real(dp), intent(out) :: y_eval, dy_eval
-      integer, intent(out) :: ierr
-
-      real(dp) :: y2(n_grid)
-
-      call natural_spline(x_grid, y_grid, n_grid, y2)
-      call splint(x_grid, y_grid, n_grid, y2, x_eval, y_eval, ierr, dy=dy_eval)
-end subroutine intpol
 
 end module cubic_spline

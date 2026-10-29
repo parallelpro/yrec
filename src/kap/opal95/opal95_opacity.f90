@@ -22,7 +22,7 @@ module opal95_opacity
            n_opal95_tables, n_opal95_x, n_opal95_z, opacity_table, &
            opal95_composition_tol, opal95_missing_opacity, &
            opal95_missing_test, stencil4_locate_opal95
-      use numerics_lib, only: interp, intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       use math_lib
       implicit none
       private
@@ -227,7 +227,7 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       do i = 1,4
          table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index+i-1)
       end do
-      call intrp2(table_z_nodes, z_weight, metal_fraction)
+      call interp(table_z_nodes, z_weight, x_eval=metal_fraction)
 !  For X tables 1-8, all values of Z present; perform interpolation.
       do i = 1,8
 ! Indices for 4 desired compositions.
@@ -253,7 +253,7 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
          do i = 1,4
             table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
          end do
-         call intrp2(table_z_nodes, z_weight_hix, metal_fraction)
+         call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
       else
          z_table_index2 = z_table_index
          do i = 1,4
@@ -284,7 +284,7 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
          do i = 1,4
             table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
          end do
-         call intrp2(table_z_nodes, z_weight_hix, metal_fraction)
+         call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
       else
          z_table_index2 = z_table_index
          do i = 1,4
@@ -362,7 +362,7 @@ subroutine build_opal95_surface_table(hydrogen_fraction)
       endif
 !
 !  Find interpolation factors in X.
-      call intrp2(table_x_nodes, x_weight, hydrogen_fraction)
+      call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction)
 ! Indices for 4 desired compositions.
       if (x_table_index /= x_stencil_6_7_8_10) then
          table1_index = x_table_index
@@ -603,7 +603,7 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
          interp_nodes(i) = opacity_table%opal95_grid_z(opacity_table%opal95_index_z+i-1)
       end do
 !     Interpolation factors in Z
-      call intrp2(interp_nodes, weight, metal_fraction)
+      call interp(interp_nodes, weight, x_eval=metal_fraction)
       do i = 1,4
          opacity_table%opal95_weight_z(i) = weight(i)
       end do
@@ -695,7 +695,7 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
          interp_nodes(4) = 1.0d0 - z_here
       endif
 !     Get interpolation factors in X
-      call intrp2(interp_nodes, weight, hydrogen_fraction)
+      call interp(interp_nodes, weight, x_eval=hydrogen_fraction)
       do j = 1,4
          opacity_table%opal95_weight_x(k,j) = weight(j)
       end do

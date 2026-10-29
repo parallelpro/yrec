@@ -220,7 +220,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
 !     cursors (nearest temperature row and density knot) left by the
 !     previous call.  For up to six temperature rows around the point
 !     the row's cubic spline in log rho gives log opacity and its rho
-!     derivative; those are then interpolated in log T (intpol) to give
+!     derivative; those are then interpolated in log T (natural_spline and splint) to give
 !     log10_opacity, dlnkap_dlnt AND dlnkap_dlnrho.
 
       integer :: jerr_gate

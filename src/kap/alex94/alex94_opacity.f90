@@ -14,7 +14,7 @@ module alex94_opacity
       use opacity_tables, only: alex_composition_tol, alex_x_stencil_start, &
            kap_settings, n_alex94_d, n_alex94_t, n_alex94_x, n_alex94_z, &
            opacity_table, stencil4_locate
-      use numerics_lib, only: interp, intrp2, lagrange4
+      use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use io_units, only: run_log_unit
       use math_lib
@@ -143,7 +143,7 @@ subroutine build_alex94_fixed_z_table(metal_fraction)
          interp_z(i) = opacity_table%alex94_grid_z(idz+i-1)
       end do
 !     Get interpolation factors for Z.
-      call intrp2(interp_z, weight_z, metal_fraction)
+      call interp(interp_z, weight_z, x_eval=metal_fraction)
 !     Interpolate in Z at fixed X.
       do i = 1,n_alex94_x
 !        Indices for tables: Sets of 7 X at fixed Z, starting from
@@ -186,7 +186,7 @@ subroutine build_alex94_surface_table(hydrogen_fraction)
       do i = 1,4
          interp_x(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
       end do
-      call intrp2(interp_x, weight_x, hydrogen_fraction)
+      call interp(interp_x, weight_x, x_eval=hydrogen_fraction)
       do i = 1,n_alex94_t
          do j = 1,n_alex94_d
             opacity_table%alex94_opacity(8,i,j) = weight_x(1)*opacity_table%alex94_opacity(opacity_table%alex94_index_x,i,j)+ &
@@ -294,7 +294,7 @@ subroutine compute_alex94_opacity(log10_density, log10_temperature, hydrogen_fra
          do i = 1,4
             interp_nodes(i) = opacity_table%alex94_grid_x(opacity_table%alex94_index_x+i-1)
          end do
-         call intrp2(interp_nodes, weight_x, hydrogen_fraction)
+         call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction)
 !        Interpolate in log R at fixed T
          do j = 1,4
             jj = opacity_table%alex94_index_x+j-1

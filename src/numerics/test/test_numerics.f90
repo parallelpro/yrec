@@ -5,13 +5,14 @@
 ! The pins: every public routine on small polynomial and rational data,
 ! error paths included, printed for a byte comparison with
 ! expected_test_numerics.out (they guard refactors):
-!   cubic splines     cspline/splint, natural_spline (four points and
-!                     seven), ysplin/intpol (eight, three and two points)
+!   cubic splines     cspline/splint, natural_spline (four points,
+!                     seven, eight, three and two), the natural spline's
+!                     coefficients (compute_spline_coefficients)
 !   quadratic spline  osplin (McAllister-Roulier) on monotone, oscillating,
 !                     stepped and concave data, extrapolation, single
 !                     points, nodes, runs outside the table, a repeated
 !                     abscissa and its error codes
-!   interpolation     inter3, interp, intrp2, lagrange4, quint, polint,
+!   interpolation     inter3, interp, lagrange4, quint, polint,
 !                     lir (cubic, linear, on a node, extrapolated)
 !   search            findex, locate
 !   linear algebra    ludcmp/lubksb, simeqc, solve_tridiagonal
@@ -70,11 +71,11 @@ program test_numerics
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
       use math_lib
-      use numerics_lib, only: bsstep, cspline, findex, inter3, interp, intpol, &
-           intrp2, lagrange4, lir, locate, &
+      use numerics_lib, only: bsstep, cspline, findex, inter3, interp, &
+           lagrange4, lir, locate, &
            lubksb, ludcmp, natural_spline, osplin, &
            polint, quint, simeqc, solve_tridiagonal, &
-           splint, ysplin, compute_spline_coefficients, numerics_ok, &
+           splint, compute_spline_coefficients, numerics_ok, &
            numerics_singular, numerics_coincident_points, numerics_bad_input, numerics_step_underflow, &
            numerics_unsorted_points, numerics_derivatives_failed, numerics_status_text
       use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
@@ -143,7 +144,7 @@ program test_numerics
       call splint(jx, jy, 7, jy2, 1.234d0, d, ierr, klo, khi)
       write(*,'(a,1pe24.15,3i3)') "splint at 1.234 =", d, klo, khi, ierr
 
-      write(*,'(a)') "# ysplin/intpol: eight points"
+      write(*,'(a)') "# natural_spline/splint(dy=): eight points; the coefficients"
       do i = 1, 8
          jx(i) = 0.5d0*i
          jy(i) = (jx(i) - 2.0d0)**3 + jx(i)
@@ -151,21 +152,21 @@ program test_numerics
       pts(1:5) = [0.2d0, 0.5d0, 1.9d0, 3.3d0, 4.6d0]
       do i = 1, 5
          v = pts(i)
-         call intpol(jx(1:8), jy(1:8), 8, v, d, dv, ierr)
-         write(*,'(a,f6.2,a,2(1pe24.15),i3)') "intpol at", v, " =", d, dv, ierr
+         call natural_value_and_slope(jx(1:8), jy(1:8), 8, v, d, dv, ierr)
+         write(*,'(a,f6.2,a,2(1pe24.15),i3)') "natural spline at", v, " =", d, dv, ierr
       end do
-      call ysplin_check()
-      write(*,'(a)') "# ysplin/intpol: three and two points (the natural spline's slopes)"
+      call coefficients_pin()
+      write(*,'(a)') "# natural_spline/splint(dy=): three and two points (the slopes)"
       jx(1:3) = [0.0d0, 1.0d0, 3.0d0]
       jy(1:3) = [0.0d0, 1.0d0, 0.0d0]
-      call intpol(jx(1:3), jy(1:3), 3, 1.0d0, d, dv, ierr)
-      write(*,'(a,2(1pe24.15),i3)') "intpol (0,0),(1,1),(3,0) at 1: value, slope 1/2", d, dv, ierr
-      call intpol(jx(1:3), jy(1:3), 3, 2.0d0, d, dv, ierr)
-      write(*,'(a,2(1pe24.15),i3)') "intpol (0,0),(1,1),(3,0) at 2", d, dv, ierr
+      call natural_value_and_slope(jx(1:3), jy(1:3), 3, 1.0d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "natural (0,0),(1,1),(3,0) at 1: value, slope 1/2", d, dv, ierr
+      call natural_value_and_slope(jx(1:3), jy(1:3), 3, 2.0d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "natural (0,0),(1,1),(3,0) at 2", d, dv, ierr
       jx(1:2) = [0.0d0, 2.0d0]
       jy(1:2) = [1.0d0, 5.0d0]
-      call intpol(jx(1:2), jy(1:2), 2, 0.5d0, d, dv, ierr)
-      write(*,'(a,2(1pe24.15),i3)') "intpol (0,1),(2,5) at 0.5: value 2, slope 2", d, dv, ierr
+      call natural_value_and_slope(jx(1:2), jy(1:2), 2, 0.5d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "natural (0,1),(2,5) at 0.5: value 2, slope 2", d, dv, ierr
 
 ! ---------------- quadratic spline
       write(*,'(a)') "# osplin: monotone convex data, points below, on, between and above"
@@ -229,7 +230,7 @@ program test_numerics
       jx(8) = 7.0d0
 
 ! ---------------- interpolation
-      write(*,'(a)') "# inter3/interp/intrp2/lagrange4/quint"
+      write(*,'(a)') "# inter3/interp/lagrange4/quint"
       call inter3([1.0d0, 1.5d0, 2.5d0], w3, dw3, 1.8d0)
       call show("inter3 w", w3)
       call show("inter3 dw", dw3)
@@ -237,8 +238,8 @@ program test_numerics
       call interp(x4, w4, dw4, 2.2d0)
       call show("interp w", w4)
       call show("interp dw", dw4)
-      call intrp2(x4, w4, 5.0d0)
-      call show("intrp2 w (extrapolated)", w4)
+      call interp(x4, w4, x_eval=5.0d0)
+      call show("interp w, no dweight (extrapolated)", w4)
       write(*,'(a,1pe24.15)') "lagrange4", lagrange4(w4, [1.0d0, -2.0d0, 3.5d0, 0.25d0])
       call quint(0.37d0, 0.2d0, 0.1d0, 1.0d0, 1.3d0, 1.9d0, v)
       write(*,'(a,1pe24.15)') "quint", v
@@ -354,14 +355,26 @@ subroutine show(label, values)
       write(*,'(3(1pe24.15))') values
 end subroutine show
 
-! ysplin on its own: the coefficients of the cubic on each interval
-subroutine ysplin_check()
-      real(dp) :: c(4,100)
+! the natural spline's value and slope at x (what intpol was)
+subroutine natural_value_and_slope(x, y, n, xe, ye, dye, ierr)
+      integer, intent(in) :: n
+      real(dp), intent(in) :: x(n), y(n), xe
+      real(dp), intent(out) :: ye, dye
+      integer, intent(out) :: ierr
+      real(dp) :: y2(n)
+      call natural_spline(x, y, n, y2)
+      call splint(x, y, n, y2, xe, ye, ierr, dy=dye)
+end subroutine natural_value_and_slope
+
+! the natural spline's coefficients of the cubic on each interval (what
+! ysplin was)
+subroutine coefficients_pin()
+      real(dp) :: c(4,100), y2(8)
       c = 0.0d0
-      c(1,1:8) = jy(1:8)
-      call ysplin(jx(1:8), c, 8)
-      call show("ysplin c(2:4,1:7)", reshape(c(2:4,1:7), [21]))
-end subroutine ysplin_check
+      call natural_spline(jx(1:8), jy(1:8), 8, y2)
+      call compute_spline_coefficients(jx(1:8), jy(1:8), y2, 8, c(:,1:8))
+      call show("natural compute_spline_coefficients c(2:4,1:7)", reshape(c(2:4,1:7), [21]))
+end subroutine coefficients_pin
 
 ! osplin on jx/jy(1:n) at the given nondecreasing points
 subroutine osplin_case(n, points)
@@ -568,7 +581,10 @@ subroutine cubic_spline_checks()
       call compute_spline_coefficients(x, y, y2, 6, c)
       err = 0.0d0
       derr = 0.0d0
-      cerr = 0.0d0
+! column n: the value, slope and half the second derivative at x(n)
+      call splint(x, y, 6, y2, x(6), ye, ierr, dy=dye)
+      cerr = max(abs(c(1,6) - ye)/49.0d0, abs(c(2,6) - dye)/46.0d0, &
+           abs(c(3,6) - 0.5d0*y2(6))/12.0d0, abs(c(4,6)))
       do k = 0, 80
          xe = 4.0d0*k/80.0d0
          call splint(x, y, 6, y2, xe, ye, ierr, klo=klo, dy=dye)
@@ -579,7 +595,8 @@ subroutine cubic_spline_checks()
       end do
       call report("cspline/splint: clamped spline exact on a cubic", err, 1.0d-14)
       call report("splint: its dy exact on the clamped cubic", derr, 1.0d-14)
-      call report("compute_spline_coefficients: the power form is splint's", cerr, 1.0d-14)
+      call report("compute_spline_coefficients: the power form is splint's, column n too", &
+           cerr, 1.0d-14)
 ! natural ends: zero second derivatives there, and exact on a line
       y = 2.0d0*x + 1.0d0
       call natural_spline(x, y, 6, y2)
@@ -625,44 +642,26 @@ subroutine rational_errors(m, err, derr)
       end do
 end subroutine rational_errors
 
-! ysplin and intpol (kept for now) against natural_spline and splint
-! for n = 2, 3, 4 and 8, and the natural spline's slope at the middle of
-! (0,0), (1,1), (3,0), which is 1/2
+! the natural spline through two points is their line, value and slope,
+! extrapolated too; through (0,0), (1,1), (3,0) its slope at the middle
+! point is 1/2 (from the one interior equation, y2(2) = -1/2)
 subroutine natural_spline_small_n_checks()
-      real(dp) :: x(8), y(8), y2(8), c(4,8), ye, dye, yi, dyi, err, xe
-      integer :: sizes(4), m, n, i, k, ierr
-      character(len=80) :: label
-      sizes = [2, 3, 4, 8]
-      do m = 1, 4
-         n = sizes(m)
-         do i = 1, n
-            x(i) = 0.5d0*i + 0.1d0*i*i
-            y(i) = rational(x(i))
-         end do
-         call natural_spline(x(1:n), y(1:n), n, y2(1:n))
-         c = 0.0d0
-         c(1,1:n) = y(1:n)
-         call ysplin(x(1:n), c, n)
-         err = 0.0d0
-         do i = 1, n
-            call splint(x(1:n), y(1:n), n, y2(1:n), x(i), ye, ierr, dy=dye)
-            err = max(err, abs(c(2,i) - dye))
-         end do
-         do k = 0, 20
-            xe = x(1) - 0.2d0 + (x(n) - x(1) + 0.4d0)*k/20.0d0
-            call splint(x(1:n), y(1:n), n, y2(1:n), xe, ye, ierr, dy=dye)
-            call intpol(x(1:n), y(1:n), n, xe, yi, dyi, ierr)
-            err = max(err, abs(yi - ye), abs(dyi - dye))
-         end do
-         write(label,'(a,i0)') "ysplin/intpol: the natural spline, n = ", n
-         call report(trim(label), err, 1.0d-15)
+      real(dp) :: x(3), y(3), y2(3), c(4,3), ye, dye, err
+      integer :: k, ierr
+      x(1:2) = [0.5d0, 2.0d0]
+      y(1:2) = [1.0d0, -2.0d0]
+      call natural_spline(x(1:2), y(1:2), 2, y2(1:2))
+      err = 0.0d0
+      do k = 0, 20
+         call splint(x(1:2), y(1:2), 2, y2(1:2), -0.5d0 + 0.2d0*k, ye, ierr, dy=dye)
+         err = max(err, abs(ye - (1.0d0 - 2.0d0*(-0.5d0 + 0.2d0*k - 0.5d0))), abs(dye + 2.0d0))
       end do
-      x(1:3) = [0.0d0, 1.0d0, 3.0d0]
-      y(1:3) = [0.0d0, 1.0d0, 0.0d0]
-      c = 0.0d0
-      c(1,1:3) = y(1:3)
-      call ysplin(x(1:3), c, 3)
-      call report("ysplin: slope 1/2 at the middle of (0,0),(1,1),(3,0)", &
+      call report("natural_spline: two points give their line, value and slope", err, 1.0d-15)
+      x = [0.0d0, 1.0d0, 3.0d0]
+      y = [0.0d0, 1.0d0, 0.0d0]
+      call natural_spline(x, y, 3, y2)
+      call compute_spline_coefficients(x, y, y2, 3, c)
+      call report("natural_spline: slope 1/2 at the middle of (0,0),(1,1),(3,0)", &
            abs(c(2,2) - 0.5d0), 1.0d-15)
 end subroutine natural_spline_small_n_checks
 
@@ -787,15 +786,14 @@ subroutine lagrange_checks()
          err = max(err, abs(lagrange4(w4, cubic(x4)) - cubic(xe))/100.0d0)
          derr = max(derr, abs(lagrange4(dw4, cubic(x4)) - cubic_slope(xe))/100.0d0)
          sum_err = max(sum_err, abs(sum(w4) - 1.0d0), abs(sum(dw4)))
-         call intrp2(x4, w4b, xe)
-         sum_err = max(sum_err, maxval(abs(w4b - w4)))
       end do
       call report("interp/lagrange4: exact on a cubic", err, 1.0d-13)
       call report("interp: its derivative weights exact on a cubic", derr, 1.0d-13)
-      call report("interp: weights sum to 1, derivatives to 0; intrp2's", sum_err, 1.0d-13)
+      call report("interp: weights sum to 1, derivatives to 0", sum_err, 1.0d-13)
       call interp(x4, w4, dweight=dw4, x_eval=2.2d0)
-      call intrp2(x4, w4b, 2.2d0)
-      call report_true("intrp2: interp's weights bit for bit", all(w4b == w4))
+      call interp(x4, w4b, x_eval=2.2d0)
+      call report_true("interp: the weights without dweight are those with it, bit for bit", &
+           all(w4b == w4))
       err = 0.0d0
       do k = 0, 8
          xe = 0.15d0 + 0.05d0*k
