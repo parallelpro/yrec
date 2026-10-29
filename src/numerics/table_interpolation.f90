@@ -12,6 +12,8 @@
 !   findex, locate          the interval holding a point
 module table_interpolation
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use numerics_status, only: numerics_ok, numerics_bad_input, &
+           numerics_coincident_points
       implicit none
       private
       public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
@@ -215,18 +217,20 @@ end subroutine polint
 ! four nearest points, with the weight of the closest corrected so the
 ! four sum to one; linear below four points. interp_flag is 1 inside
 ! the table, 0 when extrapolating. On a node the tabulated values are
-! copied. Fewer than two points, or equal end points, leave result_y
-! unset. (Formerly lir_impl behind lir, and once in net_lib; a SAVEd
-! search index served a resume-the-search option no caller used, and
-! went in 2026-10.)
+! copied. ierr (numerics_status, optional): numerics_bad_input for
+! fewer than two points, numerics_coincident_points for equal end
+! points; either leaves result_y unset and interp_flag 0. (Formerly
+! lir_impl behind lir, and once in net_lib; a SAVEd search index served
+! a resume-the-search option no caller used, and went in 2026-10.)
 pure subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
-     num_points,interp_flag)
+     num_points,interp_flag,ierr)
       real(dp), intent(in) :: target_z
       real(dp), intent(in) :: table_z(*)
       real(dp), intent(out) :: result_y(*)
       real(dp), intent(in) :: table_y(*)
       integer, intent(in) :: num_y, y_stride, num_points
       integer, intent(out) :: interp_flag
+      integer, intent(out), optional :: ierr
 
       real(dp) :: weight(4)
       integer :: search_idx
@@ -240,8 +244,10 @@ pure subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
 
       linear_mode=0
       stride=1
-! CHECK NT AND RESET IL IF NECESSARY
+      if (present(ierr)) ierr = numerics_ok
       if (num_points < 2) then
+         interp_flag = 0
+         if (present(ierr)) ierr = numerics_bad_input
          return
       end if
       if(num_points < 4) linear_mode=1
@@ -261,6 +267,8 @@ pure subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
             exit
          end if
          if (diff == 0.0) then
+            interp_flag = 0
+            if (present(ierr)) ierr = numerics_coincident_points
             return
          end if
          if (diff < 0.0) then

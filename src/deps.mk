@@ -433,6 +433,7 @@ numerics/cubic_spline.o: io_units.mod
 numerics/linear_solvers.o: numerics_status.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod numerics_status.mod quadratic_spline.mod table_interpolation.mod
 numerics/quadratic_spline.o: numerics_status.mod
+numerics/table_interpolation.o: numerics_status.mod
 numerics/test/test_numerics.o: io_units.mod numerics_lib.mod star_info_lib.mod
 rotation/am_regions.o: composition_layout.mod convection_lib.mod
 rotation/evolve_rotation.o: am_regions.mod burn_step.mod convection_geometry.mod convection_lib.mod magnetic_braking.mod math_lib.mod mid_timestep_model.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod secular_transport.mod shell_physics.mod star_info_lib.mod
