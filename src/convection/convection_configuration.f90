@@ -8,6 +8,7 @@
 ! when the starting model is read.
 module convection_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use physical_constants, only: log10_newton_g_default
       implicit none
       private
       public :: convection_settings_t, convection_settings
@@ -23,6 +24,8 @@ module convection_configuration
          logical :: adiabatic_overshoot = .false.
 ! the Sun's luminosity, cgs and log10
          real(dp) :: solar_luminosity_cgs = 0.0d0, log10_solar_luminosity = 0.0d0
+! log10 G (cgs): the control G_cgs, or the CODATA 1986 value
+         real(dp) :: log10_gravitational_constant = log10_newton_g_default
 ! starspots (G Somers 9/14): filling factor, temperature contrast, and
 ! whether the contrast varies with depth
          real(dp) :: spot_filling_factor = 0.0d0, spot_temp_contrast = 0.0d0

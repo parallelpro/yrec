@@ -105,7 +105,8 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
 
       radiative_gradient = opacity*luminosity_lsun*exp(ln10*(log_pressure - &
-           log_mass - 4d0*log_temperature + convection_settings%log10_solar_luminosity - cgl + &
+           log_mass - 4d0*log_temperature + convection_settings%log10_solar_luminosity - &
+           convection_settings%log10_gravitational_constant + &
            cdelrl))* &
            temperature_rotation_factor/pressure_rotation_factor
       deldel = radiative_gradient - adiabatic_gradient
@@ -164,7 +165,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
               1.0 - convection_settings%spot_filling_factor) - adiabatic_gradient
       endif
 ! G Somers END
-      g = exp(ln10*(cgl + log_mass - log_radius - log_radius))
+      g = exp(ln10*(convection_settings%log10_gravitational_constant + log_mass - log_radius - log_radius))
       presht = pressure/(density*g)
       phi = convection_settings%mixing_length_alpha*density*opacity*presht
       phi2 = phi*phi

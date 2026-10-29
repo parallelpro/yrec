@@ -18,17 +18,13 @@
 ! Semiconvection needs the opacity tables; the configuration matrix's
 ! semiconvection deck pins it.
 program test_convection
-      use run_setup, only: set_up_constants_and_tables
-      use star_info_lib, only: star_info, json, max_convective_zones, max_radiative_zones
-      use eos_lib, only: eos_result
+      use star_info_lib, only: json, max_convective_zones, max_radiative_zones
+      use eos_lib, only: eos_result, eos_init, eos_settings_t
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use convection_lib, only: convection_settings_t, set_convection_settings, &
            compute_temperature_gradients, find_convection_zones, homogenize_convection_zones
       use io_units, only: run_log_unit
       implicit none
-! the test's star (star_info_lib declares no instance); static, as it
-! is too large for the stack
-      type(star_info), save :: star
 ! the settings the cases change, installed before each use
       type(convection_settings_t) :: cs
       integer :: ov_bottom, ov_top
@@ -38,7 +34,7 @@ program test_convection
       logical :: convective(json)
       integer :: rad_bounds(max_radiative_zones,2), mix_bounds(max_convective_zones,2), &
            mix_bounds_no_os(max_convective_zones,2)
-      integer :: core_edge, env_edge, n_rad, n_mix, n_mix_no_os, ierr, setups_ierr, i
+      integer :: core_edge, env_edge, n_rad, n_mix, n_mix_no_os, ierr, i
       character(len=256) :: yrec_input
 
       call get_environment_variable("YREC_INPUT", yrec_input)
@@ -57,35 +53,17 @@ program test_convection
 
 contains
 
-! setups with the Yale EOS alone (Fermi table) and every table-based
-! physics switched off; it sets the constants the gradients use.
+! The Yale EOS alone (the Fermi table, the Saha cutoff at log T = 6),
+! for the pressure scale heights of the overshoot cases.
 subroutine boot_yale_eos()
-      star%ctrl%fermi_unit = 15
+      type(eos_settings_t) :: eos_cfg
       run_log_unit = 20
       open(run_log_unit, file="test_convection.short", status="replace")
-      star%ctrl%use_mhd_eos = .false.
-      star%ctrl%use_scv_eos = .false.
-      star%ctrl%use_opal95_eos = .false.
-      star%ctrl%use_opal2001_eos = .false.
-      star%ctrl%use_opal2006_eos = .false.
-      star%ctrl%use_diffusion_z = .false.
-      star%ctrl%use_numerical_derivatives = .false.
-      star%ctrl%use_debye_huckel_correction = .false.
-      star%ctrl%saha_log10t_cutoff = 6.0d0
-      star%ctrl%use_opal95_tables = .false.
-      star%ctrl%use_opal92_tables = .false.
-      star%ctrl%use_laol89_tables = .false.
-      star%ctrl%use_alex06_tables = .false.
-      star%ctrl%use_alex95_tables = .false.
-      star%ctrl%use_kurucz90_tables = .false.
-      star%use_two_z_tables = .false.
-      star%ctrl%use_pure_z_table = .false.
-      star%ctrl%use_conductive_opacity = .false.
-      star%job%atm_choice = 0
-      star%job%fermi_table_path = trim(yrec_input)//"/eos/yale/FERMI.TAB"
-      call set_up_constants_and_tables(star, setups_ierr)
-      if (setups_ierr /= 0) then
-         write(*,'(a)') "test_convection: FAIL (setups error)"
+      eos_cfg%saha_log10t_cutoff = 6.0d0
+      call eos_init(eos_cfg, trim(yrec_input)//"/eos/yale/FERMI.TAB", "", "", "", &
+           "", "", "", "", "", "", "", "", "", ierr)
+      if (ierr /= 0) then
+         write(*,'(a)') "test_convection: FAIL (eos_init error)"
          stop 1
       end if
       close(run_log_unit)

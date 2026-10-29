@@ -44,9 +44,7 @@
 ! And the MHD table interpolation on a synthetic table
 ! (check_mhd_table_lookup), which runs without the MHD tables.
 program test_eos
-      use run_setup, only: set_up_constants_and_tables
       use io_units
-      use star_info_lib, only: star_info
       use eos_lib
       use eos_configuration, only: eos_settings
       use opal_eos_tables, only: opal06
@@ -54,25 +52,27 @@ program test_eos
       use mhd_eos, only: interpolate_mhd_table
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
-! the test's star (star_info_lib declares no instance); static, as it
-! is too large for the stack
-      type(star_info), save :: star
       type(eos_settings_t) :: settings
       integer :: gerr
 
       character(len=256) :: yrec_input, mhd_dir
       character(len=256) :: fermi_path, scvh_path, scvhe_path, scvz_path, &
            opal06_path, dummy_path
-      character(len=256) :: dummy_paths7(7)
-      double precision :: laol_work(12)
-
-! core/model/starting_model.f90's atomic_weight data (12-species set, same order as mixture_weights_seed)
-      double precision :: atomic_weight(12)
-      data atomic_weight /23.0d0,26.99d0,24.32d0,55.86d0,28.1d0,12.015d0, &
-           1.008d0,16.0d0,14.01d0,39.96d0,20.19d0,4.004d0/
+! core/model/starting_model.f90's atomic weights and the default of the
+! mixture_weights_seed control (the G&N93 12-species mixture), in the
+! ix_* order of the envelope mixture
+      double precision, parameter :: atomic_weight(12) = [23.0d0, 26.99d0, &
+           24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, &
+           39.96d0, 20.19d0, 4.004d0]
+      double precision, parameter :: mixture_weights_seed(12) = [0.001999d0, &
+           0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.0d0, &
+           0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.0d0]
+! the envelope mixture handed to eos_set_mixture
+      double precision :: envelope_hydrogen_fraction, envelope_metal_fraction, &
+           mean_atomic_mass, species_fractions(12)
 
       double precision :: w(12), wsum, scale
-      integer :: setups_ierr, i, ipt, eos_ierr
+      integer :: i, ipt, eos_ierr
 
 ! the EOS variables the sections print (see eval_eos)
       double precision :: logt, t, logp, p, logd, d
@@ -113,105 +113,46 @@ program test_eos
       scvz_path   = trim(yrec_input)//"/eos/scv/z_tab_i.dat"
       opal06_path = trim(yrec_input)//"/eos/opal2006/EOSOPAL06Z0.016492"
       dummy_path = ""
-      dummy_paths7 = ""
-      laol_work = 0.0d0
 
-! unit numbers, per core/read_input.f90
       run_log_unit = 20
-      star%ctrl%fermi_unit = 15
-      star%ctrl%scv_h_unit = 72
-      star%ctrl%scv_he_unit = 73
-      star%ctrl%scv_z_unit = 74
       open(run_log_unit, file="test_eos.short", status="replace")
 
-! eos configuration
-      star%ctrl%use_mhd_eos = .false.
-      star%ctrl%use_scv_eos = .true.
-      star%ctrl%use_opal95_eos = .false.
-      star%ctrl%use_opal2001_eos = .false.
-      star%ctrl%use_opal2006_eos = .true.
-      star%ctrl%use_diffusion_z = .false.
-      star%ctrl%use_numerical_derivatives = .false.
-      star%ctrl%use_debye_huckel_correction = .false.
-      star%ctrl%saha_log10t_cutoff = 6.0d0
-
-! kap/atm gated off so setups' kap_init/atm_init are no-ops
-      star%ctrl%use_opal95_tables = .false.
-      star%ctrl%use_opal92_tables = .false.
-      star%ctrl%use_laol89_tables = .false.
-      star%ctrl%use_alex06_tables = .false.
-      star%ctrl%use_alex95_tables = .false.
-      star%ctrl%use_kurucz90_tables = .false.
-      star%use_two_z_tables = .false.
-      star%ctrl%use_pure_z_table = .false.
-      star%ctrl%use_conductive_opacity = .false.
-      star%job%atm_choice = 0
-
-! envelope composition state, per core/model/starting_model.f90's mixture algorithm
-      star%xnew = 0.70d0
-      star%znew = 0.016492d0
-      star%envelope_hydrogen_fraction = star%xnew
-      star%envelope_metal_fraction = star%znew
-      do i = 1, 12
-         w(i) = star%ctrl%mixture_weights_seed(i)
-      end do
+! the envelope mixture, by core/model/starting_model.f90's algorithm
+! (its "COMPUTE SURFACE MIX VALUES" block), for X = 0.70, Z = 0.016492
+! (the Z of the shipped EOSOPAL06Z0.016492 table)
+      envelope_hydrogen_fraction = 0.70d0
+      envelope_metal_fraction = 0.016492d0
+      w = mixture_weights_seed
       wsum = w(1)+w(2)+w(3)+w(4)+w(5)+w(6)+w(8)+w(9)+w(10)+w(11)
-      star%zenvm = star%envelope_metal_fraction* &
-           (wsum - w(6) - w(8) - w(9))/wsum
-      scale = star%envelope_metal_fraction/wsum
-      w(7) = star%envelope_hydrogen_fraction/scale
-      w(12) = (1.0d0 - star%envelope_hydrogen_fraction - &
-           star%envelope_metal_fraction)/scale
+      scale = envelope_metal_fraction/wsum
+      w(7) = envelope_hydrogen_fraction/scale
+      w(12) = (1.0d0 - envelope_hydrogen_fraction - envelope_metal_fraction)/scale
       wsum = 0.0d0
       do i = 1, 12
          w(i) = scale*w(i)/atomic_weight(i)
          wsum = wsum + w(i)
       end do
-      star%amuenv = wsum
-      scale = 1.0d0/star%amuenv
+      mean_atomic_mass = wsum
+      scale = 1.0d0/mean_atomic_mass
       do i = 1, 12
-         star%fxenv(i) = w(i)*scale
+         species_fractions(i) = w(i)*scale
       end do
-! push the mixture to the eos domain, as starin does (physics-purity)
-      call eos_set_mixture(star%envelope_hydrogen_fraction, &
-           star%envelope_metal_fraction, star%amuenv, &
-           star%fxenv)
+      call eos_set_mixture(envelope_hydrogen_fraction, envelope_metal_fraction, &
+           mean_atomic_mass, species_fractions)
 
-! constants + Fermi/SCV table loads (real setups + eos_init inside it)
-      star%job%mixture_weights = laol_work
-      star%job%alex06_table_path = dummy_path
-      star%job%allard_table_path = dummy_path
-      star%job%atm_table_path = dummy_path
-      star%job%fermi_table_path = fermi_path
-      star%job%kurucz_table_path = dummy_path
-      star%job%kurucz_table2_path = dummy_path
-      star%job%laol_table_path = dummy_path
-      star%job%laol_table2_path = dummy_path
-      star%job%opal95_table_path = dummy_path
-      star%job%opal92_table_path = dummy_path
-      star%job%zams_a_table_path = dummy_path
-      star%job%zams_b_table_path = dummy_path
-      star%job%zams_c_table_path = dummy_path
-      star%job%centre1_table_path = dummy_path
-      star%job%centre2_table_path = dummy_path
-      star%job%centre3_table_path = dummy_path
-      star%job%centre4_table_path = dummy_path
-      star%job%centre5_table_path = dummy_path
-      star%job%opal92_table2_path = dummy_path
-      star%job%pure_z_table_path = dummy_path
-      star%job%scv_h_table_path = scvh_path
-      star%job%scv_he_table_path = scvhe_path
-      star%job%scv_z_table_path = scvz_path
-      star%job%alex95_table_paths = dummy_paths7
-      star%job%opal_eos_table_path = opal06_path
-      call set_up_constants_and_tables(star, setups_ierr)
-      if (setups_ierr /= 0) then
-         write(*,'(a)') "test_eos: FAIL (setups error)"
+! the production EOS (SCV and OPAL 2006, the Saha cutoff at log T = 6,
+! as in the reference solar decks), installed with the tables it reads;
+! the OPAL table is read by esac06 on first use, as in a run
+      settings%use_scv_eos = .true.
+      settings%use_opal2006_eos = .true.
+      settings%saha_log10t_cutoff = 6.0d0
+      call eos_init(settings, fermi_path, scvh_path, scvhe_path, scvz_path, &
+           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
+           dummy_path, dummy_path, dummy_path, opal06_path, gerr)
+      if (gerr /= 0) then
+         write(*,'(a)') "test_eos: FAIL (eos_init error)"
          stop 1
       end if
-
-! (the OPAL-2006 EOS file is opened by eos_init, from
-! star%job%opal_eos_table_path; esac06 reads it lazily on first use)
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
@@ -305,7 +246,6 @@ program test_eos
             write(*,'(4(1pe24.15))') logt, logp, logd, beta
             write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
          end do
-         star%ctrl%use_mhd_eos = .false.
       end if
 
 ! Error paths (2026, docs/ROADMAP.md stage 3): in the eos domain the error

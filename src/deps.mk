@@ -322,11 +322,12 @@ atm/t_tau_relations.o: math_lib.mod physical_constants.mod
 atm/tables/allard_atmosphere.o: atm_tables.mod io_units.mod math_lib.mod numerics_lib.mod
 atm/tables/kurucz_atmosphere.o: atm_tables.mod io_units.mod numerics_lib.mod
 atm/test/test_atm.o: atm_lib.mod io_units.mod
+convection/convection_configuration.o: physical_constants.mod
 convection/convection_lib.o: convection_configuration.mod convection_zones.mod semiconvection.mod temperature_gradients.mod
 convection/convection_zones.o: convection_configuration.mod eos_lib.mod io_units.mod math_lib.mod physical_constants.mod
 convection/semiconvection.o: convection_configuration.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod temperature_gradients.mod
 convection/temperature_gradients.o: convection_configuration.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod
-convection/test/test_convection.o: convection_lib.mod eos_lib.mod io_units.mod kap_lib.mod run_setup.mod star_info_lib.mod
+convection/test/test_convection.o: convection_lib.mod eos_lib.mod io_units.mod kap_lib.mod star_info_lib.mod
 core/diagnostics/neutrino_flux_output.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/diagnostics/stitched_model.o: envelope_integration.mod io_units.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
@@ -390,7 +391,7 @@ eos/opal/opal95_eos.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_co
 eos/opal/opal_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod opal95_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/opal_eos_tables.o: io_units.mod math_lib.mod
 eos/scv/scv_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod run_setup.mod star_info_lib.mod
+eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod legacy_controls.mod numerics_lib.mod star_info_lib.mod
@@ -460,11 +461,12 @@ rotation/shape/shell_quadrature.o: composition_layout.mod math_lib.mod physical_
 rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotation_settings_setup.mod rotational_mixing.mod shell_quadrature.mod stability_coefficients.mod star_info_lib.mod viscosity.mod
 rotation/test/test_rotation_kernels.o: am_grid.mod am_transport_coefficients.mod circulation.mod composition_layout.mod equal_grid.mod instability_velocities.mod magnetic_braking.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod region_transport.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod transport_mechanism_layout.mod transport_mechanisms.mod transport_regions.mod
 rotation/viscosity.o: composition_layout.mod math_lib.mod physical_constants.mod
-setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod star_info_lib.mod
+setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod star_info_lib.mod
 setup/net_settings_setup.o: net_lib.mod star_info_lib.mod
 setup/rotation_settings_setup.o: controls_buffer.mod magnetic_braking.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
 setup/user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod
+state/physical_constants.o: math_lib.mod
 state/star_info_lib.o: composition_layout.mod envelope_points.mod net_lib.mod neutrino_flux_layout.mod stitched_model_state.mod transport_mechanism_layout.mod
 
 # real prerequisites: include files

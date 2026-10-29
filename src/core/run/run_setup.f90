@@ -43,8 +43,8 @@ end subroutine prepare_run
 !----------------------------------------------------------------------
 ! set_up_constants_and_tables (legacy setups.f)
 !----------------------------------------------------------------------
-! One-time, model-independent setup at the start of a run: the physical
-! and derived constants (in physical_constants and star%), the HSRA
+! One-time, model-independent setup at the start of a run: log10 G
+! (physical_constants' cgl) and the solar constants on star, the HSRA
 ! T(tau) offset, and the tables, loaded through the domain
 ! initializations: the opacities (kap_init); the equation of state
 ! (eos_init: the Fermi-Dirac degenerate-electron table, and the OPAL,
@@ -68,13 +68,9 @@ subroutine set_up_constants_and_tables(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
-! --- locals ---
-      double precision :: speed_of_light, electron_mass, boltzmann_constant, &
-           planck_constant
-
 ! --- Constants -------------------------------------------------------
-! (ln10, cc13, cpi and the other mathematical constants are parameters
-! of physical_constants.)
+! (the mathematical and physical constants are parameters of
+! physical_constants; only log10 G depends on a control.)
 ! Solar luminosity: log10 Lsun, and ln10/Lsun (not a log; s/erg).
       s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
       s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
@@ -84,42 +80,8 @@ subroutine set_up_constants_and_tables(s, ierr)
       s%log10_solar_radius = log10(s%solar_radius_cgs)
 ! Bolometric magnitude of the Sun.
       s%solar_bolometric_magnitude = 4.79d0
-! Speed of light.
-      speed_of_light = 2.99792458d10
-! Stefan-Boltzmann constant sigma, and its log.
-      csig = 5.67051d-5
-      csigl = log10(csig)
-! a/3 = 4 sigma/(3 c), with a the radiation constant, and its log.
-      radiation_constant_over_3 = csig*4.0d0/(3.0d0*speed_of_light)
-      ca3l = log10(radiation_constant_over_3)
-! Molar gas constant.
-      gas_constant = 8.314510d7
-! log10 G. A non-positive G_cgs (the default) keeps the historical
-! hard-coded log10 G = -7.17571 (G = 6.6726d-8) bit for bit; a
-! positive G_cgs (a namelist control) overrides it.
-      if (s%ctrl%G_cgs > 0.0d0) then
-         cgl = log10(s%ctrl%G_cgs)
-      else
-         cgl = -7.17571d0
-      end if
-! Electron mass.
-      electron_mass = 9.1093897d-28
-! Boltzmann constant.
-      boltzmann_constant = 1.380658d-16
-! Planck constant.
-      planck_constant = 6.6260755d-27
-! The Saha-equation constant:
-! cmkh = log10[ (2 pi m_e)^(3/2) k^(5/2) / h^3 ].
-      cmkh = 1.50d0*log10(2.0d0*cpi*electron_mass)+2.5d0* &
-           log10(boltzmann_constant)- &
-           3.0d0*log10(planck_constant)
-! The radiative-gradient constant, cdelrl = log10[ 3/(64 pi sigma) ],
-! so that grad_rad = 10^cdelrl kappa L P / (G m T^4).
-      cdelrl = -c4pi3l - csigl - log10(16.0d0)
-! Mixing-length-theory constants: 1/3 and 16 sqrt(2) sigma.
-      cmixl2 = cc13
-      cmixl3 = 16.0d0*dsqrt(2.0d0)*csig
-! (The Debye-Hueckel constants are set in eos_init.)
+! log10 G: the control G_cgs when positive, else the CODATA 1986 value.
+      cgl = log10_newton_g(s%ctrl%G_cgs)
 ! --- HSRA T(tau) offset -----------------------------------------------
 ! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
       s%atm_hras = hsra_t_tau_offset()

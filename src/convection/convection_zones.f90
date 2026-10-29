@@ -11,7 +11,7 @@ module convection_zones
       use convection_configuration, only: convection_settings
       use eos_lib, only: eos_result, eos_get
       use io_units, only: run_log_unit
-      use physical_constants, only: ln10, cgl
+      use physical_constants, only: ln10
       use math_lib
       implicit none
       private
@@ -442,7 +442,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       log10_mass = log_mass(edge_zone)
       log10_radius = log_radius(edge_zone)
       pscahe = exp(ln10*(log10_pressure + 2.0d0*log10_radius - &
-           eos_res%log10_density - cgl - log10_mass))
+           eos_res%log10_density - convection_settings%log10_gravitational_constant - log10_mass))
       return
 end subroutine compute_scale_height
 

@@ -112,8 +112,9 @@ end function atmosphere_settings
 ! convection_settings_from_star: convection's settings from the
 ! controls and the run card's mixing length.
 !   star reads: ctrl%alpham, ctrl%betac, ctrl%core_overshoot_active,
-!     ctrl%envelope_overshoot_active, ctrl%instability_transport_active,
-!     ctrl%ladov, ctrl%lovmax, ctrl%lovstm, ctrl%overshoot_alpha_core,
+!     ctrl%envelope_overshoot_active, ctrl%G_cgs,
+!     ctrl%instability_transport_active, ctrl%ladov, ctrl%lovmax,
+!     ctrl%lovstm, ctrl%overshoot_alpha_core,
 !     ctrl%overshoot_alpha_envelope, ctrl%rotation_active,
 !     ctrl%spot_depth_varies, ctrl%spot_filling_factor,
 !     ctrl%spot_temp_contrast, ctrl%tgcut,
@@ -122,6 +123,7 @@ end function atmosphere_settings
 !   star writes: none
 function convection_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
+      use physical_constants, only: log10_newton_g
       type(star_info), intent(in) :: s
       type(convection_settings_t) :: settings
 
@@ -130,6 +132,7 @@ function convection_settings_from_star(s) result(settings)
       settings%adiabatic_overshoot = s%ctrl%ladov
       settings%solar_luminosity_cgs = s%solar_luminosity_cgs
       settings%log10_solar_luminosity = s%log10_solar_luminosity
+      settings%log10_gravitational_constant = log10_newton_g(s%ctrl%G_cgs)
       settings%spot_filling_factor = s%ctrl%spot_filling_factor
       settings%spot_temp_contrast = s%ctrl%spot_temp_contrast
       settings%spot_depth_varies = s%ctrl%spot_depth_varies

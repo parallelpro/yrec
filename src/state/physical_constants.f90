@@ -1,17 +1,15 @@
 !----------------------------------------------------------------------
 ! physical_constants
 !----------------------------------------------------------------------
-! Added 2026 (phase six, step 3 -- docs/ROADMAP.md). The genuinely physical
-! and derived constants split out of const_lib: former common/const1/,
-! /const2/, /const3/ (set once by setups, read broadly), and the
-! version string. The mathematical constants are parameters (2026-10:
-! setups assigned them at run time, so any caller of a physics domain
-! had to run setups first; each compile-time value is bit-identical to
-! the run-time one). The rest is immutable after startup: cmixl,
-! the historical mutable exception, moved to
-! star%mixing_length_alpha in the 2026 phase-A eviction. (cmixl2/
-! cmixl3, despite the names, are MLT formula constants -- cc13 and
-! 16*sqrt(2)*sigma -- not powers of the mixing length.)
+! The mathematical and physical constants: compile-time parameters
+! (2026-10: setups assigned most of them at run time, so a physics
+! domain gave the right answer only after core's setup had run; each
+! compile-time value was checked to be bit-identical to the run-time
+! one). The one run-time value left is cgl, log10 G, which the control
+! G_cgs can set: run_setup assigns it, from log10_newton_g. Also the
+! version strings. (cmixl2/cmixl3, despite the names, are MLT formula
+! constants -- cc13 and 16*sqrt(2)*sigma -- not powers of the mixing
+! length.)
 module physical_constants
       implicit none
 
@@ -22,18 +20,42 @@ module physical_constants
            cpi = 3.1415926535898d0, c4pi = 4.0d0*cpi, c4pil = log10(c4pi), &
            c4pi3l = log10(cc13*c4pi), seconds_per_year = 3.1558d7
 
-! former common/const2/
-      double precision :: gas_constant, radiation_constant_over_3, ca3l, &
-           csig, csigl, cgl, cmkh, cmkhn
-
-! former common/const3/.
-      double precision :: cdelrl, cmixl2, cmixl3
+! The CODATA 1986 values (Cohen & Taylor 1987), cgs, that the setup has
+! always used (former common/const2/ and /const3/): the Stefan-Boltzmann
+! constant sigma [erg/(cm^2 s K^4)], the speed of light [cm/s] (exact),
+! the molar gas constant R [erg/(mol K)], and the electron mass [g], the
+! Boltzmann constant [erg/K] and the Planck constant [erg s] of the Saha
+! constant below.
+      double precision, parameter :: csig = 5.67051d-5, &
+           speed_of_light_cgs = 2.99792458d10, gas_constant = 8.314510d7, &
+           electron_mass_cgs = 9.1093897d-28, boltzmann_constant_cgs = 1.380658d-16, &
+           planck_constant_cgs = 6.6260755d-27
+! log10 sigma, and a/3 = 4 sigma/(3c) [erg/(cm^3 K^4)], with a the
+! radiation constant (P_rad = (a/3) T^4)
+      double precision, parameter :: csigl = log10(csig), &
+           radiation_constant_over_3 = csig*4.0d0/(3.0d0*speed_of_light_cgs)
+! the Saha-equation constant cmkh = log10[(2 pi m_e)^(3/2) k^(5/2)/h^3]
+      double precision, parameter :: cmkh = 1.50d0*log10(2.0d0*cpi*electron_mass_cgs) + &
+           2.5d0*log10(boltzmann_constant_cgs) - 3.0d0*log10(planck_constant_cgs)
+! the radiative-gradient constant cdelrl = log10[3/(64 pi sigma)], so
+! that grad_rad = 10^cdelrl kappa L P/(G m T^4); and the mixing-length
+! constants 1/3 and 16 sqrt(2) sigma
+      double precision, parameter :: cdelrl = -c4pi3l - csigl - log10(16.0d0), &
+           cmixl2 = cc13, cmixl3 = 16.0d0*sqrt(2.0d0)*csig
+! log10 G [cm^3/(g s^2)]: the CODATA 1986 G = 6.67259e-8, its log10
+! rounded to five decimals (G = 6.67252e-8); the value unless the
+! control G_cgs sets another (log10_newton_g)
+      double precision, parameter :: log10_newton_g_default = -7.17571d0
+! log10 G for the run, set by run_setup (former common/const2/; the
+! star-free domains take it from their settings records: convection's
+! log10_gravitational_constant)
+      double precision :: cgl
 
 ! ---- named physical constants (2026 readability sweep) ----
 ! Each keeps exactly the literal value of the site it replaced; the
-! *_legacy names mark values that differ from the ones run_setup's set_up_constants_and_tables
-! computes into the variables above (csig) or from the namelist
-! defaults (solar_radius_cgs), so the two deliberately coexist.
+! *_legacy names mark values that differ from the parameters above
+! (csig) or from the namelist defaults (solar_radius_cgs), so the two
+! deliberately coexist.
 !
 ! atomic mass unit [g], the value of the network's isotope-mass tables
 ! (Bahcall 1997): turns a rate per second per gram into the per-second
@@ -71,6 +93,21 @@ module physical_constants
       character(len=20) :: git_hash_string
 
 contains
+
+! log10 G (cgs) for a G_cgs control: log10 G_cgs when it is positive,
+! else the CODATA 1986 value log10_newton_g_default (a non-positive
+! G_cgs, the default, keeps the historical log10 G = -7.17571 bit for
+! bit). run_setup sets cgl from it, and the settings builders the
+! domains' copies.
+pure double precision function log10_newton_g(G_cgs)
+      use math_lib
+      double precision, intent(in) :: G_cgs
+      if (G_cgs > 0.0d0) then
+         log10_newton_g = log10(G_cgs)
+      else
+         log10_newton_g = log10_newton_g_default
+      end if
+end function log10_newton_g
 
 ! log10 of the stellar radius (cm) from log10 L/Lsun and log10 Teff,
 ! L = 4 pi R**2 sigma Teff**4 (the star%log_R_surface expression, before
