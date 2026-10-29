@@ -12,7 +12,7 @@
 ! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants, only: yrec_version_string, git_hash_string
+      use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: run_log_unit
       use legacy_controls
       use controls_check, only: report_control

@@ -352,7 +352,6 @@ core/run/run_setup.o: atm_lib.mod eos_lib.mod kap_lib.mod math_lib.mod microphys
 core/run/stop_conditions.o: calibration.mod io_units.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
 core/run/yrec_reset.o: star_info_lib.mod
-core/run/yrec_version.o: physical_constants.mod
 core/step/burn_step.o: convection_geometry.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/step/composition_step.o: burn_step.mod convection_lib.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
@@ -399,10 +398,10 @@ eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod 
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod legacy_controls.mod numerics_lib.mod star_info_lib.mod
-io/controls_reader.o: controls_check.mod controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod net_lib.mod physical_constants.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod user_inputs.mod
+io/controls_reader.o: controls_check.mod controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod net_lib.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod user_inputs.mod yrec_version.mod
 io/controls_sync.o: controls_buffer.mod star_info_lib.mod
-io/derived_controls.o: controls_check.mod io_units.mod legacy_controls.mod physical_constants.mod star_info_lib.mod
-io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod physical_constants.mod star_info_lib.mod
+io/derived_controls.o: controls_check.mod io_units.mod legacy_controls.mod star_info_lib.mod yrec_version.mod
+io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod star_info_lib.mod yrec_version.mod
 io/legacy_controls.o: controls_buffer.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod

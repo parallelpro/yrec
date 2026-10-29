@@ -19,7 +19,7 @@ module controls_reader
       use star_info_lib, only: star_info, controls_state, control_nml_override, &
            physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star
-      use physical_constants, only: yrec_version_string, git_hash_string
+      use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: check_io
 ! the generated includes name every namelist variable
       use legacy_controls

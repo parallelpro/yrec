@@ -14,7 +14,7 @@
 ! record, part of yrec_output's output_state, which run_yrec owns.
 module history_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants, only: yrec_version_string
+      use yrec_version, only: yrec_version_string
       use output_columns, only: max_cols, parse_columns, output_column, &
            real_column, integer_column, hist_default_names
       implicit none
