@@ -8,16 +8,17 @@
 ! the code uses from net/'s modules, and nothing more.
 !
 !   net_configuration  the reaction slots and the scale slots, the
-!                      run's settings record
-!   network            the reaction table, the rate evaluation, the
-!                      implicit burn, set_net_settings
+!                      run's settings record, the legacy sstandard map
+!   network            the rate evaluation, the implicit burn and its
+!                      error codes, the chains, each reaction's reference
+!                      S0, set_net_settings
+!   reaction_rates     the reference values of the rates outside the
+!                      table (pep, Be7, hep, the N15 + p branches)
 !   nuclear_energy     the energy generation of a zone
 !   light_elements     deuterium and Li/Be in the trace approximation,
 !                      and the trace-element integrator
-!   thermal_neutrinos  thermal neutrino losses (Itoh et al. 1996); used
-!                      by nuclear_energy only, so nothing is exported
-! (reaction_rates, the rate laws, screening and net_messages export
-! nothing either.)
+! (thermal_neutrinos, screening and net_messages export nothing: only
+! net/ uses them.)
 !
 ! The individual reaction rates, the table, the screening and the
 ! neutrino routines stay inside; net/test/test_net reaches them through
@@ -37,7 +38,7 @@ module net_lib
       use net_configuration, only: num_rate_rows, net_settings_t, &
            num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
            r_po16, num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep, &
-           num_sstandard, cross_section_scales_from_sstandard
+           cross_section_scales_from_sstandard
       use network, only: set_net_settings
 ! the values the input S0 of each rate is scaled against (map_user_inputs):
 ! a table reaction's reference_s0(r_*); pep, Be7 + e-, Be7 + p, hep; the
@@ -52,7 +53,7 @@ module net_lib
            burn_not_converged, burn_singular_jacobian
 ! the energy generation, by chain (eps_by_chain(chain_*))
       use nuclear_energy, only: nuclear_energy_result, compute_nuclear_energy
-      use network, only: n_chains, chain_name, chain_pp1, chain_pp2, chain_pp3, &
+      use network, only: n_chains, chain_pp1, chain_pp2, chain_pp3, &
            chain_cno, chain_alpha_capture, chain_triple_alpha
 ! the light elements
       use light_elements, only: &
