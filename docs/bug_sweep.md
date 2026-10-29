@@ -32,8 +32,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 43 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 52 |
-| Open | 14 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 17 |
+| Fixed | 44 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 53 |
+| Open | 13 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 16 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 
@@ -109,7 +109,7 @@ These open items depend on what the code was meant to do, not only on what it do
 | O13 | Transport region ends: sums and write-back disagree | Yes | Fixed |
 | O14 | Species 5-15 unchecked after mixing; 16-slot history | Yes | Fixed |
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Fixed (removed; documented) |
-| O16 | Settling rewrites m in place; reversed `MOD` | Yes | Open |
+| O16 | Settling rewrites m in place; reversed `MOD` | Yes | Fixed |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
 | O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open |
 | O19 | Allard reader's misspelled flag; failed lookup used | Yes | Open |
@@ -1105,7 +1105,8 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O16. Settling rewrites the mass coordinate in place, and its sub-step count uses a reversed `MOD` (MIX)
 
-- **Status:** open. The zero-count half of the `MOD` problem was guarded in L8.
+- **Status:** fixed (2026-10-28). The zero-count half of the `MOD` problem was guarded in L8.
+- **What we did:** `microdiff` converts copies of the timestep, dlnP/dr, the mass coordinate and the total mass to Bahcall-Loeb units and discards them, so the model's own are never rescaled; `microdiff_etm` no longer converts back. Both settling sub-step counts (`settle` in the composition step, `burn_and_settle` in the rotation sub-step) take mod(timestep, max_settling_dt). Measured on the 50 self-contained decks of the checked set, each run alone: the 23 with settling move, 27 are byte-identical, as are the chained m0030, ZAHB and nuclear-rate decks. The copies alone account for all of it (the count changes only at an exact multiple, which no deck met): the testsuite's settling solar decks by 3e-5 dex in log L at 4.57 Gyr at most (1.6e-4 at any age), the rotating variants by up to 3.7e-4: round-off in the mass coordinate, amplified.
 - **In the original F77?** Yes. The settling setup multiplies the model's `HS1` by the unit conversion and divides it back afterwards (microdiff_setup.f:116-121, microdiff_etm.f:143-147; [microdiff_setup.f:113-121](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_setup.f#L113-L121)). The sub-step count is in MIX ([mix.f:412-415](https://github.com/parallelpro/yrec/blob/6cd56739/src/mix.f#L412-L415)):
   ```fortran
            NSTEP = INT(DELTS/DTMAX)

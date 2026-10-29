@@ -510,17 +510,16 @@ subroutine settle_helium()
                  mass_fraction_above/ &
                  exp(ln10*1.5d0*log_temperature(outer_boundary_zone))
 ! Settling sub-steps no longer than settling_timestep_fraction (legacy
-! DT_GS) times tau, and one if timestep is shorter. The count is
-! int(timestep/max_settling_dt) + 1 unless max_settling_dt equals
-! timestep: the mod test takes its arguments as (max_settling_dt,
-! timestep), as in the original, so it adds one even when timestep is
-! an exact multiple of max_settling_dt.
+! DT_GS) times tau, and one if timestep is shorter: the count is
+! max(1, ceiling(timestep/max_settling_dt)), as in the composition step.
+! (The original took mod(max_settling_dt, timestep), arguments reversed,
+! which added one sub-step at an exact multiple; docs/bug_sweep.md O16.)
             if (solver_diagnostics()) write(run_log_unit,*) 'JMAX=', &
                  outer_boundary_zone,' FM= ', &
                  mass_fraction_above,' TSCALE=',settling_timescale
             max_settling_dt = rotation_settings%settling_timestep_fraction*settling_timescale
             num_settling_substeps = int(timestep/max_settling_dt)
-            if (mod(max_settling_dt,timestep).ne.0.0d0.or. &
+            if (mod(timestep,max_settling_dt).ne.0.0d0.or. &
                  num_settling_substeps.eq.0) &
                  num_settling_substeps=num_settling_substeps+1
             if (solver_diagnostics()) write(run_log_unit,*) &

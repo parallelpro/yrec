@@ -265,7 +265,7 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
-      double precision, intent(inout) :: timestep
+      double precision, intent(in) :: timestep
       double precision, intent(in) :: eq_radius(json), &
            eq_delta_hydrogen(json), eq_delta_metal(json)
       integer, intent(in) :: num_light
@@ -273,9 +273,9 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
       integer, intent(in) :: zone_begin, zone_end, num_eq_points
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: radius_bl(json)
-      double precision, intent(inout) :: dlnp_dr(json), enclosed_mass(json)
+      double precision, intent(in) :: dlnp_dr(json), enclosed_mass(json)
       integer, intent(in) :: num_zones
-      double precision, intent(inout) :: total_mass
+      double precision, intent(in) :: total_mass
       integer, intent(in) :: light_element_id(num_light)
 ! --- locals ---
       double precision :: tabler(4), facinterp(4)
@@ -402,13 +402,9 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
             end do
          enddo
       endif
-!
-      do i=1,num_zones
-         enclosed_mass(i)=enclosed_mass(i)/diff_scr%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)*diff_scr%bl_radius_scale
-      end do
-      timestep=timestep*diff_scr%bl_time_scale
-      total_mass=total_mass/diff_scr%bl_mass_scale
+! (The timestep, dlnP/dr, mass coordinate and total mass are microdiff's
+! copies in Bahcall and Loeb units, which it discards: nothing to
+! convert back; docs/bug_sweep.md O16.)
       return
 end subroutine microdiff_etm
 
