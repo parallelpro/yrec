@@ -42,15 +42,15 @@ module yrec_output
 contains
 
 ! ---------------------------------------------------------------
-subroutine output_init_mesa(s, log_output_file, ierr)
+subroutine output_init_mesa(s, log_output_file, output_dir, ierr)
       use star_info_lib, only: star_info
       use io_units
       use run_log, only: log_reset
       type(star_info), intent(inout) :: s
-      character(len=*), intent(in) :: log_output_file
+      character(len=*), intent(in) :: log_output_file, output_dir
       integer, intent(out) :: ierr
       character(len=256) :: log_path, msg
-      integer :: n, islash, ios
+      integer :: n, ios
 
       ierr = 0
 ! run-log name: keep an explicit .log name as-is, swap a legacy
@@ -73,12 +73,7 @@ subroutine output_init_mesa(s, log_output_file, ierr)
       if (ierr /= 0) return
       call log_reset()
 
-      islash = index(log_output_file, '/', back=.true.)
-      if (islash > 0) then
-         out_dir = log_output_file(1:islash)
-      else
-         out_dir = ' '
-      end if
+      out_dir = output_dir
       profile_counter = 0
 
       call history_output_init(s, out_dir, ierr)

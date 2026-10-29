@@ -119,21 +119,13 @@ subroutine open_run_files(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      character(len=256) :: shell_cmd, msg
-      integer :: i, last_slash_idx, ios
+      character(len=256) :: msg, output_dir
+      integer :: ios
 
-      last_slash_idx = 0
-      do i = len_trim(fshort), 1, -1
-          if (fshort(i:i) .eq. '/') then
-              last_slash_idx = i
-              exit
-          endif
-      end do
-      shell_cmd = 'mkdir -p '
-      shell_cmd(len_trim(shell_cmd)+2:len_trim(fshort(1:last_slash_idx))+len_trim(shell_cmd)) = fshort(1:last_slash_idx)
-      print *,"OUTPUT placed in :  ",fshort(1:last_slash_idx)
+      output_dir = directory_of(fshort)
+      print *,"OUTPUT placed in :  ",trim(output_dir)
       print *, ''
-      call system(shell_cmd)
+      call make_directory(output_dir)
       call copy_inlists_used(trim(inlist_used_file), ierr)
       if (ierr /= 0) return
 
@@ -143,7 +135,7 @@ subroutine open_run_files(s, ierr)
       open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the final model file', flast, ierr)
       if (ierr /= 0) return
-      call output_init_mesa(s, fshort, ierr)
+      call output_init_mesa(s, fshort, output_dir, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
          open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
@@ -162,6 +154,47 @@ subroutine open_run_files(s, ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
+
+! ---------------------------------------------------------------
+! The directory part of a path, up to and including its last '/';
+! blank for a bare file name.
+pure function directory_of(path) result(dir)
+      character(len=*), intent(in) :: path
+      character(len=len(path)) :: dir
+      integer :: islash
+
+      islash = index(path, '/', back=.true.)
+      dir = ' '
+      if (islash > 0) dir = path(1:islash)
+end function directory_of
+
+! ---------------------------------------------------------------
+! A directory and its parents created, as mkdir -p does, through the C
+! library's mkdir (no shell). A directory that exists already is left
+! alone, and a failure is left to the first open in it to report.
+subroutine make_directory(dir)
+      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char
+      character(len=*), intent(in) :: dir
+      interface
+         integer(c_int) function c_mkdir(path, mode) bind(c, name='mkdir')
+            import :: c_char, c_int
+            character(kind=c_char), intent(in) :: path(*)
+            integer(c_int), value :: mode
+         end function c_mkdir
+      end interface
+! rwx for all, less the umask (what mkdir -p gives)
+      integer(c_int), parameter :: mode_rwx_all = int(o'777', c_int)
+      integer :: i, n
+      integer(c_int) :: rc
+
+      n = len_trim(dir)
+      do i = 2, n
+         if (dir(i:i) == '/') rc = c_mkdir(dir(1:i-1) // c_null_char, mode_rwx_all)
+      end do
+      if (n > 0) then
+         if (dir(n:n) /= '/') rc = c_mkdir(dir(1:n) // c_null_char, mode_rwx_all)
+      end if
+end subroutine make_directory
 
 ! ---------------------------------------------------------------
 ! A verbatim copy of the deck's file(s) in the output directory: the

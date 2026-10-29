@@ -277,3 +277,22 @@ def test_gsm_pulse_output(tmp_path):
             ["r", "M_r", "L_r", "P", "T", "rho", "nabla", "N2", "Gamma_1",
              "nabla_ad", "delta", "kap", "kap_kap_T", "kap_kap_rho",
              "eps", "eps_eps_T", "eps_eps_rho", "Omega_rot"])
+
+
+def test_output_directory_is_created(tmp_path):
+    """The run log's directory, the output directory, is created with
+    its parents, whatever characters its path holds (it was a shell
+    `mkdir -p` with the path unquoted)."""
+    if not YREC.exists() or not (REPO / "input").exists():
+        pytest.skip("needs src/yrec and the full input/ tree")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    (tmp_path / "cm_base.inlist").write_text(deck.read_text())
+    out = tmp_path / "nested dir" / "with space" / "output"
+    env = dict(os.environ)
+    env.update({k: str(v) for k, v in ENV.items()})
+    env["YREC_OUTPUT"] = str(out)
+    r = subprocess.run([str(YREC), "cm_base.inlist"], cwd=tmp_path, env=env,
+                       capture_output=True, text=True, timeout=600)
+    assert r.returncode == 0, r.stdout[-500:] + r.stderr[-500:]
+    assert sorted(p.name for p in out.iterdir()) == [
+        "cm_base.log", "cm_base.mod", "history.data", "inlist_used"]
