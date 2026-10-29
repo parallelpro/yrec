@@ -153,6 +153,9 @@ program test_eos
          write(*,'(a)') "test_eos: FAIL (eos_init error)"
          stop 1
       end if
+! the SCV envelope-mixture table, which a run builds when it reads the
+! starting model (eos_init reads the SCV tables but does not build it)
+      call eos_update_envelope_tables(envelope_hydrogen_fraction, envelope_metal_fraction)
 
       x_frac = 0.70d0
       z_frac = 0.016492d0
