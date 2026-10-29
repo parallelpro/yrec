@@ -178,7 +178,7 @@ program test_numerics
       write(*,'(a)') "# osplin: oscillating data (slopes of opposite sign, zero slopes)"
       jy(1:8) = [0.0d0, 1.0d0, 0.5d0, 2.0d0, -1.0d0, -1.0d0, 3.0d0, 2.5d0]
       call osplin_case(8, [0.3d0, 0.9d0, 1.5d0, 2.2d0, 3.6d0, 4.5d0, 5.2d0, 6.4d0, 6.8d0, 6.99d0])
-      write(*,'(a)') "# osplin: steps (one and two knots per interval)"
+      write(*,'(a)') "# osplin: steps (knot cases 1 and 2, one knot per interval)"
       jy(1:8) = [0.0d0, 0.01d0, 0.02d0, 5.0d0, 5.01d0, 5.02d0, 10.0d0, 10.1d0]
       call osplin_case(8, [0.5d0, 1.5d0, 2.1d0, 2.5d0, 2.9d0, 3.5d0, 4.5d0, 5.5d0, 6.2d0, 6.8d0])
       write(*,'(a)') "# osplin: concave data with a near-linear stretch"
@@ -450,10 +450,13 @@ subroutine tridiagonal_check()
       write(*,'(a,i3)') "solve_tridiagonal, zero first pivot: ierr", ierr
 end subroutine tridiagonal_check
 
-! bsstep: four accepted steps of the harmonic system from x = 0; large
-! trial steps accepted at the sixth stage (h grows), the seventh (h
-! shrinks) and after a retry; then an integrand failure and a step
-! that underflows (against 0.7, as the envelope's hydrogen fraction)
+! bsstep: four accepted steps of the harmonic system from x = 0; then
+! large trial steps at tolerance 1e-13, each from the derivatives at its
+! start, that are accepted at the sixth stage (0.6: h_next = 1.2 h), the
+! seventh (1.0, 1.5: 0.95 h), the tenth (4.0: h 16/64, from the substep
+! counts), and after one retry of h/16 at the sixth (6.0) and the
+! seventh (20.0); then an integrand failure and a step that underflows
+! (against 0.7, as the envelope's hydrogen fraction)
 subroutine bsstep_check()
       real(dp), parameter :: underflow_reference = 0.7d0
       type(harmonic_system) :: sys
@@ -473,9 +476,10 @@ subroutine bsstep_check()
          call show("  step_err", err)
          h = h_next
       end do
-      pts(1:6) = [1.0d0, 1.5d0, 2.0d0, 2.5d0, 3.0d0, 4.0d0]
+      pts(1:6) = [0.6d0, 1.0d0, 1.5d0, 4.0d0, 6.0d0, 20.0d0]
       do step = 1, 6
          h = pts(step)
+         call sys%derivatives(x, y, dydx, ierr)
          call bsstep(sys, y, dydx, 3, x, h, 1.0d-13, yscale, h_did, h_next, err, &
               11, 7, underflow_reference, ierr)
          write(*,'(a,f5.2,a,i3)') "large step, h_try", h, " ierr", ierr
@@ -1183,15 +1187,16 @@ subroutine bsstep_checks()
       call report_true("bsstep: on a failure y and x are as they came in", advanced)
 end subroutine bsstep_checks
 
-! every status code has its own description
+! every status code has its own description (a new code goes into
+! codes, the one list of them)
 subroutine status_checks()
-      integer :: codes(7), i, j
+      integer, parameter :: codes(*) = [numerics_ok, numerics_singular, &
+           numerics_coincident_points, numerics_bad_input, numerics_step_underflow, &
+           numerics_unsorted_points, numerics_derivatives_failed]
+      integer :: i, j
       logical :: holds
-      codes = [numerics_ok, numerics_singular, numerics_coincident_points, &
-           numerics_bad_input, numerics_step_underflow, numerics_unsorted_points, &
-           numerics_derivatives_failed]
       holds = .true.
-      do i = 1, 7
+      do i = 1, size(codes)
          holds = holds .and. numerics_status_text(codes(i)) /= numerics_status_text(-99)
          do j = 1, i-1
             holds = holds .and. codes(i) /= codes(j) .and. &
