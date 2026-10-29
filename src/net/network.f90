@@ -2,8 +2,8 @@
 ! network
 !----------------------------------------------------------------------
 ! The hydrogen- and helium-burning network as data, and the one implicit
-! integrator that reads it (2026-10; replaces the hand-written
-! 7-species equations and Jacobian of kemcom, mixing/burn_network_region).
+! integrator that reads it (2026-10; it replaced the hand-written
+! 7-species equations and Jacobian of kemcom).
 !
 ! Species. The implicit solve carries H, He3, He4, C12, C13, N14 and
 ! O16 (in that order -- the order of the old system, which fixes the
@@ -23,11 +23,13 @@
 !
 ! Reactions. Reaction j proceeds at
 !     R_j = b_j * g_j * prod_m X(reactants_j(m))    [per s per amu]
-! where g_j is row rate_row of the composition rate vector
+! where g_j is the composition rate vector at the row's slot
 ! (compute_network_rates: N_A<sigma v>, density, screening and the 1/A
-! factors are already in it), X are mass fractions, and b_j is 1, or
-! the N15(p,alpha) branching fraction f (or 1-f) carried in row
-! rv_frac_n15_pa, for the two outcomes of the N14(p,g) chain. Each
+! factors are already in it), X are mass fractions, and b_j is 1; or
+! the N15(p,alpha) branching fraction f (or 1-f), carried at
+! rv_frac_n15_pa, for the two outcomes of N14(p,g); or the Be7
+! electron-capture fraction f_e (or 1-f_e), at rv_frac_be7_ecap, for the
+! two of He3(He4,g). Each
 ! reaction changes the per-amu abundance of species i by nu_ij, so
 !     dX_i/dt = A_i * sum_j nu_ij R_j
 ! with A_i the integer mass number, the convention the rate rows use.
@@ -141,7 +143,7 @@ module network
            min_jacobian_entry = 1.0d-8
       type :: reaction_t
          character(len=24) :: name
-         integer :: rate_row
+         integer :: slot
          integer :: branch
          integer :: reactants(max_reactants)
          integer :: change(2*max_change)
@@ -290,7 +292,7 @@ pure logical function scale_has_no_effect(settings, j)
       scale_has_no_effect = .false.
       if (reactions(j)%rate_law == shares_rate .or. &
            reactions(j)%rate_law == s_factor_fit) return
-      k = reactions(j)%rate_row
+      k = reactions(j)%slot
       scale_has_no_effect = settings%cross_section_scale(k) /= 1.0d0 .or. &
            settings%s_prime_scale(k) /= 1.0d0 .or. &
            settings%s_double_prime_scale(k) /= 1.0d0
@@ -339,7 +341,7 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, &
          if (reactions(j)%burns_in == hydrogen_burning .and. .not. hydrogen) cycle
          if (reactions(j)%burns_in == helium_burning .and. &
               .not. helium_burning_temperature) cycle
-         k = reactions(j)%rate_row
+         k = reactions(j)%slot
          call compute_screened_rate(reactions(j)%rate_law, reactions(j)%fit, &
               k, reactions(j)%screening, nr%zone, &
               nr%rate(k), nr%dlnrate_dlnrho(k), nr%dlnrate_dlnt(k))
@@ -390,7 +392,7 @@ pure function reaction_counts(rate, x) result(counts)
       counts = 0.0d0
       do j = 1, n_rows
          if (reactions(j)%rate_law == shares_rate) cycle
-         k = reactions(j)%rate_row
+         k = reactions(j)%slot
          counts(k) = rate(k)
          do m = 1, max_reactants
             if (reactions(j)%reactants(m) /= 0) &
@@ -434,7 +436,7 @@ pure function table_row_problem(j) result(problem)
 
       problem = ''
       row = reactions(j)
-      if (row%rate_row < 1 .or. row%rate_row > num_reactions) then
+      if (row%slot < 1 .or. row%slot > num_reactions) then
          problem = 'its rate slot is not a reaction slot'
       else if (row%chain < 1 .or. row%chain > n_chains) then
          problem = 'its chain does not exist'
@@ -446,7 +448,7 @@ pure function table_row_problem(j) result(problem)
            row%burns_in /= helium_burning) then
          problem = 'its burning group does not exist'
       else if (row%rate_law == shares_rate .and. &
-           slot_owner_count(row%rate_row) == 0) then
+           slot_owner_count(row%slot) == 0) then
          problem = 'it shares the rate of a slot no row computes'
       else if (any(row%reactants < 0) .or. any(row%reactants > n_solved)) then
          problem = 'a reactant is not a solved species'
@@ -473,7 +475,7 @@ pure integer function slot_owner_count(k)
 
       slot_owner_count = 0
       do j = 1, n_rows
-         if (reactions(j)%rate_row == k .and. &
+         if (reactions(j)%slot == k .and. &
               reactions(j)%rate_law /= shares_rate) &
               slot_owner_count = slot_owner_count + 1
       end do
@@ -513,17 +515,23 @@ pure integer function baryon_imbalance(j)
 end function baryon_imbalance
 
 ! ---------------------------------------------------------------
-! The table, one row per reaction, for tests and documentation.
+! The table, one row per reaction, for tests and documentation: each
+! row's slot, branch, baryon imbalance, Q, chain, the Q its masses give
+! and the neutrino energy that implies.
 subroutine write_network_table(unit)
       integer, intent(in) :: unit
+      character(len=len(chain_name)) :: chain
       integer :: j
 
-      write(unit, '(a)') '# reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain' // &
-           '  Q masses (MeV)  neutrinos (MeV)'
+      write(unit, '(a)') '# reaction                     slot  branch  baryon imbalance     Q (MeV)  chain' // &
+           '           Q masses (MeV)  neutrinos (MeV)'
       do j = 1, n_rows
-         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, i5, 2x, f14.6, 2x, f15.6)') &
-              reactions(j)%name, reactions(j)%rate_row, reactions(j)%branch, &
-              baryon_imbalance(j), reactions(j)%q_mev, reactions(j)%chain, &
+         chain = '?'
+         if (reactions(j)%chain >= 1 .and. reactions(j)%chain <= n_chains) &
+              chain = chain_name(reactions(j)%chain)
+         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, a14, 2x, f14.6, 2x, f15.6)') &
+              reactions(j)%name, reactions(j)%slot, reactions(j)%branch, &
+              baryon_imbalance(j), reactions(j)%q_mev, chain, &
               q_from_masses(j), neutrino_energy(j)
       end do
       write(unit, '(a, i0)') '# table errors: ', network_table_errors()
@@ -536,7 +544,7 @@ pure real(dp) function reaction_rate(j, rate_vec, x)
       real(dp), intent(in) :: rate_vec(:), x(n_network)
       integer :: m
 
-      reaction_rate = branch_factor(j, rate_vec)*rate_vec(reactions(j)%rate_row)
+      reaction_rate = branch_factor(j, rate_vec)*rate_vec(reactions(j)%slot)
       do m = 1, max_reactants
          if (reactions(j)%reactants(m) /= 0) &
               reaction_rate = reaction_rate*x(reactions(j)%reactants(m))
@@ -554,7 +562,7 @@ pure real(dp) function reaction_rate_derivative(j, k, rate_vec, x)
       reaction_rate_derivative = 0.0d0
       do m = 1, max_reactants
          if (reactions(j)%reactants(m) /= k) cycle
-         term = branch_factor(j, rate_vec)*rate_vec(reactions(j)%rate_row)
+         term = branch_factor(j, rate_vec)*rate_vec(reactions(j)%slot)
          do m2 = 1, max_reactants
             if (m2 /= m .and. reactions(j)%reactants(m2) /= 0) &
                  term = term*x(reactions(j)%reactants(m2))
@@ -610,14 +618,14 @@ pure subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
       energy_by_slot = 0.0d0
       energy_by_chain = 0.0d0
       do j = 1, n_rows
-         e = rate(reactions(j)%rate_row)
+         e = rate(reactions(j)%slot)
          do m = 1, max_reactants
             if (reactions(j)%reactants(m) /= 0) e = e*x(reactions(j)%reactants(m))
          end do
          e = e*branch_fraction(j, frac_n15_pa, frac_be7_ecap)* &
               reactions(j)%q_mev*erg_per_mev
-         energy_by_slot(reactions(j)%rate_row) = &
-              energy_by_slot(reactions(j)%rate_row) + e
+         energy_by_slot(reactions(j)%slot) = &
+              energy_by_slot(reactions(j)%slot) + e
          energy_by_chain(reactions(j)%chain) = &
               energy_by_chain(reactions(j)%chain) + e
       end do

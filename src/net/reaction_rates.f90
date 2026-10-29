@@ -673,10 +673,6 @@ pure function screening_mass_fractions(xa) result(mass_frac)
       mass_frac(iso_o18) = xa(i_o18)
 end function screening_mass_fractions
 
-
-
-
-
 end module reaction_rates
 
 !======================================================================

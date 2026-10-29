@@ -1,15 +1,22 @@
 !----------------------------------------------------------------------
 ! light_elements
 !----------------------------------------------------------------------
-! The light elements, operator-split from the implicit network
-! (2026-10: moved here from core/burn_lib with the model state as
-! arguments). Deuterium: deuterium_rate, the per-shell rate with the
-! convective-overturn cap; dburn, the exponential sub-stepped burn over
-! a step (burn_deuterium_region, for the main step and the rotation
-! sub-steps). Li6/Li7/Be9: compute_li_be_rates, the
-! proton-capture rates (the star-layer store_li_be_rates/burn_li_be store and
-! integrate them). Their configuration is net_configuration's net_settings; the
-! accreted gas comes in as an argument (surface_accretion).
+! The light elements, operator-split from the implicit network, and the
+! trace-element integrator they share (2026-10: moved here from
+! core/burn_lib with the model state as arguments).
+!   deuterium_rate         the per-shell D(p,g) rate, with the
+!                          convective-overturn cap
+!   burn_deuterium_region  deuterium over a step (formerly dburn and
+!                          dburnm): exponential decay with the rate
+!                          linear in time, for the main step and the
+!                          rotation sub-steps
+!   compute_li_be_rates    the Li6, Li7 and Be9 proton-capture rates
+!                          (core/step/burn_step's store_*_li_be_rates and
+!                          burn_li_be store and integrate them)
+!   burn_exposure, surviving_fraction, accreted_survival
+!                          the trace-element integrator
+! Their configuration is net_configuration's net_settings; the accreted
+! gas comes in as an argument (surface_accretion).
 module light_elements
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use net_configuration, only: net_settings
@@ -202,7 +209,6 @@ pure subroutine burn_deuterium_region(zone_begin, zone_end, num_zones, &
      shell_mass, composition, timestep, xa_start, rate_start_zone, &
      rate_end_zone, accretion, min_deuterium)
       use composition_layout, only: i_h1, i_he3, i_h2
-      use math_lib
       integer, intent(in) :: zone_begin, zone_end, num_zones
       real(dp), intent(in) :: shell_mass(:)
 ! composition: out, the region's new X, He3 and D (star%xa layout)
