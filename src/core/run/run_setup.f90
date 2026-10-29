@@ -60,7 +60,8 @@ end subroutine prepare_run
 subroutine set_up_constants_and_tables(s, ierr)
       use eos_lib
       use kap_lib
-      use microphysics_settings, only: opacity_settings, equation_of_state_settings, atmosphere_settings
+      use microphysics_settings, only: opacity_settings, equation_of_state_settings, &
+           equation_of_state_table_paths, atmosphere_settings
       use atm_lib, only: atm_init, hsra_t_tau_offset
       use physical_constants
       use math_lib
@@ -98,11 +99,7 @@ subroutine set_up_constants_and_tables(s, ierr)
 ! --- Equation-of-state tables -----------------------------------------
 ! eos_init reads the Fermi-Dirac degenerate-electron table always, and
 ! the OPAL, MHD and SCVH tables when the settings select them.
-      call eos_init(equation_of_state_settings(s), s%job%fermi_table_path,s%job%scv_h_table_path,s%job%scv_he_table_path, &
-           s%job%scv_z_table_path,s%job%zams_a_table_path,s%job%zams_b_table_path, &
-           s%job%zams_c_table_path,s%job%centre1_table_path,s%job%centre2_table_path, &
-           s%job%centre3_table_path,s%job%centre4_table_path,s%job%centre5_table_path, &
-           s%job%opal_eos_table_path, ierr)
+      call eos_init(equation_of_state_settings(s), equation_of_state_table_paths(s), ierr)
       if (ierr /= 0) return
 ! --- Surface-pressure tables for the surface boundary condition -------
 ! atm_init reads the Kurucz (atm_choice 3 and 4), Allard (atm_choice 4)

@@ -36,11 +36,14 @@ program test_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
+! the tables eos_init reads: the shipped Fermi, SCV and OPAL 2006 tables
+      type(eos_table_paths_t) :: table_paths
       integer :: gerr
 ! the ok/FAIL checks that failed (the program then stops with status 1)
       integer :: failures = 0
 
       character(len=256) :: yrec_input, mhd_dir
+      type(eos_table_paths_t) :: mhd_paths
       character(len=256) :: fermi_path, scvh_path, scvhe_path, scvz_path, &
            opal06_path, dummy_path
 ! core/model/starting_model.f90's atomic weights and the default of the
@@ -131,9 +134,12 @@ program test_eos
       settings%use_scv_eos = .true.
       settings%use_opal2006_eos = .true.
       settings%saha_log10t_cutoff = 6.0d0
-      call eos_init(settings, fermi_path, scvh_path, scvhe_path, scvz_path, &
-           dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-           dummy_path, dummy_path, dummy_path, opal06_path, gerr)
+      table_paths%fermi = fermi_path
+      table_paths%scv_h = scvh_path
+      table_paths%scv_he = scvhe_path
+      table_paths%scv_z = scvz_path
+      table_paths%opal = opal06_path
+      call eos_init(settings, table_paths, gerr)
       if (gerr /= 0) then
          write(*,'(a)') "test_eos: FAIL (eos_init error)"
          stop 1
@@ -208,11 +214,13 @@ program test_eos
       else
          settings = eos_settings
          settings%use_mhd_eos = .true.
-         call eos_init(settings, fermi_path, scvh_path, scvhe_path, scvz_path, &
-              trim(mhd_dir)//"/zams_a", trim(mhd_dir)//"/zams_b", &
-              trim(mhd_dir)//"/zams_c", trim(mhd_dir)//"/centre1", &
+         mhd_paths = table_paths
+         mhd_paths%mhd_zams = [character(len=256) :: trim(mhd_dir)//"/zams_a", &
+              trim(mhd_dir)//"/zams_b", trim(mhd_dir)//"/zams_c"]
+         mhd_paths%mhd_centre = [character(len=256) :: trim(mhd_dir)//"/centre1", &
               trim(mhd_dir)//"/centre2", trim(mhd_dir)//"/centre3", &
-              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5", opal06_path, gerr)
+              trim(mhd_dir)//"/centre4", trim(mhd_dir)//"/centre5"]
+         call eos_init(settings, mhd_paths, gerr)
       if (gerr /= 0) stop 1
          write(*,'(a)') "# test_eos: eos_eval over the same grid, MHD"
          do ipt = 1, npts
@@ -309,7 +317,7 @@ contains
               numerical, diffusion_z, debye_huckel
          character(len=*), intent(in), optional :: file
          type(eos_settings_t) :: s
-         character(len=256) :: opal_path
+         type(eos_table_paths_t) :: paths
          integer :: ierr
          write(*,'(a,a)') "# test_eos: configuration ", label
          s = eos_settings
@@ -322,11 +330,10 @@ contains
          s%use_debye_huckel_correction = present(debye_huckel)
          s%debye_huckel_eta_min = -1.0d0
          s%debye_huckel_eta_max = 1.0d0
-         opal_path = ""
-         if (present(file)) opal_path = file
-         call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
-              dummy_path, dummy_path, dummy_path, dummy_path, dummy_path, &
-              dummy_path, dummy_path, dummy_path, opal_path, ierr)
+         paths = table_paths
+         paths%opal = ""
+         if (present(file)) paths%opal = file
+         call eos_init(s, paths, ierr)
          if (ierr /= 0) write(*,'(a,i0)') "eos_init ierr = ", ierr
       end subroutine configure_eos
 
@@ -545,6 +552,7 @@ subroutine check_mhd_reader()
       real(dp), parameter :: test_log_t(4) = [4.1d0, 5.1d0, 6.1d0, 5.5d0]
       real(dp), parameter :: x_test = 0.65d0, log_rho_test = -6.0d0
       type(eos_settings_t) :: s
+      type(eos_table_paths_t) :: paths
       type(eos_result) :: res
       integer :: i, u, ierr, ks
       real(dp) :: lp
@@ -559,10 +567,10 @@ subroutine check_mhd_reader()
       end do
       s = eos_settings
       s%use_mhd_eos = .true.
-      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
-           zams_names(1), zams_names(2), zams_names(3), centre_names(1), &
-           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
-           opal06_path, ierr)
+      paths = table_paths
+      paths%mhd_zams = zams_names
+      paths%mhd_centre = centre_names
+      call eos_init(s, paths, ierr)
       ok_read = ierr == 0
       call check("mhd reader: eos_init reads the eight tables", ok_read)
       ok_rho = ok_read
@@ -596,18 +604,14 @@ subroutine check_mhd_reader()
       call eos_get(5.1d0, lp, x_test, z_mhd, res, .true., .false., ks, ierr=ierr)
       ok_out_p = ok_out_p .and. ierr /= 0
       call check("mhd reader: log P above the tables returns ierr", ok_out_p)
-      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
-           zams_names(1), "mhd_missing", zams_names(3), centre_names(1), &
-           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
-           opal06_path, ierr)
+      paths%mhd_zams(2) = "mhd_missing"
+      call eos_init(s, paths, ierr)
       call check("mhd reader: a missing table returns ierr = 1", ierr == 1)
       open(newunit=u, file="mhd_truncated", form="unformatted", status="replace")
       write(u) mhd_ivarc_test, 0, 0, 0.0d0
       close(u)
-      call eos_init(s, fermi_path, scvh_path, scvhe_path, scvz_path, &
-           zams_names(1), "mhd_truncated", zams_names(3), centre_names(1), &
-           centre_names(2), centre_names(3), centre_names(4), centre_names(5), &
-           opal06_path, ierr)
+      paths%mhd_zams(2) = "mhd_truncated"
+      call eos_init(s, paths, ierr)
       call check("mhd reader: a truncated table returns ierr = 1", ierr == 1)
       s%use_mhd_eos = .false.
       call set_eos_settings(s)

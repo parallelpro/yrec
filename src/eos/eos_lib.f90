@@ -28,7 +28,7 @@ module eos_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use eos_configuration, only: eos_settings, eos_settings_t, &
-           set_eos_settings
+           set_eos_settings, eos_table_paths_t
       use blended_eos, only: compute_blended_eos, blend_eos
       use mhd_eos, only: compute_mhd_eos, read_mhd_tables
       use opal_eos, only: esac06
@@ -48,7 +48,7 @@ module eos_lib
       private
       public :: eos_init, eos_get, eos_get_gamma1, eos_result
       public :: eos_set_mixture, eos_update_envelope_tables
-      public :: eos_settings_t, set_eos_settings
+      public :: eos_settings_t, set_eos_settings, eos_table_paths_t
 
 contains
 
@@ -91,47 +91,31 @@ end subroutine eos_get
 !----------------------------------------------------------------------
 ! eos_init
 !----------------------------------------------------------------------
-! Installs the settings and loads the tables they select: opens the
-! OPAL table (its vintage's reader reads it on first use) and reads the
-! MHD tables, the Fermi-Dirac table (always) and the SCV tables. Each
-! file is opened on a new unit; a missing one returns ierr = 1.
-subroutine eos_init(settings, fermi_table_path, scv_h_table_path, &
-     scv_he_table_path, scv_z_table_path, zams_a_table_path, &
-     zams_b_table_path, zams_c_table_path, centre1_table_path, &
-     centre2_table_path, centre3_table_path, centre4_table_path, &
-     centre5_table_path, opal_eos_table_path, ierr)
-
-      character(len=*), intent(in) :: fermi_table_path
-      character(len=*), intent(in) :: scv_h_table_path, &
-           scv_he_table_path, scv_z_table_path
-      character(len=*), intent(in) :: zams_a_table_path, &
-           zams_b_table_path, zams_c_table_path, centre1_table_path, &
-           centre2_table_path, centre3_table_path, centre4_table_path, &
-           centre5_table_path
-! the run's EOS settings (installed here); the OPAL table the settings
-! select (opened here, read lazily by its vintage's reader)
+! Installs the settings and loads the tables they select, from paths:
+! opens the OPAL table (its vintage's reader reads it on first use) and
+! reads the MHD tables, the Fermi-Dirac table (always) and the SCV
+! tables. Each file is opened on a new unit; a missing one returns
+! ierr = 1.
+subroutine eos_init(settings, paths, ierr)
       type(eos_settings_t), intent(in) :: settings
-      character(len=*), intent(in) :: opal_eos_table_path
+      type(eos_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
 
       ierr = 0
       call set_eos_settings(settings)
       if (settings%use_opal95_eos .or. settings%use_opal2001_eos .or. &
            settings%use_opal2006_eos) then
-         call open_opal_eos_table(opal_eos_table_path, ierr)
+         call open_opal_eos_table(trim(paths%opal), ierr)
          if (ierr /= 0) return
       end if
       if (settings%use_mhd_eos) then
-         call read_mhd_tables(zams_a_table_path, zams_b_table_path, &
-              zams_c_table_path, centre1_table_path, centre2_table_path, &
-              centre3_table_path, centre4_table_path, centre5_table_path, &
-              ierr)
+         call read_mhd_tables(paths%mhd_zams, paths%mhd_centre, ierr)
          if (ierr /= 0) return
       end if
-      call read_fermi_table(fermi_table_path, ierr)
+      call read_fermi_table(trim(paths%fermi), ierr)
       if (ierr /= 0) return
-      if (settings%use_scv_eos) call read_scv_tables(scv_h_table_path, &
-           scv_he_table_path, scv_z_table_path, ierr)
+      if (settings%use_scv_eos) call read_scv_tables(trim(paths%scv_h), &
+           trim(paths%scv_he), trim(paths%scv_z), ierr)
 end subroutine eos_init
 
 !----------------------------------------------------------------------

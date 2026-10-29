@@ -6,6 +6,7 @@
 ! installs its record at init and reads no other configuration:
 !     opacity_settings   kap (kap_init)
 !     equation_of_state_settings       eos (eos_init)
+!     equation_of_state_table_paths    eos's table paths (eos_init)
 !     atmosphere_settings   atm (atm_init)
 !     convection_settings_from_star   convection (set_convection_settings,
 !                        at the start of every run card)
@@ -14,13 +15,14 @@
 !                        run card)
 module microphysics_settings
       use kap_lib, only: kap_settings_t
-      use eos_lib, only: eos_settings_t
+      use eos_lib, only: eos_settings_t, eos_table_paths_t
       use atm_lib, only: atm_settings_t
       use convection_lib, only: convection_settings_t
       use element_diffusion_lib, only: diffusion_settings_t
       implicit none
       private
       public :: opacity_settings, equation_of_state_settings, atmosphere_settings, &
+           equation_of_state_table_paths, &
            convection_settings_from_star, diffusion_settings_from_star
 
 contains
@@ -91,6 +93,33 @@ function equation_of_state_settings(s) result(settings)
       settings%debye_huckel_eta_max = s%ctrl%debye_huckel_eta_max
       settings%saha_log10t_cutoff = s%ctrl%saha_log10t_cutoff
 end function equation_of_state_settings
+
+!----------------------------------------------------------------------
+! equation_of_state_table_paths: the tables eos_init reads, from the
+! job's paths.
+!   star reads: job%centre1_table_path, job%centre2_table_path,
+!     job%centre3_table_path, job%centre4_table_path,
+!     job%centre5_table_path, job%fermi_table_path,
+!     job%opal_eos_table_path, job%scv_h_table_path,
+!     job%scv_he_table_path, job%scv_z_table_path,
+!     job%zams_a_table_path, job%zams_b_table_path,
+!     job%zams_c_table_path
+!   star writes: none
+function equation_of_state_table_paths(s) result(paths)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(eos_table_paths_t) :: paths
+
+      paths%fermi = s%job%fermi_table_path
+      paths%scv_h = s%job%scv_h_table_path
+      paths%scv_he = s%job%scv_he_table_path
+      paths%scv_z = s%job%scv_z_table_path
+      paths%mhd_zams = [s%job%zams_a_table_path, s%job%zams_b_table_path, &
+           s%job%zams_c_table_path]
+      paths%mhd_centre = [s%job%centre1_table_path, s%job%centre2_table_path, &
+           s%job%centre3_table_path, s%job%centre4_table_path, s%job%centre5_table_path]
+      paths%opal = s%job%opal_eos_table_path
+end function equation_of_state_table_paths
 
 !----------------------------------------------------------------------
 ! atmosphere_settings: atm's settings from the controls.

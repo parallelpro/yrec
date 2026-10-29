@@ -7,6 +7,7 @@
 ! or set_eos_settings; nothing else writes it.
 module eos_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use mhd_eos_tables, only: mhd_n_zams, mhd_n_centre
       implicit none
       private
       type, public :: eos_settings_t
@@ -27,6 +28,18 @@ module eos_configuration
          real(dp) :: saha_log10t_cutoff = 0.0d0
       end type eos_settings_t
       type(eos_settings_t), public, protected :: eos_settings
+
+! The tables eos_init reads, by path: the Fermi-Dirac table (always), the
+! SCV tables (use_scv_eos), the MHD tables (use_mhd_eos: the three
+! ZAMS-type compositions and the five centre-type ones) and the OPAL
+! table of the selected vintage. The star layer fills it from its job
+! paths (equation_of_state_table_paths, setup/microphysics_settings.f90).
+      type, public :: eos_table_paths_t
+         character(len=256) :: fermi = ''
+         character(len=256) :: scv_h = '', scv_he = '', scv_z = ''
+         character(len=256) :: mhd_zams(mhd_n_zams) = '', mhd_centre(mhd_n_centre) = ''
+         character(len=256) :: opal = ''
+      end type eos_table_paths_t
       public :: set_eos_settings
 
 contains

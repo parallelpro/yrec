@@ -121,32 +121,25 @@ end subroutine compute_mhd_eos
 !----------------------------------------------------------------------
 ! read_mhd_tables (formerly mhdtbl)
 !----------------------------------------------------------------------
-! Opens the 8 MHD equation-of-state table files (3 ZAMS-type tables
-! for the compositions A, B and C, and 5 centre-type tables), each on a
-! new unit, reads them with mhdst and closes them. A file that cannot
-! be opened, or a table that fails mhdst's checks, returns ierr = 1
-! with a message in the run log.
-subroutine read_mhd_tables(zams_a_table_path, zams_b_table_path, zams_c_table_path, &
-     centre1_table_path, centre2_table_path, centre3_table_path, &
-     centre4_table_path, centre5_table_path, ierr)
-
-      character(len=*), intent(in) :: zams_a_table_path, zams_b_table_path, &
-           zams_c_table_path, centre1_table_path, centre2_table_path, &
-           centre3_table_path, centre4_table_path, centre5_table_path
+! Opens the 8 MHD equation-of-state table files (the 3 ZAMS-type tables
+! for the compositions A, B and C, and the 5 centre-type tables), each
+! on a new unit, reads them with mhdst and closes them. A file that
+! cannot be opened, or a table that fails mhdst's checks, returns
+! ierr = 1 with a message in the run log.
+subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
+      character(len=*), intent(in) :: zams_paths(mhd_n_zams), centre_paths(mhd_n_centre)
       integer, intent(out) :: ierr
       integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
 
       ierr = 0
       unit_zams = 0
       unit_centre = 0
-      call open_mhd_table(zams_a_table_path, unit_zams(imhd_zams_a), ierr)
-      if (ierr == 0) call open_mhd_table(zams_b_table_path, unit_zams(imhd_zams_b), ierr)
-      if (ierr == 0) call open_mhd_table(zams_c_table_path, unit_zams(imhd_zams_c), ierr)
-      if (ierr == 0) call open_mhd_table(centre1_table_path, unit_centre(imhd_centre_1), ierr)
-      if (ierr == 0) call open_mhd_table(centre2_table_path, unit_centre(imhd_centre_2), ierr)
-      if (ierr == 0) call open_mhd_table(centre3_table_path, unit_centre(imhd_centre_3), ierr)
-      if (ierr == 0) call open_mhd_table(centre4_table_path, unit_centre(imhd_centre_4), ierr)
-      if (ierr == 0) call open_mhd_table(centre5_table_path, unit_centre(imhd_centre_5), ierr)
+      do ic = 1, mhd_n_zams
+         if (ierr == 0) call open_mhd_table(trim(zams_paths(ic)), unit_zams(ic), ierr)
+      end do
+      do ic = 1, mhd_n_centre
+         if (ierr == 0) call open_mhd_table(trim(centre_paths(ic)), unit_centre(ic), ierr)
+      end do
       if (ierr == 0) then
          call mhdst(unit_zams, unit_centre, ierr)
          if (ierr /= 0) write(run_log_unit,*) &
