@@ -11,9 +11,8 @@
 !                     derivatives at (log T, log P, X, Z), in an
 !                     eos_result record (eos_results says what each
 !                     field is)
-!     eos_set_mixture the envelope mixture, and what eos derives from
-!                     it: the heavier metals of the Debye-Hueckel
-!                     correction and, with SCV, the envelope table
+!     eos_set_mixture the envelope mixture (and, with SCV, the envelope
+!                     table built from it)
 !     eos_get_gamma1  gamma1 and the adiabatic gradient at (T, rho)
 !                     (for test_eos)
 !     set_eos_settings   install settings without reloading tables
@@ -35,11 +34,10 @@ module eos_lib
       use eos_mixture, only: eos_mix
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
            open_opal_eos_table, n_opal_vintages
-      use yale_eos_tables, only: debye_huckel_x, debye_huckel_y, debye_huckel_z, &
-           debye_huckel_z_total, idh_c, idh_n, idh_o, idh_ne, idh_na, idh_mg, idh_al, &
-           idh_si, idh_ar, idh_fe
-      use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, &
-           mixture_atomic_weights
+      use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
+           idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
+      use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, ix_c, ix_n, &
+           ix_o, mixture_atomic_weights
       use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
            i_n14, i_n15, i_o16, i_o17, i_o18
       use physical_constants, only: ln10
@@ -65,11 +63,12 @@ contains
 ! saha_iterations is a counter the Saha solver adds its Newton iterations
 ! to (eos reads it nowhere; the solver's starting guess is its own
 ! module state, the previous call's solution).
-! composition_at_zone (a zone's composition, star%xa layout) sets the
-! Debye-Hueckel composition; every star-layer call passes it (omitted, as
-! by the unit tests, the previous call's composition stays). ierr /= 0
-! reports a corrupt table or a bad configuration; the diagnostic is
-! already in the run log.
+! composition_at_zone (a zone's composition, star%xa layout) gives the
+! Debye-Hueckel correction its composition (debye_huckel_composition_of;
+! every star-layer call passes it, and without it, as in the unit
+! tests, the envelope's mixture at the zone's X and Z stands in). ierr
+! /= 0 reports a corrupt table, a bad configuration or a point no
+! source covers; the message is already out (eos_report).
 subroutine eos_get(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, res, want_derivatives, &
      in_atmosphere, saha_iterations, composition_at_zone, ierr)
@@ -81,15 +80,17 @@ subroutine eos_get(log10_temperature, log10_pressure, &
       real(dp), intent(in), optional :: composition_at_zone(:)
       integer, intent(out) :: ierr
 
+      type(debye_huckel_composition) :: dh
+
       ierr = 0
       if (eos_settings%use_mhd_eos) then
          call compute_mhd_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
               metal_fraction, res, ierr)
       else
-         if (present(composition_at_zone)) &
-              call eos_set_debye_huckel_composition(composition_at_zone)
+         if (eos_settings%use_debye_huckel_correction) dh = &
+              debye_huckel_composition_of(hydrogen_fraction, metal_fraction, composition_at_zone)
          call compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, res, want_derivatives, in_atmosphere, saha_iterations, ierr)
+              metal_fraction, dh, res, want_derivatives, in_atmosphere, saha_iterations, ierr)
       end if
 end subroutine eos_get
 
@@ -167,6 +168,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       integer :: jerr
       real(dp) :: log10_temperature, log10_pressure
       type(eos_result) :: g
+      type(debye_huckel_composition) :: dh
       real(dp) :: chi_rho, chi_t, specific_heat_cv
       logical :: in_table
 
@@ -191,8 +193,10 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          g%log10_density = log10(density)
          log10_temperature = log10(temperature_1e6k*1.0d6)
          log10_pressure = log10(pressure)
+         if (eos_settings%use_debye_huckel_correction) &
+              dh = debye_huckel_composition_of(hydrogen_fraction, metal_fraction)
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, g, .false., .false., saha_iterations, jerr)
+              metal_fraction, dh, g, .false., .false., saha_iterations, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
@@ -217,13 +221,8 @@ end subroutine eos_get_gamma1
 ! sets it whenever it recomputes the envelope composition, and with SCV
 ! on the SCV envelope table is built for its X and Z here (once the
 ! tables are read; a table already built for them stays). The
-! Debye-Hueckel correction takes its metals heavier than O from it, as
-! mass fractions X_i = fx_i A_i sum_j(X_j/A_j): Ne, Na, Mg, Al, Si, Ar
-! and Fe (its P, S, Cl, Ca, Ti, Cr, Mn and Ni are not in the mixture and
-! stay zero; C, N and O come from each zone's composition); here the
-! mixture's own, and in each zone in the mixture's proportions with the
-! zone's Z less its C, N and O for their sum
-! (eos_set_debye_huckel_composition).
+! Debye-Hueckel correction takes its metals heavier than O from it, in
+! its proportions (debye_huckel_composition_of).
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, inverse_atomic_weight, number_fractions)
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
@@ -234,37 +233,63 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
       eos_mix%inverse_atomic_weight = inverse_atomic_weight
       eos_mix%number_fractions = number_fractions
-      call set_debye_huckel_heavy_metals()
       if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
            envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine eos_set_mixture
 
-! The Debye-Hueckel correction's metals heavier than O: the envelope
-! mixture's mass fractions; given beyond_o, a zone's Z less its C, N
-! and O, in the mixture's proportions with beyond_o for their sum, so
-! that the correction's metals add up to the zone's Z (where a core
-! burns helium its Z grows by the C and O it makes, not by Ne..Fe; none
-! when the mixture has none).
-subroutine set_debye_huckel_heavy_metals(beyond_o)
-      real(dp), intent(in), optional :: beyond_o
+!----------------------------------------------------------------------
+! debye_huckel_composition_of
+!----------------------------------------------------------------------
+! The composition the Debye-Hueckel correction weights at a zone. From
+! the zone's composition (star%xa layout) when given: X, Y (He-4 and
+! He-3), Z, C, N and O the zone's. Without it: the zone's X and Z, Y =
+! 1 - X - Z, and C, N and O the envelope mixture's scaled to the zone's
+! Z. The metals heavier than O are the envelope mixture's (eos_mix, as
+! mass fractions X_i = fx_i A_i sum_j X_j/A_j) in its proportions, their
+! sum the zone's Z less its C, N and O, so that the record's metals add
+! up to the zone's Z (where a core burns helium its Z grows by the C and
+! O it makes, not by Ne..Fe); none when the mixture has none. P, S, Cl,
+! Ca, Ti, Cr, Mn and Ni, which the mixture lacks, are zero.
+function debye_huckel_composition_of(hydrogen_fraction, metal_fraction, composition) &
+     result(dh)
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(in), optional :: composition(:)
+      type(debye_huckel_composition) :: dh
       real(dp) :: metal_scale, envelope_beyond_o
 
-      metal_scale = 1.0d0
-      if (present(beyond_o)) then
+      if (present(composition)) then
+         dh%hydrogen_fraction = composition(i_h1)
+         dh%helium_fraction = composition(i_he4)+composition(i_he3)
+         dh%metal_fraction = composition(i_metals)
+         dh%metals(idh_c) = composition(i_c12)+composition(i_c13)
+         dh%metals(idh_n) = composition(i_n14)+composition(i_n15)
+         dh%metals(idh_o) = composition(i_o16)+composition(i_o17)+composition(i_o18)
+      end if
+      metal_scale = 0.0d0
+      if (present(composition)) then
          envelope_beyond_o = envelope_mass_fraction(ix_ne) + envelope_mass_fraction(ix_na) + &
               envelope_mass_fraction(ix_mg) + envelope_mass_fraction(ix_al) + &
               envelope_mass_fraction(ix_si) + envelope_mass_fraction(ix_ar) + &
               envelope_mass_fraction(ix_fe)
-         metal_scale = 0.0d0
-         if (envelope_beyond_o > 0.0d0) metal_scale = max(beyond_o, 0.0d0)/envelope_beyond_o
+         if (envelope_beyond_o > 0.0d0) metal_scale = max(composition(i_metals) - &
+              dh%metals(idh_c) - dh%metals(idh_n) - dh%metals(idh_o), 0.0d0)/envelope_beyond_o
+      else
+         if (eos_mix%envelope_metal_fraction > 0.0d0) &
+              metal_scale = metal_fraction/eos_mix%envelope_metal_fraction
+         dh%hydrogen_fraction = hydrogen_fraction
+         dh%helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
+         dh%metal_fraction = metal_fraction
+         dh%metals(idh_c) = metal_scale*envelope_mass_fraction(ix_c)
+         dh%metals(idh_n) = metal_scale*envelope_mass_fraction(ix_n)
+         dh%metals(idh_o) = metal_scale*envelope_mass_fraction(ix_o)
       end if
-      debye_huckel_z(idh_ne) = metal_scale*envelope_mass_fraction(ix_ne)
-      debye_huckel_z(idh_na) = metal_scale*envelope_mass_fraction(ix_na)
-      debye_huckel_z(idh_mg) = metal_scale*envelope_mass_fraction(ix_mg)
-      debye_huckel_z(idh_al) = metal_scale*envelope_mass_fraction(ix_al)
-      debye_huckel_z(idh_si) = metal_scale*envelope_mass_fraction(ix_si)
-      debye_huckel_z(idh_ar) = metal_scale*envelope_mass_fraction(ix_ar)
-      debye_huckel_z(idh_fe) = metal_scale*envelope_mass_fraction(ix_fe)
+      dh%metals(idh_ne) = metal_scale*envelope_mass_fraction(ix_ne)
+      dh%metals(idh_na) = metal_scale*envelope_mass_fraction(ix_na)
+      dh%metals(idh_mg) = metal_scale*envelope_mass_fraction(ix_mg)
+      dh%metals(idh_al) = metal_scale*envelope_mass_fraction(ix_al)
+      dh%metals(idh_si) = metal_scale*envelope_mass_fraction(ix_si)
+      dh%metals(idh_ar) = metal_scale*envelope_mass_fraction(ix_ar)
+      dh%metals(idh_fe) = metal_scale*envelope_mass_fraction(ix_fe)
 
 contains
 
@@ -273,33 +298,7 @@ real(dp) function envelope_mass_fraction(i)
       envelope_mass_fraction = eos_mix%number_fractions(i)*eos_mix%inverse_atomic_weight*mixture_atomic_weights(i)
 end function envelope_mass_fraction
 
-end subroutine set_debye_huckel_heavy_metals
-
-!----------------------------------------------------------------------
-! eos_set_debye_huckel_composition
-!----------------------------------------------------------------------
-! The composition the Debye-Hueckel correction uses, from a zone's
-! composition (star%xa layout), set by eos_get from its
-! composition_at_zone at every call (private since 2026-10: the star
-! layer used to set the surface zone's before an envelope integration,
-! whose calls then passed none, so the integration used whatever the
-! last setter left): X, Y, Z, C, N and O the zone's, the heavier metals
-! the envelope mixture's in its proportions, summing to the zone's Z less
-! its C, N and O (set_debye_huckel_heavy_metals). Does nothing when the
-! correction is off.
-subroutine eos_set_debye_huckel_composition(composition)
-      real(dp), intent(in) :: composition(:)
-
-      if (.not. eos_settings%use_debye_huckel_correction) return
-      debye_huckel_x = composition(i_h1)
-      debye_huckel_y = composition(i_he4)+composition(i_he3)
-      debye_huckel_z_total = composition(i_metals)
-      debye_huckel_z(idh_c) = composition(i_c12)+composition(i_c13)
-      debye_huckel_z(idh_n) = composition(i_n14)+composition(i_n15)
-      debye_huckel_z(idh_o) = composition(i_o16)+composition(i_o17)+composition(i_o18)
-      call set_debye_huckel_heavy_metals(composition(i_metals) - debye_huckel_z(idh_c) - &
-           debye_huckel_z(idh_n) - debye_huckel_z(idh_o))
-end subroutine eos_set_debye_huckel_composition
+end function debye_huckel_composition_of
 
 
 end module eos_lib

@@ -17,6 +17,7 @@ module blended_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
+      use yale_eos_tables, only: debye_huckel_composition
       use scv_eos, only: compute_scv_envelope_eos
       use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, opal_layout
       use physical_constants, only: gas_constant, ln10, &
@@ -51,9 +52,10 @@ contains
 ! starting point), count their Saha iterations in a copy of
 ! saha_iterations, and leave r as it was.
 subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-     metal_fraction, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+     metal_fraction, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_iterations
@@ -94,14 +96,14 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
 
       if (want_derivatives .and. .not. eos_settings%use_numerical_derivatives) then
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, r, .true., in_atmosphere, saha_iterations, ierr)
+              metal_fraction, dh, r, .true., in_atmosphere, saha_iterations, ierr)
       else
 ! no analytic second derivatives: r keeps the ones it has (the
 ! numerical ones, or the caller's)
          kept = [r%dlnrho_dlnt_dt, r%dlnrho_dlnt_dp, r%adiabatic_gradient_dt, &
               r%adiabatic_gradient_dp, r%specific_heat_cp_dt, r%specific_heat_cp_dp]
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, r, .false., in_atmosphere, saha_iterations, ierr)
+              metal_fraction, dh, r, .false., in_atmosphere, saha_iterations, ierr)
          r%dlnrho_dlnt_dt = kept(1)
          r%dlnrho_dlnt_dp = kept(2)
          r%adiabatic_gradient_dt = kept(3)
@@ -120,7 +122,7 @@ subroutine evaluate_shifted(lt, lp, first)
       shifted = r
       shifted%log10_density = shifted_log10_density
       shifted%density = shifted_density
-      call blend_eos(lt, lp, hydrogen_fraction, metal_fraction, shifted, &
+      call blend_eos(lt, lp, hydrogen_fraction, metal_fraction, dh, shifted, &
            .false., in_atmosphere, saha_iterations_local, ierr)
       shifted_log10_density = shifted%log10_density
       shifted_density = shifted%density
@@ -150,9 +152,11 @@ end subroutine compute_blended_eos
 ! A table source added later is one more step after these (or before
 ! opal_step, to let OPAL win where both cover the point).
 subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-     metal_fraction, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+     metal_fraction, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+! the zone's composition for the Debye-Hueckel correction (eos_get's)
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_iterations
@@ -166,7 +170,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       call radiation_share(log10_temperature, log10_pressure, r, ierr)
       if (ierr /= 0) return
       call gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
-           saha_number_fractions, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+           saha_number_fractions, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       if (ierr /= 0) return
       call opal_step(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
            r, ierr)
@@ -215,10 +219,11 @@ end subroutine radiation_share
 ! stands); within saha_ramp_width of T_c that blended into the fully
 ! ionized gas (blend_saha_into).
 subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
-     saha_number_fractions, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+     saha_number_fractions, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp), intent(in) :: saha_number_fractions(:)
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_iterations
@@ -232,7 +237,7 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
 
       ierr = 0
       if (log10_temperature >= eos_settings%saha_log10t_cutoff) then
-         call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
+         call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
          return
       end if
       call compute_saha_eos(saha_number_fractions, log10_temperature, &
@@ -246,7 +251,7 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
       end if
       if (log10_temperature <= eos_settings%saha_log10t_cutoff - saha_ramp_width) return
       saha = r
-      call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
+      call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
       call blend_saha_into(saha, &
            saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature), &
            want_derivatives, r)
@@ -382,8 +387,9 @@ end subroutine zone_mixture
 ! A fully ionized gas: 1/mu_e = X/A_H + (1 - X)(Z/A of He and the
 ! metals, 1/2), R/mu, the ionization fractions (H+, He+, He++ = 1, 0, 1),
 ! then compute_fully_ionized_eos's density and derivatives.
-subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
+subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
       real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       r%electron_mean_weight_inverse = hydrogen_fraction*inverse_a_hydrogen &
            + (1.0d0 - hydrogen_fraction)*electrons_per_nucleon_metals
@@ -392,7 +398,7 @@ subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fractio
       r%ion_fraction(1) = 1.0d0
       r%ion_fraction(2) = 0.0d0
       r%ion_fraction(3) = 1.0d0
-      call compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
+      call compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r)
 end subroutine fully_ionized_gas
 
 !----------------------------------------------------------------------

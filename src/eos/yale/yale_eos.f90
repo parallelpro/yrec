@@ -16,8 +16,7 @@ module yale_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
-           debye_huckel_x, debye_huckel_y, debye_huckel_z, &
-           debye_huckel_z_total, n_debye_huckel_metals, yale
+           debye_huckel_composition, n_debye_huckel_metals, yale
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
@@ -684,13 +683,16 @@ end subroutine differentiate_saha_solution_twice
 !     between the nondegenerate and degernate electron gas cases of the
 !     D-H correction is used (this is not correct but, hopefully is
 !     close enough.)  The constant term is debye_huckel_coefficient.
-subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, r)
+subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r)
       real(dp), intent(in) :: log10_temperature, log10_pressure
+! the zone's composition for the Debye-Hueckel correction (read only
+! with the correction on)
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       type(fermi_solution) :: f
       logical :: converged
 
-      call start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
+      call start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       call iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
       if (.not. converged) return
       r%log10_density = f%dl8
@@ -710,8 +712,9 @@ end subroutine compute_fully_ionized_eos
 ! The pressures that do not depend on density (radiation, and the
 ! Debye-Hueckel mass terms), the log T row of the Fermi table and its
 ! interpolation factors, and the starting log density.
-subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
+subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       real(dp), intent(in) :: log10_temperature, log10_pressure
+      type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(in) :: r
       type(fermi_solution), intent(inout) :: f
       real(dp) :: almix
@@ -744,10 +747,10 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
       if (eos_settings%use_debye_huckel_correction) then
          almix = 0.0d0
          do ii=1,n_debye_huckel_metals
-            almix = almix + debye_huckel_nu(ii)*debye_huckel_z(ii)
+            almix = almix + debye_huckel_nu(ii)*dh%metals(ii)
          end do
-         f%cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)
-         f%cmfdh1 = debye_huckel_x+debye_huckel_y+0.5d0*almix
+         f%cmfdh0 = 2.0d0*dh%hydrogen_fraction+1.5d0*dh%helium_fraction+0.5d0*(dh%metal_fraction+almix)
+         f%cmfdh1 = dh%hydrogen_fraction+dh%helium_fraction+0.5d0*almix
       end if
 end subroutine start_fully_ionized_solution
 

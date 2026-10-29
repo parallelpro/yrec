@@ -5,16 +5,16 @@
 ! electron gas (yale: 43 abscissas, 43 degeneracies, the integrals, and
 ! the binned interval index fermi_table_x_lookup), read by
 ! read_fermi_table at eos_init; and the Debye-Hueckel correction's
-! constants and composition.
+! constants and its composition record (no state).
 module yale_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cpi, boltzmann_constant_cgs, electron_charge_esu, amu_cgs
       implicit none
 
       private
-      public :: debye_huckel_coefficient, debye_huckel_nu, debye_huckel_x, &
-           debye_huckel_y, debye_huckel_z, debye_huckel_z_total, yale
-! the slots of debye_huckel_z: the metals the correction weights
+      public :: debye_huckel_coefficient, debye_huckel_nu, yale
+! the slots of debye_huckel_composition%metals: the metals the
+! correction weights
       integer, parameter, public :: idh_c = 1, idh_n = 2, idh_o = 3, idh_ne = 4, &
            idh_na = 5, idh_mg = 6, idh_al = 7, idh_si = 8, idh_p = 9, idh_s = 10, &
            idh_cl = 11, idh_ar = 12, idh_ca = 13, idh_ti = 14, idh_cr = 15, &
@@ -28,13 +28,14 @@ module yale_eos_tables
       type(yale_eos_state) :: yale
 
 
-! The Debye-Hueckel composition: X, Y, Z and the 18 metals' mass
-! fractions, C, N and O (idh_c..idh_o) per zone by
-! eos_set_debye_huckel_composition, the heavier ones from the envelope
-! mixture by eos_set_mixture.
-      real(dp) :: debye_huckel_z(n_debye_huckel_metals) = 0.0d0
-      real(dp) :: debye_huckel_x, debye_huckel_y, &
-           debye_huckel_z_total
+! The composition the Debye-Hueckel correction weights at a zone: X, Y,
+! Z and the mass fractions of its 18 metals (slots idh_*; eos_get builds
+! it for each call, eos_lib's debye_huckel_composition_of).
+      type, public :: debye_huckel_composition
+         real(dp) :: hydrogen_fraction = 0.0d0, helium_fraction = 0.0d0, &
+              metal_fraction = 0.0d0
+         real(dp) :: metals(n_debye_huckel_metals) = 0.0d0
+      end type debye_huckel_composition
 ! The Debye-Hueckel coefficient -sqrt(pi/(k m_u**3)) e**3/3 (cgs), and
 ! the charges of the 18 metals it weights (C, N, O, Ne, Na, Mg, Al, Si,
 ! P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni). The mass unit is the atomic

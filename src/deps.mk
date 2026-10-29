@@ -392,7 +392,7 @@ element_diffusion/settling_grid.o: composition_layout.mod element_diffusion_conf
 element_diffusion/species_table.o: composition_layout.mod physical_constants.mod
 element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod io_units.mod microphysics_settings.mod star_info_lib.mod
 element_diffusion/thoul_solver.o: numerics_lib.mod
-eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod
+eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_configuration.o: mhd_eos_tables.mod
 eos/eos_lib.o: blended_eos.mod composition_layout.mod eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_messages.o: io_units.mod
