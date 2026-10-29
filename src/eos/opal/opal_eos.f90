@@ -1121,6 +1121,7 @@ subroutine readcoeos(v, vintage, ierr)
          v%x_grid_spacing_inv(x_idx) = 1.0d0/(v%x_grid_copy(x_idx) - v%x_grid_copy(x_idx-1))
       end do
       close (opal_shared%table_unit)
+      opal_shared%table_unit = 0
       if (vintage == iv_opal01) then
          ! MHP 7/2003 added ramp between OPAL and other EOS
          ! need edge of table at high rho, fixed T.

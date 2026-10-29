@@ -1011,6 +1011,7 @@ subroutine readco(v, ierr)
       end do
 
       close (opal_shared%table_unit)
+      opal_shared%table_unit = 0
 !  MHP 8/98 added ramp between OPAL and other EOS
 !  need edge of table at high rho, fixed T.
       v%t_row_index = 1
