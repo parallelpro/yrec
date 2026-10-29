@@ -21,6 +21,7 @@ import concurrent.futures
 import hashlib
 import os
 import pathlib
+import re
 import subprocess
 import tempfile
 
@@ -146,3 +147,32 @@ def test_zoning_tolerances_without_new_rate_variables():
     assert zoning == documented("zoning_tolerances"), zoning
     assert all(v > 0 for i, v in enumerate(zoning) if i != 6), "a zero zoning tolerance"
     assert dumped(dump, "atime") == documented("timestep_factors")
+
+
+def test_pristine_controls_are_the_defaults(tmp_path):
+    """controls_state(), the pristine star%ctrl and star%job, is what a deck
+    that sets nothing reads: each default is written once, as its
+    controls_buffer initializer, and the legacy names take theirs from it
+    (defaults/*.defaults document the same initializers). The exceptions are
+    not defaults: the unit numbers the read assigns, the expanded
+    inlist_used_file, and what the read derives (npenv's 0 meaning every
+    point, the run kinds, the OPAL EOS table path)."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    derived = re.compile(r"^(ctrl%(\w*_unit\d?|unit_\w+|iopale|icondopacp|"
+                         r"inlist_used_file|npenv)|job%(opal_eos_table_path|rescale_kind))(\(|$)")
+    deck = tmp_path / "empty.inlist"
+    deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
+    env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
+
+    def dump(args):
+        out = subprocess.run([str(BINARY)] + args, cwd=tmp_path, env=env,
+                             capture_output=True).stdout.decode("latin-1").splitlines()
+        k = next(i for i, l in enumerate(out) if l.startswith("# controls"))
+        return dict(l.split(" = ", 1) for l in out[k + 1:] if " = " in l)
+
+    pristine, empty = dump([]), dump([str(deck)])
+    assert empty.get("ierr") == "0"
+    diff = [k for k in pristine if k.startswith(("ctrl%", "job%"))
+            and pristine[k] != empty.get(k) and not derived.match(k)]
+    assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]

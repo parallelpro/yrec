@@ -12,9 +12,10 @@
 ! from them, so regenerate after changing a member, and add the control
 ! to defaults/controls_registry.tsv, which maps it to its legacy and
 ! new-inlist names. Each control's default is stated once in the code:
-! here, or, for a control read under a legacy name with no default here,
-! in set_legacy_defaults (io/legacy_controls.f90). The legacy namelists
-! are frozen: a new control is read only by the new format. Only the
+! here; set_legacy_defaults (io/legacy_controls.f90) gives each legacy
+! name its canonical twin's default, and holds only the defaults of the
+! legacy names that have no canonical home. The legacy namelists are
+! frozen: a new control is read only by the new format. Only the
 ! controls reader, map_user_inputs,
 ! controls_sync and test_net use this module; any file may import its
 ! named constants (max_runs, itime_*, ichi_*). tools/check_boundaries.py
@@ -110,8 +111,8 @@ module controls_buffer
       double precision :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
 
 ! Nuclear rate selection and weak screening.
-      logical :: use_new_nuclear_rates
-      double precision :: weak_screening_threshold
+      logical :: use_new_nuclear_rates = .false.
+      double precision :: weak_screening_threshold = 0.03d0
 
 ! Overshoot and semiconvection. iov1/iov2, the overshoot range, are
 ! model state (star%iov1/iov2).
@@ -152,8 +153,11 @@ module controls_buffer
 
 ! Light-element rate scales: the reader divides the decks' xsli6 etc by
 ! their reference values (sli6 = xsli6/5.5d3).
-      double precision :: li6_rate_scale, li7_rate_scale, &
-           be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale
+      double precision :: li6_rate_scale = 1.0d0
+      double precision :: li7_rate_scale = 1.0d0
+      double precision :: be9_pg_rate_scale = 1.0d0
+      double precision :: be9_pd_rate_scale = 1.0d0
+      double precision :: be9_palpha_rate_scale = 1.0d0
 
 ! Itoh et al. 1996 neutrino losses (net_lib's compute_zone_energy).
       logical :: use_itoh_neutrino_loss = .false.
@@ -191,7 +195,7 @@ module controls_buffer
            unit_centre5
 
 ! Opacity-table metallicity matching.
-      double precision :: metal_fraction_match_tolerance
+      double precision :: metal_fraction_match_tolerance = 1.0d-8
       double precision :: zsi = 0.0d0
 
 ! Envelope profile print count.
@@ -214,7 +218,9 @@ module controls_buffer
       double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
       double precision :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
-      double precision :: chi_grid_scale(12)
+      double precision :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, &
+           5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, &
+           1.0d-1 /)
 ! Slot names for chi_grid_scale, the zoning tolerances: the deck's
 ! hpttol (zoning_tolerances), or, when lnewvars is set, the like-named
 ! tol_*/flag_* controls (setup/user_inputs.f90); readers subscript with
@@ -237,39 +243,47 @@ module controls_buffer
 ! Angular momentum transport: the sub-timestep factor, iteration limits
 ! and convergence tolerance.
       double precision :: diffusion_timestep_factor = 1.0d-2
-      double precision :: convergence_tolerance
+      double precision :: convergence_tolerance = 1.0d-4
       integer :: num_rotation_structure_iters = 1, max_diffusion_iters = 10
 
 ! Gravitational settling.
-      double precision :: settling_tolerance
-      integer :: coulomb_log_choice, settling_num_iterations
-      logical :: diffuse_helium_active
-      double precision :: settling_timestep_fraction, &
-           hydrogen_diffusion_floor, helium_diffusion_min
-      logical :: use_thoul_fit
+      double precision :: settling_tolerance = 1.0d-8
+      integer :: coulomb_log_choice = 1
+      integer :: settling_num_iterations = 10
+      logical :: diffuse_helium_active = .false.
+      double precision :: settling_timestep_fraction = 0.1d0
+      double precision :: hydrogen_diffusion_floor = 1.0d-3
+      double precision :: helium_diffusion_min = 1.0d-3
+      logical :: use_thoul_fit = .false.
       double precision :: fgry = 1.0d0, fgrz = 1.0d0
       logical :: use_thoul_diffusion = .false.
-      logical :: use_diffusion_z
-      logical :: use_new_diffusion_routines
+      logical :: use_diffusion_z = .false.
+      logical :: use_new_diffusion_routines = .false.
       logical :: diffuse_lithium = .false.
 
 ! Atmosphere and envelope integration steps and tolerances.
-      double precision :: atm_error_tol, atm_step_initial, atm_step_begin
-      double precision :: atm_step_min, atm_step_max
-      double precision :: env_error_tol, env_step_begin, env_step_min
-      double precision :: env_step_max
+      double precision :: atm_error_tol = 3.0d-4
+      double precision :: atm_step_initial = 1.0d-10
+      double precision :: atm_step_begin = 1.0d-1
+      double precision :: atm_step_min = 1.0d-1
+      double precision :: atm_step_max = 5.0d-1
+      double precision :: env_error_tol = 3.0d-4
+      double precision :: env_step_begin = 1.0d-1
+      double precision :: env_step_min = 1.0d-1
+      double precision :: env_step_max = 5.0d-1
 ! The Bulirsch-Stoer integrator of both: the tolerance on the fitting
 ! mass, as a fraction of |senv|, which is also the atmosphere's step
 ! tolerance; the number of stages; and the extrapolation order
 ! (numerics/bulirsch_stoer.f90 takes 1 to 11 stages and orders 2 to 7;
 ! the controls read checks them).
-      double precision :: tolerance_fraction
-      integer :: max_stage_index, extrap_order
+      double precision :: tolerance_fraction = 1.0d-3
+      integer :: max_stage_index = 11
+      integer :: extrap_order = 7
 
 ! The atmosphere choice as read. The run's working copy is
 ! star%job%atm_choice (the surface boundary condition and the
 ! calibration cycles change it); star%atm_choice_initial keeps this value.
-      integer :: atm_choice
+      integer :: atm_choice = 0
 
 ! Initial abundances of a 12-species set (Na/Al/Mg/Fe/Si/C/H/O/N/Ar/Ne/He,
 ! a G&N93 solar mixture).
@@ -279,7 +293,8 @@ module controls_buffer
 
 ! Monte Carlo input files and their units (set by the reader). The paths
 ! have no default.
-      character(len=256) :: monte_carlo_file1_path, monte_carlo_file2_path
+      character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
+      character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
       integer :: monte_carlo_unit1, monte_carlo_unit2
 
 ! GYRE pulsation-output cadence.
@@ -287,7 +302,8 @@ module controls_buffer
 
 ! The envelope-fit triangle (its limits; lnew0 forces a fresh one at run
 ! start) and the requested envelope mass (set from the starting model).
-      double precision :: tri_delta_teffl, tri_delta_logl
+      double precision :: tri_delta_teffl = 1.0d-2
+      double precision :: tri_delta_logl = 8.0d-2
       logical :: lnew0 = .false.
       double precision :: requested_envelope_mass
       logical :: change_envelope_mass_flag
@@ -297,113 +313,154 @@ module controls_buffer
 ! rsclcm and kindrn by the reader).
       double precision :: rescale_params(4,max_runs)
       integer :: rescale_kind(max_runs)
-      integer :: num_models(max_runs), num_runs
-      logical :: first_call_flag(max_runs)
+      integer :: num_models(max_runs) = 0
+      integer :: num_runs = 1
+      logical :: first_call_flag(max_runs) = .true.
 
 ! Timestep limits from rotation and structure changes.
-      double precision :: max_domega_global
-      logical :: use_structure_dt_limits
+      double precision :: max_domega_global = 1.0d1
+      logical :: use_structure_dt_limits = .true.
 
 ! Envelope and atmosphere generation step sizes.
-      double precision :: atm_step_size, envelope_step_size
-      logical :: envelope_generation_flag
+      double precision :: atm_step_size = 0.5
+      double precision :: envelope_step_size = 0.5
+      logical :: envelope_generation_flag = .false.
 
 ! Helium flash.
-      logical :: helium_flash_active
+      logical :: helium_flash_active = .false.
 
 ! The starting envelope composition, used by the reader.
       double precision :: initial_envelope_x = 0.7d0
       double precision :: initial_envelope_z = 0.02d0
 
 ! Rescaling one species of the starting model.
-      double precision :: new_species_value
+      double precision :: new_species_value = 1.3d1
       integer :: new_species_index
-      logical :: rescale_species_active
+      logical :: rescale_species_active = .false.
       logical :: value_relative_to_h
 
 ! Changing the starting model's CNO mixture and isotope ratios. The two
 ! flags are set by the reader's validation of these inputs.
-      integer :: mixture_change_mode, isotope_change_mode
+      integer :: mixture_change_mode = 0
+      integer :: isotope_change_mode = 0
       logical :: change_cno_mixture_active, change_isotope_ratios_active
-      double precision :: target_carbon_cno_fraction, &
-           target_nitrogen_cno_fraction, target_oxygen_cno_fraction
-      double precision :: c12_to_c13_ratio, n14_to_n15_ratio, &
-           o16_to_o17_ratio, o16_to_o18_ratio
-      double precision :: target_metal_fraction
-      double precision :: initial_h2_fraction, initial_he3_fraction, &
-           initial_li6_fraction, initial_li7_fraction, &
-           initial_be9_fraction, initial_b10_fraction, &
-           initial_b11_fraction
+      double precision :: target_carbon_cno_fraction = 0.172148d0
+      double precision :: target_nitrogen_cno_fraction = 0.050426d0
+      double precision :: target_oxygen_cno_fraction = 0.468195
+      double precision :: c12_to_c13_ratio = 88.27d0
+      double precision :: n14_to_n15_ratio = 411.9d0
+      double precision :: o16_to_o17_ratio = 471.4d0
+      double precision :: o16_to_o18_ratio = 2693.0d0
+      double precision :: target_metal_fraction = 0.02292d0
+      double precision :: initial_h2_fraction = 2.781d-5
+      double precision :: initial_he3_fraction = 3.461d-5
+      double precision :: initial_li6_fraction = 7.187d-10
+      double precision :: initial_li7_fraction = 1.025d-8
+      double precision :: initial_be9_fraction = 1.595d-10
+      double precision :: initial_b10_fraction = 1.002d-9
+      double precision :: initial_b11_fraction = 4.405d-9
 
 ! Rotational mixing velocity and coefficient scales (ies and imu are
 ! read and then unused).
       double precision :: fo = 1.0d0
-      double precision :: difad_velocity_scale, mixing_velocity_scale, &
-           es_velocity_scale, gsf_velocity_scale, mu_gradient_scale, &
-           secular_shear_velocity_scale, critical_reynolds
+      double precision :: difad_velocity_scale = 1.0d0
+      double precision :: mixing_velocity_scale = 1.0d0
+      double precision :: es_velocity_scale = 1.0d0
+      double precision :: gsf_velocity_scale = 1.0d0
+      double precision :: mu_gradient_scale = 1.0d0
+      double precision :: secular_shear_velocity_scale = 1.0d0
+      double precision :: critical_reynolds = 1.0d3
       integer :: ies = 1
       integer :: imu = 1
-      double precision :: es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale
+      double precision :: es_mixing_scale = 1.0d0
+      double precision :: secular_shear_mixing_scale = 1.0d0
+      double precision :: gsf_mixing_scale = 1.0d0
 ! The Solberg-Hoiland instability's velocity scale (0: off) and mixing
 ! efficiency; new in 2026, with no legacy names.
       double precision :: solberg_hoiland_velocity_scale = 0.0d0
       double precision :: solberg_hoiland_mixing_scale = 1.0d0
-      integer :: gsf_inhibition_mode
+      integer :: gsf_inhibition_mode = 1
 
 ! The burning network's integration tolerances.
-      double precision :: min_abundance, absolute_tolerance, &
-           relative_tolerance
-      integer :: max_burn_iterations
+      double precision :: min_abundance = 1.0d-20
+      double precision :: absolute_tolerance = 1.0d-5
+      double precision :: relative_tolerance = 1.0d-4
+      integer :: max_burn_iterations = 50
 
 ! OPAL95 table unit (set by the reader).
       integer :: opal95_table_unit
 
 
 ! Extending the core inward.
-      logical :: extend_core_inward
-      integer :: num_core_shells_added
-      double precision :: core_mass_reduction_factor
+      logical :: extend_core_inward = .false.
+      integer :: num_core_shells_added = 0
+      double precision :: core_mass_reduction_factor = 1.0
 
 ! Isochrone output and the short file.
-      logical :: rewind_short_file, isochrone_output_active
+      logical :: rewind_short_file = .false.
+      logical :: isochrone_output_active = .false.
       integer :: isochrone_file_unit
 
 ! Per-run starting composition, mixing length and envelope mass.
-      double precision :: initial_x_array(max_runs), initial_z_array(max_runs), &
-           mixing_length_array(max_runs), senv0_array(max_runs)
-      logical :: has_senv0_array(max_runs)
+      double precision :: initial_x_array(max_runs) = 0
+      double precision :: initial_z_array(max_runs) = 0
+      double precision :: mixing_length_array(max_runs) = 0
+      double precision :: senv0_array(max_runs) = 1.26d-4
+      logical :: has_senv0_array(max_runs) = .false.
 
 ! Solar calibration.
-      double precision :: luminosity_tolerance, radius_tolerance, &
-           zx_tolerance, target_solar_zx, target_solar_age
-      logical :: calibrate_solar_model, calibrate_solar_zx
+      double precision :: luminosity_tolerance = 1.0d-5
+      double precision :: radius_tolerance = 1.0d-4
+      double precision :: zx_tolerance = 1.0d-3
+      double precision :: target_solar_zx = 0.02292d0
+      double precision :: target_solar_age = 4.57d9
+      logical :: calibrate_solar_model = .false.
+      logical :: calibrate_solar_zx = .false.
 
 ! The metallicity ramp, per run.
       double precision :: rsclzc(max_runs) = -1.0d0, rsclzm1(max_runs) = -1.0d0, &
            rsclzm2(max_runs) = -1.0d0
-      logical :: use_z_ramp
+      logical :: use_z_ramp = .false.
 
 ! Calibrating a star to a target luminosity, Teff or radius.
-      double precision :: target_luminosity_lsun, target_star_luminosity_tolerance, target_teff, target_radius_rsun
-      logical :: specify_teff_flag, calibrate_star_flag
+      double precision :: target_luminosity_lsun = 0
+      double precision :: target_star_luminosity_tolerance = 0
+      double precision :: target_teff = 0
+      double precision :: target_radius_rsun = 0
+      logical :: specify_teff_flag = .false.
+      logical :: calibrate_star_flag = .false.
 
 ! The OPAL EOS tables and numerical EOS derivatives (iopale is a unit).
-      logical :: use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           use_numerical_derivatives
+      logical :: use_opal95_eos = .false.
+      logical :: use_opal2001_eos = .false.
+      logical :: use_opal2006_eos = .false.
+      logical :: use_numerical_derivatives = .false.
       integer :: iopale
 ! the SCV low-temperature EOS (namelist lscv), and the Debye-Hueckel
 ! correction with its eta limits (namelist ldh, etadh0, etadh1)
-      logical :: use_scv_eos, use_debye_huckel_correction
-      double precision :: debye_huckel_eta_min, debye_huckel_eta_max
+      logical :: use_scv_eos = .false.
+      logical :: use_debye_huckel_correction = .false.
+      double precision :: debye_huckel_eta_min = -1.0d0
+      double precision :: debye_huckel_eta_max = 1.0d0
 
 ! Opacity tables: their metallicities, the molecular-opacity range and
 ! which tables to use.
-      double precision :: laol_table_z1, laol_table_z2, opal_table_z1, &
-           opal_table_z2, opal95_single_table_z, alex_table_z1, &
-           kurucz_table_z1, kurucz_table_z2, &
-           molecular_opacity_logt_min, molecular_opacity_logt_max
-      logical :: use_alex06_tables, use_laol89_tables, use_opal92_tables, use_opal95_tables, use_kurucz90_tables, use_alex95_tables
+      double precision :: laol_table_z1 = 0
+      double precision :: laol_table_z2 = 0
+      double precision :: opal_table_z1 = 0
+      double precision :: opal_table_z2 = 0
+      double precision :: opal95_single_table_z = 0
+      double precision :: alex_table_z1 = 0
+      double precision :: kurucz_table_z1 = 0
+      double precision :: kurucz_table_z2 = 0
+      double precision :: molecular_opacity_logt_min = 4.0d0
+      double precision :: molecular_opacity_logt_max = 4.1d0
+      logical :: use_alex06_tables = .false.
+      logical :: use_laol89_tables = .false.
+      logical :: use_opal92_tables = .false.
+      logical :: use_opal95_tables = .false.
+      logical :: use_kurucz90_tables = .false.
+      logical :: use_alex95_tables = .false.
 
 ! The LAOL89 interpolators extrapolate linearly within log(tollaol) of a
 ! table edge.
@@ -413,7 +470,7 @@ module controls_buffer
 ! Conductive opacities, and the second Kurucz table's unit (icondopacp is
 ! a unit too).
       integer :: kurucz_table2_unit, icondopacp
-      logical :: use_conductive_opacity
+      logical :: use_conductive_opacity = .false.
 
 ! Alexander table units (set by the reader). alex94_table_unit reads the
 ! Alexander 1994 low-T tables (kap/alex94/alex94_opacity.f90); the
@@ -428,48 +485,60 @@ module controls_buffer
 ! Angular momentum transport options: the alternative velocity form in
 ! the diffusion coefficients (lvfc) and diffusion-advection transport.
       logical :: lvfc = .false.
-      logical :: use_diffusion_advection_transport
+      logical :: use_diffusion_advection_transport = .false.
 
 ! No angular momentum transport in the core.
-      logical :: no_am_transport_in_core
+      logical :: no_am_transport_in_core = .false.
 
 ! SCV EOS table units (set by the reader).
       integer :: scv_h_unit, scv_he_unit, scv_z_unit
 
 ! Allard atmosphere tables: the target [Fe/H] and [alpha/Fe], tau=100
 ! tables, and the unit (set by the reader).
-      double precision :: allard_target_feh, allard_target_alpha
-      logical :: allard_use_tau100
+      double precision :: allard_target_feh = 0d0
+      double precision :: allard_target_alpha = 0d0
+      logical :: allard_use_tau100 = .false.
       integer :: allard_table_unit
 
 ! Solid-body rotation.
-      logical :: force_solid_body_rotation
-      integer :: solid_body_mode_flag
+      logical :: force_solid_body_rotation = .false.
+      integer :: solid_body_mode_flag = 0
 
 ! Constant mixing and settling coefficients.
       double precision :: constant_mixing_coeff = 1.0d0, constant_settling_reduction = 1.0d0
 
 ! The timestep limit from the envelope-fit triangle.
-      logical :: use_envelope_triangle_dt
+      logical :: use_envelope_triangle_dt = .false.
 
 ! Magnetic braking: the Matt/PMM wind law (K97 and V13 set their own
 ! exponents; rotation/magnetic_braking.f90's derive_wind_law).
-      double precision :: pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, &
-           pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, pmm_solar_turnover_timescale
-      logical :: use_pmm_wind_law, scale_by_rossby_number, scale_by_b_field
-      character(len=3) :: wind_law_name
+      double precision :: pmm_exponent_a = 2.0
+      double precision :: pmm_exponent_b = 1.0
+      double precision :: pmm_exponent_c = 2.0
+      double precision :: pmm_exponent_d = 0.0
+      double precision :: pmm_exponent_m = 0.5
+      double precision :: pmm_norm_jdot = 1.32e30
+      double precision :: pmm_norm_mdot = 1.27e12
+      double precision :: pmm_solar_pressure = 4.9304d0
+      double precision :: pmm_solar_omega = 2.836e-6
+      double precision :: pmm_solar_turnover_timescale = 9.4805d5
+      logical :: use_pmm_wind_law = .false.
+      logical :: scale_by_rossby_number = .true.
+      logical :: scale_by_b_field = .false.
+      character(len=3) :: wind_law_name = 'K97'
 
 ! Magnetic braking: the Kawaler (1988) law's index alfa and the constant
 ! factor fk of both laws; the saturation omega (rad/s), or, below 1000,
 ! the same in units of the solar omega.
-      double precision :: wind_law_index, wind_law_constant
-      double precision :: wind_saturation_omega, solar_omega_sat
+      double precision :: wind_law_index = 1.5d0
+      double precision :: wind_law_constant = 1.0d0
+      double precision :: wind_saturation_omega = 3.0d-4
+      double precision :: solar_omega_sat = 1000.0
       logical :: use_wind_torque = .true.
 
 ! Constant background diffusion.
-      double precision :: constant_background_diffusion_coeff
-      logical :: use_constant_background_diffusion
+      double precision :: constant_background_diffusion_coeff = 2.5d4
+      logical :: use_constant_background_diffusion = .false.
 
 ! The timestep and zoning tolerances under readable names; when lnewvars
 ! is set, map_user_inputs fills atime and chi_grid_scale from them.
@@ -488,14 +557,35 @@ module controls_buffer
            tol_dp_env_max = 0.05d0, tol_dx_max = 1.0d0, tol_dz_max = 1.0d0
       logical :: lstruct_time = .false., lnewvars = .false.
 
-! User-supplied nuclear S-factors and their first and second derivative
-! ratios (relative to the Adelberger et al. 1998 Solar Fusion I values).
-      double precision :: s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, &
-           s0_p_n14, s0_p_o16, s0_be7_electron, s0_be7_p, &
-           s0_n15_p_c12_branch, s0_n15_p_o16_branch
-      double precision :: s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
-           s0p_p_c13, s0p_p_n14, s0p_p_o16, s0pp_p_c12, s0pp_p_c13, &
-           s0pp_p_o16, s0p_be7_p, s0pp_be7_p
+! The nuclear S-factors (keV b) and their first and second derivatives
+! (b, b/keV), used with use_new_nuclear_rates: Solar Fusion II
+! (Adelberger et al. 2011). pep is relative to pp, and Be7 + e- is the
+! constant of the linear term; the code uses T9, so a coefficient for
+! T/1e6 K is divided by sqrt(1000). map_user_inputs scales them against
+! the Bahcall & Ulrich (1988) S0 and the Solar Fusion I derivatives.
+      double precision :: s0_pp = 4.01d-22
+      double precision :: s0_he3he3 = 5.21d3
+      double precision :: s0_he3he4 = 5.6d-1
+      double precision :: s0_p_c12 = 1.34d0
+      double precision :: s0_p_c13 = 7.6d0
+      double precision :: s0_p_n14 = 1.66d0
+      double precision :: s0_p_o16 = 1.06d1
+      double precision :: s0_be7_electron = 1.7709d-10
+      double precision :: s0_be7_p = 0.0208d0
+      double precision :: s0_n15_p_c12_branch = 7.3d4
+      double precision :: s0_n15_p_o16_branch = 3.6d1
+      double precision :: s0p_pp = 4.49d-24
+      double precision :: s0p_he3he3 = -4.9d0
+      double precision :: s0p_he3he4 = -3.6d-4
+      double precision :: s0p_p_c12 = 2.6d-3
+      double precision :: s0p_p_c13 = -7.83d-3
+      double precision :: s0p_p_n14 = -3.3d-3
+      double precision :: s0p_p_o16 = -5.4d-2
+      double precision :: s0pp_p_c12 = 8.3d-5
+      double precision :: s0pp_p_c13 = 7.29d-4
+      double precision :: s0pp_p_o16 = 0.0d0
+      double precision :: s0p_be7_p = -3.12d-5
+      double precision :: s0pp_be7_p = -2.288d-7
       double precision :: s0_pep = 3.5734d-6, s0_hep = 8.6d-20
 
 end module controls_buffer

@@ -41,8 +41,7 @@ program test_rotation
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
-           i_mech_solberg_hoiland
+      use star_info_lib, only: star_info, json, i_mech_eddington_sweet, i_mech_gsf, i_mech_shear
       use physical_constants, only: csig, csigl, cgl
       use magnetic_braking, only: brake_convection_zone, compute_solid_body_braking, wind_conditions
       use shell_quadrature, only: refine_distortion_integral, average_over_equipotential
@@ -345,24 +344,8 @@ end subroutine structure_check
 ! mixing of H, He3 and He4 (printed: the change of j/m, X and He4).
 subroutine secular_check()
       write(*,'(a)') "# secular transport"
-! the reader's defaults (the pristine star%ctrl leaves them zero; the
-! Solberg-Hoiland instability is off by default)
-      rotation_settings%difad_velocity_scale = 1.0d0
-      rotation_settings%mixing_velocity_scale = 1.0d0
-      rotation_settings%velocity_scale = 1.0d0
-      rotation_settings%velocity_scale(i_mech_solberg_hoiland) = 0.0d0
-      star%ctrl%mu_gradient_scale = 1.0d0
-      rotation_settings%critical_reynolds = 1.0d3
-      rotation_settings%mixing_scale = 1.0d0
-      rotation_settings%gsf_inhibition_mode = 1
-      rotation_settings%constant_background_diffusion_coeff = 2.5d4
-      rotation_settings%use_constant_background_diffusion = .false.
-      rotation_settings%no_am_transport_in_core = .false.
-      rotation_settings%use_zahn_coupling_factor = .false.
-      rotation_settings%use_diffusion_advection_transport = .false.
-      rotation_settings%chi_mass_scale = 8.0d-2
-      rotation_settings%chi_luminosity_scale = 2.0d-2
-      rotation_settings%chi_pressure_scale = 5.0d-2
+! the controls' defaults, as rotation_settings_from_star built them
+! from the pristine star (the Solberg-Hoiland instability is off)
       call secular_case("first iteration", 1, 0, .false., .true.)
       call secular_case("second iteration", 2, 0, .false., .false.)
       call secular_case("secular shear band (10x solar rotation)", 1, 1, .false., .true.)
