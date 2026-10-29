@@ -5,9 +5,10 @@
 ! (McAllister and Roulier, ACM TOMS 7, 1981; coded by S. L. Dodd and
 ! M. Roulier, N.C. State University): wherever the data are monotone or
 ! convex, so is the spline. osplin is the entry point: slopes chooses
-! the slope at each point, and meval evaluates the spline, with search
-! for the first interval, choose for the knot case of an interval,
-! cases for its knots and spline for the value.
+! the slope at each point, and meval evaluates the spline at the
+! points, below, inside and above the table; interval_arcs gives an
+! interval's arcs (choose picks its knot case, cases places its knots)
+! and spline their value at a point.
 ! On an interval from (x_left, y_left) to (x_right, y_right) with end
 ! slopes slope_left and slope_right, the spline is two quadratic arcs
 ! joined at a knot z (case 1: where the end tangents meet; case 2: the
@@ -30,6 +31,20 @@ module quadratic_spline
 ! or of twice the secant, counts as equal to it
       real(dp), parameter :: slope_tolerance = 1.d-04
 
+! The spline on one interval, from table point `interval` to the next:
+! its ends, its knot case (choose's) and the knots and control values of
+! its arcs (cases'), which spline evaluates. interval 0: none yet.
+      type :: interval_arcs
+         integer :: interval = 0
+         integer :: spline_case = 0
+         real(dp) :: x_left = 0, y_left = 0, x_right = 0, y_right = 0
+! the knot z, and case 4's first knot y
+         real(dp) :: z_x = 0, z_y = 0, y_x = 0, y_y = 0
+! the control values of the left arc (v), the right arc (w) and case 4's
+! middle arc (e)
+         real(dp) :: v_y = 0, w_y = 0, e_y = 0
+      end type interval_arcs
+
 contains
 
 !----------------------------------------------------------------------
@@ -49,7 +64,7 @@ pure subroutine osplin(xval, yval, xtab, ytab, n, k, ierr)
       integer, intent(out), optional :: ierr
 
       real(dp) :: first_derivs(n)
-      integer :: err
+      integer :: i
 
       if (present(ierr)) ierr = numerics_ok
       if (n < 3) then
@@ -57,9 +72,13 @@ pure subroutine osplin(xval, yval, xtab, ytab, n, k, ierr)
          return
       end if
       if (k < 1) return
+      do i = 1, k - 1
+         if (xval(i+1) >= xval(i)) cycle
+         if (present(ierr)) ierr = numerics_unsorted_points
+         return
+      end do
       call slopes(xtab, ytab, first_derivs, n)
-      call meval(xval, yval, xtab, ytab, first_derivs, n, k, slope_tolerance, err)
-      if (err == 2 .and. present(ierr)) ierr = numerics_unsorted_points
+      call meval(xval, yval, xtab, ytab, first_derivs, n, k, slope_tolerance)
 end subroutine osplin
 
 !----------------------------------------------------------------------
@@ -162,7 +181,7 @@ end subroutine safedivide
 ! The knots and control points of the spline on (x_left, x_right) for
 ! knot case spline_case (choose's): the knot (knot_z_x, knot_z_y) and
 ! the control points v and w of its two arcs for cases 1-3; case 4 adds
-! the first knot y and the control point e of the middle arc (unset in
+! the first knot y and the control point e of the middle arc (zero in
 ! cases 1-3). Any case other than 2, 3 and 4 is case 1.
 pure subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
      y_right, knot_e_x, knot_e_y, knot_v_x, knot_v_y, knot_w_x, &
@@ -174,6 +193,10 @@ pure subroutine cases(x_left, y_left, slope_left, slope_right, x_right, &
            knot_w_x, knot_w_y, knot_z_x, knot_z_y, knot_y_x, knot_y_y
       real(dp) :: mbar1, mbar2, mbar3, c1, d1, h1, j1, k1, ztwo
 
+      knot_y_x = 0.d0
+      knot_y_y = 0.d0
+      knot_e_x = 0.d0
+      knot_e_y = 0.d0
       select case (spline_case)
       case (2)
 ! the knot at the midpoint, the control points on the end tangents
@@ -333,26 +356,22 @@ end subroutine choose
 ! search
 !----------------------------------------------------------------------
 ! Bisection for eval_point in table_x(1:num_table_points), which it
-! lies within: table_idx is the last point below it, or the point it
-! equals (found_flag 1).
-pure subroutine search(table_x, num_table_points, eval_point, table_idx, &
-     found_flag)
+! lies within: table_idx is the point it equals, or else the last point
+! below it.
+pure subroutine search(table_x, num_table_points, eval_point, table_idx)
       integer, intent(in) :: num_table_points
       real(dp), intent(in) :: table_x(num_table_points), eval_point
-      integer, intent(out) :: table_idx, found_flag
+      integer, intent(out) :: table_idx
       integer :: first_idx, last_idx, middle_idx
 
       first_idx = 1
       last_idx = num_table_points
-      found_flag = 0
       if (table_x(1) == eval_point) then
          table_idx = 1
-         found_flag = 1
          return
       end if
       if (table_x(num_table_points) == eval_point) then
          table_idx = num_table_points
-         found_flag = 1
          return
       end if
       do
@@ -365,7 +384,6 @@ pure subroutine search(table_x, num_table_points, eval_point, table_idx, &
             first_idx = middle_idx
          else if (table_x(middle_idx) == eval_point) then
             table_idx = middle_idx
-            found_flag = 1
             return
          else
             last_idx = middle_idx
@@ -374,64 +392,92 @@ pure subroutine search(table_x, num_table_points, eval_point, table_idx, &
 end subroutine search
 
 !----------------------------------------------------------------------
+! interval_arcs_of
+!----------------------------------------------------------------------
+! The arcs of the spline on interval j, from (table_x(j), table_y(j))
+! with slope table_slope(j) to point j + 1: choose's knot case, then
+! cases' knots and control points.
+pure function interval_arcs_of(table_x, table_y, table_slope, j, eps_tol) result(arcs)
+      real(dp), intent(in) :: table_x(:), table_y(:), table_slope(:), eps_tol
+      integer, intent(in) :: j
+      type(interval_arcs) :: arcs
+      real(dp) :: e_x, v_x, w_x
+
+      arcs%interval = j
+      arcs%x_left = table_x(j)
+      arcs%y_left = table_y(j)
+      arcs%x_right = table_x(j+1)
+      arcs%y_right = table_y(j+1)
+      call choose(arcs%x_left, arcs%y_left, table_slope(j), table_slope(j+1), &
+           arcs%x_right, arcs%y_right, eps_tol, arcs%spline_case)
+      call cases(arcs%x_left, arcs%y_left, table_slope(j), table_slope(j+1), &
+           arcs%x_right, arcs%y_right, e_x, arcs%e_y, v_x, arcs%v_y, w_x, &
+           arcs%w_y, arcs%z_x, arcs%z_y, arcs%y_x, arcs%y_y, arcs%spline_case)
+end function interval_arcs_of
+
+!----------------------------------------------------------------------
 ! spline
 !----------------------------------------------------------------------
-! The spline's value at eval_point on (x_left, x_right), from cases'
-! knots (y1, y2) (case 4 only) and (z1, z2) and control points v2, w2
-! and e2 (case 4 only). MHP 6/87: the chord of the interval where a
-! knot coincides with an end.
-pure function spline(eval_point, z1, z2, x_left, y_left, x_right, y_right, &
-     y1, y2, e2, w2, v2, spline_case)
+! The value at eval_point of the spline on the interval of arcs: one
+! knot z (cases 1-3) or two, y and z (case 4), joining the left arc
+! (control value v), case 4's middle arc (e) and the right arc (w).
+! MHP 6/87: the chord of the interval where a knot coincides with an
+! end.
+pure function spline(arcs, eval_point)
       real(dp) :: spline
-      real(dp), intent(in) :: eval_point, z1, z2, x_left, y_left, &
-           x_right, y_right, y1, y2, e2, w2, v2
-      integer, intent(in) :: spline_case
+      type(interval_arcs), intent(in) :: arcs
+      real(dp), intent(in) :: eval_point
 
-      if (spline_case /= 4) then
+      associate (x_left => arcs%x_left, y_left => arcs%y_left, &
+           x_right => arcs%x_right, y_right => arcs%y_right, &
+           z_x => arcs%z_x, z_y => arcs%z_y, y_x => arcs%y_x, y_y => arcs%y_y, &
+           v_y => arcs%v_y, w_y => arcs%w_y, e_y => arcs%e_y)
+      if (arcs%spline_case /= 4) then
 ! one knot: the arc to its left or to its right
-         if (z1 < eval_point) then
-            if (x_right /= z1) then
-               spline = quadratic_arc(z1, z2, w2, x_right, y_right)
+         if (z_x < eval_point) then
+            if (x_right /= z_x) then
+               spline = quadratic_arc(z_x, z_y, w_y, x_right, y_right)
             else
                spline = chord()
             end if
-         else if (z1 == eval_point) then
-            spline = z2
+         else if (z_x == eval_point) then
+            spline = z_y
          else
-            if (z1 /= x_left) then
-               spline = quadratic_arc(x_left, y_left, v2, z1, z2)
+            if (z_x /= x_left) then
+               spline = quadratic_arc(x_left, y_left, v_y, z_x, z_y)
             else
                spline = chord()
             end if
          end if
       else
 ! two knots: the left, middle or right arc
-         if (y1 < eval_point) then
-            if (z1 < eval_point) then
-               if (x_right /= z1) then
-                  spline = quadratic_arc(z1, z2, w2, x_right, y_right)
+         if (y_x < eval_point) then
+            if (z_x < eval_point) then
+               if (x_right /= z_x) then
+                  spline = quadratic_arc(z_x, z_y, w_y, x_right, y_right)
                else
                   spline = chord()
                end if
-            else if (z1 == eval_point) then
-               spline = z2
+            else if (z_x == eval_point) then
+               spline = z_y
             else
-               if (z1 /= y1) then
-                  spline = quadratic_arc(y1, y2, e2, z1, z2)
+               if (z_x /= y_x) then
+                  spline = quadratic_arc(y_x, y_y, e_y, z_x, z_y)
                else
                   spline = chord()
                end if
             end if
-         else if (y1 == eval_point) then
-            spline = y2
+         else if (y_x == eval_point) then
+            spline = y_y
          else
-            if (y1 /= x_left) then
-               spline = quadratic_arc(x_left, y_left, v2, y1, y2)
+            if (y_x /= x_left) then
+               spline = quadratic_arc(x_left, y_left, v_y, y_x, y_y)
             else
                spline = chord()
             end if
          end if
       end if
+      end associate
 
 contains
 
@@ -448,182 +494,81 @@ contains
       pure function chord() result(f)
          real(dp) :: f
          real(dp) :: linear_interp_frac
-         linear_interp_frac = (eval_point - x_left)/(x_right - x_left)
-         f = y_left + linear_interp_frac*(y_right - y_left)
+         linear_interp_frac = (eval_point - arcs%x_left)/(arcs%x_right - arcs%x_left)
+         f = arcs%y_left + linear_interp_frac*(arcs%y_right - arcs%y_left)
       end function chord
 end function spline
 
 !----------------------------------------------------------------------
 ! meval
 !----------------------------------------------------------------------
-! The spline through table_x/table_y with slopes table_slope at the
-! nondecreasing points eval_x, into eval_y: the points below the table
-! on the first interval's arcs, extrapolated; the points in range
-! interval by interval (a point on a node takes the node's value); the
-! points above on the last interval's arcs, extrapolated. err_code: 0;
-! 1 when some points lie outside the table; 2 when eval_x decreases
-! somewhere (nothing is evaluated).
+! The spline through table_x/table_y(1:n), n >= 3, with slopes
+! table_slope, at the nondecreasing points eval_x, into eval_y, in three
+! steps: the points below the table on the first interval's arcs,
+! extrapolated; the points in range on their interval's arcs, a point on
+! a node taking the node's value; the points above on the last
+! interval's arcs, extrapolated. An interval's arcs are computed when a
+! point first needs them, so each point gets the value it has alone.
 pure subroutine meval(eval_x, eval_y, table_x, table_y, table_slope, &
-     num_table_points, num_eval_points, eps_tol, err_code)
+     num_table_points, num_eval_points, eps_tol)
       integer, intent(in) :: num_table_points, num_eval_points
       real(dp), intent(in) :: eval_x(num_eval_points), &
            table_x(num_table_points), table_y(num_table_points), &
            table_slope(num_table_points), eps_tol
       real(dp), intent(inout) :: eval_y(num_eval_points)
-      integer, intent(out) :: err_code
 
-      real(dp) :: spline_v1, spline_v2, spline_w1, spline_w2, &
-           spline_z1, spline_z2, spline_y1, spline_y2, spline_e1, spline_e2
-      integer :: start_idx, start_idx1, end_idx, found_flag
-      integer :: i, table_idx, table_idx1, spline_case, num_minus1
-      logical :: recompute_tail_params
+      type(interval_arcs) :: arcs
+      integer :: i, j, n
 
-      start_idx = 1
-      end_idx = num_eval_points
-      err_code = 0
-      if (num_eval_points /= 1) then
-         do i = 1, num_eval_points - 1
-            if (eval_x(i+1) >= eval_x(i)) cycle
-            err_code = 2
-            return
-         end do
-      end if
-! start_idx: the first point at or above table_x(1); end_idx: the last
-! at or below the last node
-      do i = 1, num_eval_points
+      n = num_table_points
+      i = 1
+! below the table
+      do while (i <= num_eval_points)
          if (eval_x(i) >= table_x(1)) exit
-         start_idx = i + 1
+         call take_arcs(arcs, 1)
+         eval_y(i) = spline(arcs, eval_x(i))
+         i = i + 1
       end do
-      do i = num_eval_points, 1, -1
-         if (eval_x(i) <= table_x(num_table_points)) exit
-         end_idx = i - 1
-      end do
-
-! the points below the table
-      if (start_idx /= 1) then
-         err_code = 1
-         call choose(table_x(1), table_y(1), table_slope(1), table_slope(2), &
-              table_x(2), table_y(2), eps_tol, spline_case)
-         call cases(table_x(1), table_y(1), table_slope(1), table_slope(2), &
-              table_x(2), table_y(2), spline_e1, spline_e2, spline_v1, &
-              spline_v2, spline_w1, spline_w2, spline_z1, spline_z2, &
-              spline_y1, spline_y2, spline_case)
-         do i = 1, start_idx - 1
-            eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, table_x(1), &
-                 table_y(1), table_x(2), table_y(2), spline_y1, spline_y2, &
-                 spline_e2, spline_w2, spline_v2, spline_case)
+! in range: the first point's interval j by bisection (on a node, the
+! node), the next points' by advancing j over the nodes they pass
+      if (i <= num_eval_points) then
+         if (eval_x(i) <= table_x(n)) then
+            call search(table_x, n, eval_x(i), j)
+            j = min(j, n - 1)
+         end if
+      end if
+      do while (i <= num_eval_points)
+         if (eval_x(i) > table_x(n)) exit
+         do while (eval_x(i) > table_x(j+1))
+            j = j + 1
          end do
-         if (start_idx > num_eval_points) return
-      end if
-
-! the points in range, if any (else all the rest lie above the table)
-      recompute_tail_params = .true.
-      if (start_idx <= end_idx) then
-! the interval of the first point in range; points on a node take the
-! node's value
-         call search(table_x, num_table_points, eval_x(start_idx), &
-              table_idx, found_flag)
-         table_idx1 = table_idx + 1
-         if (found_flag /= 0) then
-            do
-               eval_y(start_idx) = table_y(table_idx)
-               start_idx1 = start_idx
-               start_idx = start_idx + 1
-               if (start_idx > num_eval_points) return
-               if (eval_x(start_idx1) /= eval_x(start_idx)) exit
-            end do
-! advance to the interval of the next point, giving the points on the
-! nodes passed their values; stop after the last point in range (those
-! left lie above the table, after one on its last node)
-            do
-               if (start_idx > end_idx) exit
-               if (eval_x(start_idx) < table_x(table_idx1)) exit
-               if (eval_x(start_idx) == table_x(table_idx1)) then
-                  do
-                     eval_y(start_idx) = table_y(table_idx1)
-                     start_idx1 = start_idx
-                     start_idx = start_idx + 1
-                     if (start_idx > num_eval_points) return
-                     if (eval_x(start_idx) /= eval_x(start_idx1)) exit
-                  end do
-               end if
-               table_idx = table_idx1
-               table_idx1 = table_idx1 + 1
-            end do
+         if (eval_x(i) == table_x(j)) then
+            eval_y(i) = table_y(j)
+         else if (eval_x(i) == table_x(j+1)) then
+            eval_y(i) = table_y(j+1)
+         else
+            call take_arcs(arcs, j)
+            eval_y(i) = spline(arcs, eval_x(i))
          end if
-
-! interval by interval: the arcs of the current interval (the first
-! interval's are set when points below the table used them), then each
-! point's value
-         if (start_idx <= end_idx) then
-            if (table_idx /= 1 .or. err_code /= 1) then
-               call choose(table_x(table_idx), table_y(table_idx), &
-                    table_slope(table_idx), table_slope(table_idx1), &
-                    table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
-               call cases(table_x(table_idx), table_y(table_idx), &
-                    table_slope(table_idx), table_slope(table_idx1), &
-                    table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
-                    spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
-                    spline_z2, spline_y1, spline_y2, spline_case)
-            end if
-            do i = start_idx, end_idx
-               if (eval_x(i) > table_x(table_idx1)) then
-                  do
-                     table_idx = table_idx1
-                     table_idx1 = table_idx + 1
-                     if (eval_x(i) <= table_x(table_idx1)) exit
-                  end do
-                  if (eval_x(i) < table_x(table_idx1)) then
-                     call choose(table_x(table_idx), table_y(table_idx), &
-                          table_slope(table_idx), table_slope(table_idx1), &
-                          table_x(table_idx1), table_y(table_idx1), eps_tol, spline_case)
-                     call cases(table_x(table_idx), table_y(table_idx), &
-                          table_slope(table_idx), table_slope(table_idx1), &
-                          table_x(table_idx1), table_y(table_idx1), spline_e1, spline_e2, &
-                          spline_v1, spline_v2, spline_w1, spline_w2, spline_z1, &
-                          spline_z2, spline_y1, spline_y2, spline_case)
-                  end if
-               end if
-               if (eval_x(i) == table_x(table_idx1)) then
-                  eval_y(i) = table_y(table_idx1)
-                  cycle
-               end if
-               eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
-                    table_x(table_idx), table_y(table_idx), table_x(table_idx1), &
-                    table_y(table_idx1), spline_y1, spline_y2, spline_e2, &
-                    spline_w2, spline_v2, spline_case)
-            end do
-         end if
-         if (end_idx == num_eval_points) return
-! the last interval's arcs are set already when the last point in
-! range lay inside that interval
-         if ((table_idx1 == num_table_points) .and. &
-              (eval_x(end_idx) /= table_x(num_table_points))) recompute_tail_params = .false.
-      end if
-
-! the points above the table, on the last interval's arcs (its first
-! point is max(n - 1, 1); llp 8/19/08)
-      num_minus1 = max(num_table_points - 1, 1)
-      if (recompute_tail_params) then
-         err_code = 1
-         call choose(table_x(num_minus1), table_y(num_minus1), &
-              table_slope(num_minus1), table_slope(num_table_points), &
-              table_x(num_table_points), table_y(num_table_points), &
-              eps_tol, spline_case)
-         call cases(table_x(num_minus1), table_y(num_minus1), &
-              table_slope(num_minus1), table_slope(num_table_points), &
-              table_x(num_table_points), table_y(num_table_points), &
-              spline_e1, spline_e2, spline_v1, spline_v2, spline_w1, &
-              spline_w2, spline_z1, spline_z2, spline_y1, spline_y2, &
-              spline_case)
-      end if
-      do i = end_idx + 1, num_eval_points
-         eval_y(i) = spline(eval_x(i), spline_z1, spline_z2, &
-              table_x(num_minus1), table_y(num_minus1), &
-              table_x(num_table_points), table_y(num_table_points), &
-              spline_y1, spline_y2, spline_e2, spline_w2, spline_v2, &
-              spline_case)
+         i = i + 1
       end do
+! above the table (the last interval's first point is n - 1; llp
+! 8/19/08)
+      do while (i <= num_eval_points)
+         call take_arcs(arcs, n - 1)
+         eval_y(i) = spline(arcs, eval_x(i))
+         i = i + 1
+      end do
+
+contains
+
+! arcs becomes interval j's, unless it is already
+      pure subroutine take_arcs(arcs, j)
+         type(interval_arcs), intent(inout) :: arcs
+         integer, intent(in) :: j
+         if (arcs%interval /= j) &
+              arcs = interval_arcs_of(table_x, table_y, table_slope, j, eps_tol)
+      end subroutine take_arcs
 end subroutine meval
 
 end module quadratic_spline

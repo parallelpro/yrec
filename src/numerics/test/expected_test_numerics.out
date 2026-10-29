@@ -271,7 +271,7 @@ osplin: monotone data give a monotone spline                               0.00E
 osplin: convex data give a convex spline                                   0.00E+00  ok
 osplin: interpolates the nodes                                             0.00E+00  ok
 osplin: exact on a line, extrapolated too                                  1.05E-14  ok
-osplin: a run equals its points one at a time                              0.00E+00  ok
+osplin: every sorted subset of 16 points equals them one at a time         0.00E+00  ok
 osplin: n < 3 is numerics_bad_input, yval untouched                        0.00E+00  ok
 osplin: decreasing points are numerics_unsorted_points                     0.00E+00  ok
 inter3: exact on a quadratic                                               3.55E-16  ok

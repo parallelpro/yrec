@@ -686,19 +686,10 @@ subroutine quadratic_spline_checks()
       call osplin(xe, ye, x, y, 9, m, ierr)
       call report("osplin: exact on a line, extrapolated too", &
            maxval(abs(ye - (3.0d0 - 0.5d0*xe)))/3.0d0, 1.0d-13)
-! a run of points equals its points one at a time: below the table, on
-! nodes (repeated), between them, on the last node and above
+! every sorted run of points equals its points one at a time
       y = [0.0d0, 1.0d0, 0.5d0, 2.0d0, -1.0d0, -1.0d0, 3.0d0, 2.5d0, 4.0d0]
-      err = 0.0d0
-      call run_against_points([-2.0d0, -1.0d0, -0.5d0], x, y, err)
-      call run_against_points([7.0d0, 8.0d0, 9.5d0], x, y, err)
-      call run_against_points([-1.0d0, 7.0d0, 8.0d0], x, y, err)
-      call run_against_points([6.5d0, 7.0d0, 8.0d0], x, y, err)
-      call run_against_points([5.0d0, 6.5d0, 6.5d0, 7.0d0], x, y, err)
-      call run_against_points([3.5d0, 7.0d0, 8.0d0], x, y, err)
-      call run_against_points([-0.3d0, 0.0d0, 0.0d0, 0.7d0, 1.5d0, 2.0d0, 3.0d0, &
-           3.6d0, 6.5d0, 6.9d0, 7.5d0], x, y, err)
-      call report("osplin: a run equals its points one at a time", err, 0.0d0)
+      call report("osplin: every sorted subset of 16 points equals them one at a time", &
+           subsets_against_points(x, y), 0.0d0)
 ! the error contract: too few points, decreasing points
       keep = [-7.0d0, -7.0d0]
       call osplin([1.0d0, 2.0d0], keep, x, y, 2, 2, ierr)
@@ -709,20 +700,43 @@ subroutine quadratic_spline_checks()
            ierr == numerics_unsorted_points .and. all(keep == -7.0d0))
 end subroutine quadratic_spline_checks
 
-! the largest difference between osplin at a run of points and at each
-! point alone, into err
-subroutine run_against_points(points, x, y, err)
-      real(dp), intent(in) :: points(:), x(9), y(9)
-      real(dp), intent(inout) :: err
-      real(dp) :: run_y(size(points)), one(1), y1(1)
-      integer :: j, jerr
-      call osplin(points, run_y, x, y, 9, size(points), jerr)
-      do j = 1, size(points)
-         one(1) = points(j)
-         call osplin(one, y1, x, y, 9, 1, jerr)
-         err = max(err, abs(run_y(j) - y1(1)))
+! The fraction of points whose value in a run differs from their value
+! alone (bit for bit), over every nonempty sorted subset of 16 candidate
+! points on the 9-point table x/y: two below the table, the first node
+! and a point in its interval, a node twice and a point after it, the
+! third-last node and a point after it, the last-but-one node twice and
+! a point in the last interval, the last node twice and two above.
+function subsets_against_points(x, y) result(mismatch_fraction)
+      real(dp), intent(in) :: x(9), y(9)
+      real(dp) :: mismatch_fraction
+      integer, parameter :: n_cand = 16
+      real(dp), parameter :: candidates(n_cand) = [-2.0d0, -0.5d0, 0.0d0, 0.2d0, &
+           1.0d0, 1.0d0, 1.2d0, 4.2d0, 4.6d0, 5.0d0, 5.0d0, 5.7d0, 6.5d0, 6.5d0, &
+           7.0d0, 8.0d0]
+      real(dp) :: alone(n_cand), points(n_cand), run_y(n_cand), y1(1)
+      integer :: c, mask, m, picked(n_cand), jerr, mismatches, compared
+      do c = 1, n_cand
+         call osplin(candidates(c:c), y1, x, y, 9, 1, jerr)
+         alone(c) = y1(1)
       end do
-end subroutine run_against_points
+      mismatches = 0
+      compared = 0
+      do mask = 1, 2**n_cand - 1
+         m = 0
+         do c = 1, n_cand
+            if (.not. btest(mask, c - 1)) cycle
+            m = m + 1
+            picked(m) = c
+            points(m) = candidates(c)
+         end do
+         call osplin(points(1:m), run_y(1:m), x, y, 9, m, jerr)
+         do c = 1, m
+            compared = compared + 1
+            if (.not. (run_y(c) == alone(picked(c)))) mismatches = mismatches + 1
+         end do
+      end do
+      mismatch_fraction = real(mismatches, dp)/real(compared, dp)
+end function subsets_against_points
 
 ! ---------------------------------------------------------------- Lagrange
 subroutine lagrange_checks()
