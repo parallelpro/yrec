@@ -615,4 +615,9 @@ ok   envelope tables: rebuilt at a new composition, the SCV table agrees with SC
 ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe
 # test_eos: configuration production
 ok   eos_get_gamma1: below the OPAL table, the Yale/SCV value
+# test_eos: configuration yale_only
+# test_eos: configuration yale_diffusion_z
+# test_eos: configuration yale_only
+# test_eos: configuration yale_diffusion_z
+ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
 test_eos: done

@@ -704,6 +704,8 @@ end subroutine write_mhd_part
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
 !                          mixture (eos_set_debye_huckel_z)
 !   gamma1_checks          eos_get_gamma1 outside the OPAL table
+!   diffusion_z_checks     the diffusion-of-Z mixture against the default
+!                          one where Z is the envelope's
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -712,6 +714,7 @@ subroutine check_physics()
       call envelope_table_checks()
       call debye_huckel_checks()
       call gamma1_checks()
+      call diffusion_z_checks()
 end subroutine check_physics
 
 ! One eos_get at (log T, log P) and (x, z), from a fresh record.
@@ -735,6 +738,28 @@ end subroutine eos_at
 ! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b and alpha = 1/b,
 ! cp = (R/mu)(3/2 + 12(1 - b)/b + delta^2) and grad_ad = (R/mu) delta/(b cp)
 ! (Kippenhahn & Weigert sec. 13.2)
+! With use_diffusion_z the metals scale with Z/Z_env; where Z is the
+! envelope's and only X differs (X = 0.65 against 0.70), the zone's
+! 1/mu_ion is the default mixture's (the same H and He terms), on the
+! Saha path (log T = 4.5) and the fully ionized one (log T = 6.5).
+subroutine diffusion_z_checks()
+      real(dp), parameter :: x = 0.65d0, lt(2) = [4.5d0, 6.5d0], lp(2) = [9.0d0, 15.0d0]
+      type(eos_result) :: plain, diffusion
+      integer :: k, ierr1, ierr2
+      logical :: ok
+      ok = .true.
+      do k = 1, 2
+         call configure_eos("yale_only")
+         call eos_at(lt(k), lp(k), x, envelope_metal_fraction, plain, ierr1)
+         call configure_eos("yale_diffusion_z", diffusion_z=.true.)
+         call eos_at(lt(k), lp(k), x, envelope_metal_fraction, diffusion, ierr2)
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
+              abs(diffusion%ion_mean_weight_inverse/plain%ion_mean_weight_inverse - 1.0d0) < 1.0d-14 &
+              .and. abs(diffusion%log10_density - plain%log10_density) < 1.0d-12
+      end do
+      call check("diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho", ok)
+end subroutine diffusion_z_checks
+
 ! Below the OPAL 2006 table (T = 1500 K) eos_get_gamma1 takes the
 ! Yale/SCV value (to 1e-6: the Saha solver starts from the previous
 ! call's solution), with OPAL selected as without it.

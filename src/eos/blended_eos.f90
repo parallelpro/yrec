@@ -24,8 +24,7 @@ module blended_eos
            radiation_constant_over_3
       use io_units, only: run_log_unit
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, ix_c, ix_h, &
-           ix_he, ix_na, ix_ne, ix_o, n_mix_species, &
-           atomic_weights_full => mixture_atomic_weights
+           ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings
       use math_lib
 
@@ -248,15 +247,15 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
             r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
-         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)/ &
-              atomic_weights_full(ix_h)
+         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
+              inverse_atomic_weights(1)
          r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + h_excess
          do species_idx = ix_o, ix_ne
             r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
                  amu_correction*eos_mix%fxenv(species_idx)
          end do
          y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              hydrogen_fraction - metal_fraction)/atomic_weights_full(ix_he)
+              hydrogen_fraction - metal_fraction)*inverse_atomic_weights(2)
          r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + y_excess
          envelope_amu_over_amu = metal_ratio*eos_mix%amuenv/ &
               r%ion_mean_weight_inverse
