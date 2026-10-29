@@ -167,7 +167,7 @@ subroutine diffuse_composition(chi_grid, timestep, &
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use rotation_messages, only: rotation_report, message_length
-      use numerics_lib, only: osplin, solve_tridiagonal
+      use numerics_lib, only: osplin, solve_tridiagonal, numerics_status_text
       implicit none
       type(transport_grid_state), intent(in) :: chi_grid
 
@@ -191,6 +191,7 @@ subroutine diffuse_composition(chi_grid, timestep, &
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
       double precision :: test_value
+      character(len=message_length) :: line
 
       ierr = 0
 
@@ -232,7 +233,8 @@ subroutine diffuse_composition(chi_grid, timestep, &
 ! Solve for X at the end of the sub-step on the grid.
          call solve_tridiagonal(sub_diag, diag, super_diag, rhs, chi_grid%num_eq_points, solution, ierr)
          if (ierr /= 0) then
-            call rotation_report([character(len=message_length) :: ' solve_tridiagonal: singular matrix'])
+            line = ' solve_tridiagonal: '//numerics_status_text(ierr)
+            call rotation_report([line])
             return
          end if
 ! Map back to the model points. Extrapolating the new X past the end

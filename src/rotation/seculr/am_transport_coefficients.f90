@@ -176,11 +176,14 @@ end subroutine am_diffusion_coeffs
 ! is rewritten as rhs(n) (1 + (solution(n) - rhs(n))/rhs(n)), the same
 ! value up to round-off. The two halves of the Thomas algorithm are
 ! numerics' (tridiagonal_forward_sweep, tridiagonal_back_substitution).
-! A zero pivot, the first included, returns ierr = 1.
+! A zero pivot, the first included, returns the sweep's ierr
+! (numerics_singular), after a report (rotation_report).
 subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
      solution, dj_n_seed, ierr)
       use composition_layout, only: json
-      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
+      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution, &
+           numerics_status_text
+      use rotation_messages, only: rotation_report, message_length
 
       integer, intent(in) :: n
       double precision, intent(in) :: ei(json)
@@ -200,6 +203,7 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
       double precision :: rhs_orig(json)
       integer :: i, j
       double precision :: fj
+      character(len=message_length) :: line
 
       ierr = 0
       dj(n) = dj_n_seed
@@ -209,7 +213,8 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
       call tridiagonal_forward_sweep(sub_diag, diag, super_diag, rhs, n, solution, &
            gamma_elim, ierr)
       if (ierr /= 0) then
-         write(*,*) 'solve_angular_momentum_transport: singular matrix'
+         line = ' solve_angular_momentum_transport: '//numerics_status_text(ierr)
+         call rotation_report([line])
          return
       end if
       dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)

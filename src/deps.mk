@@ -449,8 +449,8 @@ rotation/rotation_configuration.o: composition_layout.mod transport_mechanism_la
 rotation/rotation_messages.o: io_units.mod run_log.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
 rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/am_transport_coefficients.o: composition_layout.mod numerics_lib.mod rotation_configuration.mod
-rotation/seculr/circulation.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod transport_mechanism_layout.mod transport_mechanisms.mod
+rotation/seculr/am_transport_coefficients.o: composition_layout.mod numerics_lib.mod rotation_configuration.mod rotation_messages.mod
+rotation/seculr/circulation.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod transport_mechanism_layout.mod transport_mechanisms.mod
 rotation/seculr/equal_grid.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/instability_velocities.o: math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/seculr/region_transport.o: am_grid.mod am_transport_coefficients.mod composition_layout.mod rotation_scratch_lib.mod

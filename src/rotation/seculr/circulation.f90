@@ -520,13 +520,16 @@ end subroutine zahn_coupling_factor
 ! Boundary conditions: Phi = 0 at the centre; at the surface no mass
 ! lies outside, so Phi varies as 1/r^3 (the exterior l = 2 solution).
 ! gravity is copied to stab%local_gravity for circulation_velocities.
-! ierr = 1 if a pivot of the elimination is zero.
+! ierr: solve_tridiagonal's (numerics_singular for a zero pivot), after
+! a report.
 subroutine compute_quadrupole(stab, &
      log_density, gravity, angular_velocity, num_zones, ierr)
       use rotation_scratch_lib, only: stability_state
       use star_info_lib, only: json
       use physical_constants
       use math_lib
+      use numerics_lib, only: solve_tridiagonal, numerics_status_text
+      use rotation_messages, only: rotation_report, message_length
       implicit none
       type(stability_state), intent(inout) :: stab
 
@@ -535,19 +538,18 @@ subroutine compute_quadrupole(stab, &
       integer, intent(in) :: num_zones
       integer, intent(out) :: ierr
 
-! The tridiagonal system and the work arrays of its solution (Thomas
-! algorithm).
+! The tridiagonal system and its solution.
       double precision :: sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), solution(json), gamma_elim(json)
+           rhs(json), solution(json)
 
       double precision :: density_omega2(json)
-      integer :: zone_index, matrix_row
+      integer :: zone_index
       double precision :: four_pi_g
       double precision :: dr, weight_plus, weight_minus, inv_dr2, dr_inv_r
       double precision :: drho_dr
       double precision :: dr_plus, dr_minus, d_density_omega2
       double precision :: radius_plus, outer_boundary_ratio
-      double precision :: pivot
+      character(len=message_length) :: line
 
       ierr = 0
       do zone_index = 1,num_zones
@@ -615,31 +617,14 @@ subroutine compute_quadrupole(stab, &
            stab%radius(num_zones)**2
       super_diag(num_zones) = 0.0D0
       rhs(num_zones) = 0.0D0
-! Solve by forward elimination and back substitution (the Thomas
-! algorithm, tridag of Numerical Recipes).
-      if (diag(1).eq.0.0D0) then
-         write(*,*) 'compute_quadrupole: singular first pivot'
-         ierr = 1
+! The Thomas algorithm (numerics' solve_tridiagonal; this was a copy of
+! it, in the same order of operations).
+      call solve_tridiagonal(sub_diag, diag, super_diag, rhs, num_zones, solution, ierr)
+      if (ierr /= 0) then
+         line = ' compute_quadrupole: '//numerics_status_text(ierr)
+         call rotation_report([line])
          return
       end if
-      pivot = diag(1)
-      solution(1) = rhs(1)/pivot
-      do matrix_row = 2,num_zones
-         gamma_elim(matrix_row) = super_diag(matrix_row-1)/pivot
-         pivot = diag(matrix_row) - sub_diag(matrix_row)*gamma_elim(matrix_row)
-         if (pivot.eq.0.0D0) then
-            write(*,*) 'compute_quadrupole: singular pivot in elimination'
-            ierr = 1
-            return
-         end if
-         solution(matrix_row) = (rhs(matrix_row) - &
-              sub_diag(matrix_row)*solution(matrix_row-1))/pivot
-      end do
-! Back substitution.
-      do matrix_row = num_zones-1,1,-1
-         solution(matrix_row) = solution(matrix_row) - &
-              gamma_elim(matrix_row+1)*solution(matrix_row+1)
-      end do
       do zone_index = 1,num_zones
          stab%quadrupole_moment(zone_index) = solution(zone_index)
          stab%local_gravity(zone_index) = gravity(zone_index)
