@@ -22,7 +22,7 @@
 module quadratic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use numerics_status, only: numerics_ok, numerics_bad_input, &
-           numerics_unsorted_points
+           numerics_unsorted_points, numerics_coincident_points
       implicit none
       private
       public :: osplin
@@ -51,11 +51,15 @@ contains
 ! osplin
 !----------------------------------------------------------------------
 ! The spline through xtab/ytab(1:n), n >= 3 points with xtab
-! increasing, at the k nondecreasing points xval, into yval; outside the
-! table it extrapolates the end intervals' quadratics.
+! nondecreasing, at the k nondecreasing points xval, into yval; outside
+! the table it extrapolates the end intervals' quadratics. A repeated
+! abscissa inside the table is allowed (the slopes around it are
+! finite, and a point on it takes a node's value).
 ! ierr (numerics_status): numerics_bad_input for n < 3,
-! numerics_unsorted_points when xval decreases somewhere; on either
-! yval is left as it was.
+! numerics_unsorted_points when xval decreases somewhere,
+! numerics_coincident_points when a point outside the table would be
+! extrapolated from an end interval of zero width (xtab(1) = xtab(2) or
+! xtab(n-1) = xtab(n)); on any of them yval is left as it was.
 pure subroutine osplin(xval, yval, xtab, ytab, n, k, ierr)
       integer, intent(in) :: n, k
       real(dp), intent(in) :: xval(k)
@@ -77,6 +81,11 @@ pure subroutine osplin(xval, yval, xtab, ytab, n, k, ierr)
          if (present(ierr)) ierr = numerics_unsorted_points
          return
       end do
+      if ((xval(1) < xtab(1) .and. xtab(2) == xtab(1)) .or. &
+          (xval(k) > xtab(n) .and. xtab(n) == xtab(n-1))) then
+         if (present(ierr)) ierr = numerics_coincident_points
+         return
+      end if
       call slopes(xtab, ytab, first_derivs, n)
       call meval(xval, yval, xtab, ytab, first_derivs, n, k, slope_tolerance)
 end subroutine osplin
@@ -261,7 +270,8 @@ end subroutine cases
 !----------------------------------------------------------------------
 ! choose
 !----------------------------------------------------------------------
-! The knot case of the interval from its end slopes and its secant spq:
+! The knot case of the interval x_left < x_right from its end slopes and
+! its secant spq (osplin never asks it of an interval of zero width):
 ! 1 when the end tangents meet inside the interval, 2 when the midpoint
 ! is the knot (MHP: also when an end slope is zero, which would divide
 ! by zero in cases), 3 or 4 when an end slope exceeds twice the secant

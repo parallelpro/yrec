@@ -43,6 +43,8 @@ MUTATIONS = [
     ('numerics/quadratic_spline.f90', '         if (arcs%interval /= j) &', '         if (arcs%interval == 0) &', 'osplin: every sorted subset'),
     ('numerics/quadratic_spline.f90', '      if (n < 3) then', '      if (n < 2) then', 'osplin: n < 3 is numerics_bad_input'),
     ('numerics/quadratic_spline.f90', ['if (err == 2 .and. present(ierr))', '         if (xval(i+1) >= xval(i)) cycle'], ['if (err == 3 .and. present(ierr))', '         if (.true.) cycle'], 'osplin: decreasing points are numerics_unsorted_points'),
+    ('numerics/quadratic_spline.f90', '          (xval(k) > xtab(n) .and. xtab(n) == xtab(n-1))) then', '          (xval(k) > xtab(n) .and. .false.)) then', 'osplin: no extrapolation from a zero-width end interval'),
+    ('numerics/quadratic_spline.f90', '      if ((xval(1) < xtab(1) .and. xtab(2) == xtab(1)) .or. &', '      if ((xval(1) < xtab(1) .and. .false.) .or. &', 'osplin: no extrapolation from a zero-width end interval'),
     ('numerics/table_interpolation.f90', '      denom2 = -diff21*diff32\n', '      denom2 = diff21*diff32\n', 'inter3: exact on a quadratic'),
     ('numerics/table_interpolation.f90', '      dweight(3) = (dx1 + dx2)/denom3', '      dweight(3) = (dx1 - dx2)/denom3', 'inter3: its derivative weights exact'),
     ('numerics/table_interpolation.f90', ['      weight(4) = (dx1*dx2*dx3)/denom4\n      dweight(1)', '      weight(4) = (dx1*dx2*dx3)/denom4\n      if (present(dweight))'], ['      weight(4) = (dx1*dx2*dx4)/denom4\n      dweight(1)', '      weight(4) = (dx1*dx2*dx4)/denom4\n      if (present(dweight))'], 'interp/lagrange4: exact on a cubic'),

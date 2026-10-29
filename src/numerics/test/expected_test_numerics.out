@@ -105,10 +105,11 @@ osplin
 osplin
    3.750000000000000E-01   2.687500000000000E+00   5.770833333333334E+00
    1.220833333333333E+01
-# osplin: error codes (n < 3; decreasing points; none)
+# osplin: error codes (n < 3; decreasing points; none; a zero-width end interval)
 osplin n = 2: ierr, yval untouched  3  -1.0  -1.0
 osplin decreasing: ierr, yval untouched  5  -1.0  -1.0
 osplin on nodes: ierr  0   1.0   4.0
+osplin, repeated last abscissa, a point above: ierr, yval untouched  2  -1.0  -1.0
 # inter3/interp/intrp2/lagrange4/quint
 inter3 w
   -2.800000000000000E-01   1.120000000000000E+00   1.600000000000000E-01
@@ -274,6 +275,7 @@ osplin: exact on a line, extrapolated too                                  1.05E
 osplin: every sorted subset of 16 points equals them one at a time         0.00E+00  ok
 osplin: n < 3 is numerics_bad_input, yval untouched                        0.00E+00  ok
 osplin: decreasing points are numerics_unsorted_points                     0.00E+00  ok
+osplin: no extrapolation from a zero-width end interval                    0.00E+00  ok
 inter3: exact on a quadratic                                               3.55E-16  ok
 inter3: its derivative weights exact on a quadratic                        1.78E-16  ok
 interp/lagrange4: exact on a cubic                                         1.42E-16  ok

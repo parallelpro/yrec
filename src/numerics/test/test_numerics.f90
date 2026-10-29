@@ -208,7 +208,7 @@ program test_numerics
          jx(i) = dble(i - 1)
       end do
       jy(1:8) = [0.0d0, 1.0d0, 4.0d0, 9.0d0, 16.0d0, 25.0d0, 36.0d0, 49.0d0]
-      write(*,'(a)') "# osplin: error codes (n < 3; decreasing points; none)"
+      write(*,'(a)') "# osplin: error codes (n < 3; decreasing points; none; a zero-width end interval)"
       jout = -1.0d0
       call osplin(jval, jout, jx, jy, 2, 2, ierr)
       write(*,'(a,i3,2f6.1)') "osplin n = 2: ierr, yval untouched", ierr, jout(1:2)
@@ -218,6 +218,13 @@ program test_numerics
       jval(1:2) = [1.0d0, 2.0d0]
       call osplin(jval, jout, jx, jy, 8, 2, ierr)
       write(*,'(a,i3,2f6.1)') "osplin on nodes: ierr", ierr, jout(1:2)
+      jx(8) = jx(7)
+      jval(1:2) = [6.5d0, 7.5d0]
+      jout = -1.0d0
+      call osplin(jval, jout, jx, jy, 8, 2, ierr)
+      write(*,'(a,i3,2f6.1)') "osplin, repeated last abscissa, a point above: ierr, yval untouched", &
+           ierr, jout(1:2)
+      jx(8) = 7.0d0
 
 ! ---------------- interpolation
       write(*,'(a)') "# inter3/interp/intrp2/lagrange4/quint"
@@ -660,8 +667,9 @@ end subroutine natural_spline_small_n_checks
 ! ---------------------------------------------------------------- osplin
 subroutine quadratic_spline_checks()
       integer, parameter :: m = 400
-      real(dp) :: x(9), y(9), xe(m), ye(m), diff_min, curv_min, err, keep(2)
-      integer :: i, k, ierr
+      real(dp) :: x(9), y(9), xe(m), ye(m), diff_min, curv_min, err, keep(2), &
+           xr(5), yr(5), inside(3)
+      integer :: i, k, ierr, ierr_below, ierr_inside
       x = [0.0d0, 0.4d0, 1.0d0, 1.5d0, 2.5d0, 3.0d0, 4.2d0, 5.0d0, 6.5d0]
 ! monotone and convex data: (x+1)^2/2 + 1/(x+1)^... take f = x^2/2 + x/4
       y = 0.5d0*x**2 + 0.25d0*x
@@ -698,6 +706,19 @@ subroutine quadratic_spline_checks()
       call osplin([2.0d0, 1.0d0], keep, x, y, 9, 2, ierr)
       call report_true("osplin: decreasing points are numerics_unsorted_points", &
            ierr == numerics_unsorted_points .and. all(keep == -7.0d0))
+! a repeated end abscissa: no extrapolation from the zero-width end
+! interval (it gave NaN), but the points inside are evaluated
+      xr = [0.0d0, 1.0d0, 2.0d0, 3.0d0, 3.0d0]
+      yr = xr**2
+      call osplin([2.5d0, 3.5d0], keep, xr, yr, 5, 2, ierr)
+      xr = [0.0d0, 0.0d0, 1.0d0, 2.0d0, 3.0d0]
+      yr = xr**2
+      call osplin([-0.5d0, 1.5d0], keep, xr, yr, 5, 2, ierr_below)
+      call osplin([0.0d0, 0.5d0, 3.0d0], inside, xr, yr, 5, 3, ierr_inside)
+      call report_true("osplin: no extrapolation from a zero-width end interval", &
+           ierr == numerics_coincident_points .and. ierr_below == numerics_coincident_points &
+           .and. all(keep == -7.0d0) .and. ierr_inside == numerics_ok &
+           .and. inside(1) == 0.0d0 .and. inside(3) == 9.0d0 .and. abs(inside(2)) < 1.0d0)
 end subroutine quadratic_spline_checks
 
 ! The fraction of points whose value in a run differs from their value
