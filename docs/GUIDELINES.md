@@ -287,9 +287,10 @@ budget now keeps them there.
 
 ## Declarations and interfaces (2026-10)
 
-net/ and numerics/ follow these five rules (numerics/README.md lists the
-routines not yet `pure`); other code follows them as it is rewritten,
-each conversion a byte-identical commit.
+net/ follows these five rules, numerics/ rules 1-3 and 5 (its
+Numerical Recipes routines keep explicit-shape arrays sized by their
+arguments, numerics/README.md section 3); other code follows them as it
+is rewritten, each conversion a byte-identical commit.
 
 1. **Modules are `private` by default** and list what they export
    (`public :: ...`), so the top of a module shows its interface.

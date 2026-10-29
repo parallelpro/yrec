@@ -44,7 +44,7 @@ contains
 ! 1e-20 as in Numerical Recipes, so that lubksb stays finite.
 ! numerics_bad_input when a column's candidate pivots are all NaN (the
 ! factorization stops there).
-subroutine ludcmp(a, n, np, indx, d, ierr)
+pure subroutine ludcmp(a, n, np, indx, d, ierr)
       real(dp), parameter :: tiny = 1.0d-20
 
       integer, intent(in) :: n, np
@@ -272,7 +272,7 @@ end subroutine simeqc
 ! (formerly tridiag_gs, and ctridi with a blanket SAVE of scratch that
 ! every call writes before it reads). ierr (numerics_status):
 ! numerics_singular for a zero pivot, the first included.
-subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
+pure subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       integer, intent(in) :: npt
       real(dp), intent(in) :: a(npt), b(npt), c(npt), ex_prime(npt)
       real(dp), intent(out) :: ex(npt)

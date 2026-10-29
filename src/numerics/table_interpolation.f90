@@ -134,7 +134,7 @@ end subroutine quint
 ! of the polynomial through xa/ya(1:n) and an error estimate dy.
 ! Coincident abscissae, equal to within coincidence_tolerance of their
 ! size, return numerics_coincident_points (numerics_status).
-subroutine polint(xa, ya, n, x, y, dy, ierr)
+pure subroutine polint(xa, ya, n, x, y, dy, ierr)
       integer, intent(in) :: n
       real(dp), intent(in) :: xa(n), ya(n)
       real(dp), intent(in) :: x

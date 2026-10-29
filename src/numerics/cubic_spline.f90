@@ -117,7 +117,7 @@ end subroutine natural_spline
 ! interval's cubic. ierr (numerics_status): numerics_coincident_points
 ! when the bracketing points coincide (formerly also ksplint, for four
 ! points, and splintd2).
-subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
+pure subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
       integer, intent(in) :: n
       real(dp), intent(in) :: xa(n), ya(n), y2a(n), x
       real(dp), intent(out) :: y
