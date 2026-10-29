@@ -25,7 +25,9 @@ module nuclear_energy
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
       use screening, only: screening_mass_fractions
       use reaction_rates, only: nuclear_rates, &
-           compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor
+           compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor, &
+           erg_per_mev, pep_coefficient
+      use light_elements, only: min_deuterium_step
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, s_factor_slots, n_chains, n_network, &
@@ -51,10 +53,6 @@ module nuclear_energy
 
       public :: compute_nuclear_energy
 
-! MeV to erg
-      real(dp), parameter :: erg_per_mev = 1.602177d-6
-! deuterium is burned (and its energy counted) above this mass fraction
-      real(dp), parameter :: min_deuterium = 1.0d-11
 ! energy released by d(p,g)3He, MeV
       real(dp), parameter :: q_deuterium_mev = 5.494d0
 ! the energy path drops a rate of the S-factor law (network's
@@ -163,7 +161,8 @@ end subroutine energy_path_rates
 ! the low temperatures involved -- and, in the surface convection zone,
 ! no faster than the convective overturn: there the capped rate,
 ! N_A/(m_d tau) per unit X, depends on neither rho nor T, and both
-! derivatives are zero. Zero at or below min_deuterium.
+! derivatives are zero. Zero at or below light_elements'
+! min_deuterium_step, the composition step's threshold.
 pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
      energy, dlneps_dlnrho, dlneps_dlnt)
       type(nuclear_rates), intent(in) :: nr
@@ -176,7 +175,7 @@ pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timesc
       energy = 0.0d0
       dlneps_dlnrho = 0.0d0
       dlneps_dlnt = 0.0d0
-      if (xa(i_h2) <= min_deuterium) return
+      if (xa(i_h2) <= min_deuterium_step) return
       call compute_deuterium_proton_capture(nr%zone%density, nr%zone%t, rate, &
            dlneps_dlnt)
       dlneps_dlnrho = 1.0d0
@@ -292,7 +291,7 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       e%neutrino_flux(i_nu_pp) = counts(r_pp)/four_pi_au2
 ! pep from pp (Neutrino Astrophysics eq. 3.17); xs_pep scales the pep/pp
 ! ratio, so leave it at 1 unless that ratio is meant to change
-      e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%zone%electron_density_na*nr%zone%t%m12* &
+      e%neutrino_flux(i_nu_pep) = pep_coefficient*nr%zone%electron_density_na*nr%zone%t%m12* &
            (1.0d0 + 20.d0*nr%zone%t%t9)*counts(r_pp)
       e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%extra_cross_section_scale(xs_pep)/four_pi_au2
 ! hep (eq. 3.12), from its screened rate factor

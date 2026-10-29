@@ -47,9 +47,11 @@ module light_elements
          real(dp) :: mass = 0.0d0
       end type surface_accretion
 
-! burn_deuterium_region's thresholds as its two callers have always used
-! them: the composition step (min_deuterium_step) and the rotation sub-steps
-! (min_deuterium_substep), deuterium mass fraction.
+! The deuterium mass fraction below which deuterium does not burn, as
+! its users have always had it: the composition step (min_deuterium_step:
+! burn_deuterium_region's threshold there, core's compute_burn_rates
+! computes no rate at or below it, and nuclear_energy counts no
+! deuterium energy) and the rotation sub-steps (min_deuterium_substep).
       real(dp), parameter :: min_deuterium_step = 1.0d-11
       real(dp), parameter :: min_deuterium_substep = 1.0d-14
 

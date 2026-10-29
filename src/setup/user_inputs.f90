@@ -33,29 +33,22 @@ subroutine map_user_inputs(s)
       use star_info_lib, only: star_info
       use controls_buffer
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
-           xs_pep, xs_be7e, xs_be7p, xs_hep
+           xs_pep, xs_be7e, xs_be7p, xs_hep, reference_s0, pep_coefficient, &
+           be7_ecapture_coefficient, s0_be7p_kevb, s0_hep_kevb, s0_n15pa_kevb, &
+           s0_n15pg_kevb
       implicit none
       type(star_info), intent(inout) :: s
 
 ! The reference S0 values (keV b) against which the input S0 values are
-! scaled: those of Bahcall & Ulrich (1988), the normalization of the
-! rates in compute_zone_energy (see set_cross_section_scales).
-      double precision :: s0_pp_ref, s0_he3he3_ref, s0_he3he4_ref, &
-           s0_p_c12_ref, s0_p_c13_ref
-      data s0_pp_ref,s0_he3he3_ref,s0_he3he4_ref,s0_p_c12_ref,s0_p_c13_ref/ &
-           4.07D-22,5.15D3,5.4D-1,1.45D0,5.5D0/
-! For pep, the reference is the proportionality constant of the pep
-! rate relative to pp; for Be7 + e-, the constant of the linear term.
-! Both rates go as T^(-1/2), and the code uses T9 rather than T6, so a
-! constant quoted for T6 = T/1e6 K must be divided by 1000^(1/2).
-      double precision :: s0_p_n14_ref, s0_p_o16_ref, s0_pep_ref, &
-           s0_be7_electron_ref
-      data s0_p_n14_ref,s0_p_o16_ref,s0_pep_ref,s0_be7_electron_ref/ &
-           3.32D0,9.4D0,3.4848D-6,1.752D-10/
-      double precision :: s0_be7_p_ref, s0_hep_ref, s0_n15_p_c12_branch_ref, &
-           s0_n15_p_o16_branch_ref
-      data s0_be7_p_ref,s0_hep_ref,s0_n15_p_c12_branch_ref, &
-           s0_n15_p_o16_branch_ref/0.0243D0,8.0D-20,6.75D4,6.4D1/
+! scaled are net's (net_lib): each table reaction's reference_s0, the
+! S0 of Bahcall & Ulrich (1988) its fit is normalized to; for pep, the
+! proportionality constant of the pep rate relative to pp
+! (pep_coefficient), for Be7 + e- the constant of its rate
+! (be7_ecapture_coefficient) -- both rates go as T^(-1/2), and the code
+! uses T9 rather than T6, so a constant quoted for T6 = T/1e6 K must be
+! divided by 1000^(1/2); the S0 of Be7 + p and hep's fits (s0_be7p_kevb,
+! s0_hep_kevb) and of the N15 + p branches (s0_n15pa_kevb,
+! s0_n15pg_kevb). See set_cross_section_scales.
 ! The Solar Fusion I S0 values (Adelberger et al. 1998), in keV b. The
 ! rate fits' first- and second-derivative terms are hard-coded as S'/S
 ! and S''/S from that compilation, so each reaction's input S'/S and
@@ -137,32 +130,32 @@ end subroutine reset_rate_scale_defaults
 subroutine set_cross_section_scales
          s%cross_section_scale = 1.0d0
          s%extra_cross_section_scale = 1.0d0
-! compute_zone_energy multiplies each rate by cross_section_scale
-! (legacy SSTANDARD), the ratio of the desired S0 to that of Bahcall &
-! Ulrich (1988). Here the namelist vector is replaced by explicit S0
-! values for the individual reactions, and the implied scales are
-! derived. The first and second derivatives may be changed separately
-! (unlike in the original compute_zone_energy): their inputs are S'/S0
-! and S''/S0, taken relative to the Solar Fusion I (Adelberger et al.
-! 1998) ratios.
-         s%cross_section_scale(r_pp) = s0_pp/s0_pp_ref
-         s%cross_section_scale(r_he3he3) = s0_he3he3/s0_he3he3_ref
-         s%cross_section_scale(r_he3he4) = s0_he3he4/s0_he3he4_ref
-         s%cross_section_scale(r_pc12) = s0_p_c12/s0_p_c12_ref
-         s%cross_section_scale(r_pc13) = s0_p_c13/s0_p_c13_ref
-         s%cross_section_scale(r_pn14) = s0_p_n14/s0_p_n14_ref
-         s%cross_section_scale(r_po16) = s0_p_o16/s0_p_o16_ref
+! The S-factor law (net/reaction_rates.f90's compute_s_factor_rate)
+! multiplies each rate by cross_section_scale (legacy SSTANDARD), the
+! ratio of the desired S0 to that of Bahcall & Ulrich (1988). Here the
+! namelist vector is replaced by explicit S0 values for the individual
+! reactions, and the implied scales are derived. The first and second
+! derivatives may be changed separately (unlike in the original ENGEB):
+! their inputs are S'/S0 and S''/S0, taken relative to the Solar Fusion
+! I (Adelberger et al. 1998) ratios.
+         s%cross_section_scale(r_pp) = s0_pp/reference_s0(r_pp)
+         s%cross_section_scale(r_he3he3) = s0_he3he3/reference_s0(r_he3he3)
+         s%cross_section_scale(r_he3he4) = s0_he3he4/reference_s0(r_he3he4)
+         s%cross_section_scale(r_pc12) = s0_p_c12/reference_s0(r_pc12)
+         s%cross_section_scale(r_pc13) = s0_p_c13/reference_s0(r_pc13)
+         s%cross_section_scale(r_pn14) = s0_p_n14/reference_s0(r_pn14)
+         s%cross_section_scale(r_po16) = s0_p_o16/reference_s0(r_po16)
 ! The helium-burning reactions (C13 + He4, C12 + He4, N14 + He4, triple
 ! alpha) keep unit scale: they are resonant and not fit by a simple S0,
 ! and their rate laws take no scale.
-         s%extra_cross_section_scale(xs_pep) = s0_pep/s0_pep_ref
-         s%extra_cross_section_scale(xs_be7e) = s0_be7_electron/s0_be7_electron_ref
-         s%extra_cross_section_scale(xs_be7p) = s0_be7_p/s0_be7_p_ref
-         s%extra_cross_section_scale(xs_hep) = s0_hep/s0_hep_ref
+         s%extra_cross_section_scale(xs_pep) = s0_pep/pep_coefficient
+         s%extra_cross_section_scale(xs_be7e) = s0_be7_electron/be7_ecapture_coefficient
+         s%extra_cross_section_scale(xs_be7p) = s0_be7_p/s0_be7p_kevb
+         s%extra_cross_section_scale(xs_hep) = s0_hep/s0_hep_kevb
 ! The scales of the N15 + p branches, N15(p,alpha)C12 and
 ! N15(p,gamma)O16.
-         s%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15_p_c12_branch_ref
-         s%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15_p_o16_branch_ref
+         s%c12_alpha_scale = s0_n15_p_c12_branch/s0_n15pa_kevb
+         s%o16_gamma_scale = s0_n15_p_o16_branch/s0_n15pg_kevb
 end subroutine set_cross_section_scales
 
 ! ---------------------------------------------------------------

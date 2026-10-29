@@ -39,6 +39,12 @@ module net_lib
            r_po16, num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep, &
            num_sstandard, cross_section_scales_from_sstandard
       use network, only: set_net_settings
+! the values the input S0 of each rate is scaled against (map_user_inputs):
+! a table reaction's reference_s0(r_*); pep, Be7 + e-, Be7 + p, hep; the
+! N15 + p branches
+      use network, only: reference_s0
+      use reaction_rates, only: pep_coefficient, be7_ecapture_coefficient, &
+           s0_be7p_kevb, s0_hep_kevb, s0_n15pa_kevb, s0_n15pg_kevb
 ! the implicit burn, with the network species a caller maps its
 ! abundances onto, and the network's dX/dt
       use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &

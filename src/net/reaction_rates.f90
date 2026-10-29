@@ -32,13 +32,32 @@ module reaction_rates
            net_settings
       use screening, only: num_isotopes, screening_t, screening_plasma, &
            compute_composition_moments, compute_screening_plasma, &
-           compute_reaction_screening, weak_intermediate_screening
+           compute_reaction_screening, weak_intermediate_screening, &
+           isotope_mass, iso_h2
       implicit none
       private
 
+! MeV to erg (CODATA 1986), for the energies the reactions release
+      real(dp), parameter, public :: erg_per_mev = 1.602177d-6
+! The rates outside the reaction table, each scaled by its extra scale
+! (xs_*), with the value its input is scaled against
+! (setup/user_inputs): pep, the ratio of its rate to pp's,
+! pep_coefficient rho/mu_e T9^(-1/2) (1 + 20 T9) (Neutrino Astrophysics
+! eq. 3.17; nuclear_energy's fluxes); Be7 + e-, be7_ecapture_coefficient
+! T9^(-1/2) (1 + 0.004 (T6 - 16)) rho/mu_e per unit Be7 (eq. 3.18); Be7 +
+! p, whose prefactor be7p_prefactor and S_eff/S0 fit be7_pcapture_fit
+! are for S0 = s0_be7p_kevb (table 3.2; tau = be7p_tau_coefficient
+! T9^(-1/3)); hep, whose prefactor is for S0 = s0_hep_kevb (eq. 3.12;
+! tau = hep_tau_coefficient T9^(-1/3)).
+      real(dp), parameter, public :: pep_coefficient = 3.4848d-6, &
+           be7_ecapture_coefficient = 1.752d-10, s0_be7p_kevb = 0.0243d0, &
+           s0_hep_kevb = 8.0d-20
+      real(dp), parameter :: be7p_prefactor = 3.128813d+5, &
+           be7p_tau_coefficient = -10.2625d0, hep_prefactor = 1.71724d+11, &
+           hep_tau_coefficient = -6.1399d0
 ! S0 (keV-b) of the two N15 + p branches (n15_alpha_fraction); integers,
 ! as the original literals were (both exact when promoted).
-      integer, parameter :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
+      integer, parameter, public :: s0_n15pg_kevb = 64, s0_n15pa_kevb = 67500
 
 ! Avogadro's number [1/mol]: N_A = 1/m_u, with m_u = amu_cgs (g), the
 ! CODATA 1986 value of physical_constants. One value for every rate of
@@ -48,11 +67,12 @@ module reaction_rates
 ! took 6.023e23, the Caughlan & Fowler prefactors 6.0225e23, the Be7
 ! captures 6.0221367e23.)
       real(dp), parameter :: avogadro_number = 1.0d0/amu_cgs
-! d(p,g)3He: N_A over the deuteron mass (amu) turns CF88's N_A<sigma v>
-! into the per-gram rate of both the deuterium depletion and its energy
-! release, and sets the convective-overturn cap. (The two former copies
-! differed by 0.68%: one divided by A = 2.)
-      real(dp), parameter :: deuteron_mass_amu = 2.013553d0
+! d(p,g)3He: N_A over the deuteron mass (amu; the screening's bare
+! nuclear mass) turns CF88's N_A<sigma v> into the per-gram rate of both
+! the deuterium depletion and its energy release, and sets the
+! convective-overturn cap. (The two former copies differed by 0.68%: one
+! divided by A = 2.)
+      real(dp), parameter :: deuteron_mass_amu = isotope_mass(iso_h2)
 ! The overturn cap applies in the surface convection zone when the
 ! turnover time exceeds min_cap_turnover_time (s) and X(H) exceeds
 ! min_cap_hydrogen (cap_deuterium_rate).
@@ -322,10 +342,10 @@ pure subroutine compute_be7_branching(zone, hydrogen_fraction, be7)
 
       associate (density => zone%density, t => zone%t, plasma => zone%plasma)
 
-      be7%electron = (1.752d-10)*t%m12*(1.0d0 + 0.004d0*(1000.d0*t%t9 - 16.d0))
+      be7%electron = be7_ecapture_coefficient*t%m12*(1.0d0 + 0.004d0*(1000.d0*t%t9 - 16.d0))
       be7%electron = be7%electron*plasma%inv_mu_e*net_settings%extra_cross_section_scale(xs_be7e)
-      tau_be7p = (-10.2625d0*t%m13)
-      be7%proton = (3.128813d+5)*hydrogen_fraction*net_settings%extra_cross_section_scale(xs_be7p)*exp(tau_be7p)
+      tau_be7p = be7p_tau_coefficient*t%m13
+      be7%proton = be7p_prefactor*hydrogen_fraction*net_settings%extra_cross_section_scale(xs_be7p)*exp(tau_be7p)
       s_ratio_be7p = t%m23 + be7_pcapture_fit(1)*t%m13 + &
            net_settings%be7p_s_prime_scale*(be7_pcapture_fit(2)+ be7_pcapture_fit(3)*t%p13) &
            + net_settings%be7p_s_double_prime_scale*(be7_pcapture_fit(4)*t%p23 + be7_pcapture_fit(5)*t%t9)
@@ -476,7 +496,7 @@ pure real(dp) function hep_rate_factor(zone)
 
       associate (density => zone%density, t => zone%t, plasma => zone%plasma)
 
-      hep_rate_factor = (1.71724d+11)*density*t%m23*exp(-6.1399d0*t%m13)
+      hep_rate_factor = hep_prefactor*density*t%m23*exp(hep_tau_coefficient*t%m13)
       hep_rate_factor = (1.0d0 + 0.067862d0*t%p13)*net_settings%extra_cross_section_scale(xs_hep)*hep_rate_factor
       hep_rate_factor = hep_rate_factor*exp(weak_intermediate_screening(plasma, hep_screening))
       end associate
@@ -530,8 +550,8 @@ end module reaction_rates
 ! preferred values were those of Bahcall & Pinsonneault (1992, RMP 64,
 ! 885, table 1), then (1995, RMP 67, 781). Entry 14, pep, scales the
 ! ratio of pep to pp: leave it at 1 unless that ratio is meant to change.
-! Entry 17, hep: the code's fit has NA's S0 = 8.0e-20 keV b (s0_hep_ref
-! in setup/user_inputs.f90); earlier choices of SSTANDARD(17) were 1.913
+! Entry 17, hep: the code's fit has NA's S0 = 8.0e-20 keV b
+! (s0_hep_kevb); earlier choices of SSTANDARD(17) were 1.913
 ! (Wolfs et al. 1989, PRL 63, 2721: 15.3e-20 keV b) and 0.1625 (Carlson et
 ! al. 1991, PRC 44, 619: 1.3e-20 keV b). Entries 8 and 10-12 (the
 ! helium-burning rates) and 9 and 13 (O16 + alpha and C12 + C12, which

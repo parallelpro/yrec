@@ -76,7 +76,7 @@ module network
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
            cf88_n14_alpha_gamma, cf88_triple_alpha, num_rate_laws, &
            compute_zone_conditions, compute_screened_rate, &
-           compute_be7_branching, n15_alpha_fraction
+           compute_be7_branching, n15_alpha_fraction, erg_per_mev
       implicit none
       private
 
@@ -150,8 +150,10 @@ module network
 ! both; net/test/test_net pins the table. The rate: rate_law (a rate law
 ! of reaction_rates, or shares_rate), burns_in (hydrogen_burning or
 ! helium_burning), fit (the S-factor law's q1..q8; its multipliers are
-! the settings' scales at the row's slot) and screening (the charges of
-! its two nuclei; triple alpha takes C12 + alpha's, as engeb did).
+! the settings' scales at the row's slot), s0_kevb (the S0 in keV b the
+! fit is normalized to, Bahcall & Ulrich 1988: the reference the input
+! S0 is scaled against, reference_s0) and screening (the charges of its
+! two nuclei; triple alpha takes C12 + alpha's, as engeb did).
       integer, parameter :: max_reactants = 3, max_change = 5
 ! the composition path drops a rate (per gram per s, abundance factors
 ! omitted) at or below min_composition_rate (compute_network_rates); the
@@ -174,6 +176,7 @@ module network
          integer :: rate_law = shares_rate
          integer :: burns_in = hydrogen_burning
          real(dp) :: fit(8) = 0.0d0
+         real(dp) :: s0_kevb = 0.0d0
          type(screening_t) :: screening = screening_t()
       end type reaction_t
 
@@ -185,19 +188,19 @@ module network
                       [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0], &
                       q_mev=6.664d0, chain=chain_pp1, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[0.12317d0, 1.08749d0, .93833d0, 0.d0, 0.d0, -3.3804d0, 20.8964d0, 0.d0], &
+                      fit=[0.12317d0, 1.08749d0, .93833d0, 0.d0, 0.d0, -3.3804d0, 20.8964d0, 0.d0], s0_kevb=4.07d-22, &
                       screening=screening_t(1, 1)), &
            reaction_t('He3(He3,2p)He4',      r_he3he3,  unbranched,           [s_he3, s_he3, 0],        &
                       [s_h1, 2, s_he3, -2, s_he4, 1, 0, 0, 0, 0], &
                       q_mev=12.860d0, chain=chain_pp1, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.03392d0, -.273d0, -.0648d0, 0.d0, 0.d0, -12.2757d0, 76.6003d0, 0.d0], &
+                      fit=[.03392d0, -.273d0, -.0648d0, 0.d0, 0.d0, -12.2757d0, 76.6003d0, 0.d0], s0_kevb=5.15d3, &
                       screening=screening_t(2, 2)), &
            reaction_t('He3(He4,g) Be7(e) ppII', r_he3he4, be7_electron_capture, [s_he3, s_he4, 0],      &
                       [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0], &
                       q_mev=1.586d0+17.394d0, chain=chain_pp2, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.0325d0, -.2085d0, -.0474d0, 0.d0, 0.d0, -12.826d0, 67.8036d0, 0.d0], &
+                      fit=[.0325d0, -.2085d0, -.0474d0, 0.d0, 0.d0, -12.826d0, 67.8036d0, 0.d0], s0_kevb=5.4d-1, &
                       screening=screening_t(2, 2)), &
            reaction_t('He3(He4,g) Be7(p) ppIII', r_he3he4, be7_proton_capture, [s_he3, s_he4, 0],      &
                       [s_h1, -1, s_he3, -1, s_he4, 1, 0, 0, 0, 0], &
@@ -206,19 +209,19 @@ module network
                       [s_h1, -1, s_c12, -1, s_c13, 1, 0, 0, 0, 0], &
                       q_mev=3.457372d0, chain=chain_cno, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.0304d0, .7630d0, .1626d0, 4.79d0, 2.595d0, -13.6899d0, 69.130d0, 0.0d0], &
+                      fit=[.0304d0, .7630d0, .1626d0, 4.79d0, 2.595d0, -13.6899d0, 69.130d0, 0.0d0], s0_kevb=1.45d0, &
                       screening=screening_t(1, 6)), &
            reaction_t('C13(p,g)N14',         r_pc13,    unbranched,           [s_h1, s_c13, 0],         &
                       [s_h1, -1, s_c13, -1, s_n14, 1, 0, 0, 0, 0], &
                       q_mev=7.550628d0, chain=chain_cno, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.03035d0, -0.4044d0, -.08598d0, 7.456d0, 4.032d0, -13.7173d0, 70.3809d0, 0.0d0], &
+                      fit=[.03035d0, -0.4044d0, -.08598d0, 7.456d0, 4.032d0, -13.7173d0, 70.3809d0, 0.0d0], s0_kevb=5.5d0, &
                       screening=screening_t(1, 6)), &
            reaction_t('N14(p,g) N15(p,a)C12', r_pn14,   n15_to_c12,           [s_h1, s_n14, 0],         &
                       [s_h1, -2, s_n14, -1, s_c12, 1, s_he4, 1, 0, 0], &
                       q_mev=9.054d0+4.966d0, chain=chain_cno, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.0273d0, -1.60d0, -.3064d0, 0.0d0, 0.0d0, -15.2281d0, 69.8517d0, 0.0d0], &
+                      fit=[.0273d0, -1.60d0, -.3064d0, 0.0d0, 0.0d0, -15.2281d0, 69.8517d0, 0.0d0], s0_kevb=3.32d0, &
                       screening=screening_t(1, 7)), &
            reaction_t('N14(p,g) N15(p,g)O16', r_pn14,   n15_to_o16,           [s_h1, s_n14, 0],         &
                       [s_h1, -2, s_n14, -1, s_o16, 1, 0, 0, 0, 0], &
@@ -227,7 +230,7 @@ module network
                       [s_h1, -2, s_o16, -1, s_n14, 1, s_he4, 1, 0, 0], &
                       q_mev=3.553d0, chain=chain_cno, &
                       rate_law=s_factor_fit, burns_in=hydrogen_burning, &
-                      fit=[.02494d0, -1.224d0, -.2139d0, .69703d0, 0.3097d0, -16.6925d0, 70.8012d0, 0.d0], &
+                      fit=[.02494d0, -1.224d0, -.2139d0, .69703d0, 0.3097d0, -16.6925d0, 70.8012d0, 0.d0], s0_kevb=9.4d0, &
                       screening=screening_t(1, 8)), &
            reaction_t('C12(a,g)O16',         r_ac12,    unbranched,           [s_he4, s_c12, 0],        &
                       [s_he4, -1, s_c12, -1, s_o16, 1, 0, 0, 0, 0], &
@@ -253,7 +256,7 @@ module network
       public :: burn_implicitly, network_table_errors, write_network_table, &
            compute_abundance_rates, compute_reaction_energies, &
            compute_reaction_rates, compute_network_rates, reaction_counts, &
-           s_factor_slots, set_net_settings, inert_scale_count
+           s_factor_slots, reference_s0, set_net_settings, inert_scale_count
 
 contains
 
@@ -419,6 +422,21 @@ pure function reaction_counts(rate, x) result(counts)
 end function reaction_counts
 
 !----------------------------------------------------------------------
+! reference_s0: the S0 (keV b) the fit of the row owning slot k is
+! normalized to (its s0_kevb; 0 for a slot whose rate law takes none):
+! map_user_inputs scales the input S0 of the reaction against it.
+pure real(dp) function reference_s0(k)
+      integer, intent(in) :: k
+      integer :: j
+
+      reference_s0 = 0.0d0
+      do j = 1, n_rows
+         if (reactions(j)%slot == k .and. reactions(j)%rate_law /= shares_rate) &
+              reference_s0 = reactions(j)%s0_kevb
+      end do
+end function reference_s0
+
+!----------------------------------------------------------------------
 ! s_factor_slots: which rate slots the S-factor law computes (the rows
 ! with rate_law s_factor_fit), the rates the energy path floors
 ! (nuclear_energy's energy_path_rates).
@@ -437,8 +455,9 @@ end function s_factor_slots
 ! a chain, a branch, a rate law, a burning group or a species that does
 ! not exist; shares the rate of a slot no row computes; has a reactant
 ! outside the implicit solve (an explicit product cannot feed back);
-! is an S-factor reaction without a fit; computes a rate with screening
-! charges outside 1..max_screening_charge; does not conserve baryon
+! is an S-factor reaction without a fit or its reference S0; computes a
+! rate with screening charges outside 1..max_screening_charge; does not
+! conserve baryon
 ! number; or deposits more energy than its atomic masses release
 ! (beyond the q_rounding_mev the Q values are rounded to). A reaction
 ! slot is wrong unless exactly one row computes its rate (so no slot is
@@ -486,6 +505,8 @@ pure function table_row_problem(j) result(problem)
          problem = 'a reactant is not a solved species'
       else if (row%rate_law == s_factor_fit .and. all(row%fit == 0.0d0)) then
          problem = 'it is an S-factor reaction without a fit'
+      else if (row%rate_law == s_factor_fit .and. row%s0_kevb <= 0.0d0) then
+         problem = 'it is an S-factor reaction without its reference S0'
       else if (row%rate_law /= shares_rate .and. &
            (min(row%screening%z1, row%screening%z2) < 1 .or. &
            max(row%screening%z1, row%screening%z2) > max_screening_charge)) then
@@ -646,8 +667,6 @@ pure subroutine compute_reaction_energies(rate, x, frac_n15_pa, frac_be7_ecap, &
            frac_n15_pa, frac_be7_ecap
       real(dp), intent(out) :: energy_by_slot(num_reactions), &
            energy_by_chain(n_chains)
-! MeV to erg
-      real(dp), parameter :: erg_per_mev = 1.602177d-6
       real(dp) :: e
       integer :: j, m
 

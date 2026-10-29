@@ -642,7 +642,7 @@ end subroutine network_rates_of_model
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
       use star_info_lib, only: json, i_h1, i_h2
-      use net_lib, only: deuterium_rate
+      use net_lib, only: deuterium_rate, min_deuterium_step
       type(star_info), intent(inout) :: s
 ! store_start_rates: also keep the deuterium rates as the start-of-step
 ! rates (star%deuterium_burning_rate_start; the composition step's
@@ -656,8 +656,8 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
            rate_by_zone)
 ! The deuterium burning rates (MHP 5/02), computed only while the surface
 ! deuterium, or with inflowing accretion the larger of it and the
-! accreted gas's, exceeds 1e-11; zero from the first shell at or below
-! the nuclear cutoff out.
+! accreted gas's, exceeds min_deuterium_step (1e-11); zero from the
+! first shell at or below the nuclear cutoff out.
       if (s%job%use_mass_accretion .and. s%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(s%xa(i_h2,s%nz), &
               s%ctrl%accreted_composition(i_h2))
@@ -666,7 +666,7 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
       end if
       do zone_idx = 1, s%nz
          if (s%logT(zone_idx).le.s%ctrl%nuclear_logT_cutoffs(1)) exit
-         if (deuterium_test.gt.1.0d-11) then
+         if (deuterium_test > min_deuterium_step) then
             s%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  s%logRho(zone_idx), s%logT(zone_idx), s%xa(i_h1,zone_idx), &
                  zone_idx.ge.s%envelope_cz_bottom_index_start, s%convective_turnover_timescale)
