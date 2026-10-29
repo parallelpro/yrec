@@ -418,6 +418,7 @@ kap/laol89/laol_opacity.o: composition_layout.mod io_units.mod math_lib.mod nume
 kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/opal95/opal95_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod run_setup.mod star_info_lib.mod
+math/test/test_math.o: math_lib.mod
 net/light_elements.o: composition_layout.mod math_lib.mod net_configuration.mod physical_constants.mod reaction_rates.mod
 net/net_configuration.o: net_messages.mod
 net/net_lib.o: light_elements.mod net_configuration.mod network.mod nuclear_energy.mod

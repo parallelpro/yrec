@@ -329,6 +329,27 @@ test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+# math_lib's contract (math/README.md): test_math under the build's
+# backend; test_math_crmath under crmath whenever the MESA SDK is
+# installed, its own copy of math_lib compiled in math/test/crmath/ (apart
+# from the build's objects and modules, which it leaves alone).
+test_math: FFLAGS += $(REL_FFLAGS)
+test_math: math/test/test_math.o math/math_lib.o
+	$(FC) $(LDFLAGS) -o $@ $^ $(CRMATH_LIBS)
+
+MATH_CRMATH_DIR := math/test/crmath
+ifneq ($(wildcard $(MESASDK_DIR)/include/crmath.mod),)
+TEST_MATH_CRMATH := test_math_crmath
+endif
+test_math_crmath: math/math_lib.f90 math/test/test_math.f90
+	@mkdir -p $(MATH_CRMATH_DIR)
+	cd $(MATH_CRMATH_DIR) && $(FC) -O3 -ffp-contract=off -cpp -ffree-line-length-none \
+	     -DYREC_CRMATH -I$(MESASDK_DIR)/include -c $(CURDIR)/math/math_lib.f90 -o math_lib.o
+	cd $(MATH_CRMATH_DIR) && $(FC) -O3 -ffp-contract=off -cpp -ffree-line-length-none \
+	     -c $(CURDIR)/math/test/test_math.f90 -o test_math.o
+	$(FC) $(LDFLAGS) -o $@ $(MATH_CRMATH_DIR)/test_math.o $(MATH_CRMATH_DIR)/math_lib.o \
+	     $(MESASDK_DIR)/lib/libcrmath.a $(MESASDK_DIR)/lib/libcrlibm.a $(MESASDK_DIR)/lib/libscs.a
+
 # examples/other_energy (2026-10): YREC with an extra energy source
 # (core/structure/energy_sources.f90), the template for a program that
 # registers its own sources before run_yrec. `make other_energy` builds
@@ -342,7 +363,7 @@ $(OTHER_ENERGY_DIR)/yrec_extra_heat: $(OTHER_ENERGY_DIR)/yrec_extra_heat.o $(fil
 other_energy: $(OTHER_ENERGY_DIR)/yrec_extra_heat
 
 .PHONY: tests
-tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
+tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
@@ -394,7 +415,8 @@ clean:
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
 	@rm -f $(OTHER_ENERGY_DIR)/yrec_extra_heat $(OTHER_ENERGY_DIR)/*.o
-	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
+	@rm -rf $(MATH_CRMATH_DIR)
 
 install:
 	install -d $(PREFIX)

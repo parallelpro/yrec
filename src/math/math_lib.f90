@@ -79,9 +79,11 @@ contains
 
 ! ---------------------------------------------------------------
 ! x**y for real y (MESA's definition). Integer-valued |y| < 100 uses
-! exact repeated multiplication; otherwise the exp(log(x)*y)
-! composition, fully determined by crmath. x = 0 returns 0 (the
-! composition would take log(0)).
+! repeated multiplication; otherwise the exp(log(x)*y) composition,
+! fully determined by crmath, with the sign of (-1)**y for a negative x
+! and an integer-valued y (where the composition alone would take the
+! log of a negative number). x = 0 returns 0 for every y, as in MESA
+! (the intrinsic x**y gives 1 for y = 0 and +Inf for y < 0).
 elemental function pow_r(x, y) result(pow_x)
       double precision, intent(in) :: x, y
       double precision :: pow_x
@@ -91,19 +93,24 @@ elemental function pow_r(x, y) result(pow_x)
          pow_x = 0.0d0
          return
       end if
-      iy = floor(y)
-      if (y == iy .and. abs(iy) < 100) then
+! the test on |y| comes first, so that int(y) cannot overflow
+      if (abs(y) < 100.0d0 .and. y == aint(y)) then
+         iy = int(y)
          pow_x = 1.0d0
          do i = 1, abs(iy)
             pow_x = pow_x*x
          end do
          if (iy < 0) pow_x = 1.0d0/pow_x
+      else if (x < 0.0d0 .and. y == aint(y)) then
+         pow_x = exp(log(-x)*y)
+         if (mod(y, 2.0d0) /= 0.0d0) pow_x = -pow_x
       else
          pow_x = exp(log(x)*y)
       end if
 end function pow_r
 
-! integer exponent: exact repeated multiplication (MESA's pow_i)
+! integer exponent: repeated multiplication (MESA's pow_i); x = 0
+! returns 0 for every iy, as pow_r does
 elemental function pow_i(x, iy) result(pow_x)
       double precision, intent(in) :: x
       integer, intent(in) :: iy
@@ -132,15 +139,18 @@ elemental function pow_r_sp(x, y) result(pow_x)
 end function pow_r_sp
 
 ! ---------------------------------------------------------------
-! 10**x for real x (MESA's definition): exact for integer x,
-! exp(x*ln10) otherwise.
+! 10**x for real x (MESA's definition): for an integer-valued |x| < 100,
+! repeated multiplication by 10, exact for 0 <= x <= 22 (10**22 is the
+! largest power of ten a double holds exactly) and correctly rounded
+! for -22 <= x < 0 (one division); exp(x*ln10) otherwise.
 elemental function exp10(x) result(exp10_x)
       double precision, intent(in) :: x
       double precision :: exp10_x
       integer :: ix, i
 
-      ix = floor(x)
-      if (x == ix .and. abs(ix) < 100) then
+! the test on |x| comes first, so that int(x) cannot overflow
+      if (abs(x) < 100.0d0 .and. x == aint(x)) then
+         ix = int(x)
          exp10_x = 1.0d0
          do i = 1, abs(ix)
             exp10_x = exp10_x*10.0d0

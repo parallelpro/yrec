@@ -21,6 +21,9 @@ src/test_rotation
 src/test_rotation_kernels
 src/test_element_diffusion
 src/test_numerics
+src/test_math
+src/test_math_crmath
+src/math/test/crmath/
 src/test_convection
 src/test_structure
 src/test_triangle_fit

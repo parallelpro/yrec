@@ -1,0 +1,11 @@
+math_lib backend: crmath
+pow: integer exponents are repeated multiplication               ok
+exp10: exact for 0 <= n <= 22, 1/10**n below                     ok
+pow, exp10: x**y and 10**x to a few ulp of y ln x                ok
+pow: a single-precision exponent is promoted                     ok
+pow: (-2)**3 = -8                                                ok
+pow: (-2)**101 and (-2)**100 to a few ulp of y ln 2              ok
+pow: (-2)**0.5 is NaN                                            ok
+pow: 0**y = 0 for y > 0                                          ok
+pow: 0**0 and 0**(-1) are 0 under crmath (MESA)                  ok
+pow: y = 3e9 takes the composition, finite                       ok
