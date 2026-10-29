@@ -272,55 +272,27 @@ end subroutine copy_inlists_used
 
 ! ---------------------------------------------------------------
 ! A leading {YREC_INPUT}, {YREC_START} or {YREC_OUTPUT} in path_value,
-! replaced by that environment variable's value, or by the default
-! below when it is unset.
+! replaced by that environment variable's value, or by its default
+! (relative to the deck's directory) when the variable is unset or
+! empty. A value that itself starts with a later placeholder is
+! expanded again.
 subroutine expand_value(path_value)
+      character(len=*), intent(inout) :: path_value
+      character(len=*), parameter :: placeholders(3) = [character(len=13) :: &
+           '{YREC_INPUT}', '{YREC_START}', '{YREC_OUTPUT}']
+      character(len=*), parameter :: defaults(3) = [character(len=17) :: &
+           '../../input', '../../startmodels', 'output']
+      character(len=1024) :: value
+      integer :: i, n, value_len, status
 
-      implicit none
-
-      integer, parameter :: n_env_vars = 3  ! Number of possible env. vars.
-      character(len=256) :: path_value
-      character(len=256) :: temp_value
-      character(len=256) :: placeholder_names(n_env_vars)
-      character(len=256) :: default_values(n_env_vars)
-      character(len=256) :: placeholder
-      integer :: env_val_len, orig_val_len, placeholder_len, default_len
-      integer :: i
-! Each placeholder (env var name enclosed in curly braces) to be
-! supported for expansion in namelists, along with default value in the
-! case where the var is not defined in the execution environment.
-! The number of assignment pairs here must match the value of the
-! parameter n_env_vars, above.
-      placeholder_names(1) = "{YREC_INPUT}"
-      default_values(1) = "../../input"
-
-      placeholder_names(2) = "{YREC_START}"
-      default_values(2) = "../../startmodels"
-
-      placeholder_names(3) = "{YREC_OUTPUT}"
-      default_values(3) = "output"
-
-      do i=1, n_env_vars
-        placeholder_len = len_trim(placeholder_names(i))
-        default_len = len_trim(default_values(i))
-        placeholder = placeholder_names(i)(1:placeholder_len)
-
-        if (path_value(1:placeholder_len) .eq. placeholder) then    ! If placeholder
-            call getenv(placeholder(2:placeholder_len-1), temp_value)
-            env_val_len = len_trim(temp_value)
-            orig_val_len = len_trim(path_value)
-            if (env_val_len .ne. 0) then       ! If env var set
-                temp_value(env_val_len+1:env_val_len+orig_val_len-placeholder_len) = path_value(placeholder_len+1:orig_val_len)
-                  !print *,"Override: ",TEMP(1:LEN_TRIM(TEMP))
-            else                          ! No env var. Use default path.
-                temp_value(1:default_len) = default_values(i)(1:len_trim(default_values(i)))
-                temp_value(default_len+1:default_len+orig_val_len) = path_value(placeholder_len+1:orig_val_len)
-                  !print *,"default: ",TEMP(1:LEN_TRIM(TEMP))
-            end if
-            path_value = temp_value
-        end if
+      do i = 1, size(placeholders)
+         n = len_trim(placeholders(i))
+         if (len(path_value) < n) cycle
+         if (path_value(1:n) /= placeholders(i)(1:n)) cycle
+         call get_environment_variable(placeholders(i)(2:n-1), value, value_len, status)
+         if (status == 1 .or. len_trim(value) == 0) value = defaults(i)
+         path_value = trim(value) // path_value(n+1:)
       end do
-
 end subroutine expand_value
 
 end module run_files

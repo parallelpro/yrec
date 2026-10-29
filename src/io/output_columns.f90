@@ -43,13 +43,13 @@ contains
 ! ---------------------------------------------------------------
 subroutine parse_columns(fname, columns, default_names, sel, nsel, &
            label, ierr)
-      use io_units
+      use io_units, only: check_io, report_error
       character(len=*), intent(in) :: fname, label
       type(output_column), intent(in) :: columns(:)
       character(len=column_name_len), intent(in) :: default_names(:)
       integer, intent(out) :: sel(max_cols), nsel
       integer, intent(out) :: ierr
-      character(len=256) :: line
+      character(len=256) :: line, msg
       integer :: u, ios, i
 
       ierr = 0
@@ -64,17 +64,10 @@ subroutine parse_columns(fname, columns, default_names, sel, nsel, &
          end do
          return
       end if
-      open(newunit=u, file=fname, status='OLD', action='READ', iostat=ios)
-      if (ios /= 0) then
-         write(*,*) 'cannot open ', trim(label), '_columns_file: ', &
-              trim(fname)
-         write(run_log_unit,*) 'cannot open ', trim(label), &
-              '_columns_file: ', trim(fname)
-! 2026 io-writer stops -> ierr (stage-3 pattern): config error
-! returned to output_init_mesa -> read_input -> read_controls.
-         ierr = 1
-         return
-      end if
+      open(newunit=u, file=fname, status='OLD', action='READ', iostat=ios, &
+           iomsg=msg)
+      call check_io(ios, msg, 'open the ' // label // '_columns_file', fname, ierr)
+      if (ierr /= 0) return
       do
          read(u, '(a)', iostat=ios) line
          if (ios /= 0) exit
@@ -90,8 +83,8 @@ subroutine parse_columns(fname, columns, default_names, sel, nsel, &
       end do
       close(u)
       if (nsel == 0) then
-         write(*,*) trim(label), '_columns_file selected no columns: ', &
-              trim(fname)
+         call report_error('the ' // label // '_columns_file ' // trim(fname) // &
+              ' selects no columns')
          ierr = 1
          return
       end if
@@ -102,16 +95,18 @@ end subroutine parse_columns
 ! to the selection; unknown names are fatal, with the valid list
 ! written to the run log.
 subroutine append_column(name, columns, sel, nsel, label, ierr)
-      use io_units
+      use io_units, only: run_log_unit, report_error
       character(len=*), intent(in) :: name, label
       type(output_column), intent(in) :: columns(:)
       integer, intent(inout) :: sel(max_cols), nsel
       integer, intent(out) :: ierr
+      character(len=80) :: text
       integer :: j
 
       ierr = 0
       if (nsel >= max_cols) then
-         write(*,*) 'more than', max_cols, ' ', trim(label), ' columns selected'
+         write(text, '(a,i0,3a)') 'more than ', max_cols, ' ', label, ' columns selected'
+         call report_error(trim(text))
          ierr = 1
          return
       end if
@@ -122,10 +117,9 @@ subroutine append_column(name, columns, sel, nsel, label, ierr)
             return
          end if
       end do
-      write(*,*) 'unknown ', trim(label), ' column: ', trim(name)
-      write(run_log_unit,*) 'unknown ', trim(label), &
-           ' column: ', trim(name)
-      write(run_log_unit,*) 'valid ', trim(label), ' columns:'
+      call report_error('unknown ' // label // ' column: ' // trim(name) // &
+           ' (the run log lists the valid ones)')
+      write(run_log_unit,'(3a)') ' valid ', label, ' columns:'
       do j = 1, size(columns)
          write(run_log_unit,'(2x,a)') trim(columns(j)%name)
       end do

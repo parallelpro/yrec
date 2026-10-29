@@ -12,6 +12,9 @@
 !   last_model_unit -- the final .mod model (last_model_file)
 module io_units
       implicit none
+      private
+      public :: last_model_unit, run_log_unit, terminal_unit, check_io, &
+           report_error
 
       integer :: last_model_unit, run_log_unit, terminal_unit
 

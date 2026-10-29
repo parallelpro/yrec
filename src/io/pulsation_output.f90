@@ -13,6 +13,7 @@
 ! models. GSM output needs HDF5 (make USE_HDF5=1); without it,
 ! write_gsm_pulse is a stub and gsm_supported is .false.
 module pulsation_output
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: check_io
       implicit none
       private
@@ -31,28 +32,26 @@ contains
 subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
       use star_info_lib, only: star_info
-      use physical_constants
+      use physical_constants, only: cgl, ln10
       use math_lib
       use stitched_model, only: n_pulse_cols, ipul_r, ipul_m, &
            ipul_L, ipul_P, ipul_T, ipul_rho, ipul_grad, ipul_N2, &
            ipul_gamma1, ipul_grada, ipul_delta, ipul_kap, ipul_eps, &
            ipul_cp, ipul_mu_e_inv, ipul_h1, ipul_z, &
            ipul_species_base, ipul_eps_grav
-      implicit none
       type(star_info), intent(in) :: s
-
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(n_pulse_cols, n)
-      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
+      real(dp), intent(in) :: pts(:,:)
+      real(dp), intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
       integer, intent(inout) :: ierr
 
       integer, parameter :: iconst = 15, ivar = 40, ivers = 1300
-      double precision :: glob(iconst), var(ivar)
+      real(dp) :: glob(iconst), var(ivar)
       integer :: u, j, k, i, ios
       character(len=256) :: msg
-      double precision :: radius_cm, mass_g, grav
-      double precision :: grav_const_cgs
+      real(dp) :: radius_cm, mass_g, grav
+      real(dp) :: grav_const_cgs
 
       open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', pulse_path, ierr)
@@ -145,28 +144,24 @@ end subroutine write_fgong_pulse
 subroutine write_gyre_pulse(s, num_shells, mass_coordinate, &
      log_density, log_luminosity, log_pressure, log_radius, &
      log_temperature, omega, pulse_path, ierr)
-      use star_info_lib, only: star_info, json
-      use physical_constants
+      use star_info_lib, only: star_info
+      use physical_constants, only: cgl, ln10
       use math_lib
-      implicit none
       type(star_info), intent(in) :: s
-
       integer, intent(in) :: num_shells
-      double precision, intent(in) :: mass_coordinate(json), &
-           log_density(json), log_luminosity(json), log_pressure(json), &
-           log_radius(json), log_temperature(json), omega(json)
-
-
+      real(dp), intent(in) :: mass_coordinate(:), &
+           log_density(:), log_luminosity(:), log_pressure(:), &
+           log_radius(:), log_temperature(:), omega(:)
       character(len=*), intent(in) :: pulse_path
       integer, intent(inout) :: ierr
       integer :: gyre_unit, i, ios
       character(len=256) :: msg
       integer, parameter :: gyre_schema = 101
-      double precision :: radius_cm, mass_g, luminosity_erg_s, &
+      real(dp) :: radius_cm, mass_g, luminosity_erg_s, &
            pressure_cgs, temperature_k, density_cgs, delta, grav, &
            global_data(3)
-      double precision :: brunt_n2(json), dr
-      double precision :: grav_const_cgs
+      real(dp) :: brunt_n2(num_shells), dr
+      real(dp) :: grav_const_cgs
 
       open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', pulse_path, ierr)
@@ -257,12 +252,11 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
       use hdf5
       use h5lt
-      use stitched_model, only: n_pulse_cols, ipul_gyre_last
-      implicit none
+      use stitched_model, only: ipul_gyre_last
 
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(n_pulse_cols, n)
-      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
+      real(dp), intent(in) :: pts(:,:)
+      real(dp), intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
       integer, intent(inout) :: ierr
 
@@ -311,28 +305,22 @@ end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
-      use io_units
-      use stitched_model, only: n_pulse_cols, ipul_gyre_last
-      implicit none
+      use io_units, only: report_error
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(n_pulse_cols, n)
-      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
+      real(dp), intent(in) :: pts(:,:)
+      real(dp), intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: pulse_path
       integer, intent(inout) :: ierr
 
-      write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
-      write(*,*) '  make clean && make USE_HDF5=1'
-      write(*,*) '(HDF5_DIR defaults to the MESA SDK; see the Makefile.)'
-      write(run_log_unit,*) 'pulse_format = GSM requires USE_HDF5=1 build'
-! 2026 ierr-not-stop: an output-format misconfiguration no longer
-! kills the run -- the pulse file is skipped (warned above, once per
-! attempt); the evolution itself is unaffected.
-      return
+! (output_open rejects GSM on this build, so this is a last guard)
+      call report_error('pulse_format = GSM requires an HDF5-enabled build: ' // &
+           'make clean && make USE_HDF5=1 (HDF5_DIR defaults to the MESA SDK)')
+      ierr = 1
 end subroutine write_gsm_pulse
 #endif
 
 ! ---------------------------------------------------------------
-! Whether this build writes GSM files, so output_init_mesa can reject
+! Whether this build writes GSM files, so output_open can reject
 ! pulse_format = 'GSM' at startup (the stub above is a last guard).
 logical function gsm_supported()
 #ifdef YREC_USE_HDF5
@@ -346,10 +334,10 @@ end function gsm_supported
 ! GYRE text format (schema 101) over the extended point set: the file
 ! written with each profile when pulse_format is 'GYRE'.
 subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
-      use stitched_model, only: n_pulse_cols, ipul_gyre_last
+      use stitched_model, only: ipul_gyre_last
       integer, intent(in) :: n
-      double precision, intent(in) :: pts(n_pulse_cols, n)
-      double precision, intent(in) :: mstar_g, rstar_cm, lstar_cgs
+      real(dp), intent(in) :: pts(:,:)
+      real(dp), intent(in) :: mstar_g, rstar_cm, lstar_cgs
       character(len=*), intent(in) :: path
       integer, intent(inout) :: ierr
       integer, parameter :: gyre_schema = 101
