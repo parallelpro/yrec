@@ -25,7 +25,7 @@ contains
 !----------------------------------------------------------------------
 ! The 3-point Lagrange weights at x_eval for the nodes x_nodes, and
 ! their derivatives in x_eval: f(x_eval) = sum(weight*f(x_nodes)). For
-! density in the Livermore opacity tables.
+! the Kurucz atmosphere tables (gravity) and the SCV EOS.
 pure subroutine inter3(x_nodes, weight, dweight, x_eval)
       real(dp), intent(in) :: x_nodes(3)
       real(dp), intent(out) :: weight(3), dweight(3)
@@ -315,7 +315,7 @@ end subroutine lir
 !----------------------------------------------------------------------
 ! findex
 !----------------------------------------------------------------------
-! YCK 3/91, for the Cox and Kurucz opacities: index such that
+! YCK 3/91, for the OPAL92 and Kurucz 1990 opacities: index such that
 ! grid_x(index) <= x_eval < grid_x(index+1), searching outward from the
 ! incoming index (reset to 1 when outside [1, n_grid]). Below the grid
 ! it returns -1, at or above its last point -n_grid.
