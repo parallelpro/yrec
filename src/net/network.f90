@@ -133,6 +133,12 @@ module network
 ! the settings' scales at the row's slot) and screening (Z1 Z2 and the
 ! Graboske factors).
       integer, parameter :: max_reactants = 3, max_change = 5
+! the composition path drops a rate (per gram per s, abundance factors
+! omitted) at or below min_composition_rate (compute_network_rates); the
+! implicit burn drops off-diagonal Jacobian entries below
+! min_jacobian_entry in magnitude, as kemcom did (burn_implicitly)
+      real(dp), parameter :: min_composition_rate = 1.0d-5, &
+           min_jacobian_entry = 1.0d-8
       type :: reaction_t
          character(len=24) :: name
          integer :: rate_row
@@ -348,7 +354,7 @@ end subroutine compute_reaction_rates
 !----------------------------------------------------------------------
 ! compute_network_rates: the composition rate vector of one zone
 ! (rate_vec, num_rate_rows): the reaction rates at their r_* slots,
-! zeroed at or below 1e-5 and turned into per second per amu (times
+! zeroed at or below min_composition_rate and turned into per second per amu (times
 ! amu_cgs), then the N15(p,alpha) and Be7 electron-capture fractions at
 ! rv_frac_n15_pa and rv_frac_be7_ecap. Slots without a table row are
 ! zero. xa is the zone's composition in the star%xa layout.
@@ -363,7 +369,7 @@ pure subroutine compute_network_rates(log_density, log_temperature, xa, &
       call compute_reaction_rates(log_density, log_temperature, &
            screening_mass_fractions(xa), nr)
       do i = 1, num_reactions
-         if (nr%rate(i) <= 1.d-5) nr%rate(i) = 0.0d0
+         if (nr%rate(i) <= min_composition_rate) nr%rate(i) = 0.0d0
       end do
 ! per s per amu (amu_cgs)
       rate_vec(1:num_reactions) = nr%rate*amu_cgs
@@ -646,8 +652,8 @@ end subroutine compute_abundance_rates
 ! Newton converges when every |correction| < absolute_tolerance and every
 ! |correction/X| < relative_tolerance (species below min_abundance are
 ! set to zero and skip the relative test); ierr = 1 after
-! max_iterations attempts. As in kemcom, Jacobian entries below 1e-8 in
-! magnitude (off the diagonal) are dropped, and if none remain the
+! max_iterations attempts. As in kemcom, Jacobian entries below
+! min_jacobian_entry in magnitude (off the diagonal) are dropped, and if none remain the
 ! residual itself is taken as the correction.
 pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
@@ -692,7 +698,7 @@ pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
             system(k, k) = 1.0d0 + system(k, k)
             do i = 1, n_solved
                if (i == k) cycle
-               if (abs(system(i, k)) < 1.0d-8) then
+               if (abs(system(i, k)) < min_jacobian_entry) then
                   system(i, k) = 0.0d0
                else
                   off_diagonal = .true.

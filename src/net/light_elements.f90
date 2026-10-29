@@ -59,6 +59,13 @@ module light_elements
 ! extrapolation to zero step of the Li/Be burn, which approximated the
 ! same integrals.)
       integer, parameter :: linear_in_time = 1, linear_in_log = 2
+! burn_exposure's series for linear_in_log below |x| = series_exposure_x
+! (x = ln(lambda_1/lambda_0) over the fraction; the series' error is
+! below 1e-17 there); exp(-Lambda) taken as 0 beyond max_exposure, where
+! it would underflow; accreted_survival's Simpson intervals, at least
+! intervals_per_exposure per unit exposure, at most 2 max_half_intervals.
+      real(dp), parameter :: series_exposure_x = 1.0d-4, max_exposure = 700.0d0, &
+           intervals_per_exposure = 10.0d0, max_half_intervals = 10000.0d0
 
 contains
 
@@ -76,7 +83,7 @@ pure real(dp) function burn_exposure(rate_start, rate_end, dt, &
            rate_end > 0.0d0) then
 ! lambda(f) = lambda_0 (lambda_1/lambda_0)^f
          x = fraction*log(rate_end/rate_start)
-         if (abs(x) < 1.0d-4) then
+         if (abs(x) < series_exposure_x) then
             burn_exposure = dt*rate_start*fraction* &
                  (1.0d0 + x*(0.5d0 + x*(1.0d0/6.0d0 + x/24.0d0)))
          else
@@ -91,7 +98,7 @@ end function burn_exposure
 
 !----------------------------------------------------------------------
 ! surviving_fraction: exp(-Lambda) over the whole step (0 once Lambda
-! exceeds 700, where exp would underflow).
+! exceeds max_exposure, where exp would underflow).
 pure real(dp) function surviving_fraction(rate_start, rate_end, dt, &
      interpolation)
       use math_lib
@@ -99,7 +106,7 @@ pure real(dp) function surviving_fraction(rate_start, rate_end, dt, &
       integer, intent(in) :: interpolation
       real(dp) :: exposure
       exposure = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
-      if (exposure > 700.0d0) then
+      if (exposure > max_exposure) then
          surviving_fraction = 0.0d0
       else
          surviving_fraction = exp(-exposure)
@@ -121,7 +128,7 @@ pure real(dp) function accreted_survival(rate_start, rate_end, dt, &
       real(dp) :: total, f, weight, s
       integer :: n, i
       total = burn_exposure(rate_start, rate_end, dt, interpolation, 1.0d0)
-      n = 2*(int(min(10.0d0*total, 10000.0d0)) + 1)
+      n = 2*(int(min(intervals_per_exposure*total, max_half_intervals)) + 1)
       s = 0.0d0
       do i = 0, n
          f = dble(i)/dble(n)
@@ -132,7 +139,7 @@ pure real(dp) function accreted_survival(rate_start, rate_end, dt, &
          else
             weight = 2.0d0
          end if
-         s = s + weight*exp(-min(700.0d0, total - &
+         s = s + weight*exp(-min(max_exposure, total - &
               burn_exposure(rate_start, rate_end, dt, interpolation, f)))
       end do
       accreted_survival = s/(3.0d0*dble(n))

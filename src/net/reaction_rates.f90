@@ -73,6 +73,35 @@ module reaction_rates
          real(dp) :: zprod = 0.0d0, z86 = 0.0d0, z53 = 0.0d0, z43 = 0.0d0, &
               z23 = 0.0d0
       end type screening_t
+! The screening plasma's constants (compute_screening_plasma):
+!   (p_F/m_e c)^2 per (rho/mu_e)^(2/3), rho/mu_e in g/cm^3:
+!     (3 pi^2 N_A)^(2/3) (hbar/m_e c)^2;
+!   m_e c^2/k in 1e9 K, for E_F/kT;
+!   Graboske et al.'s (1973) Lambda_0 = 1.88e8 (rho/mu_i)^(1/2) T^(-3/2)
+!     with T in 1e9 K (1.88e8/(1e9)^1.5);
+!   E_F/kT at or below which the electrons count as nondegenerate
+!     (Salpeter's f'/f = 1), and log10(E_F/kT) from which they are fully
+!     degenerate (f'/f = 0).
+      real(dp), parameter :: fermi_momentum_sq_coeff = 1.017677d-4, &
+           electron_rest_energy_t9 = 5.92986d0, lambda0_coeff = 5.9426d-6, &
+           nondegenerate_ef_over_kt = 1.0d-2, degenerate_log_ef_over_kt = 1.5d0
+! The weak-screening exponent Lambda_0 z_tilde Z1 Z2 up to which the
+! intermediate form applies (above the weak threshold of the settings),
+! and from which the strong form always does (compute_reaction_screening).
+      real(dp), parameter :: max_intermediate_weak_exponent = 2.0d0, &
+           min_strong_weak_exponent = 5.0d0
+! The per-gram prefactors of the Caughlan & Fowler (1988) rates: their
+! N_A<sigma v> (cm^3/mol/s; N_A^2<sigma v> for triple alpha) becomes the
+! rate per gram per second with the abundance factors omitted through
+! rho N_A/(A1 A2), and rho^2 N_A/(3! A_He4^3) for triple alpha, with the
+! neutral atomic masses (4.002603, 12, 13.003355, 14.003074; VandenBerg's
+! notes) -- unlike the bare nuclear masses of the screening and Be7.
+      real(dp), parameter :: per_gram_c13_alpha = 1.157126d22, &
+           per_gram_c12_alpha = 1.25388d22, per_gram_n14_alpha = 1.07452d22, &
+           per_gram_triple_alpha = 1.565315d21
+! N_A/m(Be7) per gram, the bare nuclear mass 7.014735 amu (JNB 10/14/97):
+! the Be7 capture rates per unit Be7 abundance, per gram.
+      real(dp), parameter :: per_gram_be7 = 8.584981d+22
 ! bare nuclear masses (amu) and charges of the iso_* isotopes
       real(dp), parameter, public :: &
            isotope_mass(num_isotopes) = [1.008665d0, 1.007276d0, 2.013553d0, 3.015501d0, 3.014933d0, 4.001506d0, &
@@ -271,14 +300,14 @@ pure subroutine compute_screening_plasma(density, electron_density_na, t, &
       real(dp) :: fermi_momentum_sq, fermi_energy_over_kt, &
            degeneracy_factor, log_degeneracy
 
-      fermi_momentum_sq=1.017677d-4*pow(electron_density_na, (2.0d0/3.0d0))
-      fermi_energy_over_kt=5.92986d0*t%m1*(sqrt(1.d0+fermi_momentum_sq)-1.d0)
-      if (fermi_energy_over_kt <= 1.d-2) then
+      fermi_momentum_sq=fermi_momentum_sq_coeff*pow(electron_density_na, (2.0d0/3.0d0))
+      fermi_energy_over_kt=electron_rest_energy_t9*t%m1*(sqrt(1.d0+fermi_momentum_sq)-1.d0)
+      if (fermi_energy_over_kt <= nondegenerate_ef_over_kt) then
          degeneracy_factor=1.0d0
       else
 ! Salpeter's figure 1, as a function of the degeneracy
          log_degeneracy=log10(fermi_energy_over_kt)
-         if (log_degeneracy >= 1.5d0) then
+         if (log_degeneracy >= degenerate_log_ef_over_kt) then
             degeneracy_factor=0.0d0
          else
             degeneracy_factor=0.75793d0-0.54621d0*log_degeneracy-0.30964d0*log_degeneracy**2+ &
@@ -289,7 +318,7 @@ pure subroutine compute_screening_plasma(density, electron_density_na, t, &
 ! Lambda_0 of Graboske et al. and its 2/3 and 0.86 powers; z_tilde of
 ! DeWitt et al. (Salpeter's zeta without the 1/mu_i), the mean ionic
 ! charge, and the powers of them the intermediate and strong forms use
-      plasma%lambda0=5.9426d-6*t%m32*sqrt(density*plasma%inv_mu_i)
+      plasma%lambda0=lambda0_coeff*t%m32*sqrt(density*plasma%inv_mu_i)
       plasma%lambda0_23=pow(plasma%lambda0, (2.0d0/3.0d0))
       plasma%lambda0_086=pow(plasma%lambda0, 0.86d0)
       plasma%z_tilde=sqrt((plasma%charge_moment_2+degeneracy_factor*plasma%inv_mu_e)/ &
@@ -308,8 +337,9 @@ end subroutine compute_screening_plasma
 ! net_settings%weak_screening_threshold (0.03 reproduces Graboske et al.
 ! and Salpeter; a value above 1 forces weak screening in the Sun),
 ! intermediate (Graboske et al. 1973, table 4) up to a weak-screening
-! value of 2, and beyond that strong or intermediate, whichever is
-! smaller (strong always from 5). (Strong screening was never checked:
+! value of max_intermediate_weak_exponent (2), and beyond that strong or
+! intermediate, whichever is smaller (strong always from
+! min_strong_weak_exponent, 5). (Strong screening was never checked:
 ! it does not occur in the Sun.)
 pure subroutine compute_reaction_screening(plasma, s, screen, &
      dscreen_dlnrho, dscreen_dlnt)
@@ -326,7 +356,7 @@ pure subroutine compute_reaction_screening(plasma, s, screen, &
       else
          intermediate=0.38d0*plasma%lambda0_086*plasma%charge_moment_158*s%z86/ &
               (plasma%inv_mu_i*plasma%z_tilde_058*plasma%mean_charge_028)
-         if (weak <= 2.d0) then
+         if (weak <= max_intermediate_weak_exponent) then
             screen=intermediate
             dscreen_dlnrho=0.43d0*intermediate
             dscreen_dlnt=-1.29d0*intermediate
@@ -334,7 +364,7 @@ pure subroutine compute_reaction_screening(plasma, s, screen, &
             strong=0.624d0*plasma%mean_charge_13*plasma%lambda0_23*(s%z53+ &
                  0.316d0*plasma%mean_charge_13*s%z43+0.737d0* &
                  s%z23/(plasma%mean_charge*plasma%lambda0_23))
-            if (strong < intermediate.or.weak >= 5.d0) then
+            if (strong < intermediate.or.weak >= min_strong_weak_exponent) then
                screen=strong
                dscreen_dlnrho=0.208d0*plasma%mean_charge_13*(s%z53+ &
                     0.316d0*plasma%mean_charge_13*s%z43)*plasma%lambda0_23
@@ -456,7 +486,7 @@ pure subroutine compute_be7_branching(zone, hydrogen_fraction, be7)
       type(zone_conditions), intent(in) :: zone
       real(dp), intent(in) :: hydrogen_fraction
       type(be7_branching), intent(out) :: be7
-      real(dp) :: tau_be7p, s_ratio_be7p, per_gram_be7
+      real(dp) :: tau_be7p, s_ratio_be7p, per_gram
 
       associate (density => zone%density, t => zone%t, plasma => zone%plasma)
 
@@ -469,9 +499,9 @@ pure subroutine compute_be7_branching(zone, hydrogen_fraction, be7)
            + net_settings%be7p_s_double_prime_scale*(be7_pcapture_fit(4)*t%p23 + be7_pcapture_fit(5)*t%t9)
       be7%proton = be7%proton*s_ratio_be7p
       be7%proton = be7%proton*exp(weak_intermediate_screening(plasma, 4.0d0, 5.7790d0))
-      per_gram_be7 = density*8.584981d+22
-      be7%proton = per_gram_be7*be7%proton
-      be7%electron = per_gram_be7*be7%electron
+      per_gram = density*per_gram_be7
+      be7%proton = per_gram*be7%proton
+      be7%electron = per_gram*be7%electron
       be7%frac_ecap = be7%electron/(be7%electron + be7%proton)
       be7%frac_pcap = be7%proton/(be7%electron + be7%proton)
       end associate
@@ -519,7 +549,7 @@ pure subroutine compute_c13_alpha_n_rate(density, t, screen, &
       a4 = 2.00d9*exp(-20.409d0*t%m1)
       a5 = 2.92d9*exp(-29.283d0*t%m1)
       s_sum = a1*r1+t%m32*(a2+a3+a4+a5)
-      rate = 1.157126d22*density*exp(screen)*s_sum
+      rate = per_gram_c13_alpha*density*exp(screen)*s_sum
       dlnrate_dlnrho=1.0d0+dscreen_dlnrho
       dr1 = cc13*(-2.0d0*t%m23-0.0129d0*t%m13+0.184d0*t%p13)
       da1 = a1*(cc13*32.329d0*t%m13 - 2.0d0*(t%t9/1.284d0)**2)
@@ -549,7 +579,7 @@ pure subroutine compute_c12_alpha_gamma_rate(density, t, screen, &
       a4 = 1.25d3*t%m32*exp(-27.499d0*t%m1)
       a5 = 1.43d-2*t%t9**5*exp(-15.541d0*t%m1)
       s_sum = a1*(a2+a3)+a4+a5
-      rate = 1.25388d22*density*exp(screen)*s_sum
+      rate = per_gram_c12_alpha*density*exp(screen)*s_sum
       dlnrate_dlnrho = 1.0d0+dscreen_dlnrho
       dlnrate_dlnt = dscreen_dlnt+ &
            (a1*((cc13*32.120d0*t%m13-2.0d0)*(a2+a3)+ &
@@ -579,7 +609,7 @@ pure subroutine compute_n14_alpha_gamma_rate(density, t, screen, &
       a3 = t%m32*2.03d0*exp(-5.054d0*t%m1)
       a4 = t%m23*1.15d4*exp(-12.310d0*t%m1)
       s_sum = a1*r1+a2+a3+a4
-      rate= 1.07452d22*density*exp(screen)*s_sum
+      rate = per_gram_n14_alpha*density*exp(screen)*s_sum
       dlnrate_dlnrho=1.d0+dscreen_dlnrho
       dr1 = cc13*(-2.0d0*t%m23-0.012d0*t%m13+0.117d0*t%p13+ &
             3.94d0*t%p23)+0.406d0*t%t9
@@ -598,7 +628,7 @@ pure subroutine compute_triple_alpha_rate(density, t, screen, &
       type(t9_powers), intent(in) :: t
       real(dp), intent(out) :: rate, dlnrate_dlnrho, dlnrate_dlnt
 
-      rate = 1.565315d21*density**2*t%m1*t%m2*2.79d-8* &
+      rate = per_gram_triple_alpha*density**2*t%m1*t%m2*2.79d-8* &
                  exp(-4.4027d0*t%m1+screen)
       dlnrate_dlnrho = 2.0d0+dscreen_dlnrho
       dlnrate_dlnt = -3.0d0+dscreen_dlnt+4.4027d0*t%m1

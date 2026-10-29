@@ -306,6 +306,10 @@ pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, 
       use math_lib
       real(dp), intent(in) :: log_density, log_temperature, t9, xa(:)
       type(nuclear_energy_result), intent(inout) :: e
+! lambda = kT/m_e c^2 = T9/bps_electron_rest_energy_t9 (m_e c^2/k in
+! 1e9 K, the fits' value; the screening's is 5.92986); the pair losses
+! only from T9 = min_pair_t9
+      real(dp), parameter :: bps_electron_rest_energy_t9 = 5.9302d0, min_pair_t9 = 0.2d0
 ! Beaudet, Petrosian & Salpeter fit coefficients: pair, photo, plasma
       real(dp), parameter :: pair_fit(7) = [6.002d19, 2.084d20, &
            1.872d21, 9.383d-1, -4.141d-1, 5.829d-2, 5.5924d0]
@@ -334,13 +338,13 @@ pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, 
          e%deps_dlnt = e%deps_dlnt - temperature*dsnu_dt
          return
       end if
-      el = t9/5.9302d0
+      el = t9/bps_electron_rest_energy_t9
       eli = 1.0d0/el
       ez = exp(cc13*ln10*(log_density-9.0d0))*eli*(0.7937d0+0.2063d0*xa(i_h1))
       ez3 = ez**3
       emue = 0.5d0*(1.0d0+xa(i_h1))
       ex1 = 0.0d0
-      if (t9 >= 0.2d0) then
+      if (t9 >= min_pair_t9) then
 ! pair neutrinos
          el2 = el*el
          polx10=(1.d0+el2*(-13.04d0+el2*(133.5d0+el2*(1534.d0+el2*918.6d0))))
@@ -361,7 +365,7 @@ pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, 
 ! their d/d ln T (qetnx) and d/d ln rho (qednx)
       qetnx = 0.0d0
       qednx = 0.0d0
-      if (t9 >= 0.2d0) then
+      if (t9 >= min_pair_t9) then
          qedn= ez*(pair_fit(2)+2.d0*ez*pair_fit(3))/polx11 - ez*pair_fit(7) &
                - 3.0d0*ez3/polx12
          qetn= -qedn+ eli*(pair_fit(4)+eli*(2.d0*pair_fit(5)+3.d0*eli*pair_fit(6)))/polx12
