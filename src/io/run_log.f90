@@ -9,6 +9,7 @@
 ! envelope/atmosphere integration statistics, triangle/rezoning
 ! bookkeeping) print only with report_solver_diagnostics.
 module run_log
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
       public :: solver_diagnostics, set_solver_diagnostics, log_model_line, &
@@ -68,7 +69,7 @@ end subroutine log_final_model_line
 
 subroutine write_model_line(s, progress)
       use star_info_lib, only: star_info, i_h1
-      use io_units
+      use io_units, only: run_log_unit, terminal_unit
       type(star_info), intent(in) :: s
       type(progress_lines), intent(inout) :: progress
       character(len=*), parameter :: header = &
@@ -91,16 +92,15 @@ subroutine write_model_line(s, progress)
       progress%last_printed_model = s%model_number
 end subroutine write_model_line
 
-! End-of-run summary (2026, run-log verbosity item): why the run
-! ended (star%termination_reason, set by stop_conditions and the
-! calibration verdict) plus the final model. The wall-clock line is
-! nondeterministic and goes to the TERMINAL ONLY, keeping the run
-! log byte-pinnable.
+! The end-of-run summary: why the run ended (star%termination_reason,
+! set by stop_conditions and the calibration verdict) and the final
+! model. The wall-clock line differs from run to run, so it goes to the
+! terminal only, which keeps the run log byte-pinnable.
 subroutine log_run_summary(s, wall_seconds)
       use star_info_lib, only: star_info
-      use io_units
+      use io_units, only: run_log_unit, terminal_unit
       type(star_info), intent(in) :: s
-      double precision, intent(in) :: wall_seconds
+      real(dp), intent(in) :: wall_seconds
       write(terminal_unit,'(a)') ''
       write(run_log_unit,'(a)') ''
       write(terminal_unit,10) trim(s%termination_reason)

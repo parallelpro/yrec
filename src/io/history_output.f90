@@ -13,7 +13,8 @@
 ! The file's state (its path, unit and selection) is a history_file
 ! record, part of yrec_output's output_state, which run_yrec owns.
 module history_output
-      use physical_constants
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use physical_constants, only: yrec_version_string
       use output_columns, only: max_cols, parse_columns, output_column, &
            real_column, integer_column, hist_default_names
       implicit none
@@ -206,7 +207,7 @@ subroutine history_values(s, vals, iprof)
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, i_nu_he3he3, &
            i_nu_he3he4
       type(star_info), intent(in) :: s
-      double precision, intent(out) :: vals(n_hist_cols)
+      real(dp), intent(out) :: vals(n_hist_cols)
       integer, intent(in) :: iprof
 
       vals(ih_model_number)            = dble(s%model_number)
@@ -310,7 +311,7 @@ subroutine write_history_row(s, history, iprof, ierr)
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
       type(output_column) :: cols(n_hist_cols)
-      double precision :: vals(n_hist_cols)
+      real(dp) :: vals(n_hist_cols)
       integer :: hist_unit, i, k, ios
       character(len=256) :: msg
 

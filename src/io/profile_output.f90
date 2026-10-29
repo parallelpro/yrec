@@ -13,6 +13,7 @@
 ! profile_selection record, part of yrec_output's output_state, which
 ! run_yrec owns.
 module profile_output
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use stitched_model, only: n_prof_cols, profile_columns, ip_zone
       use output_columns, only: max_cols, parse_columns, output_column, &
            integer_column, prof_default_names
@@ -58,7 +59,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, stitched, ierr)
       character(len=256) :: path, msg
       character(len=12) :: numstr
       integer :: u, i, k, kz, ios
-      double precision :: v
+      real(dp) :: v
 
       cols = profile_columns()
       write(numstr, '(i0)') iprof

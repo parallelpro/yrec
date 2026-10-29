@@ -6,7 +6,7 @@
 ! directory created with a verbatim copy of the inlists (inlist_used),
 ! and the files opened.
 module run_files
-      use io_units
+      use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io
       use legacy_controls
       implicit none
       private
