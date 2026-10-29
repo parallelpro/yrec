@@ -200,142 +200,115 @@ end subroutine polint
 !----------------------------------------------------------------------
 ! lir
 !----------------------------------------------------------------------
-! For target_z at the points table_z(1:num_points), increasing or
-! decreasing, the num_y tabulated functions table_y(i,n) (first
-! dimension y_stride) interpolated into result_y: cubic through the
-! four nearest points, with the weight of the closest corrected so the
-! four sum to one; linear below four points. interp_flag is 1 inside
-! the table, 0 when extrapolating. On a node the tabulated values are
-! copied. ierr (numerics_status, optional): numerics_bad_input for
-! fewer than two points, numerics_coincident_points for equal end
-! points; either leaves result_y unset and interp_flag 0. (Formerly
-! lir_impl behind lir, and once in net_lib; a SAVEd search index served
-! a resume-the-search option no caller used, and went in 2026-10.)
-pure subroutine lir(target_z,table_z,result_y,table_y,num_y,y_stride, &
-     num_points,interp_flag,ierr)
+! For target_z among the points table_z(1:num_points), increasing or
+! decreasing, the num_y tabulated functions table_y(1:num_y, point)
+! interpolated into result_y(1:num_y): cubic through four points around
+! target_z, the Lagrange weights with the one of the point closest to
+! target_z replaced so that the four sum to one; linear between the two
+! points around it below four points; the end points' cubic or line
+! outside the table. On a node the tabulated values are copied.
+! interp_flag is 1 inside the table, 0 outside it. y_stride is
+! table_y's leading dimension, size(table_y, 1). A result of zero is
+! stored as +0 (a negative zero from the table or the sum becomes +0).
+! ierr (numerics_status, optional): numerics_bad_input for fewer than
+! two points or a y_stride other than table_y's, numerics_coincident_points
+! for equal end points; either leaves result_y unset and interp_flag 0.
+! (Formerly lir_impl behind lir, and once in net_lib; a SAVEd search
+! index served a resume-the-search option no caller used, and went in
+! 2026-10.)
+pure subroutine lir(target_z, table_z, result_y, table_y, num_y, y_stride, &
+     num_points, interp_flag, ierr)
       real(dp), intent(in) :: target_z
-      real(dp), intent(in) :: table_z(*)
-      real(dp), intent(out) :: result_y(*)
-      real(dp), intent(in) :: table_y(*)
+      real(dp), intent(in) :: table_z(:)
+      real(dp), intent(out) :: result_y(:)
+      real(dp), intent(in) :: table_y(:,:)
       integer, intent(in) :: num_y, y_stride, num_points
       integer, intent(out) :: interp_flag
       integer, intent(out), optional :: ierr
 
-      real(dp) :: weight(4)
-      integer :: search_idx
-      integer :: linear_mode
-      integer :: stride, stride_m1, y_strided, num_y_strided, table_end
-      real(dp) :: diff
-      integer :: pivot, closest
-      real(dp) :: y1, y2, y3, y4, z1, z2, z3, z4, z12, z34
-      integer :: y_idx, j, k, base_idx
-      real(dp) :: yy
+      real(dp) :: weight(4), node(4), offset(4), span, weight_sum, sum_y
+      real(dp) :: offset12, offset34, frac_lower, frac_upper
+      integer :: above, first, closest, i, j
 
-      linear_mode=0
-      stride=1
       if (present(ierr)) ierr = numerics_ok
-      if (num_points < 2) then
-         interp_flag = 0
+      interp_flag = 0
+      if (num_points < 2 .or. y_stride /= size(table_y, 1)) then
          if (present(ierr)) ierr = numerics_bad_input
          return
       end if
-      if(num_points < 4) linear_mode=1
-! ADDRESSING CONSTANTS
-      interp_flag=1
-      stride_m1=stride-1
-      y_strided=stride*y_stride
-      num_y_strided=(num_y-1)*stride+1
-      table_end=(num_points-1)*stride+1
-      diff=table_z(table_end)-table_z(1)
-! THE SEARCH STARTS AT THE FIRST POINT
-      search_idx=1
-! DETERMINE POSITION OF target_z WITHIN table_z
+      span = table_z(num_points) - table_z(1)
+      if (span == 0.0d0) then
+         if (present(ierr)) ierr = numerics_coincident_points
+         return
+      end if
+! the first point beyond target_z (num_points + 1 when there is none);
+! a node gives its values
+      interp_flag = 1
+      above = 1
       do
-         if(search_idx > table_end) then
-            interp_flag=0
+         if (above > num_points) then
+            interp_flag = 0
             exit
          end if
-         if (diff == 0.0) then
-            interp_flag = 0
-            if (present(ierr)) ierr = numerics_coincident_points
-            return
-         end if
-         if (diff < 0.0) then
-            if (table_z(search_idx) < target_z) exit
+         if (span < 0.0d0) then
+            if (table_z(above) < target_z) exit
          else
-            if (table_z(search_idx) > target_z) exit
+            if (table_z(above) > target_z) exit
          end if
-         if (table_z(search_idx) == target_z) then
-! SET Y WHEN Z LIES ON A MESH POINT
-            base_idx=(search_idx-1)*y_stride
-            do y_idx=1,num_y_strided
-               result_y(y_idx)=table_y(y_idx+base_idx)
-               if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
+         if (table_z(above) == target_z) then
+            do i = 1, num_y
+               result_y(i) = table_y(i, above)
+               if (result_y(i) == 0.d0) result_y(i) = 0.d0
             end do
             return
          end if
-         search_idx=search_idx+stride
+         above = above + 1
       end do
-! CONTROL WHEN Z DOES NOT LIE ON A MESH POINT
-      if(search_idx <= 1) interp_flag=0
-      if (linear_mode /= 1) then
-! CUBIC INTERPOLATION/EXTRAPOLATION
-! PIVOTAL POINT (M) AND POINT (K) CLOSEST TO Z
-      pivot=search_idx
-      closest=3
-      if (search_idx <= 1+stride) then
-      pivot=1+stride+stride
-      closest=search_idx
-      end if
-      if (search_idx >= table_end) then
-      pivot=table_end-stride
-      closest=4
-      end if
-! WEIGHTING FACTORS
-      y1=table_z(pivot-stride*2)
-      y2=table_z(pivot-stride)
-      y3=table_z(pivot)
-      y4=table_z(pivot+stride)
-      z1=target_z-y1
-      z2=target_z-y2
-      z3=target_z-y3
-      z4=target_z-y4
-      z12=z1*z2
-      z34=z3*z4
-      weight(1)=z2*z34/((y1-y2)*(y1-y3)*(y1-y4))
-      weight(2)=z1*z34/((y2-y1)*(y2-y3)*(y2-y4))
-      weight(3)=z12*z4/((y3-y1)*(y3-y2)*(y3-y4))
-      weight(4)=z12*z3/((y4-y1)*(y4-y2)*(y4-y3))
-! CORRECT A(K)
-      diff=weight(1)+weight(2)+weight(3)+weight(4)
-      weight(closest)=(1.d0+weight(closest))-diff
-! COMPUTE Y
-      pivot=(pivot-1)/stride-3
-      pivot=pivot*y_strided
-      do y_idx=1,num_y_strided
-         k=y_idx+pivot
-         yy=0.d0
-         do j=1,4
-            k=k+y_strided
-            diff=table_y(k)
-            yy=yy+weight(j)*diff
+      if (above <= 1) interp_flag = 0
+
+      if (num_points >= 4) then
+! the four points first..first+3 (first + 2 is the first point beyond
+! target_z, kept inside the table), and closest, the one nearest to it
+         first = above - 2
+         closest = 3
+         if (above <= 2) then
+            first = 1
+            closest = above
+         end if
+         if (above >= num_points) then
+            first = num_points - 3
+            closest = 4
+         end if
+         node = table_z(first:first+3)
+         offset = target_z - node
+         offset12 = offset(1)*offset(2)
+         offset34 = offset(3)*offset(4)
+         weight(1) = offset(2)*offset34/((node(1)-node(2))*(node(1)-node(3))*(node(1)-node(4)))
+         weight(2) = offset(1)*offset34/((node(2)-node(1))*(node(2)-node(3))*(node(2)-node(4)))
+         weight(3) = offset12*offset(4)/((node(3)-node(1))*(node(3)-node(2))*(node(3)-node(4)))
+         weight(4) = offset12*offset(3)/((node(4)-node(1))*(node(4)-node(2))*(node(4)-node(3)))
+         weight_sum = weight(1) + weight(2) + weight(3) + weight(4)
+         weight(closest) = (1.d0 + weight(closest)) - weight_sum
+         do i = 1, num_y
+            sum_y = 0.d0
+            do j = 1, 4
+               sum_y = sum_y + weight(j)*table_y(i, first + j - 1)
+            end do
+            result_y(i) = sum_y
+            if (result_y(i) == 0.d0) result_y(i) = 0.d0
          end do
-         result_y(y_idx)=yy
-         if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
-      end do
-      return
-! LINEAR INTERPOLATION/EXTRAPOLATION
+         return
       end if
-      if(search_idx == 1) search_idx=1+stride
-      if(search_idx > table_end) search_idx=table_end
-      z1=table_z(search_idx)
-      y1=(z1-target_z)/(z1-table_z(search_idx-stride))
-      y2=1.0d0-y1
-      base_idx=(search_idx-1)*y_stride
-      pivot=base_idx-y_strided
-      do y_idx=1,num_y_strided,stride
-         result_y(y_idx)=y1*table_y(y_idx+pivot)+y2*table_y(y_idx+base_idx)
-         if(result_y(y_idx) == 0.d0) result_y(y_idx+stride_m1)=0.d0
+
+! linear between the points above - 1 and above (the end points
+! outside the table)
+      if (above == 1) above = 2
+      if (above > num_points) above = num_points
+      frac_lower = (table_z(above) - target_z)/(table_z(above) - table_z(above-1))
+      frac_upper = 1.0d0 - frac_lower
+      do i = 1, num_y
+         result_y(i) = frac_lower*table_y(i, above-1) + frac_upper*table_y(i, above)
+         if (result_y(i) == 0.d0) result_y(i) = 0.d0
       end do
 end subroutine lir
 
