@@ -10,9 +10,9 @@
 !                              derivatives, from the rate law, fit,
 !                              slot and screening constants of its
 !                              table row
-!     the rate laws            the S-factor law of the seven proton and
-!                              He3 captures and the Caughlan & Fowler
-!                              alpha captures and triple alpha
+!     the rate laws            the S-factor law (the proton and He3
+!                              captures) and the Caughlan & Fowler alpha
+!                              captures and triple alpha
 !     compute_be7_branching, n15_alpha_fraction, hep_rate_factor
 !                              the branchings and the hep factor
 !     compute_deuterium_proton_capture, cap_deuterium_rate
@@ -271,8 +271,8 @@ pure subroutine compute_screened_rate(rate_law, fit, slot, s, zone, &
 end subroutine compute_screened_rate
 
 !----------------------------------------------------------------------
-! The S-factor law (reactions 1-7: pp, He3+He3, He3+He4, p+C12, p+C13,
-! p+N14, p+O16):
+! The S-factor law (the table rows with rate_law s_factor_fit: pp,
+! He3+He3, He3+He4, p+C12, p+C13, p+N14, p+O16):
 ! rate = rho * [T9^(-2/3) S_eff/S0] * exp(tau + q7 + (q8 T9)^2 + screening)
 ! (Neutrino Astrophysics eq. 3.14, Fowler, Caughlan & Zimmerman 1967 eq.
 ! 52), with S_eff/S0 = 1 + q1 T9^(1/3) + q2.. q5 terms and tau = q6

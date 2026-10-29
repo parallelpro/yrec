@@ -248,7 +248,7 @@ module network
       public :: burn_implicitly, network_table_errors, write_network_table, &
            compute_abundance_rates, compute_reaction_energies, &
            compute_reaction_rates, compute_network_rates, reaction_counts, &
-           set_net_settings, inert_scale_count
+           s_factor_slots, set_net_settings, inert_scale_count
 
 contains
 
@@ -412,6 +412,20 @@ pure function reaction_counts(rate, x) result(counts)
          end do
       end do
 end function reaction_counts
+
+!----------------------------------------------------------------------
+! s_factor_slots: which rate slots the S-factor law computes (the rows
+! with rate_law s_factor_fit), the rates the energy path floors
+! (nuclear_energy's energy_path_rates).
+pure function s_factor_slots() result(mask)
+      logical :: mask(num_reactions)
+      integer :: j
+
+      mask = .false.
+      do j = 1, n_rows
+         if (reactions(j)%rate_law == s_factor_fit) mask(reactions(j)%slot) = .true.
+      end do
+end function s_factor_slots
 
 ! ---------------------------------------------------------------
 ! The table's self-check. A row is wrong when it names a reaction slot,

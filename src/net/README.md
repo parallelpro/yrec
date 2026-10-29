@@ -73,7 +73,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
 
 1. Below `logT_cutoffs(1)` it returns `burning = .false.` and zeros.
 2. `compute_reaction_rates` (as above).
-3. `energy_path_rates`: the S-factor reactions' rates below `min_energy_path_rate` (10⁻³⁰) dropped, with their derivatives.
+3. `energy_path_rates`: the rates of the S-factor law (the slots `s_factor_slots` names, from the rows' `rate_law`) below `min_energy_path_rate` (10⁻³⁰) dropped, with their derivatives.
 4. `compute_deuterium_burning`: the d(p,γ) energy and its d ln ε/d ln ρ, d ln ε/d ln T; capped in the surface convection zone (`cap_deuterium_rate`), where both derivatives are zero.
 5. `reaction_counts` (for the fluxes) and `compute_reaction_energies`: Σ b_j R_j ΠX Q_j by slot and by chain, from the table, so a reaction's composition change and its energy come from one row.
 6. `sum_energy_generation`: ε and its absolute derivatives Σ ε_j d ln r_j/d ln (ρ, T), plus deuterium's; zero derivatives at or below `min_eps_with_derivatives` (10⁻¹² erg/g/s).

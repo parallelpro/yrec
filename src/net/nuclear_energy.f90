@@ -28,7 +28,7 @@ module nuclear_energy
            compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
-           compute_reaction_energies, n_chains, n_network, &
+           compute_reaction_energies, s_factor_slots, n_chains, n_network, &
            network_species_slot, chain_pp1
       implicit none
       private
@@ -56,9 +56,9 @@ module nuclear_energy
       real(dp), parameter :: min_deuterium = 1.0d-11
 ! energy released by d(p,g)3He, MeV
       real(dp), parameter :: q_deuterium_mev = 5.494d0
-! the energy path drops a rate of the S-factor reactions (r_pp to r_po16)
-! below this (per gram per s, abundance factors omitted), with its
-! derivatives (the composition path drops rates at or below
+! the energy path drops a rate of the S-factor law (network's
+! s_factor_slots) below this (per gram per s, abundance factors omitted),
+! with its derivatives (the composition path drops rates at or below
 ! network's min_composition_rate instead)
       real(dp), parameter :: min_energy_path_rate = 1.0d-30
 ! eps (erg/g/s, before the thermal neutrino loss) at or below which its
@@ -134,19 +134,21 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
 end subroutine compute_nuclear_energy
 
 !----------------------------------------------------------------------
-! The energy path's copy of the rates: those of the S-factor reactions
-! below min_energy_path_rate are set to zero with their derivatives.
+! The energy path's copy of the rates: those of the S-factor law below
+! min_energy_path_rate are set to zero with their derivatives.
 pure subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(out) :: rate(num_reactions), &
            dlnrate_dlnrho(num_reactions), dlnrate_dlnt(num_reactions)
+      logical :: floored(num_reactions)
       integer :: i
 
       rate = nr%rate
       dlnrate_dlnrho = nr%dlnrate_dlnrho
       dlnrate_dlnt = nr%dlnrate_dlnt
-      do i = r_pp, r_po16
-         if (rate(i) < min_energy_path_rate) then
+      floored = s_factor_slots()
+      do i = 1, num_reactions
+         if (floored(i) .and. rate(i) < min_energy_path_rate) then
             rate(i) = 0.d0
             dlnrate_dlnrho(i) = 0.d0
             dlnrate_dlnt(i) = 0.d0
