@@ -107,10 +107,10 @@ How to read the tables:
 | `zenvm` | the part of the first card's surface Z not in C, N and O, passed to convection's settings (`envelope_metals_no_cno`) | - | `starting_model` (update_surface_mixture) | `starting_model`, `microphysics_settings` |  |
 | `amuenv` | inverse mean atomic weight of the surface mixture, sum `X_i`/`A_i` | 1/amu | `starting_model` (update_surface_mixture) | `model_rescaling`, `starting_model`, `shell_physics`, `run_cards`, `transport_checks` |  |
 | `fxenv(n_mix_species)` | number fractions of the 12 surface-mixture elements, slots `ix_*`, passed to the EOS (`eos_set_mixture`) | - | `starting_model` (update_surface_mixture) | `model_rescaling`, `starting_model`, `run_cards` |  |
-| `dlum_dx` | the solar calibration's fixed d log L/dX, -3.78 | - | `calibration` (check_solar_calibration) | `calibration`, `monte_carlo` | Printed in the Monte-Carlo summary |
-| `drad_dx` | the solar calibration's fixed d log R/dX, -0.89 | - | `calibration` (check_solar_calibration) | `calibration`, `monte_carlo` |  |
-| `dlum_dalpha` | the solar calibration's fixed d log L/d alpha, 0.0139 | - | `calibration` (check_solar_calibration) | `calibration`, `monte_carlo` |  |
-| `drad_dalpha` | the solar calibration's fixed d log R/d alpha, -0.050 | - | `calibration` (check_solar_calibration) | `calibration`, `monte_carlo` |  |
+| `dlum_dx` | d log L/dX of the last solar-calibration Newton step: calibration's parameter `dlogl_dx_fixed`, -3.78 | - | `calibration` (check_solar_calibration) | `monte_carlo` | 0 before the first step; printed in the Monte-Carlo summary, as the three below |
+| `drad_dx` | d log R/dX of the last Newton step, `dlogr_dx_fixed`, -0.89 | - | `calibration` (check_solar_calibration) | `monte_carlo` |  |
+| `dlum_dalpha` | d log L/d alpha of the last Newton step, `dlogl_dalpha_fixed`, 0.0139 | - | `calibration` (check_solar_calibration) | `monte_carlo` |  |
+| `drad_dalpha` | d log R/d alpha of the last Newton step, `dlogr_dalpha_fixed`, -0.050 | - | `calibration` (check_solar_calibration) | `monte_carlo` |  |
 | `log_l_prev` | log(L/Lsun) at the previous solar-calibration check, only printed | log10 Lsun | `calibration` (check_solar_calibration) | `calibration` |  |
 | `log_r_prev` | log(R/Rsun) at the previous solar-calibration check, only printed | log10 Rsun | `calibration` (check_solar_calibration) | `calibration` |  |
 | `delta_x` | the solar calibration's Newton correction to X | - | `calibration` (check_solar_calibration) | `calibration` |  |

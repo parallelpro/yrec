@@ -11,6 +11,17 @@ module calibration
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration
 
+! The solar calibration's fixed empirical partial derivatives of log L
+! and log R with respect to the hydrogen fraction X and the mixing length
+! alpha (LLP 6/28/09), dimensionless. The comments give the fitted values
+! and their RMS errors; the fit recorded for d log L/d alpha, +0.139, is
+! ten times the value used.
+      double precision, parameter :: &
+           dlogl_dx_fixed = -3.78d0, &          ! fit: -3.783, RMS error .070
+           dlogr_dx_fixed = -0.89d0, &          ! fit: -0.890, RMS error .048
+           dlogl_dalpha_fixed = 0.0139d0, &     ! fit as recorded: +0.139, RMS error .0022
+           dlogr_dalpha_fixed = -0.050d0        ! fit: -0.0504, RMS error .0059
+
 contains
 
 ! ---------------------------------------------------------------
@@ -22,11 +33,13 @@ contains
 ! |log(R/Rsun)| < radius_tolerance, and, when calibrate_solar_zx is
 ! set with a positive target_solar_zx, also
 ! |log(Z/X) - log(Z/X)_target| < zx_tolerance. If so, it sets
-! solar_calibration_active and returns. If not, it takes one Newton
-! step in (X, alpha) with fixed empirical partial derivatives of log L
-! and log R (star%dlum_dx, drad_dx, dlum_dalpha, drad_dalpha), rescales
-! Z by the Z/X mismatch when calibrate_solar_zx is set, and writes the
-! new envelope (X, Z, alpha) into the next triple's cards.
+! solar_calibration_converged and returns. If not, it takes one Newton
+! step in (X, alpha) with the fixed empirical partial derivatives of
+! log L and log R (the *_fixed parameters above; it records them in
+! star%dlum_dx, drad_dx, dlum_dalpha, drad_dalpha for the Monte-Carlo
+! summary), rescales Z by the Z/X mismatch when calibrate_solar_zx is
+! set, and writes the new envelope (X, Z, alpha) into the next triple's
+! cards.
 !
 ! Called after every completed triple (mod(nk,3) == 0; the protocol
 ! comment in run_yrec's run loop is the reference): card 3k+1
@@ -69,14 +82,12 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
          endif
       endif
 
-! Fixed empirical partial derivatives d log L/dX, d log R/dX,
-! d log L/d alpha and d log R/d alpha (LLP 6/28/09). The trailing
-! comments give the fitted values and their RMS errors; the fit
-! recorded for dlum_dalpha, +0.139, is ten times the value used.
-      s%dlum_dx = -3.78d0            ! fit: -3.783, RMS error .070
-      s%drad_dx = -0.89d0             ! fit: -0.890, RMS error .048
-      s%dlum_dalpha = 0.0139d0            ! fit as recorded: +0.139, RMS error .0022
-      s%drad_dalpha = -0.050d0            ! fit: -0.0504, RMS error .0059
+! The fixed partial derivatives d log L/dX, d log R/dX, d log L/d alpha
+! and d log R/d alpha, recorded for the Monte-Carlo summary.
+      s%dlum_dx = dlogl_dx_fixed
+      s%drad_dx = dlogr_dx_fixed
+      s%dlum_dalpha = dlogl_dalpha_fixed
+      s%drad_dalpha = dlogr_dalpha_fixed
 ! (The original code also had a run_index-based estimate of these
 ! derivatives, which an unconditional jump always bypassed; it has been
 ! removed.)
@@ -88,9 +99,9 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
 !   dalpha = (log L drad_dx/dlum_dx - log R)
 !            / (drad_dalpha - dlum_dalpha drad_dx/dlum_dx),
 !   dX     = -(log L + dlum_dalpha dalpha)/dlum_dx.
-         s%delta_alpha = ((log_l_lsun*s%drad_dx/s%dlum_dx-log_r_rsun)/ &
-              (s%drad_dalpha-s%dlum_dalpha*s%drad_dx/s%dlum_dx))
-         s%delta_x = -(log_l_lsun + s%dlum_dalpha*s%delta_alpha)/s%dlum_dx
+         s%delta_alpha = ((log_l_lsun*dlogr_dx_fixed/dlogl_dx_fixed-log_r_rsun)/ &
+              (dlogr_dalpha_fixed-dlogl_dalpha_fixed*dlogr_dx_fixed/dlogl_dx_fixed))
+         s%delta_x = -(log_l_lsun + dlogl_dalpha_fixed*s%delta_alpha)/dlogl_dx_fixed
          s%job%mixing_length_array(run_index+1) = &
               s%job%mixing_length_array(run_index-2)+s%delta_alpha
          s%job%mixing_length_array(run_index+2) = s%job%mixing_length_array(run_index+1)

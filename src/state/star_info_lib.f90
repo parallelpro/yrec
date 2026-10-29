@@ -270,14 +270,18 @@ module star_info_lib
 ! number fractions of the 12 surface-mixture elements, slots ix_*, passed
 ! to the EOS (eos_set_mixture) [-]; starting_model
             double precision :: fxenv(n_mix_species)
-! the solar calibration's fixed d log L/dX, -3.78 [-]; calibration.
-! Printed in the Monte-Carlo summary.
+! d log L/dX of the last solar-calibration Newton step: calibration's
+! parameter dlogl_dx_fixed, -3.78 [-]; calibration. 0 before the first
+! step; printed in the Monte-Carlo summary, as the three below.
             double precision :: dlum_dx
-! the solar calibration's fixed d log R/dX, -0.89 [-]; calibration
+! d log R/dX of the last Newton step, dlogr_dx_fixed, -0.89 [-];
+! calibration
             double precision :: drad_dx
-! the solar calibration's fixed d log L/d alpha, 0.0139 [-]; calibration
+! d log L/d alpha of the last Newton step, dlogl_dalpha_fixed, 0.0139
+! [-]; calibration
             double precision :: dlum_dalpha
-! the solar calibration's fixed d log R/d alpha, -0.050 [-]; calibration
+! d log R/d alpha of the last Newton step, dlogr_dalpha_fixed, -0.050
+! [-]; calibration
             double precision :: drad_dalpha
 ! log(L/Lsun) at the previous solar-calibration check, only printed
 ! [log10 Lsun]; calibration
