@@ -158,7 +158,7 @@ Each check was confirmed to fail under a mutation of the code it covers (26 muta
 
 **Add an S-factor reaction with input S0, S′ and S″ scales:** steps 1, 2 and 4 above, with `rate_law = s_factor_fit` and its `fit` (q1…q8: the S-factor law, `compute_s_factor_rate`, and the Sources at the end of `reaction_rates.f90`); its scales are the settings' at its slot already. Then:
 1. `net/net_lib.f90`: export its slot.
-2. Its three controls (`s0_<name>`, `s0p_<name>`, `s0pp_<name>`), as `io/README.md` §5 says: `io/controls_buffer.f90`, `defaults/controls_registry.tsv`, the generators.
+2. Its three controls (`s0_<name>`, `s0p_<name>`, `s0pp_<name>`), as `io/README.md` §7 ("Add a control") says: `io/controls_buffer.f90` (the default as the initializer), `defaults/controls_registry.tsv` (with `canonical`, `home` `ctrl`, `used` `run`), the generators.
 3. `setup/user_inputs.f90`: the fit's reference S0 (`s0_<name>_ref`) and its Solar Fusion S′, S″ (`qs0e_<name>_a98`, `qqs0ee_<name>_a98`, with `s0_<name>_a98`), and the three lines of `set_cross_section_scales`, `set_first_derivative_scales` and `set_second_derivative_scales` for its slot.
 `net_settings_from_star`, `star_info` and Monte Carlo need nothing.
 
@@ -178,7 +178,7 @@ Each check was confirmed to fail under a mutation of the code it covers (26 muta
 
 **Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments, the integrator from `burn_exposure`), driven per region from `core/step/burn_step.f90`.
 
-**Add a control.** Add the field to `net_settings_t` (`net/net_configuration.f90`) with the control's default as its declared default, copy it in `net_settings_from_star` (`setup/net_settings_setup.f90`), and read `net_settings%<field>`; the control itself as `io/README.md` §5 says.
+**Add a control.** Add the field to `net_settings_t` (`net/net_configuration.f90`) with the control's default as its declared default, copy it in `net_settings_from_star` (`setup/net_settings_setup.f90`), and read `net_settings%<field>`; the control itself as `io/README.md` §7 ("Add a control") says.
 
 **Add an energy source that is not nuclear** (tidal or magnetic heating). That belongs to the structure equations, not here: `core/structure/energy_sources.f90` holds a list of extra sources a program registers (`add_energy_source`; `examples/other_energy` is one).
 

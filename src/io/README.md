@@ -29,12 +29,12 @@ Every io procedure that touches the star takes it as an argument, `s` (`type(sta
 | `model_files` | The `.mod` writer and reader (`write_mod_model`, `read_mod_model`; the columns in `mod_slots` and `mod_columns`), and the YREC7 and MODEL2 readers (`read_yrec7`, `read_model2`). Its header gives each format's layout. |
 | `io_units` | The three units written from everywhere (the run log, the terminal and the final model), and io's two error reports: `check_io` after an open, read or write, and `report_error` for any other error. |
 
-**The controls reader**: `controls_reader.f90` (module `controls_reader`, entry point `read_controls`), `legacy_controls`, `controls_buffer`, `derived_controls`, `controls_check`, and the generated `inlist_new_decl.inc` and `inlist_new_read.inc` (§7).
+**The controls reader**: `controls_reader.f90` (module `controls_reader`, entry point `read_controls`), `controls_buffer`, `legacy_controls`, the generated `controls_sync`, `controls_check` and `derived_controls`, with the generated includes `inlist_new_decl.inc`, `inlist_new_read.inc`, `adopt_canonical.inc` and `legacy_mirror.inc` (§7).
 
 ## 2. A run
 
 `run_yrec` (`core/run/run_driver.f90`):
-1. `read_controls` (§7) reads the deck. Inside it, `expand_paths` expands the placeholders; `open_run_files` creates the output directory, copies the deck to `inlist_used`, and opens the starting model, the final-model file, the run log, and the Monte Carlo and isochrone files when they are on; `derive_controls` writes the run log's header, and `interpret_kind_cards` the run plan.
+1. `read_controls` (§7) reads the deck. Inside it, `expand_paths` expands the placeholders; `open_run_files` creates the output directory, copies the deck to `inlist_used`, and opens the starting model, the final-model file, the run log, and the Monte Carlo and isochrone files when they are on; `check_controls` stops the run on a control it cannot use; `derive_controls` writes the run log's header, and `interpret_kind_cards` the run plan.
 2. `output_open`: the history file's path and columns, the profile columns, and the pulse format. An unknown pulse format, or GSM on a build without HDF5, stops the run here (exit 1), as does a bad columns file. A history file a previous call left open is closed.
 3. At each card, `output_run_header` writes the card's line on the terminal (and the isochrone header).
 4. Each converged model, `evolve_step` builds the stitched model (`build_stitched_model`: every profile column at every point of the interior, envelope and atmosphere, and the pulse points), computes the observables, and calls `output_write_model`: the progress line every `terminal_interval` models; the isochrone record; every `profile_interval` models, `profile<N>.data` and its pulsation file `profile<N>.data.<format>`; the history row (its `profile_number` is that N, or 0); the `.mod` model; and every `pulse_gyre_interval` models the interior GYRE file `profile<model>.data.GYRE`.
@@ -94,45 +94,67 @@ A job's files, in its output directory (the run log's, from `log_output_file`):
 
 ## 7. Controls
 
-<!-- CONTROLS: the CTL package's text replaces this section (the
-     integrator pastes it). Until then it keeps the earlier text. -->
+**The controls reader**
 
-A deck is either a single-file inlist, one file holding a `&control` and a `&physics` group under the readable names, or a legacy CONTROL/PHYSICS namelist pair (`.nml1`/`.nml2`), the same groups under the legacy names in two files. An inlist with the group names of 2026-08 to 2026-10, `&star_job` and `&controls`, stops the run with the command that renames them. `read_controls` runs:
-1. `star%ctrl = controls_state()`: the pristine defaults, generated from `controls_buffer`'s initializers.
-2. `seed_controls_buffer`: buffer ← `star%ctrl`.
+| Module (file) | What it holds |
+|---|---|
+| `controls_reader` (`controls_reader.f90`) | `read_controls`, the entry point, and `read_input`, the read in order (below); the namelist read itself (`read_namelist_files`, and `read_inlist` for an inlist); `adopt_canonical_names`, which copies the values read under the legacy names into their canonical homes (the generated `adopt_canonical.inc`, then the few that go to the star); the table paths' load and store. |
+| `controls_buffer` | Every control under its canonical name, with its default as the initializer: the one place a control's default is written. The buffer the deck is read into; also the named constants `max_runs`, `itime_*` and `ichi_*`. |
+| `legacy_controls` | The variables the legacy `/control/` and `/physics/` namelists bind to, under their legacy spellings, those two groups, and `set_legacy_defaults`, which at the start of every read gives each legacy name its canonical twin's default (the generated `legacy_mirror.inc`) and the legacy-only names theirs. |
+| `controls_sync` (generated) | `seed_controls_buffer` (buffer ← `star%ctrl`, `star%job`) and `store_controls_to_star` (the reverse), one assignment per member. |
+| `controls_check` | The controls' validation: `check_controls`, the errors (exit 1: semiconvection with overshoot, a non-positive envelope triangle, a rotating run's `max_diffusion_iters` outside 1-16, Bulirsch-Stoer controls outside the integrator's limits, which it takes from `numerics_lib`'s `bsstep_max_stages` and `bsstep_max_extrap_order`); `warn_inert_controls`, legacy controls a deck sets that nothing uses; `warn_inconsistent_controls`, combinations that are silently inert; and `report_control`, the one way a controls message reaches both the terminal and the run log. Errors go to both, warnings to the terminal only. |
+| `derived_controls` | `derive_controls`: the controls computed from the ones read (the light-element rate scales, which EOS and opacity tables, a fresh envelope triangle for rotating runs, the starting-model mixture changes, the switches that diffusion options imply, `star%tenv`) and the run log's header. |
+| `run_files`, `run_cards` | The fixed unit numbers, the path placeholders and the run's files; the run plan from the kind cards (§1). |
+
+The wind law's coefficients, the convection zone's rotation-law clamp and the solid-body flag are not controls: `setup/rotation_settings_setup.f90` derives them when it builds rotation's settings (`magnetic_braking`'s `derive_wind_law`). The Bulirsch-Stoer controls (`tolerance_fraction`, `max_stage_index`, `extrap_order`) are controls in `star%ctrl`, and the envelope integration copies them into its kernel's settings (`envint_config`).
+
+**How a deck is read.** A deck is either a single-file inlist, one file holding a `&control` and a `&physics` group under the readable names, or a legacy CONTROL/PHYSICS namelist pair (`.nml1`/`.nml2`), the same groups under the legacy names in two files. An inlist with the group names of 2026-08 to 2026-10, `&star_job` and `&controls`, stops the run with the command that renames them. `read_controls` runs:
+1. `star%ctrl = controls_state()`: the defaults, generated from `controls_buffer`'s initializers (a test checks that a deck setting nothing reads exactly these).
+2. `seed_controls_buffer`: buffer ← `star%ctrl`, `star%job`.
 3. `read_input`:
-   - `set_legacy_defaults`, `assign_unit_numbers`, and loading the table paths;
-   - `read_namelist_files`: the namelist read, over the defaults (an inlist's through `read_inlist`, whose groups, declared in the generated `inlist_new_decl.inc`, hide `legacy_controls`' groups of the same names);
-   - `adopt_canonical_names`: each legacy-spelled variable copied to its canonical name;
-   - `map_user_inputs` (`setup/`): the readable timestep and zoning inputs mapped onto the code's vectors, and the cross sections from the S-factors;
-   - `store_controls_to_star`;
+   - `set_legacy_defaults` (each legacy name ← its canonical twin's default), `assign_unit_numbers`, and loading the table paths;
+   - `read_namelist_files`: the namelist read over the defaults (an inlist's through `read_inlist`: the generated `inlist_new_decl.inc` declares its groups, which hide `legacy_controls`' groups of the same names, and `inlist_new_read.inc` seeds the inlist names from the legacy ones, reads, and copies back);
+   - `adopt_canonical_names`: each legacy-spelled value copied to its canonical name;
+   - `map_user_inputs` (`setup/`): the readable timestep and zoning inputs mapped onto the code's vectors (with `use_new_rate_variables`), and the cross sections from the S-factors;
+   - `store_controls_to_star` (`check_controls` reads `star%ctrl` and `star%job`);
    - `expand_paths`, `open_run_files`, then storing the table paths;
+   - `check_controls` (errors stop the read with ierr = 1) and `warn_inert_controls`;
    - `derive_controls`;
    - `interpret_kind_cards`.
 4. `store_controls_to_star`: `star%ctrl` and `star%job` ← buffer.
 
-Every read starts from the same state, so an in-process rerun (pyyrec, `test_reentry`) reads exactly as a fresh run does.
+Every read starts from the same state, so an in-process rerun (pyyrec, `test_reentry`) reads exactly as a fresh run does. After the read, `run_yrec` calls `output_open` (§2), `prepare_run` and then `warn_inconsistent_controls`; each run card's `begin_kind_card` builds the domains' settings records from `star%ctrl` and `star%job` (`setup/`), and each Monte Carlo run installs the network's (`net_settings_from_star`).
 
-**A control's three names.** A namelist matches a deck's entries by variable name, so the legacy decks fix the legacy spellings (`KTTAU`). Inside the code a control has its canonical name (`atm_choice`, in `controls_buffer` and `star%ctrl`). Its new-format name is usually the canonical one. `defaults/controls_registry.tsv` maps all three and documents each control. Derived code works on the canonical names; only the reader sees the legacy ones.
+**ctrl and job.** `star%ctrl` never changes after the read. `star%job` holds the controls that code outside the read assigns: the run-card arrays the calibration rewrites, the stop thresholds the stop conditions disarm, `atm_choice` (the atmosphere switch), `fcorr` (the Newton iteration), `use_structure_dt_limits`, `use_mass_accretion` (latches), the Monte-Carlo range. The registry's `home` column says which; `tools/check_boundaries.py` fails when a member's home disagrees with the code (a ctrl member assigned outside the read, or a job member nothing assigns), and when its `used` column (`run`, `read` for an input-only control, `none`) does. A latch that the run switches and every card re-arms is a star member armed from its control (`star%settling_active` from `diffuse_helium_active`), not the control itself.
+
+**A control's three names.** A namelist matches a deck's entries by variable name, so the legacy decks fix the legacy spellings (`KTTAU`). Inside the code a control has its canonical name (`atm_choice`, in `controls_buffer`, `star%ctrl` or `star%job`); its inlist name is usually the canonical one. `defaults/controls_registry.tsv` maps the three and documents each control (`tools/controls_registry.py` describes its columns; `defaults/controls_registry.md` is the generated table). Derived code works on the canonical names; only the reader sees the legacy ones.
 
 **Generated files** (`test_generated_files.py` checks they are current; each generator takes `--check`):
 
 | File | Generator | From |
 |---|---|---|
-| `state/controls_state_def.inc`, `state/job_controls_def.inc`, `io/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` and the registry's `home` column |
-| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/control.defaults`, `defaults/physics.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
-| `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` declarations |
+| `state/controls_state_def.inc`, `state/job_controls_def.inc`, `io/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` (members, types, defaults) and the registry's `home` column; it stops if a member has no registry row of its declared type |
+| `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `io/legacy_mirror.inc`, `io/adopt_canonical.inc`, `defaults/control.defaults`, `defaults/physics.defaults`, `defaults/controls_registry.md` | `tools/gen_inlist.py` | the registry (names, types, canonical homes, descriptions) and the code's defaults; it stops if a row's type disagrees with its legacy variable's declaration |
+| `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` type bodies |
 | `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` (and it checks them against the column tables) |
 
 `tools/upgrade_inlist.py` converts a legacy pair to a single-file inlist, and renames the groups of an inlist written with `&star_job` and `&controls`.
 
-**Tests.** `test_controls` (`make tests` in `src/`, then `pytest test_controls.py`) reads every deck in `examples/` and `testsuite/` through `read_controls` and compares all of `star%ctrl` and `star%job` with `io/test/expected_controls/`; regenerate them with `YREC_REGEN_CONTROLS=1` after a deliberate change. `test_inlist_convert.py`: a converted legacy deck runs identically.
+**Where a check goes.** A value or combination the run cannot use: `check_controls` (`controls_check`), with ierr = 1 and a message through `report_control` that names the control (and its legacy name). A setting that is legal but inert: a warning in `warn_inconsistent_controls` (or, for a legacy-only name, `warn_inert_controls`), terminal only. A domain's own consistency checks on its settings stay in the domain.
 
-**Add a control:**
-1. Declare it in `controls_buffer.f90`, with its default as the initializer. That is the only place its default is written; `physics.defaults` (or `control.defaults`) documents it from there.
-2. Add its row to `defaults/controls_registry.tsv` (its names, type, status and description).
-3. Run `tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
-4. Read it from `star%ctrl` (or `star%job`) where it is used; a physics domain reads it from its settings record, filled in `setup/`.
-5. Regenerate the expected controls (`YREC_REGEN_CONTROLS=1 pytest test_controls.py`) and check that only the new control changed.
+**Tests.**
+- `test_controls` (`make tests` in `src/`, then `pytest test_controls.py`) reads every deck in `examples/` and `testsuite/` through `read_controls` and compares all of `star%ctrl` and `star%job` with `io/test/expected_controls/`. Any change to the reader shows up here; regenerate with `YREC_REGEN_CONTROLS=1` after a deliberate change. The same file checks that a deck setting nothing reads exactly `controls_state()` (one default source), that without `use_new_rate_variables` the zoning tolerances and timestep factors are `zoning_tolerances` and `timestep_factors` at their defaults, and that the inert-control warnings reach the terminal and not the run log.
+- `test_generated_files.py`: the generated files are current; the generators also stop when the registry and the declarations disagree (a member without a row, a type mismatch).
+- `test_boundaries.py` runs `tools/check_boundaries.py`, which checks the registry's `home` and `used` columns against the code.
+- `test_error_exit.py`: the controls errors (semiconvection with overshoot, the envelope triangle, `max_diffusion_iters`, the Bulirsch-Stoer limits) stop with exit 1 and a message naming the control.
+- `test_inlist_convert.py`, `test_reentry.py`: a converted legacy deck runs identically; in-process reruns.
 
-The legacy CONTROL/PHYSICS namelists are frozen: a new control is read only by the new format, so it needs nothing in `legacy_controls`. Each existing control's default is written once, in `controls_buffer` or, for a control read under a legacy name with no default there, in `set_legacy_defaults`; a legacy variable whose canonical twin has a default mirrors it (`alphac = overshoot_alpha_core`). `gen_inlist` stops if a control has no default in the code.
+**Add a control** (traced end to end on 2026-10-29 with a real-valued dummy control read by rotation's settings):
+1. Declare it in `io/controls_buffer.f90`, in the group it belongs to, with its default as the initializer (`real(dp) :: my_scale = 1.0d0`). That is the only place its default is written.
+2. Add its row to `defaults/controls_registry.tsv`: `group` (`control` or `physics`), `legacy` and `proposed_name` both the new name (the legacy namelists are frozen, so a new control is read only by the inlist format, and its inlist name is its code name), `type` as declared (`real`, `integer`, `logical`, `string`, with `(n)` for an array), `status` `keep`, a description, `canonical` the new name, `home` `ctrl` (`job` only if code outside the read will assign it), `used` `run`.
+3. From `src/`: `python3 tools/gen_controls_state.py`, `python3 tools/gen_inlist.py`, `python3 tools/gen_controls_dump.py`.
+4. Give it to the domain that uses it: a field in the domain's settings type (`<domain>_configuration`), its copy in the builder in `setup/` (for rotation `rotation_settings_from_star`, for the network `net_settings_from_star`), then `python3 tools/check_star_contracts.py --fix` for the builder's `star reads:` list. The domain reads the field, never `star%ctrl`.
+5. If some values cannot run, reject them in `controls_check`'s `check_controls`; if a combination is inert, warn in `warn_inconsistent_controls`.
+6. `make` in `src/`, `python3 tools/check_boundaries.py` (it checks the row's `home` and `used`), and `YREC_REGEN_CONTROLS=1 python3 -m pytest -q test_controls.py` from the repository root: only the new member's lines change (in `pristine.txt`, each representative dump that sets it, and every line of `hashes.txt`).
+
+The legacy CONTROL/PHYSICS namelists are frozen: a new control needs nothing in `legacy_controls`. A legacy name takes its canonical twin's default (`legacy_mirror.inc`); only the legacy names with no canonical home have defaults of their own, in `set_legacy_defaults`. `gen_inlist` stops if a control has no default in the code.
