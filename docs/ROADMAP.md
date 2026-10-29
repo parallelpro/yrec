@@ -2149,7 +2149,7 @@ MESA baselines pass on each.
   Inherited from WCZ; needs the authors' choice of fix.
 - **Seen: O13** in the grid test: with a radiative first zone the grid
   counts a convection zone below it and the map back leaves it alone.
-- **Still open:**
+- **Still open** (items 1, 4 and 5 done in Stage D, below):
   1. `apply_secular_transport` (558 lines): 16 internal procedures share
      about 20 host locals. Proposed: the per-region transport (grid,
      solve, map back, mixing) as a module procedure with explicit
@@ -2171,3 +2171,79 @@ MESA baselines pass on each.
   compiled, and the ones gfortran names as written put back, per
   procedure); each new check confirmed by a mutation of the code it
   covers.
+
+### rotation/ Stage D: validated, restructured, the open rotation bugs fixed (yrec-next, 2026-10-28)
+
+Asked for rotation/ to be "a really good module" (the re-evaluation
+put it near 7 of 10), in six phases. Refactors were checked
+byte-identical (the 56-deck set, or the 26 rotating decks with every
+output file compared, and the test outputs); each results-changing fix
+is its own commit, measured against the commit before on the rotating
+decks (each run in its own directory, history.data compared column by
+column; scratchpad measure.py, histcmp.py, cmp_runs.py) and, for the
+settling fix, on the 50 self-contained decks of the set.
+
+- **Phase 1, a safety net** (4e764df2): analytic and law checks in
+  test_rotation_kernels (the stability coefficients against their
+  formulas; the wind's spin-down against the saturated and unsaturated
+  solutions, second order in the step; constant-D diffusion against its
+  eigenmodes, h^2 and dt; the checks' contracts), each confirmed by a
+  mutation; CI runs both rotation test programs; src/tools/coverage.py
+  (gcov; rotation/ at 92.7%).
+- **Phase 2, validation** (908b5501): docs/ROTATION_VALIDATION.md;
+  sample_cases/rotation_vs_MESA (a solid body under J conservation
+  against MESA 26.04.1: the main-sequence omega within 0.8% slow, 0.4%
+  at omega/omega_crit = 0.25); src/tools/substep_convergence.py (first
+  order in time_dw_mix). Found O26, O27, O28.
+- **Phase 3, apply_secular_transport's steps as module procedures**
+  (6dbf17b0): explicit arguments and intents for every step; the
+  region's angular momentum diffusion (region_transport) and the outer
+  point's wind terms (magnetic_braking's outer_point_wind_terms) as
+  star-blind kernels with tests; the interface quantities in stab. O28
+  fixed with it.
+- **Phase 4, a mechanism interface** (8716c7e7):
+  transport_mechanisms' compute_mechanism_velocity, slot by slot;
+  the layout declares each mechanism's correction (the shear corrects
+  the GSF) and controls; tests check the slots written and that the
+  controls are the registry's and are copied.
+- **Phase 5, the open rotation bugs**, one measured commit each:
+  O26 J and E_rot of the model the step ends with (1add4edd; history
+  columns only), O27 the surface region's implicit wind term
+  (0ceb4632; one variant moves), O12 the Newton tolerance 1e-14
+  (f1cbabae; all move at round-off, amplified to 2e-4 dex), O11 the
+  dynamical-shear limit (42bd6b41; the five decks with dynamical
+  shear), O17 the braking's 1/G, wind switch and tau_cz (920e6022,
+  63b8325c, c5520bc0; the 14 Matt-law decks with surface transport for
+  the first), O13 a region's end cell and write-back (ed8f7af6; no deck
+  reaches it), O14 the late species checked, at most 16 iterations
+  (a62b9741), O15 the safeguard removed (6574fd95), O25 constant j at
+  the centre (8fb3c67b), max_diffusion_iters defaults to 10 (94755a59),
+  O16 settling on copies and the MOD (c66901c9; the 23 settling decks,
+  3e-5 dex in log L at 4.57 Gyr). The author questions on O13, O15 and
+  O25 were answered with the bug list's proposed defaults; the bug list
+  records them as revisable. Found O29 (open).
+- **Phase 6, cleanup** (d51f2ea7, 13f9a1ba, 1ee8e6ed, 21d88db0,
+  2f4a8f78): the commented-out code (830 lines) in rotation/retired;
+  the thresholds as named parameters; the shear kernel pure (the
+  dispatcher reports dynamical shear); star%omega_mid is
+  star%omega_substep; rotation_messages (rotation_report to the terminal
+  and the run log, rotation_note to the run log too with solver
+  diagnostics).
+- **Learned:** build with the default target (`make`, not `make yrec`):
+  only the default adds -O3, and make does not rebuild objects when the
+  flags change, so an unoptimized test build looked like a
+  code-generation sensitivity until the flags were found. git's stash
+  list is shared by every worktree. The machine-local MESA-format
+  baseline of the rotating solar model pins history.data: reseed it
+  after a fix that moves it.
+- **Still open:**
+  1. O29: the dynamical-shear limit takes the mean gravity's sign (only
+     beyond break-up), and that run ends with exit status 0 after a
+     BSSTEP error.
+  2. The sub-step re-burns, settles and burns deuterium on the
+     interpolated model through core (Stage C's item 2).
+  3. Argument lists of 15 to 20 remain where drivers pass model arrays
+     one by one (Stage C's item 3).
+  4. The constant-j law (walpcz <= -2) spins a convection zone's base
+     beyond break-up once a small radiative core forms (O25's variant
+     stops at 1.67 Myr): physics for the authors.

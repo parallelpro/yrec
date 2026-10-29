@@ -82,6 +82,8 @@ The README there has the table and the steps.
 --coverage in DIR and measures gcov line coverage of rotation/ under
 the two test programs and the decks given. With the rotating
 configuration-matrix decks, the rotating variants (50 Myr) and the
-rescale-only rotating deck: 92.7% of 2203 executable lines. The unrun
-lines are the checks' unreachable branches and the gradient-reversal
-safeguard, which acts only above 1 rad/s (O15).
+rescale-only rotating deck: 96.9% of 2150 executable lines (92.7% of
+2203 before the checks' unreachable branches and the gradient-reversal
+safeguard, which acted only above 1 rad/s, were removed: O15). Every
+file is above 90%; the checks, the braking, the mechanisms' dispatcher
+and the region's transport are at 100%.

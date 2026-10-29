@@ -42,8 +42,9 @@ In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
 These open items depend on what the code was meant to do, not only on what it does:
 
 - **O20:** is the calibration's dL/dα 0.0139 or 0.139?
-- **O12:** what tolerance should the solid-body Newton iteration stop at?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
+
+Answered with the bug list's proposed defaults on 2026-10-28, revisable: O12 (1e-14), O13 (the end cell includes an adjacent convection zone in its sums and its write-back), O15 (the safeguard removed), O25 (a convection zone reaching the centre is a solid body under walpcz ≤ -2).
 
 ### Summary
 
