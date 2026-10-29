@@ -720,19 +720,25 @@ contains
 ! weak-screening exponent Lambda_0 z_tilde Z1 Z2 is at least 5 for every
 ! reaction, so each is strongly screened. Its rates' d ln rate/d ln T and
 ! d ln rate/d ln rho against centred differences (1e-4 dex), and the
-! screening's effect: the pp rate with strong screening is below the
-! one weak screening (forced with a threshold of 1e3) gives there.
+! screening itself: ln(pp rate) less its value with weak screening
+! (forced with a threshold of 1e3) is the strong exponent less the weak
+! one, the strong one from Graboske et al.'s formula with pp's constants
+! (Z1 Z2 = 1, z53 = 1.175, z43 = 0.52, z23 = -0.413), and it is negative.
       subroutine check_strong_screening()
          double precision, parameter :: h = 1.0d-4, logt = 7.0d0, logd = 6.0d0
          type(nuclear_rates) :: nr0, nrp, nrm, nr_weak
          type(zone_conditions) :: zone
          type(net_settings_t) :: s
-         double precision :: fd, worst, weak_min
+         double precision :: fd, worst, weak_min, strong, ln_ratio
          integer :: k, ierr
 
          call install_production_settings()
          call compute_zone_conditions(logd, logt, fd_mass, zone)
          weak_min = zone%plasma%weak_unit
+         associate (p => zone%plasma)
+         strong = 0.624d0*p%mean_charge_13*p%lambda0_23*(1.175d0 + &
+              0.316d0*p%mean_charge_13*0.52d0 - 0.737d0*0.413d0/(p%mean_charge*p%lambda0_23))
+         end associate
          call compute_reaction_rates(logd, logt, fd_mass, nr0)
          worst = 0.0d0
          do k = 1, num_reactions
@@ -751,6 +757,7 @@ contains
          call set_net_settings(s, ierr)
          call compute_reaction_rates(logd, logt, fd_mass, nr_weak)
          call install_production_settings()
+         ln_ratio = log(nr0%rate(r_pp)) - log(nr_weak%rate(r_pp))
          write(*,'(a)') "# test_net: strong screening, log T 7, log rho 6: " // &
               "Lambda_0 z_tilde, pp rate (strong, weak), worst derivative error"
          write(*,'(1pe20.12,1pe20.12,1pe20.12,es10.2)') weak_min, nr0%rate(r_pp), &
@@ -758,6 +765,8 @@ contains
          call report("strong screening: in the strong regime, below weak, derivatives " // &
               "vs centred differences (1e-6)", weak_min >= 5.0d0 .and. &
               nr0%rate(r_pp) < nr_weak%rate(r_pp) .and. worst < 1.0d-6)
+         call report("strong screening: the exponent is Graboske et al.'s (1e-10)", &
+              abs(ln_ratio - (strong - weak_min)) < 1.0d-10)
       end subroutine check_strong_screening
 
 ! burn_implicitly's error contract: a step that needs more Newton
