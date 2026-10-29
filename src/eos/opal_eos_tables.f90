@@ -48,7 +48,7 @@ module opal_eos_tables
            opal01_t6_index_lo, opal01_x_grid, opal06, &
            opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
            opal95, opal95_density_index_edge, opal95_t6_index_lo, &
-           opal95_x_grid, opal_shared, opal_eos_var_order, opal_eos_vintage, &
+           opal95_x_grid, opal_shared, opal_eos_vintage, &
            opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad, &
            n_eos_nt_max
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
@@ -113,9 +113,6 @@ module opal_eos_tables
 ! Single-precision literals, as in OPAL (see the module header).
       real(dp), parameter :: opal01_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
       real(dp), parameter :: opal06_x_grid(n_eos_mx) = [0.0, 0.2, 0.4, 0.6, 0.8]
-! Table-column -> eos_output-slot permutation (the identity for all
-! three vintages).
-      integer, parameter :: opal_eos_var_order(n_eos_mv) = [1,2,3,4,5,6,7,8,9,10]
 ! Row of the lowest tabulated T6 at each density column.
       integer, parameter :: opal95_t6_index_lo(n_eos95_nr) = &
            [(56,i=1,37),(54,i=1,7), &
@@ -284,9 +281,8 @@ module opal_eos_tables
            integer :: x_index_lo
 ! density-interpolation weights (xxh is unused)
            real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
-! each table's Z, and the eos_output slot of each table variable
+! each table's Z
            real(dp) :: z_table(n_eos_mx)
-           integer :: eos_index_inverse(10)
 ! the interpolation stencil and orders
            integer :: density_index_1, density_index_2, density_index_3, &
                 density_index_4, t6_index_1, t6_index_2, t6_index_3, &

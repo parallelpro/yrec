@@ -68,6 +68,9 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       real(dp) :: specific_gas_constant_check
       real(dp) :: chi_rho, chi_t, cv, gamma1, gamma2_ratio
       integer :: rad_flag, deriv_order
+! how far the 1995 table's interpolated pressure may be from P
+! (relative) at the density the search found
+      real(dp), parameter :: pressure_check_tolerance = 0.5d-6
 
       ierr = 0
       in_table = .true.
@@ -133,7 +136,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
          output = opal06%eos_output
       end select
       if (opal_layout(vintage)%checks_pressure .and. &
-           abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > 0.5d-6) then
+           abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > pressure_check_tolerance) then
          eos_lines = unwritten_line
          write(eos_lines,*) p_e12, output(opal_layout(vintage)%i_p)
          call eos_report(eos_lines)
@@ -256,11 +259,6 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos01_nt
 
-! NOTE: no D-suffix in the original (rhoofp01.f) -- preserved
-! verbatim: parsed as a single-precision constant and then widened to
-! double precision, which is NOT bit-identical to the correctly-
-! rounded double value.
-      real(dp), parameter :: rad_const_over_c = 1.8914785e-3
 
 ! --- locals ---
       integer :: t6_scan_idx
@@ -295,7 +293,7 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
 
       ierr = 0
 
-      rat = rad_const_over_c
+      rat = opal_layout(iv_opal01)%rad_const_over_c
 ! The radiation pressure is deliberately not subtracted from the target
 ! here (the original's IF(IRAD.EQ.1) PR=4/3*RAT*T6**4 is commented out);
 ! rad_flag instead adds it to pressure_max/pressure_min below.
@@ -448,7 +446,9 @@ end function rhoofp01
 ! = the table's n_vars) makes every slot that of gas plus radiation
 ! (add_radiation); a density search's trial call (deriv_order = 1) only
 ! adds the radiation pressure to its pressure slot, since its other
-! slots are an earlier call's.
+! slots are an earlier call's. Without it (rad_flag = 0, the 2006
+! density search's trial calls) the slots are the gas's, the cv slot in
+! the table's units.
 !
 ! The 2006 slots (the 2001 table lacks slot 4):
 !   v%eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
@@ -484,11 +484,6 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
       real(dp) :: species_number_fraction(7)
 
-! NOTE: this literal has no D0 suffix in the original (esac06.f) --
-! preserved verbatim: it is parsed as a single-precision constant and
-! then widened to double precision, which is NOT bit-identical to the
-! correctly-rounded double value.
-      real(dp), parameter :: molar_gas_constant_mbcc = 83.14511
 ! --- locals ---
       integer :: x_loop_index
       real(dp) :: t6_value, density_value   ! working copies (slt/slr)
@@ -799,10 +794,10 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 ! stale E and cv slots by T6 and moles*R/mu on every call.
       if (lay%i_e <= deriv_order) &
            v%eos_output(lay%i_e) = v%eos_output(lay%i_e)*t6_temperature ! interpolated in E/T6
-      mean_molecular_weight = gmass01(hydrogen_fraction, opal_shared%table_metal_fraction(vintage), &
-           total_moles, ground_state_energy, metal_mole_fraction, &
-           species_number_fraction)
       if (rad_flag == 1 .and. deriv_order >= lay%n_vars) then
+         mean_molecular_weight = gmass01(hydrogen_fraction, opal_shared%table_metal_fraction(vintage), &
+              total_moles, ground_state_energy, metal_mole_fraction, &
+              species_number_fraction)
          call add_radiation(v, lay, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else if (rad_flag == 1) then
@@ -811,10 +806,6 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 ! to the pressure alone, as add_radiation would
          v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
               opal_radiation_pressure(lay, t6_temperature)
-      else
-         if (lay%i_cv <= deriv_order) &
-              v%eos_output(lay%i_cv) = v%eos_output(lay%i_cv)* &
-              total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return
       end if

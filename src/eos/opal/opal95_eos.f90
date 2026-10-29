@@ -20,8 +20,8 @@ module opal95_eos
            i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
            i_opal_gamma2_ratio, i_opal_gamma3m1, i_opal_p, i_opal_s, &
            iv_opal95, n_eos95_nr, n_eos95_nt, n_eos_mv, n_eos_mx, opal95, &
-           opal95_density_index_edge, opal95_t6_index_lo, opal95_x_grid, &
-           opal_shared, opal_eos_var_order, opal_eos_vintage95, opal_flag_set, &
+           opal_layout, opal_vintage_layout, &
+           opal_shared, opal_eos_vintage95, opal_flag_set, &
            opal_rho_not_found, quad
       use physical_constants, only: gas_constant
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
@@ -30,10 +30,11 @@ module opal95_eos
       private
       public :: esac, rhoofp, find_opal95_ramp
 
-! radsub's constants: a/c [Mb/T6^4], and the ratio of the latest energy
-! unit (N_A k in erg/eV, 0.9648575e12) to the older one the 1995 tables
-! were computed with (0.9652e12), which rescales P and S
-      real(dp), parameter :: opal95_rad_const_over_c = 1.8914785d-3
+! the 1995 row of opal_layout (its table's size, grids, slots and
+! radiation constants); and radsub's ratio of the latest energy unit
+! (N_A k in erg/eV, 0.9648575e12) to the older one the 1995 tables were
+! computed with (0.9652e12), which rescales P and S
+      type(opal_vintage_layout), parameter :: lay95 = opal_layout(iv_opal95)
       real(dp), parameter :: opal95_unit_ratio = 0.9648575d0/0.9652d0
 
 contains
@@ -73,7 +74,7 @@ subroutine find_opal95_ramp(temperature, log10_density, ramp_factor, &
          return
       end if
       call find_opal_ramp(nt, opal95%t6_grid, opal95%t_row_index, opal95%density_edge_at_t, &
-           opal95_density_index_edge, opal95%density_grid, t6, log10_density, ramp_factor, &
+           lay95%density_index_edge, opal95%density_grid, t6, log10_density, ramp_factor, &
            in_opal_table, needs_ramp, ierr)
 
 end subroutine find_opal95_ramp
@@ -102,8 +103,6 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos95_nt
 
-      real(dp), parameter :: rad_const_over_c = 1.8914785d-3
-
 ! --- locals ---
       real(dp) :: rat, radiation_pressure, pressure_no_rad
       real(dp) :: hydrogen_fraction_dbg, t6_dbg, density_dbg
@@ -120,7 +119,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
 
       ierr = 0
 
-      rat = rad_const_over_c
+      rat = lay95%rad_const_over_c
 ! The radiation pressure is deliberately not subtracted from the target
 ! here (the original's IF(IRAD.EQ.1) PR=4/3*RAT*T6**4 is commented out);
 ! rad_flag instead adds it to pressure_max/pressure_min below.
@@ -144,7 +143,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       hi_idx = mx
     do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction <= opal95_x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction <= lay95%x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -169,8 +168,8 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       t6_bisect_idx = lo_idx
 
       pressure_max = v%eos_table(x_bisect_idx,1,t6_bisect_idx, &
-           opal95_density_index_edge(t6_bisect_idx))*t6_temperature* &
-           v%density_grid(opal95_density_index_edge(t6_bisect_idx)) + &
+           lay95%density_index_edge(t6_bisect_idx))*t6_temperature* &
+           v%density_grid(lay95%density_index_edge(t6_bisect_idx)) + &
            rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
       pressure_min = v%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
            v%density_grid(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
@@ -181,7 +180,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
          return
       end if
 
-      density_trial1 = v%density_grid(opal95_density_index_edge(t6_bisect_idx))* &
+      density_trial1 = v%density_grid(lay95%density_index_edge(t6_bisect_idx))* &
            pressure_no_rad/pressure_max
       call esac(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
            rad_flag, ierr, in_table)
@@ -212,8 +211,8 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
          end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
-         if (density_trial2 > v%density_grid(opal95_density_index_edge(t6_bisect_idx))) &
-              density_trial2 = v%density_grid(opal95_density_index_edge(t6_bisect_idx))
+         if (density_trial2 > v%density_grid(lay95%density_index_edge(t6_bisect_idx))) &
+              density_trial2 = v%density_grid(lay95%density_index_edge(t6_bisect_idx))
          call esac(v, hydrogen_fraction, t6_temperature, density_trial2, 1, &
               rad_flag, ierr, in_table)
          if (ierr /= 0 .or. .not. in_table) then
@@ -279,12 +278,12 @@ end function rhoofp
 !   v%eos_output(10) gamma3-1 (Cox & Guili eq 9.88)
 !
 ! deriv_order sets the maximum index of v%eos_output filled in (e.g.
-! deriv_order=1 gives just the pressure). rad_flag=0 -> no radiation
-! correction; rad_flag=1 -> radiation correction added: to every slot
-! (radsub) on a full call (deriv_order = 10), to the pressure alone on a
-! density search's trial call (its other slots are an earlier call's). opal_eos_var_order(i),i=1,10 sets the order in which the
-! EOS variables are stored in v%eos_output/v%eos_table (by default
-! 1,2,...,10, i.e. unpermuted).
+! deriv_order=1 gives just the pressure). rad_flag=1 adds the radiation
+! correction: to every slot (radsub) on a full call (deriv_order = 10),
+! to the pressure alone on a density search's trial call (its other
+! slots are an earlier call's); rad_flag=0 leaves the gas alone, which
+! only a call for the pressure needs (the cv slot then stays in the
+! table's units).
 subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, in_table)
 
@@ -303,11 +302,10 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       integer, parameter :: mx = n_eos_mx, nr = n_eos95_nr, nt = n_eos95_nt
 
       real(dp) :: species_number_fraction(7)
-      real(dp), parameter :: molar_gas_constant_mbcc = 83.1446304d0
 ! --- locals ---
       integer :: x_loop_index
       real(dp) :: t6_value, density_value   ! working copies (SLT/SLR)
-      integer :: species_idx, index_idx
+      integer :: species_idx
       integer :: lo_idx, hi_idx, mid_idx, result_idx
       integer :: x_index_2, x_index_3, x_index_4, x_index_hi
       real(dp) :: table_sum_2x2, table_sum_3x3, table_sum_3x4, &
@@ -342,14 +340,8 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
 
       if (opal_shared%table_loaded_flag(iv_opal95) /= opal_flag_set) then
          opal_shared%table_loaded_flag(iv_opal95) = opal_flag_set
-         do index_idx = 1, 10
-            do species_idx = 1, 10
-               if (opal_eos_var_order(index_idx) == species_idx) &
-                    v%eos_index_inverse(index_idx) = species_idx
-            end do
-         end do
          do species_idx = 1, mx
-            v%x_grid_copy(species_idx) = opal95_x_grid(species_idx)
+            v%x_grid_copy(species_idx) = lay95%x_grid(species_idx)
          end do
 !
 ! ..... read the data files
@@ -405,7 +397,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       hi_idx = mx
     do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction <= opal95_x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction <= lay95%x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
@@ -423,8 +415,8 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
          x_index_4 = 2
          x_index_hi = 1
       end if
-      if ((hydrogen_fraction <= opal95_x_grid(2)+1.0d-7) .or. &
-           (hydrogen_fraction >= opal95_x_grid(mx-2)-1.0d-7)) x_index_hi = x_index_3
+      if ((hydrogen_fraction <= lay95%x_grid(2)+1.0d-7) .or. &
+           (hydrogen_fraction >= lay95%x_grid(mx-2)-1.0d-7)) x_index_hi = x_index_3
 !
       lo_idx = 2
       hi_idx = nr
@@ -637,34 +629,29 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       if (eos_var_idx > deriv_order) then
 
       pressure_scale = t6_temperature*density
-      v%eos_output(v%eos_index_inverse(i_opal_p)) = v%eos_output(v%eos_index_inverse(i_opal_p))* &
+      v%eos_output(i_opal_p) = v%eos_output(i_opal_p)* &
            pressure_scale   ! interpolated in p/po
 ! Only slots that this call actually re-interpolated (index <= deriv_order)
 ! are rescaled; the original scaled E and cv unconditionally, so the
 ! deriv_order=1 trial calls from the rho(P,T) inversion compounded the
 ! stale E and cv slots by T6 and moles*R/mu on every call.
-      if (v%eos_index_inverse(i_opal_e) <= deriv_order) &
-           v%eos_output(v%eos_index_inverse(i_opal_e)) = v%eos_output(v%eos_index_inverse(i_opal_e))* &
+      if (i_opal_e <= deriv_order) &
+           v%eos_output(i_opal_e) = v%eos_output(i_opal_e)* &
            t6_temperature   ! interpolated in E/T6
 ! dE/dRho (slot 4) is deliberately not rescaled here (YCK commented out
 ! EOS(IRI(4))=EOS(IRI(4))/SQRT(R*T6) in the original).
       mean_molecular_weight = gmass(hydrogen_fraction, opal_shared%table_metal_fraction(iv_opal95), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
-      if (rad_flag == 1 .and. deriv_order >= 10) then
+      if (rad_flag == 1 .and. deriv_order >= lay95%n_vars) then
          call radsub(v, t6_temperature, density, total_moles, &
               mean_molecular_weight)
       else if (rad_flag == 1) then
 ! a density search's trial call (only the pressure slot is fresh, the
 ! others hold an earlier call's values): the pressure alone, as radsub
 ! makes it
-         v%eos_output(v%eos_index_inverse(i_opal_p)) = &
-              (v%eos_output(v%eos_index_inverse(i_opal_p)) + &
+         v%eos_output(i_opal_p) = (v%eos_output(i_opal_p) + &
               opal95_radiation_pressure(t6_temperature))*opal95_unit_ratio
-      else
-         if (v%eos_index_inverse(i_opal_cv) <= deriv_order) &
-              v%eos_output(v%eos_index_inverse(i_opal_cv)) = v%eos_output(v%eos_index_inverse(i_opal_cv))* &
-              total_moles*molar_gas_constant_mbcc/mean_molecular_weight
       end if
       return
       end if
@@ -812,7 +799,6 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
       real(dp), intent(in) :: total_moles
       real(dp), intent(in) :: mean_molecular_weight
 
-      real(dp), parameter :: molar_gas_constant_mbcc = 83.1446304d0
 ! --- locals ---
       real(dp) :: moles_per_ev, radiation_pressure, &
            radiation_energy, radiation_entropy
@@ -822,19 +808,19 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
            gamma2_over_gamma2_minus1
       real(dp) :: de_drho_at_t
 
-      moles_per_ev = total_moles*molar_gas_constant_mbcc  ! Mb-cc/unit T6
+      moles_per_ev = total_moles*lay95%molar_gas_constant_mbcc  ! Mb-cc/unit T6
 
       radiation_pressure = opal95_radiation_pressure(t6_temperature)   ! Mb
       radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
-      total_pressure = v%eos_output(v%eos_index_inverse(i_opal_p)) + radiation_pressure
-      total_energy = v%eos_output(v%eos_index_inverse(i_opal_e)) + radiation_energy
-      total_entropy = v%eos_output(v%eos_index_inverse(i_opal_s)) + radiation_entropy
-      chi_rho = v%eos_output(v%eos_index_inverse(i_opal_chi_rho))*v%eos_output(v%eos_index_inverse(i_opal_p))/ &
+      total_pressure = v%eos_output(i_opal_p) + radiation_pressure
+      total_energy = v%eos_output(i_opal_e) + radiation_energy
+      total_entropy = v%eos_output(i_opal_s) + radiation_entropy
+      chi_rho = v%eos_output(i_opal_chi_rho)*v%eos_output(i_opal_p)/ &
            total_pressure
-      chi_t6 = (v%eos_output(v%eos_index_inverse(i_opal_p))*v%eos_output(v%eos_index_inverse(i_opal_chi_t)) &
+      chi_t6 = (v%eos_output(i_opal_p)*v%eos_output(i_opal_chi_t) &
            + 4.0d0*radiation_pressure)/total_pressure
-      molar_specific_heat = (v%eos_output(v%eos_index_inverse(i_opal_cv))*moles_per_ev/ &
+      molar_specific_heat = (v%eos_output(i_opal_cv)*moles_per_ev/ &
            mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
       gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
            t6_temperature)
@@ -845,29 +831,29 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
 !     fully-ionized, and has no radiation correction
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
-      de_drho_at_t = v%eos_output(v%eos_index_inverse(i_opal_dedrho)) - radiation_energy/density
+      de_drho_at_t = v%eos_output(i_opal_dedrho) - radiation_energy/density
       total_pressure = total_pressure*opal95_unit_ratio
 ! MHP 10/02 EN is never used; should this be ET=ET*REVISE???
 !      EN=EN*REVISE
       total_entropy = total_entropy*opal95_unit_ratio
 ! DEDRHOA is never used; should this be DEDRHOAT=DEDRHOAT*REVISE????
 !      Dedrhoa=dedrhoa*revise
-      v%eos_output(v%eos_index_inverse(i_opal_p)) = total_pressure
-      v%eos_output(v%eos_index_inverse(i_opal_e)) = total_energy
-      v%eos_output(v%eos_index_inverse(i_opal_s)) = total_entropy
-      v%eos_output(v%eos_index_inverse(i_opal_dedrho)) = de_drho_at_t
-      v%eos_output(v%eos_index_inverse(i_opal_cv)) = molar_specific_heat
-      v%eos_output(v%eos_index_inverse(i_opal_chi_rho)) = chi_rho
-      v%eos_output(v%eos_index_inverse(i_opal_chi_t)) = chi_t6
-      v%eos_output(v%eos_index_inverse(i_opal_gamma1)) = gamma1
-      v%eos_output(v%eos_index_inverse(i_opal_gamma2_ratio)) = gamma2_over_gamma2_minus1
-      v%eos_output(v%eos_index_inverse(i_opal_gamma3m1)) = gamma3_minus1
+      v%eos_output(i_opal_p) = total_pressure
+      v%eos_output(i_opal_e) = total_energy
+      v%eos_output(i_opal_s) = total_entropy
+      v%eos_output(i_opal_dedrho) = de_drho_at_t
+      v%eos_output(i_opal_cv) = molar_specific_heat
+      v%eos_output(i_opal_chi_rho) = chi_rho
+      v%eos_output(i_opal_chi_t) = chi_t6
+      v%eos_output(i_opal_gamma1) = gamma1
+      v%eos_output(i_opal_gamma2_ratio) = gamma2_over_gamma2_minus1
+      v%eos_output(i_opal_gamma3m1) = gamma3_minus1
 end subroutine radsub
 
 ! The radiation pressure (4/3)(a/c) T6^4 in Mb, with the 1995 a/c.
 pure real(dp) function opal95_radiation_pressure(t6_temperature)
       real(dp), intent(in) :: t6_temperature
-      opal95_radiation_pressure = 4.0d0/3.0d0*opal95_rad_const_over_c*t6_temperature**4
+      opal95_radiation_pressure = 4.0d0/3.0d0*lay95%rad_const_over_c*t6_temperature**4
 end function opal95_radiation_pressure
 
 !----------------------------------------------------------------------
@@ -1024,7 +1010,7 @@ subroutine readco(v, ierr)
             read(opal_shared%table_unit,'(A)') blank_line
             read(opal_shared%table_unit,'(A)') blank_line
             if (v%temperature_count_used(x_loop_index,density_row) < &
-                 opal95_t6_index_lo(density_row)) then
+                 lay95%t6_index_lo(density_row)) then
                eos_lines = unwritten_line
                write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') v%hydrogen_fraction_header(x_loop_index), &
                     v%density_grid_table(x_loop_index,density_row)
@@ -1033,14 +1019,14 @@ subroutine readco(v, ierr)
                return
             end if
             do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
-               if (t6_row > opal95_t6_index_lo(density_row)) then
+               if (t6_row > lay95%t6_index_lo(density_row)) then
                   read (opal_shared%table_unit,'(A)') blank_line
                   cycle
                end if
                read (opal_shared%table_unit,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
                     v%t6_list(density_row,t6_row), &
                     v%log10_r_value(density_row,t6_row), &
-                    (v%eos_table(x_loop_index,opal_eos_var_order(var_idx), &
+                    (v%eos_table(x_loop_index,var_idx, &
                     t6_row,density_row), var_idx=1,10)
             end do
             read(opal_shared%table_unit,'(A)') blank_line
@@ -1074,7 +1060,7 @@ subroutine readco(v, ierr)
 !  need edge of table at high rho, fixed T.
       v%t_row_index = 1
       do t6_idx = 1, nt
-         v%density_edge_at_t(t6_idx) = v%density_grid(opal95_density_index_edge(t6_idx))
+         v%density_edge_at_t(t6_idx) = v%density_grid(lay95%density_index_edge(t6_idx))
       end do
 end subroutine readco
 
