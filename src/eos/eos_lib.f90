@@ -104,10 +104,10 @@ end subroutine eos_get
 ! vintage or a Debye-Hueckel degeneracy range with eta_max <= eta_min
 ! (nothing is installed then).
 subroutine eos_init(settings, paths, ierr)
-      character(len=message_length) :: eos_lines(4)
       type(eos_settings_t), intent(in) :: settings
       type(eos_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
       if (settings%opal_vintage < opal_vintage_none .or. &

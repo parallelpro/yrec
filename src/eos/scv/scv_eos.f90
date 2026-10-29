@@ -55,14 +55,14 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
      metal_fraction, r, valid_table_point, ierr)
 
       integer, intent(out) :: ierr
-      integer :: jerr_gate
-
-      integer, parameter :: nts = scv_nt
 
       type(eos_result), intent(inout) :: r
 real(dp), intent(in) :: log10_temperature
 real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(out) :: valid_table_point
+      integer :: jerr_gate
+
+      integer, parameter :: nts = scv_nt
 
 ! Replace 4-pt Lagrange interpolate with 4-pt natural spline
       real(dp) :: press_interp_weights(4), &
@@ -484,13 +484,13 @@ end subroutine compute_scv_envelope_eos
 subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
      metal_fraction, r, valid_table_point)
 
-
-      integer, parameter :: nts = scv_nt
-
       type(eos_result), intent(inout) :: r
 real(dp), intent(in) :: log10_temperature
 real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(out) :: valid_table_point
+
+
+      integer, parameter :: nts = scv_nt
 
       real(dp) :: interp_nodes(4), temp_interp_weights(4), &
            temp_interp_weight_derivs(4), press_interp_weights(4), &
@@ -797,11 +797,11 @@ end subroutine compute_scv_eos
 ! not touched.
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
-
-      integer, parameter :: nts = scv_nt
 ! the envelope composition the table is built for
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction
+
+      integer, parameter :: nts = scv_nt
 
 ! interp_x: the three abscissae handed to inter3, and its weights and
 ! their derivatives
@@ -1066,9 +1066,9 @@ subroutine read_scv_rows(units, h_table_path, ierr)
 end subroutine read_scv_rows
 
 subroutine open_scv_table(path, table_unit, ierr)
-      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: path
       integer, intent(out) :: table_unit, ierr
+      character(len=message_length) :: eos_lines(4)
       open(newunit=table_unit, file=path, status='OLD', iostat=ierr)
       if (ierr /= 0) then
          eos_lines = unwritten_line

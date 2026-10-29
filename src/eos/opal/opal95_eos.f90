@@ -52,15 +52,15 @@ contains
 subroutine find_opal95_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
-      integer, parameter :: nt = n_eos95_nt
-
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-! --- locals ---
-      real(dp) :: t6
 
       integer, intent(out) :: ierr
+
+      integer, parameter :: nt = n_eos95_nt
+! --- locals ---
+      real(dp) :: t6
 
       ierr = 0
 
@@ -92,12 +92,13 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
+
+      integer, intent(out) :: ierr
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos95_nt
 
@@ -114,8 +115,7 @@ real(dp) function rhoofp(v, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: refine_count, shrink_count
       integer, parameter :: max_refine = 30, max_shrink = 20
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       logical :: in_table
 
       ierr = 0
@@ -289,12 +289,16 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, in_table)
 
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            density
       integer, intent(in) :: deriv_order, rad_flag
+
+      integer, intent(out) :: ierr
+! in_table is false when (T6, rho) is outside the table or in an
+! empty region of it
+      logical, intent(out) :: in_table
 
       integer, parameter :: mx = n_eos_mx, nr = n_eos95_nr, nt = n_eos95_nt
 
@@ -315,11 +319,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       real(dp) :: pressure_scale
       real(dp) :: total_moles, ground_state_energy, &
            metal_mole_fraction, mean_molecular_weight
-
-      integer, intent(out) :: ierr
-! in_table is false when (T6, rho) is outside the table or in an
-! empty region of it
-      logical, intent(out) :: in_table
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
       in_table = .true.
@@ -695,16 +695,16 @@ end subroutine esac
 subroutine t6rinterp(v, slr, slt, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
 
       real(dp), intent(in) :: slr, slt
 
+      integer, intent(out) :: ierr
+
 ! --- locals ---
       integer :: hi_loop_count, recompute_flag, cache_slot, t6_grid_idx
       real(dp) :: esactq, esact2, esactq2, dix, dix2
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
 
@@ -965,8 +965,9 @@ end function gmass
 ! opal_shared%table_loaded_flag).
 subroutine readco(v, ierr)
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage95), intent(inout) :: v
+
+      integer, intent(out) :: ierr
 
       integer, parameter :: mx = n_eos_mx, mv = n_eos_mv, nr = n_eos95_nr, nt = n_eos95_nt
 
@@ -977,8 +978,7 @@ subroutine readco(v, ierr)
       integer :: x_idx, var_idx, t6_idx, r_idx, t6_scan_idx
       integer :: density_row, t6_row, record_number
       real(dp) :: unused_field
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
 

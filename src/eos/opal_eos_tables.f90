@@ -440,7 +440,6 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
      in_opal_table, needs_ramp, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: nt
       real(dp), intent(in) :: t6_grid(:), density_edge_at_t(:)
       integer, intent(in) :: density_index_edge(:)
@@ -450,12 +449,13 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
       real(dp), intent(in) :: t6, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
+
+      integer, intent(out) :: ierr
 ! --- locals ---
       real(dp) :: table_edge_density, ramp_start_density
       real(dp) :: t6_top_of_table
       integer :: t6_scan_idx
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
 
@@ -664,9 +664,9 @@ end function gmass01
 ! (opal_shared%table_unit), closing one left open by an earlier
 ! eos_init. The vintage's reader reads it on first use.
 subroutine open_opal_eos_table(opal_eos_table_path, ierr)
-      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: opal_eos_table_path
       integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       logical :: is_open
 
       if (opal_shared%table_unit /= 0) then

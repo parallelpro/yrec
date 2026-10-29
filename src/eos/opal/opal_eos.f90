@@ -56,13 +56,13 @@ contains
 ! to check that the interpolated pressure reproduces P (1995).
 subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr, in_table)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
       integer, intent(out) :: ierr
       logical, intent(out) :: in_table
+      character(len=message_length) :: eos_lines(4)
       real(dp) :: output(n_eos_mv)
       real(dp) :: t_million_k, p_e12, hydrogen_fraction_work, density_cgs, radiation_fraction
       real(dp) :: specific_gas_constant_check
@@ -210,15 +210,15 @@ end subroutine find_opal_edge_ramp
 subroutine find_opal2001_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
 
-      integer, parameter :: nt = n_eos01_nt
-
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-! --- locals ---
-      real(dp) :: t6
 
       integer, intent(out) :: ierr
+
+      integer, parameter :: nt = n_eos01_nt
+! --- locals ---
+      real(dp) :: t6
 
       ierr = 0
 
@@ -247,12 +247,12 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
+      integer, intent(out) :: ierr
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos01_nt
 
@@ -290,7 +290,7 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
            (111,t6_scan_idx=1,7), (110,t6_scan_idx=1,6), &
            (109,t6_scan_idx=1,34), 107, 104, (100,t6_scan_idx=1,40), &
            (99,t6_scan_idx=1,10), 98, 97, 96, 95, 94, 93, 92]
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       logical :: in_table
 
       ierr = 0
@@ -462,7 +462,6 @@ end function rhoofp01
 !   v%eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
 subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
      density, deriv_order, rad_flag, ierr, in_table)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
 
 
@@ -471,6 +470,11 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            density
       integer, intent(in) :: deriv_order, rad_flag
+
+      integer, intent(out) :: ierr
+! in_table is false when (T6, rho) is outside the table or in an
+! empty region of it
+      logical, intent(out) :: in_table
 
       integer, parameter :: mx = n_eos_mx
 ! the vintage's table: its size, its X grid and its name in messages
@@ -502,11 +506,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: total_moles, ground_state_energy, &
            metal_mole_fraction, mean_molecular_weight
       type(opal_vintage_layout) :: lay
-
-      integer, intent(out) :: ierr
-! in_table is false when (T6, rho) is outside the table or in an
-! empty region of it
-      logical, intent(out) :: in_table
+      character(len=message_length) :: eos_lines(4)
 
       nr = opal_layout(vintage)%nr
       nt = opal_layout(vintage)%nt
@@ -864,6 +864,7 @@ subroutine readcoeos(v, vintage, ierr)
       integer, intent(in) :: vintage
 
       type(opal_eos_vintage), intent(inout) :: v
+      integer, intent(out) :: ierr
 
       integer, parameter :: mx = n_eos_mx, mv = n_eos_mv
 ! the vintage's table size
@@ -877,7 +878,6 @@ subroutine readcoeos(v, vintage, ierr)
       integer :: density_row, t6_row, record_number
       integer :: column_idx, table_var_idx
       real(dp) :: unused_field, unused_header(2), unused_species(6), unused_columns(2)
-      integer, intent(out) :: ierr
 
       nr = opal_layout(vintage)%nr
       nt = opal_layout(vintage)%nt
@@ -1012,12 +1012,12 @@ end subroutine t6rinteos
 pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
 
-
-      integer, parameter :: nr = n_eos06_nr, nt = n_eos06_nt
-
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
+
+
+      integer, parameter :: nr = n_eos06_nr, nt = n_eos06_nt
 
       integer :: t6_row, density_row
 ! --- locals ---
@@ -1157,12 +1157,13 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       type(opal_eos_vintage), intent(inout) :: v
 
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            pressure_e12
       integer, intent(in) :: rad_flag
+
+      integer, intent(out) :: ierr
 
       integer, parameter :: mx = n_eos_mx, nt = n_eos06_nt
 
@@ -1182,8 +1183,7 @@ real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: refine_count, shrink_count
       integer, parameter :: max_refine = 30, max_shrink = 20
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       logical :: in_table
 
       ierr = 0
@@ -1414,9 +1414,9 @@ end function opal_radiation_pressure
 ! (T6, rho) outside the table
 subroutine report_outside_table(vintage, t6, density, t6_first, t6_last, &
      density_first, density_last)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: t6, density, t6_first, t6_last, density_first, density_last
+      character(len=message_length) :: eos_lines(4)
       character(len=15) :: id
       id = opal_layout(vintage)%routine_id
       if (vintage == iv_opal01) then
@@ -1444,8 +1444,8 @@ end subroutine report_outside_table
 
 ! the T6 search found no row (the 2001 message never printed its indices)
 subroutine report_t6_search(vintage, hi_idx, lo_idx, mid_idx)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, hi_idx, lo_idx, mid_idx
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id
@@ -1459,9 +1459,9 @@ end subroutine report_t6_search
 
 ! (T6, rho) in an empty region of the table
 subroutine report_empty_region(vintage, hydrogen_fraction, t6, density)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, t6, density
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
@@ -1479,8 +1479,8 @@ end subroutine report_empty_region
 
 ! the X tables of the stencil are not all for one Z
 subroutine report_tables_z(vintage)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A,"Z does not match Z in OEOS01 files you are" ," using")') opal_layout(vintage)%routine_id
@@ -1495,9 +1495,9 @@ end subroutine report_tables_z
 ! an X-interpolated value above 1e20 (an empty entry in the stencil):
 ! the stencil and the three table values from x_first
 subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, t6_idx, density_idx, x_first
       type(opal_eos_vintage), intent(in) :: v
+      character(len=message_length) :: eos_lines(4)
       integer :: k
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
@@ -1519,10 +1519,10 @@ end subroutine report_x_interpolation
 
 ! the run's Z differs from the table's
 subroutine report_run_z(vintage, v, hydrogen_fraction, t6, density)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       type(opal_eos_vintage), intent(in) :: v
       real(dp), intent(in) :: hydrogen_fraction, t6, density
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in OPAL 2001 EOS files", &
@@ -1546,8 +1546,8 @@ end subroutine report_run_z
 
 ! the reader: a density block out of order
 subroutine report_record_number(vintage, record_number, density_row)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, record_number, density_row
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(" Data file incorrect: numtot,jcs= ",2I5)') record_number, density_row
@@ -1561,9 +1561,9 @@ end subroutine report_record_number
 
 ! the reader: a density column with fewer T6 rows than the table needs
 subroutine report_short_column(vintage, hydrogen_fraction, density)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, density
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("problem with data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, density
@@ -1578,8 +1578,8 @@ end subroutine report_short_column
 
 ! the reader: a zero T6
 subroutine report_zero_t6(vintage, t6_idx)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage, t6_idx
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("READCOEOS01: Error:",I4, "-th T6 value is zero")') t6_idx
@@ -1593,8 +1593,8 @@ end subroutine report_zero_t6
 
 ! the T6-rho interpolation's indices out of range
 subroutine report_interpolation_indices(vintage)
-      character(len=message_length) :: eos_lines(4)
       integer, intent(in) :: vintage
+      character(len=message_length) :: eos_lines(4)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("Interpolation indices out of range", ";please report conditions.")')

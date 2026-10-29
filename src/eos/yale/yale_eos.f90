@@ -285,11 +285,11 @@ end subroutine set_saha_constants
 ! at 1e-38 in magnitude, as on the DEC-20 the code was written for.
 subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, &
      s, saha_iterations)
-      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: saha_number_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(saha_system), intent(inout) :: s
       integer, intent(inout) :: saha_iterations
+      character(len=message_length) :: eos_lines(4)
       real(dp) :: c12l
       real(dp) :: c13l
       real(dp) :: c21
@@ -754,11 +754,11 @@ end subroutine start_fully_ionized_solution
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
 ! pr the radiation pressure, pdh the Debye-Hueckel term.
 subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
-      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       type(fermi_solution), intent(inout) :: f
       logical, intent(out) :: converged
+      character(len=message_length) :: eos_lines(4)
       real(dp) :: cden1
       real(dp) :: cden2
       real(dp) :: cden3
@@ -1092,9 +1092,9 @@ end subroutine compute_internal_energy_and_cp
 ! interval index compute_fully_ionized_eos looks up. A non-increasing
 ! abscissa is a corrupt table: ierr = 1.
 subroutine read_fermi_table(fermi_table_path, ierr)
-      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: fermi_table_path
       integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx
       integer :: bin_start, bin_width, bin_end
 

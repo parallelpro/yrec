@@ -48,10 +48,11 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr)
 
 
-      character(len=message_length) :: eos_lines(4)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+
+      integer, intent(out) :: ierr
 
 ! log10 e to the original's nine digits (clni is the exact 1/ln 10):
 ! turns the tables' d/dlog10 rho and d/dlog10 T of grad_ad into d/dln
@@ -60,8 +61,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       real(dp) :: chi_rho, chi_t, log10_specific_heat_cp
       real(dp) :: specific_gas_constant_check
       integer :: ion_idx
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
 
@@ -126,9 +126,9 @@ end subroutine compute_mhd_eos
 ! cannot be opened, or a table that fails mhdst's checks, returns
 ! ierr = 1 with a message in the run log.
 subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
-      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: zams_paths(mhd_n_zams), centre_paths(mhd_n_centre)
       integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
       integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
 
       ierr = 0
@@ -159,9 +159,9 @@ end subroutine read_mhd_tables
 ! open one MHD table (unformatted) on a new unit; ierr = 1, with a
 ! message in the run log, when it cannot be opened
 subroutine open_mhd_table(path, table_unit, ierr)
-      character(len=message_length) :: eos_lines(4)
       character(len=*), intent(in) :: path
       integer, intent(out) :: table_unit, ierr
+      character(len=message_length) :: eos_lines(4)
       open(newunit=table_unit, file=path, status='OLD', form='UNFORMATTED', &
            iostat=ierr)
       if (ierr /= 0) then
@@ -183,6 +183,10 @@ end subroutine open_mhd_table
 ! centre tables above.
 subroutine mhdst(unit_zams, unit_centre, ierr)
 
+      integer, intent(in) :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre)
+
+      integer, intent(out) :: ierr
+
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: nchem0 = mhd_nchem0
@@ -192,8 +196,6 @@ subroutine mhdst(unit_zams, unit_centre, ierr)
       integer, parameter :: nr1m = mhd_nr1m
       integer, parameter :: nr2m = mhd_nr2m
       integer, parameter :: nrxm = mhd_nrxm
-
-      integer, intent(in) :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre)
 
       real(dp) :: unused_zams_table(nt1m,nr1m,ivarc), unused_zams_log10t(nt1m)
 !     Working storage for numerical X-derivatives. Common to all
@@ -211,8 +213,6 @@ subroutine mhdst(unit_zams, unit_centre, ierr)
       integer :: num_chem_species, unused_num_t, unused_num_r, table_index
       real(dp) :: unused_drho
       integer :: ic
-
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -290,6 +290,8 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       real(dp), intent(inout) :: atomic_weight(nchem0), &
            number_abundance(nchem0), mass_fraction(nchem0), mean_molecular_weight
 
+      integer, intent(out) :: ierr
+
       real(dp) :: log10t_down(nt2m), log10t_up(nt2m)
       real(dp) :: table_vars_centroid(nt2m,nr2m,ivar1)
       real(dp) :: table_vars_down(nt2m,nr2m,ivar1)
@@ -305,8 +307,6 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
            unused_mean_molecular_weight_up
       integer :: species_index, temp_check_index, temp_deriv_index, &
            density_deriv_index, var_index
-
-      integer, intent(out) :: ierr
 
       ierr = 0
 
@@ -469,10 +469,10 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
 !     NT is input; NR,TL,tdvar are output
       real(dp), intent(out) :: log_t(max_t_points), &
            table_data(max_t_points,max_rho_points,num_vars)
-! --- locals ---
-      integer :: t_idx, rho_idx, var_idx, rho_count_read
 
       integer, intent(out) :: ierr
+! --- locals ---
+      integer :: t_idx, rho_idx, var_idx, rho_count_read
 
       ierr = 0
 
@@ -559,12 +559,13 @@ end subroutine mhdpx
 !     selects: quadratic across the three ZAMS compositions, cubic
 !     across four of the five centre ones.
 subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
-      character(len=message_length) :: eos_lines(4)
-      integer, parameter :: ivarx = mhd_ivarx
-      integer, parameter :: ndimt = 8
 
       real(dp), intent(in) :: log10_pressure, log10_temperature, &
            hydrogen_fraction
+
+      integer, intent(out) :: ierr
+      integer, parameter :: ivarx = mhd_ivarx
+      integer, parameter :: ndimt = 8
 
       real(dp) :: table_vars(ndimt,ivarx), table_hfrac(ndimt)
       logical :: in_range, use_centre_tables
@@ -581,8 +582,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
            num_points, interp_mode
       real(dp) :: x_grid_origin, x_grid_spacing, &
            var_at_x0, var_at_x1, var_at_x2
-
-      integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
 
       ierr = 0
 
@@ -681,20 +681,20 @@ end subroutine mhdpx1
 ! mhd (mhd_eos_tables).
 subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
      table_vars, table_hfrac, ndimt, in_range, ierr)
-      integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
-      integer, parameter :: nt1m = mhd_nt1m
-      integer, parameter :: nt2m = mhd_nt2m
-      integer, parameter :: ntxm = mhd_ntxm
-      integer, parameter :: nr1m = mhd_nr1m
-      integer, parameter :: nr2m = mhd_nr2m
-      integer, parameter :: nrxm = mhd_nrxm
       integer, intent(in) :: family, ic, ndimt
       real(dp), intent(in) :: log10_pressure, log10_temperature
       real(dp), intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
       logical, intent(out) :: in_range
       integer, intent(out) :: ierr
+      integer, parameter :: ivarc = mhd_ivarc
+      integer, parameter :: nt1m = mhd_nt1m
+      integer, parameter :: nt2m = mhd_nt2m
+      integer, parameter :: ntxm = mhd_ntxm
+      integer, parameter :: nr1m = mhd_nr1m
+      integer, parameter :: nr2m = mhd_nr2m
+      integer, parameter :: nrxm = mhd_nrxm
       real(dp) :: intpt_work1(ivarx,4), intpt_work2(ivarx,4), &
            intpt_y(ivarx), interpolated_vars(ivarx)
 
