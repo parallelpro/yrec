@@ -69,11 +69,11 @@ module network
            num_reactions, num_rate_rows, net_settings, net_settings_t, &
            store_net_settings
       use reaction_rates, only: iso_h1, num_isotopes, &
-           nuclear_rates, zone_conditions, screening_t, shares_rate, &
+           nuclear_rates, screening_t, shares_rate, &
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
            cf88_n14_alpha_gamma, cf88_triple_alpha, num_rate_laws, &
            compute_zone_conditions, compute_screened_rate, &
-           compute_be7_branching, compute_n15_branching, compute_hep_rate, &
+           compute_be7_branching, n15_alpha_fraction, hep_rate_factor, &
            screening_mass_fractions
       implicit none
       private
@@ -319,13 +319,12 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, &
       real(dp), intent(in) :: log_density, log_temperature, &
            mass_frac(num_isotopes)
       type(nuclear_rates), intent(out) :: nr
-      type(zone_conditions) :: zone
       logical :: hydrogen, helium_burning_temperature
       integer :: j, k
 
-      call compute_zone_conditions(log_density, log_temperature, mass_frac, &
-           zone, nr)
       if (log_temperature <= net_settings%logT_cutoffs(1)) return
+      call compute_zone_conditions(log_density, log_temperature, mass_frac, &
+           nr%zone)
       hydrogen = mass_frac(iso_h1) /= 0.0d0
       helium_burning_temperature = &
            log_temperature >= net_settings%logT_cutoffs(4)
@@ -336,14 +335,14 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, &
               .not. helium_burning_temperature) cycle
          k = reactions(j)%rate_row
          call compute_screened_rate(reactions(j)%rate_law, reactions(j)%fit, &
-              k, reactions(j)%screening, zone, &
+              k, reactions(j)%screening, nr%zone, &
               nr%rate(k), nr%dlnrate_dlnrho(k), nr%dlnrate_dlnt(k))
       end do
       if (hydrogen) then
-         call compute_be7_branching(zone, mass_frac(iso_h1), nr)
-         call compute_n15_branching(zone, nr)
+         call compute_be7_branching(nr%zone, mass_frac(iso_h1), nr%be7)
+         nr%frac_n15_pa = n15_alpha_fraction(nr%zone)
       end if
-      call compute_hep_rate(zone, nr)
+      nr%hep = hep_rate_factor(nr%zone)
 end subroutine compute_reaction_rates
 
 !----------------------------------------------------------------------
@@ -369,7 +368,7 @@ pure subroutine compute_network_rates(log_density, log_temperature, xa, &
 ! per s per amu (amu_cgs)
       rate_vec(1:num_reactions) = nr%rate*amu_cgs
       rate_vec(rv_frac_n15_pa) = nr%frac_n15_pa
-      rate_vec(rv_frac_be7_ecap) = nr%frac_be7_ecap
+      rate_vec(rv_frac_be7_ecap) = nr%be7%frac_ecap
 end subroutine compute_network_rates
 
 !----------------------------------------------------------------------

@@ -731,7 +731,7 @@ contains
          integer :: k, ierr
 
          call install_production_settings()
-         call compute_zone_conditions(logd, logt, fd_mass, zone, nr0)
+         call compute_zone_conditions(logd, logt, fd_mass, zone)
          weak_min = zone%plasma%weak_unit
          call compute_reaction_rates(logd, logt, fd_mass, nr0)
          worst = 0.0d0

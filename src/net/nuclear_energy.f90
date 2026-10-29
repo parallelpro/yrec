@@ -22,7 +22,7 @@ module nuclear_energy
       use net_configuration, only: net_settings, num_reactions, r_pp, &
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
       use reaction_rates, only: nuclear_rates, screening_mass_fractions, &
-           deuterium_proton_capture_rate, avogadro_dpg, deuteron_mass_amu
+           compute_deuterium_proton_capture, cap_deuterium_rate
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, n_chains, n_network, &
@@ -90,7 +90,7 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
            deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt)
       reactions_per_gram = reaction_counts(rate, network_mass_fractions(xa))
       call compute_reaction_energies(rate, network_mass_fractions(xa), &
-           nr%frac_n15_pa, nr%frac_be7_ecap, energy_by_slot, energy_by_chain)
+           nr%frac_n15_pa, nr%be7%frac_ecap, energy_by_slot, energy_by_chain)
       call sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
            deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, &
            reactions_per_gram, e)
@@ -98,7 +98,7 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       if (net_settings%calc_neutrinos) &
            call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       if (log_temperature > net_settings%logT_cutoffs(5)) &
-           call add_thermal_neutrino_loss(log_density, log_temperature, nr%t9, xa, e)
+           call add_thermal_neutrino_loss(log_density, log_temperature, nr%zone%t%t9, xa, e)
 end subroutine compute_nuclear_energy
 
 !----------------------------------------------------------------------
@@ -132,35 +132,25 @@ end subroutine energy_path_rates
 pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
      energy, dlneps_dlnrho, dlneps_dlnt)
       use composition_layout, only: i_h1, i_h2
-      use physical_constants, only: cc13
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(in) :: xa(:), turnover_timescale
       logical, intent(in) :: in_surface_cz
       real(dp), intent(out) :: energy, dlneps_dlnrho, dlneps_dlnt
-      real(dp) :: rate, max_rate, zz, tfac, tfac_deriv
+      real(dp) :: rate
+      logical :: capped
 
       energy = 0.0d0
       dlneps_dlnrho = 0.0d0
       dlneps_dlnt = 0.0d0
       if (xa(i_h2) <= min_deuterium) return
-! CF88's fit; zz and tfac are its exponent and polynomial, for the
-! T-derivative (2026 bugsweep Batch 2: T9**(-2/3), as in CF88)
-      zz = -3.72d0*nr%t9_m13
-      tfac = 1.0d0+0.112d0*nr%t9_p13+3.38d0*nr%t9_p23+2.65d0*nr%t9
-      rate = deuterium_proton_capture_rate(nr%density, nr%t9, nr%t9_p13, &
-           nr%t9_p23, nr%t9_m13, nr%t9_m23)
-      tfac_deriv = 0.112d0*nr%t9_p13+6.76d0*nr%t9_p23+7.95d0*nr%t9
+      call compute_deuterium_proton_capture(nr%zone%density, nr%zone%t, rate, &
+           dlneps_dlnt)
       dlneps_dlnrho = 1.0d0
-      dlneps_dlnt = cc13*((tfac_deriv/tfac) -2.0d0 - zz)
-      if (in_surface_cz .and. turnover_timescale > 1.0d0) then
-         max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
-         if (rate*xa(i_h1) > max_rate) then
-            if (xa(i_h1) > 1.0d-6) then
-               rate = max_rate/xa(i_h1)
-               dlneps_dlnrho = 0.0d0
-               dlneps_dlnt = 0.0d0
-            end if
-         end if
+      call cap_deuterium_rate(xa(i_h1), in_surface_cz, turnover_timescale, &
+           rate, capped)
+      if (capped) then
+         dlneps_dlnrho = 0.0d0
+         dlneps_dlnt = 0.0d0
       end if
       energy = rate*xa(i_h1)*xa(i_h2)*q_deuterium_mev*erg_per_mev
 end subroutine compute_deuterium_burning
@@ -259,17 +249,17 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       e%neutrino_flux(i_nu_pp) = eg(r_pp)/four_pi_au2
 ! pep from pp (Neutrino Astrophysics eq. 3.17); xs_pep scales the pep/pp
 ! ratio, so leave it at 1 unless that ratio is meant to change
-      e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%electron_density_na*nr%t9_m12* &
-           (1.0d0 + 20.d0*nr%t9)*eg(r_pp)
+      e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%zone%electron_density_na*nr%zone%t%m12* &
+           (1.0d0 + 20.d0*nr%zone%t%t9)*eg(r_pp)
       e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%extra_cross_section_scale(xs_pep)/four_pi_au2
 ! hep (eq. 3.12), from the screened rate factor of compute_reaction_rates
       e%neutrino_flux(i_nu_hep) = nr%hep
       e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &
            four_pi_au2
       e%be7_set = .true.
-      e%be7_mass_fraction = eg(r_he3he4)/(nr%be7_proton + nr%be7_electron)
-      e%neutrino_flux(i_nu_be7) = eg(r_he3he4)*nr%frac_be7_ecap/four_pi_au2
-      e%neutrino_flux(i_nu_b8) = eg(r_he3he4)*nr%frac_be7_pcap/four_pi_au2
+      e%be7_mass_fraction = eg(r_he3he4)/(nr%be7%proton + nr%be7%electron)
+      e%neutrino_flux(i_nu_be7) = eg(r_he3he4)*nr%be7%frac_ecap/four_pi_au2
+      e%neutrino_flux(i_nu_b8) = eg(r_he3he4)*nr%be7%frac_pcap/four_pi_au2
       e%neutrino_flux(i_nu_n13) = eg(r_pc12)/four_pi_au2
       e%neutrino_flux(i_nu_o15) = eg(r_pn14)/four_pi_au2
       e%neutrino_flux(i_nu_f17) = eg(r_po16)/four_pi_au2

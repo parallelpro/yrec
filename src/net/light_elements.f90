@@ -13,8 +13,8 @@
 module light_elements
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use net_configuration, only: net_settings
-      use reaction_rates, only: deuterium_proton_capture_rate, avogadro_dpg, &
-           deuteron_mass_amu
+      use reaction_rates, only: compute_deuterium_proton_capture, &
+           cap_deuterium_rate, powers_of_t9, t9_powers
       implicit none
       private
       public :: deuterium_rate, burn_deuterium_region, compute_li_be_rates, &
@@ -142,41 +142,33 @@ end function accreted_survival
 ! deuterium_rate (formerly deutrate)
 !----------------------------------------------------------------------
 ! The deuterium burning rate of one shell, per s per amu: X times the
-! D(p,g)He3 rate of deuterium_proton_capture_rate (Caughlan & Fowler
-! 1988, unscreened -- the temperatures are low) times amu_cgs. In the
-! surface convection zone (in_surface_cz), when the turnover time is
-! above 1 s and X above 1e-6, the rate is capped so that deuterium burns
-! no faster than the convection overturns. burn_deuterium_region uses
-! it; the caller stores it.
+! D(p,g)He3 rate of compute_deuterium_proton_capture (Caughlan & Fowler
+! 1988, unscreened -- the temperatures are low) times amu_cgs, capped in
+! the surface convection zone (in_surface_cz) so that deuterium burns no
+! faster than the convection overturns (cap_deuterium_rate; the energy
+! generation applies the same cap). burn_deuterium_region uses it; the
+! caller stores it.
 ! (2026: T9^(-2/3) as in CF88's fit, was T9^(+2/3). 2026-10: one rate
 ! with the energy generation, where this copy had divided N_A by 2
 ! instead of by the deuteron mass, 0.68% apart.)
 pure real(dp) function deuterium_rate(log_density, log_temperature, &
      hydrogen_fraction, in_surface_cz, turnover_timescale)
-      use physical_constants, only: amu_cgs, cc13, ln10
+      use physical_constants, only: amu_cgs, ln10
       use math_lib
       real(dp), intent(in) :: log_density, log_temperature, &
            hydrogen_fraction
       logical, intent(in) :: in_surface_cz
 ! turnover_timescale: s
       real(dp), intent(in) :: turnover_timescale
-! rho (g/cm^3), T9 (T/1e9 K) and its powers
-      real(dp) :: rho, t9, t9p13, t9p23, t9m13, t9m23
-      real(dp) :: rate, max_rate
+      type(t9_powers) :: t
+      real(dp) :: rate, dlnrate_dlnt
+      logical :: capped
 
-      rho = exp(ln10*log_density)
-      t9 = exp(ln10*(log_temperature - 9.0d0))
-      t9p13 = pow(t9, cc13)
-      t9p23 = t9p13**2
-      t9m13 = 1.0d0/t9p13
-      t9m23 = t9m13**2
-      rate = deuterium_proton_capture_rate(rho, t9, t9p13, t9p23, t9m13, t9m23)
-! in the surface convection zone, no faster than the turnover
-      if (in_surface_cz .and. turnover_timescale > 1.0d0) then
-         max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
-         if (rate*hydrogen_fraction > max_rate .and. hydrogen_fraction > 1.0d-6) &
-              rate = max_rate/hydrogen_fraction
-      end if
+      t = powers_of_t9(log_temperature)
+      call compute_deuterium_proton_capture(exp(ln10*log_density), t, rate, &
+           dlnrate_dlnt)
+      call cap_deuterium_rate(hydrogen_fraction, in_surface_cz, &
+           turnover_timescale, rate, capped)
       deuterium_rate = hydrogen_fraction*rate*amu_cgs
 end function deuterium_rate
 
