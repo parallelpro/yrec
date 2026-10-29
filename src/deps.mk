@@ -357,7 +357,7 @@ core/step/composition_step.o: burn_step.mod convection_lib.mod element_diffusion
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
 core/step/mass_change.o: atm_lib.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_log.mod star_info_lib.mod
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
-core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod viscosity.mod
+core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod viscosity.mod
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_geometry.mod convection_lib.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod io_units.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod controls_buffer.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/structure/energy_sources.o: composition_layout.mod

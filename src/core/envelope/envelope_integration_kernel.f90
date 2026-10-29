@@ -159,7 +159,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use io_units
       use physical_constants
       use integration_parameters
-      use numerics_lib
+      use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
+           numerics_bad_input, numerics_step_underflow
       use run_log, only: solver_diagnostics
       implicit none
 

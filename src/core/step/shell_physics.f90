@@ -36,7 +36,6 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
       use physical_constants
       use eos_lib
       use kap_lib
-      use numerics_lib
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s

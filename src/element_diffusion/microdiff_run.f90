@@ -27,7 +27,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: solve_tridiagonal
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
       double precision, intent(in) :: grid_spacing

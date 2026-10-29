@@ -72,7 +72,7 @@ subroutine gravitational_settling(diff_scr, &
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: solve_tridiagonal
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 

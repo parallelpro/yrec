@@ -426,6 +426,24 @@ def check_no_io(src_root):
     return problems
 
 
+# Facades whose users must name what they take (docs/GUIDELINES.md,
+# "Declarations and interfaces", rule 2: every `use` has an only: list;
+# math_lib is the exception, since under USE_CRMATH its procedures
+# shadow the intrinsics). Add a module once its users comply.
+ONLY_LIST_MODULES = ["numerics_lib"]
+
+def check_only_lists(src_root):
+    problems = []
+    use_re = re.compile(r"(?i)^\s*use\s+(\w+)\s*(,\s*only\s*:)?")
+    for f in sorted(src_root.rglob("*.f90")):
+        rel = f.relative_to(src_root).as_posix()
+        for i, line in enumerate(strip_comments(f.read_text(errors="replace")).splitlines(), 1):
+            m = use_re.match(line)
+            if m and m.group(1).lower() in ONLY_LIST_MODULES and not m.group(2):
+                problems.append(f"{rel}:{i}: `use {m.group(1)}` without an only: list")
+    return problems
+
+
 def check_math_lib(src_root):
     """Reproducibility contract (2026): every file calling an elementary
     transcendental must `use math_lib` (so USE_CRMATH builds shadow the
@@ -624,6 +642,13 @@ def main():
     if io_problems:
         print("NO-I/O CONTRACT VIOLATIONS (numerics/, math/):")
         for m in io_problems:
+            print("  " + m)
+        return 1
+
+    only_problems = check_only_lists(SRC)
+    if only_problems:
+        print("ONLY-LIST CONTRACT VIOLATIONS (use <facade>, only: ...):")
+        for m in only_problems:
             print("  " + m)
         return 1
 

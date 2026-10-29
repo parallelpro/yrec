@@ -24,7 +24,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
       use composition_layout, only: json, i_metals
-      use numerics_lib
+      use numerics_lib, only: intrp2, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -284,7 +284,7 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
       use composition_layout, only: json
-      use numerics_lib
+      use numerics_lib, only: intrp2, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 

@@ -57,7 +57,7 @@ subroutine am_transport_grid(chi_grid, sub_physics, &
       use equal_grid
       use star_info_lib, only: json
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: osplin
       use math_lib
       implicit none
       type(transport_grid_state), intent(inout) :: chi_grid
@@ -313,7 +313,7 @@ subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_m
      total_delta_angular_momentum, specific_angular_momentum)
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json
-      use numerics_lib
+      use numerics_lib, only: osplin
       implicit none
       type(transport_grid_state), intent(in) :: chi_grid
 

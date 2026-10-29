@@ -167,7 +167,7 @@ subroutine diffuse_composition(chi_grid, timestep, &
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
       use rotation_messages, only: rotation_report, message_length
-      use numerics_lib
+      use numerics_lib, only: osplin, solve_tridiagonal
       implicit none
       type(transport_grid_state), intent(in) :: chi_grid
 

@@ -170,7 +170,7 @@ subroutine equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, 
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json
       use physical_constants
-      use numerics_lib
+      use numerics_lib, only: osplin
       use math_lib
       implicit none
       type(transport_grid_state), intent(inout) :: chi_grid

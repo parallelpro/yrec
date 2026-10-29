@@ -59,7 +59,7 @@ contains
 subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
      coulomb_log, pressure_coeff, temp_coeff, conc_coeff, ierr)
 
-      use numerics_lib
+      use numerics_lib, only: lubksb, ludcmp
       implicit none
       integer, parameter :: mmax=20, nmax=42
 
