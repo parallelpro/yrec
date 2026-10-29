@@ -40,14 +40,14 @@ The `pow(0, y ≤ 0)` difference is MESA's and kept (2026-10, a revisable defaul
 
 ## 4. Adding a shadowed function
 
-To route another elementary function through math_lib (say `erf`):
+To route another elementary function through math_lib (traced 2026-10-29 with `acosh` on a throwaway branch):
 
-1. Check that crmath provides it (`$MESASDK_DIR/include/crmath.mod`; the wrapper's source lists its functions).
+1. Check that crmath provides it: `gzip -dc $MESASDK_DIR/include/crmath.mod | grep -o "'acosh'"` (crmath has the inverse hyperbolic functions, `expm1`, `log1p`, `log2`, `hypot`, the `*pi` functions; it has no `erf`).
 2. Add it to the `public ::` lines under `#ifdef YREC_CRMATH` in `math_lib.f90`. Under the intrinsic backend nothing is needed: the intrinsic is used.
-3. Run `python3 tools/check_boundaries.py` (in `src/`): it reads the shadowed names from those `public ::` lines, so its callers now must `use math_lib`; add it where the checker asks.
-4. Add a check to `math/test/test_math.f90`, under both backends.
+3. Run `python3 tools/check_boundaries.py` (in `src/`): it reads the shadowed names from those `public ::` lines, so a caller of the function without `use math_lib` in scope is now reported; add the `use` where it asks.
+4. Add a check to `math/test/test_math.f90` that holds under both backends (for `acosh`, `acosh(cosh(1.5))` within a few ulp of 1.5), rebuild both programs (`make test_math test_math_crmath` in `src/`) and regenerate both expected lists (`src/test_math > src/math/test/expected_test_math_intrinsic.out`, `src/test_math_crmath > src/math/test/expected_test_math_crmath.out`, from the repository root). A re-exported crmath function has no code of math_lib's to mutate; a function math_lib defines itself gets a mutation in `math/test/mutate_math.py`.
 
-A function crmath lacks would need a definition in both branches of the `#ifdef`, as `pow` and `exp10` have.
+A function crmath lacks (`erf`) would need a definition in both branches of the `#ifdef`, as `pow` and `exp10` have, and mutations of both.
 
 ## 5. Its test
 
