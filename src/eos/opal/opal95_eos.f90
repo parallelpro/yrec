@@ -30,6 +30,12 @@ module opal95_eos
       private
       public :: esac, rhoofp, find_opal95_ramp
 
+! radsub's constants: a/c [Mb/T6^4], and the ratio of the latest energy
+! unit (N_A k in erg/eV, 0.9648575e12) to the older one the 1995 tables
+! were computed with (0.9652e12), which rescales P and S
+      real(dp), parameter :: opal95_rad_const_over_c = 1.8914785d-3
+      real(dp), parameter :: opal95_unit_ratio = 0.9648575d0/0.9652d0
+
 contains
 
 !----------------------------------------------------------------------
@@ -274,8 +280,9 @@ end function rhoofp
 !
 ! deriv_order sets the maximum index of v%eos_output filled in (e.g.
 ! deriv_order=1 gives just the pressure). rad_flag=0 -> no radiation
-! correction; rad_flag=1 -> radiation correction added (via
-! radsub). opal_eos_var_order(i),i=1,10 sets the order in which the
+! correction; rad_flag=1 -> radiation correction added: to every slot
+! (radsub) on a full call (deriv_order = 10), to the pressure alone on a
+! density search's trial call (its other slots are an earlier call's). opal_eos_var_order(i),i=1,10 sets the order in which the
 ! EOS variables are stored in v%eos_output/v%eos_table (by default
 ! 1,2,...,10, i.e. unpermuted).
 subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
@@ -644,9 +651,16 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       mean_molecular_weight = gmass(hydrogen_fraction, opal_shared%table_metal_fraction(iv_opal95), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
-      if (rad_flag == 1) then
+      if (rad_flag == 1 .and. deriv_order >= 10) then
          call radsub(v, t6_temperature, density, total_moles, &
               mean_molecular_weight)
+      else if (rad_flag == 1) then
+! a density search's trial call (only the pressure slot is fresh, the
+! others hold an earlier call's values): the pressure alone, as radsub
+! makes it
+         v%eos_output(v%eos_index_inverse(i_opal_p)) = &
+              (v%eos_output(v%eos_index_inverse(i_opal_p)) + &
+              opal95_radiation_pressure(t6_temperature))*opal95_unit_ratio
       else
          if (v%eos_index_inverse(i_opal_cv) <= deriv_order) &
               v%eos_output(v%eos_index_inverse(i_opal_cv)) = v%eos_output(v%eos_index_inverse(i_opal_cv))* &
@@ -798,9 +812,6 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
       real(dp), intent(in) :: total_moles
       real(dp), intent(in) :: mean_molecular_weight
 
-      real(dp), parameter :: unit_factor = 0.9648575d0
-      real(dp), parameter :: unit_factor_legacy = 0.9652d0
-      real(dp), parameter :: rad_const_over_c = 1.8914785d-3
       real(dp), parameter :: molar_gas_constant_mbcc = 83.1446304d0
 ! --- locals ---
       real(dp) :: moles_per_ev, radiation_pressure, &
@@ -810,11 +821,10 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
       real(dp) :: molar_specific_heat, gamma3_minus1, gamma1, &
            gamma2_over_gamma2_minus1
       real(dp) :: de_drho_at_t
-      real(dp) :: unit_ratio
 
       moles_per_ev = total_moles*molar_gas_constant_mbcc  ! Mb-cc/unit T6
 
-      radiation_pressure = 4.0d0/3.0d0*rad_const_over_c*t6_temperature**4   ! Mb
+      radiation_pressure = opal95_radiation_pressure(t6_temperature)   ! Mb
       radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
       total_pressure = v%eos_output(v%eos_index_inverse(i_opal_p)) + radiation_pressure
@@ -836,11 +846,10 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
 !     cvt=(eos(5)*molenak/tmass+4.*er/t6)
 !    x  /molenak
       de_drho_at_t = v%eos_output(v%eos_index_inverse(i_opal_dedrho)) - radiation_energy/density
-      unit_ratio = unit_factor/unit_factor_legacy
-      total_pressure = total_pressure*unit_ratio
+      total_pressure = total_pressure*opal95_unit_ratio
 ! MHP 10/02 EN is never used; should this be ET=ET*REVISE???
 !      EN=EN*REVISE
-      total_entropy = total_entropy*unit_ratio
+      total_entropy = total_entropy*opal95_unit_ratio
 ! DEDRHOA is never used; should this be DEDRHOAT=DEDRHOAT*REVISE????
 !      Dedrhoa=dedrhoa*revise
       v%eos_output(v%eos_index_inverse(i_opal_p)) = total_pressure
@@ -854,6 +863,12 @@ pure subroutine radsub(v, t6_temperature, density, total_moles, &
       v%eos_output(v%eos_index_inverse(i_opal_gamma2_ratio)) = gamma2_over_gamma2_minus1
       v%eos_output(v%eos_index_inverse(i_opal_gamma3m1)) = gamma3_minus1
 end subroutine radsub
+
+! The radiation pressure (4/3)(a/c) T6^4 in Mb, with the 1995 a/c.
+pure real(dp) function opal95_radiation_pressure(t6_temperature)
+      real(dp), intent(in) :: t6_temperature
+      opal95_radiation_pressure = 4.0d0/3.0d0*opal95_rad_const_over_c*t6_temperature**4
+end function opal95_radiation_pressure
 
 !----------------------------------------------------------------------
 ! gmass

@@ -31,8 +31,10 @@ program test_eos
       use io_units
       use eos_lib
       use eos_configuration, only: eos_settings
-      use opal_eos_tables, only: opal06
-      use opal_eos, only: esac06, compute_opal_eos, iv_opal06
+      use opal_eos_tables, only: opal06, opal01, opal95, i_opal_cv, i_opal01_cv, &
+           i_opal_p, i_opal01_p
+      use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal06
+      use opal95_eos, only: esac
       use physical_constants, only: gas_constant
       use mhd_eos, only: interpolate_mhd_table
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -753,6 +755,7 @@ end subroutine write_mhd_part
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
 !                          one where Z is the envelope's
 !   settings_checks        eos_init's check of the OPAL vintage
+!   opal_trial_call_checks the 1995 and 2001 density searches' trial calls
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -764,7 +767,45 @@ subroutine check_physics()
       call scv_mean_weight_checks()
       call diffusion_z_checks()
       call settings_checks()
+      call opal_trial_call_checks()
 end subroutine check_physics
+
+! The density searches of the 1995 and 2001 tables call the interpolator
+! for the pressure alone (deriv_order = 1) with the radiation correction;
+! the other slots then hold the last full call's values, and the trial
+! calls leave them so (the radiation correction once rewrote cv from
+! them on every trial call, growing it a hundredfold each time). The
+! pressure is the full call's.
+subroutine opal_trial_call_checks()
+      real(dp), parameter :: x = 0.70d0, t6 = 2.0d0, rho = 0.1d0
+      real(dp) :: cv_full, p_full
+      integer :: k, ierr
+      logical :: covers, ok
+      character(len=256) :: legacy
+      legacy = trim(yrec_input)//"/eos/legacy/"
+      call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
+      call esac(opal95, x, t6, rho, 10, 1, ierr, covers)
+      ok = ierr == 0 .and. covers
+      cv_full = opal95%eos_output(i_opal_cv)
+      p_full = opal95%eos_output(i_opal_p)
+      do k = 1, 20
+         call esac(opal95, x, t6, rho, 1, 1, ierr, covers)
+         ok = ok .and. ierr == 0
+      end do
+      call check("OPAL 1995: trial calls keep the other slots and give the full call's pressure", &
+           ok .and. opal95%eos_output(i_opal_cv) == cv_full .and. opal95%eos_output(i_opal_p) == p_full)
+      call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
+      call esac01(opal01, x, t6, rho, 9, 1, ierr, covers)
+      ok = ierr == 0 .and. covers
+      cv_full = opal01%eos_output(i_opal01_cv)
+      p_full = opal01%eos_output(i_opal01_p)
+      do k = 1, 20
+         call esac01(opal01, x, t6, rho, 1, 1, ierr, covers)
+         ok = ok .and. ierr == 0
+      end do
+      call check("OPAL 2001: trial calls keep the other slots and give the full call's pressure", &
+           ok .and. opal01%eos_output(i_opal01_cv) == cv_full .and. opal01%eos_output(i_opal01_p) == p_full)
+end subroutine opal_trial_call_checks
 
 ! One eos_get at (log T, log P) and (x, z), from a fresh record.
 subroutine eos_at(lt, lp, x, z, res, ierr, atmosphere, comp)

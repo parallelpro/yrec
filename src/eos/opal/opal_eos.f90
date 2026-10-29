@@ -36,6 +36,8 @@ module opal_eos
       implicit none
       private
       public :: compute_opal_eos, find_opal_edge_ramp, esac06
+! for test_eos: the 2001 interpolator's entry point
+      public :: esac01
       public :: iv_opal95, iv_opal01, iv_opal06, opal_layout
 
 contains
@@ -441,6 +443,12 @@ end function rhoofp01
 ! opal_layout, and their messages are written by the report_*
 ! procedures below.
 !
+! With the radiation correction (rad_flag = 1) a full call (deriv_order
+! = the table's n_vars) makes every slot that of gas plus radiation
+! (add_radiation); a density search's trial call (deriv_order = 1) only
+! adds the radiation pressure to its pressure slot, since its other
+! slots are an earlier call's.
+!
 ! The 2006 slots (the 2001 table lacks slot 4):
 !   v%eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
 !   v%eos_output(2) energy, in 1e12 erg/gm (zero at T6=0)
@@ -793,9 +801,15 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       mean_molecular_weight = gmass01(hydrogen_fraction, opal_shared%table_metal_fraction(vintage), &
            total_moles, ground_state_energy, metal_mole_fraction, &
            species_number_fraction)
-      if (rad_flag == 1) then
+      if (rad_flag == 1 .and. deriv_order >= lay%n_vars) then
          call add_radiation(v, lay, t6_temperature, density, total_moles, &
               mean_molecular_weight)
+      else if (rad_flag == 1) then
+! a density search's trial call (only the pressure slot is fresh, the
+! others hold an earlier call's values): the radiation pressure is added
+! to the pressure alone, as add_radiation would
+         v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
+              opal_radiation_pressure(lay, t6_temperature)
       else
          if (lay%i_cv <= deriv_order) &
               v%eos_output(lay%i_cv) = v%eos_output(lay%i_cv)* &
@@ -1340,7 +1354,7 @@ pure subroutine add_radiation(v, lay, t6_temperature, density, total_moles, &
       real(dp) :: gamma3_minus1, gamma1, gamma2_over_gamma2_minus1
 
       moles_per_ev = total_moles*lay%molar_gas_constant_mbcc  ! Mb-cc/unit T6
-      radiation_pressure = 4.0d0/3.0d0*lay%rad_const_over_c*t6_temperature**4   ! Mb
+      radiation_pressure = opal_radiation_pressure(lay, t6_temperature)   ! Mb
       radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
       radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
 
@@ -1385,6 +1399,13 @@ pure subroutine add_radiation(v, lay, t6_temperature, density, total_moles, &
       v%eos_output(lay%i_chi_rho) = chi_rho
       v%eos_output(lay%i_chi_t) = chi_t6
 end subroutine add_radiation
+
+! The radiation pressure (4/3)(a/c) T6^4 in Mb, with the vintage's a/c.
+pure real(dp) function opal_radiation_pressure(lay, t6_temperature)
+      type(opal_vintage_layout), intent(in) :: lay
+      real(dp), intent(in) :: t6_temperature
+      opal_radiation_pressure = 4.0d0/3.0d0*lay%rad_const_over_c*t6_temperature**4
+end function opal_radiation_pressure
 
 !----------------------------------------------------------------------
 ! The 2001 and 2006 interpolators' messages, each vintage's in its

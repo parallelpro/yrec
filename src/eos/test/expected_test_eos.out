@@ -637,4 +637,8 @@ ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
 # test_eos: configuration yale_diffusion_z
 ok   diffusion of Z: an envelope without metals takes the default mixture
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
+# test_eos: configuration opal95
+ok   OPAL 1995: trial calls keep the other slots and give the full call's pressure
+# test_eos: configuration opal2001
+ok   OPAL 2001: trial calls keep the other slots and give the full call's pressure
 test_eos: done
