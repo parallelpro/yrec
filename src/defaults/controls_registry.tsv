@@ -216,7 +216,7 @@ physics	niter1	integer	max_iter_level1	canonical		Henyey iteration limit, level 
 physics	niter2	integer	max_iter_level2	canonical		Henyey iteration limit, level 2	max_iter_level2	ctrl	run
 physics	niter3	integer	max_iter_level3	canonical		Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0.	max_iter_level3	ctrl	run
 physics	niter4	integer	max_iter_level4	canonical		Henyey iteration limit, level 4 (high precision)	max_iter_level4	ctrl	run
-physics	nuse	integer	extrap_order	canonical		The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7	extrap_order	ctrl	run
+physics	nuse	integer	extrap_order	canonical		The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index	extrap_order	ctrl	run
 physics	niter_gs	integer	settling_num_iterations	canonical		Settling: the largest number of iterations of the abundance-change solver	settling_num_iterations	ctrl	run
 physics	optol	real	metal_fraction_match_tolerance	canonical		Opacity tables: tolerance for matching the model's metallicity to a table's	metal_fraction_match_tolerance	ctrl	run
 physics	rcrit	real	critical_reynolds	canonical		Critical Reynolds number for the onset of the secular shear instability	critical_reynolds	ctrl	run

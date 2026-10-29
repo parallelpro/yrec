@@ -406,7 +406,7 @@
       ! (legacy name: niter4)
       max_iter_level4 = 0
 
-      ! The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7
+      ! The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index
       ! (legacy name: nuse)
       extrap_order = 7
 

@@ -20,6 +20,7 @@
 ! one. Each rule names the code it is checked against.
 module controls_check
       use io_units, only: terminal_unit, run_log_unit
+      use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
       implicit none
       private
@@ -30,10 +31,11 @@ module controls_check
 ! (rotation/seculr/transport_checks' max_recorded_iterations;
 ! docs/bug_sweep.md O14).
       integer, parameter :: max_transport_iterations = 16
-! The Bulirsch-Stoer integrator's limits (numerics/bulirsch_stoer.f90):
-! its stage sequence has 11 entries and its extrapolation tableau 7
-! columns; order 1 would index the stage sequence at 0.
-      integer, parameter :: bulirsch_stoer_max_stages = 11, bulirsch_stoer_max_order = 7
+! The Bulirsch-Stoer integrator's limits are numerics_lib's
+! bsstep_max_stages (11, its stage sequence) and bsstep_max_extrap_order
+! (7, its extrapolation tableau's columns); order 1 would index the stage
+! sequence at 0, and an order above the stage count leaves its step-size
+! retry loop without an end.
       integer, parameter :: message_length = 512
 
 contains
@@ -61,7 +63,9 @@ end subroutine warn
 !   - the envelope triangle's size is not positive (with zero area its
 !     walk never contains the model, surface_boundary);
 !   - a rotating run's max_diffusion_iters is outside 1 to 16;
-!   - the Bulirsch-Stoer controls are outside the integrator's limits.
+!   - the Bulirsch-Stoer controls are outside the integrator's limits
+!     (1 <= max_stage_index <= 11, 2 <= extrap_order <= 7, extrap_order
+!     <= max_stage_index) or the tolerance is not positive.
 !   star reads: ctrl%core_overshoot_active,
 !     ctrl%envelope_overshoot_active, ctrl%extrap_order, ctrl%lovstm,
 !     ctrl%max_diffusion_iters, ctrl%max_stage_index,
@@ -100,12 +104,13 @@ subroutine check_controls(s, ierr)
          return
       end if
       if (s%ctrl%tolerance_fraction <= 0.0d0 .or. s%ctrl%max_stage_index < 1 .or. &
-           s%ctrl%max_stage_index > bulirsch_stoer_max_stages .or. s%ctrl%extrap_order < 2 &
-           .or. s%ctrl%extrap_order > bulirsch_stoer_max_order) then
+           s%ctrl%max_stage_index > bsstep_max_stages .or. s%ctrl%extrap_order < 2 &
+           .or. s%ctrl%extrap_order > bsstep_max_extrap_order &
+           .or. s%ctrl%extrap_order > s%ctrl%max_stage_index) then
          write(line,'(1x,a,1pe11.3,a,i0,a,i0)') 'ERROR: the Bulirsch-Stoer controls need' &
               //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to 11 and' &
-              //' extrap_order (NUSE) 2 to 7, not', s%ctrl%tolerance_fraction, ', ', &
-              s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
+              //' extrap_order (NUSE) 2 to 7 and at most IMAX, not', &
+              s%ctrl%tolerance_fraction, ', ', s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
          call report_control(line)
          ierr = 1
          return

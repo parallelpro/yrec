@@ -255,7 +255,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `max_iter_level2` | `niter2` | `max_iter_level2` | ctrl | run | integer | `20` | canonical | Henyey iteration limit, level 2 |
 | `max_iter_level3` | `niter3` | `max_iter_level3` | ctrl | run | integer | `2` | canonical | Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0. |
 | `max_iter_level4` | `niter4` | `max_iter_level4` | ctrl | run | integer | `0` | canonical | Henyey iteration limit, level 4 (high precision) |
-| `extrap_order` | `nuse` | `extrap_order` | ctrl | run | integer | `7` | canonical | The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 |
+| `extrap_order` | `nuse` | `extrap_order` | ctrl | run | integer | `7` | canonical | The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index |
 | `settling_num_iterations` | `niter_gs` | `settling_num_iterations` | ctrl | run | integer | `10` | canonical | Settling: the largest number of iterations of the abundance-change solver |
 | `metal_fraction_match_tolerance` | `optol` | `metal_fraction_match_tolerance` | ctrl | run | real | `1.0d-8` | canonical | Opacity tables: tolerance for matching the model's metallicity to a table's |
 | `critical_reynolds` | `rcrit` | `critical_reynolds` | ctrl | run | real | `1.0d3` | canonical | Critical Reynolds number for the onset of the secular shear instability |

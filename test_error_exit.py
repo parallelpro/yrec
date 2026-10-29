@@ -287,11 +287,12 @@ def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
 
 
 @pytest.mark.parametrize("control, value", [("NUSE", "1"), ("NUSE", "8"), ("IMAX", "12"),
-                                            ("STOLR0", "0.0")])
+                                            ("IMAX", "6"), ("STOLR0", "0.0")])
 def test_bulirsch_stoer_controls_out_of_range(tmp_path, control, value):
     """The envelope's Bulirsch-Stoer controls must fit the integrator
     (numerics/bulirsch_stoer.f90): 1 to 11 stages (IMAX), an order of 2
-    to 7 (NUSE), a positive tolerance (STOLR0). Outside, the controls
+    to 7 (NUSE) and at most IMAX (the deck's NUSE is 7, so IMAX = 6 is
+    rejected), a positive tolerance (STOLR0). Outside, the controls
     read stops with exit 1 and names them."""
     if not YREC.exists():
         pytest.skip("src/yrec not built")
