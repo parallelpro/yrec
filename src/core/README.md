@@ -23,7 +23,7 @@ Its subdirectories follow the layers of `docs/TARGET_ARCHITECTURE.md` §4.1:
 |---|---|
 | **run/** | |
 | `run_driver` | `run_yrec`: the whole run. Reads the controls, sets up the tables, and goes through the run cards, evolving each card's model with `evolve_step`; the calibration verdict at the end of each card. |
-| `run_setup` | `set_up_constants_and_tables` (the physical constants, and the kap/eos/atm table loads through their `*_init`) and `prepare_run` (that, then the Monte-Carlo run range). |
+| `run_setup` | `set_up_constants_and_tables` (the solar units on the star and log10 G, the one run-time constant; the kap/eos/atm settings and table loads through their `*_init`) and `prepare_run` (that, then the Monte-Carlo run range). |
 | `calibration` | The solar and star calibrations: their setup before the run (`setup_*_calibration`) and the check after each card (`check_*_calibration`). |
 | `monte_carlo` | The Monte-Carlo runs: the sampled parameters and the summaries. |
 | `stop_conditions` | The stops: end age, the central-abundance table, the star-calibration target radius. |

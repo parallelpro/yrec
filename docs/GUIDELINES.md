@@ -329,6 +329,10 @@ them as it is rewritten.
    a physics routine gives the right answer without any setup having
    run. The compiler rounds such values correctly; check one against
    the run-time value before converting it in a byte-identical commit.
+   `state/physical_constants` holds every physical constant so; the one
+   value a control can set, log10 G (`cgl`, from `log10_newton_g`), is
+   assigned once by `run_setup`, and a domain takes it from its
+   settings record.
 4. **Slots and species are named:** `xa(i_h1,k)`, not `xa(1,k)`;
    `rate_vec(r_pp)`, not `rate_vec(1)`. A magic number becomes a named
    parameter with its unit and source.

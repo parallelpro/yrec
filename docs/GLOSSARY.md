@@ -41,7 +41,7 @@ Line numbers cited here are for the working tree of 2026-10-10. `src/` is being 
 | Luminosity in the structure | `luminosity_lsun` is **linear** L/L☉. The interface copies used by rotation (`rot_scr%luminosity_interface`) and the pulse files are in erg s⁻¹. |
 | Mass | `m`, `dm` in g; `log_mass`, `log_total_mass` in log₁₀ g. Observables (`star_mass`, `core_cz_mass`, `envelope_mass`, `h_shell_*_mass`) are in M☉. |
 | Radius | `logR` in log₁₀ cm. `log_R_surface` and `envelope_cz_log_radius` are log₁₀(*r*/R☉). `envelope_radius` is in R☉, and `h_shell_*_radius` is *r*/R. |
-| Time | `star%dt` in s, `timestep_yr` in yr, the age `age_gyr` in Gyr. `seconds_per_year` = 3.1558×10⁷ (`core/run/run_setup.f90:57`). |
+| Time | `star%dt` in s, `timestep_yr` in yr, the age `age_gyr` in Gyr. `seconds_per_year` = 3.1558×10⁷ (a parameter of `state/physical_constants.f90`). |
 | Stored logs | All log₁₀. ln 10 is `ln10` (also `clndp`, legacy `CLN`); 1/ln 10 is `clni` (`CLNI`). |
 | Specific energy rates | erg g⁻¹ s⁻¹. Exception: `eps_channels(1:5,:)` holds fractions (trap 4). |
 | Solar units | Set once by `core/run/run_setup.f90` from the namelist values `clsun`/`crsun` and the control `solar_mass_cgs`. The luminosity values are rescaled per Monte-Carlo run. |
@@ -397,17 +397,17 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| ln 10 | — | `ln10`, `clndp` | `CLN`, `CLNDP` | core/run/run_setup.f90:43-44 | Natural log of 10 (two copies). |
-| 1/ln 10 | — | `clni` | `CLNI` | core/run/run_setup.f90:45 | |
-| 4π, log₁₀ 4π, log₁₀(4π/3) | — | `c4pi`, `c4pil`, `c4pi3l` | `C4PI`, `C4PIL`, `C4PI3L` | core/run/run_setup.f90 | |
-| log₁₀ G | dex (cgs) | `cgl` | `CGL` | core/run/run_setup.f90:78-80 | From control `G_cgs` if > 0, else −7.17571. |
-| R_gas | erg mol⁻¹ K⁻¹ | `gas_constant` | `CGAS` | core/run/run_setup.f90:73 | 8.314510×10⁷. |
-| a/3 | erg cm⁻³ K⁻⁴ | `radiation_constant_over_3`, `ca3l` (log₁₀) | `CA3`, `CA3L` | core/run/run_setup.f90:70-71 | Radiation constant over 3 (4σ/3c). |
-| σ | erg cm⁻² s⁻¹ K⁻⁴ | `csig`, `csigl`; `sigma_sb_cgs_legacy` (5.669×10⁻⁵, viscos only) | `CSIG`, `CSIGL` | core/run/run_setup.f90:67-68, state/physical_constants.f90 | Stefan–Boltzmann constant (two values coexist). |
-| — | — | `cmixl2`, `cmixl3`, `cdelrl` | `CMIXL2`, `CMIXL3`, `CDELRL` | core/run/run_setup.f90:91-93 | MLT constants (1/3, 16√2 σ) and the ∇_rad constant. Not powers of the mixing length. |
-| yr | s | `seconds_per_year` | `CSECYR` | core/run/run_setup.f90:57 | 3.1558×10⁷. |
+| ln 10 | — | `ln10`, `clndp` | `CLN`, `CLNDP` | state/physical_constants.f90 (parameters) | Natural log of 10 (two copies). |
+| 1/ln 10 | — | `clni` | `CLNI` | state/physical_constants.f90 (parameter) | |
+| 4π, log₁₀ 4π, log₁₀(4π/3) | — | `c4pi`, `c4pil`, `c4pi3l` | `C4PI`, `C4PIL`, `C4PI3L` | state/physical_constants.f90 (parameters) | |
+| log₁₀ G | dex (cgs) | `cgl`; `log10_newton_g(G_cgs)`, `log10_newton_g_default`; convection's `convection_settings%log10_gravitational_constant` | `CGL` | core/run/run_setup.f90 (`cgl = log10_newton_g(s%ctrl%G_cgs)`), state/physical_constants.f90 | The one run-time constant: log₁₀ of the control `G_cgs` if > 0, else −7.17571 (CODATA 1986's G, rounded in log₁₀). core/, rotation/ and io/ read `cgl`; convection reads its settings record. |
+| R_gas | erg mol⁻¹ K⁻¹ | `gas_constant` | `CGAS` | state/physical_constants.f90 (parameter) | 8.314510×10⁷ (CODATA 1986). |
+| a/3 | erg cm⁻³ K⁻⁴ | `radiation_constant_over_3` | `CA3` | state/physical_constants.f90 (parameter) | Radiation constant over 3 (4σ/3c, with `speed_of_light_cgs`). The log `CA3L` was never read and is gone. |
+| σ | erg cm⁻² s⁻¹ K⁻⁴ | `csig`, `csigl`; `sigma_sb_cgs_legacy` (5.669×10⁻⁵, viscos only) | `CSIG`, `CSIGL` | state/physical_constants.f90 (parameters) | Stefan–Boltzmann constant, 5.67051×10⁻⁵ (CODATA 1986; two values coexist). |
+| — | — | `cmixl2`, `cmixl3`, `cdelrl`; `cmkh` | `CMIXL2`, `CMIXL3`, `CDELRL`; `CMKH` | state/physical_constants.f90 (parameters) | MLT constants (1/3, 16√2 σ), the ∇_rad constant log₁₀[3/(64πσ)], and the Saha constant log₁₀[(2π m_e)^(3/2) k^(5/2)/h³] (from `electron_mass_cgs`, `boltzmann_constant_cgs`, `planck_constant_cgs`). Not powers of the mixing length. |
+| yr | s | `seconds_per_year` | `CSECYR` | state/physical_constants.f90 (parameter) | 3.1558×10⁷. |
 | L☉ | erg s⁻¹ | `star%solar_luminosity_cgs`, `log10_solar_luminosity` | `CLSUN`, `CLSUNL` (`/CONST/`) | core/run/run_setup.f90 | Solar luminosity (namelist `clsun`; rescaled per Monte-Carlo run). |
-| ln10/L☉ | s erg⁻¹ | `star%ln10_over_lsun` | `CLNSUN` | core/run/run_setup.f90:48 | ln 10 divided by L☉. **Not a logarithm** (trap 22). |
+| ln10/L☉ | s erg⁻¹ | `star%ln10_over_lsun` | `CLNSUN` | core/run/run_setup.f90 (`set_up_constants_and_tables`) | ln 10 divided by L☉. **Not a logarithm** (trap 22). |
 | M☉ | g | `star%solar_mass_cgs` (control `ctrl%solar_mass_cgs`), `log10_solar_mass` | `CMSUN`, `CMSUNL` | core/run/run_setup.f90 | Solar mass. |
 | R☉ | cm | `star%solar_radius_cgs`, `log10_solar_radius`; `rsun_cgs_legacy` (microdiff) | `CRSUN`, `CRSUNL` | core/run/run_setup.f90 | Solar radius (namelist `crsun`). |
 
@@ -536,7 +536,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - They do not describe the envelope above the fitting point.
     - `envelope_cz_log_radius` is log₁₀(r/R☉).
 22. **`ln10_over_lsun` is not a log.**
-    - It is ln 10/L☉ in s erg⁻¹ (`core/run/run_setup.f90:48`; comment at `state/star_info_lib.f90:264-267`).
+    - It is ln 10/L☉ in s erg⁻¹ (`set_up_constants_and_tables` in `core/run/run_setup.f90`; comment at `state/star_info_lib.f90:264-267`).
     - Multiplied by m, it gives `cccql` (`core/structure/structure_equations.f90:308`).
 23. **`use_new_rate_variables` (`LNEWVARS`) has nothing to do with reaction rates.**
     - It overwrites the rezoning tolerances `chi_grid_scale` (legacy `HPTTOL`) and the timestep limiters `atime` from the `tol_*`, `flag_*` and `time_*` controls (`setup/user_inputs.f90:196-258`).
