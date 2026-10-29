@@ -126,7 +126,7 @@ subroutine advance_rotation_substep(s, sub_model, sub_physics, &
 ! sub-step (X_D > 1e-14).
       if (s%xa_start(i_h2,s%nz).gt.1.0D-14) call burn_deuterium_over_substep()
       call locate_convection_zones()
-      call rotate_midpoint_model()
+      call rotate_substep_model()
 
 contains
 
@@ -319,18 +319,18 @@ end subroutine locate_convection_zones
 
 ! ---------------------------------------------------------------
 ! The rotation of the interpolated model: omega, the moments of inertia
-! and the shape (eta_squared_mid, mean_radius_mid, di_domega_mid) that
+! and the shape (sub_model's eta_squared, mean_radius and di_domega) that
 ! carry each shell's specific angular momentum star%j_rot on the new
 ! radii, and the moment of inertia of the surface convection zone.
 ! solid_body_mode_flag = 1 acts like force_solid_body_rotation.
-subroutine rotate_midpoint_model()
+subroutine rotate_substep_model()
       if (.not.solid_body_everywhere()) then
 ! Differential rotation: j/m = (I/m) omega shell by shell. First guess,
 ! the thin spherical shell: I/m = (2/3) r^2, omega = j/(I/m), and
 ! I = dm (I/m).
          do i = 1,s%nz
             sub_model%moment_of_inertia(i) = cc23*exp(ln10*2.0D0*sub_model%log_radius(i))
-            s%omega_mid(i) = s%j_rot(i)/sub_model%moment_of_inertia(i)
+            s%omega_substep(i) = s%j_rot(i)/sub_model%moment_of_inertia(i)
             sub_model%moment_of_inertia(i) = s%dm(i)*sub_model%moment_of_inertia(i)
          end do
 ! omega of each shell from star%j_rot and that first guess, iterating
@@ -338,7 +338,7 @@ subroutine rotate_midpoint_model()
 ! zones rotate by their rotation law (omega_from_j).
          call omega_from_j(sub_model%log_density,s%j_rot,sub_model%log_radius, &
               s%log_mass,s%dm,sub_model%am_transport_convective_flag,s%nz, &
-              sub_model%eta_squared,sub_model%moment_of_inertia,s%omega_mid,sub_model%di_domega, &
+              sub_model%eta_squared,sub_model%moment_of_inertia,s%omega_substep,sub_model%di_domega, &
               sub_model%mean_radius,s%disk_gate_age_gyr)
 ! The moment of inertia of the surface convection zone, if there is one.
          if (surface_cz_active) then
@@ -355,7 +355,7 @@ subroutine rotate_midpoint_model()
          solid_zone_end = s%nz
          call solid_body_omega(sub_model%log_density,s%j_rot,sub_model%log_radius, &
               s%log_mass,s%dm,solid_zone_start,solid_zone_end, &
-              sub_model%eta_squared,sub_model%moment_of_inertia,s%omega_mid,sub_model%di_domega, &
+              sub_model%eta_squared,sub_model%moment_of_inertia,s%omega_substep,sub_model%di_domega, &
               sub_model%mean_radius,s%nz,s%disk_gate_age_gyr)
          if (surface_cz_active) then
             moment_of_inertia_cz = sub_model%moment_of_inertia(1)
@@ -364,7 +364,7 @@ subroutine rotate_midpoint_model()
             end do
          endif
       endif
-end subroutine rotate_midpoint_model
+end subroutine rotate_substep_model
 
 end subroutine advance_rotation_substep
 

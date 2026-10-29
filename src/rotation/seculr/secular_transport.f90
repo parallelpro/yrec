@@ -93,7 +93,7 @@ contains
 ! between the sub-step's start and the previous iterate (and averaged
 ! with the previous U), until check_angular_momentum finds j converged.
 ! The other species mix once, at the end.
-! Outputs: star%j_rot and star%xa; star%omega_mid and the shape from
+! Outputs: star%j_rot and star%xa; star%omega_substep and the shape from
 ! the new j; redo_flag, with sub_timestep halved and cut_count raised,
 ! when a check asks for a shorter sub-step; diffusion_solve_ok;
 ! omega_surface and cz_moment_of_inertia of the surface convection zone;
@@ -172,7 +172,7 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
 ! first previous iterate), omega, and the surface omega for the wind
 ! torque. No iterate has been accepted yet.
       specific_angular_momentum_prev(1:s%nz) = specific_angular_momentum_saved(1:s%nz)
-      omega_start(1:s%nz) = s%omega_mid(1:s%nz)
+      omega_start(1:s%nz) = s%omega_substep(1:s%nz)
       wind%omega_start = sub_model%omega_start(s%nz)
       diffusion_solve_ok = .false.
 
@@ -182,7 +182,7 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
 ! (restart_iteration), averaged in turn with the previous velocities,
 ! for a more accurate run of diffusion coefficients.
       do iteration = 1,rotation_settings%max_diffusion_iters
-         omega_surface = s%omega_mid(s%nz)
+         omega_surface = s%omega_substep(s%nz)
          if (iteration > 1) call restart_iteration(s, sub_model, sub_physics, stab, &
               circ_scr, zone_min, zone_max, iteration, omega_start, &
               specific_angular_momentum_saved, total_velocity, transport_active)
@@ -303,9 +303,9 @@ subroutine set_up_interfaces(s, sub_model, sub_physics, stab, zone_min, zone_max
            sub_model%log_pressure, sub_model%log_radius, s%m, sub_model%log_temperature, &
            zone_min, zone_max, s%nz)
       call compute_omega_gradients(zone_min, zone_max, stab%radius_interface, &
-           sub_model%log_radius, s%omega_mid, stab%domega_dlnr)
+           sub_model%log_radius, s%omega_substep, stab%domega_dlnr)
       call compute_quadrupole(stab, &
-           sub_model%log_density, sub_model%mean_gravity, s%omega_mid, s%nz, ierr)
+           sub_model%log_density, sub_model%mean_gravity, s%omega_substep, s%nz, ierr)
 end subroutine set_up_interfaces
 
 ! ---------------------------------------------------------------
@@ -328,18 +328,18 @@ subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
       logical, intent(out) :: transport_active
       call circulation_velocities(stab, sub_physics, circ_scr, &
            zone_min, zone_max, iteration, &
-           sub_model%am_transport_convective_flag, s%nz, s%omega_mid, transport_active, &
+           sub_model%am_transport_convective_flag, s%nz, s%omega_substep, transport_active, &
            total_velocity, s%solar_luminosity_cgs*sub_model%luminosity_lsun(s%nz), &
            sub_model%log_pressure, s%mechanism_velocity)
       if (rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(stab, sub_model%log_density, stab%radius, &
-                total_velocity, zone_min, zone_max, s%omega_mid, s%vfc)
+                total_velocity, zone_min, zone_max, s%omega_substep, s%vfc)
 end subroutine compute_velocities
 
 ! ---------------------------------------------------------------
 ! The start of the second and later iterations. omega is averaged with
 ! its value at the start of the sub-step,
-!   omega_mid = (omega_mid + omega_start)/2,
+!   omega_substep = (omega_substep + omega_start)/2,
 ! and its gradient and the velocities are recomputed from it. Then j/m
 ! goes back to its start, composition slots 1-4 to
 ! sub_model%composition_snapshot, and the convection zones are remixed
@@ -361,10 +361,10 @@ subroutine restart_iteration(s, sub_model, sub_physics, stab, circ_scr, &
       logical, intent(out) :: transport_active
       integer :: i, j
       do i = 1,s%nz
-         s%omega_mid(i) = 0.5D0*(s%omega_mid(i)+omega_start(i))
+         s%omega_substep(i) = 0.5D0*(s%omega_substep(i)+omega_start(i))
       end do
       call compute_omega_gradients(zone_min, zone_max, stab%radius_interface, &
-           sub_model%log_radius, s%omega_mid, stab%domega_dlnr)
+           sub_model%log_radius, s%omega_substep, stab%domega_dlnr)
       call compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
            zone_min, zone_max, iteration, total_velocity, transport_active)
       do i = 1,s%nz
@@ -423,7 +423,7 @@ subroutine spin_down_uncoupled_surface(s, sub_model, wind, zone_max, cz_uncouple
          if (ierr /= 0) return
          call solid_body_omega(sub_model%log_density, s%j_rot, sub_model%log_radius, &
               s%log_mass, s%dm, 1, s%nz, &
-              sub_model%eta_squared, sub_model%moment_of_inertia, s%omega_mid, &
+              sub_model%eta_squared, sub_model%moment_of_inertia, s%omega_substep, &
               sub_model%di_domega, sub_model%mean_radius, s%nz, s%disk_gate_age_gyr)
       endif
 end subroutine spin_down_uncoupled_surface
@@ -515,7 +515,7 @@ subroutine transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid,
          if (.not. solid_body_everywhere()) then
             call outer_point_wind_terms(wind%cz_active .and. zone_end == zone_max, &
                  wind%disk_locked, iteration, s%log_L, sub_timestep, &
-                 chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points), s%omega_mid(s%nz), &
+                 chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points), s%omega_substep(s%nz), &
                  s%star_mass, s%log_Teff, wind%omega_start, wind_now(s), &
                  wind%surface_implicit, wind%surface_implicit_set, &
                  wind%loss_explicit, wind%loss_implicit, fix_omega_at_surface, &
@@ -564,7 +564,7 @@ subroutine check_iterate(s, sub_model, sub_physics, iteration, &
            specific_angular_momentum_saved, sub_model%log_radius, s%log_mass, s%dm, &
            iteration, sub_model%am_transport_convective_flag, s%nz, &
            sub_model%eta_squared, sub_model%moment_of_inertia, s%j_rot, cut_count, &
-           diffusion_solve_ok, redo_flag, s%omega_mid, sub_model%di_domega, &
+           diffusion_solve_ok, redo_flag, s%omega_substep, sub_model%di_domega, &
            sub_model%mean_radius, ierr)
       if (ierr /= 0) return
       if (.not. redo_flag) call check_composition(s, sub_physics, s%xa, iteration, &

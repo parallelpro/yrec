@@ -50,7 +50,7 @@ module rotation_scratch_lib
 ! mid_timestep_model, read by secular_transport and the rest of the
 ! sub-step. Reads follow a write in the same step (the later sub-steps'
 ! seeding reads the previous sub-step's values). Its omega is
-! star%omega_mid, which outlives the step. luminosity_lsun is linear
+! star%omega_substep, which outlives the step. luminosity_lsun is linear
 ! L/Lsun (interpolated from star%luminosity_lsun), not a log, unlike its
 ! log_* neighbours; mean_gravity is star%mean_gravity's; di_domega is
 ! zone_moments_of_inertia's, (omega/2) dI/d omega.

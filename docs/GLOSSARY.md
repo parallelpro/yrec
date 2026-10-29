@@ -294,8 +294,8 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | E_rot,tot | erg | `star%total_rotational_ke` | `SKEROT` | core/model/rezoning.f90, core/model/starting_model.f90 | Total rotational kinetic energy. |
 | max ΔΩ/Ω | — | `star%max_domega_frac` | `DWMAX` | core/step/timestep_control.f90 | Largest fractional change of Ω since the previous model; drives the rotation timestep. |
 | — | Gyr | `star%disk_gate_age_gyr` | `SAGE` (`/DISK/`) | core/step/step_driver.f90:457 | Age compared with `disk_locking_age_gyr` by `disk_locking_engaged()`. |
-| Ω at sub-step start | rad s⁻¹ | `rot_scr%omega_substep_start` | `WMST` (`/OLDROT2/`) | rotation/evolve_angular_momentum.f90 | Ω at the start of the current diffusion sub-step; read at the surface for the wind torque. |
-| mid-sub-step structure | as base | `rot_scr%log_density_mid`, `log_pressure_mid`, `log_temperature_mid`, `log_radius_mid`, `luminosity_lsun_mid` (linear), `star%omega_mid` (outlives the step), `mean_gravity_mid`, `eta_squared_mid`, `moment_of_inertia_mid`, `mean_radius_mid`, `di_domega_mid` ((Ω/2) dI/dΩ), `convective_flag_mid`, `am_transport_convective_flag_mid` | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to the sub-step (its end) for `secular_transport`. |
+| Ω at sub-step start | rad s⁻¹ | `sub_model%omega_start` | `WMST` (`/OLDROT2/`) | rotation/evolve_rotation.f90 | Ω at the start of the current diffusion sub-step; read at the surface for the wind torque. |
+| sub-step structure | as base | `sub_model%log_density`, `log_pressure`, `log_temperature`, `log_radius`, `luminosity_lsun` (linear), `mean_gravity`, `eta_squared`, `moment_of_inertia`, `mean_radius`, `di_domega` ((Ω/2) dI/dΩ), `convective_flag`, `am_transport_convective_flag`; `star%omega_substep` (outlives the step) | locals of `getw`/`midmod` | rotation/mid_timestep_model.f90 | Structure interpolated to the sub-step (its end) for `secular_transport`. |
 
 ### 2.8 Rotational transport (`secular_transport` pipeline)
 
