@@ -24,7 +24,7 @@ contains
 ! by the fixed-step envelope integration, built once per step in
 ! evolve_step before compute_observables, and walks it as one structure
 ! with turnover_from_interior_new. It integrates nothing itself, and
-! star%pphot belongs to the stitched build (its atm_get). The mid-step
+! star%photosphere_logP belongs to the stitched build (its atm_get). The mid-step
 ! consumers (the wind saturation, the deuterium limiter) read the values
 ! stored at the end of the previous step (the _old and pphot0 copies).
 ! Called by read_starting_model and compute_observables.

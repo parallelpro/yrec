@@ -199,8 +199,8 @@ function shell_at(im) result(sh)
       sh%log_pressure_delta = 5.0d-4
       sh%rotational_ke = 0.0d0
       sh%rotational_ke_start = 0.0d0
-      sh%in_overshoot = im >= star%iov1 .and. im <= star%iov2
-      sh%in_surface_cz = im >= star%jcz
+      sh%in_overshoot = im >= star%envelope_overshoot_bottom_index .and. im <= star%envelope_overshoot_top_index
+      sh%in_surface_cz = im >= star%envelope_cz_bottom_index_start
 end function shell_at
 
 ! ---------------------------------------------------------------

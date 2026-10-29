@@ -27,7 +27,7 @@
 ! composition step in between.
 !
 ! Nonzero ierr propagates a callee failure to evolve_step.
-! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L.
+! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L_lsun.
 module henyey_iteration
       use henyey_elimination, only: henyey_solve
       use surface_boundary, only: compute_surface_boundary
@@ -43,7 +43,7 @@ contains
 
 !----------------------------------------------------------------------
 ! refresh_surface_bc: start an iteration level. Sets log L
-! (star%log_L), the log mass fraction inside the fitting point,
+! (star%log_L_lsun), the log mass fraction inside the fitting point,
 !   senv = log m(nz) - log M,
 ! and resets the Saha-state counter. When recompute_surface_bc is set
 ! (forced on for a new triangle, or for a reset one at level 2), it
@@ -76,9 +76,9 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
       ierr = 0
 ! False unless compute_surface_boundary integrates a new envelope.
       envelope_recomputed_flag = .false.
-      s%log_L = log10(s%luminosity_lsun(s%nz))
+      s%log_L_lsun = log10(s%luminosity_lsun(s%nz))
       saha_state = 0
-      s%senv = s%log_mass(s%nz) - s%log_total_mass
+      s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
 ! The surface rotation factors fp and ft for the envelope integrations
@@ -95,14 +95,14 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
 ! Debye-Hueckel species of the outermost shell) and take log P(nz) as
 ! their guess at the fitting-point pressure.
       if (recompute_surface_bc) then
-       hydrogen_fraction = s%xnew
-       metal_fraction = s%znew
+       hydrogen_fraction = s%surface_hydrogen_fraction
+       metal_fraction = s%surface_metal_fraction
        log10_pressure_limit = s%logP(s%nz)
-       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l,s%envelope_fit_coeffs,s%fit_point_pressure,s%fit_point_temperature, &
+       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l_lsun,s%envelope_fit_coeffs,s%fit_point_pressure,s%fit_point_temperature, &
             s%fit_point_radius,tri_orientation,stored_vertex_index, &
             s%stored_envelope_state, &
             start_new_triangle,reset_triangle,saha_state, &
-            s%log_total_mass,s%log_L, &
+            s%log_total_mass,s%log_L_lsun, &
             s%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
@@ -225,18 +225,18 @@ end subroutine linearize_structure_equations
 ! renormalize_luminosity_breakdown; it also guards a nonpositive sum, and
 ! is kept separate on purpose (reports/henyey-wave2.md item 6).
 subroutine renormalize_luminosity_channels()
-       total_luminosity_terms = s%luminosity_breakdown(i_lum_pp1)+s%luminosity_breakdown(i_lum_pp2)+ &
-            s%luminosity_breakdown(i_lum_pp3)+s%luminosity_breakdown(i_lum_cno)+s%luminosity_breakdown(i_lum_3alpha)+ &
-            s%luminosity_breakdown(i_lum_neu)+s%luminosity_breakdown(i_lum_grav)+s%luminosity_breakdown(i_lum_he_c)
+       total_luminosity_terms = s%luminosity_breakdown_lsun(i_lum_pp1)+s%luminosity_breakdown_lsun(i_lum_pp2)+ &
+            s%luminosity_breakdown_lsun(i_lum_pp3)+s%luminosity_breakdown_lsun(i_lum_cno)+s%luminosity_breakdown_lsun(i_lum_3alpha)+ &
+            s%luminosity_breakdown_lsun(i_lum_neu)+s%luminosity_breakdown_lsun(i_lum_grav)+s%luminosity_breakdown_lsun(i_lum_he_c)
 ! the extra energy sources' channel, when there are any (so that they
 ! are not folded into the others)
        if (num_energy_sources() > 0) total_luminosity_terms = total_luminosity_terms + &
-            s%luminosity_breakdown(i_lum_extra)
+            s%luminosity_breakdown_lsun(i_lum_extra)
        if (.not.s%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = s%luminosity_lsun(s%nz)/total_luminosity_terms
           do j = 1,n_lum_channels
-             s%luminosity_breakdown(j) = s%luminosity_breakdown(j)*temp
+             s%luminosity_breakdown_lsun(j) = s%luminosity_breakdown_lsun(j)*temp
           end do
        endif
 end subroutine renormalize_luminosity_channels
@@ -291,7 +291,7 @@ subroutine form_surface_bc_rows()
        s%surface_bc(5) =-temp*s%envelope_fit_coeffs(5)
        s%surface_bc(6) = temp*(s%envelope_fit_coeffs(4)*s%logP(s%nz)+ &
             s%envelope_fit_coeffs(5)*s%logT(s%nz)+ &
-            s%envelope_fit_coeffs(6)-s%log_L)
+            s%envelope_fit_coeffs(6)-s%log_L_lsun)
 end subroutine form_surface_bc_rows
 
 ! ---------------------------------------------------------------
@@ -362,9 +362,9 @@ subroutine set_henyey_correction_factor()
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
 ! The hydrogen- and helium-burning luminosities, for the log line.
-       hydrogen_burn_luminosity = s%luminosity_breakdown(i_lum_pp1) + s%luminosity_breakdown(i_lum_pp2) &
-            + s%luminosity_breakdown(i_lum_pp3) + s%luminosity_breakdown(i_lum_cno)
-       helium_burn_luminosity= s%luminosity_breakdown(i_lum_3alpha) + s%luminosity_breakdown(i_lum_he_c)
+       hydrogen_burn_luminosity = s%luminosity_breakdown_lsun(i_lum_pp1) + s%luminosity_breakdown_lsun(i_lum_pp2) &
+            + s%luminosity_breakdown_lsun(i_lum_pp3) + s%luminosity_breakdown_lsun(i_lum_cno)
+       helium_burn_luminosity= s%luminosity_breakdown_lsun(i_lum_3alpha) + s%luminosity_breakdown_lsun(i_lum_he_c)
        if (converged) s%newton_iterations = iterations_done + 1
 end subroutine set_henyey_correction_factor
 
@@ -379,7 +379,7 @@ subroutine log_henyey_corrections()
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
           write(run_log_unit,70)(s%max_correction_index(j),s%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &
-               helium_burn_luminosity,(s%luminosity_breakdown(j),j=6,7)
+               helium_burn_luminosity,(s%luminosity_breakdown_lsun(j),j=6,7)
    70       format(' CORR',I5,'P',1PE9.2,I5,'T',E9.2,I5,'R',E9.2,I5,'L', &
             E9.2,'  F=',0PF5.3,'  E-HY',1PE10.3,' HE',E10.3,' NU',E10.3, &
             ' G',E10.3)
@@ -415,7 +415,7 @@ subroutine apply_henyey_corrections()
           s%luminosity_lsun(i) = s%luminosity_lsun(i) + &
                correction_factor*s%elim_rhs(4,i)
        end do
-       s%log_L = log10(s%luminosity_lsun(s%nz))
+       s%log_L_lsun = log10(s%luminosity_lsun(s%nz))
        s%log_Teff = s%envelope_fit_coeffs(7)*s%logP(s%nz) + &
             s%envelope_fit_coeffs(8)*s%logT(s%nz) + &
             s%envelope_fit_coeffs(9)

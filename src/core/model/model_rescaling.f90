@@ -105,12 +105,12 @@ contains
 subroutine rescale_surface_x
       if(s%job%rescale_params(2,run_index).gt.0.0d0) then
          if(s%job%rescale_params(2,run_index).le.1.0d0) then
-            x_rescale_factor = s%job%rescale_params(2,run_index)/dmax1(s%xnew,1.0d-20)
+            x_rescale_factor = s%job%rescale_params(2,run_index)/dmax1(s%surface_hydrogen_fraction,1.0d-20)
             do zone_idx = 1,num_zones
                composition(1,zone_idx) = dmin1(s%job%rescale_params(2,run_index), &
                     composition(1,zone_idx)*x_rescale_factor)
             end do
-            s%xnew = s%job%rescale_params(2,run_index)
+            s%surface_hydrogen_fraction = s%job%rescale_params(2,run_index)
             s%job%initial_envelope_x = s%job%rescale_params(2,run_index)
 ! The envelope X, star%envelope_hydrogen_fraction (legacy XENV), is
 ! deliberately left alone: it sets the initial mean molecular weight
@@ -140,7 +140,7 @@ end subroutine rescale_surface_x
 subroutine rescale_interior_z
       if(s%job%rescale_params(3,run_index).gt.0.0d0) then
          if(s%job%rescale_params(3,run_index).le.1.0d0) then
-            delta_z = s%job%rescale_params(3,run_index) - s%znew
+            delta_z = s%job%rescale_params(3,run_index) - s%surface_metal_fraction
             do zone_idx = 1,num_zones
                z_rescale_factor=dmax1(0.d0,composition(3,zone_idx)+delta_z)/ &
                     (composition(3,zone_idx)+1.d-30)
@@ -149,15 +149,15 @@ subroutine rescale_interior_z
                   composition(species_idx,zone_idx) = composition(species_idx,zone_idx)*z_rescale_factor
                end do
             end do
-            s%znew = s%job%rescale_params(3,run_index)
+            s%surface_metal_fraction = s%job%rescale_params(3,run_index)
             s%job%initial_envelope_z = s%job%rescale_params(3,run_index)
 ! Unlike X, the envelope Z (star%envelope_metal_fraction, legacy ZENV)
 ! follows the new Z, since many routines read it (DBG 4/95), and the
 ! EOS mixture with it.
             s%envelope_metal_fraction = s%job%initial_envelope_z
             call eos_set_mixture(s%envelope_hydrogen_fraction, &
-                 s%envelope_metal_fraction, s%amuenv, &
-                 s%fxenv)
+                 s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
+                 s%envelope_number_fractions)
          else
 ! Requested Z above 1: Z is not changed.
             error_species_index = 3
@@ -209,7 +209,6 @@ subroutine rescale_main_sequence_mass
             log_mass_shift = log10(s%job%rescale_params(1,run_index)/star_mass)
             total_mass_log = total_mass_log + log_mass_shift
             star_mass = s%job%rescale_params(1,run_index)
-            s%stotal = total_mass_log
             do zone_idx = 1,num_zones
                shell_mass_log(zone_idx) = shell_mass_log(zone_idx) + log_mass_shift
             end do
@@ -282,7 +281,6 @@ subroutine rescale_hb_total_mass
         total_mass_log=log10(exp10(shell_mass_log(shell_end))+mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_end))))
 
             star_mass = s%job%rescale_params(1,run_index)
-            s%stotal = total_mass_log
             do zone_idx = shell_end+1,num_zones
         shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_end))+ &
              mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_end))))
@@ -313,7 +311,6 @@ subroutine rescale_hb_total_mass
             mass_scale_factor*(exp10(total_mass_log)-exp10(shell_mass_log(shell_begin-1))))
 
             star_mass = s%job%rescale_params(1,run_index)
-            s%stotal = total_mass_log
             do zone_idx = shell_begin,num_zones
       shell_mass_log(zone_idx)=log10(exp10(shell_mass_log(shell_begin-1))+ &
            mass_scale_factor*(exp10(shell_mass_log(zone_idx))-exp10(shell_mass_log(shell_begin-1))))
@@ -415,7 +412,7 @@ end subroutine set_helium_from_x_and_z
 subroutine ramp_interior_z
       if(s%ctrl%use_z_ramp.and.(s%job%rsclzc(run_index).gt.0d0).and.(s%job%rsclzm1(run_index).gt.0d0) &
            .and.(s%job%rsclzm2(run_index).gt.0d0))then
-            z_ramp_slope = (s%znew - s%job%rsclzc(run_index))/(s%job%rsclzm2(run_index)-s%job%rsclzm1(run_index))
+            z_ramp_slope = (s%surface_metal_fraction - s%job%rsclzc(run_index))/(s%job%rsclzm2(run_index)-s%job%rsclzm1(run_index))
             do zone_idx = 1,num_zones
                mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*s%solar_mass_cgs)
                if (mass_fraction_local .lt. s%job%rsclzm1(run_index)) then

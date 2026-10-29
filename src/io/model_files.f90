@@ -70,7 +70,7 @@ subroutine write_mod_model(s, iwrite, replace)
       write(iwrite,'(a,1x,es26.16e3)')  'log_total_mass      ', s%log_total_mass
       write(iwrite,'(a,1x,es26.16e3)')  'star_age_gyr        ', s%age_gyr
       write(iwrite,'(a,1x,es26.16e3)')  'timestep_yr         ', s%timestep_yr
-      write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', s%log_L
+      write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', s%log_L_lsun
       write(iwrite,'(a,1x,es26.16e3)')  'log_Teff            ', s%log_Teff
       write(iwrite,'(a,1x,es26.16e3)')  'mixing_length_alpha ', s%mixing_length_alpha
       write(iwrite,'(a,1x,l1)')         'extended_composition', s%ctrl%use_extended_composition
@@ -160,7 +160,7 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
          case ('timestep_yr')
             read(line,*,iostat=ios,iomsg=msg) name, timestep_yr
          case ('log_L')
-            read(line,*,iostat=ios,iomsg=msg) name, s%log_L
+            read(line,*,iostat=ios,iomsg=msg) name, s%log_L_lsun
          case ('log_Teff')
             read(line,*,iostat=ios,iomsg=msg) name, s%log_Teff
          case ('mixing_length_alpha')
@@ -196,7 +196,7 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
       end do
 
 ! (the energy generation's first call computes the breakdown)
-      s%luminosity_breakdown = 0.0d0
+      s%luminosity_breakdown_lsun = 0.0d0
 end subroutine read_mod_model
 
 ! ---------------------------------------------------------------
@@ -277,7 +277,7 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
 
 ! the header
       read(iread,10,iostat=ios,iomsg=msg) header_keyword,s%model_number,s%nz,s%star_mass, &
-           s%log_Teff,s%log_L,s%log_total_mass, &
+           s%log_Teff,s%log_L_lsun,s%log_total_mass, &
            s%age_gyr,timestep_yr
  10   format(A4,1X,2I5,3F8.5,1X,F14.10,F13.9,F13.0)
       call check_model_read(ios, msg, iread, 'the header', ierr)
@@ -300,7 +300,7 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       if (ierr /= 0) return
 
 ! the luminosities of pp I-III, CNO, 3 alpha, the neutrinos and gravity
-      read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown(j),j=1,7)
+      read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown_lsun(j),j=1,7)
  40   format(10X,7E10.3)
       call check_model_read(ios, msg, iread, 'the luminosities', ierr)
       if (ierr /= 0) return
@@ -311,7 +311,7 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       triangle_orientation = 1D0
       do i = 1,3
        read(iread,70,iostat=ios,iomsg=msg) envelope_record_number,s%triangle_log_teff(i), &
-            s%triangle_log_l(i),s%fit_point_pressure(i), &
+            s%triangle_log_l_lsun(i),s%fit_point_pressure(i), &
             s%fit_point_temperature(i),s%fit_point_radius(i), &
             (s%envelope_fit_coeffs(3*i-3+j),j = 1,3)
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
@@ -498,7 +498,7 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
 
 ! the header (the zone count checked before it indexes anything)
       read(iread,10,iostat=ios,iomsg=msg) header_keyword,model_number,nz,s%star_mass, &
-           s%log_Teff,s%log_L,s%log_total_mass,s%age_gyr, &
+           s%log_Teff,s%log_L_lsun,s%log_total_mass,s%age_gyr, &
            timestep_yr,log_mass_center,log_mass_surface
  10   format(A5,2I8,5F16.12,1PE18.10,0P2F16.12)
       call check_model_read(ios, msg, iread, 'the header', ierr)
@@ -526,7 +526,7 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
 
 ! the luminosities of pp I-III, CNO, 3 alpha, the neutrinos and gravity
 ! (the line 'TLUMX', then the seven values)
-      read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown(j),j=1,7)
+      read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown_lsun(j),j=1,7)
    40 format(10X,1P7E17.9)
       call check_model_read(ios, msg, iread, 'the luminosities', ierr)
       if (ierr /= 0) return
@@ -538,7 +538,7 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
       triangle_orientation = 1D0
       do i = 1,3
          read(iread,50,iostat=ios,iomsg=msg)envelope_record_number,s%triangle_log_teff(i), &
-              s%triangle_log_l(i),s%fit_point_pressure(i), &
+              s%triangle_log_l_lsun(i),s%fit_point_pressure(i), &
               s%fit_point_temperature(i),s%fit_point_radius(i), &
               (s%envelope_fit_coeffs(3*i-3+j),j=1,3)
          call check_model_read(ios, msg, iread, 'the envelope records', ierr)
@@ -578,13 +578,13 @@ subroutine luminosities_to_solar_units(s)
       real(dp) :: largest
       integer :: j
 
-      largest = max(s%luminosity_breakdown(i_lum_pp1), &
-           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
-           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
-           abs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
+      largest = max(s%luminosity_breakdown_lsun(i_lum_pp1), &
+           s%luminosity_breakdown_lsun(i_lum_pp2),s%luminosity_breakdown_lsun(i_lum_pp3), &
+           s%luminosity_breakdown_lsun(i_lum_cno),s%luminosity_breakdown_lsun(i_lum_3alpha), &
+           abs(s%luminosity_breakdown_lsun(i_lum_neu)),s%luminosity_breakdown_lsun(i_lum_grav))
       if (largest > largest_solar_units) then
          do j = 1,7
-            s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
+            s%luminosity_breakdown_lsun(j) = s%luminosity_breakdown_lsun(j)/s%solar_luminosity_cgs
          end do
       end if
 end subroutine luminosities_to_solar_units

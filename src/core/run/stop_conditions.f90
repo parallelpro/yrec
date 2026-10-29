@@ -90,7 +90,7 @@ logical function converged_model_is_nan(s)
       converged_model_is_nan = .true.
       nz = s%nz
       what = ' '
-      if (ieee_is_nan(s%log_L)) then
+      if (ieee_is_nan(s%log_L_lsun)) then
          what = 'log_L'
       else if (ieee_is_nan(s%log_Teff)) then
          what = 'log_Teff'
@@ -160,7 +160,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
       if (s%ctrl%calibrate_star_flag .and. .not. s%star_found_flag) then
          if (mod(s%job%nk,2).eq.0 .and. model_iteration.ne.1) then
-            call check_star_calibration(s, s%log_L, s%log_Teff, &
+            call check_star_calibration(s, s%log_L_lsun, s%log_Teff, &
                  s%age_gyr, s%job%nk)
             if (s%just_passed_target_radius_flag) then
                step_status = step_leave_run_loop
@@ -188,8 +188,8 @@ logical function structure_limit_stop_triggered(s)
       integer :: k
 
       nk = s%job%nk
-      qval = [s%log_L, exp10(s%log_Teff), s%log_g_surface, &
-              s%nu_max]
+      qval = [s%log_L_lsun, exp10(s%log_Teff), s%log_g_surface, &
+              s%nu_max_uhz]
       qup = [s%ctrl%log_L_upper_limit(nk), s%ctrl%Teff_upper_limit(nk), &
              s%ctrl%log_g_upper_limit(nk), s%ctrl%nu_max_upper_limit(nk)]
       qlo = [s%ctrl%log_L_lower_limit(nk), s%ctrl%Teff_lower_limit(nk), &

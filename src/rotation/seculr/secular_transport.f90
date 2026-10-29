@@ -162,9 +162,9 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
       call set_up_interfaces(s, sub_model, sub_physics, stab, zone_min, zone_max, ierr)
       if (ierr /= 0) return
 ! The velocities of the unperturbed model, the first iteration's. The
-! Zahn coupling factor star%vfc is zero unless compute_velocities sets
+! Zahn coupling factor star%zahn_coupling is zero unless compute_velocities sets
 ! it.
-      s%vfc(1:s%nz) = 0.0d0
+      s%zahn_coupling(1:s%nz) = 0.0d0
       iteration = 1
       call compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
            zone_min, zone_max, iteration, total_velocity, transport_active)
@@ -316,7 +316,7 @@ end subroutine set_up_interfaces
 ! (total_velocity, U; each mechanism's on the star) and whether any
 ! transport acts (transport_active), from the surface luminosity (erg/s)
 ! and stab. Under use_zahn_coupling_factor (legacy LVFC), also the Zahn
-! (1992) coupling factor star%vfc, by which diffusion_velocity_scales
+! (1992) coupling factor star%zahn_coupling, by which diffusion_velocity_scales
 ! scales D_mix (gated on LVFC as in the F77 seculr.f, not on LDIFAD).
 subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
      zone_min, zone_max, iteration, total_velocity, transport_active)
@@ -336,7 +336,7 @@ subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
            sub_model%log_pressure, s%mechanism_velocity)
       if (rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(stab, sub_model%log_density, stab%radius, &
-                total_velocity, zone_min, zone_max, s%omega_substep, s%vfc)
+                total_velocity, zone_min, zone_max, s%omega_substep, s%zahn_coupling)
 end subroutine compute_velocities
 
 ! ---------------------------------------------------------------
@@ -412,14 +412,14 @@ subroutine spin_down_uncoupled_surface(s, sub_model, wind, zone_max, cz_uncouple
          do i = zone_max,s%nz
             cz_moment_of_inertia = cz_moment_of_inertia + sub_model%moment_of_inertia(i)
          end do
-         call brake_convection_zone(s%log_L, sub_timestep, cz_mass_bottom, &
+         call brake_convection_zone(s%log_L_lsun, sub_timestep, cz_mass_bottom, &
               cz_mass_top, zone_max, s%nz, rotation_settings%use_wind_torque, omega_surface, &
               s%star_mass, s%log_Teff, cz_moment_of_inertia, &
               s%j_rot, wind_now(s), ierr)
       else if (wind%cz_active .and. solid_body_everywhere()) then
 ! The torque on the whole star: from mass 0 to the total mass, zones
 ! 1..nz; then one omega for the whole star from its new j.
-         call brake_convection_zone(s%log_L, sub_timestep, 0.0D0, &
+         call brake_convection_zone(s%log_L_lsun, sub_timestep, 0.0D0, &
               exp(ln10*s%log_total_mass), 1, s%nz, rotation_settings%use_wind_torque, &
               omega_surface, s%star_mass, s%log_Teff, cz_moment_of_inertia, &
               s%j_rot, wind_now(s), ierr)
@@ -446,7 +446,7 @@ subroutine set_diffusion_coefficients(s, stab, am_diffusion_coeff, mixing_diffus
       double precision :: radius_mid(json)
       integer :: i
       call diffusion_velocity_scales(stab%radius, s%nz, radius_mid, &
-           am_diffusion_coeff, mixing_diffusion_coeff, s%mechanism_velocity, s%vfc)
+           am_diffusion_coeff, mixing_diffusion_coeff, s%mechanism_velocity, s%zahn_coupling)
       do i = 1, s%nz
          s%am_diffusion_coeff(i) = am_diffusion_coeff(i)
          s%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)
@@ -517,7 +517,7 @@ subroutine transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid,
          endif
          if (.not. solid_body_everywhere()) then
             call outer_point_wind_terms(wind%cz_active .and. zone_end == zone_max, &
-                 wind%disk_locked, iteration, s%log_L, sub_timestep, &
+                 wind%disk_locked, iteration, s%log_L_lsun, sub_timestep, &
                  chi_grid%eq_moment_of_inertia(chi_grid%num_eq_points), s%omega_substep(s%nz), &
                  s%star_mass, s%log_Teff, wind%omega_start, wind_now(s), &
                  wind%surface_implicit, wind%surface_implicit_set, &
@@ -612,10 +612,10 @@ function wind_now(s) result(conditions)
       type(star_info), intent(in) :: s
       type(wind_conditions) :: conditions
       conditions = wind_conditions( &
-           turnover_timescale_start=s%convective_turnover_timescale_old, &
+           turnover_timescale_start=s%convective_turnover_timescale_prev, &
            turnover_timescale_end=s%convective_turnover_timescale, &
-           log_pphot_start=s%pphot0, log_pphot_end=s%pphot, &
-           step_fraction=s%fracstep)
+           log_pphot_start=s%photosphere_logP_prev, log_pphot_end=s%photosphere_logP, &
+           step_fraction=s%substep_time_fraction)
 end function wind_now
 
 ! ---------------------------------------------------------------

@@ -213,16 +213,16 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
       yini = 1.0d0 - s%job%rescale_params(2,run_index-2) - s%job%rescale_params(3,run_index-2)
       zini = s%job%rescale_params(3,run_index-2)
       write(s%ctrl%monte_carlo_unit1,50)s%nz,s%job%mixing_length_array(run_index),yini,zini, &
-           s%log_L,local_log_radius
+           s%log_L_lsun,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 ! Record 6: the radius (Rsun) of the base of the surface convection
 ! zone and the mass above it (Msun), and the surface Y, Z and Z/X.
-      write(s%ctrl%monte_carlo_unit1,60)s%envelope_radius,s%envelope_mass,s%xa(i_he4,s%nz), &
+      write(s%ctrl%monte_carlo_unit1,60)s%envelope_radius_rsun,s%envelope_mass_msun,s%xa(i_he4,s%nz), &
            s%xa(i_metals,s%nz),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 ! Record 7: the luminosities (Lsun) of the pp I, pp II, pp III and CNO
 ! channels and of gravitational energy release.
-      write(s%ctrl%monte_carlo_unit1,70)(s%luminosity_breakdown(j),j=1,4),s%luminosity_breakdown(i_lum_grav)
+      write(s%ctrl%monte_carlo_unit1,70)(s%luminosity_breakdown_lsun(j),j=1,4),s%luminosity_breakdown_lsun(i_lum_grav)
  70   format(1P5E10.3)
 end subroutine write_monte_carlo_model
 

@@ -169,7 +169,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! Locate the hydrogen-burning shell and the edges of the convective core
 ! and of the surface convection zone, where they exist.
        call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
-              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_zone_begin,s%h_shell_end_index,s%h_shell_midpoint_zone, &
+              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_bot_index,s%h_shell_top_index,s%h_shell_mid_index, &
               s%has_h_shell)
 ! Burn Li6, Li7 and Be9 on the converged model (burn_light_elements,
 ! below).
@@ -179,7 +179,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
          if (new_atmosphere_fit_needed) then
             call rebuild_envelope(s, target_envelope_mass,s%xa,s%logRho,s%luminosity_lsun,s%logP,s%logR,s%log_mass,s%m,s%dm, &
                             s%log_total_mass,s%logT,s%convective_flag,s%eta_squared,s%i_rot,s%j_rot,qiw,s%mean_radius, &
-                            s%kinetic_energy_rot,s%log_L,s%total_angular_momentum,s%total_rotational_ke,s%log_Teff,s%nz,s%recompute_envelope_triangle,ierr)
+                            s%kinetic_energy_rot,s%log_L_lsun,s%total_angular_momentum,s%total_rotational_ke,s%log_Teff,s%nz,s%recompute_envelope_triangle,ierr)
             if (ierr /= 0) return
 ! The rotational shape factors f_P and f_T (fp_rot, ft_rot) for the
 ! current omega on the new points.
@@ -193,8 +193,8 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
        s%dt_saved = s%dt
        disable_structure_dt_limits = .false.
        call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
-              s%h_shell_midpoint_zone,s%luminosity_breakdown,s%age_gyr,s%timestep_yr,s%job%nk,s%logP,s%logR,s%omega, &
-              s%max_domega_frac,s%h_shell_zone_begin,s%log_Teff, disable_structure_dt_limits)
+              s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%job%nk,s%logP,s%logR,s%omega, &
+              s%max_domega_frac,s%h_shell_bot_index,s%log_Teff, disable_structure_dt_limits)
        if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
 ! With a fixed end age (target_end_age > 0) that this model reached,
 ! compute_timestep has clipped the next timestep to (nearly) zero. Write
@@ -216,7 +216,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
        if (s%job%rescale_kind(s%job%nk).ne.2) s%model_number = s%model_number+1
 ! Assemble the whole converged star (interior, envelope and atmosphere)
 ! into the stitched arrays before the observables: the turnover-time
-! observable walks them, star%pphot comes from this build, and the output
+! observable walks them, star%photosphere_logP comes from this build, and the output
 ! writers below only copy; nothing downstream integrates anything.
        call build_stitched_model(s, ierr)
        if (ierr /= 0) return
@@ -328,13 +328,13 @@ subroutine rezone_or_snapshot
       use math_lib
 ! Rezone the new model, except with the helium-flash option.
           if (.not.s%ctrl%helium_flash_active) then
-             call rezone(s, s%stored_vertex_index, s%reset_triangle, s%h_shell_zone_begin, &
+             call rezone(s, s%stored_vertex_index, s%reset_triangle, s%h_shell_bot_index, &
                   s%has_h_shell, s%total_angular_momentum, &
                   s%total_rotational_ke, ierr)
              if (ierr /= 0) return
 ! The base zone of the surface convection zone, where deuterium burning
 ! is capped (compute_zone_energy, compute_burn_rates).
-               s%jcz = s%envelope_cz_bottom_index
+               s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
             else
 ! Keep the start-of-step structure, which the structure-change timestep
 ! limit (timestep_limit_structure, formerly ptime) compares against.
@@ -352,7 +352,7 @@ subroutine rezone_or_snapshot
 ! The start-of-step rotational kinetic energy of each zone.
             if (s%ctrl%rotation_active) then
                do i = 1,s%nz
-                  s%kinetic_energy_rot_old(i) = s%kinetic_energy_rot(i)
+                  s%kinetic_energy_rot_start(i) = s%kinetic_energy_rot(i)
                end do
             endif
 ! The start-of-step depth of the surface convection zone, for the Li/Be
@@ -487,9 +487,9 @@ subroutine converge_with_rotation
 ! (xa_start, legacy HCOMPP), so that every pass starts from them.
             if (s%job%num_rotation_structure_iters.gt.1) then
                do i = 1,s%nz
-                  s%orig_specific_angular_momentum(i) = s%j_rot(i)
+                  s%j_rot_iteration_start(i) = s%j_rot(i)
                   do j = 1,n_species_extended
-                     s%orig_composition(j,i) = s%xa_start(j,i)
+                     s%xa_iteration_start(j,i) = s%xa_start(j,i)
                   end do
                end do
             endif
@@ -498,7 +498,7 @@ subroutine converge_with_rotation
                if (itrot.gt.1) then
                   do i = 1,s%nz
                      do j = 1,n_species_extended
-                        s%xa_start(j,i) = s%orig_composition(j,i)
+                        s%xa_start(j,i) = s%xa_iteration_start(j,i)
                      end do
                   end do
                endif
@@ -528,7 +528,7 @@ subroutine converge_with_rotation
 ! On repeat passes, restore the start-of-step angular momentum.
                if (itrot.gt.1) then
                   do i = 1,s%nz
-                     s%j_rot(i) = s%orig_specific_angular_momentum(i)
+                     s%j_rot(i) = s%j_rot_iteration_start(i)
                   end do
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
@@ -569,7 +569,7 @@ subroutine burn_light_elements
             if (.not.s%ctrl%rotation_active .or. .not.s%ctrl%instability_transport_active) then
 ! The convection zones at the end of the step.
                call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,radiative_zone_bounds,s%mixed_zone_bounds, &
-                            mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
+                            mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
                if (ierr /= 0) return
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).

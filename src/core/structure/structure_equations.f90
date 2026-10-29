@@ -104,7 +104,7 @@ subroutine start_energy_bookkeeping()
          end do
       end if
       do j = 1,n_lum_channels
-       s%luminosity_breakdown(j) = 0.0d0
+       s%luminosity_breakdown_lsun(j) = 0.0d0
       end do
 end subroutine start_energy_bookkeeping
 
@@ -148,9 +148,9 @@ subroutine gather_shell_state()
           end if
        end if
        sh%rotational_ke = s%kinetic_energy_rot(im)
-       sh%rotational_ke_start = s%kinetic_energy_rot_old(im)
-       sh%in_overshoot = im >= s%iov1 .and. im <= s%iov2
-       sh%in_surface_cz = im.ge.s%jcz
+       sh%rotational_ke_start = s%kinetic_energy_rot_start(im)
+       sh%in_overshoot = im >= s%envelope_overshoot_bottom_index .and. im <= s%envelope_overshoot_top_index
+       sh%in_surface_cz = im.ge.s%envelope_cz_bottom_index_start
 end subroutine gather_shell_state
 
 ! ---------------------------------------------------------------
@@ -180,20 +180,20 @@ subroutine add_shell_energy_budget()
             do chain = 1, n_chains
                j = luminosity_channel_of_chain(chain)
                if (j == 0) cycle
-               s%luminosity_breakdown(j) = s%luminosity_breakdown(j) + &
+               s%luminosity_breakdown_lsun(j) = s%luminosity_breakdown_lsun(j) + &
                     (s%dm(im)/s%solar_luminosity_cgs)* &
                     diag%burn%eps_by_chain(chain)
             end do
-            s%luminosity_breakdown(i_lum_neu) = s%luminosity_breakdown(i_lum_neu) + &
+            s%luminosity_breakdown_lsun(i_lum_neu) = s%luminosity_breakdown_lsun(i_lum_neu) + &
                  (s%dm(im)/s%solar_luminosity_cgs)*diag%burn%eps_neutrino_loss
        end if
        if (diag%has_eps_grav) then
             s%eps_grav(im) = diag%eps_grav
-            s%luminosity_breakdown(i_lum_grav) = s%luminosity_breakdown(i_lum_grav) + &
+            s%luminosity_breakdown_lsun(i_lum_grav) = s%luminosity_breakdown_lsun(i_lum_grav) + &
                  (s%dm(im)/s%solar_luminosity_cgs)*diag%eps_grav
        end if
        s%eps_extra(im) = diag%eps_extra
-       s%luminosity_breakdown(i_lum_extra) = s%luminosity_breakdown(i_lum_extra) + &
+       s%luminosity_breakdown_lsun(i_lum_extra) = s%luminosity_breakdown_lsun(i_lum_extra) + &
             (s%dm(im)/s%solar_luminosity_cgs)*diag%eps_extra
 end subroutine add_shell_energy_budget
 
@@ -323,7 +323,7 @@ end subroutine compute_henyey_coefficients
 !----------------------------------------------------------------------
 ! Where each nuclear chain (net_lib's chain_*, the slots of
 ! nuclear_energy_result%eps_by_chain) is stored: its luminosity channel
-! (star%luminosity_breakdown's i_lum_* slot), and its eps channel
+! (star%luminosity_breakdown_lsun's i_lum_* slot), and its eps channel
 ! (star%eps_channels' i_eps_* slot; 0 for the alpha captures, which have
 ! none). A chain without a case here maps to 0 and is left out of the
 ! breakdown (eps_total still has it): a new chain needs its case.

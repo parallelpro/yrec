@@ -27,7 +27,7 @@ contains
 ! (append_envelope_points). Then come the new shells' masses and, with
 ! rotation, a first guess at their rotation, which omega_from_j makes
 ! consistent, and the star's angular momentum and rotational energy.
-! Updates star%senv and num_zones; called from evolve_step. ierr: the
+! Updates star%log_fit_point_mass_fraction and num_zones; called from evolve_step. ierr: the
 ! integration failed, the zones would overflow json, or the mass
 ! interpolation was degenerate.
 subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
@@ -134,7 +134,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
       endif
       call print_new_interior_points()
       new_points_added_flag = .true.
-       write(*,597)envelope_mass_before,s%senv
+       write(*,597)envelope_mass_before,s%log_fit_point_mass_fraction
  597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
      'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
       return
@@ -155,7 +155,7 @@ subroutine prepare_envelope_rebuild()
       target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
 ! The zone count and the fitting mass before the rebuild.
       old_num_zones = num_zones
-      envelope_mass_before = s%senv
+      envelope_mass_before = s%log_fit_point_mass_fraction
 ! The envelope integration takes a fixed step in log P,
 ! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
 ! only. No boundary vertex is saved, and saha_state starts at 0.
@@ -174,7 +174,7 @@ subroutine set_envelope_surface()
 ! R from L = 4 pi R^2 sigma Teff^4.
       log_radius_surface = surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
 ! g = G M / R^2.
-      log_gravity_surface = cgl + s%stotal - log_radius_surface - log_radius_surface
+      log_gravity_surface = cgl + s%log_total_mass - log_radius_surface - log_radius_surface
 ! X and Z of the outermost shell.
       hydrogen_fraction = composition(i_h1,num_zones)
       metal_fraction = composition(i_metals,num_zones)
@@ -209,7 +209,7 @@ subroutine integrate_new_envelope()
          ierr = jerr_atm
          return
       end if
-      s%senv = target_envelope_mass
+      s%log_fit_point_mass_fraction = target_envelope_mass
 end subroutine integrate_new_envelope
 
 ! ---------------------------------------------------------------
@@ -231,7 +231,7 @@ subroutine shift_envelope_points()
       mass_test = log_mass(num_zones)
       num_new_env_points = 0
       do zone_index = 1,s%env_points%num_env_points - 1
-         mass_test2 = s%stotal+s%env_points%env_log10_mass(zone_index+1)
+         mass_test2 = s%log_total_mass+s%env_points%env_log10_mass(zone_index+1)
          if(mass_test2-mass_test.gt.1.0D-10)then
             s%env_points%env_log10_density(zone_index) = s%env_points%env_log10_density(zone_index+1)+density_offset
             s%env_points%env_log10_pressure(zone_index) = s%env_points%env_log10_pressure(zone_index+1)+pressure_offset
@@ -322,7 +322,7 @@ subroutine print_new_interior_points()
      ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(zone_index,log_density(zone_index),log_luminosity(zone_index), &
            log_pressure(zone_index),log_radius(zone_index), &
-           log_mass(zone_index)-s%stotal, &
+           log_mass(zone_index)-s%log_total_mass, &
            log_temperature(zone_index),convective_flag(zone_index), &
            zone_index = old_num_zones,num_zones)
  911  format(I5,1P6E16.8,L2)

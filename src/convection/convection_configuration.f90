@@ -44,7 +44,7 @@ module convection_configuration
          logical :: rotation_active = .false., instability_transport_active = .false.
 ! homogenize the extended composition (15 species, not 11)
          logical :: use_extended_composition = .false.
-! the envelope's metal fraction outside C, N and O (star%zenvm), the
+! the envelope's metal fraction outside C, N and O (star%envelope_metals_no_cno), the
 ! floor of species 9 after homogenizing
          real(dp) :: envelope_metals_no_cno = 0.0d0
       end type convection_settings_t

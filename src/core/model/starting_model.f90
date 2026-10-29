@@ -217,24 +217,24 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
                  s%logT,s%convective_flag,s%nz, &
                  s%am_transport_convective_flag,radiative_zone_bounds, &
                  convective_zone_bounds,num_radiative_zones, &
-                 num_convective_zones, s%iov1, s%iov2, ierr)
+                 num_convective_zones, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
 ! Initialize the convective turnover time (legacy TAUCZ), the
 ! photospheric pressure pphot and fracstep. The stitched model
-! (interior plus a fresh envelope) is built first: it sets star%pphot,
+! (interior plus a fresh envelope) is built first: it sets star%photosphere_logP,
 ! and compute_turnover_timescale walks it, returning the radius of the
-! convection-zone base in star%envelope_radius. (starin passed the
+! convection-zone base in star%envelope_radius_rsun. (starin passed the
 ! envelope radius array there, overwriting its first element.) The
 ! wind takes pphot and the turnover time at the fraction fracstep of
 ! the step, between the step-start copies (pphot0, *_old) and the
 ! current values.
       call build_stitched_model(s, ierr)
       if (ierr /= 0) return
-      call compute_turnover_timescale(s, s%envelope_radius, ierr)
+      call compute_turnover_timescale(s, s%envelope_radius_rsun, ierr)
       if (ierr /= 0) return
-      s%convective_turnover_timescale_old = s%convective_turnover_timescale
-      s%pphot0 = s%pphot
-      s%fracstep = 0.5
+      s%convective_turnover_timescale_prev = s%convective_turnover_timescale
+      s%photosphere_logP_prev = s%photosphere_logP
+      s%substep_time_fraction = 0.5
 
       return
 
@@ -282,7 +282,7 @@ end subroutine acquire_starting_model
 ! ---------------------------------------------------------------
 ! Read the model file on unit iread, in the layout its first keyword
 ! names (YMOD: YREC .mod; NMOD: YREC7; MOD2: MODEL2), and set the
-! timestep and star%stotal from it. Sets ierr on an unknown layout or
+! timestep and star%log_total_mass from it. Sets ierr on an unknown layout or
 ! a failed read.
 subroutine read_starting_model_file
 
@@ -345,7 +345,6 @@ subroutine read_starting_model_file
 ! The timestep in s, and the log total mass.
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
-      s%stotal = s%log_total_mass
 end subroutine read_starting_model_file
 
 ! ---------------------------------------------------------------
@@ -388,8 +387,8 @@ subroutine reset_state_after_read
 
 
 ! Surface X and Z (xnew, znew) from the outermost interior point.
-      s%xnew = s%xa(i_h1,s%nz)
-      s%znew = s%xa(i_metals,s%nz)
+      s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
+      s%surface_metal_fraction = s%xa(i_metals,s%nz)
 end subroutine reset_state_after_read
 
 ! ---------------------------------------------------------------
@@ -659,10 +658,10 @@ subroutine rescale_and_refit_envelope
       if (s%job%change_envelope_mass_flag) then
       envelope_rescale: do
        call clamp_requested_envelope_mass
-       if (s%senv.eq.s%job%requested_envelope_mass) exit envelope_rescale
+       if (s%log_fit_point_mass_fraction.eq.s%job%requested_envelope_mass) exit envelope_rescale
        num_species = n_species_basic
        if (s%ctrl%use_extended_composition) num_species = n_species_extended
-       if (s%job%requested_envelope_mass.lt.s%senv) then
+       if (s%job%requested_envelope_mass.lt.s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit
           if (i < (1)) then
@@ -685,7 +684,7 @@ subroutine rescale_and_refit_envelope
           if (ierr /= 0) return
        endif
        envelope_recomputed_flag = .true.
-       write(run_log_unit,597)old_senv,s%senv
+       write(run_log_unit,597)old_senv,s%log_fit_point_mass_fraction
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -705,8 +704,8 @@ subroutine clamp_requested_envelope_mass
 ! (DBG 2/92; it was -1e-10).
        if (s%job%requested_envelope_mass.gt.-1.0d-12) s%job%requested_envelope_mass = &
             -1.d-12
-       s%senv = s%log_mass(s%nz) - s%log_total_mass
-       old_senv = s%senv
+       s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
+       old_senv = s%log_fit_point_mass_fraction
 end subroutine clamp_requested_envelope_mass
 
 ! ---------------------------------------------------------------
@@ -729,7 +728,7 @@ end subroutine find_shell_below_new_fit
 ! The new surface X and Z (xnew, znew) are its X and Z.
 subroutine interpolate_new_fitting_point
             s%nz = i + 1
-          s%senv = s%job%requested_envelope_mass
+          s%log_fit_point_mass_fraction = s%job%requested_envelope_mass
           interior_interp_fraction = (target_log_mass_at_fit-s%log_mass(i))/ &
                (s%log_mass(i+1) - s%log_mass(i))
           s%log_mass(s%nz) = target_log_mass_at_fit
@@ -748,8 +747,8 @@ subroutine interpolate_new_fitting_point
           do j = 1,num_species
              s%xa(j,s%nz) = s%xa(j,i)
           end do
-          s%xnew = s%xa(i_h1,s%nz)
-          s%znew = s%xa(i_metals,s%nz)
+          s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
+          s%surface_metal_fraction = s%xa(i_metals,s%nz)
           if (s%ctrl%rotation_active) s%omega(s%nz) = s%omega(i) + &
                interior_interp_fraction*(s%omega(i+1)-s%omega(i))
 end subroutine interpolate_new_fitting_point
@@ -828,10 +827,10 @@ subroutine integrate_envelope_to_new_fit
 !   log R = (log L/Lsun + log Lsun - 4 log Teff - log(4 pi) - log sigma)/2,
 ! with log Lsun = star%log10_solar_luminosity (starin's CLSUNL; the
 ! 2026-08 modernization had put Lsun in erg/s there, fixed 2026-10-12).
-          shell_luminosity_lsun = exp(ln10*s%log_L)
-          log10_radius = 0.5d0*(s%log_L + s%log10_solar_luminosity - &
+          shell_luminosity_lsun = exp(ln10*s%log_L_lsun)
+          log10_radius = 0.5d0*(s%log_L_lsun + s%log10_solar_luminosity - &
                4.0d0*s%log_Teff - c4pil - csigl)
-          log10_gravity = cgl + s%stotal - log10_radius - log10_radius
+          log10_gravity = cgl + s%log_total_mass - log10_radius - log10_radius
           hydrogen_fraction = s%xa(i_h1,s%nz)
           metal_fraction = s%xa(i_metals,s%nz)
           point_pressure_rotation_factor = 1.0d0
@@ -849,7 +848,7 @@ subroutine integrate_envelope_to_new_fit
              spot_adjusted_log_teff = s%log_Teff
           endif
           call atm_get(s, shell_luminosity_lsun,point_pressure_rotation_factor, &
-                 point_temperature_rotation_factor,log10_gravity,s%stotal, &
+                 point_temperature_rotation_factor,log10_gravity,s%log_total_mass, &
                  print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,s%xa(:,s%nz),saha_state, &
@@ -860,7 +859,7 @@ subroutine integrate_envelope_to_new_fit
              ierr = jerr_atm
              return
           end if
-          s%senv = s%job%requested_envelope_mass
+          s%log_fit_point_mass_fraction = s%job%requested_envelope_mass
 end subroutine integrate_envelope_to_new_fit
 
 ! ---------------------------------------------------------------
@@ -926,7 +925,7 @@ subroutine append_envelope_as_shells
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       write(*,911)(j,s%logRho(j),s%luminosity_lsun(j),s%logP(j), &
-                   s%logR(j),s%log_mass(j)-s%stotal, &
+                   s%logR(j),s%log_mass(j)-s%log_total_mass, &
                    s%logT(j),s%convective_flag(j), j = old_last_shell,s%nz)
  911  format(i5,1p6e16.8,l2)
 end subroutine append_envelope_as_shells
@@ -997,8 +996,8 @@ subroutine update_surface_mixture
 
 ! Surface composition: X_env = xnew, Z_env = znew, X(He3) of the last
 ! shell, Y_env = 1 - X_env - Z_env - X(He3).
-      s%envelope_hydrogen_fraction = s%xnew
-      s%envelope_metal_fraction = s%znew
+      s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
+      s%envelope_metal_fraction = s%surface_metal_fraction
       s%envelope_helium_fraction = 1.0d0 - s%envelope_hydrogen_fraction - &
            s%envelope_metal_fraction - s%xa(i_he3,s%nz)
       s%envelope_he3_fraction = s%xa(i_he3,s%nz)
@@ -1009,10 +1008,10 @@ subroutine update_surface_mixture
            species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
            species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
 ! The part of Z not in C, N and O: zenvm = Z_env (S - w_C - w_O - w_N)/S.
-      s%zenvm = s%envelope_metal_fraction*(mixture_weight_sum - &
+      s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
-      call set_convection_envelope_metals(s%zenvm)
+      call set_convection_envelope_metals(s%envelope_metals_no_cno)
 ! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
 ! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
 ! fraction too. Then w_i becomes X_i/A_i, and
@@ -1029,18 +1028,18 @@ subroutine update_surface_mixture
             atomic_weight(i)
        mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
       end do
-      s%amuenv = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/s%amuenv
+      s%envelope_inverse_atomic_weight = mixture_weight_sum
+      mixture_scale_factor = 1.0d0/s%envelope_inverse_atomic_weight
 ! Number fractions of the elements, fxenv(i) = (X_i/A_i)/amuenv, which
 ! the EOS needs (DBG 1/96): compute_blended_eos and compute_saha_eos
 ! (legacy EQSAHA).
       do i = 1,n_mix_species
-       s%fxenv(i) = species_mix_weights(i)*mixture_scale_factor
+       s%envelope_number_fractions(i) = species_mix_weights(i)*mixture_scale_factor
       end do
 ! Pass the new mixture to the EOS.
       call eos_set_mixture(s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction, s%amuenv, &
-           s%fxenv)
+           s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
+           s%envelope_number_fractions)
       end if
 ! Regenerate the surface opacity tables for the surface X (DBG 11/95),
 ! and the SCV envelope EOS table when SCV is on.
@@ -1067,7 +1066,7 @@ subroutine snapshot_step_start
       s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
       if (s%ctrl%rotation_active) then
          do i = 1,s%nz
-          s%old_omega(i) = s%omega(i)
+          s%omega_start(i) = s%omega(i)
          end do
       endif
 end subroutine snapshot_step_start

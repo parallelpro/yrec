@@ -82,11 +82,11 @@ subroutine write_model_line(s, progress)
          progress%lines_since_header = 0
       end if
       write(terminal_unit,10) s%model_number, s%nz, s%age_gyr, &
-           s%timestep_yr, s%log_Teff, s%log_L, &
-           s%log_R_surface, s%xa(i_h1,1), s%newton_iterations
+           s%timestep_yr, s%log_Teff, s%log_L_lsun, &
+           s%log_R_surface_rsun, s%xa(i_h1,1), s%newton_iterations
       write(run_log_unit,10) s%model_number, s%nz, s%age_gyr, &
-           s%timestep_yr, s%log_Teff, s%log_L, &
-           s%log_R_surface, s%xa(i_h1,1), s%newton_iterations
+           s%timestep_yr, s%log_Teff, s%log_L_lsun, &
+           s%log_R_surface_rsun, s%xa(i_h1,1), s%newton_iterations
    10 format(1x,i7,1x,i6,1x,es15.8,1x,es12.5,3(1x,f10.6),2x,f8.6,1x,i6)
       progress%lines_since_header = progress%lines_since_header + 1
       progress%last_printed_model = s%model_number

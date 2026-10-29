@@ -150,13 +150,13 @@ subroutine output_write_model(s, output, ierr)
 ! g (cm/s**2), Ycenter, He-core mass (g)
       if (s%ctrl%isochrone_output_active) then
         age_yr = s%age_gyr*1.0D9
-        luminosity_erg_s = exp10(s%log_L)*s%solar_luminosity_cgs
-        radius_cm = exp10(s%log_R_surface)*s%solar_radius_cgs
+        luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
+        radius_cm = exp10(s%log_R_surface_rsun)*s%solar_radius_cgs
         teff_k = exp10(s%log_Teff)
         gravity_cgs = exp10(s%log_g_surface)
         ycenter_local = s%xa(i_he4,1)
         if (s%has_h_shell) then
-           he_core_mass_grams = s%m(s%h_shell_zone_begin-1)
+           he_core_mass_grams = s%m(s%h_shell_bot_index-1)
         else
            he_core_mass_grams = 0.0D0
         end if
@@ -241,8 +241,8 @@ subroutine write_pulse(s, output, iprof, stitched, ierr)
       real(dp) :: mstar_g, rstar_cm, lstar_cgs
 
       mstar_g = exp(ln10*s%log_total_mass)
-      rstar_cm = exp(ln10*(s%log_R_surface + s%log10_solar_radius))
-      lstar_cgs = exp(ln10*s%log_L)*s%solar_luminosity_cgs
+      rstar_cm = exp(ln10*(s%log_R_surface_rsun + s%log10_solar_radius))
+      lstar_cgs = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
       path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'

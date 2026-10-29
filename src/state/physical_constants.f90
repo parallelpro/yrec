@@ -110,7 +110,7 @@ pure double precision function log10_newton_g(G_cgs)
 end function log10_newton_g
 
 ! log10 of the stellar radius (cm) from log10 L/Lsun and log10 Teff,
-! L = 4 pi R**2 sigma Teff**4 (the star%log_R_surface expression, before
+! L = 4 pi R**2 sigma Teff**4 (the star%log_R_surface_rsun expression, before
 ! the solar-radius offset; formerly wind_lib's and observables's).
 ! envelope_integration's surface_log10_radius_cm orders the terms
 ! differently and can differ in the last bit.

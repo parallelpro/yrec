@@ -263,11 +263,11 @@ subroutine end_of_card_calibration(runs_complete)
 ! L = 4 pi R^2 sigma Teff^4.
          if (s%ctrl%calibrate_solar_model) then
             if (mod(s%job%nk,solar_calib_cards_per_cycle).eq.0) then
-               log_r_rsun = log10_radius_from_l_teff(s%log_L,s%log_Teff, &
+               log_r_rsun = log10_radius_from_l_teff(s%log_L_lsun,s%log_Teff, &
                     s%log10_solar_luminosity)-s%log10_solar_radius
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
                current_zx = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
-               call check_solar_calibration(s, s%log_L,log_r_rsun,s%job%nk,current_zx)
+               call check_solar_calibration(s, s%log_L_lsun,log_r_rsun,s%job%nk,current_zx)
                s%job%use_structure_dt_limits = saved_use_structure_dt_limits  ! restore for the next cycle
                s%job%atm_choice  = saved_atm_choice    ! restore for the next cycle
                if (s%solar_calibration_converged) then
@@ -370,7 +370,7 @@ subroutine begin_kind_card
          s%pulsation_mass_msun=s%star_mass
 ! Record the starting base of the surface convection zone and zero the
 ! convective turnover timescale (MHP 08/02).
-         s%jcz = s%envelope_cz_bottom_index
+         s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
          s%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
       call output_run_header(s, s%star_mass)
@@ -387,14 +387,14 @@ subroutine begin_kind_card
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).
          call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
-              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_zone_begin, &
-              s%h_shell_end_index,s%h_shell_midpoint_zone,s%has_h_shell)
+              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_bot_index, &
+              s%h_shell_top_index,s%h_shell_mid_index,s%has_h_shell)
 ! Estimate the first timestep of the card.
        disable_structure_dt_limits = .false.
        call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun, &
             s%m,s%logT,s%xa,s%core_cz_top_index, &
-            s%h_shell_midpoint_zone,s%luminosity_breakdown,s%age_gyr,s%timestep_yr,s%job%nk, &
-            s%logP,s%logR,s%omega,s%max_domega_frac,s%h_shell_zone_begin, &
+            s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%job%nk, &
+            s%logP,s%logR,s%omega,s%max_domega_frac,s%h_shell_bot_index, &
             s%log_Teff, disable_structure_dt_limits)
        if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
 

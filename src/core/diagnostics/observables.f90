@@ -7,7 +7,7 @@
 ! from evolve_step once per model, after the stitched model is built
 ! and before the output writer. Every quantity it computes is stored on
 ! star% (the observables members and the renormalized
-! star%luminosity_breakdown), so the writer only reads; its one physics
+! star%luminosity_breakdown_lsun), so the writer only reads; its one physics
 ! feedback is the turnover timescale (see compute_observables). The
 ! module also holds shell_masses_from_log_mass, the m and dm of a
 ! log-mass grid.
@@ -15,7 +15,7 @@
 ! The order of the themes matters: the central conditions precede the
 ! base of the surface convection zone (whose fully convective branch
 ! reads star%central_log10_*), and compute_surface_globals precedes the
-! themes that read star%log_R_surface.
+! themes that read star%log_R_surface_rsun.
 !
 ! One local of the legacy routine's blanket SAVE is real cross-call
 ! state: the Saha-table state of the central eos call, which the star
@@ -109,7 +109,7 @@ subroutine shell_masses_from_log_mass(log_mass, log_total_mass, nz, m, dm)
 end subroutine shell_masses_from_log_mass
 
 ! ---------------------------------------------------------------
-! Rescales the luminosity channels star%luminosity_breakdown so that
+! Rescales the luminosity channels star%luminosity_breakdown_lsun so that
 ! they sum to the surface luminosity: each channel times
 ! L(nz)/sum of channels. Skipped during the helium flash. (This changes
 ! the model.)
@@ -123,14 +123,14 @@ subroutine renormalize_luminosity_breakdown(s)
 ! on purpose (audit/readability-sweep-2026-09-03/reports/henyey-wave2.md,
 ! item 6).
       if(.not.s%ctrl%helium_flash_active) then
-       total_luminosity_sum = s%luminosity_breakdown(i_lum_pp1)+s%luminosity_breakdown(i_lum_pp2)+ &
-            s%luminosity_breakdown(i_lum_pp3)+s%luminosity_breakdown(i_lum_cno)+s%luminosity_breakdown(i_lum_3alpha)+ &
-            s%luminosity_breakdown(i_lum_neu)+s%luminosity_breakdown(i_lum_grav)+s%luminosity_breakdown(i_lum_he_c)
+       total_luminosity_sum = s%luminosity_breakdown_lsun(i_lum_pp1)+s%luminosity_breakdown_lsun(i_lum_pp2)+ &
+            s%luminosity_breakdown_lsun(i_lum_pp3)+s%luminosity_breakdown_lsun(i_lum_cno)+s%luminosity_breakdown_lsun(i_lum_3alpha)+ &
+            s%luminosity_breakdown_lsun(i_lum_neu)+s%luminosity_breakdown_lsun(i_lum_grav)+s%luminosity_breakdown_lsun(i_lum_he_c)
        if (num_energy_sources() > 0) total_luminosity_sum = total_luminosity_sum + &
-            s%luminosity_breakdown(i_lum_extra)
+            s%luminosity_breakdown_lsun(i_lum_extra)
        temp_value = s%luminosity_lsun(s%nz)/total_luminosity_sum
        do i = 1,n_lum_channels
-          s%luminosity_breakdown(i) = s%luminosity_breakdown(i)*temp_value
+          s%luminosity_breakdown_lsun(i) = s%luminosity_breakdown_lsun(i)*temp_value
        end do
       endif
 end subroutine renormalize_luminosity_breakdown
@@ -141,9 +141,9 @@ end subroutine renormalize_luminosity_breakdown
 subroutine locate_core_cz(s)
       type(star_info), intent(inout) :: s
       if(s%core_cz_top_index.gt.1) then
-       s%core_cz_mass = s%m(s%core_cz_top_index)/s%solar_mass_cgs
+       s%core_cz_mass_msun = s%m(s%core_cz_top_index)/s%solar_mass_cgs
       else
-       s%core_cz_mass = 0.0D0
+       s%core_cz_mass_msun = 0.0D0
       endif
 end subroutine locate_core_cz
 
@@ -197,7 +197,7 @@ end subroutine compute_central_conditions
 
 ! ---------------------------------------------------------------
 ! The base of the surface convection zone, interpolated between the
-! zones around it: star%envelope_mass (the convective envelope's mass,
+! zones around it: star%envelope_mass_msun (the convective envelope's mass,
 ! Msun), envelope_radius (Rsun), and
 ! envelope_cz_temperature, _density, _pressure and _opacity. A fully
 ! convective star takes the central values (so compute_central_conditions
@@ -221,11 +221,11 @@ subroutine locate_surface_cz_base(s)
             envelope_boundary_fx = cz_base_fraction(dd2, dd1)
             cz_base_mass = s%m(s%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (s%m(s%envelope_cz_bottom_index)-s%m(s%envelope_cz_bottom_index-1))
-            s%envelope_mass = (exp(ln10*s%log_total_mass) - cz_base_mass)/s%solar_mass_cgs
+            s%envelope_mass_msun = (exp(ln10*s%log_total_mass) - cz_base_mass)/s%solar_mass_cgs
 ! The radius of the base (MHP 2/98).
             envelope_cz_log_radius = s%logR(s%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (s%logR(s%envelope_cz_bottom_index)-s%logR(s%envelope_cz_bottom_index-1))-s%log10_solar_radius
-            s%envelope_radius = exp(ln10*envelope_cz_log_radius)
+            s%envelope_radius_rsun = exp(ln10*envelope_cz_log_radius)
             s%envelope_cz_opacity = s%opacity_zone(s%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
                  (s%opacity_zone(s%envelope_cz_bottom_index)-s%opacity_zone(s%envelope_cz_bottom_index-1))
             envelope_cz_log_temperature = s%logT(s%envelope_cz_bottom_index-1)+envelope_boundary_fx* &
@@ -238,16 +238,16 @@ subroutine locate_surface_cz_base(s)
             s%envelope_cz_density = exp(ln10*envelope_cz_log_density)
             s%envelope_cz_pressure = exp(ln10*envelope_cz_log_pressure)
        else
-          s%envelope_mass = s%star_mass
-          s%envelope_radius = 0.0D0
+          s%envelope_mass_msun = s%star_mass
+          s%envelope_radius_rsun = 0.0D0
             s%envelope_cz_temperature = exp10(s%central_log10_temperature)
             s%envelope_cz_density = exp10(s%central_log10_density)
             s%envelope_cz_pressure = exp10(s%central_log10_pressure)
             s%envelope_cz_opacity = s%opacity_zone(1)
        endif
       else
-       s%envelope_mass = 0.0D0
-       s%envelope_radius = 0.0D0
+       s%envelope_mass_msun = 0.0D0
+       s%envelope_radius_rsun = 0.0D0
          s%envelope_cz_temperature = 0.0D0
          s%envelope_cz_density = 0.0D0
          s%envelope_cz_pressure = 0.0D0
@@ -259,14 +259,14 @@ end subroutine locate_surface_cz_base
 ! Refreshes the turnover timescale and copies it and pphot to their
 ! _old / pphot0 versions, which the mid-step consumers (the wind, the
 ! deuterium limiter) read during the next step. compute_turnover_timescale
-! also overwrites star%envelope_radius with its own base radius.
+! also overwrites star%envelope_radius_rsun with its own base radius.
 subroutine refresh_turnover_timescale(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
-      call compute_turnover_timescale(s, s%envelope_radius, ierr)
-      s%convective_turnover_timescale_old = &
+      call compute_turnover_timescale(s, s%envelope_radius_rsun, ierr)
+      s%convective_turnover_timescale_prev = &
            s%convective_turnover_timescale
-      s%pphot0 = s%pphot
+      s%photosphere_logP_prev = s%photosphere_logP
 end subroutine refresh_turnover_timescale
 
 ! ---------------------------------------------------------------
@@ -274,11 +274,11 @@ end subroutine refresh_turnover_timescale
 ! log M - 2 log R (CGS), then log_R_surface in Rsun.
 subroutine compute_surface_globals(s)
       type(star_info), intent(inout) :: s
-      s%log_R_surface = log10_radius_from_l_teff(s%log_L, s%log_Teff, &
+      s%log_R_surface_rsun = log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
            s%log10_solar_luminosity)
-      s%log_g_surface = cgl + s%stotal &
-           - 2.0d0*s%log_R_surface
-      s%log_R_surface = s%log_R_surface - s%log10_solar_radius
+      s%log_g_surface = cgl + s%log_total_mass &
+           - 2.0d0*s%log_R_surface_rsun
+      s%log_R_surface_rsun = s%log_R_surface_rsun - s%log10_solar_radius
 end subroutine compute_surface_globals
 
 ! ---------------------------------------------------------------
@@ -303,12 +303,12 @@ subroutine compute_seismic_observables(s)
 
       log_g_solar = cgl + log10(s%solar_mass_cgs) &
            - 2.0d0*log10(s%solar_radius_cgs)
-      s%nu_max = s%ctrl%nu_max_sun &
+      s%nu_max_uhz = s%ctrl%nu_max_sun &
            * exp10((s%log_g_surface - log_g_solar)) &
            * sqrt(s%ctrl%Teff_sun/exp10(s%log_Teff))
 ! The mean-density scaling.
-      s%delta_nu_rho = s%ctrl%delta_nu_sun &
-           * sqrt(s%star_mass) * exp10((-1.5d0*s%log_R_surface))
+      s%delta_nu_rho_uhz = s%ctrl%delta_nu_sun &
+           * sqrt(s%star_mass) * exp10((-1.5d0*s%log_R_surface_rsun))
 
 ! The asymptotic p-mode large separation from the sound travel time,
 !   delta_nu = [2 int_0^R dr/c]^(-1),
@@ -324,9 +324,9 @@ subroutine compute_seismic_observables(s)
               *(1.0d0/s%stitched%prof(ip_csound,k) + 1.0d0/s%stitched%prof(ip_csound,k-1))
       end do
       if (acoustic_radius > 0.0d0) then
-         s%delta_nu = 1.0d6/(2.0d0*acoustic_radius)
+         s%delta_nu_uhz = 1.0d6/(2.0d0*acoustic_radius)
       else
-         s%delta_nu = 0.0d0
+         s%delta_nu_uhz = 0.0d0
       end if
 
 ! The asymptotic l = 1 g-mode period spacing from the Brunt-Vaisala
@@ -410,7 +410,7 @@ end subroutine compute_snu_rates
 ! The surface rotation period, P = 2 pi/omega(nz) in days (at most
 ! 9999), the surface velocity omega(nz) R in km/s, and the moment of
 ! inertia of the surface convection zone (the i_rot sum with rotation,
-! sum (2/3) dm r^2 without). Reads star%log_R_surface, so
+! sum (2/3) dm r^2 without). Reads star%log_R_surface_rsun, so
 ! compute_surface_globals runs first.
 subroutine compute_rotation_observables(s)
       use math_lib
@@ -422,7 +422,7 @@ subroutine compute_rotation_observables(s)
          s%rotation_period_days = min(9999.0d0, &
               0.5d0*c4pi/s%omega(s%nz)/8.64d4)
          s%surf_velocity_kms = s%omega(s%nz)* &
-              exp(ln10*(s%log_R_surface+s%log10_solar_radius))*1.0d-5
+              exp(ln10*(s%log_R_surface_rsun+s%log10_solar_radius))*1.0d-5
          if (s%envelope_cz_bottom_index .lt. s%nz) then
             do i = s%envelope_cz_bottom_index, s%nz
                s%cz_moment_of_inertia = &
@@ -445,30 +445,30 @@ end subroutine compute_rotation_observables
 ! ---------------------------------------------------------------
 ! The bottom, middle and top of the hydrogen-burning shell: masses in
 ! Msun and radii as r/R (zero without a shell). Reads
-! star%log_R_surface, so compute_surface_globals runs first.
+! star%log_R_surface_rsun, so compute_surface_globals runs first.
 subroutine compute_h_shell_boundaries(s)
       use math_lib
       type(star_info), intent(inout) :: s
       if (s%has_h_shell) then
-         s%h_shell_bot_mass = &
-              s%m(s%h_shell_zone_begin)/s%solar_mass_cgs
-         s%h_shell_mid_mass = &
-              s%m(s%h_shell_midpoint_zone)/s%solar_mass_cgs
-         s%h_shell_top_mass = &
-              s%m(s%h_shell_end_index)/s%solar_mass_cgs
+         s%h_shell_bot_mass_msun = &
+              s%m(s%h_shell_bot_index)/s%solar_mass_cgs
+         s%h_shell_mid_mass_msun = &
+              s%m(s%h_shell_mid_index)/s%solar_mass_cgs
+         s%h_shell_top_mass_msun = &
+              s%m(s%h_shell_top_index)/s%solar_mass_cgs
          s%h_shell_bot_radius = exp(ln10*( &
-              s%logR(s%h_shell_zone_begin) &
-              - s%log_R_surface - s%log10_solar_radius))
+              s%logR(s%h_shell_bot_index) &
+              - s%log_R_surface_rsun - s%log10_solar_radius))
          s%h_shell_mid_radius = exp(ln10*( &
-              s%logR(s%h_shell_midpoint_zone) &
-              - s%log_R_surface - s%log10_solar_radius))
+              s%logR(s%h_shell_mid_index) &
+              - s%log_R_surface_rsun - s%log10_solar_radius))
          s%h_shell_top_radius = exp(ln10*( &
-              s%logR(s%h_shell_end_index) &
-              - s%log_R_surface - s%log10_solar_radius))
+              s%logR(s%h_shell_top_index) &
+              - s%log_R_surface_rsun - s%log10_solar_radius))
       else
-         s%h_shell_bot_mass = 0.0d0
-         s%h_shell_mid_mass = 0.0d0
-         s%h_shell_top_mass = 0.0d0
+         s%h_shell_bot_mass_msun = 0.0d0
+         s%h_shell_mid_mass_msun = 0.0d0
+         s%h_shell_top_mass_msun = 0.0d0
          s%h_shell_bot_radius = 0.0d0
          s%h_shell_mid_radius = 0.0d0
          s%h_shell_top_radius = 0.0d0

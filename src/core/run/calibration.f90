@@ -121,9 +121,9 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
          s%job%initial_x_array(run_index+2) = s%job%rescale_params(2,run_index+1)
          s%job%initial_x_array(run_index+3) = s%job%rescale_params(2,run_index+1)
          write(terminal_unit,*) "New BL, Old BL, Delta BL: ", &
-             log_l_lsun, s%log_l_prev, log_l_lsun-s%log_l_prev
+             log_l_lsun, s%log_l_lsun_prev_check, log_l_lsun-s%log_l_lsun_prev_check
          write(terminal_unit,*) "New RL, Old RL, Delta RL: ", &
-             log_r_rsun, s%log_r_prev, log_r_rsun-s%log_r_prev
+             log_r_rsun, s%log_r_rsun_prev_check, log_r_rsun-s%log_r_rsun_prev_check
          write(terminal_unit,*) "New X, Old X, DX: ", &
              s%job%rescale_params(2,run_index+1), s%job%rescale_params(2,run_index-2), &
              s%delta_x
@@ -135,8 +135,8 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
              s%job%rescale_params(3,run_index+1), s%job%rescale_params(3,run_index-2), &
              delta_z
          endif
-         s%log_l_prev = log_l_lsun
-         s%log_r_prev = log_r_rsun
+         s%log_l_lsun_prev_check = log_l_lsun
+         s%log_r_rsun_prev_check = log_r_rsun
 end subroutine check_solar_calibration
 
 ! ---------------------------------------------------------------
@@ -187,13 +187,13 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 !   r_rsun_current                        R/Rsun of this model (linear)
 !   star%r_rsun_prev_model                 R/Rsun of the previous model
 !                                         (linear)
-!   current_age, star%age_prev_model      age of this and of the
+!   current_age, star%age_gyr_prev_model      age of this and of the
 !                                         previous model (Gyr)
-!   star%age_at_target_radius             age at R* (Gyr)
-!   log_l_lsun, star%log_l_prev_model     log(L/Lsun) of this and of the
+!   star%age_gyr_at_target_radius             age at R* (Gyr)
+!   log_l_lsun, star%log_l_lsun_prev_model     log(L/Lsun) of this and of the
 !                                         previous model
-!   star%log_l_at_target_radius           log(L/Lsun) at R*
-!   star%log_l_at_target_radius_prev_run  the same, from the previous run
+!   star%log_l_lsun_at_target_radius           log(L/Lsun) at R*
+!   star%log_l_lsun_at_target_radius_prev_run  the same, from the previous run
 !   prev_x                                X of the previous run,
 !                                         rescale_params(2, nk-1)
 !
@@ -206,16 +206,16 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
       if(r_rsun_current.gt.s%r_rsun_prev_model) then
          if(.not.(r_rsun_current.gt.s%job%target_radius_rsun.and. &
               s%r_rsun_prev_model.le.s%job%target_radius_rsun)) then
-              s%log_l_prev_model = log_l_lsun
-              s%age_prev_model = current_age
+              s%log_l_lsun_prev_model = log_l_lsun
+              s%age_gyr_prev_model = current_age
               s%r_rsun_prev_model = r_rsun_current
               return
           end if
       else
           if (.not.(r_rsun_current.lt.s%job%target_radius_rsun.and. &
                s%r_rsun_prev_model.ge.s%job%target_radius_rsun)) then
-              s%log_l_prev_model = log_l_lsun
-              s%age_prev_model = current_age
+              s%log_l_lsun_prev_model = log_l_lsun
+              s%age_gyr_prev_model = current_age
               s%r_rsun_prev_model = r_rsun_current
               return
            end if
@@ -231,42 +231,42 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 !   age(R*)   = age + (d age/dR) (R* - R).
 ! (Despite their names, dlogl_dlogr and dage_dlogr are derivatives with
 ! respect to the linear R/Rsun.)
-      dlogl_dlogr = (log_l_lsun-s%log_l_prev_model)/ &
+      dlogl_dlogr = (log_l_lsun-s%log_l_lsun_prev_model)/ &
            (r_rsun_current-s%r_rsun_prev_model)
-      s%log_l_at_target_radius = log_l_lsun + &
+      s%log_l_lsun_at_target_radius = log_l_lsun + &
            dlogl_dlogr*(s%job%target_radius_rsun-r_rsun_current)
-      dage_dlogr = (current_age-s%age_prev_model)/ &
+      dage_dlogr = (current_age-s%age_gyr_prev_model)/ &
            (r_rsun_current-s%r_rsun_prev_model)
-      s%age_at_target_radius = current_age + &
+      s%age_gyr_at_target_radius = current_age + &
            dage_dlogr*(s%job%target_radius_rsun-r_rsun_current)
       write(*,*) ' X, LogL/Lsun at R* =', s%job%rescale_params(2,run_index-1), &
-           s%log_l_at_target_radius
+           s%log_l_lsun_at_target_radius
       write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
-           s%job%rescale_params(2,run_index-1), s%log_l_at_target_radius
-      if (abs(exp10(s%log_l_at_target_radius)-s%ctrl%target_luminosity_lsun) &
+           s%job%rescale_params(2,run_index-1), s%log_l_lsun_at_target_radius
+      if (abs(exp10(s%log_l_lsun_at_target_radius)-s%ctrl%target_luminosity_lsun) &
            .le. s%ctrl%target_star_luminosity_tolerance) then
 ! The track passes through the target L and R. Do one more run with the
 ! same X, stopped at the interpolated age at R* (converted from Gyr to
 ! yr).
          s%star_found_flag=.true.
        s%job%end_age_stop_active(run_index+1) = .true.
-       s%job%target_end_age(run_index+1) = s%age_at_target_radius*1.0d9
+       s%job%target_end_age(run_index+1) = s%age_gyr_at_target_radius*1.0d9
        s%job%end_age_stop_active(run_index+2) = .true.
-       s%job%target_end_age(run_index+2) = s%age_at_target_radius*1.0d9
+       s%job%target_end_age(run_index+2) = s%age_gyr_at_target_radius*1.0d9
        s%job%rescale_params(2,run_index+1) = s%job%rescale_params(2,run_index-1)
        s%job%initial_x_array(run_index+1) = s%job%rescale_params(2,run_index+1)
        s%job%initial_x_array(run_index+2) = s%job%initial_x_array(run_index+1)
 !
       write(*,*) ' Have hit R* & L*, prepare final run to age:', &
-        s%age_at_target_radius
+        s%age_gyr_at_target_radius
       write(run_log_unit,*)'#Have hit R* & L*, prepare final run to age:', &
-        s%age_at_target_radius
+        s%age_gyr_at_target_radius
          return
       else
          if (run_index .eq. 2) then
 ! First pass: save log L at R*, lower X by x_calibration_step (Y up by
 ! the same at fixed Z), and start the next run.
-            s%log_l_at_target_radius_prev_run = s%log_l_at_target_radius
+            s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
           prev_x = s%job%rescale_params(2,run_index-1)
           new_x = prev_x - x_calibration_step
           s%job%rescale_params(2,run_index+1) = new_x
@@ -286,13 +286,13 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
             new_x = s%job%rescale_params(2, run_index-1)
           prev_x = s%job%rescale_params(2, run_index-3)
             dx_dlogl = (new_x-prev_x)/ &
-                 (s%log_l_at_target_radius-s%log_l_at_target_radius_prev_run)
+                 (s%log_l_lsun_at_target_radius-s%log_l_lsun_at_target_radius_prev_run)
           new_x = dx_dlogl*(log10(s%ctrl%target_luminosity_lsun)- &
-               s%log_l_at_target_radius)+new_x
+               s%log_l_lsun_at_target_radius)+new_x
 !
       write(*,*) ' Setup next run, NK, X =', run_index, new_x
       write(run_log_unit, *) ' Setup next run, NK, X =', run_index, new_x
-          s%log_l_at_target_radius_prev_run = s%log_l_at_target_radius
+          s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
           s%job%rescale_params(2,run_index+1) = new_x
           s%job%initial_x_array(run_index+1) = new_x
           s%job%initial_x_array(run_index+2) = new_x

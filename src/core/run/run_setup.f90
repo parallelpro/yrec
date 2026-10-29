@@ -85,7 +85,7 @@ subroutine set_up_constants_and_tables(s, ierr)
       cgl = log10_newton_g(s%ctrl%G_cgs)
 ! --- HSRA T(tau) offset -----------------------------------------------
 ! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
-      s%atm_hras = hsra_t_tau_offset()
+      s%hsra_log_t_offset = hsra_t_tau_offset()
 ! --- Opacity tables ---------------------------------------------------
       ierr = 0
       call kap_init(opacity_settings(s), s%envelope_hydrogen_fraction, &

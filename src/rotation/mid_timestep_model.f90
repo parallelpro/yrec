@@ -101,7 +101,7 @@ subroutine advance_rotation_substep(s, sub_model, sub_physics, &
       call am_convective_regions(s%xa,sub_model%log_density,sub_model%log_pressure,sub_model%log_radius, &
            s%log_mass,sub_model%log_temperature,sub_model%convective_flag,s%nz, &
            sub_model%am_transport_convective_flag,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, s%iov1, s%iov2, ierr)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
 ! Burn the start-of-sub-step composition (star%xa_start) over the
 ! sub-step. For thermodynamic consistency (MHP 6/00) the network rates
@@ -139,7 +139,7 @@ subroutine start_substep_composition()
       if (first_call) then
          do j = 1,s%nz
             sub_model%convective_flag_prev(j) = s%convective_flag_start(j)
-            sub_physics%mu(j) = s%old_mu(j)
+            sub_physics%mu(j) = s%mu_start(j)
             do i = 1,num_species_tracked
                s%xa(i,j) = s%xa_start(i,j)
             end do
@@ -157,7 +157,7 @@ end subroutine start_substep_composition
 !   q_mid = q_start + f (q_end - q_start)
 ! for log rho, L, log P, log r, log T, the mean gravity and sub_physics's
 ! gradients, energy generation, viscosity, thermal diffusivity, c_P,
-! qdt and opacity (start values from star%*_start, star%old_hg and
+! qdt and opacity (start values from star%*_start, star%mean_gravity_start and
 ! star%old_*). The mean molecular weight instead accumulates each
 ! sub-step's share of its change,
 !   mu_mid = mu_mid + (sub_timestep/full_timestep) (mu_end - mu_old),
@@ -176,23 +176,23 @@ subroutine interpolate_structure()
               time_fraction*(s%logR(j)-s%logR_start(j))
          sub_model%log_temperature(j) = s%logT_start(j) + &
               time_fraction*(s%logT(j)-s%logT_start(j))
-         sub_model%mean_gravity(j) = s%old_hg(j) + time_fraction*(s%mean_gravity(j) - s%old_hg(j))
-         sub_physics%grada(j) = s%old_grada(j) + &
-              time_fraction*(s%grada(j)-s%old_grada(j))
-         sub_physics%gradT(j) = s%old_gradT(j) + time_fraction*(s%gradT(j) - s%old_gradT(j))
-         sub_physics%gradr(j) = s%old_gradr(j) + &
-              time_fraction*(s%gradr(j) - s%old_gradr(j))
-         sub_physics%eps_total(j) = s%old_eps_total(j) + time_fraction*(s%eps_total(j) - s%old_eps_total(j))
-         sub_physics%visc(j) = s%old_visc(j) + time_fraction*(s%visc(j) - s%old_visc(j))
-         sub_physics%thdif(j) = s%old_thdif(j) + time_fraction*(s%thdif(j) - s%old_thdif(j))
-         sub_physics%cp(j) = s%old_cp(j) + time_fraction*(s%cp(j) - s%old_cp(j))
-         sub_physics%qdt(j) = s%old_qdt(j) + time_fraction*(s%qdt(j) - s%old_qdt(j))
-         sub_physics%opacity(j) = s%old_opacity(j) + time_fraction*(s%opacity_zone(j) - s%old_opacity(j))
-         sub_physics%mu(j) = sub_physics%mu(j) + step_fraction_ratio*(s%mu(j) - s%old_mu(j))
+         sub_model%mean_gravity(j) = s%mean_gravity_start(j) + time_fraction*(s%mean_gravity(j) - s%mean_gravity_start(j))
+         sub_physics%grada(j) = s%grada_start(j) + &
+              time_fraction*(s%grada(j)-s%grada_start(j))
+         sub_physics%gradT(j) = s%gradT_start(j) + time_fraction*(s%gradT(j) - s%gradT_start(j))
+         sub_physics%gradr(j) = s%gradr_start(j) + &
+              time_fraction*(s%gradr(j) - s%gradr_start(j))
+         sub_physics%eps_total(j) = s%eps_total_start(j) + time_fraction*(s%eps_total(j) - s%eps_total_start(j))
+         sub_physics%visc(j) = s%kinematic_viscosity_start(j) + time_fraction*(s%kinematic_viscosity(j) - s%kinematic_viscosity_start(j))
+         sub_physics%thdif(j) = s%thermal_diffusivity_start(j) + time_fraction*(s%thermal_diffusivity(j) - s%thermal_diffusivity_start(j))
+         sub_physics%cp(j) = s%cp_start(j) + time_fraction*(s%cp(j) - s%cp_start(j))
+         sub_physics%qdt(j) = s%dlnrho_dlnt_start(j) + time_fraction*(s%dlnrho_dlnt(j) - s%dlnrho_dlnt_start(j))
+         sub_physics%opacity(j) = s%opacity_zone_start(j) + time_fraction*(s%opacity_zone(j) - s%opacity_zone_start(j))
+         sub_physics%mu(j) = sub_physics%mu(j) + step_fraction_ratio*(s%mu(j) - s%mu_start(j))
 ! The total energy generation, eps_total + eps_neu + eps_grav with the
 ! stored signs (MHP 6/00).
          total_epsilon = s%eps_total(j)+s%eps_channels(i_eps_neu,j)+s%eps_channels(i_eps_grav,j)
-         sub_physics%eps_plus_neu_grav(j) = s%old_eps_plus_neu_grav(j)+time_fraction*(total_epsilon-s%old_eps_plus_neu_grav(j))
+         sub_physics%eps_plus_neu_grav(j) = s%eps_plus_neu_grav_start(j)+time_fraction*(total_epsilon-s%eps_plus_neu_grav_start(j))
       end do
 end subroutine interpolate_structure
 
@@ -208,11 +208,11 @@ subroutine settle_convective_state()
       do i = 1,s%nz
          if (s%convective_flag(i).eqv.sub_model%convective_flag_prev(i)) then
             sub_model%convective_flag(i) = s%convective_flag(i)
-            sub_physics%conv_vel(i) = s%old_conv_vel(i) + time_fraction*(s%conv_vel(i)-s%old_conv_vel(i))
+            sub_physics%conv_vel(i) = s%conv_vel_start(i) + time_fraction*(s%conv_vel(i)-s%conv_vel_start(i))
          else
             if (sub_physics%grada(i).lt.sub_physics%gradr(i)) then
                sub_model%convective_flag(i) = .true.
-               sub_physics%conv_vel(i) = max(s%old_conv_vel(i),s%conv_vel(i))
+               sub_physics%conv_vel(i) = max(s%conv_vel_start(i),s%conv_vel(i))
             else
                sub_model%convective_flag(i) = .false.
                sub_physics%conv_vel(i) = 0.0D0

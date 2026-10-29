@@ -259,7 +259,7 @@ end subroutine check_angular_momentum
 !   1/mu_e   = X/A(H1) + 2 (X3/A(He3) + Y/A(He4)) + Z/2,
 !   mu = 1/(1/mu_ion + 1/mu_e) = mu_ion mu_e/(mu_ion + mu_e),
 ! where dX, dY, dZ, dX3 are the differences from the envelope mixture
-! and star%amuenv = sum X_i/A_i of that mixture.
+! and star%envelope_inverse_atomic_weight = sum X_i/A_i of that mixture.
 !
 ! Inputs:
 !   iteration_number : this iteration, 1 to
@@ -321,7 +321,7 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
            dt, cut_count, converged_flag, redo_flag, ierr)
       if (ierr /= 0 .or. redo_flag) return
 ! The mean molecular weight of a fully ionized gas (the equations in
-! the header), from the second iteration on. star%amuenv is 1/mu_ion of
+! the header), from the second iteration on. star%envelope_inverse_atomic_weight is 1/mu_ion of
 ! the envelope mixture. Partial ionization is ignored; the original
 ! notes that massive stars need a correction for it.
       if(iteration_number.gt.1)then
@@ -334,7 +334,7 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
                  s%envelope_metal_fraction
             delta_helium3 = composition(i_he3,zone_index)- &
                  s%envelope_he3_fraction
-            amu_calc_temp = s%amuenv + delta_hydrogen/atomic_weight(1) + &
+            amu_calc_temp = s%envelope_inverse_atomic_weight + delta_hydrogen/atomic_weight(1) + &
                  delta_helium/atomic_weight(2) + &
                  delta_metal/atomic_weight(3) + &
                  delta_helium3/atomic_weight(4)

@@ -19,7 +19,7 @@
 ! star%, which src/tools/check_boundaries.py checks (STAR_BLIND_FILES).
 ! Its settings arrive in an envint_config that the driver, atm_get in
 ! envelope_integration, fills from star%job and star%ctrl. Its two
-! effects on the star, the photospheric pressure (star%pphot) and the
+! effects on the star, the photospheric pressure (star%photosphere_logP) and the
 ! switch to a gray atmosphere when the Allard table lookup fails, come
 ! back as outputs that the driver applies.
 module envelope_integration_kernel
@@ -38,7 +38,7 @@ module envelope_integration_kernel
 ! HSRA offset atm_hras; the fitting mass senv = log10(m_fit/M); tenv,
 ! the log T at which the envelope state is stored for the surface
 ! boundary; log10 Lsun; log10 of the total mass in g, the origin of the
-! envelope's mass coordinate log(m/M) (star%stotal); and calc_envelope
+! envelope's mass coordinate log(m/M) (star%log_total_mass); and calc_envelope
 ! (false: the photosphere only); and the Bulirsch-Stoer controls: the
 ! tolerance fraction (the atmosphere's step tolerance, and the envelope's
 ! stop at tolerance_fraction |senv| of senv), the number of stages and
@@ -256,7 +256,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       jerr = 0
       switched_to_gray = .false.
 ! -1d99 means "no photosphere": it stays unless the atmosphere
-! finishes, so that the driver does not overwrite star%pphot after an
+! finishes, so that the driver does not overwrite star%photosphere_logP after an
 ! early error.
       log10_photo_pressure = -1.0d99
 

@@ -8,7 +8,7 @@
 ! atmosphere_derivs/envelope_derivs integrands (which call the eos/
 ! kap facades) through numerics' bsstep in core/envelope/envelope_integration_kernel.f90,
 ! consuming the pure atm surface lookups (surfp/kcsurfp/interpolate_allard_surface --
-! still atm-domain physics) and writing model state (star%pphot and
+! still atm-domain physics) and writing model state (star%photosphere_logP and
 ! the star's envelope and atmosphere points). In MESA terms this is star-solver code (create_atm/env
 ! integration), not the atm physics module -- which is why it now
 ! lives in core/ with the derivative routines, surfbc and the
@@ -83,7 +83,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! DRIVER. It snapshots the configuration out of star%job / star%ctrl
 ! into an envint_config, calls the star-blind kernel
 ! (core/envelope/envelope_integration_kernel.f90), and applies the star-state consequences:
-! star%pphot from the integrated photosphere, and the Allard
+! star%photosphere_logP from the integrated photosphere, and the Allard
 ! gray-fallback switch (atm_choice -> 0, use_ttau_relation) when the
 ! kernel reports it.
 !
@@ -152,11 +152,11 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%atm_error_tol = s%ctrl%atm_error_tol
       cfg%env_error_tol = s%ctrl%env_error_tol
       cfg%atm_step_initial = s%ctrl%atm_step_initial
-      cfg%atm_hras = s%atm_hras
-      cfg%log10_total_mass = s%stotal
+      cfg%atm_hras = s%hsra_log_t_offset
+      cfg%log10_total_mass = s%log_total_mass
       cfg%surface_composition = surface_composition
-      cfg%senv = s%senv
-      cfg%tenv = s%tenv
+      cfg%senv = s%log_fit_point_mass_fraction
+      cfg%tenv = s%envelope_store_log_temperature
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
       cfg%calc_envelope = s%ctrl%calc_envelope_flag
       cfg%tolerance_fraction = s%ctrl%tolerance_fraction
@@ -180,7 +180,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 
 ! star-state consequences of the integration, applied HERE and only
 ! here (the kernel never sees star_info):
-      if (log10_photo_pressure > -1.0d98) s%pphot = log10_photo_pressure
+      if (log10_photo_pressure > -1.0d98) s%photosphere_logP = log10_photo_pressure
       if (switched_to_gray) then
 ! Allard table lookup out of range: the kernel fell back to a gray
 ! atmosphere for this and all future calls (historical behavior)

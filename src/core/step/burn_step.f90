@@ -62,10 +62,11 @@ end function surface_accretion_now
 ! The energy generation of one shell: net's compute_nuclear_energy, with
 ! the two inputs that depend on where the shell sits in the model filled
 ! in: whether it lies in the surface convection zone (shell_index >=
-! star%jcz), and the convective turnover time; together they cap
+! star%envelope_cz_bottom_index_start), and the convective turnover time; together they cap
 ! deuterium burning there. Everything comes back in e; nothing is
 ! stored.
-!   star reads: convective_turnover_timescale, jcz
+!   star reads: convective_turnover_timescale,
+!     envelope_cz_bottom_index_start
 !   star writes: none
 subroutine compute_zone_energy(s, log_density, log_temperature, xa, &
      shell_index, e)
@@ -77,7 +78,7 @@ subroutine compute_zone_energy(s, log_density, log_temperature, xa, &
       type(nuclear_energy_result), intent(out) :: e
 
       call compute_nuclear_energy(log_density, log_temperature, xa, &
-           shell_index.ge.s%jcz, s%convective_turnover_timescale, e)
+           shell_index.ge.s%envelope_cz_bottom_index_start, s%convective_turnover_timescale, e)
 end subroutine compute_zone_energy
 
 
@@ -620,8 +621,8 @@ end subroutine network_rates_of_model
 ! sub-step's midpoint model (mid_timestep_model, for burn_and_settle).
 !   star reads: convective_turnover_timescale,
 !     ctrl%accreted_composition, ctrl%mass_accretion_rate,
-!     ctrl%nuclear_logT_cutoffs, jcz, job%use_mass_accretion, logRho,
-!     logT, nz, xa
+!     ctrl%nuclear_logT_cutoffs, envelope_cz_bottom_index_start,
+!     job%use_mass_accretion, logRho, logT, nz, xa
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
       use star_info_lib, only: json, i_h1, i_h2
@@ -652,7 +653,7 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
          if (deuterium_test.gt.1.0d-11) then
             s%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  s%logRho(zone_idx), s%logT(zone_idx), s%xa(i_h1,zone_idx), &
-                 zone_idx.ge.s%jcz, s%convective_turnover_timescale)
+                 zone_idx.ge.s%envelope_cz_bottom_index_start, s%convective_turnover_timescale)
             if (store_start_rates) s%deuterium_burning_rate_start(zone_idx) = &
                  s%deuterium_burning_rate(zone_idx)
          else

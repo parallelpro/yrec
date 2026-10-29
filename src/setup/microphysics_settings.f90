@@ -159,8 +159,8 @@ end function atmosphere_settings
 !     ctrl%overshoot_alpha_envelope, ctrl%rotation_active,
 !     ctrl%spot_depth_varies, ctrl%spot_filling_factor,
 !     ctrl%spot_temp_contrast, ctrl%tgcut,
-!     ctrl%use_extended_composition, log10_solar_luminosity,
-!     mixing_length_alpha, solar_luminosity_cgs, zenvm
+!     ctrl%use_extended_composition, envelope_metals_no_cno,
+!     log10_solar_luminosity, mixing_length_alpha, solar_luminosity_cgs
 !   star writes: none
 function convection_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -188,7 +188,7 @@ function convection_settings_from_star(s) result(settings)
       settings%rotation_active = s%ctrl%rotation_active
       settings%instability_transport_active = s%ctrl%instability_transport_active
       settings%use_extended_composition = s%ctrl%use_extended_composition
-      settings%envelope_metals_no_cno = s%zenvm
+      settings%envelope_metals_no_cno = s%envelope_metals_no_cno
 end function convection_settings_from_star
 
 !----------------------------------------------------------------------

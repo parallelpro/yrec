@@ -75,10 +75,10 @@ module rotation_scratch_lib
 ! iteration
            double precision :: composition_snapshot(15,json)
 ! omega_start (legacy WMST): omega at the start of the current sub-step
-! (star%old_omega on the first, star%omega afterwards), read at the
+! (star%omega_start on the first, star%omega afterwards), read at the
 ! surface by secular_transport for the wind torque. (The start-of-step
 ! physics the model is interpolated from, on the step's mesh, is the
-! star's: star%old_gradT, ..., which the rezone stores.)
+! star's: star%gradT_start, ..., which the rezone stores.)
            double precision :: omega_start(json)
       end type substep_model_state
 

@@ -89,7 +89,7 @@ module controls_buffer
       logical :: compute_neutrino_fluxes = .false.
 
 ! Timestep factors (atime) and log T cutoffs: nuclear burning, Saha
-! ionization, the envelope's temperature window (tenv0, tenv1; star%tenv
+! ionization, the envelope's temperature window (tenv0, tenv1; star%envelope_store_log_temperature
 ! is their mean) and the simplified temperature gradient (tgcut).
       real(dp) :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
@@ -122,7 +122,7 @@ module controls_buffer
       real(dp) :: weak_screening_threshold = 0.03d0
 
 ! Overshoot and semiconvection. iov1/iov2, the overshoot range, are
-! model state (star%iov1/iov2).
+! model state (star%envelope_overshoot_bottom_index/envelope_overshoot_top_index).
       real(dp) :: dpenv = 1.0d0
       logical :: core_overshoot_active = .false.
       real(dp) :: overshoot_alpha_core = 0.0d0

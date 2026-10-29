@@ -79,11 +79,11 @@ program test_rotation
       rotation_settings%pmm_solar_pressure = 4.9752d0
       rotation_settings%pmm_solar_turnover_timescale = 9.6132d5
       rotation_settings%wind_saturation_omega = 3.0d-5
-      star%convective_turnover_timescale_old = 9.0d5
+      star%convective_turnover_timescale_prev = 9.0d5
       star%convective_turnover_timescale = 1.1d6
-      star%fracstep = 0.5d0
-      star%pphot0 = 4.95d0
-      star%pphot = 5.00d0
+      star%substep_time_fraction = 0.5d0
+      star%photosphere_logP_prev = 4.95d0
+      star%photosphere_logP = 5.00d0
 
       write(*,'(a)') "# brake_convection_zone (j/m of the convection zone after the step)"
       rotation_settings%use_pmm_wind_law = .true.
@@ -158,10 +158,10 @@ contains
 function wind_now() result(conditions)
       type(wind_conditions) :: conditions
       conditions = wind_conditions( &
-           turnover_timescale_start=star%convective_turnover_timescale_old, &
+           turnover_timescale_start=star%convective_turnover_timescale_prev, &
            turnover_timescale_end=star%convective_turnover_timescale, &
-           log_pphot_start=star%pphot0, log_pphot_end=star%pphot, &
-           step_fraction=star%fracstep)
+           log_pphot_start=star%photosphere_logP_prev, log_pphot_end=star%photosphere_logP, &
+           step_fraction=star%substep_time_fraction)
 end function wind_now
 
 ! The convection zone: zones 3-6 of the model, 0.02 Msun with moment of
@@ -316,10 +316,10 @@ subroutine structure_check()
          star%opacity_zone(i) = 1.0d0 + 100.0d0*(dble(i)/dble(n))**4
       end do
       call viscos(xa, log_rho, log_t, star%opacity_zone, star%cp, n, &
-           star%visc, star%thdif)
+           star%kinematic_viscosity, star%thermal_diffusivity)
       write(*,'(a)') "zone  viscosity thermal-diffusivity"
       do s = 1, size(shown)
-         write(*,'(i4,2(1pe24.15))') shown(s), star%visc(shown(s)), star%thdif(shown(s))
+         write(*,'(i4,2(1pe24.15))') shown(s), star%kinematic_viscosity(shown(s)), star%thermal_diffusivity(shown(s))
       end do
 end subroutine structure_check
 
@@ -454,7 +454,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       zmin = 2
       zmax = count(.not. convective(1:n))
       circ_scr%velocity_prev = 0.0d0
-      star%vfc = 0.0d0
+      star%zahn_coupling = 0.0d0
       call rotation_stability_setup(stab, sub_physics, &
            log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n)
       radius = stab%radius
@@ -482,9 +482,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
               v_total, lum_total, log_p, star%mechanism_velocity)
       end do
       if (zahn) call zahn_coupling_factor(stab, log_rho, radius, v_total, zmin, zmax, w, &
-           star%vfc)
+           star%zahn_coupling)
       call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix, &
-           star%mechanism_velocity, star%vfc)
+           star%mechanism_velocity, star%zahn_coupling)
       write(*,'(a)') "## "//label
       write(*,'(a,i2,a,l2,a,i3)') "quadrupole ierr", ierr, "  transport active", active, &
            "  zone_max", zmax
@@ -497,7 +497,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       write(*,'(a)') "zone  total-velocity D_omega D_mix vfc quadrupole"
       do s = 1, size(shown)
          i = shown(s)
-         write(*,'(i4,5(1pe24.15))') i, v_total(i), d_am(i), d_mix(i), star%vfc(i), &
+         write(*,'(i4,5(1pe24.15))') i, v_total(i), d_am(i), d_mix(i), star%zahn_coupling(i), &
               stab%quadrupole_moment(i)
       end do
       if (chain) then

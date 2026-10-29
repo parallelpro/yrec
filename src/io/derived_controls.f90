@@ -40,7 +40,7 @@ subroutine derive_controls(s)
 
       call derive_rate_scales
       call select_eos_and_opacity_tables(s)
-      s%tenv = 0.5d0*(tenv0 + tenv1)
+      s%envelope_store_log_temperature = 0.5d0*(tenv0 + tenv1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
       call select_cno_mixture

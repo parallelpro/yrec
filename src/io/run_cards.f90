@@ -46,7 +46,7 @@ subroutine interpret_kind_cards(s)
 ! it), and the eos-side mixture follows it
          if (rescale_params(3,n) > 0.0_dp) s%envelope_metal_fraction = rescale_params(3,n)
          call eos_set_mixture(s%envelope_hydrogen_fraction, &
-              s%envelope_metal_fraction, s%amuenv, s%fxenv)
+              s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, s%envelope_number_fractions)
       end do
 end subroutine interpret_kind_cards
 

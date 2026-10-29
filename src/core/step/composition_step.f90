@@ -76,9 +76,9 @@ contains
 !     ctrl%use_extended_composition, ctrl%use_semiconvection, dm, gradT,
 !     log_mass, log_Teff, log_total_mass, logP, logR, logT,
 !     luminosity_lsun, nz
-!   star writes: convective_flag, iov1, iov2, logRho, m,
-!     mixed_zone_bounds, settling_active, settling_suspended_reported,
-!     xa
+!   star writes: convective_flag, envelope_overshoot_bottom_index,
+!     envelope_overshoot_top_index, logRho, m, mixed_zone_bounds,
+!     settling_active, settling_suspended_reported, xa
 subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
@@ -128,7 +128,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
            radiative_zone_bounds, s%mixed_zone_bounds, &
            mixed_zone_bounds_no_overshoot, core_cz_edge, envelope_cz_edge, &
            num_radiative_zones, num_mixed_zones, &
-           num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
+           num_mixed_zones_no_overshoot, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
 
 ! 2-3. Burning: the rates, then the implicit network.
@@ -176,7 +176,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
               radiative_zone_bounds, s%mixed_zone_bounds, &
               mixed_zone_bounds_no_overshoot, core_cz_edge, &
               envelope_cz_edge, num_radiative_zones, num_mixed_zones, &
-              num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
+              num_mixed_zones_no_overshoot, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
          if (ierr /= 0) return
       end if
 

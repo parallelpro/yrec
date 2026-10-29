@@ -145,8 +145,8 @@ subroutine build_stitched_model(s, ierr)
       ksaha = 0
       lprt = .false.
       lsbc0 = .false.
-      b = exp(ln10*s%log_L)
-      rl = surface_log10_radius_cm(s, s%log_L, s%log_Teff)
+      b = exp(ln10*s%log_L_lsun)
+      rl = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
       gl = cgl + s%log_total_mass - rl - rl
       plim = s%logP(s%nz)
       if (s%convective_flag(s%nz) .and. s%ctrl%spot_filling_factor /= 0.0d0 &
@@ -157,7 +157,7 @@ subroutine build_stitched_model(s, ierr)
          ateffl = s%log_Teff
       end if
       jerr = 0
-! The stitch is the one writer of star%pphot: atm_get sets it from
+! The stitch is the one writer of star%photosphere_logP: atm_get sets it from
 ! this integration at the converged model, and no other path
 ! recomputes it. The stitch runs every step, so pphot is always
 ! current.
@@ -634,7 +634,7 @@ subroutine atmosphere_value(s, icol, i, value, found)
       case (ip_logT);         value = s%atm_points%atmo_log10_temperature(i)
       case (ip_logRho);       value = s%atm_points%atmo_log10_density(i)
       case (ip_logP);         value = s%atm_points%atmo_log10_pressure(i)
-      case (ip_luminosity);   value = exp(ln10*s%log_L)
+      case (ip_luminosity);   value = exp(ln10*s%log_L_lsun)
       case (ip_gamma1);       value = s%atm_points%atmo_gamma1(i)
       case (ip_opacity);      value = s%atm_points%atmo_opacity(i)
 ! atmo_gradients holds (1) the radiative, (2) the actual and (3) the
@@ -785,7 +785,7 @@ subroutine gather_atmosphere_point()
       delta = -s%atm_points%atmo_dlnrho_dlnt(i)
       nab = s%atm_points%atmo_gradients(2,i)
       nab_ad = s%atm_points%atmo_gradients(3,i)
-      pts(ipul_L,j) = exp(ln10*s%log_L)*s%solar_luminosity_cgs
+      pts(ipul_L,j) = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
       pts(ipul_gamma1,j) = s%atm_points%atmo_gamma1(i)
       pts(ipul_kap,j) = s%atm_points%atmo_opacity(i)
       pts(ipul_kap_kap_T,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)

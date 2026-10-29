@@ -51,11 +51,12 @@ contains
 ! when matter was accreted.
 !   star reads: ctrl%mass_accretion_rate, ctrl%reimers_scaling_factor,
 !     ctrl%use_reimers_wind, dm, envelope_cz_bottom_index,
-!     log10_solar_luminosity, log_L, log_Teff, log_total_mass, logP,
-!     logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
+!     log10_solar_luminosity, log_L_lsun, log_Teff, log_total_mass,
+!     logP, logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
 !   star writes: atm_point, convective_turnover_timescale,
-!     envelope_specific_entropy, jcz, job%use_mass_accretion
+!     envelope_cz_bottom_index_start, envelope_specific_entropy,
+!     job%use_mass_accretion
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: old_log_envelope_mass_fraction
@@ -131,7 +132,7 @@ contains
 ! mass_accretion_rate, or the Reimers law with use_reimers_wind.
 subroutine set_mass_change_rate()
 ! R from L = 4 pi R^2 sigma Teff^4, and M, in CGS.
-      log10_radius = log10_radius_from_l_teff(s%log_L, s%log_Teff, &
+      log10_radius = log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
            s%log10_solar_luminosity)
       total_radius_cm = exp10(log10_radius)
       total_mass_grams = s%star_mass*s%solar_mass_cgs
@@ -143,7 +144,7 @@ subroutine set_mass_change_rate()
 ! to CGS again, a rate about 1e25 too large.)
       if(s%ctrl%use_reimers_wind)then
          mass_loss_rate_msun_yr = s%ctrl%reimers_scaling_factor* &
-              exp10(s%log_L)* &
+              exp10(s%log_L_lsun)* &
               (total_radius_cm/s%solar_radius_cgs)/s%star_mass
       endif
 end subroutine set_mass_change_rate
@@ -163,10 +164,10 @@ subroutine measure_convective_envelope()
               ' mass change: turnover time (yr), R/Rsun', &
               s%convective_turnover_timescale/seconds_per_year, &
               total_radius_cm/s%solar_radius_cgs
-         s%jcz = jenv
+         s%envelope_cz_bottom_index_start = jenv
       else
          s%convective_turnover_timescale = 0.0d0
-         s%jcz = nz
+         s%envelope_cz_bottom_index_start = nz
       endif
 ! The mass of the convective envelope, sum of dm(jenv..nz) (MHP 8/10).
 ! dm(nz) reaches the total mass, so this includes the mass outside the
@@ -336,9 +337,9 @@ end subroutine change_mass
 !     envelope_cz_bottom_index, envelope_specific_entropy, logRho, nz,
 !     omega, solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
-!     delta_log_temperature, dm, dt, j_rot, log_mass, log_total_mass,
-!     logP, logR, logT, m, recompute_envelope_triangle, senv, star_mass,
-!     stotal, xa
+!     delta_log_temperature, dm, dt, j_rot, log_fit_point_mass_fraction,
+!     log_mass, log_total_mass, logP, logR, logT, m,
+!     recompute_envelope_triangle, star_mass, xa
 subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
      cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
@@ -537,11 +538,10 @@ subroutine update_masses()
       total_mass_grams_old = exp10(s%log_total_mass)
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       s%log_total_mass = log10(total_mass_grams_new)
-      s%stotal = s%log_total_mass
       call change_shell_masses(jenv, delta_mass_cgs, total_mass_grams_new, &
            s%m(1:nz), s%log_mass(1:nz), s%dm(1:nz))
 ! senv = log10(m(nz)/M), the mass fraction inside the fitting point.
-      s%senv = s%log_mass(nz) - s%log_total_mass
+      s%log_fit_point_mass_fraction = s%log_mass(nz) - s%log_total_mass
 ! The envelope triangle (the surface boundary condition) is to be
 ! recomputed.
       s%recompute_envelope_triangle = .true.

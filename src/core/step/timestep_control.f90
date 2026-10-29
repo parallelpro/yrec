@@ -339,7 +339,7 @@ end subroutine timestep_limit_structure
 ! timestep_limit_omega (legacy wtime.f)
 !----------------------------------------------------------------------
 ! For rotating models, the timestep limit from the change of omega since
-! the start of the step (star%old_omega):
+! the start of the step (star%omega_start):
 !   max_domega_frac = max_i 2 |omega_i - omega_old,i|/(omega_i + omega_old,i),
 !   f = max_domega_frac/max_domega_global   (legacy DTWIND),
 ! clipped to [1/a, a] with a = atime(itime_max_dt_frac), and
@@ -369,10 +369,10 @@ subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotatio
       double precision, parameter :: dt_unlimited = 1.0d20
 
       start_index = 1
-      max_domega_frac = 2.0d0*abs(omega(start_index)-s%old_omega(start_index))/ &
-           (omega(start_index)+s%old_omega(start_index))
+      max_domega_frac = 2.0d0*abs(omega(start_index)-s%omega_start(start_index))/ &
+           (omega(start_index)+s%omega_start(start_index))
       do i = start_index+1,num_points
-         test_domega=2.0d0*abs(omega(i)-s%old_omega(i))/(omega(i)+s%old_omega(i))
+         test_domega=2.0d0*abs(omega(i)-s%omega_start(i))/(omega(i)+s%omega_start(i))
          if(test_domega.gt.max_domega_frac) then
             max_domega_frac = test_domega
          endif

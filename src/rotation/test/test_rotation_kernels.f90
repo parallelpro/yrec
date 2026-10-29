@@ -1348,7 +1348,7 @@ subroutine checkj_check()
       do k = 1, n
          inertia(k) = 2.0d0/3.0d0*r(k)**2*dm(k)
          j0(k) = 3.0d-6*(1.0d0 + 0.3d0*dble(k)/dble(n))*inertia(k)/dm(k)
-         st%old_omega(k) = 3.0d-6
+         st%omega_start(k) = 3.0d-6
       end do
       eta2 = 0.0d0; r0 = r
 ! a change of 1e-6 (within the tolerance)
@@ -1491,13 +1491,13 @@ subroutine checkc_check()
       if (ierr == 0) err = 1.0d0
       call report("checkc: the fourth cut stops the run", err, 0.0d0)
 ! mu at the second iteration: pure H1, He4 and metals (as C12) in zones
-! 2, 3 and 4, the envelope mixture elsewhere; star%amuenv is that
+! 2, 3 and 4, the envelope mixture elsewhere; star%envelope_inverse_atomic_weight is that
 ! mixture's sum X_i/A_i. A fully ionized gas: mu = A/(1 + Z_nuc), so
 ! A(H)/2, A(He4)/3 and 12/7.
       comp(i_h1, 10) = 0.7d0
       st%envelope_hydrogen_fraction = 0.7d0; st%envelope_helium_fraction = 0.28d0
       st%envelope_metal_fraction = 0.02d0; st%envelope_he3_fraction = 1.0d-5
-      st%amuenv = 0.7d0/a_h + 0.28d0/a_he + 0.02d0/12.0d0 + 1.0d-5/a_he3
+      st%envelope_inverse_atomic_weight = 0.7d0/a_h + 0.28d0/a_he + 0.02d0/12.0d0 + 1.0d-5/a_he3
       comp(1:4, 2) = 0.0d0; comp(i_h1, 2) = 1.0d0
       comp(1:4, 3) = 0.0d0; comp(i_he4, 3) = 1.0d0
       comp(1:4, 4) = 0.0d0; comp(i_metals, 4) = 1.0d0

@@ -48,23 +48,28 @@ contains
 !   star reads: conv_vel, cp, ctrl%chi_grid_scale,
 !     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
 !     ctrl%rotation_active, ctrl%tenv0, ctrl%tenv1,
-!     ctrl%use_extended_composition, disk_gate_age_gyr, eps_channels,
-!     eps_total, fit_point_pressure, fit_point_radius, grada, gradr,
-!     gradT, log_Teff, log_total_mass, mu, opacity_zone, qdt,
-!     stored_envelope_state, thdif, visc
-!   star writes: am_transport_convective_flag, convective_flag,
-!     convective_flag_start, core_cz_top_index,
-!     deuterium_burning_rate_start, dln_luminosity_dt, dlog_pressure_dt,
-!     dlog_radius_dt, dlog_temperature_dt, dm, envelope_cz_bottom_index,
-!     eta_squared, fp_rot, ft_rot, i_rot, iov1, iov2, j_rot,
-!     kinetic_energy_rot, log_mass, log_Teff_start, logP, logP_start,
-!     logR, logR_start, logRho, logRho_start, logT, logT_start,
-!     luminosity_lsun, luminosity_lsun_start, m, mean_gravity,
-!     mean_radius, nz, old_conv_vel, old_cp, old_eps_plus_neu_grav,
-!     old_eps_total, old_eta_squared, old_grada, old_gradr, old_gradT,
-!     old_hg, old_mean_radius, old_mu, old_omega, old_opacity, old_qdt,
-!     old_specific_angular_momentum, old_thdif, old_visc, omega, senv,
-!     surface_luminosity_lsun_start, xa, xa_start, xnew, znew
+!     ctrl%use_extended_composition, disk_gate_age_gyr, dlnrho_dlnt,
+!     eps_channels, eps_total, fit_point_pressure, fit_point_radius,
+!     grada, gradr, gradT, kinematic_viscosity, log_Teff,
+!     log_total_mass, mu, opacity_zone, stored_envelope_state,
+!     thermal_diffusivity
+!   star writes: am_transport_convective_flag, conv_vel_start,
+!     convective_flag, convective_flag_start, core_cz_top_index,
+!     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,
+!     dlnrho_dlnt_start, dlog_pressure_dt, dlog_radius_dt,
+!     dlog_temperature_dt, dm, envelope_cz_bottom_index,
+!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
+!     eps_plus_neu_grav_start, eps_total_start, eta_squared,
+!     eta_squared_start, fp_rot, ft_rot, grada_start, gradr_start,
+!     gradT_start, i_rot, j_rot, j_rot_start, kinematic_viscosity_start,
+!     kinetic_energy_rot, log_fit_point_mass_fraction, log_mass,
+!     log_Teff_start, logP, logP_start, logR, logR_start, logRho,
+!     logRho_start, logT, logT_start, luminosity_lsun,
+!     luminosity_lsun_start, m, mean_gravity, mean_gravity_start,
+!     mean_radius, mean_radius_start, mu_start, nz, omega, omega_start,
+!     opacity_zone_start, surface_hydrogen_fraction,
+!     surface_luminosity_lsun_start, surface_metal_fraction,
+!     thermal_diffusivity_start, xa, xa_start
 subroutine rezone(s, envelope_store_index, point_reset_flag, &
      h_shell_zone_begin, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
@@ -183,7 +188,7 @@ contains
 ! tenv0 < log T < tenv1. If it is cooler than tenv0, the outer points
 ! down to the first one hotter than tenv0 are deleted; if it is hotter
 ! than tenv1 and a stored envelope state exists, one point is added
-! outside it. Either sets point_reset_flag (and star%senv); ierr if the
+! outside it. Either sets point_reset_flag (and star%log_fit_point_mass_fraction); ierr if the
 ! whole model is cooler than tenv0.
 subroutine check_envelope_temperature_range
 ! The outer point is cooler than tenv0: delete points down to the first
@@ -194,7 +199,7 @@ subroutine check_envelope_temperature_range
              write(run_log_unit,10) s%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
-             s%senv = s%log_mass(s%nz) - s%log_total_mass
+             s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
              point_reset_flag = .true.
              exit
           endif
@@ -217,8 +222,8 @@ subroutine check_envelope_temperature_range
       else if (s%logT(s%nz).gt.s%ctrl%tenv1.and. &
            envelope_store_index.ne.0) then
        s%nz = s%nz + 1
-       s%senv = s%stored_envelope_state(4)
-       s%log_mass(s%nz) = s%log_total_mass + s%senv
+       s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
+       s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
        s%logP(s%nz) = s%logP(s%nz-1) + &
             (s%stored_envelope_state(1) - s%fit_point_pressure(envelope_store_index))
        s%logT(s%nz) = s%logT(s%nz-1) + &
@@ -834,13 +839,13 @@ subroutine regrid_rotation_variables
                    mean_radius=s%mean_radius(1:old_point_count), &
                    eta_squared=s%eta_squared(1:old_point_count)), &
               new_log_mass(1:new_point_count), regridded)
-         s%old_omega(1:new_point_count) = regridded%omega
-         s%old_specific_angular_momentum(1:new_point_count) = &
+         s%omega_start(1:new_point_count) = regridded%omega
+         s%j_rot_start(1:new_point_count) = &
               regridded%specific_angular_momentum
          fp_old(1:new_point_count) = regridded%fp
          ft_old(1:new_point_count) = regridded%ft
-         s%old_mean_radius(1:new_point_count) = regridded%mean_radius
-         s%old_eta_squared(1:new_point_count) = regridded%eta_squared
+         s%mean_radius_start(1:new_point_count) = regridded%mean_radius
+         s%eta_squared_start(1:new_point_count) = regridded%eta_squared
       endif
 
 end subroutine regrid_rotation_variables
@@ -859,14 +864,14 @@ subroutine regrid_start_of_step_eps
            s%ctrl%envelope_overshoot_active)) then
          call regrid_profile(s%log_mass(1:old_point_count), &
               s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%old_eps_total(1:new_point_count))
+              s%eps_total_start(1:new_point_count))
          do zone_index = 1,s%nz
             spline_y(zone_index) = s%eps_total(zone_index)+s%eps_channels(i_eps_neu,zone_index)+ &
                  s%eps_channels(i_eps_grav,zone_index)
          end do
          call regrid_profile(s%log_mass(1:old_point_count), &
               spline_y(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%old_eps_plus_neu_grav(1:new_point_count))
+              s%eps_plus_neu_grav_start(1:new_point_count))
       endif
 end subroutine regrid_start_of_step_eps
 
@@ -884,12 +889,12 @@ subroutine transfer_new_points
       end do
       if (s%ctrl%rotation_active) then
        do j = 1, new_num_zones
-          s%j_rot(j) = s%old_specific_angular_momentum(j)
-          s%omega(j) = s%old_omega(j)
+          s%j_rot(j) = s%j_rot_start(j)
+          s%omega(j) = s%omega_start(j)
           s%fp_rot(j) = fp_old(j)
           s%ft_rot(j) = ft_old(j)
-          s%eta_squared(j) = s%old_eta_squared(j)
-          s%mean_radius(j) = s%old_mean_radius(j)
+          s%eta_squared(j) = s%eta_squared_start(j)
+          s%mean_radius(j) = s%mean_radius_start(j)
        end do
       endif
       if (solver_diagnostics()) then
@@ -932,7 +937,7 @@ subroutine respin_on_new_grid
        call am_convective_regions(s%xa,s%logRho,s%logP,s%logR, &
             s%log_mass,s%logT,s%convective_flag,s%nz, &
             s%am_transport_convective_flag,radiative_zone_bounds, &
-            convective_zone_bounds,num_radiative_zones,num_convective_zones, s%iov1, s%iov2, ierr)
+            convective_zone_bounds,num_radiative_zones,num_convective_zones, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
        if (ierr /= 0) return
 ! The moments of inertia of the distorted shells (with eta2 and r0)
 ! before omega is re-derived, as the 2015/04/06 version did (JNT
@@ -975,14 +980,14 @@ subroutine retally_angular_momentum
        total_rotational_ke = sum_rotational_ke
 ! The start-of-step rotation state, for the angular momentum transport.
        do i = 1,s%nz
-          s%old_omega(i) = s%omega(i)
-          s%old_hg(i) = s%mean_gravity(i)
-          s%old_eta_squared(i) = s%eta_squared(i)
-          s%old_mean_radius(i) = s%mean_radius(i)
+          s%omega_start(i) = s%omega(i)
+          s%mean_gravity_start(i) = s%mean_gravity(i)
+          s%eta_squared_start(i) = s%eta_squared(i)
+          s%mean_radius_start(i) = s%mean_radius(i)
           s%convective_flag_start(i) = s%convective_flag(i)
 ! j also goes to old_specific_angular_momentum (legacy HJX), for I/O
 ! as well (MHP 10/91).
-            s%old_specific_angular_momentum(i) = s%j_rot(i)
+            s%j_rot_start(i) = s%j_rot(i)
        end do
 end subroutine retally_angular_momentum
 
@@ -1008,16 +1013,16 @@ subroutine rerun_physics_on_new_grid
 ! mesh, so that several short diffusion sub-steps can be taken within
 ! one evolutionary step.
          do zone_index = 1,s%nz
-            s%old_gradr(zone_index) = s%gradr(zone_index)
-            s%old_gradT(zone_index) = s%gradT(zone_index)
-            s%old_grada(zone_index) = s%grada(zone_index)
-            s%old_mu(zone_index) = s%mu(zone_index)
-            s%old_opacity(zone_index) = s%opacity_zone(zone_index)
-            s%old_cp(zone_index) = s%cp(zone_index)
-            s%old_qdt(zone_index) = s%qdt(zone_index)
-            s%old_conv_vel(zone_index) = s%conv_vel(zone_index)
-            s%old_visc(zone_index) = s%visc(zone_index)
-            s%old_thdif(zone_index) = s%thdif(zone_index)
+            s%gradr_start(zone_index) = s%gradr(zone_index)
+            s%gradT_start(zone_index) = s%gradT(zone_index)
+            s%grada_start(zone_index) = s%grada(zone_index)
+            s%mu_start(zone_index) = s%mu(zone_index)
+            s%opacity_zone_start(zone_index) = s%opacity_zone(zone_index)
+            s%cp_start(zone_index) = s%cp(zone_index)
+            s%dlnrho_dlnt_start(zone_index) = s%dlnrho_dlnt(zone_index)
+            s%conv_vel_start(zone_index) = s%conv_vel(zone_index)
+            s%kinematic_viscosity_start(zone_index) = s%kinematic_viscosity(zone_index)
+            s%thermal_diffusivity_start(zone_index) = s%thermal_diffusivity(zone_index)
 ! The start-of-step eps sum (legacy ESUMO) is splined in
 ! regrid_start_of_step_eps (MHP 6/00). (Until 2026-10 this loop also
 ! stored grad_ad - grad (MHP 06/02) in the rotation scratch's
@@ -1042,10 +1047,10 @@ end subroutine rerun_physics_on_new_grid
 ! Rebuild the surface opacity tables (for the new surface X and Z) when
 ! the surface X has moved by more than 1e-8 since they were built.
 subroutine refresh_surface_opacity
-      if (dabs(s%xnew-s%xa(i_h1,s%nz)).gt.1.0D-8) then
-               s%xnew = s%xa(i_h1,s%nz)
-               s%znew = s%xa(i_metals,s%nz)
-               call kap_update_surface_tables(s%xnew, ierr=ierr)
+      if (dabs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)).gt.1.0D-8) then
+               s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
+               s%surface_metal_fraction = s%xa(i_metals,s%nz)
+               call kap_update_surface_tables(s%surface_hydrogen_fraction, ierr=ierr)
                if (ierr /= 0) return
 
       end if

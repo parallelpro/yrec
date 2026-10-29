@@ -122,7 +122,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call am_convective_regions(s%xa,s%logRho,s%logP,s%logR,s%log_mass, &
            s%logT,s%convective_flag,s%nz, &
            am_transport_convective_flag,radiative_zone_bounds, &
-           convective_zone_bounds,num_radiative_zones,num_convective_zones, s%iov1, s%iov2, ierr)
+           convective_zone_bounds,num_radiative_zones,num_convective_zones, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
       disk_lock_engaged = .false.
       if(disk_locking_engaged(s%disk_gate_age_gyr)) disk_lock_engaged = .true.
@@ -159,7 +159,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       call advance_substep_clock()
       call record_substep_start_omega()
       fx = elapsed_substep_time/full_timestep
-      s%fracstep = fx
+      s%substep_time_fraction = fx
       call advance_rotation_substep(s, sub_model, sub_physics, &
            full_timestep, sub_timestep, fx, first_call, &
            moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
@@ -246,8 +246,8 @@ subroutine spin_down_without_transport()
          endif
          wind_loss_active = rotation_settings%use_wind_torque
 ! the loss rate averaged over the step
-         s%fracstep = 0.5
-         call brake_convection_zone(s%log_L,full_timestep,cz_mass_bottom, &
+         s%substep_time_fraction = 0.5
+         call brake_convection_zone(s%log_L_lsun,full_timestep,cz_mass_bottom, &
               cz_mass_top,envelope_boundary_zone,s%nz,wind_loss_active, &
               omega_surface, &
               s%star_mass,s%log_Teff,moment_of_inertia_cz, &
@@ -295,10 +295,10 @@ end subroutine advance_substep_clock
 subroutine record_substep_start_omega()
       if(first_call)then
 !         rot_scr%theta_prev(1) = rot_scr%theta_rezoned(1)
-         sub_model%omega_start(1) = s%old_omega(1)
+         sub_model%omega_start(1) = s%omega_start(1)
          do zone_index = 2,s%nz
 !            rot_scr%theta_prev(zone_index) = rot_scr%theta_rezoned(zone_index)
-            sub_model%omega_start(zone_index) = s%old_omega(zone_index)
+            sub_model%omega_start(zone_index) = s%omega_start(zone_index)
          end do
       else
          sub_model%omega_start(1) = s%omega(1)
@@ -319,7 +319,7 @@ end subroutine record_substep_start_omega
 subroutine brake_surface_convection_zone()
       omega_surface = s%omega_substep(s%nz)
       if(fully_convective_flag.or..not.rotation_settings%instability_transport_active) then
-         call brake_convection_zone(s%log_L,sub_timestep,cz_mass_bottom,cz_mass_top, &
+         call brake_convection_zone(s%log_L_lsun,sub_timestep,cz_mass_bottom,cz_mass_top, &
               envelope_boundary_zone,s%nz,wind_loss_active,omega_surface, &
               s%star_mass,s%log_Teff,moment_of_inertia_cz, &
               s%j_rot, wind_now(), ierr)
@@ -355,7 +355,7 @@ subroutine apply_instability_transport()
          elapsed_substep_time = elapsed_substep_time - 2.0D0*sub_timestep
          do zone_index = 1,s%nz
             s%j_rot(zone_index) = specific_angular_momentum_saved(zone_index)
-            sub_physics%mu(zone_index) = sub_physics%mu(zone_index) - fx*(s%mu(zone_index)-s%old_mu(zone_index))
+            sub_physics%mu(zone_index) = sub_physics%mu(zone_index) - fx*(s%mu(zone_index)-s%mu_start(zone_index))
             do species_index = 1,num_species_tracked
                s%xa(species_index,zone_index) = s%xa_start(species_index,zone_index)
             end do
@@ -374,7 +374,7 @@ subroutine burn_light_elements_over_substep()
            radiative_zone_bounds,convective_zone_bounds, &
            convective_zone_bounds_burn,core_boundary_zone_cur, &
            envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
-           num_convective_zones_burn, s%iov1, s%iov2, ierr)
+           num_convective_zones_burn, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
       if(rotation_settings%intermediate_overshoot .and. sub_model%convective_flag(s%nz))then
          s%envelope_overshoot_depth_end = rotation_settings%overshoot_alpha_envelope* &
@@ -426,10 +426,10 @@ end subroutine burn_light_elements_over_substep
 function wind_now() result(conditions)
       type(wind_conditions) :: conditions
       conditions = wind_conditions( &
-           turnover_timescale_start=s%convective_turnover_timescale_old, &
+           turnover_timescale_start=s%convective_turnover_timescale_prev, &
            turnover_timescale_end=s%convective_turnover_timescale, &
-           log_pphot_start=s%pphot0, log_pphot_end=s%pphot, &
-           step_fraction=s%fracstep)
+           log_pphot_start=s%photosphere_logP_prev, log_pphot_end=s%photosphere_logP, &
+           step_fraction=s%substep_time_fraction)
 end function wind_now
 
 end subroutine evolve_angular_momentum
