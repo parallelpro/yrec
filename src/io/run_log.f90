@@ -12,26 +12,28 @@ module run_log
       implicit none
       private
       public :: solver_diagnostics, set_solver_diagnostics, log_model_line, &
-           log_final_model_line, log_reset
+           log_final_model_line
       public :: log_run_summary
+      public :: progress_lines
 
 ! Reprint the column header every so many printed lines (MESA's
-! write_header_frequency), and never print the same model twice
-! (the final-model call may coincide with an interval line).
+! write_header_frequency).
       integer, parameter :: header_every = 10
-      integer :: lines_since_header = header_every
-      integer :: last_printed_model = -1
-! the control report_solver_diagnostics (set_solver_diagnostics)
+
+! The progress lines' state, per job (part of yrec_output's
+! output_state, which run_yrec owns): the lines printed since the
+! header, and the last model printed, so the same model never prints
+! twice (the final-model call may coincide with an interval line).
+      type :: progress_lines
+         integer :: lines_since_header = header_every
+         integer :: last_printed_model = -1
+      end type progress_lines
+
+! the control report_solver_diagnostics (set_solver_diagnostics), which
+! star-free code asks through solver_diagnostics()
       logical :: solver_diagnostics_on = .false.
 
 contains
-
-! Reset the per-run formatting state (in-process re-entry: called
-! from output_init_mesa at every job start).
-subroutine log_reset()
-      lines_since_header = header_every
-      last_printed_model = -1
-end subroutine log_reset
 
 ! The control report_solver_diagnostics, as the controls read installs
 ! it (set_solver_diagnostics), so that star-free code can ask.
@@ -47,33 +49,36 @@ end function solver_diagnostics
 
 ! The compact per-model progress line, to the terminal and the run
 ! log, throttled by terminal_interval (0 = off; final always prints).
-subroutine log_model_line(s)
+subroutine log_model_line(s, progress)
       use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(progress_lines), intent(inout) :: progress
       if (s%ctrl%terminal_interval <= 0) return
       if (mod(s%model_number, s%ctrl%terminal_interval) /= 0) return
-      call write_model_line(s)
+      call write_model_line(s, progress)
 end subroutine log_model_line
 
 ! The end-of-card call: the last converged model always prints.
-subroutine log_final_model_line(s)
+subroutine log_final_model_line(s, progress)
       use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
-      call write_model_line(s)
+      type(star_info), intent(in) :: s
+      type(progress_lines), intent(inout) :: progress
+      call write_model_line(s, progress)
 end subroutine log_final_model_line
 
-subroutine write_model_line(s)
+subroutine write_model_line(s, progress)
       use star_info_lib, only: star_info, i_h1
       use io_units
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(progress_lines), intent(inout) :: progress
       character(len=*), parameter :: header = &
            '   model  zones         age_Gyr        dt_yr   log_Teff' // &
            '      log_L      log_R center_h1  iters'
-      if (s%model_number == last_printed_model) return
-      if (lines_since_header >= header_every) then
+      if (s%model_number == progress%last_printed_model) return
+      if (progress%lines_since_header >= header_every) then
          write(terminal_unit,'(a)') header
          write(run_log_unit,'(a)') header
-         lines_since_header = 0
+         progress%lines_since_header = 0
       end if
       write(terminal_unit,10) s%model_number, s%nz, s%age_gyr, &
            s%timestep_yr, s%log_Teff, s%log_L, &
@@ -82,8 +87,8 @@ subroutine write_model_line(s)
            s%timestep_yr, s%log_Teff, s%log_L, &
            s%log_R_surface, s%xa(i_h1,1), s%newton_iterations
    10 format(1x,i7,1x,i6,1x,es15.8,1x,es12.5,3(1x,f10.6),2x,f8.6,1x,i6)
-      lines_since_header = lines_since_header + 1
-      last_printed_model = s%model_number
+      progress%lines_since_header = progress%lines_since_header + 1
+      progress%last_printed_model = s%model_number
 end subroutine write_model_line
 
 ! End-of-run summary (2026, run-log verbosity item): why the run
@@ -94,7 +99,7 @@ end subroutine write_model_line
 subroutine log_run_summary(s, wall_seconds)
       use star_info_lib, only: star_info
       use io_units
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       double precision, intent(in) :: wall_seconds
       write(terminal_unit,'(a)') ''
       write(run_log_unit,'(a)') ''

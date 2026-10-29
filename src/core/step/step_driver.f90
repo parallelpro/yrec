@@ -32,8 +32,9 @@ contains
 ! and then, on the converged model: the shell boundaries, the Li/Be burn,
 ! the envelope rebuild, the next timestep (compute_timestep), the
 ! stitched model, the observables, the output and the stop conditions.
-! model_iteration is the model's count within the run card (the star
-! calibration's check starts at the second). Exits:
+! output is the job's output state (run_yrec's). model_iteration is the
+! model's count within the run card (the star calibration's check
+! starts at the second). Exits:
 !   step_status = step_continue        advance accepted, continue
 !   step_status = step_kind_card_done  an age, abundance or structure-limit
 !                                      stop reached
@@ -48,7 +49,7 @@ contains
 ! previous step). The reset block below (evolve_step_reset_pending)
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
-subroutine evolve_step(s, model_iteration, step_status, ierr)
+subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
       use rotating_shape, only: rotation_shape_factors
@@ -63,7 +64,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
       use composition_step, only: advance_composition, predictor_pass, corrector_pass
       use henyey_iteration, only: refresh_surface_bc, henyey_iterate
       use convection_geometry, only: pressure_scale_height
-      use yrec_output, only: output_write_model
+      use yrec_output, only: output_state, output_write_model
       use observables, only: compute_observables
       use stitched_model, only: build_stitched_model
       use mass_change, only: change_mass
@@ -80,6 +81,8 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
       integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
            radiative_zone_bounds(max_radiative_zones,2)
       type(star_info), intent(inout) :: s
+! the job's output state (yrec_output), which run_yrec owns
+      type(output_state), intent(inout) :: output
 
 ! The run-card index is star%job%nk (legacy NK in /ZRAMP/), not an
 ! argument.
@@ -224,7 +227,7 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
        call compute_observables(s, ierr)
        if (ierr /= 0) return
 ! Write the model's output (formerly wrtout).
-       call output_write_model(s, ierr)
+       call output_write_model(s, output, ierr)
        if (ierr /= 0) return
 
 ! The stop conditions (MHP 10/24), in order: the end age, the table of

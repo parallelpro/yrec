@@ -1,89 +1,88 @@
 !----------------------------------------------------------------------
 ! yrec_output
 !----------------------------------------------------------------------
-! The run's output, per job:
-!   <outdir>/<star_history_name>  one row per converged model, MESA's
-!                                 history.data layout (history_output);
-!                                 the profile_number column maps models
-!                                 to profiles.
-!   <outdir>/profile<N>.data      every profile_interval models, MESA's
-!                                 profile layout, zone 1 the surface
-!                                 (profile_output), with the pulsation
-!                                 file in pulse_format beside it
-!                                 (pulsation_output).
-!   the run log                   everything written to run_log_unit.
-!   the .mod model                every model (model_files).
-! Columns are selectable through history_columns_file and
-! profile_columns_file (output_columns). This module opens the job's
-! files, writes the run card's header, and decides each model what is
-! due. The writers only read: compute_observables (core) and the
-! stitched model (core/stitched_model) compute every quantity first.
-! The output directory and the profile counter are per job, reset by
-! output_init_mesa together with the writers' own state.
+! The run's output, per job, in the output directory (the run log's):
+!   <star_history_name>        one row per converged model, MESA's
+!                              history.data layout (history_output); its
+!                              profile_number column maps models to
+!                              profiles.
+!   <profile_data_prefix><N>.data  every profile_interval models, MESA's
+!                              profile layout, zone 1 the surface
+!                              (profile_output), with the pulsation file
+!                              in pulse_format beside it
+!                              (pulsation_output).
+!   the .mod model             every model (model_files).
+! The run log (run_files opens it) gets the progress line every
+! terminal_interval models (run_log).
+!
+! The job's output state is one record, output_state, which run_yrec
+! owns: output_open sets it up after the controls are read, evolve_step
+! passes it to output_write_model every model, and output_close closes
+! the history file at the end. The writers only read the star:
+! compute_observables and the stitched model (core) compute every
+! quantity first.
 module yrec_output
-      use physical_constants
-      use history_output, only: history_output_init, write_history_row
-      use profile_output, only: profile_output_init, write_profile
-      use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, &
-           write_gyre_ext, gsm_supported
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use physical_constants, only: ln10
+      use history_output, only: history_file, history_output_init, &
+           write_history_row, close_history
+      use profile_output, only: profile_selection, profile_output_init, &
+           write_profile
+      use run_log, only: progress_lines, log_model_line, log_final_model_line
+      use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, &
+           write_gyre_pulse, write_gyre_ext, gsm_supported
       use model_files, only: write_mod_model
       use math_lib
       implicit none
       private
-      public :: output_init_mesa, output_run_header, output_write_model
+      public :: output_state, output_open, output_close, output_run_header, &
+           output_write_model, output_final_model_line
 
-      character(len=256) :: out_dir = ' '
-      integer :: profile_counter = 0
 ! The pulsation file formats pulse_format names (case-insensitive);
 ! unknown_pulse_format for any other name.
       integer, parameter :: unknown_pulse_format = 0, pulse_gyre = 1, &
            pulse_fgong = 2, pulse_gsm = 3
 
+! One job's output state: the output directory, the profile counter
+! (the N of profile<N>.data), the pulse format, the history file, the
+! profile columns and the progress lines.
+      type :: output_state
+         character(len=256) :: out_dir = ' '
+         integer :: profile_counter = 0
+         integer :: pulse_format = pulse_gyre
+         type(history_file) :: history
+         type(profile_selection) :: profiles
+         type(progress_lines) :: progress
+      end type output_state
+
 contains
 
 ! ---------------------------------------------------------------
-subroutine output_init_mesa(s, log_output_file, output_dir, ierr)
+! The job's output, after the controls are read: a history file a
+! previous job left open is closed, the column selections are read,
+! and the pulse format is checked, so that a bad one stops the run
+! before its first model (an unknown name, or GSM on a build without
+! HDF5).
+subroutine output_open(s, output, ierr)
       use star_info_lib, only: star_info
-      use io_units
-      use run_log, only: log_reset
-      type(star_info), intent(inout) :: s
-      character(len=*), intent(in) :: log_output_file, output_dir
+      use run_files, only: output_directory
+      use io_units, only: report_error
+      type(star_info), intent(in) :: s
+      type(output_state), intent(inout) :: output
       integer, intent(out) :: ierr
-      character(len=256) :: log_path, msg
-      integer :: n, ios
 
       ierr = 0
-! run-log name: keep an explicit .log name as-is, swap a legacy
-! .short name to .log, append .log otherwise (so the default
-! run.log stays run.log, not run.log.log).
-      n = len_trim(log_output_file)
-      if (n >= 4 .and. log_output_file(max(1,n-3):n) == '.log') then
-         log_path = log_output_file
-      else
-         n = index(log_output_file, '.short')
-         if (n > 0) then
-            log_path = log_output_file(1:n) // 'log'
-         else
-            log_path = trim(log_output_file) // '.log'
-         end if
-      end if
-      open(run_log_unit, file=log_path, form='FORMATTED', &
-           status='REPLACE', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the run log', log_path, ierr)
+      call close_history(output%history)
+      output%out_dir = output_directory()
+      output%profile_counter = 0
+      output%progress = progress_lines()
+      call history_output_init(s, output%history, output%out_dir, ierr)
       if (ierr /= 0) return
-      call log_reset()
-
-      out_dir = output_dir
-      profile_counter = 0
-
-      call history_output_init(s, out_dir, ierr)
+      call profile_output_init(s, output%profiles, ierr)
       if (ierr /= 0) return
-      call profile_output_init(s, out_dir, ierr)
-      if (ierr /= 0) return
-! The pulse format, checked here so that a bad one stops the run before
-! its first model: an unknown name, or GSM on a build without HDF5.
+      output%pulse_format = pulse_format_code(s%job%pulse_format)
       if (s%ctrl%write_pulse_flag) then
-         select case (pulse_format_code(s%job%pulse_format))
+         select case (output%pulse_format)
          case (unknown_pulse_format)
             call report_error("pulse_format = '" // trim(s%job%pulse_format) // &
                  "' is not GYRE, FGONG or GSM")
@@ -98,7 +97,14 @@ subroutine output_init_mesa(s, log_output_file, output_dir, ierr)
             end if
          end select
       end if
-end subroutine output_init_mesa
+end subroutine output_open
+
+! ---------------------------------------------------------------
+! The end of the job's output: the history file closed.
+subroutine output_close(output)
+      type(output_state), intent(inout) :: output
+      call close_history(output%history)
+end subroutine output_close
 
 ! ---------------------------------------------------------------
 ! The format a pulse_format value names: pulse_gyre, pulse_fgong or
@@ -122,26 +128,23 @@ pure integer function pulse_format_code(name)
 end function pulse_format_code
 
 ! ---------------------------------------------------------------
-subroutine output_write_model(s, ierr)
-      use star_info_lib, only: star_info
-! 2026 use_legacy_output retirement: ONE output path for every run.
-! Per converged model: the run-log progress line, the isochrone
-! record (if enabled), profiles/pulse files when due, the history
-! row, the .mod restart model, and the interval GYRE pulse. The
-! remnants of the deleted write_legacy_output (wrtout) live here.
-      use star_info_lib, only: i_he4
-      use io_units
-      use run_log, only: log_model_line
-      type(star_info), intent(inout) :: s
+! One converged model's output: the progress line, the isochrone
+! record, the profile and pulse files when due, the history row, the
+! .mod model, and the interval GYRE file.
+subroutine output_write_model(s, output, ierr)
+      use star_info_lib, only: star_info, i_he4
+      use io_units, only: last_model_unit
+      type(star_info), intent(in) :: s
+      type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
       integer :: iprof
-      double precision :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
+      real(dp) :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams
       character(len=5) :: gyre_suffix
       character(len=320) :: gyre_path
 
-! the compact progress line (throttled by terminal_interval)
-      call log_model_line(s)
+! the progress line (every terminal_interval models)
+      call log_model_line(s, output%progress)
 
 ! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, He-core mass (g)
@@ -164,34 +167,32 @@ subroutine output_write_model(s, ierr)
       end if
 
 ! Profiles and pulse files share the trigger and the number (MESA's
-! write_pulse_data_with_profile coupling): every profile_interval
-! models, the counter advances and each enabled product is written --
-! profile<N>.data, and/or profile<N>.data.GYRE / .data.FGONG per
-! pulse_format. The history profile_number column records N. The
-! stitched arrays are built every step by evolve_step (ahead of
-! compute_observables); this block only decides whether THIS model
-! gets profile/pulse files, then numbers and writes.
+! write_pulse_data_with_profile): every profile_interval models the
+! counter advances and each enabled file is written, profile<N>.data
+! and profile<N>.data.<format>. The history's profile_number column
+! records N (0 for a model without one).
       iprof = 0
       if (profile_write_due(s)) then
-         profile_counter = profile_counter + 1
-         iprof = profile_counter
-         if (s%ctrl%write_profile_flag) call write_profile(s, iprof, s%stitched, ierr)
+         output%profile_counter = output%profile_counter + 1
+         iprof = output%profile_counter
+         if (s%ctrl%write_profile_flag) call write_profile(s, output%profiles, &
+              output%out_dir, iprof, s%stitched, ierr)
          if (ierr /= 0) return
-         if (s%ctrl%write_pulse_flag) call write_pulse(s, iprof, s%stitched, ierr)
+         if (s%ctrl%write_pulse_flag) call write_pulse(s, output, iprof, s%stitched, ierr)
          if (ierr /= 0) return
       end if
-      call write_history_row(s, iprof, ierr)
+      call write_history_row(s, output%history, iprof, ierr)
       if (ierr /= 0) return
-! The .mod model file: restart + in-run divergence recovery.
+! the .mod model: the restart file, and the recovery source of a step
+! that fails
       call write_mod_model(s, last_model_unit, replace=.true.)
 
-! interval GYRE pulse output (independent of write_pulse_flag);
-! model-numbered (zero-padded), same prefix and directory as the
-! counter-numbered profile/pulse stream
-      if (s%ctrl%pulse_gyre_interval.gt.0 .and. &
-          mod(s%model_number,s%ctrl%pulse_gyre_interval).eq.0) then
+! the interval GYRE file (independent of write_pulse_flag): numbered by
+! the model (zero-padded), with the profiles' prefix and directory
+      if (s%ctrl%pulse_gyre_interval > 0 .and. &
+          mod(s%model_number,s%ctrl%pulse_gyre_interval) == 0) then
          write(gyre_suffix,'(I5.5)') s%model_number
-         gyre_path = trim(out_dir)//trim(s%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
+         gyre_path = trim(output%out_dir)//trim(s%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
          call write_gyre_pulse(s, s%nz,s%m, &
               s%logRho,s%luminosity_lsun,s%logP,s%logR, &
               s%logT,s%omega, gyre_path, ierr)
@@ -199,12 +200,21 @@ subroutine output_write_model(s, ierr)
 end subroutine output_write_model
 
 ! ---------------------------------------------------------------
-! Is a profile/pulse write due this model? The historical trigger:
-! MESA-style output, a positive cadence, at least one product
-! enabled, and the model number on the cadence.
+! The end of a card: the progress line of its last converged model,
+! whatever the terminal_interval phase.
+subroutine output_final_model_line(s, output)
+      use star_info_lib, only: star_info
+      type(star_info), intent(in) :: s
+      type(output_state), intent(inout) :: output
+      call log_final_model_line(s, output%progress)
+end subroutine output_final_model_line
+
+! ---------------------------------------------------------------
+! Is a profile/pulse write due this model? A positive cadence, at
+! least one of the two enabled, and the model number on the cadence.
 logical function profile_write_due(s)
       use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       profile_write_due = .false.
       if (s%ctrl%profile_interval <= 0) return
       if (.not. (s%ctrl%write_profile_flag .or. &
@@ -212,32 +222,32 @@ logical function profile_write_due(s)
       profile_write_due = mod(s%model_number, s%ctrl%profile_interval) == 0
 end function profile_write_due
 
-! Pulse file alongside profile <iprof>: profile<N>.data.GYRE /
-! .data.FGONG / .data.GSM in the output directory, covering the FULL
-! extended model. Global M_star/R_star/L_star refer to the
-! photosphere (atmosphere points extend above R_star, as in MESA's
+! ---------------------------------------------------------------
+! The pulsation file of profile iprof, profile<N>.data.GYRE / .FGONG /
+! .GSM, over the whole extended model. M_star, R_star and L_star refer
+! to the photosphere (atmosphere points sit above R_star, as in MESA's
 ! add_atmosphere).
-subroutine write_pulse(s, iprof, stitched, ierr)
+subroutine write_pulse(s, output, iprof, stitched, ierr)
       use star_info_lib, only: star_info
-      use math_lib
       use stitched_model_state, only: stitched_model_record
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(output_state), intent(in) :: output
       integer, intent(in) :: iprof
 ! stitched: the stitched model whose pulse columns are written.
       type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
       character(len=256) :: path
       character(len=12) :: numstr
-      double precision :: mstar_g, rstar_cm, lstar_cgs
+      real(dp) :: mstar_g, rstar_cm, lstar_cgs
 
       mstar_g = exp(ln10*s%log_total_mass)
       rstar_cm = exp(ln10*(s%log_R_surface + s%log10_solar_radius))
       lstar_cgs = exp(ln10*s%log_L)*s%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
-      path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
-! (output_init_mesa has rejected any other format)
-      select case (pulse_format_code(s%job%pulse_format))
+      path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+! (output_open has rejected any other format)
+      select case (output%pulse_format)
       case (pulse_fgong)
          call write_fgong_pulse(s, stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.FGONG', ierr)
@@ -255,21 +265,22 @@ end subroutine write_pulse
 ! the isochrone file's header.
 subroutine output_run_header(s, total_mass_msun)
       use star_info_lib, only: star_info
-      use io_units
-      type(star_info), intent(inout) :: s
-      double precision, intent(in) :: total_mass_msun
-      double precision :: total_mass_grams
+      use io_units, only: terminal_unit
+      type(star_info), intent(in) :: s
+      real(dp), intent(in) :: total_mass_msun
+      real(dp) :: total_mass_grams
 
-      if (s%job%rescale_kind(s%job%nk) .eq. 1) then
+      select case (s%job%rescale_kind(s%job%nk))
+      case (1)
          write(terminal_unit, 47) s%job%nk, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
-      else if (s%job%rescale_kind(s%job%nk) .eq. 2) then
+      case (2)
          write(terminal_unit, 48) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
-      else if (s%job%rescale_kind(s%job%nk) .eq. 3) then
+      case (3)
          write(terminal_unit, 49) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
-      end if
+      end select
   47  format(/,1x,'card',i3,' (evolve):  mixing length =',f8.6, &
              '  models =',i6)
   48  format(/,1x,'card',i3,' (rescale):         X =',f8.6, &
@@ -283,8 +294,6 @@ subroutine output_run_header(s, total_mass_msun)
               s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,s%solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
-
-      return
 end subroutine output_run_header
 
 end module yrec_output

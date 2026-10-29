@@ -9,42 +9,47 @@
 ! The column table and the values are core's (stitched_model: the
 ! table profile_columns, at the named indices ip_<name>, and the values
 ! s%stitched%prof over the stitched full-star model: interior, envelope
-! and atmosphere). The writer only reads them. The module state below is
-! per job (the output directory and the selection), reset by
-! profile_output_init.
+! and atmosphere). The writer only reads them. The column selection is a
+! profile_selection record, part of yrec_output's output_state, which
+! run_yrec owns.
 module profile_output
       use stitched_model, only: n_prof_cols, profile_columns, ip_zone
       use output_columns, only: max_cols, parse_columns, output_column, &
            integer_column, prof_default_names
       implicit none
       private
-      public :: profile_output_init, write_profile
+      public :: profile_selection, profile_output_init, write_profile
 
-      character(len=256) :: prof_out_dir = ' '
-      integer :: prof_nsel = 0
-      integer :: prof_sel(max_cols)
+! One job's profile columns (indices into profile_columns).
+      type :: profile_selection
+         integer :: nsel = 0
+         integer :: sel(max_cols) = 0
+      end type profile_selection
 
 contains
 
 ! ---------------------------------------------------------------
-subroutine profile_output_init(s, out_dir, ierr)
+! The job's profile columns, from profile_columns_file.
+subroutine profile_output_init(s, profiles, ierr)
       use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
-      character(len=*), intent(in) :: out_dir
+      type(star_info), intent(in) :: s
+      type(profile_selection), intent(out) :: profiles
       integer, intent(out) :: ierr
 
-      prof_out_dir = out_dir
-      ierr = 0
       call parse_columns(s%ctrl%profile_columns_file, profile_columns(), &
-           prof_default_names, prof_sel, prof_nsel, 'profile', ierr)
+           prof_default_names, profiles%sel, profiles%nsel, 'profile', ierr)
 end subroutine profile_output_init
 
 ! ---------------------------------------------------------------
-subroutine write_profile(s, iprof, stitched, ierr)
+! Profile iprof, <out_dir><profile_data_prefix><iprof>.data, of the
+! stitched model.
+subroutine write_profile(s, profiles, out_dir, iprof, stitched, ierr)
       use star_info_lib, only: star_info
       use stitched_model_state, only: stitched_model_record
       use io_units, only: check_io
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(profile_selection), intent(in) :: profiles
+      character(len=*), intent(in) :: out_dir
       integer, intent(in) :: iprof
 ! stitched: the stitched model whose columns are written.
       type(stitched_model_record), intent(in) :: stitched
@@ -57,7 +62,7 @@ subroutine write_profile(s, iprof, stitched, ierr)
 
       cols = profile_columns()
       write(numstr, '(i0)') iprof
-      path = trim(prof_out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+      path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', path, ierr)
       if (ierr /= 0) return
@@ -76,21 +81,21 @@ subroutine write_profile(s, iprof, stitched, ierr)
            s%job%initial_envelope_z, s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
       write(u, '(a)') ''
-      write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
+      write(u, '(999(1x,i40))') (k, k = 1, profiles%nsel)
       write(u, '(999(1x,a40))') &
-           (adjustr(trim(cols(prof_sel(k))%name)), k = 1, prof_nsel)
+           (adjustr(trim(cols(profiles%sel(k))%name)), k = 1, profiles%nsel)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
 ! is stored inward-to-outward, so walk it in reverse.
       do k = 1, stitched%n_ext
          kz = stitched%n_ext - k + 1
-         do i = 1, prof_nsel
-            if (prof_sel(i) == ip_zone) then
+         do i = 1, profiles%nsel
+            if (profiles%sel(i) == ip_zone) then
                v = dble(k)
             else
-               v = stitched%prof(prof_sel(i), kz)
+               v = stitched%prof(profiles%sel(i), kz)
             end if
-            if (cols(prof_sel(i))%kind == integer_column) then
+            if (cols(profiles%sel(i))%kind == integer_column) then
                write(u, '(1x,i40)', advance='no') nint(v)
             else
                write(u, '(1x,es40.16e3)', advance='no') v

@@ -7,11 +7,15 @@
 ! and the files opened.
 module run_files
       use io_units
-      use yrec_output, only: output_init_mesa
       use legacy_controls
       implicit none
       private
-      public :: assign_unit_numbers, expand_paths, open_run_files, expand_value
+      public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &
+           output_directory
+
+! The run's output directory, the run log's (open_run_files sets it at
+! every read; output_directory returns it).
+      character(len=256) :: output_dir = ' '
 
 contains
 
@@ -113,13 +117,15 @@ end subroutine expand_paths
 ! The output directory (the run log's directory) created and the
 ! inlists copied into it, then the run's files opened: the starting
 ! model, the final model (the restart file, and the solver's recovery
-! source when a step diverges), the run log and history (output_init_mesa),
-! and the Monte Carlo and isochrone files when those are on.
+! source when a step diverges), the run log, and the Monte Carlo and
+! isochrone files when those are on. (The history and profile files
+! are the output's: yrec_output's output_open, after the read. s is
+! unused.)
 subroutine open_run_files(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      character(len=256) :: msg, output_dir
+      character(len=256) :: msg
       integer :: ios
 
       output_dir = directory_of(fshort)
@@ -135,7 +141,7 @@ subroutine open_run_files(s, ierr)
       open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the final model file', flast, ierr)
       if (ierr /= 0) return
-      call output_init_mesa(s, fshort, output_dir, ierr)
+      call open_run_log(fshort, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
          open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
@@ -154,6 +160,40 @@ subroutine open_run_files(s, ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
+
+! ---------------------------------------------------------------
+! The run's output directory: the run log's (blank for the working
+! directory).
+function output_directory() result(dir)
+      character(len=256) :: dir
+      dir = output_dir
+end function output_directory
+
+! ---------------------------------------------------------------
+! The run log on run_log_unit, from log_output_file: an explicit .log
+! name is kept, a legacy .short name becomes .log, and .log is appended
+! to any other (so the default run.log stays run.log).
+subroutine open_run_log(log_output_file, ierr)
+      character(len=*), intent(in) :: log_output_file
+      integer, intent(inout) :: ierr
+      character(len=256) :: log_path, msg
+      integer :: n, ios
+
+      n = len_trim(log_output_file)
+      if (n >= 4 .and. log_output_file(max(1,n-3):n) == '.log') then
+         log_path = log_output_file
+      else
+         n = index(log_output_file, '.short')
+         if (n > 0) then
+            log_path = log_output_file(1:n) // 'log'
+         else
+            log_path = trim(log_output_file) // '.log'
+         end if
+      end if
+      open(run_log_unit, file=log_path, form='FORMATTED', &
+           status='REPLACE', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the run log', log_path, ierr)
+end subroutine open_run_log
 
 ! ---------------------------------------------------------------
 ! The directory part of a path, up to and including its last '/';

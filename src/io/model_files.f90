@@ -39,7 +39,7 @@ subroutine write_mod_model(s, iwrite, replace)
       use io_units
       use run_log, only: solver_diagnostics
       implicit none
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
 
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace

@@ -10,15 +10,16 @@
 ! keyed by it (its name and kind), and a value in history_values. The
 ! writer only reads the star: compute_observables
 ! (core/diagnostics/observables.f90) computes every quantity first.
-! The module state below is per job (the path and the selection), reset
-! by history_output_init.
+! The file's state (its path, unit and selection) is a history_file
+! record, part of yrec_output's output_state, which run_yrec owns.
 module history_output
       use physical_constants
       use output_columns, only: max_cols, parse_columns, output_column, &
            real_column, integer_column, hist_default_names
       implicit none
       private
-      public :: history_output_init, write_history_row
+      public :: history_file, history_output_init, write_history_row, &
+           close_history
 
 ! The history columns' named indices, in the order of the column table.
       integer, parameter :: &
@@ -57,34 +58,43 @@ module history_output
       integer, parameter :: id_columns(3) = &
            [ih_model_number, ih_profile_number, ih_num_zones]
 
-      character(len=256) :: hist_path = ' '
-      integer :: hist_nsel = 0
-      integer :: hist_sel(max_cols)
+! One job's history file: its path, its unit once the first row has
+! opened it, and the selected columns (indices into history_columns).
+      type :: history_file
+         character(len=256) :: path = ' '
+         integer :: unit = 0
+         logical :: is_open = .false.
+         integer :: nsel = 0
+         integer :: sel(max_cols) = 0
+      end type history_file
 
 contains
 
 ! ---------------------------------------------------------------
-subroutine history_output_init(s, out_dir, ierr)
+! The job's history file: a file a previous job left open is closed (an
+! in-process rerun), and the path and the column selection are set; the
+! first row opens the file.
+subroutine history_output_init(s, history, out_dir, ierr)
       use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(history_file), intent(inout) :: history
       character(len=*), intent(in) :: out_dir
       integer, intent(out) :: ierr
-      integer :: prior_unit
-      logical :: prior_open
 
-      hist_path = trim(out_dir) // trim(s%ctrl%star_history_name)
-! in-process re-entry: a history unit still connected from a
-! previous job would silently accumulate; close it so the lazy
-! open in write_history_row starts the file over.
-      inquire(file=hist_path, opened=prior_open, number=prior_unit)
-      if (prior_open) close(prior_unit)
-
-      ierr = 0
+      call close_history(history)
+      history%path = trim(out_dir) // trim(s%ctrl%star_history_name)
       call parse_columns(s%ctrl%history_columns_file, history_columns(), &
-           hist_default_names, hist_sel, hist_nsel, 'history', ierr)
+           hist_default_names, history%sel, history%nsel, 'history', ierr)
       if (ierr /= 0) return
-      call hoist_id_columns(hist_sel, hist_nsel)
+      call hoist_id_columns(history%sel, history%nsel)
 end subroutine history_output_init
+
+! The history file closed, if a row has opened it.
+subroutine close_history(history)
+      type(history_file), intent(inout) :: history
+      if (history%is_open) close(history%unit)
+      history%is_open = .false.
+end subroutine close_history
 
 ! ---------------------------------------------------------------
 ! The history column table: each column's name and kind, at its named
@@ -195,7 +205,7 @@ subroutine history_values(s, vals, iprof)
       use neutrino_flux_layout, only: i_nu_pp, i_nu_pep, i_nu_hep, &
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, i_nu_he3he3, &
            i_nu_he3he4
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       double precision, intent(out) :: vals(n_hist_cols)
       integer, intent(in) :: iprof
 
@@ -290,26 +300,29 @@ subroutine history_values(s, vals, iprof)
       vals(ih_lum_extra)               = s%luminosity_breakdown(i_lum_extra)
 end subroutine history_values
 
-subroutine write_history_row(s, iprof, ierr)
+! This model's row; the first row opens the file and writes its header
+! (MESA's layout: the global block, then the column numbers and names).
+subroutine write_history_row(s, history, iprof, ierr)
       use star_info_lib, only: star_info
       use io_units, only: check_io
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
+      type(history_file), intent(inout) :: history
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
       type(output_column) :: cols(n_hist_cols)
       double precision :: vals(n_hist_cols)
       integer :: hist_unit, i, k, ios
       character(len=256) :: msg
-      logical :: hist_open
 
       call history_values(s, vals, iprof)
       cols = history_columns()
-      inquire(file=hist_path, opened=hist_open, number=hist_unit)
-      if (.not. hist_open) then
-         open(newunit=hist_unit, file=hist_path, status='REPLACE', &
+      if (.not. history%is_open) then
+         open(newunit=history%unit, file=history%path, status='REPLACE', &
               action='WRITE', iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'write', hist_path, ierr)
+         call check_io(ios, msg, 'write', history%path, ierr)
          if (ierr /= 0) return
+         history%is_open = .true.
+         hist_unit = history%unit
 ! Global block: run metadata, matching what the legacy .track header
 ! carried (initial composition + mixing length). The initial_* values
 ! are the kind card's starting envelope composition (initial_y by
@@ -325,17 +338,18 @@ subroutine write_history_row(s, iprof, ierr)
               1.0d0 - s%job%initial_envelope_x - s%job%initial_envelope_z, &
               s%job%initial_envelope_z, s%mixing_length_alpha
          write(hist_unit, '(a)') ''
-         write(hist_unit, '(999(1x,i40))') (k, k = 1, hist_nsel)
+         write(hist_unit, '(999(1x,i40))') (k, k = 1, history%nsel)
          write(hist_unit, '(999(1x,a40))') &
-              (adjustr(trim(cols(hist_sel(k))%name)), k = 1, hist_nsel)
+              (adjustr(trim(cols(history%sel(k))%name)), k = 1, history%nsel)
       end if
-      do i = 1, hist_nsel
-         if (cols(hist_sel(i))%kind == integer_column) then
+      hist_unit = history%unit
+      do i = 1, history%nsel
+         if (cols(history%sel(i))%kind == integer_column) then
             write(hist_unit, '(1x,i40)', advance='no') &
-                 nint(vals(hist_sel(i)))
+                 nint(vals(history%sel(i)))
          else
             write(hist_unit, '(1x,es40.16e3)', advance='no') &
-                 vals(hist_sel(i))
+                 vals(history%sel(i))
          end if
       end do
       write(hist_unit, '(a)') ''

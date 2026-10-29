@@ -48,7 +48,8 @@ subroutine run_yrec(ierr)
       use net_lib, only: set_net_settings
       use net_settings_setup, only: net_settings_from_star
       use star_info_lib, only: star_info, i_h1, i_metals
-      use yrec_output, only: output_run_header
+      use yrec_output, only: output_state, output_open, output_close, &
+           output_run_header, output_final_model_line
       use io_units
       use model_files, only: write_mod_model
       use physical_constants
@@ -94,6 +95,10 @@ subroutine run_yrec(ierr)
 ! The run's star (static with the other locals, allocated on the first
 ! call); yrec_run_prologue resets it to its process-start state.
       type(star_info), allocatable :: s
+! The job's output state (the history file, the profile columns and
+! counter, the progress lines), set up by output_open after the read
+! and passed to every step.
+      type(output_state) :: output
 ! Keep the locals static (see the header).
       save
       ierr = 0
@@ -109,6 +114,8 @@ subroutine run_yrec(ierr)
       s%punch_pending_flag = .false.
 ! Read the controls into star%ctrl and star%job.
       call read_controls(s, ierr)
+      if (ierr /= 0) return
+      call output_open(s, output, ierr)
       if (ierr /= 0) return
 ! A second opacity-table set at a different Z is needed under the Z
 ! ramp or with Z diffusion; the kap table loaders read this flag from
@@ -152,7 +159,7 @@ subroutine run_yrec(ierr)
        do model_iteration = 1,s%job%num_models(s%job%nk)
 ! One model step per iteration (core/step/step_driver.f90; its header
 ! gives the step_status contract).
-       call evolve_step(s, model_iteration, step_status, ierr)
+       call evolve_step(s, output, model_iteration, step_status, ierr)
        if (ierr /= 0) return
        if (step_status == step_kind_card_done) exit
        if (step_status == step_leave_run_loop) cycle run_loop
@@ -208,7 +215,8 @@ subroutine run_yrec(ierr)
            convergence_iterations, log_r_rsun)
       end do
 
-! Normal end of job: return with ierr = 0.
+! Normal end of job: the history file closed, and ierr = 0.
+      call output_close(output)
       return
 
 contains
@@ -402,8 +410,7 @@ end subroutine begin_kind_card
 ! Finish one kind card: write the progress line of the card's last
 ! converged model, whatever the terminal_interval phase.
 subroutine end_kind_card
-      use run_log, only: log_final_model_line
-      call log_final_model_line(s)
+      call output_final_model_line(s, output)
 end subroutine end_kind_card
 
 end subroutine run_yrec

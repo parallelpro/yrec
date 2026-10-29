@@ -39,7 +39,7 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
            ipul_cp, ipul_mu_e_inv, ipul_h1, ipul_z, &
            ipul_species_base, ipul_eps_grav
       implicit none
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
 
       integer, intent(in) :: n
       double precision, intent(in) :: pts(n_pulse_cols, n)
@@ -149,7 +149,7 @@ subroutine write_gyre_pulse(s, num_shells, mass_coordinate, &
       use physical_constants
       use math_lib
       implicit none
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
 
       integer, intent(in) :: num_shells
       double precision, intent(in) :: mass_coordinate(json), &
