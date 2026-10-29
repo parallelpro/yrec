@@ -266,18 +266,19 @@ end subroutine write_pulse
 subroutine output_run_header(s, total_mass_msun)
       use star_info_lib, only: star_info
       use io_units, only: terminal_unit
+      use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: total_mass_msun
       real(dp) :: total_mass_grams
 
       select case (s%job%rescale_kind(s%job%nk))
-      case (1)
+      case (card_evolve)
          write(terminal_unit, 47) s%job%nk, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
-      case (2)
+      case (card_rescale)
          write(terminal_unit, 48) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
-      case (3)
+      case (card_rescale_and_evolve)
          write(terminal_unit, 49) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
       end select
