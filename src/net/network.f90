@@ -69,14 +69,14 @@
 ! lists the files outside net/ that follow.
 module network
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use composition_layout, only: i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, &
-           i_o16, i_o18
+      use composition_layout, only: i_h1, i_h2, i_he3, i_he4, i_c12, i_c13, &
+           i_n14, i_o16, i_o18
       use net_configuration, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap, &
            num_reactions, num_rate_rows, net_settings
-      use screening, only: iso_h1, num_isotopes, screening_t, &
-           screening_mass_fractions
+      use screening, only: num_isotopes, screening_t, iso_h1, iso_h2, &
+           iso_he3, iso_he4, iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
       use reaction_rates, only: nuclear_rates, shares_rate, &
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
            cf88_n14_alpha_gamma, cf88_triple_alpha, &
@@ -92,25 +92,27 @@ module network
 ! products updated explicitly after convergence
       integer, parameter, public :: n_solved = 7, n_network = 8
 ! The species table, in s_* order: each species' name, its slot in the
-! composition vector xa, its mass number (the integer A the rate
+! composition vector xa, its isotope in the screening composition
+! (screening's iso_*), its mass number (the integer A the rate
 ! convention uses) and its atomic mass excess (MeV, AME2020: Wang et al.
-! 2021), which checks the rows' energies (q_from_masses).
+! 2021), which checks the rows' energies (network_checks).
       type :: species_t
          character(len=4) :: name
-         integer :: xa_slot
+         integer :: xa_slot, screening_isotope
          real(dp) :: mass_number, mass_excess_mev
       end type species_t
       type(species_t), parameter :: species(n_network) = [ &
-           species_t('H1  ', i_h1,  1.0d0,  7.288971d0), &
-           species_t('He3 ', i_he3, 3.0d0, 14.931219d0), &
-           species_t('He4 ', i_he4, 4.0d0,  2.424916d0), &
-           species_t('C12 ', i_c12, 12.0d0, 0.0d0), &
-           species_t('C13 ', i_c13, 13.0d0, 3.125009d0), &
-           species_t('N14 ', i_n14, 14.0d0, 2.863417d0), &
-           species_t('O16 ', i_o16, 16.0d0, -4.737001d0), &
-           species_t('O18 ', i_o18, 18.0d0, -0.782816d0)]
+           species_t('H1  ', i_h1,  iso_h1,  1.0d0,  7.288971d0), &
+           species_t('He3 ', i_he3, iso_he3, 3.0d0, 14.931219d0), &
+           species_t('He4 ', i_he4, iso_he4, 4.0d0,  2.424916d0), &
+           species_t('C12 ', i_c12, iso_c12, 12.0d0, 0.0d0), &
+           species_t('C13 ', i_c13, iso_c13, 13.0d0, 3.125009d0), &
+           species_t('N14 ', i_n14, iso_n14, 14.0d0, 2.863417d0), &
+           species_t('O16 ', i_o16, iso_o16, 16.0d0, -4.737001d0), &
+           species_t('O18 ', i_o18, iso_o18, 18.0d0, -0.782816d0)]
 ! the columns of the table the rest of the code reads
       integer, parameter, public :: network_species_slot(n_network) = species%xa_slot
+      integer, parameter :: screening_isotope(n_network) = species%screening_isotope
       real(dp), parameter, public :: mass_number(n_network) = species%mass_number
       real(dp), parameter, public :: mass_excess_mev(n_network) = species%mass_excess_mev
 ! the atomic mass excess of the neutron, the one untracked particle a
@@ -261,7 +263,7 @@ module network
       public :: burn_implicitly, compute_abundance_rates, &
            compute_reaction_energies, compute_reaction_rates, &
            compute_network_rates, reaction_counts, s_factor_slots, &
-           reference_s0, branch_fraction
+           reference_s0, branch_fraction, screening_mass_fractions
 
 contains
 
@@ -355,6 +357,23 @@ pure function reaction_counts(rate, x) result(counts)
          end do
       end do
 end function reaction_counts
+
+!----------------------------------------------------------------------
+! screening_mass_fractions: the isotope mass fractions (screening's
+! iso_* slots) that compute_reaction_rates screens with, from a zone's
+! composition in the star%xa layout: each network species at its
+! screening isotope (the species table), and deuterium, which burns
+! outside the network but screens too (2026-10: the composition path used
+! to leave it out). The isotopes nothing here names (n, H3, Ne20, Mg24)
+! are zero.
+pure function screening_mass_fractions(xa) result(mass_frac)
+      real(dp), intent(in) :: xa(:)
+      real(dp) :: mass_frac(num_isotopes)
+
+      mass_frac = 0.0d0
+      mass_frac(screening_isotope) = xa(network_species_slot)
+      mass_frac(iso_h2) = xa(i_h2)
+end function screening_mass_fractions
 
 !----------------------------------------------------------------------
 ! reference_s0: the S0 (keV b) the fit of the row owning slot k is

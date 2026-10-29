@@ -23,7 +23,6 @@ module nuclear_energy
            i_be9, i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_metals
       use net_configuration, only: net_settings, num_reactions, r_pp, &
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
-      use screening, only: screening_mass_fractions
       use reaction_rates, only: nuclear_rates, &
            compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor, &
            erg_per_mev, pep_coefficient
@@ -31,7 +30,7 @@ module nuclear_energy
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, s_factor_slots, n_chains, n_network, &
-           network_species_slot, chain_pp1
+           network_species_slot, chain_pp1, screening_mass_fractions
       implicit none
       private
 

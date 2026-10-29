@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! screening
 !----------------------------------------------------------------------
-! The electron screening of the reaction rates: the composition the
-! screening sees (the isotopes iso_*, their bare nuclear masses and
-! charges, screening_mass_fractions), the plasma quantities of a zone
+! The electron screening of the reaction rates: the isotopes of the
+! composition the screening sees (iso_*, with their bare nuclear masses
+! and charges; network's screening_mass_fractions fills it from a
+! zone's composition), the plasma quantities of a zone
 ! (compute_composition_moments, compute_screening_plasma: Salpeter's
 ! degeneracy correction, Graboske et al.'s Lambda_0, DeWitt et al.'s
 ! z_tilde, the mean ionic charge), and the screening exponent of one
@@ -99,7 +100,7 @@ module screening
               mean_charge_13 = 0.0d0, weak_unit = 0.0d0
       end type screening_plasma
 
-      public :: screening_plasma, screening_mass_fractions, &
+      public :: screening_plasma, &
            compute_composition_moments, compute_screening_plasma, &
            compute_reaction_screening, weak_intermediate_screening
 
@@ -244,29 +245,5 @@ pure real(dp) function weak_intermediate_screening(plasma, s)
               (plasma%inv_mu_i*plasma%z_tilde_058*plasma%mean_charge_028)
       end if
 end function weak_intermediate_screening
-
-!----------------------------------------------------------------------
-! screening_mass_fractions: the isotope mass fractions (iso_* slots) that
-! compute_reaction_rates screens with, from a zone's composition in the
-! star%xa layout. The isotopes YREC does not track (n, H3, Ne20, Mg24)
-! are zero; deuterium is included (2026-10: the composition path used to
-! leave it out).
-pure function screening_mass_fractions(xa) result(mass_frac)
-      use composition_layout, only: i_h1, i_h2, i_he4, i_he3, i_c12, i_c13, &
-           i_n14, i_o16, i_o18
-      real(dp), intent(in) :: xa(:)
-      real(dp) :: mass_frac(num_isotopes)
-
-      mass_frac = 0.0d0
-      mass_frac(iso_h1) = xa(i_h1)
-      mass_frac(iso_h2) = xa(i_h2)
-      mass_frac(iso_he3) = xa(i_he3)
-      mass_frac(iso_he4) = xa(i_he4)
-      mass_frac(iso_c12) = xa(i_c12)
-      mass_frac(iso_c13) = xa(i_c13)
-      mass_frac(iso_n14) = xa(i_n14)
-      mass_frac(iso_o16) = xa(i_o16)
-      mass_frac(iso_o18) = xa(i_o18)
-end function screening_mass_fractions
 
 end module screening
