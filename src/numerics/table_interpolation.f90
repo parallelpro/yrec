@@ -55,11 +55,15 @@ end subroutine inter3
 !----------------------------------------------------------------------
 ! interp
 !----------------------------------------------------------------------
-! The 4-point Lagrange weights at x_eval and their derivatives in
-! x_eval, as inter3. For the VandenBerg opacity tables (CAPPA).
+! The 4-point Lagrange weights at x_eval, and when asked their
+! derivatives in x_eval: f(x_eval) = sum(weight*f(x_nodes)), applied by
+! lagrange4. For the opacity tables (Alexander 1994 and 2006, OPAL95),
+! the SCV EOS, the microscopic diffusion's grid and rotation's
+! interfaces.
 pure subroutine interp(x_nodes, weight, dweight, x_eval)
       real(dp), intent(in) :: x_nodes(4)
-      real(dp), intent(out) :: weight(4), dweight(4)
+      real(dp), intent(out) :: weight(4)
+      real(dp), intent(out), optional :: dweight(4)
       real(dp), intent(in) :: x_eval
 
       real(dp) :: diff43, diff42, diff41, diff32, diff31, diff21
@@ -84,43 +88,25 @@ pure subroutine interp(x_nodes, weight, dweight, x_eval)
       weight(2) = (dx1*dx3*dx4)/denom2
       weight(3) = (dx1*dx2*dx4)/denom3
       weight(4) = (dx1*dx2*dx3)/denom4
-      dweight(1) = (dx3*dx4 + dx2*dx4 + dx2*dx3)/denom1
-      dweight(2) = (dx3*dx4 + dx1*dx4 + dx1*dx3)/denom2
-      dweight(3) = (dx2*dx4 + dx1*dx4 + dx1*dx2)/denom3
-      dweight(4) = (dx2*dx3 + dx1*dx3 + dx1*dx2)/denom4
+      if (present(dweight)) then
+         dweight(1) = (dx3*dx4 + dx2*dx4 + dx2*dx3)/denom1
+         dweight(2) = (dx3*dx4 + dx1*dx4 + dx1*dx3)/denom2
+         dweight(3) = (dx2*dx4 + dx1*dx4 + dx1*dx2)/denom3
+         dweight(4) = (dx2*dx3 + dx1*dx3 + dx1*dx2)/denom4
+      end if
 end subroutine interp
 
 !----------------------------------------------------------------------
 ! intrp2
 !----------------------------------------------------------------------
-! interp without the derivatives.
+! interp without the derivatives (kept for now; new code calls interp
+! without dweight).
 pure subroutine intrp2(x_nodes, weight, x_eval)
       real(dp), intent(in) :: x_nodes(4)
       real(dp), intent(out) :: weight(4)
       real(dp), intent(in) :: x_eval
 
-      real(dp) :: diff43, diff42, diff41, diff32, diff31, diff21
-      real(dp) :: denom1, denom2, denom3, denom4
-      real(dp) :: dx1, dx2, dx3, dx4
-
-      diff43 = x_nodes(4) - x_nodes(3)
-      diff42 = x_nodes(4) - x_nodes(2)
-      diff41 = x_nodes(4) - x_nodes(1)
-      diff32 = x_nodes(3) - x_nodes(2)
-      diff31 = x_nodes(3) - x_nodes(1)
-      diff21 = x_nodes(2) - x_nodes(1)
-      denom1 = -diff21*diff31*diff41
-      denom2 = diff21*diff32*diff42
-      denom3 = -diff31*diff32*diff43
-      denom4 = diff41*diff42*diff43
-      dx1 = x_eval - x_nodes(1)
-      dx2 = x_eval - x_nodes(2)
-      dx3 = x_eval - x_nodes(3)
-      dx4 = x_eval - x_nodes(4)
-      weight(1) = (dx2*dx3*dx4)/denom1
-      weight(2) = (dx1*dx3*dx4)/denom2
-      weight(3) = (dx1*dx2*dx4)/denom3
-      weight(4) = (dx1*dx2*dx3)/denom4
+      call interp(x_nodes, weight, x_eval=x_eval)
 end subroutine intrp2
 
 !----------------------------------------------------------------------

@@ -268,16 +268,14 @@ end subroutine zero_transport_in_core
 
 ! 4-point Lagrange interpolation of a(k..k+3) to interface i in ln a,
 ! with the weights stab%lagrange_interp_weights(1:4,i) set by
-! rotation_stability_setup (stability_coefficients).
+! rotation_stability_setup (stability_coefficients), through numerics'
+! lagrange4.
       function log_lagrange4(a, k, i)
+      use numerics_lib, only: lagrange4
       double precision, intent(in) :: a(*)
       integer, intent(in) :: k, i
       double precision :: log_lagrange4
-      log_lagrange4 = exp(log(a(k))* &
-           stab%lagrange_interp_weights(1,i)+log(a(k+1))* &
-           stab%lagrange_interp_weights(2,i)+ &
-           log(a(k+2))*stab%lagrange_interp_weights(3,i)+log(a(k+3))* &
-           stab%lagrange_interp_weights(4,i))
+      log_lagrange4 = exp(lagrange4(stab%lagrange_interp_weights(:,i), log(a(k:k+3))))
       end function log_lagrange4
 
 end subroutine circulation_velocities

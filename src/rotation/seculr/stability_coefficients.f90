@@ -222,45 +222,27 @@ contains
 ! The 4-point Lagrange interpolation weights at interface interface_idx
 ! (radius stab%radius_interface(interface_idx)) from zones
 ! first_point..first_point+3, into
-! stab%lagrange_interp_weights(1:4,interface_idx).
+! stab%lagrange_interp_weights(1:4,interface_idx) (numerics' interp).
 subroutine lagrange_weights(first_point, interface_idx)
+      use numerics_lib, only: interp
       integer, intent(in) :: first_point, interface_idx
-      double precision :: dr43, dr42, dr41, dr32, dr31, dr21
-      double precision :: lag_denom1, lag_denom2, lag_denom3, lag_denom4
-      double precision :: lag_x1, lag_x2, lag_x3, lag_x4
 
-      dr43 = stab%radius(first_point+3) - stab%radius(first_point+2)
-      dr42 = stab%radius(first_point+3) - stab%radius(first_point+1)
-      dr41 = stab%radius(first_point+3) - stab%radius(first_point)
-      dr32 = stab%radius(first_point+2) - stab%radius(first_point+1)
-      dr31 = stab%radius(first_point+2) - stab%radius(first_point)
-      dr21 = stab%radius(first_point+1) - stab%radius(first_point)
-      lag_denom1 = -dr21*dr31*dr41
-      lag_denom2 = dr21*dr32*dr42
-      lag_denom3 = -dr31*dr32*dr43
-      lag_denom4 = dr41*dr42*dr43
-      lag_x1 = stab%radius_interface(interface_idx) - stab%radius(first_point)
-      lag_x2 = stab%radius_interface(interface_idx) - stab%radius(first_point+1)
-      lag_x3 = stab%radius_interface(interface_idx) - stab%radius(first_point+2)
-      lag_x4 = stab%radius_interface(interface_idx) - stab%radius(first_point+3)
-      stab%lagrange_interp_weights(1,interface_idx) = (lag_x2*lag_x3*lag_x4)/lag_denom1
-      stab%lagrange_interp_weights(2,interface_idx) = (lag_x1*lag_x3*lag_x4)/lag_denom2
-      stab%lagrange_interp_weights(3,interface_idx) = (lag_x1*lag_x2*lag_x4)/lag_denom3
-      stab%lagrange_interp_weights(4,interface_idx) = (lag_x1*lag_x2*lag_x3)/lag_denom4
+      call interp(stab%radius(first_point:first_point+3), &
+           stab%lagrange_interp_weights(:,interface_idx), &
+           x_eval=stab%radius_interface(interface_idx))
 end subroutine lagrange_weights
 
 !----------------------------------------------------------------------
 ! interp4
 !----------------------------------------------------------------------
 ! field at interface interface_idx, with lagrange_weights' weights from
-! zones first_point..first_point+3.
+! zones first_point..first_point+3 (numerics' lagrange4).
 double precision function interp4(field, first_point, interface_idx)
+      use numerics_lib, only: lagrange4
       double precision, intent(in) :: field(json)
       integer, intent(in) :: first_point, interface_idx
-      interp4 = field(first_point)*stab%lagrange_interp_weights(1,interface_idx)+ &
-           field(first_point+1)*stab%lagrange_interp_weights(2,interface_idx)+ &
-           field(first_point+2)*stab%lagrange_interp_weights(3,interface_idx)+ &
-           field(first_point+3)*stab%lagrange_interp_weights(4,interface_idx)
+      interp4 = lagrange4(stab%lagrange_interp_weights(:,interface_idx), &
+           field(first_point:first_point+3))
 end function interp4
 
 !----------------------------------------------------------------------
