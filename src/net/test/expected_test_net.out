@@ -1,3 +1,4 @@
+set_net_settings: the table checks out, the settings installed: ok
 # test_net: cross_section_scale (reaction slots), then extra_cross_section_scale (pep, Be7+e, Be7+p, hep), from map_user_inputs (newcross defaults)
   9.852579852580E-01  1.011650485437E+00  1.037037037037E+00  9.241379310345E-01
   1.381818181818E+00  5.000000000000E-01  1.127659620231E+00  1.000000000000E+00
@@ -27,7 +28,7 @@ snu  3  1.828838690089E-06  7.681739761613E-13  2.435666642227E-09
 snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
 # test_net: azbar H/He4/C12
   1.295896328294E+00  1.101511879050E+00  7.000000000000E-01  7.000000000000E-02  1.666666666667E-03
-# test_net: deutrate
+# test_net: deuterium_rate, log T 6.2, log rho 1.5, outside the surface CZ
   2.679193841397E-08
 # test_net: rate derivatives, max |analytic/numerical - 1| (dlnT, dlnrho)
   1  9.97E-05  2.33E-04
@@ -41,6 +42,7 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
   9  2.66E-05  3.69E-04
  10  1.68E-05  4.22E-04
  11  1.39E-05  1.87E-04
+rate derivatives vs centred differences (5e-3): ok
 # test_net: network table
 # reaction                 rate row  branch  baryon imbalance     Q (MeV)  chain  Q masses (MeV)  neutrinos (MeV)
 pp chain to He3                  1       0                 0    6.664000      1        6.935694         0.271694
@@ -64,6 +66,7 @@ all rates, log T 7.3, log rho 2.2, dt 1e17 s (ierr 0): H He3 He4 C12 C13 N14 O16
   7.776373861128E-02  3.872113392136E-08  9.024996509314E-01  3.602303270192E-05
   8.185046527234E-06  1.076800415678E-02  1.494359500180E-03  2.000000000000E-05
 sum X conserved (1e-14): ok
+burn_implicitly: ierr 1 when out of iterations, 0 when converged: ok
 # test_net: trace integrator
 surviving_fraction vs closed form (1e-13): ok
 accreted_survival vs reference (1e-6): ok
@@ -78,6 +81,23 @@ point 2  7.350  1.750
 point 3  8.100  4.000
   1.895411190469E+04  0.000000000000E+00  0.000000000000E+00  1.710896616059E+04 -1.545857932034E+00
   6.42E-05  7.97E-04
+compute_nuclear_energy derivatives vs centred differences (5e-3): ok
+# test_net: thermal neutrino losses on C/O (BPS, then Itoh): eps, derivative errors (dlnT, dlnrho)
+ 1  8.10  4.00 -1.863898917844E+00  5.38E-07  5.38E-09
+ 1  8.60  5.00 -1.073759114260E+04  4.84E-07  1.80E-09
+ 2  8.10  4.00 -1.675681562459E+00  4.65E-07  7.76E-06
+ 2  8.60  5.00 -8.731067250836E+03  2.45E-05  1.18E-03
+BPS neutrino loss negative, derivatives vs centred differences (1e-6): ok
+Itoh neutrino loss negative, derivatives vs centred differences (2e-3): ok
+# test_net: deuterium energy, log T 6.6, log rho 1: eps and derivative errors (dlnT, dlnrho), outside and inside the surface CZ (capped)
+  2.343187464322E+09  3.94E-07  8.84E-09
+  5.265976801498E+06  2.04E-04  3.04E-04
+deuterium energy derivatives vs centred differences (1e-6): ok
+capped deuterium: eps below the free rate's, derivatives vs centred differences (1e-3): ok
+below the burning cutoff: nothing burns, everything zero: ok
+# test_net: strong screening, log T 7, log rho 6: Lambda_0 z_tilde, pp rate (strong, weak), worst derivative error
+  6.004914067295E+00  4.729201068481E+10  1.704871349166E+12  8.78E-09
+strong screening: in the strong regime, below weak, derivatives vs centred differences (1e-6): ok
 # test_net: compute_abundance_rates, dX/dt / A: H He3 He4 C12 C13 N14 O16 O18
  -1.097958344069E-15 -3.014892365009E-16  1.703542417370E-16 -1.259259469469E-15
   1.197061996450E-15  6.242140095209E-17 -2.239279325898E-19  0.000000000000E+00
@@ -98,8 +118,15 @@ below threshold
   8.898735793303E-06  1.190655489368E-07  1.276873552444E-08
 # test_net: deuterium_rate, log T 6.5, log rho 1.5: outside, inside the surface CZ (turnover 1e6 s)
   1.235332854524E-05  4.967057546834E-07
+deuterium_rate capped at N_A/(m_d tau) in the surface CZ (1e-12): ok
 # test_net: solar neutrino fluxes at the solar centre, then the Be7 mass fraction
   1.813024531101E-32  6.767127715539E-35  1.032281809900E-39  7.939465005808E-33  2.126150526300E-35
   1.600045662702E-33  7.577970199992E-34  1.688893798735E-35  5.741311324498E-33  7.960726511071E-33
   1.849840062616E-11
+# test_net: configuration
+reaction table self-check (no errors): ok
+ WARNING: net: sstandard(9) =  9.00000E-01 belongs to no reaction YREC computes; it has no effect
+ WARNING: net: sstandard(13) =  1.30000E+00 belongs to no reaction YREC computes; it has no effect
+sstandard onto the reaction and extra scales: ok
+a scale on C12(a,g) is reported as without effect: ok
 test_net: done

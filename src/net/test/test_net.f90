@@ -4,29 +4,38 @@
 ! Standalone net-domain test program (2026), companion to
 ! eos/kap/atm's (see eos/test/test_eos.f90 for the initialization
 ! conventions). net/ is a function of (log T, log rho, composition)
-! once its settings are installed, so each piece is tested on its own:
-!   * the cross-section scales (setup/user_inputs.f90, newcross
-!     defaults) and net_settings_from_star,
+! once its settings are installed, so each piece is tested on its own.
+! It prints values for byte-comparison against expected_test_net.out,
+! and checks that print ok or FAIL (each confirmed to fail under a
+! mutation of the code it covers):
+!   * set_net_settings installs net_settings_from_star's record (the
+!     table self-check passes); the cross-section scales of
+!     map_user_inputs (Solar Fusion II inputs);
 !   * compute_network_rates on a (log T, log rho) grid, and
 !     compute_reaction_rates' analytic derivatives against centred
-!     differences,
-!   * sneut (Itoh et al. 1996 neutrino losses) and azbar,
-!   * deuterium_rate,
+!     differences (5e-3: the screening derivatives hold the plasma fixed);
+!   * sneut (Itoh et al. 1996) and azbar; deuterium_rate;
 !   * the reaction table: baryon balance, and each row's Q against the
-!     atomic mass excesses (the difference is the row's neutrinos),
+!     atomic mass excesses (the difference is the row's neutrinos);
 !   * burn_implicitly against backward Euler's closed form for one
-!     reaction at a time, and its mass conservation with all of them,
+!     reaction at a time, its mass conservation with all of them, and its
+!     ierr when it runs out of iterations;
 !   * the trace integrator (surviving_fraction, accreted_survival)
-!     against closed forms and an independent quadrature,
+!     against closed forms and an independent quadrature;
 !   * compute_nuclear_energy at three reference points, and its
-!     derivatives against centred differences,
+!     derivatives against centred differences; the thermal neutrino
+!     losses alone (C/O, nothing burning), both fits, with their
+!     derivatives; deuterium burning outside and inside the surface
+!     convection zone (the cap binding), with their derivatives; nothing
+!     below the burning cutoff;
+!   * strong screening: the regime, its effect, the rates' derivatives;
 !   * compute_abundance_rates (the network's dX/dt) on a hydrogen- and
 !     a helium-burning zone, burn_deuterium_region (shell, region,
 !     accreting surface region, below the threshold), compute_li_be_rates,
-!     the deuterium-rate cap in the surface convection zone, and the
-!     solar neutrino fluxes.
-! Results print for byte-comparison against expected_test_net.out;
-! the checks print ok or FAIL.
+!     the deuterium-rate cap (exactly N_A/(m_d tau)), and the solar
+!     neutrino fluxes;
+!   * the configuration: the table's self-check, the legacy sstandard
+!     map, and the scale reported as without effect.
 program test_net
       use run_setup, only: set_up_constants_and_tables
       use user_inputs, only: map_user_inputs
@@ -44,11 +53,15 @@ program test_net
            network_species_slot, chain_pp1, chain_cno, chain_triple_alpha
 ! the domain's own test: it also reaches net/'s internal modules
       use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
-           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, nuclear_rates
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, nuclear_rates, &
+           zone_conditions, compute_zone_conditions
       use net_configuration, only: num_reactions, num_extra_scales, r_3alpha, &
-           r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings
-      use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates
+           r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings, num_sstandard, &
+           cross_section_scales_from_sstandard
+      use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates, &
+           network_table_errors, inert_scale_count
       use thermal_neutrinos, only: sneut, azbar
+      use physical_constants, only: amu_cgs
       use net_settings_setup, only: net_settings_from_star
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
@@ -83,6 +96,8 @@ program test_net
       double precision :: snu, dsnudt, dsnudd, dsnuda, dsnudz
       double precision :: xmass(3), aion(3), zion(3), ymass(3), &
            abar, zbar
+! the eps of the last point energy_derivative_errors evaluated
+      double precision :: last_eps
 
       call get_environment_variable("YREC_INPUT", yrec_input)
       if (len_trim(yrec_input) == 0) then
@@ -94,7 +109,7 @@ program test_net
       dummy_paths7 = ""
       laol_work = 0.0d0
 
-! unit numbers, per core/read_input.f90
+! the run log's unit, as io/run_files.f90 assigns it
       run_log_unit = 20
       star%ctrl%fermi_unit = 15
       open(run_log_unit, file="test_net.short", status="replace")
@@ -147,11 +162,11 @@ program test_net
          stop 1
       end if
 
-! Nuclear cross-sections: parmin keeps the S-factor namelist locals
-! with Solar Fusion II defaults (Adelberger et al. 2011; see
-! core/read_input.f90's DATA statements around line 1177) and
-! copy-assigns them into controls. This test bypasses parmin, so it
-! sets the same SFII values explicitly, with the new-rates path on.
+! The nuclear cross sections: a run's controls read fills the S-factor
+! controls with the Solar Fusion II values (Adelberger et al. 2011;
+! defaults/physics.defaults) before map_user_inputs turns them into the
+! star's scales. This test bypasses the read, so it sets the same values
+! in the controls buffer, with the new-rates path on.
       use_new_nuclear_rates = .true.
       s0_pp = 4.01d-22
       s0_he3he3 = 5.21d3
@@ -180,10 +195,8 @@ program test_net
 ! cross-section scales via the real remap, then the network's settings
       call map_user_inputs(star)
       call set_net_settings(net_settings_from_star(star), setups_ierr)
-      if (setups_ierr /= 0) then
-         write(*,'(a)') "test_net: FAIL (set_net_settings)"
-         stop 1
-      end if
+      call report("set_net_settings: the table checks out, the settings installed", &
+           setups_ierr == 0)
       write(*,'(a)') "# test_net: cross_section_scale (reaction slots), then " // &
            "extra_cross_section_scale (pep, Be7+e, Be7+p, hep), from map_user_inputs " // &
            "(newcross defaults)"
@@ -213,7 +226,7 @@ program test_net
               rate_vec(r_3alpha), rate_vec(rv_frac_be7_ecap)
       end do
 
-! Itoh neutrino losses (pure; first call initializes its own tables)
+! Itoh neutrino losses
       write(*,'(a)') "# test_net: sneut (Itoh et al. 1996)"
       do ipt = 1, npts
          call sneut(10.0d0**grid_logt(ipt), 10.0d0**grid_logd(ipt), &
@@ -229,16 +242,17 @@ program test_net
       write(*,'(a)') "# test_net: azbar H/He4/C12"
       write(*,'(5(1pe20.12))') abar, zbar, ymass(1), ymass(2), ymass(3)
 
-! deuterium burning rate (result lands in star%light_burn)
-      write(*,'(a)') "# test_net: deutrate"
-      star%xa(i_h2,1) = 2.0d-5
-      write(*,'(1pe20.12)') deuterium_rate(1.5d0, 6.2d0, 0.70d0, &
-           1.ge.star%jcz, star%convective_turnover_timescale)
+! the deuterium burning rate of a shell (per s per amu) outside the
+! surface convection zone, so uncapped
+      write(*,'(a)') "# test_net: deuterium_rate, log T 6.2, log rho 1.5, outside the surface CZ"
+      write(*,'(1pe20.12)') deuterium_rate(1.5d0, 6.2d0, 0.70d0, .false., 0.0d0)
 
 ! analytic dln(rate)/dlnT and dln(rate)/dln(rho) of compute_reaction_rates
 ! against centred differences (step 1e-4 dex), worst relative error per
 ! reaction slot over three (log T, log rho) points; slots that are zero
-! everywhere print 0. Guards the hand-derived Jacobian terms.
+! everywhere print 0. Guards the hand-derived Jacobian terms; the
+! screening derivatives are approximate (their plasma terms are held
+! fixed), so the check allows 5e-3.
       write(*,'(a)') "# test_net: rate derivatives, max |analytic/numerical - 1| (dlnT, dlnrho)"
       fd_mass = 0.0d0
       fd_mass(iso_h1) = 0.70d0
@@ -268,17 +282,25 @@ program test_net
       do k = 1, num_reactions
          write(*,'(i3, 2es10.2)') k, fd_err_t(k), fd_err_d(k)
       end do
+      call report("rate derivatives vs centred differences (5e-3)", &
+           maxval(fd_err_t) < 5.0d-3 .and. maxval(fd_err_d) < 5.0d-3)
 
 ! the burning network's reaction table and its baryon-balance check
       write(*,'(a)') "# test_net: network table"
       call write_network_table(6)
 
       call check_burn_implicitly()
+      call check_burn_nonconvergence()
       call check_trace_integrator()
       call check_nuclear_energy()
+      call check_thermal_neutrino_losses()
+      call check_deuterium_energy()
+      call check_below_cutoff()
+      call check_strong_screening()
       call check_abundance_rates()
       call check_light_elements()
       call check_solar_neutrino_fluxes()
+      call check_configuration()
 
       close(run_log_unit)
       write(*,'(a)') "test_net: done"
@@ -413,7 +435,9 @@ contains
 ! points: the solar centre, a CNO-burning core, a helium-burning core.
 ! Each prints the total, the pp, CNO and triple-alpha parts and the
 ! neutrino loss (erg/g/s), then |analytic/numerical - 1| of d eps/d ln T
-! and d eps/d ln rho, against centred differences of 1e-4 dex.
+! and d eps/d ln rho, against centred differences of 1e-4 dex. The
+! derivatives hold the screening plasma and the branchings fixed, so the
+! check allows 5e-3.
       subroutine check_nuclear_energy()
          integer, parameter :: npoint = 3
          double precision, parameter :: h = 1.0d-4
@@ -421,7 +445,7 @@ contains
               logd(npoint) = [2.176d0, 1.75d0, 4.0d0]
          type(nuclear_energy_result) :: e, ep, em
          double precision :: xa(15, npoint), fd
-         double precision :: err_t, err_d
+         double precision :: err_t, err_d, worst
          integer :: k
 
          call install_production_settings()
@@ -435,6 +459,7 @@ contains
 
          write(*,'(a)') "# test_net: compute_nuclear_energy: eps, pp, CNO, " // &
               "triple alpha, neutrino loss; derivative errors (dlnT, dlnrho)"
+         worst = 0.0d0
          do k = 1, npoint
             call compute_nuclear_energy(logd(k), logt(k), xa(:,k), .false., 0.0d0, e)
             write(*,'(a,i2,f7.3,f7.3)') "point", k, logt(k), logd(k)
@@ -449,12 +474,16 @@ contains
             fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
             err_d = abs(e%deps_dlnrho/fd - 1.0d0)
             write(*,'(2es10.2)') err_t, err_d
+            worst = max(worst, err_t, err_d)
          end do
+         call report("compute_nuclear_energy derivatives vs centred differences (5e-3)", &
+              worst < 5.0d-3)
       end subroutine check_nuclear_energy
 
-! The production settings of a run (the namelist defaults: cutoffs,
-! weak-screening threshold, solar neutrino fluxes and Itoh losses on,
-! light-element rate scales 1), keeping the cross-section scales.
+! The settings of a solar run: the default cutoffs and weak-screening
+! threshold, with the solar neutrino fluxes and the Itoh et al. losses
+! on (the defaults have both off), light-element rate scales 1, keeping
+! the cross-section scales.
       subroutine install_production_settings()
          type(net_settings_t) :: s
          integer :: ierr
@@ -495,7 +524,8 @@ contains
 ! region, the three as the accreting surface region, and a region below
 ! the threshold; each prints the region's new X, He3 and D.
 ! compute_li_be_rates at three temperatures; deuterium_rate inside and
-! outside the surface convection zone where the turnover cap binds.
+! outside the surface convection zone where the turnover cap binds (the
+! capped rate is N_A/(m_d tau) amu_cgs, exactly).
       subroutine check_light_elements()
          integer, parameter :: nz = 3
          double precision, parameter :: t9(3) = [3.0d-3, 5.0d-3, 1.0d-2]
@@ -532,6 +562,11 @@ contains
          write(*,'(a)') "# test_net: deuterium_rate, log T 6.5, log rho 1.5: outside, inside the surface CZ (turnover 1e6 s)"
          write(*,'(2(1pe20.12))') deuterium_rate(1.5d0, 6.5d0, 0.70d0, .false., 1.0d6), &
               deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6)
+         call report("deuterium_rate capped at N_A/(m_d tau) in the surface CZ (1e-12)", &
+              abs(deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6)/ &
+              (6.023d23/2.013553d0/1.0d6*amu_cgs) - 1.0d0) < 1.0d-12 .and. &
+              deuterium_rate(1.5d0, 6.5d0, 0.70d0, .false., 1.0d6) > &
+              deuterium_rate(1.5d0, 6.5d0, 0.70d0, .true., 1.0d6))
       end subroutine check_light_elements
 
       subroutine deuterium_case(label, first, last, accretion, threshold, &
@@ -564,4 +599,210 @@ contains
          write(*,'(5(1pe20.12))') e%neutrino_flux
          write(*,'(1pe20.12)') e%be7_mass_fraction
       end subroutine check_solar_neutrino_fluxes
+! The thermal neutrino losses of both fits, on a carbon-oxygen mixture
+! where nothing burns (no H, no He4), so eps is the loss alone: its
+! value and |analytic/numerical - 1| of d eps/d ln T and d eps/d ln rho
+! (centred differences of 1e-4 dex), at log T 8.1 (photo and plasma
+! neutrinos) and 8.6 (pair too, T9 >= 0.2), log rho 4 and 5: Beaudet,
+! Petrosian & Salpeter (the default) and Itoh et al. The loss is
+! negative. (sneut's recombination term takes d nu-term/d nu without
+! the -c00^2 factor, which puts its density derivative 1.3e-3 off at
+! log T 8.6; hence the Itoh tolerance.)
+      subroutine check_thermal_neutrino_losses()
+         integer, parameter :: npoint = 2
+         double precision, parameter :: logt(npoint) = [8.1d0, 8.6d0], &
+              logd(npoint) = [4.0d0, 5.0d0]
+         type(net_settings_t) :: s
+         double precision :: xa(15), err_t, err_d, worst(2)
+         logical :: negative(2)
+         integer :: k, fit, ierr
+
+         xa = 0.0d0
+         xa([i_metals, i_c12, i_o16]) = [1.0d0, 0.5d0, 0.5d0]
+         write(*,'(a)') "# test_net: thermal neutrino losses on C/O (BPS, then Itoh): " // &
+              "eps, derivative errors (dlnT, dlnrho)"
+         do fit = 1, 2
+            call install_production_settings()
+            s = net_settings
+            s%use_itoh_neutrino_loss = fit == 2
+            call set_net_settings(s, ierr)
+            worst(fit) = 0.0d0
+            negative(fit) = .true.
+            do k = 1, npoint
+               call energy_derivative_errors(logd(k), logt(k), xa, .false., 0.0d0, &
+                    err_t, err_d)
+               worst(fit) = max(worst(fit), err_t, err_d)
+               negative(fit) = negative(fit) .and. last_eps < 0.0d0
+               write(*,'(i2,f6.2,f6.2,1pe20.12,2es10.2)') fit, logt(k), logd(k), &
+                    last_eps, err_t, err_d
+            end do
+         end do
+         call report("BPS neutrino loss negative, derivatives vs centred differences (1e-6)", &
+              negative(1) .and. worst(1) < 1.0d-6)
+         call report("Itoh neutrino loss negative, derivatives vs centred differences (2e-3)", &
+              negative(2) .and. worst(2) < 2.0d-3)
+      end subroutine check_thermal_neutrino_losses
+
+! |analytic/numerical - 1| of compute_nuclear_energy's d eps/d ln T and
+! d eps/d ln rho at one point, against centred differences of 1e-4 dex;
+! last_eps keeps the point's eps.
+      subroutine energy_derivative_errors(logd, logt, xa, in_surface_cz, &
+           turnover, err_t, err_d)
+         double precision, intent(in) :: logd, logt, xa(:), turnover
+         logical, intent(in) :: in_surface_cz
+         double precision, intent(out) :: err_t, err_d
+         double precision, parameter :: h = 1.0d-4
+         type(nuclear_energy_result) :: e, ep, em
+         double precision :: fd
+
+         call compute_nuclear_energy(logd, logt, xa, in_surface_cz, turnover, e)
+         last_eps = e%total_energy_gen_rate
+         call compute_nuclear_energy(logd, logt+h, xa, in_surface_cz, turnover, ep)
+         call compute_nuclear_energy(logd, logt-h, xa, in_surface_cz, turnover, em)
+         fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
+         err_t = abs(e%deps_dlnt/fd - 1.0d0)
+         call compute_nuclear_energy(logd+h, logt, xa, in_surface_cz, turnover, ep)
+         call compute_nuclear_energy(logd-h, logt, xa, in_surface_cz, turnover, em)
+         fd = (ep%total_energy_gen_rate - em%total_energy_gen_rate)/(2.0d0*h*log(10.0d0))
+         err_d = abs(e%deps_dlnrho/fd - 1.0d0)
+      end subroutine energy_derivative_errors
+
+! Deuterium burning in a pre-main-sequence surface convection zone
+! (log T 6.6, log rho 1, D 2e-5): outside the zone, and inside it with a
+! turnover time of 1e7 s, where the cap binds (the rate per unit X there
+! exceeds N_A/(m_d tau) about 500 times). Capped, eps_D = (N_A/m_d/tau)
+! X_D Q depends on neither rho nor T, so d eps/d ln rho and d eps/d ln T
+! are pp's alone; both points are checked against centred differences
+! (the capped point's to 1e-3: there the differences of an eps of 5e6
+! resolve pp's derivatives of order 0.1 only to about 1e-4).
+      subroutine check_deuterium_energy()
+         double precision :: xa(15), eps_free, err_t, err_d, worst_free, worst_capped
+         double precision, parameter :: turnover = 1.0d7
+         double precision :: capped_eps
+
+         call install_production_settings()
+         xa = 0.0d0
+         xa([i_h1, i_he4, i_metals, i_he3, i_h2]) = [0.70d0, 0.28d0, 0.02d0, 3.0d-5, 2.0d-5]
+         write(*,'(a)') "# test_net: deuterium energy, log T 6.6, log rho 1: eps and " // &
+              "derivative errors (dlnT, dlnrho), outside and inside the surface CZ (capped)"
+         call energy_derivative_errors(1.0d0, 6.6d0, xa, .false., turnover, err_t, err_d)
+         eps_free = last_eps
+         worst_free = max(err_t, err_d)
+         write(*,'(1pe20.12,2es10.2)') last_eps, err_t, err_d
+         call energy_derivative_errors(1.0d0, 6.6d0, xa, .true., turnover, err_t, err_d)
+         capped_eps = last_eps
+         worst_capped = max(err_t, err_d)
+         write(*,'(1pe20.12,2es10.2)') last_eps, err_t, err_d
+         call report("deuterium energy derivatives vs centred differences (1e-6)", &
+              worst_free < 1.0d-6)
+         call report("capped deuterium: eps below the free rate's, derivatives vs " // &
+              "centred differences (1e-3)", capped_eps < eps_free .and. worst_capped < 1.0d-3)
+      end subroutine check_deuterium_energy
+
+! Below the burning cutoff (log T <= logT_cutoffs(1), 6.5) nothing is
+! computed: burning is off and every value is zero, at the cutoff too.
+      subroutine check_below_cutoff()
+         type(nuclear_energy_result) :: e1, e2
+         double precision :: xa(15)
+
+         call install_production_settings()
+         xa = 0.0d0
+         xa([i_h1, i_he4, i_metals, i_he3, i_h2]) = [0.70d0, 0.28d0, 0.02d0, 3.0d-5, 2.0d-5]
+         call compute_nuclear_energy(1.0d0, 6.4d0, xa, .false., 0.0d0, e1)
+         call compute_nuclear_energy(1.0d0, 6.5d0, xa, .false., 0.0d0, e2)
+         call report("below the burning cutoff: nothing burns, everything zero", &
+              .not. e1%burning .and. .not. e2%burning .and. &
+              e1%total_energy_gen_rate == 0.0d0 .and. e2%total_energy_gen_rate == 0.0d0 .and. &
+              all(e1%eps_by_chain == 0.0d0) .and. e1%deps_dlnt == 0.0d0 .and. &
+              e1%deps_dlnrho == 0.0d0 .and. e1%eps_neutrino_loss == 0.0d0)
+      end subroutine check_below_cutoff
+
+! Strong screening (Graboske et al. 1973): at log T 7, log rho 6 the
+! weak-screening exponent Lambda_0 z_tilde Z1 Z2 is at least 5 for every
+! reaction, so each is strongly screened. Its rates' d ln rate/d ln T and
+! d ln rate/d ln rho against centred differences (1e-4 dex), and the
+! screening's effect: the pp rate with strong screening is below the
+! one weak screening (forced with a threshold of 1e3) gives there.
+      subroutine check_strong_screening()
+         double precision, parameter :: h = 1.0d-4, logt = 7.0d0, logd = 6.0d0
+         type(nuclear_rates) :: nr0, nrp, nrm, nr_weak
+         type(zone_conditions) :: zone
+         type(net_settings_t) :: s
+         double precision :: fd, worst, weak_min
+         integer :: k, ierr
+
+         call install_production_settings()
+         call compute_zone_conditions(logd, logt, fd_mass, zone, nr0)
+         weak_min = zone%plasma%weak_unit
+         call compute_reaction_rates(logd, logt, fd_mass, nr0)
+         worst = 0.0d0
+         do k = 1, num_reactions
+            if (nr0%rate(k) <= 0.0d0) cycle
+            call compute_reaction_rates(logd, logt+h, fd_mass, nrp)
+            call compute_reaction_rates(logd, logt-h, fd_mass, nrm)
+            fd = (log(nrp%rate(k)) - log(nrm%rate(k)))/(2.0d0*h*log(10.0d0))
+            worst = max(worst, abs(nr0%dlnrate_dlnt(k)/fd - 1.0d0))
+            call compute_reaction_rates(logd+h, logt, fd_mass, nrp)
+            call compute_reaction_rates(logd-h, logt, fd_mass, nrm)
+            fd = (log(nrp%rate(k)) - log(nrm%rate(k)))/(2.0d0*h*log(10.0d0))
+            worst = max(worst, abs(nr0%dlnrate_dlnrho(k)/fd - 1.0d0))
+         end do
+         s = net_settings
+         s%weak_screening_threshold = 1.0d3
+         call set_net_settings(s, ierr)
+         call compute_reaction_rates(logd, logt, fd_mass, nr_weak)
+         call install_production_settings()
+         write(*,'(a)') "# test_net: strong screening, log T 7, log rho 6: " // &
+              "Lambda_0 z_tilde, pp rate (strong, weak), worst derivative error"
+         write(*,'(1pe20.12,1pe20.12,1pe20.12,es10.2)') weak_min, nr0%rate(r_pp), &
+              nr_weak%rate(r_pp), worst
+         call report("strong screening: in the strong regime, below weak, derivatives " // &
+              "vs centred differences (1e-6)", weak_min >= 5.0d0 .and. &
+              nr0%rate(r_pp) < nr_weak%rate(r_pp) .and. worst < 1.0d-6)
+      end subroutine check_strong_screening
+
+! burn_implicitly's error contract: a step that needs more Newton
+! iterations than it is given returns ierr = 1 (here the every-rate
+! step of check_burn_implicitly with a single iteration); with enough,
+! ierr = 0.
+      subroutine check_burn_nonconvergence()
+         double precision :: g(num_rate_rows), x0(n_network), x(n_network)
+         integer :: ierr1, ierr50
+
+         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         call compute_network_rates(2.2d0, 7.3d0, test_xa, g)
+         x = x0
+         call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 1, x, ierr1)
+         x = x0
+         call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 50, x, ierr50)
+         call report("burn_implicitly: ierr 1 when out of iterations, 0 when converged", &
+              ierr1 == 1 .and. ierr50 == 0)
+      end subroutine check_burn_nonconvergence
+
+! The configuration's contracts: the reaction table passes its
+! self-check (network_table_errors: every row consistent, every slot
+! computed by exactly one row); the legacy sstandard vector lands on the
+! reaction and extra scales by its old numbering (entry i = 0.1 i;
+! entries 9 and 13, which belong to no reaction, give a warning); and a
+! scale set on a reaction whose rate law takes none (C12(a,g)) is the
+! one set_net_settings reports as having no effect.
+      subroutine check_configuration()
+         double precision :: sstandard(num_sstandard), xs(num_reactions), &
+              extra(num_extra_scales)
+         type(net_settings_t) :: s
+         integer :: i
+
+         write(*,'(a)') "# test_net: configuration"
+         call report("reaction table self-check (no errors)", network_table_errors() == 0)
+         sstandard = [(0.1d0*i, i = 1, num_sstandard)]
+         call cross_section_scales_from_sstandard(sstandard, xs, extra)
+         call report("sstandard onto the reaction and extra scales", &
+              all(xs(r_pp:r_po16) == sstandard(1:7)) .and. xs(r_ac13) == sstandard(8) .and. &
+              xs(r_ac12) == sstandard(10) .and. xs(r_an14) == sstandard(11) .and. &
+              xs(r_3alpha) == sstandard(12) .and. all(extra == sstandard(14:17)))
+         s = net_settings
+         s%cross_section_scale(r_ac12) = 2.0d0
+         call report("a scale on C12(a,g) is reported as without effect", &
+              inert_scale_count(s) == 1 .and. inert_scale_count(net_settings) == 0)
+      end subroutine check_configuration
 end program test_net

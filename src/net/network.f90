@@ -227,7 +227,7 @@ module network
       public :: burn_implicitly, network_table_errors, write_network_table, &
            compute_abundance_rates, compute_reaction_energies, &
            compute_reaction_rates, compute_network_rates, reaction_counts, &
-           set_net_settings
+           set_net_settings, inert_scale_count
 
 contains
 
@@ -264,20 +264,42 @@ subroutine set_net_settings(settings, ierr)
       end do
       if (ierr /= 0) return
       do j = 1, n_rows
-         k = reactions(j)%rate_row
-         if (reactions(j)%rate_law == shares_rate .or. &
-              reactions(j)%rate_law == s_factor_fit) cycle
-         if (settings%cross_section_scale(k) /= 1.0d0 .or. &
-              settings%s_prime_scale(k) /= 1.0d0 .or. &
-              settings%s_double_prime_scale(k) /= 1.0d0) then
-            write(line(1), '(4a)') ' WARNING: net: a cross-section scale of ', &
-                 trim(reactions(j)%name), ' is not 1, but its rate law', &
-                 ' takes no scale; it has no effect'
-            call net_report(line)
-         end if
+         if (.not. scale_has_no_effect(settings, j)) cycle
+         write(line(1), '(4a)') ' WARNING: net: a cross-section scale of ', &
+              trim(reactions(j)%name), ' is not 1, but its rate law', &
+              ' takes no scale; it has no effect'
+         call net_report(line)
       end do
       call store_net_settings(settings)
 end subroutine set_net_settings
+
+! Row j computes its rate with a law that takes no scale (only the
+! S-factor law reads the per-reaction scales), yet one of its scales in
+! settings is not 1.
+pure logical function scale_has_no_effect(settings, j)
+      type(net_settings_t), intent(in) :: settings
+      integer, intent(in) :: j
+      integer :: k
+
+      scale_has_no_effect = .false.
+      if (reactions(j)%rate_law == shares_rate .or. &
+           reactions(j)%rate_law == s_factor_fit) return
+      k = reactions(j)%rate_row
+      scale_has_no_effect = settings%cross_section_scale(k) /= 1.0d0 .or. &
+           settings%s_prime_scale(k) /= 1.0d0 .or. &
+           settings%s_double_prime_scale(k) /= 1.0d0
+end function scale_has_no_effect
+
+! The number of rows scale_has_no_effect reports.
+pure integer function inert_scale_count(settings)
+      type(net_settings_t), intent(in) :: settings
+      integer :: j
+
+      inert_scale_count = 0
+      do j = 1, n_rows
+         if (scale_has_no_effect(settings, j)) inert_scale_count = inert_scale_count + 1
+      end do
+end function inert_scale_count
 
 !----------------------------------------------------------------------
 ! compute_reaction_rates: the H/He reaction rates of one zone and their
