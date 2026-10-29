@@ -86,17 +86,30 @@ module network
 ! the first n_solved species are solved implicitly; the rest are
 ! products updated explicitly after convergence
       integer, parameter, public :: n_solved = 7, n_network = 8
-! the composition-vector (xa) slot of each network species, s_* order
-      integer, parameter, public :: network_species_slot(n_network) = &
-           [i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, i_o16, i_o18]
-      real(dp), parameter, public :: mass_number(n_network) = &
-           [1.0d0, 3.0d0, 4.0d0, 12.0d0, 13.0d0, 14.0d0, 16.0d0, 18.0d0]
-! atomic mass excesses, MeV (AME2020: Wang et al. 2021), of the network
-! species and of the neutron, the one untracked particle a row emits;
-! they check the rows' energies (q_from_masses)
-      real(dp), parameter :: mass_excess_mev(n_network) = &
-           [7.288971d0, 14.931219d0, 2.424916d0, 0.0d0, 3.125009d0, &
-           2.863417d0, -4.737001d0, -0.782816d0]
+! The species table, in s_* order: each species' name, its slot in the
+! composition vector xa, its mass number (the integer A the rate
+! convention uses) and its atomic mass excess (MeV, AME2020: Wang et al.
+! 2021), which checks the rows' energies (q_from_masses).
+      type :: species_t
+         character(len=4) :: name
+         integer :: xa_slot
+         real(dp) :: mass_number, mass_excess_mev
+      end type species_t
+      type(species_t), parameter :: species(n_network) = [ &
+           species_t('H1  ', i_h1,  1.0d0,  7.288971d0), &
+           species_t('He3 ', i_he3, 3.0d0, 14.931219d0), &
+           species_t('He4 ', i_he4, 4.0d0,  2.424916d0), &
+           species_t('C12 ', i_c12, 12.0d0, 0.0d0), &
+           species_t('C13 ', i_c13, 13.0d0, 3.125009d0), &
+           species_t('N14 ', i_n14, 14.0d0, 2.863417d0), &
+           species_t('O16 ', i_o16, 16.0d0, -4.737001d0), &
+           species_t('O18 ', i_o18, 18.0d0, -0.782816d0)]
+! the columns of the table the rest of the code reads
+      integer, parameter, public :: network_species_slot(n_network) = species%xa_slot
+      real(dp), parameter, public :: mass_number(n_network) = species%mass_number
+      real(dp), parameter :: mass_excess_mev(n_network) = species%mass_excess_mev
+! the atomic mass excess of the neutron, the one untracked particle a
+! row emits, MeV
       real(dp), parameter :: neutron_mass_excess_mev = 8.071318d0
 ! the rounding of the rows' Q values, MeV: a row whose Q exceeds the
 ! energy its masses release by more is wrong (network_table_errors)
