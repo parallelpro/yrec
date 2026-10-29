@@ -1096,7 +1096,10 @@ left for a decision (physics changes):
 - **Open: the state modules.** star_info_lib, rotation_scratch_lib and
   point_scratch_lib keep their names until the Phase 5 state split
   (docs/TARGET_ARCHITECTURE.md section 4.2) replaces them.
-- **Open: facade-only use for eos, kap, atm, numerics.** Only net/ is in
+- **Open: facade-only use for eos, kap, atm, numerics.** (Status
+  2026-10-29: FACADE_ONLY_DOMAINS lists all seven star-free domains,
+  and integration_parameters is gone since 97c00d5a; the text below is
+  as written in 2026-10.) Only net/ is in
   check_boundaries' FACADE_ONLY_DOMAINS. The others are still entered
   through internal modules, mostly table state: read_controls and
   read_starting_model set yale_eos_tables, scv_eos_tables,
@@ -1158,12 +1161,14 @@ All bitwise identical (test_net pins, gate1, config matrix, full run).
 - **DONE (ccd1918c, below): the level-1 equilibrium burn is dropped.**
 - **Left as is: Timmes' sneut** (1,357 lines of external code with
   saved tables). It is why compute_nuclear_energy cannot be pure.
+  (Pure since 78f58053, 2026-10-29: the saved tables are parameter
+  arrays.)
 
 ### net/ to 9 (yrec-next, 2026-10-11)
 
 - **DONE, bitwise identical: simeqc and burn_implicitly are pure**
   (ef4c50f1); in net/ only Timmes' neutrino routines and their callers
-  are not.
+  are not (they are since 78f58053, 2026-10-29).
 - **DONE, bitwise identical: net/ uses no star_info_lib** (d06db92b). The
   slot constants live in the constants-only modules composition_layout
   and neutrino_flux_layout (state/), which star_info_lib re-exports;
@@ -1178,7 +1183,9 @@ All bitwise identical (test_net pins, gate1, config matrix, full run).
   and each law applies the screening exponent inside its own formula,
   not the driver after a bare fit, because exp(a + b) and
   exp(a)*exp(b) differ in the last bit. Rate scale factors are still
-  referred to by slot (scale_slot), not by name.
+  referred to by slot (scale_slot), not by name (by name since
+  77dfc919, 2026-10-29: each row's scales are at its own reaction
+  slot).
 - **DONE, measured: the level-1 equilibrium burn is dropped** (ccd1918c).
   The predictor pass ran the implicit network and then overwrote X (and
   Z, C12, O16 in helium burning) with an explicit equilibrium-He3/CN
@@ -1548,6 +1555,9 @@ test_mesa_output and the full battery compare the runs.
     gone, and gen_inlist stops if a live control has no default in the
     code. The legacy namelists are frozen: new controls are new-format
     only. Doing this found tscut's lost F77 default of 6.0 (restored).
+    (Not yet true for 180 legacy names, whose literals in
+    set_legacy_defaults disagreed with their canonical initializers;
+    6085de4c, 2026-10-29, made the initializers the one source.)
   - read_yrec7 and read_model2 return 26 header values, most of which the
     caller discards; a header record would shorten both.
   - monte_carlo_file1_path and monte_carlo_file2_path are NUL-filled when
@@ -2270,3 +2280,291 @@ ABCD with the uninhibited GSF, its default), Schatzman's turbulent
 diffusion, magnetic fields. The thesis's mu currents (eqs. 14-16) were
 replaced by the Maeder & Zahn (1998) inhibition in 2002 (MHP 06/02).
 
+### Module evaluation follow-up: eos, net, io, numerics, math, state, setup (yrec-next, 2026-10-29)
+
+**Why.** After rotation/'s Stage D the owner asked for the other
+modules to reach the standard rotation/ sets, on five criteria:
+readability, organization, maintainability, extensibility (a newcomer
+can add physics) and documentation that matches the code, and for the
+bugs found on the way to be fixed. "Concise" meant the logic, never
+fewer features or controls. Five read-only reviews scored the modules
+first (908b983c, audit/module-evaluation-2026-10-29/SUMMARY.md; out of
+5 relative to rotation/, for readability, organization,
+maintainability, extensibility and docs): net 4/4/3/3/3, setup
+4/3/3.5/3/3, math 4/3.5/3/3.5/2, numerics 3/4/2.5/3/3, eos 3/3/2/2/3,
+io 2.5/2.5/2/2/3, state 2.5/2/2.5/2.5/2.5. The obstacles they named:
+net's hand-kept index layouts; numerics' unchecked preconditions and
+an ierr that reported success; io's controls pipeline (two default
+sources that disagreed for 107 controls, the ctrl/job split kept in a
+Python list); star_info in COMMON-block order with hand-kept member
+tables; physical constants assigned at run time; tests that pinned
+numbers and checked no physics; 5-10 false claims in every README.
+Six bugs were confirmed by hand before any work began.
+
+**How.** Six work packages, each in its own git worktree from
+2c88d896 with the files it owned (NET: net/ and its builder; STATE:
+star_info's layout and the state/setup READMEs; OUT: io's output, model
+files, run cards and run files; NUM: numerics/, math/ and the
+duplicated numerics in rotation/ and kap/; CTL: the controls pipeline;
+EOS: eos/ and the physical constants). Each package kept a hand-off
+note (its commits, bugs in this list's format, decisions with
+revisable defaults, leftovers); bugs went into docs/bug_sweep.md
+section 7 as M1-M34. Every commit was built, checked with
+check_boundaries and the unit tests, and run on a deck set whose every
+output file was byte-compared with a snapshot of 2c88d896 and whose
+run logs were compared with the pins (scratchpad check.py): the quick
+set (the configuration matrix, an accretion variant, a solar deck; 18
+decks), the full set (40, with the testsuite and the pre-MS, ZAMS, ZAHB
+and rotating TAMS decks) or all 56 (with the rotating variants). Each
+results-changing fix is its own commit, measured against its parent
+(history.data column by column, scratchpad histcmp.py). The packages
+were merged onto one integration branch in order: the audit commit,
+NET's 22 commits, STATE's 5, OUT's 17 with a regeneration of
+state/README.md's tables (fb83611d), NUM's 23, CTL's 15. CTL's
+s%job%-to-s%ctrl% rename was re-run as a script on the merged tree
+rather than merged as a diff, and check_controls takes NUM's named
+bsstep limits. On the merged tree: after NET and STATE all 56 decks
+byte-identical; after OUT and NUM only the run logs' "stop conditions"
+line differs (55 logs, M19); after CTL also the 23 rotating Matt-law
+decks (9b58f6f6, below). Unit tests: 63 passed, 1 skipped (HDF5).
+The pins in standard/ are not reseeded yet; that is done once, after
+the EOS package.
+
+#### net/ (NET, 22 commits)
+
+- **Layout** (2cba8030, 77dfc919, fa8cdec2): the chain energies are
+  one array, eps_by_chain, which core loops over through
+  luminosity_channel_of_chain and eps_channel_of_chain. One reaction
+  layout in the new net_configuration: 11 reaction slots (the dead
+  slots 9 and 13 gone, M6), the composition rows after them, the extra
+  scales by name (xs_pep, xs_be7e, xs_be7p, xs_hep), per-slot
+  derivative scales; star_info's scale arrays take their sizes from
+  net_lib, and Monte Carlo and map_user_inputs address them by name.
+  The builder is setup/net_settings_setup's pure
+  net_settings_from_star, installed by run_yrec with
+  set_net_settings(..., ierr) after the table's self-check (every slot
+  computed by exactly one row; the rate law, chain, branch, species
+  known). net_settings_t's declared defaults are the controls'.
+- **One job per routine** (78f58053, 61bbbd64, b5d5c721, f9d923c4,
+  4ad0fce3, 3e9132bb, a1cf682b, a605b827): the thermal-neutrino chain
+  is pure (its coefficients are parameter arrays), so GUIDELINES' net/
+  purity exception went; nuclear_rates is filled in one place, the
+  d(p,g) fit and the deuterium cap are written once; the energy sum
+  only sums; every threshold and prefactor is a named parameter with
+  its unit and source; the screening is its own module; the network
+  species are one table; a chain without a luminosity channel is
+  skipped. One Sources text per file (ee5c6122), its contradictions
+  resolved against the code, the F77 comments kept verbatim in
+  net/retired/f77_rate_comments.txt.
+- **Tests** (104f3b80, f2c6ebe6, bdad7653): test_net's ok/FAIL checks
+  (the rates' and energy's derivatives against centred differences,
+  both neutrino fits, deuterium burning with its cap, strong screening
+  against Graboske's formula, the burn's non-convergence, the table's
+  invariants), each confirmed by a mutation: 26 of 26 caught (two
+  were not at first; the two later commits tightened those checks).
+- **Bugs:** M1-M7. **Docs:** README to rotation's shape with recipes
+  traced by adding a reaction (90d041e0), the glossary rows (7b0764af),
+  coverage 90.6% of 1582 lines (4eed10cb).
+
+#### state/ and setup/ (STATE, 5 commits)
+
+- 49aa2d6b: star_info's 239 members in thirteen lifetime classes,
+  longest-lived first, each class with a banner (what it holds, when
+  it is valid) and each member on its own line under one comment in a
+  fixed form (meaning, unit, writers, notes); history in a Sources
+  section. 8ddbf6db: tools/gen_star_docs.py builds state/README.md's
+  tables from those comments and the code; test_generated_files runs
+  its --check, which also fails on a member without a comment, a wrong
+  writer or a member nothing reads.
+- f2558123: setup/README.md (each builder, where and when it is
+  installed, the rules, recipes); 368078df: the solar calibration's
+  four fixed derivatives are named parameters; 61e44415: setup/'s
+  coverage, 95.2% of 252 lines.
+- Prepared, not applied: a rename script for 62 members (one
+  convention for earlier values, readable legacy names, the unit-suffix
+  rule) and the stotal duplicate merged into log_total_mass,
+  byte-identical over the 56 decks on a scratch branch. It is to be run
+  once after all merges (renames were outside this wave).
+
+#### io/: output, model files, run cards, run files (OUT, 17 commits)
+
+- **Bugs:** M18-M26, each its own commit (49e417d7, 34fc2988,
+  8c80883a, b1e7ae2c with 30fae4e5, ba392477, e2335b37, 466b46ff,
+  226fabae, 770f6ce2).
+- **Structure, byte-identical:** the history and profile columns as
+  named tables of (name, kind) with an index per column, checked by
+  gen_default_columns.py and a sync test (770f6ce2); the output's state
+  one record, output_state, that run_yrec owns (226fabae); run_cards
+  with named card kinds and one echo (ccc50cca); model_files with each
+  format's layout and one slot list (0103db35); declarations, messages
+  through report_error, real(dp), use-only (b1f61cbc, 7bc6d4a6);
+  stitched_model's comments and declarations (d8ae6c7b, 4d9b76d1).
+- **Docs:** io/README.md with the recipes "add a history column", "add
+  a profile column" and "add a field to the .mod model", traced on a
+  copy; coverage 86.5% of 2065 lines (ed229bdb).
+
+#### numerics/ and math/ (NUM, 23 commits)
+
+- **Bugs:** M8-M17, each its own commit.
+- **One error contract** (ecce23f0): numerics_status names the codes
+  (singular, coincident points, bad input, step underflow, unsorted
+  points, derivatives failed); the routines print nothing, and the
+  callers that can meet a failure write the same messages to the same
+  places; check_boundaries checks that numerics/ and math/ hold no I/O
+  statement; numerics depends on nothing outside itself; the envelope's
+  status is the kernel's envelope_termination (numerics_termination is
+  kept for now).
+- **One routine per job:** one natural cubic spline (4eaaaece); the
+  tridiagonal solve in two halves that rotation's angular momentum
+  solve reuses bit for bit (9c1c03b1); one 4-point Lagrange formula
+  for numerics and rotation's three copies (f402d470); kap's hunt in
+  numerics and LAOL's natural splines (a25ee9ca).
+- **Readability:** quadratic_spline, lir and simeqc out of their F77
+  shape (7ed8722a, 90475cd2, f1108365), bsstep, mmid and findex
+  indented (61b0dfcb), the comments that named wrong callers
+  (10fe4a65); every use of numerics_lib has an only-list, enforced
+  (38ac9180).
+- **Tests:** test_numerics keeps its pins and gains ok/FAIL property
+  checks (exactness on polynomials, convergence orders, the error
+  codes), each confirmed by numerics/test/mutate_numerics.py (55 of 55
+  caught; 54bf5e79); test_math checks each math backend's contract
+  (c2638e4b). math_lib's README, safe_divide_by_exp removed (023d5080).
+  numerics/README.md with "which routine for what" and recipes; coverage
+  91.1% of 827 lines (90619ab5); math 100%.
+
+#### io/: the controls pipeline (CTL, 15 commits)
+
+- **Bugs:** M27 (a0b4f434), M28 (af946c0c), M29 and M30 (db99ec9a).
+- **One default source** (6085de4c): each control's default is its
+  controls_buffer initializer (180 literals moved from
+  set_legacy_defaults); test_controls checks that a deck setting
+  nothing reads exactly controls_state().
+- **One registry** (5f3835a3, 88b6c96f, 8398d475): the registry says
+  each control's canonical member, its home (ctrl or job) and its use
+  (run, read, none), with a row for every buffer member;
+  gen_controls_state and gen_inlist check the declared types against
+  it; the copies between the legacy and canonical names
+  (adopt_canonical.inc, legacy_mirror.inc) are generated from it;
+  controls_sync is generated into io/, private.
+- **Homes** (97c00d5a, 937ada41, 96b1d4ab): the Bulirsch-Stoer
+  controls are controls and envint_config fields
+  (state/integration_parameters.f90 deleted), checked at read time
+  against bsstep's limits (with nuse <= imax, 396bbb7c); the wind law's
+  coefficients come from magnetic_braking's pure derive_wind_law,
+  called by rotation_settings_from_star (ten pseudo-controls gone);
+  star%job holds exactly the 36 controls that code outside the read
+  assigns (34 moved to star%ctrl), and check_boundaries fails when the
+  registry's home or use disagrees with the code.
+- **Hygiene:** zsi and alex_mixture_x/z deleted, mu_gradient_scale
+  retired (465bfc60); one validation module, controls_check, with
+  check_controls, the warnings and report_control (db99ec9a); the
+  modules' declarations, and io/read_controls.f90 renamed
+  io/controls_reader.f90 after its module (7f111d37).
+- **Docs:** the controls parts of io/, setup/ and state/README.md, with
+  an "add a control" recipe traced end to end on a throwaway branch.
+
+#### eos/ (EOS): to be added
+
+Placeholder. The EOS package (eos/, the physical constants as
+compile-time parameters, the eos_init call) is still running; its
+commits, its bugs (docs/bug_sweep.md M35 on) and its open items go
+here when it is merged.
+
+#### Results-changing commits
+
+| Commit | Change | Moves |
+|---|---|---|
+| ee268284 | M1: eps_total includes the α captures | GYRE's eps in helium-burning cores only; no deck output of the set |
+| 0ca5ff3e | M2: the capped deuterium rate's derivatives are zero | the Jacobian only; no deck |
+| 85af8bef | M3: sneut's recombination derivative | no deck of the set; the 1 Msun ZAHB deck with the Itoh losses moves late in helium burning (final dlog L -2.9e-3, the runs parting near core-helium exhaustion) |
+| 0c4fc520 | M4: triple α's z53 | no deck (none screens triple α strongly) |
+| 4eaaaece | M11: one natural cubic spline | test_kap's OPAL92 and Kurucz 1990 pins only (<= 6.3e-16 relative; dlnkap/dlnT -0.32606 -> -0.35187 at OPAL92's top T node) |
+| 49e417d7 | M18: the Monte Carlo model file keeps every run's model | only a calibrating Monte Carlo deck; none shipped |
+| 34fc2988 | M19: the central-D stop label | the run logs' stop line (55 logs, 34 pinned) |
+| 8c80883a | M20: a kind-3 card's stops | the run-plan line of 7 unpinned seed decks |
+| af946c0c | M28: the settling latch per card | multi-card decks only; on a four-card deck built to reach it, at 1.5 Gyr dlog L +5.4e-5, dX_c -1.7e-4 |
+| 9b58f6f6 | the controls' inexact single-precision defaults (sstandard, the CUS O fraction, the Matt law's solar constants, V13's m and c_2) are d0 | the 23 rotating Matt-law decks: at the logs' last line, \|dlog L\| <= 6.0e-5 (rv_sbm3), \|dlog Teff\| <= 2.7e-5, \|dX_c\| <= 5.6e-5 (rv_ref), model counts within 4; Test_solar_GS_rot final dlog L -1.2e-7 |
+
+#### Still open
+
+1. **M31:** use_structure_dt_limits is switched off for the rest of the
+   run, and use_mass_accretion is the same kind of latch. Proposed: a
+   star latch armed from the control at every card start, as M28.
+2. **M32, M33, M34** and the read-time envelope Z: docs/bug_sweep.md
+   section 7 and its "Decisions needed". The read-time Z (the run plan
+   sets the envelope Z to the last card's positive rescale Z, which
+   kap_init reads before the starting model sets it again; PARMIN did
+   the same): proposed, move that assignment into prepare_run just
+   before kap_init, so io stops reaching into eos (byte-identical).
+3. **net/:** the Caughlan & Fowler rates take no cross-section scale
+   (M5; decided, revisable); sneut's bremsstrahlung derivative is good
+   to 2e-6 of the total and was not investigated; the CF88 rates'
+   resonant terms (above T9 ~ 1) have no check; the screening
+   constants are literals per row (proposed: the charges Z1, Z2 in
+   screening_t, so that the self-check can compute z_p); adding an
+   isotope still means the literal 15 in about 40 declarations and the
+   model format (Phase 5).
+4. **state/ and setup/:** the rename script, then GLOSSARY's member
+   tables and the comment mentions it lists. Constants and copies on
+   the star, each with a byte-identical plan in the STATE notes:
+   solar_bolometric_magnitude (a parameter in physical_constants),
+   atm_hras (envelope_integration calls hsra_t_tau_offset), tenv and
+   use_two_z_tables (computed where they are read). timestep_yr against
+   dt/seconds_per_year is not byte-identical (the .mod header), and the
+   cp, mu, qdt pulse pairs are evaluations at different times, not
+   duplicates: decisions with measured commits. The builders under one
+   name, <domain>_settings_from_star, installed from one module
+   (setup/settings_install.f90: per run, per Monte Carlo run, per card),
+   with check_boundaries allowing the set_* calls only there.
+5. **io/:** model_files' readers return 26 header values (a header
+   record next); the card-kind constants are run_cards', while core
+   still tests bare kinds (step_driver, calibration, starting_model;
+   proposed, a constants-only module in state/); the history columns
+   neut_diag_1/2 keep their opaque names (a rename is an output
+   change); log_output_file could become a canonical control, so that
+   the output takes its directory from star%ctrl; the namelist groups
+   still read 99 controls into locals named after their inlist names
+   and copy them through the legacy names (inlist_new_read.inc;
+   binding the canonical names directly is a generator change touching
+   every row).
+6. **numerics/:** pure for splint, intpol, polint, ludcmp and
+   solve_tridiagonal, now that they print nothing; ysplin, intpol,
+   intrp2 and numerics_termination removed once their callers in kap/
+   and element_diffusion/ move; descriptive names for the YREC-written
+   routines (renames were outside this wave); lir onto interp's
+   weights (results-changing: lir corrects the closest weight so the
+   four sum to one). Rotation's solve_angular_momentum_transport still
+   prints its own "singular matrix" line, against rotation's message
+   rule; eos/scv's two splint calls no longer print splint's message
+   (the EOS package's choice).
+
+#### Learned
+
+- check.py copies its extra decks (the accretion variant, rv_*, o24)
+  into the worktree's examples/ while it runs, and test_controls reads
+  every deck there: the unit tests run during a deck run fail
+  test_controls falsely. Run one after the other.
+- Load: five packages shared 12 cores, at load averages of 150-330; a
+  full 56-deck run took 26-40 minutes. The packages grouped their
+  verification (one rotating-set run covering several rotation
+  refactors, the final full set on the last code commit, quick sets on
+  copies of the tree while the worktree ran the long set), and each
+  commit message says which run covers it.
+- Generated files at merge: deps.mk, state/README.md (gen_star_docs),
+  the controls' includes and dumps and the star contracts all follow
+  the code, and a merge has to regenerate them. A test commit that
+  did not regenerate deps.mk broke test_generated_files for every
+  later commit of its package until a rebase fixed each one. A
+  mechanical rename that other packages' files also need (s%job% to
+  s%ctrl%) goes in as a script re-run on the merged tree, not as a
+  diff; renames other packages would conflict with wait as a script.
+- A mutation that a new check does not catch means the check is too
+  weak, not that the mutation is harmless: NET's two misses (the
+  strong-screening regime, a 5e-3 slip under a 5e-3 tolerance) each
+  led to a sharper check.
+- A commit message's "In the original F77?" is a claim to check
+  against the import: M2's says the cap is not in the F77, and ENGEB
+  has it.
+- test_element_diffusion's stale metal coefficients (M33) make the
+  unit tests fail now and then (3 in 100 runs at the base); a failure
+  there alone, passing on a rerun, is that.
