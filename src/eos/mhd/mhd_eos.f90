@@ -96,7 +96,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
            r%dlnrho_dlnt + r%specific_heat_cp_dt)
       r%beta = exp10((mhd%mhd_output(i_mhd_log10_pgas) - mhd%mhd_output(i_mhd_log10_p)))
       r%beta_inverse = 1.0d0/r%beta
-      r%beta14 = 1.0d0 - r%beta
+      r%beta14 = 4.0d0*r%beta_inverse*(1.0d0 - r%beta)
       do ion_idx = 1, 3
       r%ion_fraction(ion_idx) = mhd%mhd_output(ion_idx+i_mhd_ion_frac_1-1)
       end do

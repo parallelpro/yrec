@@ -411,7 +411,7 @@ subroutine adopt_table_result(table_r, r)
       r%density = exp10(r%log10_density)
       r%beta = table_r%beta
       r%beta_inverse = 1.0d0/r%beta
-      r%beta14 = 1.0d0 - r%beta
+      r%beta14 = 4.0d0*r%beta_inverse*(1.0d0 - r%beta)
       r%specific_gas_constant = table_r%specific_gas_constant
       r%ion_mean_weight_inverse = table_r%ion_mean_weight_inverse
       r%electron_mean_weight_inverse = table_r%electron_mean_weight_inverse
@@ -432,7 +432,7 @@ subroutine blend_table_result(table_r, ramp_factor, r)
       r%density = exp10(r%log10_density)
       r%beta = r%beta + ramp_factor*(table_r%beta - r%beta)
       r%beta_inverse = 1.0d0/r%beta
-      r%beta14 = 1.0d0 - r%beta
+      r%beta14 = 4.0d0*r%beta_inverse*(1.0d0 - r%beta)
       r%specific_gas_constant = r%specific_gas_constant + &
            ramp_factor*(table_r%specific_gas_constant - r%specific_gas_constant)
       r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &

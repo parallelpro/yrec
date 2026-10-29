@@ -23,8 +23,8 @@ module eos_results
          real(dp) :: temperature = 0.0d0, pressure = 0.0d0
 ! density (g/cm^3) and its log10
          real(dp) :: log10_density = 0.0d0, density = 0.0d0
-! beta = P_gas/P, 1/beta, and beta14 (4(1-beta)/beta on the Yale path,
-! 1-beta after OPAL or MHD)
+! beta = P_gas/P, 1/beta, and beta14 = 4(1-beta)/beta = 4 P_rad/P_gas
+! (the radiation term of the Yale solvers)
          real(dp) :: beta = 0.0d0, beta_inverse = 0.0d0, beta14 = 0.0d0
 ! the ionization fractions of H, He+ and He++
          real(dp) :: ion_fraction(3) = 0.0d0

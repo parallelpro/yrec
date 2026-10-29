@@ -61,7 +61,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       integer, intent(out) :: ierr
       logical, intent(out) :: in_table
       real(dp) :: output(n_eos_mv)
-      real(dp) :: t_million_k, p_e12, hydrogen_fraction_work, density_cgs
+      real(dp) :: t_million_k, p_e12, hydrogen_fraction_work, density_cgs, radiation_fraction
       real(dp) :: specific_gas_constant_check
       real(dp) :: chi_rho, chi_t, cv, gamma1, gamma2_ratio
       integer :: rad_flag, deriv_order
@@ -147,10 +147,13 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       r%specific_heat_cp = 1.0d6*cv*gamma1/chi_rho
       r%adiabatic_gradient = 1.0d0/gamma2_ratio
 
-      r%beta14 = (2.521971383d-3*t_million_k*t_million_k)* &
+! the radiation pressure's share of P ((a/3) T^4 in OPAL's units), and
+! beta
+      radiation_fraction = (2.521971383d-3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)
-      r%beta = 1.0d0 - r%beta14
+      r%beta = 1.0d0 - radiation_fraction
       r%beta_inverse = 1.0d0/r%beta
+      r%beta14 = 4.0d0*r%beta_inverse*radiation_fraction
       r%specific_gas_constant = r%pressure*r%beta/(r%density*r%temperature)
       call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
            metal_fraction, specific_gas_constant_check, &
