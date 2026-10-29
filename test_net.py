@@ -1,16 +1,18 @@
-"""Standalone net-domain regression test (2026).
+"""net/'s unit test (2026).
 
 Runs src/test_net (built by `make tests` in src/) with YREC_INPUT
 pointing at the repository's input/ tables, and compares its stdout
-against the pinned src/nuclear/test/expected_test_net.out
-(byte-exact locally; ULP-tolerant under YREC_TEST_TOLERANT=1 in CI,
-via conftest.compare_output).
+against the pinned src/net/test/expected_test_net.out (byte-exact
+locally; ULP-tolerant under YREC_TEST_TOLERANT=1 in CI, via
+conftest.compare_output). The program also exits 1 when one of its
+ok/FAIL checks fails.
 
-Exercises remap's cross-section scales (Solar Fusion II over SFI
-references), the 13 reaction rates over a (logT, logRho) grid, the
-Itoh et al. (1996) neutrino losses, azbar, and deutrate -- the
-composition-in/rates-out core of the domain. compute_zone_energy (the per-zone
-energy-generation driver) is model-coupled and covered by Stage-0.
+test_net checks net/ piece by piece (its header lists the checks): the
+settings and their install, the reaction table's self-check, the rates
+and their derivatives, the implicit burn and its error codes, the
+energy generation with the thermal neutrino losses and deuterium, the
+screening, the light elements and the trace-element integrator, the
+solar neutrino fluxes, and the legacy cross-section map.
 """
 import os
 import pathlib

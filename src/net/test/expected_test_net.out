@@ -43,6 +43,8 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
  10  1.68E-05  4.22E-04
  11  1.39E-05  1.87E-04
 rate derivatives vs centred differences (2e-4 in T, 2e-3 in rho): ok
+Be7 branch fractions sum to 1 at the derivative points (1e-15): ok
+every reaction slot has a positive rate at log T 7.8, log rho 2: ok
 # test_net: network table
 # reaction                     slot  branch  baryon imbalance     Q (MeV)  chain           Q masses (MeV)  neutrinos (MeV)
 pp chain to He3                  1       0                 0    6.664000  pp I                  6.935694         0.271694
@@ -82,6 +84,7 @@ point 3  8.100  4.000
   1.895279351370E+04  0.000000000000E+00  0.000000000000E+00  1.710778528390E+04 -1.560827432613E+00
   6.42E-05  7.97E-04
 compute_nuclear_energy derivatives vs centred differences (5e-3): ok
+the chains' energies sum to eps less the neutrino loss (1e-14): ok
 # test_net: thermal neutrino losses on C/O (BPS, then Itoh): eps, derivative errors (dlnT, dlnrho)
  1  8.10  4.00 -1.863898917844E+00  5.38E-07  5.38E-09
  1  8.60  5.00 -1.073759114260E+04  4.84E-07  1.80E-09
@@ -130,4 +133,6 @@ reaction table self-check (no errors): ok
  WARNING: net: sstandard(13) =  1.30000E+00 belongs to no reaction YREC computes; it has no effect
 sstandard onto the reaction and extra scales: ok
 a scale on C12(a,g) is reported as without effect: ok
+net_settings_from_star copies every member into its own component: ok
+set_net_settings installs every component of the record: ok
 test_net: done
