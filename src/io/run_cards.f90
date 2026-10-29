@@ -8,9 +8,9 @@ module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: run_log_unit, terminal_unit
       use eos_lib, only: eos_set_mixture
-      use legacy_controls, only: numrun, kindrn, lfirst, nmodls, endage, &
+      use legacy_controls, only: numrun, kindrn, nmodls, endage, &
            setdt, end_dcen, end_xcen, end_ycen, rsclm, rsclx, rsclz, rsclcm
-      use controls_buffer, only: rescale_kind, rescale_params, &
+      use controls_buffer, only: rescale_kind, rescale_params, first_call_flag, &
            end_age_stop_active, timestep_override_active
       implicit none
       private
@@ -36,7 +36,9 @@ subroutine interpret_kind_cards(s)
       write(run_log_unit,200)
   200 format(/1x,'run plan',/)
 
-      lfirst(1) = .true.
+! card 1 has no previous card's model: it starts from the starting
+! model whatever the deck says (as the F77 PARMIN forced LFIRST(1))
+      first_call_flag(1) = .true.
       do n = 1, numrun
          rescale_kind(n) = kindrn(n)
          if (evolves(n)) call set_stop_flags(n)
@@ -84,20 +86,20 @@ subroutine echo_card(n)
       select case (kindrn(n))
       case (card_evolve)
          if (nmodls(n) <= 0) return
-         if (lfirst(n)) then
+         if (first_call_flag(n)) then
             write(line,350) n, nmodls(n)
          else
             write(line,351) n, nmodls(n)
          end if
       case (card_rescale)
          if (nmodls(n) <= 0) return
-         if (lfirst(n)) then
+         if (first_call_flag(n)) then
             write(line,450) n
          else
             write(line,451) n
          end if
       case (card_rescale_and_evolve)
-         if (lfirst(n)) then
+         if (first_call_flag(n)) then
             write(line,550) n
          else
             write(line,551) n

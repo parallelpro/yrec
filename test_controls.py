@@ -199,3 +199,25 @@ def test_inert_controls_warn_on_the_terminal(tmp_path):
     wind = "WARNING (controls): use_rotation_scaled_solar_wind"
     assert wind in out[giant] and wind not in out[base]
     assert all("WARNING (controls): surface_composition_file" in o for o in out.values())
+
+
+def test_card_one_starts_from_the_starting_model(tmp_path):
+    """Card 1 has no previous card's model, so it always loads the starting
+    model: a deck that sets first_call_flag(1) = .FALSE. (ten shipped decks
+    did) reads job%first_call_flag(1) = T, and the run plan says so; card
+    2's flag stays as the deck sets it."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text()
+    assert "first_call_flag(1) = .TRUE." in text
+    off = tmp_path / "cm_base_card1_false.inlist"
+    off.write_text(text.replace("first_call_flag(1) = .TRUE.", "first_call_flag(1) = .FALSE."))
+    env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
+    result = subprocess.run([str(BINARY), str(off)], cwd=deck.parent, env=env, capture_output=True)
+    out = result.stdout.decode("latin-1")
+    dump = out.splitlines()
+    assert "ierr = 0" in dump
+    assert "job%first_call_flag(1) = T" in dump
+    assert "job%first_call_flag(2) = F" in dump
+    assert "card  1: rescale and evolve the starting model" in out, out[-500:]
