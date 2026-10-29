@@ -17,7 +17,7 @@ module yale_eos
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_x, debye_huckel_y, debye_huckel_z, &
-           debye_huckel_z_total, yale
+           debye_huckel_z_total, n_debye_huckel_metals, yale
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
@@ -735,7 +735,7 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, r, f)
 ! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1
       if (eos_settings%use_debye_huckel_correction) then
          almix = 0.0d0
-         do ii=1,18
+         do ii=1,n_debye_huckel_metals
             almix = almix + debye_huckel_nu(ii)*debye_huckel_z(ii)
          end do
          f%cmfdh0 = 2.0d0*debye_huckel_x+1.5d0*debye_huckel_y+0.5d0*(debye_huckel_z_total+almix)

@@ -28,7 +28,8 @@ module opal_eos
            n_eos06_nr, n_eos06_nt, n_eos_mv, n_eos_mx, opal95, opal01, opal06, &
            opal01_density_index_edge, opal01_x_grid, opal06_density_index_edge, &
            opal06_t6_index_lo, opal06_x_grid, opal_layout, opal_shared, &
-           opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad
+           opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad, &
+           opal_radiation_constant_over_3
       use physical_constants, only: gas_constant
       use eos_messages, only: eos_log, message_length, unwritten_line
       use eos_mixture, only: compute_mean_weights
@@ -151,7 +152,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
 
 ! the radiation pressure's share of P ((a/3) T^4 in OPAL's units), and
 ! beta
-      radiation_fraction = (2.521971383d-3*t_million_k*t_million_k)* &
+      radiation_fraction = (opal_radiation_constant_over_3*t_million_k*t_million_k)* &
            (t_million_k*t_million_k/p_e12)
       r%beta = 1.0d0 - radiation_fraction
       r%beta_inverse = 1.0d0/r%beta

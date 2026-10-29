@@ -23,6 +23,8 @@ module physical_constants
       public :: amu_cgs, m_proton_cgs, amu_cgs_legacy, m_electron_amu, &
            rsun_cgs_legacy, sigma_sb_cgs_legacy, rad_viscosity_coeff_cgs, &
            solar_bolometric_magnitude
+      public :: electron_charge_esu, hydrogen_atom_mass_cgs, &
+           helium_atom_mass_cgs
       public :: log10_radius_from_l_teff
 
 ! mathematical constants (former common/const1/, and clndp and
@@ -103,6 +105,13 @@ module physical_constants
 ! always used (the former common/const/'s CMBOL; IAU 2015 Resolution B2
 ! fixes 4.74), written in the isochrone file's header
       real(dp), parameter :: solar_bolometric_magnitude = 4.79d0
+! the elementary charge [esu] to four digits, as the EOS's Debye-Hueckel
+! coefficient has always taken it (CODATA 1986: 4.8032068e-10)
+      real(dp), parameter :: electron_charge_esu = 4.802d-10
+! the hydrogen and helium atom masses [g] of the SCV EOS's entropy of
+! mixing (setscv.f; Saumon, Chabrier & Van Horn 1995)
+      real(dp), parameter :: hydrogen_atom_mass_cgs = 1.67357d-24, &
+           helium_atom_mass_cgs = 6.646442d-24
 
 contains
 

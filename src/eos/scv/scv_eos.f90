@@ -24,7 +24,8 @@ module scv_eos
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
            tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction, scv_tables_loaded
-      use physical_constants, only: cc13, ln10, radiation_constant_over_3
+      use physical_constants, only: cc13, ln10, radiation_constant_over_3, &
+           boltzmann_constant_cgs, hydrogen_atom_mass_cgs, helium_atom_mass_cgs
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: mean_weights_from_density
@@ -797,9 +798,6 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 ! interp_x: the three abscissae handed to inter3, and its weights and
 ! their derivatives
       real(dp) :: interp_x(3), t_interp_weight(3), t_interp_dweight(3)
-      real(dp), parameter :: hydrogen_atom_mass = 1.67357d-24
-      real(dp), parameter :: helium_atom_mass = 6.646442d-24
-      real(dp), parameter :: boltzmann_constant = 1.380658d-16
 ! --- locals ---
       integer :: t_idx, p_idx, k_idx, t_row
 ! log10 T and log10 P of the table point, ln T, and T
@@ -837,10 +835,10 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             density_mix = 1.0d0/(one_minus_y_local/density_h + &
                  helium_fraction_hhe/density_he)
             hydrogen_number_density = 2.0d0*one_minus_y_local*density_mix/ &
-                 hydrogen_atom_mass/(1.0d0+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral)+ &
+                 hydrogen_atom_mass_cgs/(1.0d0+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral)+ &
                  tablex(t_idx,p_idx,iscv_frac_atom_ion1))
             helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
-                 helium_atom_mass/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
+                 helium_atom_mass_cgs/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
                  tabley(t_idx,p_idx,iscv_frac_atom_ion1))
 ! Hydrogen and helium electron number densities
             hydrogen_electron_density = 0.5d0*hydrogen_number_density* &
@@ -856,7 +854,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                  helium_number_density == 0.0d0) then
                smix(t_idx,p_idx) = 0.0d0
             else
-               mixing_beta = (hydrogen_atom_mass/helium_atom_mass)* &
+               mixing_beta = (hydrogen_atom_mass_cgs/helium_atom_mass_cgs)* &
                     (helium_fraction_hhe/one_minus_y_local)
                mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,iscv_frac_atom_ion1)+ 3.0d0* &
                     tablex(t_idx,p_idx,iscv_frac_neutral))/(1.0d0+2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral)+ &
@@ -876,7 +874,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                end if
                total_number_density = hydrogen_number_density + &
                     helium_number_density
-               smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass*2.0d0/ &
+               smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass_cgs*2.0d0/ &
                     (1.0d0+tablex(t_idx,p_idx,iscv_frac_atom_ion1)+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral))* &
                     (log(1.0d0+mixing_beta*mixing_gamma)- &
                     hydrogen_electron_density/total_number_density* &
@@ -884,7 +882,7 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
                     log(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
                     helium_electron_density/total_number_density* &
                     log(1.0d0+mix_dei))
-               smix(t_idx,p_idx) = boltzmann_constant*smix(t_idx,p_idx)
+               smix(t_idx,p_idx) = boltzmann_constant_cgs*smix(t_idx,p_idx)
             end if
          end do
       end do

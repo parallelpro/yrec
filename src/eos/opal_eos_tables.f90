@@ -94,6 +94,10 @@ module opal_eos_tables
 ! Density returned by rhoofp/rhoofp01/rhoofp06 when the (P,T6) point
 ! is not in the table (compute_opal_eos tests for .le. -998).
       real(dp), parameter :: opal_rho_not_found = -999.0d0
+! a/3 in OPAL's units, Mb per T6^4 (radiation_constant_over_3 times
+! 1e24/1e12), to the ten digits compute_opal_eos has always written:
+! the radiation pressure's share of P is this T6^4/P12
+      real(dp), parameter, public :: opal_radiation_constant_over_3 = 2.521971383d-3
 ! Value of the table_loaded_flag / readco_init_flag members once the
 ! corresponding tables have been read.
       integer, parameter :: opal_flag_set = 12345678
