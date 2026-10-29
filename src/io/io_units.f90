@@ -3,7 +3,8 @@
 !----------------------------------------------------------------------
 ! The three fixed units written from everywhere, assigned at each read
 ! (run_files' assign_unit_numbers), and check_io, the report for a
-! failed open, read or write. Newer readers and writers use
+! failed open, read or write, and report_error, the report of any other
+! error. Newer readers and writers use
 ! open(newunit=...) instead of fixed units.
 !   run_log_unit    -- the run log (log_output_file, default run.log)
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
@@ -26,17 +27,24 @@ subroutine check_io(ios, message, action, path, ierr, close_unit)
       character(len=*), intent(in) :: message, action, path
       integer, intent(inout) :: ierr
       integer, intent(in), optional :: close_unit
-      logical :: log_open
 
       if (ios == 0) return
       if (present(close_unit)) close(close_unit)
-      write(terminal_unit,'(1x,6a)') 'ERROR: cannot ', action, ' ', trim(path), &
-           ': ', trim(message)
-      inquire(unit=run_log_unit, opened=log_open)
-      if (log_open .and. run_log_unit /= terminal_unit) &
-           write(run_log_unit,'(1x,6a)') 'ERROR: cannot ', action, ' ', trim(path), &
-           ': ', trim(message)
+      call report_error('cannot ' // action // ' ' // trim(path) // ': ' // trim(message))
       ierr = 1
 end subroutine check_io
+
+! ---------------------------------------------------------------
+! An error: "ERROR: <text>" on the terminal, and in the run log once it
+! is open.
+subroutine report_error(text)
+      character(len=*), intent(in) :: text
+      logical :: log_open
+
+      write(terminal_unit,'(1x,2a)') 'ERROR: ', text
+      inquire(unit=run_log_unit, opened=log_open)
+      if (log_open .and. run_log_unit /= terminal_unit) &
+           write(run_log_unit,'(1x,2a)') 'ERROR: ', text
+end subroutine report_error
 
 end module io_units

@@ -224,3 +224,26 @@ def test_too_many_transport_iterations_exits_nonzero(tmp_path):
     assert result.returncode == 1, (
         f"ITDIF2 = 17 must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
     assert "max_diffusion_iters (ITDIF2) must be 1 to 16" in result.stdout + result.stderr
+
+
+def test_unknown_pulse_format_exits_nonzero(tmp_path):
+    """pulse_format names GYRE, FGONG or GSM, in any case; any other
+    name stops the run at startup with exit 1 (it once meant GYRE,
+    silently)."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    inlist = tmp_path / "inlist"
+    conv = subprocess.run(
+        [sys.executable, str(CONVERTER), str(CASE_DIR / NML1), str(CASE_DIR / NML2),
+         "-o", str(inlist)], capture_output=True, text=True)
+    assert conv.returncode == 0, conv.stderr
+    inlist.write_text(inlist.read_text().replace(
+        "&physics", "&physics\n write_pulse_flag = .true.\n pulse_format = 'GYR'\n", 1))
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), "inlist"], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"pulse_format = 'GYR' must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}")
+    assert "pulse_format = 'GYR' is not GYRE, FGONG or GSM" in result.stdout, result.stdout[-300:]

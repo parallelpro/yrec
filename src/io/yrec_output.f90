@@ -34,6 +34,10 @@ module yrec_output
 
       character(len=256) :: out_dir = ' '
       integer :: profile_counter = 0
+! The pulsation file formats pulse_format names (case-insensitive);
+! unknown_pulse_format for any other name.
+      integer, parameter :: unknown_pulse_format = 0, pulse_gyre = 1, &
+           pulse_fgong = 2, pulse_gsm = 3
 
 contains
 
@@ -81,20 +85,46 @@ subroutine output_init_mesa(s, log_output_file, ierr)
       if (ierr /= 0) return
       call profile_output_init(s, out_dir, ierr)
       if (ierr /= 0) return
-! 2026 io-writer stops -> ierr: fail GSM-without-HDF5 at config time
-! (the stub's stop at first write remains only as a last resort).
-      if (s%ctrl%write_pulse_flag .and. &
-          trim(s%job%pulse_format) == 'GSM') then
-         if (.not. gsm_supported()) then
-            write(*,*) 'pulse_format = GSM requires an HDF5-enabled build:'
-            write(*,*) '  make clean && make USE_HDF5=1'
-            write(run_log_unit,*) &
-                 'pulse_format = GSM requires USE_HDF5=1 build'
+! The pulse format, checked here so that a bad one stops the run before
+! its first model: an unknown name, or GSM on a build without HDF5.
+      if (s%ctrl%write_pulse_flag) then
+         select case (pulse_format_code(s%job%pulse_format))
+         case (unknown_pulse_format)
+            call report_error("pulse_format = '" // trim(s%job%pulse_format) // &
+                 "' is not GYRE, FGONG or GSM")
             ierr = 1
             return
-         end if
+         case (pulse_gsm)
+            if (.not. gsm_supported()) then
+               call report_error('pulse_format = GSM requires an HDF5-enabled ' // &
+                    'build: make clean && make USE_HDF5=1')
+               ierr = 1
+               return
+            end if
+         end select
       end if
 end subroutine output_init_mesa
+
+! ---------------------------------------------------------------
+! The format a pulse_format value names: pulse_gyre, pulse_fgong or
+! pulse_gsm, whatever its case; unknown_pulse_format otherwise.
+pure integer function pulse_format_code(name)
+      character(len=*), intent(in) :: name
+      character(len=len(name)) :: upper
+      integer :: i, c
+
+      upper = name
+      do i = 1, len(upper)
+         c = iachar(upper(i:i))
+         if (c >= iachar('a') .and. c <= iachar('z')) upper(i:i) = achar(c - 32)
+      end do
+      select case (trim(adjustl(upper)))
+      case ('GYRE');  pulse_format_code = pulse_gyre
+      case ('FGONG'); pulse_format_code = pulse_fgong
+      case ('GSM');   pulse_format_code = pulse_gsm
+      case default;   pulse_format_code = unknown_pulse_format
+      end select
+end function pulse_format_code
 
 ! ---------------------------------------------------------------
 subroutine output_write_model(s, ierr)
@@ -210,21 +240,19 @@ subroutine write_pulse(s, iprof, stitched, ierr)
       lstar_cgs = exp(ln10*s%log_L)*s%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
-      if (s%job%pulse_format(1:5) == 'FGONG' .or. &
-          s%job%pulse_format(1:5) == 'fgong') then
-         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.FGONG'
+      path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+! (output_init_mesa has rejected any other format)
+      select case (pulse_format_code(s%job%pulse_format))
+      case (pulse_fgong)
          call write_fgong_pulse(s, stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path, ierr)
-      else if (s%job%pulse_format(1:3) == 'GSM' .or. &
-               s%job%pulse_format(1:3) == 'gsm') then
-         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.GSM'
+              lstar_cgs, trim(path) // '.FGONG', ierr)
+      case (pulse_gsm)
          call write_gsm_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path, ierr)
-      else
-         path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data.GYRE'
+              lstar_cgs, trim(path) // '.GSM', ierr)
+      case default
          call write_gyre_ext(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
-              lstar_cgs, path, ierr)
-      end if
+              lstar_cgs, trim(path) // '.GYRE', ierr)
+      end select
 end subroutine write_pulse
 
 ! ---------------------------------------------------------------

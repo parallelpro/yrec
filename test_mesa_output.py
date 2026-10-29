@@ -151,14 +151,15 @@ def test_mesa_output_contract(tmp_path):
     t_outer = 10.0 ** float(prows[0][pcol["logT"]])
     assert t_outer < 1.2 * 10.0 ** log_teff_1, (t_outer, 10 ** log_teff_1)
 
-    # ---- custom history columns + FGONG pulse output ----
+    # ---- custom history columns + FGONG pulse output (pulse_format
+    # in any case) ----
     columns = "! test subset\nstar_age\nlog_Teff\nlog_L\n"
     custom = unstamped.replace(
         "&control",
         "&control\n history_columns_file = 'my_columns.list'\n", 1)
     custom = custom.replace(
         "&physics",
-        "&physics\n pulse_format = 'FGONG'\n"
+        "&physics\n pulse_format = 'Fgong'\n"
         " write_profile_flag = .false.\n write_pulse_flag = .true.\n", 1)
     custom_out = _run(tmp_path / "custom", custom,
                       extra_files={"my_columns.list": columns})
