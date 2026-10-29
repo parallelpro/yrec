@@ -133,6 +133,17 @@ program test_numerics
          write(*,'(a,f6.2,a,2(1pe24.15),i3)') "intpol at", v, " =", d, dv, ierr
       end do
       call ysplin_check()
+      write(*,'(a)') "# ysplin/intpol: three and two points (the natural spline's slopes)"
+      jx(1:3) = [0.0d0, 1.0d0, 3.0d0]
+      jy(1:3) = [0.0d0, 1.0d0, 0.0d0]
+      call intpol(jx(1:3), jy(1:3), 3, 1.0d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "intpol (0,0),(1,1),(3,0) at 1: value, slope 1/2", d, dv, ierr
+      call intpol(jx(1:3), jy(1:3), 3, 2.0d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "intpol (0,0),(1,1),(3,0) at 2", d, dv, ierr
+      jx(1:2) = [0.0d0, 2.0d0]
+      jy(1:2) = [1.0d0, 5.0d0]
+      call intpol(jx(1:2), jy(1:2), 2, 0.5d0, d, dv, ierr)
+      write(*,'(a,2(1pe24.15),i3)') "intpol (0,1),(2,5) at 0.5: value 2, slope 2", d, dv, ierr
 
 ! ---------------- quadratic spline
       write(*,'(a)') "# osplin: monotone convex data, points below, on, between and above"

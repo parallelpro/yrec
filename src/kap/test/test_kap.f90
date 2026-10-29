@@ -175,7 +175,8 @@ contains
 !                single-Z surface table (Z = 0.016232) and the 4D
 !                interpolation away from it (Z = 0.020), a helium core
 !                on the pure-Z blend
-!   opal92       two Z tables (0.0188, 0.0200), blended at Z = 0.019
+!   opal92       two Z tables (0.0188, 0.0200), blended at Z = 0.019, and
+!                the top temperature node
 !   laol89       two Z tables (0.0188, 0.0190), blended at Z = 0.0189
 !   kurucz90     Kurucz molecular tables at [M/H] = 0 and -0.5, blended,
 !                over OPAL95
@@ -201,6 +202,9 @@ contains
               opal92_path=trim(atom)//"legacy/opal92/Z0188.OPALN", &
               opal92_path2=trim(atom)//"legacy/opal92/Z0200.OPALN")
          call evaluate_points(0.70d0, 0.019d0, interior_only=.true.)
+! the top temperature node (T6 = 100), where only three temperature rows
+! enter the spline in log T
+         call evaluate_point(0.70d0, 0.019d0, 8.0d0, 3.0d0)
 
          call configure("laol89", laol89=.true., z1=0.0188d0, z2=0.0190d0, two_z=.true., &
               laol_path=trim(atom)//"legacy/opal92/Z0188AG89.DBGLAOL", &

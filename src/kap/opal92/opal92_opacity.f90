@@ -15,7 +15,8 @@ module opal92_opacity
       use opacity_tables, only: kap_settings, n_opal92_d, n_opal92_t, &
            n_opal92_x, opacity_table, opal92_missing_opacity, &
            opal92_table_set, opal92_x_match_tol
-      use numerics_lib, only: findex, intpol, ysplin
+      use numerics_lib, only: findex, natural_spline, splint, &
+           compute_spline_coefficients
       use math_lib
       implicit none
       private
@@ -131,7 +132,8 @@ subroutine prepare_opal92_tables(ierr)
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
-      real(dp) :: spline_work(4,np), density_nodes(n_opal92_d)
+      real(dp) :: spline_work(4,np), density_nodes(n_opal92_d), &
+           row_opacity(n_opal92_d), row_second_derivs(n_opal92_d)
       integer :: ix, it, index1, jd, id, index2, j, i
       real(dp) :: chkd, chko
 
@@ -174,11 +176,14 @@ subroutine prep_table(tbl, ierr)
           jd = jd + 1
           density_nodes(jd) = chkd
 !>>>> Check the opacity value in the table
-          spline_work(1,jd) = chko
+          row_opacity(jd) = chko
         end do
         tbl%density_count(index1) = jd
         if (jd <= 1) cycle
-        call ysplin(density_nodes, spline_work, jd)
+! the row's natural cubic spline in log R, as coefficients per interval
+        call natural_spline(density_nodes, row_opacity, jd, row_second_derivs)
+        call compute_spline_coefficients(density_nodes, row_opacity, &
+             row_second_derivs, jd, spline_work)
         do j = 1,jd
         do i = 1,4
          index2 = i + (j-1)*4
@@ -215,7 +220,8 @@ subroutine build_opal92_surface_table(hydrogen_fraction, ierr)
       real(dp), intent(in) :: hydrogen_fraction
       integer, intent(out) :: ierr
 
-      real(dp) :: coeff(4,np)
+      real(dp) :: coeff(4,np), row_opacity(n_opal92_d), &
+           row_second_derivs(n_opal92_d)
       integer :: x_index, temp_index, rho_search_index, im2, im3, &
            row_index, coeff_base_index, density_start, density_end, j, i
       real(dp) :: temp6, density_rhot3, opacity0, log10_opacity0, &
@@ -275,9 +281,11 @@ subroutine build_surface_table(tbl, table_z, ierr)
             x_fraction_within=(hydrogen_fraction-tbl%grid_x(x_index))/ &
                  (tbl%grid_x(x_index+1)-tbl%grid_x(x_index))
             log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-            coeff(1,im3)=log10_opacity_final
+            row_opacity(im3)=log10_opacity_final
          end do
-         call ysplin(tbl%grid_logr,coeff,density_end)
+         call natural_spline(tbl%grid_logr, row_opacity, density_end, row_second_derivs)
+         call compute_spline_coefficients(tbl%grid_logr, row_opacity, &
+              row_second_derivs, density_end, coeff)
          do j=1,density_end
             do i=1,4
                coeff_base_index=i+(j-1)*4
@@ -419,11 +427,11 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
            dlnkap_dlnrho, dlnkap_dlnt
 
       real(dp) :: xt(n_opal92_t), yto(n_opal92_t)
-      real(dp) :: aqod(n_opal92_t)
+      real(dp) :: aqod(n_opal92_t), second_derivs(n_opal92_t)
       integer :: jt, it, its, itf
       integer :: mm1, index1, ndss, ndf, knot, index2
       real(dp) :: dx, c1, c2, c3, c4, ol0, qodi
-      real(dp) :: ol00, unused_ddensity_dtemp
+      real(dp) :: ol00
 
       ierr = 0
 ! For six grid points of temperature
@@ -497,13 +505,15 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       end if
 !! Interpolation for the opacity in the entry T and d.
 !! Get the partial derivative of ol wrt T.
-      call intpol(xt, yto, jt, temperature, ol00, dlnkap_dlnt, ierr)
+      call natural_spline(xt, yto, jt, second_derivs)
+      call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
       if (ierr /= 0) return
       log10_opacity = ol00
       opacity = exp10(log10_opacity)
 ! QOTF = D LN(O)/D LN(T)
 !! find the partial derivative value of ol wrt d in the given T and d
-      call intpol(xt, aqod, jt, temperature, dlnkap_dlnrho, unused_ddensity_dtemp, ierr)
+      call natural_spline(xt, aqod, jt, second_derivs)
+      call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
       if (ierr /= 0) return
 ! QODF = D LN(O)/D LN(D)
 

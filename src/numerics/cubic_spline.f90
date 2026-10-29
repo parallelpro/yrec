@@ -4,20 +4,26 @@
 ! Cubic splines through tabulated points (YREC's numerics_lib, split
 ! 2026-10):
 !   cspline, splint   Numerical Recipes' spline/splint: the second
-!                     derivatives for given end slopes (a slope of 1e30 or
-!                     more means a natural end), and the value at x
+!                     derivatives for given end slopes (a slope above
+!                     0.99d30 makes that end natural), and the value at x,
+!                     with its first derivative when asked
 !   natural_spline    cspline with both ends natural (formerly kspline,
 !                     for four points, and splinc)
-!   ysplin, intpol    YCK's (3/91) natural spline in coefficient form,
-!                     for the Cox and Kurucz opacity tables: the cubic's
-!                     coefficients on every interval, and the value and
-!                     slope at x
+!   compute_spline_coefficients
+!                     the spline's cubic on each interval in powers of
+!                     x - x(i), for tables that store it (OPAL92 and
+!                     Kurucz 1990 opacities)
+!   ysplin, intpol    the natural spline in coefficient form, and its
+!                     value and slope at x: kept for now on top of the
+!                     routines above (YCK's 3/91 slope-form solve they
+!                     replaced was wrong for 2 and 3 points)
 module cubic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: run_log_unit, terminal_unit
+      use io_units, only: run_log_unit
       implicit none
       private
-      public :: cspline, natural_spline, splint, ysplin, intpol
+      public :: cspline, natural_spline, splint, compute_spline_coefficients
+      public :: ysplin, intpol
 
 contains
 
@@ -84,16 +90,18 @@ end subroutine natural_spline
 ! splint
 !----------------------------------------------------------------------
 ! Numerical Recipes' splint (p. 89; MHP 10/02): the cubic spline
-! through xa/ya, with the second derivatives y2a from cspline, at x;
-! klo/khi optionally return the bracketing points. Coincident
-! bracketing points return ierr = 1 (formerly also ksplint, for four
-! points, and splintd2).
-subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi)
+! through xa/ya, with the second derivatives y2a from cspline, at x, and
+! its first derivative dy when asked; klo/khi optionally return the
+! bracketing points. Outside the table it extrapolates the end
+! interval's cubic. Coincident bracketing points return ierr = 1
+! (formerly also ksplint, for four points, and splintd2).
+subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
       integer, intent(in) :: n
       real(dp), intent(in) :: xa(n), ya(n), y2a(n), x
       real(dp), intent(out) :: y
       integer, intent(out) :: ierr
       integer, intent(out), optional :: klo, khi
+      real(dp), intent(out), optional :: dy
 
       integer :: lo, hi, k
       real(dp) :: h, a, b
@@ -121,146 +129,84 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi)
       b = (x - xa(lo))/h
       y = a*ya(lo)+b*ya(hi)+ &
            ((a**3-a)*y2a(lo)+(b**3-b)*y2a(hi))*(h**2)/6.0d0
+      if (present(dy)) dy = (ya(hi)-ya(lo))/h &
+           - ((3.0d0*a**2-1.0d0)*y2a(lo) - (3.0d0*b**2-1.0d0)*y2a(hi))*h/6.0d0
 end subroutine splint
+
+!----------------------------------------------------------------------
+! compute_spline_coefficients
+!----------------------------------------------------------------------
+! The cubic spline through x/y(1:n) with second derivatives y2 (from
+! cspline or natural_spline) in powers of x - x(i): on [x(i), x(i+1)]
+!   s(x) = c(1,i) + c(2,i) d + c(3,i) d**2 + c(4,i) d**3,  d = x - x(i),
+! with c(1,i) = y(i), c(2,i) = s'(x(i)), c(3,i) = y2(i)/2 and c(4,i) =
+! (y2(i+1) - y2(i))/(6 h), h = x(i+1) - x(i). Column n holds the value,
+! slope and half the second derivative at the last point (c(4,n) = 0),
+! for a linear extrapolation beyond it.
+pure subroutine compute_spline_coefficients(x, y, y2, n, c)
+      integer, intent(in) :: n
+      real(dp), intent(in) :: x(n), y(n), y2(n)
+      real(dp), intent(out) :: c(4,n)
+
+      integer :: i
+      real(dp) :: h
+
+      do i = 1, n-1
+         h = x(i+1) - x(i)
+         c(1,i) = y(i)
+         c(2,i) = (y(i+1)-y(i))/h - h*(2.0d0*y2(i) + y2(i+1))/6.0d0
+         c(3,i) = 0.5d0*y2(i)
+         c(4,i) = (y2(i+1) - y2(i))/(6.0d0*h)
+      end do
+      c(1,n) = y(n)
+      if (n > 1) then
+         h = x(n) - x(n-1)
+         c(2,n) = (y(n)-y(n-1))/h + h*(y2(n-1) + 2.0d0*y2(n))/6.0d0
+      else
+         c(2,n) = 0.0d0
+      end if
+      c(3,n) = 0.5d0*y2(n)
+      c(4,n) = 0.0d0
+end subroutine compute_spline_coefficients
 
 !----------------------------------------------------------------------
 ! ysplin
 !----------------------------------------------------------------------
-! YCK 3/91: the natural cubic spline through xi(1:n) in coefficient
-! form. On entry c(1,i) holds the values; on exit c(2,i), c(3,i) and
-! c(4,i) hold the first-, second- and third-order coefficients of the
-! cubic on [xi(i), xi(i+1)].
+! The natural cubic spline through xi(1:n) in coefficient form (kept for
+! now; new code calls natural_spline and compute_spline_coefficients).
+! On entry c(1,i) holds the values; on exit c(2,i), c(3,i) and c(4,i)
+! hold the first-, second- and third-order coefficients of the cubic on
+! [xi(i), xi(i+1)], and c(2,n) the slope at xi(n).
 pure subroutine ysplin(xi, c, n)
-      integer, parameter :: np = 100
-
       integer, intent(in) :: n
       real(dp), intent(in) :: xi(n)
-      real(dp), intent(inout) :: c(4,np)
+      real(dp), intent(inout) :: c(4,n)
 
-      real(dp) :: f(np), h(np), d(np), g, d3
-      real(dp) :: const1, const2, const3, const4
-      integer :: i
+      real(dp) :: values(n), y2(n)
 
-! set the divided difference at each subinterval.
-      do i = 2, n
-         h(i) = xi(i)-xi(i-1)
-         f(i) = (c(1,i)-c(1,i-1))/h(i)
-      end do
-! set the tridiagonally dominant matrix and the matrix equation
-! for the natural spline.
-!!!!! find the coefficients for the second order terms !!!!!
-      i = 2
-      const1 = 3.0d0
-      const2 = 1.5d0
-      const3 = 2.0d0
-      const4 = 1.5d0
-      c(2,i) = const1*h(i)*f(i+1)+const2*h(i+1)*f(i)
-      d(i) = const3*h(i)+const4*h(i+1)
-      do i = 3, n-2
-         const1 = 3.0d0
-         const2 = 3.0d0
-         const3 = 2.0d0
-         const4 = 2.0d0
-         c(2,i) = const1*h(i)*f(i+1)+const2*h(i+1)*f(i)
-         d(i) = const3*h(i)+const4*h(i+1)
-      end do
-      i = n-1
-      const1 = 1.5d0
-      const2 = 3.0d0
-      const3 = 1.5d0
-      const4 = 2.0d0
-      c(2,i) = const1*h(i)*f(i+1)+const2*h(i+1)*f(i)
-      d(i) = const3*h(i)+const4*h(i+1)
-! solve the matrix equation with gauss method
-! elimination of the sub-diagonal
-      do i = 2, n-2
-         g = h(i+2)/d(i)
-         d(i+1) = d(i+1)-g*h(i)
-         c(2,i+1) = c(2,i+1)-g*c(2,i)
-      end do
-! elimination of the super-diagonal
-      c(2,n-1) = c(2,n-1)/d(n-1)
-      do i = n-2, 2, -1
-         c(2,i) = (c(2,i)-h(i)*c(2,i+1))/d(i)
-      end do
-! treatment for the first and last row.
-      c(2,1) = 1.5d0*f(2)-c(2,2)/2.0d0
-      c(2,n) = 1.5d0*f(n)-c(2,n-1)/2.0d0
-!!! now, we have the coefficients for the first order terms
-!
-! find the coefficients for the second, and the third order terms
-      do i = 1, n-1
-         d3 = c(2,i)+c(2,i+1)-2.0d0*f(i+1)
-         c(3,i) = (f(i+1)-c(2,i)-d3)/h(i+1)
-         c(4,i) = d3/(h(i+1)*h(i+1))
-      end do
-!!!   now, we have complete set of coefficients for each sub-interval.
+      values = c(1,1:n)
+      call natural_spline(xi, values, n, y2)
+      call compute_spline_coefficients(xi, values, y2, n, c)
 end subroutine ysplin
 
 !----------------------------------------------------------------------
 ! intpol
 !----------------------------------------------------------------------
-! YCK 3/91: the value y_eval and slope dy_eval at x_eval of ysplin's
-! spline through x_grid/y_grid (n_grid <= 100 points); outside the grid
-! it extrapolates the end cubic.
+! The value y_eval and slope dy_eval at x_eval of the natural cubic
+! spline through x_grid/y_grid(1:n_grid) (kept for now; new code calls
+! natural_spline and splint with dy). Outside the grid it extrapolates
+! the end cubic. ierr: splint's.
 subroutine intpol(x_grid, y_grid, n_grid, x_eval, y_eval, dy_eval, ierr)
-      integer, parameter :: np=100
-
       integer, intent(in) :: n_grid
       real(dp), intent(in) :: x_grid(n_grid), y_grid(n_grid)
       real(dp), intent(in) :: x_eval
       real(dp), intent(out) :: y_eval, dy_eval
       integer, intent(out) :: ierr
 
-      real(dp) :: spline_coeff(4,np), dx_local, x_eval_copy
-      real(dp) :: interp_value, interp_deriv
-      integer :: i, k_lo, k_hi, k_mid
+      real(dp) :: y2(n_grid)
 
-      ierr = 0
-! the coefficients for the zero-th order term
-      do i=1,n_grid
-         spline_coeff(1,i)=y_grid(i)
-      end do
-! find the coefficients for spline interploation
-      call ysplin(x_grid, spline_coeff, n_grid)
-      x_eval_copy=x_eval
-! find the grid point,  k_lo, such that x_grid(k_lo)<=x_eval_copy, and
-! abs(x_grid(k_lo)-x_eval_copy)<1.
-      if(x_grid(1) > x_eval)then
-         k_lo=1
-         k_hi=2
-      else if(x_grid(n_grid) < x_eval)then
-         k_lo=n_grid-1
-         k_hi=n_grid
-      else
-      k_lo=1
-      k_hi=n_grid
-      do while ((k_hi-k_lo) > 1)
-         k_mid = (k_hi+k_lo)/2
-         if(x_grid(k_mid) > x_eval_copy)then
-            k_hi=k_mid
-         else
-            k_lo=k_mid
-         endif
-      end do
-      if((k_hi-k_lo) <= 0)then
-         write(terminal_unit, *) 'ERROR COX OP: INTERPOLATION'
-         write(run_log_unit, *) 'ERROR COX OP: INTERPOLATION'
-         ierr = 1
-         return
-      endif
-      end if
-! now, (k_lo,k_hi) is sub-range of x_grid which contains x_eval_copy.
-      dx_local=x_eval_copy-x_grid(k_lo)
-! go on to the spline interpolation routine.
-! evaluates the interpolation value in the sub-range we determined.
-      interp_value=((spline_coeff(4,k_lo)*dx_local+spline_coeff(3,k_lo))*dx_local &
-           +spline_coeff(2,k_lo))*dx_local+spline_coeff(1,k_lo)
-      interp_deriv=(3.0d0*spline_coeff(4,k_lo)*dx_local+2.0d0*spline_coeff(3,k_lo)) &
-           *dx_local+spline_coeff(2,k_lo)
-! return the results from the spline routine
-      y_eval=interp_value
-      dy_eval=interp_deriv
+      call natural_spline(x_grid, y_grid, n_grid, y2)
+      call splint(x_grid, y_grid, n_grid, y2, x_eval, y_eval, ierr, dy=dy_eval)
 end subroutine intpol
 
 end module cubic_spline

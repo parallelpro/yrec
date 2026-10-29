@@ -16,7 +16,8 @@
 ! diverged, stop", which exited 0), so that main and yrec_capi can tell
 ! it from a configuration error.
 module numerics_lib
-      use cubic_spline, only: cspline, natural_spline, splint, ysplin, intpol
+      use cubic_spline, only: cspline, natural_spline, splint, &
+           compute_spline_coefficients, ysplin, intpol
       use quadratic_spline, only: osplin
       use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
            polint, lir, findex, locate
@@ -29,7 +30,8 @@ module numerics_lib
            numerics_derivatives_failed, numerics_status_text
       implicit none
       private
-      public :: cspline, natural_spline, splint, ysplin, intpol
+      public :: cspline, natural_spline, splint, compute_spline_coefficients
+      public :: ysplin, intpol
       public :: osplin
       public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal

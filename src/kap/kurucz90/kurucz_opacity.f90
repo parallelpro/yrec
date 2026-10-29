@@ -15,7 +15,8 @@ module kurucz_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings, kurucz_max_num_densities, &
            kurucz_max_num_temps, kurucz_table_set, opacity_table
-      use numerics_lib, only: findex, intpol, ysplin
+      use numerics_lib, only: findex, natural_spline, splint, &
+           compute_spline_coefficients
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -152,7 +153,9 @@ subroutine build_kurucz_splines(tbl, ierr)
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
-      real(dp) :: spline_work(4,np), density_nodes(kurucz_max_num_densities)
+      real(dp) :: spline_work(4,np), density_nodes(kurucz_max_num_densities), &
+           row_log10_opacity(kurucz_max_num_densities), &
+           row_second_derivs(kurucz_max_num_densities)
       integer :: it, jd, id, index2, j, i
       real(dp) :: chkd, chko
 
@@ -166,7 +169,7 @@ subroutine build_kurucz_splines(tbl, ierr)
             if (jd <= 0) tbl%density_start_index(it) = id
             jd = jd + 1
             density_nodes(jd) = chkd
-            spline_work(1,jd) = log10(chko)
+            row_log10_opacity(jd) = log10(chko)
          end do
          tbl%density_count(it) = jd
          if (tbl%density_start_index(it) /= 1) then
@@ -179,7 +182,10 @@ subroutine build_kurucz_splines(tbl, ierr)
             ierr = 1
             return
          end if
-         call ysplin(density_nodes, spline_work, jd)
+! the row's natural cubic spline in log rho, as coefficients per interval
+         call natural_spline(density_nodes, row_log10_opacity, jd, row_second_derivs)
+         call compute_spline_coefficients(density_nodes, row_log10_opacity, &
+              row_second_derivs, jd, spline_work)
          do j = 1,jd
             do i = 1,4
                index2 = i + (j-1)*4
@@ -228,7 +234,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
 
       real(dp) :: temp_subset_logt(kurucz_max_num_temps), &
            temp_subset_log10_opacity(kurucz_max_num_temps)
-      real(dp) :: temp_subset_dlnkap_dlnrho(kurucz_max_num_temps)
+      real(dp) :: temp_subset_dlnkap_dlnrho(kurucz_max_num_temps), &
+           temp_subset_second_derivs(kurucz_max_num_temps)
       ! The Kurucz tables are only used below this density and temperature.
       real(dp), parameter :: kurucz_logrho_max = -3.0d0, kurucz_logt_max = 4.1d0
       integer :: num_valid_temps, temp_index, temp_index_start, &
@@ -241,7 +248,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
            coeff_base_index
       real(dp) :: delta_logrho, c1, c2, c3, c4
       real(dp) :: log10_opacity_at_rho, dlnkap_dlnrho_at_rho
-      real(dp) :: log10_opacity_interp, dlnkap_dlnrho_unused
+      real(dp) :: log10_opacity_interp
 
       call findex(tbl%grid_logt, tbl%num_temps, log10_temperature, &
            tbl%ix_t)
@@ -336,8 +343,11 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       in_table = .true.
 !     Interpolation for the opacity in the entry T and d.
 !     Get the partial derivative of ol wrt T.
-      call intpol(temp_subset_logt, temp_subset_log10_opacity, &
-           num_valid_temps, log10_temperature, log10_opacity_interp, dlnkap_dlnt, jerr_gate)
+      call natural_spline(temp_subset_logt, temp_subset_log10_opacity, &
+           num_valid_temps, temp_subset_second_derivs)
+      call splint(temp_subset_logt, temp_subset_log10_opacity, num_valid_temps, &
+           temp_subset_second_derivs, log10_temperature, log10_opacity_interp, &
+           jerr_gate, dy=dlnkap_dlnt)
       ! 2026 numerics-gate opt-in: interpolation failure returns via
       ! ierr (diagnostic printed at the gate) instead of stopping.
       if (jerr_gate /= 0) then
@@ -348,8 +358,10 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       opacity = exp10(log10_opacity)
 !     QOTF = D LN(O)/D LN(T)
 !     find the partial derivative value of ol wrt d in the given T and d
-      call intpol(temp_subset_logt, temp_subset_dlnkap_dlnrho, &
-           num_valid_temps, log10_temperature, dlnkap_dlnrho, dlnkap_dlnrho_unused, jerr_gate)
+      call natural_spline(temp_subset_logt, temp_subset_dlnkap_dlnrho, &
+           num_valid_temps, temp_subset_second_derivs)
+      call splint(temp_subset_logt, temp_subset_dlnkap_dlnrho, num_valid_temps, &
+           temp_subset_second_derivs, log10_temperature, dlnkap_dlnrho, jerr_gate)
       if (jerr_gate /= 0) then
          ierr = jerr_gate
          return
