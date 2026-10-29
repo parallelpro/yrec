@@ -596,6 +596,7 @@ ok   ideal gas, fully ionized: rho = mu P_gas/(R T) with the Fermi-Dirac correct
 ok   ideal gas, fully ionized: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)
 ok   radiation-dominated: grad_ad and cp of the gas plus radiation
 ok   radiation-dominated: grad_ad -> 1/4
+ok   radiation pressure above P: beta <= 0 returns ierr
 # test_eos: configuration yale_only
 ok   continuity: rho and grad_ad at the Saha ramp's foot (cutoff - 0.5)
 ok   continuity: rho and grad_ad at the Saha cutoff

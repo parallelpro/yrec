@@ -309,10 +309,13 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       r%beta14 = radiation_constant_over_3*(r%temperature**2)**2/r%pressure
       r%beta = 1 - r%beta14
 
-      if (r%beta < 0d0) then
+! radiation pressure at or above P: no gas pressure, no solution
+      if (r%beta <= 0d0) then
          write(run_log_unit,*) &
-              'EQSTAT2: BETA is negative: TL,PL,BETA,1-BETA', &
-              log10_temperature, log10_pressure, r%beta, 1d0 - r%beta
+              'blend_eos: beta = P_gas/P is not positive: log T, log P, beta', &
+              log10_temperature, log10_pressure, r%beta
+         ierr = 1
+         return
       end if
 
       r%beta_inverse = 1.0d0/r%beta

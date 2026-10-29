@@ -849,6 +849,10 @@ subroutine ideal_gas_checks()
       call eos_at(7.5d0, 15.41d0, x, z, r, ierr)
       call check("radiation-dominated: grad_ad -> 1/4", ierr == 0 .and. r%beta < 0.03d0 .and. &
            abs(r%adiabatic_gradient - 0.25d0) < 1.0d-3)
+! radiation pressure above P (log P_rad = 15.402 at log T = 7.5): no gas
+! pressure, an error
+      call eos_at(7.5d0, 15.40d0, x, z, r, ierr)
+      call check("radiation pressure above P: beta <= 0 returns ierr", ierr == 1)
 end subroutine ideal_gas_checks
 
 ! rho and grad_ad on both sides of a boundary in log T (fixed log P):
