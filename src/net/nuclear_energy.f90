@@ -80,7 +80,7 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
 ! each slot's rate times its reactants' mass fractions, per gram per s
       real(dp) :: reactions_per_gram(num_reactions)
       real(dp) :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
-      real(dp) :: deuterium_energy, deuterium_dlneps_dlnt
+      real(dp) :: deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt
 
       if (log_temperature <= net_settings%logT_cutoffs(1)) return
       e%burning = .true.
@@ -89,12 +89,13 @@ subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
            screening_mass_fractions(xa), nr)
       call energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       call compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
-           deuterium_energy, deuterium_dlneps_dlnt)
+           deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt)
       reactions_per_gram = reaction_counts(rate, network_mass_fractions(xa))
       call compute_reaction_energies(rate, network_mass_fractions(xa), &
            nr%frac_n15_pa, nr%frac_be7_ecap, energy_by_slot, energy_by_chain)
       call sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
-           deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
+           deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, &
+           reactions_per_gram, e)
       call store_chain_energies(energy_by_chain, deuterium_energy, e)
       if (net_settings%calc_neutrinos) &
            call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
@@ -125,20 +126,23 @@ end subroutine energy_path_rates
 
 !----------------------------------------------------------------------
 ! Deuterium burning, d(p,g)3He (MHP 5/02): its energy generation (erg/g/s)
-! and d ln eps / d ln T. Unscreened -- reasonable at the low temperatures
-! involved -- and, in the surface convection zone, no faster than the
-! convective overturn. Zero at or below min_deuterium.
+! and d ln eps / d ln rho, d ln eps / d ln T. Unscreened -- reasonable at
+! the low temperatures involved -- and, in the surface convection zone,
+! no faster than the convective overturn: there the capped rate,
+! N_A/(m_d tau) per unit X, depends on neither rho nor T, and both
+! derivatives are zero. Zero at or below min_deuterium.
 pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
-     energy, dlneps_dlnt)
+     energy, dlneps_dlnrho, dlneps_dlnt)
       use composition_layout, only: i_h1, i_h2
       use physical_constants, only: cc13
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(in) :: xa(:), turnover_timescale
       logical, intent(in) :: in_surface_cz
-      real(dp), intent(out) :: energy, dlneps_dlnt
+      real(dp), intent(out) :: energy, dlneps_dlnrho, dlneps_dlnt
       real(dp) :: rate, max_rate, zz, tfac, tfac_deriv
 
       energy = 0.0d0
+      dlneps_dlnrho = 0.0d0
       dlneps_dlnt = 0.0d0
       if (xa(i_h2) <= min_deuterium) return
 ! CF88's fit; zz and tfac are its exponent and polynomial, for the
@@ -148,11 +152,16 @@ pure subroutine compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timesc
       rate = deuterium_proton_capture_rate(nr%density, nr%t9, nr%t9_p13, &
            nr%t9_p23, nr%t9_m13, nr%t9_m23)
       tfac_deriv = 0.112d0*nr%t9_p13+6.76d0*nr%t9_p23+7.95d0*nr%t9
+      dlneps_dlnrho = 1.0d0
       dlneps_dlnt = cc13*((tfac_deriv/tfac) -2.0d0 - zz)
       if (in_surface_cz .and. turnover_timescale > 1.0d0) then
          max_rate = avogadro_dpg/deuteron_mass_amu/turnover_timescale
          if (rate*xa(i_h1) > max_rate) then
-            if (xa(i_h1) > 1.0d-6) rate = max_rate/xa(i_h1)
+            if (xa(i_h1) > 1.0d-6) then
+               rate = max_rate/xa(i_h1)
+               dlneps_dlnrho = 0.0d0
+               dlneps_dlnt = 0.0d0
+            end if
          end if
       end if
       energy = rate*xa(i_h1)*xa(i_h2)*q_deuterium_mev*erg_per_mev
@@ -171,15 +180,15 @@ end function network_mass_fractions
 
 !----------------------------------------------------------------------
 ! eps and its absolute derivatives: the sum over reactions of eps_j and
-! eps_j * d ln rate_j / d ln (rho, T), plus deuterium burning (whose rate
-! depends on rho linearly). Below eps = 1e-12 the derivatives are zero,
+! eps_j * d ln rate_j / d ln (rho, T), plus deuterium burning's. Below eps = 1e-12 the derivatives are zero,
 ! and so are the reaction counts the neutrino fluxes use. These are
 ! absolute derivatives, not d ln eps: the Henyey Jacobian and the
 ! pulsation output (GYRE's eps*eps_T) both want this form.
 pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
-     deuterium_energy, deuterium_dlneps_dlnt, reactions_per_gram, e)
+     deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, &
+     reactions_per_gram, e)
       real(dp), intent(in) :: energy_by_slot(num_reactions), &
-           deuterium_energy, deuterium_dlneps_dlnt
+           deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt
       real(dp), intent(inout) :: dlnrate_dlnrho(num_reactions), &
            dlnrate_dlnt(num_reactions), reactions_per_gram(num_reactions)
       type(nuclear_energy_result), intent(inout) :: e
@@ -200,7 +209,7 @@ pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dl
          sum_t = sum_t+energy_by_slot(i)*dlnrate_dlnt(i)
       end do
       e%total_energy_gen_rate = e%total_energy_gen_rate + deuterium_energy
-      sum_rho = sum_rho + deuterium_energy
+      sum_rho = sum_rho + deuterium_energy*deuterium_dlneps_dlnrho
       sum_t = sum_t + deuterium_energy*deuterium_dlneps_dlnt
       if (e%total_energy_gen_rate <= 1.d-12) then
          e%deps_dlnrho = 0.d0
