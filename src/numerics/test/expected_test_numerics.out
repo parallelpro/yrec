@@ -265,6 +265,8 @@ cspline: the error falls as h^4 (order to 0.2)                             1.03E
 splint: the slope's error falls as h^3 (order to 0.3)                      5.20E-02  ok
 natural_spline: two points give their line, value and slope                4.44E-16  ok
 natural_spline: slope 1/2 at the middle of (0,0),(1,1),(3,0)               0.00E+00  ok
+cspline: n < 2, repeated and non-monotone abscissae give their codes       0.00E+00  ok
+natural_spline: a decreasing table, the increasing one's y2                1.97E-16  ok
 osplin: monotone data give a monotone spline                               0.00E+00  ok
 osplin: convex data give a convex spline                                   0.00E+00  ok
 osplin: interpolates the nodes                                             0.00E+00  ok

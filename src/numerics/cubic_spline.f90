@@ -18,7 +18,8 @@
 ! callers had moved to them.)
 module cubic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use numerics_status, only: numerics_ok, numerics_coincident_points
+      use numerics_status, only: numerics_ok, numerics_coincident_points, &
+           numerics_bad_input
       implicit none
       private
       public :: cspline, natural_spline, splint, compute_spline_coefficients
@@ -29,19 +30,39 @@ contains
 ! cspline
 !----------------------------------------------------------------------
 ! Numerical Recipes' spline (p. 88; double precision for the
-! opacities): the second derivatives y2 at the tabulated points
-! x(1) < ... < x(n) of the cubic spline through y with first
-! derivatives yp1 and ypn at the ends. yp1 or ypn of 0.99d30 or more
-! makes that end natural (zero second derivative).
-pure subroutine cspline(x, y, n, yp1, ypn, y2)
+! opacities): the second derivatives y2 at the tabulated points x(1:n),
+! n >= 2, strictly monotone (increasing, as splint needs, or
+! decreasing), of the cubic spline through y with first derivatives yp1
+! and ypn at the ends. yp1 or ypn above 0.99d30 makes that end natural
+! (zero second derivative).
+! ierr (numerics_status, optional): numerics_bad_input for n < 2 or
+! abscissae that are not monotone, numerics_coincident_points for two
+! equal neighbours; y2 is then not set.
+pure subroutine cspline(x, y, n, yp1, ypn, y2, ierr)
       integer, intent(in) :: n
       real(dp), intent(in) :: x(n), y(n), yp1, ypn
       real(dp), intent(out) :: y2(n)
+      integer, intent(out), optional :: ierr
 
       real(dp) :: u(n)
       integer :: i, k
       real(dp) :: sig, p, qn, un
 
+      if (present(ierr)) ierr = numerics_ok
+      if (n < 2) then
+         if (present(ierr)) ierr = numerics_bad_input
+         return
+      end if
+      do i = 1, n - 1
+         if (x(i+1) == x(i)) then
+            if (present(ierr)) ierr = numerics_coincident_points
+            return
+         end if
+         if ((x(i+1) > x(i)) .neqv. (x(2) > x(1))) then
+            if (present(ierr)) ierr = numerics_bad_input
+            return
+         end if
+      end do
       if (yp1 > 0.99d30) then
          y2(1) = 0.0d0
          u(1) = 0.0d0
@@ -73,15 +94,17 @@ end subroutine cspline
 ! natural_spline
 !----------------------------------------------------------------------
 ! cspline with natural boundary conditions at both ends (formerly
-! kspline, its four-point form, and splinc).
-pure subroutine natural_spline(x, y, n, y2)
+! kspline, its four-point form, and splinc); ierr (optional) is
+! cspline's.
+pure subroutine natural_spline(x, y, n, y2, ierr)
       integer, intent(in) :: n
       real(dp), intent(in) :: x(n), y(n)
       real(dp), intent(out) :: y2(n)
-! cspline reads a boundary slope of 0.99d30 or more as natural
+      integer, intent(out), optional :: ierr
+! cspline reads a boundary slope above 0.99d30 as natural
       real(dp), parameter :: natural_bc = 1.0d30
 
-      call cspline(x, y, n, natural_bc, natural_bc, y2)
+      call cspline(x, y, n, natural_bc, natural_bc, y2, ierr)
 end subroutine natural_spline
 
 !----------------------------------------------------------------------

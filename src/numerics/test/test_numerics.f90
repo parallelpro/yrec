@@ -618,7 +618,28 @@ subroutine cubic_spline_checks()
       call report("splint: the slope's error falls as h^3 (order to 0.3)", &
            abs(log(de_coarse/de_fine)/log(2.0d0) - 3.0d0), 0.3d0)
       call natural_spline_small_n_checks()
+      call cspline_contract_checks()
 end subroutine cubic_spline_checks
+
+! cspline's preconditions: n >= 2 and strictly monotone abscissae; a
+! decreasing table gives the increasing one's second derivatives
+subroutine cspline_contract_checks()
+      real(dp) :: x(5), y(5), y2(5), y2_down(5)
+      integer :: i, ierr_one, ierr_repeat, ierr_zigzag, ierr_down
+      x = [0.0d0, 0.7d0, 1.5d0, 2.0d0, 3.2d0]
+      y = [(rational(x(i)), i = 1, 5)]
+      call cspline(x(1:1), y(1:1), 1, 1.0d30, 1.0d30, y2(1:1), ierr_one)
+      call natural_spline([0.0d0, 1.0d0, 1.0d0, 2.0d0, 3.0d0], y, 5, y2, ierr_repeat)
+      call natural_spline([0.0d0, 1.0d0, 2.0d0, 1.5d0, 3.0d0], y, 5, y2, ierr_zigzag)
+      call report_true("cspline: n < 2, repeated and non-monotone abscissae give their codes", &
+           ierr_one == numerics_bad_input .and. ierr_repeat == numerics_coincident_points &
+           .and. ierr_zigzag == numerics_bad_input)
+      call natural_spline(x, y, 5, y2)
+      call natural_spline(x(5:1:-1), y(5:1:-1), 5, y2_down, ierr_down)
+      call report("natural_spline: a decreasing table, the increasing one's y2", &
+           merge(maxval(abs(y2_down(5:1:-1) - y2))/maxval(abs(y2)), 1.0d0, ierr_down == numerics_ok), &
+           1.0d-15)
+end subroutine cspline_contract_checks
 
 ! the clamped spline's largest errors in value and slope on [0, 2] with
 ! m equal intervals, sampled at 10 points per interval
