@@ -313,8 +313,8 @@ program test_numerics
       a5(1:3,1) = ieee_value(1.0d0, ieee_quiet_nan)
       call ludcmp(a5, 3, 5, indx, d, ierr)
       write(*,'(a,i3)') "ludcmp, a NaN column: ierr", ierr
-      write(*,'(a)') "# simeqc: 3 unknowns, two right-hand sides; then singular"
-      sm(1:15) = [4.0d0, 1.0d0, 2.0d0, 1.0d0, 5.0d0, 1.0d0, 2.0d0, 1.0d0, 6.0d0, &
+      write(*,'(a)') "# simeqc: 3 unknowns (rows interchanged), two right-hand sides; then singular"
+      sm(1:15) = [1.0d0, 0.5d0, 4.0d0, 3.0d0, 1.0d0, 2.0d0, 2.0d0, 6.0d0, 1.0d0, &
                   1.0d0, 2.0d0, 3.0d0, 0.5d0, -1.0d0, 2.0d0]
       call simeqc(sm(1:15), 5, 3, ierr)
       call show("simeqc", sm(1:15))
@@ -1027,8 +1027,10 @@ subroutine linear_algebra_checks()
       a3 = reshape([nan, nan, nan,  2.0d0, 5.0d0, 7.0d0,  3.0d0, 6.0d0, 1.0d0], [3, 3])
       call ludcmp(a3, 3, 3, indx3, d, ierr)
       call report_true("ludcmp: a NaN column is numerics_bad_input", ierr == numerics_bad_input)
-! simeqc against LU on two right-hand sides
-      a3 = reshape([4.0d0, 1.0d0, 2.0d0,  1.0d0, 5.0d0, 1.0d0,  2.0d0, 1.0d0, 6.0d0], [3, 3])
+! simeqc against LU on two right-hand sides, for a matrix whose first
+! two columns need a row interchange (their largest elements are in
+! rows 3 and 1 after it)
+      a3 = reshape([1.0d0, 0.5d0, 4.0d0,  3.0d0, 1.0d0, 2.0d0,  2.0d0, 6.0d0, 1.0d0], [3, 3])
       sm(1:9) = reshape(a3, [9])
       sm(10:12) = [1.0d0, 2.0d0, 3.0d0]
       sm(13:15) = [0.5d0, -1.0d0, 2.0d0]
@@ -1045,6 +1047,20 @@ subroutine linear_algebra_checks()
       sm(1:6) = [1.0d0, 2.0d0, 2.0d0, 4.0d0, 1.0d0, 1.0d0]
       call simeqc(sm(1:6), 3, 2, ierr)
       call report_true("simeqc: a singular matrix is numerics_singular", ierr == numerics_singular)
+! rows (1,2,3), (4,5,6), (7,8,9): the last pivot is round-off
+      sm(1:12) = [1.0d0, 4.0d0, 7.0d0,  2.0d0, 5.0d0, 8.0d0,  3.0d0, 6.0d0, 9.0d0, &
+           1.0d0, 1.0d0, 1.0d0]
+      call simeqc(sm(1:12), 4, 3, ierr)
+      call report_true("simeqc: a round-off pivot (rows 1..9) is numerics_singular", &
+           ierr == numerics_singular)
+! a well-conditioned matrix with a row scaled by 1e-30 is solved
+      sm(1:6) = [2.0d0, 1.0d-30,  1.0d0, 3.0d-30,  3.0d0, 4.0d-30]
+      call simeqc(sm(1:6), 3, 2, ierr)
+      call report_true("simeqc: a row scaled by 1e-30 is not singular, and solved", &
+           ierr == numerics_ok .and. abs(sm(5) - 1.0d0) < 1.0d-15 .and. abs(sm(6) - 1.0d0) < 1.0d-15)
+      sm(1:6) = [nan, nan,  1.0d0, 2.0d0,  1.0d0, 1.0d0]
+      call simeqc(sm(1:6), 3, 2, ierr)
+      call report_true("simeqc: a NaN column is numerics_bad_input", ierr == numerics_bad_input)
 ! the tridiagonal solve against a dense one, and its two halves
       do i = 1, n
          sub(i) = -1.0d0 + 0.1d0*i

@@ -9,7 +9,10 @@
 !                      more right-hand sides
 !   solve_tridiagonal  the Thomas algorithm (formerly tridiag_gs and
 !                      ctridi, the same algorithm twice)
-! A singular system returns numerics_singular (numerics_status).
+! A singular system returns numerics_singular (numerics_status): for
+! the dense solvers a matrix singular to working precision, a pivot at
+! most singular_pivot_tolerance of its row's largest element; for the
+! Thomas algorithm, which does not pivot, an exactly zero pivot.
 module linear_solvers
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
@@ -18,6 +21,11 @@ module linear_solvers
       private
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
       public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
+
+! The largest scaled pivot, |pivot|/max|row| with the row's elements as
+! they were on entry, of a matrix singular to working precision (ludcmp
+! and simeqc): about 50 times the double-precision epsilon.
+      real(dp), parameter :: singular_pivot_tolerance = 1.0d-14
 
 contains
 
@@ -38,9 +46,6 @@ contains
 ! factorization stops there).
 subroutine ludcmp(a, n, np, indx, d, ierr)
       real(dp), parameter :: tiny = 1.0d-20
-! the largest scaled pivot, |pivot|/max|row|, of a matrix singular to
-! working precision
-      real(dp), parameter :: singular_pivot_tolerance = 1.0d-14
 
       integer, intent(in) :: n, np
       real(dp), intent(inout) :: a(np,np)
@@ -176,34 +181,61 @@ end subroutine lubksb
 ! hold A, the rest (num_cols > num_unknowns) the right-hand sides,
 ! which are overwritten with the solutions. A is destroyed. The pivot
 ! of column j is the first largest |a(i,j)|, i >= j. ierr
-! (numerics_status): numerics_singular for a zero pivot. (2026-10: on a
-! 2-D array, with the flat-index arithmetic of SIMQ written as
+! (numerics_status): numerics_singular when every candidate pivot of a
+! column is at most singular_pivot_tolerance of the largest |element|
+! its row of A had on entry (a zero column or a zero row included), A
+! singular to working precision; numerics_bad_input for a NaN pivot.
+! On either, a and the solutions are left partly eliminated. (2026-10:
+! on a 2-D array, with the flat-index arithmetic of SIMQ written as
 ! subscripts in the same order of operations; sized from the arguments,
 ! it was a fixed system_matrix(56), the 7x8 kemcom case; the singular
-! case no longer writes "STOPPED AT 1010" to unit 5, standard input.)
+! case no longer writes "STOPPED AT 1010" to unit 5, standard input.
+! SIMQ tested for an exactly zero pivot, which a matrix singular by
+! round-off passes.)
 pure subroutine simeqc(a, num_cols, num_unknowns, ierr)
       integer, intent(in) :: num_cols, num_unknowns
       real(dp), intent(inout) :: a(num_unknowns, num_cols)
       integer, intent(out) :: ierr
 
       integer :: n, j, i, k, pivot_row, row, col
-      real(dp) :: pivot, swap
+      real(dp) :: pivot, swap, row_size(num_unknowns), largest_scaled
 
       ierr = numerics_ok
       n = num_unknowns
+! each row's largest |element| of A, which follows its row through the
+! interchanges
+      do i = 1, n
+         row_size(i) = 0.0d0
+         do col = 1, n
+            if (abs(a(i,col)) > row_size(i)) row_size(i) = abs(a(i,col))
+         end do
+      end do
 ! forward elimination: row j scaled by its pivot, then subtracted from
 ! the rows below
       do j = 1, n
          pivot = 0.0d0
+         pivot_row = j
+         largest_scaled = 0.0d0
          do i = j, n
+            if (row_size(i) > 0.0d0) then
+               if (abs(a(i,j)) > largest_scaled*row_size(i)) &
+                    largest_scaled = abs(a(i,j))/row_size(i)
+            end if
             if (abs(pivot) >= abs(a(i,j))) cycle
             pivot = a(i,j)
             pivot_row = i
          end do
-         if (abs(pivot) == 0.0d0) then
+         if (ieee_is_nan(pivot)) then
+            ierr = numerics_bad_input
+            return
+         end if
+         if (largest_scaled <= singular_pivot_tolerance) then
             ierr = numerics_singular
             return
          end if
+         swap = row_size(j)
+         row_size(j) = row_size(pivot_row)
+         row_size(pivot_row) = swap
          do col = j, num_cols
             swap = a(j,col)
             a(j,col) = a(pivot_row,col)

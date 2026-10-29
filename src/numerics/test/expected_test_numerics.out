@@ -177,13 +177,13 @@ lubksb x
 ludcmp singular: ierr  1
 ludcmp, rows (1,2,3),(4,5,6),(7,8,9) (a round-off pivot): ierr  1
 ludcmp, a NaN column: ierr  3
-# simeqc: 3 unknowns, two right-hand sides; then singular
+# simeqc: 3 unknowns (rows interchanged), two right-hand sides; then singular
 simeqc
-   1.000000000000000E+00   1.000000000000000E+00   2.000000000000000E+00
-   2.500000000000000E-01   1.000000000000000E+00   5.000000000000000E-01
-   5.000000000000000E-01   1.052631578947368E-01   1.000000000000000E+00
-  -6.382978723404255E-02   3.191489361702127E-01   4.680851063829787E-01
-   5.319148936170220E-03  -2.765957446808510E-01   3.776595744680851E-01
+   1.000000000000000E+00   5.000000000000000E-01   1.000000000000000E+00
+   5.000000000000000E-01   1.000000000000000E+00   7.500000000000000E-01
+   2.500000000000000E-01   7.000000000000000E-01   1.000000000000000E+00
+   7.289719626168225E-01  -1.028037383177570E-01   2.897196261682243E-01
+   4.766355140186916E-01   1.635514018691589E-01  -2.336448598130841E-01
 simeqc ierr  0
 simeqc singular: ierr  1
 # solve_tridiagonal
@@ -304,8 +304,11 @@ ludcmp: a round-off pivot (rows 1..9) is numerics_singular                 0.00E
 ludcmp: a zero pivot (row 3 = row 1 + row 2) is numerics_singular          0.00E+00  ok
 ludcmp: a zero row is numerics_singular, the matrix untouched              0.00E+00  ok
 ludcmp: a NaN column is numerics_bad_input                                 0.00E+00  ok
-simeqc: LU's solution for two right-hand sides                             1.19E-16  ok
+simeqc: LU's solution for two right-hand sides                             3.81E-17  ok
 simeqc: a singular matrix is numerics_singular                             0.00E+00  ok
+simeqc: a round-off pivot (rows 1..9) is numerics_singular                 0.00E+00  ok
+simeqc: a row scaled by 1e-30 is not singular, and solved                  0.00E+00  ok
+simeqc: a NaN column is numerics_bad_input                                 0.00E+00  ok
 solve_tridiagonal: a dense solve's solution                                1.27E-16  ok
 tridiagonal sweep + back substitution: a dense solve's solution            1.27E-16  ok
 solve_tridiagonal: a zero first pivot is numerics_singular                 0.00E+00  ok
