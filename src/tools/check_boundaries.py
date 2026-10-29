@@ -407,6 +407,25 @@ def check_facade_imports(src_root):
     return problems
 
 
+# Directories whose code does no I/O (2026-10): their routines return a
+# status code and their callers report (numerics/README.md, section 3).
+NO_IO_DIRS = ["numerics", "math"]
+IO_STATEMENT = re.compile(r"(?i)(?<![\w%])(?:(?:write|read|open|close|inquire)\s*\(|print\s*[*'0-9\x22])")
+
+def check_no_io(src_root):
+    problems = []
+    for d in NO_IO_DIRS:
+        for f in sorted((src_root / d).rglob("*.f90")):
+            rel = f.relative_to(src_root).as_posix()
+            if "/test/" in rel:
+                continue
+            for i, line in enumerate(f.read_text(errors="replace").splitlines(), 1):
+                code = mask_strings(line)
+                if IO_STATEMENT.search(code):
+                    problems.append(f"{rel}:{i}: I/O statement in a no-I/O directory: {line.strip()[:60]}")
+    return problems
+
+
 def check_math_lib(src_root):
     """Reproducibility contract (2026): every file calling an elementary
     transcendental must `use math_lib` (so USE_CRMATH builds shadow the
@@ -599,6 +618,13 @@ def main():
         print("FACADE CONTRACT VIOLATIONS:")
         for b in facade_problems:
             print("  " + b)
+        return 1
+
+    io_problems = check_no_io(SRC)
+    if io_problems:
+        print("NO-I/O CONTRACT VIOLATIONS (numerics/, math/):")
+        for m in io_problems:
+            print("  " + m)
         return 1
 
     math_problems = check_math_lib(SRC)

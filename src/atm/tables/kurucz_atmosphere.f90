@@ -122,6 +122,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             ! 2026 numerics-gate opt-in: interpolation failure returns via
             ! ierr (diagnostic printed at the gate) instead of stopping.
             if (jerr_gate /= 0) then
+               write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
                ierr = jerr_gate
                return
             end if
@@ -145,6 +146,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                call splint(gravity_nodes, pressure_table_vals, 4, &
                     gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
                if (jerr_gate /= 0) then
+                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
                   ierr = jerr_gate
                   return
                end if
@@ -163,6 +165,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
          call splint(gravity_nodes, pressure_table_vals, 4, &
               gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
          if (jerr_gate /= 0) then
+            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
             ierr = jerr_gate
             return
          end if
@@ -174,6 +177,7 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
       call splint(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv, &
            log10_teff, interpolated_value, jerr_gate)
       if (jerr_gate /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ierr = jerr_gate
          return
       end if

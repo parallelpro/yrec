@@ -177,7 +177,10 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
 !
          call solve_tridiagonal(sub_diag, diag, super_diag, diffused_abundance_prime, &
               num_eq_points, diffused_abundance, ierr)
-         if (ierr /= 0) return
+         if (ierr /= 0) then
+            write(*,*) 'solve_tridiagonal: singular matrix'
+            return
+         end if
 !
 !  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
 !  ENOUGH TO EXIT.

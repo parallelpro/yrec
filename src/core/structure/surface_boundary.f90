@@ -252,7 +252,7 @@ subroutine integrate_vertex_envelopes()
                  stored_envelope_state=stored_envelope_state, &
                  stored_vertex_index=stored_vertex_index, &
                  vtx_logp=vtx_logp,vtx_logr=vtx_logr,vtx_logt=vtx_logt)
-! An integration failure (numerics_termination) or a table error comes
+! An integration failure (envelope_termination) or a table error comes
 ! back in jerr_atm; the caller (refresh_surface_bc) propagates it.
           if (jerr_atm /= 0) then
              ierr = jerr_atm

@@ -159,7 +159,6 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
       end do
       h = 0.25d0*h/2.0d0**((max_stage_index-extrap_order)/2)
       if(underflow_reference+h == underflow_reference) then
-         write(*,*) 'ERROR IN BSSTEP'
        ierr = numerics_step_underflow
        return
       end if

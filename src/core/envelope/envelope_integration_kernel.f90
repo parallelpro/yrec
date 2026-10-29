@@ -60,6 +60,12 @@ module envelope_integration_kernel
 ! above it.
       double precision, parameter, public :: senv_thin_envelope = -1.0d-12
 
+! The status of an envelope integration that failed (bsstep: the
+! solution diverged; the historical "solution diverged, stop", which
+! exited 0): negative, so that main and yrec_capi tell it from an error.
+! (It was numerics_lib's numerics_termination.)
+      integer, parameter, public :: envelope_termination = -2
+
 ! The atmosphere (compute_atmosphere_derivs: log P against log tau) or
 ! the envelope (compute_envelope_derivs: log(m/M), log T and log r
 ! against log P) as an ode_system for bsstep. It carries the values the
@@ -525,14 +531,15 @@ subroutine take_atmosphere_step()
             h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
 ! A bsstep limit out of range is a configuration error; any other
-! bsstep failure (the solution diverged; bsstep has printed the
-! diagnostic) returns the numerics-termination code.
+! bsstep failure (the solution diverged) returns envelope_termination,
+! after the historical message for a step that vanished.
        if (jerr == numerics_bad_input) then
           call report_bsstep_limits()
           ierr = jerr
           return
        else if (jerr /= 0) then
-          ierr = numerics_termination
+          if (jerr == numerics_step_underflow) write(*,*) 'ERROR IN BSSTEP'
+          ierr = envelope_termination
           return
        end if
 ! Add up the error estimate, and find d log P / d log tau at the start
@@ -840,7 +847,8 @@ subroutine take_envelope_step()
           ierr = jerr
           return
        else if (jerr /= 0) then
-          ierr = numerics_termination
+          if (jerr == numerics_step_underflow) write(*,*) 'ERROR IN BSSTEP'
+          ierr = envelope_termination
           return
        end if
 ! Add up the error estimates.

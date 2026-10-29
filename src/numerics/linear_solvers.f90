@@ -8,7 +8,7 @@
 !                      for one or more right-hand sides
 !   solve_tridiagonal  the Thomas algorithm (formerly tridiag_gs and
 !                      ctridi, the same algorithm twice)
-! A singular system returns ierr = 1.
+! A singular system returns numerics_singular (numerics_status).
 module linear_solvers
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
@@ -59,7 +59,6 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
               if (abs(a(i,j)) > aamax) aamax = abs(a(i,j))
           end do
           if (aamax == 0d0) then
-             write(*,*) 'ludcmp: singular matrix'
              ierr = numerics_singular
              return
           end if
@@ -200,7 +199,7 @@ pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
       imax=i
       end do
       if (abs(biga) == 0.0d0) then
-      ierr = 1
+      ierr = numerics_singular
       return
       end if
       ia=j+num_unknowns*(j-2)
@@ -255,7 +254,8 @@ end subroutine simeqc
 ! The Thomas algorithm for the tridiagonal system with sub-diagonal a,
 ! diagonal b, super-diagonal c and right-hand side ex_prime, into ex
 ! (formerly tridiag_gs, and ctridi with a blanket SAVE of scratch that
-! every call writes before it reads). A zero pivot returns ierr = 1.
+! every call writes before it reads). ierr (numerics_status):
+! numerics_singular for a zero pivot, the first included.
 subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       integer, intent(in) :: npt
       real(dp), intent(in) :: a(npt), b(npt), c(npt), ex_prime(npt)
@@ -266,11 +266,10 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       integer :: j
       real(dp) :: bet
 
-      ierr = 0
+      ierr = numerics_ok
       bet = b(1)
       if (bet == 0) then
-         write(*,*) 'solve_tridiagonal: singular matrix'
-         ierr = 1
+         ierr = numerics_singular
          return
       end if
       ex(1) = ex_prime(1)/bet
@@ -278,8 +277,7 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
          gama(j) = c(j-1)/bet
          bet = b(j) - a(j)*gama(j)
          if (bet == 0) then
-            write(*,*) 'solve_tridiagonal: singular matrix'
-            ierr = 1
+            ierr = numerics_singular
             return
          end if
          ex(j) = (ex_prime(j) - a(j)*ex(j-1))/bet

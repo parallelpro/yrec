@@ -17,6 +17,7 @@ module opal92_opacity
            opal92_table_set, opal92_x_match_tol
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients
+      use io_units, only: run_log_unit
       use math_lib
       implicit none
       private
@@ -507,14 +508,20 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
 !! Get the partial derivative of ol wrt T.
       call natural_spline(xt, yto, jt, second_derivs)
       call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         return
+      end if
       log10_opacity = ol00
       opacity = exp10(log10_opacity)
 ! QOTF = D LN(O)/D LN(T)
 !! find the partial derivative value of ol wrt d in the given T and d
       call natural_spline(xt, aqod, jt, second_derivs)
       call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         return
+      end if
 ! QODF = D LN(O)/D LN(D)
 
 end subroutine interpolate_opal92_2d

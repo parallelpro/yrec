@@ -108,7 +108,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
             surface_temperature_rotation_factor,envelope_recomputed_flag, &
             log10_pressure_limit,s%convective_flag,s%nz,jerr)
 ! An envelope or atmosphere integration failure (including
-! numerics_termination, a negative code) comes back in jerr and goes up
+! envelope_termination, a negative code) comes back in jerr and goes up
 ! to the driver.
        if (jerr /= 0) then
           ierr = jerr

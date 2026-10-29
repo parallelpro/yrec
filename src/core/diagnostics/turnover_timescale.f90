@@ -116,6 +116,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
       use numerics_lib
+      use io_units, only: run_log_unit
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
       use star_info_lib, only: json
@@ -375,14 +376,20 @@ subroutine time_scale_height_above_base()
                spline_y_velocity(4) = convective_velocity(kk+1)
                call natural_spline(spline_x_delta, spline_y_velocity, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
-               if (ierr /= 0) return
+               if (ierr /= 0) then
+                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  return
+               end if
                spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
                spline_y_pscale(2) = exp(ln10*(log10_pressure(kk-1)-log10_density(kk-1)))/local_gravity(kk-1)
                spline_y_pscale(3) = exp(ln10*(log10_pressure(kk)-log10_density(kk)))/local_gravity(kk)
                spline_y_pscale(4) = exp(ln10*(log10_pressure(kk+1)-log10_density(kk+1)))/local_gravity(kk+1)
                call natural_spline(spline_x_delta, spline_y_pscale, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
-               if (ierr /= 0) return
+               if (ierr /= 0) then
+                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+                  return
+               end if
 ! tau = H_p/v_c.
                s%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                spline_taucz_done = .true.
@@ -436,7 +443,10 @@ subroutine time_bottom_cell_crossing()
       spline_y_velocity(4) = convective_velocity(kk+1)
       call natural_spline(spline_x_radius, spline_y_velocity, 4, spline_deriv)
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
+         return
+      end if
 ! tau = width/v_c.
       s%convective_turnover_timescale = cz_width/convective_velocity_bcz
 end subroutine time_bottom_cell_crossing

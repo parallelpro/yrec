@@ -10,11 +10,11 @@
 !                        polint, lir, findex, locate
 !   linear_solvers       ludcmp, lubksb, simeqc, solve_tridiagonal
 !   bulirsch_stoer       bsstep, for an ode_system
-! None of them reads the star or keeps state between calls. They report
-! failure through ierr; numerics_termination is the status a driver
-! gives a failed envelope integration (the historical "solution
-! diverged, stop", which exited 0), so that main and yrec_capi can tell
-! it from a configuration error.
+! None of them reads the star, keeps state between calls or prints.
+! They report failure through ierr, as numerics_status's codes, and the
+! caller reports it. numerics_termination is kept for now: the envelope
+! integration's status is envelope_termination
+! (core/envelope/envelope_integration_kernel).
 module numerics_lib
       use cubic_spline, only: cspline, natural_spline, splint, &
            compute_spline_coefficients, ysplin, intpol
@@ -40,5 +40,6 @@ module numerics_lib
       public :: numerics_ok, numerics_singular, numerics_coincident_points, &
            numerics_bad_input, numerics_step_underflow, numerics_unsorted_points, &
            numerics_derivatives_failed, numerics_status_text
+! kept for now: use envelope_termination (envelope_integration_kernel)
       integer, parameter, public :: numerics_termination = -2
 end module numerics_lib

@@ -295,6 +295,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   ! 2026 numerics-gate opt-in: interpolation failure returns via
                   ! ierr (diagnostic printed at the gate) instead of stopping.
                   if (jerr_gate /= 0) then
+                     write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
                      ierr = jerr_gate
                      return
                   end if
@@ -348,6 +349,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                  logt_d2opacity, log10_temperature, log10_opacity_value, &
                  jerr_gate, spline_index_lo, spline_index_hi)
             if (jerr_gate /= 0) then
+               write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
                ierr = jerr_gate
                return
             end if
@@ -540,6 +542,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                ! 2026 numerics-gate opt-in: interpolation failure returns via
                ! ierr (diagnostic printed at the gate) instead of stopping.
                if (jerr_gate /= 0) then
+                  write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
                   ierr = jerr_gate
                   return
                end if
@@ -587,6 +590,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
               logt_d2opacity, log10_temperature, log10_opacity_value, &
               jerr_gate, spline_index_lo, spline_index_hi)
          if (jerr_gate /= 0) then
+            write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
             ierr = jerr_gate
             return
          end if

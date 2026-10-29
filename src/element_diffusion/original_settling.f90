@@ -249,7 +249,10 @@ subroutine gravitational_settling(diff_scr, &
 !
          call solve_tridiagonal(sub_diag,diag,super_diag,hydrogen_x_prime, &
               num_equal_points,equal_hydrogen_fraction, ierr)
-         if (ierr /= 0) return
+         if (ierr /= 0) then
+            write(*,*) 'solve_tridiagonal: singular matrix'
+            return
+         end if
 !
 !  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
 !  ENOUGH TO EXIT.

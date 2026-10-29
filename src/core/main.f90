@@ -17,7 +17,7 @@ program main
 
       ierr = 0
       call run_yrec(ierr)
-! negative ierr is numerics_termination (numerics_lib) -- the
+! negative ierr is envelope_termination (envelope_integration_kernel) -- the
 ! historical "solution diverged" stop, which exited 0; preserve that
 ! as a clean exit. Positive ierr is a real error (exit 1).
       if (ierr > 0) stop 1

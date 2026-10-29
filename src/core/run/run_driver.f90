@@ -38,7 +38,7 @@ contains
 !
 ! ierr: 0 on a normal end of job; positive on a configuration, read or
 ! numerical error (the command-line wrapper exits 1); negative on
-! numerics_termination (the historical "solution diverged" stop, which
+! envelope_termination (the historical "solution diverged" stop, which
 ! exits 0).
 !
 subroutine run_yrec(ierr)

@@ -854,7 +854,7 @@ subroutine integrate_envelope_to_new_fit
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
                  hydrogen_fraction,metal_fraction,s%xa(:,s%nz),saha_state, &
                  ierr=jerr_atm,env_steps=env_steps)
-! atm_get returns integration failures (numerics_termination among
+! atm_get returns integration failures (envelope_termination among
 ! them) in jerr_atm; pass them on.
           if (jerr_atm /= 0) then
              ierr = jerr_atm

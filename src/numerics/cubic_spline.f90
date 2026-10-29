@@ -19,7 +19,7 @@
 !                     replaced was wrong for 2 and 3 points)
 module cubic_spline
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: run_log_unit
+      use numerics_status, only: numerics_ok, numerics_coincident_points
       implicit none
       private
       public :: cspline, natural_spline, splint, compute_spline_coefficients
@@ -93,8 +93,9 @@ end subroutine natural_spline
 ! through xa/ya, with the second derivatives y2a from cspline, at x, and
 ! its first derivative dy when asked; klo/khi optionally return the
 ! bracketing points. Outside the table it extrapolates the end
-! interval's cubic. Coincident bracketing points return ierr = 1
-! (formerly also ksplint, for four points, and splintd2).
+! interval's cubic. ierr (numerics_status): numerics_coincident_points
+! when the bracketing points coincide (formerly also ksplint, for four
+! points, and splintd2).
 subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
       integer, intent(in) :: n
       real(dp), intent(in) :: xa(n), ya(n), y2a(n), x
@@ -106,7 +107,7 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
       integer :: lo, hi, k
       real(dp) :: h, a, b
 
-      ierr = 0
+      ierr = numerics_ok
       lo = 1
       hi = n
       do while (hi-lo > 1)
@@ -121,8 +122,7 @@ subroutine splint(xa, ya, n, y2a, x, y, ierr, klo, khi, dy)
       if (present(khi)) khi = hi
       h = xa(hi) - xa(lo)
       if (h == 0d0) then
-         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
-         ierr = 1
+         ierr = numerics_coincident_points
          return
       end if
       a = (xa(hi)-x)/h

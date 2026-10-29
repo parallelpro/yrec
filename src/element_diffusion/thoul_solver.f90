@@ -285,7 +285,10 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
 ! For I=N, we get the gravitational force g
 
       call ludcmp(delta,n,nmax,indx,d,ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         write(*,*) 'ludcmp: singular matrix'
+         return
+      end if
 
       call lubksb(delta,n,nmax,indx,alpha)
       call lubksb(delta,n,nmax,indx,nu)

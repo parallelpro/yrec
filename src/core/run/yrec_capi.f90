@@ -18,7 +18,7 @@
 ! supported and byte-identical to fresh processes (phase-five step C;
 ! enforced by test_reentry and test_pyyrec). The numerics gates
 ! report through ierr rather than stopping the process: a NEGATIVE
-! status is numerics_termination (numerics_lib), i.e. the run ended
+! status is envelope_termination (envelope_integration_kernel), i.e. the run ended
 ! in the historical "solution diverged" mode (outputs up to that
 ! model are valid); positive is a hard error; zero is success.
 module yrec_capi

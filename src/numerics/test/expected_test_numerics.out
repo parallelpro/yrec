@@ -10,8 +10,7 @@ splint at  0.50 =   1.250000000000000E-01  2  3  0
 splint at  1.70 =   2.512999999999999E+00  3  4  0
 splint at  3.95 =   5.472987500000001E+01  5  6  0
 splint at  4.50 =   8.312500000000000E+01  5  6  0
- ERROR IN SPLINT ROUTINE.
-splint, repeated abscissa: klo khi ierr  5  6  1
+splint, repeated abscissa: klo khi ierr  5  6  2
 # natural_spline/splint: four points
 natural_spline y2
    0.000000000000000E+00   3.826530612244898E-01  -2.295918367346941E-02
@@ -19,8 +18,7 @@ natural_spline y2
 splint at  1.50 =   7.260841836734694E-01  0
 splint at  4.00 =   2.500000000000000E-01  0
 splint at  6.50 =   1.662946428571428E-01  0
- ERROR IN SPLINT ROUTINE.
-splint (4 points), repeated abscissa: ierr  1
+splint (4 points), repeated abscissa: ierr  2
 # natural_spline/splint: seven points in json-sized arrays
 natural_spline y2
    0.000000000000000E+00   6.531649206209781E-01   1.886032333071000E-01
@@ -131,8 +129,7 @@ quint   1.688500000000000E+00
 polint n=5   8.003940990295114E-01   1.052550217659097E-03  0
 polint n=3 extrapolated   1.006283378996856E+00  -2.014953952435351E-02  0
 polint n=5, abscissae scaled by 1e-25   8.003940990295114E-01   1.052550217659103E-03  0
- polint: repeated abscissa (den ~ 0)
-polint, repeated abscissa: ierr  1
+polint, repeated abscissa: ierr  2
 # lir
 lir cubic at  2.70 =   7.290000000000001E+00   7.300000000000001E+00  1
 lir cubic at  4.00 =   1.600000000000000E+01   6.000000000000000E+00  1
@@ -176,7 +173,6 @@ ludcmp LU
 lubksb x
    7.597597597597597E-01  -1.501501501501494E-02  -1.681681681681682E-01
    6.396396396396398E-01
- ludcmp: singular matrix
 ludcmp singular: ierr  1
 ludcmp, rows (1,2,3),(4,5,6),(7,8,9) (a round-off pivot): ierr  1
 ludcmp, a NaN column: ierr  3
@@ -196,9 +192,7 @@ solve_tridiagonal
 solve_tridiagonal, first n-2 rows
    2.677538607439323E+00   3.482016367915140E+00   3.283116118172492E+00
    2.494978278483916E+00
- solve_tridiagonal: singular matrix
 solve_tridiagonal singular: ierr  1
- solve_tridiagonal: singular matrix
 solve_tridiagonal, zero first pivot: ierr  1
 # bsstep (mmid, ratext)
 step 1 ierr  0 deriv calls    33
@@ -250,9 +244,7 @@ large step, h_try 4.00 ierr  0
    1.936921680515588E-02  -9.998123991390228E-01   3.919321003270355E-01
    3.122222225481851E+00   9.313225746154785E-10   2.328306436538696E-10
 bsstep, integrand failure: ierr, derivatives_ierr  6  3
- ERROR IN BSSTEP
 bsstep, step underflow: ierr  4 deriv calls   20221
- ERROR IN BSSTEP
 bsstep, one equation, NaN: ierr  4
 bsstep, NaN in component 3 of 3: ierr  0 y(1:2), y(3) is NaN   4.719827050515231E-07   9.999999970700355E-01 T
 bsstep limits   0  11   7: ierr  3 deriv calls  0  0.0

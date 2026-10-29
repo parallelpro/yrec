@@ -332,7 +332,7 @@ convection/test/test_convection.o: convection_lib.mod eos_lib.mod io_units.mod k
 core/diagnostics/neutrino_flux_output.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/diagnostics/stitched_model.o: envelope_integration.mod io_units.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
-core/diagnostics/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
+core/diagnostics/turnover_timescale.o: convection_geometry.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 core/envelope/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod integration_parameters.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod
@@ -415,7 +415,7 @@ kap/conductive/conductive_opacity.o: math_lib.mod
 kap/kap_lib.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod eos_lib.mod io_units.mod kurucz_opacity.mod laol_opacity.mod math_lib.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
 kap/kurucz90/kurucz_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/laol89/laol_opacity.o: composition_layout.mod io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
-kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod
+kap/opal92/opal92_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/opal95/opal95_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/test/test_kap.o: io_units.mod kap_lib.mod opacity_tables.mod run_setup.mod star_info_lib.mod
 math/test/test_math.o: math_lib.mod
@@ -430,7 +430,7 @@ net/screening.o: composition_layout.mod math_lib.mod net_configuration.mod physi
 net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod physical_constants.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/bulirsch_stoer.o: numerics_status.mod
-numerics/cubic_spline.o: io_units.mod
+numerics/cubic_spline.o: numerics_status.mod
 numerics/linear_solvers.o: numerics_status.mod
 numerics/numerics_lib.o: bulirsch_stoer.mod cubic_spline.mod linear_solvers.mod numerics_status.mod quadratic_spline.mod table_interpolation.mod
 numerics/quadratic_spline.o: numerics_status.mod
@@ -450,7 +450,7 @@ rotation/seculr/circulation.o: math_lib.mod physical_constants.mod rotation_conf
 rotation/seculr/equal_grid.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/instability_velocities.o: math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/seculr/region_transport.o: am_grid.mod am_transport_coefficients.mod composition_layout.mod rotation_scratch_lib.mod
-rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_scratch_lib.mod star_info_lib.mod transport_regions.mod
+rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod transport_regions.mod
 rotation/seculr/secular_transport.o: am_grid.mod circulation.mod convection_lib.mod magnetic_braking.mod math_lib.mod omega_profile.mod physical_constants.mod region_transport.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod transport_regions.mod
 rotation/seculr/stability_coefficients.o: math_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/transport_checks.o: io_units.mod omega_profile.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod

@@ -351,6 +351,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       ! 2026 numerics-gate opt-in: interpolation failure returns via
       ! ierr (diagnostic printed at the gate) instead of stopping.
       if (jerr_gate /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ierr = jerr_gate
          return
       end if
@@ -363,6 +364,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       call splint(temp_subset_logt, temp_subset_dlnkap_dlnrho, num_valid_temps, &
            temp_subset_second_derivs, log10_temperature, dlnkap_dlnrho, jerr_gate)
       if (jerr_gate /= 0) then
+         write(run_log_unit,*) 'ERROR IN SPLINT ROUTINE.'
          ierr = jerr_gate
          return
       end if
