@@ -335,7 +335,7 @@ convection/semiconvection.o: convection_configuration.mod eos_lib.mod io_units.m
 convection/temperature_gradients.o: convection_configuration.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod physical_constants.mod
 convection/test/test_convection.o: convection_lib.mod eos_lib.mod io_units.mod kap_lib.mod star_info_lib.mod
 core/diagnostics/neutrino_flux_output.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
-core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
+core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod structure_equations.mod turnover_timescale.mod
 core/diagnostics/stitched_model.o: envelope_integration.mod io_units.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod

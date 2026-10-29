@@ -25,10 +25,9 @@
 ! never used, is not carried over.)
 module observables
       use turnover_timescale, only: compute_turnover_timescale
-      use star_info_lib, only: i_h1, i_metals, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
-           i_lum_cno, i_lum_3alpha, i_lum_neu, i_lum_grav, i_lum_he_c, &
-           i_lum_extra, n_lum_channels, star_info
+      use star_info_lib, only: i_h1, i_metals, n_lum_channels, star_info
       use energy_sources, only: num_energy_sources
+      use structure_equations, only: luminosity_channel_sum
       use eos_lib
       use physical_constants
       implicit none
@@ -111,8 +110,9 @@ end subroutine shell_masses_from_log_mass
 ! ---------------------------------------------------------------
 ! Rescales the luminosity channels star%luminosity_breakdown_lsun so that
 ! they sum to the surface luminosity: each channel times
-! L(nz)/sum of channels. Skipped during the helium flash. (This changes
-! the model.)
+! L(nz)/sum of channels (structure_equations' luminosity_channel_sum,
+! with the extra energy sources' channel when there are any). Skipped
+! during the helium flash. (This changes the model.)
 subroutine renormalize_luminosity_breakdown(s)
       type(star_info), intent(inout) :: s
       double precision :: total_luminosity_sum, temp_value
@@ -123,11 +123,8 @@ subroutine renormalize_luminosity_breakdown(s)
 ! on purpose (audit/readability-sweep-2026-09-03/reports/henyey-wave2.md,
 ! item 6).
       if(.not.s%ctrl%helium_flash_active) then
-       total_luminosity_sum = s%luminosity_breakdown_lsun(i_lum_pp1)+s%luminosity_breakdown_lsun(i_lum_pp2)+ &
-            s%luminosity_breakdown_lsun(i_lum_pp3)+s%luminosity_breakdown_lsun(i_lum_cno)+s%luminosity_breakdown_lsun(i_lum_3alpha)+ &
-            s%luminosity_breakdown_lsun(i_lum_neu)+s%luminosity_breakdown_lsun(i_lum_grav)+s%luminosity_breakdown_lsun(i_lum_he_c)
-       if (num_energy_sources() > 0) total_luminosity_sum = total_luminosity_sum + &
-            s%luminosity_breakdown_lsun(i_lum_extra)
+       total_luminosity_sum = luminosity_channel_sum(s%luminosity_breakdown_lsun, &
+            num_energy_sources() > 0)
        temp_value = s%luminosity_lsun(s%nz)/total_luminosity_sum
        do i = 1,n_lum_channels
           s%luminosity_breakdown_lsun(i) = s%luminosity_breakdown_lsun(i)*temp_value

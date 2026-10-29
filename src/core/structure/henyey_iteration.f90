@@ -31,7 +31,8 @@
 module henyey_iteration
       use henyey_elimination, only: henyey_solve
       use surface_boundary, only: compute_surface_boundary
-      use structure_equations, only: compute_henyey_coefficients
+      use structure_equations, only: compute_henyey_coefficients, &
+           luminosity_channel_sum
       use omega_profile, only: omega_from_j
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: star_info, json
@@ -134,9 +135,8 @@ end subroutine refresh_surface_bc
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
      saha_state, envelope_zone_index, iterations_done, ierr)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_grav, &
-           i_lum_he_c, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, &
-           i_lum_extra, n_lum_channels
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
+           i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
       use energy_sources, only: num_energy_sources
       use io_units
       use run_log, only: solver_diagnostics
@@ -221,17 +221,15 @@ end subroutine linearize_structure_equations
 ! luminosity,
 !   luminosity_breakdown_lsun(j) *= L(nz)/sum_j luminosity_breakdown_lsun(j),
 ! except during the helium flash, when the star is out of thermal
-! equilibrium. This is the per-iteration twin of observables'
-! renormalize_luminosity_breakdown; it also guards a nonpositive sum, and
-! is kept separate on purpose (reports/henyey-wave2.md item 6).
+! equilibrium. The sum is structure_equations' luminosity_channel_sum,
+! with the extra energy sources' channel when there are any (so that
+! they are not folded into the others). This is the per-iteration twin
+! of observables' renormalize_luminosity_breakdown; it also guards a
+! nonpositive sum, and is kept separate on purpose
+! (reports/henyey-wave2.md item 6).
 subroutine renormalize_luminosity_channels()
-       total_luminosity_terms = s%luminosity_breakdown_lsun(i_lum_pp1)+s%luminosity_breakdown_lsun(i_lum_pp2)+ &
-            s%luminosity_breakdown_lsun(i_lum_pp3)+s%luminosity_breakdown_lsun(i_lum_cno)+s%luminosity_breakdown_lsun(i_lum_3alpha)+ &
-            s%luminosity_breakdown_lsun(i_lum_neu)+s%luminosity_breakdown_lsun(i_lum_grav)+s%luminosity_breakdown_lsun(i_lum_he_c)
-! the extra energy sources' channel, when there are any (so that they
-! are not folded into the others)
-       if (num_energy_sources() > 0) total_luminosity_terms = total_luminosity_terms + &
-            s%luminosity_breakdown_lsun(i_lum_extra)
+       total_luminosity_terms = luminosity_channel_sum(s%luminosity_breakdown_lsun, &
+            num_energy_sources() > 0)
        if (.not.s%ctrl%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
             then
           temp = s%luminosity_lsun(s%nz)/total_luminosity_terms

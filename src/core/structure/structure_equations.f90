@@ -11,7 +11,7 @@ module structure_equations
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: compute_henyey_coefficients
+      public :: compute_henyey_coefficients, luminosity_channel_sum
 
 contains
 
@@ -320,6 +320,28 @@ subroutine store_pulse_derivatives()
 end subroutine store_pulse_derivatives
 
 end subroutine compute_henyey_coefficients
+
+!----------------------------------------------------------------------
+! luminosity_channel_sum: the sum (Lsun) of the luminosity channels
+! breakdown_lsun (star%luminosity_breakdown_lsun) that are renormalized
+! to the surface luminosity: every i_lum_* channel in slot order, the
+! extra energy sources' (i_lum_extra) only when a program registered any
+! (with_extra_sources). henyey_iterate's per-iteration renormalization
+! and observables' post-convergence one both take it, so a new channel
+! (n_lum_channels + 1) is in both sums.
+pure double precision function luminosity_channel_sum(breakdown_lsun, &
+     with_extra_sources)
+      use star_info_lib, only: i_lum_extra, n_lum_channels
+      double precision, intent(in) :: breakdown_lsun(n_lum_channels)
+      logical, intent(in) :: with_extra_sources
+      integer :: j
+
+      luminosity_channel_sum = 0.0d0
+      do j = 1, n_lum_channels
+         if (j == i_lum_extra .and. .not. with_extra_sources) cycle
+         luminosity_channel_sum = luminosity_channel_sum + breakdown_lsun(j)
+      end do
+end function luminosity_channel_sum
 
 !----------------------------------------------------------------------
 ! Where each nuclear chain (net_lib's chain_*, the slots of
