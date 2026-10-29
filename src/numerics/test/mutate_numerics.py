@@ -97,6 +97,7 @@ MUTATIONS = [
     ('numerics/bulirsch_stoer.f90', '       ierr = numerics_step_underflow', '       ierr = numerics_bad_input', 'bsstep: zero tolerance ends in numerics_step_underflow'),
     ('numerics/bulirsch_stoer.f90', ' derivatives_ierr = jerr_integrand\n               y = y_sav\n', ' derivatives_ierr = jerr_integrand\n', 'bsstep: on a failure y and x are as they came in'),
     ('numerics/bulirsch_stoer.f90', '            ierr = numerics_step_underflow\n            y = y_sav\n', '            ierr = numerics_step_underflow\n', 'bsstep: on a failure y and x are as they came in'),
+    ('numerics/numerics_lib.f90', 'interpolate_tabulated_functions => lir, bracket_index => findex', 'interpolate_tabulated_functions => lir, bracket_index => hunt', 'aliases: each gives'),
     ('numerics/numerics_status.f90', "         text = 'step underflow'", "         text = 'singular matrix'", 'numerics_status: distinct codes'),
 ]
 

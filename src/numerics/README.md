@@ -8,7 +8,7 @@ This directory holds the general-purpose numerical methods the physics uses: spl
 
 | Module (file) | What it holds |
 |---|---|
-| `numerics_lib` (`numerics_lib.f90`) | **The public interface.** It re-exports what the modules below make public, the status codes and the bsstep limits. |
+| `numerics_lib` (`numerics_lib.f90`) | **The public interface.** It re-exports what the modules below make public, the status codes and the bsstep limits, and gives the YREC-written routines with short legacy names a descriptive alias (the same procedure under a second name): `lagrange3_weights` (`inter3`), `lagrange4_weights` (`interp`), `equidistant_quadratic` (`quint`), `interpolate_tabulated_functions` (`lir`), `bracket_index` (`findex`). |
 | `numerics_status` | The status codes every routine returns in `ierr` (§3), and `numerics_status_text`, a short description of each for a caller's message. |
 | `cubic_spline` | `cspline` and `splint` (Numerical Recipes): the second derivatives of the cubic spline for given end slopes, and its value at x, with its first derivative when asked (`dy=`). `natural_spline`: `cspline` with both ends natural. `compute_spline_coefficients`: the spline's cubic on each interval in powers of x − x(i), for tables that store it (OPAL92 and Kurucz 1990 opacities). |
 | `quadratic_spline` | `osplin`: the shape-preserving osculatory quadratic spline of ACM Algorithm 574 (McAllister & Roulier 1981), which keeps the data's monotonicity and convexity. Its steps (`slopes`, `meval`, `choose`, `cases`, `search`, `spline`, `safedivide`) are private. |
@@ -28,10 +28,10 @@ Solvers that carry a domain's physics in their interface live with that domain:
 | interpolate a smooth function through tabulated points | `natural_spline` (or `cspline` with known end slopes), then `splint` | C², exact on cubics with the right end slopes; `splint(..., dy=)` gives the slope; extrapolates the end cubic |
 | store a spline as polynomial coefficients | `compute_spline_coefficients` after `natural_spline` | c(1:4, i) on [x(i), x(i+1)]; column n holds the end value and slope |
 | interpolate where overshoots must not appear (monotone or convex data) | `osplin` | C¹, keeps monotonicity and convexity; at many sorted points in one call |
-| interpolate with 4 points (or 3) and want the derivative | `interp` (`inter3`), then `lagrange4` | exact on cubics (quadratics); the weights' derivatives with `dweight` |
-| interpolate at three equidistant points | `quint` | exact on quadratics |
+| interpolate with 4 points (or 3) and want the derivative | `interp` = `lagrange4_weights` (`inter3` = `lagrange3_weights`), then `lagrange4` | exact on cubics (quadratics); the weights' derivatives with `dweight` |
+| interpolate at three equidistant points | `quint` = `equidistant_quadratic` | exact on quadratics |
 | interpolate (or extrapolate to zero) with n points and an error estimate | `polint` | Neville; exact on polynomials of degree n − 1 |
-| interpolate many functions tabulated on the same points | `lir` | cubic (4 points or more) or linear |
+| interpolate many functions tabulated on the same points | `lir` = `interpolate_tabulated_functions` | cubic (4 points or more) or linear |
 | find the interval holding x | `locate` (bisection), `hunt` or `findex` (start from a guess: for a sequence of nearby x) | the conventions differ at the nodes and outside: see each header |
 | solve a dense linear system | `ludcmp` then `lubksb` (several right-hand sides: one `lubksb` each) | `simeqc` solves in place for a few right-hand sides at once |
 | solve a tridiagonal system | `solve_tridiagonal` | `tridiagonal_forward_sweep` + `tridiagonal_back_substitution` when a step goes between the two |
@@ -44,7 +44,7 @@ Solvers that carry a domain's physics in their interface live with that domain:
 - **No I/O.** numerics prints nothing (`tools/check_boundaries.py` checks that numerics/ and math/ hold no I/O statement): the caller reports a failure, where the failure means something, as `<routine>: <numerics_status_text(ierr)>` (`splint: coincident abscissae`), and passes the code up. The messages go where the routines' own used to: splint's to the run log, ludcmp's, solve_tridiagonal's, polint's and bsstep's to the terminal; rotation's through `rotation_numerics_report` (the terminal and the run log), rezone's (osplin) to both.
 - **Searches.** One bisection (`locate`, with its 1% slack beyond the ends) and one warm-started search (`hunt`; `findex` is hunt with −1 and −n for outside, which OPAL92 and Kurucz 1990 test). `locate`, `hunt`, and the bisections inside `splint` and `osplin`, differ at the nodes and outside the table; each header states its convention.
 - Procedures without side effects are `pure`: all but `bsstep` and `mmid`, which call an `ode_system`'s derivatives (they may change their object).
-- Numerical Recipes and IBM SSP routines keep their authors' names (`cspline`, `splint`, `polint`, `ludcmp`, `lubksb`, `hunt`, `bsstep` with `mmid` and `ratext`; `simeqc`); routines written for YREC are named for what they do.
+- Numerical Recipes and IBM SSP routines keep their authors' names (`cspline`, `splint`, `polint`, `ludcmp`, `lubksb`, `hunt`, `locate`, `bsstep` with `mmid` and `ratext`; `simeqc`). The routines written for YREC since 2026 are named for what they do (`natural_spline`, `compute_spline_coefficients`, `lagrange4`, `solve_tridiagonal`); the older ones with short names (`inter3`, `interp`, `quint`, `lir`, `findex`; `osplin`, ACM 574's) have a descriptive alias in `numerics_lib` (§1), which new code may use; the existing callers keep the short names.
 
 ## 4. Integrating ODEs
 

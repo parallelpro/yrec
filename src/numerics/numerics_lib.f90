@@ -14,6 +14,12 @@
 !                        tridiagonal_back_substitution
 !   bulirsch_stoer       bsstep for an ode_system, and its limits
 !   numerics_status      the codes returned in ierr, numerics_status_text
+! The YREC-written routines with short legacy names have a descriptive
+! alias, the same procedure under a second name (new code may use
+! either; the legacy names stay for their callers):
+!   lagrange3_weights => inter3     lagrange4_weights => interp
+!   equidistant_quadratic => quint  interpolate_tabulated_functions => lir
+!   bracket_index => findex
 ! None of them reads the star, keeps state between calls or prints.
 ! They report failure through ierr, as numerics_status's codes, and the
 ! caller reports it.
@@ -23,6 +29,9 @@ module numerics_lib
       use quadratic_spline, only: osplin
       use table_interpolation, only: inter3, interp, lagrange4, quint, &
            polint, lir, findex, locate, hunt
+      use table_interpolation, only: lagrange3_weights => inter3, &
+           lagrange4_weights => interp, equidistant_quadratic => quint, &
+           interpolate_tabulated_functions => lir, bracket_index => findex
       use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal, &
            tridiagonal_forward_sweep, tridiagonal_back_substitution
       use bulirsch_stoer, only: ode_system, bsstep, bsstep_max_equations, &
@@ -36,6 +45,8 @@ module numerics_lib
       public :: cspline, natural_spline, splint, compute_spline_coefficients
       public :: osplin
       public :: inter3, interp, lagrange4, quint, polint, lir, findex, locate, hunt
+      public :: lagrange3_weights, lagrange4_weights, equidistant_quadratic, &
+           interpolate_tabulated_functions, bracket_index
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
       public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
       public :: ode_system, bsstep, bsstep_max_equations, bsstep_max_stages, &

@@ -80,6 +80,8 @@ program test_numerics
            numerics_unsorted_points, numerics_derivatives_failed, numerics_status_text
       use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
       use numerics_lib, only: hunt
+      use numerics_lib, only: lagrange3_weights, lagrange4_weights, equidistant_quadratic, &
+           interpolate_tabulated_functions, bracket_index
       use test_numerics_callbacks, only: harmonic_system
       implicit none
 ! the pins' tables are larger than the data they hold
@@ -847,7 +849,40 @@ subroutine lagrange_checks()
       call report_true("polint: coincident abscissae are numerics_coincident_points", &
            ierr == numerics_coincident_points)
       call lir_checks()
+      call alias_checks()
 end subroutine lagrange_checks
+
+! the descriptive aliases are their legacy routines: the same results,
+! bit for bit, on the same arguments (findex's outside codes included)
+subroutine alias_checks()
+      real(dp) :: w3(3), dw3(3), w3b(3), dw3b(3), w4(4), dw4(4), w4b(4), dw4b(4), &
+           q, qb, res(2), resb(2), ty(2,6), tz(6)
+      integer :: flag, flagb, j, jb, k
+      logical :: holds
+      call inter3([1.0d0, 1.5d0, 2.5d0], w3, dw3, 1.8d0)
+      call lagrange3_weights([1.0d0, 1.5d0, 2.5d0], w3b, dw3b, 1.8d0)
+      holds = all(w3 == w3b) .and. all(dw3 == dw3b)
+      call interp([0.0d0, 1.0d0, 3.0d0, 4.5d0], w4, dw4, 2.2d0)
+      call lagrange4_weights([0.0d0, 1.0d0, 3.0d0, 4.5d0], w4b, dw4b, 2.2d0)
+      holds = holds .and. all(w4 == w4b) .and. all(dw4 == dw4b)
+      call quint(0.37d0, 0.2d0, 0.1d0, 1.0d0, 1.3d0, 1.9d0, q)
+      call equidistant_quadratic(0.37d0, 0.2d0, 0.1d0, 1.0d0, 1.3d0, 1.9d0, qb)
+      holds = holds .and. q == qb
+      tz = [1.0d0, 2.0d0, 3.5d0, 4.0d0, 6.0d0, 7.5d0]
+      ty(1,:) = tz**2
+      ty(2,:) = 10.0d0 - tz
+      call lir(2.7d0, tz, res, ty, 2, 2, 6, flag)
+      call interpolate_tabulated_functions(2.7d0, tz, resb, ty, 2, 2, 6, flagb)
+      holds = holds .and. all(res == resb) .and. flag == flagb
+      do k = 0, 67
+         j = 3
+         jb = 3
+         call findex(tz, 6, sample(k), j)
+         call bracket_index(tz, 6, sample(k), jb)
+         holds = holds .and. j == jb
+      end do
+      call report_true("aliases: each gives its legacy routine's results", holds)
+end subroutine alias_checks
 
 elemental function quadratic(x) result(f)
       real(dp), intent(in) :: x

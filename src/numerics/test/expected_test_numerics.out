@@ -292,6 +292,7 @@ lir: on a node, the tabulated values (flag 1)                              0.00E
 lir: outside the table, flag 0                                             0.00E+00  ok
 lir: one point is numerics_bad_input, result untouched                     0.00E+00  ok
 lir: a flat table is numerics_coincident_points                            0.00E+00  ok
+aliases: each gives its legacy routine's results                           0.00E+00  ok
 locate: brackets x in increasing and decreasing tables                     0.00E+00  ok
 locate: the end nodes give 1 and n-1, either direction                     0.00E+00  ok
 locate: within 1% of the span beyond an end, the end interval              0.00E+00  ok
