@@ -941,7 +941,7 @@ subroutine readco(v, ierr)
          opal_shared%readco_init_flag(iv_opal95) = opal_flag_set
       end if
 
-! ..... read  tables (the file is opened on opal_shared%table_unit by read_controls)
+! ..... read  tables (on the unit eos_init's open_opal_eos_table opened)
       do x_loop_index = 1, mx
 
          read (opal_shared%table_unit,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &

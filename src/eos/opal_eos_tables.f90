@@ -488,7 +488,7 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
          return
          end if
       end if
-!     define table edge in rho by linear interpolation.
+!     the table's edge in rho: the edge of the row below (in T6) the point
       table_edge_density = density_edge_at_t(t_row_index+1)
       table_edge_density = log10(table_edge_density)
 !     define beginning of ramp in the same fashion -

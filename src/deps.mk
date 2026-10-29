@@ -385,7 +385,7 @@ element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod io_un
 element_diffusion/thoul_solver.o: numerics_lib.mod
 eos/blended_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod opal_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod
 eos/eos_configuration.o: mhd_eos_tables.mod
-eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
+eos/eos_lib.o: blended_eos.mod composition_layout.mod eos_configuration.mod eos_mixture.mod eos_results.mod io_units.mod math_lib.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_mixture.o: composition_layout.mod physical_constants.mod
 eos/mhd/mhd_eos.o: eos_mixture.mod eos_results.mod io_units.mod math_lib.mod mhd_eos_tables.mod numerics_lib.mod
 eos/opal/opal95_eos.o: io_units.mod math_lib.mod opal_eos_tables.mod physical_constants.mod

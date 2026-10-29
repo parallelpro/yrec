@@ -20,7 +20,7 @@ module yale_eos
            debye_huckel_z_total, yale
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use io_units, only: run_log_unit
-      use eos_mixture, only: ix_he, n_mix_species
+      use eos_mixture, only: ix_h, ix_he, n_mix_species
       use eos_configuration, only: eos_settings
       use math_lib
       implicit none
@@ -33,6 +33,9 @@ module yale_eos
 ! module state, the previous call's solution, whoever made it (so a
 ! result depends on the call before it within the solver's tolerance,
 ! 1e-9 in E).
+! the first ionization energies as temperatures (K) of the 11 species
+! before He in the mixture's ix_* order (Na, Al, Mg, Fe, Si, C, H, O, N,
+! Ar, Ne: slot ix_h is hydrogen), and helium's two
       real(dp), parameter :: ionization_temp(11) = [real(dp) :: 59630., &
            69450., 88710., 91330., 94570., 130630., 157800., 158000., 168630., &
            183080., 250200.]
@@ -207,7 +210,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
       r%density = r%beta*r%pressure/(r%specific_gas_constant*r%temperature)
       r%log10_density = log10(r%density)
       r%ion_fraction(1) = 0.0d0
-      if(s%nz0 >= 7) r%ion_fraction(1) = s%species_ion_fraction(7)
+      if(s%nz0 >= ix_h) r%ion_fraction(1) = s%species_ion_fraction(ix_h)
       r%ion_fraction(2) = s%helium_ion_fraction_1
       r%ion_fraction(3) = s%helium_ion_fraction_2
       call differentiate_saha_solution(s, r, d)
@@ -245,9 +248,6 @@ subroutine set_saha_constants(log10_temperature, log10_pressure, r, s)
          s%saha_ratio(i) = 1.0d16
          s%nz1 = i + 1
       end do
-      if (i > nz) then
-      i = nz + 1
-      end if
       s%nz0 = i - 1
       s%nz1 = min0(nz,s%nz1)
       s%skip_helium_i = .true.

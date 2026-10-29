@@ -63,7 +63,8 @@ pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
       real(dp), intent(in) :: x, z
       real(dp), intent(out) :: mu_ion_inv, dfx1, dfx12, dfx4
       logical, intent(out) :: use_envelope
-! inverse_atomic_weights: 1/A for H, He, C(12), and a spare slot
+! inverse_atomic_weights: 1/A for H, He and C(12), and Z/A = 1/2 of He
+! and the metals (blend_eos's 1/mu_e; unused here)
       real(dp), parameter :: inverse_atomic_weights(4) = [0.9921d0, 0.24975d0, 0.08322d0, 0.4995d0]
 
 ! Set up fractional abundances
@@ -85,10 +86,11 @@ end subroutine ion_mean_weight_excess
 
 ! compute_mean_weights: the ion and electron inverse mean molecular
 ! weights and the specific gas constant R*(1/mu_ion + 1/mu_e) of a
-! zone, as a cross-check on an EOS table's own bookkeeping (the OPAL
-! and MHD paths call it). 1/mu_ion comes from ion_mean_weight_excess;
-! 1/mu_e is backed out of the ideal-gas law with the given beta (the
-! gas-pressure fraction).
+! zone for the OPAL and MHD paths: 1/mu_ion from ion_mean_weight_excess,
+! and 1/mu_e backed out of the ideal-gas law with the given beta (the
+! gas-pressure fraction). So the R it returns equals beta P/(rho T) for
+! any input: MHD's comparison of the two catches only a table result
+! inconsistent with its own P (a stale or empty row), not a wrong mu.
 pure subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
      metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)

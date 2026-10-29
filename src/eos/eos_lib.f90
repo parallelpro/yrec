@@ -39,10 +39,12 @@ module eos_lib
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
            open_opal_eos_table
       use yale_eos_tables, only: debye_huckel_x, debye_huckel_y, debye_huckel_z, &
-           debye_huckel_z_total, idh_ne, idh_na, idh_mg, idh_al, idh_si, idh_ar, &
-           idh_fe
+           debye_huckel_z_total, idh_c, idh_n, idh_o, idh_ne, idh_na, idh_mg, idh_al, &
+           idh_si, idh_ar, idh_fe
       use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, &
            mixture_atomic_weights
+      use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
+           i_n14, i_n15, i_o16, i_o17, i_o18
       use physical_constants, only: ln10
       use io_units, only: run_log_unit
       use math_lib
@@ -145,15 +147,13 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       real(dp), intent(out) :: gamma1, adiabatic_gradient
       integer, intent(inout) :: saha_iterations
-! ierr as for eos_eval; an out-of-table esac06 lookup is not an error.
+! ierr as for eos_get; an out-of-table esac06 lookup is not an error.
       integer, intent(out) :: ierr
+! esac06's full evaluation (its nine variables) with the radiation
+! correction
+      integer, parameter :: opal06_variables = 9, with_radiation = 1
 
       integer :: jerr
-
-! per-call copies: esac06 and blend_eos write into several of their
-! input arguments
-      integer :: eos_interp_order, eos_rad_flag
-      real(dp) :: x_local, t6_local, d_local
       real(dp) :: log10_temperature, log10_pressure
       type(eos_result) :: g
       real(dp) :: chi_rho, chi_t, specific_heat_cv
@@ -164,13 +164,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       in_table = .false.
 
       if (eos_settings%opal_vintage == opal_vintage_2006) then
-         eos_interp_order = 9
-         eos_rad_flag = 1
-         x_local = hydrogen_fraction
-         t6_local = temperature_1e6k
-         d_local = density
-         call esac06(opal06, x_local, t6_local, d_local, eos_interp_order, &
-              eos_rad_flag, jerr, in_table)
+         call esac06(opal06, hydrogen_fraction, temperature_1e6k, density, &
+              opal06_variables, with_radiation, jerr, in_table)
          if (jerr /= 0) then
             ierr = jerr
             return
@@ -252,12 +247,12 @@ subroutine eos_set_debye_huckel_composition(composition)
       real(dp), intent(in) :: composition(:)
 
       if (.not. eos_settings%use_debye_huckel_correction) return
-      debye_huckel_x = composition(1)
-      debye_huckel_y = composition(2)+composition(4)
-      debye_huckel_z_total = composition(3)
-      debye_huckel_z(1) = composition(5)+composition(6)
-      debye_huckel_z(2) = composition(7)+composition(8)
-      debye_huckel_z(3) = composition(9)+composition(10)+composition(11)
+      debye_huckel_x = composition(i_h1)
+      debye_huckel_y = composition(i_he4)+composition(i_he3)
+      debye_huckel_z_total = composition(i_metals)
+      debye_huckel_z(idh_c) = composition(i_c12)+composition(i_c13)
+      debye_huckel_z(idh_n) = composition(i_n14)+composition(i_n15)
+      debye_huckel_z(idh_o) = composition(i_o16)+composition(i_o17)+composition(i_o18)
 end subroutine eos_set_debye_huckel_composition
 
 !----------------------------------------------------------------------

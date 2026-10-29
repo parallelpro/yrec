@@ -56,10 +56,11 @@ CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
 
 # domain -> names callable from outside that domain.
 PUBLIC = {
-    # The three eos_lib facade entries. Everything else in eos/
-    # (eqstat/eqstat2, the OPAL/MHD/SCV/Yale internals, mu) is private.
-    # eos_get is the named-index result-array query (the former
-    # eos_get_r); the long-form engine eos_eval is domain-internal.
+    # eos_lib's facade: eos_init installs the settings and reads the
+    # tables, eos_get evaluates a zone into an eos_result, eos_set_mixture
+    # and eos_update_envelope_tables take the envelope composition,
+    # set_eos_settings installs settings without reading tables. The
+    # blended, Yale, SCV, OPAL and MHD modules are eos-internal.
     # eos_get_gamma1 is test-only: its sole caller is
     # eos/test/test_eos.f90 (the calcad diagnostic it served is gone).
     "eos": {"eos_get", "eos_get_gamma1", "eos_init", "eos_set_mixture",

@@ -191,8 +191,8 @@ end subroutine find_opal_edge_ramp
 ! MHP 7/2003: checks whether a (T, log10 rho) point falls within the
 ! OPAL 2001 EOS table, and if it is near the table's edge, computes
 ! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (see blend_eos.f90's use_opal2001_eos branch, which calls this
-! immediately after compute_opal2001_eos).
+! result (blend_eos calls it, through find_opal_edge_ramp, right after
+! compute_opal_eos).
 !
 ! The 2001 density check (log10 rho outside -14..7 is outside the
 ! table), then find_opal_ramp.
@@ -972,8 +972,8 @@ end subroutine t6rinteos
 ! LLP 10/16/06: checks whether a (T, log10 rho) point falls within the
 ! OPAL 2006 EOS table, and if it is near the table's edge, computes
 ! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (see blend_eos.f90's use_opal2006_eos branch, which calls this
-! immediately after compute_opal2006_eos). Unlike find_opal95_ramp/find_opal2001_ramp (1995/2001),
+! result (blend_eos calls it, through find_opal_edge_ramp, right after
+! compute_opal_eos). Unlike find_opal95_ramp/find_opal2001_ramp (1995/2001),
 ! this version tracks the table's ragged edge via per-row/per-column
 ! index arrays (opal06_t6_index_lo/opal06_density_index_edge) rather than a single
 ! linear-interpolated edge value.
