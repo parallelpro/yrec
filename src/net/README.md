@@ -63,7 +63,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
    1. below `logT_cutoffs(1)` everything is zero;
    2. `compute_zone_conditions`: the density, the electron density, T9 and its powers, the screening plasma (composition moments, Salpeter's degeneracy factor, Λ₀, z̃, the mean charge), from `screening_mass_fractions(xa)`;
    3. each table row that computes a rate, when it burns (hydrogen-burning rows need hydrogen, helium-burning rows log T ≥ `logT_cutoffs(4)`): `compute_screened_rate` → its screening and its rate law, scaled at the row's slot;
-   4. with hydrogen, the Be7 branching and the N15(p,α) fraction; always the hep factor.
+   4. with hydrogen, the Be7 branching and the N15(p,α) fraction.
 
    `compute_network_rates` then drops rates at or below `min_composition_rate` (10⁻⁵) and returns the rate vector per s per amu: the reactions at `r_*`, the two fractions at `rv_*`.
 2. `burn_network` → per region `burn_network_region` → `burn_implicitly`: Newton iteration on X − X₀ − dt A Σ ν R(X) = 0, its equations and Jacobian from the table rows (`compute_abundance_rates`, `reaction_rate_derivative`); the explicit products (O18) from the converged abundances. `ierr = 1` when it runs out of iterations.
@@ -78,7 +78,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
 5. `reaction_counts` (for the fluxes) and `compute_reaction_energies`: Σ b_j R_j ΠX Q_j by slot and by chain, from the table, so a reaction's composition change and its energy come from one row.
 6. `sum_energy_generation`: ε and its absolute derivatives Σ ε_j d ln r_j/d ln (ρ, T), plus deuterium's; zero derivatives at or below `min_eps_with_derivatives` (10⁻¹² erg/g/s).
 7. `store_chain_energies`: `eps_by_chain(chain_*)`, d(p,γ) in pp I.
-8. With `calc_neutrinos`, `compute_solar_neutrino_fluxes` (and the equilibrium Be7 abundance).
+8. With `calc_neutrinos`, `compute_solar_neutrino_fluxes` (with the hep rate factor, `hep_rate_factor`, and the equilibrium Be7 abundance).
 9. Above `logT_cutoffs(5)`, `add_thermal_neutrino_loss`: Beaudet, Petrosian & Salpeter (1967), or Itoh et al. (1996) with `use_itoh_neutrino_loss`, subtracted from ε with its derivatives.
 
 ### 2.3 When each piece runs during a timestep

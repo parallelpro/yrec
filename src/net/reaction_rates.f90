@@ -119,16 +119,15 @@ module reaction_rates
 ! The rates of one zone, from network's compute_reaction_rates: rate(r_*)
 ! per gram per second with the abundance factors omitted (screened,
 ! scaled), and its logarithmic derivatives; the Be7 branching and the
-! N15(p,alpha) fraction; the screened hep factor (the flux diagnostics);
-! and the zone conditions they came from, which the energy and flux
-! consumers reuse. All zero below net_settings%logT_cutoffs(1).
+! N15(p,alpha) fraction; and the zone conditions they came from, which
+! the energy and flux consumers reuse. All zero below
+! net_settings%logT_cutoffs(1).
       type, public :: nuclear_rates
          real(dp) :: rate(num_reactions) = 0.0d0
          real(dp) :: dlnrate_dlnt(num_reactions) = 0.0d0
          real(dp) :: dlnrate_dlnrho(num_reactions) = 0.0d0
          type(be7_branching) :: be7
          real(dp) :: frac_n15_pa = 0.0d0
-         real(dp) :: hep = 0.0d0
          type(zone_conditions) :: zone
       end type nuclear_rates
 
@@ -469,7 +468,8 @@ end subroutine compute_triple_alpha_rate
 
 !----------------------------------------------------------------------
 ! hep, He3(p,e+ nu)He4, for the neutrino flux only: the screened, scaled
-! rate factor, which the consumer multiplies by X(H) X(He3).
+! rate factor, which nuclear_energy's compute_solar_neutrino_fluxes
+! multiplies by X(H) X(He3).
 pure real(dp) function hep_rate_factor(zone)
       use math_lib
       type(zone_conditions), intent(in) :: zone

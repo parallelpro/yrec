@@ -76,7 +76,7 @@ module network
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
            cf88_n14_alpha_gamma, cf88_triple_alpha, num_rate_laws, &
            compute_zone_conditions, compute_screened_rate, &
-           compute_be7_branching, n15_alpha_fraction, hep_rate_factor
+           compute_be7_branching, n15_alpha_fraction
       implicit none
       private
 
@@ -332,7 +332,7 @@ end function inert_scale_count
 ! hydrogen, helium-burning rows log T >= logT_cutoffs(4). nr%rate(r_*)
 ! is per gram per second with the abundance factors omitted, screened
 ! and scaled by net_settings; each consumer applies its own floor. With
-! hydrogen, also the Be7 and N15 branchings; always the hep factor.
+! hydrogen, also the Be7 and N15 branchings.
 ! Below logT_cutoffs(1) everything is zero. mass_frac(iso_*) is the
 ! composition the screening sees (screening_mass_fractions).
 pure subroutine compute_reaction_rates(log_density, log_temperature, &
@@ -363,7 +363,6 @@ pure subroutine compute_reaction_rates(log_density, log_temperature, &
          call compute_be7_branching(nr%zone, mass_frac(iso_h1), nr%be7)
          nr%frac_n15_pa = n15_alpha_fraction(nr%zone)
       end if
-      nr%hep = hep_rate_factor(nr%zone)
 end subroutine compute_reaction_rates
 
 !----------------------------------------------------------------------

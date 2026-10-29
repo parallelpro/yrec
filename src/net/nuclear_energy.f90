@@ -25,7 +25,7 @@ module nuclear_energy
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
       use screening, only: screening_mass_fractions
       use reaction_rates, only: nuclear_rates, &
-           compute_deuterium_proton_capture, cap_deuterium_rate
+           compute_deuterium_proton_capture, cap_deuterium_rate, hep_rate_factor
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &
            compute_reaction_energies, n_chains, n_network, &
@@ -293,8 +293,8 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%zone%electron_density_na*nr%zone%t%m12* &
            (1.0d0 + 20.d0*nr%zone%t%t9)*counts(r_pp)
       e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%extra_cross_section_scale(xs_pep)/four_pi_au2
-! hep (eq. 3.12), from the screened rate factor of compute_reaction_rates
-      e%neutrino_flux(i_nu_hep) = nr%hep
+! hep (eq. 3.12), from its screened rate factor
+      e%neutrino_flux(i_nu_hep) = hep_rate_factor(nr%zone)
       e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &
            four_pi_au2
       e%be7_set = .true.
