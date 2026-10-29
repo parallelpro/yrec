@@ -76,8 +76,9 @@ contains
 !     dm, gradT, job%use_extended_composition, job%use_semiconvection,
 !     log_mass, log_Teff, log_total_mass, logP, logR, logT,
 !     luminosity_lsun, nz
-!   star writes: convective_flag, iov1, iov2, job%diffuse_helium_active,
-!     logRho, m, mixed_zone_bounds, settling_suspended_reported, xa
+!   star writes: convective_flag, iov1, iov2, logRho, m,
+!     mixed_zone_bounds, settling_active, settling_suspended_reported,
+!     xa
 subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
@@ -158,7 +159,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       end if
 
 ! 6. Gravitational settling.
-      if (s%job%diffuse_helium_active) then
+      if (s%settling_active) then
          call settle
          if (ierr /= 0) return
       end if
@@ -251,8 +252,8 @@ end subroutine homogenize_mixed_regions
 ! timescale at the outer boundary (MHP 6/90). The outer boundary is the
 ! base of the surface convection zone or, where Y there is below
 ! ctrl%helium_diffusion_min (legacy YMIN), the first zone inward where Y
-! exceeds it. Settling switches itself off for good
-! (star%job%diffuse_helium_active) once the central X drops below
+! exceeds it. Settling switches itself off for the rest of the run card
+! (star%settling_active) once the central X drops below
 ! ctrl%hydrogen_diffusion_floor.
 subroutine settle
       double precision :: total_mass_unlogged, dlnp_dr(json)
@@ -260,7 +261,7 @@ subroutine settle
            max_settling_dt, settling_dt
       integer :: k, search_idx, num_settling_steps, substep_idx
       if (s%xa(i_h1,1).lt.s%ctrl%hydrogen_diffusion_floor) then
-         s%job%diffuse_helium_active = .false.
+         s%settling_active = .false.
          return
       end if
       total_mass_unlogged = exp(ln10*s%log_total_mass)
@@ -303,7 +304,7 @@ subroutine settle
       do substep_idx = 1, num_settling_steps
          call diffuse_elements(settling_dt, s%xa, dlnp_dr, s%logR, &
               s%logRho, s%m, s%logT, s%gradT, deep_mix_flag, &
-              s%nz, total_mass_unlogged, s%job%diffuse_helium_active, &
+              s%nz, total_mass_unlogged, s%settling_active, &
               s%settling_suspended_reported, ierr)
          if (ierr /= 0) return
       end do

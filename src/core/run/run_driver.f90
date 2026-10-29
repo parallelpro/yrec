@@ -326,6 +326,9 @@ subroutine begin_kind_card
        s%job%requested_envelope_mass = s%job%senv0_array(s%job%nk)
        s%reset_triangle = .false.
        s%model_diverged_flag = .false.
+! Arm helium settling for the card (the settling routines switch it off
+! when the centre runs out of hydrogen).
+       s%settling_active = s%job%diffuse_helium_active
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
          s%total_angular_momentum = 0.0D0

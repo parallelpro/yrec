@@ -267,9 +267,9 @@ def check_star_free(src_root):
 # Domains that use the star object for their state but read their
 # configuration from a settings record (2026-10): their code may not
 # read star%ctrl or star%job, except the listed members, which are
-# state shared with core rather than settings (rotation: the settling
-# latch, which settling turns off when X or Y runs out).
-CONTROLS_FREE_DIRS = {"rotation": {"job%diffuse_helium_active"}}
+# state shared with core rather than settings (none left: the settling
+# latch is star%settling_active since 2026-10-29).
+CONTROLS_FREE_DIRS = {"rotation": set()}
 
 def check_controls_free(src_root):
     problems = []

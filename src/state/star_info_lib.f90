@@ -248,6 +248,12 @@ module star_info_lib
 ! composition_step, mid_timestep_model. The message prints once per
 ! suspension; "SETTLING RESUMED" clears it.
             logical :: settling_suspended_reported = .false.
+! helium settles in this run card [logical]; run_driver, composition_step,
+! mid_timestep_model. Armed from the control job%diffuse_helium_active
+! (never changed after the read) at the start of every card, and so of
+! every Monte-Carlo run, by begin_kind_card; the settling routines switch
+! it off once the central X falls below ctrl%hydrogen_diffusion_floor.
+            logical :: settling_active = .false.
 ! surface X of the first run card: the reference X of the EOS mixture and
 ! of 1/mu_ion in compute_shell_physics [-]; starting_model. Set once
 ! (update_surface_mixture) and kept for the run on purpose; the controls

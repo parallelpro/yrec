@@ -378,7 +378,7 @@ end subroutine advance_rotation_substep
 !    composition rate vectors of the model being burned
 !    (network_rates_of_model; advance_rotation_substep passes those of
 !    its interpolated model) and log_temperature its temperatures.
-! 2. While diffuse_helium_active, settle helium (settle_helium).
+! 2. While star%settling_active, settle helium (settle_helium).
 ! 3. Clip and renormalize the abundances (renormalize_composition).
 ! A nonzero ierr stops the run.
 subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, log_temperature, &
@@ -442,7 +442,7 @@ subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, lo
               timestep, ierr)
          if (ierr /= 0) return
       end do
-      if (s%job%diffuse_helium_active) then
+      if (s%settling_active) then
          call settle_helium()
          if (ierr /= 0) return
       end if
@@ -457,13 +457,14 @@ contains
 ! the settling timescale at the outer boundary (Michaud et al. 1984;
 ! MHP 6/90). The outer boundary is the top of the outermost radiative
 ! region, just below the surface convection zone. Settling stops for
-! good once the central X drops below hydrogen_diffusion_floor; with no
+! the rest of the run card (star%settling_active) once the central X
+! drops below hydrogen_diffusion_floor; with no
 ! surface convection zone the run stops (ierr = 1).
 subroutine settle_helium()
       character(len=message_length) :: lines(2)
       settling: do
          if (composition(1,1).lt.rotation_settings%hydrogen_diffusion_floor) then
-            s%job%diffuse_helium_active=.false.
+            s%settling_active=.false.
             exit settling
          end if
 ! Settling needs a surface convection zone.
@@ -553,7 +554,7 @@ subroutine settle_helium()
             call diffuse_elements(settling_dt,composition,dlnp_dr_settling, &
                  log_radius,log_density,enclosed_mass,log_temperature, &
                  sub_physics%gradT,am_transport_convective_flag,num_zones, &
-                 total_mass,s%job%diffuse_helium_active, &
+                 total_mass,s%settling_active, &
                  s%settling_suspended_reported, ierr)
             if (ierr /= 0) return
          end do
