@@ -549,8 +549,8 @@ interpolated in both directions with edge-validity bookkeeping
 | `average_over_equipotential` (`qgauss`; in `rotation/shape/shell_quadrature.f90`) | 10-point Gauss–Legendre quadrature | shape integrals |
 | `natural_spline` + `splint(..., dy=)`, `compute_spline_coefficients` | natural cubic spline with its derivative; the spline as a cubic per interval | OPAL 1992 and Kurucz 1990 opacity interpolation (`ysplin` and `intpol` are kept for now as wrappers of these) |
 
-Every numerics routine returns its status in `ierr`, as `numerics_status`'s
-named codes (0 ok; singular, coincident points, bad input, step underflow,
+A numerics routine that can fail returns its status in `ierr`, as
+`numerics_status`'s named codes (0 ok; singular, coincident points, bad input, step underflow,
 unsorted points, derivatives failed), and prints nothing: the caller that
 can meet a failure reports it (`tools/check_boundaries.py` checks that
 numerics/ and math/ hold no I/O statement). None of the numerics keeps
