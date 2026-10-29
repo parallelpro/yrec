@@ -13,7 +13,8 @@
 !   seismic(4,i)     brunt_N2, lamb_S2 (l = 1), gradL, gradr_div_grada
 !   atm_height(i)    the height of atmosphere point i above the photosphere
 !                    (cm; indexed like s%atm_points, 1 = outermost)
-!   prof(col,i)      the profile columns (io/yrec_output's registry)
+!   prof(col,i)      the profile columns (stitched_model's table
+!                    profile_columns)
 !   pulse(col,i)     the GYRE/FGONG pulse columns
 ! The arrays are allocated, and zeroed, by the first build; columns and
 ! points a build does not write keep their earlier values.

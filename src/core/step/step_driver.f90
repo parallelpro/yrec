@@ -357,7 +357,7 @@ subroutine rezone_or_snapshot
             endif
 ! The start-of-step depth of the surface convection zone, for the Li/Be
 ! burn: its base zone, and the envelope overshoot depth alpha_ov H_P
-! below it (stored as pressure_scale_height_start, though it is not H_P).
+! below it (envelope_overshoot_depth_start).
 ! cz_base_radius_prev = 0 tells locate_surface_mixing_base that no base
 ! radius has been stored yet this step.
             if (s%ctrl%use_extended_composition) then

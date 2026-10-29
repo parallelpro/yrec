@@ -70,7 +70,8 @@ module star_info_lib
       integer, parameter, public :: &
            max_convective_zones = 12, max_radiative_zones = 13
 
-! eps_channels(7,json): specific energy generation channels [erg/g/s].
+! The rows of eps_channels(7,json): the chains' fractions of eps_total
+! (rows 1-5, dimensionless), eps_nu and eps_grav (rows 6-7, erg/(g s)).
       integer, parameter, public :: &
            i_eps_pp1 = 1, i_eps_pp2 = 2, i_eps_pp3 = 3, &
            i_eps_cno = 4, i_eps_he3 = 5, i_eps_neu = 6, &
@@ -686,10 +687,11 @@ module star_info_lib
 
 ! ==== Step working state ===============================================
 ! Values one stage computes for a later stage of the same or the next
-! step, and that are not output: rates of change, burning rates, the
-! depth of the surface mixed region, the turnover time, the shell physics
-! that rotation uses, the outer layers of the latest envelope
-! integration, the last rotation sub-step's omega.
+! step: rates of change, burning rates, the depth of the surface mixed
+! region, the turnover time, the shell physics that rotation uses, the
+! outer layers of the latest envelope integration, the last rotation
+! sub-step's omega. A few are printed too (the history prints the
+! turnover time and the photospheric pressure).
 ! Valid: from the stage that writes them; each member says which.
 
 ! d log T/dt over the last step, for the next step's first guess [1/s];
@@ -836,11 +838,15 @@ module star_info_lib
 ! (core/structure/energy_sources.f90) [erg/(g s)]; structure_equations.
 ! Zero without a registered source.
             double precision :: eps_extra(json)
-! nuclear energy generation pp1 + pp2 + pp3 + CNO + 3 alpha [erg/(g s)];
-! structure_equations. Zero below the burning cutoff.
+! nuclear energy generation, the sum of the chains' eps: pp1 + pp2 +
+! pp3 + CNO + triple alpha + the alpha captures [erg/(g s)];
+! structure_equations. Zero below the burning cutoff; the neutrino losses
+! are not in it.
             double precision :: eps_total(json)
-! per channel i_eps_*: rows 1-5 the fractions of eps_total, row 6 eps_nu,
-! row 7 eps_grav [rows 1-5: -; rows 6-7: erg/(g s)]; structure_equations
+! per channel i_eps_*: rows 1-5 the fractions of eps_total of pp1, pp2,
+! pp3, CNO and triple alpha, row 6 eps_nu, row 7 eps_grav [rows 1-5: -;
+! rows 6-7: erg/(g s)]; structure_equations. The alpha captures have no
+! row, so rows 1-5 sum to less than 1 where they burn.
             double precision :: eps_channels(7,json)
 ! luminosity per channel i_lum_* (pp1, pp2, pp3, CNO, 3 alpha, neutrinos,
 ! gravothermal, alpha captures, the extra energy sources), scaled to sum
@@ -1052,7 +1058,8 @@ end module star_info_lib
 !   CMIXL       mixing_length_alpha (the one mutable value the constants
 !               module carried)
 !   /deuter/    deuterium_burning_rate, deuterium_burning_rate_start
-!               (per Gyr until 2026-10, now per s), envelope_cz_bottom_index_start
+!               (per Gyr until 2026-10, now per s),
+!               envelope_cz_bottom_index_start (JCZ)
 !   /entrop/    dlog_temperature_dt, dlog_pressure_dt, dln_luminosity_dt,
 !               dlog_radius_dt
 !   /liov/      envelope_overshoot_depth_start, envelope_overshoot_depth_end
@@ -1065,16 +1072,18 @@ end module star_info_lib
 !   /prevcz/    cz_base_radius_prev, envelope_cz_base_zone_prev
 !   /sound/     adiabatic_index_gamma1
 !   /theage/    age_gyr (DAGE)
-!   /varfc/     zahn_coupling (zahn_coupling)
+!   /varfc/     zahn_coupling (VFC)
 !   /zramp/     job%nk (NK)
 ! and the per-zone diagnostics of the former shell_diagnostics_state:
 ! eps_total (SESUM), eps_channels (SEG), beta (SBETA), eta (SETA),
 ! conv_vel (SVEL), opacity_zone (SO, the opacity, not O16), and gradr,
-! gradT, grada (the rows of DEL_GRAD(3,:)). The legacy flags: LCZ
-! (am_transport_convective_flag), LPUNCH (punch_pending_flag), envelope_overshoot_bottom_index,
-! envelope_overshoot_top_index. am_transport_convective_flag was never assigned before 2026-10:
-! main.f's LCZ was a local passed only to CRRECT and GETROT, so the
-! Newton iterations treated every zone as radiative.
+! gradT, grada (the rows of DEL_GRAD(3,:)). The legacy flags and
+! indices: LCZ (am_transport_convective_flag), LPUNCH
+! (punch_pending_flag), IOV1 and IOV2 (envelope_overshoot_bottom_index,
+! envelope_overshoot_top_index). am_transport_convective_flag was never
+! assigned before 2026-10: main.f's LCZ was a local passed only to
+! CRRECT and GETROT, so the Newton iterations treated every zone as
+! radiative.
 !
 ! Renamed in 2026-10 (old name first): gravitational_luminosity ->
 ! eps_grav; temperature_, pressure_, luminosity_, radius_entropy_term ->
@@ -1101,7 +1110,8 @@ end module star_info_lib
 ! maximum omega wind_reference_omega and wind_max_omega [rad/s] (double
 ! precision), and its switch use_rotation_scaled_solar_wind (logical).
 ! Reviving it means declaring them again, in the constants set at setup,
-! and filling them from the controls.!
+! and filling them from the controls.
+!
 ! Renamed after the 2026-10-29 review (old name first; the earlier values
 ! as <member>_start / _prev, the legacy names, the unit suffixes):
 ! old_omega -> omega_start,

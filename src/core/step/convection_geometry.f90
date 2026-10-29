@@ -130,7 +130,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
 ! at every step) marks the first call of the step: the starting base
 ! radius is then the midpoint of zones env_cz_zone_old-1 and
 ! env_cz_zone_old in the start-of-step model, and the mixed region
-! reaches the overshoot depth alpha_ov H_P (pressure_scale_height_start)
+! reaches the overshoot depth alpha_ov H_P (envelope_overshoot_depth_start)
 ! below it. Later calls in the step (the rotation sub-steps) start from
 ! the previous call's end-of-step zone.
             if(s%cz_base_radius_prev.eq.0.0d0)then
@@ -152,7 +152,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
 ! The ending depth, from the interpolated true base,
 !   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
 ! k = env_cz_zone; the mixed region reaches alpha_ov H_P
-! (pressure_scale_height_end) below it.
+! (envelope_overshoot_depth_end) below it.
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius

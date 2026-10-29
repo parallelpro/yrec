@@ -34,7 +34,8 @@ continuation lines, the star argument s, the declared intents). Tests
 
 Fails, writing nothing, when a member has no comment in that form, names
 a writer that does not write it, or is never written or never read
-outside the tests.
+outside the tests, or when the first column of README section 4's table
+(the members removed) names a live member.
 
 usage: gen_star_docs.py           rewrite state/README.md's generated parts
        gen_star_docs.py --check   exit 1 if they are stale
@@ -444,6 +445,26 @@ def render(classes, members, writers, readers, where):
     return "\n".join(cls_rows) + "\n", "\n".join(tables)
 
 
+REMOVED_HEADING = "## 4. Members removed"
+
+
+def removed_names(text):
+    """the names in backticks in the first column of README section 4's
+    table, with their line numbers"""
+    i = text.find(REMOVED_HEADING)
+    if i < 0:
+        sys.exit(f"state/README.md: the section '{REMOVED_HEADING}' is missing")
+    j = text.find("\n## ", i + len(REMOVED_HEADING))
+    first = text[:i].count("\n") + 1
+    out = []
+    for k, line in enumerate(text[i:j if j > 0 else len(text)].splitlines()):
+        cells = line.split("|")
+        if not line.startswith("|") or len(cells) < 3 or set(cells[1].strip()) <= set("-"):
+            continue
+        out += [(first + k, n) for n in re.findall(r"`([A-Za-z_]\w*)`", cells[1])]
+    return out
+
+
 def splice(text, tag, body):
     begin = f"<!-- BEGIN GENERATED {tag}: tools/gen_star_docs.py from state/star_info_lib.f90 -->"
     end = f"<!-- END GENERATED {tag} -->"
@@ -467,12 +488,16 @@ def main():
             errors.append(f"{e['name']}: nothing outside the tests writes it")
         if not readers[key]:
             errors.append(f"{e['name']}: nothing outside the tests reads it")
+    text = README.read_text()
+    live = {e["name"].lower() for e in members}
+    for line, n in removed_names(text):
+        if n.lower() in live:
+            errors.append(f"state/README.md:{line}: section 4 lists {n} as removed, but it is a member")
     if errors:
-        print("gen_star_docs.py: state/star_info_lib.f90 needs attention:", file=sys.stderr)
+        print("gen_star_docs.py: state/star_info_lib.f90 or state/README.md needs attention:", file=sys.stderr)
         print("\n".join("  " + e for e in errors), file=sys.stderr)
         sys.exit(1)
     cls_table, member_tables = render(classes, members, writers, readers, where)
-    text = README.read_text()
     text = splice(text, "classes", cls_table)
     text = splice(text, "members", member_tables)
     emit(README, text)
