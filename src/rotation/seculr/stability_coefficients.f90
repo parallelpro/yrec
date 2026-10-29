@@ -54,7 +54,7 @@
 ! terms (difad_shear_coeff1/2, facd2/facd3), set here; they are
 ! commented out with it.
 module stability_coefficients
-      use rotation_configuration, only: rotation_settings
+      use rotation_configuration, only: rotation_settings, gradient_margin_floor
       implicit none
       private
       public :: rotation_stability_setup
@@ -168,15 +168,15 @@ subroutine rotation_stability_setup(stab, sub_physics, &
          dlnmu_dlnp = (log10(sub_physics%mu(zone_idx))-log10(sub_physics%mu(zone_idx-1)))/ &
               (log_pressure(zone_idx)-log_pressure(zone_idx-1))
          if(zone_idx.eq.transport_zone_begin)then
-            delta_grad_floor=max(1.0d-3,0.5d0*(sub_physics%grada(transport_zone_begin+1)- &
+            delta_grad_floor=max(gradient_margin_floor,0.5d0*(sub_physics%grada(transport_zone_begin+1)- &
                  sub_physics%gradT(transport_zone_begin+1)) &
                  +dlnmu_dlnp)
          else if(zone_idx.eq.transport_zone_end)then
-            delta_grad_floor=max(1.0d-3,0.5d0*(sub_physics%grada(transport_zone_end-1)- &
+            delta_grad_floor=max(gradient_margin_floor,0.5d0*(sub_physics%grada(transport_zone_end-1)- &
                  sub_physics%gradT(transport_zone_end-1)) &
                  +dlnmu_dlnp)
          else
-            delta_grad_floor = 1.0d-3
+            delta_grad_floor = gradient_margin_floor
          endif
          delta_grad = max(grada_i(zone_idx)-grad_i(zone_idx),delta_grad_floor)
          stab%del_grad_diff_interface(zone_idx) = &
@@ -200,7 +200,7 @@ subroutine rotation_stability_setup(stab, sub_physics, &
 ! (now in rotation/retired/advection_diffusion.f90.txt)
 ! the dynamical shear: the |d omega/d ln r| at which Ri = 1/4
          stab%dynamical_shear_omega_limit(zone_idx)=sqrt(rho_i(zone_idx)/p_i(zone_idx)* &
-              max(grada_i(zone_idx) - grad_i(zone_idx),1.0d-3)) &
+              max(grada_i(zone_idx) - grad_i(zone_idx),gradient_margin_floor)) &
               *2.0d0*g_i(zone_idx)
 ! the mu-gradient Richardson term, (rho/P) g^2 (-d ln T/d ln mu)/d ln P
          stab%mu_gradient_richardson_coeff(zone_idx) = rho_i(zone_idx)*g_i(zone_idx)**2/ &

@@ -19,6 +19,11 @@ module circulation
       private
       public :: circulation_velocities, diffusion_velocity_scales, zahn_coupling_factor, compute_quadrupole
 
+! U below velocity_floor (cm/s) counts as zero. With
+! no_am_transport_in_core the velocities are zeroed out to the first
+! interface where L reaches core_luminosity_fraction of the total.
+      double precision, parameter :: velocity_floor = 1.0d-20
+      double precision, parameter :: core_luminosity_fraction = 9.9d-1
 contains
 
 ! ---------------------------------------------------------------
@@ -229,7 +234,7 @@ end subroutine average_with_previous
 subroutine sum_velocities()
       do i =zone_min,zone_max
          total_velocity(i) = mechanism_sum(mechanism_velocity(:,i))
-         if (total_velocity(i).lt.1.0d-20) &
+         if (total_velocity(i).lt.velocity_floor) &
               total_velocity(i)=0.0d0
          if (total_velocity(i).gt.0.0d0) any_transport_active=.true.
       end do
@@ -243,7 +248,7 @@ end subroutine sum_velocities
 subroutine zero_transport_in_core()
       do i = zone_min,zone_max
          dell = stab%luminosity_interface(i)/total_luminosity
-         if (dell.lt.9.9d-1) then
+         if (dell.lt.core_luminosity_fraction) then
             total_velocity(i) = 0.0d0
             do m = 1, n_transport_mechanisms
                mechanism_velocity(m,i) = 0.0d0

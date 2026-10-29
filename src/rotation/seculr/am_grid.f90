@@ -11,6 +11,9 @@ module am_grid
       private
       public :: am_transport_grid, equal_grid_to_model
 
+! equal_grid_to_model rescales the zones' new j unless their change of J
+! matches the grid's within map_back_tolerance of it.
+      double precision, parameter :: map_back_tolerance = 1.0d-5
 contains
 
 ! ---------------------------------------------------------------
@@ -388,7 +391,7 @@ subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_m
 ! tolerance is 1e-5 of that total, so without a loss it is zero and the
 ! scaling below always runs, removing the interpolation's small error.
       test = abs(sumdjmod - total_delta_angular_momentum)
-      val = 1.0d-5*abs(total_delta_angular_momentum)
+      val = map_back_tolerance*abs(total_delta_angular_momentum)
 ! Scale j over i0..i1 by one factor so that the zones' total J becomes
 ! sumjmod + total_delta_angular_momentum.
       if (test.gt.val) then

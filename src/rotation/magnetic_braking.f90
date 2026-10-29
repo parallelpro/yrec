@@ -64,6 +64,15 @@ module magnetic_braking
          type(wind_conditions) :: conditions
       end type braking_law
 
+! brake_convection_zone's implicit midpoint iteration stops when two
+! iterates of omega differ by at most brake_iteration_tolerance,
+! relatively, or after brake_iteration_limit corrections. The Kawaler
+! law's mass-loss rate is fixed at kawaler_mass_loss_rate_msun_yr and
+! enters as (Mdot/kawaler_mass_loss_unit_msun_yr)**exmd.
+      double precision, parameter :: brake_iteration_tolerance = 1.0d-6
+      integer, parameter :: brake_iteration_limit = 20
+      double precision, parameter :: kawaler_mass_loss_rate_msun_yr = 2.0d-14, &
+           kawaler_mass_loss_unit_msun_yr = 1.0d-14
 contains
 
 !----------------------------------------------------------------------
@@ -134,10 +143,10 @@ subroutine brake_convection_zone(log_luminosity_lsun, full_timestep, cz_mass_bot
             omega_iter_new = omega_substep_start - domega(law, sub_timestep, omega_iter, .false.)
             domega_relative_change = 2.0d0*abs((omega_iter_prev-omega_iter_new)/ &
                  (omega_iter_prev+omega_iter_new))
-            if (domega_relative_change > 1.0d-6) then
+            if (domega_relative_change > brake_iteration_tolerance) then
                omega_iter = 0.5d0*(omega_substep_start+omega_iter_new)
                omega_iter_prev = omega_iter_new
-               if (iter_count <= 20) cycle omega_fixed_point
+               if (iter_count <= brake_iteration_limit) cycle omega_fixed_point
             endif
             exit omega_fixed_point
          end do omega_fixed_point
@@ -226,7 +235,7 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
          if (ierr /= 0) return
          call set_kawaler_radius(log_luminosity_lsun, log_teff, law)
          wind_coefficient = full_timestep/cz_moment_of_inertia*rotation_settings%wind_constant* &
-              pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
+              pow((law%mass_loss_rate_msun_yr/kawaler_mass_loss_unit_msun_yr), rotation_settings%wind_mass_loss_exponent) &
               *pow((law%total_radius_cm/rotation_settings%solar_radius_cgs), rotation_settings%wind_radius_exponent)*pow(total_mass_msun, rotation_settings%wind_mass_exponent)
          fcen1 = 1.0d0
          fcen2 = 1.0d0
@@ -369,7 +378,7 @@ subroutine set_kawaler_radius(log_luminosity_lsun, log_teff, law)
       type(braking_law), intent(inout) :: law
       law%total_radius_cm = exp(ln10*log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
            rotation_settings%log10_solar_luminosity))
-      law%mass_loss_rate_msun_yr = 2.0d-14
+      law%mass_loss_rate_msun_yr = kawaler_mass_loss_rate_msun_yr
 end subroutine set_kawaler_radius
 
 ! The drop in Omega over dt from the law's torque at omega. For the
@@ -393,7 +402,7 @@ real(dp) function domega(law, dt, omega, initial)
               *pow(min(omega_scaled,law%omega_saturation), (rotation_settings%wind_law_omega_exponent-1.0d0))*fcen
       else
          domega = (dt/law%cz_moment_of_inertia)*rotation_settings%wind_constant* &
-              pow((law%mass_loss_rate_msun_yr/1.0d-14), rotation_settings%wind_mass_loss_exponent) &
+              pow((law%mass_loss_rate_msun_yr/kawaler_mass_loss_unit_msun_yr), rotation_settings%wind_mass_loss_exponent) &
               *omega*pow((law%total_radius_cm/rotation_settings%solar_radius_cgs), rotation_settings%wind_radius_exponent)* &
               pow(law%total_mass_msun, rotation_settings%wind_mass_exponent) &
               *pow(min(omega,law%omega_saturation), (rotation_settings%wind_law_omega_exponent-1.0d0))

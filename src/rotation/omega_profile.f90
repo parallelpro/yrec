@@ -23,6 +23,8 @@ module omega_profile
 ! transport's iterations before the last.
       double precision, parameter :: default_inertia_tolerance = 1.0d-14
 
+! The most Newton corrections solid_body_omega takes.
+      integer, parameter :: max_newton_corrections = 20
 contains
 
 ! ---------------------------------------------------------------
@@ -215,7 +217,7 @@ subroutine solid_body_omega(log_density, specific_angular_momentum, log_radius, 
       if(.not.disk_locked)then
       if(dabs(delta_angular_momentum/total_angular_momentum).gt. &
            tolerance) then
-         if(iteration_count.lt.20) then
+         if(iteration_count.lt.max_newton_corrections) then
             iteration_count = iteration_count + 1
             delta_omega = delta_angular_momentum/ &
                  (total_moment_of_inertia + omega_guess*total_di_domega)

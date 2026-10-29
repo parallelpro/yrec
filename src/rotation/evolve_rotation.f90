@@ -12,6 +12,9 @@ module evolve_rotation
       private
       public :: evolve_angular_momentum
 
+! The last sub-step ends exactly at the end of the step: a sub-step
+! that ends within this fraction of the step of its end is the last.
+      double precision, parameter :: substep_clock_tolerance = 1.0d-6
 contains
 
 ! ---------------------------------------------------------------
@@ -275,7 +278,7 @@ end subroutine count_substeps
 ! Advance the sub-step clock; the last sub-step ends exactly at the end
 ! of the step (within 1e-6 of it counts, against round-off).
 subroutine advance_substep_clock()
-      delts_test = full_timestep - full_timestep*1.0D-6
+      delts_test = full_timestep - full_timestep*substep_clock_tolerance
       if(elapsed_substep_time+sub_timestep.ge.delts_test)then
          sub_timestep = full_timestep - elapsed_substep_time
          elapsed_substep_time = full_timestep

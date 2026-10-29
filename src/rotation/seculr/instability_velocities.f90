@@ -11,11 +11,21 @@
 ! forms the structural coefficients. test_rotation_kernels checks them
 ! against the laws they keep.
 module instability_velocities
+      use rotation_configuration, only: gradient_margin_floor
       implicit none
       private
       public :: compute_eddington_sweet_velocity, inhibit_by_mu_gradient, &
            compute_gsf_velocity, compute_shear_velocities
 
+! The GSF velocity's mu-gradient inhibition is ignored where its limit
+! is below gsf_mu_negligible_fraction of |d omega/d ln r| or below
+! negligible_limit; the shear's mu gradient counts as absent below a
+! fractional Delta mu of uniform_mu_fraction, and its Richardson term
+! is floored at negligible_limit. (gradient_margin_floor, the margins'
+! floor, is rotation_configuration's.)
+      double precision, parameter :: gsf_mu_negligible_fraction = 1.0d-2
+      double precision, parameter :: negligible_limit = 1.0d-20
+      double precision, parameter :: uniform_mu_fraction = 1.0d-10
 contains
 
 ! ---------------------------------------------------------------
@@ -150,8 +160,8 @@ pure subroutine inhibit_by_mu_gradient(zone_min, zone_max, mu, log_pressure, &
           qmu = log(mu(i))-log(mu(i-1))
           qp = ln10*(log_pressure(i)-log_pressure(i-1))
           ddel=del_grad_diff_interface(i)+ qmu/qp
-          ddtest = max(del_grad_diff_interface(i),1.0d-3)
-          ddtest2 = max(ddel,1.0d-3)
+          ddtest = max(del_grad_diff_interface(i),gradient_margin_floor)
+          ddtest2 = max(ddel,gradient_margin_floor)
           qqq = ddtest/ddtest2
           es_circulation_velocity(i) = es_circulation_velocity(i)*qqq
 ! (commented out: the factor on the advection-diffusion transport's
@@ -236,11 +246,11 @@ pure subroutine compute_gsf_velocity(zone_min, zone_max, gsf_inhibition_mode, &
                gsf_circulation_velocity(i) = 0.0d0
                cycle
             else
-               qwrmx2 = 1.0d-2*domega_dlnr(i)
+               qwrmx2 = gsf_mu_negligible_fraction*domega_dlnr(i)
                if (abs(qwrmx).lt.abs(qwrmx2)) then
                   qwrmx2 = 1.0d0
                else
-                  if (abs(qwrmx).lt.1.0d-20) then
+                  if (abs(qwrmx).lt.negligible_limit) then
                      qwrmx2 = 1.0d0
                   else
                      qwrmx2 = sqrt((abs(domega_dlnr(i))-qwrmx)/qwrmx)
@@ -353,7 +363,7 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
          if (abs(domega_dlnr(i)).gt.qwrmx) then
 ! Unstable. Without a mu gradient (|Delta mu/mu| < 1e-10), U_SS as above.
             if (abs((mu(i)-mu(i-1))/mean_molecular_weight_interface(i)) &
-                 .lt.1.0d-10) then
+                 .lt.uniform_mu_fraction) then
                qwrmx2 = 0.0d0
                qwr = abs(domega_dlnr(i)) - qwrmx
                secular_shear_velocity(i)=8.0d0/4.5d1* &
@@ -367,7 +377,7 @@ subroutine compute_shear_velocities(zone_min, zone_max, critical_reynolds, &
 ! (1 - b) P = (R/mu) rho T. It reaches the dynamical criterion's 1/4
 ! (no Prandtl-number factor) at
 !   qwrmx2 = 2 sqrt(mu_gradient_richardson_coeff |Delta mu/mu|).
-               qwrmx2 = 2.0d0*sqrt(max(1.0d-20,mu_gradient_richardson_coeff(i)* &
+               qwrmx2 = 2.0d0*sqrt(max(negligible_limit,mu_gradient_richardson_coeff(i)* &
                         abs((mu(i)-mu(i-1))/ &
                         mean_molecular_weight_interface(i))))
                if (abs(domega_dlnr(i)).gt.qwrmx2) then

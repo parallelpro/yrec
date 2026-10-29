@@ -12,6 +12,15 @@ module transport_checks
       private
       public :: check_angular_momentum, check_composition, check_mixed_species
 
+! check_angular_momentum's iteration history holds
+! max_recorded_iterations (io's derive_controls rejects a rotating run
+! with more). A negative interior abundance smaller than
+! small_abundance_fraction of the surface value is repaired; a larger
+! one cuts the sub-step, and the cut after max_substep_cuts stops the
+! run.
+      integer, parameter :: max_recorded_iterations = 16
+      double precision, parameter :: small_abundance_fraction = 1.0d-5
+      integer, parameter :: max_substep_cuts = 3
 contains
 
 ! ---------------------------------------------------------------
@@ -88,8 +97,8 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
 ! locals
 ! The history of measure_convergence, one entry per iteration: room for
 ! 16 iterations, and max_diffusion_iters is not checked against it.
-      double precision :: max_delta_j_by_iter(16)
-      integer :: max_delta_j_zone_by_iter(16)
+      double precision :: max_delta_j_by_iter(max_recorded_iterations)
+      integer :: max_delta_j_zone_by_iter(max_recorded_iterations)
       integer :: zone_index, scan_index
       double precision :: delta_j_fraction
       double precision :: inertia_tolerance, shape_tolerance
@@ -389,7 +398,7 @@ subroutine check_species_range(composition, species_begin, species_end, num_zone
 ! below 1e-5 of the surface abundance in size is replaced by the mean
 ! of its neighbours (at least 0) instead of cutting the sub-step.
                if(abs(composition(species_index,zone_index)).lt. &
-                    1.0d-5*composition(species_index,num_zones))then
+                    small_abundance_fraction*composition(species_index,num_zones))then
                   composition(species_index,zone_index) = &
                        max(0.0d0,0.5d0* &
                        (composition(species_index,zone_index+1)+ &
@@ -399,7 +408,7 @@ subroutine check_species_range(composition, species_begin, species_end, num_zone
 ! Otherwise halve the sub-step and redo it; the fourth cut of the
 ! sub-step stops the run instead.
                cut_count = cut_count + 1
-               if(cut_count.gt.3)then
+               if(cut_count.gt.max_substep_cuts)then
                   write(6,1010) species_index,zone_index, &
                        composition(species_index,zone_index)
                   write(run_log_unit,1010) species_index,zone_index, &

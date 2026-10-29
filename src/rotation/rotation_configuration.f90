@@ -23,6 +23,11 @@ module rotation_configuration
 ! the iterations.
       integer, parameter :: last_mu_species = i_he3
 
+! The floor of the margins grad_ad - grad and grad_ad - grad +
+! d ln mu/d ln P in the stability coefficients
+! (rotation_stability_setup: Delta, the dynamical-shear limit) and in
+! the mu-gradient inhibition of the Eddington-Sweet circulation.
+      double precision, parameter, public :: gradient_margin_floor = 1.0d-3
       type :: rotation_settings_t
 ! instability transport (secular_transport) on. The step is cut into
 ! sub-steps that each change omega by at most diffusion_timestep_factor
