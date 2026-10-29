@@ -33,7 +33,7 @@ The `pow(0, y ≤ 0)` difference is MESA's and kept (2026-10, a revisable defaul
 
 `tools/check_boundaries.py` (`check_math_lib`) enforces, for every source file outside `math/` and the test programs:
 
-- a procedure that calls an elementary transcendental (`exp`, `log`, `log10`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`) has `use math_lib` in scope, its own or its host's;
+- a procedure that calls a function math_lib shadows under crmath (`exp`, `log`, `log10`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`, `hypot`, and `expm1`, `log1p`, `log2`: the checker reads them from math_lib's `public ::` lines under `#ifdef YREC_CRMATH`) has `use math_lib` in scope, its own or its host's;
 - no real exponent appears after `**`: write `pow(x, y)`, and `exp10(x)` for 10 to a real power. Integer exponents (`x**2`, `x**n`) are exact repeated multiplication and stay as `**`. Parameter initializers are exempt (the compiler folds them, correctly rounded).
 
 `use math_lib` is the one `use` without an `only:` list (docs/GUIDELINES.md, "Declarations and interfaces", rule 2): under crmath its procedures shadow the intrinsics, which an `only:` list cannot express for a file that must also build without them.
@@ -44,7 +44,7 @@ To route another elementary function through math_lib (say `erf`):
 
 1. Check that crmath provides it (`$MESASDK_DIR/include/crmath.mod`; the wrapper's source lists its functions).
 2. Add it to the `public ::` lines under `#ifdef YREC_CRMATH` in `math_lib.f90`. Under the intrinsic backend nothing is needed: the intrinsic is used.
-3. Add it to `MATH_FUNCS` in `tools/check_boundaries.py`, so that its callers must `use math_lib`; run the checker and add `use math_lib` where it asks.
+3. Run `python3 tools/check_boundaries.py` (in `src/`): it reads the shadowed names from those `public ::` lines, so its callers now must `use math_lib`; add it where the checker asks.
 4. Add a check to `math/test/test_math.f90`, under both backends.
 
 A function crmath lacks would need a definition in both branches of the `#ifdef`, as `pow` and `exp10` have.

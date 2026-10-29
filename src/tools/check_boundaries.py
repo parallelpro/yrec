@@ -124,7 +124,29 @@ def strip_comments(text):
 
 
 
-MATH_FUNCS = r"(?:exp|log|log10|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh)"
+# The elementary functions math_lib shadows under the crmath backend: the
+# names on its public lines inside `#ifdef YREC_CRMATH` (math/README.md,
+# section 4). A caller of one must have `use math_lib` in scope.
+def shadowed_math_functions(src_root):
+    names, in_crmath = [], False
+    for line in (src_root / "math" / "math_lib.f90").read_text().splitlines():
+        directive = line.strip().lower()
+        if directive.startswith("#ifdef") and "yrec_crmath" in directive:
+            in_crmath = True
+        elif directive.startswith(("#else", "#endif")):
+            in_crmath = False
+        elif in_crmath:
+            m = re.match(r"(?i)^\s*public\s*::(.*)$", line)
+            if m:
+                names += [n.strip().lower() for n in m.group(1).split(",") if n.strip()]
+    if not names:
+        raise SystemExit("check_boundaries: no shadowed functions found in math/math_lib.f90")
+    return names
+
+
+def math_funcs_pattern(src_root):
+    names = sorted(shadowed_math_functions(src_root), key=len, reverse=True)
+    return r"(?:" + "|".join(names) + r")"
 
 def mask_strings(line):
     out, q = [], None
@@ -471,10 +493,12 @@ def check_facade_imports(src_root):
     return problems
 
 
-# Directories whose code does no I/O (2026-10): their routines return a
-# status code and their callers report (numerics/README.md, section 3).
+# Directories whose code does no I/O and never stops the run (2026-10):
+# their routines return a status code and their callers report
+# (numerics/README.md, section 3).
 NO_IO_DIRS = ["numerics", "math"]
 IO_STATEMENT = re.compile(r"(?i)(?<![\w%])(?:(?:write|read|open|close|inquire)\s*\(|print\s*[*'0-9\x22])")
+STOP_STATEMENT = re.compile(r"(?i)(?<![\w%])(?:error\s+)?stop(?![\w%])")
 
 def check_no_io(src_root):
     problems = []
@@ -487,6 +511,8 @@ def check_no_io(src_root):
                 code = mask_strings(line)
                 if IO_STATEMENT.search(code):
                     problems.append(f"{rel}:{i}: I/O statement in a no-I/O directory: {line.strip()[:60]}")
+                if STOP_STATEMENT.search(code):
+                    problems.append(f"{rel}:{i}: stop in a no-I/O directory (return a status): {line.strip()[:60]}")
     return problems
 
 
@@ -517,7 +543,7 @@ def check_math_lib(src_root):
     rounded, and a math_lib procedure may not appear in a constant
     expression."""
     import re as _re
-    ref = _re.compile(r"(?i)(?<![a-z0-9_])" + MATH_FUNCS + r"\s*\(")
+    ref = _re.compile(r"(?i)(?<![a-z0-9_])" + math_funcs_pattern(src_root) + r"\s*\(")
     param_decl = _re.compile(r"(?i)^\s*(double\s+precision|real|integer)\b[^:]*\bparameter\b[^:]*::")
 
     def without_parameter_decls(lines):
