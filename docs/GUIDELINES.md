@@ -163,8 +163,14 @@ For each file:
 the name says otherwise.** A non-CGS variable carries its unit as a
 suffix (`_msun`, `_rsun`, `_lsun`, `_gyr`, `_yr`, `_uhz`, `_per_gyr`);
 `log_x` is log10 of x in the unit its name implies. New code follows
-this; renames of older names happen as code is touched (byte-identical
-commits). Output columns keep their MESA names.
+this; the star's members were renamed to it on 2026-10-29 (a568e084:
+the unit before a lifetime qualifier, `luminosity_lsun_start`;
+`star_mass` keeps MESA's name), and other older names follow as code is
+touched (byte-identical commits). Output columns keep their MESA names.
+Earlier values of a star member are `<member>_start` (the start of the
+step), `<member>_prev` (the previous model) and
+`<member>_iteration_start` (the start of the structure-rotation
+iteration).
 
 
 **Modules, files and procedures (2026-10).** Four rules; new code
@@ -244,7 +250,7 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
 4. **A driver's header lists the `star` members it reads and writes**,
    directly above its `subroutine` line:
 
-       !   star reads: jcz, convective_turnover_timescale
+       !   star reads: envelope_cz_bottom_index_start, convective_turnover_timescale
        !   star writes: none
 
    `tools/check_star_contracts.py` checks every declared list against the

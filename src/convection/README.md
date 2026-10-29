@@ -36,7 +36,7 @@ The burn-and-settle sub-stepping of rotating models (`mid_timestep_model`'s `bur
 
 The star layer builds it in `convection_settings_from_star` (`setup/microphysics_settings.f90`). run_yrec installs it in `begin_kind_card`, after the card's mixing length and the Monte Carlo run's L☉ are set.
 
-The overshoot region below the envelope is model state. `find_convection_zones` returns it (`overshoot_bottom`, `overshoot_top`, which the star layer keeps as `star%iov1`/`iov2`). The callers of `compute_temperature_gradients` pass `in_overshoot_region` for the zone they evaluate.
+The overshoot region below the envelope is model state. `find_convection_zones` returns it (`overshoot_bottom`, `overshoot_top`, which the star layer keeps as `star%envelope_overshoot_bottom_index`/`envelope_overshoot_top_index`). The callers of `compute_temperature_gradients` pass `in_overshoot_region` for the zone they evaluate.
 
 ## 3. Conventions
 

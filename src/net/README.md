@@ -41,7 +41,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
 | `core/run/run_driver.f90` | `run_yrec` installs the settings: `set_net_settings(net_settings_from_star(s), ierr)`, once per Monte-Carlo run. |
 | `core/step/burn_step.f90` | The star-layer driver (table below). |
 | `core/structure/shell_equations.f90` | `form_nuclear_energy_terms`: `compute_nuclear_energy` at every shell and Newton iteration of the Henyey solve. |
-| `core/structure/structure_equations.f90` | The chains into `star%luminosity_breakdown` (`luminosity_channel_of_chain`) and `star%eps_channels` (`eps_channel_of_chain`); `eps_total`, the sum of every chain's ε. |
+| `core/structure/structure_equations.f90` | The chains into `star%luminosity_breakdown_lsun` (`luminosity_channel_of_chain`) and `star%eps_channels` (`eps_channel_of_chain`); `eps_total`, the sum of every chain's ε. |
 
 `core/step/burn_step.f90`'s procedures:
 
@@ -168,7 +168,7 @@ Each check was confirmed to fail under a mutation of the code it covers (26 muta
 3. `state/star_info_lib.f90`: its luminosity channel `i_lum_<name>` (`n_lum_channels` + 1), and an `i_eps_*` slot if it gets a fraction column (`eps_channels` is sized 7).
 4. `core/structure/structure_equations.f90`: its case in `luminosity_channel_of_chain` (and `eps_channel_of_chain`, else 0). `eps_total` sums every chain already.
 5. `core/diagnostics/observables.f90`: add the channel to `renormalize_luminosity_breakdown`'s sum.
-6. For output, a history column that reads `s%luminosity_breakdown(i_lum_<name>)` (`io/history_output.f90`, `defaults/history_columns.list`).
+6. For output, a history column that reads `s%luminosity_breakdown_lsun(i_lum_<name>)` (`io/history_output.f90`, `defaults/history_columns.list`).
 
 **Add an isotope** (say Ne20, solved implicitly). This is the expensive extension:
 1. `state/composition_layout.f90`: a slot `i_<name>` (`n_species_extended` + 1). The species count is still a literal 15 in some forty declarations across the code (Phase 5 removes them), and `io/model_files.f90` writes the 15 slots (a model-format change).

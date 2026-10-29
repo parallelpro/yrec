@@ -6,7 +6,7 @@ A procedure may declare, in the comment block directly above its
 writes -- through the global `star`, or through the argument `s`
 (type(star_info)) that core's procedures receive it as:
 
-    !   star reads: jcz, convective_turnover_timescale
+    !   star reads: envelope_cz_bottom_index_start, convective_turnover_timescale
     !   star writes: none
 
 Long lists continue on further comment lines indented past the label.
