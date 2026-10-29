@@ -32,17 +32,16 @@ subroutine interpret_kind_cards(s)
       do nkind=1, numrun
 ! READ IN NMODLS AND MODEL SOURCE(MEMORY OR FIRST MODEL)-SAME FOR ALL
        rescale_kind(nkind) = kindrn(nkind)
+! The cards that evolve (kinds 1 and 3) stop at their age and central
+! abundance stops, and may fix the timestep.
+       if (kindrn(nkind) == 1 .or. kindrn(nkind) == 3) then
+          end_age_stop_active(nkind) = endage(nkind) > 0.0d0 .or. &
+               end_dcen(nkind) > 0.0d0 .or. end_xcen(nkind) > 0.0d0 .or. &
+               end_ycen(nkind) > 0.0d0
+          timestep_override_active(nkind) = setdt(nkind) > 0.0d0
+       end if
        if(kindrn(nkind).eq.1) then
 ! EVOLVE CARD
-! MHP 10/24 GENERALIZE STOP CONDITIONS
-!          LENDAG(NKIND) = ENDAGE(NKIND).GT.0D0
-            if(endage(nkind).gt.0.0d0 .or. end_dcen(nkind).gt.0.0d0 &
-           &  .or. end_xcen(nkind).gt.0.0d0 .or. end_ycen(nkind).gt.0.0d0)then
-               end_age_stop_active(nkind)=.true.
-            else
-               end_age_stop_active(nkind)=.false.
-            endif
-          timestep_override_active(nkind) = setdt(nkind).gt.0d0
             if (nmodls(nkind).gt.0) then
           if (lfirst(nkind)) then
              write(terminal_unit,350) nkind,nmodls(nkind)
@@ -107,14 +106,20 @@ subroutine interpret_kind_cards(s)
       550          format(1x,'card',i3, &
            &          ': rescale and evolve the starting model')
             else
-               write(terminal_unit,451) nkind
-               write(run_log_unit,451) nkind
-!   551          FORMAT(/1X,'RUN #',I3,
-!      1         '   RESCALE & EVOLVE THE PREVIOUS RUN''S LAST MODEL.')
+               write(terminal_unit,551) nkind
+               write(run_log_unit,551) nkind
+      551          format(1x,'card',i3, &
+           &          ': rescale and evolve the previous card''s model')
             end if
             write(terminal_unit,452) nmodls(nkind),(rescale_params(i,nkind),i = 1,4)
             write(run_log_unit,452) nmodls(nkind), &
            &       (rescale_params(i,nkind),i = 1,4)
+            if (end_age_stop_active(nkind) .or. timestep_override_active(nkind)) then
+               write(terminal_unit,370) endage(nkind), setdt(nkind), &
+                    end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
+               write(run_log_unit,370) endage(nkind), setdt(nkind), &
+                    end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
+            end if
        end if
 ! a positive rescale target sets the envelope Z (0, the default, keeps it)
          if(rescale_params(3,nkind).gt.0.0d0)  s%envelope_metal_fraction=rescale_params(3,nkind)
