@@ -98,6 +98,16 @@ program test_eos
       data g1_rho /1.0d-7,  1.0d-4,  1.0d-1,  80.0d0/
       data g1_p   /3.16d4,  1.0d8,   3.16d13, 1.6d17/
 
+! a table source's reference result at (log T, log P, X, Z), for
+! ramp_end_is_continuous
+      abstract interface
+         subroutine reference_eos(lt, lp, x, z, r)
+            import :: dp, eos_result
+            real(dp), intent(in) :: lt, lp, x, z
+            type(eos_result), intent(out) :: r
+         end subroutine reference_eos
+      end interface
+
       call get_environment_variable("YREC_INPUT", yrec_input)
       if (len_trim(yrec_input) == 0) then
          write(*,'(a)') "test_eos: FAIL (YREC_INPUT not set)"
@@ -753,10 +763,10 @@ end subroutine write_mhd_part
 !                          Fermi-Dirac correction), grad_ad and cp
 !                          against the ideal gas plus radiation, and
 !                          grad_ad -> 1/4 when radiation dominates
-!   continuity_checks      rho and grad_ad across the edges of the
+!   continuity_checks      every blended field across the ends of the
 !                          Saha-to-fully-ionized ramp (cutoff - 0.5 and
-!                          the cutoff) and across the OPAL 2006 table's
-!                          edge ramp
+!                          the cutoff; Yale alone and with SCV) and of
+!                          the OPAL 2006 table's edge ramp
 !   atmosphere_checks      eos_get with in_atmosphere = .true.
 !   envelope_table_checks  the SCV envelope table eos_set_mixture builds
 !                          for a new envelope composition
@@ -1095,65 +1105,117 @@ subroutine ideal_gas_checks()
       call check("radiation pressure above P: beta <= 0 returns ierr", ierr == 1)
 end subroutine ideal_gas_checks
 
-! rho, grad_ad, the ionization fractions and d(dln rho/dln T)/dln T and
-! /dln P on both sides of a boundary in log T (fixed log P): the jump
-! over 2e-7 in log T, against 1e-6 (1e-4 for the second derivatives,
-! which carry the fully ionized iteration's tolerance; a step at the
-! boundary would be the gap between the two solutions, 1e-3 to 1e-1)
-subroutine continuity_in_t(label, lt0, lp)
+! Every field a blend sets, on both sides of a boundary in log T (fixed
+! log P), 2e-7 in log T apart: log rho, rho, R/mu and 1/mu_e
+! (mean_weights false leaves these two out), the ionization fractions,
+! the four first derivatives and the six second derivatives. The
+! tolerances: 1e-6 (relative for rho, R/mu and cp), 1e-4 for the
+! second derivatives, which carry the fully ionized iteration's
+! tolerance; a field left out of a blend jumps by the gap between the
+! two solutions there, 1e-3 to 1e-1. The fields that jump are named.
+subroutine continuity_in_t(label, lt0, lp, mean_weights)
       character(len=*), intent(in) :: label
       real(dp), intent(in) :: lt0, lp
+      logical, intent(in) :: mean_weights
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0, h = 1.0d-7
       type(eos_result) :: below, above
       integer :: ierr1, ierr2
       call eos_at(lt0 - h, lp, x, z, below, ierr1)
       call eos_at(lt0 + h, lp, x, z, above, ierr2)
       call check(label, ierr1 == 0 .and. ierr2 == 0 .and. &
-           abs(above%log10_density - below%log10_density) < 1.0d-6 .and. &
-           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-6 .and. &
-           all(abs(above%ion_fraction - below%ion_fraction) < 1.0d-6) .and. &
-           abs(above%dlnrho_dlnt_dt - below%dlnrho_dlnt_dt) < 1.0d-4 .and. &
-           abs(above%dlnrho_dlnt_dp - below%dlnrho_dlnt_dp) < 1.0d-4)
+           results_agree(below, above, 1.0d-6, 1.0d-4, mean_weights, .true.))
 end subroutine continuity_in_t
 
+! Whether two results agree field by field (a to tol, the second
+! derivatives to tol2 when second is set; rho, R/mu and cp relative),
+! naming in the output the fields that do not.
+logical function results_agree(a, b, tol, tol2, mean_weights, second)
+      type(eos_result), intent(in) :: a, b
+      real(dp), intent(in) :: tol, tol2
+      logical, intent(in) :: mean_weights, second
+      character(len=200) :: off
+      off = ""
+      call note_gap(off, "log10_density", abs(a%log10_density - b%log10_density), tol)
+      call note_gap(off, "density", abs(a%density/b%density - 1.0d0), tol)
+      call note_gap(off, "beta", abs(a%beta - b%beta), tol)
+      if (mean_weights) then
+         call note_gap(off, "R/mu", abs(a%specific_gas_constant/b%specific_gas_constant - 1.0d0), tol)
+         call note_gap(off, "1/mu_e", abs(a%electron_mean_weight_inverse - b%electron_mean_weight_inverse), tol)
+      end if
+      call note_gap(off, "ion_fraction", maxval(abs(a%ion_fraction - b%ion_fraction)), tol)
+      call note_gap(off, "dlnrho_dlnt", abs(a%dlnrho_dlnt - b%dlnrho_dlnt), tol)
+      call note_gap(off, "dlnrho_dlnp", abs(a%dlnrho_dlnp - b%dlnrho_dlnp), tol)
+      call note_gap(off, "cp", abs(a%specific_heat_cp/b%specific_heat_cp - 1.0d0), tol)
+      call note_gap(off, "grad_ad", abs(a%adiabatic_gradient - b%adiabatic_gradient), tol)
+      if (second) then
+         call note_gap(off, "dlnrho_dlnt_dt", abs(a%dlnrho_dlnt_dt - b%dlnrho_dlnt_dt), tol2)
+         call note_gap(off, "dlnrho_dlnt_dp", abs(a%dlnrho_dlnt_dp - b%dlnrho_dlnt_dp), tol2)
+         call note_gap(off, "grad_ad_dt", abs(a%adiabatic_gradient_dt - b%adiabatic_gradient_dt), tol2)
+         call note_gap(off, "grad_ad_dp", abs(a%adiabatic_gradient_dp - b%adiabatic_gradient_dp), tol2)
+         call note_gap(off, "cp_dt", abs(a%specific_heat_cp_dt - b%specific_heat_cp_dt), tol2)
+         call note_gap(off, "cp_dp", abs(a%specific_heat_cp_dp - b%specific_heat_cp_dp), tol2)
+      end if
+      results_agree = len_trim(off) == 0
+      if (.not. results_agree) write(*,'(a,a)') "     jump in:", trim(off)
+end function results_agree
+
+! add name to the list off when gap is not below limit
+subroutine note_gap(off, name, gap, limit)
+      character(len=*), intent(inout) :: off
+      character(len=*), intent(in) :: name
+      real(dp), intent(in) :: gap, limit
+      if (.not. gap < limit) off = trim(off)//" "//name
+end subroutine note_gap
+
+! Continuity at both ends of the Saha ramp (its foot, cutoff - 0.5, and
+! the cutoff), with the Yale solvers alone and with SCV under the ramp's
+! foot; and at both ends of the OPAL 2006 table's edge ramp. At the
+! cutoff R/mu and 1/mu_e are left out: below it they are beta P/(rho T),
+! above it the composition's, 7e-4 apart (an open question to the
+! authors, docs/bug_sweep.md).
 subroutine continuity_checks()
       call configure_eos("yale_only")
       call continuity_in_t("continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)", &
-           5.5d0, 13.0d0)
-      call continuity_in_t("continuity: the blended quantities at the Saha cutoff", 6.0d0, 13.0d0)
-      call continuity_in_t("continuity: the blended quantities at the Saha cutoff, denser", 6.0d0, 15.0d0)
+           5.5d0, 13.0d0, .true.)
+      call continuity_in_t("continuity: the blended quantities at the Saha cutoff", 6.0d0, 13.0d0, .false.)
+      call continuity_in_t("continuity: the blended quantities at the Saha cutoff, denser", &
+           6.0d0, 15.0d0, .false.)
+      call configure_eos("scv_only", scv=.true.)
+      call continuity_in_t("continuity: the blended quantities at the Saha ramp's foot, SCV under it", &
+           5.5d0, 13.0d0, .true.)
 ! the OPAL 2006 table's edge at log T = 5, in log P: the blend is
 ! OPAL's own result below log P = 12.87, the Yale/SCV result above
-! 13.01, and ramps between. Each end of the ramp is bisected (to 1e-11
-! in log P) and the two sides compared: rho to 1e-8 and grad_ad to 1e-7
-! in the log (the gap between the two results there is 1e-3 to 1e-2).
+! 13.01, and ramps between
       call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
-      call check("continuity: rho and grad_ad where the OPAL 2006 edge ramp reaches OPAL", &
-           ramp_end_is_continuous(12.80d0, 12.94d0, .true.))
-      call check("continuity: rho and grad_ad at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
-           ramp_end_is_continuous(13.05d0, 12.94d0, .false.))
+      call check("continuity: where the OPAL 2006 edge ramp reaches OPAL", &
+           ramp_end_is_continuous(5.0d0, 12.80d0, 12.94d0, opal2006_alone))
+      call check("continuity: at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
+           ramp_end_is_continuous(5.0d0, 13.05d0, 12.94d0, without_opal))
 end subroutine continuity_checks
 
-! At log T = 5 between log P = lp_equal (where the blend equals the
-! reference) and lp_differ (inside the ramp, where it does not), bisect
-! for the end of the OPAL 2006 edge ramp and compare rho and grad_ad on
-! its two sides. The reference is OPAL's own result (compute_opal_eos)
-! at the ramp's inner end (inner_end), and the Yale/SCV result (OPAL
-! switched off) at the table's edge.
-logical function ramp_end_is_continuous(lp_equal, lp_differ, inner_end)
-      real(dp), intent(in) :: lp_equal, lp_differ
-      logical, intent(in) :: inner_end
-      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 5.0d0
+! A table source's edge ramp at log T = lt, in log P, between lp_equal
+! (where the blend is the reference: the source alone at the ramp's inner
+! end, the blend without the source at its outer end) and lp_differ
+! (inside the ramp): the end is bisected to 1e-11 in log P and every
+! field the table blend sets (log rho, rho, beta, the mean weights, the
+! first derivatives) compared on its two sides, to 1e-7 (the gap between
+! the two results there is 1e-3 to 1e-2; beta is OPAL's and Yale's alike
+! there, so its omission would not show). Any source passes its own two
+! references.
+logical function ramp_end_is_continuous(lt, lp_equal, lp_differ, reference)
+      real(dp), intent(in) :: lt, lp_equal, lp_differ
+      procedure(reference_eos) :: reference
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
       real(dp) :: a, b, m
       type(eos_result) :: below, above
       integer :: k, ierr1, ierr2
       logical :: ok
       a = lp_equal
       b = lp_differ
-      ok = blend_equals_reference(a, inner_end) .and. .not. blend_equals_reference(b, inner_end)
+      ok = blend_equals_reference(lt, a, reference) .and. .not. blend_equals_reference(lt, b, reference)
       do k = 1, 40
          m = 0.5d0*(a + b)
-         if (blend_equals_reference(m, inner_end)) then
+         if (blend_equals_reference(lt, m, reference)) then
             a = m
          else
             b = m
@@ -1162,34 +1224,47 @@ logical function ramp_end_is_continuous(lp_equal, lp_differ, inner_end)
       call eos_at(lt, a, x, z, below, ierr1)
       call eos_at(lt, b, x, z, above, ierr2)
       ramp_end_is_continuous = ok .and. ierr1 == 0 .and. ierr2 == 0 .and. &
-           abs(above%log10_density - below%log10_density) < 1.0d-8 .and. &
-           abs(above%adiabatic_gradient - below%adiabatic_gradient) < 1.0d-7
+           results_agree(below, above, 1.0d-7, 0.0d0, .true., .false.)
 end function ramp_end_is_continuous
 
-! Whether the production blend at (log T = 5, lp) equals OPAL's own
-! result (opal_reference) or the Yale/SCV result, to 1e-12 in log rho.
-logical function blend_equals_reference(lp, opal_reference)
-      real(dp), intent(in) :: lp
-      logical, intent(in) :: opal_reference
-      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 5.0d0
-      type(eos_result) :: blend, reference
-      type(eos_settings_t) :: s
+! Whether the blend at (lt, lp) is the reference's result: the same log
+! rho, bit for bit (adopting a table's result copies it; a blend with a
+! weight below 1 does not), so that the bisection finds where the blend
+! starts, not where it has moved rho by a rounding error.
+logical function blend_equals_reference(lt, lp, reference)
+      real(dp), intent(in) :: lt, lp
+      procedure(reference_eos) :: reference
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+      type(eos_result) :: blend, ref
+      integer :: ierr
+      call eos_at(lt, lp, x, z, blend, ierr)
+      call reference(lt, lp, x, z, ref)
+      blend_equals_reference = blend%log10_density == ref%log10_density
+end function blend_equals_reference
+
+! The references of the OPAL 2006 edge ramp: OPAL's own result, and the
+! blend with OPAL switched off.
+subroutine opal2006_alone(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
       integer :: ierr
       logical :: covers
-      call eos_at(lt, lp, x, z, blend, ierr)
-      if (opal_reference) then
-         reference = eos_result()
-         call compute_opal_eos(iv_opal06, lt, lp, x, z, reference, ierr, covers)
-      else
-         s = eos_settings
-         s%opal_vintage = opal_vintage_none
-         call set_eos_settings(s)
-         call eos_at(lt, lp, x, z, reference, ierr)
-         s%opal_vintage = opal_vintage_2006
-         call set_eos_settings(s)
-      end if
-      blend_equals_reference = abs(blend%log10_density - reference%log10_density) < 1.0d-12
-end function blend_equals_reference
+      r = eos_result()
+      call compute_opal_eos(iv_opal06, lt, lp, x, z, r, ierr, covers)
+end subroutine opal2006_alone
+
+subroutine without_opal(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      type(eos_settings_t) :: s, before
+      integer :: ierr
+      before = eos_settings
+      s = eos_settings
+      s%opal_vintage = opal_vintage_none
+      call set_eos_settings(s)
+      call eos_at(lt, lp, x, z, r, ierr)
+      call set_eos_settings(before)
+end subroutine without_opal
 
 ! in_atmosphere = .true. at Saha points, in the ramp and below it, with
 ! and without SCV: the same density, beta, ionization fractions, first
