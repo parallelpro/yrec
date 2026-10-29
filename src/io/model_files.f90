@@ -4,19 +4,40 @@
 ! The stellar model files. write_mod_model writes the .mod format: the
 ! final model, which is also the restart file and the solver's recovery
 ! source, and the Monte Carlo runs' models. read_mod_model reads it back.
-! read_yrec7 and read_model2 read the two older starting-model formats,
-! YREC7 and MODEL2 (llp 4/16/03), which share one layout: a header, the
-! luminosities, the envelope records (skipped), then the shells in four
-! parts (structure; CNO abundances; the extended composition; log J/M or
-! omega). MODEL2 adds the last two lines of arguments. read_starting_model
-! (core) picks the reader from the file's format tag. The readers fill
-! star% directly and return the file's own header values; several of
-! those share names with controls_buffer members, so this module never
-! uses controls_buffer.
+! read_yrec7 and read_model2 read the two older starting-model formats
+! (read_starting_model, in core, picks the reader from the file's format
+! tag):
+!   YREC7 (tag NMOD): a header, the physics flags, the luminosities, the
+!     three envelope-triangle records, then the shells in four parts: the
+!     structure with X and Z, one line per shell; He3 and CNO, one value
+!     per convection zone and one line per radiative shell; the light
+!     elements H2-Be9, two shells per line; and -log10(omega), eight
+!     shells per line.
+!   MODEL2 (tag MOD2, llp 4/16/03): a header, the physics flags and
+!     codes, the luminosities, the three envelope records, three heading
+!     lines, then one line per shell with every quantity.
+! Both readers take the same arguments, the file's header values (the
+! last two lines of arguments are MODEL2's; read_yrec7 gives them their
+! defaults). They fill star% directly; several of the header values
+! share names with controls_buffer members, so this module never uses
+! controls_buffer.
 module model_files
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use star_info_lib, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
+           i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9
       implicit none
       private
       public :: write_mod_model, read_mod_model, read_yrec7, read_model2
+
+! The .mod format's composition columns, by slot, and its column-header
+! line (the writer writes it, the reader requires it).
+      integer, parameter :: mod_slots(15) = [i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
+           i_li6, i_li7, i_be9]
+      character(len=*), parameter :: mod_columns = &
+           'columns: zone log_mass logR luminosity logP logT' &
+           // ' logRho conv omega h1 he4 z he3 c12 c13 n14 n15 o16 o17 o18' &
+           // ' h2 li6 li7 be9'
 
 contains
 
@@ -33,21 +54,13 @@ contains
 ! appended after the ones already written (the Monte Carlo model file,
 ! one model per run).
 subroutine write_mod_model(s, iwrite, replace)
-      use star_info_lib, only: star_info, i_h1, i_he4, i_metals, i_he3, i_c12, &
-           i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
-           i_be9
-      use io_units
+      use star_info_lib, only: star_info
+      use io_units, only: last_model_unit, run_log_unit
       use run_log, only: solver_diagnostics
-      implicit none
       type(star_info), intent(in) :: s
-
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace
-
       integer :: k
-      integer, parameter :: slots(15) = [i_h1, i_he4, i_metals, i_he3, &
-           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
-           i_li6, i_li7, i_be9]
 
       if (replace) rewind iwrite
       write(iwrite,'(a)') 'YMOD 1'
@@ -62,27 +75,19 @@ subroutine write_mod_model(s, iwrite, replace)
       write(iwrite,'(a,1x,es26.16e3)')  'mixing_length_alpha ', s%mixing_length_alpha
       write(iwrite,'(a,1x,l1)')         'extended_composition', s%job%use_extended_composition
       write(iwrite,'(a,1x,l1)')         'rotation_active     ', s%job%rotation_active
-      write(iwrite,'(a)') 'columns: zone log_mass logR luminosity logP logT' &
-           // ' logRho conv omega h1 he4 z he3 c12 c13 n14 n15 o16 o17 o18' &
-           // ' h2 li6 li7 be9'
+      write(iwrite,'(a)') mod_columns
       do k = 1, s%nz
          write(iwrite,'(i6,6(1x,es26.16e3),1x,l1,16(1x,es26.16e3))') k, &
               s%log_mass(k), s%logR(k), s%luminosity_lsun(k), &
               s%logP(k), s%logT(k), s%logRho(k), &
               s%convective_flag(k), s%omega(k), &
-              s%xa(slots(1),k),  s%xa(slots(2),k),  s%xa(slots(3),k), &
-              s%xa(slots(4),k),  s%xa(slots(5),k),  s%xa(slots(6),k), &
-              s%xa(slots(7),k),  s%xa(slots(8),k),  s%xa(slots(9),k), &
-              s%xa(slots(10),k), s%xa(slots(11),k), s%xa(slots(12),k), &
-              s%xa(slots(13),k), s%xa(slots(14),k), s%xa(slots(15),k)
+              s%xa(mod_slots,k)
       end do
       flush(iwrite)
 
-! 2026 log redesign: the per-model terminal echo is replaced by the
-! run-log progress line (run_log); the "DUMPED MODEL" bookkeeping
-! is solver forensics behind the diagnostics flag.
+! the solver forensics' record of the write
       if (solver_diagnostics()) then
-         if (iwrite .eq. last_model_unit) then
+         if (iwrite == last_model_unit) then
           write(run_log_unit,330) s%model_number, iwrite
          else
           write(run_log_unit,340) s%model_number, s%age_gyr, iwrite
@@ -90,28 +95,24 @@ subroutine write_mod_model(s, iwrite, replace)
       end if
   330 format(' DUMPED MODEL',I5,'  FILE',I3)
   340 format(' DUMPED MODEL',I5,' AGE',F13.9,'  FILE',I3)
-
-      return
 end subroutine write_mod_model
 
 ! ---------------------------------------------------------------
-! Named global values (unknown names are reported and ignored, so the
-! format can grow), the column-header line (checked against the expected
-! layout), then one row per shell into star%. The three values the
-! deck-consistency check and the timestep seeding need are returned. The
-! luminosity breakdown is zeroed; the first energy-generation call
-! computes it.
+! Named global values (unknown names are noted in the run log and
+! ignored, so the format can grow), the column-header line (it must be
+! mod_columns), then one row per shell into star%. The four header
+! values the deck-consistency check and the timestep seeding need are
+! returned: the timestep, the mixing length, and the extended-
+! composition and rotation flags. The luminosity breakdown is zeroed;
+! the first energy-generation call computes it. A malformed file is
+! reported and returns ierr = 1.
 subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
      use_extended_composition0, rotation_active0, ierr)
-      use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
-           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
-           i_li7, i_be9
-      use io_units
-      implicit none
+      use star_info_lib, only: star_info
+      use io_units, only: run_log_unit
       type(star_info), intent(inout) :: s
-
       integer, intent(in) :: iread
-      double precision, intent(out) :: timestep_yr, mixing_length0
+      real(dp), intent(out) :: timestep_yr, mixing_length0
       logical, intent(out) :: use_extended_composition0, rotation_active0
       integer, intent(out) :: ierr
 
@@ -119,13 +120,6 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
       character(len=64) :: name
       character(len=256) :: msg
       integer :: k, izone, ios
-      integer, parameter :: slots(15) = [i_h1, i_he4, i_metals, i_he3, &
-           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, &
-           i_li6, i_li7, i_be9]
-      character(len=*), parameter :: expected_columns = &
-           'columns: zone log_mass logR luminosity logP logT' &
-           // ' logRho conv omega h1 he4 z he3 c12 c13 n14 n15 o16 o17 o18' &
-           // ' h2 li6 li7 be9'
 
       ierr = 0
       timestep_yr = 0.0d0
@@ -137,9 +131,8 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
       read(iread,'(a)',iostat=ios,iomsg=msg) line
       call check_model_read(ios, msg, iread, 'the format tag', ierr)
       if (ierr /= 0) return
-      if (line(1:6) .ne. 'YMOD 1') then
-         write(run_log_unit,'(a)') 'READ_MOD_MODEL: not a YMOD 1 file'
-         ierr = 1
+      if (line(1:6) /= 'YMOD 1') then
+         call report_model_error(iread, 'is not a YMOD 1 file', ierr)
          return
       end if
 
@@ -147,12 +140,10 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
       do
          read(iread,'(a)',iostat=ios) line
          if (ios /= 0) then
-            write(run_log_unit,'(a)') &
-                 'READ_MOD_MODEL: file ended before columns line'
-            ierr = 1
+            call report_model_error(iread, 'ends before its columns line', ierr)
             return
          end if
-         if (line(1:8) .eq. 'columns:') exit
+         if (line(1:8) == 'columns:') exit
          read(line,*,iostat=ios) name
          if (ios /= 0 .or. len_trim(line) == 0) cycle
          select case (trim(name))
@@ -180,53 +171,38 @@ subroutine read_mod_model(s, iread, timestep_yr, mixing_length0, &
             read(line,*,iostat=ios,iomsg=msg) name, rotation_active0
          case default
             write(run_log_unit,'(2a)') &
-                 'READ_MOD_MODEL: ignoring unknown global ', trim(name)
+                 ' read_mod_model: ignoring the unknown global ', trim(name)
             ios = 0
          end select
          call check_model_read(ios, msg, iread, 'the global '//trim(name), ierr)
          if (ierr /= 0) return
       end do
 
-      if (trim(line) .ne. expected_columns) then
-         write(run_log_unit,'(a)') &
-              'READ_MOD_MODEL: unexpected column layout:'
-         write(run_log_unit,'(a)') trim(line)
-         ierr = 1
+      if (trim(line) /= mod_columns) then
+         call report_model_error(iread, 'has the columns ' // trim(line(9:)), ierr)
          return
       end if
-      if (s%nz < 1 .or. s%nz > json) then
-         write(run_log_unit,'(a,i9)') &
-              'READ_MOD_MODEL: bad num_zones ', s%nz
-         ierr = 1
-         return
-      end if
+      call check_zone_count(s%nz, iread, ierr)
+      if (ierr /= 0) return
 
       do k = 1, s%nz
-         read(iread,*,iostat=ios) izone, &
+         read(iread,*,iostat=ios,iomsg=msg) izone, &
               s%log_mass(k), s%logR(k), s%luminosity_lsun(k), &
               s%logP(k), s%logT(k), s%logRho(k), &
               s%convective_flag(k), s%omega(k), &
-              s%xa(slots(1),k),  s%xa(slots(2),k),  s%xa(slots(3),k), &
-              s%xa(slots(4),k),  s%xa(slots(5),k),  s%xa(slots(6),k), &
-              s%xa(slots(7),k),  s%xa(slots(8),k),  s%xa(slots(9),k), &
-              s%xa(slots(10),k), s%xa(slots(11),k), s%xa(slots(12),k), &
-              s%xa(slots(13),k), s%xa(slots(14),k), s%xa(slots(15),k)
-         if (ios /= 0) then
-            write(run_log_unit,'(a,i7)') &
-                 'READ_MOD_MODEL: read error at shell ', k
-            ierr = 1
-            return
-         end if
+              s%xa(mod_slots,k)
+         call check_model_read(ios, msg, iread, 'the shells', ierr)
+         if (ierr /= 0) return
       end do
 
-! TLUMX was only a cosmetic seed; compute_zone_energy recomputes it on the first step.
+! (the energy generation's first call computes the breakdown)
       s%luminosity_breakdown = 0.0d0
-
-      return
 end subroutine read_mod_model
 
 ! ---------------------------------------------------------------
-! A YREC7-format model; the arguments are the file's header values.
+! A YREC7-format model (the module header gives its layout); the
+! arguments are the file's header values, MODEL2's at their defaults.
+! xa and omega are zeroed first, for what the file does not hold.
 subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
@@ -236,73 +212,53 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
      envelope_overshoot_active, lovstm, use_pure_z_table, &
      use_semiconvection, disk_pressure, disk_temperature, &
      wind_saturation_omega, ierr)
-      use io_units
-      use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, i_lum_grav, &
-           i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
+      use io_units, only: run_log_unit
+      use star_info_lib, only: star_info, json
       use math_lib
-      implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(out) :: mixing_length
-      double precision, intent(out) :: timestep_yr
-      double precision, intent(out) :: triangle_orientation
+      real(dp), intent(out) :: mixing_length
+      real(dp), intent(out) :: timestep_yr
+      real(dp), intent(out) :: triangle_orientation
       integer, intent(in) :: iread
       integer, intent(out) :: core_cz_top_index, envelope_cz_bottom_index
       logical, intent(out) :: use_extended_composition, rotation_active
-! atm_code, eos_code, hik_code, alok_code and
-! star%initial_composition_code: the format's physics-option codes,
-! placeholders here (their encoding is not interpreted)
-      character*4, intent(out) :: atm_code
-      character*6, intent(out) :: eos_code
-      character*4, intent(out) :: hik_code
+! atm_code, eos_code, hik_code, alok_code: the MODEL2 format's
+! physics-option codes, "?" here (their encoding is not interpreted)
+      character(len=4), intent(out) :: atm_code
+      character(len=6), intent(out) :: eos_code
+      character(len=4), intent(out) :: hik_code
       logical, intent(out) :: use_diffusion_y, use_diffusion_z, &
            disk_locking_active, instability_transport_active, use_wind_torque
-      character*4, intent(out) :: alok_code
+      character(len=4), intent(out) :: alok_code
       logical, intent(out) :: core_overshoot_active, envelope_overshoot_active, lovstm, &
            use_pure_z_table, use_semiconvection
-      double precision, intent(out) :: disk_pressure, disk_temperature, &
+      real(dp), intent(out) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
+      integer, intent(out) :: ierr
 
-
-      character*4 :: header_keyword
+      character(len=4) :: header_keyword
       character(len=256) :: msg
       integer :: ios
-
-      double precision :: omega_log10(json)
+      real(dp) :: omega_log10(json)
 ! -log10(omega) at or above this value marks a non-rotating shell
-! (omega stored as 0) in the legacy model file
-      double precision, parameter :: omega_log10_zero_sentinel = 58.9D0
-! --- locals ---
+! (omega stored as 0)
+      real(dp), parameter :: omega_log10_zero_sentinel = 58.9D0
       integer :: i, j, ix, iz
       integer :: envelope_record_number
       integer :: pair_start_index, parity_test
       integer :: ii
-      double precision :: max_luminosity_component
-
-! Initialization
-
-! Zero the star%xa arrays (star%xa) and the star%omega array.
-! This is agreed upon protection in case they are inadvertently used in
-! the program, but not present in the old YREC input data.
-      integer, intent(out) :: ierr
 
       ierr = 0
 
-      do i  = 1, json
-         s%omega(i) = 0d0
-       do j = 1, 15
-          s%xa(j,i) = 0d0
-       enddo
-      enddo
+      s%omega = 0d0
+      s%xa = 0d0
 
-! Set Model2-sspecific strings to "?"
-! MHP 4/25 padded character strings to proper length
+! MODEL2's codes, flags and constants, at their defaults
       atm_code = "  ? "
       eos_code = "    ? "
       hik_code = "  ? "
       alok_code = "  ? "
-
-! Set Model2-specific flags false
       use_diffusion_y = .false.
       use_diffusion_z = .false.
       disk_locking_active = .false.
@@ -313,19 +269,13 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       lovstm = .false.
       use_pure_z_table = .false.
       use_semiconvection = .false.
-
-! Set Model2-specific constants to default
       disk_pressure = 7.2722D-6
       disk_temperature = 0d0
       wind_saturation_omega = 3d-4
 
-! End of initialization
-
-! Read in an input model from the LU iread file in YREC7 Format
-
       rewind(iread)
 
-! get the header record
+! the header
       read(iread,10,iostat=ios,iomsg=msg) header_keyword,s%model_number,s%nz,s%star_mass, &
            s%log_Teff,s%log_L,s%log_total_mass, &
            s%age_gyr,timestep_yr
@@ -335,8 +285,8 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       call check_zone_count(s%nz, iread, ierr)
       if (ierr /= 0) return
 
-! Get the flags describing the input physics and the information that
-! is stored in the model (rotating or not?, extendec compotition, etc.)
+! what the model holds (rotation, the extended composition), the
+! convection-zone edges and the mixing length
       read(iread,30,iostat=ios,iomsg=msg) rotation_active,use_extended_composition, &
            core_cz_top_index,envelope_cz_bottom_index,mixing_length
  30   format(2(L1,1X),5X,2I4,F7.3)
@@ -349,27 +299,15 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
            'envelope convection zone bottom', ierr)
       if (ierr /= 0) return
 
-! get the LUMINOSITIES---PP(1-2-3)-CNO-HE-NU-GRAV
+! the luminosities of pp I-III, CNO, 3 alpha, the neutrinos and gravity
       read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown(j),j=1,7)
  40   format(10X,7E10.3)
       call check_model_read(ios, msg, iread, 'the luminosities', ierr)
       if (ierr /= 0) return
+      call luminosities_to_solar_units(s)
 
-! If TLUMX are in ergs, convert to solar units.  Decide by
-! comparing to 10**20. If larger, divide by CLSUN.
-      max_luminosity_component = dmax1(s%luminosity_breakdown(i_lum_pp1), &
-           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
-           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
-           dabs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
-      if(max_luminosity_component.gt.1.0D20) then
-       do j = 1,7
-          s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
-         enddo
-      endif
-
-! Get the ENVELOPE DATA
-! FTRI is 1,normally.  It is set to -1  if any of the record numbers
-! for the envelope triangle records was set to -1 by WRTLST.
+! the three envelope-triangle records; triangle_orientation is -1 when a
+! record number is negative (the triangle was reflected), 1 otherwise
       triangle_orientation = 1D0
       do i = 1,3
        read(iread,70,iostat=ios,iomsg=msg) envelope_record_number,s%triangle_log_teff(i), &
@@ -379,12 +317,11 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
  70      format(3X,I2,F7.5,4F8.5,3E12.5)
        call check_model_read(ios, msg, iread, 'the envelope records', ierr)
        if (ierr /= 0) return
-       if(envelope_record_number.lt.0) triangle_orientation = -1D0
+       if (envelope_record_number < 0) triangle_orientation = -1D0
       end do
 
-! READ IN HENYEY POINTS IN 4 PARTS
-!
-! Read FIRST PART:M,R,L,P,T,RHO,CONV(T/F),X,Y,AND Z - one line per shell
+! The shells, in four parts. Part 1, one line per shell: log m, log r,
+! L, log P, log T, log rho, convective, and X and Z in units of 1e-6.
       do i = 1,s%nz
        read(iread,100,iostat=ios,iomsg=msg) s%log_mass(i),s%logR(i),s%luminosity_lsun(i), &
             s%logP(i),s%logT(i),s%logRho(i),s%convective_flag(i), &
@@ -392,25 +329,20 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
  100     format(0PF13.10,F10.7,1PE14.7,0PF10.7,2F10.7,L1,2I6)
        call check_model_read(ios, msg, iread, 'the shells', ierr)
        if (ierr /= 0) return
-       if(s%log_mass(i).lt.0D0.or.s%log_mass(i).gt.s%log_total_mass) then
-          write(run_log_unit,1000)
-          write(run_log_unit,1050) i
- 1000       format(1X,39('>'),40('<')/1X,'RUN STOPPED')
- 1050       format(' ERROR IN SUBROUTINE GETY7'/1X,'GLITCH IN SHELL', &
-           I3,', SHELL MASS LESS THAN ZERO OR GREATER THAN STAR MASS')
-          ! 2026 (phase five, step B): stop converted to ierr; run_yrec
-          ! returns the error and the CLI wrapper (main) stops.
-          ierr = 1
+       if (s%log_mass(i) < 0D0 .or. s%log_mass(i) > s%log_total_mass) then
+          write(msg, '(a,i0,a)') 'shell ', i, &
+               ' has a mass below zero or above the star''s'
+          call report_model_error(iread, trim(msg), ierr)
           return
        endif
-       s%xa(1,i) = 1.0D-6*dfloat(ix)
-       s%xa(3,i) = 1.0D-6*dfloat(iz)
+       s%xa(i_h1,i) = 1.0D-6*dble(ix)
+       s%xa(i_metals,i) = 1.0D-6*dble(iz)
       end do
 
-! Read SECOND PART:ELEMENT ABUNDANCES: HE3,CNO CYCLE ELEMENTS.
-! ABUNDANCES IN SURFACE AND CENTRAL CONVECTION ZONES STORED WITH 1
-! VALUE PER ZONE RATHER THAN 1 VALUE PER SHELL
-      if(envelope_cz_bottom_index.le.core_cz_top_index) then
+! Part 2, He3 and the CNO isotopes (slots 4-11): one value for each
+! convection zone (the core's and the envelope's), one line per shell
+! between them.
+      if (envelope_cz_bottom_index <= core_cz_top_index) then
        read(iread,200,iostat=ios,iomsg=msg)(s%xa(i,core_cz_top_index),i=4,11)
        if (ios == 0) read(iread,200,iostat=ios,iomsg=msg)(s%xa(i,envelope_cz_bottom_index),i=4,11)
       else
@@ -422,33 +354,33 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       endif
       call check_model_read(ios, msg, iread, 'the CNO abundances', ierr)
       if (ierr /= 0) return
-      if(core_cz_top_index.gt.1) then
-! CONVECTIVE CORE- ASSIGN FIRST COMPOSITION VALUE TO SHELLS 1-JCORE
+! the convective core's value in its shells
+      if (core_cz_top_index > 1) then
        do j = 1,core_cz_top_index-1
           do i = 4,11
              s%xa(i,j) = s%xa(i,core_cz_top_index)
           end do
        end do
       endif
-      if(envelope_cz_bottom_index.lt.s%nz) then
-! CONVECTIVE SURFACE- ASSIGN LAST COMPOSITION TO SHELLS JENV-M
+! the convective envelope's value in its shells
+      if (envelope_cz_bottom_index < s%nz) then
        do j = envelope_cz_bottom_index+1,s%nz
           do i = 4,11
              s%xa(i,j) = s%xa(i,envelope_cz_bottom_index)
           end do
        end do
       endif
-! DEFINE HE4 = 1 - X - Z - HE3.
+! He4 = 1 - X - Z - He3
       do i = 1,s%nz
-       s%xa(2,i) = 1.0D0 - s%xa(1,i) - s%xa(3,i) - &
-            s%xa(4,i)
+       s%xa(i_he4,i) = 1.0D0 - s%xa(i_h1,i) - s%xa(i_metals,i) - &
+            s%xa(i_he3,i)
       end do
 
-! READ IN H2,LI6,LI7,BE9 (EXTENDED COMPOSITION)
-
-      if(use_extended_composition) then
-       if(envelope_cz_bottom_index.eq.1)then
-! FULLY CONVECTIVE MODEL
+! Part 3, with the extended composition: H2, Li6, Li7 and Be9 (slots
+! 12-15), one value for a fully convective star, otherwise two shells
+! per line, the convection zones as in part 2.
+      if (use_extended_composition) then
+       if (envelope_cz_bottom_index == 1) then
           read(iread,300,iostat=ios,iomsg=msg)(s%xa(i,1),i=12,15)
  300        format(4(1PE9.3,1X))
           call check_model_read(ios, msg, iread, 'the light elements', ierr)
@@ -459,8 +391,6 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
              end do
           end do
        else
-! GENERAL CASE
-! THESE ABUNDANCES ARE READ IN WITH 2 SHELLS PER LINE
           ios = 0
           do pair_start_index = core_cz_top_index,envelope_cz_bottom_index-1,2
              read(iread,200,iostat=ios,iomsg=msg)((s%xa(i,j),i = 12,15), &
@@ -469,23 +399,21 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
           end do
           call check_model_read(ios, msg, iread, 'the light elements', ierr)
           if (ierr /= 0) return
-! IF AN ODD NUMBER OF ABUNDANCES STORED, READ IN LAST VALUE
+! an odd number of shells: the last on a line of its own
           parity_test = envelope_cz_bottom_index-1 - core_cz_top_index
-          if(mod(parity_test,2).ne.0) then
+          if (mod(parity_test,2) /= 0) then
                read(iread,300,iostat=ios,iomsg=msg)(s%xa(i,pair_start_index),i = 12,15)
                call check_model_read(ios, msg, iread, 'the light elements', ierr)
                if (ierr /= 0) return
           end if
-          if(core_cz_top_index.gt.1) then
-! CONVECTIVE CORE- ASSIGN FIRST VALUE TO SHELLS 1-JCORE
+          if (core_cz_top_index > 1) then
              do j = 1,core_cz_top_index-1
               do i = 12,15
                  s%xa(i,j) = s%xa(i,core_cz_top_index)
               end do
              end do
           endif
-          if(envelope_cz_bottom_index.lt.s%nz) then
-! CONVECTIVE SURFACE- ASSIGN LAST VALUE TO SHELLS JENV - M
+          if (envelope_cz_bottom_index < s%nz) then
              do j = envelope_cz_bottom_index+1,s%nz
               do i = 12,15
                  s%xa(i,j) = s%xa(i,envelope_cz_bottom_index)
@@ -495,17 +423,23 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
        endif
       endif
 
-! Read in FOURTH PART:  - LOG J/M STORED , 8 SHELLS PER LINE
-
-      if(rotation_active) then
-! READ OMEGA IN. If OMEGA records are missing go to OMEGA BYPASS below
+! Part 4, in a rotating model: -log10(omega), eight shells per line. A
+! file that ends before them (a model written before its rotation was
+! set up) keeps omega zero, with a note.
+      if (rotation_active) then
       read(iread,500,iostat=ios,iomsg=msg)(omega_log10(ii),ii = 1,s%nz)
  500    format(0P8F10.7)
-      if (is_iostat_end(ios)) go to 9999
+      if (is_iostat_end(ios)) then
+         write(run_log_unit,'(a)') ' read_yrec7: the model file has no omega' // &
+              ' records; omega is zero'
+         s%omega = 0d0
+         rewind iread
+         return
+      end if
       call check_model_read(ios, msg, iread, 'the rotation rates', ierr)
       if (ierr /= 0) return
       do i = 1,s%nz
-           if(omega_log10(i) .lt. omega_log10_zero_sentinel) then
+           if (omega_log10(i) < omega_log10_zero_sentinel) then
               s%omega(i) = pow(10D0, (-omega_log10(i)))
            else
               s%omega(i) = 0D0
@@ -513,32 +447,13 @@ subroutine read_yrec7(s, mixing_length, timestep_yr, triangle_orientation, &
       end do
       endif
 
-! KEEP iread OPEN
+! (the unit stays open, rewound)
       rewind iread
-
-      return
-
-! OMEGA BYPASS
-! Come here if OMEGA records are missing -- Can happen if
-! a new star%omega file is being generated (LWNEW is true in STARIN)
-
-9999  write(run_log_unit,9998) "GETYREC7: OMEGA records are missing from ", &
-        " input model file - OMEGA array zeroed"
-9998  format(2A)
-
-      do i  = 1, json
-         s%omega(i) = 0d0
-      enddo
-
-! KEEP iread OPEN
-      rewind iread
-
-      return
-
 end subroutine read_yrec7
 
 ! ---------------------------------------------------------------
-! A MODEL2-format model: the YREC7 layout plus the MODEL2 additions.
+! A MODEL2-format model (the module header gives its layout); the
+! arguments are the file's header values.
 subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
      iread, core_cz_top_index, envelope_cz_bottom_index, &
      use_extended_composition, rotation_active, atm_code, eos_code, &
@@ -548,47 +463,40 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
      envelope_overshoot_active, lovstm, use_pure_z_table, &
      use_semiconvection, disk_pressure, disk_temperature, &
      wind_saturation_omega, ierr)
-      use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, &
-           i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3, json
-      implicit none
-! the model's initial-composition code, read and not used
-      character(len=4) :: composition_code
+      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
-
-      double precision, intent(out) :: mixing_length
-      double precision, intent(out) :: timestep_yr
-      double precision, intent(out) :: triangle_orientation
+      real(dp), intent(out) :: mixing_length
+      real(dp), intent(out) :: timestep_yr
+      real(dp), intent(out) :: triangle_orientation
       integer, intent(in) :: iread
       integer, intent(out) :: core_cz_top_index, envelope_cz_bottom_index
       logical, intent(out) :: use_extended_composition, rotation_active
-! atm_code/eos_code/hik_code/alok_code/star%initial_composition_code are short physics-
-! option codes read verbatim from the model header; their exact
-! encoding is not interpreted in this file, so names are conservative.
-      character*4, intent(out) :: atm_code
-      character*6, intent(out) :: eos_code
-      character*4, intent(out) :: hik_code
+! atm_code, eos_code, hik_code, alok_code: short physics-option codes,
+! read verbatim from the header (their encoding is not interpreted)
+      character(len=4), intent(out) :: atm_code
+      character(len=6), intent(out) :: eos_code
+      character(len=4), intent(out) :: hik_code
       logical, intent(out) :: use_diffusion_y, use_diffusion_z, &
            disk_locking_active, instability_transport_active, use_wind_torque
-      character*4, intent(out) :: alok_code
+      character(len=4), intent(out) :: alok_code
       logical, intent(out) :: core_overshoot_active, envelope_overshoot_active, lovstm, &
            use_pure_z_table, use_semiconvection
-      double precision, intent(out) :: disk_pressure, disk_temperature, &
+      real(dp), intent(out) :: disk_pressure, disk_temperature, &
            wind_saturation_omega
       integer, intent(out) :: ierr
 
-
-      character*5 :: header_keyword
+      character(len=5) :: header_keyword
+! the model's initial-composition code, read and not used
+      character(len=4) :: composition_code
       character(len=256) :: msg
       integer :: envelope_record_number
       integer :: i, j, k, ios, model_number, nz
-      double precision :: max_luminosity_component, log_mass_center, &
-           log_mass_surface
+      real(dp) :: log_mass_center, log_mass_surface
 
       ierr = 0
       rewind(iread)
 
-! GET THE HEADER RECORD (the zone count checked before it indexes
-! anything)
+! the header (the zone count checked before it indexes anything)
       read(iread,10,iostat=ios,iomsg=msg) header_keyword,model_number,nz,s%star_mass, &
            s%log_Teff,s%log_L,s%log_total_mass,s%age_gyr, &
            timestep_yr,log_mass_center,log_mass_surface
@@ -602,8 +510,8 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
       s%log_mass(1) = log_mass_center
       s%log_mass(nz) = log_mass_surface
 
-! Get the flags describing the input physics and the information that
-! is stored in the model (rotating or not?, extendec compotition, etc.)
+! the convection-zone edges, the mixing length, the physics codes and
+! flags, and what the model holds (rotation, the extended composition)
       read(iread,30,iostat=ios,iomsg=msg) core_cz_top_index,envelope_cz_bottom_index, &
            mixing_length,eos_code,atm_code,alok_code,hik_code, &
            use_pure_z_table,composition_code,use_extended_composition, &
@@ -616,29 +524,17 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
       call check_model_read(ios, msg, iread, 'the flags', ierr)
       if (ierr /= 0) return
 
-! Get the  LUMINOSITIES---PP(1-2-3)-CNO-HE-NU-GRAV
-! CONVERT TO SOLAR LUMINOSITIES
+! the luminosities of pp I-III, CNO, 3 alpha, the neutrinos and gravity
+! (the line 'TLUMX', then the seven values)
       read(iread,40,iostat=ios,iomsg=msg) (s%luminosity_breakdown(j),j=1,7)
-!   40 FORMAT('TLUMX',5X,1P7E17.9)
    40 format(10X,1P7E17.9)
       call check_model_read(ios, msg, iread, 'the luminosities', ierr)
       if (ierr /= 0) return
+      call luminosities_to_solar_units(s)
 
-! If TLUMX are in ergs, convert to solar units.  Decide by
-! comparing to 10**20.  IF larger, divide by CLSUN.
-      max_luminosity_component = dmax1(s%luminosity_breakdown(i_lum_pp1), &
-           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
-           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
-           dabs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
-      if (max_luminosity_component.gt.1.0D20) then
-       do j = 1,7
-          s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
-         enddo
-      endif
-
-! Get the ENVELOPE DATA
-! FTRI is 1,normally.  It is set to -1  if any of the record numbers
-! for the envelope triangle records was set to -1 by WRTLST.
+! the three envelope-triangle records ('ENV', the record number, ...);
+! triangle_orientation is -1 when a record number is negative (the
+! triangle was reflected), 1 otherwise
       triangle_orientation = 1D0
       do i = 1,3
          read(iread,50,iostat=ios,iomsg=msg)envelope_record_number,s%triangle_log_teff(i), &
@@ -647,19 +543,18 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
               (s%envelope_fit_coeffs(3*i-3+j),j=1,3)
          call check_model_read(ios, msg, iread, 'the envelope records', ierr)
          if (ierr /= 0) return
-         if (envelope_record_number .lt. 0) triangle_orientation = -1D0
+         if (envelope_record_number < 0) triangle_orientation = -1D0
       enddo
-!   50 FORMAT('ENV',I2,5F16.12,1P3E20.12)
    50 format(4X,I2,5F16.12,1P3E20.12)
 
-! Skip over column headings for per-shell data
+! the three heading lines
       do i = 1, 3
          read(iread,*,iostat=ios,iomsg=msg)
          call check_model_read(ios, msg, iread, 'the column headings', ierr)
          if (ierr /= 0) return
       end do
 
-! Read per-shell data (HENYEY POINGS)
+! one line per shell
       do i = 1,s%nz
          read(iread,60,iostat=ios,iomsg=msg) k,s%log_mass(i),s%logR(i),s%luminosity_lsun(i), &
               s%logP(i),s%logT(i),s%logRho(i), &
@@ -669,9 +564,45 @@ subroutine read_model2(s, mixing_length, timestep_yr, triangle_orientation, &
        enddo
  60   format(I6,0P2F18.14,1PE24.16,0P3F18.14,1PE24.16,1x,L1, &
            3(0PF12.9),12(0PE16.8))
-
-      return
 end subroutine read_model2
+
+! ---------------------------------------------------------------
+! The seven luminosities in Lsun: a model that stores them in erg/s
+! (any above 1e20, |L_nu| for the neutrinos) is converted.
+subroutine luminosities_to_solar_units(s)
+      use star_info_lib, only: star_info, i_lum_3alpha, i_lum_cno, &
+           i_lum_grav, i_lum_neu, i_lum_pp1, i_lum_pp2, i_lum_pp3
+      type(star_info), intent(inout) :: s
+! the largest luminosity in Lsun a model can hold [Lsun]
+      real(dp), parameter :: largest_solar_units = 1.0D20
+      real(dp) :: largest
+      integer :: j
+
+      largest = max(s%luminosity_breakdown(i_lum_pp1), &
+           s%luminosity_breakdown(i_lum_pp2),s%luminosity_breakdown(i_lum_pp3), &
+           s%luminosity_breakdown(i_lum_cno),s%luminosity_breakdown(i_lum_3alpha), &
+           abs(s%luminosity_breakdown(i_lum_neu)),s%luminosity_breakdown(i_lum_grav))
+      if (largest > largest_solar_units) then
+         do j = 1,7
+            s%luminosity_breakdown(j) = s%luminosity_breakdown(j)/s%solar_luminosity_cgs
+         end do
+      end if
+end subroutine luminosities_to_solar_units
+
+! ---------------------------------------------------------------
+! An error in the model file on unit iread: "the starting model <file>
+! <what>", and ierr = 1.
+subroutine report_model_error(iread, what, ierr)
+      use io_units, only: report_error
+      integer, intent(in) :: iread
+      character(len=*), intent(in) :: what
+      integer, intent(inout) :: ierr
+      character(len=256) :: path
+
+      inquire(unit=iread, name=path)
+      call report_error('the starting model ' // trim(path) // ' ' // what)
+      ierr = 1
+end subroutine report_model_error
 
 ! ---------------------------------------------------------------
 ! After a read of the model file on unit iread with iostat=ios and
