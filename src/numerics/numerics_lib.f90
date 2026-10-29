@@ -3,13 +3,18 @@
 !----------------------------------------------------------------------
 ! The numerics domain's one public module (docs/GUIDELINES.md naming rule
 ! 2): it re-exports the generic numerical routines, which live in five
-! modules by topic:
-!   cubic_spline         cspline, natural_spline, splint, ysplin, intpol
+! modules by topic, and the status codes (numerics/README.md):
+!   cubic_spline         cspline, natural_spline, splint,
+!                        compute_spline_coefficients; ysplin, intpol
+!                        (kept for now)
 !   quadratic_spline     osplin (shape-preserving, ACM 574)
-!   table_interpolation  inter3, interp, intrp2, lagrange4, quint,
-!                        polint, lir, findex, locate
-!   linear_solvers       ludcmp, lubksb, simeqc, solve_tridiagonal
-!   bulirsch_stoer       bsstep, for an ode_system
+!   table_interpolation  inter3, interp, lagrange4, quint, polint, lir,
+!                        locate, hunt, findex; intrp2 (kept for now)
+!   linear_solvers       ludcmp, lubksb, simeqc, solve_tridiagonal,
+!                        tridiagonal_forward_sweep,
+!                        tridiagonal_back_substitution
+!   bulirsch_stoer       bsstep for an ode_system, and its limits
+!   numerics_status      the codes returned in ierr, numerics_status_text
 ! None of them reads the star, keeps state between calls or prints.
 ! They report failure through ierr, as numerics_status's codes, and the
 ! caller reports it. numerics_termination is kept for now: the envelope
@@ -20,7 +25,7 @@ module numerics_lib
            compute_spline_coefficients, ysplin, intpol
       use quadratic_spline, only: osplin
       use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
-           polint, lir, findex, locate
+           polint, lir, findex, locate, hunt
       use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal, &
            tridiagonal_forward_sweep, tridiagonal_back_substitution
       use bulirsch_stoer, only: ode_system, bsstep, bsstep_max_equations, &
@@ -34,7 +39,7 @@ module numerics_lib
       public :: cspline, natural_spline, splint, compute_spline_coefficients
       public :: ysplin, intpol
       public :: osplin
-      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
+      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate, hunt
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
       public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
       public :: ode_system, bsstep, bsstep_max_equations, bsstep_max_stages, &

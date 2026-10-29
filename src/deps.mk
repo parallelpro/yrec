@@ -411,7 +411,7 @@ io/test/test_controls.o: controls_reader.mod integration_parameters.mod io_units
 io/yrec_output.o: history_output.mod io_units.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod stitched_model_state.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
-kap/conductive/conductive_opacity.o: math_lib.mod
+kap/conductive/conductive_opacity.o: math_lib.mod numerics_lib.mod
 kap/kap_lib.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod eos_lib.mod io_units.mod kurucz_opacity.mod laol_opacity.mod math_lib.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
 kap/kurucz90/kurucz_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod
 kap/laol89/laol_opacity.o: composition_layout.mod io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod

@@ -76,6 +76,7 @@ program test_numerics
            numerics_singular, numerics_coincident_points, numerics_bad_input, numerics_step_underflow, &
            numerics_unsorted_points, numerics_derivatives_failed, numerics_status_text
       use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
+      use numerics_lib, only: hunt
       use test_numerics_callbacks, only: harmonic_system
       implicit none
 ! the pins' tables are larger than the data they hold
@@ -923,6 +924,31 @@ subroutine search_checks()
          end do
       end do
       call report_true("findex: brackets x from any guess; -1 below, -n at the top", holds)
+      holds = .true.
+      do k = 0, 67
+         xe = sample(k)
+         do guess = -1, 8
+            j = guess
+            call hunt(up, 7, xe, j)
+            if (xe < up(1)) then
+               holds = holds .and. j == 0
+            else if (xe >= up(7)) then
+               holds = holds .and. j == 7
+            else
+               holds = holds .and. up(j) <= xe .and. xe < up(j+1)
+            end if
+            j = guess
+            call hunt(down, 7, xe, j)
+            if (xe >= down(1)) then
+               holds = holds .and. j == 0
+            else if (xe < down(7)) then
+               holds = holds .and. j == 7
+            else
+               holds = holds .and. down(j) > xe .and. xe >= down(j+1)
+            end if
+         end do
+      end do
+      call report_true("hunt: brackets x from any guess, either direction", holds)
 end subroutine search_checks
 
 ! ---------------------------------------------------------------- linear algebra

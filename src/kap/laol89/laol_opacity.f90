@@ -18,7 +18,7 @@ module laol_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings, laol_opacity_cap, &
            laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
-      use numerics_lib, only: cspline, locate, splint
+      use numerics_lib, only: natural_spline, locate, splint
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -205,8 +205,8 @@ subroutine spline_laol_table(tbl)
             end do
             if (num_valid_rho >= 4) then
                tbl%slaol_num_points(ix,it)=num_valid_rho
-               call cspline(row_log_rho, row_log10_opacity, num_valid_rho, &
-                    1.0d30, 1.0d30, row_d2opacity)
+               call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
+                    row_d2opacity)
                do ir=1,num_valid_rho
                    tbl%slaol_opacity(ix,ir,it) = row_log10_opacity(ir)
                    tbl%slaol_log_rho(ix,ir,it) = row_log_rho(ir)
@@ -343,8 +343,8 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
             end if
          end do
          if (num_valid_t >= 4) then
-            call cspline(logt_values, logt_interp_opacity, num_valid_t, &
-                 1.0d30, 1.0d30, logt_d2opacity)
+            call natural_spline(logt_values, logt_interp_opacity, num_valid_t, &
+                 logt_d2opacity)
             call splint(logt_values, logt_interp_opacity, num_valid_t, &
                  logt_d2opacity, log10_temperature, log10_opacity_value, &
                  jerr_gate, spline_index_lo, spline_index_hi)
@@ -478,8 +478,8 @@ subroutine build_pure_z_splines
             end do
             if (num_valid_rho >= 4) then
                opacity_table%zslaol_num_points(it)=num_valid_rho
-               call cspline(row_log_rho, row_log10_opacity, num_valid_rho, &
-                    1.0d30, 1.0d30, row_d2opacity)
+               call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
+                    row_d2opacity)
                do ir=1,num_valid_rho
                      opacity_table%zslaol_opacity(ir,it) = row_log10_opacity(ir)
                      opacity_table%zslaol_log_rho(ir,it) = row_log_rho(ir)
@@ -584,8 +584,8 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
          end if
       end do
       if (num_valid_t >= 4) then
-         call cspline(logt_values, logt_interp_opacity, num_valid_t, &
-              1.0d30, 1.0d30, logt_d2opacity)
+         call natural_spline(logt_values, logt_interp_opacity, num_valid_t, &
+              logt_d2opacity)
          call splint(logt_values, logt_interp_opacity, num_valid_t, &
               logt_d2opacity, log10_temperature, log10_opacity_value, &
               jerr_gate, spline_index_lo, spline_index_hi)

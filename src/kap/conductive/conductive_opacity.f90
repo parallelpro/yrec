@@ -9,11 +9,12 @@
 !                                  table's values for H, He and an O
 !                                  proxy for the metals, weighted by
 !                                  each species' ionization fraction
-!     condopacp, cinterp3, hunt    Potekhin's interpolation routines,
+!     condopacp, cinterp3          Potekhin's interpolation routines,
 !                                  under their own names
 module conductive_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
+      use numerics_lib, only: hunt
       implicit none
       private
       public :: read_conductive_table, compute_conductive_opacity
@@ -484,69 +485,5 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       endif
 end subroutine cinterp3
 
-!   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling
-!   Numerical Receipes(Cambridge Univ., 1986)
-!     Given an array XX of length N, and given a value X,
-!     returns a value JLO such that X is between XX(JLO) and XX(JLO+1).
-!     XX must be monotonic, either increasing or decreasing.
-!     JLO=0 or JLO=N is returned to indicate that X is out of range.
-!     JLO on input is taken as the initial guess for JLO on output.
-pure subroutine hunt(table,n,target_value,index)
-
-
-      integer, intent(in) :: n
-      real(dp), intent(in) :: table(*)
-      real(dp), intent(in) :: target_value
-      integer, intent(inout) :: index
-
-      logical :: ascending
-      integer :: index_hi, increment, index_mid
-
-      ascending=table(n) > table(1) ! true if ascending order, false otherwise
-      if (index <= 0.or.index > n) then ! Input guess not useful.
-         index=0
-         index_hi=n+1  ! go immediately to bisection
-      else
-      increment=1 ! set the hunting increment
-      if (target_value >= table(index).eqv.ascending) then ! Hunt up:
-        do
-          index_hi=index+increment
-        if (index_hi > n) then ! Done hunting, since off end of table
-           index_hi=n+1
-           exit
-        elseif (target_value >= table(index_hi).eqv.ascending) then ! Not done hunting
-           index=index_hi
-           increment=increment+increment
-        else
-           exit
-        endif
-        end do
-      else ! Hunt down:
-         index_hi=index
-         do
-          index=index_hi-increment
-        if (index < 1) then ! Done hunting, since off end of table
-           index=0
-           exit
-        elseif (target_value < table(index).eqv.ascending) then ! Not done hunting
-           index_hi=index
-           increment=increment+increment ! so double the increment
-        else
-           exit
-        endif ! Done hunting, value bracketed
-         end do
-      endif
-      endif
-!   Hunt is done, so begin the final bisection phase:
-      do
-      if (index_hi-index == 1) return
-      index_mid=(index_hi+index)/2
-      if (target_value >= table(index_mid).eqv.ascending) then
-         index=index_mid
-      else
-         index_hi=index_mid
-      endif
-      end do
-end subroutine hunt
 
 end module conductive_opacity

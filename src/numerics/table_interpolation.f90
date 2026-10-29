@@ -9,14 +9,16 @@
 !   polint                  Neville's algorithm (Numerical Recipes)
 !   lir                     cubic (linear below 4 points) interpolation of
 !                           a set of tabulated functions
-!   findex, locate          the interval holding a point
+!   locate, hunt, findex    the interval holding a point: by bisection,
+!                           and from a starting guess (Numerical Recipes'
+!                           hunt; YCK's findex)
 module table_interpolation
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use numerics_status, only: numerics_ok, numerics_bad_input, &
            numerics_coincident_points
       implicit none
       private
-      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
+      public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate, hunt
 
 contains
 
@@ -391,5 +393,73 @@ pure subroutine locate(xx, n, x, j)
          j = n-1
       end if
 end subroutine locate
+
+!----------------------------------------------------------------------
+! hunt
+!----------------------------------------------------------------------
+!   W.H.Press, B.P.Flannery, S.A.Teukolsky, W.T.Vetterling
+!   Numerical Receipes(Cambridge Univ., 1986)
+!     Given an array XX of length N, and given a value X,
+!     returns a value JLO such that X is between XX(JLO) and XX(JLO+1).
+!     XX must be monotonic, either increasing or decreasing.
+!     JLO=0 or JLO=N is returned to indicate that X is out of range.
+!     JLO on input is taken as the initial guess for JLO on output.
+pure subroutine hunt(table,n,target_value,index)
+
+
+      integer, intent(in) :: n
+      real(dp), intent(in) :: table(*)
+      real(dp), intent(in) :: target_value
+      integer, intent(inout) :: index
+
+      logical :: ascending
+      integer :: index_hi, increment, index_mid
+
+      ascending=table(n) > table(1) ! true if ascending order, false otherwise
+      if (index <= 0.or.index > n) then ! Input guess not useful.
+         index=0
+         index_hi=n+1  ! go immediately to bisection
+      else
+      increment=1 ! set the hunting increment
+      if (target_value >= table(index).eqv.ascending) then ! Hunt up:
+        do
+          index_hi=index+increment
+        if (index_hi > n) then ! Done hunting, since off end of table
+           index_hi=n+1
+           exit
+        elseif (target_value >= table(index_hi).eqv.ascending) then ! Not done hunting
+           index=index_hi
+           increment=increment+increment
+        else
+           exit
+        endif
+        end do
+      else ! Hunt down:
+         index_hi=index
+         do
+          index=index_hi-increment
+        if (index < 1) then ! Done hunting, since off end of table
+           index=0
+           exit
+        elseif (target_value < table(index).eqv.ascending) then ! Not done hunting
+           index_hi=index
+           increment=increment+increment ! so double the increment
+        else
+           exit
+        endif ! Done hunting, value bracketed
+         end do
+      endif
+      endif
+!   Hunt is done, so begin the final bisection phase:
+      do
+      if (index_hi-index == 1) return
+      index_mid=(index_hi+index)/2
+      if (target_value >= table(index_mid).eqv.ascending) then
+         index=index_mid
+      else
+         index_hi=index_mid
+      endif
+      end do
+end subroutine hunt
 
 end module table_interpolation

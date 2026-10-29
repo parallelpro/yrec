@@ -296,6 +296,7 @@ locate: the end nodes give 1 and n-1, either direction                     0.00E
 locate: within 1% of the span beyond an end, the end interval              0.00E+00  ok
 locate: beyond the slack, 0 and n, either direction                        0.00E+00  ok
 findex: brackets x from any guess; -1 below, -n at the top                 0.00E+00  ok
+hunt: brackets x from any guess, either direction                          0.00E+00  ok
 ludcmp/lubksb: the residual of a 6x6 solve                                 2.93E-17  ok
 ludcmp: a round-off pivot (rows 1..9) is numerics_singular                 0.00E+00  ok
 ludcmp: a zero pivot (row 3 = row 1 + row 2) is numerics_singular          0.00E+00  ok
