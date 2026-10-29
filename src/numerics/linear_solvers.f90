@@ -16,6 +16,7 @@ module linear_solvers
       implicit none
       private
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
+      public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
 
 contains
 
@@ -252,7 +253,8 @@ end subroutine simeqc
 ! solve_tridiagonal
 !----------------------------------------------------------------------
 ! The Thomas algorithm for the tridiagonal system with sub-diagonal a,
-! diagonal b, super-diagonal c and right-hand side ex_prime, into ex
+! diagonal b, super-diagonal c and right-hand side ex_prime, into ex:
+! tridiagonal_forward_sweep, then tridiagonal_back_substitution
 ! (formerly tridiag_gs, and ctridi with a blanket SAVE of scratch that
 ! every call writes before it reads). ierr (numerics_status):
 ! numerics_singular for a zero pivot, the first included.
@@ -263,6 +265,27 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
       integer, intent(out) :: ierr
 
       real(dp) :: gama(npt)
+
+      call tridiagonal_forward_sweep(a, b, c, ex_prime, npt, ex, gama, ierr)
+      if (ierr /= numerics_ok) return
+      call tridiagonal_back_substitution(gama, npt, ex)
+end subroutine solve_tridiagonal
+
+!----------------------------------------------------------------------
+! tridiagonal_forward_sweep
+!----------------------------------------------------------------------
+! The Thomas algorithm's elimination of the sub-diagonal a (diagonal b,
+! super-diagonal c, right-hand side r): with bet_1 = b(1) and, for
+! j = 2..n, gama(j) = c(j-1)/bet_(j-1) and bet_j = b(j) - a(j) gama(j),
+! x(j) = (r(j) - a(j) x(j-1))/bet_j. x(n) is then the solution's last
+! component; tridiagonal_back_substitution gives the others. gama(1) is
+! not set. ierr: numerics_singular for a zero pivot bet_j.
+pure subroutine tridiagonal_forward_sweep(a, b, c, r, n, x, gama, ierr)
+      integer, intent(in) :: n
+      real(dp), intent(in) :: a(n), b(n), c(n), r(n)
+      real(dp), intent(out) :: x(n), gama(n)
+      integer, intent(out) :: ierr
+
       integer :: j
       real(dp) :: bet
 
@@ -272,19 +295,34 @@ subroutine solve_tridiagonal(a, b, c, ex_prime, npt, ex, ierr)
          ierr = numerics_singular
          return
       end if
-      ex(1) = ex_prime(1)/bet
-      do j = 2, npt
+      x(1) = r(1)/bet
+      do j = 2, n
          gama(j) = c(j-1)/bet
          bet = b(j) - a(j)*gama(j)
          if (bet == 0) then
             ierr = numerics_singular
             return
          end if
-         ex(j) = (ex_prime(j) - a(j)*ex(j-1))/bet
+         x(j) = (r(j) - a(j)*x(j-1))/bet
       end do
-      do j = npt-1, 1, -1
-         ex(j) = ex(j) - gama(j+1)*ex(j+1)
+end subroutine tridiagonal_forward_sweep
+
+!----------------------------------------------------------------------
+! tridiagonal_back_substitution
+!----------------------------------------------------------------------
+! The Thomas algorithm's back substitution, x(j) = x(j) - gama(j+1)
+! x(j+1) for j = n-1 down to 1, on tridiagonal_forward_sweep's x and
+! gama.
+pure subroutine tridiagonal_back_substitution(gama, n, x)
+      integer, intent(in) :: n
+      real(dp), intent(in) :: gama(n)
+      real(dp), intent(inout) :: x(n)
+
+      integer :: j
+
+      do j = n-1, 1, -1
+         x(j) = x(j) - gama(j+1)*x(j+1)
       end do
-end subroutine solve_tridiagonal
+end subroutine tridiagonal_back_substitution
 
 end module linear_solvers

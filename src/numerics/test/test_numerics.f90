@@ -75,6 +75,7 @@ program test_numerics
            splint, ysplin, compute_spline_coefficients, numerics_ok, &
            numerics_singular, numerics_coincident_points, numerics_bad_input, numerics_step_underflow, &
            numerics_unsorted_points, numerics_derivatives_failed, numerics_status_text
+      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
       use test_numerics_callbacks, only: harmonic_system
       implicit none
 ! the pins' tables are larger than the data they hold
@@ -1002,6 +1003,10 @@ subroutine linear_algebra_checks()
       call lubksb(dense, n, n, indx, x)
       call report("solve_tridiagonal: a dense solve's solution", &
            maxval(abs(xt - x))/maxval(abs(x)), 1.0d-15)
+      call tridiagonal_forward_sweep(sub, diag, sup, b, n, xs, gam, ierr)
+      call tridiagonal_back_substitution(gam, n, xs)
+      call report("tridiagonal sweep + back substitution: a dense solve's solution", &
+           maxval(abs(xs - x))/maxval(abs(x)), 1.0d-15)
       diag(1) = 0.0d0
       call solve_tridiagonal(sub, diag, sup, b, n, xt, ierr)
       call report_true("solve_tridiagonal: a zero first pivot is numerics_singular", &

@@ -21,7 +21,8 @@ module numerics_lib
       use quadratic_spline, only: osplin
       use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
            polint, lir, findex, locate
-      use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal
+      use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal, &
+           tridiagonal_forward_sweep, tridiagonal_back_substitution
       use bulirsch_stoer, only: ode_system, bsstep, bsstep_max_equations, &
            bsstep_max_stages, bsstep_max_extrap_order
       use numerics_status, only: numerics_ok, numerics_singular, &
@@ -35,6 +36,7 @@ module numerics_lib
       public :: osplin
       public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
+      public :: tridiagonal_forward_sweep, tridiagonal_back_substitution
       public :: ode_system, bsstep, bsstep_max_equations, bsstep_max_stages, &
            bsstep_max_extrap_order
       public :: numerics_ok, numerics_singular, numerics_coincident_points, &

@@ -304,6 +304,7 @@ ludcmp: a NaN column is numerics_bad_input                                 0.00E
 simeqc: LU's solution for two right-hand sides                             1.19E-16  ok
 simeqc: a singular matrix is numerics_singular                             0.00E+00  ok
 solve_tridiagonal: a dense solve's solution                                1.27E-16  ok
+tridiagonal sweep + back substitution: a dense solve's solution            1.27E-16  ok
 solve_tridiagonal: a zero first pivot is numerics_singular                 0.00E+00  ok
 solve_tridiagonal: a zero later pivot is numerics_singular                 0.00E+00  ok
 bsstep: sin x, cos x and exp(-0.3x) to x = 5                               7.28E-13  ok

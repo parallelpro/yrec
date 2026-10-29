@@ -174,10 +174,13 @@ end subroutine am_diffusion_coeffs
 ! wind_loss_implicit)/2; dj(n) is thus I_n (omega_end - omega_start)
 ! when J_n = I_n omega_start. Before the back substitution solution(n)
 ! is rewritten as rhs(n) (1 + (solution(n) - rhs(n))/rhs(n)), the same
-! value up to round-off. A zero pivot returns ierr = 1.
+! value up to round-off. The two halves of the Thomas algorithm are
+! numerics' (tridiagonal_forward_sweep, tridiagonal_back_substitution).
+! A zero pivot, the first included, returns ierr = 1.
 subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
      solution, dj_n_seed, ierr)
       use composition_layout, only: json
+      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
 
       integer, intent(in) :: n
       double precision, intent(in) :: ei(json)
@@ -196,31 +199,25 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
 
       double precision :: rhs_orig(json)
       integer :: i, j
-      double precision :: bet, fj
+      double precision :: fj
 
       ierr = 0
       dj(n) = dj_n_seed
       do i = 1, n
          rhs_orig(i) = rhs(i)
       end do
-      bet = diag(1)
-      solution(1) = rhs(1)/bet
-      do j = 2, n
-         gamma_elim(j) = super_diag(j-1)/bet
-         bet = diag(j) - sub_diag(j)*gamma_elim(j)
-         if (bet.eq.0) then
-            write(*,*) 'solve_angular_momentum_transport: singular matrix'
-            ierr = 1
-            return
-         end if
-         solution(j) = (rhs(j) - sub_diag(j)*solution(j-1))/bet
-      end do
+      call tridiagonal_forward_sweep(sub_diag, diag, super_diag, rhs, n, solution, &
+           gamma_elim, ierr)
+      if (ierr /= 0) then
+         write(*,*) 'solve_angular_momentum_transport: singular matrix'
+         return
+      end if
       dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)
       sumdj = dj(n)
       fj = 1.0d0+(solution(n)-rhs_orig(n))/rhs_orig(n)
       solution(n) = rhs_orig(n)*fj
+      call tridiagonal_back_substitution(gamma_elim, n, solution)
       do j = n-1, 1, -1
-         solution(j) = solution(j) - gamma_elim(j+1)*solution(j+1)
          dj(j) = (solution(j)-rhs_orig(j))*ei(j)
          sumdj = sumdj + dj(j)
       end do
