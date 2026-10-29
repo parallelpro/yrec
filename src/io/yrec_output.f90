@@ -80,11 +80,11 @@ subroutine output_open(s, output, ierr)
       if (ierr /= 0) return
       call profile_output_init(s, output%profiles, ierr)
       if (ierr /= 0) return
-      output%pulse_format = pulse_format_code(s%job%pulse_format)
+      output%pulse_format = pulse_format_code(s%ctrl%pulse_format)
       if (s%ctrl%write_pulse_flag) then
          select case (output%pulse_format)
          case (unknown_pulse_format)
-            call report_error("pulse_format = '" // trim(s%job%pulse_format) // &
+            call report_error("pulse_format = '" // trim(s%ctrl%pulse_format) // &
                  "' is not GYRE, FGONG or GSM")
             ierr = 1
             return

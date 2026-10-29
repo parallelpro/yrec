@@ -126,7 +126,7 @@ program test_eos
       star%ctrl%use_opal95_eos = .false.
       star%ctrl%use_opal2001_eos = .false.
       star%ctrl%use_opal2006_eos = .true.
-      star%job%use_diffusion_z = .false.
+      star%ctrl%use_diffusion_z = .false.
       star%ctrl%use_numerical_derivatives = .false.
       star%ctrl%use_debye_huckel_correction = .false.
       star%ctrl%saha_log10t_cutoff = 6.0d0

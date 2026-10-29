@@ -62,7 +62,7 @@ contains
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      if ((s%omega(1) .eq. 0) .and. (s%job%rotation_active)) then
+      if ((s%omega(1) .eq. 0) .and. (s%ctrl%rotation_active)) then
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                  ' Initialize rotation rates or set LROT to', &
                  ' FALSE.')
@@ -190,10 +190,10 @@ logical function structure_limit_stop_triggered(s)
       nk = s%job%nk
       qval = [s%log_L, exp10(s%log_Teff), s%log_g_surface, &
               s%nu_max]
-      qup = [s%job%log_L_upper_limit(nk), s%job%Teff_upper_limit(nk), &
-             s%job%log_g_upper_limit(nk), s%job%nu_max_upper_limit(nk)]
-      qlo = [s%job%log_L_lower_limit(nk), s%job%Teff_lower_limit(nk), &
-             s%job%log_g_lower_limit(nk), s%job%nu_max_lower_limit(nk)]
+      qup = [s%ctrl%log_L_upper_limit(nk), s%ctrl%Teff_upper_limit(nk), &
+             s%ctrl%log_g_upper_limit(nk), s%ctrl%nu_max_upper_limit(nk)]
+      qlo = [s%ctrl%log_L_lower_limit(nk), s%ctrl%Teff_lower_limit(nk), &
+             s%ctrl%log_g_lower_limit(nk), s%ctrl%nu_max_lower_limit(nk)]
 
       structure_limit_stop_triggered = .false.
       do k = 1, nlim

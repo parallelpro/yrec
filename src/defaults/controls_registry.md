@@ -138,28 +138,28 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `history_columns_file` | `history_columns_file` | `history_columns_file` | ctrl | run | string | `' '` | verified | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
 | `profile_columns_file` | `profile_columns_file` | `profile_columns_file` | ctrl | run | string | `' '` | verified | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
 | `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | ctrl | read | string | `'{YREC_OUTPUT}/inlist_used'` | verified | Verbatim copy of the input namelist file(s), written at startup as run provenance |
-| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | job | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
-| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | job | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
-| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | job | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
-| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | job | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
-| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | job | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
-| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | job | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
-| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | job | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
-| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | job | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
+| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
+| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | ctrl | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
+| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
+| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | ctrl | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
+| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
+| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | ctrl | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
+| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
+| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | ctrl | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
 
 ## &physics
 
 | inlist name | legacy name | code name | home | used | type | default | status | description |
 |---|---|---|---|---|---|---|---|---|
 | `log_output_file` | `fshort` | `-` | - | - | string | `'{YREC_OUTPUT}/run.log'` | verified | Run log path; its directory part defines the output directory (legacy FSHORT) |
-| `atm_step_min` | `atmmin` | `atm_step_min` | job | run | real | `1.0d-1` | canonical | The atmosphere integration's smallest step (in log tau) |
-| `atm_step_begin` | `atmbeg` | `atm_step_begin` | job | run | real | `1.0d-1` | canonical | Atmosphere integration: the first step |
+| `atm_step_min` | `atmmin` | `atm_step_min` | ctrl | run | real | `1.0d-1` | canonical | The atmosphere integration's smallest step (in log tau) |
+| `atm_step_begin` | `atmbeg` | `atm_step_begin` | ctrl | run | real | `1.0d-1` | canonical | Atmosphere integration: the first step |
 | `atm_error_tol` | `atmerr` | `atm_error_tol` | ctrl | run | real | `3.0d-4` | canonical | Atmosphere integration: error tolerance |
-| `atm_step_max` | `atmmax` | `atm_step_max` | job | run | real | `5.0d-1` | canonical | The atmosphere integration's largest step (in log tau) |
+| `atm_step_max` | `atmmax` | `atm_step_max` | ctrl | run | real | `5.0d-1` | canonical | The atmosphere integration's largest step (in log tau) |
 | `atm_step_initial` | `atmd0` | `atm_step_initial` | ctrl | run | real | `1.0d-10` | canonical | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
 | `change_species_name` | `anewcp` | `-` | - | - | string | `'   '` | verified | Element id whose abundance to override in the start model (with change_species_value) |
 | `new_species_value_mode` | `atmp` | `-` | - | - | string | `''` | canonical | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
-| `fpft_average_weight` | `acfpft` | `acfpft` | job | run | real | `1.0d-36` | verified | Averaging weight in the fp/ft update (shape, checkj) |
+| `fpft_average_weight` | `acfpft` | `acfpft` | ctrl | run | real | `1.0d-36` | verified | Averaging weight in the fp/ft update (shape, checkj) |
 | `timestep_factors` | `atime` | `atime` | ctrl | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | verified | Per-phase timestep-control factor array (wtime/ytime governors) |
 | `overshoot_alpha_core` | `alphac` | `overshoot_alpha_core` | ctrl | run | real | `0.0d0` | canonical | Core overshoot extent in pressure scale heights |
 | `overshoot_alpha_envelope` | `alphae` | `overshoot_alpha_envelope` | ctrl | run | real | `0.0d0` | canonical | Envelope overshoot extent in pressure scale heights |
@@ -174,14 +174,14 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `solar_mass_cgs` | `solar_mass_cgs` | `solar_mass_cgs` | ctrl | run | real | `1.9891d33` | canonical | Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups. |
 | `G_cgs` | `G_cgs` | `g_cgs` | ctrl | run | real | `-1.0d0` | canonical | Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups. |
 | `envelope_logP_step` | `dpenv` | `dpenv` | ctrl | run | real | `1.0d0` | verified | mix: envelope pressure step control |
-| `diffusion_timestep_factor` | `dtdif` | `diffusion_timestep_factor` | job | run | real | `1.0d-2` | canonical | Sub-timestep factor for rotation diffusion |
-| `max_domega_global` | `dtwind` | `max_domega_global` | job | run | real | `1.0d1` | canonical | Timestep limit: the largest fractional change of omega per step |
+| `diffusion_timestep_factor` | `dtdif` | `diffusion_timestep_factor` | ctrl | run | real | `1.0d-2` | canonical | Sub-timestep factor for rotation diffusion |
+| `max_domega_global` | `dtwind` | `max_domega_global` | ctrl | run | real | `1.0d1` | canonical | Timestep limit: the largest fractional change of omega per step |
 | `convergence_tolerance` | `djok` | `convergence_tolerance` | ctrl | run | real | `1.0d-4` | canonical | Angular momentum transport: the convergence tolerance of the transport iterations |
 | `settling_timestep_fraction` | `dt_gs` | `settling_timestep_fraction` | ctrl | run | real | `0.1d0` | canonical | Gravitational settling: sub-timestep as a fraction of the timestep |
 | `env_error_tol` | `enverr` | `env_error_tol` | ctrl | run | real | `3.0d-4` | canonical | Envelope integration: error tolerance |
-| `env_step_max` | `envmax` | `env_step_max` | job | run | real | `5.0d-1` | canonical | The envelope integration's largest step (in log P) |
-| `env_step_min` | `envmin` | `env_step_min` | job | run | real | `1.0d-1` | canonical | Envelope integration: minimum step |
-| `env_step_begin` | `envbeg` | `env_step_begin` | job | run | real | `1.0d-1` | canonical | Envelope integration: first step |
+| `env_step_max` | `envmax` | `env_step_max` | ctrl | run | real | `5.0d-1` | canonical | The envelope integration's largest step (in log P) |
+| `env_step_min` | `envmin` | `env_step_min` | ctrl | run | real | `1.0d-1` | canonical | Envelope integration: minimum step |
+| `env_step_begin` | `envbeg` | `env_step_begin` | ctrl | run | real | `1.0d-1` | canonical | Envelope integration: first step |
 | `envelope_step_size` | `envstp` | `envelope_step_size` | ctrl | run | real | `0.5d0` | canonical | Envelope generation: the envelope step size |
 | `debye_huckel_eta_min` | `etadh0` | `debye_huckel_eta_min` | ctrl | run | real | `-1.0d0` | canonical | Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain |
 | `debye_huckel_eta_max` | `etadh1` | `debye_huckel_eta_max` | ctrl | run | real | `1.0d0` | canonical | Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain |
@@ -221,23 +221,23 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_diffusion_advection_transport` | `ldifad` | `use_diffusion_advection_transport` | ctrl | run | logical | `.false.` | canonical | Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out) |
 | `no_am_transport_in_core` | `lnoj` | `no_am_transport_in_core` | ctrl | run | logical | `.false.` | canonical | No angular momentum transport in the convective core |
 | `use_new_diffusion_routines` | `lnewdif` | `use_new_diffusion_routines` | ctrl | run | logical | `.false.` | canonical | Use the new diffusion routines |
-| `diffuse_helium_active` | `ldify` | `diffuse_helium_active` | job | run | logical | `.false.` | canonical | Gravitational settling of helium (and hydrogen) |
-| `use_diffusion_z` | `ldifz` | `use_diffusion_z` | job | run | logical | `.false.` | canonical | Gravitational settling of the metals (implies helium settling and the Thoul et al. routines) |
+| `diffuse_helium_active` | `ldify` | `diffuse_helium_active` | ctrl | run | logical | `.false.` | canonical | Gravitational settling of helium (and hydrogen) |
+| `use_diffusion_z` | `ldifz` | `use_diffusion_z` | ctrl | run | logical | `.false.` | canonical | Gravitational settling of the metals (implies helium settling and the Thoul et al. routines) |
 | `diffuse_lithium` | `ldifli` | `diffuse_lithium` | ctrl | run | logical | `.false.` | canonical | Include Li/Be in gravitational settling |
 | `calc_neutrinos` | `lsnu` | `calc_neutrinos` | ctrl | run | logical | `.false.` | canonical | Compute solar neutrino fluxes |
 | `use_debye_huckel_correction` | `ldh` | `use_debye_huckel_correction` | ctrl | run | logical | `.false.` | canonical | Apply the Debye-Hueckel correction to the simplified EOS |
 | `rescale_species_active` | `lnewcp` | `rescale_species_active` | ctrl | run | logical | `.false.` | canonical | Set one species of the starting model (change_species_name) to new_species_value |
 | `helium_flash_active` | `lkuthe` | `helium_flash_active` | ctrl | run | logical | `.false.` | canonical | Helium flash run: no rezoning, the starting model written to the .mod file for timestep cuts, and flash-specific solver handling |
-| `core_overshoot_active` | `lovstc` | `core_overshoot_active` | job | run | logical | `.false.` | canonical | Enable convective-core overshoot |
-| `envelope_overshoot_active` | `lovste` | `envelope_overshoot_active` | job | run | logical | `.false.` | canonical | Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights |
-| `intermediate_overshoot_active` | `lovstm` | `lovstm` | job | run | logical | `.false.` | canonical | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
+| `core_overshoot_active` | `lovstc` | `core_overshoot_active` | ctrl | run | logical | `.false.` | canonical | Enable convective-core overshoot |
+| `envelope_overshoot_active` | `lovste` | `envelope_overshoot_active` | ctrl | run | logical | `.false.` | canonical | Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights |
+| `intermediate_overshoot_active` | `lovstm` | `lovstm` | ctrl | run | logical | `.false.` | canonical | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
 | `overshoot_max_extent_flag` | `lovmax` | `lovmax` | ctrl | run | logical | `.false.` | verified | Cap the core overshoot extent at overshoot_beta_core times the core radius |
-| `use_extended_composition` | `lexcom` | `use_extended_composition` | job | run | logical | `.false.` | canonical | Extended composition: also follow H2, Li6, Li7 and Be9 (15 species) |
-| `rotation_flag` | `lrot` | `rotation_active` | job | run | logical | `.false.` | canonical | Rotation: evolve the rotation curve and the angular momentum transport |
+| `use_extended_composition` | `lexcom` | `use_extended_composition` | ctrl | run | logical | `.false.` | canonical | Extended composition: also follow H2, Li6, Li7 and Be9 (15 species) |
+| `rotation_flag` | `lrot` | `rotation_active` | ctrl | run | logical | `.false.` | canonical | Rotation: evolve the rotation curve and the angular momentum transport |
 | `new_triangle_init_flag` | `lnew0` | `lnew0` | ctrl | run | logical | `.false.` | verified | Force a fresh envelope-fit triangle at run start |
-| `instability_transport_active` | `linstb` | `instability_transport_active` | job | run | logical | `.false.` | canonical | Rotationally induced mixing and hydrodynamic angular momentum transport |
+| `instability_transport_active` | `linstb` | `instability_transport_active` | ctrl | run | logical | `.false.` | canonical | Rotationally induced mixing and hydrodynamic angular momentum transport |
 | `set_initial_omega` | `lwnew` | `set_initial_omega` | ctrl | run | logical | `.false.` | canonical | Initialize solid-body rotation at omega = initial_omega |
-| `use_wind_torque` | `ljdot0` | `use_wind_torque` | job | run | logical | `.true.` | canonical | Apply magnetic wind angular-momentum loss |
+| `use_wind_torque` | `ljdot0` | `use_wind_torque` | ctrl | run | logical | `.true.` | canonical | Apply magnetic wind angular-momentum loss |
 | `use_structure_dt_limits` | `lptime` | `use_structure_dt_limits` | job | run | logical | `.true.` | canonical | Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl) |
 | `adiabatic_overshoot_active` | `ladov` | `ladov` | ctrl | run | logical | `.false.` | verified | tpgrad: treat overshoot region adiabatically |
 | `use_envelope_triangle_dt` | `ltrist` | `use_envelope_triangle_dt` | ctrl | run | logical | `.false.` | canonical | Limit the timestep by the envelope-fit triangle |
@@ -248,7 +248,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_opal95_eos` | `lopale` | `use_opal95_eos` | ctrl | run | logical | `.false.` | canonical | Use the OPAL 1995 EOS (a newer OPAL EOS selected wins) |
 | `use_mhd_eos` | `lmhd` | `use_mhd_eos` | ctrl | run | logical | `.false.` | canonical | Use the MHD EOS |
 | `extend_core_inward` | `lcore` | `extend_core_inward` | ctrl | run | logical | `.false.` | canonical | Add shells inward of the starting model's innermost shell |
-| `use_semiconvection` | `lsemic` | `use_semiconvection` | job | run | logical | `.false.` | canonical | Semiconvection treatment (conflicts with core overshoot) |
+| `use_semiconvection` | `lsemic` | `use_semiconvection` | ctrl | run | logical | `.false.` | canonical | Semiconvection treatment (conflicts with core overshoot) |
 | `improved_first_guess_flag` | `lnews` | `improved_first_guess_flag` | ctrl | run | logical | `.false.` | canonical | Use stored structure changes for the next model's first guess |
 | `num_core_shells_added` | `mcore` | `num_core_shells_added` | job | run | integer | `0` | canonical | With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor) |
 | `max_iter_level1` | `niter1` | `max_iter_level1` | ctrl | run | integer | `2` | canonical | Henyey iteration limit, level 1 (fresh surface BC) |
@@ -273,7 +273,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `new_zone_omega_weight` | `walpcz` | `walpcz` | ctrl | run | real | `0.0d0` | verified | Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes |
 | `initial_omega` | `wnew` | `initial_omega` | ctrl | run | real | `0.0d0` | canonical | Initial rotation rate when set_initial_omega |
 | `weak_screening_threshold` | `weakscreening` | `weak_screening_threshold` | ctrl | run | real | `0.03d0` | canonical | Threshold of the screening parameter below which nuclear rates use weak screening |
-| `change_species_value` | `xnewcp` | `new_species_value` | job | run | real | `1.3d1` | verified | New abundance for change_species_name |
+| `change_species_value` | `xnewcp` | `new_species_value` | ctrl | run | real | `1.3d1` | verified | New abundance for change_species_name |
 | `hydrogen_diffusion_floor` | `xmin` | `hydrogen_diffusion_floor` | ctrl | run | real | `1.0d-3` | canonical | Settling stops (for the rest of the run card) once the central X falls below this |
 | `helium_diffusion_min` | `ymin` | `helium_diffusion_min` | ctrl | run | real | `1.0d-3` | canonical | Settling's outer boundary moves inward to the first zone where Y exceeds this |
 | `molecular_opacity_logt_min` | `tmolmin` | `molecular_opacity_logt_min` | ctrl | run | real | `4.0d0` | canonical | log10 T below which only the molecular opacities are used |
@@ -283,10 +283,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `mc_run_end` | `imend` | `mc_run_end` | job | run | integer | `1` | canonical | Last Monte-Carlo realization index |
 | `(legacy only)` | `sstandard` | `-` | - | - | real(17) | `0.9828, 1.0485, 0.9815, 0.9241, 1.3818, 1.0542, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0108, 0.7819, 0.2875` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
 | `use_scv_eos` | `lscv` | `use_scv_eos` | ctrl | run | logical | `.false.` | canonical | Use the SCV EOS where it is valid and the OPAL EOS is not |
-| `disk_locking_active` | `ldisk` | `disk_locking_active` | job | run | logical | `.false.` | canonical | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
-| `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | job | run | real | `0.0d0` | canonical | Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr). |
-| `disk_omega_rad_s` | `pdisk` | `disk_omega_rad_s` | job | run | real | `7.2722d-6` | canonical | Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s). |
-| `wind_saturation_omega` | `wmax` | `wind_saturation_omega` | job | run | real | `3.0d-4` | canonical | Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units |
+| `disk_locking_active` | `ldisk` | `disk_locking_active` | ctrl | run | logical | `.false.` | canonical | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
+| `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | ctrl | run | real | `0.0d0` | canonical | Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr). |
+| `disk_omega_rad_s` | `pdisk` | `disk_omega_rad_s` | ctrl | run | real | `7.2722d-6` | canonical | Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s). |
+| `wind_saturation_omega` | `wmax` | `wind_saturation_omega` | ctrl | run | real | `3.0d-4` | canonical | Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units |
 | `force_solid_body_rotation` | `lsolid` | `force_solid_body_rotation` | ctrl | run | logical | `.false.` | canonical | Force solid-body rotation (sets solid_body_mode_flag = 1) |
 | `solid_body_mode_flag` | `impjmod` | `solid_body_mode_flag` | ctrl | run | integer | `0` | canonical | Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone |
 | `mass_change` | `dmdt0` | `mass_accretion_rate` | ctrl | run | real | `-1.0d-14` | canonical | Mass change rate (Msun/yr; negative for loss) when use_mass_change is set |
@@ -399,7 +399,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | ctrl | read | real | `1.0d0` | keep | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
 | `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | ctrl | read | real | `1.5d0` | keep | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
 | `use_new_rate_variables` | `lnewvars` | `lnewvars` | ctrl | read | logical | `.false.` | verified | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
-| `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | job | run | logical | `.true.` | canonical | Integrate the full envelope (false: the atmosphere to the photosphere only) |
+| `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | ctrl | run | logical | `.true.` | canonical | Integrate the full envelope (false: the atmosphere to the photosphere only) |
 | `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | ctrl | run | string | `'profile'` | verified | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
 | `star_history_name` | `star_history_name` | `star_history_name` | ctrl | run | string | `'history.data'` | verified | MESA mode: history file name (written to the output directory) |
 | `terminal_interval` | `terminal_interval` | `terminal_interval` | ctrl | run | integer | `50` | verified | Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints |
@@ -408,7 +408,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `Teff_sun` | `Teff_sun` | `teff_sun` | ctrl | run | real | `5772.0d0` | canonical | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
 | `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | ctrl | read | logical | `.false.` | verified | Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping |
 | `profile_interval` | `profile_interval` | `profile_interval` | ctrl | run | integer | `50` | verified | MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles |
-| `pulse_format` | `pulse_format` | `pulse_format` | job | run | string | `'GYRE'` | verified | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
+| `pulse_format` | `pulse_format` | `pulse_format` | ctrl | run | string | `'GYRE'` | verified | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
 | `write_profile_flag` | `write_profile_flag` | `write_profile_flag` | ctrl | run | logical | `.false.` | verified | MESA mode: master toggle for profile{N}.data output (cadence from profile_interval) |
 | `write_pulse_flag` | `write_pulse_flag` | `write_pulse_flag` | ctrl | run | logical | `.false.` | verified | MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number) |
 | `compute_neutrino_fluxes` | `compute_neutrino_fluxes` | `compute_neutrino_fluxes` | ctrl | run | logical | `.false.` | verified | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run |

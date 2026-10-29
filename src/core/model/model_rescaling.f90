@@ -174,7 +174,7 @@ end subroutine rescale_interior_z
 ! than X, Y and Z, slot new_species_index, to new_species_value in
 ! every shell (main-sequence models).
 subroutine rescale_one_species
-         if(s%ctrl%rescale_species_active.and.s%job%new_species_value.ge.0.0d0) then
+         if(s%ctrl%rescale_species_active.and.s%ctrl%new_species_value.ge.0.0d0) then
 ! new_species_value is a mass fraction or, with value_relative_to_h
 ! (legacy LREL), a log abundance relative to the surface X on a scale
 ! where X is 12, by mass:
@@ -183,9 +183,9 @@ subroutine rescale_one_species
 ! as given, so every rescale card converts it afresh. (The converted
 ! value used to overwrite it, and a second rescale converted it again,
 ! to about 1e-12 X.)
-            species_target = s%job%new_species_value
+            species_target = s%ctrl%new_species_value
             if(s%ctrl%value_relative_to_h) species_target = &
-                 exp(ln10*(s%job%new_species_value-12.0d0))*composition(1,num_zones)
+                 exp(ln10*(s%ctrl%new_species_value-12.0d0))*composition(1,num_zones)
             if(species_target.lt.1.0d0) then
                do zone_idx = 1,num_zones
                   composition(s%ctrl%new_species_index,zone_idx) = species_target

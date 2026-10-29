@@ -5,6 +5,30 @@
       write(u,'(a," = ",a)') 'ctrl%history_columns_file', '"'//trim(star%ctrl%history_columns_file)//'"'
       write(u,'(a," = ",a)') 'ctrl%profile_columns_file', '"'//trim(star%ctrl%profile_columns_file)//'"'
       write(u,'(a," = ",i0)') 'ctrl%profile_interval', star%ctrl%profile_interval
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%log_L_upper_limit('//itoa(i1)//')', star%ctrl%log_L_upper_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%log_L_lower_limit('//itoa(i1)//')', star%ctrl%log_L_lower_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%Teff_upper_limit('//itoa(i1)//')', star%ctrl%Teff_upper_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%Teff_lower_limit('//itoa(i1)//')', star%ctrl%Teff_lower_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%log_g_upper_limit('//itoa(i1)//')', star%ctrl%log_g_upper_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%log_g_lower_limit('//itoa(i1)//')', star%ctrl%log_g_lower_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%nu_max_upper_limit('//itoa(i1)//')', star%ctrl%nu_max_upper_limit(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'ctrl%nu_max_lower_limit('//itoa(i1)//')', star%ctrl%nu_max_lower_limit(i1)
+      end do
       write(u,'(a," = ",es25.17e3)') 'ctrl%solar_mass_cgs', star%ctrl%solar_mass_cgs
       write(u,'(a," = ",es25.17e3)') 'ctrl%G_cgs', star%ctrl%G_cgs
       write(u,'(a," = ",es25.17e3)') 'ctrl%nu_max_sun', star%ctrl%nu_max_sun
@@ -12,6 +36,7 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%Teff_sun', star%ctrl%Teff_sun
       write(u,'(a," = ",a)') 'ctrl%profile_data_prefix', '"'//trim(star%ctrl%profile_data_prefix)//'"'
       write(u,'(a," = ",a)') 'ctrl%inlist_used_file', '"'//trim(star%ctrl%inlist_used_file)//'"'
+      write(u,'(a," = ",a)') 'ctrl%pulse_format', '"'//trim(star%ctrl%pulse_format)//'"'
       write(u,'(a," = ",l1)') 'ctrl%write_profile_flag', star%ctrl%write_profile_flag
       write(u,'(a," = ",l1)') 'ctrl%write_pulse_flag', star%ctrl%write_pulse_flag
       write(u,'(a," = ",i0)') 'ctrl%terminal_interval', star%ctrl%terminal_interval
@@ -31,15 +56,22 @@
       write(u,'(a," = ",l1)') 'ctrl%use_new_nuclear_rates', star%ctrl%use_new_nuclear_rates
       write(u,'(a," = ",es25.17e3)') 'ctrl%weak_screening_threshold', star%ctrl%weak_screening_threshold
       write(u,'(a," = ",es25.17e3)') 'ctrl%dpenv', star%ctrl%dpenv
+      write(u,'(a," = ",l1)') 'ctrl%core_overshoot_active', star%ctrl%core_overshoot_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_alpha_core', star%ctrl%overshoot_alpha_core
+      write(u,'(a," = ",l1)') 'ctrl%envelope_overshoot_active', star%ctrl%envelope_overshoot_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_alpha_envelope', star%ctrl%overshoot_alpha_envelope
+      write(u,'(a," = ",l1)') 'ctrl%lovstm', star%ctrl%lovstm
       write(u,'(a," = ",es25.17e3)') 'ctrl%alpham', star%ctrl%alpham
       write(u,'(a," = ",l1)') 'ctrl%ladov', star%ctrl%ladov
       write(u,'(a," = ",l1)') 'ctrl%lovmax', star%ctrl%lovmax
       write(u,'(a," = ",es25.17e3)') 'ctrl%betac', star%ctrl%betac
+      write(u,'(a," = ",l1)') 'ctrl%use_semiconvection', star%ctrl%use_semiconvection
+      write(u,'(a," = ",es25.17e3)') 'ctrl%acfpft', star%ctrl%acfpft
       write(u,'(a," = ",i0)') 'ctrl%itfp1', star%ctrl%itfp1
       write(u,'(a," = ",i0)') 'ctrl%itfp2', star%ctrl%itfp2
+      write(u,'(a," = ",l1)') 'ctrl%rotation_active', star%ctrl%rotation_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%walpcz', star%ctrl%walpcz
+      write(u,'(a," = ",l1)') 'ctrl%instability_transport_active', star%ctrl%instability_transport_active
       write(u,'(a," = ",l1)') 'ctrl%set_initial_omega', star%ctrl%set_initial_omega
       write(u,'(a," = ",es25.17e3)') 'ctrl%initial_omega', star%ctrl%initial_omega
       write(u,'(a," = ",es25.17e3)') 'ctrl%mass_accretion_rate', star%ctrl%mass_accretion_rate
@@ -59,9 +91,14 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%be9_pd_rate_scale', star%ctrl%be9_pd_rate_scale
       write(u,'(a," = ",es25.17e3)') 'ctrl%be9_palpha_rate_scale', star%ctrl%be9_palpha_rate_scale
       write(u,'(a," = ",l1)') 'ctrl%use_itoh_neutrino_loss', star%ctrl%use_itoh_neutrino_loss
+      write(u,'(a," = ",l1)') 'ctrl%calc_envelope_flag', star%ctrl%calc_envelope_flag
+      write(u,'(a," = ",l1)') 'ctrl%use_extended_composition', star%ctrl%use_extended_composition
       write(u,'(a," = ",es25.17e3)') 'ctrl%spot_filling_factor', star%ctrl%spot_filling_factor
       write(u,'(a," = ",es25.17e3)') 'ctrl%spot_temp_contrast', star%ctrl%spot_temp_contrast
       write(u,'(a," = ",l1)') 'ctrl%spot_depth_varies', star%ctrl%spot_depth_varies
+      write(u,'(a," = ",es25.17e3)') 'ctrl%disk_locking_age_gyr', star%ctrl%disk_locking_age_gyr
+      write(u,'(a," = ",es25.17e3)') 'ctrl%disk_omega_rad_s', star%ctrl%disk_omega_rad_s
+      write(u,'(a," = ",l1)') 'ctrl%disk_locking_active', star%ctrl%disk_locking_active
       write(u,'(a," = ",l1)') 'ctrl%use_mhd_eos', star%ctrl%use_mhd_eos
       write(u,'(a," = ",i0)') 'ctrl%unit_zams_a', star%ctrl%unit_zams_a
       write(u,'(a," = ",i0)') 'ctrl%unit_zams_b', star%ctrl%unit_zams_b
@@ -95,22 +132,31 @@
       write(u,'(a," = ",i0)') 'ctrl%max_iter_level1', star%ctrl%max_iter_level1
       write(u,'(a," = ",i0)') 'ctrl%max_iter_level2', star%ctrl%max_iter_level2
       write(u,'(a," = ",i0)') 'ctrl%max_iter_level3', star%ctrl%max_iter_level3
+      write(u,'(a," = ",es25.17e3)') 'ctrl%diffusion_timestep_factor', star%ctrl%diffusion_timestep_factor
       write(u,'(a," = ",es25.17e3)') 'ctrl%convergence_tolerance', star%ctrl%convergence_tolerance
       write(u,'(a," = ",i0)') 'ctrl%max_diffusion_iters', star%ctrl%max_diffusion_iters
       write(u,'(a," = ",es25.17e3)') 'ctrl%settling_tolerance', star%ctrl%settling_tolerance
       write(u,'(a," = ",i0)') 'ctrl%coulomb_log_choice', star%ctrl%coulomb_log_choice
       write(u,'(a," = ",i0)') 'ctrl%settling_num_iterations', star%ctrl%settling_num_iterations
+      write(u,'(a," = ",l1)') 'ctrl%diffuse_helium_active', star%ctrl%diffuse_helium_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%settling_timestep_fraction', star%ctrl%settling_timestep_fraction
       write(u,'(a," = ",es25.17e3)') 'ctrl%hydrogen_diffusion_floor', star%ctrl%hydrogen_diffusion_floor
       write(u,'(a," = ",es25.17e3)') 'ctrl%helium_diffusion_min', star%ctrl%helium_diffusion_min
       write(u,'(a," = ",l1)') 'ctrl%use_thoul_fit', star%ctrl%use_thoul_fit
       write(u,'(a," = ",es25.17e3)') 'ctrl%fgry', star%ctrl%fgry
       write(u,'(a," = ",l1)') 'ctrl%use_thoul_diffusion', star%ctrl%use_thoul_diffusion
+      write(u,'(a," = ",l1)') 'ctrl%use_diffusion_z', star%ctrl%use_diffusion_z
       write(u,'(a," = ",l1)') 'ctrl%use_new_diffusion_routines', star%ctrl%use_new_diffusion_routines
       write(u,'(a," = ",l1)') 'ctrl%diffuse_lithium', star%ctrl%diffuse_lithium
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_error_tol', star%ctrl%atm_error_tol
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_initial', star%ctrl%atm_step_initial
+      write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_begin', star%ctrl%atm_step_begin
+      write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_min', star%ctrl%atm_step_min
+      write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_max', star%ctrl%atm_step_max
       write(u,'(a," = ",es25.17e3)') 'ctrl%env_error_tol', star%ctrl%env_error_tol
+      write(u,'(a," = ",es25.17e3)') 'ctrl%env_step_begin', star%ctrl%env_step_begin
+      write(u,'(a," = ",es25.17e3)') 'ctrl%env_step_min', star%ctrl%env_step_min
+      write(u,'(a," = ",es25.17e3)') 'ctrl%env_step_max', star%ctrl%env_step_max
       write(u,'(a," = ",es25.17e3)') 'ctrl%tolerance_fraction', star%ctrl%tolerance_fraction
       write(u,'(a," = ",i0)') 'ctrl%max_stage_index', star%ctrl%max_stage_index
       write(u,'(a," = ",i0)') 'ctrl%extrap_order', star%ctrl%extrap_order
@@ -125,10 +171,12 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%tri_delta_teffl', star%ctrl%tri_delta_teffl
       write(u,'(a," = ",es25.17e3)') 'ctrl%tri_delta_logl', star%ctrl%tri_delta_logl
       write(u,'(a," = ",l1)') 'ctrl%lnew0', star%ctrl%lnew0
+      write(u,'(a," = ",es25.17e3)') 'ctrl%max_domega_global', star%ctrl%max_domega_global
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_size', star%ctrl%atm_step_size
       write(u,'(a," = ",es25.17e3)') 'ctrl%envelope_step_size', star%ctrl%envelope_step_size
       write(u,'(a," = ",l1)') 'ctrl%envelope_generation_flag', star%ctrl%envelope_generation_flag
       write(u,'(a," = ",l1)') 'ctrl%helium_flash_active', star%ctrl%helium_flash_active
+      write(u,'(a," = ",es25.17e3)') 'ctrl%new_species_value', star%ctrl%new_species_value
       write(u,'(a," = ",i0)') 'ctrl%new_species_index', star%ctrl%new_species_index
       write(u,'(a," = ",l1)') 'ctrl%rescale_species_active', star%ctrl%rescale_species_active
       write(u,'(a," = ",l1)') 'ctrl%value_relative_to_h', star%ctrl%value_relative_to_h
@@ -250,7 +298,9 @@
       write(u,'(a," = ",a)') 'ctrl%wind_law_name', '"'//trim(star%ctrl%wind_law_name)//'"'
       write(u,'(a," = ",es25.17e3)') 'ctrl%wind_law_index', star%ctrl%wind_law_index
       write(u,'(a," = ",es25.17e3)') 'ctrl%wind_law_constant', star%ctrl%wind_law_constant
+      write(u,'(a," = ",es25.17e3)') 'ctrl%wind_saturation_omega', star%ctrl%wind_saturation_omega
       write(u,'(a," = ",es25.17e3)') 'ctrl%solar_omega_sat', star%ctrl%solar_omega_sat
+      write(u,'(a," = ",l1)') 'ctrl%use_wind_torque', star%ctrl%use_wind_torque
       write(u,'(a," = ",es25.17e3)') 'ctrl%constant_background_diffusion_coeff', star%ctrl%constant_background_diffusion_coeff
       write(u,'(a," = ",l1)') 'ctrl%use_constant_background_diffusion', star%ctrl%use_constant_background_diffusion
       write(u,'(a," = ",es25.17e3)') 'ctrl%flag_dx', star%ctrl%flag_dx
@@ -308,44 +358,7 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%s0pp_be7_p', star%ctrl%s0pp_be7_p
       write(u,'(a," = ",es25.17e3)') 'ctrl%s0_pep', star%ctrl%s0_pep
       write(u,'(a," = ",es25.17e3)') 'ctrl%s0_hep', star%ctrl%s0_hep
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%log_L_upper_limit('//itoa(i1)//')', star%job%log_L_upper_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%log_L_lower_limit('//itoa(i1)//')', star%job%log_L_lower_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%Teff_upper_limit('//itoa(i1)//')', star%job%Teff_upper_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%Teff_lower_limit('//itoa(i1)//')', star%job%Teff_lower_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%log_g_upper_limit('//itoa(i1)//')', star%job%log_g_upper_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%log_g_lower_limit('//itoa(i1)//')', star%job%log_g_lower_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%nu_max_upper_limit('//itoa(i1)//')', star%job%nu_max_upper_limit(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%nu_max_lower_limit('//itoa(i1)//')', star%job%nu_max_lower_limit(i1)
-      end do
-      write(u,'(a," = ",a)') 'job%pulse_format', '"'//trim(star%job%pulse_format)//'"'
-      write(u,'(a," = ",l1)') 'job%core_overshoot_active', star%job%core_overshoot_active
-      write(u,'(a," = ",l1)') 'job%envelope_overshoot_active', star%job%envelope_overshoot_active
-      write(u,'(a," = ",l1)') 'job%lovstm', star%job%lovstm
-      write(u,'(a," = ",l1)') 'job%use_semiconvection', star%job%use_semiconvection
-      write(u,'(a," = ",es25.17e3)') 'job%acfpft', star%job%acfpft
-      write(u,'(a," = ",l1)') 'job%rotation_active', star%job%rotation_active
-      write(u,'(a," = ",l1)') 'job%instability_transport_active', star%job%instability_transport_active
       write(u,'(a," = ",l1)') 'job%use_mass_accretion', star%job%use_mass_accretion
-      write(u,'(a," = ",l1)') 'job%calc_envelope_flag', star%job%calc_envelope_flag
-      write(u,'(a," = ",l1)') 'job%use_extended_composition', star%job%use_extended_composition
-      write(u,'(a," = ",es25.17e3)') 'job%disk_locking_age_gyr', star%job%disk_locking_age_gyr
-      write(u,'(a," = ",es25.17e3)') 'job%disk_omega_rad_s', star%job%disk_omega_rad_s
-      write(u,'(a," = ",l1)') 'job%disk_locking_active', star%job%disk_locking_active
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'job%target_end_age('//itoa(i1)//')', star%job%target_end_age(i1)
       end do
@@ -370,17 +383,8 @@
       write(u,'(a," = ",i0)') 'job%mc_run_start', star%job%mc_run_start
       write(u,'(a," = ",i0)') 'job%mc_run_end', star%job%mc_run_end
       write(u,'(a," = ",es25.17e3)') 'job%fcorr', star%job%fcorr
-      write(u,'(a," = ",es25.17e3)') 'job%diffusion_timestep_factor', star%job%diffusion_timestep_factor
       write(u,'(a," = ",i0)') 'job%num_rotation_structure_iters', star%job%num_rotation_structure_iters
-      write(u,'(a," = ",l1)') 'job%diffuse_helium_active', star%job%diffuse_helium_active
       write(u,'(a," = ",es25.17e3)') 'job%fgrz', star%job%fgrz
-      write(u,'(a," = ",l1)') 'job%use_diffusion_z', star%job%use_diffusion_z
-      write(u,'(a," = ",es25.17e3)') 'job%atm_step_begin', star%job%atm_step_begin
-      write(u,'(a," = ",es25.17e3)') 'job%atm_step_min', star%job%atm_step_min
-      write(u,'(a," = ",es25.17e3)') 'job%atm_step_max', star%job%atm_step_max
-      write(u,'(a," = ",es25.17e3)') 'job%env_step_begin', star%job%env_step_begin
-      write(u,'(a," = ",es25.17e3)') 'job%env_step_min', star%job%env_step_min
-      write(u,'(a," = ",es25.17e3)') 'job%env_step_max', star%job%env_step_max
       write(u,'(a," = ",i0)') 'job%atm_choice', star%job%atm_choice
       write(u,'(a," = ",es25.17e3)') 'job%requested_envelope_mass', star%job%requested_envelope_mass
       write(u,'(a," = ",l1)') 'job%change_envelope_mass_flag', star%job%change_envelope_mass_flag
@@ -399,11 +403,9 @@
       do i1 = 1, 50
       write(u,'(a," = ",l1)') 'job%first_call_flag('//itoa(i1)//')', star%job%first_call_flag(i1)
       end do
-      write(u,'(a," = ",es25.17e3)') 'job%max_domega_global', star%job%max_domega_global
       write(u,'(a," = ",l1)') 'job%use_structure_dt_limits', star%job%use_structure_dt_limits
       write(u,'(a," = ",es25.17e3)') 'job%initial_envelope_x', star%job%initial_envelope_x
       write(u,'(a," = ",es25.17e3)') 'job%initial_envelope_z', star%job%initial_envelope_z
-      write(u,'(a," = ",es25.17e3)') 'job%new_species_value', star%job%new_species_value
       write(u,'(a," = ",i0)') 'job%num_core_shells_added', star%job%num_core_shells_added
       write(u,'(a," = ",es25.17e3)') 'job%core_mass_reduction_factor', star%job%core_mass_reduction_factor
       do i1 = 1, 50
@@ -432,5 +434,3 @@
       end do
       write(u,'(a," = ",es25.17e3)') 'job%target_teff', star%job%target_teff
       write(u,'(a," = ",es25.17e3)') 'job%target_radius_rsun', star%job%target_radius_rsun
-      write(u,'(a," = ",es25.17e3)') 'job%wind_saturation_omega', star%job%wind_saturation_omega
-      write(u,'(a," = ",l1)') 'job%use_wind_torque', star%job%use_wind_torque

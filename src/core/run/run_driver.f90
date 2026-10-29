@@ -120,7 +120,7 @@ subroutine run_yrec(ierr)
 ! A second opacity-table set at a different Z is needed under the Z
 ! ramp or with Z diffusion; the kap table loaders read this flag from
 ! kap_init (called in prepare_run) on.
-      s%use_two_z_tables = s%ctrl%use_z_ramp .or. s%job%use_diffusion_z
+      s%use_two_z_tables = s%ctrl%use_z_ramp .or. s%ctrl%use_diffusion_z
       call prepare_run(s, ierr)
       if (ierr /= 0) return
 ! Warn (terminal only) about control combinations that are silently
@@ -328,7 +328,7 @@ subroutine begin_kind_card
        s%model_diverged_flag = .false.
 ! Arm helium settling for the card (the settling routines switch it off
 ! when the centre runs out of hydrogen).
-       s%settling_active = s%job%diffuse_helium_active
+       s%settling_active = s%ctrl%diffuse_helium_active
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
          s%total_angular_momentum = 0.0D0

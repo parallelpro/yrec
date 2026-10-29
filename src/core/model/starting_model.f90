@@ -363,10 +363,10 @@ subroutine check_model_against_controls
 ! The warning prints lexcp0, which is never set (see its declaration),
 ! for the model's flag.
        if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
-            s%job%use_extended_composition) then
+            s%ctrl%use_extended_composition) then
           write(run_log_unit,1040) s%mixing_length_alpha,mixing_length0, &
-               s%job%use_extended_composition,lexcp0
-          write(terminal_unit,1040) s%mixing_length_alpha,mixing_length0,s%job%use_extended_composition, &
+               s%ctrl%use_extended_composition,lexcp0
+          write(terminal_unit,1040) s%mixing_length_alpha,mixing_length0,s%ctrl%use_extended_composition, &
                lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
@@ -397,7 +397,7 @@ end subroutine reset_state_after_read
 ! unit rotation factors fp and ft (non-rotating runs).
 subroutine set_starting_rotation_curve
 
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
        if (s%ctrl%set_initial_omega) then
 ! Solid-body rotation, omega = initial_omega (legacy WNEW) in every
 ! shell: this turns a non-rotating model into a rotating one.
@@ -661,7 +661,7 @@ subroutine rescale_and_refit_envelope
        call clamp_requested_envelope_mass
        if (s%senv.eq.s%job%requested_envelope_mass) exit envelope_rescale
        num_species = n_species_basic
-       if (s%job%use_extended_composition) num_species = n_species_extended
+       if (s%ctrl%use_extended_composition) num_species = n_species_extended
        if (s%job%requested_envelope_mass.lt.s%senv) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit
@@ -750,7 +750,7 @@ subroutine interpolate_new_fitting_point
           end do
           s%xnew = s%xa(i_h1,s%nz)
           s%znew = s%xa(i_metals,s%nz)
-          if (s%job%rotation_active) s%omega(s%nz) = s%omega(i) + &
+          if (s%ctrl%rotation_active) s%omega(s%nz) = s%omega(i) + &
                interior_interp_fraction*(s%omega(i+1)-s%omega(i))
 end subroutine interpolate_new_fitting_point
 
@@ -915,7 +915,7 @@ subroutine append_envelope_as_shells
             end if
 ! The new shells rotate with the old last shell's omega, with the
 ! specific angular momentum of a thin shell, j = (2/3) omega r^2.
-            if (s%job%rotation_active) then
+            if (s%ctrl%rotation_active) then
                do j = old_last_shell+1,s%nz
                   s%omega(j) = s%omega(old_last_shell)
                   s%j_rot(j) = cc23*s%omega(old_last_shell)* &
@@ -947,7 +947,7 @@ end subroutine build_shell_masses
 subroutine initialize_rotation_state
 ! di_domega of omega_from_j, which this caller does not use
       double precision :: qiw(json)
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
 ! Shape factors fp_rot and ft_rot, mean gravity and radius, and
 ! eta_squared, from omega.
        call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
@@ -1065,7 +1065,7 @@ subroutine snapshot_step_start
       end do
       s%log_Teff_start = s%log_Teff
       s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
          do i = 1,s%nz
           s%old_omega(i) = s%omega(i)
          end do

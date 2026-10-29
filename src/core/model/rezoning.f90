@@ -46,12 +46,12 @@ contains
 ! total_rotational_ke: re-totalled on the new mesh (rotating models).
 ! ierr /= 0 on failure.
 !   star reads: conv_vel, cp, ctrl%chi_grid_scale,
-!     ctrl%overshoot_alpha_envelope, ctrl%tenv0, ctrl%tenv1,
-!     disk_gate_age_gyr, eps_channels, eps_total, fit_point_pressure,
-!     fit_point_radius, grada, gradr, gradT,
-!     job%envelope_overshoot_active, job%rotation_active,
-!     job%use_extended_composition, log_Teff, log_total_mass, mu,
-!     opacity_zone, qdt, stored_envelope_state, thdif, visc
+!     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
+!     ctrl%rotation_active, ctrl%tenv0, ctrl%tenv1,
+!     ctrl%use_extended_composition, disk_gate_age_gyr, eps_channels,
+!     eps_total, fit_point_pressure, fit_point_radius, grada, gradr,
+!     gradT, log_Teff, log_total_mass, mu, opacity_zone, qdt,
+!     stored_envelope_state, thdif, visc
 !   star writes: am_transport_convective_flag, convective_flag,
 !     convective_flag_start, core_cz_top_index,
 !     deuterium_burning_rate_start, dln_luminosity_dt, dlog_pressure_dt,
@@ -162,7 +162,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
       point_reset_flag = .false.
 ! The number of species carried: 11, or 15 with the extended composition.
       num_species_tracked = 11
-      if (s%job%use_extended_composition) num_species_tracked = 15
+      if (s%ctrl%use_extended_composition) num_species_tracked = 15
       call check_envelope_temperature_range
       if (ierr /= 0) return
       call flag_fixed_points
@@ -275,7 +275,7 @@ subroutine flag_fixed_points
             s%ctrl%chi_grid_scale(ichi_flag_dz)) then
           call append_flag_point(i)
 ! else (rotating models) a jump in log omega.
-       else if (s%job%rotation_active) then
+       else if (s%ctrl%rotation_active) then
           log_omega_top = log10(s%omega(i))
           log_omega_bot = log10(s%omega(i-1))
           if (dabs(log_omega_top-log_omega_bot).gt.s%ctrl%chi_grid_scale(ichi_flag_dw)) then
@@ -305,7 +305,7 @@ subroutine flag_fixed_points
 ! overshoot; with it, the deepest point with
 ! log P - log P(czb) <= overshoot_alpha_envelope (alpha used here as a
 ! depth in log P).
-       if (.not.s%job%envelope_overshoot_active) then
+       if (.not.s%ctrl%envelope_overshoot_active) then
           overshoot_base_zone = s%envelope_cz_bottom_index
        else
           do overshoot_base_zone = s%envelope_cz_bottom_index-1,1,-1
@@ -746,7 +746,7 @@ subroutine interpolate_onto_new_grid
       call regrid_start_of_step_eps
       call transfer_new_points
       call set_new_shell_masses
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
        call respin_on_new_grid
        if (ierr /= 0) return
        call retally_angular_momentum
@@ -790,7 +790,7 @@ subroutine regrid_composition_terms
 ! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
 ! here: when the mesh grew, this is the regridded deuterium at that
 ! index, below the new surface.)
-      if (s%job%use_extended_composition .and. &
+      if (s%ctrl%use_extended_composition .and. &
            s%xa(i_h2,s%nz).ge.1.0D-14) then
          call regrid_in_place(s%deuterium_burning_rate_start)
       endif
@@ -825,7 +825,7 @@ end subroutine regrid_structure_variables
 ! old_* arrays (and fp_old, ft_old) that transfer_new_points adopts.
 subroutine regrid_rotation_variables
       type(rotation_profiles) :: regridded
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
          call regrid_rotation(s%log_mass(1:old_point_count), &
               rotation_profiles(omega=s%omega(1:old_point_count), &
                    specific_angular_momentum=s%j_rot(1:old_point_count), &
@@ -855,8 +855,8 @@ end subroutine regrid_rotation_variables
 ! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
 ! the new mesh, so the values were misplaced on every rotating rezone.)
 subroutine regrid_start_of_step_eps
-      if (s%job%rotation_active .or. (s%job%use_extended_composition .and. &
-           s%job%envelope_overshoot_active)) then
+      if (s%ctrl%rotation_active .or. (s%ctrl%use_extended_composition .and. &
+           s%ctrl%envelope_overshoot_active)) then
          call regrid_profile(s%log_mass(1:old_point_count), &
               s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
               s%old_eps_total(1:new_point_count))
@@ -882,7 +882,7 @@ subroutine transfer_new_points
        s%luminosity_lsun(j) = s%luminosity_lsun_start(j)
        s%logRho(j) = s%logRho_start(j)
       end do
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
        do j = 1, new_num_zones
           s%j_rot(j) = s%old_specific_angular_momentum(j)
           s%omega(j) = s%old_omega(j)
@@ -995,8 +995,8 @@ end subroutine retally_angular_momentum
 ! accurately (MHP 9/91); even without diffusion, the new physics locates
 ! the convection-zone edges accurately.
 subroutine rerun_physics_on_new_grid
-      if (s%job%rotation_active .or. (s%job%use_extended_composition .and. &
-           s%job%envelope_overshoot_active)) then
+      if (s%ctrl%rotation_active .or. (s%ctrl%use_extended_composition .and. &
+           s%ctrl%envelope_overshoot_active)) then
        call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun, &
             s%logP,s%logR,s%log_mass,s%logT, &
             s%convective_flag,s%nz,s%log_Teff, jerr)

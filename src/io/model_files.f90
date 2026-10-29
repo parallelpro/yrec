@@ -73,8 +73,8 @@ subroutine write_mod_model(s, iwrite, replace)
       write(iwrite,'(a,1x,es26.16e3)')  'log_L               ', s%log_L
       write(iwrite,'(a,1x,es26.16e3)')  'log_Teff            ', s%log_Teff
       write(iwrite,'(a,1x,es26.16e3)')  'mixing_length_alpha ', s%mixing_length_alpha
-      write(iwrite,'(a,1x,l1)')         'extended_composition', s%job%use_extended_composition
-      write(iwrite,'(a,1x,l1)')         'rotation_active     ', s%job%rotation_active
+      write(iwrite,'(a,1x,l1)')         'extended_composition', s%ctrl%use_extended_composition
+      write(iwrite,'(a,1x,l1)')         'rotation_active     ', s%ctrl%rotation_active
       write(iwrite,'(a)') mod_columns
       do k = 1, s%nz
          write(iwrite,'(i6,6(1x,es26.16e3),1x,l1,16(1x,es26.16e3))') k, &

@@ -249,7 +249,7 @@ module star_info_lib
 ! suspension; "SETTLING RESUMED" clears it.
             logical :: settling_suspended_reported = .false.
 ! helium settles in this run card [logical]; run_driver, composition_step,
-! mid_timestep_model. Armed from the control job%diffuse_helium_active
+! mid_timestep_model. Armed from the control ctrl%diffuse_helium_active
 ! (never changed after the read) at the start of every card, and so of
 ! every Monte-Carlo run, by begin_kind_card; the settling routines switch
 ! it off once the central X falls below ctrl%hydrogen_diffusion_floor.
@@ -397,7 +397,7 @@ module star_info_lib
 ! mass fractions; row = species slot i_* of composition_layout, row
 ! i_metals the total Z [-]; burn_step, composition_step, rezoning,
 ! starting_model, model_files. In .mod; rows 12-15 only with
-! job%use_extended_composition.
+! ctrl%use_extended_composition.
             double precision :: xa(n_species_extended,json)
 ! surface X for the envelope integrations and the surface opacity tables;
 ! follows xa(i_h1,nz) [-]; rezoning, starting_model, model_rescaling.
@@ -446,7 +446,7 @@ module star_info_lib
 ! The rotation curve and the shape of the rotating star. The specific
 ! angular momentum j_rot is conserved; omega, the moments of inertia and
 ! the shape factors follow from it and the structure.
-! Valid: between steps. Meaningful only with job%rotation_active;
+! Valid: between steps. Meaningful only with ctrl%rotation_active;
 ! without rotation the shape factors are 1.
 
 ! angular velocity of each shell [rad/s]; henyey_iteration, rezoning,
@@ -654,7 +654,7 @@ module star_info_lib
             double precision :: old_eps_plus_neu_grav(json)
 ! Li6 proton-capture rate rho X lambda at the start of the step; zero
 ! outward of log T = 6 [1/s]; burn_step, evolve_rotation. With
-! job%use_extended_composition.
+! ctrl%use_extended_composition.
             double precision :: rate_li6_start(json)
 ! Li7 proton-capture rate at the start of the step [1/s]; burn_step,
 ! evolve_rotation
@@ -725,7 +725,7 @@ module star_info_lib
 ! first solid-body sub-step starts its Newton iteration from its mean.
             double precision :: omega_substep(json)
 ! Li6 proton-capture rate rho X lambda at the end of the step, on the
-! converged model [1/s]; burn_step. With job%use_extended_composition.
+! converged model [1/s]; burn_step. With ctrl%use_extended_composition.
             double precision :: rate_li6(json)
 ! Li7 proton-capture rate at the end of the step [1/s]; burn_step
             double precision :: rate_li7(json)
@@ -739,7 +739,7 @@ module star_info_lib
             double precision :: envelope_overshoot_depth_end
 ! radius of the base of the surface mixed region found by the last call
 ! within the step [cm]; convection_geometry, step_driver. With
-! job%use_extended_composition; zeroed at each step start to mean none
+! ctrl%use_extended_composition; zeroed at each step start to mean none
 ! yet.
             double precision :: cz_base_radius_prev
 ! zone of that base, the starting zone of the next call within the step

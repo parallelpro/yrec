@@ -4,28 +4,7 @@
 ! controls read assigns them: the run cards, the calibration,
 ! the latches), included into star_job. Default-initialized
 ! like controls_state, so the declared state is the pristine one.
-            double precision :: log_L_upper_limit(50) = 1.0d99
-            double precision :: log_L_lower_limit(50) = -1.0d99
-            double precision :: Teff_upper_limit(50) = 1.0d99
-            double precision :: Teff_lower_limit(50) = -1.0d99
-            double precision :: log_g_upper_limit(50) = 1.0d99
-            double precision :: log_g_lower_limit(50) = -1.0d99
-            double precision :: nu_max_upper_limit(50) = 1.0d99
-            double precision :: nu_max_lower_limit(50) = -1.0d99
-            character(len=8) :: pulse_format = 'GYRE'
-            logical :: core_overshoot_active = .false.
-            logical :: envelope_overshoot_active = .false.
-            logical :: lovstm = .false.
-            logical :: use_semiconvection = .false.
-            double precision :: acfpft = 1.0d-36
-            logical :: rotation_active = .false.
-            logical :: instability_transport_active = .false.
             logical :: use_mass_accretion = .false.
-            logical :: calc_envelope_flag = .true.
-            logical :: use_extended_composition = .false.
-            double precision :: disk_locking_age_gyr = 0.0d0
-            double precision :: disk_omega_rad_s = 7.2722d-6
-            logical :: disk_locking_active = .false.
             double precision :: target_end_age(50) = 0.0d0
             double precision :: timestep_override(50) = 0.0d0
             double precision :: central_deuterium_stop(50) = 0.0d0
@@ -36,17 +15,8 @@
             integer :: mc_run_start = 1
             integer :: mc_run_end = 1
             double precision :: fcorr = 0.0d0
-            double precision :: diffusion_timestep_factor = 1.0d-2
             integer :: num_rotation_structure_iters = 1
-            logical :: diffuse_helium_active = .false.
             double precision :: fgrz = 1.0d0
-            logical :: use_diffusion_z = .false.
-            double precision :: atm_step_begin = 1.0d-1
-            double precision :: atm_step_min = 1.0d-1
-            double precision :: atm_step_max = 5.0d-1
-            double precision :: env_step_begin = 1.0d-1
-            double precision :: env_step_min = 1.0d-1
-            double precision :: env_step_max = 5.0d-1
             integer :: atm_choice = 0
             double precision :: requested_envelope_mass = 0.0d0
             logical :: change_envelope_mass_flag = .false.
@@ -55,11 +25,9 @@
             integer :: num_models(50) = 0
             integer :: num_runs = 1
             logical :: first_call_flag(50) = .true.
-            double precision :: max_domega_global = 1.0d1
             logical :: use_structure_dt_limits = .true.
             double precision :: initial_envelope_x = 0.7d0
             double precision :: initial_envelope_z = 0.02d0
-            double precision :: new_species_value = 1.3d1
             integer :: num_core_shells_added = 0
             double precision :: core_mass_reduction_factor = 1.0d0
             double precision :: initial_x_array(50) = 0
@@ -72,5 +40,3 @@
             double precision :: rsclzm2(50) = -1.0d0
             double precision :: target_teff = 0
             double precision :: target_radius_rsun = 0
-            double precision :: wind_saturation_omega = 3.0d-4
-            logical :: use_wind_torque = .true.

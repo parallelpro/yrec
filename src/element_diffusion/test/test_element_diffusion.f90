@@ -49,9 +49,9 @@ program test_element_diffusion
       call build_model()
 
       call reset_controls()
-      star%job%diffuse_helium_active = .true.
+      star%ctrl%diffuse_helium_active = .true.
       call settle_case('old: helium', .false.)
-      star%job%use_diffusion_z = .true.
+      star%ctrl%use_diffusion_z = .true.
       call settle_case('old: helium and metals', .false.)
       star%ctrl%coulomb_log_choice = 2
       call settle_case('old: Coulomb logarithm choice 2', .false.)
@@ -82,9 +82,9 @@ program test_element_diffusion
       call floors(.false.)
 
       call reset_controls()
-      star%job%diffuse_helium_active = .true.
+      star%ctrl%diffuse_helium_active = .true.
       call settle_case('new: helium', .true.)
-      star%job%use_diffusion_z = .true.
+      star%ctrl%use_diffusion_z = .true.
       call settle_case('new: helium and metals', .true.)
       star%ctrl%diffuse_lithium = .true.
       star%ctrl%coulomb_log_choice = 4
@@ -149,8 +149,8 @@ end subroutine build_model
 ! The settling controls at their defaults (the tolerance 1e-7: the original
 ! solve stalls near 4e-8 at this model's centre), the switches off.
 subroutine reset_controls()
-      star%job%diffuse_helium_active = .false.
-      star%job%use_diffusion_z = .false.
+      star%ctrl%diffuse_helium_active = .false.
+      star%ctrl%use_diffusion_z = .false.
       star%ctrl%diffuse_lithium = .false.
       star%ctrl%use_thoul_fit = .false.
       star%ctrl%use_thoul_diffusion = .true.
@@ -204,7 +204,7 @@ subroutine settle_case(label, new_routines)
 ! the controls set above, as a run card installs them
       call set_diffusion_settings(diffusion_settings_from_star(star))
       call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
-           log_t, del, convective, nz, mass, star%job%diffuse_helium_active, &
+           log_t, del, convective, nz, mass, star%ctrl%diffuse_helium_active, &
            star%settling_suspended_reported, ierr)
       write(*,'(/,a)') '# '//label
       write(*,'(a,i0)') 'ierr = ', ierr

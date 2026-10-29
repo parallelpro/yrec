@@ -83,7 +83,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
            recompute_surface_bc = .true.
 ! The surface rotation factors fp and ft for the envelope integrations
 ! (1 without rotation).
-      if (s%job%rotation_active.and.recompute_surface_bc) then
+      if (s%ctrl%rotation_active.and.recompute_surface_bc) then
        surface_pressure_rotation_factor = s%fp_rot(s%nz)
        surface_temperature_rotation_factor = &
             s%ft_rot(s%nz)
@@ -428,7 +428,7 @@ end subroutine apply_henyey_corrections
 subroutine update_rotation_after_corrections()
 ! di_domega of omega_from_j, which this caller does not use
       double precision :: qiw(json)
-         if (s%job%rotation_active) then
+         if (s%ctrl%rotation_active) then
             call omega_from_j(s%logRho,s%j_rot,s%logR, &
                  s%log_mass,s%dm,s%am_transport_convective_flag, &
                  s%nz,s%eta_squared,s%i_rot,s%omega,qiw, &

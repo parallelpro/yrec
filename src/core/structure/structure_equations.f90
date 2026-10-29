@@ -118,7 +118,7 @@ subroutine set_structure_settings()
       cfg%log_teff = s%log_Teff
       cfg%turnover_timescale = s%convective_turnover_timescale
       cfg%ln10_over_lsun = s%ln10_over_lsun
-      cfg%rotation_active = s%job%rotation_active
+      cfg%rotation_active = s%ctrl%rotation_active
 end subroutine set_structure_settings
 
 ! ---------------------------------------------------------------
@@ -280,7 +280,7 @@ subroutine store_zone_thermodynamics()
 ! their only reader: the copies of dln kappa/dln T, d eps/dln T and
 ! (eps - eps_nu - eps_grav)/eps for rotation_stability_setup. They come
 ! back with that transport.
-!         if (star%job%rotation_active) then
+!         if (star%ctrl%rotation_active) then
 !            rot_scr%dlnkappa_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
 !            if (star%eps_total(im).gt.0.0d0) then
 !               total_energy_sum = star%eps_total(im)

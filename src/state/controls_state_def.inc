@@ -6,6 +6,14 @@
             character(len=256) :: history_columns_file = ' '
             character(len=256) :: profile_columns_file = ' '
             integer :: profile_interval = 50
+            double precision :: log_L_upper_limit(50) = 1.0d99
+            double precision :: log_L_lower_limit(50) = -1.0d99
+            double precision :: Teff_upper_limit(50) = 1.0d99
+            double precision :: Teff_lower_limit(50) = -1.0d99
+            double precision :: log_g_upper_limit(50) = 1.0d99
+            double precision :: log_g_lower_limit(50) = -1.0d99
+            double precision :: nu_max_upper_limit(50) = 1.0d99
+            double precision :: nu_max_lower_limit(50) = -1.0d99
             double precision :: solar_mass_cgs = 1.9891d33
             double precision :: G_cgs = -1.0d0
             double precision :: nu_max_sun = 3090.0d0
@@ -13,6 +21,7 @@
             double precision :: Teff_sun = 5772.0d0
             character(len=256) :: profile_data_prefix = 'profile'
             character(len=256) :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
+            character(len=8) :: pulse_format = 'GYRE'
             logical :: write_profile_flag = .false.
             logical :: write_pulse_flag = .false.
             integer :: terminal_interval = 50
@@ -28,15 +37,22 @@
             logical :: use_new_nuclear_rates = .false.
             double precision :: weak_screening_threshold = 0.03d0
             double precision :: dpenv = 1.0d0
+            logical :: core_overshoot_active = .false.
             double precision :: overshoot_alpha_core = 0.0d0
+            logical :: envelope_overshoot_active = .false.
             double precision :: overshoot_alpha_envelope = 0.0d0
+            logical :: lovstm = .false.
             double precision :: alpham = 0.0d0
             logical :: ladov = .false.
             logical :: lovmax = .false.
             double precision :: betac = 0.15d0
+            logical :: use_semiconvection = .false.
+            double precision :: acfpft = 1.0d-36
             integer :: itfp1 = 5
             integer :: itfp2 = 20
+            logical :: rotation_active = .false.
             double precision :: walpcz = 0.0d0
+            logical :: instability_transport_active = .false.
             logical :: set_initial_omega = .false.
             double precision :: initial_omega = 0.0d0
             double precision :: mass_accretion_rate = -1.0d-14
@@ -54,9 +70,14 @@
             double precision :: be9_pd_rate_scale = 1.0d0
             double precision :: be9_palpha_rate_scale = 1.0d0
             logical :: use_itoh_neutrino_loss = .false.
+            logical :: calc_envelope_flag = .true.
+            logical :: use_extended_composition = .false.
             double precision :: spot_filling_factor = 0.00d0
             double precision :: spot_temp_contrast = 1.00d0
             logical :: spot_depth_varies = .false.
+            double precision :: disk_locking_age_gyr = 0.0d0
+            double precision :: disk_omega_rad_s = 7.2722d-6
+            logical :: disk_locking_active = .false.
             logical :: use_mhd_eos = .false.
             integer :: unit_zams_a = 0
             integer :: unit_zams_b = 0
@@ -84,22 +105,31 @@
             integer :: max_iter_level1 = 2
             integer :: max_iter_level2 = 20
             integer :: max_iter_level3 = 2
+            double precision :: diffusion_timestep_factor = 1.0d-2
             double precision :: convergence_tolerance = 1.0d-4
             integer :: max_diffusion_iters = 10
             double precision :: settling_tolerance = 1.0d-8
             integer :: coulomb_log_choice = 1
             integer :: settling_num_iterations = 10
+            logical :: diffuse_helium_active = .false.
             double precision :: settling_timestep_fraction = 0.1d0
             double precision :: hydrogen_diffusion_floor = 1.0d-3
             double precision :: helium_diffusion_min = 1.0d-3
             logical :: use_thoul_fit = .false.
             double precision :: fgry = 1.0d0
             logical :: use_thoul_diffusion = .false.
+            logical :: use_diffusion_z = .false.
             logical :: use_new_diffusion_routines = .false.
             logical :: diffuse_lithium = .false.
             double precision :: atm_error_tol = 3.0d-4
             double precision :: atm_step_initial = 1.0d-10
+            double precision :: atm_step_begin = 1.0d-1
+            double precision :: atm_step_min = 1.0d-1
+            double precision :: atm_step_max = 5.0d-1
             double precision :: env_error_tol = 3.0d-4
+            double precision :: env_step_begin = 1.0d-1
+            double precision :: env_step_min = 1.0d-1
+            double precision :: env_step_max = 5.0d-1
             double precision :: tolerance_fraction = 1.0d-3
             integer :: max_stage_index = 11
             integer :: extrap_order = 7
@@ -112,10 +142,12 @@
             double precision :: tri_delta_teffl = 1.0d-2
             double precision :: tri_delta_logl = 8.0d-2
             logical :: lnew0 = .false.
+            double precision :: max_domega_global = 1.0d1
             double precision :: atm_step_size = 0.5d0
             double precision :: envelope_step_size = 0.5d0
             logical :: envelope_generation_flag = .false.
             logical :: helium_flash_active = .false.
+            double precision :: new_species_value = 1.3d1
             integer :: new_species_index = 0
             logical :: rescale_species_active = .false.
             logical :: value_relative_to_h = .false.
@@ -237,7 +269,9 @@
             character(len=3) :: wind_law_name = 'K97'
             double precision :: wind_law_index = 1.5d0
             double precision :: wind_law_constant = 1.0d0
+            double precision :: wind_saturation_omega = 3.0d-4
             double precision :: solar_omega_sat = 1000.0d0
+            logical :: use_wind_torque = .true.
             double precision :: constant_background_diffusion_coeff = 2.5d4
             logical :: use_constant_background_diffusion = .false.
             double precision :: flag_dx = 0.05d0

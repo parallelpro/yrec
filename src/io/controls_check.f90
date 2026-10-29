@@ -62,23 +62,23 @@ end subroutine warn
 !     walk never contains the model, surface_boundary);
 !   - a rotating run's max_diffusion_iters is outside 1 to 16;
 !   - the Bulirsch-Stoer controls are outside the integrator's limits.
-!   star reads: ctrl%extrap_order, ctrl%max_diffusion_iters,
-!     ctrl%max_stage_index, ctrl%tolerance_fraction,
-!     ctrl%tri_delta_logl, ctrl%tri_delta_teffl,
-!     job%core_overshoot_active, job%envelope_overshoot_active,
-!     job%lovstm, job%rotation_active, job%use_semiconvection
+!   star reads: ctrl%core_overshoot_active,
+!     ctrl%envelope_overshoot_active, ctrl%extrap_order, ctrl%lovstm,
+!     ctrl%max_diffusion_iters, ctrl%max_stage_index,
+!     ctrl%rotation_active, ctrl%tolerance_fraction,
+!     ctrl%tri_delta_logl, ctrl%tri_delta_teffl, ctrl%use_semiconvection
 !   star writes: none
 subroutine check_controls(s, ierr)
       type(star_info), intent(in) :: s
       integer, intent(inout) :: ierr
       character(len=message_length) :: line
 
-      if (s%job%use_semiconvection .and. (s%job%core_overshoot_active .or. &
-           s%job%envelope_overshoot_active .or. s%job%lovstm)) then
+      if (s%ctrl%use_semiconvection .and. (s%ctrl%core_overshoot_active .or. &
+           s%ctrl%envelope_overshoot_active .or. s%ctrl%lovstm)) then
          write(line,'(1x,a,3l2)') 'ERROR: SEMI-CONVECTION and overshoot are both on:' &
               //' use_semiconvection (LSEMIC) with core, envelope, intermediate overshoot' &
-              //' (LOVSTC, LOVSTE, LOVSTM) =', s%job%core_overshoot_active, &
-              s%job%envelope_overshoot_active, s%job%lovstm
+              //' (LOVSTC, LOVSTE, LOVSTM) =', s%ctrl%core_overshoot_active, &
+              s%ctrl%envelope_overshoot_active, s%ctrl%lovstm
          call report_control(line)
          ierr = 1
          return
@@ -91,7 +91,7 @@ subroutine check_controls(s, ierr)
          ierr = 1
          return
       end if
-      if (s%job%rotation_active .and. (s%ctrl%max_diffusion_iters < 1 .or. &
+      if (s%ctrl%rotation_active .and. (s%ctrl%max_diffusion_iters < 1 .or. &
            s%ctrl%max_diffusion_iters > max_transport_iterations)) then
          write(line,'(1x,a,i0)') 'ERROR: max_diffusion_iters (ITDIF2) must be 1 to 16, not ', &
               s%ctrl%max_diffusion_iters
@@ -144,10 +144,10 @@ end subroutine warn_inert_controls
 ! overshoot_alpha_envelope = 0.5 and envelope_overshoot_active unset for
 ! years). Each rule is checked against the gating code named above it.
 !   star reads: ctrl%betac, ctrl%calibrate_solar_model,
-!     ctrl%calibrate_star_flag, ctrl%diffuse_lithium, ctrl%lovmax,
+!     ctrl%calibrate_star_flag, ctrl%core_overshoot_active,
+!     ctrl%diffuse_lithium, ctrl%envelope_overshoot_active, ctrl%lovmax,
 !     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope,
-!     ctrl%use_new_diffusion_routines, job%core_overshoot_active,
-!     job%envelope_overshoot_active
+!     ctrl%use_new_diffusion_routines
 !   star writes: none
 subroutine warn_inconsistent_controls(s)
       type(star_info), intent(in) :: s
@@ -155,19 +155,19 @@ subroutine warn_inconsistent_controls(s)
 ! overshoot extents are consumed only inside the active-flag gates
 ! (convection/convection_zones.f90's extend_by_overshoot)
       if (s%ctrl%overshoot_alpha_core > 0.0d0 .and. &
-           .not. s%job%core_overshoot_active) &
+           .not. s%ctrl%core_overshoot_active) &
            call warn('overshoot_alpha_core is set but core_overshoot_active' &
            //' is off -- core overshoot is NOT applied')
       if (s%ctrl%overshoot_alpha_envelope > 0.0d0 .and. &
-           .not. s%job%envelope_overshoot_active) &
+           .not. s%ctrl%envelope_overshoot_active) &
            call warn('overshoot_alpha_envelope is set but ' &
            //'envelope_overshoot_active is off -- envelope overshoot is' &
            //' NOT applied')
-      if (s%job%core_overshoot_active .and. &
+      if (s%ctrl%core_overshoot_active .and. &
            s%ctrl%overshoot_alpha_core <= 0.0d0) &
            call warn('core_overshoot_active is on but ' &
            //'overshoot_alpha_core is zero -- zero-extent overshoot')
-      if (s%job%envelope_overshoot_active .and. &
+      if (s%ctrl%envelope_overshoot_active .and. &
            s%ctrl%overshoot_alpha_envelope <= 0.0d0) &
            call warn('envelope_overshoot_active is on but ' &
            //'overshoot_alpha_envelope is zero -- zero-extent overshoot')
@@ -175,7 +175,7 @@ subroutine warn_inconsistent_controls(s)
 ! lovmax caps the core overshoot extent at betac times the core radius
 ! (convection/convection_zones.f90's extend_by_overshoot) -- with
 ! overshoot_beta_core = 0 the cap is zero
-      if (s%job%core_overshoot_active .and. s%ctrl%lovmax .and. &
+      if (s%ctrl%core_overshoot_active .and. s%ctrl%lovmax .and. &
            s%ctrl%betac <= 0.0d0) &
            call warn('overshoot_max_extent_flag is on with ' &
            //'overshoot_beta_core = 0 -- core overshoot is capped to zero')

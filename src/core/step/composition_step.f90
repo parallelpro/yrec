@@ -22,7 +22,7 @@
 !      store_start_rates, the deuterium rates are also kept as the
 !      start-of-step rates)
 !   3. the implicit network burn (burn_network)
-!   4. semiconvection (semiconvection, when job%use_semiconvection is set)
+!   4. semiconvection (semiconvection, when ctrl%use_semiconvection is set)
 !   5. homogenize the mixed regions (homogenize, or always with
 !      semiconvection on)
 !   6. gravitational settling (when enabled), sub-stepped
@@ -48,7 +48,7 @@ module composition_step
          logical :: store_start_rates = .false.
 ! Homogenize the mixed regions (always done when semiconvection is on).
          logical :: homogenize = .false.
-! Run semiconvection, when job%use_semiconvection is set.
+! Run semiconvection, when ctrl%use_semiconvection is set.
          logical :: semiconvection = .false.
 ! Apply the deep-mixing option, when ctrl%dpenv < 1.
          logical :: deep_mixing = .false.
@@ -73,7 +73,7 @@ contains
 ! zone search, the network burn, semiconvection or settling.
 !   star reads: ctrl%dpenv, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%settling_timestep_fraction,
-!     dm, gradT, job%use_extended_composition, job%use_semiconvection,
+!     ctrl%use_extended_composition, ctrl%use_semiconvection, dm, gradT,
 !     log_mass, log_Teff, log_total_mass, logP, logR, logT,
 !     luminosity_lsun, nz
 !   star writes: convective_flag, iov1, iov2, logRho, m,
@@ -114,7 +114,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 
       ierr = 0
 
-      if (s%job%use_extended_composition) then
+      if (s%ctrl%use_extended_composition) then
          num_species = 15
       else
          num_species = 11
@@ -138,7 +138,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       if (ierr /= 0) return
 
 ! 4. Semiconvection, on the passes that run it.
-      if (s%job%use_semiconvection) then
+      if (s%ctrl%use_semiconvection) then
          if (opts%semiconvection) &
               call extend_by_semiconvection(timestep, s%xa, s%logRho, &
               s%luminosity_lsun, s%logP, s%logR, s%log_mass, &
@@ -150,7 +150,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 ! 5. Homogenize the mixed regions: always with semiconvection on, and on
 ! the passes that ask for it (opts%homogenize). The bounds go to the run
 ! log with the solver diagnostics.
-      if (s%job%use_semiconvection .or. opts%homogenize) &
+      if (s%ctrl%use_semiconvection .or. opts%homogenize) &
            call homogenize_mixed_regions
       if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
          write(run_log_unit,110) ((s%mixed_zone_bounds(zone_idx,inner_zone_idx), &
@@ -181,7 +181,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       end if
 
 ! 9. Deuterium burning over the step (extended composition only).
-      if (s%job%use_extended_composition) call burn_deuterium(s,  &
+      if (s%ctrl%use_extended_composition) call burn_deuterium(s,  &
            radiative_zone_bounds, num_radiative_zones, num_mixed_zones, &
            timestep)
 

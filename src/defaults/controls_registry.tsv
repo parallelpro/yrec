@@ -113,14 +113,14 @@ control	xbe9_ini	real	initial_be9_fraction	canonical		Initial Be9 mass fraction 
 control	xb10_ini	real	initial_b10_fraction	canonical		Initial B10 mass fraction for isotope_mixture_name 'CUS'	initial_b10_fraction	ctrl	read
 control	xb11_ini	real	initial_b11_fraction	canonical		Initial B11 mass fraction for isotope_mixture_name 'CUS'	initial_b11_fraction	ctrl	read
 control	pulse_gyre_interval	integer	pulse_gyre_interval	keep		Write the interior-only GYRE file every this many models (0 = off)	pulse_gyre_interval	ctrl	run
-physics	atmmin	real	atm_step_min	canonical		The atmosphere integration's smallest step (in log tau)	atm_step_min	job	run
-physics	atmbeg	real	atm_step_begin	canonical		Atmosphere integration: the first step	atm_step_begin	job	run
+physics	atmmin	real	atm_step_min	canonical		The atmosphere integration's smallest step (in log tau)	atm_step_min	ctrl	run
+physics	atmbeg	real	atm_step_begin	canonical		Atmosphere integration: the first step	atm_step_begin	ctrl	run
 physics	atmerr	real	atm_error_tol	canonical		Atmosphere integration: error tolerance	atm_error_tol	ctrl	run
-physics	atmmax	real	atm_step_max	canonical		The atmosphere integration's largest step (in log tau)	atm_step_max	job	run
+physics	atmmax	real	atm_step_max	canonical		The atmosphere integration's largest step (in log tau)	atm_step_max	ctrl	run
 physics	atmd0	real	atm_step_initial	canonical		Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry	atm_step_initial	ctrl	run
 physics	anewcp	string	change_species_name	verified		Element id whose abundance to override in the start model (with change_species_value)			
 physics	atmp	string	new_species_value_mode	canonical		With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen			
-physics	acfpft	real	fpft_average_weight	verified		Averaging weight in the fp/ft update (shape, checkj)	acfpft	job	run
+physics	acfpft	real	fpft_average_weight	verified		Averaging weight in the fp/ft update (shape, checkj)	acfpft	ctrl	run
 physics	atime	real(14)	timestep_factors	verified		Per-phase timestep-control factor array (wtime/ytime governors)	atime	ctrl	run
 physics	alphac	real	overshoot_alpha_core	canonical	~ MESA overshoot f	Core overshoot extent in pressure scale heights	overshoot_alpha_core	ctrl	run
 physics	alphae	real	overshoot_alpha_envelope	canonical		Envelope overshoot extent in pressure scale heights	overshoot_alpha_envelope	ctrl	run
@@ -135,14 +135,14 @@ physics	crsun	real	solar_radius_cgs	canonical		The solar radius (cm) used for th
 physics	solar_mass_cgs	real	solar_mass_cgs	canonical		Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups.	solar_mass_cgs	ctrl	run
 physics	G_cgs	real	G_cgs	canonical		Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups.	g_cgs	ctrl	run
 physics	dpenv	real	envelope_logP_step	verified		mix: envelope pressure step control	dpenv	ctrl	run
-physics	dtdif	real	diffusion_timestep_factor	canonical		Sub-timestep factor for rotation diffusion	diffusion_timestep_factor	job	run
-physics	dtwind	real	max_domega_global	canonical		Timestep limit: the largest fractional change of omega per step	max_domega_global	job	run
+physics	dtdif	real	diffusion_timestep_factor	canonical		Sub-timestep factor for rotation diffusion	diffusion_timestep_factor	ctrl	run
+physics	dtwind	real	max_domega_global	canonical		Timestep limit: the largest fractional change of omega per step	max_domega_global	ctrl	run
 physics	djok	real	convergence_tolerance	canonical		Angular momentum transport: the convergence tolerance of the transport iterations	convergence_tolerance	ctrl	run
 physics	dt_gs	real	settling_timestep_fraction	canonical		Gravitational settling: sub-timestep as a fraction of the timestep	settling_timestep_fraction	ctrl	run
 physics	enverr	real	env_error_tol	canonical		Envelope integration: error tolerance	env_error_tol	ctrl	run
-physics	envmax	real	env_step_max	canonical		The envelope integration's largest step (in log P)	env_step_max	job	run
-physics	envmin	real	env_step_min	canonical		Envelope integration: minimum step	env_step_min	job	run
-physics	envbeg	real	env_step_begin	canonical		Envelope integration: first step	env_step_begin	job	run
+physics	envmax	real	env_step_max	canonical		The envelope integration's largest step (in log P)	env_step_max	ctrl	run
+physics	envmin	real	env_step_min	canonical		Envelope integration: minimum step	env_step_min	ctrl	run
+physics	envbeg	real	env_step_begin	canonical		Envelope integration: first step	env_step_begin	ctrl	run
 physics	envstp	real	envelope_step_size	canonical		Envelope generation: the envelope step size	envelope_step_size	ctrl	run
 physics	etadh0	real	debye_huckel_eta_min	canonical		Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain	debye_huckel_eta_min	ctrl	run
 physics	etadh1	real	debye_huckel_eta_max	canonical		Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain	debye_huckel_eta_max	ctrl	run
@@ -182,23 +182,23 @@ physics	lvfc	logical	velocity_form_correction	verified		Rotational mixing: scale
 physics	ldifad	logical	use_diffusion_advection_transport	canonical		Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out)	use_diffusion_advection_transport	ctrl	run
 physics	lnoj	logical	no_am_transport_in_core	canonical		No angular momentum transport in the convective core	no_am_transport_in_core	ctrl	run
 physics	lnewdif	logical	use_new_diffusion_routines	canonical		Use the new diffusion routines	use_new_diffusion_routines	ctrl	run
-physics	ldify	logical	diffuse_helium_active	canonical		Gravitational settling of helium (and hydrogen)	diffuse_helium_active	job	run
-physics	ldifz	logical	use_diffusion_z	canonical		Gravitational settling of the metals (implies helium settling and the Thoul et al. routines)	use_diffusion_z	job	run
+physics	ldify	logical	diffuse_helium_active	canonical		Gravitational settling of helium (and hydrogen)	diffuse_helium_active	ctrl	run
+physics	ldifz	logical	use_diffusion_z	canonical		Gravitational settling of the metals (implies helium settling and the Thoul et al. routines)	use_diffusion_z	ctrl	run
 physics	ldifli	logical	diffuse_lithium	canonical		Include Li/Be in gravitational settling	diffuse_lithium	ctrl	run
 physics	lsnu	logical	calc_neutrinos	canonical		Compute solar neutrino fluxes	calc_neutrinos	ctrl	run
 physics	ldh	logical	use_debye_huckel_correction	canonical		Apply the Debye-Hueckel correction to the simplified EOS	use_debye_huckel_correction	ctrl	run
 physics	lnewcp	logical	rescale_species_active	canonical		Set one species of the starting model (change_species_name) to new_species_value	rescale_species_active	ctrl	run
 physics	lkuthe	logical	helium_flash_active	canonical		Helium flash run: no rezoning, the starting model written to the .mod file for timestep cuts, and flash-specific solver handling	helium_flash_active	ctrl	run
-physics	lovstc	logical	core_overshoot_active	canonical		Enable convective-core overshoot	core_overshoot_active	job	run
-physics	lovste	logical	envelope_overshoot_active	canonical		Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights	envelope_overshoot_active	job	run
-physics	lovstm	logical	intermediate_overshoot_active	canonical		Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min	lovstm	job	run
+physics	lovstc	logical	core_overshoot_active	canonical		Enable convective-core overshoot	core_overshoot_active	ctrl	run
+physics	lovste	logical	envelope_overshoot_active	canonical		Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights	envelope_overshoot_active	ctrl	run
+physics	lovstm	logical	intermediate_overshoot_active	canonical		Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min	lovstm	ctrl	run
 physics	lovmax	logical	overshoot_max_extent_flag	verified		Cap the core overshoot extent at overshoot_beta_core times the core radius	lovmax	ctrl	run
-physics	lexcom	logical	use_extended_composition	canonical		Extended composition: also follow H2, Li6, Li7 and Be9 (15 species)	use_extended_composition	job	run
-physics	lrot	logical	rotation_flag	canonical	mesa: rotation_flag	Rotation: evolve the rotation curve and the angular momentum transport	rotation_active	job	run
+physics	lexcom	logical	use_extended_composition	canonical		Extended composition: also follow H2, Li6, Li7 and Be9 (15 species)	use_extended_composition	ctrl	run
+physics	lrot	logical	rotation_flag	canonical	mesa: rotation_flag	Rotation: evolve the rotation curve and the angular momentum transport	rotation_active	ctrl	run
 physics	lnew0	logical	new_triangle_init_flag	verified		Force a fresh envelope-fit triangle at run start	lnew0	ctrl	run
-physics	linstb	logical	instability_transport_active	canonical		Rotationally induced mixing and hydrodynamic angular momentum transport	instability_transport_active	job	run
+physics	linstb	logical	instability_transport_active	canonical		Rotationally induced mixing and hydrodynamic angular momentum transport	instability_transport_active	ctrl	run
 physics	lwnew	logical	set_initial_omega	canonical		Initialize solid-body rotation at omega = initial_omega	set_initial_omega	ctrl	run
-physics	ljdot0	logical	use_wind_torque	canonical		Apply magnetic wind angular-momentum loss	use_wind_torque	job	run
+physics	ljdot0	logical	use_wind_torque	canonical		Apply magnetic wind angular-momentum loss	use_wind_torque	ctrl	run
 physics	lptime	logical	use_structure_dt_limits	canonical		Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl)	use_structure_dt_limits	job	run
 physics	ladov	logical	adiabatic_overshoot_active	verified		tpgrad: treat overshoot region adiabatically	ladov	ctrl	run
 physics	ltrist	logical	use_envelope_triangle_dt	canonical		Limit the timestep by the envelope-fit triangle	use_envelope_triangle_dt	ctrl	run
@@ -209,7 +209,7 @@ physics	lthoulfit	logical	use_thoul_fit	canonical		Use the published fit to the 
 physics	lopale	logical	use_opal95_eos	canonical		Use the OPAL 1995 EOS (a newer OPAL EOS selected wins)	use_opal95_eos	ctrl	run
 physics	lmhd	logical	use_mhd_eos	canonical		Use the MHD EOS	use_mhd_eos	ctrl	run
 physics	lcore	logical	extend_core_inward	canonical		Add shells inward of the starting model's innermost shell	extend_core_inward	ctrl	run
-physics	lsemic	logical	use_semiconvection	canonical		Semiconvection treatment (conflicts with core overshoot)	use_semiconvection	job	run
+physics	lsemic	logical	use_semiconvection	canonical		Semiconvection treatment (conflicts with core overshoot)	use_semiconvection	ctrl	run
 physics	lnews	logical	improved_first_guess_flag	canonical		Use stored structure changes for the next model's first guess	improved_first_guess_flag	ctrl	run
 physics	mcore	integer	num_core_shells_added	canonical		With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor)	num_core_shells_added	job	run
 physics	niter1	integer	max_iter_level1	canonical		Henyey iteration limit, level 1 (fresh surface BC)	max_iter_level1	ctrl	run
@@ -234,7 +234,7 @@ physics	vnew	real(12)	mixture_weights_seed	canonical		Species mixture-weight vec
 physics	walpcz	real	new_zone_omega_weight	verified		Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes	walpcz	ctrl	run
 physics	wnew	real	initial_omega	canonical		Initial rotation rate when set_initial_omega	initial_omega	ctrl	run
 physics	weakscreening	real	weak_screening_threshold	canonical		Threshold of the screening parameter below which nuclear rates use weak screening	weak_screening_threshold	ctrl	run
-physics	xnewcp	real	change_species_value	verified		New abundance for change_species_name	new_species_value	job	run
+physics	xnewcp	real	change_species_value	verified		New abundance for change_species_name	new_species_value	ctrl	run
 physics	xmin	real	hydrogen_diffusion_floor	canonical		Settling stops (for the rest of the run card) once the central X falls below this	hydrogen_diffusion_floor	ctrl	run
 physics	ymin	real	helium_diffusion_min	canonical		Settling's outer boundary moves inward to the first zone where Y exceeds this	helium_diffusion_min	ctrl	run
 physics	tmolmin	real	molecular_opacity_logt_min	canonical		log10 T below which only the molecular opacities are used	molecular_opacity_logt_min	ctrl	run
@@ -244,10 +244,10 @@ physics	imbeg	integer	mc_run_start	canonical		First Monte-Carlo realization inde
 physics	imend	integer	mc_run_end	canonical		Last Monte-Carlo realization index	mc_run_end	job	run
 physics	sstandard	real(17)	mc_standard_seed	legacy		cross-section ratios used when use_new_nuclear_rates = .false.			
 physics	lscv	logical	use_scv_eos	canonical		Use the SCV EOS where it is valid and the OPAL EOS is not	use_scv_eos	ctrl	run
-physics	ldisk	logical	disk_locking_active	canonical		Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr	disk_locking_active	job	run
-physics	tdisk	real	disk_locking_age_gyr	canonical		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).	disk_locking_age_gyr	job	run
-physics	pdisk	real	disk_omega_rad_s	canonical		Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).	disk_omega_rad_s	job	run
-physics	wmax	real	wind_saturation_omega	canonical		Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units	wind_saturation_omega	job	run
+physics	ldisk	logical	disk_locking_active	canonical		Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr	disk_locking_active	ctrl	run
+physics	tdisk	real	disk_locking_age_gyr	canonical		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).	disk_locking_age_gyr	ctrl	run
+physics	pdisk	real	disk_omega_rad_s	canonical		Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly said period in days; the code has always consumed rad/s).	disk_omega_rad_s	ctrl	run
+physics	wmax	real	wind_saturation_omega	canonical		Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units	wind_saturation_omega	ctrl	run
 physics	lsolid	logical	force_solid_body_rotation	canonical		Force solid-body rotation (sets solid_body_mode_flag = 1)	force_solid_body_rotation	ctrl	run
 physics	impjmod	integer	solid_body_mode_flag	canonical		Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone	solid_body_mode_flag	ctrl	run
 physics	dmdt0	real	mass_change	canonical	mesa: mass_change	Mass change rate (Msun/yr; negative for loss) when use_mass_change is set	mass_accretion_rate	ctrl	run
@@ -360,27 +360,27 @@ physics	tol_dx_max	real	tol_dx_max	keep		With use_new_rate_variables: the larges
 physics	tol_dz_max	real	tol_dz_max	keep		With use_new_rate_variables: the largest spacing in Z between points (usually off)	tol_dz_max	ctrl	read
 physics	time_max_dt_frac	real	time_max_dt_frac	keep		With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next	time_max_dt_frac	ctrl	read
 physics	lnewvars	logical	use_new_rate_variables	verified		Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates	lnewvars	ctrl	read
-physics	lcalcenv	logical	calc_envelope_flag	canonical		Integrate the full envelope (false: the atmosphere to the photosphere only)	calc_envelope_flag	job	run
+physics	lcalcenv	logical	calc_envelope_flag	canonical		Integrate the full envelope (false: the atmosphere to the photosphere only)	calc_envelope_flag	ctrl	run
 control	history_columns_file	string	history_columns_file	verified	mesa: same	File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list	history_columns_file	ctrl	run
 control	profile_columns_file	string	profile_columns_file	verified	mesa: same	File listing the profile columns; blank: the default selection of defaults/profile_columns.list	profile_columns_file	ctrl	run
 physics	profile_data_prefix	string	profile_data_prefix	verified	mesa: same	Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory	profile_data_prefix	ctrl	run
 control	inlist_used_file	string	inlist_used_file	verified		Verbatim copy of the input namelist file(s), written at startup as run provenance	inlist_used_file	ctrl	read
 physics	star_history_name	string	star_history_name	verified	mesa: same	MESA mode: history file name (written to the output directory)	star_history_name	ctrl	run
 physics	terminal_interval	integer	terminal_interval	verified	mesa: same	Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints	terminal_interval	ctrl	run
-control	log_L_upper_limit	real(50)	log_L_upper_limit	canonical	mesa: same	Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)	log_l_upper_limit	job	run
-control	log_L_lower_limit	real(50)	log_L_lower_limit	canonical	mesa: same	Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off)	log_l_lower_limit	job	run
-control	Teff_upper_limit	real(50)	Teff_upper_limit	canonical	mesa: same	Per kind card: stop the card when Teff [K] exceeds this (1d99 = off)	teff_upper_limit	job	run
-control	Teff_lower_limit	real(50)	Teff_lower_limit	canonical	mesa: same	Per kind card: stop the card when Teff [K] drops below this (-1d99 = off)	teff_lower_limit	job	run
-control	log_g_upper_limit	real(50)	log_g_upper_limit	canonical	mesa: same	Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off)	log_g_upper_limit	job	run
-control	log_g_lower_limit	real(50)	log_g_lower_limit	canonical	mesa: same	Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off)	log_g_lower_limit	job	run
-control	nu_max_upper_limit	real(50)	nu_max_upper_limit	canonical		Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off)	nu_max_upper_limit	job	run
-control	nu_max_lower_limit	real(50)	nu_max_lower_limit	canonical		Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off)	nu_max_lower_limit	job	run
+control	log_L_upper_limit	real(50)	log_L_upper_limit	canonical	mesa: same	Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)	log_l_upper_limit	ctrl	run
+control	log_L_lower_limit	real(50)	log_L_lower_limit	canonical	mesa: same	Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off)	log_l_lower_limit	ctrl	run
+control	Teff_upper_limit	real(50)	Teff_upper_limit	canonical	mesa: same	Per kind card: stop the card when Teff [K] exceeds this (1d99 = off)	teff_upper_limit	ctrl	run
+control	Teff_lower_limit	real(50)	Teff_lower_limit	canonical	mesa: same	Per kind card: stop the card when Teff [K] drops below this (-1d99 = off)	teff_lower_limit	ctrl	run
+control	log_g_upper_limit	real(50)	log_g_upper_limit	canonical	mesa: same	Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off)	log_g_upper_limit	ctrl	run
+control	log_g_lower_limit	real(50)	log_g_lower_limit	canonical	mesa: same	Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off)	log_g_lower_limit	ctrl	run
+control	nu_max_upper_limit	real(50)	nu_max_upper_limit	canonical		Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off)	nu_max_upper_limit	ctrl	run
+control	nu_max_lower_limit	real(50)	nu_max_lower_limit	canonical		Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off)	nu_max_lower_limit	ctrl	run
 physics	nu_max_sun	real	nu_max_sun	canonical		Solar nu_max [uHz] for the scaling relation (Huber et al. 2011)	nu_max_sun	ctrl	run
 physics	delta_nu_sun	real	delta_nu_sun	canonical		Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011)	delta_nu_sun	ctrl	run
 physics	Teff_sun	real	Teff_sun	canonical		Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value)	teff_sun	ctrl	run
 physics	report_solver_diagnostics	logical	report_solver_diagnostics	verified	~ mesa report_solver_progress	Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping	report_solver_diagnostics	ctrl	read
 physics	profile_interval	integer	profile_interval	verified	mesa: same	MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles	profile_interval	ctrl	run
-physics	pulse_format	string	pulse_format	verified	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}	pulse_format	job	run
+physics	pulse_format	string	pulse_format	verified	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}	pulse_format	ctrl	run
 physics	write_profile_flag	logical	write_profile_flag	verified		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)	write_profile_flag	ctrl	run
 physics	write_pulse_flag	logical	write_pulse_flag	verified		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)	write_pulse_flag	ctrl	run
 physics	compute_neutrino_fluxes	logical	compute_neutrino_fluxes	verified		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run	compute_neutrino_fluxes	ctrl	run

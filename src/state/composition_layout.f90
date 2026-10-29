@@ -11,7 +11,7 @@
 ! species); the heavy elements in slots 5..11 and 13..15 are diffusion
 ! and burning tracers carried inside Z, not independent contributions
 ! to it. The basic set is slots i_h1..i_o18; the extended set
-! (job%use_extended_composition) adds i_h2..i_be9. Composition arrays
+! (ctrl%use_extended_composition) adds i_h2..i_be9. Composition arrays
 ! are always dimensioned for the extended set.
 module composition_layout
       implicit none

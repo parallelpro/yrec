@@ -369,7 +369,7 @@ subroutine compute_moment_of_inertia(s)
       integer :: i
 
       s%total_moment_of_inertia = 0.0d0
-      if (.not. s%job%rotation_active) then
+      if (.not. s%ctrl%rotation_active) then
          do i = 1, s%nz
             s%total_moment_of_inertia = &
                  s%total_moment_of_inertia + &
@@ -418,7 +418,7 @@ subroutine compute_rotation_observables(s)
       integer :: i
 
       s%cz_moment_of_inertia = 0.0d0
-      if (s%job%rotation_active) then
+      if (s%ctrl%rotation_active) then
          s%rotation_period_days = min(9999.0d0, &
               0.5d0*c4pi/s%omega(s%nz)/8.64d4)
          s%surf_velocity_kms = s%omega(s%nz)* &

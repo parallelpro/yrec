@@ -292,7 +292,7 @@ subroutine advance_composition_and_age
                if (ierr /= 0) return
 ! Store the composition at the start of the timestep (xa_start).
                num_species = n_species_basic
-               if (s%job%use_extended_composition) num_species=n_species_extended
+               if (s%ctrl%use_extended_composition) num_species=n_species_extended
                do i = 1,s%nz
                   do j = 1,num_species
                      s%xa_start(j,i) = s%xa(j,i)
@@ -350,7 +350,7 @@ subroutine rezone_or_snapshot
                s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
           endif
 ! The start-of-step rotational kinetic energy of each zone.
-            if (s%job%rotation_active) then
+            if (s%ctrl%rotation_active) then
                do i = 1,s%nz
                   s%kinetic_energy_rot_old(i) = s%kinetic_energy_rot(i)
                end do
@@ -360,7 +360,7 @@ subroutine rezone_or_snapshot
 ! below it (stored as pressure_scale_height_start, though it is not H_P).
 ! cz_base_radius_prev = 0 tells locate_surface_mixing_base that no base
 ! radius has been stored yet this step.
-            if (s%job%use_extended_composition) then
+            if (s%ctrl%use_extended_composition) then
                s%cz_base_radius_prev = 0.0D0
                envelope_cz_zone_prev = s%envelope_cz_bottom_index
                s%envelope_overshoot_depth_start = envelope_overshoot_depth()
@@ -479,7 +479,7 @@ end subroutine solve_structure
 ! start-of-step composition and angular momentum are restored on repeat
 ! passes, so that nothing is counted twice.
 subroutine converge_with_rotation
-            if (.not.s%job%rotation_active) then
+            if (.not.s%ctrl%rotation_active) then
                s%job%num_rotation_structure_iters = 1
             endif
 ! When the structure and rotation are iterated (MHP 05/02), keep copies
@@ -524,7 +524,7 @@ subroutine converge_with_rotation
 
 ! The age (Gyr) that the disk-locking test reads.
             s%disk_gate_age_gyr = s%age_gyr
-            if (s%job%rotation_active) then
+            if (s%ctrl%rotation_active) then
 ! On repeat passes, restore the start-of-step angular momentum.
                if (itrot.gt.1) then
                   do i = 1,s%nz
@@ -532,12 +532,12 @@ subroutine converge_with_rotation
                   end do
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
-! the wind torque when job%use_wind_torque is set). A model not aged
+! the wind torque when ctrl%use_wind_torque is set). A model not aged
 ! gets a zero step, as the Henyey pass does: it spans no time, so no
 ! angular momentum moves or leaves. (Until 2026-10 it got its step
 ! negated, and without instability transport the wind brake applied it,
 ! spinning the surface convection zone up; docs/bug_sweep.md O24.)
-               wind_loss_active = s%job%use_wind_torque
+               wind_loss_active = s%ctrl%use_wind_torque
                call evolve_angular_momentum(s, merge(s%dt, 0.0d0, evolve_model_flag), &
                     s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
@@ -563,10 +563,10 @@ end subroutine converge_with_rotation
 subroutine burn_light_elements
       use math_lib
 ! Only with the extended composition, for a model being aged.
-         if (s%job%use_extended_composition .and. s%model_number.ge.0 .and. &
+         if (s%ctrl%use_extended_composition .and. s%model_number.ge.0 .and. &
               evolve_model_flag .and. s%dt.gt.0.0D0) then
 ! Only without rotation, or without rotational mixing.
-            if (.not.s%job%rotation_active .or. .not.s%job%instability_transport_active) then
+            if (.not.s%ctrl%rotation_active .or. .not.s%ctrl%instability_transport_active) then
 ! The convection zones at the end of the step.
                call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,radiative_zone_bounds,s%mixed_zone_bounds, &
                             mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%iov1, s%iov2, ierr)
@@ -633,7 +633,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       mixed_zone_bounds_rerun = 0
       if (iteration_level.gt.2 .and. evolve_model_flag .and. s%dt.gt.0.0d0) then
          num_species = n_species_basic
-         if (s%job%use_extended_composition) num_species = n_species_extended
+         if (s%ctrl%use_extended_composition) num_species = n_species_extended
          do i = 1,s%nz
             do j = 1,num_species
                s%xa(j,i) = s%xa_start(j,i)
@@ -662,7 +662,7 @@ end subroutine solve_level
 ! (rezone_or_snapshot, burn_light_elements).
 double precision function envelope_overshoot_depth()
       use math_lib
-      if (s%job%envelope_overshoot_active) then
+      if (s%ctrl%envelope_overshoot_active) then
          envelope_overshoot_depth = s%ctrl%overshoot_alpha_envelope* &
               pressure_scale_height(s%logP(s%envelope_cz_bottom_index), &
               s%logR(s%envelope_cz_bottom_index), &

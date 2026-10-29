@@ -128,7 +128,7 @@ subroutine build_stitched_model(s, ierr)
          s%stitched%region(s%stitched%n_ext) = region_interior
          s%stitched%index(s%stitched%n_ext) = j
       end do
-      if (.not. s%job%calc_envelope_flag) then
+      if (.not. s%ctrl%calc_envelope_flag) then
          s%stitched%n_ie = s%stitched%n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this

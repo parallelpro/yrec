@@ -330,11 +330,11 @@ end subroutine change_mass
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
 ! boundary is the surface zone.
-!   star reads: ctrl%accreted_composition, ctrl%fczdmdt, ctrl%ftotdmdt,
-!     ctrl%walpcz, disk_gate_age_gyr, envelope_cz_bottom_index,
-!     envelope_specific_entropy, job%disk_locking_active,
-!     job%disk_locking_age_gyr, job%rotation_active, logRho, nz, omega,
-!     solar_mass_cgs
+!   star reads: ctrl%accreted_composition, ctrl%disk_locking_active,
+!     ctrl%disk_locking_age_gyr, ctrl%fczdmdt, ctrl%ftotdmdt,
+!     ctrl%rotation_active, ctrl%walpcz, disk_gate_age_gyr,
+!     envelope_cz_bottom_index, envelope_specific_entropy, logRho, nz,
+!     omega, solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
 !     delta_log_temperature, dm, dt, j_rot, log_mass, log_total_mass,
 !     logP, logR, logT, m, recompute_envelope_triangle, senv, star_mass,
@@ -387,7 +387,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 ! is read but never reached them), so it never ran. To revive it,
 ! uncomment this block, its locals and its star members
 ! (state/star_info_lib), and set them.
-!      if(star%use_rotation_scaled_solar_wind .and. star%job%rotation_active) then
+!      if(star%use_rotation_scaled_solar_wind .and. star%ctrl%rotation_active) then
 !         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
 !         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
 !         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
@@ -405,7 +405,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
            seconds_per_year
 ! With mass loss from a rotating star, the lost matter carries off
 ! angular momentum (a thermal wind).
-      wind_carries_angular_momentum = s%job%rotation_active .and. &
+      wind_carries_angular_momentum = s%ctrl%rotation_active .and. &
            delta_mass_cgs.lt.0.0d0
       call adjust_cz_for_accreted_entropy()
       call update_masses()
@@ -455,10 +455,10 @@ subroutine limit_mass_change_timestep()
       endif
 ! With accretion only (Mdot > 0, MHP 8/10): a step that would pass the
 ! disk-locking age is clipped to end there, and the mass change stops.
-      if(s%job%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
+      if(s%ctrl%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
          disk_age_test = s%disk_gate_age_gyr + 1.0d-9*s%dt/seconds_per_year
-         if(disk_age_test.gt.s%job%disk_locking_age_gyr)then
-            s%dt = (s%job%disk_locking_age_gyr-s%disk_gate_age_gyr)*1.0d9*seconds_per_year
+         if(disk_age_test.gt.s%ctrl%disk_locking_age_gyr)then
+            s%dt = (s%ctrl%disk_locking_age_gyr-s%disk_gate_age_gyr)*1.0d9*seconds_per_year
             disk_exhausted = .true.
          endif
       endif

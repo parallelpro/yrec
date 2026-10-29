@@ -125,7 +125,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
 ! With rotation: guess omega and j of the new shells, find omega, the
 ! shape and the moments of inertia of every zone from j (omega_from_j),
 ! and sum the angular momentum and rotational energy.
-      if(s%job%rotation_active)then
+      if(s%ctrl%rotation_active)then
          call guess_new_shell_rotation()
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
               shell_mass,convective_flag,num_zones,eta_squared, &
@@ -145,7 +145,7 @@ contains
 ! The species count, the target envelope mass (clamped), the current
 ! number of zones and envelope mass, and the integration settings.
 subroutine prepare_envelope_rebuild()
-      if(s%job%use_extended_composition)then
+      if(s%ctrl%use_extended_composition)then
          species_end_index = n_species_extended
       else
          species_end_index = n_species_basic

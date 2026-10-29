@@ -136,18 +136,18 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
          cfg%atm_step_min = atm_steps%step_min
          cfg%atm_step_max = atm_steps%step_max
       else
-         cfg%atm_step_begin = s%job%atm_step_begin
-         cfg%atm_step_min = s%job%atm_step_min
-         cfg%atm_step_max = s%job%atm_step_max
+         cfg%atm_step_begin = s%ctrl%atm_step_begin
+         cfg%atm_step_min = s%ctrl%atm_step_min
+         cfg%atm_step_max = s%ctrl%atm_step_max
       end if
       if (present(env_steps)) then
          cfg%env_step_begin = env_steps%step_begin
          cfg%env_step_min = env_steps%step_min
          cfg%env_step_max = env_steps%step_max
       else
-         cfg%env_step_begin = s%job%env_step_begin
-         cfg%env_step_min = s%job%env_step_min
-         cfg%env_step_max = s%job%env_step_max
+         cfg%env_step_begin = s%ctrl%env_step_begin
+         cfg%env_step_min = s%ctrl%env_step_min
+         cfg%env_step_max = s%ctrl%env_step_max
       end if
       cfg%atm_error_tol = s%ctrl%atm_error_tol
       cfg%env_error_tol = s%ctrl%env_error_tol
@@ -158,7 +158,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%senv = s%senv
       cfg%tenv = s%tenv
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
-      cfg%calc_envelope = s%job%calc_envelope_flag
+      cfg%calc_envelope = s%ctrl%calc_envelope_flag
       cfg%tolerance_fraction = s%ctrl%tolerance_fraction
       cfg%max_stage_index = s%ctrl%max_stage_index
       cfg%extrap_order = s%ctrl%extrap_order

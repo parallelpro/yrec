@@ -289,6 +289,62 @@ def check_controls_free(src_root):
     return problems
 
 
+# The controls' homes and uses (2026-10-29): defaults/controls_registry.tsv
+# says, for each controls_buffer member, whether it lives on star%ctrl or
+# star%job and where it is used. star%job holds exactly the members that
+# code outside the controls read assigns (star%ctrl never changes after
+# the read); `used` is run when code outside the read references the
+# member, read when only the read does (an input-only control), none when
+# nothing does. Tests are not code here. A write is an assignment to
+# s%<home>%<name> (or star%...), or the member passed to an intent(out) or
+# intent(inout) dummy (tools/check_star_contracts.py's analysis).
+CONTROLS_READ_FILES = {
+    "io/controls_reader.f90", "io/legacy_controls.f90", "io/run_files.f90",
+    "io/derived_controls.f90", "io/run_cards.f90", "io/controls_buffer.f90",
+    "io/controls_sync.f90", "state/controls_sync.f90", "setup/user_inputs.f90",
+}
+
+
+def check_control_homes(src_root):
+    import controls_registry
+    import check_star_contracts as contracts
+    rows = [r for r in controls_registry.rows() if r["home"]]
+    outside = [p for p in sorted(src_root.rglob("*.f90"))
+               if "/test/" not in p.relative_to(src_root).as_posix()
+               and p.relative_to(src_root).as_posix() not in CONTROLS_READ_FILES]
+    code = "\n".join(strip_comments(p.read_text(errors="replace")) for p in outside).lower()
+    written = set(m.group(2) for m in re.finditer(
+        r"\b(?:s|star)%(ctrl|job)%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
+    procs = contracts.scan(outside)
+    for name in procs:
+        _, writes = contracts.footprint(procs, name)
+        written |= {w.split("%", 1)[1] for w in writes if w.startswith(("ctrl%", "job%"))}
+    referenced = set(re.findall(r"\b(?:s|star)%(?:ctrl|job)%(\w+)", code))
+    read_files = [src_root / f for f in sorted(CONTROLS_READ_FILES)
+                  if f not in ("io/controls_buffer.f90", "io/controls_sync.f90",
+                               "state/controls_sync.f90")
+                  and (src_root / f).exists()]
+    # a namelist group's list of names is not a use
+    read_code = "\n".join(l for p in read_files
+                          for l in join_continuations(strip_comments(p.read_text(errors="replace")))
+                          if not re.match(r"(?i)^\s*namelist\b", l)).lower()
+    problems = []
+    for r in rows:
+        m = r["canonical"]
+        home = "job" if m in written else "ctrl"
+        if home != r["home"]:
+            problems.append(f"{m}: registry home {r['home']}, but code outside the read "
+                            + ("assigns it (job)" if home == "job" else "never assigns it (ctrl)"))
+        # the read's own copies (m = legacy, m = s%ctrl%m) are not uses
+        rest = re.sub(r"(?m)^\s*" + m + r"\s*(\([^=\n]*\))?\s*=.*$", "", read_code)
+        rest = re.sub(r"(?m)^\s*" + re.escape(r["legacy"].lower()) + r"\s*=\s*" + m + r"\s*$", "", rest)
+        used = ("run" if m in referenced else
+                "read" if re.search(r"(?<![%\w])" + m + r"\b|%(?:ctrl|job)%" + m + r"\b", rest)
+                else "none")
+        if used != r["used"]:
+            problems.append(f"{m}: registry used {r['used']}, but the code says {used}")
+    return sorted(set(problems))
+
 # The star layer's access to the star object (2026-10). Routines come in
 # three kinds, never mixed in one routine:
 #   orchestration (core's drivers, io's writers): reads and writes the
@@ -629,6 +685,13 @@ def main():
     if controls_problems:
         print("CONTROLS-FREE CONTRACT VIOLATIONS:")
         for b in controls_problems:
+            print("  " + b)
+        return 1
+
+    home_problems = check_control_homes(SRC)
+    if home_problems:
+        print("CONTROLS REGISTRY HOME/USE VIOLATIONS (defaults/controls_registry.tsv):")
+        for b in home_problems:
             print("  " + b)
         return 1
 

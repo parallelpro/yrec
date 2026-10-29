@@ -149,7 +149,7 @@ end subroutine limit_by_structure_change
 ! since the previous model, which sets the number of angular momentum
 ! transport sub-steps (evolve_angular_momentum).
 subroutine limit_by_omega_change()
-      if(s%job%rotation_active) then
+      if(s%ctrl%rotation_active) then
        call timestep_limit_omega(s, previous_timestep,num_points,omega,rotation_dt,max_domega_frac)
       else
        rotation_dt = dt_unlimited
@@ -377,7 +377,7 @@ subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotatio
             max_domega_frac = test_domega
          endif
       end do
-      dt_factor = max_domega_frac/s%job%max_domega_global
+      dt_factor = max_domega_frac/s%ctrl%max_domega_global
 ! No change of omega: no limit.
       if (dt_factor.eq.0.d0)then
           rotation_dt = dt_unlimited
@@ -542,7 +542,7 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
        local_log_density = log_density(max_temp_zone)
        local_log_temperature = log_temperature(max_temp_zone)
        zone_xa = composition(:,max_temp_zone)
-       if (.not.s%job%use_extended_composition) zone_xa(i_h2) = 0.0d0
+       if (.not.s%ctrl%use_extended_composition) zone_xa(i_h2) = 0.0d0
        call compute_zone_energy(s, local_log_density, local_log_temperature, &
             zone_xa, max_temp_zone, burn)
          helium_energy_gen = burn%eps_by_chain(chain_triple_alpha)
