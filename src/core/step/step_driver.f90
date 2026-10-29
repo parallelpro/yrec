@@ -215,7 +215,8 @@ subroutine evolve_step(s, model_iteration, step_status, ierr)
 ! into the stitched arrays before the observables: the turnover-time
 ! observable walks them, star%pphot comes from this build, and the output
 ! writers below only copy; nothing downstream integrates anything.
-       call build_stitched_model(s)
+       call build_stitched_model(s, ierr)
+       if (ierr /= 0) return
 ! The per-model observables, computed in the star layer (one procedure
 ! per family of quantities, core/diagnostics/observables.f90), including
 ! the renormalized luminosity_breakdown; the output below only reads

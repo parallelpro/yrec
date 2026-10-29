@@ -329,7 +329,7 @@ convection/temperature_gradients.o: convection_configuration.mod eos_lib.mod io_
 convection/test/test_convection.o: convection_lib.mod eos_lib.mod io_units.mod kap_lib.mod run_setup.mod star_info_lib.mod
 core/diagnostics/neutrino_flux_output.o: burn_step.mod io_units.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
-core/diagnostics/stitched_model.o: envelope_integration.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/diagnostics/stitched_model.o: envelope_integration.mod io_units.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 core/envelope/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
@@ -395,7 +395,7 @@ eos/yale/yale_eos.o: eos_configuration.mod eos_mixture.mod eos_results.mod io_un
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_check.o: io_units.mod star_info_lib.mod
 io/derived_controls.o: io_units.mod legacy_controls.mod math_lib.mod physical_constants.mod star_info_lib.mod
-io/history_output.o: io_units.mod output_columns.mod physical_constants.mod star_info_lib.mod
+io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod physical_constants.mod star_info_lib.mod
 io/legacy_controls.o: controls_buffer.mod integration_parameters.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
 io/output_columns.o: io_units.mod

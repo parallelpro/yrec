@@ -30,7 +30,7 @@ contains
 ! Called by read_starting_model and compute_observables.
 subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       use stitched_model, only: &
-           ip_mass, ip_logR, ip_logRho, ip_logP, ip_conv, ip_gradr, &
+           ip_mass, ip_logR, ip_logRho, ip_logP, ip_mixing_type, ip_gradr, &
            ip_grada, ip_conv_vel
       use star_info_lib, only: json
       use physical_constants
@@ -80,7 +80,7 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
          combined_velocity(j) = s%stitched%prof(ip_conv_vel,j)
          combined_grad1(j) = s%stitched%prof(ip_gradr,j)
          combined_grad2(j) = s%stitched%prof(ip_grada,j)
-         combined_convective_flag(j) = s%stitched%prof(ip_conv,j) .ne. 0.0d0
+         combined_convective_flag(j) = s%stitched%prof(ip_mixing_type,j) .ne. 0.0d0
       end do
 
       call turnover_from_interior_new(s, combined_mass, combined_convective_flag, &

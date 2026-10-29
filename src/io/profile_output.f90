@@ -1,21 +1,21 @@
 !----------------------------------------------------------------------
 ! profile_output
 !----------------------------------------------------------------------
-! The MESA-layout profile files:
-! the column name table and the writer for <outdir>/profile<N>.data
-! (zone 1 = the surface); columns selectable via the
-! profile_columns_file control (default selection from
-! defaults/profile_columns.list -- see output_columns).
+! The profile files, in MESA's profile layout: <outdir>/profile<N>.data,
+! zone 1 the surface. The columns are selected by the
+! profile_columns_file control (the default selection is
+! defaults/profile_columns.list, see output_columns).
 !
-! Writers are PURE READERS of the stitched full-star model
-! (interior + envelope + atmosphere), assembled every step by
-! core/diagnostics/stitched_model.f90 into the stx_* arrays. Module state below
-! is per-job (output directory, parsed selection), reset by
-! profile_output_init on every job.
+! The column table and the values are core's (stitched_model: the
+! table profile_columns, at the named indices ip_<name>, and the values
+! s%stitched%prof over the stitched full-star model: interior, envelope
+! and atmosphere). The writer only reads them. The module state below is
+! per job (the output directory and the selection), reset by
+! profile_output_init.
 module profile_output
-      use stitched_model, only: n_prof_cols
-      use output_columns, only: max_cols, parse_columns, &
-           prof_default_names, n_prof_default
+      use stitched_model, only: n_prof_cols, profile_columns, ip_zone
+      use output_columns, only: max_cols, parse_columns, output_column, &
+           integer_column, prof_default_names
       implicit none
       private
       public :: profile_output_init, write_profile
@@ -23,11 +23,6 @@ module profile_output
       character(len=256) :: prof_out_dir = ' '
       integer :: prof_nsel = 0
       integer :: prof_sel(max_cols)
-! the two integer-valued profile columns (written with an I format).
-! profile_column_names keeps literal names(1)/names(9): the aux test
-! test_mesa_output.py::test_default_columns_lists_in_sync harvests
-! "names(<digits>) = '...'" from that routine.
-      integer, parameter :: col_zone = 1, col_mixing_type = 9
 
 contains
 
@@ -37,83 +32,12 @@ subroutine profile_output_init(s, out_dir, ierr)
       type(star_info), intent(inout) :: s
       character(len=*), intent(in) :: out_dir
       integer, intent(out) :: ierr
-      character(len=24) :: prof_names(n_prof_cols)
 
       prof_out_dir = out_dir
       ierr = 0
-      call profile_column_names(prof_names)
-      call parse_columns(s%ctrl%profile_columns_file, prof_names, &
-           n_prof_cols, prof_default_names, n_prof_default, &
-           prof_sel, prof_nsel, 'profile', ierr)
+      call parse_columns(s%ctrl%profile_columns_file, profile_columns(), &
+           prof_default_names, prof_sel, prof_nsel, 'profile', ierr)
 end subroutine profile_output_init
-
-! ---------------------------------------------------------------
-subroutine profile_column_names(names)
-      character(len=24), intent(out) :: names(n_prof_cols)
-
-      names(1) = 'zone'
-      names(2) = 'mass'
-      names(3) = 'logR'
-      names(4) = 'logT'
-      names(5) = 'logRho'
-      names(6) = 'logP'
-      names(7) = 'luminosity'
-      names(8) = 'dm'
-      names(9) = 'mixing_type'
-      names(10) = 'gamma1'
-      names(11) = 'opacity'
-      names(12) = 'gradr'
-      names(13) = 'gradT'
-      names(14) = 'grada'
-      names(15) = 'conv_vel'
-      names(16) = 'beta'
-      names(17) = 'eta'
-      names(18) = 'grav'
-      names(19) = 'eps_ppI'
-      names(20) = 'eps_ppII'
-      names(21) = 'eps_ppIII'
-      names(22) = 'eps_cno'
-      names(23) = 'eps_he3'
-      names(24) = 'eps_nuc'
-      names(25) = 'eps_neu'
-      names(26) = 'eps_grav'
-      names(27) = 'h1'
-      names(28) = 'h2'
-      names(29) = 'he3'
-      names(30) = 'he4'
-      names(31) = 'li6'
-      names(32) = 'li7'
-      names(33) = 'be9'
-      names(34) = 'c12'
-      names(35) = 'c13'
-      names(36) = 'n14'
-      names(37) = 'n15'
-      names(38) = 'o16'
-      names(39) = 'o17'
-      names(40) = 'o18'
-      names(41) = 'z'
-      names(42) = 'omega'
-      names(43) = 'j_rot'
-      names(44) = 'i_rot'
-      names(45) = 'fp_rot'
-      names(46) = 'ft_rot'
-      names(47) = 'v_es'
-      names(48) = 'v_gsf'
-      names(49) = 'v_ss'
-      names(50) = 'cp'
-      names(51) = 'delta'
-      names(52) = 'mu'
-      names(53) = 'mu_e_inv'
-      names(54) = 'brunt_N2'
-      names(55) = 'lamb_S2'
-      names(56) = 'gradL'
-      names(57) = 'gradr_div_grada'
-      names(58) = 'csound'
-      names(59) = 'D_omega'
-      names(60) = 'D_mix_rot'
-      names(61) = 'eps_extra'
-      names(62) = 'v_sh'
-end subroutine profile_column_names
 
 ! ---------------------------------------------------------------
 subroutine write_profile(s, iprof, stitched, ierr)
@@ -125,13 +49,13 @@ subroutine write_profile(s, iprof, stitched, ierr)
 ! stitched: the stitched model whose columns are written.
       type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
-      character(len=24) :: names(n_prof_cols)
+      type(output_column) :: cols(n_prof_cols)
       character(len=256) :: path, msg
       character(len=12) :: numstr
       integer :: u, i, k, kz, ios
       double precision :: v
 
-      call profile_column_names(names)
+      cols = profile_columns()
       write(numstr, '(i0)') iprof
       path = trim(prof_out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
@@ -154,19 +78,19 @@ subroutine write_profile(s, iprof, stitched, ierr)
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, prof_nsel)
       write(u, '(999(1x,a40))') &
-           (adjustr(trim(names(prof_sel(k)))), k = 1, prof_nsel)
+           (adjustr(trim(cols(prof_sel(k))%name)), k = 1, prof_nsel)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
 ! is stored inward-to-outward, so walk it in reverse.
       do k = 1, stitched%n_ext
          kz = stitched%n_ext - k + 1
          do i = 1, prof_nsel
-            if (prof_sel(i) == col_zone) then
+            if (prof_sel(i) == ip_zone) then
                v = dble(k)
             else
                v = stitched%prof(prof_sel(i), kz)
             end if
-            if (prof_sel(i) == col_zone .or. prof_sel(i) == col_mixing_type) then
+            if (cols(prof_sel(i))%kind == integer_column) then
                write(u, '(1x,i40)', advance='no') nint(v)
             else
                write(u, '(1x,es40.16e3)', advance='no') v

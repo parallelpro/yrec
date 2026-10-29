@@ -1,33 +1,33 @@
 !----------------------------------------------------------------------
 ! stitched_model
 !----------------------------------------------------------------------
-! Added 2026 (stitched-model restructure): the one place that
-! assembles the FULL converged star -- interior (center -> fitting
-! point) + envelope (fitting point -> photosphere) + atmosphere
-! (photosphere -> tau~0) -- and materializes every quantity the
-! profile and pulse writers need, as plain arrays over the extended
-! grid. build_stitched_model re-integrates the envelope/atmosphere
-! at the converged (Teff, L) with the fixed output step sizes
-! (stitch's recipe, formerly io/yrec_output.f90's build_extended),
-! then fills:
-!   s%stitched%prof(1:n_prof_cols, 1:n_ext) -- the profile column values
-!     (column meanings = io/yrec_output.f90's profile column
-!     registry; column 1, the zone number, is left 0 -- the writer
-!     numbers zones itself)
+! The one place that assembles the whole converged star -- interior
+! (center -> fitting point) + envelope (fitting point -> photosphere) +
+! atmosphere (photosphere -> tau ~ 0) -- and computes every quantity
+! the profile and pulse writers need, as plain arrays over the extended
+! grid. build_stitched_model re-integrates the envelope and atmosphere
+! at the converged (Teff, L) with the fixed output step sizes, then
+! fills:
+!   s%stitched%prof(1:n_prof_cols, 1:n_ext) -- the profile columns, at
+!     their named indices ip_<name>; column ip_zone is left 0 (the
+!     writer numbers the zones)
 !   s%stitched%pulse(1:n_pulse_cols, 1:n_ext) -- the GYRE/FGONG pulse set
-! The io writers are pure readers of these arrays; nothing in the
-! output path integrates or stitches anything. compute_observables
-! themes may read them too (profile-based observables).
+! The profile column table (profile_columns: each column's name and
+! kind) is here, next to the values (interior_value, envelope_value,
+! atmosphere_value). The io writers only read these arrays; nothing in
+! the output path integrates or stitches anything. compute_observables
+! reads them too (the turnover time, the seismic observables).
 module stitched_model
       use physical_constants
       use math_lib
       use star_info_lib, only: json, star_info
+      use output_columns, only: output_column, real_column, integer_column
       implicit none
       private
-      public :: build_stitched_model, n_prof_cols, n_pulse_cols, &
-           ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, ip_conv, &
-           ip_gradr, ip_gradT, ip_grada, ip_conv_vel, ip_brunt_N2, &
-           ip_csound
+      public :: build_stitched_model, profile_columns, n_prof_cols, n_pulse_cols
+      public :: ip_zone, ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, &
+           ip_mixing_type, ip_gradr, ip_gradT, ip_grada, ip_conv_vel, &
+           ip_brunt_N2, ip_csound
       public :: ipul_r, ipul_m, ipul_L, ipul_P, ipul_T, ipul_rho, &
            ipul_grad, ipul_N2, ipul_gamma1, ipul_grada, ipul_delta, &
            ipul_kap, ipul_kap_kap_T, ipul_kap_kap_rho, ipul_eps, &
@@ -35,7 +35,32 @@ module stitched_model
            ipul_mu_e_inv, ipul_h1, ipul_z, ipul_species_base, &
            ipul_eps_grav, ipul_gyre_last
 
-      integer, parameter :: n_prof_cols = 62
+! The profile columns' named indices, in the order of the column table.
+      integer, parameter :: &
+           ip_zone = 1, ip_mass = 2, ip_logR = 3, ip_logT = 4, &
+           ip_logRho = 5, ip_logP = 6, ip_luminosity = 7, ip_dm = 8, &
+           ip_mixing_type = 9, ip_gamma1 = 10, ip_opacity = 11, ip_gradr = 12, &
+           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15, ip_beta = 16, &
+           ip_eta = 17, ip_grav = 18, ip_eps_ppI = 19, ip_eps_ppII = 20, &
+           ip_eps_ppIII = 21, ip_eps_cno = 22, ip_eps_he3 = 23, ip_eps_nuc = 24, &
+           ip_eps_neu = 25, ip_eps_grav = 26, ip_h1 = 27, ip_h2 = 28, &
+           ip_he3 = 29, ip_he4 = 30, ip_li6 = 31, ip_li7 = 32, &
+           ip_be9 = 33, ip_c12 = 34, ip_c13 = 35, ip_n14 = 36, &
+           ip_n15 = 37, ip_o16 = 38, ip_o17 = 39, ip_o18 = 40, &
+           ip_z = 41, ip_omega = 42, ip_j_rot = 43, ip_i_rot = 44, &
+           ip_fp_rot = 45, ip_ft_rot = 46, ip_v_es = 47, ip_v_gsf = 48, &
+           ip_v_ss = 49, ip_cp = 50, ip_delta = 51, ip_mu = 52, &
+           ip_mu_e_inv = 53, ip_brunt_N2 = 54, ip_lamb_S2 = 55, ip_gradL = 56, &
+           ip_gradr_div_grada = 57, ip_csound = 58, ip_D_omega = 59, ip_D_mix_rot = 60, &
+           ip_eps_extra = 61, ip_v_sh = 62
+      integer, parameter :: n_prof_cols = ip_v_sh
+! The four seismic columns, which compute_seismic_columns fills over the
+! whole extended grid (s%stitched%seismic(1:4,:), in this order).
+      integer, parameter :: ip_seismic_first = ip_brunt_N2, &
+           ip_seismic_last = ip_gradr_div_grada
+! The regions of the extended grid (s%stitched%region).
+      integer, parameter :: region_interior = 1, region_envelope = 2, &
+           region_atmosphere = 3
       integer, parameter :: n_pulse_cols = 35
 ! Named pulse-column indices (2026 audit, section 8: the pts(35,*)
 ! map was bare numbers in every writer -- reverse-engineered once
@@ -52,24 +77,10 @@ module stitched_model
            ipul_mu_e_inv = 20, ipul_h1 = 21, ipul_z = 22, &
            ipul_species_base = 22, ipul_eps_grav = 34
       integer, parameter :: ipul_gyre_last = ipul_omega
-! Named indices for the s%stitched%prof columns physics consumers read
-! (column meanings = the profile column registry in io/yrec_output).
-      integer, parameter :: ip_mass = 2, ip_logR = 3, ip_logT = 4, &
-           ip_logRho = 5, ip_logP = 6, ip_conv = 9, ip_gradr = 12, &
-           ip_gradT = 13, ip_grada = 14, ip_conv_vel = 15, &
-           ip_brunt_N2 = 54, ip_csound = 58
-! further columns read (not exported) by compute_seismic_columns:
-! gamma1, delta = -dlnrho/dlnT, mean molecular weight; and the four
-! seismic columns 54-57 (brunt_N2, lamb_S2, gradL, gradr_div_grada)
-! that it fills.
-      integer, parameter :: ip_gamma1 = 10, ip_delta = 51, ip_mu = 52
-      integer, parameter :: ip_seismic_first = ip_brunt_N2, &
-           ip_seismic_last = ip_brunt_N2 + 3
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
-! assembled inward-to-outward, exactly the regions io/write_stitched_profile.f90
-! splices for the legacy .store format. Profiles and pulse files both
-! cover the full star: truncating at the fitting point would drop the
+! assembled inward-to-outward. Profiles and pulse files both cover the
+! full star: truncating at the fitting point would drop the
 ! superadiabatic layer and photosphere, which dominate p-mode
 ! frequencies.
       integer, parameter :: max_ext = 3*json
@@ -83,14 +94,15 @@ contains
 ! model and build the inward-to-outward index map. The envelope the
 ! solver last integrated belongs to some trial (Teff, L) -- or was
 ! never integrated at all, when the envelope triangle interpolated --
-! so a fresh atm_get at the converged values is required (the same recipe
-! io/write_stitched_profile.f90 uses for the legacy .store profiles, with the
-! same fixed output step sizes).
-subroutine build_stitched_model(s)
+! so a fresh atm_get at the converged values is required, with the
+! fixed output step sizes. ierr = 1 when a profile column has no value
+! in a region (fill_stitched_arrays).
+subroutine build_stitched_model(s, ierr)
       use star_info_lib, only: i_h1, i_metals
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm
       type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
       double precision :: b, gl, rl, ateffl, plim
@@ -109,11 +121,12 @@ subroutine build_stitched_model(s)
          s%stitched%prof = 0.0d0
          s%stitched%pulse = 0.0d0
       end if
+      ierr = 0
 ! interior always present
       s%stitched%n_ext = 0
       do j = 1, s%nz
          s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = 1
+         s%stitched%region(s%stitched%n_ext) = region_interior
          s%stitched%index(s%stitched%n_ext) = j
       end do
       if (.not. s%job%calc_envelope_flag) then
@@ -121,7 +134,7 @@ subroutine build_stitched_model(s)
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this
 ! branch -- they hold whatever the last full build left.)
-         call fill_stitched_arrays(s)
+         call fill_stitched_arrays(s, ierr)
          return
       end if
 
@@ -157,7 +170,7 @@ subroutine build_stitched_model(s)
 
       if (jerr /= 0) then
          s%stitched%n_ie = s%stitched%n_ext
-         call fill_stitched_arrays(s)
+         call fill_stitched_arrays(s, ierr)
          return
       end if
 
@@ -171,7 +184,7 @@ subroutine build_stitched_model(s)
          if (s%stitched%n_ext >= max_ext) exit
          if (s%env_points%env_log10_radius(i) <= s%logR(s%nz)) cycle
          s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = 2
+         s%stitched%region(s%stitched%n_ext) = region_envelope
          s%stitched%index(s%stitched%n_ext) = i
       end do
       s%stitched%n_ie = s%stitched%n_ext
@@ -198,11 +211,11 @@ subroutine build_stitched_model(s)
          if (s%stitched%n_ext >= max_ext) exit
          if (s%stitched%atm_height(i) <= 0.0d0) cycle
          s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = 3
+         s%stitched%region(s%stitched%n_ext) = region_atmosphere
          s%stitched%index(s%stitched%n_ext) = i
       end do
       call compute_seismic_columns(s)
-      call fill_stitched_arrays(s)
+      call fill_stitched_arrays(s, ierr)
 end subroutine build_stitched_model
 
 ! ---------------------------------------------------------------
@@ -289,93 +302,115 @@ subroutine compute_seismic_columns(s)
       end if
 end subroutine compute_seismic_columns
 
-! Profile column value at extended point j. Envelope/atmosphere points
-! carry what those integrations store; quantities they do not track
-! (per-species abundances beyond X/Z, burning terms, rotation
-! internals) are zero, as io/write_stitched_profile.f90 also writes them.
-double precision function ext_profile_value(s, icol, j)
-      use math_lib
-      use star_info_lib, only: i_h1, i_metals
-      type(star_info), intent(inout) :: s
+! ---------------------------------------------------------------
+! The profile column table: each column's name and kind, at its named
+! index (profile_output writes the selected ones).
+function profile_columns() result(cols)
+      type(output_column) :: cols(n_prof_cols)
+
+      cols(ip_zone)            = output_column('zone', integer_column)
+      cols(ip_mass)            = output_column('mass', real_column)
+      cols(ip_logR)            = output_column('logR', real_column)
+      cols(ip_logT)            = output_column('logT', real_column)
+      cols(ip_logRho)          = output_column('logRho', real_column)
+      cols(ip_logP)            = output_column('logP', real_column)
+      cols(ip_luminosity)      = output_column('luminosity', real_column)
+      cols(ip_dm)              = output_column('dm', real_column)
+      cols(ip_mixing_type)     = output_column('mixing_type', integer_column)
+      cols(ip_gamma1)          = output_column('gamma1', real_column)
+      cols(ip_opacity)         = output_column('opacity', real_column)
+      cols(ip_gradr)           = output_column('gradr', real_column)
+      cols(ip_gradT)           = output_column('gradT', real_column)
+      cols(ip_grada)           = output_column('grada', real_column)
+      cols(ip_conv_vel)        = output_column('conv_vel', real_column)
+      cols(ip_beta)            = output_column('beta', real_column)
+      cols(ip_eta)             = output_column('eta', real_column)
+      cols(ip_grav)            = output_column('grav', real_column)
+      cols(ip_eps_ppI)         = output_column('eps_ppI', real_column)
+      cols(ip_eps_ppII)        = output_column('eps_ppII', real_column)
+      cols(ip_eps_ppIII)       = output_column('eps_ppIII', real_column)
+      cols(ip_eps_cno)         = output_column('eps_cno', real_column)
+      cols(ip_eps_he3)         = output_column('eps_he3', real_column)
+      cols(ip_eps_nuc)         = output_column('eps_nuc', real_column)
+      cols(ip_eps_neu)         = output_column('eps_neu', real_column)
+      cols(ip_eps_grav)        = output_column('eps_grav', real_column)
+      cols(ip_h1)              = output_column('h1', real_column)
+      cols(ip_h2)              = output_column('h2', real_column)
+      cols(ip_he3)             = output_column('he3', real_column)
+      cols(ip_he4)             = output_column('he4', real_column)
+      cols(ip_li6)             = output_column('li6', real_column)
+      cols(ip_li7)             = output_column('li7', real_column)
+      cols(ip_be9)             = output_column('be9', real_column)
+      cols(ip_c12)             = output_column('c12', real_column)
+      cols(ip_c13)             = output_column('c13', real_column)
+      cols(ip_n14)             = output_column('n14', real_column)
+      cols(ip_n15)             = output_column('n15', real_column)
+      cols(ip_o16)             = output_column('o16', real_column)
+      cols(ip_o17)             = output_column('o17', real_column)
+      cols(ip_o18)             = output_column('o18', real_column)
+      cols(ip_z)               = output_column('z', real_column)
+      cols(ip_omega)           = output_column('omega', real_column)
+      cols(ip_j_rot)           = output_column('j_rot', real_column)
+      cols(ip_i_rot)           = output_column('i_rot', real_column)
+      cols(ip_fp_rot)          = output_column('fp_rot', real_column)
+      cols(ip_ft_rot)          = output_column('ft_rot', real_column)
+      cols(ip_v_es)            = output_column('v_es', real_column)
+      cols(ip_v_gsf)           = output_column('v_gsf', real_column)
+      cols(ip_v_ss)            = output_column('v_ss', real_column)
+      cols(ip_cp)              = output_column('cp', real_column)
+      cols(ip_delta)           = output_column('delta', real_column)
+      cols(ip_mu)              = output_column('mu', real_column)
+      cols(ip_mu_e_inv)        = output_column('mu_e_inv', real_column)
+      cols(ip_brunt_N2)        = output_column('brunt_N2', real_column)
+      cols(ip_lamb_S2)         = output_column('lamb_S2', real_column)
+      cols(ip_gradL)           = output_column('gradL', real_column)
+      cols(ip_gradr_div_grada) = output_column('gradr_div_grada', real_column)
+      cols(ip_csound)          = output_column('csound', real_column)
+      cols(ip_D_omega)         = output_column('D_omega', real_column)
+      cols(ip_D_mix_rot)       = output_column('D_mix_rot', real_column)
+      cols(ip_eps_extra)       = output_column('eps_extra', real_column)
+      cols(ip_v_sh)            = output_column('v_sh', real_column)
+end function profile_columns
+
+! ---------------------------------------------------------------
+! Profile column icol at extended point j: a seismic column from
+! compute_seismic_columns' pass, otherwise its value in the point's
+! region. found is false when that region has no case for the column
+! (a column added without one), which fill_stitched_arrays reports.
+subroutine extended_point_value(s, icol, j, value, found)
+      type(star_info), intent(in) :: s
       integer, intent(in) :: icol, j
+      double precision, intent(out) :: value
+      logical, intent(out) :: found
       integer :: i
 
       if (icol >= ip_seismic_first .and. icol <= ip_seismic_last) then
-         ext_profile_value = s%stitched%seismic(icol-ip_seismic_first+1, j)
+         value = s%stitched%seismic(icol-ip_seismic_first+1, j)
+         found = .true.
          return
       end if
       i = s%stitched%index(j)
       select case (s%stitched%region(j))
-      case (1)
-         ext_profile_value = profile_value(s, icol, i)
-      case (2)
-         select case (icol)
-         case (2);  ext_profile_value = envelope_mass_g(s, i)/s%solar_mass_cgs
-         case (3);  ext_profile_value = s%env_points%env_log10_radius(i)
-         case (4);  ext_profile_value = s%env_points%env_log10_temperature(i)
-         case (5);  ext_profile_value = s%env_points%env_log10_density(i)
-         case (6);  ext_profile_value = s%env_points%env_log10_pressure(i)
-         case (7);  ext_profile_value = s%env_points%env_luminosity(i)
-         case (9);  ext_profile_value = convective_indicator(s%env_points%env_convective_flag(i))
-         case (10); ext_profile_value = s%env_points%env_gamma1(i)
-         case (11); ext_profile_value = s%env_points%env_opacity(i)
-         case (12); ext_profile_value = s%env_points%env_gradients(1,i)
-! env_gradients order is (1) radiative, (2) adiabatic, (3) actual
-! (set from current_gradients in envint) -- profile columns are
-! 13 = gradT (actual), 14 = grada. The pre-2026 mapping had these
-! two swapped in the envelope region (found when the turnover
-! walker started reading the stitched columns).
-         case (13); ext_profile_value = s%env_points%env_gradients(3,i)
-         case (14); ext_profile_value = s%env_points%env_gradients(2,i)
-         case (15); ext_profile_value = s%env_points%env_convective_velocity(i)
-         case (16); ext_profile_value = s%env_points%env_beta(i)
-         case (27); ext_profile_value = s%env_points%env_hydrogen_fraction(i)
-         case (41); ext_profile_value = s%env_points%env_metal_fraction(i)
-         case (42); ext_profile_value = s%omega(s%nz)
-         case (50); ext_profile_value = s%env_points%env_specific_heat_cp(i)
-         case (51); ext_profile_value = -s%env_points%env_dlnrho_dlnt(i)
-! 2026 (bugsweep sec-11): mu from the gas-pressure ideal-gas relation
-! R/mu = beta*P/(rho*T) -- the same identity compute_blended_eos uses for its
-! specific gas constant -- so the Ledoux column below sees a
-! continuous mu across the interior/envelope junction instead of 0.
-         case (52); ext_profile_value = ideal_gas_mu( &
-              s%env_points%env_log10_pressure(i), &
-              s%env_points%env_log10_temperature(i), &
-              s%env_points%env_log10_density(i), s%env_points%env_beta(i))
-         case (58); ext_profile_value = sound_speed_cgs(s%env_points%env_gamma1(i), &
-              s%env_points%env_log10_pressure(i), s%env_points%env_log10_density(i))
-         case default; ext_profile_value = 0.0d0
-         end select
-      case (3)
-         select case (icol)
-         case (2);  ext_profile_value = s%star_mass
-         case (3);  ext_profile_value = log10(atmosphere_radius_cm(s, i))
-         case (4);  ext_profile_value = s%atm_points%atmo_log10_temperature(i)
-         case (5);  ext_profile_value = s%atm_points%atmo_log10_density(i)
-         case (6);  ext_profile_value = s%atm_points%atmo_log10_pressure(i)
-         case (7);  ext_profile_value = exp(ln10*s%log_L)
-         case (10); ext_profile_value = s%atm_points%atmo_gamma1(i)
-         case (11); ext_profile_value = s%atm_points%atmo_opacity(i)
-         case (12); ext_profile_value = s%atm_points%atmo_gradients(1,i)
-         case (13); ext_profile_value = s%atm_points%atmo_gradients(2,i)
-         case (14); ext_profile_value = s%atm_points%atmo_gradients(3,i)
-         case (16); ext_profile_value = s%atm_points%atmo_beta(i)
-         case (27); ext_profile_value = s%xa(i_h1,s%nz)
-         case (41); ext_profile_value = s%xa(i_metals,s%nz)
-         case (42); ext_profile_value = s%omega(s%nz)
-         case (50); ext_profile_value = s%atm_points%atmo_specific_heat_cp(i)
-         case (51); ext_profile_value = -s%atm_points%atmo_dlnrho_dlnt(i)
-         case (52); ext_profile_value = ideal_gas_mu( &
-              s%atm_points%atmo_log10_pressure(i), &
-              s%atm_points%atmo_log10_temperature(i), &
-              s%atm_points%atmo_log10_density(i), s%atm_points%atmo_beta(i))
-         case (58); ext_profile_value = sound_speed_cgs(s%atm_points%atmo_gamma1(i), &
-              s%atm_points%atmo_log10_pressure(i), s%atm_points%atmo_log10_density(i))
-         case default; ext_profile_value = 0.0d0
-         end select
+      case (region_interior)
+         call interior_value(s, icol, i, value, found)
+      case (region_envelope)
+         call envelope_value(s, icol, i, value, found)
+      case (region_atmosphere)
+         call atmosphere_value(s, icol, i, value, found)
       case default
-         ext_profile_value = 0.0d0
+         value = 0.0d0
+         found = .false.
       end select
+end subroutine extended_point_value
+
+! Profile column icol at extended point j, for compute_seismic_columns,
+! which reads only columns every region has (fill_stitched_arrays
+! reports any that is missing).
+double precision function ext_profile_value(s, icol, j)
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: icol, j
+      logical :: found
+      call extended_point_value(s, icol, j, ext_profile_value, found)
 end function ext_profile_value
 
 ! ---------------------------------------------------------------
@@ -418,7 +453,7 @@ end function convective_indicator
 ! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
 ! the total mass).
 double precision function envelope_mass_g(s, i)
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       integer, intent(in) :: i
       envelope_mass_g = exp(ln10*(s%env_points%env_log10_mass(i) + s%log_total_mass))
 end function envelope_mass_g
@@ -426,7 +461,7 @@ end function envelope_mass_g
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
 double precision function atmosphere_radius_cm(s, i)
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       integer, intent(in) :: i
       atmosphere_radius_cm = exp(ln10* &
            s%env_points%env_log10_radius(s%env_points%num_env_points)) + s%stitched%atm_height(i)
@@ -446,10 +481,11 @@ double precision function ideal_gas_mu(log10_p, log10_t, log10_rho, beta)
       end if
 end function ideal_gas_mu
 
-! Per-zone value for profile column icol at YREC zone index k
-! (1 = center .. nz = surface). Sources match putstore's per-shell
-! block and the pulse arrays coefft fills every model.
-double precision function profile_value(s, icol, k)
+! ---------------------------------------------------------------
+! Profile column icol at interior zone k (1 = center .. nz = surface):
+! the converged model's values. found is false for a column without a
+! case.
+subroutine interior_value(s, icol, k, value, found)
       use math_lib
       use star_info_lib, only: i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, &
            i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
@@ -457,76 +493,191 @@ double precision function profile_value(s, icol, k)
            i_o17, i_o18
       use star_info_lib, only: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
            i_mech_solberg_hoiland
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       integer, intent(in) :: icol, k
+      double precision, intent(out) :: value
+      logical, intent(out) :: found
 
+      found = .true.
       select case (icol)
-      case (1);  profile_value = 0.0d0   ! zone number set by the writer
-      case (2);  profile_value = s%m(k)/s%solar_mass_cgs
-      case (3);  profile_value = s%logR(k)
-      case (4);  profile_value = s%logT(k)
-      case (5);  profile_value = s%logRho(k)
-      case (6);  profile_value = s%logP(k)
-      case (7);  profile_value = s%luminosity_lsun(k)
-      case (8);  profile_value = s%dm(k)/s%solar_mass_cgs
-      case (9);  profile_value = convective_indicator(s%convective_flag(k))
-      case (10); profile_value = s%adiabatic_index_gamma1(k)
-      case (11); profile_value = s%opacity_zone(k)
-      case (12); profile_value = s%gradr(k)
-      case (13); profile_value = s%gradT(k)
-      case (14); profile_value = s%grada(k)
-      case (15); profile_value = s%conv_vel(k)
-      case (16); profile_value = s%beta(k)
-      case (17); profile_value = s%eta(k)
-      case (18)
-         profile_value = exp(ln10*(cgl - 2.0d0*s%logR(k)))*s%m(k)
-      case (19); profile_value = s%eps_channels(i_eps_pp1,k)
-      case (20); profile_value = s%eps_channels(i_eps_pp2,k)
-      case (21); profile_value = s%eps_channels(i_eps_pp3,k)
-      case (22); profile_value = s%eps_channels(i_eps_cno,k)
-      case (23); profile_value = s%eps_channels(i_eps_he3,k)
-      case (24); profile_value = s%eps_total(k)
-      case (25); profile_value = s%eps_channels(i_eps_neu,k)
-      case (26); profile_value = s%eps_channels(i_eps_grav,k)
-      case (27); profile_value = s%xa(i_h1,k)
-      case (28); profile_value = s%xa(i_h2,k)
-      case (29); profile_value = s%xa(i_he3,k)
-      case (30); profile_value = s%xa(i_he4,k)
-      case (31); profile_value = s%xa(i_li6,k)
-      case (32); profile_value = s%xa(i_li7,k)
-      case (33); profile_value = s%xa(i_be9,k)
-      case (34); profile_value = s%xa(i_c12,k)
-      case (35); profile_value = s%xa(i_c13,k)
-      case (36); profile_value = s%xa(i_n14,k)
-      case (37); profile_value = s%xa(i_n15,k)
-      case (38); profile_value = s%xa(i_o16,k)
-      case (39); profile_value = s%xa(i_o17,k)
-      case (40); profile_value = s%xa(i_o18,k)
-      case (41); profile_value = s%xa(i_metals,k)
-      case (42); profile_value = s%omega(k)
-      case (43); profile_value = s%j_rot(k)
-      case (44); profile_value = s%i_rot(k)
-      case (45); profile_value = s%fp_rot(k)
-      case (46); profile_value = s%ft_rot(k)
-      case (47); profile_value = s%mechanism_velocity(i_mech_eddington_sweet,k)
-      case (48); profile_value = s%mechanism_velocity(i_mech_gsf,k)
-      case (49); profile_value = s%mechanism_velocity(i_mech_shear,k)
-      case (50); profile_value = s%pulse_specific_heat(k)
-      case (51); profile_value = -s%pulse_dlnrho_dlnt(k)
-      case (52); profile_value = s%pulse_mean_molecular_weight(k)
-! 2026 (bugsweep sec-11): the array already holds 1/mu_e (eos
-! electron_mean_weight_inverse); it used to be inverted again here.
-      case (53); profile_value = s%pulse_electron_mean_weight_inverse(k)
-      case (58); profile_value = sound_speed_cgs(s%adiabatic_index_gamma1(k), &
-              s%logP(k), s%logRho(k))
-      case (59); profile_value = s%am_diffusion_coeff(k)
-      case (60); profile_value = s%mixing_diffusion_coeff(k)
-      case (61); profile_value = s%eps_extra(k)
-      case (62); profile_value = s%mechanism_velocity(i_mech_solberg_hoiland,k)
+      case (ip_zone);         value = 0.0d0   ! the writer numbers the zones
+      case (ip_mass);         value = s%m(k)/s%solar_mass_cgs
+      case (ip_logR);         value = s%logR(k)
+      case (ip_logT);         value = s%logT(k)
+      case (ip_logRho);       value = s%logRho(k)
+      case (ip_logP);         value = s%logP(k)
+      case (ip_luminosity);   value = s%luminosity_lsun(k)
+      case (ip_dm);           value = s%dm(k)/s%solar_mass_cgs
+      case (ip_mixing_type);  value = convective_indicator(s%convective_flag(k))
+      case (ip_gamma1);       value = s%adiabatic_index_gamma1(k)
+      case (ip_opacity);      value = s%opacity_zone(k)
+      case (ip_gradr);        value = s%gradr(k)
+      case (ip_gradT);        value = s%gradT(k)
+      case (ip_grada);        value = s%grada(k)
+      case (ip_conv_vel);     value = s%conv_vel(k)
+      case (ip_beta);         value = s%beta(k)
+      case (ip_eta);          value = s%eta(k)
+      case (ip_grav);         value = exp(ln10*(cgl - 2.0d0*s%logR(k)))*s%m(k)
+      case (ip_eps_ppI);      value = s%eps_channels(i_eps_pp1,k)
+      case (ip_eps_ppII);     value = s%eps_channels(i_eps_pp2,k)
+      case (ip_eps_ppIII);    value = s%eps_channels(i_eps_pp3,k)
+      case (ip_eps_cno);      value = s%eps_channels(i_eps_cno,k)
+      case (ip_eps_he3);      value = s%eps_channels(i_eps_he3,k)
+      case (ip_eps_nuc);      value = s%eps_total(k)
+      case (ip_eps_neu);      value = s%eps_channels(i_eps_neu,k)
+      case (ip_eps_grav);     value = s%eps_channels(i_eps_grav,k)
+      case (ip_h1);           value = s%xa(i_h1,k)
+      case (ip_h2);           value = s%xa(i_h2,k)
+      case (ip_he3);          value = s%xa(i_he3,k)
+      case (ip_he4);          value = s%xa(i_he4,k)
+      case (ip_li6);          value = s%xa(i_li6,k)
+      case (ip_li7);          value = s%xa(i_li7,k)
+      case (ip_be9);          value = s%xa(i_be9,k)
+      case (ip_c12);          value = s%xa(i_c12,k)
+      case (ip_c13);          value = s%xa(i_c13,k)
+      case (ip_n14);          value = s%xa(i_n14,k)
+      case (ip_n15);          value = s%xa(i_n15,k)
+      case (ip_o16);          value = s%xa(i_o16,k)
+      case (ip_o17);          value = s%xa(i_o17,k)
+      case (ip_o18);          value = s%xa(i_o18,k)
+      case (ip_z);            value = s%xa(i_metals,k)
+      case (ip_omega);        value = s%omega(k)
+      case (ip_j_rot);        value = s%j_rot(k)
+      case (ip_i_rot);        value = s%i_rot(k)
+      case (ip_fp_rot);       value = s%fp_rot(k)
+      case (ip_ft_rot);       value = s%ft_rot(k)
+      case (ip_v_es);         value = s%mechanism_velocity(i_mech_eddington_sweet,k)
+      case (ip_v_gsf);        value = s%mechanism_velocity(i_mech_gsf,k)
+      case (ip_v_ss);         value = s%mechanism_velocity(i_mech_shear,k)
+      case (ip_cp);           value = s%pulse_specific_heat(k)
+      case (ip_delta);        value = -s%pulse_dlnrho_dlnt(k)
+      case (ip_mu);           value = s%pulse_mean_molecular_weight(k)
+! (the array holds 1/mu_e, eos's electron_mean_weight_inverse)
+      case (ip_mu_e_inv);     value = s%pulse_electron_mean_weight_inverse(k)
+      case (ip_csound);       value = sound_speed_cgs(s%adiabatic_index_gamma1(k), &
+                                   s%logP(k), s%logRho(k))
+      case (ip_D_omega);      value = s%am_diffusion_coeff(k)
+      case (ip_D_mix_rot);    value = s%mixing_diffusion_coeff(k)
+      case (ip_eps_extra);    value = s%eps_extra(k)
+      case (ip_v_sh);         value = s%mechanism_velocity(i_mech_solberg_hoiland,k)
       case default
-         profile_value = 0.0d0
+         value = 0.0d0
+         found = .false.
       end select
-end function profile_value
+end subroutine interior_value
+
+! ---------------------------------------------------------------
+! Profile column icol at envelope point i: what the envelope
+! integration stores (env_points), the surface omega, and zero for the
+! columns it does not compute (burning, the composition beyond X and Z,
+! the rotation's internals and transport). found is false for a column
+! without a case.
+subroutine envelope_value(s, icol, i, value, found)
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: icol, i
+      double precision, intent(out) :: value
+      logical, intent(out) :: found
+
+      found = .true.
+      select case (icol)
+      case (ip_mass);         value = envelope_mass_g(s, i)/s%solar_mass_cgs
+      case (ip_logR);         value = s%env_points%env_log10_radius(i)
+      case (ip_logT);         value = s%env_points%env_log10_temperature(i)
+      case (ip_logRho);       value = s%env_points%env_log10_density(i)
+      case (ip_logP);         value = s%env_points%env_log10_pressure(i)
+      case (ip_luminosity);   value = s%env_points%env_luminosity(i)
+      case (ip_mixing_type);  value = convective_indicator(s%env_points%env_convective_flag(i))
+      case (ip_gamma1);       value = s%env_points%env_gamma1(i)
+      case (ip_opacity);      value = s%env_points%env_opacity(i)
+! env_gradients holds (1) the radiative, (2) the adiabatic and (3) the
+! actual gradient (envint's current_gradients).
+      case (ip_gradr);        value = s%env_points%env_gradients(1,i)
+      case (ip_gradT);        value = s%env_points%env_gradients(3,i)
+      case (ip_grada);        value = s%env_points%env_gradients(2,i)
+      case (ip_conv_vel);     value = s%env_points%env_convective_velocity(i)
+      case (ip_beta);         value = s%env_points%env_beta(i)
+      case (ip_h1);           value = s%env_points%env_hydrogen_fraction(i)
+      case (ip_z);            value = s%env_points%env_metal_fraction(i)
+      case (ip_omega);        value = s%omega(s%nz)
+      case (ip_cp);           value = s%env_points%env_specific_heat_cp(i)
+      case (ip_delta);        value = -s%env_points%env_dlnrho_dlnt(i)
+! mu from the gas pressure, R/mu = beta*P/(rho*T) (compute_blended_eos's
+! specific gas constant), continuous across the fitting point
+      case (ip_mu);           value = ideal_gas_mu( &
+                                   s%env_points%env_log10_pressure(i), &
+                                   s%env_points%env_log10_temperature(i), &
+                                   s%env_points%env_log10_density(i), s%env_points%env_beta(i))
+      case (ip_csound);       value = sound_speed_cgs(s%env_points%env_gamma1(i), &
+                                   s%env_points%env_log10_pressure(i), &
+                                   s%env_points%env_log10_density(i))
+      case (ip_zone, ip_dm, ip_eta, ip_grav, &
+           ip_eps_ppI, ip_eps_ppII, ip_eps_ppIII, ip_eps_cno, ip_eps_he3, &
+           ip_eps_nuc, ip_eps_neu, ip_eps_grav, ip_eps_extra, &
+           ip_h2, ip_he3, ip_he4, ip_li6, ip_li7, ip_be9, ip_c12, ip_c13, &
+           ip_n14, ip_n15, ip_o16, ip_o17, ip_o18, &
+           ip_j_rot, ip_i_rot, ip_fp_rot, ip_ft_rot, ip_v_es, ip_v_gsf, &
+           ip_v_ss, ip_v_sh, ip_mu_e_inv, ip_D_omega, ip_D_mix_rot)
+         value = 0.0d0
+      case default
+         value = 0.0d0
+         found = .false.
+      end select
+end subroutine envelope_value
+
+! ---------------------------------------------------------------
+! Profile column icol at atmosphere point i: what the atmosphere
+! integration stores (atm_points), the surface's mass, luminosity,
+! composition and omega, and zero for the columns it does not compute
+! (the envelope's, and the mixing type and convective velocity). found
+! is false for a column without a case.
+subroutine atmosphere_value(s, icol, i, value, found)
+      use star_info_lib, only: i_h1, i_metals
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: icol, i
+      double precision, intent(out) :: value
+      logical, intent(out) :: found
+
+      found = .true.
+      select case (icol)
+      case (ip_mass);         value = s%star_mass
+      case (ip_logR);         value = log10(atmosphere_radius_cm(s, i))
+      case (ip_logT);         value = s%atm_points%atmo_log10_temperature(i)
+      case (ip_logRho);       value = s%atm_points%atmo_log10_density(i)
+      case (ip_logP);         value = s%atm_points%atmo_log10_pressure(i)
+      case (ip_luminosity);   value = exp(ln10*s%log_L)
+      case (ip_gamma1);       value = s%atm_points%atmo_gamma1(i)
+      case (ip_opacity);      value = s%atm_points%atmo_opacity(i)
+! atmo_gradients holds (1) the radiative, (2) the actual and (3) the
+! adiabatic gradient.
+      case (ip_gradr);        value = s%atm_points%atmo_gradients(1,i)
+      case (ip_gradT);        value = s%atm_points%atmo_gradients(2,i)
+      case (ip_grada);        value = s%atm_points%atmo_gradients(3,i)
+      case (ip_beta);         value = s%atm_points%atmo_beta(i)
+      case (ip_h1);           value = s%xa(i_h1,s%nz)
+      case (ip_z);            value = s%xa(i_metals,s%nz)
+      case (ip_omega);        value = s%omega(s%nz)
+      case (ip_cp);           value = s%atm_points%atmo_specific_heat_cp(i)
+      case (ip_delta);        value = -s%atm_points%atmo_dlnrho_dlnt(i)
+      case (ip_mu);           value = ideal_gas_mu( &
+                                   s%atm_points%atmo_log10_pressure(i), &
+                                   s%atm_points%atmo_log10_temperature(i), &
+                                   s%atm_points%atmo_log10_density(i), s%atm_points%atmo_beta(i))
+      case (ip_csound);       value = sound_speed_cgs(s%atm_points%atmo_gamma1(i), &
+                                   s%atm_points%atmo_log10_pressure(i), &
+                                   s%atm_points%atmo_log10_density(i))
+      case (ip_zone, ip_dm, ip_eta, ip_grav, ip_mixing_type, ip_conv_vel, &
+           ip_eps_ppI, ip_eps_ppII, ip_eps_ppIII, ip_eps_cno, ip_eps_he3, &
+           ip_eps_nuc, ip_eps_neu, ip_eps_grav, ip_eps_extra, &
+           ip_h2, ip_he3, ip_he4, ip_li6, ip_li7, ip_be9, ip_c12, ip_c13, &
+           ip_n14, ip_n15, ip_o16, ip_o17, ip_o18, &
+           ip_j_rot, ip_i_rot, ip_fp_rot, ip_ft_rot, ip_v_es, ip_v_gsf, &
+           ip_v_ss, ip_v_sh, ip_mu_e_inv, ip_D_omega, ip_D_mix_rot)
+         value = 0.0d0
+      case default
+         value = 0.0d0
+         found = .false.
+      end select
+end subroutine atmosphere_value
 
 ! Assemble the per-point pulse data for the FULL extended model
 ! (interior + envelope + atmosphere; build_stitched_model must have run).
@@ -748,16 +899,47 @@ integer function species_slot(k)
 end function species_slot
 
 ! ---------------------------------------------------------------
-! Materialize the writer-facing arrays from the assembled grid.
-subroutine fill_stitched_arrays(s)
+! The writers' arrays from the assembled grid: every profile column at
+! every point, then the pulse points. A column without a value in a
+! point's region is an error (ierr = 1), reported once.
+subroutine fill_stitched_arrays(s, ierr)
+      use io_units, only: report_error
       type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+      type(output_column) :: cols(n_prof_cols)
       integer :: j, icol
+      double precision :: value
+      logical :: found
+
+      ierr = 0
       do j = 1, s%stitched%n_ext
          do icol = 1, n_prof_cols
-            s%stitched%prof(icol, j) = ext_profile_value(s, icol, j)
+            call extended_point_value(s, icol, j, value, found)
+            if (.not. found) then
+               cols = profile_columns()
+               call report_error('the profile column ' // trim(cols(icol)%name) // &
+                    ' has no value in the ' // &
+                    trim(region_name(s%stitched%region(j))) // &
+                    ' (core/diagnostics/stitched_model.f90)')
+               ierr = 1
+               return
+            end if
+            s%stitched%prof(icol, j) = value
          end do
       end do
       call build_pulse_points(s, s%stitched%pulse)
 end subroutine fill_stitched_arrays
+
+! The name of a region of the extended grid, for messages.
+function region_name(region) result(name)
+      integer, intent(in) :: region
+      character(len=16) :: name
+      select case (region)
+      case (region_interior);   name = 'interior'
+      case (region_envelope);   name = 'envelope'
+      case (region_atmosphere); name = 'atmosphere'
+      case default;             name = 'unknown region'
+      end select
+end function region_name
 
 end module stitched_model

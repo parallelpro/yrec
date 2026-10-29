@@ -228,7 +228,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 ! wind takes pphot and the turnover time at the fraction fracstep of
 ! the step, between the step-start copies (pphot0, *_old) and the
 ! current values.
-      call build_stitched_model(s)
+      call build_stitched_model(s, ierr)
+      if (ierr /= 0) return
       call compute_turnover_timescale(s, s%envelope_radius, ierr)
       if (ierr /= 0) return
       s%convective_turnover_timescale_old = s%convective_turnover_timescale

@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! output_columns
 !----------------------------------------------------------------------
-! Column-selection machinery shared by the history and profile
-! writers. Format-blind: callers
-! hand parse_columns their own name table and default selection.
+! What the history and profile writers share: the column record (a
+! name and how it is written), and the selection of columns from a
+! columns file. Format-blind: each writer hands parse_columns its own
+! column table and default selection.
 !
 ! A columns file has one column name per line, '!' comments, blank
 ! lines ignored; unknown names are fatal (config error), with the
@@ -15,24 +16,39 @@
 module output_columns
       implicit none
       private
-      public :: max_cols, parse_columns
+      public :: max_cols, column_name_len, parse_columns
+      public :: output_column, real_column, integer_column
       public :: hist_default_names, n_hist_default
       public :: prof_default_names, n_prof_default
 
       integer, parameter :: max_cols = 128
+! the longest column name (gen_default_columns.py's WIDTH)
+      integer, parameter :: column_name_len = 24
+! How a column is written: real_column as es40.16e3, integer_column as
+! i40 (the id columns, the zone number, the mixing type).
+      integer, parameter :: real_column = 1, integer_column = 2
+
+! One column of a history or profile file: its name in the file and how
+! it is written. Each writer's table holds one per column, at the
+! column's named index (ih_* in history_output, ip_* in stitched_model).
+      type :: output_column
+         character(len=column_name_len) :: name = ' '
+         integer :: kind = real_column
+      end type output_column
+
       include 'default_columns.inc'
 
 contains
 
 ! ---------------------------------------------------------------
-subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
-           sel, nsel, label, ierr)
+subroutine parse_columns(fname, columns, default_names, sel, nsel, &
+           label, ierr)
       use io_units
       character(len=*), intent(in) :: fname, label
-      integer, intent(out) :: ierr
-      integer, intent(in) :: ncol, ndefault
-      character(len=24), intent(in) :: names(ncol), default_names(ndefault)
+      type(output_column), intent(in) :: columns(:)
+      character(len=column_name_len), intent(in) :: default_names(:)
       integer, intent(out) :: sel(max_cols), nsel
+      integer, intent(out) :: ierr
       character(len=256) :: line
       integer :: u, ios, i
 
@@ -41,8 +57,8 @@ subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
       if (len_trim(fname) == 0) then
 ! blank columns file: the compiled-in default selection (generated
 ! from defaults/<label>_columns.list -- see default_columns.inc)
-         do i = 1, ndefault
-            call append_column(default_names(i), names, ncol, sel, nsel, &
+         do i = 1, size(default_names)
+            call append_column(default_names(i), columns, sel, nsel, &
                  label, ierr)
             if (ierr /= 0) return
          end do
@@ -66,7 +82,7 @@ subroutine parse_columns(fname, names, ncol, default_names, ndefault, &
          if (i > 0) line = line(1:i-1)
          line = adjustl(line)
          if (len_trim(line) == 0) cycle
-         call append_column(line, names, ncol, sel, nsel, label, ierr)
+         call append_column(line, columns, sel, nsel, label, ierr)
          if (ierr /= 0) then
             close(u)
             return
@@ -85,18 +101,22 @@ end subroutine parse_columns
 ! Look a column name up in the writer's table and append its index
 ! to the selection; unknown names are fatal, with the valid list
 ! written to the run log.
-subroutine append_column(name, names, ncol, sel, nsel, label, ierr)
+subroutine append_column(name, columns, sel, nsel, label, ierr)
       use io_units
       character(len=*), intent(in) :: name, label
-      integer, intent(in) :: ncol
-      character(len=24), intent(in) :: names(ncol)
+      type(output_column), intent(in) :: columns(:)
       integer, intent(inout) :: sel(max_cols), nsel
       integer, intent(out) :: ierr
       integer :: j
 
       ierr = 0
-      do j = 1, ncol
-         if (trim(name) == trim(names(j))) then
+      if (nsel >= max_cols) then
+         write(*,*) 'more than', max_cols, ' ', trim(label), ' columns selected'
+         ierr = 1
+         return
+      end if
+      do j = 1, size(columns)
+         if (trim(name) == trim(columns(j)%name)) then
             nsel = nsel + 1
             sel(nsel) = j
             return
@@ -106,8 +126,8 @@ subroutine append_column(name, names, ncol, sel, nsel, label, ierr)
       write(run_log_unit,*) 'unknown ', trim(label), &
            ' column: ', trim(name)
       write(run_log_unit,*) 'valid ', trim(label), ' columns:'
-      do j = 1, ncol
-         write(run_log_unit,'(2x,a)') trim(names(j))
+      do j = 1, size(columns)
+         write(run_log_unit,'(2x,a)') trim(columns(j)%name)
       end do
       ierr = 1
 end subroutine append_column

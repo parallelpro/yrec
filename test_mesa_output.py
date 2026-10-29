@@ -203,34 +203,53 @@ def test_default_columns_lists_in_sync():
     """defaults/{history,profile}_columns.list are the authority on
     the default output columns, compiled in by
     tools/gen_default_columns.py (uncommented entries; '!name' marks
-    an opt-in column excluded from the default). Invariants: every
-    writer column appears in its .list exactly once (so the files
+    an opt-in column excluded from the default). The column tables are
+    history_output's history_columns and stitched_model's
+    profile_columns, one row per column at its named index. Invariants:
+    every table column appears in its .list exactly once (so the files
     fully document what the columns files may contain -- entry order
-    is free, it sets the output column order), and the generated
-    include is fresh."""
+    is free, it sets the output column order); each row sits at the
+    index named after its column (ih_<name>, ip_<name>), the indices
+    run 1..n, and every history column has a value; every profile
+    column has a case in each region (seismic columns aside); and the
+    generated include is fresh."""
+    import importlib.util
     import re
     import subprocess
-    src = ((REPO / "src" / "io" / "history_output.f90").read_text()
-           + (REPO / "src" / "io" / "profile_output.f90").read_text())
+    spec = importlib.util.spec_from_file_location(
+        "gen_default_columns", REPO / "src" / "tools" / "gen_default_columns.py")
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
 
-    def harvest(sub):
-        m = re.search(r"subroutine " + sub + r"\(names\)(.*?)end subroutine " + sub,
-                      src, re.S)
-        return [n for _, n in
-                re.findall(r"names\((\d+)\)\s*=\s*'([^']+)'", m.group(1))]
+    tables = gen.column_tables()
+    for tag, (rows, idx, entries, lst, prefix) in tables.items():
+        names = [n for _, n, _ in rows]
+        assert sorted(entries) == sorted(names), lst
+        for index, name, kind in rows:
+            assert index.lower() == (prefix + name).lower(), (index, name)
+            assert kind in ("real_column", "integer_column"), (name, kind)
+        assert sorted(idx[(prefix + n).lower()] for n in names) == \
+            list(range(1, len(names) + 1)), tag
+    assert gen.sync_errors() == []
 
-    def entries(fname):
-        # ('!name' = commented-out opt-in entry; '! prose' is skipped)
-        out = []
-        for line in (REPO / "src" / "defaults" / fname).read_text().splitlines():
-            m = re.match(r"^(!?)([A-Za-z]\w*)", line)
-            if m:
-                out.append(m.group(2))
-        return out
+    # every history column has its value line
+    hist = (REPO / "src" / "io" / "history_output.f90").read_text()
+    valued = {v.lower() for v in re.findall(r"^\s*vals\((ih_\w+)\)\s*=", hist, re.M)}
+    assert valued == {i.lower() for i, _, _ in tables["hist"][0]}
 
-    for fname, sub in [("history_columns.list", "history_column_names"),
-                       ("profile_columns.list", "profile_column_names")]:
-        assert sorted(entries(fname)) == sorted(harvest(sub)), fname
+    # every profile column has a case in each region's value routine
+    # (the four seismic columns come from compute_seismic_columns)
+    core = (REPO / "src" / "core" / "diagnostics" / "stitched_model.f90").read_text()
+    seismic = {"ip_brunt_n2", "ip_lamb_s2", "ip_gradl", "ip_gradr_div_grada"}
+    all_ip = {i.lower() for i, _, _ in tables["prof"][0]}
+    for routine in ("interior_value", "envelope_value", "atmosphere_value"):
+        body = re.search(r"subroutine " + routine + r"\((.*?)end subroutine " + routine,
+                         core, re.S).group(1)
+        body = re.sub(r"&\s*\n\s*", " ", body)   # join continuation lines
+        cased = set()
+        for labels in re.findall(r"^\s*case\s*\(([^)]*)\)", body, re.M):
+            cased |= {x.strip().lower() for x in labels.split(",")}
+        assert cased == all_ip - seismic, (routine, sorted((all_ip - seismic) ^ cased))
 
     r = subprocess.run(
         [sys.executable, str(REPO / "src" / "tools" / "gen_default_columns.py"),

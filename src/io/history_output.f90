@@ -1,25 +1,61 @@
 !----------------------------------------------------------------------
 ! history_output
 !----------------------------------------------------------------------
-! The MESA-layout history file:
-! the column name/value tables -- the part that grows with every new
-! column -- and the row writer. One row per converged model; columns
-! selectable via the history_columns_file control (default selection
-! from defaults/history_columns.list -- see output_columns).
+! The history file, in MESA's history.data layout: its column table and
+! its row writer. One row per converged model; the columns are selected
+! by the history_columns_file control (the default selection is
+! defaults/history_columns.list, see output_columns).
 !
-! Writers are PURE READERS: every quantity is computed by
-! compute_observables (core/diagnostics/observables.f90, after the step's
-! physics) into star_info. Module state below is per-job (path,
-! parsed selection), reset by history_output_init on every job.
+! Each column has a named index ih_<name>, a row in history_columns
+! keyed by it (its name and kind), and a value in history_values. The
+! writer only reads the star: compute_observables
+! (core/diagnostics/observables.f90) computes every quantity first.
+! The module state below is per job (the path and the selection), reset
+! by history_output_init.
 module history_output
       use physical_constants
-      use output_columns, only: max_cols, parse_columns, &
-           hist_default_names, n_hist_default
+      use output_columns, only: max_cols, parse_columns, output_column, &
+           real_column, integer_column, hist_default_names
       implicit none
       private
       public :: history_output_init, write_history_row
 
-      integer, parameter :: n_hist_cols = 89
+! The history columns' named indices, in the order of the column table.
+      integer, parameter :: &
+           ih_model_number = 1, ih_profile_number = 2, ih_num_zones = 3, &
+           ih_log_L = 4, ih_log_R = 5, ih_log_g = 6, &
+           ih_log_Teff = 7, ih_mass_conv_core = 8, ih_cz_bot_mass = 9, &
+           ih_cz_bot_radius = 10, ih_cz_bot_temperature = 11, ih_cz_bot_density = 12, &
+           ih_cz_bot_pressure = 13, ih_cz_bot_opacity = 14, ih_log_center_T = 15, &
+           ih_log_center_Rho = 16, ih_log_center_P = 17, ih_center_beta = 18, &
+           ih_center_degeneracy = 19, ih_center_h1 = 20, ih_center_he4 = 21, &
+           ih_center_z = 22, ih_lum_ppI = 23, ih_lum_ppII = 24, &
+           ih_lum_ppIII = 25, ih_lum_cno = 26, ih_lum_3alpha = 27, &
+           ih_lum_heC = 28, ih_lum_grav = 29, ih_lum_neu = 30, &
+           ih_snu_cl37 = 31, ih_snu_ga71 = 32, ih_neut_pp = 33, &
+           ih_neut_pep = 34, ih_neut_hep = 35, ih_neut_be7 = 36, &
+           ih_neut_b8 = 37, ih_neut_n13 = 38, ih_neut_o15 = 39, &
+           ih_neut_f17 = 40, ih_neut_diag_1 = 41, ih_neut_diag_2 = 42, &
+           ih_center_he3 = 43, ih_center_c12 = 44, ih_center_c13 = 45, &
+           ih_center_n14 = 46, ih_center_n15 = 47, ih_center_o16 = 48, &
+           ih_center_o17 = 49, ih_center_o18 = 50, ih_surface_he3 = 51, &
+           ih_surface_c12 = 52, ih_surface_c13 = 53, ih_surface_n14 = 54, &
+           ih_surface_n15 = 55, ih_surface_o16 = 56, ih_surface_o17 = 57, &
+           ih_surface_o18 = 58, ih_surface_h2 = 59, ih_surface_li6 = 60, &
+           ih_surface_li7 = 61, ih_surface_be9 = 62, ih_surface_h1 = 63, &
+           ih_surface_he4 = 64, ih_surface_z = 65, ih_surface_z_div_x = 66, &
+           ih_total_angular_momentum = 67, ih_total_rotational_ke = 68, ih_total_moment_of_inertia = 69, &
+           ih_cz_moment_of_inertia = 70, ih_surf_avg_omega = 71, ih_center_omega = 72, &
+           ih_rotation_period_days = 73, ih_surf_avg_v_rot = 74, ih_tau_conv_cz = 75, &
+           ih_h_shell_bot_mass = 76, ih_h_shell_mid_mass = 77, ih_h_shell_top_mass = 78, &
+           ih_h_shell_bot_radius = 79, ih_h_shell_mid_radius = 80, ih_h_shell_top_radius = 81, &
+           ih_log_P_photosphere = 82, ih_star_mass = 83, ih_star_age = 84, &
+           ih_nu_max = 85, ih_delta_nu_rho = 86, ih_delta_nu = 87, &
+           ih_delta_Pg = 88, ih_lum_extra = 89
+      integer, parameter :: n_hist_cols = ih_lum_extra
+! The id columns, which lead the file in this order whenever selected.
+      integer, parameter :: id_columns(3) = &
+           [ih_model_number, ih_profile_number, ih_num_zones]
 
       character(len=256) :: hist_path = ' '
       integer :: hist_nsel = 0
@@ -33,7 +69,6 @@ subroutine history_output_init(s, out_dir, ierr)
       type(star_info), intent(inout) :: s
       character(len=*), intent(in) :: out_dir
       integer, intent(out) :: ierr
-      character(len=24) :: hist_names(n_hist_cols)
       integer :: prior_unit
       logical :: prior_open
 
@@ -45,209 +80,236 @@ subroutine history_output_init(s, out_dir, ierr)
       if (prior_open) close(prior_unit)
 
       ierr = 0
-      call history_column_names(hist_names)
-      call parse_columns(s%ctrl%history_columns_file, hist_names, &
-           n_hist_cols, hist_default_names, n_hist_default, &
-           hist_sel, hist_nsel, 'history', ierr)
+      call parse_columns(s%ctrl%history_columns_file, history_columns(), &
+           hist_default_names, hist_sel, hist_nsel, 'history', ierr)
       if (ierr /= 0) return
-! model_number / profile_number / num_zones lead the file whenever
-! they are selected, in that fixed order (they are columns 1-3 of the
-! built-in table, so a stable hoist of indices 1..3 does it).
       call hoist_id_columns(hist_sel, hist_nsel)
 end subroutine history_output_init
 
 ! ---------------------------------------------------------------
-subroutine history_column_names(names)
-      character(len=24), intent(out) :: names(n_hist_cols)
+! The history column table: each column's name and kind, at its named
+! index.
+function history_columns() result(cols)
+      type(output_column) :: cols(n_hist_cols)
 
-      names(1) = 'model_number'
-      names(2) = 'profile_number'
-      names(3) = 'num_zones'
-      names(4) = 'log_L'
-      names(5) = 'log_R'
-      names(6) = 'log_g'
-      names(7) = 'log_Teff'
-      names(8) = 'mass_conv_core'
-      names(9) = 'cz_bot_mass'
-      names(10) = 'cz_bot_radius'
-      names(11) = 'cz_bot_temperature'
-      names(12) = 'cz_bot_density'
-      names(13) = 'cz_bot_pressure'
-      names(14) = 'cz_bot_opacity'
-      names(15) = 'log_center_T'
-      names(16) = 'log_center_Rho'
-      names(17) = 'log_center_P'
-      names(18) = 'center_beta'
-      names(19) = 'center_degeneracy'
-      names(20) = 'center_h1'
-      names(21) = 'center_he4'
-      names(22) = 'center_z'
-      names(23) = 'lum_ppI'
-      names(24) = 'lum_ppII'
-      names(25) = 'lum_ppIII'
-      names(26) = 'lum_cno'
-      names(27) = 'lum_3alpha'
-      names(28) = 'lum_heC'
-      names(29) = 'lum_grav'
-      names(30) = 'lum_neu'
-      names(31) = 'snu_cl37'
-      names(32) = 'snu_ga71'
-      names(33) = 'neut_pp'
-      names(34) = 'neut_pep'
-      names(35) = 'neut_hep'
-      names(36) = 'neut_be7'
-      names(37) = 'neut_b8'
-      names(38) = 'neut_n13'
-      names(39) = 'neut_o15'
-      names(40) = 'neut_f17'
-      names(41) = 'neut_diag_1'
-      names(42) = 'neut_diag_2'
-      names(43) = 'center_he3'
-      names(44) = 'center_c12'
-      names(45) = 'center_c13'
-      names(46) = 'center_n14'
-      names(47) = 'center_n15'
-      names(48) = 'center_o16'
-      names(49) = 'center_o17'
-      names(50) = 'center_o18'
-      names(51) = 'surface_he3'
-      names(52) = 'surface_c12'
-      names(53) = 'surface_c13'
-      names(54) = 'surface_n14'
-      names(55) = 'surface_n15'
-      names(56) = 'surface_o16'
-      names(57) = 'surface_o17'
-      names(58) = 'surface_o18'
-      names(59) = 'surface_h2'
-      names(60) = 'surface_li6'
-      names(61) = 'surface_li7'
-      names(62) = 'surface_be9'
-      names(63) = 'surface_h1'
-      names(64) = 'surface_he4'
-      names(65) = 'surface_z'
-      names(66) = 'surface_z_div_x'
-      names(67) = 'total_angular_momentum'
-      names(68) = 'total_rotational_ke'
-      names(69) = 'total_moment_of_inertia'
-      names(70) = 'cz_moment_of_inertia'
-      names(71) = 'surf_avg_omega'
-      names(72) = 'center_omega'
-      names(73) = 'rotation_period_days'
-      names(74) = 'surf_avg_v_rot'
-      names(75) = 'tau_conv_cz'
-      names(76) = 'h_shell_bot_mass'
-      names(77) = 'h_shell_mid_mass'
-      names(78) = 'h_shell_top_mass'
-      names(79) = 'h_shell_bot_radius'
-      names(80) = 'h_shell_mid_radius'
-      names(81) = 'h_shell_top_radius'
-      names(82) = 'log_P_photosphere'
-      names(83) = 'star_mass'
-      names(84) = 'star_age'
+      cols(ih_model_number)            = output_column('model_number', integer_column)
+      cols(ih_profile_number)          = output_column('profile_number', integer_column)
+      cols(ih_num_zones)               = output_column('num_zones', integer_column)
+      cols(ih_log_L)                   = output_column('log_L', real_column)
+      cols(ih_log_R)                   = output_column('log_R', real_column)
+      cols(ih_log_g)                   = output_column('log_g', real_column)
+      cols(ih_log_Teff)                = output_column('log_Teff', real_column)
+      cols(ih_mass_conv_core)          = output_column('mass_conv_core', real_column)
+      cols(ih_cz_bot_mass)             = output_column('cz_bot_mass', real_column)
+      cols(ih_cz_bot_radius)           = output_column('cz_bot_radius', real_column)
+      cols(ih_cz_bot_temperature)      = output_column('cz_bot_temperature', real_column)
+      cols(ih_cz_bot_density)          = output_column('cz_bot_density', real_column)
+      cols(ih_cz_bot_pressure)         = output_column('cz_bot_pressure', real_column)
+      cols(ih_cz_bot_opacity)          = output_column('cz_bot_opacity', real_column)
+      cols(ih_log_center_T)            = output_column('log_center_T', real_column)
+      cols(ih_log_center_Rho)          = output_column('log_center_Rho', real_column)
+      cols(ih_log_center_P)            = output_column('log_center_P', real_column)
+      cols(ih_center_beta)             = output_column('center_beta', real_column)
+      cols(ih_center_degeneracy)       = output_column('center_degeneracy', real_column)
+      cols(ih_center_h1)               = output_column('center_h1', real_column)
+      cols(ih_center_he4)              = output_column('center_he4', real_column)
+      cols(ih_center_z)                = output_column('center_z', real_column)
+      cols(ih_lum_ppI)                 = output_column('lum_ppI', real_column)
+      cols(ih_lum_ppII)                = output_column('lum_ppII', real_column)
+      cols(ih_lum_ppIII)               = output_column('lum_ppIII', real_column)
+      cols(ih_lum_cno)                 = output_column('lum_cno', real_column)
+      cols(ih_lum_3alpha)              = output_column('lum_3alpha', real_column)
+      cols(ih_lum_heC)                 = output_column('lum_heC', real_column)
+      cols(ih_lum_grav)                = output_column('lum_grav', real_column)
+      cols(ih_lum_neu)                 = output_column('lum_neu', real_column)
+      cols(ih_snu_cl37)                = output_column('snu_cl37', real_column)
+      cols(ih_snu_ga71)                = output_column('snu_ga71', real_column)
+      cols(ih_neut_pp)                 = output_column('neut_pp', real_column)
+      cols(ih_neut_pep)                = output_column('neut_pep', real_column)
+      cols(ih_neut_hep)                = output_column('neut_hep', real_column)
+      cols(ih_neut_be7)                = output_column('neut_be7', real_column)
+      cols(ih_neut_b8)                 = output_column('neut_b8', real_column)
+      cols(ih_neut_n13)                = output_column('neut_n13', real_column)
+      cols(ih_neut_o15)                = output_column('neut_o15', real_column)
+      cols(ih_neut_f17)                = output_column('neut_f17', real_column)
+      cols(ih_neut_diag_1)             = output_column('neut_diag_1', real_column)
+      cols(ih_neut_diag_2)             = output_column('neut_diag_2', real_column)
+      cols(ih_center_he3)              = output_column('center_he3', real_column)
+      cols(ih_center_c12)              = output_column('center_c12', real_column)
+      cols(ih_center_c13)              = output_column('center_c13', real_column)
+      cols(ih_center_n14)              = output_column('center_n14', real_column)
+      cols(ih_center_n15)              = output_column('center_n15', real_column)
+      cols(ih_center_o16)              = output_column('center_o16', real_column)
+      cols(ih_center_o17)              = output_column('center_o17', real_column)
+      cols(ih_center_o18)              = output_column('center_o18', real_column)
+      cols(ih_surface_he3)             = output_column('surface_he3', real_column)
+      cols(ih_surface_c12)             = output_column('surface_c12', real_column)
+      cols(ih_surface_c13)             = output_column('surface_c13', real_column)
+      cols(ih_surface_n14)             = output_column('surface_n14', real_column)
+      cols(ih_surface_n15)             = output_column('surface_n15', real_column)
+      cols(ih_surface_o16)             = output_column('surface_o16', real_column)
+      cols(ih_surface_o17)             = output_column('surface_o17', real_column)
+      cols(ih_surface_o18)             = output_column('surface_o18', real_column)
+      cols(ih_surface_h2)              = output_column('surface_h2', real_column)
+      cols(ih_surface_li6)             = output_column('surface_li6', real_column)
+      cols(ih_surface_li7)             = output_column('surface_li7', real_column)
+      cols(ih_surface_be9)             = output_column('surface_be9', real_column)
+      cols(ih_surface_h1)              = output_column('surface_h1', real_column)
+      cols(ih_surface_he4)             = output_column('surface_he4', real_column)
+      cols(ih_surface_z)               = output_column('surface_z', real_column)
+      cols(ih_surface_z_div_x)         = output_column('surface_z_div_x', real_column)
+      cols(ih_total_angular_momentum)  = output_column('total_angular_momentum', real_column)
+      cols(ih_total_rotational_ke)     = output_column('total_rotational_ke', real_column)
+      cols(ih_total_moment_of_inertia) = output_column('total_moment_of_inertia', real_column)
+      cols(ih_cz_moment_of_inertia)    = output_column('cz_moment_of_inertia', real_column)
+      cols(ih_surf_avg_omega)          = output_column('surf_avg_omega', real_column)
+      cols(ih_center_omega)            = output_column('center_omega', real_column)
+      cols(ih_rotation_period_days)    = output_column('rotation_period_days', real_column)
+      cols(ih_surf_avg_v_rot)          = output_column('surf_avg_v_rot', real_column)
+      cols(ih_tau_conv_cz)             = output_column('tau_conv_cz', real_column)
+      cols(ih_h_shell_bot_mass)        = output_column('h_shell_bot_mass', real_column)
+      cols(ih_h_shell_mid_mass)        = output_column('h_shell_mid_mass', real_column)
+      cols(ih_h_shell_top_mass)        = output_column('h_shell_top_mass', real_column)
+      cols(ih_h_shell_bot_radius)      = output_column('h_shell_bot_radius', real_column)
+      cols(ih_h_shell_mid_radius)      = output_column('h_shell_mid_radius', real_column)
+      cols(ih_h_shell_top_radius)      = output_column('h_shell_top_radius', real_column)
+      cols(ih_log_P_photosphere)       = output_column('log_P_photosphere', real_column)
+      cols(ih_star_mass)               = output_column('star_mass', real_column)
+      cols(ih_star_age)                = output_column('star_age', real_column)
 ! opt-in columns (commented out in defaults/history_columns.list)
-      names(85) = 'nu_max'
-      names(86) = 'delta_nu_rho'
-      names(87) = 'delta_nu'
-      names(88) = 'delta_Pg'
-      names(89) = 'lum_extra'
-end subroutine history_column_names
+      cols(ih_nu_max)                  = output_column('nu_max', real_column)
+      cols(ih_delta_nu_rho)            = output_column('delta_nu_rho', real_column)
+      cols(ih_delta_nu)                = output_column('delta_nu', real_column)
+      cols(ih_delta_Pg)                = output_column('delta_Pg', real_column)
+      cols(ih_lum_extra)               = output_column('lum_extra', real_column)
+end function history_columns
 
+! ---------------------------------------------------------------
+! Every column's value for this model, at its named index (iprof: the
+! profile written with this model, 0 for none).
 subroutine history_values(s, vals, iprof)
-      use star_info_lib, only: star_info, i_h1, i_he4, i_lum_grav, &
-           i_lum_he_c, i_lum_neu, i_lum_extra, i_metals
+      use star_info_lib, only: star_info, i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
+           i_li7, i_be9, i_lum_pp1, i_lum_pp2, i_lum_pp3, i_lum_cno, &
+           i_lum_3alpha, i_lum_he_c, i_lum_grav, i_lum_neu, i_lum_extra
+      use neutrino_flux_layout, only: i_nu_pp, i_nu_pep, i_nu_hep, &
+           i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, i_nu_he3he3, &
+           i_nu_he3he4
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: vals(n_hist_cols)
       integer, intent(in) :: iprof
-      integer :: i
 
-      vals(1) = dble(s%model_number)
-      vals(2) = dble(iprof)
-      vals(3) = dble(s%nz)
-      vals(4) = s%log_L
-      vals(5) = s%log_R_surface
-      vals(6) = s%log_g_surface
-      vals(7) = s%log_Teff
-      vals(8) = s%core_cz_mass
-      vals(9) = s%envelope_mass
-      vals(10) = s%envelope_radius
-      vals(11) = s%envelope_cz_temperature
-      vals(12) = s%envelope_cz_density
-      vals(13) = s%envelope_cz_pressure
-      vals(14) = s%envelope_cz_opacity
-      vals(15) = s%central_log10_temperature
-      vals(16) = s%central_log10_density
-      vals(17) = s%central_log10_pressure
-      vals(18) = s%central_beta
-      vals(19) = s%central_degeneracy_eta
-      vals(20) = s%xa(i_h1,1)
-      vals(21) = s%xa(i_he4,1)
-      vals(22) = s%xa(i_metals,1)
-      do i = 1, 5
-         vals(22+i) = s%luminosity_breakdown(i)
-      end do
-      vals(28) = s%luminosity_breakdown(i_lum_he_c)
-      vals(29) = s%luminosity_breakdown(i_lum_grav)
-      vals(30) = s%luminosity_breakdown(i_lum_neu)
-      vals(31) = s%cl37_snu_rate
-      vals(32) = s%ga71_snu_rate
-      do i = 1, 10
-         vals(32+i) = s%neutrino_flux_total(i)
-      end do
-      do i = 4, 11
-         vals(39+i) = s%xa(i,1)
-      end do
-      do i = 4, 15
-         vals(47+i) = s%xa(i,s%nz)
-      end do
-      vals(63) = s%xa(i_h1,s%nz)
-      vals(64) = s%xa(i_he4,s%nz)
-      vals(65) = s%xa(i_metals,s%nz)
-      vals(66) = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
-      vals(67) = s%total_angular_momentum
-      vals(68) = s%total_rotational_ke
-      vals(69) = s%total_moment_of_inertia
-      vals(70) = s%cz_moment_of_inertia
-      vals(71) = s%omega(s%nz)
-      vals(72) = s%omega(1)
-      vals(73) = s%rotation_period_days
-      vals(74) = s%surf_velocity_kms
-      vals(75) = s%convective_turnover_timescale
-      vals(76) = s%h_shell_bot_mass
-      vals(77) = s%h_shell_mid_mass
-      vals(78) = s%h_shell_top_mass
-      vals(79) = s%h_shell_bot_radius
-      vals(80) = s%h_shell_mid_radius
-      vals(81) = s%h_shell_top_radius
-      vals(82) = s%pphot
-      vals(83) = s%star_mass
-      vals(84) = s%age_gyr*1.0d9
-      vals(85) = s%nu_max
-      vals(86) = s%delta_nu_rho
-      vals(87) = s%delta_nu
-      vals(88) = s%delta_Pg
-      vals(89) = s%luminosity_breakdown(i_lum_extra)
+      vals(ih_model_number)            = dble(s%model_number)
+      vals(ih_profile_number)          = dble(iprof)
+      vals(ih_num_zones)               = dble(s%nz)
+      vals(ih_log_L)                   = s%log_L
+      vals(ih_log_R)                   = s%log_R_surface
+      vals(ih_log_g)                   = s%log_g_surface
+      vals(ih_log_Teff)                = s%log_Teff
+      vals(ih_mass_conv_core)          = s%core_cz_mass
+      vals(ih_cz_bot_mass)             = s%envelope_mass
+      vals(ih_cz_bot_radius)           = s%envelope_radius
+      vals(ih_cz_bot_temperature)      = s%envelope_cz_temperature
+      vals(ih_cz_bot_density)          = s%envelope_cz_density
+      vals(ih_cz_bot_pressure)         = s%envelope_cz_pressure
+      vals(ih_cz_bot_opacity)          = s%envelope_cz_opacity
+      vals(ih_log_center_T)            = s%central_log10_temperature
+      vals(ih_log_center_Rho)          = s%central_log10_density
+      vals(ih_log_center_P)            = s%central_log10_pressure
+      vals(ih_center_beta)             = s%central_beta
+      vals(ih_center_degeneracy)       = s%central_degeneracy_eta
+      vals(ih_center_h1)               = s%xa(i_h1,1)
+      vals(ih_center_he4)              = s%xa(i_he4,1)
+      vals(ih_center_z)                = s%xa(i_metals,1)
+      vals(ih_lum_ppI)                 = s%luminosity_breakdown(i_lum_pp1)
+      vals(ih_lum_ppII)                = s%luminosity_breakdown(i_lum_pp2)
+      vals(ih_lum_ppIII)               = s%luminosity_breakdown(i_lum_pp3)
+      vals(ih_lum_cno)                 = s%luminosity_breakdown(i_lum_cno)
+      vals(ih_lum_3alpha)              = s%luminosity_breakdown(i_lum_3alpha)
+      vals(ih_lum_heC)                 = s%luminosity_breakdown(i_lum_he_c)
+      vals(ih_lum_grav)                = s%luminosity_breakdown(i_lum_grav)
+      vals(ih_lum_neu)                 = s%luminosity_breakdown(i_lum_neu)
+      vals(ih_snu_cl37)                = s%cl37_snu_rate
+      vals(ih_snu_ga71)                = s%ga71_snu_rate
+      vals(ih_neut_pp)                 = s%neutrino_flux_total(i_nu_pp)
+      vals(ih_neut_pep)                = s%neutrino_flux_total(i_nu_pep)
+      vals(ih_neut_hep)                = s%neutrino_flux_total(i_nu_hep)
+      vals(ih_neut_be7)                = s%neutrino_flux_total(i_nu_be7)
+      vals(ih_neut_b8)                 = s%neutrino_flux_total(i_nu_b8)
+      vals(ih_neut_n13)                = s%neutrino_flux_total(i_nu_n13)
+      vals(ih_neut_o15)                = s%neutrino_flux_total(i_nu_o15)
+      vals(ih_neut_f17)                = s%neutrino_flux_total(i_nu_f17)
+      vals(ih_neut_diag_1)             = s%neutrino_flux_total(i_nu_he3he3)
+      vals(ih_neut_diag_2)             = s%neutrino_flux_total(i_nu_he3he4)
+      vals(ih_center_he3)              = s%xa(i_he3,1)
+      vals(ih_center_c12)              = s%xa(i_c12,1)
+      vals(ih_center_c13)              = s%xa(i_c13,1)
+      vals(ih_center_n14)              = s%xa(i_n14,1)
+      vals(ih_center_n15)              = s%xa(i_n15,1)
+      vals(ih_center_o16)              = s%xa(i_o16,1)
+      vals(ih_center_o17)              = s%xa(i_o17,1)
+      vals(ih_center_o18)              = s%xa(i_o18,1)
+      vals(ih_surface_he3)             = s%xa(i_he3,s%nz)
+      vals(ih_surface_c12)             = s%xa(i_c12,s%nz)
+      vals(ih_surface_c13)             = s%xa(i_c13,s%nz)
+      vals(ih_surface_n14)             = s%xa(i_n14,s%nz)
+      vals(ih_surface_n15)             = s%xa(i_n15,s%nz)
+      vals(ih_surface_o16)             = s%xa(i_o16,s%nz)
+      vals(ih_surface_o17)             = s%xa(i_o17,s%nz)
+      vals(ih_surface_o18)             = s%xa(i_o18,s%nz)
+      vals(ih_surface_h2)              = s%xa(i_h2,s%nz)
+      vals(ih_surface_li6)             = s%xa(i_li6,s%nz)
+      vals(ih_surface_li7)             = s%xa(i_li7,s%nz)
+      vals(ih_surface_be9)             = s%xa(i_be9,s%nz)
+      vals(ih_surface_h1)              = s%xa(i_h1,s%nz)
+      vals(ih_surface_he4)             = s%xa(i_he4,s%nz)
+      vals(ih_surface_z)               = s%xa(i_metals,s%nz)
+      vals(ih_surface_z_div_x)         = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
+      vals(ih_total_angular_momentum)  = s%total_angular_momentum
+      vals(ih_total_rotational_ke)     = s%total_rotational_ke
+      vals(ih_total_moment_of_inertia) = s%total_moment_of_inertia
+      vals(ih_cz_moment_of_inertia)    = s%cz_moment_of_inertia
+      vals(ih_surf_avg_omega)          = s%omega(s%nz)
+      vals(ih_center_omega)            = s%omega(1)
+      vals(ih_rotation_period_days)    = s%rotation_period_days
+      vals(ih_surf_avg_v_rot)          = s%surf_velocity_kms
+      vals(ih_tau_conv_cz)             = s%convective_turnover_timescale
+      vals(ih_h_shell_bot_mass)        = s%h_shell_bot_mass
+      vals(ih_h_shell_mid_mass)        = s%h_shell_mid_mass
+      vals(ih_h_shell_top_mass)        = s%h_shell_top_mass
+      vals(ih_h_shell_bot_radius)      = s%h_shell_bot_radius
+      vals(ih_h_shell_mid_radius)      = s%h_shell_mid_radius
+      vals(ih_h_shell_top_radius)      = s%h_shell_top_radius
+      vals(ih_log_P_photosphere)       = s%pphot
+      vals(ih_star_mass)               = s%star_mass
+      vals(ih_star_age)                = s%age_gyr*1.0d9
+      vals(ih_nu_max)                  = s%nu_max
+      vals(ih_delta_nu_rho)            = s%delta_nu_rho
+      vals(ih_delta_nu)                = s%delta_nu
+      vals(ih_delta_Pg)                = s%delta_Pg
+      vals(ih_lum_extra)               = s%luminosity_breakdown(i_lum_extra)
 end subroutine history_values
 
 subroutine write_history_row(s, iprof, ierr)
-      use star_info_lib, only: star_info, i_metals
+      use star_info_lib, only: star_info
       use io_units, only: check_io
       type(star_info), intent(inout) :: s
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
-      character(len=24) :: names(n_hist_cols)
+      type(output_column) :: cols(n_hist_cols)
       double precision :: vals(n_hist_cols)
       integer :: hist_unit, i, k, ios
       character(len=256) :: msg
       logical :: hist_open
 
       call history_values(s, vals, iprof)
+      cols = history_columns()
       inquire(file=hist_path, opened=hist_open, number=hist_unit)
       if (.not. hist_open) then
          open(newunit=hist_unit, file=hist_path, status='REPLACE', &
               action='WRITE', iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'write', hist_path, ierr)
          if (ierr /= 0) return
-         call history_column_names(names)
 ! Global block: run metadata, matching what the legacy .track header
 ! carried (initial composition + mixing length). The initial_* values
 ! are the kind card's starting envelope composition (initial_y by
@@ -265,10 +327,10 @@ subroutine write_history_row(s, iprof, ierr)
          write(hist_unit, '(a)') ''
          write(hist_unit, '(999(1x,i40))') (k, k = 1, hist_nsel)
          write(hist_unit, '(999(1x,a40))') &
-              (adjustr(trim(names(hist_sel(k)))), k = 1, hist_nsel)
+              (adjustr(trim(cols(hist_sel(k))%name)), k = 1, hist_nsel)
       end if
       do i = 1, hist_nsel
-         if (is_int_hist_col(hist_sel(i))) then
+         if (cols(hist_sel(i))%kind == integer_column) then
             write(hist_unit, '(1x,i40)', advance='no') &
                  nint(vals(hist_sel(i)))
          else
@@ -282,29 +344,24 @@ subroutine write_history_row(s, iprof, ierr)
       flush(hist_unit)
 end subroutine write_history_row
 
-! History columns written as true integers.
-logical function is_int_hist_col(icol)
-      integer, intent(in) :: icol
-      is_int_hist_col = (icol >= 1 .and. icol <= 3)
-end function is_int_hist_col
-
-! Stable hoist of the id columns (built-in indices 1..3, i.e.
-! model_number/profile_number/num_zones) to the front of a selection.
+! ---------------------------------------------------------------
+! The id columns moved to the front of a selection, in id_columns'
+! order; the other columns keep theirs.
 subroutine hoist_id_columns(sel, nsel)
       integer, intent(inout) :: sel(max_cols), nsel
       integer :: tmp(max_cols), n, id, i
 
       n = 0
-      do id = 1, 3
+      do id = 1, size(id_columns)
          do i = 1, nsel
-            if (sel(i) == id) then
+            if (sel(i) == id_columns(id)) then
                n = n + 1
-               tmp(n) = id
+               tmp(n) = sel(i)
             end if
          end do
       end do
       do i = 1, nsel
-         if (sel(i) > 3) then
+         if (all(sel(i) /= id_columns)) then
             n = n + 1
             tmp(n) = sel(i)
          end if

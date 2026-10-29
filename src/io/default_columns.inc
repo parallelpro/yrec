@@ -5,7 +5,7 @@
 ! default output column selections used when
 ! history_columns_file / profile_columns_file are blank.
       integer, parameter :: n_hist_default = 30
-      character(len=24), parameter :: hist_default_names(n_hist_default) = [ &
+      character(len=column_name_len), parameter :: hist_default_names(n_hist_default) = [ &
            'model_number            ', &
            'profile_number          ', &
            'num_zones               ', &
@@ -37,7 +37,7 @@
            'tau_conv_cz             ', &
            'log_P_photosphere       ' ]
       integer, parameter :: n_prof_default = 12
-      character(len=24), parameter :: prof_default_names(n_prof_default) = [ &
+      character(len=column_name_len), parameter :: prof_default_names(n_prof_default) = [ &
            'zone                    ', &
            'mass                    ', &
            'logR                    ', &
