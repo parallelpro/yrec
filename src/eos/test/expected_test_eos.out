@@ -60,7 +60,9 @@ g1  1   1.622770955662772E+00   3.819689051698335E-01
 g1  2   1.561990116447061E+00   3.410726867781327E-01
 g1  3   1.662861447743696E+00   3.957986221946234E-01
 g1  4   1.666295617340983E+00   3.966366433217322E-01
-# test_eos: eos_get_gamma1, Yale/SCV branch (defined regime only)
+# test_eos: eos_get_gamma1, Yale/SCV branch
+g1  1   1.620593105443258E+00   3.810706770342555E-01
+g1  2   1.646682907104789E+00   3.864599726402390E-01
 g1  3   1.664268850065454E+00   3.983747568277380E-01
 g1  4   1.664333375060509E+00   3.989501157492898E-01
 # test_eos: MHD path SKIPPED (YREC_MHD_TABLES not set; no MHD tables ship with YREC)
@@ -609,4 +611,6 @@ ok   envelope tables: rebuilt at a new composition, the SCV table agrees with SC
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 ok   Debye-Hueckel: rho(none) < rho(C, N, O) < rho(C, N, O and heavy metals)
+# test_eos: configuration production
+ok   eos_get_gamma1: below the OPAL table, the Yale/SCV value
 test_eos: done

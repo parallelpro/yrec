@@ -179,19 +179,14 @@ program test_eos
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
 
-! Only the two hotter points here: at the two low-T points the
-! Yale/SCV branch's Cox & Guili gamma1 reconstruction consumes
-! quantities blend_eos leaves undefined under the branch's historical
-! lderiv=.false. setting (inherited verbatim from calcad's original
-! formulation; NaN/uninitialized in practice) -- a pre-existing
-! property of that code path, unreachable in production configs
-! (which set LOPALE06), and not meaningfully pinnable.
-      write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch " // &
-           "(defined regime only)"
+! The Yale/SCV branch at the same four points (it once asked blend_eos
+! to skip the Saha solver's derivatives, so its two cool points read
+! unset values).
+      write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch"
       settings = eos_settings
       settings%use_opal2006_eos = .false.
       call set_eos_settings(settings)
-      do ipt = 3, ng1
+      do ipt = 1, ng1
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
          pres = g1_p(ipt)
@@ -708,6 +703,7 @@ end subroutine write_mhd_part
 !                          the envelope composition
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
 !                          mixture (eos_set_debye_huckel_z)
+!   gamma1_checks          eos_get_gamma1 outside the OPAL table
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -715,6 +711,7 @@ subroutine check_physics()
       call atmosphere_checks()
       call envelope_table_checks()
       call debye_huckel_checks()
+      call gamma1_checks()
 end subroutine check_physics
 
 ! One eos_get at (log T, log P) and (x, z), from a fresh record.
@@ -738,6 +735,30 @@ end subroutine eos_at
 ! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b and alpha = 1/b,
 ! cp = (R/mu)(3/2 + 12(1 - b)/b + delta^2) and grad_ad = (R/mu) delta/(b cp)
 ! (Kippenhahn & Weigert sec. 13.2)
+! Below the OPAL 2006 table (T = 1500 K) eos_get_gamma1 takes the
+! Yale/SCV value (to 1e-6: the Saha solver starts from the previous
+! call's solution), with OPAL selected as without it.
+subroutine gamma1_checks()
+      type(eos_settings_t) :: s
+      real(dp) :: g1_yale, ga_yale, g1, ga
+      integer :: ierr1, ierr2, iterations
+      call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
+      s = eos_settings
+      s%use_opal2006_eos = .false.
+      call set_eos_settings(s)
+      iterations = 0
+      call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1_yale, ga_yale, &
+           iterations, ierr=ierr1)
+      s%use_opal2006_eos = .true.
+      call set_eos_settings(s)
+      iterations = 0
+      call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1, ga, &
+           iterations, ierr=ierr2)
+      call check("eos_get_gamma1: below the OPAL table, the Yale/SCV value", &
+           ierr1 == 0 .and. ierr2 == 0 .and. abs(g1/g1_yale - 1.0d0) < 1.0d-6 .and. &
+           abs(ga/ga_yale - 1.0d0) < 1.0d-6)
+end subroutine gamma1_checks
+
 subroutine ideal_radiation_gas(b, r_mu, cp, grad_ad)
       real(dp), intent(in) :: b, r_mu
       real(dp), intent(out) :: cp, grad_ad

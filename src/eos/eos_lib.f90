@@ -137,10 +137,9 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! gamma1 and the adiabatic gradient at (T6, rho, P) and (X, Z): from
 ! the OPAL 2006 table (esac06, with the radiation correction) when
-! use_opal2006_eos is set, else from blend_eos, with gamma1 built from
-! chi_rho, chi_T and cv (Cox & Giuli ch. 9). Outside the OPAL table it
-! returns what esac06 left from the previous point. test_eos is its
-! only caller.
+! use_opal2006_eos is set and the table covers the point, else from
+! blend_eos, with gamma1 built from chi_rho, chi_T and cv (Cox & Giuli
+! ch. 9). test_eos is its only caller.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
      saha_state, ierr)
@@ -165,6 +164,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
 
       ierr = 0
       jerr = 0
+      in_table = .false.
 
       if (eos_settings%use_opal2006_eos) then
          eos_interp_order = 9
@@ -178,6 +178,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
             ierr = jerr
             return
          end if
+      end if
+      if (eos_settings%use_opal2006_eos .and. in_table) then
          gamma1 = opal06%eos_output(i_opal_gamma1)
          adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)
       else
@@ -187,7 +189,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          log10_temperature = log10(temperature_1e6k*1.0d6)
          log10_pressure = log10(pressure)
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, g, .false., .true., saha_state, jerr)
+              metal_fraction, g, .false., .false., saha_state, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
