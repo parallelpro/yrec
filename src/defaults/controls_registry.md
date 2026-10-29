@@ -137,7 +137,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | ctrl | run | integer | `0` | keep | Write the interior-only GYRE file every this many models (0 = off) |
 | `history_columns_file` | `history_columns_file` | `history_columns_file` | ctrl | run | string | `' '` | verified | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
 | `profile_columns_file` | `profile_columns_file` | `profile_columns_file` | ctrl | run | string | `' '` | verified | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
-| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | ctrl | read | string | `'{YREC_OUTPUT}/inlist_used'` | verified | Verbatim copy of the input namelist file(s), written at startup as run provenance |
+| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | ctrl | read | string | `' '` | verified | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
 | `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
 | `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | ctrl | run | real(50) | `-1.0d99` | canonical | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
 | `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | ctrl | run | real(50) | `1.0d99` | canonical | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |

@@ -68,7 +68,9 @@ module controls_buffer
       real(dp) :: delta_nu_sun = 135.1d0
       real(dp) :: Teff_sun = 5772.0d0
       character(len=256) :: profile_data_prefix = 'profile'
-      character(len=256) :: inlist_used_file = '{YREC_OUTPUT}/inlist_used'
+! the copy of the deck; blank: inlist_used in the output directory
+! (the run log's)
+      character(len=256) :: inlist_used_file = ' '
       character(len=8) :: pulse_format = 'GYRE'
 ! Independent toggles: profiles only, pulse only, both, or neither
 ! (cadence stays with profile_interval / pulse_gyre_interval):

@@ -115,7 +115,8 @@ end subroutine expand_paths
 
 ! ---------------------------------------------------------------
 ! The output directory (the run log's directory) created and the
-! inlists copied into it, then the run's files opened: the starting
+! inlists copied into it (inlist_used, or inlist_used_file when the
+! deck names one), then the run's files opened: the starting
 ! model, the final model (the restart file, and the solver's recovery
 ! source when a step diverges), the run log, and the Monte Carlo and
 ! isochrone files when those are on. (The history and profile files
@@ -125,14 +126,16 @@ subroutine open_run_files(s, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      character(len=256) :: msg
+      character(len=256) :: msg, inlist_copy
       integer :: ios
 
       output_dir = directory_of(fshort)
       print *,"OUTPUT placed in :  ",trim(output_dir)
       print *, ''
       call make_directory(output_dir)
-      call copy_inlists_used(trim(inlist_used_file), ierr)
+      inlist_copy = inlist_used_file
+      if (len_trim(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
+      call copy_inlists_used(trim(inlist_copy), ierr)
       if (ierr /= 0) return
 
       open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)

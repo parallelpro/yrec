@@ -154,13 +154,13 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     that sets nothing reads: each default is written once, as its
     controls_buffer initializer, and the legacy names take theirs from it
     (defaults/*.defaults document the same initializers). The exceptions are
-    not defaults: the unit numbers the read assigns, the expanded
-    inlist_used_file, and what the read derives (npenv's 0 meaning every
-    point, the run kinds, the OPAL EOS table path)."""
+    not defaults: the unit numbers the read assigns, and what the read
+    derives (npenv's 0 meaning every point, the run kinds, the OPAL EOS
+    table path)."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     derived = re.compile(r"^(ctrl%(\w*_unit\d?|unit_\w+|iopale|icondopacp|"
-                         r"inlist_used_file|npenv)|job%(opal_eos_table_path|rescale_kind))(\(|$)")
+                         r"npenv)|job%(opal_eos_table_path|rescale_kind))(\(|$)")
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
@@ -221,3 +221,34 @@ def test_card_one_starts_from_the_starting_model(tmp_path):
     assert "job%first_call_flag(1) = T" in dump
     assert "job%first_call_flag(2) = F" in dump
     assert "card  1: rescale and evolve the starting model" in out, out[-500:]
+
+
+def test_inlist_copy_goes_to_the_output_directory(tmp_path):
+    """The verbatim copy of the deck (inlist_used) lands in the run's output
+    directory, the run log's, wherever that is: a deck whose run log is in
+    a subdirectory of YREC_OUTPUT gets its copy there too, and nothing in
+    YREC_OUTPUT itself; inlist_used_file names another place."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text()
+    old = 'log_output_file = "{YREC_OUTPUT}/cm_base.short"'
+    assert old in text
+    sub = tmp_path / "sub.inlist"
+    sub.write_text(text.replace(old, 'log_output_file = "{YREC_OUTPUT}/nested/cm_base.short"'))
+    named = tmp_path / "named.inlist"
+    named.write_text(text.replace("&control", "&control\n inlist_used_file = '{YREC_OUTPUT}/copy.txt'", 1))
+    for case, d in (("sub", sub), ("named", named)):
+        out = tmp_path / ("out_" + case)
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out)))
+        assert "ierr = 0" in r.stdout.decode("latin-1").splitlines()
+        if case == "sub":
+            assert (out / "nested" / "inlist_used").is_file()
+            assert not (out / "inlist_used").exists()
+        else:
+            assert (out / "copy.txt").is_file()
+            assert not (out / "inlist_used").exists()
+        copy = (out / "nested" / "inlist_used") if case == "sub" else (out / "copy.txt")
+        assert copy.read_text().startswith("! ==== copied verbatim from: ")

@@ -364,7 +364,7 @@ physics	lcalcenv	logical	calc_envelope_flag	canonical		Integrate the full envelo
 control	history_columns_file	string	history_columns_file	verified	mesa: same	File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list	history_columns_file	ctrl	run
 control	profile_columns_file	string	profile_columns_file	verified	mesa: same	File listing the profile columns; blank: the default selection of defaults/profile_columns.list	profile_columns_file	ctrl	run
 physics	profile_data_prefix	string	profile_data_prefix	verified	mesa: same	Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory	profile_data_prefix	ctrl	run
-control	inlist_used_file	string	inlist_used_file	verified		Verbatim copy of the input namelist file(s), written at startup as run provenance	inlist_used_file	ctrl	read
+control	inlist_used_file	string	inlist_used_file	verified		Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's	inlist_used_file	ctrl	read
 physics	star_history_name	string	star_history_name	verified	mesa: same	MESA mode: history file name (written to the output directory)	star_history_name	ctrl	run
 physics	terminal_interval	integer	terminal_interval	verified	mesa: same	Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints	terminal_interval	ctrl	run
 control	log_L_upper_limit	real(50)	log_L_upper_limit	canonical	mesa: same	Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)	log_l_upper_limit	ctrl	run

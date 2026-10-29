@@ -458,8 +458,8 @@
       ! File listing the profile columns; blank: the default selection of defaults/profile_columns.list
       profile_columns_file = ' '
 
-      ! Verbatim copy of the input namelist file(s), written at startup as run provenance
-      inlist_used_file = '{YREC_OUTPUT}/inlist_used'
+      ! Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's
+      inlist_used_file = ' '
 
       ! Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)
       log_L_upper_limit = 1.0d99
