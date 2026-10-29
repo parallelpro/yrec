@@ -291,9 +291,12 @@ subroutine enforce_rotation_profile(log_density, specific_angular_momentum, log_
 ! Solid body. alpha >= 0 rather than > 0 (JVS 2026/02/13), so alpha = 0
 ! takes this branch. A convection zone below the surface always rotates
 ! as a solid body (JNT 2015/05/07): the imposed law and modes 2 and 3
-! act on the surface convection zone only.
+! act on the surface convection zone only. So does one that reaches the
+! centre under alpha <= -2: omega ~ r^alpha (constant j at alpha = -2)
+! cannot hold down to r = 0 (docs/bug_sweep.md O25).
       if((rotation_settings%cz_rotation_law_exponent.ge.0.0d0) .or. solid_body_everywhere() .or. &
-           (iend.lt.num_zones)) then
+           (iend.lt.num_zones) .or. &
+           (rotation_settings%cz_rotation_law_exponent.le.-2.0d0 .and. istart.eq.1)) then
          call solid_body_omega(log_density,specific_angular_momentum,log_radius, &
               log_mass,shell_mass,istart,iend,eta_squared, &
               moment_of_inertia,omega,qiw,mean_radius,num_zones, &

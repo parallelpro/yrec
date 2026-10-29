@@ -32,7 +32,7 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 42 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 51 |
+| Fixed | 43 | 2 (S5, L9) | 7 (N4, S13, L1, L4, L6, L7, L17) | 52 |
 | Open | 14 | 1 (O4, with a 2026 part) | 2 (O5, O22) | 17 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip.
@@ -44,7 +44,6 @@ These open items depend on what the code was meant to do, not only on what it do
 - **O20:** is the calibration's dL/dα 0.0139 or 0.139?
 - **O12:** what tolerance should the solid-body Newton iteration stop at?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
-- **O25:** under walpcz ≤ -2, should a convection zone that reaches the centre rotate as a solid body, or should the control be rejected?
 
 ### Summary
 
@@ -119,10 +118,11 @@ These open items depend on what the code was meant to do, not only on what it do
 | O22 | Profile N² column disagrees with the pulse files | No (2026) | Open |
 | O23 | Two EOS derivatives threaded through but unused | Yes | Fixed, [6252b537](https://github.com/parallelpro/yrec/commit/6252b537) |
 | O24 | Un-aged rotating model without transport spun up by the wind | Yes | Fixed, [2bdbfbad](https://github.com/parallelpro/yrec/commit/2bdbfbad) |
-| O25 | Constant j in a fully convective star diverges at the centre | Yes | Open |
+| O25 | Constant j in a fully convective star diverges at the centre | Yes | Fixed |
 | O26 | The history's total J and rotational KE lag their model by a step | Yes | Fixed (history columns only) |
 | O27 | An inner region zeroes the wind term the surface region averages | Yes | Fixed |
 | O28 | The transport check reads an unset convergence flag | Yes | Fixed (byte-identical), with the restructure of `apply_secular_transport` |
+| O29 | The dynamical-shear limit takes the sign of the mean gravity | Yes | Open (beyond break-up only) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1249,7 +1249,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O25. Constant specific angular momentum in a fully convective star diverges at the centre
 
-- **Status:** open (found 2026-10-28 by a rotation variant deck). No shipped deck sets the law; the fix needs the authors' choice.
+- **Status:** fixed (2026-10-28), with the first proposal below as the default the authors can revisit: under walpcz ≤ -2, a convection zone that reaches the centre rotates as a solid body, in every mode (`enforce_rotation_profile`). `test_rotation_kernels` checks a fully convective star under constant j: one omega, and its J kept (a mutation dropping the test is caught). The variant deck that stopped at its first model now runs; it stops at 1.67 Myr instead, once a small radiative core has formed and the constant-j surface convection zone spins its base beyond break-up (omega about 1e-3 rad/s, where the mean gravity turns negative; see O29). No shipped deck sets the law: the 26 rotating decks are byte-identical.
 - **In the original F77?** Yes. WCZ imposes a uniform j on the convection zone when `WALPCZ .LE. -2` ([wcz.f:18-30](https://github.com/parallelpro/yrec/blob/6cd56739/src/wcz.f#L18-L30)):
   ```fortran
         ELSE IF(WALPCZ.LE.-2.0D0)THEN
@@ -1288,4 +1288,13 @@ These are found, recorded and left as they are, because each fix changes results
 - **What is wrong:** under solid-body rotation (`force_solid_body_rotation` or `solid_body_mode_flag = 1`), and in an iteration whose regions are all single interfaces, no region solves for angular momentum, so the flag is never set; `check_angular_momentum` reads it, and a true value would mark the iteration converged and suppress its report. The solid-body decks print the report every sub-step, so the stack has held false.
 - **Expected behaviour, and why:** the flag belongs to the commented-out advection-diffusion solve, which could report its own convergence; without that solve it is always false.
 - **Proposed fix:** pass false. Byte-identical.
+
+### O29. The dynamical-shear limit takes the sign of the mean gravity
+
+- **Status:** open (found 2026-10-28 by the walpcz = -2 variant deck after O25's fix). Only a model rotating beyond break-up reaches it.
+- **In the original F77?** Yes. VCIRC's QWRMAX is 2 g sqrt((rho/P) max(grad_ad - grad, 1e-3)) with the signed mean gravity.
+- **Now:** `rotation_stability_setup`'s `stab%dynamical_shear_omega_limit` ([stability_coefficients.f90](https://github.com/parallelpro/yrec/blob/e214d9cf/src/rotation/seculr/stability_coefficients.f90)).
+- **What is wrong:** the Richardson number holds g^2, so the largest stable |d omega/d ln r| is 2 |g| sqrt(...). Where the centrifugal term exceeds gravity the mean gravity is negative, the limit is negative, every interface reads as dynamically unstable, and the shear's correction of U_GSF takes an inner omega outside the two zones' values (seen: -2.9e-2 rad/s). The same run then ends with an integration error (BSSTEP) and exit status 0, where the error contract asks for 1.
+- **Expected behaviour, and why:** a model beyond break-up should stop with a message; the limit, where it is used, should take |g|.
+- **Proposed fix:** take abs(g) in the limit, and stop the run (ierr) when the mean gravity of a rotating model turns negative. One measured commit; only models beyond break-up change.
 

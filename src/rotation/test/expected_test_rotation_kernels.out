@@ -5,6 +5,7 @@ shape: 1 - ft ~ omega^4 (ratio 16)                       5.51E-05  ok
 omega_from_j: radiative zones keep I omega = j dm        7.74E-15  ok
 omega_from_j: the envelope keeps its J                   0.00E+00  ok
 omega_from_j: the envelope rotates as a solid body       0.00E+00  ok
+omega_from_j: constant j at the centre, a solid body     1.38E-16  ok
 AM diffusion: J conserved without wind                   0.00E+00  ok
 AM diffusion: sumdj = 0 without wind                     1.39E-17  ok
 AM diffusion: the wind takes its surface term            6.23E-13  ok

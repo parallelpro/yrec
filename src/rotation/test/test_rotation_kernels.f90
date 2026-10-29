@@ -17,6 +17,8 @@
 !   omega_from_j each radiative zone carries its own angular momentum,
 !                I omega = j dm, and the convective envelope its total,
 !                sum I omega = sum j dm, at one omega (a solid body);
+!                a fully convective star under constant j (walpcz = -2)
+!                rotates as a solid body and keeps its J;
 !   AM diffusion am_diffusion_coeffs + solve_angular_momentum_transport
 !                on 20 points (diffusion numbers dt D/(dchi I) of order
 !                1, so that round-off stays round-off): without wind, sum I omega is unchanged
@@ -303,6 +305,23 @@ subroutine omega_from_j_check()
       call report("omega_from_j: the envelope keeps its J", abs(i_omega_cz - j_cz)/j_cz, 1.0d-12)
       err = maxval(abs(w(k_cz:n) - w(n)))/w(n)
       call report("omega_from_j: the envelope rotates as a solid body", err, 1.0d-15)
+! a fully convective star under constant j (walpcz = -2): a convection
+! zone that reaches the centre rotates as a solid body, with a finite
+! omega, and keeps its J (docs/bug_sweep.md O25: omega ~ 1/r^2 diverged)
+      rotation_settings%cz_rotation_law_exponent = -2.0d0
+      do k = 1, n
+         w(k) = 2.9d-5
+      end do
+      eta2 = 0.0d0; r0 = r
+      call zone_moments_of_inertia(eta2, log_r, log_m, dm, 1, n, w, r0, inertia, di_dw)
+      jm(1:n) = 1.1d0*inertia(1:n)*w(1:n)/dm(1:n)
+      j_before(1:n) = jm(1:n)*dm(1:n)
+      call omega_from_j(log_rho, jm, log_r, log_m, dm, [(.true., k = 1, json)], n, eta2, &
+           inertia, w, qiw, r0, 0.0d0)
+      err = max(maxval(abs(w(1:n) - w(n)))/w(n), &
+           abs(sum(inertia(1:n)*w(1:n)) - sum(j_before(1:n)))/sum(j_before(1:n)))
+      call report("omega_from_j: constant j at the centre, a solid body", err, 1.0d-12)
+      rotation_settings%cz_rotation_law_exponent = 0.0d0
 end subroutine omega_from_j_check
 
 subroutine am_diffusion_check()
