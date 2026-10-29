@@ -80,12 +80,11 @@ module magnetic_braking
 ! The Kawaler (1988) law's normalization: Jdot = fk kawaler_torque_scale
 ! kawaler_omega_scale**alfa ... (cgs). The Matt law's centrifugal
 ! constant c_2 (Matt et al. 2012, ApJ 754, L26); V13's torque exponent m
-! (van Saders & Pinsonneault 2013). Both keep the single-precision
-! values the F77 DATA gave them. solar_omega_sat below
+! (van Saders & Pinsonneault 2013). solar_omega_sat below
 ! solar_units_saturation_limit gives the saturation omega in units of
 ! the solar omega.
       real(dp), parameter :: kawaler_torque_scale = 2.036d33, kawaler_omega_scale = 1.452d9
-      real(dp), parameter :: matt_centrifugal_constant = 0.0506, v13_exponent_m = 0.22
+      real(dp), parameter :: matt_centrifugal_constant = 0.0506d0, v13_exponent_m = 0.22d0
       real(dp), parameter :: solar_units_saturation_limit = 1.0d3
 
 ! The step's state the laws read (the caller fills it from the star):

@@ -399,7 +399,7 @@
 
       ! Oxygen fraction of the CNO metals for cno_mixture_name 'CUS'
       ! (legacy name: frac_o)
-      target_oxygen_cno_fraction = 0.468195
+      target_oxygen_cno_fraction = 0.468195d0
 
       ! C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_mixture_mode = 1)
       ! (legacy name: r12_13)

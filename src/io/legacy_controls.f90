@@ -347,8 +347,8 @@ subroutine set_legacy_defaults
 ! The legacy names without a canonical home, and their defaults.
 ! sstandard: the cross sections relative to Bahcall & Ulrich 1988, used
 ! when lnewnuc is .false.
-      sstandard = (/ 0.9828, 1.0485, 0.9815, 0.9241, 1.3818, 1.0542, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, &
-           1.0, 1.0, 1.0108, 0.7819, 0.2875 /)
+      sstandard = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, &
+           1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
       kindrn = 1
       rsclm = 0.0d0
       rsclx = 0.0d0

@@ -157,7 +157,7 @@
             logical :: change_isotope_ratios_active = .false.
             double precision :: target_carbon_cno_fraction = 0.172148d0
             double precision :: target_nitrogen_cno_fraction = 0.050426d0
-            double precision :: target_oxygen_cno_fraction = 0.468195
+            double precision :: target_oxygen_cno_fraction = 0.468195d0
             double precision :: c12_to_c13_ratio = 88.27d0
             double precision :: n14_to_n15_ratio = 411.9d0
             double precision :: o16_to_o17_ratio = 471.4d0
@@ -258,10 +258,10 @@
             double precision :: pmm_exponent_c = 2.0d0
             double precision :: pmm_exponent_d = 0.0d0
             double precision :: pmm_exponent_m = 0.5d0
-            double precision :: pmm_norm_jdot = 1.32e30
-            double precision :: pmm_norm_mdot = 1.27e12
+            double precision :: pmm_norm_jdot = 1.32d30
+            double precision :: pmm_norm_mdot = 1.27d12
             double precision :: pmm_solar_pressure = 4.9304d0
-            double precision :: pmm_solar_omega = 2.836e-6
+            double precision :: pmm_solar_omega = 2.836d-6
             double precision :: pmm_solar_turnover_timescale = 9.4805d5
             logical :: use_pmm_wind_law = .false.
             logical :: scale_by_rossby_number = .true.

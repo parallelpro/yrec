@@ -121,7 +121,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `isotope_mixture_name` | `aiso` | `-` | - | - | string | `'L21'` | verified | Isotope-ratio set selector (L21 default or CUS custom) |
 | `target_carbon_cno_fraction` | `frac_c` | `target_carbon_cno_fraction` | ctrl | run | real | `0.172148d0` | canonical | Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with cno_mixture_mode = 1) |
 | `target_nitrogen_cno_fraction` | `frac_n` | `target_nitrogen_cno_fraction` | ctrl | run | real | `0.050426d0` | canonical | Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS' |
-| `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | ctrl | run | real | `0.468195` | canonical | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
+| `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | ctrl | run | real | `0.468195d0` | canonical | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
 | `c12_to_c13_ratio` | `r12_13` | `c12_to_c13_ratio` | ctrl | run | real | `88.27d0` | canonical | C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_mixture_mode = 1) |
 | `n14_to_n15_ratio` | `r14_15` | `n14_to_n15_ratio` | ctrl | read | real | `411.9d0` | canonical | N14/N15 number ratio for isotope_mixture_name 'CUS' |
 | `o16_to_o17_ratio` | `r16_17` | `o16_to_o17_ratio` | ctrl | read | real | `471.4d0` | canonical | O16/O17 number ratio for isotope_mixture_name 'CUS' |
@@ -281,7 +281,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `monte_carlo_active` | `lmonte` | `monte_carlo_active` | ctrl | run | logical | `.false.` | canonical | Monte-Carlo multi-realization mode |
 | `mc_run_start` | `imbeg` | `mc_run_start` | job | run | integer | `1` | canonical | First Monte-Carlo realization index |
 | `mc_run_end` | `imend` | `mc_run_end` | job | run | integer | `1` | canonical | Last Monte-Carlo realization index |
-| `(legacy only)` | `sstandard` | `-` | - | - | real(17) | `0.9828, 1.0485, 0.9815, 0.9241, 1.3818, 1.0542, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0108, 0.7819, 0.2875` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
+| `(legacy only)` | `sstandard` | `-` | - | - | real(17) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
 | `use_scv_eos` | `lscv` | `use_scv_eos` | ctrl | run | logical | `.false.` | canonical | Use the SCV EOS where it is valid and the OPAL EOS is not |
 | `disk_locking_active` | `ldisk` | `disk_locking_active` | ctrl | run | logical | `.false.` | canonical | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
 | `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | ctrl | run | real | `0.0d0` | canonical | Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr). |
@@ -316,11 +316,11 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pmm_exponent_c` | `pmmc` | `pmm_exponent_c` | ctrl | run | real | `2.0d0` | canonical | PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
 | `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | ctrl | run | real | `0.0d0` | canonical | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
 | `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | ctrl | run | real | `0.5d0` | canonical | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
-| `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | ctrl | run | real | `1.32e30` | canonical | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
-| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | ctrl | none | real | `1.27e12` | canonical | Matt wind law: the solar mass-loss rate (g/s), its zero point |
+| `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | ctrl | run | real | `1.32d30` | canonical | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
+| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | ctrl | none | real | `1.27d12` | canonical | Matt wind law: the solar mass-loss rate (g/s), its zero point |
 | `pmm_omega_sat` | `pmmwmax` | `-` | - | - | real | `0` | verified | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
 | `pmm_solar_pressure` | `pmmsolp` | `pmm_solar_pressure` | ctrl | run | real | `4.9304d0` | canonical | Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength |
-| `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | ctrl | run | real | `2.836e-6` | canonical | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
+| `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | ctrl | run | real | `2.836d-6` | canonical | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
 | `pmm_solar_turnover_timescale` | `pmmsoltau` | `pmm_solar_turnover_timescale` | ctrl | run | real | `9.4805d5` | canonical | Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number |
 | `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | ctrl | run | logical | `.false.` | canonical | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
 | `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | ctrl | run | real | `2.5d4` | canonical | Constant background diffusion coefficient for angular momentum (cm^2/s) |

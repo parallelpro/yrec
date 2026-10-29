@@ -648,11 +648,11 @@
 
       ! Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant)
       ! (legacy name: pmmjd)
-      pmm_norm_jdot = 1.32e30
+      pmm_norm_jdot = 1.32d30
 
       ! Matt wind law: the solar mass-loss rate (g/s), its zero point
       ! (legacy name: pmmmd)
-      pmm_norm_mdot = 1.27e12
+      pmm_norm_mdot = 1.27d12
 
       ! Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set
       ! (legacy name: pmmwmax)
@@ -664,7 +664,7 @@
 
       ! Matt wind law: the solar angular velocity (rad/s), the zero point of the torque
       ! (legacy name: pmmsolw)
-      pmm_solar_omega = 2.836e-6
+      pmm_solar_omega = 2.836d-6
 
       ! Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number
       ! (legacy name: pmmsoltau)

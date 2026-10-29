@@ -352,7 +352,7 @@ module controls_buffer
       logical :: change_cno_mixture_active, change_isotope_ratios_active
       real(dp) :: target_carbon_cno_fraction = 0.172148d0
       real(dp) :: target_nitrogen_cno_fraction = 0.050426d0
-      real(dp) :: target_oxygen_cno_fraction = 0.468195
+      real(dp) :: target_oxygen_cno_fraction = 0.468195d0
       real(dp) :: c12_to_c13_ratio = 88.27d0
       real(dp) :: n14_to_n15_ratio = 411.9d0
       real(dp) :: o16_to_o17_ratio = 471.4d0
@@ -519,10 +519,10 @@ module controls_buffer
       real(dp) :: pmm_exponent_c = 2.0d0
       real(dp) :: pmm_exponent_d = 0.0d0
       real(dp) :: pmm_exponent_m = 0.5d0
-      real(dp) :: pmm_norm_jdot = 1.32e30
-      real(dp) :: pmm_norm_mdot = 1.27e12
+      real(dp) :: pmm_norm_jdot = 1.32d30
+      real(dp) :: pmm_norm_mdot = 1.27d12
       real(dp) :: pmm_solar_pressure = 4.9304d0
-      real(dp) :: pmm_solar_omega = 2.836e-6
+      real(dp) :: pmm_solar_omega = 2.836d-6
       real(dp) :: pmm_solar_turnover_timescale = 9.4805d5
       logical :: use_pmm_wind_law = .false.
       logical :: scale_by_rossby_number = .true.
