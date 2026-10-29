@@ -195,8 +195,9 @@ end subroutine polint
 ! For target_z among the points table_z(1:num_points), increasing or
 ! decreasing, the num_y tabulated functions table_y(1:num_y, point)
 ! interpolated into result_y(1:num_y): cubic through four points around
-! target_z, the Lagrange weights with the one of the point closest to
-! target_z replaced so that the four sum to one; linear between the two
+! target_z, interp's Lagrange weights with the one of the point closest
+! to target_z (see below) replaced so that the four sum to one, applied
+! by lagrange4; linear between the two
 ! points around it below four points; the end points' cubic or line
 ! outside the table. On a node the tabulated values are copied.
 ! interp_flag is 1 inside the table, 0 outside it. y_stride is
@@ -218,9 +219,9 @@ pure subroutine lir(target_z, table_z, result_y, table_y, num_y, y_stride, &
       integer, intent(out) :: interp_flag
       integer, intent(out), optional :: ierr
 
-      real(dp) :: weight(4), node(4), offset(4), span, weight_sum, sum_y
-      real(dp) :: offset12, offset34, frac_lower, frac_upper
-      integer :: above, first, closest, i, j
+      real(dp) :: weight(4), span, weight_sum
+      real(dp) :: frac_lower, frac_upper
+      integer :: above, first, closest, i
 
       if (present(ierr)) ierr = numerics_ok
       interp_flag = 0
@@ -271,22 +272,11 @@ pure subroutine lir(target_z, table_z, result_y, table_y, num_y, y_stride, &
             first = num_points - 3
             closest = 4
          end if
-         node = table_z(first:first+3)
-         offset = target_z - node
-         offset12 = offset(1)*offset(2)
-         offset34 = offset(3)*offset(4)
-         weight(1) = offset(2)*offset34/((node(1)-node(2))*(node(1)-node(3))*(node(1)-node(4)))
-         weight(2) = offset(1)*offset34/((node(2)-node(1))*(node(2)-node(3))*(node(2)-node(4)))
-         weight(3) = offset12*offset(4)/((node(3)-node(1))*(node(3)-node(2))*(node(3)-node(4)))
-         weight(4) = offset12*offset(3)/((node(4)-node(1))*(node(4)-node(2))*(node(4)-node(3)))
+         call interp(table_z(first:first+3), weight, x_eval=target_z)
          weight_sum = weight(1) + weight(2) + weight(3) + weight(4)
          weight(closest) = (1.d0 + weight(closest)) - weight_sum
          do i = 1, num_y
-            sum_y = 0.d0
-            do j = 1, 4
-               sum_y = sum_y + weight(j)*table_y(i, first + j - 1)
-            end do
-            result_y(i) = sum_y
+            result_y(i) = lagrange4(weight, table_y(i, first:first+3))
             if (result_y(i) == 0.d0) result_y(i) = 0.d0
          end do
          return
