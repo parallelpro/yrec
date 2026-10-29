@@ -21,7 +21,8 @@ module nuclear_energy
       use neutrino_flux_layout, only: n_nu_fluxes
       use net_configuration, only: net_settings, num_reactions, r_pp, &
            r_he3he3, r_he3he4, r_pc12, r_pn14, r_po16, xs_pep
-      use reaction_rates, only: nuclear_rates, screening_mass_fractions, &
+      use screening, only: screening_mass_fractions
+      use reaction_rates, only: nuclear_rates, &
            compute_deuterium_proton_capture, cap_deuterium_rate
       use thermal_neutrinos, only: compute_thermal_neutrino_losses
       use network, only: compute_reaction_rates, reaction_counts, &

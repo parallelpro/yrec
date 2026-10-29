@@ -70,13 +70,13 @@ module network
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap, &
            num_reactions, num_rate_rows, net_settings, net_settings_t, &
            store_net_settings
-      use reaction_rates, only: iso_h1, num_isotopes, &
-           nuclear_rates, screening_t, shares_rate, &
+      use screening, only: iso_h1, num_isotopes, screening_t, &
+           screening_mass_fractions
+      use reaction_rates, only: nuclear_rates, shares_rate, &
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
            cf88_n14_alpha_gamma, cf88_triple_alpha, num_rate_laws, &
            compute_zone_conditions, compute_screened_rate, &
-           compute_be7_branching, n15_alpha_fraction, hep_rate_factor, &
-           screening_mass_fractions
+           compute_be7_branching, n15_alpha_fraction, hep_rate_factor
       implicit none
       private
 

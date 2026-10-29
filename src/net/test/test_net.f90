@@ -52,9 +52,10 @@ program test_net
            burn_deuterium_region, surface_accretion, compute_li_be_rates, &
            network_species_slot, chain_pp1, chain_cno, chain_triple_alpha
 ! the domain's own test: it also reaches net/'s internal modules
-      use reaction_rates, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
-           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18, nuclear_rates, &
-           zone_conditions, compute_zone_conditions
+      use screening, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
+           iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
+      use reaction_rates, only: nuclear_rates, zone_conditions, &
+           compute_zone_conditions
       use net_configuration, only: num_reactions, num_extra_scales, r_3alpha, &
            r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings, num_sstandard, &
            cross_section_scales_from_sstandard
