@@ -158,7 +158,7 @@ program test_rotation_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: json
       use rotation_configuration, only: rotation_settings
-      use physical_constants, only: cgl, log10_radius_from_l_teff
+      use physical_constants, only: cgl, csigl, log10_radius_from_l_teff
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
@@ -198,9 +198,11 @@ program test_rotation_kernels
       integer :: i, failures
 
       failures = 0
-! G and the settings the shape and the wind laws read (the controls'
-! defaults where a run would take them).
+! G, log10 sigma (log10_radius_from_l_teff) and the settings the shape
+! and the wind laws read (the controls' defaults where a run would take
+! them).
       cgl = -7.17571d0
+      csigl = log10(5.67051d-5)
       rotation_settings%shape_outer_iterations = 5
       rotation_settings%shape_inner_iterations = 20
       rotation_settings%shape_tolerance = 1.0d-36
@@ -1188,10 +1190,11 @@ end subroutine wind_terms_checks
 ! midpoint rule's first-order term. The solid-body form once lacked the
 ! 1/G of the solar centrifugal term (docs/bug_sweep.md O17), 0.17% here.
 subroutine matt_forms_check()
-! dt for a drop of about 2e-6 of omega (with these settings the torque
-! is weak), where the midpoint and explicit losses differ by 1.5 times
-! that (the torque goes as omega^3)
-      real(dp), parameter :: i_cz = 1.0d54, m_cz = 1.0d32, omega = 1.0d-5, dt = 2.0d17
+! dt for a drop of about 2e-6 of omega, where the midpoint and explicit
+! losses differ by 1.5 times that (the torque goes as omega^3). (Until
+! log10 sigma was set here, the star's radius came out 130 times too
+! small, and the step was 2e17 s.)
+      real(dp), parameter :: i_cz = 1.0d54, m_cz = 1.0d32, omega = 1.0d-5, dt = 5.5d10
       real(dp) :: jm(json), d_start, d_end, d_cz
       type(wind_conditions) :: cond
       integer :: ierr
@@ -1268,7 +1271,7 @@ subroutine stability_check()
            expect, got
       integer :: k, i
       rotation_settings%solar_luminosity_cgs = lsun
-      radiation_constant_over_3 = 7.5657d-15/3.0d0
+      radiation_constant_over_3 = 5.67051d-5*4.0d0/(3.0d0*2.99792458d10)
       gconst = 10.0d0**cgl
       do k = 1, n
          x = r(k)/rsun

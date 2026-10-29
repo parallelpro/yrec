@@ -25,7 +25,7 @@ spin-down: saturated, error = (KT)^3/(12 N^2)            6.18E-04  ok
 spin-down: saturated, error ~ 1/N^2                      1.76E-03  ok
 spin-down: unsaturated, Omega_0 (1+2K Omega_0^2 T)^-1/2  6.10E-05  ok
 spin-down: unsaturated, error ~ 1/N^2                    3.82E-03  ok
-spin-down: a long step = its sub-steps                   1.42E-15  ok
+spin-down: a long step = its sub-steps                   1.03E-15  ok
 decay: mode 1 is the step's eigenvector                  0.00E+00  ok
 decay: mode 3 is the step's eigenvector                  2.22E-16  ok
 decay: grid rate -> kappa (pi/L)^2 as h^2                2.22E-04  ok
@@ -67,9 +67,9 @@ wind terms: disk locking holds the point                 0.00E+00  ok
 wind terms: the braking's, at the point's I and omega    0.00E+00  ok
 wind terms: a first surface term starts afresh           0.00E+00  ok
 wind terms: none without the wind torque                 0.00E+00  ok
-wind law: the Matt law's two forms agree                 2.65E-06  ok
+wind law: the Matt law's two forms agree                 2.67E-06  ok
 wind law: neither law brakes with the wind off           0.00E+00  ok
-wind law: B-field scaling alone, the two forms agree     2.65E-06  ok
+wind law: B-field scaling alone, the two forms agree     2.67E-06  ok
 stability: GSF coefficient (32/3) H_P r^3/(G m Delta)    3.67E-14  ok
 stability: Eddington-Sweet coefficient                   2.65E-14  ok
 stability: Eddington-Sweet omega^4 coefficient           2.78E-14  ok
