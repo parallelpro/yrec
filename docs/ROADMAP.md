@@ -260,9 +260,9 @@ the single-precision literal item is DONE in Batch 3.)
   building with -Wmaybe-uninitialized (+ GNU_DEV_FFLAGS run of the
   solar case), fix what it finds, then decide whether prod keeps the
   flag as belt-and-braces. Tier 2.
-- **Numerical Recipes provenance** in numerics_lib (SPLINE, LUDCMP,
-  LUBKSB, POLINT, MMID, bsstep lineage -- self-documented in the
-  headers): NR's license does not permit source redistribution, and
+- **Numerical Recipes provenance** in numerics_lib (SPLINE, SPLINT,
+  LUDCMP, LUBKSB, POLINT, HUNT, LOCATE, MMID, bsstep lineage --
+  self-documented in the headers): NR's license does not permit source redistribution, and
   this repo is public. Replace: LAPACK (already an SDK dependency)
   for LU; independently-licensed spline + Bulirsch-Stoer, or
   clean-room rewrites. Byte-rebaseline per replacement. The single
@@ -1465,7 +1465,8 @@ Msun case, and the full battery) except three error messages.
     guards, cannot be reached through osplin: slopes keeps every slope
     below twice both adjacent secants.
 - **Open:** the Numerical Recipes routines (cspline, splint, polint,
-  ludcmp/lubksb, bsstep) remain a licensing liability
+  ludcmp/lubksb, hunt, locate, bsstep with mmid and ratext) remain a
+  licensing liability
   (MODERNIZATION_CHANGES). Replacing them changes results at round-off.
 
 ### mixing/ split: convection/ and rotation's burn-settle-mix (yrec-next, 2026-10-11)

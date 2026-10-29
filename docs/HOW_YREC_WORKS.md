@@ -552,8 +552,10 @@ interpolated in both directions with edge-validity bookkeeping
 A numerics routine that can fail returns its status in `ierr`, as
 `numerics_status`'s named codes (0 ok; singular, coincident points, bad input, step underflow,
 unsorted points, derivatives failed), and prints nothing: the caller that
-can meet a failure reports it (`tools/check_boundaries.py` checks that
-numerics/ and math/ hold no I/O statement). None of the numerics keeps
+can meet a failure reports it, as `<routine>: <numerics_status_text>`
+through its domain's messages, and passes the code up
+(`tools/check_boundaries.py` checks that numerics/ and math/ hold no I/O
+statement and no `stop`). None of the numerics keeps
 `save` state (2026-10: the six that did were
 shown not to need it, or given explicit state, such as `ratext`'s
 tableau). The only routine-local `save`s are in the two driver files

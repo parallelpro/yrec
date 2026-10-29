@@ -195,9 +195,9 @@ end subroutine polint
 ! For target_z among the points table_z(1:num_points), increasing or
 ! decreasing, the num_y tabulated functions table_y(1:num_y, point)
 ! interpolated into result_y(1:num_y): cubic through four points around
-! target_z, interp's Lagrange weights with the one of the point closest
-! to target_z (see below) replaced so that the four sum to one, applied
-! by lagrange4; linear between the two
+! target_z, interp's Lagrange weights with the one of the first point
+! beyond target_z (the last point when target_z lies beyond the table)
+! replaced so that the four sum to one, applied by lagrange4; linear between the two
 ! points around it below four points; the end points' cubic or line
 ! outside the table. On a node the tabulated values are copied.
 ! interp_flag is 1 inside the table, 0 outside it. y_stride is
@@ -221,7 +221,7 @@ pure subroutine lir(target_z, table_z, result_y, table_y, num_y, y_stride, &
 
       real(dp) :: weight(4), span, weight_sum
       real(dp) :: frac_lower, frac_upper
-      integer :: above, first, closest, i
+      integer :: above, first, corrected, i
 
       if (present(ierr)) ierr = numerics_ok
       interp_flag = 0
@@ -261,20 +261,22 @@ pure subroutine lir(target_z, table_z, result_y, table_y, num_y, y_stride, &
 
       if (num_points >= 4) then
 ! the four points first..first+3 (first + 2 is the first point beyond
-! target_z, kept inside the table), and closest, the one nearest to it
+! target_z, kept inside the table), and corrected, the stencil's slot of
+! that first point beyond (or of the last point), whose weight takes up
+! the four's round-off
          first = above - 2
-         closest = 3
+         corrected = 3
          if (above <= 2) then
             first = 1
-            closest = above
+            corrected = above
          end if
          if (above >= num_points) then
             first = num_points - 3
-            closest = 4
+            corrected = 4
          end if
          call interp(table_z(first:first+3), weight, x_eval=target_z)
          weight_sum = weight(1) + weight(2) + weight(3) + weight(4)
-         weight(closest) = (1.d0 + weight(closest)) - weight_sum
+         weight(corrected) = (1.d0 + weight(corrected)) - weight_sum
          do i = 1, num_y
             result_y(i) = lagrange4(weight, table_y(i, first:first+3))
             if (result_y(i) == 0.d0) result_y(i) = 0.d0
