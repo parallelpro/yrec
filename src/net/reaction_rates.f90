@@ -310,20 +310,21 @@ pure subroutine compute_s_factor_rate(q, slot, density, t, screen, &
       integer, intent(in) :: slot
       type(t9_powers), intent(in) :: t
       real(dp), intent(out) :: rate, dlnrate_dlnrho, dlnrate_dlnt
-! T9^(-2/3) S_eff/S0, and the three multipliers
-      real(dp) :: s_ratio, qs0e, qqs0ee, xs
+! T9^(-2/3) S_eff/S0, and the reaction's three multipliers
+      real(dp) :: s_ratio, s_prime_scale, s_double_prime_scale, &
+           cross_section_scale
 
-      qs0e = net_settings%s_prime_scale(slot)
-      qqs0ee = net_settings%s_double_prime_scale(slot)
-      xs = net_settings%cross_section_scale(slot)
-      s_ratio=t%m23+q(1)*t%m13+qs0e*(q(2)+q(3)*t%p13)+ &
-           qqs0ee*(q(4)*t%p23+q(5)*t%t9)
+      s_prime_scale = net_settings%s_prime_scale(slot)
+      s_double_prime_scale = net_settings%s_double_prime_scale(slot)
+      cross_section_scale = net_settings%cross_section_scale(slot)
+      s_ratio=t%m23+q(1)*t%m13+s_prime_scale*(q(2)+q(3)*t%p13)+ &
+           s_double_prime_scale*(q(4)*t%p23+q(5)*t%t9)
       rate=density*s_ratio*exp(q(6)*t%m13+q(7)+(q(8)*t%t9)**2+screen)
-      rate = rate*xs
+      rate = rate*cross_section_scale
       dlnrate_dlnrho=1.d0+dscreen_dlnrho
       dlnrate_dlnt=dscreen_dlnt-(q(6)*t%m13+(2.d0*t%m23+ &
-           q(1)*t%m13-qs0e*q(3)*t%p13- &
-           qqs0ee*(2.d0*q(4)*t%p23+3.d0*q(5)*t%t9))/s_ratio)/3.d0+ &
+           q(1)*t%m13-s_prime_scale*q(3)*t%p13- &
+           s_double_prime_scale*(2.d0*q(4)*t%p23+3.d0*q(5)*t%t9))/s_ratio)/3.d0+ &
            2.d0*(q(8)*t%t9)**2
 end subroutine compute_s_factor_rate
 
