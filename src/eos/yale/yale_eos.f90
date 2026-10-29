@@ -19,7 +19,7 @@ module yale_eos
            debye_huckel_x, debye_huckel_y, debye_huckel_z, &
            debye_huckel_z_total, n_debye_huckel_metals, yale
       use physical_constants, only: clni, cmkh, gas_constant, ln10
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
       use eos_configuration, only: eos_settings
       use math_lib
@@ -1105,7 +1105,7 @@ subroutine read_fermi_table(fermi_table_path, ierr)
       if (ierr /= 0) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: cannot open the Fermi-Dirac table ', trim(fermi_table_path)
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -1121,7 +1121,7 @@ subroutine read_fermi_table(fermi_table_path, ierr)
        if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
           eos_lines = unwritten_line
           write(eos_lines,1000) grid_idx
-          call eos_log(eos_lines)
+          call eos_report(eos_lines)
  1000       format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
            ' does not increase')
           close(fermi_unit)

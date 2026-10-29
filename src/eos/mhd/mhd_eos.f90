@@ -73,7 +73,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
          eos_lines = unwritten_line
          write(eos_lines,'(a,2f10.5)') ' MHD EOS: (log T, log P) outside the tables or a bad table:', &
               log10_temperature, log10_pressure
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          return
       end if
       r%log10_density = mhd%mhd_output(i_mhd_log10_rho)
@@ -145,7 +145,7 @@ subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
          if (ierr /= 0) then
             eos_lines = unwritten_line
             write(eos_lines,*) 'eos_init: an MHD table is corrupt or does not match its layout'
-            call eos_log(eos_lines)
+            call eos_report(eos_lines)
          end if
       end if
       do ic = 1, mhd_n_zams
@@ -167,7 +167,7 @@ subroutine open_mhd_table(path, table_unit, ierr)
       if (ierr /= 0) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: cannot open the MHD table ', trim(path)
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          table_unit = 0
          ierr = 1
       end if
@@ -607,7 +607,8 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       end if
       do i = 1, n_tables
          call mhdpx2(log10_pressure, log10_temperature, family, i, table_vars, table_hfrac, &
-              ndimt, in_range)
+              ndimt, in_range, ierr)
+         if (ierr /= 0) return
          if (.not. in_range) exit
       end do
       if (.not. in_range) then
@@ -659,7 +660,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          var_leading_dim=ivarx
          num_points=4
          call lir(hydrogen_fraction, cubic_x_nodes, mhd%mhd_output, cubic_vars, &
-              num_vars, var_leading_dim, num_points, interp_mode)
+              num_vars, var_leading_dim, num_points, interp_mode, ierr)
       end if
 end subroutine mhdpx1
 
@@ -675,10 +676,11 @@ end subroutine mhdpx1
 ! (log10 P, log10 T) and stores the result as row ic (ZAMS) or
 ! mhd_n_zams + ic (centre) of table_vars, with that table's hydrogen
 ! mass fraction in table_hfrac; in_range is false when log P is above
-! the highest of a row the interpolation uses. The tables are the
-! composition-indexed arrays of mhd (mhd_eos_tables).
+! the highest of a row the interpolation uses, and ierr lir's status
+! (numerics_status). The tables are the composition-indexed arrays of
+! mhd (mhd_eos_tables).
 subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
-     table_vars, table_hfrac, ndimt, in_range)
+     table_vars, table_hfrac, ndimt, in_range, ierr)
       integer, parameter :: ivarc = mhd_ivarc
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: nt1m = mhd_nt1m
@@ -692,6 +694,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
       real(dp), intent(inout) :: table_vars(ndimt,ivarx), &
            table_hfrac(ndimt)
       logical, intent(out) :: in_range
+      integer, intent(out) :: ierr
       real(dp) :: intpt_work1(ivarx,4), intpt_work2(ivarx,4), &
            intpt_y(ivarx), interpolated_vars(ivarx)
 
@@ -699,6 +702,7 @@ subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
 
       interpolated_vars = 0.0d0
       in_range = .true.
+      ierr = 0
       select case (family)
       case (imhd_family_zams_lower)
          call interpolate_and_store(mhd%zams_lower_table(:,:,:,ic), &
@@ -729,7 +733,7 @@ subroutine interpolate_and_store(table_data, table_dim_t, table_dim_r, &
 
       call interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
            table_dim_t, table_dim_r, num_vars, table_log10t, num_t, &
-           num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars, in_range)
+           num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars, in_range, ierr)
       do i=1,num_vars
          table_vars(row,i) = interpolated_vars(i)
       end do
@@ -751,7 +755,7 @@ end subroutine mhdpx2
 ! the T rows, the stencils clamp to the table's edge.
 subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
      table_dim_t, table_dim_r, num_vars, table_log10t, num_t, num_r, &
-     work1, work2, y_work, interp_vars, in_range)
+     work1, work2, y_work, interp_vars, in_range, ierr)
       integer, intent(in) :: table_dim_t, table_dim_r, num_vars
       real(dp), intent(in) :: log10_pressure, log10_temperature
       real(dp), intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
@@ -761,6 +765,8 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       real(dp), intent(inout) :: y_work(num_vars)
       real(dp), intent(out) :: interp_vars(num_vars)
       logical, intent(out) :: in_range
+! lir's status (numerics_status): nonzero for coincident table nodes
+      integer, intent(out) :: ierr
 
       integer :: r_lo_guess(4), r_indices(4,4), t_indices(4)
       real(dp) :: x_nodes(4)
@@ -775,6 +781,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
 ! below the first table row clamps to the bottom stencil instead of
 ! reading a stale/zero index.
       in_range = .true.
+      ierr = 0
       t_indices(1)=1
       do n=1,num_t
          if (table_log10t(n).ge.log10_temperature) exit
@@ -825,7 +832,8 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
          end do
 
          call lir(log10_pressure, x_nodes, y_work, work1, lir_num_vars, &
-              lir_leading_dim, lir_num_points, lir_interp_mode)
+              lir_leading_dim, lir_num_points, lir_interp_mode, ierr)
+         if (ierr /= 0) return
          do iv=1,num_vars
             work2(iv,t_col) = y_work(iv)
          end do
@@ -837,7 +845,7 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       end do
 
       call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
-           lir_leading_dim, lir_num_points, lir_interp_mode)
+           lir_leading_dim, lir_num_points, lir_interp_mode, ierr)
 
       return
 end subroutine interpolate_mhd_table

@@ -24,7 +24,7 @@ module opal95_eos
            opal_shared, opal_eos_var_order, opal_eos_vintage95, opal_flag_set, &
            opal_rho_not_found, quad
       use physical_constants, only: gas_constant
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -332,7 +332,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
          eos_lines = unwritten_line
          write(eos_lines,'(" IRAD MUST BE 0 OR 1")')
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -360,10 +360,10 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
          if (opal_shared%table_metal_fraction(iv_opal95) + hydrogen_fraction - 1.0d-6 > 1.0d0) then
             eos_lines = unwritten_line
             write(eos_lines,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-            call eos_log(eos_lines)
+            call eos_report(eos_lines)
             eos_lines = unwritten_line
             write(eos_lines,*) opal_shared%table_metal_fraction(iv_opal95), hydrogen_fraction
-            call eos_log(eos_lines)
+            call eos_report(eos_lines)
             ierr = 1
             return
          end if
@@ -551,7 +551,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
            (v%z_table(x_index_3) /= v%z_table(v%x_index_lo))) then
          eos_lines = unwritten_line
          write(eos_lines,'("Z DOES NOT MATCH Z IN EOSDATA FILES YOU ARE" ," USING")')
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -670,15 +670,15 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       end if
       eos_lines = unwritten_line
       write(eos_lines,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", " USING (66)")')
-      call eos_log(eos_lines)
+      call eos_report(eos_lines)
       eos_lines = unwritten_line
       write(eos_lines,'("MF,ZZ(MF)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
-      call eos_log(eos_lines)
+      call eos_report(eos_lines)
       eos_lines = unwritten_line
       write(eos_lines,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') v%t6_interp_order, &
            v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
            t6_temperature, density, opal_shared%table_metal_fraction(iv_opal95)
-      call eos_log(eos_lines)
+      call eos_report(eos_lines)
       ierr = 1
 
 end subroutine esac
@@ -777,7 +777,7 @@ subroutine t6rinterp(v, slr, slt, ierr)
       if (v%esact > 1.0d+15) then
          eos_lines = unwritten_line
          write(eos_lines,'("INTERPOLATION INDICES OUT OF RANGE", ";PLEASE REPORT CONDITIONS.")')
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -1017,7 +1017,7 @@ subroutine readco(v, ierr)
             if (record_number /= density_row) then
                eos_lines = unwritten_line
                write(eos_lines,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') record_number, density_row
-               call eos_log(eos_lines)
+               call eos_report(eos_lines)
                ierr = 1
                return
             end if
@@ -1028,7 +1028,7 @@ subroutine readco(v, ierr)
                eos_lines = unwritten_line
                write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') v%hydrogen_fraction_header(x_loop_index), &
                     v%density_grid_table(x_loop_index,density_row)
-               call eos_log(eos_lines)
+               call eos_report(eos_lines)
                ierr = 1
                return
             end if

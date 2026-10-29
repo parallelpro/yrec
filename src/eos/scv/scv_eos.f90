@@ -26,7 +26,8 @@ module scv_eos
            tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction, scv_tables_loaded
       use physical_constants, only: cc13, ln10, radiation_constant_over_3, &
            boltzmann_constant_cgs, hydrogen_atom_mass_cgs, helium_atom_mass_cgs
-      use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
+      use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint, &
+           numerics_status_text
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: mean_weights_from_density
       use math_lib
@@ -416,7 +417,7 @@ contains
 ! then a temperature spline through the four results. t_shift/p_shift
 ! are 0 for the home cell and +-1 for the smoothing cells. Table,
 ! indices, work arrays and ierr are host-associated from compute_scv_envelope_eos; on a
-! spline failure ierr is set and the caller must return.
+! spline failure ierr is set (with a message) and the caller must return.
 subroutine spline_cell(t_shift, p_shift, result)
       integer, intent(in) :: t_shift, p_shift
       real(dp), intent(out) :: result(:)
@@ -434,10 +435,8 @@ subroutine spline_cell(t_shift, p_shift, result)
             call natural_spline(interp_nodes, ytab_work, 4, spline_second_deriv)
             call splint(interp_nodes, ytab_work, 4, spline_second_deriv, &
                  log10_gas_pressure, spline_value, jerr_gate)
-            ! 2026 numerics-gate opt-in (see numerics_lib): interpolation
-            ! failure returns via ierr instead of stopping.
             if (jerr_gate /= 0) then
-               ierr = jerr_gate
+               call report_spline_failure(jerr_gate)
                return
             end if
             temp_grid(i,j) = spline_value
@@ -455,12 +454,25 @@ subroutine spline_cell(t_shift, p_shift, result)
          call splint(interp_nodes, ytab_work, 4, spline_second_deriv, &
               log10_temperature, spline_value, jerr_gate)
          if (jerr_gate /= 0) then
-            ierr = jerr_gate
+            call report_spline_failure(jerr_gate)
             return
          end if
          result(j) = spline_value
       end do
 end subroutine spline_cell
+
+! splint's failure (numerics' status in status): ierr, and the message
+! with the point and the cell
+subroutine report_spline_failure(status)
+      integer, intent(in) :: status
+      character(len=message_length) :: eos_lines(4)
+      ierr = status
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a,a,2f10.5,a,2i4)') 'SCV envelope table: the spline failed (', &
+           numerics_status_text(status), ') at log T, log P_gas', log10_temperature, &
+           log10_gas_pressure, '; cell', idtt, idp
+      call eos_report(eos_lines)
+end subroutine report_spline_failure
 
 end subroutine compute_scv_envelope_eos
 

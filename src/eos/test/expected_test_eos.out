@@ -69,6 +69,7 @@ g1  4   1.664333375060509E+00   3.989501157492898E-01
 # test_eos: MHD path SKIPPED (YREC_MHD_TABLES not set; no MHD tables ship with YREC)
 # test_eos: error paths via ierr
 err facade-success ierr =    0
+OPALEOS/ESAC06: Irad must be 0 or 1
 err bad-rad-flag   ierr =    1
 # test_eos: configuration opal95
 eos  3.700  4.500 -7.003744496938856E+00  9.999496800553952E-01 -1.008424198538272E+00  1.000766519974713E+00
@@ -581,13 +582,18 @@ lookup at  9.00  3.60 =  -5.750000000000002E+00   8.999999999999996E+00   7.5937
 lookup at 13.70  5.30 =  -4.125000000000000E+00   1.370000000000000E+01   1.903593750000000E+01
 lookup at 30.00  4.60 =  -9.000000000000000E+00  -9.000000000000000E+00  -9.000000000000000E+00
 ok   mhd lookup: in range inside and at the corners, not above the table
+ok   mhd lookup: coincident table rows return lir's status
 # MHD reader (synthetic tables)
 ok   mhd reader: eos_init reads the eight tables
 ok   mhd reader: log rho = log P - log T - c(X) in each family and at the boundary
 ok   mhd reader: grad_ad, dln rho/dln T and dln rho/dln P as tabulated
+ MHD EOS: (log T, log P) outside the tables or a bad table:   6.90000   7.59500
 ok   mhd reader: log T above the tables returns ierr
+ MHD EOS: (log T, log P) outside the tables or a bad table:   5.10000  13.69500
 ok   mhd reader: log P above the tables returns ierr
+ eos_init: cannot open the MHD table mhd_missing
 ok   mhd reader: a missing table returns ierr = 1
+ eos_init: an MHD table is corrupt or does not match its layout
 ok   mhd reader: a truncated table returns ierr = 1
 # test_eos: physics checks
 # test_eos: configuration yale_only
@@ -597,6 +603,7 @@ ok   ideal gas, fully ionized: rho = mu P_gas/(R T) with the Fermi-Dirac correct
 ok   ideal gas, fully ionized: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)
 ok   radiation-dominated: grad_ad and cp of the gas plus radiation
 ok   radiation-dominated: grad_ad -> 1/4
+ blend_eos: beta = P_gas/P is not positive: log T, log P, beta   7.5000000000000000        15.400000000000000       -4.0148916156006464E-003
 ok   radiation pressure above P: beta <= 0 returns ierr
 # test_eos: configuration yale_only
 ok   continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)

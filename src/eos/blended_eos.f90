@@ -21,7 +21,7 @@ module blended_eos
       use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, opal_layout
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, mean_weights_from_density, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings, opal_vintage_none
@@ -193,7 +193,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
          eos_lines = unwritten_line
          write(eos_lines,*) 'blend_eos: beta = P_gas/P is not positive: log T, log P, beta', &
               log10_temperature, log10_pressure, r%beta
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if

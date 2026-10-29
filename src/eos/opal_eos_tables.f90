@@ -681,7 +681,7 @@ subroutine open_opal_eos_table(opal_eos_table_path, ierr)
       if (ierr /= 0) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: cannot open the OPAL EOS table ', trim(opal_eos_table_path)
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
       end if
 end subroutine open_opal_eos_table

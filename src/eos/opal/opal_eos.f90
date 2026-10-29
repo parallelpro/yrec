@@ -31,7 +31,7 @@ module opal_eos
            opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad, &
            opal_radiation_constant_over_3
       use physical_constants, only: gas_constant
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: compute_mean_weights
       use math_lib
       implicit none
@@ -136,7 +136,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
            abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > 0.5d-6) then
          eos_lines = unwritten_line
          write(eos_lines,*) p_e12, output(opal_layout(vintage)%i_p)
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -523,7 +523,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
          eos_lines = unwritten_line
          write(eos_lines,'(A, " Irad must be 0 or 1")') routine_id
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
@@ -544,10 +544,10 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
          if (opal_shared%table_metal_fraction(vintage)+hydrogen_fraction-1.0d-6 > 1) then
             eos_lines = unwritten_line
             write(eos_lines,*) routine_id, "Mass fractions exceed unity (61)"
-            call eos_log(eos_lines)
+            call eos_report(eos_lines)
             eos_lines = unwritten_line
             write(eos_lines,*) 'Z, XH', opal_shared%table_metal_fraction(vintage), hydrogen_fraction
-            call eos_log(eos_lines)
+            call eos_report(eos_lines)
             
             
             ierr = 1
@@ -1485,11 +1485,11 @@ subroutine report_tables_z(vintage)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A,"Z does not match Z in OEOS01 files you are" ," using")') opal_layout(vintage)%routine_id
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'(A,"Z does not match Z in OEOS06 files you are" ," using")') opal_layout(vintage)%routine_id
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
 end subroutine report_tables_z
 
@@ -1528,21 +1528,21 @@ subroutine report_run_z(vintage, v, hydrogen_fraction, t6, density)
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in OPAL 2001 EOS files", &
               " you are using (66)"
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in EOSdata* files you ", &
               "are using (66)"
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
       eos_lines = unwritten_line
       write(eos_lines,'("mf,zz(mf)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
-      call eos_log(eos_lines)
+      call eos_report(eos_lines)
       eos_lines = unwritten_line
       write(eos_lines,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') v%t6_interp_order, &
            v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
            t6, density, opal_shared%table_metal_fraction(vintage)
-      call eos_log(eos_lines)
+      call eos_report(eos_lines)
 end subroutine report_run_z
 
 ! the reader: a density block out of order
@@ -1552,11 +1552,11 @@ subroutine report_record_number(vintage, record_number, density_row)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(" Data file incorrect: numtot,jcs= ",2I5)') record_number, density_row
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'(" OEOS06 Data file incorrect: numtot,jcs= " ,2I5)') record_number, density_row
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
 end subroutine report_record_number
 
@@ -1568,12 +1568,12 @@ subroutine report_short_column(vintage, hydrogen_fraction, density)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("problem with data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, density
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'("Problem with OEOS96 data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, &
               density
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
 end subroutine report_short_column
 
@@ -1584,11 +1584,11 @@ subroutine report_zero_t6(vintage, t6_idx)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("READCOEOS01: Error:",I4, "-th T6 value is zero")') t6_idx
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'("READCOEOS06: Error:",I4, "-th T6 value is zero")') t6_idx
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
 end subroutine report_zero_t6
 
@@ -1599,11 +1599,11 @@ subroutine report_interpolation_indices(vintage)
       if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("Interpolation indices out of range", ";please report conditions.")')
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'("T6RINTEOS06: Interpolation indices out", " of range;please report conditions.")')
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
 end subroutine report_interpolation_indices
 

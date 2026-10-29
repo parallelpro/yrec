@@ -554,7 +554,7 @@ subroutine check_mhd_table_lookup()
       double precision :: table(nt,nr,nv), tlog(nt), w1(nv,4), w2(nv,4), yw(nv), &
            out(nv), log_p(4), log_t(4)
       logical :: in_range(4)
-      integer :: it, ir, i
+      integer :: it, ir, i, lir_status(4)
       write(*,'(a)') "# MHD table lookup (synthetic table)"
       do it = 1, nt
          tlog(it) = 3.5d0 + 0.25d0*it
@@ -572,11 +572,17 @@ subroutine check_mhd_table_lookup()
          w2 = 0.0d0
          yw = 0.0d0
          call interpolate_mhd_table(log_p(i), log_t(i), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, &
-              out, in_range(i))
+              out, in_range(i), lir_status(i))
          write(*,'(a,2f6.2,a,3(1pe24.15))') "lookup at", log_p(i), log_t(i), " =", out
       end do
       call check("mhd lookup: in range inside and at the corners, not above the table", &
-           all(in_range(1:3)) .and. .not. in_range(4))
+           all(in_range(1:3)) .and. .not. in_range(4) .and. all(lir_status(1:3) == 0))
+! a table whose T rows all coincide: lir's status (coincident nodes)
+! comes back (it used to be dropped)
+      tlog = 4.0d0
+      call interpolate_mhd_table(log_p(1), log_t(1), table, nt, nr, nv, tlog, nt, nr, w1, w2, yw, &
+           out, in_range(1), lir_status(1))
+      call check("mhd lookup: coincident table rows return lir's status", lir_status(1) /= 0)
 end subroutine check_mhd_table_lookup
 
 ! The MHD reader on a synthetic table set (the real tables are not
