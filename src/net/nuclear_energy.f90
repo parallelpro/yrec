@@ -62,7 +62,7 @@ contains
 !   in_surface_cz       the zone lies in the surface convection zone: there
 !   turnover_timescale  deuterium burns no faster than the convective
 !                       overturn (when turnover_timescale > 1 s)
-subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
+pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
      in_surface_cz, turnover_timescale, e)
       real(dp), intent(in) :: log_density, log_temperature, xa(:)
       logical, intent(in) :: in_surface_cz
@@ -289,7 +289,7 @@ end subroutine compute_solar_neutrino_fluxes
 ! Itoh et al. (1996) when net_settings%use_itoh_neutrino_loss (Grant
 ! Newsham 9/06), otherwise the Beaudet, Petrosian & Salpeter (1967) fits
 ! for the pair, photo and plasma losses.
-subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
+pure subroutine add_thermal_neutrino_loss(log_density, log_temperature, t9, xa, e)
       use composition_layout, only: i_h1, i_he4, i_c12, i_c13, i_o16, i_o18
       use physical_constants, only: cc13, ln10
       use math_lib

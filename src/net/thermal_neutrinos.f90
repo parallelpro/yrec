@@ -5,104 +5,47 @@
 ! and recombination) from the fits of Itoh et al. (1996, ApJS 102, 411)
 ! as coded by F. X. Timmes, adapted for YREC by G. Newsham (2006). The
 ! Timmes routines keep their public names (sneut, azbar, ifermi12,
-! zfermim12) for comparison with his codes and MESA; YREC's two
-! wrappers are compute_thermal_neutrino_losses (formerly neutrino) and
-! compute_mixture_neutrino_losses (formerly nulosses). nuclear_energy is
-! the only user, so net_lib exports none of it. The routines are as
-! their authors wrote them, apart from free source form and real(dp).
+! zfermim12) for comparison with his codes and MESA; YREC's wrapper is
+! compute_thermal_neutrino_losses (formerly neutrino and nulosses).
+! nuclear_energy is the only user, so net_lib exports none of it. The
+! routines are as their authors wrote them, apart from free source form,
+! real(dp), and the expansion coefficients of ifermi12 and zfermim12 as
+! parameter arrays (they were data statements), which lets the whole
+! chain be pure.
 module thermal_neutrinos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
       integer, parameter, public :: nu_ionmax = 4
-      public :: compute_thermal_neutrino_losses, compute_mixture_neutrino_losses, &
-           azbar, sneut, ifermi12, zfermim12
+      public :: compute_thermal_neutrino_losses, azbar, sneut, ifermi12, &
+           zfermim12
 contains
 
 !----------------------------------------------------------------------
-! compute_thermal_neutrino_losses (formerly neutrino)
+! compute_thermal_neutrino_losses (formerly neutrino and nulosses; G.
+! Newsham 9/06, from the codes of N. Itoh and F. Timmes)
 !----------------------------------------------------------------------
-! Added by Grant Newsham 9/06.
-!
-! Sets up the (currently 4-species: H, He, C, O) composition arrays
-! expected by compute_mixture_neutrino_losses/sneut and calls through to them. Returns the
-! neutrino energy-loss rate (snu) and its derivatives with respect to
-! temperature and density (dsnudt, dsnudd).
-subroutine compute_thermal_neutrino_losses(temp,den,x,y,zc,zo,snu,dsnudt,dsnudd)
-
+! The thermal neutrino energy-loss rate snu (erg/g/s, >= 0) and its
+! derivatives with respect to temperature and density (dsnudt, dsnudd:
+! absolute, per K and per g/cm^3) of a four-species mixture: H (x), He4
+! (y), C12 (zc) and O16 (zo), by mass fraction. It takes the mean A and
+! Z of the mixture (azbar) and calls sneut. The bremsstrahlung losses use
+! the carbon coefficients only (the differences for other elements are
+! slight); the Fermi-temperature cutoff at 0.01 T_F suits helium but
+! will need amending for carbon-oxygen white dwarfs and AGB cores.
+pure subroutine compute_thermal_neutrino_losses(temp, den, x, y, zc, zo, &
+     snu, dsnudt, dsnudd)
       real(dp), intent(in) :: temp, den, x, y, zc, zo
       real(dp), intent(out) :: snu, dsnudt, dsnudd
+! the species' nucleon numbers and charges: H, He4, C12, O16
+      real(dp), parameter :: aion(nu_ionmax) = [1.0d0, 4.0d0, 12.0d0, 16.0d0], &
+           zion(nu_ionmax) = [1.0d0, 2.0d0, 6.0d0, 8.0d0]
+      real(dp) :: xmass(nu_ionmax), ymass(nu_ionmax), abar, zbar, dsnuda, dsnudz
 
-      real(dp) :: xmass(nu_ionmax), ymass(nu_ionmax), aion(nu_ionmax), &
-           zion(nu_ionmax)
-
-!..set the mass fractions, z's and a's of the composition
-!..hydrogen
-
-      aion(1)  = 1.0d0
-      zion(1)  = 1.0d0
-
-!..helium
-
-      aion(2)  = 4.0d0
-      zion(2)  = 2.0d0
-
-!..carbon 12
-
-      aion(3)  = 12.0d0
-      zion(3)  = 6.0d0
-
-!..oxygen 16
-
-      aion(4)  = 16.0d0
-      zion(4)  = 8.0d0
-
-      xmass(1) = x
-      xmass(2) = y
-      xmass(3) = zc
-      xmass(4) = zo
-
-      call compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion,dsnudt,dsnudd)
-
+      xmass = [x, y, zc, zo]
+      call azbar(xmass, aion, zion, nu_ionmax, ymass, abar, zbar)
+      call sneut(temp, den, abar, zbar, snu, dsnudt, dsnudd, dsnuda, dsnudz)
 end subroutine compute_thermal_neutrino_losses
-
-
-!----------------------------------------------------------------------
-! compute_mixture_neutrino_losses (formerly nulosses)
-!----------------------------------------------------------------------
-! Neutrino loss subroutine modified by G. Newsham from codes of
-! N. Itoh & F. Timmes (9/06).
-!
-! Currently uses just the carbon coefficients for the bremsstrahlung
-! neutrino losses (the differences for other elements is slight.)
-! We also currently set the fermi temperature cuttoff at 0.01 Tfermi.
-! This is applicable for helium but will need to be amended for
-! carbon and oxygen white dwarfs and cores of AGB stars.
-
-subroutine compute_mixture_neutrino_losses(temp,den,snu,xmass,ymass,aion,zion, &
-                     dsnudt,dsnudd)
-
-
-!..ionmax  = number of isotopes in the network
-!..xmass   = mass fractions
-!..ymass   = molar fractions (output, from azbar)
-!..aion    = number of nucleons
-!..zion    = number of protons
-
-      real(dp), intent(in) :: xmass(nu_ionmax), aion(nu_ionmax), &
-                       zion(nu_ionmax), temp, den
-      real(dp), intent(out) :: ymass(nu_ionmax), snu, dsnudt, dsnudd
-      real(dp) abar,zbar,dsnuda,dsnudz
-
-!..get abar and zbar
-      call azbar(xmass,aion,zion,nu_ionmax, &
-                 ymass,abar,zbar)
-
-!..get the neutrino losses
-      call sneut(temp,den,abar,zbar, &
-                  snu,dsnudt,dsnudd,dsnuda,dsnudz)
-
-end subroutine compute_mixture_neutrino_losses
 
 
 
@@ -145,7 +88,7 @@ end subroutine azbar
 ! with respect to temperature, density, mean atomic weight, and mean
 ! charge, from the analytic fits of Itoh et al. (1996) to the pair,
 ! plasma, photoneutrino, bremsstrahlung, and recombination processes.
-subroutine sneut(temp,den,abar,zbar, &
+pure subroutine sneut(temp,den,abar,zbar, &
                   snu,dsnudt,dsnudd,dsnuda,dsnudz)
       use math_lib
 !..this routine computes neutrino losses from the analytic fits of
@@ -227,10 +170,8 @@ real(dp) t8,t812,t832,t82,t83,t85,t86,t8m1,t8m2,t8m3,t8m5, &
 
 
 !..recomb
-! ifermi12/zfermim12 are no longer declared as external doubles here:
-! since both moved into this module (2026, see net_lib.f90's own
-! header), declaring their names again as plain locals would shadow
-! the host-associated module functions rather than resolve to them.
+! (ifermi12 and zfermim12 are this module's functions, so they are not
+! declared here: a local of the same name would shadow them.)
 real(dp) nu,nudt,nudd,nuda,nudz, &
                  nu2,nu3,bigj,bigjdt,bigjdd,bigjda,bigjdz
 
@@ -1509,7 +1450,7 @@ end subroutine sneut
 ! degeneracy parameter eta such that F_{1/2}(eta) = fermi_half_integral)
 ! when it is equal to fermi_half_integral.
 ! Maximum error is 4.19d-9. Reference: Antia, ApJS 84,101 1993.
-real(dp) function ifermi12(fermi_half_integral)
+pure real(dp) function ifermi12(fermi_half_integral)
 
       use math_lib
 
@@ -1519,26 +1460,24 @@ real(dp) function ifermi12(fermi_half_integral)
       real(dp), intent(in) :: fermi_half_integral
 
 !..declare
-      integer :: term_idx, deg_num_small, deg_den_small, deg_num_large, &
-           deg_den_large
-      real(dp) :: fd_order, coef_num_small(12), coef_den_small(12), &
-           coef_num_large(12), coef_den_large(12), numerator, denominator, &
-           scaled_arg
-!..load the coefficients of the expansion
-      data  fd_order,deg_num_small,deg_den_small,deg_num_large,deg_den_large &
-           /0.5d0, 4, 3, 6, 5/
-      data  (coef_num_small(term_idx),term_idx=1,5)/ 1.999266880833d4,   5.702479099336d3, &
+      integer :: term_idx
+      real(dp) :: numerator, denominator, scaled_arg
+!..the coefficients of the expansion
+      real(dp), parameter :: fd_order = 0.5d0
+      integer, parameter :: deg_num_small = 4, deg_den_small = 3, &
+           deg_num_large = 6, deg_den_large = 5
+      real(dp), parameter :: coef_num_small(5) = [ 1.999266880833d4,   5.702479099336d3, &
            6.610132843877d2,   3.818838129486d1, &
-           1.0d0/
-      data  (coef_den_small(term_idx),term_idx=1,4)/ 1.771804140488d4,  -2.014785161019d3, &
-           9.130355392717d1,  -1.670718177489d0/
-      data  (coef_num_large(term_idx),term_idx=1,7)/-1.277060388085d-2,  7.187946804945d-2, &
+           1.0d0]
+      real(dp), parameter :: coef_den_small(4) = [ 1.771804140488d4,  -2.014785161019d3, &
+           9.130355392717d1,  -1.670718177489d0]
+      real(dp), parameter :: coef_num_large(7) = [-1.277060388085d-2,  7.187946804945d-2, &
            -4.262314235106d-1,  4.997559426872d-1, &
            -1.285579118012d0,  -3.930805454272d-1, &
-           1.0d0/
-      data  (coef_den_large(term_idx),term_idx=1,6)/-9.745794806288d-3,  5.485432756838d-2, &
+           1.0d0]
+      real(dp), parameter :: coef_den_large(6) = [-9.745794806288d-3,  5.485432756838d-2, &
            -3.299466243260d-1,  4.077841975923d-1, &
-           -1.145531476975d0,  -6.067091689181d-2/
+           -1.145531476975d0,  -6.067091689181d-2]
 
       if (fermi_half_integral < 4.0d0) then
        numerator  = fermi_half_integral + coef_num_small(deg_num_small)
@@ -1572,7 +1511,7 @@ end function ifermi12
 !..this routine applies a rational function expansion to get the
 !..fermi-dirac integral of order -1/2 evaluated at degeneracy_parameter.
 !..maximum error is 1.23d-12. reference: antia apjs 84,101 1993.
-real(dp) function zfermim12(degeneracy_parameter)
+pure real(dp) function zfermim12(degeneracy_parameter)
 
       use math_lib
 
@@ -1581,33 +1520,31 @@ real(dp) function zfermim12(degeneracy_parameter)
       real(dp), intent(in) :: degeneracy_parameter
 
 !..declare
-      integer :: term_idx, deg_num_small, deg_den_small, deg_num_large, &
-           deg_den_large
-      real(dp) :: coef_num_small(12), coef_den_small(12), &
-           coef_num_large(12), coef_den_large(12), numerator, denominator, &
-           scaled_arg
-!..load the coefficients of the expansion
-      data  deg_num_small,deg_den_small,deg_num_large,deg_den_large /7, 7, 11, 11/
-      data  (coef_num_small(term_idx),term_idx=1,8)/ 1.71446374704454d7,    3.88148302324068d7, &
+      integer :: term_idx
+      real(dp) :: numerator, denominator, scaled_arg
+!..the coefficients of the expansion
+      integer, parameter :: deg_num_small = 7, deg_den_small = 7, &
+           deg_num_large = 11, deg_den_large = 11
+      real(dp), parameter :: coef_num_small(8) = [ 1.71446374704454d7,    3.88148302324068d7, &
            3.16743385304962d7,    1.14587609192151d7, &
            1.83696370756153d6,    1.14980998186874d5, &
-           1.98276889924768d3,    1.0d0/
-      data  (coef_den_small(term_idx),term_idx=1,8)/ 9.67282587452899d6,    2.87386436731785d7, &
+           1.98276889924768d3,    1.0d0]
+      real(dp), parameter :: coef_den_small(8) = [ 9.67282587452899d6,    2.87386436731785d7, &
            3.26070130734158d7,    1.77657027846367d7, &
            4.81648022267831d6,    6.13709569333207d5, &
-           3.13595854332114d4,    4.35061725080755d2/
-      data (coef_num_large(term_idx),term_idx=1,12)/-4.46620341924942d-15, -1.58654991146236d-12, &
+           3.13595854332114d4,    4.35061725080755d2]
+      real(dp), parameter :: coef_num_large(12) = [-4.46620341924942d-15, -1.58654991146236d-12, &
            -4.44467627042232d-10, -6.84738791621745d-8, &
            -6.64932238528105d-6,  -3.69976170193942d-4, &
            -1.12295393687006d-2,  -1.60926102124442d-1, &
            -8.52408612877447d-1,  -7.45519953763928d-1, &
-           2.98435207466372d0,    1.0d0/
-      data (coef_den_large(term_idx),term_idx=1,12)/-2.23310170962369d-15, -7.94193282071464d-13, &
+           2.98435207466372d0,    1.0d0]
+      real(dp), parameter :: coef_den_large(12) = [-2.23310170962369d-15, -7.94193282071464d-13, &
            -2.22564376956228d-10, -3.43299431079845d-8, &
            -3.33919612678907d-6,  -1.86432212187088d-4, &
            -5.69764436880529d-3,  -8.34904593067194d-2, &
            -4.78770844009440d-1,  -4.99759250374148d-1, &
-           1.86795964993052d0,    4.16485970495288d-1/
+           1.86795964993052d0,    4.16485970495288d-1]
 
       if (degeneracy_parameter < 2.0d0) then
        scaled_arg = exp(degeneracy_parameter)

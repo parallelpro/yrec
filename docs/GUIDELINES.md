@@ -297,8 +297,10 @@ rewritten, each conversion a byte-identical commit.
    callers pass whole arrays as before, and the declaration no longer
    pretends to know the caller's dimensions.
 5. **Procedures without side effects are `pure`**, and the compiler
-   checks it. In net/ the only exceptions are Timmes' neutrino routines
-   (saved tables) and their callers.
+   checks it. In net/ the only exceptions are the configuration
+   (`set_net_settings` and the legacy cross-section map, which install
+   the settings and report through `net_messages`) and the table
+   printout for the tests.
 
 ## Code style (2026-10)
 
