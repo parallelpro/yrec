@@ -150,10 +150,10 @@ subroutine set_mass_change_rate()
 end subroutine set_mass_change_rate
 
 ! ---------------------------------------------------------------
-! With a surface convection zone, sets jcz to the zone's base (and, with
-! the solver diagnostics on, prints the turnover timescale in yr and
-! R/Rsun); without one, zeroes the turnover timescale and sets jcz = nz.
-! Then sums the mass of the convective envelope.
+! With a surface convection zone, sets envelope_cz_bottom_index_start to
+! the zone's base (and, with the solver diagnostics on, prints the
+! turnover timescale in yr and R/Rsun); without one, zeroes the turnover
+! timescale and sets it to nz. Then sums the convective envelope's mass.
 subroutine measure_convective_envelope()
       use run_log, only: solver_diagnostics
 ! The turnover timescale was computed beforehand, for the previous model
@@ -526,21 +526,21 @@ end subroutine adjust_cz_for_accreted_entropy
 ! The new total mass, the masses of the convection zone
 ! (change_shell_masses: with mass loss the zone-center masses compress
 ! about the zone's base; the shell masses dm, the last reaching the new
-! total) and senv; the surface boundary condition is to be recomputed.
-! With a wind that carries angular momentum, the zone's shell masses
-! before the change are kept for spin_down_cz_by_wind.
+! total) and log_fit_point_mass_fraction; the surface boundary condition
+! is to be recomputed. With a wind that carries angular momentum, the
+! zone's shell masses before the change are kept for spin_down_cz_by_wind.
 subroutine update_masses()
       if(wind_carries_angular_momentum) &
            cz_shell_masses_before = s%dm(jenv:nz)
 ! The new total mass, in Msun (star_mass) and as log10 M in g
-! (log_total_mass and its copy stotal).
+! (log_total_mass).
       s%star_mass = s%star_mass + delta_mass_cgs/s%solar_mass_cgs
       total_mass_grams_old = exp10(s%log_total_mass)
       total_mass_grams_new = total_mass_grams_old + delta_mass_cgs
       s%log_total_mass = log10(total_mass_grams_new)
       call change_shell_masses(jenv, delta_mass_cgs, total_mass_grams_new, &
            s%m(1:nz), s%log_mass(1:nz), s%dm(1:nz))
-! senv = log10(m(nz)/M), the mass fraction inside the fitting point.
+! log_fit_point_mass_fraction = log10(m(nz)/M), m(nz) the fitting point's mass.
       s%log_fit_point_mass_fraction = s%log_mass(nz) - s%log_total_mass
 ! The envelope triangle (the surface boundary condition) is to be
 ! recomputed.

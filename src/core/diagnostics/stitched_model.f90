@@ -157,10 +157,10 @@ subroutine build_stitched_model(s, ierr)
          ateffl = s%log_Teff
       end if
       jerr = 0
-! The stitch is the one writer of star%photosphere_logP: atm_get sets it from
-! this integration at the converged model, and no other path
-! recomputes it. The stitch runs every step, so pphot is always
-! current.
+! The stitch is the one writer of star%photosphere_logP: atm_get sets
+! it from this integration at the converged model, and no other path
+! recomputes it. The stitch runs every step, so photosphere_logP is
+! always current.
       call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
            s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
            s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), ksaha, jerr, &

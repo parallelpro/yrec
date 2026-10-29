@@ -164,10 +164,10 @@ subroutine append_envelope_points(s, accept_point_at_fit_mass, species_end_index
          endif
       end do
 ! Every envelope point, the photosphere included, lay inside the
-! fitting mass (an envelope below about 1e-12 of the star, senv at 0):
-! all became zones, and the model now ends at the photosphere. (After
-! the exit above, num_zones is already zone_index, and this test is
-! false.)
+! fitting mass (an envelope below about 1e-12 of the star,
+! log_fit_point_mass_fraction at 0): all became zones, and the model
+! now ends at the photosphere. (After the exit above, num_zones is
+! already zone_index, and this test is false.)
       if (zone_index .gt. num_zones + s%env_points%num_env_points) then
       num_zones = num_zones + s%env_points%num_env_points
       end if

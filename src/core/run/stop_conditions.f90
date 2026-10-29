@@ -172,7 +172,7 @@ end subroutine check_stop_conditions
 ! ---------------------------------------------------------------
 ! Structure-limit stops: each configured limit is checked
 ! against the freshly computed observables (compute_observables runs
-! before this, so log_g_surface and the scaling-relation nu_max are
+! before this, so log_g_surface and the scaling-relation nu_max_uhz are
 ! current). Prints one STOP line per hit to the terminal and the
 ! run log.
 logical function structure_limit_stop_triggered(s)

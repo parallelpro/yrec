@@ -20,12 +20,12 @@ contains
 ! convection-zone edges: the equation of state (eos_get), the opacity
 ! (kap_get) and the temperature gradients (compute_temperature_gradients,
 ! with the rotation factors fp and ft and the adiabatic-overshoot region
-! star%envelope_overshoot_bottom_index..envelope_overshoot_top_index). Sets convective_flag and stores in star% the
-! gradients grad_rad, grad and grad_ad (gradr, gradT, grada), the mean
-! molecular weight mu, the opacity, c_P, dlnrho/dlnT (qdt) and the
-! convective velocity; then viscos gives the kinematic viscosity and the
-! thermal diffusivity. log_luminosity holds L/Lsun, not its log (the
-! callers pass star%luminosity_lsun).
+! star%envelope_overshoot_bottom_index..envelope_overshoot_top_index).
+! Sets convective_flag and stores in star% the gradients grad_rad, grad
+! and grad_ad (gradr, gradT, grada), the mean molecular weight mu, the
+! opacity, c_P, dlnrho/dlnT (dlnrho_dlnt) and the convective velocity;
+! then viscos gives the kinematic viscosity and the thermal diffusivity.
+! log_luminosity holds L/Lsun, not its log (callers pass star%luminosity_lsun).
 subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)
@@ -121,9 +121,9 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
          s%grada(im) = eos_res%adiabatic_gradient
 ! The mean molecular weight of a fully ionized gas,
 ! mu = mu_ion mu_e / (mu_ion + mu_e) (amu2 = mu_ion, emu2 = mu_e):
-!   1/mu_ion = amuenv + sum_k (X_k - X_k,env)/A_k over H, He4, Z (as C12)
-!              and He3, where star%envelope_inverse_atomic_weight is 1/mu_ion of the surface
-!              mixture and X_k,env its abundances;
+!   1/mu_ion = envelope_inverse_atomic_weight + sum_k (X_k - X_k,env)/A_k
+!              over H, He4, Z (as C12) and He3, the first term being 1/mu_ion
+!              of the surface mixture and X_k,env its abundances;
 !   1/mu_e = X/A_H + 2 (X_He3/A_He3 + Y/A_He4) + Z/2.
          dfx1 = composition(i_h1,im) - s%envelope_hydrogen_fraction
          dfx2 = composition(i_he4,im) - s%envelope_helium_fraction

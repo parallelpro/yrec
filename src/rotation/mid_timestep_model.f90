@@ -157,8 +157,8 @@ end subroutine start_substep_composition
 !   q_mid = q_start + f (q_end - q_start)
 ! for log rho, L, log P, log r, log T, the mean gravity and sub_physics's
 ! gradients, energy generation, viscosity, thermal diffusivity, c_P,
-! qdt and opacity (start values from star%*_start, star%mean_gravity_start and
-! star%old_*). The mean molecular weight instead accumulates each
+! dlnrho_dlnt and opacity (start values from the star's *_start arrays).
+! The mean molecular weight instead accumulates each
 ! sub-step's share of its change,
 !   mu_mid = mu_mid + (sub_timestep/full_timestep) (mu_end - mu_old),
 ! which reaches the same point of the step (the caller takes the share

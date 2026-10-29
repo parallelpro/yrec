@@ -220,14 +220,14 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
                  num_convective_zones, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
 ! Initialize the convective turnover time (legacy TAUCZ), the
-! photospheric pressure pphot and fracstep. The stitched model
-! (interior plus a fresh envelope) is built first: it sets star%photosphere_logP,
-! and compute_turnover_timescale walks it, returning the radius of the
-! convection-zone base in star%envelope_radius_rsun. (starin passed the
-! envelope radius array there, overwriting its first element.) The
-! wind takes pphot and the turnover time at the fraction fracstep of
-! the step, between the step-start copies (pphot0, *_old) and the
-! current values.
+! photospheric pressure photosphere_logP and substep_time_fraction. The
+! stitched model (interior plus a fresh envelope) is built first: it sets
+! star%photosphere_logP, and compute_turnover_timescale walks it,
+! returning the radius of the convection-zone base in
+! star%envelope_radius_rsun. (starin passed the envelope radius array
+! there, overwriting its first element.) The wind takes photosphere_logP
+! and the turnover time at the fraction substep_time_fraction of the step,
+! between the step-start copies (*_prev) and the current values.
       call build_stitched_model(s, ierr)
       if (ierr /= 0) return
       call compute_turnover_timescale(s, s%envelope_radius_rsun, ierr)
@@ -386,7 +386,7 @@ subroutine reset_state_after_read
        envelope_recomputed_flag = .true.
 
 
-! Surface X and Z (xnew, znew) from the outermost interior point.
+! surface_hydrogen_fraction, surface_metal_fraction: the outermost point's X, Z.
       s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
       s%surface_metal_fraction = s%xa(i_metals,s%nz)
 end subroutine reset_state_after_read
@@ -695,8 +695,8 @@ end subroutine rescale_and_refit_envelope
 
 ! ---------------------------------------------------------------
 ! Make the requested envelope mass, log10(m_fit/M), negative and no
-! shallower than -1e-12, and record the current one,
-! senv = log m(nz) - log M, in senv and old_senv.
+! shallower than -1e-12, and record the current one, log m(nz) - log M,
+! in log_fit_point_mass_fraction and the local old_senv.
 subroutine clamp_requested_envelope_mass
        if (s%job%requested_envelope_mass.gt.0.0d0) s%job%requested_envelope_mass = &
             -s%job%requested_envelope_mass
@@ -725,7 +725,7 @@ end subroutine find_shell_below_new_fit
 ! in log m between shells i and i+1:
 !   f = (log m_fit - log m_i)/(log m_(i+1) - log m_i),
 !   y = y_i + f (y_(i+1) - y_i) for log rho, L, log P, log R, log T.
-! The new surface X and Z (xnew, znew) are its X and Z.
+! Its X and Z become surface_hydrogen_fraction and surface_metal_fraction.
 subroutine interpolate_new_fitting_point
             s%nz = i + 1
           s%log_fit_point_mass_fraction = s%job%requested_envelope_mass
@@ -811,8 +811,8 @@ end subroutine set_new_last_shell_convection
 ! ---------------------------------------------------------------
 ! Integrate an envelope with the model's Teff and L from the surface
 ! down to the pressure of the old last interior shell (atm_get), for
-! the new, shallower fitting mass; sets senv to it. Sets ierr on
-! failure.
+! the new, shallower fitting mass; sets log_fit_point_mass_fraction to
+! it. Sets ierr on failure.
 subroutine integrate_envelope_to_new_fit
       use math_lib
             old_last_shell = s%nz
@@ -981,11 +981,11 @@ end subroutine initialize_rotation_state
 ! ---------------------------------------------------------------
 ! Surface-mixture bookkeeping. On the first card (run_index <= 1), set
 ! the surface X, Y, Z and He3, build from them and the controls' metal
-! mixture the number fractions fxenv of the 12 mixture elements, Z
-! without C, N and O (zenvm) and amuenv, and pass them to the EOS. On
-! every card, regenerate the surface opacity tables, and the SCV
-! envelope EOS table when SCV is on, for the current surface
-! composition.
+! mixture the number fractions envelope_number_fractions of the 12
+! mixture elements, Z without C, N and O (envelope_metals_no_cno) and
+! envelope_inverse_atomic_weight, and pass them to the EOS. On every
+! card, regenerate the surface opacity tables, and the SCV envelope EOS
+! table when SCV is on, for the current surface composition.
 subroutine update_surface_mixture
       if (run_index.le.1) then
 ! The relative mass fractions w_i of the ten metals are the controls'
@@ -994,8 +994,8 @@ subroutine update_surface_mixture
          species_mix_weights(i)=s%ctrl%mixture_weights_seed(i)
       end do
 
-! Surface composition: X_env = xnew, Z_env = znew, X(He3) of the last
-! shell, Y_env = 1 - X_env - Z_env - X(He3).
+! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction,
+! X(He3) of the last shell, Y_env = 1 - X_env - Z_env - X(He3).
       s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
       s%envelope_metal_fraction = s%surface_metal_fraction
       s%envelope_helium_fraction = 1.0d0 - s%envelope_hydrogen_fraction - &
@@ -1007,7 +1007,7 @@ subroutine update_surface_mixture
            species_mix_weights(ix_si)+species_mix_weights(ix_c)+ &
            species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
            species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
-! The part of Z not in C, N and O: zenvm = Z_env (S - w_C - w_O - w_N)/S.
+! Z outside C, N and O: envelope_metals_no_cno = Z_env (S - w_C - w_O - w_N)/S.
       s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
@@ -1015,7 +1015,7 @@ subroutine update_surface_mixture
 ! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
 ! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
 ! fraction too. Then w_i becomes X_i/A_i, and
-!   amuenv = sum_i X_i/A_i,
+!   envelope_inverse_atomic_weight = sum_i X_i/A_i,
 ! the inverse mean atomic weight 1/mu_ion of the whole surface mixture.
       mixture_scale_factor = s%envelope_metal_fraction/mixture_weight_sum
       species_mix_weights(ix_h) = s%envelope_hydrogen_fraction/ &
@@ -1030,9 +1030,9 @@ subroutine update_surface_mixture
       end do
       s%envelope_inverse_atomic_weight = mixture_weight_sum
       mixture_scale_factor = 1.0d0/s%envelope_inverse_atomic_weight
-! Number fractions of the elements, fxenv(i) = (X_i/A_i)/amuenv, which
-! the EOS needs (DBG 1/96): compute_blended_eos and compute_saha_eos
-! (legacy EQSAHA).
+! Number fractions of the elements, envelope_number_fractions(i) =
+! (X_i/A_i)/envelope_inverse_atomic_weight, which the EOS needs (DBG
+! 1/96): compute_blended_eos and compute_saha_eos (legacy EQSAHA).
       do i = 1,n_mix_species
        s%envelope_number_fractions(i) = species_mix_weights(i)*mixture_scale_factor
       end do
@@ -1054,7 +1054,7 @@ end subroutine update_surface_mixture
 ! Copy the step-start structure: log P, log T, log R and L into the
 ! *_start arrays (legacy HPOLD), against which the timestep control
 ! limits the change from model to model; with them Teff and the surface
-! L, and, when rotating, omega into old_omega.
+! L, and, when rotating, omega into omega_start.
 subroutine snapshot_step_start
       do i = 1,s%nz
          s%logP_start(i) = s%logP(i)

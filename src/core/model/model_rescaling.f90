@@ -35,8 +35,8 @@ contains
 !   surface Z (DBG 5/94).
 ! luminosity_array is L/Lsun (it locates the H shell); shell_mass_log
 ! and total_mass_log are log10 m and log10 M (g); star_mass is M in
-! Msun. xnew and znew hold the old surface X and Z on entry, and the
-! targets on return when X or Z is rescaled.
+! Msun. surface_hydrogen_fraction and surface_metal_fraction hold the old
+! surface X and Z on entry, and the targets on return when X or Z is rescaled.
 subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
       use physical_constants
@@ -97,8 +97,8 @@ subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
 contains
 
 ! ---------------------------------------------------------------
-! Scale every shell's X by X_new/X_surf, X_surf = xnew being the old
-! surface X, capping each at X_new:
+! Scale every shell's X by X_new/X_surf, X_surf being the old surface X
+! (surface_hydrogen_fraction), capping each at X_new:
 !   X_i -> min(X_new, X_i X_new/max(X_surf, 1e-20)).
 ! Valid for main-sequence and horizontal-branch models alike. A
 ! requested X above 1 is refused with a message.
@@ -127,9 +127,9 @@ subroutine rescale_surface_x
 end subroutine rescale_surface_x
 
 ! ---------------------------------------------------------------
-! Shift every shell's Z by dZ = Z_new - Z_surf, Z_surf = znew being the
-! old surface Z, and scale the CNO isotopes (slots C12..O18) by each
-! shell's new over old Z:
+! Shift every shell's Z by dZ = Z_new - Z_surf, Z_surf being the old
+! surface Z (surface_metal_fraction), and scale the CNO isotopes (slots
+! C12..O18) by each shell's new over old Z:
 !   Z_i -> max(0, Z_i + dZ),
 !   X_k,i -> X_k,i max(0, Z_i + dZ)/(Z_i + 1e-30),  k = C12..O18.
 ! He3 and the light elements are left alone. The target is applied when
@@ -402,8 +402,8 @@ end subroutine set_helium_from_x_and_z
 ! With use_z_ramp (legacy LZRAMP; DBG 5/94) and rsclzc, rsclzm1 and
 ! rsclzm2 all positive, rescale the interior Z as a function of the
 ! mass fraction q = m/M: Z = rsclzc for q < rsclzm1, then linear up to
-! the surface Z (znew) at q = rsclzm2,
-!   Z(q) = rsclzc + (q - rsclzm1)(znew - rsclzc)/(rsclzm2 - rsclzm1);
+! the surface Z, Z_surf = surface_metal_fraction, at q = rsclzm2,
+!   Z(q) = rsclzc + (q - rsclzm1)(Z_surf - rsclzc)/(rsclzm2 - rsclzm1);
 ! Z beyond rsclzm2 is left alone. X takes up the change, Y being kept:
 ! X = 1 - Z - X(He3) - Y. The CNO isotopes (C12..O18) are multiplied by
 ! Z_new/(Z_old + 1e-30), as in rescale_interior_z. (The factor was

@@ -150,8 +150,8 @@ subroutine prepare_envelope_rebuild()
       else
          species_end_index = n_species_basic
       endif
-! Keep senv at or below senv_thin_envelope: an envelope of at least
-! about 2.3e-12 of the star.
+! Keep log_fit_point_mass_fraction at or below senv_thin_envelope: an
+! envelope of at least about 2.3e-12 of the star.
       target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
 ! The zone count and the fitting mass before the rebuild.
       old_num_zones = num_zones

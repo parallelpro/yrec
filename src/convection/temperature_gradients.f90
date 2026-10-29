@@ -25,10 +25,10 @@
 ! star-blind envint kernel's integrand path, where the state comes
 ! from the integration point, not from star%'s zone arrays).
 ! in_overshoot_region: the point lies in the overshoot region below the
-! envelope (the caller's zone between star%envelope_overshoot_bottom_index and star%envelope_overshoot_top_index); with
-! the adiabatic_overshoot setting a radiative point there takes the
-! adiabatic gradient. (Formerly zone_index, compared here with
-! star%envelope_overshoot_bottom_index/envelope_overshoot_top_index; -1 for envelope and atmosphere points.)
+! envelope (the caller's zone between star%envelope_overshoot_bottom_index
+! and star%envelope_overshoot_top_index); with the adiabatic_overshoot
+! setting a radiative point there takes the adiabatic gradient. (Formerly
+! zone_index, compared here with them; -1 for envelope and atmosphere points.)
 module temperature_gradients
       use convection_configuration, only: convection_settings
       implicit none

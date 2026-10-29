@@ -255,11 +255,11 @@ end subroutine check_angular_momentum
 ! From the second iteration on, the mean molecular weight of a fully
 ! ionized gas, with A the atomic weights and the metals taken as C12
 ! for the ions and as 2 nucleons per electron:
-!   1/mu_ion = amuenv + dX/A(H1) + dY/A(He4) + dZ/12 + dX3/A(He3),
+!   1/mu_ion = 1/mu_ion,env + dX/A(H1) + dY/A(He4) + dZ/12 + dX3/A(He3),
 !   1/mu_e   = X/A(H1) + 2 (X3/A(He3) + Y/A(He4)) + Z/2,
 !   mu = 1/(1/mu_ion + 1/mu_e) = mu_ion mu_e/(mu_ion + mu_e),
 ! where dX, dY, dZ, dX3 are the differences from the envelope mixture
-! and star%envelope_inverse_atomic_weight = sum X_i/A_i of that mixture.
+! and 1/mu_ion,env, its sum X_i/A_i, is star%envelope_inverse_atomic_weight.
 !
 ! Inputs:
 !   iteration_number : this iteration, 1 to

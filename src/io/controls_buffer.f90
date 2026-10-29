@@ -121,8 +121,8 @@ module controls_buffer
       logical :: use_new_nuclear_rates = .false.
       real(dp) :: weak_screening_threshold = 0.03d0
 
-! Overshoot and semiconvection. iov1/iov2, the overshoot range, are
-! model state (star%envelope_overshoot_bottom_index/envelope_overshoot_top_index).
+! Overshoot and semiconvection. The overshoot range is model state
+! (star%envelope_overshoot_bottom_index/envelope_overshoot_top_index).
       real(dp) :: dpenv = 1.0d0
       logical :: core_overshoot_active = .false.
       real(dp) :: overshoot_alpha_core = 0.0d0
@@ -278,10 +278,10 @@ module controls_buffer
       real(dp) :: env_step_min = 1.0d-1
       real(dp) :: env_step_max = 5.0d-1
 ! The Bulirsch-Stoer integrator of both: the tolerance on the fitting
-! mass, as a fraction of |senv|, which is also the atmosphere's step
-! tolerance; the number of stages; and the extrapolation order
-! (numerics/bulirsch_stoer.f90 takes 1 to 11 stages and orders 2 to 7;
-! the controls read checks them).
+! mass, as a fraction of |log_fit_point_mass_fraction|, which is also
+! the atmosphere's step tolerance; the number of stages; and the
+! extrapolation order (numerics/bulirsch_stoer.f90 takes 1 to 11 stages
+! and orders 2 to 7; the controls read checks them).
       real(dp) :: tolerance_fraction = 1.0d-3
       integer :: max_stage_index = 11
       integer :: extrap_order = 7

@@ -41,7 +41,7 @@
 ! (rotation_scratch_lib, filled by mid_timestep_model each sub-step),
 ! the interface structure and coefficients from stab, the transport
 ! grid from chi_grid, and the model's arrays and scalars (log_mass, m,
-! dm, j_rot, xa, nz, log_L, log_total_mass, star_mass, log_Teff) from
+! dm, j_rot, xa, nz, log_L_lsun, log_total_mass, star_mass, log_Teff) from
 ! star.
 module secular_transport
       use rotation_configuration, only: rotation_settings, disk_locking_engaged, &

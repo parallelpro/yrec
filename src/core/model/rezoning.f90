@@ -39,12 +39,12 @@ contains
 !      rotating models omega re-derived from j and the total angular
 !      momentum and rotational kinetic energy re-totalled.
 ! envelope_store_index: the envelope-triangle vertex whose integration
-! stored its state where T reached tenv (0 for none), used when a point
-! is added at the surface. point_reset_flag: set when outer points were
-! deleted or added. h_shell_zone_begin, h_shell_active: the base of the
-! H-burning shell and whether there is one. total_angular_momentum,
-! total_rotational_ke: re-totalled on the new mesh (rotating models).
-! ierr /= 0 on failure.
+! stored its state where T reached envelope_store_log_temperature (0 for
+! none), used when a point is added at the surface. point_reset_flag: set
+! when outer points were deleted or added. h_shell_zone_begin,
+! h_shell_active: the base of the H-burning shell and whether there is
+! one. total_angular_momentum, total_rotational_ke: re-totalled on the
+! new mesh (rotating models). ierr /= 0 on failure.
 !   star reads: conv_vel, cp, ctrl%chi_grid_scale,
 !     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
 !     ctrl%rotation_active, ctrl%tenv0, ctrl%tenv1,
@@ -827,7 +827,7 @@ end subroutine regrid_structure_variables
 ! ---------------------------------------------------------------
 ! For rotating models, spline omega, the specific angular momentum j,
 ! the shape factors fp and ft, r0 and eta2 onto the new points, into the
-! old_* arrays (and fp_old, ft_old) that transfer_new_points adopts.
+! *_start arrays (and fp_old, ft_old) that transfer_new_points adopts.
 subroutine regrid_rotation_variables
       type(rotation_profiles) :: regridded
       if (s%ctrl%rotation_active) then
@@ -853,8 +853,8 @@ end subroutine regrid_rotation_variables
 ! ---------------------------------------------------------------
 ! For rotating models (or the extended composition with envelope
 ! overshoot), spline the start-of-step energy generation onto the new
-! points (MHP 6/00): eps_total into old_eps_total and
-! eps_total + eps_neu + eps_grav into old_eps_plus_neu_grav, for the
+! points (MHP 6/00): eps_total into eps_total_start and
+! eps_total + eps_neu + eps_grav into eps_plus_neu_grav_start, for the
 ! mid-step Eddington-Sweet velocities. This runs before
 ! transfer_new_points, while star%log_mass is still the old mesh. (2026
 ! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
@@ -985,7 +985,7 @@ subroutine retally_angular_momentum
           s%eta_squared_start(i) = s%eta_squared(i)
           s%mean_radius_start(i) = s%mean_radius(i)
           s%convective_flag_start(i) = s%convective_flag(i)
-! j also goes to old_specific_angular_momentum (legacy HJX), for I/O
+! j also goes to j_rot_start (legacy HJX), for I/O
 ! as well (MHP 10/91).
             s%j_rot_start(i) = s%j_rot(i)
        end do

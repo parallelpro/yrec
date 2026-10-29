@@ -24,9 +24,9 @@ contains
 ! by the fixed-step envelope integration, built once per step in
 ! evolve_step before compute_observables, and walks it as one structure
 ! with turnover_from_interior_new. It integrates nothing itself, and
-! star%photosphere_logP belongs to the stitched build (its atm_get). The mid-step
-! consumers (the wind saturation, the deuterium limiter) read the values
-! stored at the end of the previous step (the _old and pphot0 copies).
+! star%photosphere_logP belongs to the stitched build (its atm_get). The
+! mid-step consumers (the wind saturation, the deuterium limiter) read
+! the values stored at the end of the previous step (the _prev copies).
 ! Called by read_starting_model and compute_observables.
 subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       use stitched_model, only: &
@@ -49,7 +49,7 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       integer :: j, num_points
 
       ierr = 0
-! Start from zero; pphot is left alone (the stitched build owns it).
+! Start from zero; photosphere_logP is left alone (the stitched build owns it).
       s%convective_turnover_timescale = 0.0
 
 ! The span. In the interior model, zones j+1..nz-1 are the convective

@@ -19,9 +19,9 @@
 ! star%, which src/tools/check_boundaries.py checks (STAR_BLIND_FILES).
 ! Its settings arrive in an envint_config that the driver, atm_get in
 ! envelope_integration, fills from star%job and star%ctrl. Its two
-! effects on the star, the photospheric pressure (star%photosphere_logP) and the
-! switch to a gray atmosphere when the Allard table lookup fails, come
-! back as outputs that the driver applies.
+! effects on the star, the photospheric pressure (star%photosphere_logP)
+! and the switch to a gray atmosphere when the Allard table lookup fails,
+! come back as outputs that the driver applies.
 module envelope_integration_kernel
       use composition_layout, only: n_species_extended
       use envelope_points, only: envelope_structure_state, &
@@ -255,8 +255,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       ierr = 0
       jerr = 0
       switched_to_gray = .false.
-! -1d99 means "no photosphere": it stays unless the atmosphere
-! finishes, so that the driver does not overwrite star%photosphere_logP after an
+! -1d99 means "no photosphere": it stays unless the atmosphere finishes,
+! so that the driver does not overwrite star%photosphere_logP after an
 ! early error.
       log10_photo_pressure = -1.0d99
 
@@ -265,9 +265,9 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       call integrate_atmosphere
       if (ierr /= 0) return
 ! The photosphere (or the table's surface point) is reached, and its
-! pressure is pphot. Stop here when only pphot is wanted; otherwise
-! integrate the envelope in pressure from there down to the fitting
-! mass.
+! pressure is the star's photosphere_logP. Stop here when only that is
+! wanted; otherwise integrate the envelope in pressure from there down
+! to the fitting mass.
       log10_photo_pressure = atm_point%log10_pressure
       if (.not.cfg%calc_envelope) return
 

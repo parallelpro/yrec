@@ -82,7 +82,7 @@ end function ttau_photosphere_x_limit
 
 ! ---------------------------------------------------------------
 ! The HSRA anchor: the fit evaluated at tau = 2/3, which the star layer
-! stores as the run's atm_hras offset.
+! stores as the run's HSRA offset (star%hsra_log_t_offset).
 pure function hsra_t_tau_offset() result(offset)
       real(dp) :: offset
       offset = harvard_t_tau(cc23)

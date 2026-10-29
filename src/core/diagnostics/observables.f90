@@ -61,9 +61,9 @@ subroutine compute_observables(s, ierr)
       call compute_central_conditions(s, ierr)
       if (ierr /= 0) return
       call locate_surface_cz_base(s)
-! The turnover timescale (with its _old and pphot0 copies) is physics
-! state, read by the wind saturation and the deuterium limiter, and is
-! refreshed here for every model.
+! The turnover timescale (and the _prev copies of it and of photosphere_logP)
+! is physics state, read by the wind saturation and the deuterium limiter,
+! and is refreshed here for every model.
       call refresh_turnover_timescale(s, ierr)
       if (ierr /= 0) return
 
@@ -197,8 +197,8 @@ end subroutine compute_central_conditions
 
 ! ---------------------------------------------------------------
 ! The base of the surface convection zone, interpolated between the
-! zones around it: star%envelope_mass_msun (the convective envelope's mass,
-! Msun), envelope_radius (Rsun), and
+! zones around it: star%envelope_mass_msun (the convective envelope's
+! mass), envelope_radius_rsun, and
 ! envelope_cz_temperature, _density, _pressure and _opacity. A fully
 ! convective star takes the central values (so compute_central_conditions
 ! runs first); without a surface convection zone all are zero.
@@ -256,8 +256,8 @@ subroutine locate_surface_cz_base(s)
 end subroutine locate_surface_cz_base
 
 ! ---------------------------------------------------------------
-! Refreshes the turnover timescale and copies it and pphot to their
-! _old / pphot0 versions, which the mid-step consumers (the wind, the
+! Refreshes the turnover timescale and copies it and photosphere_logP
+! to their _prev versions, which the mid-step consumers (the wind, the
 ! deuterium limiter) read during the next step. compute_turnover_timescale
 ! also overwrites star%envelope_radius_rsun with its own base radius.
 subroutine refresh_turnover_timescale(s, ierr)
@@ -271,7 +271,7 @@ end subroutine refresh_turnover_timescale
 
 ! ---------------------------------------------------------------
 ! The surface radius from L = 4 pi R^2 sigma Teff^4, log g = log G +
-! log M - 2 log R (CGS), then log_R_surface in Rsun.
+! log M - 2 log R (CGS), then log_R_surface_rsun = log10(R/Rsun).
 subroutine compute_surface_globals(s)
       type(star_info), intent(inout) :: s
       s%log_R_surface_rsun = log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
@@ -285,11 +285,11 @@ end subroutine compute_surface_globals
 ! The asteroseismic observables. The scaling relations, against the
 ! solar references nu_max_sun, delta_nu_sun and Teff_sun of the
 ! controls,
-!   nu_max = nu_max_sun (g/g_sun) (Teff/Teff_sun)^(-1/2),
-!   delta_nu_rho = delta_nu_sun (M/Msun)^(1/2) (R/Rsun)^(-3/2),
+!   nu_max_uhz = nu_max_sun (g/g_sun) (Teff/Teff_sun)^(-1/2),
+!   delta_nu_rho_uhz = delta_nu_sun (M/Msun)^(1/2) (R/Rsun)^(-3/2),
 ! with log g_sun from the run's own solar constants, so that
 ! Monte-Carlo-scaled solar values stay self-consistent; then the
-! asymptotic delta_nu and delta_Pg from the stitched model.
+! asymptotic delta_nu_uhz and delta_Pg from the stitched model.
 subroutine compute_seismic_observables(s)
       use math_lib
       use stitched_model, only: ip_logR, &

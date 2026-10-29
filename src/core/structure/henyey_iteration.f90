@@ -44,7 +44,7 @@ contains
 !----------------------------------------------------------------------
 ! refresh_surface_bc: start an iteration level. Sets log L
 ! (star%log_L_lsun), the log mass fraction inside the fitting point,
-!   senv = log m(nz) - log M,
+!   log_fit_point_mass_fraction = log m(nz) - log M,
 ! and resets the Saha-state counter. When recompute_surface_bc is set
 ! (forced on for a new triangle, or for a reset one at level 2), it
 ! rebuilds the envelope fit with compute_surface_boundary.
@@ -219,7 +219,7 @@ end subroutine linearize_structure_equations
 ! ---------------------------------------------------------------
 ! Scale the luminosity channels so that they sum to the surface
 ! luminosity,
-!   luminosity_breakdown(j) *= L(nz)/sum_j luminosity_breakdown(j),
+!   luminosity_breakdown_lsun(j) *= L(nz)/sum_j luminosity_breakdown_lsun(j),
 ! except during the helium flash, when the star is out of thermal
 ! equilibrium. This is the per-iteration twin of observables'
 ! renormalize_luminosity_breakdown; it also guards a nonpositive sum, and
