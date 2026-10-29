@@ -2328,9 +2328,10 @@ bsstep limits. On the merged tree: after NET and STATE all 56 decks
 byte-identical; after OUT and NUM only the run logs' "stop conditions"
 line differs (55 logs, M19); after CTL also the 23 rotating Matt-law
 decks (9b58f6f6, below); after EOS every deck (M37-M39, below), and
-the renames byte-identical. Unit tests: 63 passed, 1 skipped (HDF5),
-before EOS. The pins in standard/ were reseeded once, after the
-series: pins reseeded at <RESEED>.
+the renames byte-identical. Unit tests at the end: 63 passed, 1
+skipped (HDF5). The pins in standard/ were reseeded once, after the
+series: pins reseeded at 2f84ae0e, the series' last code commit (the
+previous pins are 2c88d896's outputs, which a build of it reproduces).
 
 #### net/ (NET, 22 commits)
 
