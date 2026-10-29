@@ -4,7 +4,10 @@
 ! The settings record of eos/: everything the equation of state needs
 ! from the run's configuration, installed by eos_init (from the star
 ! layer's equation_of_state_settings, setup/microphysics_settings.f90)
-! or set_eos_settings; nothing else writes it.
+! or set_eos_settings; nothing else writes it. Its defaults are the
+! controls' (defaults/controls_registry.tsv), so a star-free caller that
+! sets only what it changes gets what a deck that leaves the controls
+! alone gets.
 module eos_configuration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use mhd_eos_tables, only: mhd_n_zams, mhd_n_centre
@@ -25,12 +28,15 @@ module eos_configuration
 ! derivatives by finite differences rather than analytically; the metal
 ! fraction varies (diffusion of Z), so the mixture is rescaled per zone
          logical :: use_numerical_derivatives = .false., use_diffusion_z = .false.
-! the Debye-Hueckel correction and the degeneracy (eta) range it ramps
-! over
+! the Debye-Hueckel correction and the degeneracy (eta) range over which
+! it ramps from its nondegenerate to its degenerate form (eta_max >
+! eta_min, which eos_init checks)
          logical :: use_debye_huckel_correction = .false.
-         real(dp) :: debye_huckel_eta_min = 0.0d0, debye_huckel_eta_max = 0.0d0
-! log10 T below which the Saha solution is used (ramped)
-         real(dp) :: saha_log10t_cutoff = 0.0d0
+         real(dp) :: debye_huckel_eta_min = -1.0d0, debye_huckel_eta_max = 1.0d0
+! log10 T (K) at and above which the gas is fully ionized; the Saha
+! solution below it, blended into the fully ionized one over the 0.5 dex
+! under it
+         real(dp) :: saha_log10t_cutoff = 6.0d0
       end type eos_settings_t
       type(eos_settings_t), public, protected :: eos_settings
 

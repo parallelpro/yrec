@@ -945,6 +945,19 @@ subroutine settings_checks()
       call eos_init(s, table_paths, ierr)
       call check("settings: two OPAL vintages selected, eos_init returns ierr = 1", &
            ierr == 1 .and. eos_settings%opal_vintage == before%opal_vintage)
+      s = eos_settings
+      s%use_debye_huckel_correction = .true.
+      s%debye_huckel_eta_min = 1.0d0
+      s%debye_huckel_eta_max = 1.0d0
+      call eos_init(s, table_paths, ierr)
+      call check("settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1", &
+           ierr == 1 .and. (eos_settings%use_debye_huckel_correction .eqv. before%use_debye_huckel_correction))
+! the defaults are the controls' (defaults/controls_registry.tsv)
+      s = eos_settings_t()
+      call check("settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)", &
+           s%saha_log10t_cutoff == 6.0d0 .and. s%debye_huckel_eta_min == -1.0d0 .and. &
+           s%debye_huckel_eta_max == 1.0d0 .and. s%opal_vintage == opal_vintage_none .and. &
+           .not. (s%use_scv_eos .or. s%use_mhd_eos .or. s%use_debye_huckel_correction))
 end subroutine settings_checks
 
 ! Below the OPAL 2006 table (T = 1500 K) eos_get_gamma1 takes the

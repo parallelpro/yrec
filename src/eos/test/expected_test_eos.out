@@ -636,7 +636,11 @@ ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 ok   diffusion of Z: an envelope without metals takes the default mixture
+ eos_init: more than one OPAL EOS vintage selected
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
+ eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:   1.0000000000000000        1.0000000000000000
+ok   settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1
+ok   settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)
 # test_eos: configuration opal95
 ok   OPAL 1995: trial calls keep the other slots and give the full call's pressure
 # test_eos: configuration opal2001

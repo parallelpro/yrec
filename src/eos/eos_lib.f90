@@ -34,7 +34,7 @@ module eos_lib
       use yale_eos, only: read_fermi_table
       use eos_mixture, only: eos_mix
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
-           open_opal_eos_table
+           open_opal_eos_table, n_opal_vintages
       use yale_eos_tables, only: debye_huckel_x, debye_huckel_y, debye_huckel_z, &
            debye_huckel_z_total, idh_c, idh_n, idh_o, idh_ne, idh_na, idh_mg, idh_al, &
            idh_si, idh_ar, idh_fe
@@ -43,7 +43,7 @@ module eos_lib
       use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
            i_n14, i_n15, i_o16, i_o17, i_o18
       use physical_constants, only: ln10
-      use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_messages, only: eos_report, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -99,8 +99,10 @@ end subroutine eos_get
 ! Installs the settings and loads the tables they select, from paths:
 ! opens the OPAL table (its vintage's reader reads it on first use) and
 ! reads the MHD tables, the Fermi-Dirac table (always) and the SCV
-! tables. Each file is opened on a new unit; a missing one returns
-! ierr = 1.
+! tables. Each file is opened on a new unit; a missing or corrupt one
+! returns ierr = 1, and so do settings that select more than one OPAL
+! vintage or a Debye-Hueckel degeneracy range with eta_max <= eta_min
+! (nothing is installed then).
 subroutine eos_init(settings, paths, ierr)
       character(len=message_length) :: eos_lines(4)
       type(eos_settings_t), intent(in) :: settings
@@ -109,10 +111,19 @@ subroutine eos_init(settings, paths, ierr)
 
       ierr = 0
       if (settings%opal_vintage < opal_vintage_none .or. &
-           settings%opal_vintage > opal_vintage_2006) then
+           settings%opal_vintage > n_opal_vintages) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: more than one OPAL EOS vintage selected'
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
+         ierr = 1
+         return
+      end if
+      if (settings%use_debye_huckel_correction .and. &
+           .not. settings%debye_huckel_eta_max > settings%debye_huckel_eta_min) then
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:', &
+              settings%debye_huckel_eta_min, settings%debye_huckel_eta_max
+         call eos_report(eos_lines)
          ierr = 1
          return
       end if
