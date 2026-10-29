@@ -108,7 +108,8 @@ subroutine diffuse_composition_driver(chi_grid, sub_physics, &
          call composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_density, luminosity_lsun, &
               log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
               log_total_mass, zone_begin, zone_end, convective_flag, &
-              num_zones)
+              num_zones, ierr)
+         if (ierr /= 0) return
 ! A region of two zones (a single unstable interface) is skipped.
          if (chi_grid%single_interface) then
             if (search_start.le.zone_max) then
@@ -166,8 +167,8 @@ subroutine diffuse_composition(chi_grid, timestep, &
      species_begin, species_end, ierr)
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
-      use rotation_messages, only: rotation_report, message_length
-      use numerics_lib, only: osplin, solve_tridiagonal, numerics_status_text
+      use rotation_messages, only: rotation_numerics_report
+      use numerics_lib, only: osplin, solve_tridiagonal
       implicit none
       type(transport_grid_state), intent(in) :: chi_grid
 
@@ -191,7 +192,6 @@ subroutine diffuse_composition(chi_grid, timestep, &
       integer :: num_varying_species, j_idx, zone_idx, ntab, species_num, &
            orig_zone_idx, i0, i1
       double precision :: test_value
-      character(len=message_length) :: line
 
       ierr = 0
 
@@ -225,7 +225,11 @@ subroutine diffuse_composition(chi_grid, timestep, &
                  orig_zone_idx)
          end do
          call osplin(chi_grid%eq_chi, eq_composition, table_x, table_y, ntab, &
-              chi_grid%num_eq_points)
+              chi_grid%num_eq_points, ierr)
+         if (ierr /= 0) then
+            call rotation_numerics_report('diffuse_composition: osplin', ierr)
+            return
+         end if
 ! The implicit difference equations for X at the end of the sub-step.
          call composition_diffusion_coeffs(chi_grid%eq_mixing_diffusion_coeff, chi_grid%eq_chi_spacing, timestep, &
               eq_composition, chi_grid%eq_mass, chi_grid%num_eq_points, &
@@ -233,8 +237,7 @@ subroutine diffuse_composition(chi_grid, timestep, &
 ! Solve for X at the end of the sub-step on the grid.
          call solve_tridiagonal(sub_diag, diag, super_diag, rhs, chi_grid%num_eq_points, solution, ierr)
          if (ierr /= 0) then
-            line = ' solve_tridiagonal: '//numerics_status_text(ierr)
-            call rotation_report([line])
+            call rotation_numerics_report('solve_tridiagonal', ierr)
             return
          end if
 ! Map back to the model points. Extrapolating the new X past the end
@@ -250,7 +253,11 @@ subroutine diffuse_composition(chi_grid, timestep, &
             eval_x(zone_idx) = chi_grid%chi(zone_idx)
          end do
 ! eval_y: the change in X at the model points of the region.
-         call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, ntab)
+         call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, ntab, ierr)
+         if (ierr /= 0) then
+            call rotation_numerics_report('diffuse_composition: osplin', ierr)
+            return
+         end if
 ! i0..i1: the zones that take the region's change: the region and the
 ! convection zones directly below zone_begin and above zone_end, whose
 ! masses composition_grid adds to the end cells, whether or not the end
@@ -372,9 +379,11 @@ end subroutine composition_diffusion_coeffs
 ! 4 pi r^2 rho D d chi/dr (g/s). When the region has only two zones (a
 ! single unstable interface) it sets chi_grid%single_interface and does
 ! nothing else. am_transport_grid is the angular momentum counterpart.
+! ierr: an osplin failure's code, after a report (equal_grid's
+! routines).
 subroutine composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, enclosed_mass, shell_mass, &
-     log_total_mass, zone_begin, zone_end, convective_flag, num_zones)
+     log_total_mass, zone_begin, zone_end, convective_flag, num_zones, ierr)
       use rotation_scratch_lib, only: transport_grid_state, &
            substep_physics_state
       use equal_grid
@@ -393,11 +402,13 @@ subroutine composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_d
       integer, intent(in) :: zone_begin, zone_end
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
+      integer, intent(out) :: ierr
       integer :: idx, search_idx, ntab, ntabb
       double precision :: em_top, em_bot
 ! the spline's table (the model points) and evaluation points (the grid)
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
 
+      ierr = 0
 ! A region with a single unstable interface is flagged and skipped.
       if (zone_end - zone_begin.le.1) then
          chi_grid%single_interface = .true.
@@ -407,7 +418,8 @@ subroutine composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_d
       end if
 ! The equally spaced grid: chi, eq_chi and eq_enclosed_mass.
       call equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, zone_begin, &
-           zone_end, num_zones)
+           zone_end, num_zones, ierr)
+      if (ierr /= 0) return
 ! The zone mass of each grid point. An interior point's zone runs from
 ! halfway to the point below to halfway to the point above.
       do idx = 2, chi_grid%num_eq_points-1
@@ -464,12 +476,14 @@ subroutine composition_grid(chi_grid, sub_physics, mixing_diffusion_coeff, log_d
 ! unstable interface and above the top one.
       call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
            chi_grid%num_eq_points, eval_x, table_x, table_y, &
-           chi_grid%eq_mixing_diffusion_coeff)
+           chi_grid%eq_mixing_diffusion_coeff, ierr)
+      if (ierr /= 0) return
 ! log10(rho r^2 d chi/dr) at the edges, in eval_y.
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
            enclosed_mass, sub_physics%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
            ntab, chi_grid%num_eq_points, chi_grid%chi, eval_x, table_x, &
-           table_y, eval_y)
+           table_y, eval_y, ierr)
+      if (ierr /= 0) return
 ! Apply the factor (mixing_diffusion_coeff already carries the 4 pi).
       call multiply_by_exp10(chi_grid%eq_mixing_diffusion_coeff, eval_y, chi_grid%num_eq_points)
       return

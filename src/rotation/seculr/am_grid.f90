@@ -45,19 +45,22 @@ contains
 ! edges (element i between points i-1 and i) eq_am_diffusion_coeff and
 ! eq_mixing_diffusion_coeff; the spacing eq_chi_spacing. A region with a
 ! single unstable interface (zone_end - zone_begin <= 1) is not mapped:
-! chi_grid%single_interface is set, the other outputs are not.
+! chi_grid%single_interface is set, the other outputs are not. ierr: an
+! osplin failure's code, after a report (equal_grid's routines and
+! spline_to_grid).
 subroutine am_transport_grid(chi_grid, sub_physics, &
      am_diffusion_coeff, mixing_diffusion_coeff, log_density, &
      moment_of_inertia, specific_angular_momentum, luminosity_lsun, &
      log_pressure, log_radius, radius, log_mass, enclosed_mass, shell_mass, &
      log_total_mass, zone_begin, zone_end, am_transport_convective_flag, &
-     num_zones, omega)
+     num_zones, omega, ierr)
       use rotation_scratch_lib, only: transport_grid_state, &
            substep_physics_state
       use equal_grid
       use star_info_lib, only: json
       use physical_constants
       use numerics_lib, only: osplin
+      use rotation_messages, only: rotation_numerics_report
       use math_lib
       implicit none
       type(transport_grid_state), intent(inout) :: chi_grid
@@ -76,6 +79,7 @@ subroutine am_transport_grid(chi_grid, sub_physics, &
       double precision, intent(in) :: omega(json)
 ! Outputs: chi_grid's grid and the region's quantities on it (its eq_*
 ! arrays and single_interface)
+      integer, intent(out) :: ierr
 
       double precision :: eq_reduced_moment_of_inertia(json)
       integer :: ntab, i, ii, ntabb
@@ -84,6 +88,7 @@ subroutine am_transport_grid(chi_grid, sub_physics, &
 ! interfaces), eval_x/eval_y on the grid (points or edges).
       double precision :: table_x(json), table_y(json), eval_x(json), eval_y(json)
 
+      ierr = 0
 ! A single unstable interface: flag it and return (the caller skips
 ! the region).
       if (zone_end-zone_begin.le.1) then
@@ -94,13 +99,27 @@ subroutine am_transport_grid(chi_grid, sub_physics, &
       end if
 ! The grid equally spaced in chi.
       call equal_spaced_grid(chi_grid, luminosity_lsun,log_pressure,log_mass,zone_begin, &
-           zone_end,num_zones)
+           zone_end,num_zones,ierr)
+      if (ierr /= 0) return
       call interpolate_to_grid_centers()
+      if (ierr /= 0) return
       call sum_zone_contents()
       call edge_coefficients()
+      if (ierr /= 0) return
       call apply_jacobians()
 
 contains
+
+! ---------------------------------------------------------------
+! table_y(1:n_table) at table_x, splined (osplin) to the grid points
+! eval_x(1:num_eq_points) into values; a failure sets ierr, after a
+! report.
+subroutine spline_to_grid(n_table, values)
+      integer, intent(in) :: n_table
+      double precision, intent(inout) :: values(json)
+      call osplin(eval_x, values, table_x, table_y, n_table, chi_grid%num_eq_points, ierr)
+      if (ierr /= 0) call rotation_numerics_report('am_transport_grid: osplin', ierr)
+end subroutine spline_to_grid
 
 ! ---------------------------------------------------------------
 ! The model quantities at the grid points, each splined in chi from the
@@ -119,25 +138,28 @@ subroutine interpolate_to_grid_centers()
       do i = 1,chi_grid%num_eq_points
          eval_x(i) = chi_grid%eq_chi(i)
       end do
-      call osplin(eval_x,eval_y,table_x,table_y,ntab,chi_grid%num_eq_points)
+      call spline_to_grid(ntab, eval_y)
+      if (ierr /= 0) return
 ! I/(m r^2) (2/3 for a thin spherical shell).
       do i = 1,ntab
          ii = zone_begin + i - 1
          table_y(i) = moment_of_inertia(ii)/(shell_mass(ii)*radius(ii)**2)
       end do
-      call osplin(eval_x,eq_reduced_moment_of_inertia,table_x,table_y,ntab,chi_grid%num_eq_points)
+      call spline_to_grid(ntab, eq_reduced_moment_of_inertia)
+      if (ierr /= 0) return
 ! j.
       do i = 1,ntab
          ii = zone_begin + i - 1
          table_y(i) = specific_angular_momentum(ii)
       end do
-      call osplin(eval_x,chi_grid%eq_angular_momentum,table_x,table_y,ntab,chi_grid%num_eq_points)
+      call spline_to_grid(ntab, chi_grid%eq_angular_momentum)
+      if (ierr /= 0) return
 ! omega.
       do i = 1,ntab
          ii = zone_begin + i - 1
          table_y(i) = omega(ii)
       end do
-      call osplin(eval_x,chi_grid%eq_omega,table_x,table_y,ntab,chi_grid%num_eq_points)
+      call spline_to_grid(ntab, chi_grid%eq_omega)
 end subroutine interpolate_to_grid_centers
 
 ! ---------------------------------------------------------------
@@ -222,10 +244,12 @@ subroutine edge_coefficients()
            chi_grid%num_eq_points, table_x, eval_x, ntabb)
 ! The angular momentum diffusion coefficient.
       call interp_edge_coeff(am_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
-           chi_grid%num_eq_points, eval_x, table_x, table_y, chi_grid%eq_am_diffusion_coeff)
+           chi_grid%num_eq_points, eval_x, table_x, table_y, chi_grid%eq_am_diffusion_coeff, ierr)
+      if (ierr /= 0) return
 ! The composition (mixing) diffusion coefficient.
       call interp_edge_coeff(mixing_diffusion_coeff, zone_begin, zone_end, ntab, ntabb, &
-           chi_grid%num_eq_points, eval_x, table_x, table_y, chi_grid%eq_mixing_diffusion_coeff)
+           chi_grid%num_eq_points, eval_x, table_x, table_y, chi_grid%eq_mixing_diffusion_coeff, ierr)
+      if (ierr /= 0) return
 ! (commented out with the advection-diffusion transport, 2026-10-12:
 ! the advective and diffusive
 ! coefficients rot_scr%am_advective_coeff and am_diffusive_coeff: the
@@ -261,7 +285,8 @@ subroutine apply_jacobians()
       call dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
            enclosed_mass, sub_physics%eps_plus_neu_grav, luminosity_lsun(num_zones), zone_begin, &
            ntab, chi_grid%num_eq_points, chi_grid%chi, eval_x, table_x, &
-           table_y, eval_y)
+           table_y, eval_y, ierr)
+      if (ierr /= 0) return
 ! The composition coefficient times rho r^2 dchi/dr.
       call multiply_by_exp10(chi_grid%eq_mixing_diffusion_coeff, eval_y, chi_grid%num_eq_points)
 ! log10(rho r^4 (I/m r^2) dchi/dr) = log10(rho r^2 dchi/dr) + log10(I/m)
@@ -270,7 +295,8 @@ subroutine apply_jacobians()
          ii = zone_begin + i - 1
          table_y(i) = table_y(i)  + log10(moment_of_inertia(ii)/shell_mass(ii))
       end do
-      call osplin(eval_x,eval_y,table_x,table_y,ntab,chi_grid%num_eq_points)
+      call spline_to_grid(ntab, eval_y)
+      if (ierr /= 0) return
 ! The angular momentum coefficient times rho r^4 (I/m r^2) dchi/dr.
       call multiply_by_exp10(chi_grid%eq_am_diffusion_coeff, eval_y, chi_grid%num_eq_points)
 ! (commented out: the advection-diffusion coefficients by the same factor)
@@ -308,12 +334,14 @@ end subroutine am_transport_grid
 ! and the grid points in chi.
 ! In/out:
 !   specific_angular_momentum : j at the model zones (cm^2/s).
+! ierr: an osplin failure's code, after a report; j is then unchanged.
 subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_momentum, shell_mass, &
      zone_begin, zone_end, convective_flag, num_points, &
-     total_delta_angular_momentum, specific_angular_momentum)
+     total_delta_angular_momentum, specific_angular_momentum, ierr)
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json
       use numerics_lib, only: osplin
+      use rotation_messages, only: rotation_numerics_report
       implicit none
       type(transport_grid_state), intent(in) :: chi_grid
 
@@ -324,6 +352,7 @@ subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_m
       integer, intent(in) :: num_points
       double precision, intent(in) :: total_delta_angular_momentum
       double precision, intent(inout) :: specific_angular_momentum(json)
+      integer, intent(out) :: ierr
       integer :: i0, i1, i, nmod, ii
       double precision :: sumjmod, sumdjmod, test, val, ratio
 ! The spline tables: table_x/table_y at the grid points, eval_x/eval_y
@@ -354,7 +383,11 @@ subroutine equal_grid_to_model(chi_grid, eq_delta_angular_momentum, eq_angular_m
          table_x(i) = chi_grid%eq_chi(i)
          table_y(i) = eq_delta_angular_momentum(i)/eq_angular_momentum(i)
       end do
-      call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, nmod)
+      call osplin(eval_x, eval_y, table_x, table_y, chi_grid%num_eq_points, nmod, ierr)
+      if (ierr /= 0) then
+         call rotation_numerics_report('equal_grid_to_model: osplin', ierr)
+         return
+      end if
 ! j -> j (1 + dJ/J) over i0..i1, summing the zones' J (sumjmod) and its
 ! change (sumdjmod) on the way; the zones beyond the region take the
 ! change at its end zone.

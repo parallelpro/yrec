@@ -10,7 +10,10 @@
 ! (dchi_dr_jacobian, multiply_by_exp10). The spline tables (table_x,
 ! table_y) and evaluation points (eval_x, eval_y) are the callers' own
 ! arrays, passed in as arguments. All interpolation uses osplin, the
-! shape-preserving (osculatory) quadratic spline of numerics_lib.
+! shape-preserving (osculatory) quadratic spline of numerics_lib; a
+! failure of it (a table of fewer than three points, decreasing grid
+! points) is reported (rotation_numerics_report) and returned in ierr,
+! osplin's code.
 !
 ! The blocks that differ between the two callers stay with them: the
 ! zone masses (am_transport_grid builds the moment of inertia and
@@ -66,14 +69,16 @@ end subroutine edge_grid_abscissae
 !   table_y(ntabb) = coeff(zone_end).
 ! eq_coeff(i) is the value at the edge between grid points i-1 and i.
 subroutine interp_edge_coeff(coeff, zone_begin, zone_end, ntab, ntabb, num_eq_points, &
-     eval_x, table_x, table_y, eq_coeff)
+     eval_x, table_x, table_y, eq_coeff, ierr)
       use star_info_lib, only: json
       use numerics_lib, only: osplin
+      use rotation_messages, only: rotation_numerics_report
       implicit none
       double precision, intent(in) :: coeff(json), eval_x(json), table_x(json)
       integer, intent(in) :: zone_begin, zone_end, ntab, ntabb, num_eq_points
       double precision, intent(inout) :: table_y(json)
       double precision, intent(out) :: eq_coeff(json)
+      integer, intent(out) :: ierr
       integer :: i, ii
 
       table_y(1) = coeff(zone_begin+1)
@@ -82,7 +87,8 @@ subroutine interp_edge_coeff(coeff, zone_begin, zone_end, ntab, ntabb, num_eq_po
          table_y(i) = coeff(ii)
       end do
       table_y(ntabb) = coeff(zone_end)
-      call osplin(eval_x,eq_coeff,table_x,table_y,ntabb,num_eq_points)
+      call osplin(eval_x,eq_coeff,table_x,table_y,ntabb,num_eq_points,ierr)
+      if (ierr /= 0) call rotation_numerics_report('interp_edge_coeff: osplin', ierr)
 end subroutine interp_edge_coeff
 
 ! The Jacobian factor of a diffusion coefficient on the chi grid,
@@ -95,10 +101,11 @@ end subroutine interp_edge_coeff
 ! L_tot of chi.
 subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
      enclosed_mass, epsm, surface_luminosity_lsun, zone_begin, ntab, num_eq_points, &
-     chi, eval_x, table_x, table_y, eval_y)
+     chi, eval_x, table_x, table_y, eval_y, ierr)
       use star_info_lib, only: json
       use physical_constants
       use numerics_lib, only: osplin
+      use rotation_messages, only: rotation_numerics_report
       use math_lib
       implicit none
       double precision, intent(in) :: log_density(json), log_radius(json), &
@@ -107,6 +114,7 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
       integer, intent(in) :: zone_begin, ntab, num_eq_points
       double precision, intent(inout) :: table_x(json), table_y(json)
       double precision, intent(out) :: eval_y(json)
+      integer, intent(out) :: ierr
       integer :: i, ii
       double precision :: mass_scale, luminosity_scale, pressure_scale, &
            four_pi_rho_r2, dchi_dr
@@ -133,7 +141,8 @@ subroutine dchi_dr_jacobian(log_density, log_radius, log_mass, log_pressure, &
               2.0d0*log_radius(ii)))/(ln10*pressure_scale)
          table_y(i) = log_density(ii) + log10(dchi_dr) + 2.0d0*log_radius(ii)
       end do
-      call osplin(eval_x,eval_y,table_x,table_y,ntab,num_eq_points)
+      call osplin(eval_x,eval_y,table_x,table_y,ntab,num_eq_points,ierr)
+      if (ierr /= 0) call rotation_numerics_report('dchi_dr_jacobian: osplin', ierr)
 end subroutine dchi_dr_jacobian
 
 ! coeff(i) = coeff(i) 10**log_factor(i) at the num_eq_points grid points:
@@ -166,11 +175,12 @@ end subroutine multiply_by_exp10
 ! eq_chi, equally spaced (eq_chi_spacing) from chi(1) to the last chi;
 ! and eq_enclosed_mass, the enclosed mass (g) at the eq_chi points.
 subroutine equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, zone_begin, &
-     zone_end, num_zones)
+     zone_end, num_zones, ierr)
       use rotation_scratch_lib, only: transport_grid_state
       use star_info_lib, only: json
       use physical_constants
       use numerics_lib, only: osplin
+      use rotation_messages, only: rotation_numerics_report
       use math_lib
       implicit none
       type(transport_grid_state), intent(inout) :: chi_grid
@@ -183,6 +193,7 @@ subroutine equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, 
       double precision, intent(in) :: luminosity_lsun(json), log_pressure(json), &
            log_mass(json)
       integer, intent(in) :: zone_begin, zone_end, num_zones
+      integer, intent(out) :: ierr
 
       double precision :: log_mass_table(json)
       integer :: num_points_in_range, zone_index, range_index
@@ -216,7 +227,12 @@ subroutine equal_spaced_grid(chi_grid, luminosity_lsun, log_pressure, log_mass, 
       do zone_index = 1, num_points_in_range
          log_mass_table(zone_index) = log_mass(zone_begin+zone_index-1)
       end do
-      call osplin(chi_grid%eq_chi,chi_grid%eq_enclosed_mass,chi_grid%chi,log_mass_table,num_points_in_range,chi_grid%num_eq_points)
+      call osplin(chi_grid%eq_chi,chi_grid%eq_enclosed_mass,chi_grid%chi,log_mass_table, &
+           num_points_in_range,chi_grid%num_eq_points,ierr)
+      if (ierr /= 0) then
+         call rotation_numerics_report('equal_spaced_grid: osplin', ierr)
+         return
+      end if
 ! From log10 M to M (g).
       do zone_index = 1, chi_grid%num_eq_points
          chi_grid%eq_enclosed_mass(zone_index) = exp(ln10*chi_grid%eq_enclosed_mass(zone_index))

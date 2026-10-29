@@ -165,7 +165,7 @@ program test_rotation_kernels
       use am_transport_coefficients, only: am_diffusion_coeffs
       use am_transport_coefficients, only: solve_angular_momentum_transport
       use rotational_mixing, only: composition_diffusion_coeffs, diffuse_composition_driver
-      use numerics_lib, only: solve_tridiagonal
+      use numerics_lib, only: solve_tridiagonal, numerics_bad_input
       use magnetic_braking, only: compute_solid_body_braking, wind_conditions
       use magnetic_braking, only: brake_convection_zone, outer_point_wind_terms
       use magnetic_braking, only: derive_wind_law, wind_law_inputs, wind_law_coefficients
@@ -923,7 +923,7 @@ subroutine grid_checks()
            d_am(json), d_mix(json), dj(json), jm1(json), spacing, region_mass, &
            grid_j, s_loss, err, ratio_cz, ratio_first
       logical :: conv(json)
-      integer :: k
+      integer :: k, ierr, num_eq_points
       rotation_settings%chi_mass_scale = 8.0d-2
       rotation_settings%chi_luminosity_scale = 2.0d-2
       rotation_settings%chi_pressure_scale = 5.0d-2
@@ -942,7 +942,7 @@ subroutine grid_checks()
          sub_physics%eps_plus_neu_grav(k) = 1.0d0
       end do
 ! the chi grid
-      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n, ierr)
       spacing = chi_grid%eq_chi_spacing
       err = 0.0d0
       do k = 2, chi_grid%num_eq_points
@@ -953,7 +953,7 @@ subroutine grid_checks()
       call report("grids: chi points equally spaced, end to end", err, 1.0d-12)
 ! the momentum grid's zone masses and J
       call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
-           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, ierr)
       region_mass = 0.5d0*(m(ze) + m(ze+1)) - 0.5d0*(m(zb) + m(zb-1)) + sum(dm(1:zb-1))
       call report("grids: the grid masses add up to the region's", &
            abs(sum(chi_grid%eq_mass(1:chi_grid%num_eq_points)) - region_mass)/region_mass, 1.0d-13)
@@ -964,7 +964,8 @@ subroutine grid_checks()
       end do
       dj(chi_grid%num_eq_points) = dj(chi_grid%num_eq_points) - sum(dj(1:chi_grid%num_eq_points))
       jm1 = jm
-      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1)
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1, &
+           ierr)
       call report("grids: the map back conserves J in a redistribution", &
            abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)))/sum(jm(1:n)*dm(1:n)), 1.0d-13)
       ratio_first = jm1(zb)/jm(zb)
@@ -975,9 +976,20 @@ subroutine grid_checks()
          dj(k) = s_loss*chi_grid%eq_angular_momentum(k)/grid_j
       end do
       jm1 = jm
-      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, s_loss, jm1)
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, s_loss, jm1, &
+           ierr)
       call report("grids: the map back takes a loss to 1e-5", &
            abs(sum((jm1(1:n) - jm(1:n))*dm(1:n)) - s_loss)/abs(s_loss), 1.0d-5)
+! a spline failure (a grid of two points, too few for osplin) returns
+! osplin's code, after its report, and leaves j as it was
+      num_eq_points = chi_grid%num_eq_points
+      chi_grid%num_eq_points = 2
+      jm1 = jm
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, s_loss, jm1, &
+           ierr)
+      chi_grid%num_eq_points = num_eq_points
+      call report("grids: a spline failure is osplin's code, j unchanged", &
+           merge(0.0d0, 1.0d0, ierr == numerics_bad_input .and. all(jm1(1:n) == jm(1:n))), 0.0d0)
 end subroutine grid_checks
 
 ! ---------------------------------------------------------------
@@ -1011,16 +1023,17 @@ subroutine radiative_end_checks()
          conv(k) = k < zb
          sub_physics%eps_plus_neu_grav(k) = 1.0d0
       end do
-      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n, ierr)
       call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
-           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, ierr)
 ! a redistribution: the convection zone below takes the first change
       do k = 1, chi_grid%num_eq_points
          dj(k) = 1.0d-3*chi_grid%eq_angular_momentum(k)*sin(6.0d0*dble(k)/dble(chi_grid%num_eq_points))
       end do
       dj(chi_grid%num_eq_points) = dj(chi_grid%num_eq_points) - sum(dj(1:chi_grid%num_eq_points))
       jm1 = jm
-      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1)
+      call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zb, ze, conv, n, 0.0d0, jm1, &
+           ierr)
       ratio_cz = maxval(abs(jm1(1:zb-1)/jm(1:zb-1) - jm1(zb)/jm(zb)))
       if (abs(jm1(1)/jm(1) - 1.0d0) < 1.0d-8) ratio_cz = 1.0d0
       call report("grids: below a radiative first zone, the CZ takes it", ratio_cz, 1.0d-15)
@@ -1076,9 +1089,9 @@ subroutine region_transport_checks()
          sub_physics%eps_plus_neu_grav(k) = 1.0d0
       end do
       j0 = sum(jm(1:n)*dm(1:n))
-      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n)
+      call equal_spaced_grid(chi_grid, lum, lp, log_m, zb, ze, n, ierr)
       call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
-           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, ierr)
 ! no wind
       jm1 = jm
       call diffuse_region_angular_momentum(chi_grid, 1.0d13, 0.0d0, 0.0d0, .false., &
@@ -1102,7 +1115,7 @@ subroutine region_transport_checks()
          jm(k) = w(k)*inertia(k)/dm(k)
       end do
       call am_transport_grid(chi_grid, sub_physics, d_am, d_mix, log_rho, inertia, jm, lum, lp, &
-           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w)
+           log_r, r, log_m, m, dm, log_m(n), zb, ze, conv, n, w, ierr)
       jm1 = jm
       call diffuse_region_angular_momentum(chi_grid, 1.0d13, 0.0d0, 0.0d0, .false., &
            dm, zb, ze, conv, n, jm1, ierr)

@@ -57,6 +57,8 @@ grids: the grid masses add up to the region's            0.00E+00  ok
 grids: the map back conserves J in a redistribution      5.15E-17  ok
 grids: the convection zone below takes the first change  2.22E-16  ok
 grids: the map back takes a loss to 1e-5                 5.52E-15  ok
+ equal_grid_to_model: osplin: input out of range
+grids: a spline failure is osplin's code, j unchanged    0.00E+00  ok
 grids: below a radiative first zone, the CZ takes it     2.22E-16  ok
 mixing: below a radiative first zone, the CZ takes it    0.00E+00  ok
 region: J conserved without a wind, j moves              1.11E-17  ok

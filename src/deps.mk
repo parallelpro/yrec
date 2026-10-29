@@ -446,12 +446,12 @@ rotation/magnetic_braking.o: composition_layout.mod math_lib.mod physical_consta
 rotation/mid_timestep_model.o: am_regions.mod burn_step.mod element_diffusion_lib.mod io_units.mod math_lib.mod net_lib.mod omega_profile.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod run_log.mod star_info_lib.mod
 rotation/omega_profile.o: composition_layout.mod math_lib.mod moments_of_inertia.mod physical_constants.mod rotating_shape.mod rotation_configuration.mod
 rotation/rotation_configuration.o: composition_layout.mod transport_mechanism_layout.mod
-rotation/rotation_messages.o: io_units.mod run_log.mod
+rotation/rotation_messages.o: io_units.mod numerics_lib.mod run_log.mod
 rotation/rotation_scratch_lib.o: rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
-rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/am_grid.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/am_transport_coefficients.o: composition_layout.mod numerics_lib.mod rotation_configuration.mod rotation_messages.mod
 rotation/seculr/circulation.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod transport_mechanism_layout.mod transport_mechanisms.mod
-rotation/seculr/equal_grid.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/equal_grid.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/instability_velocities.o: math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/seculr/region_transport.o: am_grid.mod am_transport_coefficients.mod composition_layout.mod rotation_scratch_lib.mod
 rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod transport_regions.mod

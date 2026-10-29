@@ -34,7 +34,8 @@ contains
 ! I (omega' - omega), is interpolated back as a fractional change of j/m
 ! to the region's zones (and an adjoining convection zone), rescaled so
 ! that the total change is the grid's (equal_grid_to_model), into
-! specific_angular_momentum. A zero pivot returns ierr = 1.
+! specific_angular_momentum. A zero pivot returns the solve's ierr
+! (numerics_singular), a spline failure osplin's, each after a report.
 subroutine diffuse_region_angular_momentum(chi_grid, sub_timestep, &
      wind_loss_explicit, wind_loss_implicit, fix_omega_at_surface, &
      shell_mass, zone_begin, zone_end, am_transport_convective_flag, &
@@ -69,7 +70,7 @@ subroutine diffuse_region_angular_momentum(chi_grid, sub_timestep, &
       if (ierr /= 0) return
       call equal_grid_to_model(chi_grid, delta_angular_momentum, chi_grid%eq_angular_momentum, &
            shell_mass, zone_begin, zone_end, am_transport_convective_flag, &
-           num_zones, sum_delta_angular_momentum, specific_angular_momentum)
+           num_zones, sum_delta_angular_momentum, specific_angular_momentum, ierr)
 end subroutine diffuse_region_angular_momentum
 
 end module region_transport

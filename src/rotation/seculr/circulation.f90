@@ -528,8 +528,8 @@ subroutine compute_quadrupole(stab, &
       use star_info_lib, only: json
       use physical_constants
       use math_lib
-      use numerics_lib, only: solve_tridiagonal, numerics_status_text
-      use rotation_messages, only: rotation_report, message_length
+      use numerics_lib, only: solve_tridiagonal
+      use rotation_messages, only: rotation_numerics_report
       implicit none
       type(stability_state), intent(inout) :: stab
 
@@ -549,7 +549,6 @@ subroutine compute_quadrupole(stab, &
       double precision :: drho_dr
       double precision :: dr_plus, dr_minus, d_density_omega2
       double precision :: radius_plus, outer_boundary_ratio
-      character(len=message_length) :: line
 
       ierr = 0
       do zone_index = 1,num_zones
@@ -621,8 +620,7 @@ subroutine compute_quadrupole(stab, &
 ! it, in the same order of operations).
       call solve_tridiagonal(sub_diag, diag, super_diag, rhs, num_zones, solution, ierr)
       if (ierr /= 0) then
-         line = ' compute_quadrupole: '//numerics_status_text(ierr)
-         call rotation_report([line])
+         call rotation_numerics_report('compute_quadrupole', ierr)
          return
       end if
       do zone_index = 1,num_zones

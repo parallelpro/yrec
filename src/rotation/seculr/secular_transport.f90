@@ -507,7 +507,8 @@ subroutine transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid,
               sub_model%moment_of_inertia, specific_angular_momentum_saved, &
               sub_model%luminosity_lsun, sub_model%log_pressure, sub_model%log_radius, &
               stab%radius, s%log_mass, s%m, s%dm, s%log_total_mass, zone_begin, zone_end, &
-              sub_model%am_transport_convective_flag, s%nz, omega_start)
+              sub_model%am_transport_convective_flag, s%nz, omega_start, ierr)
+         if (ierr /= 0) return
          if (chi_grid%single_interface) then
             if (scan_start_zone <= zone_max) then
                cycle region_loop

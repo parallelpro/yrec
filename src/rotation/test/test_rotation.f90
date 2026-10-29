@@ -531,12 +531,13 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          end do
          call am_transport_grid(chi_grid, sub_physics, &
               d_am, d_mix, log_rho, inertia, jm, lum, log_p, log_r, radius, &
-              log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w)
+              log_m, m, dm, log10(m(n)), zbeg, zend, convective, n, w, ierr)
          call am_diffusion_coeffs(chi_grid%eq_am_diffusion_coeff, chi_grid%eq_chi_spacing, 3.0d13, chi_grid%eq_moment_of_inertia, chi_grid%eq_angular_momentum, chi_grid%eq_omega, chi_grid%num_eq_points, &
               0.0d0, 0.0d0, .false., sub_diag, diag, super_diag, rhs, wind_term)
          call solve_angular_momentum_transport(chi_grid%num_eq_points, chi_grid%eq_moment_of_inertia, dj, sum_dj, sub_diag, diag, &
               super_diag, rhs, solution, wind_term, ierr)
-         call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zbeg, zend, convective, n, sum_dj, jm)
+         call equal_grid_to_model(chi_grid, dj, chi_grid%eq_angular_momentum, dm, zbeg, zend, convective, n, &
+              sum_dj, jm, ierr)
          mixed_ok = .false.
          call diffuse_composition_driver(chi_grid, sub_physics, &
               3.0d13, d_mix, log_rho, lum, log_p, &

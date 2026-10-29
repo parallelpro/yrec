@@ -181,9 +181,8 @@ end subroutine am_diffusion_coeffs
 subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, super_diag, rhs, &
      solution, dj_n_seed, ierr)
       use composition_layout, only: json
-      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution, &
-           numerics_status_text
-      use rotation_messages, only: rotation_report, message_length
+      use numerics_lib, only: tridiagonal_forward_sweep, tridiagonal_back_substitution
+      use rotation_messages, only: rotation_numerics_report
 
       integer, intent(in) :: n
       double precision, intent(in) :: ei(json)
@@ -203,7 +202,6 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
       double precision :: rhs_orig(json)
       integer :: i, j
       double precision :: fj
-      character(len=message_length) :: line
 
       ierr = 0
       dj(n) = dj_n_seed
@@ -213,8 +211,7 @@ subroutine solve_angular_momentum_transport(n, ei, dj, sumdj, sub_diag, diag, su
       call tridiagonal_forward_sweep(sub_diag, diag, super_diag, rhs, n, solution, &
            gamma_elim, ierr)
       if (ierr /= 0) then
-         line = ' solve_angular_momentum_transport: '//numerics_status_text(ierr)
-         call rotation_report([line])
+         call rotation_numerics_report('solve_angular_momentum_transport', ierr)
          return
       end if
       dj(n) = dj(n)+(solution(n)-rhs_orig(n))*ei(n)
