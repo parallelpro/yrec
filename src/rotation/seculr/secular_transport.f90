@@ -251,11 +251,14 @@ end subroutine apply_secular_transport
 ! many non-rotating decks that set it run unaffected; here, where it
 ! would act, the run stops (ierr = 1).
 subroutine refuse_advection_diffusion(ierr)
+      use rotation_messages, only: rotation_report, message_length
       integer, intent(inout) :: ierr
+      character(len=message_length) :: lines(1)
       if (rotation_settings%use_diffusion_advection_transport) then
-         write(*,'(a)') 'apply_secular_transport: use_diffusion_advection_transport' &
+         lines(1) = 'apply_secular_transport: use_diffusion_advection_transport' &
               //' (LDIFAD) is not available -- the advection-diffusion' &
               //' transport is commented out. Set it .false.'
+         call rotation_report(lines)
          ierr = 1
       end if
 end subroutine refuse_advection_diffusion

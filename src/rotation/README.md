@@ -25,6 +25,7 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `am_regions` | `am_convective_regions`: the convection zones, with their overshoot, for angular momentum transport. |
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
 | `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form; `outer_point_wind_terms`, the wind's boundary terms for a transport region that reaches the surface. Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
+| `rotation_messages` | `rotation_report` and `rotation_note`, rotation's two kinds of message (§3). |
 | `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`cz_rotation_law_exponent` for `walpcz`, `wind_constant` for `constfactor`, ...). |
 | `rotation_scratch_lib` | The types of the working state, one record per stage: `sub_model` (the structure interpolated to the sub-step, its convection zones, composition snapshot and starting ω), `sub_physics` (the physics interpolated to it), `stab` (the structure at the interfaces and the stability coefficients), `chi_grid` (the transport region's equally spaced grid) and `circ_scr` (the mechanisms' previous velocities). `evolve_angular_momentum` allocates them for the step and passes each routine the records it uses; the module declares no instance. Nothing in them outlives a step; what does (the last sub-step's omega, `star%omega_substep`) is on the star. |
 | **shape/** | |
@@ -70,7 +71,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - CGS, and log is log₁₀. ω is in rad/s, and `j_rot` is the specific angular momentum. Zones run from the center out.
 - Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one; test it with `solid_body_everywhere()` (`rotation_configuration`).
 - Composition slots come from `composition_layout`: the transport mixes slots 1 to `last_mu_species` (X, Y, Z, He3, which set the μ gradient) at every iteration, the rest up to `num_tracked_species()` once.
-- Failures (a singular solve, a step cut too often) return `ierr`.
+- Failures (a singular solve, a step cut too often) return `ierr`. Messages go through `rotation_messages`: an error or a cut of the sub-step to the terminal and the run log (`rotation_report`), a per-sub-step note (the dynamical-shear interfaces, the transport's convergence) to the terminal, and to the run log too when solver diagnostics are on (`rotation_note`). Kernels print nothing.
 - Kept by decision (2026-10-12): the μ gradient enters the Eddington–Sweet inhibition twice (`inhibit_by_mu_gradient`), so it cuts U_ES by at most a half, as in the F77 code. `docs/HOW_YREC_WORKS.md` §4.6 explains it.
 
 ## 4. Tests and extending

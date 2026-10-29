@@ -390,6 +390,7 @@ subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, lo
       use star_info_lib, only: star_info, json
       use io_units
       use run_log, only: solver_diagnostics
+      use rotation_messages, only: rotation_report, message_length, unwritten_line
       use physical_constants
       use math_lib
       use burn_step, only: burn_network_region, burn_regions
@@ -459,6 +460,7 @@ contains
 ! good once the central X drops below hydrogen_diffusion_floor; with no
 ! surface convection zone the run stops (ierr = 1).
 subroutine settle_helium()
+      character(len=message_length) :: lines(2)
       settling: do
          if (composition(1,1).lt.rotation_settings%hydrogen_diffusion_floor) then
             s%job%diffuse_helium_active=.false.
@@ -466,8 +468,9 @@ subroutine settle_helium()
          end if
 ! Settling needs a surface convection zone.
          if (.not.convective_flag(num_zones)) then
-            write(*,911)
-            write(run_log_unit,911)
+            lines = unwritten_line
+            write(lines,911)
+            call rotation_report(lines)
   911       format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL'/ &
                  'STOPPED IN SUBROUTINE MIX')
             ! a nonzero ierr stops the run

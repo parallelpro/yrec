@@ -34,6 +34,7 @@ module magnetic_braking
       use composition_layout, only: json
       use physical_constants, only: ln10, cgl, log10_radius_from_l_teff
       use math_lib
+      use rotation_messages, only: rotation_report, message_length, unwritten_line
       implicit none
       private
       public :: brake_convection_zone, compute_solid_body_braking, outer_point_wind_terms
@@ -354,6 +355,7 @@ subroutine set_kawaler_law(check_transport, law, ierr)
       type(braking_law), intent(inout) :: law
       integer, intent(out) :: ierr
 
+      character(len=message_length) :: lines(1)
       ierr = 0
       law%matt = .false.
       if (check_transport .and. .not. rotation_settings%instability_transport_active) then
@@ -362,7 +364,9 @@ subroutine set_kawaler_law(check_transport, law, ierr)
          if (law%conditions%turnover_timescale_end > 1.0d0) then
             law%omega_saturation = rotation_settings%wind_saturation_omega/law%conditions%turnover_timescale_end
          else
-            write(*,911)rotation_settings%wind_saturation_omega,law%conditions%turnover_timescale_end
+            lines = unwritten_line
+            write(lines,911)rotation_settings%wind_saturation_omega,law%conditions%turnover_timescale_end
+            call rotation_report(lines)
  911        format('ERROR IN WIND - TAUCZ NOT DEFINED ',1P2E12.3,'STOPPED')
             ierr = 1
             return

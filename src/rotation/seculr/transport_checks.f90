@@ -8,6 +8,8 @@
 ! molecular weight (check_composition).
 module transport_checks
       use rotation_configuration, only: rotation_settings, last_mu_species
+      use rotation_messages, only: rotation_report, rotation_note, message_length, &
+           unwritten_line
       implicit none
       private
       public :: check_angular_momentum, check_composition, check_mixed_species
@@ -104,6 +106,8 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       double precision :: inertia_tolerance, shape_tolerance
       double precision :: max_fractional_dj
       integer :: max_dj_zone
+! a message's lines (rotation_messages)
+      character(len=message_length) :: lines(8)
 
       ierr = 0
 
@@ -127,8 +131,9 @@ subroutine reject_negative_j()
       do zone_index = 1,num_zones
          if(specific_angular_momentum(zone_index).le.0.0d0) then
             cut_count = cut_count + 1
-            write(6,1000) zone_index
-            write(run_log_unit,1000) zone_index
+            lines = unwritten_line
+            write(lines,1000) zone_index
+            call rotation_report(lines)
  1000       format(1x,39('>'),39('<')/5x,'ERROR IN SR CHECKJ'/ &
                     5x,'NEGATIVE J/M ENCOUNTERED IN ZONE',i5, &
                     ' AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED'/ &
@@ -222,10 +227,12 @@ subroutine report_largest_change()
             max_dj_zone = zone_index
          endif
       end do
-      write(*,160)max_fractional_dj,max_dj_zone, &
+      lines = unwritten_line
+      write(lines,160)max_fractional_dj,max_dj_zone, &
            (max_delta_j_by_iter(scan_index), &
            max_delta_j_zone_by_iter(scan_index),scan_index=1, &
            iteration_number)
+      call rotation_note(lines)
   160       format(' MAX D(J/M)/(J/M)',1pe12.3,' AT PT.',i5, &
               ' BY ITERATION'/5(1x,e11.3,i4))
 end subroutine report_largest_change
@@ -386,6 +393,7 @@ subroutine check_species_range(composition, species_begin, species_end, num_zone
       logical, intent(inout) :: converged_flag, redo_flag
       integer, intent(out) :: ierr
       integer :: species_index, zone_index
+      character(len=message_length) :: lines(8)
       ierr = 0
       do species_index = species_begin,species_end
 ! Slot i_metals holds Z, which is not mixed as a unit.
@@ -409,10 +417,10 @@ subroutine check_species_range(composition, species_begin, species_end, num_zone
 ! sub-step stops the run instead.
                cut_count = cut_count + 1
                if(cut_count.gt.max_substep_cuts)then
-                  write(6,1010) species_index,zone_index, &
+                  lines = unwritten_line
+                  write(lines,1010) species_index,zone_index, &
                        composition(species_index,zone_index)
-                  write(run_log_unit,1010) species_index,zone_index, &
-                       composition(species_index,zone_index)
+                  call rotation_report(lines)
  1010 format(1x,39('>'),39('>')/' ERROR IN SR CHECKC'/ &
               ' ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5,' ABUNDANCE ', &
               1pe12.3/' 3 ATTEMPTS AT TIMESTEP CUTTING FAILED'/ &
@@ -424,10 +432,10 @@ subroutine check_species_range(composition, species_begin, species_end, num_zone
                   redo_flag = .true.
                   converged_flag = .false.
                   dt = 0.5d0*dt
-                  write(6,1015)cut_count,species_index,zone_index, &
+                  lines = unwritten_line
+                  write(lines,1015)cut_count,species_index,zone_index, &
                        composition(species_index,zone_index)
-                  write(run_log_unit,1015)cut_count,species_index, &
-                       zone_index,composition(species_index,zone_index)
+                  call rotation_report(lines)
  1015 format(' ERROR IN SR CHECKC'/' TIMESTEP CUT NUMBER ',i2, &
               ' DUE TO ANOMALOUS COMP NUMBER',i2,' IN ZONE',i5, &
               ' ABUNDANCE ',1pe12.3)

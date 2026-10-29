@@ -21,6 +21,7 @@ module transport_mechanisms
       use rotation_scratch_lib, only: stability_state, substep_physics_state
       use instability_velocities, only: compute_eddington_sweet_velocity, &
            inhibit_by_mu_gradient, compute_gsf_velocity, compute_shear_velocities
+      use rotation_messages, only: rotation_note, message_length, unwritten_line
       implicit none
       private
       public :: compute_mechanism_velocity
@@ -54,6 +55,7 @@ subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physic
       logical :: dynamical(json)
       double precision :: dynamical_inner_omega(json)
       integer :: i
+      character(len=message_length) :: lines(1)
 
       select case (slot)
       case (i_mech_eddington_sweet)
@@ -82,7 +84,10 @@ subroutine compute_mechanism_velocity(slot, zone_min, zone_max, stab, sub_physic
 ! The report of each dynamically unstable interface (the kernel is
 ! pure): the zones' omega and the inner omega at the limit.
          do i = zone_min, zone_max
-            if (dynamical(i)) write(6,9911) i, omega(i), omega(i-1), dynamical_inner_omega(i)
+            if (.not. dynamical(i)) cycle
+            lines = unwritten_line
+            write(lines,9911) i, omega(i), omega(i-1), dynamical_inner_omega(i)
+            call rotation_note(lines)
          end do
  9911    format(1x,'DYNAMICAL SHEAR-SHELL',i5,1p,' WTOP',e11.3, &
               ' WBOT',e11.3,' LIMIT',e11.3)
