@@ -158,8 +158,11 @@ contains
 ! Prather partial-ionization equation of state: solves the coupled
 ! Saha ionization equations (11 metal/light-element species plus a
 ! 2-stage helium treatment) by Newton iteration on the mean number of
-! free electrons per ion, then (if want_derivatives) differentiates
-! the result with respect to log T and log P. Called from blend_eos.f90
+! free electrons per ion, then differentiates the result with respect
+! to log T and log P: always the first derivatives (dln rho/dln T,
+! dln rho/dln P, cp, grad_ad), the second ones only with
+! want_derivatives and not in_atmosphere (otherwise they keep the
+! caller's values). Called from blend_eos.f90
 ! whenever the temperature is below the ionization cutoff, either
 ! directly (Prather EOS) or ahead of the SCV table lookup (to get
 ! derivatives SCV itself does not supply).
@@ -205,9 +208,8 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
       if(s%nz0 >= 7) r%ion_fraction(1) = s%species_ion_fraction(7)
       r%ion_fraction(2) = s%helium_ion_fraction_1
       r%ion_fraction(3) = s%helium_ion_fraction_2
-      if (in_atmosphere) return
       call differentiate_saha_solution(s, r, d)
-      if (.not. want_derivatives) return
+      if (.not. want_derivatives .or. in_atmosphere) return
       call differentiate_saha_solution_twice(s, d, r)
 end subroutine compute_saha_eos
 

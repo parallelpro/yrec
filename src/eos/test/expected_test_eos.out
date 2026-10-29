@@ -603,7 +603,7 @@ ok   continuity: rho and grad_ad where the OPAL 2006 edge ramp reaches OPAL
 ok   continuity: rho and grad_ad at the OPAL 2006 table's edge (the Yale/SCV result beyond)
 # test_eos: configuration yale_only
 # test_eos: configuration scv_only
-ok   in_atmosphere: the density, beta and ionization fractions of a full evaluation
+ok   in_atmosphere: the density, ionization and first derivatives of a full evaluation
 # test_eos: configuration scv_only
 ok   envelope tables: rebuilt at a new composition, the SCV table agrees with SCV's general path
 # test_eos: configuration yale_only

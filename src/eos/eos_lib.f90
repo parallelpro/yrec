@@ -56,7 +56,8 @@ contains
 ! The EOS at (log T, log P, X, Z), in res (see eos_results for what each
 ! field is, and which fields are also inputs). want_derivatives asks for
 ! the six second derivatives; in_atmosphere skips the Saha solver's
-! derivatives; saha_state carries that solver's state between calls.
+! second derivatives (the first ones are always computed); saha_state
+! carries that solver's state between calls.
 ! composition_at_zone (a zone's composition, star%xa layout) sets the
 ! Debye-Hueckel composition; every star-layer call passes it (omitted, as
 ! by the unit tests, the previous call's composition stays). ierr /= 0
