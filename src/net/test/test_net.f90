@@ -604,10 +604,9 @@ contains
 ! value and |analytic/numerical - 1| of d eps/d ln T and d eps/d ln rho
 ! (centred differences of 1e-4 dex), at log T 8.1 (photo and plasma
 ! neutrinos) and 8.6 (pair too, T9 >= 0.2), log rho 4 and 5: Beaudet,
-! Petrosian & Salpeter (the default) and Itoh et al. The loss is
-! negative. (sneut's recombination term takes d nu-term/d nu without
-! the -c00^2 factor, which puts its density derivative 1.3e-3 off at
-! log T 8.6; hence the Itoh tolerance.)
+! Petrosian & Salpeter (the default) and Itoh et al. (to 1e-5: sneut's
+! bremsstrahlung derivative is good to about 2e-6 of the total there).
+! The loss is negative.
       subroutine check_thermal_neutrino_losses()
          integer, parameter :: npoint = 2
          double precision, parameter :: logt(npoint) = [8.1d0, 8.6d0], &
@@ -639,8 +638,8 @@ contains
          end do
          call report("BPS neutrino loss negative, derivatives vs centred differences (1e-6)", &
               negative(1) .and. worst(1) < 1.0d-6)
-         call report("Itoh neutrino loss negative, derivatives vs centred differences (2e-3)", &
-              negative(2) .and. worst(2) < 2.0d-3)
+         call report("Itoh neutrino loss negative, derivatives vs centred differences (1e-5)", &
+              negative(2) .and. worst(2) < 1.0d-5)
       end subroutine check_thermal_neutrino_losses
 
 ! |analytic/numerical - 1| of compute_nuclear_energy's d eps/d ln T and

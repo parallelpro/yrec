@@ -1333,8 +1333,11 @@ if (nu >= -20.0d0  .and.  nu <= 10.0d0) then
  zetadz = 2.0d0*zeta*zbari
 
 
+!..c01 is d c00/d nu (2026-10: it was the polynomial's derivative without
+!..the factor -c00**2, which put the recombination derivatives 28% off
+!..where nu >= 0)
  c00    = 1.0d0/(1.0d0 + f1*nu + f2*nu2 + f3*nu3)
- c01    = f1 + f2*2.0d0*nu + f3*3.0d0*nu2
+ c01    = -c00*c00*(f1 + f2*2.0d0*nu + f3*3.0d0*nu2)
  dum    = zeta*c00
  dumdt  = zetadt*c00 + zeta*c01*nudt
  dumdd  = zeta*c01*nudd
