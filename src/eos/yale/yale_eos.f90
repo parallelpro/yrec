@@ -29,8 +29,10 @@ module yale_eos
 
 ! Single-precision literals, as in eqsaha.f: widened to double, they
 ! differ from the correctly rounded doubles in the last bits. The
-! three saved values are the Saha solver's starting guesses (E, x1, x2),
-! the previous call's solution.
+! three saved values are the Saha solver's starting guesses (E, x1, x2):
+! module state, the previous call's solution, whoever made it (so a
+! result depends on the call before it within the solver's tolerance,
+! 1e-9 in E).
       real(dp), parameter :: ionization_temp(11) = [real(dp) :: 59630., &
            69450., 88710., 91330., 94570., 130630., 157800., 158000., 168630., &
            183080., 250200.]
@@ -177,13 +179,13 @@ contains
 ! steps differentiate the converged system: sqet = dE/dln T,
 ! sqep = dE/dln P, sx1qt = dx1/dln T, and so on.
 subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
-     log10_pressure, r, want_derivatives, in_atmosphere, saha_state)
+     log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
 
       real(dp), intent(in) :: saha_mass_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       type(saha_system) :: s
       type(saha_sensitivities) :: d
 
@@ -194,7 +196,7 @@ subroutine compute_saha_eos(saha_mass_fractions, log10_temperature, &
       s%helium_ion_fraction_1 = saha_x1_guess
       s%helium_ion_fraction_2 = saha_x2_guess
       call set_saha_constants(log10_temperature, log10_pressure, r, s)
-      call solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, s, saha_state)
+      call solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, s, saha_iterations)
       saha_e_guess = s%mean_electrons_per_ion
       saha_x1_guess = s%helium_ion_fraction_1
       saha_x2_guess = s%helium_ion_fraction_2
@@ -278,15 +280,15 @@ end subroutine set_saha_constants
 ! solve_saha_system
 !----------------------------------------------------------------------
 ! Newton iteration on E and the He fractions (at most
-! max_saha_iterations; saha_state counts the iterations), from the
-! previous call's solution. The products in the elimination are floored
+! max_saha_iterations, each added to saha_iterations), from the previous
+! call's solution. The products in the elimination are floored
 ! at 1e-38 in magnitude, as on the DEC-20 the code was written for.
 subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_pressure, &
-     s, saha_state)
+     s, saha_iterations)
       real(dp), intent(in) :: saha_mass_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(saha_system), intent(inout) :: s
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       real(dp) :: c12l
       real(dp) :: c13l
       real(dp) :: c21
@@ -314,7 +316,7 @@ subroutine solve_saha_system(saha_mass_fractions, log10_temperature, log10_press
       real(dp) :: temp8
 
       do isaha=1,max_saha_iterations
-         saha_state = saha_state + 1
+         saha_iterations = saha_iterations + 1
          s%ep1 = 1.0d0/(1.0d0 + s%mean_electrons_per_ion)
          s%ep1e = s%ep1/s%mean_electrons_per_ion
          s%ep12 = s%ep1*s%ep1

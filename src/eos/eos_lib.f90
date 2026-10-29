@@ -62,8 +62,10 @@ contains
 ! The EOS at (log T, log P, X, Z), in res (see eos_results for what each
 ! field is, and which fields are also inputs). want_derivatives asks for
 ! the six second derivatives; in_atmosphere skips the Saha solver's
-! second derivatives (the first ones are always computed); saha_state
-! carries that solver's state between calls.
+! second derivatives (the first ones are always computed);
+! saha_iterations is a counter the Saha solver adds its Newton iterations
+! to (eos reads it nowhere; the solver's starting guess is its own
+! module state, the previous call's solution).
 ! composition_at_zone (a zone's composition, star%xa layout) sets the
 ! Debye-Hueckel composition; every star-layer call passes it (omitted, as
 ! by the unit tests, the previous call's composition stays). ierr /= 0
@@ -71,12 +73,12 @@ contains
 ! already in the run log.
 subroutine eos_get(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, res, want_derivatives, &
-     in_atmosphere, saha_state, composition_at_zone, ierr)
+     in_atmosphere, saha_iterations, composition_at_zone, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: res
       logical, intent(in) :: want_derivatives, in_atmosphere
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       real(dp), intent(in), optional :: composition_at_zone(:)
       integer, intent(out) :: ierr
 
@@ -88,7 +90,7 @@ subroutine eos_get(log10_temperature, log10_pressure, &
          if (present(composition_at_zone)) &
               call eos_set_debye_huckel_composition(composition_at_zone)
          call compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, res, want_derivatives, in_atmosphere, saha_state, ierr)
+              metal_fraction, res, want_derivatives, in_atmosphere, saha_iterations, ierr)
       end if
 end subroutine eos_get
 
@@ -137,12 +139,12 @@ end subroutine eos_init
 ! ch. 9). test_eos is its only caller.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
      temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
-     saha_state, ierr)
+     saha_iterations, ierr)
 
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction, &
            temperature_1e6k, density, pressure
       real(dp), intent(out) :: gamma1, adiabatic_gradient
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
 ! ierr as for eos_eval; an out-of-table esac06 lookup is not an error.
       integer, intent(out) :: ierr
 
@@ -184,7 +186,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          log10_temperature = log10(temperature_1e6k*1.0d6)
          log10_pressure = log10(pressure)
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, g, .false., .false., saha_state, jerr)
+              metal_fraction, g, .false., .false., saha_iterations, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return

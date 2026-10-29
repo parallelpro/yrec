@@ -52,14 +52,15 @@ contains
 !   derivatives of grad_ad and cp.
 ! The shifted evaluations start from a copy of r, carry their own
 ! density guess from one to the next (the fully ionized iteration's
-! starting point), use a copy of saha_state, and leave r as it was.
+! starting point), count their Saha iterations in a copy of
+! saha_iterations, and leave r as it was.
 subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-     metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
+     metal_fraction, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
 ! the steps in log T and log P: a hundredth of the tables' approximate
 ! intervals (0.03, 0.15), which worked best empirically
@@ -72,11 +73,11 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
       real(dp) :: shifted_log10_density, shifted_density
       real(dp) :: above(4), below(4)
       real(dp) :: kept(6)
-      integer :: saha_state_local
+      integer :: saha_iterations_local
 
       ierr = 0
       if (want_derivatives .and. eos_settings%use_numerical_derivatives) then
-         saha_state_local = saha_state
+         saha_iterations_local = saha_iterations
          shifted_log10_density = r%log10_density
          shifted_density = r%density
          call evaluate_shifted(log10_temperature + dtl, log10_pressure, above)
@@ -97,14 +98,14 @@ subroutine compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fract
 
       if (want_derivatives .and. .not. eos_settings%use_numerical_derivatives) then
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, r, .true., in_atmosphere, saha_state, ierr)
+              metal_fraction, r, .true., in_atmosphere, saha_iterations, ierr)
       else
 ! no analytic second derivatives: r keeps the ones it has (the
 ! numerical ones, or the caller's)
          kept = [r%dlnrho_dlnt_dt, r%dlnrho_dlnt_dp, r%adiabatic_gradient_dt, &
               r%adiabatic_gradient_dp, r%specific_heat_cp_dt, r%specific_heat_cp_dp]
          call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, r, .false., in_atmosphere, saha_state, ierr)
+              metal_fraction, r, .false., in_atmosphere, saha_iterations, ierr)
          r%dlnrho_dlnt_dt = kept(1)
          r%dlnrho_dlnt_dp = kept(2)
          r%adiabatic_gradient_dt = kept(3)
@@ -124,7 +125,7 @@ subroutine evaluate_shifted(lt, lp, first)
       shifted%log10_density = shifted_log10_density
       shifted%density = shifted_density
       call blend_eos(lt, lp, hydrogen_fraction, metal_fraction, shifted, &
-           .false., in_atmosphere, saha_state_local, ierr)
+           .false., in_atmosphere, saha_iterations_local, ierr)
       shifted_log10_density = shifted%log10_density
       shifted_density = shifted%density
       first = [shifted%dlnrho_dlnt, shifted%dlnrho_dlnp, shifted%specific_heat_cp, &
@@ -154,12 +155,12 @@ end subroutine compute_blended_eos
 !                          table's edge (blend_table_result)
 ! metal_fraction is intent(in): no callee writes it.
 subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-     metal_fraction, r, want_derivatives, in_atmosphere, saha_state, ierr)
+     metal_fraction, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
 ! the Saha ramp: its width below the cutoff in log T, and the scale that
 ! maps it onto a weight from 1 (its foot) to 0 (the cutoff)
@@ -203,7 +204,7 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
          call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, r)
       else
          call compute_saha_eos(saha_mass_fractions, log10_temperature, &
-              log10_pressure, r, want_derivatives, in_atmosphere, saha_state)
+              log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
 ! SCV replaces Saha's density and first derivatives (Saha's second
 ! derivatives stay) where its table covers the point; elsewhere Saha's
 ! result stands
