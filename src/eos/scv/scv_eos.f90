@@ -35,39 +35,41 @@ module scv_eos
       private
       public :: compute_scv_envelope_eos, build_scv_envelope_table, read_scv_tables
 
+! the lowest log10 P_gas (cgs) the tables cover; how far a zone's X or
+! Z may be from the envelope table's for the table to serve it
+      real(dp), parameter :: scv_min_log10_gas_pressure = 4.0d0, &
+           scv_composition_tolerance = 1.0d-5
+
 contains
 
 !----------------------------------------------------------------------
 ! compute_scv_envelope_eos (formerly eqscve)
 !----------------------------------------------------------------------
-! Interpolates in the surface (envelope) abundance table of the
-! Saumon-Chabrier-Van Horn (SCV) equation of state -- i.e. the table
-! built specifically for the envelope composition (X, Z). If the
-! requested composition differs from the one the table was built for
-! (by more than 1e-5 in X or Z), falls back to compute_scv_eos (the
-! general-abundance SCV table). Locates the SCV
-! table cell in (log10 T, log10 Pgas), interpolates density and its
-! logarithmic derivatives, the specific heat, adiabatic gradient, and
-! ionization fractions, with an additional smoothing pass across
-! adjacent table cells (the 4-pt Lagrange interpolation of the
-! original version was replaced with a 4-pt natural spline).
+! The SCV EOS at (log T, P in r) from the envelope table, the table
+! built for the envelope composition: a zone whose X or Z differs from
+! the table's by more than scv_composition_tolerance takes
+! compute_scv_eos (the three tables, any composition) instead. With the
+! cell around (log T, log P_gas) (find_scv_cell; covers false outside
+! the table, r untouched), a 4-point natural spline in log P_gas and then
+! in log T of the table's five columns, smoothed across the next cell
+! within tol_temp_smooth / tol_pressure_smooth of a node; from them the
+! density, the mean weights it implies, dln rho/dln T and dln rho/dln P
+! with radiation, cp and grad_ad; and the ionization fractions from the
+! pure H and He tables (scv_ionization_fractions). A spline failure is
+! ierr (with a message).
 subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
-     metal_fraction, r, valid_table_point, ierr)
-
-      integer, intent(out) :: ierr
-
+     metal_fraction, r, covers, ierr)
+      real(dp), intent(in) :: log10_temperature
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
-real(dp), intent(in) :: log10_temperature
-real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      logical, intent(out) :: valid_table_point
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
       integer :: jerr_gate
 
       integer, parameter :: nts = scv_nt
 
 ! Replace 4-pt Lagrange interpolate with 4-pt natural spline
-      real(dp) :: press_interp_weights(4), &
-           press_interp_weight_derivs(4), temp_interp_weights(4), &
-           temp_interp_weight_derivs(4)
+      real(dp) :: press_interp_weights(4), temp_interp_weights(4)
       real(dp) :: interp_nodes(4), ytab_work(4), &
            spline_second_deriv(4), interp_result(5), temp_grid(4,5), &
            interp_result_temp_shift(5), interp_result_press_shift(5), &
@@ -88,56 +90,25 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp) :: dlnrho_dlnp_gas, dlnrho_dlnt_gas, dlnp_dlnt_gas, &
            dlnp_dlnt, du_dt, &
            radiation_energy_density_term
-      real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
-           xtf_he_e, xtf_hepp, xhp, xhep, xhepp
-      logical :: temp_needs_smoothing, press_needs_smoothing
+      logical :: temp_needs_smoothing, press_needs_smoothing, t_centred, p_centred
       integer :: temp_smooth_direction, press_smooth_direction
-      integer :: i, ii, j, jj, jjj, k
+      integer :: i, ii, j, k
       ierr = 0
-      if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > 1.0d-5 &
-           .or. abs(metal_fraction-tablenv_metal_fraction) > 1.0d-5) then
+      if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > scv_composition_tolerance &
+           .or. abs(metal_fraction-tablenv_metal_fraction) > scv_composition_tolerance) then
          call compute_scv_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
-              r, valid_table_point)
+              r, covers)
          return
       end if
 ! find gas pressure (which is the quantity which is tabulated).
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
-!  check if the point is within the table
-      if (log10_temperature < tlogx(1) .or. &
-           log10_temperature > tlogx(nts) .or. &
-           log10_gas_pressure < 4.0d0) then
-         valid_table_point = .false.   ! Error exit - no valid table entry
-         return
-      end if
-!  find nearest points in temperature.
-      if (log10_temperature < tlogx(idtt+1)) then
-! search down to find nearest 4 table elements
-         do i = idtt, 1, -1
-            if (log10_temperature > tlogx(i)) then
-               ii = i - 1
-               exit
-            end if
-         end do
-         if (i < (1)) then
-         ii = 1
-         end if
-      else
-! search up for nearest 4 table elements
-         do i = idtt+2, nts
-            if (log10_temperature < tlogx(i)) then
-               ii = i - 2
-               exit
-            end if
-         end do
-         if (i > nts) then
-         ii = nts - 3
-         end if
-      end if
-      idtt = max(1,ii)
-      idtt = min(nts-3,idtt)
+! the table's cell around the point (idtt, idp), if it covers it
+      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+           t_centred, p_centred)
+      if (.not. covers) return
       temp_needs_smoothing = .false.
-      if (idtt == ii) then
+      if (t_centred) then
          temp_dist_above = log10_temperature - &
               tlogx(idtt+1)
          temp_dist_below = tlogx(idtt+2) - &
@@ -161,41 +132,8 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
             end if
          end if
       end if
-!  find nearest points in pressure.
-      jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure < tablenv(idtt,jjj+1,iscvenv_log10_p)) then
-! search down to find nearest 4 table elements
-         do j = jjj, 1, -1
-            if (log10_gas_pressure > tablenv(idtt,j,iscvenv_log10_p)) then
-               jj = j - 1
-               exit
-            end if
-         end do
-         if (j < (1)) then
-         jj = 1
-         end if
-         idp = max(1,jj)
-         idp = min(nptsx(idtt)-3, &
-              idp)
-      else
-! search up for nearest 4 table elements.  note search is done at lowest
-! temperature point (with the minimum range in p).
-         do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure < tablenv(idtt,j,iscvenv_log10_p)) then
-               jj = j - 2
-               exit
-            end if
-         end do
-         if (j > (nptsx(idtt))) then
-! point is outside table; return.
-         valid_table_point = .false.   ! Error exit - no valid table entry
-         return
-         end if
-         idp = min(nptsx(idtt)-3, jj)
-      end if
-      valid_table_point = .true.
       press_needs_smoothing = .false.
-      if (idp == jj) then
+      if (p_centred) then
          press_dist_above = log10_gas_pressure - &
               tablenv(idtt,idp+1,iscvenv_log10_p)
          press_dist_below = tablenv(idtt, &
@@ -334,75 +272,17 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       r%adiabatic_gradient = -r%pressure*r%dlnrho_dlnt/r%density/r%temperature/ &
            r%specific_heat_cp
 
-! Get fractions of total particles (including electrons), as follows:
-!   XTF_H2  the fraction that is neutral hydrogen molecules, and
-!   XTF_He  the fraction thst is neutral helium).
-!   These are in column 2 respectively of the SCV hydrogen and
-!   Helium tables.
-! interpolate in pressure at 4 different temperature points.
-
+! the ionization fractions, from the pure H and He tables at the cell
       do k = 1,4
          interp_nodes(k) = tlogx(k+idtt-1)
       end do
-      call interp(interp_nodes, temp_interp_weights, &
-           temp_interp_weight_derivs, log10_temperature)
+      call interp(interp_nodes, temp_interp_weights, x_eval=log10_temperature)
       do k = 1,4
          interp_nodes(k) = tablenv(idtt, &
               idp+k-1,iscvenv_log10_p)
       end do
-      call interp(interp_nodes, press_interp_weights, &
-           press_interp_weight_derivs, log10_gas_pressure)
-
-      do i = 1,4
-         ii = idtt+i-1
-         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
-         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
-      end do
-! interpolate in temperature
-      xtf_h2 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
-      xtf_he = lagrange4(temp_interp_weights, temp_grid(1:4,2))
-
-! Get more fractions of total particles (including electrons), as follows:
-!   XTF_H1  the fraction that is neutral hydrogen atoms, and
-!   XTF_HeP  the fraction thst is singly ionized helium).
-!   These are in column 3 respectively of the SCV hydrogen and
-!   Helium tables.
-! interpolate in pressure at 4 different temperature points.
-      do i = 1,4
-         ii = idtt+i-1
-         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
-         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
-      end do
-! interpolate in temperature
-      xtf_h1 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
-      xtf_hep = lagrange4(temp_interp_weights, temp_grid(1:4,2))
-
-! At tis time we can calculate the ramaining particles fractions using
-! conservation of particles and coservation of charge.  The variable
-! names are:
-!  XTF_H_e  the hycrogen related fraction that is electrons
-!  XTF_HP   the hydrogen ralated fraction that is H+ ions
-!  XTF_He_e the helium related fraction that is electrons
-!  XTF_HePP the helium related fraction that is doubly ionized helium (He++)
-! Particle and charge conservation yields:
-      xtf_h_e = .5d0*(1d0 - xtf_h2 - xtf_h1)
-      xtf_hp = xtf_h_e
-      xtf_he_e = (1d0/3d0)*(2d0 - 2d0*xtf_he - xtf_hep)
-      xtf_hepp = 1d0 - xtf_he - xtf_hep - xtf_he_e
-
-! We are seeking the fraction XHP of hydrogen nuclei that are singly
-! ionized, the fraction XHeP of helium huclei that are singly ionized
-! and XHePP, the helium fraction that is doubly ionized.
-      xhp = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)
-      xhep = xtf_hep / (xtf_he + xtf_hep + xtf_hepp)
-      xhepp = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
-
-! In the same order, these are the desired elements of array ion_fraction(3)
-      r%ion_fraction(1) = xhp
-      r%ion_fraction(2) = xhep
-      r%ion_fraction(3) = xhepp
-
-      return  ! Normal exit. Valid table entry. valid_table_point is true.
+      call interp(interp_nodes, press_interp_weights, x_eval=log10_gas_pressure)
+      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
 
 contains
 
@@ -475,26 +355,22 @@ end subroutine compute_scv_envelope_eos
 !----------------------------------------------------------------------
 ! compute_scv_eos (formerly eqscvg)
 !----------------------------------------------------------------------
-! Interpolates in the general-abundance tables of the Saumon-
-! Chabrier-Van Horn (SCV) equation of state. Given log10(T), the
-! total pressure P, and the composition (X, Z), locates the SCV
-! table cell in (log10 T, log10 Pgas) and interpolates density and
-! its logarithmic derivatives, plus the specific heat, adiabatic
-! gradient, and ionization fractions.
+! The SCV EOS at (log T, P in r) for any (X, Z), from the pure H, He and
+! metal tables: at the cell around (log T, log P_gas) (find_scv_cell;
+! covers false outside the tables, r untouched), 4-point Lagrange
+! interpolation of each table in log P_gas and then log T, combined by
+! the additive-volume rule (with the entropy of mixing) into the
+! density, the mean weights it implies, dln rho/dln T and dln rho/dln P
+! with radiation, cp and grad_ad; and the ionization fractions
+! (scv_ionization_fractions).
 subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
-     metal_fraction, r, valid_table_point)
-
+     metal_fraction, r, covers)
+      real(dp), intent(in) :: log10_temperature
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
-real(dp), intent(in) :: log10_temperature
-real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      logical, intent(out) :: valid_table_point
-
-
-      integer, parameter :: nts = scv_nt
-
+      logical, intent(out) :: covers
       real(dp) :: interp_nodes(4), temp_interp_weights(4), &
-           temp_interp_weight_derivs(4), press_interp_weights(4), &
-           press_interp_weight_derivs(4), temp_work(4,3)
+           temp_interp_weight_derivs(4), press_interp_weights(4), temp_work(4,3)
 
 ! --- locals ---
       real(dp) :: beta_complement, log10_gas_pressure, &
@@ -514,81 +390,14 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
            dlnsmix_dlnt
       real(dp) :: dlns_dlnt_pure_h, dlns_dlnt_pure_he, &
            log10_du_dt_pure_z, du_dt_pure_z
-      real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, &
-           xtf_he_e, xtf_hepp, xhp, xhep, xhepp
-      integer :: i, ii, j, jj, jjj, k
+      logical :: t_centred, p_centred
+      integer :: i, ii, k
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
-! check if the point is within the table
-      if (log10_temperature < tlogx(1) .or. &
-           log10_temperature > tlogx(nts) .or. &
-           log10_gas_pressure < 4.0d0) then
-         valid_table_point = .false.
-         return
-      end if
-! find nearest points in temperature.
-      if (log10_temperature < tlogx(idtt+1)) then
-! search down to find nearest 4 table elements
-         do i = idtt, 1, -1
-            if (log10_temperature > tlogx(i)) then
-               ii = i - 1
-               exit
-            end if
-         end do
-         if (i < (1)) then
-         ii = 1
-         end if
-         idtt = max(1,ii)
-         idtt = min(nts-3,idtt)
-      else
-! search up for nearest 4 table elements
-         do i = idtt+2, nts
-            if (log10_temperature < tlogx(i)) then
-               ii = i - 2
-               exit
-            end if
-         end do
-         if (i > nts) then
-         ii = nts - 3
-         end if
-         idtt = max(1,ii)
-         idtt = min(nts-3,idtt)
-      end if
-! find nearest points in pressure, on the H table's log P_gas grid (the
-! He and Z tables share it; the envelope table, which this path must
-! not need, copies it)
-      jjj = min(nptsx(idtt)-3, idp)
-      if (log10_gas_pressure < tablex(idtt,jjj+1,iscv_log10_p)) then
-! search down to find nearest 4 table elements
-         do j = jjj, 1, -1
-            if (log10_gas_pressure > tablex(idtt,j,iscv_log10_p)) then
-               jj = j - 1
-               exit
-            end if
-         end do
-         if (j < (1)) then
-         jj = 1
-         end if
-         idp = max(1,jj)
-         idp = min(nptsx(idtt)-3, &
-              idp)
-      else
-! search up for nearest 4 table elements.  note search is done at lowest
-! temperature point (with the minimum range in p).
-         do j = jjj+2, nptsx(idtt)
-            if (log10_gas_pressure < tablex(idtt,j,iscv_log10_p)) then
-               jj = j - 2
-               exit
-            end if
-         end do
-         if (j > (nptsx(idtt))) then
-! point is outside table; return.
-         valid_table_point = .false.
-         return
-         end if
-         idp = min(nptsx(idtt)-3, jj)
-      end if
-      valid_table_point = .true.
+! the tables' cell around the point (idtt, idp), if they cover it
+      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+           t_centred, p_centred)
+      if (.not. covers) return
       do k = 1,4
          interp_nodes(k) = tlogx(k+idtt-1)
       end do
@@ -597,8 +406,7 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       do k = 1,4
          interp_nodes(k) = tablex(idtt,idp+k-1,iscv_log10_p)
       end do
-      call interp(interp_nodes, press_interp_weights, &
-           press_interp_weight_derivs, log10_gas_pressure)
+      call interp(interp_nodes, press_interp_weights, x_eval=log10_gas_pressure)
       helium_fraction = 1.0d0 - hydrogen_fraction - metal_fraction
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*r%pressure
@@ -722,64 +530,126 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       r%adiabatic_gradient = -r%pressure*r%dlnrho_dlnt/r%density/r%temperature/ &
            r%specific_heat_cp
 
-! Get fractions of total particles (including electrons), as follows:
-!   XTF_H2  the fraction that is neutral hydrogen molecules, and
-!   XTF_He  the fraction thst is neutral helium).
-!   These are in column 2 respectively of the SCV hydrogen and
-!   Helium tables.
-! interpolate in pressure at 4 different temperature points.
+! the ionization fractions, from the pure H and He tables at the cell
+      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
+
+end subroutine compute_scv_eos
+
+!----------------------------------------------------------------------
+! find_scv_cell
+!----------------------------------------------------------------------
+! The 4 x 4 cell of the SCV tables around (log T, log P_gas): its first
+! row idtt and first column idp, on the H table's grid (tlogx and the log
+! P_gas column, which the He, Z and envelope tables share), searched from
+! the last lookup's cell (it moves to this one). covers is false outside
+! the tables: log T beyond their rows, log P_gas below
+! scv_min_log10_gas_pressure or above the row's highest. t_centred and
+! p_centred tell whether the cell is centred on the point (not clamped
+! at the table's edge), where the envelope lookup smooths across cells.
+subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centred, &
+     p_centred)
+      real(dp), intent(in) :: log10_temperature, log10_gas_pressure
+      logical, intent(out) :: covers, t_centred, p_centred
+      integer, parameter :: nts = scv_nt
+      integer :: i, ii, j, jj, jjj
+
+      covers = .false.
+      t_centred = .false.
+      p_centred = .false.
+      if (log10_temperature < tlogx(1) .or. log10_temperature > tlogx(nts) .or. &
+           log10_gas_pressure < scv_min_log10_gas_pressure) return
+! the rows: down or up from the last cell
+      if (log10_temperature < tlogx(idtt+1)) then
+         do i = idtt, 1, -1
+            if (log10_temperature > tlogx(i)) then
+               ii = i - 1
+               exit
+            end if
+         end do
+         if (i < 1) ii = 1
+      else
+         do i = idtt+2, nts
+            if (log10_temperature < tlogx(i)) then
+               ii = i - 2
+               exit
+            end if
+         end do
+         if (i > nts) ii = nts - 3
+      end if
+      idtt = max(1,ii)
+      idtt = min(nts-3,idtt)
+      t_centred = idtt == ii
+! the columns, at the cell's first row (the one with the fewest points)
+      jjj = min(nptsx(idtt)-3, idp)
+      if (log10_gas_pressure < tablex(idtt,jjj+1,iscv_log10_p)) then
+         do j = jjj, 1, -1
+            if (log10_gas_pressure > tablex(idtt,j,iscv_log10_p)) then
+               jj = j - 1
+               exit
+            end if
+         end do
+         if (j < 1) jj = 1
+         idp = max(1,jj)
+         idp = min(nptsx(idtt)-3, idp)
+      else
+         do j = jjj+2, nptsx(idtt)
+            if (log10_gas_pressure < tablex(idtt,j,iscv_log10_p)) then
+               jj = j - 2
+               exit
+            end if
+         end do
+         if (j > nptsx(idtt)) return
+         idp = min(nptsx(idtt)-3, jj)
+      end if
+      covers = .true.
+      p_centred = idp == jj
+end subroutine find_scv_cell
+
+!----------------------------------------------------------------------
+! scv_ionization_fractions
+!----------------------------------------------------------------------
+! The H+, He+ and He++ fractions of the nuclei at the cell (idtt, idp),
+! with the 4-point weights in T and P: the pure H table's particle
+! fractions of H2 and H (columns 2 and 3) and the pure He table's of
+! neutral He and He+, interpolated in P at the cell's four rows and then
+! in T; the H+, electron and He++ fractions follow from the
+! conservation of particles and of charge.
+subroutine scv_ionization_fractions(temp_interp_weights, press_interp_weights, ion_fraction)
+      real(dp), intent(in) :: temp_interp_weights(4), press_interp_weights(4)
+      real(dp), intent(out) :: ion_fraction(3)
+      real(dp) :: temp_grid(4,2)
+      real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, xtf_he_e, xtf_hepp
+      integer :: i, ii
+
+! the fractions of all particles (electrons included) that are H2 and
+! neutral He (column 2 of the H and He tables)
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
-         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
+         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_neutral))
+         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_neutral))
       end do
-! interpolate in temperature
-      xtf_h2 = lagrange4(temp_interp_weights, temp_work(1:4,1))
-      xtf_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
-
-! Get more fractions of total particles (including electrons), as follows:
-!   XTF_H1  the fraction that is neutral hydrogen atoms, and
-!   XTF_HeP  the fraction thst is singly ionized helium).
-!   These are in column 3 respectively of the SCV hydrogen and
-!   Helium tables.
-! interpolate in pressure at 4 different temperature points.
+      xtf_h2 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_he = lagrange4(temp_interp_weights, temp_grid(1:4,2))
+! that are neutral H and He+ (column 3)
       do i = 1,4
          ii = idtt+i-1
-         temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
-         temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_grid(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_frac_atom_ion1))
+         temp_grid(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_frac_atom_ion1))
       end do
-! interpolate in temperature
-      xtf_h1 = lagrange4(temp_interp_weights, temp_work(1:4,1))
-      xtf_hep = lagrange4(temp_interp_weights, temp_work(1:4,2))
-
-! At tis time we can calculate the ramaining particles fractions using
-! conservation of particles and coservation of charge.  The variable
-! names are:
-!  XTF_H_e  the hycrogen related fraction that is electrons
-!  XTF_HP   the hydrogen ralated fraction that is H+ ions
-!  XTF_He_e the helium related fraction that is electrons
-!  XTF_HePP the helium related fraction that is doubly ionized helium (He++)
-! Particle and charge conservation yields:
+      xtf_h1 = lagrange4(temp_interp_weights, temp_grid(1:4,1))
+      xtf_hep = lagrange4(temp_interp_weights, temp_grid(1:4,2))
+! the hydrogen-related electrons and H+, the helium-related electrons
+! and He++, by the conservation of particles and charge
       xtf_h_e = .5d0*(1d0 - xtf_h2 - xtf_h1)
       xtf_hp = xtf_h_e
       xtf_he_e = (1d0/3d0)*(2d0 - 2d0*xtf_he - xtf_hep)
       xtf_hepp = 1d0 - xtf_he - xtf_hep - xtf_he_e
-
-! We are seeking the fraction XHP of hydrogen nuclei that are singly
-! ionized, the fraction XHeP of helium huclei that are singly ionized
-! and XHePP, the helium fraction that is doubly ionized.
-      xhp = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)
-      xhep = xtf_hep / (xtf_he + xtf_hep + xtf_hepp)
-      xhepp = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
-
-! In the same order, these are the desired elements of array ion_fraction(3)
-      r%ion_fraction(1) = xhp
-      r%ion_fraction(2) = xhep
-      r%ion_fraction(3) = xhepp
-
-      return    ! Primay exit. Success. valid_table_point is true.
-
-end subroutine compute_scv_eos
+! the fractions of the H nuclei that are H+, and of the He nuclei that
+! are He+ and He++
+      ion_fraction(1) = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)
+      ion_fraction(2) = xtf_hep / (xtf_he + xtf_hep + xtf_hepp)
+      ion_fraction(3) = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
+end subroutine scv_ionization_fractions
 
 !----------------------------------------------------------------------
 ! build_scv_envelope_table (formerly setscv)
