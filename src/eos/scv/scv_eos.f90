@@ -17,11 +17,9 @@ module scv_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use scv_eos_tables, only: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
-           iscv_dlns_dlnt, iscv_du_dt, iscv_frac_atom_ion1, iscv_frac_neutral, &
+           iscv_dlns_dlnt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
-           iscvenv_dlncp_dlnt, iscvenv_dlnp_dlnrho, iscvenv_dlnrho_dlnp, &
-           iscvenv_dlnrho_dlnt, iscvenv_dqdt_dlnp, iscvenv_dqdt_dlnt, &
-           iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
+           iscvenv_dlnrho_dlnp, iscvenv_dlnrho_dlnt, iscvenv_du_dt, &
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
@@ -779,13 +777,13 @@ end subroutine compute_scv_eos
 !----------------------------------------------------------------------
 ! Builds the envelope-mixture (X/Y/Z) SCVH-style equation-of-state
 ! table tablenv from the separately tabulated pure-hydrogen (tablex),
-! pure-helium (tabley), and pure-metal (tablez) tables: first
-! completes du/dt and the entropy-of-mixing correction (smix) on the
-! native H/He table grid, then combines the three species by the
-! additive-volume rule at the envelope composition (X=envelope_hydrogen_
-! fraction, Z=envelope_metal_fraction) to fill tablenv columns 1-6,
-! then numerically differentiates those columns (in log T and log P)
-! to fill tablenv columns 7-12.
+! pure-helium (tabley), and pure-metal (tablez) tables: first the
+! entropy of mixing (smix) on the native H/He table grid, then the
+! three species combined by the additive-volume rule at the envelope
+! composition (X = envelope_hydrogen_fraction, Z =
+! envelope_metal_fraction) into tablenv's six columns, which
+! compute_scv_envelope_eos interpolates. The lookups' warm-start cell
+! (idtt, idp) is not touched.
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
 
@@ -794,18 +792,15 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
            envelope_metal_fraction
 
-! interp_x: the three abscissae handed to inter3; interp_f: the three
-! tabulated values combined with the weights inter3 returns.
-      real(dp) :: interp_x(3), interp_f(3), t_interp_weight(3), &
-           t_interp_dweight(3), p_interp_weight(3), p_interp_dweight(3)
+! interp_x: the three abscissae handed to inter3, and its weights and
+! their derivatives
+      real(dp) :: interp_x(3), t_interp_weight(3), t_interp_dweight(3)
       real(dp), parameter :: hydrogen_atom_mass = 1.67357d-24
       real(dp), parameter :: helium_atom_mass = 6.646442d-24
       real(dp), parameter :: boltzmann_constant = 1.380658d-16
 ! --- locals ---
-      integer :: t_idx, p_idx, k_idx, ii, jj
-! log_t_work/log_p_work are reused as scratch across the file: log10
-! scale in the first two loops below, natural-log scale (CLN*...) in
-! the final derivative loop -- this mirrors the original TL/PL reuse.
+      integer :: t_idx, p_idx, k_idx, t_row
+! log10 T and log10 P of the table point, ln T, and T
       real(dp) :: log_t_work, log_p_work, ln_t_work, temp_value
 ! helium_fraction_hhe: Y = 1 - X of the pure H/He mixture used for the
 ! entropy of mixing; helium_fraction_local: Y = 1 - X - Z of the
@@ -824,25 +819,10 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       real(dp) :: dlnrho_dlnp_gas, dlnrho_dlnt_gas
       real(dp) :: entropy_h, entropy_he, entropy_total, &
            dsmix_dlnt, dlns_dlnt, cp_gas, du_dt
-      real(dp) :: dqdt_dlnp, dqdt_dlnt, dlncp_dlnt, &
-           dqut_dlnt, dqut_dlnp, dlnp_dlnrho, ln_rho_value
 
 !  Read in equation of state tables for hydrogen and helium
       do t_idx = 1, nts
          do p_idx = 1, nptsx(t_idx)
-!  Compute du/dt - needed for specific heat derivatives
-!  cp = T (ds/dt)|P = s(d ln s/d ln T)|P (eq 1)
-! and cp = du/dt + P*(d ln rho/d ln T)**2/(rho*T*d ln rho/d ln P) (eq 2)
-! du/dt can be inferred from eq 1 and the second term in eq 2, all of
-! which are contained in the tables.
-            tablex(t_idx,p_idx,iscv_du_dt) = &
-                 exp(ln10*tablex(t_idx,p_idx,iscv_log10_s))*tablex(t_idx,p_idx,iscv_dlns_dlnt) - &
-                 exp(ln10*(tablex(t_idx,p_idx,iscv_log10_p)-tablex(t_idx,p_idx,iscv_log10_rho)- &
-                 tlogx(t_idx)))*tablex(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tablex(t_idx,p_idx,iscv_dlnrho_dlnp)
-            tabley(t_idx,p_idx,iscv_du_dt) = &
-                 exp(ln10*tabley(t_idx,p_idx,iscv_log10_s))*tabley(t_idx,p_idx,iscv_dlns_dlnt) - &
-                 exp(ln10*(tabley(t_idx,p_idx,iscv_log10_p)-tabley(t_idx,p_idx,iscv_log10_rho)- &
-                 tlogx(t_idx)))*tabley(t_idx,p_idx,iscv_dlnrho_dlnt)**2/tabley(t_idx,p_idx,iscv_dlnrho_dlnp)
 ! Compute the entropy of mixing.
 ! Number density of hydrogen and helium
             helium_fraction_hhe = 1.0d0-envelope_hydrogen_fraction
@@ -907,16 +887,16 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       do t_idx=1,nts
          log_t_work = tlogx(t_idx)
          temp_value = (exp10(log_t_work))
-! Temperature interpolation factors
+! the three-row stencil in T for d smix/d ln T (its first row t_row)
         if (t_idx == 1) then
-           idtt = 1
+           t_row = 1
         else if (t_idx == nts) then
-           idtt = t_idx - 2
+           t_row = t_idx - 2
         else
-           idtt = t_idx - 1
+           t_row = t_idx - 1
         end if
         do k_idx = 1,3
-           interp_x(k_idx) = ln10*tlogx(k_idx+idtt-1)
+           interp_x(k_idx) = ln10*tlogx(k_idx+t_row-1)
         end do
         ln_t_work = ln10*log_t_work
         call inter3(interp_x,t_interp_weight,t_interp_dweight,ln_t_work)
@@ -963,9 +943,9 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 ! entropy of mixing.
             entropy_total = hydrogen_fraction_local*entropy_h + &
                  helium_fraction_local*entropy_he + smix(t_idx,p_idx)
-            dsmix_dlnt = t_interp_dweight(1)*smix(idtt,p_idx)+ &
-                 t_interp_dweight(2)*smix(idtt+1,p_idx)+ &
-                 t_interp_dweight(3)*smix(idtt+2,p_idx)
+            dsmix_dlnt = t_interp_dweight(1)*smix(t_row,p_idx)+ &
+                 t_interp_dweight(2)*smix(t_row+1,p_idx)+ &
+                 t_interp_dweight(3)*smix(t_row+2,p_idx)
 ! D LN S/ D LN T
             dlns_dlnt = (hydrogen_fraction_local*entropy_h* &
                  tablex(t_idx,p_idx,iscv_dlns_dlnt) + helium_fraction_local*entropy_he* &
@@ -990,89 +970,6 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
             tablenv(t_idx,p_idx,iscvenv_cp) = cp_gas
             tablenv(t_idx,p_idx,iscvenv_du_dt) = du_dt
          end do
-      end do
-! Now find the following derivatives numerically :
-! D QDT/ D LN T
-! D QDT/ D LN P
-! D LN CP / D LN P
-! D LN CP / D LN T
-! D LN DEL(AD) / D LN P
-! D LN DEL(AD) / D LN T
-      do t_idx = 1, nts
-! Temperature interpolation factors
-        if (t_idx == 1) then
-           idtt = 1
-        else if (t_idx == nts) then
-           idtt = t_idx - 2
-        else
-           idtt = t_idx - 1
-        end if
-        do k_idx = 1,3
-           interp_x(k_idx) = ln10*tlogx(k_idx+idtt-1)
-        end do
-        log_t_work = ln10*tlogx(t_idx)
-        call inter3(interp_x,t_interp_weight,t_interp_dweight,log_t_work)
-        temp_value = exp(log_t_work)
-        do p_idx = 1, nptsx(t_idx)
-! Pressure interpolation factors
-           if (p_idx == 1) then
-              idp = 1
-           else if (p_idx == nptsx(t_idx)) then
-              idp = p_idx - 2
-           else
-              idp = p_idx - 1
-           end if
-           do k_idx = 1,3
-              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,iscvenv_log10_p)
-           end do
-           log_p_work = ln10*tablenv(t_idx,p_idx,iscvenv_log10_p)
-           call inter3(interp_x,p_interp_weight,p_interp_dweight,log_p_work)
-! Derivatives of d ln rho/ d ln T
-           dqdt_dlnp = tablenv(t_idx,idp,iscvenv_dlnrho_dlnt)*p_interp_dweight(1)+ &
-                tablenv(t_idx,idp+1,iscvenv_dlnrho_dlnt)*p_interp_dweight(2) &
-                +tablenv(t_idx,idp+2,iscvenv_dlnrho_dlnt)*p_interp_dweight(3)
-           dqdt_dlnt = tablenv(idtt,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(1)+ &
-                tablenv(idtt+1,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(2) &
-                +tablenv(idtt+2,p_idx,iscvenv_dlnrho_dlnt)*t_interp_dweight(3)
-! DERIVATIVES OF LN CP (only the T derivative is stored; the P
-! derivative was never used)
-           do k_idx = 1,3
-              ii = idtt+k_idx-1
-            jj = min(nptsx(ii),p_idx)
-            interp_f(k_idx) = log(tablenv(ii,jj,iscvenv_cp))
-           end do
-           dlncp_dlnt = interp_f(1)*t_interp_dweight(1)+ &
-                interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
-! Derivatives of du/dt
-           do k_idx = 1,3
-              ii = idtt+k_idx-1
-            jj = min(nptsx(ii),p_idx)
-            interp_f(k_idx) = tablenv(ii,jj,iscvenv_du_dt)
-              interp_f(k_idx) = tablenv(idtt+k_idx-1,p_idx,iscvenv_du_dt)
-           end do
-           dqut_dlnt = interp_f(1)*t_interp_dweight(1)+ &
-                interp_f(2)*t_interp_dweight(2)+interp_f(3)*t_interp_dweight(3)
-           do k_idx = 1,3
-              interp_f(k_idx) = tablenv(t_idx,idp+k_idx-1,iscvenv_du_dt)
-           end do
-           dqut_dlnp = interp_f(1)*p_interp_dweight(1)+ &
-                interp_f(2)*p_interp_dweight(2)+interp_f(3)*p_interp_dweight(3)
-! D/d ln rho (d ln P/d ln rho)
-           do k_idx = 1,3
-              interp_x(k_idx) = ln10*tablenv(t_idx,idp+k_idx-1,iscvenv_log10_rho)
-           end do
-           ln_rho_value = ln10*tablenv(t_idx,p_idx,iscvenv_log10_rho)
-           call inter3(interp_x,p_interp_weight,p_interp_dweight,ln_rho_value)
-           dlnp_dlnrho = p_interp_dweight(1)/tablenv(t_idx,idp,iscvenv_dlnrho_dlnp)+ &
-                p_interp_dweight(2)/tablenv(t_idx,idp+1,iscvenv_dlnrho_dlnp) &
-                +p_interp_dweight(3)/tablenv(t_idx,idp+2,iscvenv_dlnrho_dlnp)
-           tablenv(t_idx,p_idx,iscvenv_dqdt_dlnp) = dqdt_dlnp
-           tablenv(t_idx,p_idx,iscvenv_dqdt_dlnt) = dqdt_dlnt
-           tablenv(t_idx,p_idx,iscvenv_dlnp_dlnrho) = dlnp_dlnrho
-           tablenv(t_idx,p_idx,iscvenv_dlncp_dlnt) = dlncp_dlnt
-           tablenv(t_idx,p_idx,iscvenv_dqut_dlnp) = dqut_dlnp
-           tablenv(t_idx,p_idx,iscvenv_dqut_dlnt) = dqut_dlnt
-        end do
       end do
       tablenv_hydrogen_fraction = envelope_hydrogen_fraction
       tablenv_metal_fraction = envelope_metal_fraction

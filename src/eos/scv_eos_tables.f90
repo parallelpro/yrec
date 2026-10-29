@@ -12,25 +12,27 @@ module scv_eos_tables
 
       private
       public :: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
-           iscv_dlns_dlnt, iscv_du_dt, iscv_frac_atom_ion1, iscv_frac_neutral, &
+           iscv_dlns_dlnt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
-           iscvenv_dlncp_dlnt, iscvenv_dlnp_dlnrho, iscvenv_dlnrho_dlnp, &
-           iscvenv_dlnrho_dlnt, iscvenv_dqdt_dlnp, iscvenv_dqdt_dlnt, &
-           iscvenv_dqut_dlnp, iscvenv_dqut_dlnt, iscvenv_du_dt, &
+           iscvenv_dlnrho_dlnp, iscvenv_dlnrho_dlnt, iscvenv_du_dt, &
            iscvenv_log10_p, iscvenv_log10_rho, iscvz_dlnrho_dlnp, &
            iscvz_dlnrho_dlnt, iscvz_log10_du_dt, iscvz_log10_rho, nptsx, &
            scv_nt, smix, tablenv, tablex, tabley, tablez, &
            tlogx, tablenv_hydrogen_fraction, tablenv_metal_fraction
 ! Table dimensions: scv_nt temperature rows, up to scv_np pressure
 ! points per row (nptsx holds the actual count), scv_nvar variables per
-! point in the H, He and envelope tables and scv_nvar_z in the Z table.
+! point in the H and He tables, scv_nvar_z in the Z table and
+! scv_nvar_env in the envelope table.
       integer, parameter :: scv_nt = 63
       integer, parameter :: scv_np = 76
-      integer, parameter :: scv_nvar = 12
+      integer, parameter :: scv_nvar = 11
       integer, parameter :: scv_nvar_z = 13
+      integer, parameter :: scv_nvar_env = 6
       real(dp) :: tlogx(scv_nt), tablex(scv_nt,scv_np,scv_nvar), &
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
-           tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar)
+           tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar_env)
+! the cell (first row, first column) the last SCV lookup used, where the
+! next one starts its search
       integer :: nptsx(scv_nt), idtt, idp
 ! the envelope X and Z tablenv was built for (-1 until it is built)
       real(dp) :: tablenv_hydrogen_fraction = -1.0d0, tablenv_metal_fraction = -1.0d0
@@ -47,7 +49,6 @@ module scv_eos_tables
       integer, parameter :: iscv_dlnrho_dlnt = 7    ! dln(rho)/dln(T) at constant P
       integer, parameter :: iscv_dlnrho_dlnp = 8    ! dln(rho)/dln(P) at constant T
       integer, parameter :: iscv_dlns_dlnt = 9      ! dln(S)/dln(T) at constant P
-      integer, parameter :: iscv_du_dt = 12         ! du/dT, built by build_scv_envelope_table (not read)
 ! Z (metal) table (tablez):
       integer, parameter :: iscvz_log10_rho = 4     ! log10 density
       integer, parameter :: iscvz_log10_du_dt = 7   ! log10 du/dT
@@ -62,12 +63,6 @@ module scv_eos_tables
       integer, parameter :: iscvenv_dlnrho_dlnp = 4   ! dln(rho)/dln(P), gas
       integer, parameter :: iscvenv_cp = 5            ! cp, gas
       integer, parameter :: iscvenv_du_dt = 6         ! du/dT
-      integer, parameter :: iscvenv_dqdt_dlnp = 7     ! d(dlnrho/dlnT)/dln(P)
-      integer, parameter :: iscvenv_dqdt_dlnt = 8     ! d(dlnrho/dlnT)/dln(T)
-      integer, parameter :: iscvenv_dlnp_dlnrho = 9   ! d(lnP)/d(ln rho) along the row
-      integer, parameter :: iscvenv_dlncp_dlnt = 10   ! dln(cp)/dln(T)
-      integer, parameter :: iscvenv_dqut_dlnp = 11    ! d(du/dT)/dln(P)
-      integer, parameter :: iscvenv_dqut_dlnt = 12    ! d(du/dT)/dln(T)
 
 
 !======================================================================
