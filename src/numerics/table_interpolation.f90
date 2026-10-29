@@ -387,35 +387,37 @@ end subroutine findex
 !----------------------------------------------------------------------
 ! locate
 !----------------------------------------------------------------------
-! The j with x between xx(j) and xx(j+1), by bisection, for xx
-! increasing or decreasing; j = 0 or n when outside, except within 1%
-! of an end, which clamps to the end interval.
+! The j with x between xx(j) and xx(j+1), by bisection (Numerical
+! Recipes' locate): xx(j) < x <= xx(j+1) for an increasing table,
+! xx(j) >= x > xx(j+1) for a decreasing one. Outside the table j is 0
+! or n, except within 1% of the table's span beyond an end, which gives
+! the end interval (1 or n-1); so does x on an end node.
 pure subroutine locate(xx, n, x, j)
       integer, intent(in) :: n
       real(dp), intent(in) :: xx(n), x
       integer, intent(out) :: j
 
       integer :: jl, ju, jm
-! slack allowed when x falls just outside the table before the
-! bracket is clamped to the end intervals
-      real(dp), parameter :: below_table_slack = 0.99d0, &
-           above_table_slack = 1.01d0
+! how far beyond an end, as a fraction of the table's span, x still
+! takes the end interval
+      real(dp), parameter :: edge_slack = 0.01d0
+      real(dp) :: slack
 
       jl = 0
       ju = n+1
-   do while (ju-jl > 1)
+      do while (ju-jl > 1)
          jm = (ju+jl)/2
          if ((xx(n) > xx(1)).eqv.(x > xx(jm))) then
             jl = jm
          else
             ju = jm
          end if
-   end do
+      end do
       j = jl
-      if ((j == 0) .and. (x > below_table_slack*xx(1))) then
+      slack = edge_slack*abs(xx(n) - xx(1))
+      if (j == 0 .and. abs(x - xx(1)) <= slack) then
          j = 1
-      end if
-      if ((j == n) .and. (x < above_table_slack*xx(n))) then
+      else if (j == n .and. abs(x - xx(n)) <= slack) then
          j = n-1
       end if
 end subroutine locate

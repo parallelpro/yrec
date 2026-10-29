@@ -149,8 +149,8 @@ findex  0.50 ->   2
 findex  2.50 ->   4
 # locate: increasing and decreasing tables, edge slack
 locate up  1.60 ->   3
-locate up  0.00 ->   0
-locate up -0.01 ->   0
+locate up  0.00 ->   1
+locate up -0.01 ->   1
 locate up  4.03 ->   5
 locate up  4.50 ->   6
 locate up -1.00 ->   0
@@ -158,7 +158,7 @@ locate within slack 0.995 ->   1
 locate within slack 5.020 ->   5
 locate down  4.00 ->   2
 locate down  5.00 ->   1
-locate down  0.50 ->   5
+locate down  0.50 ->   6
 # ludcmp/lubksb: 4x4 in 5x5 storage, then a singular matrix
 ludcmp d ierr indx  1.0  0  4  2  4  4
 ludcmp LU
