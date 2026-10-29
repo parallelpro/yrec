@@ -621,4 +621,5 @@ ok   eos_get_gamma1: below the OPAL table, the Yale/SCV value
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
+ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
 test_eos: done

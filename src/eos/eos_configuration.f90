@@ -10,12 +10,17 @@ module eos_configuration
       use mhd_eos_tables, only: mhd_n_zams, mhd_n_centre
       implicit none
       private
+! The OPAL table vintages eos_settings_t%opal_vintage selects:
+! opal_vintage_conflict is the builder's answer to controls that select
+! more than one, an error at eos_init.
+      integer, parameter, public :: opal_vintage_none = 0, opal_vintage_1995 = 1, &
+           opal_vintage_2001 = 2, opal_vintage_2006 = 3, opal_vintage_conflict = -1
+
       type, public :: eos_settings_t
 ! the MHD tables instead of everything below; the OPAL table vintage
-! (1995, 2001 or 2006; at most one); the SCV EOS at low temperature
+! (opal_vintage_*); the SCV EOS at low temperature
          logical :: use_mhd_eos = .false.
-         logical :: use_opal95_eos = .false., use_opal2001_eos = .false., &
-              use_opal2006_eos = .false.
+         integer :: opal_vintage = opal_vintage_none
          logical :: use_scv_eos = .false.
 ! derivatives by finite differences rather than analytically; the metal
 ! fraction varies (diffusion of Z), so the mixture is rescaled per zone

@@ -28,7 +28,8 @@ module eos_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use eos_configuration, only: eos_settings, eos_settings_t, &
-           set_eos_settings, eos_table_paths_t
+           set_eos_settings, eos_table_paths_t, opal_vintage_none, opal_vintage_1995, &
+           opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict
       use blended_eos, only: compute_blended_eos, blend_eos
       use mhd_eos, only: compute_mhd_eos, read_mhd_tables
       use opal_eos, only: esac06
@@ -43,12 +44,15 @@ module eos_lib
       use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, &
            mixture_atomic_weights
       use physical_constants, only: ln10
+      use io_units, only: run_log_unit
       use math_lib
       implicit none
       private
       public :: eos_init, eos_get, eos_get_gamma1, eos_result
       public :: eos_set_mixture, eos_update_envelope_tables
       public :: eos_settings_t, set_eos_settings, eos_table_paths_t
+      public :: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
+           opal_vintage_2006, opal_vintage_conflict
 
 contains
 
@@ -102,9 +106,14 @@ subroutine eos_init(settings, paths, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
+      if (settings%opal_vintage < opal_vintage_none .or. &
+           settings%opal_vintage > opal_vintage_2006) then
+         write(run_log_unit,*) 'eos_init: more than one OPAL EOS vintage selected'
+         ierr = 1
+         return
+      end if
       call set_eos_settings(settings)
-      if (settings%use_opal95_eos .or. settings%use_opal2001_eos .or. &
-           settings%use_opal2006_eos) then
+      if (settings%opal_vintage /= opal_vintage_none) then
          call open_opal_eos_table(trim(paths%opal), ierr)
          if (ierr /= 0) return
       end if
@@ -123,7 +132,7 @@ end subroutine eos_init
 !----------------------------------------------------------------------
 ! gamma1 and the adiabatic gradient at (T6, rho, P) and (X, Z): from
 ! the OPAL 2006 table (esac06, with the radiation correction) when
-! use_opal2006_eos is set and the table covers the point, else from
+! the 2006 vintage is selected and the table covers the point, else from
 ! blend_eos, with gamma1 built from chi_rho, chi_T and cv (Cox & Giuli
 ! ch. 9). test_eos is its only caller.
 subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
@@ -152,7 +161,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       jerr = 0
       in_table = .false.
 
-      if (eos_settings%use_opal2006_eos) then
+      if (eos_settings%opal_vintage == opal_vintage_2006) then
          eos_interp_order = 9
          eos_rad_flag = 1
          x_local = hydrogen_fraction
@@ -165,7 +174,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
             return
          end if
       end if
-      if (eos_settings%use_opal2006_eos .and. in_table) then
+      if (eos_settings%opal_vintage == opal_vintage_2006 .and. in_table) then
          gamma1 = opal06%eos_output(i_opal_gamma1)
          adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)
       else

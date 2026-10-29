@@ -409,14 +409,7 @@ contains
 ! variable is host-associated from blend_eos.
 logical function opal_selected(vintage)
       integer, intent(in) :: vintage
-      select case (vintage)
-      case (iv_opal95)
-         opal_selected = eos_settings%use_opal95_eos
-      case (iv_opal01)
-         opal_selected = eos_settings%use_opal2001_eos
-      case default
-         opal_selected = eos_settings%use_opal2006_eos
-      end select
+      opal_selected = eos_settings%opal_vintage == vintage
 end function opal_selected
 
 ! the (T, rho) window inside which a vintage is consulted at all (the

@@ -132,7 +132,7 @@ program test_eos
 ! as in the reference solar decks), installed with the tables it reads;
 ! the OPAL table is read by esac06 on first use, as in a run
       settings%use_scv_eos = .true.
-      settings%use_opal2006_eos = .true.
+      settings%opal_vintage = opal_vintage_2006
       settings%saha_log10t_cutoff = 6.0d0
       table_paths%fermi = fermi_path
       table_paths%scv_h = scvh_path
@@ -190,7 +190,7 @@ program test_eos
 ! unset values).
       write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch"
       settings = eos_settings
-      settings%use_opal2006_eos = .false.
+      settings%opal_vintage = opal_vintage_none
       call set_eos_settings(settings)
       do ipt = 1, ng1
          t6 = g1_t6(ipt)
@@ -202,7 +202,7 @@ program test_eos
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
       end do
-      settings%use_opal2006_eos = .true.
+      settings%opal_vintage = opal_vintage_2006
       call set_eos_settings(settings)
 
 ! MHD path: infrastructure for closing the LMHD coverage gap; runs
@@ -321,9 +321,10 @@ contains
          integer :: ierr
          write(*,'(a,a)') "# test_eos: configuration ", label
          s = eos_settings
-         s%use_opal95_eos = present(opal95)
-         s%use_opal2001_eos = present(opal2001)
-         s%use_opal2006_eos = present(opal2006)
+         s%opal_vintage = opal_vintage_none
+         if (present(opal95)) s%opal_vintage = opal_vintage_1995
+         if (present(opal2001)) s%opal_vintage = opal_vintage_2001
+         if (present(opal2006)) s%opal_vintage = opal_vintage_2006
          s%use_scv_eos = present(scv)
          s%use_numerical_derivatives = present(numerical)
          s%use_diffusion_z = present(diffusion_z)
@@ -710,6 +711,7 @@ end subroutine write_mhd_part
 !   gamma1_checks          eos_get_gamma1 outside the OPAL table
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
 !                          one where Z is the envelope's
+!   settings_checks        eos_init's check of the OPAL vintage
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -719,6 +721,7 @@ subroutine check_physics()
       call debye_huckel_checks()
       call gamma1_checks()
       call diffusion_z_checks()
+      call settings_checks()
 end subroutine check_physics
 
 ! One eos_get at (log T, log P) and (x, z), from a fresh record.
@@ -764,6 +767,19 @@ subroutine diffusion_z_checks()
       call check("diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho", ok)
 end subroutine diffusion_z_checks
 
+! eos_init refuses settings that select more than one OPAL vintage (the
+! builder's opal_vintage_conflict) and installs nothing.
+subroutine settings_checks()
+      type(eos_settings_t) :: s, before
+      integer :: ierr
+      before = eos_settings
+      s = eos_settings
+      s%opal_vintage = opal_vintage_conflict
+      call eos_init(s, table_paths, ierr)
+      call check("settings: two OPAL vintages selected, eos_init returns ierr = 1", &
+           ierr == 1 .and. eos_settings%opal_vintage == before%opal_vintage)
+end subroutine settings_checks
+
 ! Below the OPAL 2006 table (T = 1500 K) eos_get_gamma1 takes the
 ! Yale/SCV value (to 1e-6: the Saha solver starts from the previous
 ! call's solution), with OPAL selected as without it.
@@ -773,12 +789,12 @@ subroutine gamma1_checks()
       integer :: ierr1, ierr2, iterations
       call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
       s = eos_settings
-      s%use_opal2006_eos = .false.
+      s%opal_vintage = opal_vintage_none
       call set_eos_settings(s)
       iterations = 0
       call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1_yale, ga_yale, &
            iterations, ierr=ierr1)
-      s%use_opal2006_eos = .true.
+      s%opal_vintage = opal_vintage_2006
       call set_eos_settings(s)
       iterations = 0
       call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1, ga, &
@@ -946,10 +962,10 @@ logical function blend_equals_reference(lp, opal_reference)
          call compute_opal_eos(iv_opal06, lt, lp, x, z, reference, ierr, covers)
       else
          s = eos_settings
-         s%use_opal2006_eos = .false.
+         s%opal_vintage = opal_vintage_none
          call set_eos_settings(s)
          call eos_at(lt, lp, x, z, reference, ierr)
-         s%use_opal2006_eos = .true.
+         s%opal_vintage = opal_vintage_2006
          call set_eos_settings(s)
       end if
       blend_equals_reference = abs(blend%log10_density - reference%log10_density) < 1.0d-12

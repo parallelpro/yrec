@@ -32,6 +32,7 @@
 ! doubles in the last bits.
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_configuration, only: opal_vintage_1995, opal_vintage_2001, opal_vintage_2006
       use io_units, only: run_log_unit
       use math_lib
       implicit none
@@ -57,9 +58,11 @@ module opal_eos_tables
 ! Largest 2001/2006 table dimensions: the physical size of every
 ! opal_eos_vintage table array (the 2001 loops run to n_eos01_*).
       integer, parameter :: n_eos_nr_max = n_eos06_nr, n_eos_nt_max = n_eos06_nt
-! Vintage ids: indices of opal_shared%readco_init_flag / table_metal_fraction.
+! Vintage ids (eos_configuration's opal_vintage_*): the rows of
+! opal_layout and the indices of opal_shared's per-vintage flags.
       integer, parameter :: n_opal_vintages = 3
-      integer, parameter :: iv_opal95 = 1, iv_opal01 = 2, iv_opal06 = 3
+      integer, parameter :: iv_opal95 = opal_vintage_1995, iv_opal01 = opal_vintage_2001, &
+           iv_opal06 = opal_vintage_2006
 ! Variable numbers of the OPAL EOS results (the slots of
 ! opal95%eos_output / opal06%eos_output and the arguments of their
 ! eos_index_inverse): the 1995 and 2006 tables carry the same ten
