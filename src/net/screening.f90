@@ -9,7 +9,8 @@
 ! z_tilde, the mean ionic charge), and the screening exponent of one
 ! reaction with its derivatives (compute_reaction_screening: weak,
 ! intermediate or strong; weak_intermediate_screening for Be7 + p and
-! hep), from its constants (screening_t). reaction_rates applies it.
+! hep), from the charges of its two nuclei (screening_t) and the
+! constants they give (graboske_z). reaction_rates applies it.
 ! Sources: the end of reaction_rates.f90 (Screening).
 module screening
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -31,13 +32,40 @@ module screening
                 11.996709d0, 13.000064d0, 13.999233d0, 15.990526d0, 17.994772d0, 19.986954d0, 23.978458d0], &
            isotope_charge(num_isotopes) = [0.d0, 1.d0, 1.d0, 1.d0, 2.d0, 2.d0, 6.d0, 6.d0, 7.d0, 8.d0, 8.d0, 10.d0, 12.d0]
 
-! A reaction's screening constants: the charge product Z1 Z2 and the
-! Graboske et al. (1973, table 4) factors of the intermediate (z86) and
-! strong (z53, z43, z23) forms.
+! A reaction's screening: the charges Z1 and Z2 of its two nuclei, 1 to
+! max_screening_charge (0 in a row that computes no rate). Its
+! constants follow from them: the charge product Z1 Z2 (the weak form)
+! and graboske_z.
+      integer, parameter, public :: max_screening_charge = 14
       type, public :: screening_t
-         real(dp) :: zprod = 0.0d0, z86 = 0.0d0, z53 = 0.0d0, z43 = 0.0d0, &
-              z23 = 0.0d0
+         integer :: z1 = 0, z2 = 0
       end type screening_t
+! Graboske et al.'s (1973, table 4) factors of the intermediate (z86)
+! and strong (z53, z43, z23) forms, z_p = (Z1+Z2)^p - Z1^p - Z2^p for
+! p = 1.86, 5/3, 4/3 and 2/3: graboske_z(z_p, Z1, Z2), for every pair of
+! charges, computed at compile time (x^p written exp(p ln x), as
+! check_boundaries wants no real exponent). (2026-10: each table row
+! carried them as literals rounded to 2-4 digits.)
+      integer, parameter :: z86 = 1, z53 = 2, z43 = 3, z23 = 4
+      real(dp), parameter :: graboske_powers(4) = [1.86d0, 5.0d0/3.0d0, &
+           4.0d0/3.0d0, 2.0d0/3.0d0]
+      real(dp), parameter :: charge_values(max_screening_charge) = [1.0d0, &
+           2.0d0, 3.0d0, 4.0d0, 5.0d0, 6.0d0, 7.0d0, 8.0d0, 9.0d0, 10.0d0, &
+           11.0d0, 12.0d0, 13.0d0, 14.0d0]
+! ln Z1, ln Z2, ln(Z1 + Z2) and p on the (p, Z1, Z2) grid
+      real(dp), parameter :: &
+           ln_z1_grid(4, max_screening_charge, max_screening_charge) = &
+           log(spread(spread(charge_values, 2, max_screening_charge), 1, 4)), &
+           ln_z2_grid(4, max_screening_charge, max_screening_charge) = &
+           log(spread(spread(charge_values, 1, max_screening_charge), 1, 4)), &
+           ln_sum_grid(4, max_screening_charge, max_screening_charge) = &
+           log(spread(spread(charge_values, 2, max_screening_charge) + &
+           spread(charge_values, 1, max_screening_charge), 1, 4)), &
+           p_grid(4, max_screening_charge, max_screening_charge) = &
+           spread(spread(graboske_powers, 2, max_screening_charge), 3, max_screening_charge)
+      real(dp), parameter :: &
+           graboske_z(4, max_screening_charge, max_screening_charge) = &
+           exp(p_grid*ln_sum_grid) - exp(p_grid*ln_z1_grid) - exp(p_grid*ln_z2_grid)
 
 ! The screening plasma's constants (compute_screening_plasma):
 !   (p_F/m_e c)^2 per (rho/mu_e)^(2/3), rho/mu_e in g/cm^3:
@@ -166,49 +194,53 @@ pure subroutine compute_reaction_screening(plasma, s, screen, &
       real(dp), intent(out) :: screen, dscreen_dlnrho, dscreen_dlnt
       real(dp) :: weak, intermediate, strong
 
-      weak=plasma%weak_unit*s%zprod
+      weak=plasma%weak_unit*real(s%z1*s%z2, dp)
       if (weak <= net_settings%weak_screening_threshold) then
          screen=weak
          dscreen_dlnrho=0.5d0*weak
          dscreen_dlnt=-1.5d0*weak
       else
-         intermediate=0.38d0*plasma%lambda0_086*plasma%charge_moment_158*s%z86/ &
+         intermediate=0.38d0*plasma%lambda0_086*plasma%charge_moment_158*graboske_z(z86, s%z1, s%z2)/ &
               (plasma%inv_mu_i*plasma%z_tilde_058*plasma%mean_charge_028)
          if (weak <= max_intermediate_weak_exponent) then
             screen=intermediate
             dscreen_dlnrho=0.43d0*intermediate
             dscreen_dlnt=-1.29d0*intermediate
          else
-            strong=0.624d0*plasma%mean_charge_13*plasma%lambda0_23*(s%z53+ &
-                 0.316d0*plasma%mean_charge_13*s%z43+0.737d0* &
-                 s%z23/(plasma%mean_charge*plasma%lambda0_23))
+            associate (g53 => graboske_z(z53, s%z1, s%z2), &
+                 g43 => graboske_z(z43, s%z1, s%z2), g23 => graboske_z(z23, s%z1, s%z2))
+            strong=0.624d0*plasma%mean_charge_13*plasma%lambda0_23*(g53+ &
+                 0.316d0*plasma%mean_charge_13*g43+0.737d0* &
+                 g23/(plasma%mean_charge*plasma%lambda0_23))
             if (strong < intermediate.or.weak >= min_strong_weak_exponent) then
                screen=strong
-               dscreen_dlnrho=0.208d0*plasma%mean_charge_13*(s%z53+ &
-                    0.316d0*plasma%mean_charge_13*s%z43)*plasma%lambda0_23
+               dscreen_dlnrho=0.208d0*plasma%mean_charge_13*(g53+ &
+                    0.316d0*plasma%mean_charge_13*g43)*plasma%lambda0_23
                dscreen_dlnt=-3.d0*dscreen_dlnrho
             else
                screen=intermediate
                dscreen_dlnrho=0.43d0*intermediate
                dscreen_dlnt=-1.29d0*intermediate
             end if
+            end associate
          end if
       end if
 end subroutine compute_reaction_screening
 
 !----------------------------------------------------------------------
 ! Weak screening, or intermediate above the weak threshold, for one
-! reaction of charge product zprod and Graboske z86 (Be7 + p, hep).
-pure real(dp) function weak_intermediate_screening(plasma, zprod, z86)
+! reaction of charges s (Be7 + p, hep).
+pure real(dp) function weak_intermediate_screening(plasma, s)
       type(screening_plasma), intent(in) :: plasma
-      real(dp), intent(in) :: zprod, z86
+      type(screening_t), intent(in) :: s
       real(dp) :: weak
 
-      weak = plasma%weak_unit*zprod
+      weak = plasma%weak_unit*real(s%z1*s%z2, dp)
       if (weak <= net_settings%weak_screening_threshold) then
          weak_intermediate_screening = weak
       else
-         weak_intermediate_screening = 0.38d0*plasma%lambda0_086*plasma%charge_moment_158*z86/ &
+         weak_intermediate_screening = 0.38d0*plasma%lambda0_086*plasma%charge_moment_158* &
+              graboske_z(z86, s%z1, s%z2)/ &
               (plasma%inv_mu_i*plasma%z_tilde_058*plasma%mean_charge_028)
       end if
 end function weak_intermediate_screening

@@ -723,10 +723,10 @@ contains
 ! d ln rate/d ln rho against centred differences (1e-4 dex), and the
 ! screening itself: ln(pp rate) less its value with weak screening
 ! (forced with a threshold of 1e3) is the strong exponent less the weak
-! one, the strong one from Graboske et al.'s formula with pp's constants
-! (Z1 Z2 = 1, z53 = 1.175, z43 = 0.52, z23 = -0.413), and it is negative;
-! the same for triple alpha at log T 7.8, log rho 8 (Z1 Z2 = 12, z53 =
-! 9.014, z43 = 2.577, z23 = -0.889: (Z1+Z2)^p - Z1^p - Z2^p with Z = 2, 6).
+! one, the strong one from Graboske et al.'s formula with pp's charges
+! (Z1 = Z2 = 1; z_p = (Z1+Z2)^p - Z1^p - Z2^p, here at run time), and it
+! is negative; the same for triple alpha at log T 7.8, log rho 8 (Z = 2,
+! 6, which give z53 = 9.014).
       subroutine check_strong_screening()
          double precision, parameter :: h = 1.0d-4, logt = 7.0d0, logd = 6.0d0
          type(nuclear_rates) :: nr0, nrp, nrm, nr_weak
@@ -740,8 +740,9 @@ contains
          call compute_zone_conditions(logd, logt, fd_mass, zone)
          weak_min = zone%plasma%weak_unit
          associate (p => zone%plasma)
-         strong = 0.624d0*p%mean_charge_13*p%lambda0_23*(1.175d0 + &
-              0.316d0*p%mean_charge_13*0.52d0 - 0.737d0*0.413d0/(p%mean_charge*p%lambda0_23))
+         strong = 0.624d0*p%mean_charge_13*p%lambda0_23*(zp(5.0d0/3.0d0, 1, 1) + &
+              0.316d0*p%mean_charge_13*zp(4.0d0/3.0d0, 1, 1) + &
+              0.737d0*zp(2.0d0/3.0d0, 1, 1)/(p%mean_charge*p%lambda0_23))
          end associate
          call compute_reaction_rates(logd, logt, fd_mass, nr0)
          worst = 0.0d0
@@ -767,8 +768,9 @@ contains
          call compute_zone_conditions(8.0d0, 7.8d0, fd_mass, zone)
          weak_3a = 12.0d0*zone%plasma%weak_unit
          associate (p => zone%plasma)
-         strong_3a = 0.624d0*p%mean_charge_13*p%lambda0_23*(9.014d0 + &
-              0.316d0*p%mean_charge_13*2.577d0 - 0.737d0*0.889d0/(p%mean_charge*p%lambda0_23))
+         strong_3a = 0.624d0*p%mean_charge_13*p%lambda0_23*(zp(5.0d0/3.0d0, 2, 6) + &
+              0.316d0*p%mean_charge_13*zp(4.0d0/3.0d0, 2, 6) + &
+              0.737d0*zp(2.0d0/3.0d0, 2, 6)/(p%mean_charge*p%lambda0_23))
          end associate
          ln_ratio_3a = log(nrp%rate(r_3alpha)) - log(nrm%rate(r_3alpha))
          write(*,'(a)') "# test_net: strong screening, log T 7, log rho 6: " // &
@@ -782,6 +784,13 @@ contains
               "triple alpha (1e-10)", abs(ln_ratio - (strong - weak_min)) < 1.0d-10 .and. &
               weak_3a >= 5.0d0 .and. abs(ln_ratio_3a - (strong_3a - weak_3a)) < 1.0d-10)
       end subroutine check_strong_screening
+
+! Graboske et al.'s z_p = (Z1+Z2)^p - Z1^p - Z2^p, the test's own copy
+      double precision function zp(p, z1, z2)
+         double precision, intent(in) :: p
+         integer, intent(in) :: z1, z2
+         zp = dble(z1 + z2)**p - dble(z1)**p - dble(z2)**p
+      end function zp
 
 ! burn_implicitly's error contract: a step that needs more Newton
 ! iterations than it is given returns ierr = 1 (here the every-rate

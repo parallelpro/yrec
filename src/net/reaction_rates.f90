@@ -83,6 +83,9 @@ module reaction_rates
            per_gram_c12_alpha = avogadro_number/(he4_atomic_mass*c12_atomic_mass), &
            per_gram_n14_alpha = avogadro_number/(he4_atomic_mass*n14_atomic_mass), &
            per_gram_triple_alpha = avogadro_number/(6.0d0*he4_atomic_mass**3)
+! The screening of Be7 + p and of hep, He3 + p: their charges.
+      type(screening_t), parameter :: be7p_screening = screening_t(4, 1), &
+           hep_screening = screening_t(2, 1)
 ! N_A/m(Be7) per gram, with the bare nuclear mass of Be7 (amu; JNB
 ! 10/14/97): the Be7 capture rates per unit Be7 abundance, per gram.
       real(dp), parameter :: be7_nuclear_mass = 7.014735d0, &
@@ -328,7 +331,7 @@ pure subroutine compute_be7_branching(zone, hydrogen_fraction, be7)
            net_settings%be7p_s_prime_scale*(be7_pcapture_fit(2)+ be7_pcapture_fit(3)*t%p13) &
            + net_settings%be7p_s_double_prime_scale*(be7_pcapture_fit(4)*t%p23 + be7_pcapture_fit(5)*t%t9)
       be7%proton = be7%proton*s_ratio_be7p
-      be7%proton = be7%proton*exp(weak_intermediate_screening(plasma, 4.0d0, 5.7790d0))
+      be7%proton = be7%proton*exp(weak_intermediate_screening(plasma, be7p_screening))
       per_gram = density*per_gram_be7
       be7%proton = per_gram*be7%proton
       be7%electron = per_gram*be7%electron
@@ -475,7 +478,7 @@ pure real(dp) function hep_rate_factor(zone)
 
       hep_rate_factor = (1.71724d+11)*density*t%m23*exp(-6.1399d0*t%m13)
       hep_rate_factor = (1.0d0 + 0.067862d0*t%p13)*net_settings%extra_cross_section_scale(xs_hep)*hep_rate_factor
-      hep_rate_factor = hep_rate_factor*exp(weak_intermediate_screening(plasma, 2.0d0, 3.08687d0))
+      hep_rate_factor = hep_rate_factor*exp(weak_intermediate_screening(plasma, hep_screening))
       end associate
 end function hep_rate_factor
 
@@ -488,8 +491,8 @@ end module reaction_rates
 ! of the F77 code are kept verbatim in net/retired/f77_rate_comments.txt.
 !
 ! Legacy names. Q1..Q8 are the fit coefficients of network's table rows
-! (fit) and be7_pcapture_fit; ZPRD, Z86, Z53, Z43, Z23 the rows'
-! screening constants (screening_t); SSTANDARD the cross-section scales
+! (fit) and be7_pcapture_fit; ZPRD, Z86, Z53, Z43, Z23 the screening
+! constants (screening's graboske_z, from each row's charges); SSTANDARD the cross-section scales
 ! (net_configuration, which maps its 17 entries); QS0E, QQS0EE the
 ! derivative scales; XXL, XXL6, XXL8 lambda0, lambda0_23, lambda0_086;
 ! ZCURL z_tilde, ZBAR mean_charge, AMU and EMU inv_mu_i and inv_mu_e, XTR
