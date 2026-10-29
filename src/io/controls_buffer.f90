@@ -8,7 +8,7 @@
 ! set under other names; store_controls_to_star then copies it into
 ! star%ctrl and star%job, where the rest of the code reads its controls.
 ! The declarations below are the defaults: tools/gen_controls_state.py
-! generates star%ctrl's type and the two copies (state/controls_sync.f90)
+! generates star%ctrl's type and the two copies (io/controls_sync.f90)
 ! from them, so regenerate after changing a member, and add the control
 ! to defaults/controls_registry.tsv, which maps it to its legacy and
 ! new-inlist names. Each control's default is stated once in the code:

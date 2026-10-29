@@ -119,7 +119,7 @@ Every read starts from the same state, so an in-process rerun (pyyrec, `test_ree
 
 | File | Generator | From |
 |---|---|---|
-| `state/controls_state_def.inc`, `state/job_controls_def.inc`, `state/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` |
+| `state/controls_state_def.inc`, `state/job_controls_def.inc`, `io/controls_sync.f90` | `tools/gen_controls_state.py` | `controls_buffer.f90` and the registry's `home` column |
 | `io/inlist_new_decl.inc`, `io/inlist_new_read.inc`, `defaults/control.defaults`, `defaults/physics.defaults` | `tools/gen_inlist.py` | the registry (names, types, descriptions) and the code's defaults |
 | `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the `star%ctrl` and `star%job` declarations |
 | `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` (and it checks them against the column tables) |

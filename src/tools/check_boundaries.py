@@ -42,7 +42,7 @@ CONTROLS_BUFFER_IMPORTERS = {
     "io/run_files.f90",
     "io/derived_controls.f90",
     "io/run_cards.f90",
-    "state/controls_sync.f90",
+    "io/controls_sync.f90",
     "setup/user_inputs.f90",
     "net/test/test_net.f90",
 }

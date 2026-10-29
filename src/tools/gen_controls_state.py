@@ -16,7 +16,8 @@ Emits:
       `star%ctrl = controls_state()` reproduces the pristine
       pre-read_input state exactly.
 
-  state/controls_sync.f90   -- module controls_sync with
+  io/controls_sync.f90      -- module controls_sync (part of the controls
+      read, so in io/) with
       seed_controls_buffer  (buffer member = star%ctrl%member) and
       store_controls_to_star (star%ctrl%member = buffer member),
       one assignment per member, in declaration order.
@@ -35,7 +36,7 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 LIB = SRC / "io" / "controls_buffer.f90"
 DEF = SRC / "state" / "controls_state_def.inc"
 JOBDEF = SRC / "state" / "job_controls_def.inc"
-SYNC = SRC / "state" / "controls_sync.f90"
+SYNC = SRC / "io" / "controls_sync.f90"
 
 # Each member's home, star%ctrl or star%job, is the registry's home column
 # (tools/controls_registry.py; check_boundaries checks it against the code):
@@ -194,12 +195,23 @@ def main():
             "!   call seed_controls_buffer(s)   (buffer <- s%ctrl)\n"
             "!   call read_input(s, ierr)       (the deck read over the buffer)\n"
             "!   call store_controls_to_star(s) (s%ctrl, s%job <- buffer)\n"
-            "! Both take the star as an argument s; nothing here names the\n"
-            "! global.\n"
+            "! Both take the star as an argument s.\n"
             "module controls_sync\n"
-            "      use controls_buffer\n"
+        )
+        names = [name for _, name, _, _ in members]
+        line = "      use controls_buffer, only: "
+        for i, name in enumerate(names):
+            piece = name + (", " if i < len(names) - 1 else "")
+            if len(line) + len(piece) > 76:
+                f.write(line.rstrip() + " &\n")
+                line = "           "
+            line += piece
+        f.write(line.rstrip() + "\n")
+        f.write(
             "      use star_info_lib, only: star_info\n"
             "      implicit none\n"
+            "      private\n"
+            "      public :: seed_controls_buffer, store_controls_to_star\n"
             "\n"
             "contains\n"
             "\n"

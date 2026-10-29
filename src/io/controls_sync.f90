@@ -9,12 +9,129 @@
 !   call seed_controls_buffer(s)   (buffer <- s%ctrl)
 !   call read_input(s, ierr)       (the deck read over the buffer)
 !   call store_controls_to_star(s) (s%ctrl, s%job <- buffer)
-! Both take the star as an argument s; nothing here names the
-! global.
+! Both take the star as an argument s.
 module controls_sync
-      use controls_buffer
+      use controls_buffer, only: star_history_name, history_columns_file, &
+           profile_columns_file, profile_interval, log_L_upper_limit, &
+           log_L_lower_limit, Teff_upper_limit, Teff_lower_limit, &
+           log_g_upper_limit, log_g_lower_limit, nu_max_upper_limit, &
+           nu_max_lower_limit, solar_mass_cgs, G_cgs, nu_max_sun, &
+           delta_nu_sun, Teff_sun, profile_data_prefix, inlist_used_file, &
+           pulse_format, write_profile_flag, write_pulse_flag, &
+           terminal_interval, set_initial_model_number, &
+           report_solver_diagnostics, compute_neutrino_fluxes, atime, &
+           nuclear_logT_cutoffs, saha_log10t_cutoff, tenv0, tenv1, tgcut, &
+           use_new_nuclear_rates, weak_screening_threshold, dpenv, &
+           core_overshoot_active, overshoot_alpha_core, &
+           envelope_overshoot_active, overshoot_alpha_envelope, lovstm, &
+           alpham, ladov, lovmax, betac, use_semiconvection, acfpft, itfp1, &
+           itfp2, rotation_active, walpcz, instability_transport_active, &
+           set_initial_omega, initial_omega, mass_accretion_rate, fczdmdt, &
+           ftotdmdt, accreted_composition, reimers_scaling_factor, &
+           use_reimers_wind, use_mass_accretion, max_iter_level4, &
+           improved_first_guess_flag, calc_neutrinos, li6_rate_scale, &
+           li7_rate_scale, be9_pg_rate_scale, be9_pd_rate_scale, &
+           be9_palpha_rate_scale, use_itoh_neutrino_loss, &
+           calc_envelope_flag, use_extended_composition, &
+           spot_filling_factor, spot_temp_contrast, spot_depth_varies, &
+           disk_locking_age_gyr, disk_omega_rad_s, disk_locking_active, &
+           target_end_age, timestep_override, central_deuterium_stop, &
+           central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
+           timestep_override_active, use_mhd_eos, unit_zams_a, unit_zams_b, &
+           unit_zams_c, unit_centre1, unit_centre2, unit_centre3, &
+           unit_centre4, unit_centre5, metal_fraction_match_tolerance, &
+           npenv, first_unit, run_unit, standard_unit, fermi_unit, &
+           dynamics_unit, opal92_table_unit, composition_unit, &
+           kurucz_table_unit, monte_carlo_active, mc_run_start, mc_run_end, &
+           htoler, fcorr0, fcorri, fcorr, chi_grid_scale, max_iter_level1, &
+           max_iter_level2, max_iter_level3, diffusion_timestep_factor, &
+           convergence_tolerance, num_rotation_structure_iters, &
+           max_diffusion_iters, settling_tolerance, coulomb_log_choice, &
+           settling_num_iterations, diffuse_helium_active, &
+           settling_timestep_fraction, hydrogen_diffusion_floor, &
+           helium_diffusion_min, use_thoul_fit, fgry, fgrz, &
+           use_thoul_diffusion, use_diffusion_z, &
+           use_new_diffusion_routines, diffuse_lithium, atm_error_tol, &
+           atm_step_initial, atm_step_begin, atm_step_min, atm_step_max, &
+           env_error_tol, env_step_begin, env_step_min, env_step_max, &
+           tolerance_fraction, max_stage_index, extrap_order, atm_choice, &
+           mixture_weights_seed, monte_carlo_file1_path, &
+           monte_carlo_file2_path, monte_carlo_unit1, monte_carlo_unit2, &
+           pulse_gyre_interval, tri_delta_teffl, tri_delta_logl, lnew0, &
+           requested_envelope_mass, change_envelope_mass_flag, &
+           rescale_params, rescale_kind, num_models, num_runs, &
+           first_call_flag, max_domega_global, use_structure_dt_limits, &
+           atm_step_size, envelope_step_size, envelope_generation_flag, &
+           helium_flash_active, initial_envelope_x, initial_envelope_z, &
+           new_species_value, new_species_index, rescale_species_active, &
+           value_relative_to_h, mixture_change_mode, isotope_change_mode, &
+           change_cno_mixture_active, change_isotope_ratios_active, &
+           target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
+           target_oxygen_cno_fraction, c12_to_c13_ratio, n14_to_n15_ratio, &
+           o16_to_o17_ratio, o16_to_o18_ratio, target_metal_fraction, &
+           initial_h2_fraction, initial_he3_fraction, initial_li6_fraction, &
+           initial_li7_fraction, initial_be9_fraction, &
+           initial_b10_fraction, initial_b11_fraction, fo, &
+           difad_velocity_scale, mixing_velocity_scale, es_velocity_scale, &
+           gsf_velocity_scale, secular_shear_velocity_scale, &
+           critical_reynolds, ies, imu, es_mixing_scale, &
+           secular_shear_mixing_scale, gsf_mixing_scale, &
+           solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
+           gsf_inhibition_mode, min_abundance, absolute_tolerance, &
+           relative_tolerance, max_burn_iterations, opal95_table_unit, &
+           extend_core_inward, num_core_shells_added, &
+           core_mass_reduction_factor, rewind_short_file, &
+           isochrone_output_active, isochrone_file_unit, initial_x_array, &
+           initial_z_array, mixing_length_array, senv0_array, &
+           has_senv0_array, luminosity_tolerance, radius_tolerance, &
+           zx_tolerance, target_solar_zx, target_solar_age, &
+           calibrate_solar_model, calibrate_solar_zx, rsclzc, rsclzm1, &
+           rsclzm2, use_z_ramp, target_luminosity_lsun, &
+           target_star_luminosity_tolerance, target_teff, &
+           target_radius_rsun, specify_teff_flag, calibrate_star_flag, &
+           use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
+           use_numerical_derivatives, iopale, use_scv_eos, &
+           use_debye_huckel_correction, debye_huckel_eta_min, &
+           debye_huckel_eta_max, laol_table_z1, laol_table_z2, &
+           opal_table_z1, opal_table_z2, opal95_single_table_z, &
+           alex_table_z1, kurucz_table_z1, kurucz_table_z2, &
+           molecular_opacity_logt_min, molecular_opacity_logt_max, &
+           use_alex06_tables, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           tollaol, use_pure_z_table, kurucz_table2_unit, icondopacp, &
+           use_conductive_opacity, alex94_table_unit, alex06_table_unit, &
+           lvfc, use_diffusion_advection_transport, &
+           no_am_transport_in_core, scv_h_unit, scv_he_unit, scv_z_unit, &
+           allard_target_feh, allard_target_alpha, allard_use_tau100, &
+           allard_table_unit, force_solid_body_rotation, &
+           solid_body_mode_flag, constant_mixing_coeff, &
+           constant_settling_reduction, use_envelope_triangle_dt, &
+           pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, pmm_exponent_d, &
+           pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
+           pmm_solar_pressure, pmm_solar_omega, &
+           pmm_solar_turnover_timescale, use_pmm_wind_law, &
+           scale_by_rossby_number, scale_by_b_field, wind_law_name, &
+           wind_law_index, wind_law_constant, wind_saturation_omega, &
+           solar_omega_sat, use_wind_torque, &
+           constant_background_diffusion_coeff, &
+           use_constant_background_diffusion, flag_dx, flag_dw, flag_dz, &
+           time_core_min, time_dl, time_dp, time_dr, time_dt, &
+           time_dw_global, time_dw_mix, time_dx_core_frac, &
+           time_dx_core_tot, time_dx_shell, time_dx_total, &
+           time_dy_core_frac, time_dy_core_tot, time_dy_shell, &
+           time_dy_total, time_max_dt_frac, tol_czbase_fine_width, &
+           tol_dl_max, tol_dm_max, tol_dm_min, tol_dp_core_max, &
+           tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, &
+           lstruct_time, lnewvars, s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, &
+           s0_p_c13, s0_p_n14, s0_p_o16, s0_be7_electron, s0_be7_p, &
+           s0_n15_p_c12_branch, s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, &
+           s0p_he3he4, s0p_p_c12, s0p_p_c13, s0p_p_n14, s0p_p_o16, &
+           s0pp_p_c12, s0pp_p_c13, s0pp_p_o16, s0p_be7_p, s0pp_be7_p, &
+           s0_pep, s0_hep
       use star_info_lib, only: star_info
       implicit none
+      private
+      public :: seed_controls_buffer, store_controls_to_star
 
 contains
 
