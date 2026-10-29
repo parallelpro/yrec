@@ -65,9 +65,7 @@ end subroutine assign_unit_numbers
 ! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
 ! every path control, expanded (expand_value): every string control
 ! that names a file, by its legacy name (test_generated_files.py checks
-! the list against the registry). history_columns_file and
-! profile_columns_file are the exception: the output reads them from
-! star%ctrl, stored before this expansion.
+! the list against the registry).
 subroutine expand_paths
       integer :: i
 
@@ -107,7 +105,9 @@ subroutine expand_paths
       call expand_value(fscvz)
       call expand_value(fshort)
       call expand_value(fstch)
+      call expand_value(history_columns_file)
       call expand_value(inlist_used_file)
+      call expand_value(profile_columns_file)
       do i = 1, size(opecalex)
          call expand_value(opecalex(i))
       end do

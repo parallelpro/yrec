@@ -315,3 +315,24 @@ def test_output_directory_is_created(tmp_path):
     assert r.returncode == 0, r.stdout[-500:] + r.stderr[-500:]
     assert sorted(p.name for p in out.iterdir()) == [
         "cm_base.log", "cm_base.mod", "history.data", "inlist_used"]
+
+
+def test_columns_file_path_is_expanded(tmp_path):
+    """history_columns_file may start with a {YREC_...} placeholder,
+    like every path control."""
+    if not YREC.exists() or not (REPO / "input").exists():
+        pytest.skip("needs src/yrec and the full input/ tree")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text().replace(
+        "&control", "&control\n history_columns_file = '{YREC_OUTPUT}/../cols.list'\n", 1)
+    (tmp_path / "cm_base.inlist").write_text(text)
+    (tmp_path / "cols.list").write_text("star_age\nlog_L\n")
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ)
+    env.update({k: str(v) for k, v in ENV.items()})
+    env["YREC_OUTPUT"] = str(tmp_path / "output")
+    r = subprocess.run([str(YREC), "cm_base.inlist"], cwd=tmp_path, env=env,
+                       capture_output=True, text=True, timeout=600)
+    assert r.returncode == 0, r.stdout[-500:] + r.stderr[-500:]
+    names, _, _ = _parse_mesa_file(tmp_path / "output" / "history.data")
+    assert names == ["star_age", "log_L"], names

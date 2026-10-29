@@ -27,9 +27,7 @@ def test_generated_files_current(generator):
 # String controls that are not file paths (names, codes, the output
 # file's own name and prefix).
 NOT_PATHS = {"amix", "aiso", "anewcp", "atmp", "awind", "descrip", "pulse_format",
-             "profile_data_prefix", "star_history_name",
-             # read by the output from star%ctrl (see expand_paths)
-             "history_columns_file", "profile_columns_file"}
+             "profile_data_prefix", "star_history_name"}
 
 
 def test_every_path_control_is_expanded():
