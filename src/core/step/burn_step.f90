@@ -459,7 +459,8 @@ end subroutine store_end_li_be_rates
 subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep, ierr)
 
-      use star_info_lib, only: json, i_h1, i_metals, n_species_basic
+      use star_info_lib, only: json, i_h1, i_metals, n_species_basic, &
+           n_species_extended
       use net_lib, only: burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4, burn_not_converged, &
            burn_singular_jacobian
@@ -475,7 +476,10 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
 
-      double precision :: region_start(n_species_basic), rate_vec(num_rate_rows)
+! region_start: the region's start-of-step composition, every slot (the
+! network species are read at network_species_slot, wherever the layout
+! puts them)
+      double precision :: region_start(n_species_extended), rate_vec(num_rate_rows)
       double precision :: x_start(n_network), x(n_network), region_mass, metals
       integer :: k, guess_zone
       character(len=160) :: message
@@ -490,20 +494,20 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
          rate_vec = 0.0d0
          do k = zone_begin, zone_end
             region_mass = region_mass + shell_mass(k)
-            region_start = region_start + s%xa_start(1:n_species_basic,k)*shell_mass(k)
+            region_start = region_start + s%xa_start(:,k)*shell_mass(k)
             rate_vec = rate_vec + shell_mass(k)*rate_by_zone(:,k)
          end do
          region_start = region_start/region_mass
          rate_vec = rate_vec/region_mass
       else
-         region_start = s%xa_start(1:n_species_basic,zone_begin)
+         region_start = s%xa_start(:,zone_begin)
          rate_vec = rate_by_zone(:,zone_begin)
       end if
 
 ! Too cool to burn (below ctrl%nuclear_logT_cutoffs(1)): only homogenize.
       if (log_temperature(zone_begin) < s%ctrl%nuclear_logT_cutoffs(1)) then
          do k = zone_begin, zone_end
-            composition(1:n_species_basic,k) = region_start
+            composition(1:n_species_basic,k) = region_start(1:n_species_basic)
          end do
          return
       end if
