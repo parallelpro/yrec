@@ -2,8 +2,10 @@
 """Generate star%ctrl's type body and the buffer sync module.
 
 Source of truth: io/controls_buffer.f90's declarations (names, types,
-dims, and declaration-time defaults -- the same single place the
-legacy read has always taken its pristine state from). Emits:
+dims, and declaration-time defaults: each control's one default) and the
+registry's home column (defaults/controls_registry.tsv: star%ctrl or
+star%job). Every buffer member needs a registry row of its declared type.
+Emits:
 
   state/controls_state_def.inc  -- the component list of the
       controls_state type (star_info_lib defines
@@ -27,6 +29,7 @@ import pathlib
 import re
 
 from generated_files import Out, finish
+import controls_registry
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 LIB = SRC / "io" / "controls_buffer.f90"
@@ -34,43 +37,9 @@ DEF = SRC / "state" / "controls_state_def.inc"
 JOBDEF = SRC / "state" / "job_controls_def.inc"
 SYNC = SRC / "state" / "controls_sync.f90"
 
-# Members that live on star%job instead of star%ctrl: the run-list /
-# calibration-protocol card arrays and latches, which the calibration
-# protocol (setcal/chkcal/setscal/chkscal), the stop-disarm pass, and
-# the MC loop WRITE after the read -- mutable job state, excluded
-# from ctrl's immutable-after-read contract. Still namelist/card
-# targets: read_input reads them into the buffer; the sync store routes
-# them to star%job.
-JOB_MEMBERS = {
-    "mixing_length_array", "rescale_params", "rescale_kind",
-    "num_models", "num_runs", "initial_x_array", "initial_z_array",
-    "has_senv0_array", "senv0_array", "rsclzc", "rsclzm1", "rsclzm2",
-    "target_end_age", "end_age_stop_active", "central_deuterium_stop",
-    "central_hydrogen_stop", "central_helium_stop",
-    "timestep_override", "timestep_override_active", "first_call_flag",
-    # batch 3: namelist-read members the run mutates -- the
-    # model-restore set (getyrec7/getmodel2 write them back from
-    # stored models), driver/output toggles, per-card working copies,
-    # and config the physics adjusts in place.
-    "rotation_active", "use_extended_composition", "core_overshoot_active", "lovstm",
-    "envelope_overshoot_active", "use_semiconvection",
-    "instability_transport_active", "disk_locking_active",
-    "disk_omega_rad_s", "disk_locking_age_gyr", "use_diffusion_z",
-    "wind_saturation_omega", "use_wind_torque", "atm_choice",
-    "use_structure_dt_limits", "atm_step_begin", "atm_step_min",
-    "atm_step_max", "env_step_begin", "env_step_min", "env_step_max",
-    "calc_envelope_flag", "initial_envelope_x",
-    "initial_envelope_z", "requested_envelope_mass",
-    "change_envelope_mass_flag", "core_mass_reduction_factor",
-    "num_core_shells_added", "fcorr", "num_rotation_structure_iters", "diffusion_timestep_factor", "mc_run_start", "mc_run_end",
-    "log_L_upper_limit", "log_L_lower_limit", "Teff_upper_limit",
-    "Teff_lower_limit", "log_g_upper_limit", "log_g_lower_limit",
-    "nu_max_upper_limit", "nu_max_lower_limit",
-    "acfpft", "max_domega_global", "fgrz",
-    "diffuse_helium_active", "use_mass_accretion", "new_species_value",
-    "target_radius_rsun", "target_teff", "pulse_format",
-}
-
+# Each member's home, star%ctrl or star%job, is the registry's home column
+# (tools/controls_registry.py; check_boundaries checks it against the code):
+# job holds the members that code outside the read assigns.
 TYPE_RE = re.compile(
     r"^\s*(double precision|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
     r"\s*(,\s*public)?\s*::\s*(.*)$",
@@ -157,12 +126,37 @@ def parse():
     return members
 
 
+def homes(members):
+    """{member: 'ctrl' or 'job'} from the registry, which must give every
+    buffer member a row of its declared type"""
+    rows = [r for r in controls_registry.rows() if r["home"]]
+    home, problems = {}, []
+    for typespec, name, dims, _ in members:
+        mine = [r for r in rows if r["canonical"] == name.lower()]
+        if not mine:
+            problems.append(f"{name}: no registry row (canonical column)")
+            continue
+        declared = controls_registry.type_of(typespec, dims)
+        for r in mine:
+            if r["type"].replace(" ", "") != declared:
+                problems.append(f"{name}: registry type {r['type']} ({r['legacy']}), declared {declared}")
+        if len({r["home"] for r in mine}) > 1:
+            problems.append(f"{name}: two homes in the registry")
+        home[name] = mine[0]["home"]
+    known = {n.lower() for _, n, _, _ in members}
+    for r in rows:
+        if r["canonical"] not in known:
+            problems.append(f"registry row {r['legacy']}: canonical {r['canonical']} is not in controls_buffer")
+    if problems:
+        raise SystemExit("gen_controls_state: the registry and controls_buffer disagree:\n  "
+                         + "\n  ".join(problems))
+    return home
+
+
 def main():
     members = parse()
-    found_job = {n for _, n, _, _ in members} & JOB_MEMBERS
-    missing = JOB_MEMBERS - found_job
-    if missing:
-        raise SystemExit(f"JOB_MEMBERS not found in controls_buffer: {missing}")
+    home = homes(members)
+    JOB_MEMBERS = {n for n, h in home.items() if h == "job"}
     with Out(DEF) as f:
         f.write(
             "! GENERATED by tools/gen_controls_state.py from\n"
@@ -178,10 +172,10 @@ def main():
         f.write(
             "! GENERATED by tools/gen_controls_state.py from\n"
             "! io/controls_buffer.f90 -- do not edit; regenerate instead.\n"
-            "! The JOB_MEMBERS subset (run-list / calibration-protocol\n"
-            "! card arrays and latches -- mutable job state), included\n"
-            "! into star_job. Default-initialized like controls_state, so\n"
-            "! declaration/star0-restore state is pristine.\n"
+            "! The members whose registry home is job (code outside the\n"
+            "! controls read assigns them: the run cards, the calibration,\n"
+            "! the latches), included into star_job. Default-initialized\n"
+            "! like controls_state, so the declared state is the pristine one.\n"
         )
         for typespec, name, dims, init in members:
             if name not in JOB_MEMBERS:

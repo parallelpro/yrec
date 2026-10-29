@@ -10,6 +10,7 @@
       ! (legacy name: fshort)
       log_output_file = '{YREC_OUTPUT}/run.log'
 
+      ! The atmosphere integration's smallest step (in log tau)
       ! (legacy name: atmmin)
       atm_step_min = 1.0d-1
 
@@ -21,6 +22,7 @@
       ! (legacy name: atmerr)
       atm_error_tol = 3.0d-4
 
+      ! The atmosphere integration's largest step (in log tau)
       ! (legacy name: atmmax)
       atm_step_max = 5.0d-1
 
@@ -32,7 +34,7 @@
       ! (legacy name: anewcp)
       change_species_name = '   '
 
-      ! VERIFIED 2026: 3-char mode for species rescaling (with anewcp/xnewcp): 'ABS' -> new_species_value is an absolute mass fraction, otherwise relative to H (drives value_relative_to_h). The 'atm_print_flag' guess was wrong -- nothing atmospheric about it.
+      ! With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen
       ! (legacy name: atmp)
       new_species_value_mode = ''
 
@@ -52,11 +54,11 @@
       ! (legacy name: alphae)
       overshoot_alpha_envelope = 0.0d0
 
-      ! Kawaler wind-law index: JDOT ~ FK * OMEGA^(1+4a/3) * ... (echoed as WIND IND.)
+      ! Kawaler wind law: the index alfa (Jdot ~ Omega**(1+4 alfa/3) ...); K97 takes m = alfa/3
       ! (legacy name: alfa)
       wind_law_index = 1.5d0
 
-      ! oversh: minimum overshoot alpha
+      ! Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights
       ! (legacy name: alpham)
       overshoot_alpha_min = 0.0d0
 
@@ -68,7 +70,7 @@
       ! (legacy name: abstol)
       absolute_tolerance = 1.0d-5
 
-      ! oversh: core overshoot shape parameter
+      ! With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius
       ! (legacy name: betac)
       overshoot_beta_core = 0.15d0
 
@@ -80,6 +82,7 @@
       ! (legacy name: clsun)
       solar_luminosity_cgs = 3.8515d33
 
+      ! The solar radius (cm) used for the tracks and the output
       ! (legacy name: crsun)
       solar_radius_cgs = 6.9598d10
 
@@ -101,6 +104,7 @@
       ! (legacy name: dtwind)
       max_domega_global = 1.0d1
 
+      ! Angular momentum transport: the convergence tolerance of the transport iterations
       ! (legacy name: djok)
       convergence_tolerance = 1.0d-4
 
@@ -112,6 +116,7 @@
       ! (legacy name: enverr)
       env_error_tol = 3.0d-4
 
+      ! The envelope integration's largest step (in log P)
       ! (legacy name: envmax)
       env_step_max = 5.0d-1
 
@@ -127,56 +132,67 @@
       ! (legacy name: envstp)
       envelope_step_size = 0.5
 
+      ! Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain
       ! (legacy name: etadh0)
       debye_huckel_eta_min = -1.0d0
 
+      ! Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain
       ! (legacy name: etadh1)
       debye_huckel_eta_max = 1.0d0
 
-      ! VERIFIED 2026: Henyey under-relaxation start: fcorr = |fcorr0| - fcorri at step start (evolve_step); fcorr0>0 enables per-iteration growth.
+      ! Henyey under-relaxation: each step starts with the correction factor |fcorr0| - fcorri; a positive fcorr0 lets it grow each iteration
       ! (legacy name: fcorr0)
       solver_underrelax_start = 0.8d0
 
-      ! VERIFIED 2026: Henyey under-relaxation increment: fcorr grows by this each corrector pass up to 1 (henyey_iterate).
+      ! Henyey under-relaxation: the correction factor grows by this each corrector pass, up to 1
       ! (legacy name: fcorri)
       solver_underrelax_increment = 0.1d0
 
-      ! Kawaler/PMM wind-law constant factor FK in the JDOT formula
+      ! The constant factor of both wind laws (1 reproduces the solar angular momentum loss)
       ! (legacy name: fk)
       wind_law_constant = 1.0d0
 
+      ! Scale of the angular momentum diffusion coefficients in the diffusion-advection transport
       ! (legacy name: fw)
       difad_velocity_scale = 1.0d0
 
+      ! Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion)
       ! (legacy name: fc)
       mixing_velocity_scale = 1.0d0
 
-      ! Echoed as COUPLING in the .short header; no other functional use found
+      ! Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header)
       ! (legacy name: fo)
       coupling_factor = 1.0d0
 
-      ! No effect: the mu-gradient velocity it scaled is zeroed (docs/bug_sweep.md O15)
+      ! Inert: the mu-gradient scale has no effect (docs/bug_sweep.md O15)
       ! (legacy name: fmu)
       mu_gradient_scale = 1.0d0
 
+      ! Scale of the Eddington-Sweet circulation velocity in the angular momentum transport
       ! (legacy name: fes)
       es_velocity_scale = 1.0d0
 
+      ! With extend_core_inward: the factor by which the innermost mass is reduced
       ! (legacy name: fcore)
       core_mass_reduction_factor = 1.0
 
+      ! Scale of the GSF and ABCD instability velocities in the angular momentum transport
       ! (legacy name: fgsf)
       gsf_velocity_scale = 1.0d0
 
+      ! Scale of the secular shear instability velocity in the angular momentum transport
       ! (legacy name: fss)
       secular_shear_velocity_scale = 1.0d0
 
+      ! Scale of the Eddington-Sweet circulation's chemical mixing relative to its angular momentum transport
       ! (legacy name: fesc)
       es_mixing_scale = 1.0d0
 
+      ! Scale of the secular shear's chemical mixing relative to its angular momentum transport
       ! (legacy name: fssc)
       secular_shear_mixing_scale = 1.0d0
 
+      ! Scale of the GSF instability's chemical mixing relative to its angular momentum transport
       ! (legacy name: fgsfc)
       gsf_mixing_scale = 1.0d0
 
@@ -198,7 +214,7 @@
       ! (legacy name: grtol)
       settling_tolerance = 1.0d-8
 
-      ! VERIFIED 2026: htoler(5,2) Henyey thresholds: rows 1-4 = per-variable convergence (col 1) and correction-too-large (col 2) limits; row 5 = the level-5 residual test.
+      ! The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test
       ! (legacy name: htoler)
       solver_tolerances = 6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6
 
@@ -214,6 +230,7 @@
       ! (legacy name: itfp2)
       fpft_iter2 = 20
 
+      ! The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11
       ! (legacy name: imax)
       max_stage_index = 11
 
@@ -225,9 +242,11 @@
       ! (legacy name: itdif2)
       max_diffusion_iters = 10
 
+      ! The stability condition of the GSF and ABCD instabilities (1 is recommended)
       ! (legacy name: igsf)
       gsf_inhibition_mode = 1
 
+      ! The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended)
       ! (legacy name: ilambda)
       coulomb_log_choice = 1
 
@@ -235,6 +254,7 @@
       ! (legacy name: kttau)
       atm_choice = 0
 
+      ! The burning network solver's largest number of iterations
       ! (legacy name: kemmax)
       max_burn_iterations = 50
 
@@ -242,6 +262,7 @@
       ! (legacy name: lvfc)
       velocity_form_correction = .false.
 
+      ! Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out)
       ! (legacy name: ldifad)
       use_diffusion_advection_transport = .false.
 
@@ -253,9 +274,11 @@
       ! (legacy name: lnewdif)
       use_new_diffusion_routines = .false.
 
+      ! Gravitational settling of helium (and hydrogen)
       ! (legacy name: ldify)
       diffuse_helium_active = .false.
 
+      ! Gravitational settling of the metals (implies helium settling and the Thoul et al. routines)
       ! (legacy name: ldifz)
       use_diffusion_z = .false.
 
@@ -267,9 +290,11 @@
       ! (legacy name: lsnu)
       calc_neutrinos = .false.
 
+      ! Apply the Debye-Hueckel correction to the simplified EOS
       ! (legacy name: ldh)
       use_debye_huckel_correction = .false.
 
+      ! Set one species of the starting model (change_species_name) to new_species_value
       ! (legacy name: lnewcp)
       rescale_species_active = .false.
 
@@ -281,14 +306,15 @@
       ! (legacy name: lovstc)
       core_overshoot_active = .false.
 
+      ! Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights
       ! (legacy name: lovste)
       envelope_overshoot_active = .false.
 
-      ! VERIFIED 2026: enables overshoot at INTERMEDIATE convection zones (neither the core, lovstc, nor the surface envelope, lovste); overshoot_boundaries skips such zones without it.
+      ! Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min
       ! (legacy name: lovstm)
       intermediate_overshoot_active = .false.
 
-      ! oversh: cap overshoot extent option
+      ! Cap the core overshoot extent at overshoot_beta_core times the core radius
       ! (legacy name: lovmax)
       overshoot_max_extent_flag = .false.
 
@@ -296,6 +322,7 @@
       ! (legacy name: lexcom)
       use_extended_composition = .false.
 
+      ! Rotation: evolve the rotation curve and the angular momentum transport
       ! (legacy name: lrot)
       rotation_flag = .false.
 
@@ -303,6 +330,7 @@
       ! (legacy name: lnew0)
       new_triangle_init_flag = .false.
 
+      ! Rotationally induced mixing and hydrodynamic angular momentum transport
       ! (legacy name: linstb)
       instability_transport_active = .false.
 
@@ -326,6 +354,7 @@
       ! (legacy name: ltrist)
       use_envelope_triangle_dt = .false.
 
+      ! Inert: read and stored, used nowhere (the outer layers are built by stitched_model)
       ! (legacy name: lenvg)
       envelope_generation_flag = .false.
 
@@ -337,6 +366,7 @@
       ! (legacy name: lthoul)
       use_thoul_diffusion = .false.
 
+      ! Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended)
       ! (legacy name: lthoulfit)
       use_thoul_fit = .false.
 
@@ -360,6 +390,7 @@
       ! (legacy name: lnews)
       improved_first_guess_flag = .false.
 
+      ! With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor)
       ! (legacy name: mcore)
       num_core_shells_added = 0
 
@@ -379,9 +410,11 @@
       ! (legacy name: niter4)
       max_iter_level4 = 0
 
+      ! The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7
       ! (legacy name: nuse)
       extrap_order = 7
 
+      ! Settling: the largest number of iterations of the abundance-change solver
       ! (legacy name: niter_gs)
       settling_num_iterations = 10
 
@@ -389,12 +422,15 @@
       ! (legacy name: optol)
       metal_fraction_match_tolerance = 1.0d-8
 
+      ! Critical Reynolds number for the onset of the secular shear instability
       ! (legacy name: rcrit)
       critical_reynolds = 1.0d3
 
+      ! The burning network solver's relative tolerance
       ! (legacy name: reltol)
       relative_tolerance = 1.0d-4
 
+      ! The envelope integration stops when log(m/M) is within this fraction of senv (also the atmosphere integration's step tolerance)
       ! (legacy name: stolr0)
       tolerance_fraction = 1.0d-3
 
@@ -402,6 +438,7 @@
       ! (legacy name: tcut)
       nuclear_logT_cutoffs = 6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0
 
+      ! log10 T above which the default EOS assumes full ionization
       ! (legacy name: tscut)
       saha_log10t_cutoff = 6.0d0
 
@@ -425,7 +462,7 @@
       ! (legacy name: tridl)
       tri_delta_logl = 8.0d-2
 
-      ! VERIFIED 2026: LAOL89 interpolators allow linear extrapolation within log(tollaol) of a table edge (gtlaol/gtlaol2/gtpurz: log_extrap_tolerance = log(tollaol)).
+      ! The LAOL 1989 interpolators extrapolate linearly within log(tollaol) of a table edge
       ! (legacy name: tollaol)
       laol_z_tolerance = 10.0d0
 
@@ -441,6 +478,7 @@
       ! (legacy name: wnew)
       initial_omega = 0.0d0
 
+      ! Threshold of the screening parameter below which nuclear rates use weak screening
       ! (legacy name: weakscreening)
       weak_screening_threshold = 0.03d0
 
@@ -448,15 +486,19 @@
       ! (legacy name: xnewcp)
       change_species_value = 1.3d1
 
+      ! Settling stops (for the rest of the run card) once the central X falls below this
       ! (legacy name: xmin)
       hydrogen_diffusion_floor = 1.0d-3
 
+      ! Settling's outer boundary moves inward to the first zone where Y exceeds this
       ! (legacy name: ymin)
       helium_diffusion_min = 1.0d-3
 
+      ! log10 T below which only the molecular opacities are used
       ! (legacy name: tmolmin)
       molecular_opacity_logt_min = 4.0d0
 
+      ! log10 T above which only the atomic opacities are used (a ramp joins the two)
       ! (legacy name: tmolmax)
       molecular_opacity_logt_max = 4.1d0
 
@@ -472,9 +514,11 @@
       ! (legacy name: imend)
       mc_run_end = 1
 
+      ! Use the SCV EOS where it is valid and the OPAL EOS is not
       ! (legacy name: lscv)
       use_scv_eos = .false.
 
+      ! Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr
       ! (legacy name: ldisk)
       disk_locking_active = .false.
 
@@ -486,6 +530,7 @@
       ! (legacy name: pdisk)
       disk_omega_rad_s = 7.2722d-6
 
+      ! Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units
       ! (legacy name: wmax)
       wind_saturation_omega = 3.0d-4
 
@@ -493,6 +538,7 @@
       ! (legacy name: lsolid)
       force_solid_body_rotation = .false.
 
+      ! Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone
       ! (legacy name: impjmod)
       solid_body_mode_flag = 0
 
@@ -508,6 +554,7 @@
       ! (legacy name: ftotdmdt)
       accretion_total_fraction = 1.0d-2
 
+      ! Mass fractions of the accreted material (star%xa layout)
       ! (legacy name: compacc)
       accreted_composition = 0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, 8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11
 
@@ -519,6 +566,7 @@
       ! (legacy name: lreimer)
       use_reimers_wind = .false.
 
+      ! Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted
       ! (legacy name: lmdot)
       use_mass_change = .false.
 
@@ -526,6 +574,7 @@
       ! (legacy name: lopale01)
       use_opal2001_eos = .false.
 
+      ! Use the conductive opacity tables (conductive_opacity_table_file)
       ! (legacy name: lcondopacp)
       use_conductive_opacity = .false.
 
@@ -533,6 +582,7 @@
       ! (legacy name: lopale06)
       use_opal2006_eos = .false.
 
+      ! Use numerical derivatives of the EOS instead of analytic ones (much slower)
       ! (legacy name: lnumderiv)
       use_numerical_derivatives = .false.
 
@@ -544,6 +594,7 @@
       ! (legacy name: alatm_alpha)
       allard_target_alpha = 0d0
 
+      ! Allard atmosphere tables: the boundary at tau = 100 instead of the photosphere
       ! (legacy name: laltptau100)
       allard_use_tau100 = .false.
 
@@ -555,23 +606,27 @@
       ! (legacy name: cstdiffmix)
       constant_settling_reduction = 1.0d0
 
-      ! VERIFIED 2026: scaled-solar-wind mass loss: Mdot = solar rate * min((omega/omega_ref)^2, cap) in mdot; copied to star%rot%use_rotation_scaled_solar_wind.
+      ! Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set
       ! (legacy name: lsolwind)
       use_rotation_scaled_solar_wind = .false.
 
+      ! Use the Matt et al. (2012) magnetized wind law (wind_law_name) instead of the Kawaler law
       ! (legacy name: lmwind)
       use_pmm_wind_law = .false.
 
+      ! Matt wind law: scale the loss rate with the Rossby number (use with a saturation threshold)
       ! (legacy name: lrossby)
       scale_by_rossby_number = .true.
 
-      ! Use the PMM wind law (Somers pinned Matt-style)
+      ! Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set
       ! (legacy name: lpmm)
       use_pmm_wind = .false.
 
+      ! Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13)
       ! (legacy name: lbscale)
       scale_by_b_field = .false.
 
+      ! Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given)
       ! (legacy name: awind)
       wind_law_name = 'K97'
 
@@ -587,31 +642,39 @@
       ! (legacy name: pmmc)
       pmm_exponent_c = 2.0
 
+      ! Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it)
       ! (legacy name: pmmd)
       pmm_exponent_d = 0.0
 
+      ! Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it)
       ! (legacy name: pmmm)
       pmm_exponent_m = 0.5
 
+      ! Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant)
       ! (legacy name: pmmjd)
       pmm_norm_jdot = 1.32e30
 
+      ! Matt wind law: the solar mass-loss rate (g/s), its zero point
       ! (legacy name: pmmmd)
       pmm_norm_mdot = 1.27e12
 
-      ! PMM wind: saturation omega
+      ! Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set
       ! (legacy name: pmmwmax)
       pmm_omega_sat = 0
 
+      ! Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength
       ! (legacy name: pmmsolp)
       pmm_solar_pressure = 4.9304d0
 
+      ! Matt wind law: the solar angular velocity (rad/s), the zero point of the torque
       ! (legacy name: pmmsolw)
       pmm_solar_omega = 2.836e-6
 
+      ! Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number
       ! (legacy name: pmmsoltau)
       pmm_solar_turnover_timescale = 9.4805d5
 
+      ! Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport
       ! (legacy name: lcodm)
       use_constant_background_diffusion = .false.
 
@@ -619,7 +682,7 @@
       ! (legacy name: codm)
       constant_background_diffusion_coeff = 2.5d4
 
-      ! Saturation omega for the solar-calibrated wind
+      ! The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega
       ! (legacy name: wmax_sun)
       solar_omega_sat = 1000.0
 
@@ -671,15 +734,19 @@
       ! (legacy name: sli7)
       li7_rate_scale = 1.0d0
 
+      ! Scale of the Be9(p,g) rate (overridden by xsbe91 with lxbe91)
       ! (legacy name: sbe91)
       be9_pg_rate_scale = 1.0d0
 
+      ! Scale of the Be9(p,d) rate (overridden by xsbe92 with lxbe92)
       ! (legacy name: sbe92)
       be9_pd_rate_scale = 1.0d0
 
+      ! Scale of the Be9(p,a) rate (overridden by xsbe93 with lxbe93)
       ! (legacy name: sbe93)
       be9_palpha_rate_scale = 1.0d0
 
+      ! Take the cross sections from the s0_* controls (Adelberger et al. 2011 defaults) instead of the ratios to Bahcall & Ulrich (1988)
       ! (legacy name: lnewnuc)
       use_new_nuclear_rates = .false.
 
@@ -687,9 +754,11 @@
       ! (legacy name: spotf)
       spot_filling_factor = 0.00d0
 
+      ! Starspots: the spot temperature contrast (with spot_filling_factor > 0; 0.85 is typical of sunspots)
       ! (legacy name: spotx)
       spot_temp_contrast = 1.00d0
 
+      ! Starspots: decrease the spot contrast with depth, at constant B
       ! (legacy name: lsdepth)
       spot_depth_varies = .false.
 
@@ -713,61 +782,81 @@
       ! (legacy name: s0_1_13)
       s0_p_c13 = 7.6d0
 
+      ! S0 of N14(p,g)O15 (keV b), with use_new_nuclear_rates
       ! (legacy name: s0_1_14)
       s0_p_n14 = 1.66d0
 
+      ! S0 of O16(p,g)F17 (keV b), with use_new_nuclear_rates
       ! (legacy name: s0_1_16)
       s0_p_o16 = 1.06d1
 
+      ! The pep rate relative to pp, with use_new_nuclear_rates
       s0_pep = 3.5734d-6
 
+      ! The constant of the linear term of Be7 electron capture, with use_new_nuclear_rates
       ! (legacy name: s0_1_be7e)
       s0_be7_electron = 1.7709d-10
 
+      ! S0 of Be7(p,g)B8 (keV b), with use_new_nuclear_rates
       ! (legacy name: s0_1_be7p)
       s0_be7_p = 0.0208d0
 
+      ! S0 of He3(p,e+ nu)He4 (keV b), with use_new_nuclear_rates
       s0_hep = 8.6d-20
 
+      ! S0 of N15(p,a)C12 (keV b), which sets the N15 + p branching
       ! (legacy name: s0_1_15_c12alp)
       s0_n15_p_c12_branch = 7.3d4
 
+      ! S0 of N15(p,g)O16 (keV b), which sets the N15 + p branching
       ! (legacy name: s0_1_15_o16)
       s0_n15_p_o16_branch = 3.6d1
 
+      ! dS/dE of H1(p,e+ nu)H2 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_1)
       s0p_pp = 4.49d-24
 
+      ! dS/dE of He3(He3,2p)He4 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_3_3)
       s0p_he3he3 = -4.9d0
 
+      ! dS/dE of He3(a,g)Be7 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_3_4)
       s0p_he3he4 = -3.6d-4
 
+      ! dS/dE of C12(p,g)N13 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_12)
       s0p_p_c12 = 2.6d-3
 
+      ! dS/dE of C13(p,g)N14 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_13)
       s0p_p_c13 = -7.83d-3
 
+      ! dS/dE of N14(p,g)O15 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_14)
       s0p_p_n14 = -3.3d-3
 
+      ! dS/dE of O16(p,g)F17 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_16)
       s0p_p_o16 = -5.4d-2
 
+      ! d2S/dE2 of C12(p,g)N13 (b/keV), with use_new_nuclear_rates
       ! (legacy name: s0pp_1_12)
       s0pp_p_c12 = 8.3d-5
 
+      ! d2S/dE2 of C13(p,g)N14 (b/keV), with use_new_nuclear_rates
       ! (legacy name: s0pp_1_13)
       s0pp_p_c13 = 7.29d-4
 
+      ! d2S/dE2 of O16(p,g)F17 (b/keV), with use_new_nuclear_rates
       ! (legacy name: s0pp_1_16)
       s0pp_p_o16 = 0.0d0
 
+      ! dS/dE of Be7(p,g)B8 (b), with use_new_nuclear_rates
       ! (legacy name: s0p_1_be7p)
       s0p_be7_p = -3.12d-5
 
+      ! d2S/dE2 of Be7(p,g)B8 (b/keV), with use_new_nuclear_rates
       ! (legacy name: s0pp_1_be7p)
       s0pp_be7_p = -2.288d-7
 
@@ -780,62 +869,89 @@
       ! Zoning: a Z jump between shells larger than this flags a shell
       flag_dz = 0.05d0
 
+      ! With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates)
       lstruct_time = .false.
 
+      ! With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria
       time_core_min = 1.0d-3
 
+      ! With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence)
       time_dl = 2.0d-2
 
+      ! With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence)
       time_dp = 4.0d-2
 
+      ! With use_new_rate_variables: the largest change of r at any point per step (pre-main sequence)
       time_dr = 2.0d-2
 
+      ! With use_new_rate_variables: the largest change of T at any point per step (pre-main sequence)
       time_dt = 2.0d-2
 
+      ! With use_new_rate_variables: the largest change of omega per step
       time_dw_global = 8.0d-2
 
+      ! With use_new_rate_variables: the largest change of omega per rotational-mixing sub-step
       time_dw_mix = 8.0d-2
 
+      ! With use_new_rate_variables: the largest fraction of the central X burned per step
       time_dx_core_frac = 0.5d0
 
+      ! With use_new_rate_variables: the largest change of the central X per step
       time_dx_core_tot = 2.0d-2
 
+      ! With use_new_rate_variables: the largest fraction of X burned in the shell per step
       time_dx_shell = 0.1d0
 
+      ! With use_new_rate_variables: the largest mass of hydrogen burned per step (Msun)
       time_dx_total = 1.5d-3
 
+      ! With use_new_rate_variables: the largest fraction of the central Y burned per step
       time_dy_core_frac = 0.5d0
 
+      ! With use_new_rate_variables: the largest change of the central Y per step
       time_dy_core_tot = 2.0d-2
 
+      ! With use_new_rate_variables: the largest fraction of Y burned in the shell per step
       time_dy_shell = 0.1d0
 
+      ! With use_new_rate_variables: the largest mass of helium burned per step (Msun)
       time_dy_total = 1.5d-3
 
+      ! With use_new_rate_variables: the width in log P of the finely zoned region at the base of the convection zone
       tol_czbase_fine_width = 0.0d0
 
+      ! With use_new_rate_variables: the largest spacing in L/L_surface between points
       tol_dl_max = 0.02d0
 
+      ! With use_new_rate_variables: the largest spacing in log m between points
       tol_dm_max = 0.08d0
 
+      ! With use_new_rate_variables: the smallest spacing in log m between points
       tol_dm_min = 1.0d-8
 
+      ! With use_new_rate_variables: the largest spacing in log P below the surface convection zone
       tol_dp_core_max = 0.05d0
 
+      ! With use_new_rate_variables: the largest spacing in log P near the base of the surface convection zone
       tol_dp_czbase_max = 0.05d0
 
+      ! With use_new_rate_variables: the largest spacing in log P in the surface convection zone
       tol_dp_env_max = 0.05d0
 
+      ! With use_new_rate_variables: the largest spacing in X between points (usually off)
       tol_dx_max = 1.0d0
 
+      ! With use_new_rate_variables: the largest spacing in Z between points (usually off)
       tol_dz_max = 1.0d0
 
+      ! With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next
       time_max_dt_frac = 1.5d0
 
       ! Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates
       ! (legacy name: lnewvars)
       use_new_rate_variables = .false.
 
+      ! Integrate the full envelope (false: the atmosphere to the photosphere only)
       ! (legacy name: lcalcenv)
       calc_envelope_flag = .true.
 

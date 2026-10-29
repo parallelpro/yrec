@@ -35,6 +35,8 @@ def load_registry():
     for l in body:
         r = dict(zip(header.split("\t"), l.split("\t")))
         grp, legacy, new, status = r["group"], r["legacy"], r["proposed_name"], r["status"]
+        if status == "derived":
+            continue  # no deck sets it
         if status in ("unused", "legacy"):
             dead[grp].add(legacy)
         else:

@@ -6,12 +6,15 @@
 
 &control
 
+      ! Per run: the mixing-length parameter alpha (the solar calibration rewrites the later runs' entries)
       ! (legacy name: cmixla)
       mixing_length_alpha = 0
 
+      ! Solar calibration: the target age of the Sun (yr)
       ! (legacy name: calsolage)
       target_solar_age = 4.57d9
 
+      ! Solar calibration: the target surface Z/X (with calibrate_solar_zx)
       ! (legacy name: calsolzx)
       target_solar_zx = 0.02292d0
 
@@ -59,7 +62,7 @@
       ! (legacy name: flldat)
       ll_data_file = ''
 
-      ! Surface-composition output file
+      ! Inert: the path is expanded and used nowhere; the controls read warns when it is set
       ! (legacy name: fscomp)
       surface_composition_file = ''
 
@@ -154,15 +157,19 @@
       ! Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).
       set_initial_model_number = 1
 
+      ! On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2
       ! (legacy name: lzramp)
       use_z_ramp = .false.
 
+      ! Star calibration: match the target Teff (target_teff) instead of the target radius (target_radius_rsun)
       ! (legacy name: lteff)
       specify_teff_flag = .false.
 
+      ! Calibrate the mixing length and Y so that the star reaches target_luminosity_lsun at the target radius or Teff
       ! (legacy name: lcalst)
       calibrate_star_flag = .false.
 
+      ! Use the pure C and N opacity tables (pure_z_opacity_table_file) for metal-enriched mixtures
       ! (legacy name: lpurez)
       use_pure_z_table = .false.
 
@@ -174,27 +181,35 @@
       ! (legacy name: lrwsh)
       rewind_short_file = .false.
 
+      ! Per run: move the outer fitting point to the fractional envelope mass senv0_array
       ! (legacy name: lsenv0a)
       has_senv0_array = .false.
 
+      ! Calibrate Y and the mixing length so that the model matches the solar L and R at target_solar_age
       ! (legacy name: lcals)
       calibrate_solar_model = .false.
 
+      ! Solar calibration: also calibrate Z to match target_solar_zx (within zx_tolerance)
       ! (legacy name: lcalsolzx)
       calibrate_solar_zx = .false.
 
+      ! Use the LAOL 1989 opacity tables (laol_opacity_table_file)
       ! (legacy name: llaol89)
       use_laol89_tables = .false.
 
+      ! Use the OPAL 1992 opacity tables (opal92_opacity_table_file)
       ! (legacy name: lopal92)
       use_opal92_tables = .false.
 
+      ! Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file)
       ! (legacy name: lopal95)
       use_opal95_tables = .false.
 
+      ! Use the Kurucz 1990 low-temperature opacity tables
       ! (legacy name: lkur90)
       use_kurucz90_tables = .false.
 
+      ! Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list)
       ! (legacy name: lalex95)
       use_alex95_tables = .false.
 
@@ -202,13 +217,15 @@
       ! (legacy name: npenv)
       envelope_print_points = 0
 
+      ! The number of runs (kind cards): each rescales a model, evolves it, or both
       ! (legacy name: numrun)
       num_runs = 1
 
+      ! Per run: the number of models to compute (the run stops earlier if a stop condition is met)
       ! (legacy name: nmodls)
       max_model_number = 0
 
-      ! VERIFIED 2026: the seven Alexander-1995 low-T opacity table FILE PATHS (character(len=256)(7)), relayed to star%job%alex95_table_paths -- the old 'alex_z_value' guess was wrong.
+      ! The seven Alexander & Ferguson 1994 low-temperature opacity table files (the historical name says z_list)
       ! (legacy name: opecalex)
       alex95_table_z_list = ''
 
@@ -240,15 +257,19 @@
       ! (legacy name: rsclzm2)
       rescale_z_mix2 = -1.0d0
 
+      ! Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits
       ! (legacy name: setdt)
       timestep_override = 0.0d0
 
+      ! Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array)
       ! (legacy name: senv0a)
       senv0_array = 1.26d-4
 
+      ! Star calibration: the target Teff (K), with specify_teff_flag
       ! (legacy name: steff)
       target_teff = 0
 
+      ! Star calibration: the target radius (Rsun)
       ! (legacy name: sr)
       target_radius_rsun = 0
 
@@ -260,6 +281,7 @@
       ! (legacy name: toll)
       luminosity_tolerance = 1.0d-5
 
+      ! Solar calibration: the tolerance on log10(Z/X)
       ! (legacy name: tolz)
       zx_tolerance = 1.0d-3
 
@@ -271,6 +293,7 @@
       ! (legacy name: xls)
       target_luminosity_lsun = 0
 
+      ! Star calibration: the tolerance on L/Lsun at the target radius or Teff
       ! (legacy name: xlstol)
       target_star_luminosity_tolerance = 0
 
@@ -290,26 +313,31 @@
       ! (legacy name: zopal1)
       opal_table_z1 = 0
 
+      ! Z of the second OPAL 1992 opacity table
       ! (legacy name: zopal2)
       opal_table_z2 = 0
 
+      ! Z of the surface-mixture OPAL 1995 / OP table generated at the start
       ! (legacy name: zopal951)
       opal95_single_table_z = 0
 
-      ! Second Z of the OPAL95 opacity table pair
+      ! Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set
       ! (legacy name: zopal952)
       opal95_z2 = 0
 
+      ! Z of the Alexander & Ferguson 1994 low-temperature table
       ! (legacy name: zalex1)
       alex_table_z1 = 0
 
-      ! Second Z of the Alexander table pair
+      ! Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set
       ! (legacy name: zalex2)
       alex_z2 = 0
 
+      ! Z of the first Kurucz 1990 opacity table
       ! (legacy name: zkur1)
       kurucz_table_z1 = 0
 
+      ! Z of the second Kurucz 1990 opacity table
       ! (legacy name: zkur2)
       kurucz_table_z2 = 0
 
@@ -329,15 +357,19 @@
       ! (legacy name: falex06)
       alex06_opacity_table_file = ''
 
+      ! Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file)
       ! (legacy name: lalex06)
       use_alex06_tables = .false.
 
+      ! Per run: stop when the central deuterium mass fraction falls below this (0: off)
       ! (legacy name: end_dcen)
       central_deuterium_stop = 0.0d0
 
+      ! Per run: stop when the central hydrogen mass fraction falls below this (0: off)
       ! (legacy name: end_xcen)
       central_hydrogen_stop = 0.0d0
 
+      ! Per run: stop when the central helium mass fraction falls below this (0: off)
       ! (legacy name: end_ycen)
       central_helium_stop = 0.0d0
 
@@ -357,58 +389,73 @@
       ! (legacy name: aiso)
       isotope_mixture_name = 'L21'
 
+      ! Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with cno_mixture_mode = 1)
       ! (legacy name: frac_c)
       target_carbon_cno_fraction = 0.172148d0
 
+      ! Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS'
       ! (legacy name: frac_n)
       target_nitrogen_cno_fraction = 0.050426d0
 
+      ! Oxygen fraction of the CNO metals for cno_mixture_name 'CUS'
       ! (legacy name: frac_o)
       target_oxygen_cno_fraction = 0.468195
 
+      ! C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_mixture_mode = 1)
       ! (legacy name: r12_13)
       c12_to_c13_ratio = 88.27d0
 
+      ! N14/N15 number ratio for isotope_mixture_name 'CUS'
       ! (legacy name: r14_15)
       n14_to_n15_ratio = 411.9d0
 
+      ! O16/O17 number ratio for isotope_mixture_name 'CUS'
       ! (legacy name: r16_17)
       o16_to_o17_ratio = 471.4d0
 
+      ! O16/O18 number ratio for isotope_mixture_name 'CUS'
       ! (legacy name: r16_18)
       o16_to_o18_ratio = 2693.0d0
 
+      ! Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting model keeps its Z)
       ! (legacy name: zxmix)
       target_metal_fraction = 0.02292d0
 
+      ! Initial H2 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xh2_ini)
       initial_h2_fraction = 2.781d-5
 
+      ! Initial He3 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xhe3_ini)
       initial_he3_fraction = 3.461d-5
 
+      ! Initial Li6 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xli6_ini)
       initial_li6_fraction = 7.187d-10
 
+      ! Initial Li7 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xli7_ini)
       initial_li7_fraction = 1.025d-8
 
+      ! Initial Be9 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xbe9_ini)
       initial_be9_fraction = 1.595d-10
 
+      ! Initial B10 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xb10_ini)
       initial_b10_fraction = 1.002d-9
 
+      ! Initial B11 mass fraction for isotope_mixture_name 'CUS'
       ! (legacy name: xb11_ini)
       initial_b11_fraction = 4.405d-9
 
       ! Write the interior-only GYRE file every this many models (0 = off)
       pulse_gyre_interval = 0
 
-      ! MESA mode: file listing the history columns to write (one name per line, ! comments); blank = all columns
+      ! File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list
       history_columns_file = ' '
 
-      ! MESA mode: file listing the profile columns to write; blank = all columns
+      ! File listing the profile columns; blank: the default selection of defaults/profile_columns.list
       profile_columns_file = ' '
 
       ! Verbatim copy of the input namelist file(s), written at startup as run provenance
