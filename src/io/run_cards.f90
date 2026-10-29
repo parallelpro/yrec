@@ -62,7 +62,7 @@ subroutine interpret_kind_cards(s)
              write(run_log_unit,370) endage(nkind), setdt(nkind), &
            &          end_dcen(nkind), end_xcen(nkind), end_ycen(nkind)
       370          format(9x,'stop conditions (0 = unused): age =',es9.2, &
-           &          ' yr   fixed dt =',es9.2,' yr   central: log rho =',es10.3, &
+           &          ' yr   fixed dt =',es9.2,' yr   central: D =',es10.3, &
            &          '  X =',es10.3,'  Y =',es10.3)
           endif
             end if
