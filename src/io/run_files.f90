@@ -58,17 +58,43 @@ subroutine assign_unit_numbers
 end subroutine assign_unit_numbers
 
 ! ---------------------------------------------------------------
-! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in the
-! path controls, expanded (expand_value).
+! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
+! every path control, expanded (expand_value): every string control
+! that names a file, by its legacy name (test_generated_files.py checks
+! the list against the registry). history_columns_file and
+! profile_columns_file are the exception: the output reads them from
+! star%ctrl, stored before this expansion.
 subroutine expand_paths
+      integer :: i
+
       call expand_value(falex06)
       call expand_value(fallard)
       call expand_value(fatm)
       call expand_value(fcondopacp)
+      call expand_value(fdyn)
       call expand_value(ffermi)
       call expand_value(ffirst)
+      call expand_value(fiso)
+      call expand_value(fkur)
+      call expand_value(fkur2)
+      call expand_value(flaol)
+      call expand_value(flaol2)
       call expand_value(flast)
       call expand_value(fliv95)
+      call expand_value(flldat)
+      call expand_value(fmhd1)
+      call expand_value(fmhd2)
+      call expand_value(fmhd3)
+      call expand_value(fmhd4)
+      call expand_value(fmhd5)
+      call expand_value(fmhd6)
+      call expand_value(fmhd7)
+      call expand_value(fmhd8)
+      call expand_value(fmonte1)
+      call expand_value(fmonte2)
+      call expand_value(fopal2)
+      call expand_value(fopale)
+      call expand_value(fopale01)
       call expand_value(fopale06)
       call expand_value(fpurez)
       call expand_value(fscomp)
@@ -76,7 +102,11 @@ subroutine expand_paths
       call expand_value(fscvhe)
       call expand_value(fscvz)
       call expand_value(fshort)
+      call expand_value(fstch)
       call expand_value(inlist_used_file)
+      do i = 1, size(opecalex)
+         call expand_value(opecalex(i))
+      end do
 end subroutine expand_paths
 
 ! ---------------------------------------------------------------
