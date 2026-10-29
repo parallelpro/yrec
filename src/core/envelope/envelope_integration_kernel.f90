@@ -524,9 +524,14 @@ subroutine take_atmosphere_step()
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
             h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
-! A bsstep failure (the solution diverged; bsstep has printed the
+! A bsstep limit out of range is a configuration error; any other
+! bsstep failure (the solution diverged; bsstep has printed the
 ! diagnostic) returns the numerics-termination code.
-       if (jerr /= 0) then
+       if (jerr == numerics_bad_input) then
+          call report_bsstep_limits()
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
           ierr = numerics_termination
           return
        end if
@@ -829,9 +834,12 @@ subroutine take_envelope_step()
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
               h_next,step_err,max_stage_index,extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
-! A bsstep failure returns the numerics-termination code, as in the
-! atmosphere.
-       if (jerr /= 0) then
+! A bsstep failure returns as in the atmosphere.
+       if (jerr == numerics_bad_input) then
+          call report_bsstep_limits()
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
           ierr = numerics_termination
           return
        end if
@@ -850,6 +858,20 @@ subroutine take_envelope_step()
           return
        end if
 end subroutine take_envelope_step
+
+! ---------------------------------------------------------------
+! The message for Bulirsch-Stoer limits out of range (the controls imax
+! and nuse), to the terminal and the run log.
+subroutine report_bsstep_limits()
+       character(len=*), parameter :: fmt = &
+            '(1x,a,i0,a,i0,a,i0,a,i0)'
+       write(terminal_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
+            max_stage_index, ', nuse = ', extrap_order, '; need 2 <= nuse <= ', &
+            bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
+       write(run_log_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
+            max_stage_index, ', nuse = ', extrap_order, '; need 2 <= nuse <= ', &
+            bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
+end subroutine report_bsstep_limits
 
 ! ---------------------------------------------------------------
 ! The new envelope point into env_points, unless the step went past the

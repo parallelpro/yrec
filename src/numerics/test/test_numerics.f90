@@ -354,7 +354,7 @@ subroutine bsstep_check()
       double precision, parameter :: underflow_reference = 0.7d0
       type(harmonic_system) :: sys
       double precision :: y(3), dydx(3), yscale(3), err(3), x, h, h_did, h_next
-      integer :: step
+      integer :: step, jerr, limits(3,6)
       write(*,'(a)') "# bsstep (mmid, ratext)"
       y = [0.0d0, 1.0d0, 1.0d0]
       x = 0.0d0
@@ -379,8 +379,8 @@ subroutine bsstep_check()
       end do
       sys%fail = .true.
       call bsstep(sys, y, dydx, 3, x, h, 1.0d-10, yscale, h_did, h_next, err, &
-           11, 7, underflow_reference, ierr)
-      write(*,'(a,i3)') "bsstep, integrand failure: ierr", ierr
+           11, 7, underflow_reference, ierr, jerr)
+      write(*,'(a,2i3)') "bsstep, integrand failure: ierr, derivatives_ierr", ierr, jerr
       sys%fail = .false.
 ! zero tolerance: no step is accepted, so h shrinks until it vanishes
 ! against the underflow reference
@@ -403,6 +403,17 @@ subroutine bsstep_check()
            11, 7, underflow_reference, ierr)
       write(*,'(a,i3,a,2(1pe24.15),l2)') "bsstep, NaN in component 3 of 3: ierr", ierr, &
            " y(1:2), y(3) is NaN", y(1:2), y(3) /= y(3)
+! limits out of range: no step, numerics_bad_input (num_eqs,
+! max_stage_index, extrap_order)
+      limits = reshape([0, 11, 7,  16, 11, 7,  3, 12, 7,  3, 11, 1,  3, 11, 8,  3, 5, 7], [3, 6])
+      do step = 1, 6
+         sys%calls = 0
+         x = 0.0d0
+         call bsstep(sys, y, dydx, limits(1,step), x, 0.5d0, 1.0d-10, yscale, h_did, &
+              h_next, err, limits(2,step), limits(3,step), underflow_reference, ierr)
+         write(*,'(a,3i4,a,i3,a,i3,f5.1)') "bsstep limits", limits(:,step), ": ierr", ierr, &
+              " deriv calls", sys%calls, x
+      end do
 end subroutine bsstep_check
 
 end program test_numerics

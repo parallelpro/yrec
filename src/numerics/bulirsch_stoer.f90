@@ -13,10 +13,12 @@
 module bulirsch_stoer
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-      use math_lib
+      use numerics_status, only: numerics_ok, numerics_bad_input, &
+           numerics_step_underflow, numerics_derivatives_failed
       implicit none
       private
       public :: ode_system, bsstep
+      public :: bsstep_max_equations, bsstep_max_stages, bsstep_max_extrap_order
 
 ! A system of first-order equations y' = f(x, y)
       type, abstract :: ode_system
@@ -35,12 +37,21 @@ module bulirsch_stoer
          end subroutine ode_derivatives
       end interface
 
+! The number of midpoint substeps at each stage of a step; a step has
+! at most bsstep_max_stages stages.
+      integer, parameter :: substep_sequence(11) = [2,4,6,8,12,16,24,32,48,64,96]
+! bsstep's limits, which the tableau's size sets: the most equations, the
+! most stages (max_stage_index) and the most stages the extrapolation
+! uses (extrap_order).
+      integer, parameter :: bsstep_max_equations = 15
+      integer, parameter :: bsstep_max_stages = size(substep_sequence)
+      integer, parameter :: bsstep_max_extrap_order = 7
+
 ! ratext's tableau, carried from one stage of a step to the next
 ! (formerly SAVEd in ratext): the step sizes squared and the diagonals
-      integer, parameter :: imax = 11, nmax = 15, ncol = 7
       type :: rational_tableau
-         real(dp) :: x_hist(imax) = 0.0d0
-         real(dp) :: tableau(nmax,ncol) = 0.0d0
+         real(dp) :: x_hist(bsstep_max_stages) = 0.0d0
+         real(dp) :: tableau(bsstep_max_equations,bsstep_max_extrap_order) = 0.0d0
       end type rational_tableau
 
 contains
@@ -56,13 +67,20 @@ contains
 ! substep_sequence(i) midpoint substeps, extrapolated over up to
 ! extrap_order stages; when none meets tolerance, h shrinks by
 ! 4*2**((max_stage_index - extrap_order)/2) and the step is retried.
-! ierr: the derivatives' failure, or 1 when h underflows, i.e. when
+! Limits: 1 <= num_eqs <= bsstep_max_equations, 2 <= extrap_order <=
+! bsstep_max_extrap_order, extrap_order <= max_stage_index <=
+! bsstep_max_stages (with fewer stages than extrap_order a retry would
+! not shrink h).
+! ierr (numerics_status): numerics_bad_input when a limit is broken
+! (nothing is done); numerics_derivatives_failed when the derivatives
+! fail (their code in derivatives_ierr, if present); and
+! numerics_step_underflow when h underflows, i.e. when
 ! underflow_reference + h == underflow_reference. (The envelope passes
 ! its hydrogen fraction there: the F77 BSSTEP tested X+H.EQ.X with X
 ! its hydrogen-fraction argument, not the independent variable X0.)
 subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      h_did, h_next, step_err, max_stage_index, extrap_order, &
-     underflow_reference, ierr)
+     underflow_reference, ierr, derivatives_ierr)
       real(dp), parameter :: one = 1.0d0, shrink_factor = 0.95d0, &
            grow_factor = 1.2d0
 
@@ -77,16 +95,22 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
       integer, intent(in) :: max_stage_index, extrap_order
       real(dp), intent(in) :: underflow_reference
       integer, intent(out) :: ierr
+      integer, intent(out), optional :: derivatives_ierr
 
-! the number of midpoint substeps at each stage
-      integer, parameter :: substep_sequence(11) = [2,4,6,8,12,16,24,32,48,64,96]
       real(dp) :: y_err(num_eqs), y_sav(num_eqs), dy_sav(num_eqs), y_seq(num_eqs)
       real(dp) :: h, x_sav, x_est, err_max
       integer :: i, j
       integer :: jerr_integrand
       type(rational_tableau) :: tableau
 
-      ierr = 0
+      if (present(derivatives_ierr)) derivatives_ierr = 0
+      if (num_eqs < 1 .or. num_eqs > bsstep_max_equations .or. &
+          extrap_order < 2 .or. extrap_order > bsstep_max_extrap_order .or. &
+          max_stage_index < extrap_order .or. max_stage_index > bsstep_max_stages) then
+         ierr = numerics_bad_input
+         return
+      end if
+      ierr = numerics_ok
       h = h_step
       x_sav = indep_var
       do i = 1,num_eqs
@@ -98,7 +122,8 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
        call mmid(system, y_sav, dy_sav, num_eqs, x_sav, h, substep_sequence(i), &
             y_seq, jerr_integrand)
        if (jerr_integrand /= 0) then
-          ierr = jerr_integrand
+          ierr = numerics_derivatives_failed
+          if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand
           return
        end if
        x_est = (h/substep_sequence(i))**2
@@ -126,17 +151,16 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
           else if (i == extrap_order-1) then
              h_next = h*grow_factor
           else
-             h_next = h*dfloat(substep_sequence(extrap_order-1))/ &
-                  dfloat(substep_sequence(i))
+             h_next = h*real(substep_sequence(extrap_order-1), dp)/ &
+                  real(substep_sequence(i), dp)
           endif
           return
        endif
       end do
-      h = 0.25d0*h/pow(2.0d0, int((max_stage_index-extrap_order)/2))
-!      H = 0.25D0*H/2**((IMAX-NUSE)/2)
+      h = 0.25d0*h/2.0d0**((max_stage_index-extrap_order)/2)
       if(underflow_reference+h == underflow_reference) then
          write(*,*) 'ERROR IN BSSTEP'
-       ierr = 1
+       ierr = numerics_step_underflow
        return
       end if
       end do
@@ -208,7 +232,7 @@ pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, 
       real(dp), intent(in) :: x_est
       real(dp), intent(in) :: y_est(num_vars)
       real(dp), intent(out) :: y_extrap(num_vars), y_err(num_vars)
-      real(dp) :: fx(ncol)
+      real(dp) :: fx(bsstep_max_extrap_order)
       integer :: var_idx, k, k2, num_use
       real(dp) :: yy, v, c, b1, b, ddy
 
@@ -254,3 +278,4 @@ pure subroutine ratext(tab, est_index, x_est, y_est, y_extrap, y_err, num_vars, 
 end subroutine ratext
 
 end module bulirsch_stoer
+

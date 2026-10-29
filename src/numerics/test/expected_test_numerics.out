@@ -220,10 +220,16 @@ large step, h_try 4.00 ierr  0
   y, x, h_did, h_next
    1.936921680515588E-02  -9.998123991390228E-01   3.919321003270355E-01
    3.122222225481851E+00   9.313225746154785E-10   2.328306436538696E-10
-bsstep, integrand failure: ierr  3
+bsstep, integrand failure: ierr, derivatives_ierr  6  3
  ERROR IN BSSTEP
-bsstep, step underflow: ierr  1 deriv calls   20221
+bsstep, step underflow: ierr  4 deriv calls   20221
  ERROR IN BSSTEP
-bsstep, one equation, NaN: ierr  1
+bsstep, one equation, NaN: ierr  4
 bsstep, NaN in component 3 of 3: ierr  0 y(1:2), y(3) is NaN   4.719827050515231E-07   9.999999970700355E-01 T
+bsstep limits   0  11   7: ierr  3 deriv calls  0  0.0
+bsstep limits  16  11   7: ierr  3 deriv calls  0  0.0
+bsstep limits   3  12   7: ierr  3 deriv calls  0  0.0
+bsstep limits   3  11   1: ierr  3 deriv calls  0  0.0
+bsstep limits   3  11   8: ierr  3 deriv calls  0  0.0
+bsstep limits   3   5   7: ierr  3 deriv calls  0  0.0
 test_numerics: done

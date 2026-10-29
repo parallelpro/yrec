@@ -21,13 +21,22 @@ module numerics_lib
       use table_interpolation, only: inter3, interp, intrp2, lagrange4, quint, &
            polint, lir, findex, locate
       use linear_solvers, only: ludcmp, lubksb, simeqc, solve_tridiagonal
-      use bulirsch_stoer, only: ode_system, bsstep
+      use bulirsch_stoer, only: ode_system, bsstep, bsstep_max_equations, &
+           bsstep_max_stages, bsstep_max_extrap_order
+      use numerics_status, only: numerics_ok, numerics_singular, &
+           numerics_coincident_points, numerics_bad_input, &
+           numerics_step_underflow, numerics_unsorted_points, &
+           numerics_derivatives_failed, numerics_status_text
       implicit none
       private
       public :: cspline, natural_spline, splint, ysplin, intpol
       public :: osplin
       public :: inter3, interp, intrp2, lagrange4, quint, polint, lir, findex, locate
       public :: ludcmp, lubksb, simeqc, solve_tridiagonal
-      public :: ode_system, bsstep
+      public :: ode_system, bsstep, bsstep_max_equations, bsstep_max_stages, &
+           bsstep_max_extrap_order
+      public :: numerics_ok, numerics_singular, numerics_coincident_points, &
+           numerics_bad_input, numerics_step_underflow, numerics_unsorted_points, &
+           numerics_derivatives_failed, numerics_status_text
       integer, parameter, public :: numerics_termination = -2
 end module numerics_lib
