@@ -11,15 +11,24 @@
 ! adopt_canonical_names; the legacy names it reads (amix, aiso,
 ! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
 module derived_controls
-      use physical_constants
-      use io_units
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use physical_constants, only: yrec_version_string, git_hash_string
+      use io_units, only: run_log_unit
       use legacy_controls
       use controls_check, only: report_control
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: derive_controls
 
       integer, parameter :: message_length = 512
+! The light-element cross sections (keV b) the rate scales are relative
+! to: Li6 5500 (Fowler et al. 1967), Li7 52 (Rolfs & Kavanagh 1986),
+! Be9(p,g) 1.1 (approximate, from Fowler 1988), Be9(p,d) and Be9(p,a)
+! 15000 (Fowler et al. 1967).
+      real(dp), parameter :: li6_reference_xs = 5.5d3, li7_reference_xs = 5.2d1, &
+           be9_pg_reference_xs = 1.1d0, be9_pd_reference_xs = 1.5d4, &
+           be9_palpha_reference_xs = 1.5d4
 
 contains
 
@@ -27,7 +36,6 @@ contains
 ! The derivations, in order, and the run log's header. (controls_check's
 ! check_controls has rejected the controls the run cannot use.)
 subroutine derive_controls(s)
-      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
 
       call derive_rate_scales
@@ -44,15 +52,14 @@ subroutine derive_controls(s)
 end subroutine derive_controls
 
 ! ---------------------------------------------------------------
-! The light-element cross sections (keV b) as scales of their defaults
-! (Li6 5500, Li7 52, Be9(p,g) 1.1, Be9(p,d) and Be9(p,a) 15000; see
-! set_legacy_defaults).
+! The light-element cross sections (keV b, the xs* controls) as scales
+! of their reference values, which are also their defaults.
 subroutine derive_rate_scales
-      if (lxli6) sli6 = xsli6/5.5d3
-      if (lxli7) sli7 = xsli7/5.2d1
-      if (lxbe91) sbe91 = xsbe91/1.1d0
-      if (lxbe92) sbe92 = xsbe92/1.5d4
-      if (lxbe93) sbe93 = xsbe93/1.5d4
+      if (lxli6) sli6 = xsli6/li6_reference_xs
+      if (lxli7) sli7 = xsli7/li7_reference_xs
+      if (lxbe91) sbe91 = xsbe91/be9_pg_reference_xs
+      if (lxbe92) sbe92 = xsbe92/be9_pd_reference_xs
+      if (lxbe93) sbe93 = xsbe93/be9_palpha_reference_xs
       li6_rate_scale = sli6
       li7_rate_scale = sli7
       be9_pg_rate_scale = sbe91
@@ -64,7 +71,6 @@ end subroutine derive_rate_scales
 ! The newest OPAL EOS and Alexander opacities requested win; eos_init
 ! opens star%job%opal_eos_table_path.
 subroutine select_eos_and_opacity_tables(s)
-      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       s%job%opal_eos_table_path = ""
       if (use_opal2006_eos) then
@@ -122,7 +128,7 @@ end subroutine find_rescaled_species
 ! the amix table row, or as given for 'CUS' unless negative or summing
 ! to 1 or more.
 subroutine select_cno_mixture
-      double precision :: sum_frac
+      real(dp) :: sum_frac
       integer :: i
       character(len=message_length) :: line
 
@@ -181,7 +187,7 @@ end subroutine select_cno_mixture
 ! abundances, the defaults for aiso 'L21' or as given for 'CUS' unless
 ! negative or summing to 1 or more.
 subroutine select_isotope_mixture
-      double precision :: sum_frac
+      real(dp) :: sum_frac
       character(len=message_length) :: line
 
       change_isotope_ratios_active = .false.

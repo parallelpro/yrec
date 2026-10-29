@@ -64,7 +64,7 @@
 
       ! Envelope generation: the atmosphere step size
       ! (legacy name: atmstp)
-      atm_step_size = 0.5
+      atm_step_size = 0.5d0
 
       ! Burning network: absolute tolerance
       ! (legacy name: abstol)
@@ -130,7 +130,7 @@
 
       ! Envelope generation: the envelope step size
       ! (legacy name: envstp)
-      envelope_step_size = 0.5
+      envelope_step_size = 0.5d0
 
       ! Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain
       ! (legacy name: etadh0)
@@ -170,7 +170,7 @@
 
       ! With extend_core_inward: the factor by which the innermost mass is reduced
       ! (legacy name: fcore)
-      core_mass_reduction_factor = 1.0
+      core_mass_reduction_factor = 1.0d0
 
       ! Scale of the GSF and ABCD instability velocities in the angular momentum transport
       ! (legacy name: fgsf)
@@ -628,23 +628,23 @@
 
       ! PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it
       ! (legacy name: pmma)
-      pmm_exponent_a = 2.0
+      pmm_exponent_a = 2.0d0
 
       ! PMM wind law: exponent b, with Bmag ~ (omega R**c)**b; K97 and V13 set it
       ! (legacy name: pmmb)
-      pmm_exponent_b = 1.0
+      pmm_exponent_b = 1.0d0
 
       ! PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it
       ! (legacy name: pmmc)
-      pmm_exponent_c = 2.0
+      pmm_exponent_c = 2.0d0
 
       ! Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it)
       ! (legacy name: pmmd)
-      pmm_exponent_d = 0.0
+      pmm_exponent_d = 0.0d0
 
       ! Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it)
       ! (legacy name: pmmm)
-      pmm_exponent_m = 0.5
+      pmm_exponent_m = 0.5d0
 
       ! Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant)
       ! (legacy name: pmmjd)
@@ -680,7 +680,7 @@
 
       ! The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega
       ! (legacy name: wmax_sun)
-      solar_omega_sat = 1000.0
+      solar_omega_sat = 1000.0d0
 
       ! Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate)
       ! (legacy name: xsli6)

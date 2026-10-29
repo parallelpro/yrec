@@ -36,7 +36,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
 |---|---|
 | `setup/net_settings_setup.f90` | `net_settings_from_star`: the settings from the controls and the star's cross-section scales (pure, `intent(in)` star). |
 | `setup/user_inputs.f90` | `map_user_inputs`, during the controls read: the S0, S′ and S″ inputs (`s0_*`, `s0p_*`, `s0pp_*`) into `star%cross_section_scale`, `qs0e_scale`, `qqs0ee_scale` (by reaction slot), `extra_cross_section_scale` (by `xs_*`), `be7p_qs0e_scale`, `be7p_qqs0ee_scale` and the N15 + p branch scales. |
-| `io/read_controls.f90` | With `use_new_nuclear_rates` off, the legacy `sstandard` through `cross_section_scales_from_sstandard`. |
+| `io/controls_reader.f90` | With `use_new_nuclear_rates` off, the legacy `sstandard` through `cross_section_scales_from_sstandard`. |
 | `core/run/monte_carlo.f90` | A Monte-Carlo run rescales pp, He3 + He3, He3 + He4 (`r_*`) and Be7 + p (`xs_be7p`). |
 | `core/run/run_driver.f90` | `run_yrec` installs the settings: `set_net_settings(net_settings_from_star(s), ierr)`, once per Monte-Carlo run. |
 | `core/step/burn_step.f90` | The star-layer driver (table below). |

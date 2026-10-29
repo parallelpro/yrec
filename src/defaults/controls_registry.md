@@ -79,10 +79,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `num_runs` | `numrun` | `num_runs` | job | run | integer | `1` | canonical | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | job | run | integer(50) | `0` | canonical | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_table_z_list` | `opecalex` | `-` | - | - | string(7) | `''` | canonical | The seven Alexander & Ferguson 1994 low-temperature opacity table files (the historical name says z_list) |
-| `rescale_mass` | `rsclm` | `-` | - | - | real(50) | `0.0` | verified | Per-run target mass (Msun) for rescale runs |
-| `rescale_x` | `rsclx` | `-` | - | - | real(50) | `0.0` | verified | Per-run target hydrogen fraction for rescale runs |
-| `rescale_z` | `rsclz` | `-` | - | - | real(50) | `0.0` | verified | Per-run target metallicity for rescale runs |
-| `rescale_core_mass` | `rsclcm` | `-` | - | - | real(50) | `0.0` | verified | Per-run rescale: core mass bound |
+| `rescale_mass` | `rsclm` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target mass (Msun) for rescale runs |
+| `rescale_x` | `rsclx` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target hydrogen fraction for rescale runs |
+| `rescale_z` | `rsclz` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run target metallicity for rescale runs |
+| `rescale_core_mass` | `rsclcm` | `-` | - | - | real(50) | `0.0d0` | verified | Per-run rescale: core mass bound |
 | `rescale_core_z` | `rsclzc` | `rsclzc` | job | run | real(50) | `-1.0d0` | verified | rscale/setcal: core-Z rescale target |
 | `rescale_z_mix1` | `rsclzm1` | `rsclzm1` | job | run | real(50) | `-1.0d0` | verified | rscale/setcal: Z-mix rescale parameter 1 |
 | `rescale_z_mix2` | `rsclzm2` | `rsclzm2` | job | run | real(50) | `-1.0d0` | verified | rscale/setcal: Z-mix rescale parameter 2 |
@@ -165,7 +165,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `overshoot_alpha_envelope` | `alphae` | `overshoot_alpha_envelope` | ctrl | run | real | `0.0d0` | canonical | Envelope overshoot extent in pressure scale heights |
 | `wind_law_index` | `alfa` | `wind_law_index` | ctrl | run | real | `1.5d0` | verified | Kawaler wind law: the index alfa (Jdot ~ Omega**(1+4 alfa/3) ...); K97 takes m = alfa/3 |
 | `overshoot_alpha_min` | `alpham` | `alpham` | ctrl | run | real | `0.0d0` | verified | Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights |
-| `atm_step_size` | `atmstp` | `atm_step_size` | ctrl | run | real | `0.5` | canonical | Envelope generation: the atmosphere step size |
+| `atm_step_size` | `atmstp` | `atm_step_size` | ctrl | run | real | `0.5d0` | canonical | Envelope generation: the atmosphere step size |
 | `absolute_tolerance` | `abstol` | `absolute_tolerance` | ctrl | run | real | `1.0d-5` | canonical | Burning network: absolute tolerance |
 | `overshoot_beta_core` | `betac` | `betac` | ctrl | run | real | `0.15d0` | verified | With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius |
 | `min_abundance` | `cmin` | `min_abundance` | ctrl | run | real | `1.0d-20` | canonical | Burning network: abundances below this are treated as zero |
@@ -182,7 +182,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `env_step_max` | `envmax` | `env_step_max` | job | run | real | `5.0d-1` | canonical | The envelope integration's largest step (in log P) |
 | `env_step_min` | `envmin` | `env_step_min` | job | run | real | `1.0d-1` | canonical | Envelope integration: minimum step |
 | `env_step_begin` | `envbeg` | `env_step_begin` | job | run | real | `1.0d-1` | canonical | Envelope integration: first step |
-| `envelope_step_size` | `envstp` | `envelope_step_size` | ctrl | run | real | `0.5` | canonical | Envelope generation: the envelope step size |
+| `envelope_step_size` | `envstp` | `envelope_step_size` | ctrl | run | real | `0.5d0` | canonical | Envelope generation: the envelope step size |
 | `debye_huckel_eta_min` | `etadh0` | `debye_huckel_eta_min` | ctrl | run | real | `-1.0d0` | canonical | Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain |
 | `debye_huckel_eta_max` | `etadh1` | `debye_huckel_eta_max` | ctrl | run | real | `1.0d0` | canonical | Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain |
 | `solver_underrelax_start` | `fcorr0` | `fcorr0` | ctrl | run | real | `0.8d0` | canonical | Henyey under-relaxation: each step starts with the correction factor \|fcorr0\| - fcorri; a positive fcorr0 lets it grow each iteration |
@@ -193,7 +193,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `coupling_factor` | `fo` | `fo` | ctrl | none | real | `1.0d0` | verified | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
 | `(legacy only)` | `fmu` | `-` | - | - | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
-| `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | job | run | real | `1.0` | canonical | With extend_core_inward: the factor by which the innermost mass is reduced |
+| `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | job | run | real | `1.0d0` | canonical | With extend_core_inward: the factor by which the innermost mass is reduced |
 | `gsf_velocity_scale` | `fgsf` | `gsf_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the GSF and ABCD instability velocities in the angular momentum transport |
 | `secular_shear_velocity_scale` | `fss` | `secular_shear_velocity_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the secular shear instability velocity in the angular momentum transport |
 | `es_mixing_scale` | `fesc` | `es_mixing_scale` | ctrl | run | real | `1.0d0` | canonical | Scale of the Eddington-Sweet circulation's chemical mixing relative to its angular momentum transport |
@@ -311,11 +311,11 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_pmm_wind` | `lpmm` | `-` | - | - | logical | `.false.` | verified | Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set |
 | `scale_by_b_field` | `lbscale` | `scale_by_b_field` | ctrl | run | logical | `.false.` | canonical | Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13) |
 | `wind_law_name` | `awind` | `wind_law_name` | ctrl | run | string | `'K97'` | canonical | Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given) |
-| `pmm_exponent_a` | `pmma` | `pmm_exponent_a` | ctrl | run | real | `2.0` | canonical | PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it |
-| `pmm_exponent_b` | `pmmb` | `pmm_exponent_b` | ctrl | run | real | `1.0` | canonical | PMM wind law: exponent b, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
-| `pmm_exponent_c` | `pmmc` | `pmm_exponent_c` | ctrl | run | real | `2.0` | canonical | PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
-| `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | ctrl | run | real | `0.0` | canonical | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
-| `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | ctrl | run | real | `0.5` | canonical | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
+| `pmm_exponent_a` | `pmma` | `pmm_exponent_a` | ctrl | run | real | `2.0d0` | canonical | PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it |
+| `pmm_exponent_b` | `pmmb` | `pmm_exponent_b` | ctrl | run | real | `1.0d0` | canonical | PMM wind law: exponent b, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
+| `pmm_exponent_c` | `pmmc` | `pmm_exponent_c` | ctrl | run | real | `2.0d0` | canonical | PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
+| `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | ctrl | run | real | `0.0d0` | canonical | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
+| `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | ctrl | run | real | `0.5d0` | canonical | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
 | `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | ctrl | run | real | `1.32e30` | canonical | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
 | `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | ctrl | none | real | `1.27e12` | canonical | Matt wind law: the solar mass-loss rate (g/s), its zero point |
 | `pmm_omega_sat` | `pmmwmax` | `-` | - | - | real | `0` | verified | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
@@ -324,7 +324,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pmm_solar_turnover_timescale` | `pmmsoltau` | `pmm_solar_turnover_timescale` | ctrl | run | real | `9.4805d5` | canonical | Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number |
 | `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | ctrl | run | logical | `.false.` | canonical | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
 | `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | ctrl | run | real | `2.5d4` | canonical | Constant background diffusion coefficient for angular momentum (cm^2/s) |
-| `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | ctrl | run | real | `1000.0` | verified | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
+| `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | ctrl | run | real | `1000.0d0` | verified | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
 | `li6_rate_value` | `xsli6` | `-` | - | - | real | `5.5d3` | verified | Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate) |
 | `li7_rate_value` | `xsli7` | `-` | - | - | real | `5.2d1` | verified | Li7 burning cross-section override (value/5.2e1) |
 | `be9_rate_value1` | `xsbe91` | `-` | - | - | real | `1.1d0` | verified | Be9 cross-section override 1 (value/1.1) |

@@ -231,19 +231,19 @@
 
       ! Per-run target mass (Msun) for rescale runs
       ! (legacy name: rsclm)
-      rescale_mass = 0.0
+      rescale_mass = 0.0d0
 
       ! Per-run target hydrogen fraction for rescale runs
       ! (legacy name: rsclx)
-      rescale_x = 0.0
+      rescale_x = 0.0d0
 
       ! Per-run target metallicity for rescale runs
       ! (legacy name: rsclz)
-      rescale_z = 0.0
+      rescale_z = 0.0d0
 
       ! Per-run rescale: core mass bound
       ! (legacy name: rsclcm)
-      rescale_core_mass = 0.0
+      rescale_core_mass = 0.0d0
 
       ! rscale/setcal: core-Z rescale target
       ! (legacy name: rsclzc)

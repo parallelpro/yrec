@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! read_controls
+! controls_reader
 !----------------------------------------------------------------------
 ! Reads a deck into star%ctrl and star%job. Each read starts from the
 ! pristine defaults: star%ctrl = controls_state() (generated from
@@ -7,14 +7,21 @@
 ! (seed_controls_buffer); read_input reads the deck over the buffer,
 ! and store_controls_to_star copies the result back. The read's steps
 ! live in legacy_controls (the namelist variables and their defaults),
-! run_files, derived_controls and run_cards. Errors return via ierr.
+! run_files, controls_check (the errors and warnings), derived_controls
+! and run_cards; the copies between the legacy and the canonical names
+! are generated from the registry (adopt_canonical.inc,
+! legacy_mirror.inc). Errors return via ierr.
 module controls_reader
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
-      use star_info_lib, only: control_nml_override, physics_nml_override
-      use controls_sync, only: store_controls_to_star
-      use physical_constants
-      use io_units
+      use net_lib, only: cross_section_scales_from_sstandard
+      use star_info_lib, only: star_info, controls_state, control_nml_override, &
+           physics_nml_override
+      use controls_sync, only: seed_controls_buffer, store_controls_to_star
+      use physical_constants, only: yrec_version_string, git_hash_string
+      use io_units, only: check_io
+! the generated includes name every namelist variable
       use legacy_controls
       use run_files, only: assign_unit_numbers, expand_paths, open_run_files
       use derived_controls, only: derive_controls
@@ -27,12 +34,6 @@ module controls_reader
 contains
 
 subroutine read_controls(s, ierr)
-      use star_info_lib, only: star_info
-
-      use star_info_lib, only: controls_state
-      use controls_sync, only: seed_controls_buffer, &
-           store_controls_to_star
-      implicit none
       type(star_info), intent(inout) :: s
 
       integer, intent(out) :: ierr
@@ -58,7 +59,6 @@ end subroutine read_controls
 ! their canonical names, opens the run's files, derives the remaining
 ! controls and turns the kind cards into the run plan.
 subroutine read_input(s, ierr)
-      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
@@ -72,11 +72,11 @@ subroutine read_input(s, ierr)
 
 ! The deck: the first command-line argument (default yrec8.nml1), or
 ! the override an embedding host (pyyrec) sets, since argv is the host's.
-      if (control_nml_override .ne. ' ') then
+      if (control_nml_override /= ' ') then
          control_nml_file = control_nml_override
       else
       call getarg(1, control_nml_file)
-      if (control_nml_file(1:2) .eq. ' ') control_nml_file = 'yrec8.nml1'
+      if (control_nml_file(1:2) == ' ') control_nml_file = 'yrec8.nml1'
       end if
       print *, ' '
       call read_namelist_files(ierr)
@@ -104,7 +104,6 @@ end subroutine read_input
 ! load comes first, so a deck that names no table keeps the previous
 ! read's path; the store follows the read and the path expansion.
 subroutine load_table_paths(s)
-      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       falex06 = s%job%alex06_table_path
       fallard = s%job%allard_table_path
@@ -133,7 +132,6 @@ subroutine load_table_paths(s)
 end subroutine load_table_paths
 
 subroutine store_table_paths(s)
-      use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
       s%job%alex06_table_path = falex06
       s%job%allard_table_path = fallard
@@ -184,11 +182,11 @@ subroutine read_namelist_files(ierr)
       single_inlist = nml_file_has_group(control_nml_file, 'control') .and. &
            nml_file_has_group(control_nml_file, 'physics')
 
-      if (physics_nml_override .ne. ' ') then
+      if (physics_nml_override /= ' ') then
          physics_nml_file = physics_nml_override
       else
       call getarg(2, physics_nml_file)
-      if (physics_nml_file(1:2) .eq. ' ') physics_nml_file = 'yrec8.nml2'
+      if (physics_nml_file(1:2) == ' ') physics_nml_file = 'yrec8.nml2'
       end if
 ! a single-file inlist is both files (copy_inlists_used copies it once)
       if (single_inlist) physics_nml_file = control_nml_file
@@ -243,8 +241,6 @@ end subroutine read_inlist
 ! (controls_buffer or star). map_user_inputs,
 ! which runs next, reads use_new_nuclear_rates and the s0_* values.
 subroutine adopt_canonical_names(s)
-      use star_info_lib, only: star_info
-      use net_lib, only: cross_section_scales_from_sstandard
       type(star_info), intent(inout) :: s
       include 'adopt_canonical.inc'
 ! The legacy names whose home is in the star, and what the copies

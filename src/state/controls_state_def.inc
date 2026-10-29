@@ -112,8 +112,8 @@
             double precision :: tri_delta_teffl = 1.0d-2
             double precision :: tri_delta_logl = 8.0d-2
             logical :: lnew0 = .false.
-            double precision :: atm_step_size = 0.5
-            double precision :: envelope_step_size = 0.5
+            double precision :: atm_step_size = 0.5d0
+            double precision :: envelope_step_size = 0.5d0
             logical :: envelope_generation_flag = .false.
             logical :: helium_flash_active = .false.
             integer :: new_species_index = 0
@@ -221,11 +221,11 @@
             double precision :: constant_mixing_coeff = 1.0d0
             double precision :: constant_settling_reduction = 1.0d0
             logical :: use_envelope_triangle_dt = .false.
-            double precision :: pmm_exponent_a = 2.0
-            double precision :: pmm_exponent_b = 1.0
-            double precision :: pmm_exponent_c = 2.0
-            double precision :: pmm_exponent_d = 0.0
-            double precision :: pmm_exponent_m = 0.5
+            double precision :: pmm_exponent_a = 2.0d0
+            double precision :: pmm_exponent_b = 1.0d0
+            double precision :: pmm_exponent_c = 2.0d0
+            double precision :: pmm_exponent_d = 0.0d0
+            double precision :: pmm_exponent_m = 0.5d0
             double precision :: pmm_norm_jdot = 1.32e30
             double precision :: pmm_norm_mdot = 1.27e12
             double precision :: pmm_solar_pressure = 4.9304d0
@@ -237,7 +237,7 @@
             character(len=3) :: wind_law_name = 'K97'
             double precision :: wind_law_index = 1.5d0
             double precision :: wind_law_constant = 1.0d0
-            double precision :: solar_omega_sat = 1000.0
+            double precision :: solar_omega_sat = 1000.0d0
             double precision :: constant_background_diffusion_coeff = 2.5d4
             logical :: use_constant_background_diffusion = .false.
             double precision :: flag_dx = 0.05d0

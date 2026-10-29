@@ -579,7 +579,7 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
   └─ run_yrec(ierr)                            └─ yrec_capi: yrec_run()
        ├─ yrec_run_prologue     (re-entrancy: the run's star from a
        │                         pristine template; core/run/yrec_reset.f90)
-       ├─ read_controls         (io/read_controls.f90; read_input (parmin):
+       ├─ read_controls         (io/controls_reader.f90; read_input (parmin):
        │                         a legacy $CONTROL/$PHYSICS pair or a
        │                         single-file &control/&physics inlist)
        ├─ star_setup            (eos_init/kap_init/atm_init table loads)

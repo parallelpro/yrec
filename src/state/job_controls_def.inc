@@ -61,7 +61,7 @@
             double precision :: initial_envelope_z = 0.02d0
             double precision :: new_species_value = 1.3d1
             integer :: num_core_shells_added = 0
-            double precision :: core_mass_reduction_factor = 1.0
+            double precision :: core_mass_reduction_factor = 1.0d0
             double precision :: initial_x_array(50) = 0
             double precision :: initial_z_array(50) = 0
             double precision :: mixing_length_array(50) = 0

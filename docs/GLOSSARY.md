@@ -268,7 +268,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | — | — | `star%stored_vertex_index`; also `stored_vertex_index` | `ISTORE` | core/envelope/envelope_integration_kernel.f90 | Vertex whose state is in `stored_envelope_state`. |
 | — | logical | `star%recompute_envelope_triangle`; also `start_new_triangle` | `LNEW` | core/step/step_driver.f90, core/structure/surface_boundary.f90 | Build a fresh triangle around (T_eff, L). |
 | — | logical | `star%reset_triangle` | `LRESET` | core/structure/surface_boundary.f90, core/model/rezoning.f90 | Redo all three envelopes and retriangulate if needed. |
-| log₁₀ T | dex (K) | `star%tenv` | `TENV` (`/CTLIM/`) | io/read_controls.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state. |
+| log₁₀ T | dex (K) | `star%tenv` | `TENV` (`/CTLIM/`) | io/controls_reader.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state. |
 | log₁₀ T(τ=2/3) | dex (K) | `star%atm_hras` | `HRAS` (`/ATMOS/`) | core/run/run_setup.f90:124 | HSRA T–τ fit at τ = 2/3, the offset for `atm_choice` = 2. The `star_info` comment says Krishna-Swamy; the code uses `hsra_t_tau_offset`. |
 | — | logical | `star%use_ttau_relation` | `LTTAU` | core/structure/surface_boundary.f90, core/envelope/envelope_integration.f90 | Runtime switch to a T–τ relation, e.g. the gray fallback outside table range. |
 | — | mixed | `env_points%env_log10_*`, `env_gradients(3,:)`, ... | `/ENVSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Envelope points (fitting point to photosphere). Gradient rows are (rad, **ad**, actual) (trap 19). |
@@ -414,7 +414,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 ### 2.14 Key controls
 
 - **Inlist name:** the name in an inlist's `&physics` group, or in its `&control` group where marked (c).
-- **Legacy:** the F77 namelist name, read by the legacy reader (`io/read_controls.f90`).
+- **Legacy:** the F77 namelist name, read by the legacy reader (`io/controls_reader.f90`).
 - **Code field:** where the value lives at run time. `ctrl` means `star%ctrl%`. `job` means `star%job%`, which holds run-list and calibration state and may change during a run.
 - **Full list:** the ~380 controls are in `defaults/controls_registry.tsv` and the generated `defaults/*.defaults`.
 

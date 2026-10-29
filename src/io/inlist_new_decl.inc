@@ -4,9 +4,9 @@
 ! the &control and &physics groups under the new names (they hide
 ! legacy_controls' groups of the same names in read_inlist). See
 ! defaults/*.defaults for docs.
-      double precision :: mixing_length_alpha(50)
+      real(dp) :: mixing_length_alpha(50)
       character(len=256) :: run_description(2)
-      double precision :: max_age(50)
+      real(dp) :: max_age(50)
       character(len=256) :: laol_opacity_table_file
       character(len=256) :: pure_z_opacity_table_file
       character(len=256) :: laol_opacity_table2_file
@@ -40,15 +40,15 @@
       integer :: envelope_print_points
       integer :: max_model_number(50)
       character(len=256) :: alex95_table_z_list(7)
-      double precision :: rescale_mass(50)
-      double precision :: rescale_x(50)
-      double precision :: rescale_z(50)
-      double precision :: rescale_core_mass(50)
-      double precision :: rescale_core_z(max_runs)
-      double precision :: rescale_z_mix1(max_runs)
-      double precision :: rescale_z_mix2(max_runs)
-      double precision :: opal95_z2
-      double precision :: alex_z2
+      real(dp) :: rescale_mass(50)
+      real(dp) :: rescale_x(50)
+      real(dp) :: rescale_z(50)
+      real(dp) :: rescale_core_mass(50)
+      real(dp) :: rescale_core_z(max_runs)
+      real(dp) :: rescale_z_mix1(max_runs)
+      real(dp) :: rescale_z_mix2(max_runs)
+      real(dp) :: opal95_z2
+      real(dp) :: alex_z2
       character(len=256) :: opal01_eos_table_file
       character(len=256) :: conductive_opacity_table_file
       character(len=256) :: opal06_eos_table_file
@@ -57,20 +57,20 @@
       character(len=8) :: isotope_mixture_name
       character(len=3) :: change_species_name
       character(len=3) :: new_species_value_mode
-      double precision :: fpft_average_weight
-      double precision :: timestep_factors(14)
-      double precision :: overshoot_alpha_min
-      double precision :: overshoot_beta_core
-      double precision :: solar_luminosity_cgs
-      double precision :: solar_radius_cgs
-      double precision :: envelope_logP_step
-      double precision :: solver_underrelax_start
-      double precision :: solver_underrelax_increment
-      double precision :: coupling_factor
-      double precision :: settling_y_factor
-      double precision :: settling_z_factor
-      double precision :: solver_tolerances(5,2)
-      double precision :: zoning_tolerances(12)
+      real(dp) :: fpft_average_weight
+      real(dp) :: timestep_factors(14)
+      real(dp) :: overshoot_alpha_min
+      real(dp) :: overshoot_beta_core
+      real(dp) :: solar_luminosity_cgs
+      real(dp) :: solar_radius_cgs
+      real(dp) :: envelope_logP_step
+      real(dp) :: solver_underrelax_start
+      real(dp) :: solver_underrelax_increment
+      real(dp) :: coupling_factor
+      real(dp) :: settling_y_factor
+      real(dp) :: settling_z_factor
+      real(dp) :: solver_tolerances(5,2)
+      real(dp) :: zoning_tolerances(12)
       integer :: fpft_iter1
       integer :: fpft_iter2
       logical :: velocity_form_correction
@@ -79,24 +79,24 @@
       logical :: rotation_flag
       logical :: new_triangle_init_flag
       logical :: adiabatic_overshoot_active
-      double precision :: rezone_env_logT0
-      double precision :: rezone_env_logT1
-      double precision :: gradient_logT_cutoff
-      double precision :: laol_z_tolerance
-      double precision :: new_zone_omega_weight
-      double precision :: change_species_value
-      double precision :: mass_change
-      double precision :: accretion_cz_fraction
-      double precision :: accretion_total_fraction
+      real(dp) :: rezone_env_logT0
+      real(dp) :: rezone_env_logT1
+      real(dp) :: gradient_logT_cutoff
+      real(dp) :: laol_z_tolerance
+      real(dp) :: new_zone_omega_weight
+      real(dp) :: change_species_value
+      real(dp) :: mass_change
+      real(dp) :: accretion_cz_fraction
+      real(dp) :: accretion_total_fraction
       logical :: use_mass_change
       logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
-      double precision :: pmm_omega_sat
-      double precision :: li6_rate_value
-      double precision :: li7_rate_value
-      double precision :: be9_rate_value1
-      double precision :: be9_rate_value2
-      double precision :: be9_rate_value3
+      real(dp) :: pmm_omega_sat
+      real(dp) :: li6_rate_value
+      real(dp) :: li7_rate_value
+      real(dp) :: be9_rate_value1
+      real(dp) :: be9_rate_value2
+      real(dp) :: be9_rate_value3
       logical :: scale_li6_rate
       logical :: scale_li7_rate
       logical :: scale_be9_rate1

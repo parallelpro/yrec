@@ -37,7 +37,7 @@ DOMAINS = ["eos", "kap", "atm", "net", "convection",
 # the buffer to simulate that pipeline). A new name here is a design
 # regression, not an allowlist entry.
 CONTROLS_BUFFER_IMPORTERS = {
-    "io/read_controls.f90",
+    "io/controls_reader.f90",
     "io/legacy_controls.f90",
     "io/run_files.f90",
     "io/derived_controls.f90",

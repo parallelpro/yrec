@@ -32,7 +32,7 @@ Configuration set elsewhere:
 ## 2. When each runs
 
 In a run (`run_yrec`, `core/run/run_driver.f90`), in order:
-1. `read_controls` (`io/read_controls.f90`): the namelists into the buffer, `adopt_canonical_names`, `map_user_inputs`, `derive_controls` (`io/derived_controls.f90`), then the store into `s%ctrl` and `s%job`.
+1. `read_controls` (`io/controls_reader.f90`): the namelists into the buffer, `adopt_canonical_names`, `map_user_inputs`, `derive_controls` (`io/derived_controls.f90`), then the store into `s%ctrl` and `s%job`.
 2. `run_yrec` sets `s%use_two_z_tables`; `prepare_run` (`core/run/run_setup.f90`) calls `set_up_constants_and_tables`, which installs the three per-run records: `kap_init(opacity_settings(s), ...)`, `eos_init(equation_of_state_settings(s), ...)`, `atm_init(atmosphere_settings(s), ...)`, each of which also loads its tables.
 3. For each Monte-Carlo run: `apply_monte_carlo_parameters`, then `set_net_settings(net_settings_from_star(s), ierr)`.
 4. For each run card, `begin_kind_card`: the card's `mixing_length_alpha`, then `set_convection_settings(convection_settings_from_star(s))`, `set_rotation_settings(rotation_settings_from_star(s))` and `set_diffusion_settings(diffusion_settings_from_star(s))`, before the card's starting model is read; on the first card the model read's `update_surface_mixture` adds `set_convection_envelope_metals`.

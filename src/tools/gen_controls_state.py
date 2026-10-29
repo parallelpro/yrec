@@ -42,7 +42,7 @@ SYNC = SRC / "io" / "controls_sync.f90"
 # (tools/controls_registry.py; check_boundaries checks it against the code):
 # job holds the members that code outside the read assigns.
 TYPE_RE = re.compile(
-    r"^\s*(double precision|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
+    r"^\s*(double precision|real\s*\(\s*dp\s*\)|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
     r"\s*(,\s*public)?\s*::\s*(.*)$",
     re.IGNORECASE,
 )
@@ -111,6 +111,8 @@ def parse():
         if not m:
             continue
         typespec = re.sub(r"\s+", " ", m.group(1).lower()).replace(" (", "(")
+        if typespec.replace(" ", "") == "real(dp)":
+            typespec = "double precision"   # star_info_lib's spelling
         for ent in split_entities(m.group(3)):
             em = re.match(r"^(\w+)\s*(\([^)]*\))?\s*(=\s*(.*))?$", ent, re.S)
             if not em:

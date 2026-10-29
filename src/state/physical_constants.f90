@@ -64,8 +64,9 @@ module physical_constants
       double precision, parameter :: rad_viscosity_coeff_cgs = 6.7282653d-26
 
 ! former common/version/: yrec_version_string/git_hash_string
-! (originally yrecver/githash) are not namelist values -- genuinely
-! used in io/read_controls.f90, renamed in place there.
+! (originally yrecver/githash) are not namelist values: set by
+! core/run/yrec_version.f90, printed in the controls read's banner
+! (io/controls_reader.f90, io/derived_controls.f90) and the history.
       character(len=10) :: yrec_version_string
       character(len=20) :: git_hash_string
 

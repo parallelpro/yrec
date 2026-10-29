@@ -29,7 +29,7 @@ Every io procedure that touches the star takes it as an argument, `s` (`type(sta
 | `model_files` | The `.mod` writer and reader (`write_mod_model`, `read_mod_model`; the columns in `mod_slots` and `mod_columns`), and the YREC7 and MODEL2 readers (`read_yrec7`, `read_model2`). Its header gives each format's layout. |
 | `io_units` | The three units written from everywhere (the run log, the terminal and the final model), and io's two error reports: `check_io` after an open, read or write, and `report_error` for any other error. |
 
-**The controls reader**: `read_controls.f90` (module `controls_reader`), `legacy_controls`, `controls_buffer`, `derived_controls`, `controls_check`, and the generated `inlist_new_decl.inc` and `inlist_new_read.inc` (§7).
+**The controls reader**: `controls_reader.f90` (module `controls_reader`, entry point `read_controls`), `legacy_controls`, `controls_buffer`, `derived_controls`, `controls_check`, and the generated `inlist_new_decl.inc` and `inlist_new_read.inc` (§7).
 
 ## 2. A run
 

@@ -7,12 +7,18 @@
 ! renaming one would break every deck that sets it), the two legacy
 ! namelist groups, and the reader's other working variables. (The
 ! inlist's &control and &physics groups, under the new names, belong
-! to read_inlist in read_controls.) read_input copies the values into
-! their canonical homes (controls_buffer, star%job) after the read;
-! reset_legacy_controls clears everything at the start of each read.
+! to read_inlist in controls_reader.) adopt_canonical_names copies the
+! values into their canonical homes (controls_buffer, the star) after
+! the read; set_legacy_defaults resets everything at the start of each
+! read.
 module legacy_controls
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use controls_buffer
       implicit none
+! Public, as the buffer is: the namelist variables are the controls
+! read's working state (CONTROLS_BUFFER_IMPORTERS).
+      public
+      private :: dp
 
 ! The legacy namelists' binding targets, under their original spellings.
 ! The legacy namelists are frozen: new controls go only into the new
@@ -38,18 +44,18 @@ module legacy_controls
            flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
       integer :: kindrn(50)
-      double precision :: rsclm(50), rsclx(50), rsclz(50), rsclcm(50)
+      real(dp) :: rsclm(50), rsclx(50), rsclz(50), rsclcm(50)
       character(len=256) :: fliv95
       character(len=256) :: fopale, fopale01, fcondopacp, fopale06
       character(len=256) :: opecalex(7)
       character(len=256) :: falex06
 
-      double precision :: alfa, fk, wmax_sun, pmmwmax, zalex2, zopal952
+      real(dp) :: alfa, fk, wmax_sun, pmmwmax, zalex2, zopal952
       logical :: lpmm, lsolwind
 
       character(len=3) :: element_id(12)
       character(len=8) :: mixture_id_table(4)
-      double precision :: zx_mix_table(4), frac_c_table(4), &
+      real(dp) :: zx_mix_table(4), frac_c_table(4), &
            frac_n_table(4), frac_o_table(4)
       character(len=256) :: control_nml_file, physics_nml_file
 
@@ -57,68 +63,68 @@ module legacy_controls
 
       character(len=256) :: descrip(2)
 
-      double precision :: tridt, tridl
+      real(dp) :: tridt, tridl
 
       integer :: nmodls(50), numrun
       logical :: lfirst(50)
 
-      double precision :: clsun, crsun
+      real(dp) :: clsun, crsun
 
-      double precision :: dtwind
+      real(dp) :: dtwind
 
       logical :: lptime
 
-      double precision :: hpttol(12)
+      real(dp) :: hpttol(12)
 
-      double precision :: djok
+      real(dp) :: djok
 
       logical :: lovste
 
-      double precision :: atmstp, envstp
+      real(dp) :: atmstp, envstp
       logical :: lenvg
 
       logical :: lexcom
 
       logical :: lkuthe
 
-      double precision :: atmerr, atmd0, atmbeg, atmmin, atmmax
+      real(dp) :: atmerr, atmd0, atmbeg, atmmin, atmmax
 
-      double precision :: enverr, envbeg, envmin, envmax
+      real(dp) :: enverr, envbeg, envmin, envmax
 
-      double precision :: stolr0
+      real(dp) :: stolr0
       integer :: imax, nuse
 
-      double precision :: tscut
+      real(dp) :: tscut
 
-      double precision :: xnewcp
+      real(dp) :: xnewcp
       logical :: lnewcp
 
       integer :: isetmix, isetiso
-      double precision :: frac_c, frac_n, frac_o, r12_13, r14_15, r16_17, r16_18, zxmix, xh2_ini, &
+      real(dp) :: frac_c, frac_n, frac_o, r12_13, r14_15, r16_17, r16_18, zxmix, xh2_ini, &
            xhe3_ini, xli6_ini, xli7_ini, xbe9_ini, xb10_ini, xb11_ini
 
-      double precision :: optol
+      real(dp) :: optol
 
       logical :: lrot, linstb
 
-      double precision :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
+      real(dp) :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
 
-      double precision :: fw, fc, fes, fgsf, fmu, fss, rcrit
+      real(dp) :: fw, fc, fes, fgsf, fmu, fss, rcrit
 
-      double precision :: etadh0, etadh1
+      real(dp) :: etadh0, etadh1
       logical :: ldh
 
-      double precision :: fesc, fssc, fgsfc
+      real(dp) :: fesc, fssc, fgsfc
       integer :: igsf
 
-      double precision :: grtol
+      real(dp) :: grtol
       integer :: ilambda, niter_gs
       logical :: ldify
 
-      double precision :: cmin, abstol, reltol
+      real(dp) :: cmin, abstol, reltol
       integer :: kemmax
 
-      double precision :: dt_gs, xmin, ymin
+      real(dp) :: dt_gs, xmin, ymin
       logical :: lthoulfit
 
       logical :: ldifz
@@ -131,28 +137,28 @@ module legacy_controls
 
       logical :: lcore
       integer :: mcore
-      double precision :: fcore
+      real(dp) :: fcore
 
       logical :: lpurez
 
       logical :: lrwsh, liso
 
-      double precision :: xenv0a(50), zenv0a(50), cmixla(50), senv0a(50)
+      real(dp) :: xenv0a(50), zenv0a(50), cmixla(50), senv0a(50)
       logical :: lsenv0a(50)
 
       logical :: lnulos1
 
-      double precision :: toll, tolr, tolz, calsolzx, calsolage
+      real(dp) :: toll, tolr, tolz, calsolzx, calsolage
       logical :: lcals, lcalsolzx
 
       logical :: lzramp
 
-      double precision :: xls, xlstol, steff, sr
+      real(dp) :: xls, xlstol, steff, sr
       logical :: lteff, lcalst
 
       logical :: lopale, lopale01, lopale06, lnumderiv
 
-      double precision :: zlaol1, zlaol2, zopal1, zopal2, zopal951, zalex1, zkur1, zkur2, tmolmin, &
+      real(dp) :: zlaol1, zlaol2, zopal1, zopal2, zopal951, zalex1, zkur1, zkur2, tmolmin, &
            tmolmax
       logical :: lalex06, llaol89, lopal92, lopal95, lkur90, lalex95
 
@@ -162,15 +168,15 @@ module legacy_controls
 
       logical :: lnoj
 
-      double precision :: sstandard(17)
+      real(dp) :: sstandard(17)
       logical :: lnewnuc
 
-      double precision :: alphac, alphae
-      double precision :: dtdif
-      double precision :: wnew, creim
-      double precision :: cstmixing, cstdiffmix
-      double precision :: tcut(5)
-      double precision :: vnew(12)
+      real(dp) :: alphac, alphae
+      real(dp) :: dtdif
+      real(dp) :: wnew, creim
+      real(dp) :: cstmixing, cstdiffmix
+      real(dp) :: tcut(5)
+      real(dp) :: vnew(12)
       integer :: itdif1, itdif2
       integer :: niter1, niter2, niter3, niter4
       logical :: ldifli, lsnu, lovstc
@@ -179,46 +185,46 @@ module legacy_controls
       logical :: lreimer
       integer :: imbeg, imend
 
-      double precision :: s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, &
+      real(dp) :: s0_1_1, s0_3_3, s0_3_4, s0_1_12, s0_1_13, s0_1_14, s0_1_16, &
            s0_1_be7e, s0_1_be7p, s0_1_15_c12alp, s0_1_15_o16, s0p_1_1, s0p_3_3, s0p_3_4, &
            s0p_1_12, s0p_1_13, s0p_1_14, s0p_1_16, s0pp_1_12, s0pp_1_13, s0pp_1_16, s0p_1_be7p, &
            s0pp_1_be7p
 
       logical :: lscv
 
-      double precision :: alatm_feh, alatm_alpha
+      real(dp) :: alatm_feh, alatm_alpha
       logical :: laltptau100
 
-      double precision :: tdisk, pdisk
+      real(dp) :: tdisk, pdisk
       logical :: ldisk
 
-      double precision :: weakscreening
+      real(dp) :: weakscreening
 
       logical :: lsolid
       integer :: impjmod
 
-      double precision :: dmdt0, compacc(15)
+      real(dp) :: dmdt0, compacc(15)
       logical :: lmdot
 
       logical :: ltrist
 
-      double precision :: pmma, pmmb, pmmc, pmmd, pmmm, pmmjd, pmmmd, pmmsolp, pmmsolw, pmmsoltau
+      real(dp) :: pmma, pmmb, pmmc, pmmd, pmmm, pmmjd, pmmmd, pmmsolp, pmmsolw, pmmsoltau
       logical :: lmwind, lrossby, lbscale
       character(len=3) :: awind
 
-      double precision :: wmax
+      real(dp) :: wmax
 
       logical :: lcalcenv
 
-      double precision :: codm
+      real(dp) :: codm
       logical :: lcodm
 
-      double precision :: xsli6, xsli7, xsbe91, xsbe92, xsbe93
+      real(dp) :: xsli6, xsli7, xsbe91, xsbe92, xsbe93
       logical :: lxli6, lxli7, lxbe91, lxbe92, lxbe93
 
-      double precision :: sli6, sli7, sbe91, sbe92, sbe93
+      real(dp) :: sli6, sli7, sbe91, sbe92, sbe93
 
-      double precision :: spotf, spotx
+      real(dp) :: spotf, spotx
       logical :: lsdepth
 
 
@@ -344,10 +350,10 @@ subroutine set_legacy_defaults
       sstandard = (/ 0.9828, 1.0485, 0.9815, 0.9241, 1.3818, 1.0542, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, &
            1.0, 1.0, 1.0108, 0.7819, 0.2875 /)
       kindrn = 1
-      rsclm = 0.0
-      rsclx = 0.0
-      rsclz = 0.0
-      rsclcm = 0.0
+      rsclm = 0.0d0
+      rsclx = 0.0d0
+      rsclz = 0.0d0
+      rsclcm = 0.0d0
       element_id = (/ 'HE3', 'C12', 'C13', 'N14', 'N15', 'O16', 'O17', 'O18', 'H2 ', 'LI6', 'LI7', 'BE9' /)
 ! Rescaling one species of the starting model (anewcp names it)
       anewcp = '   '
