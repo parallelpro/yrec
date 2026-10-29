@@ -56,11 +56,17 @@
 !     F_i(X) = X_i - X0_i - dt A_i sum_j nu_ij R_j(X) = 0
 ! by Newton iteration on J_ik = dF_i/dX_k.
 !
+! The module is the two tables and the code that reads them; the
+! tables' self-check and set_net_settings, which runs it, are
+! network_checks'. The table's columns are public for that module (code
+! outside net/ sees only what net_lib re-exports).
+!
 ! Adding a reaction means adding a row to the table, and naming its rate
 ! slot r_* in net_configuration (raising num_reactions); a rate of a new
 ! functional form also needs its rate law in reaction_rates. Adding a
-! species means adding it to the species list and to the rows that
-! touch it.
+! species means adding it to the species table, before s_o18 if it is
+! solved, and to the rows that make or burn it; net/README.md's recipe
+! lists the files outside net/ that follow.
 module network
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_h1, i_he3, i_he4, i_c12, i_c13, i_n14, &
@@ -68,13 +74,12 @@ module network
       use net_configuration, only: r_pp, r_he3he3, r_he3he4, &
            r_pc12, r_pc13, r_pn14, r_po16, r_ac13, &
            r_ac12, r_an14, r_3alpha, rv_frac_n15_pa, rv_frac_be7_ecap, &
-           num_reactions, num_rate_rows, net_settings, net_settings_t, &
-           store_net_settings
+           num_reactions, num_rate_rows, net_settings
       use screening, only: iso_h1, num_isotopes, screening_t, &
-           max_screening_charge, screening_mass_fractions
+           screening_mass_fractions
       use reaction_rates, only: nuclear_rates, shares_rate, &
            s_factor_fit, cf88_c13_alpha_n, cf88_c12_alpha_gamma, &
-           cf88_n14_alpha_gamma, cf88_triple_alpha, num_rate_laws, &
+           cf88_n14_alpha_gamma, cf88_triple_alpha, &
            compute_zone_conditions, compute_screened_rate, &
            compute_be7_branching, n15_alpha_fraction, erg_per_mev
       implicit none
@@ -107,17 +112,17 @@ module network
 ! the columns of the table the rest of the code reads
       integer, parameter, public :: network_species_slot(n_network) = species%xa_slot
       real(dp), parameter, public :: mass_number(n_network) = species%mass_number
-      real(dp), parameter :: mass_excess_mev(n_network) = species%mass_excess_mev
+      real(dp), parameter, public :: mass_excess_mev(n_network) = species%mass_excess_mev
 ! the atomic mass excess of the neutron, the one untracked particle a
 ! row emits, MeV
-      real(dp), parameter :: neutron_mass_excess_mev = 8.071318d0
+      real(dp), parameter, public :: neutron_mass_excess_mev = 8.071318d0
 ! the rounding of the rows' Q values, MeV: a row whose Q exceeds the
-! energy its masses release by more is wrong (network_table_errors)
-      real(dp), parameter :: q_rounding_mev = 1.0d-3
+! energy its masses release by more is wrong (network_checks)
+      real(dp), parameter, public :: q_rounding_mev = 1.0d-3
 
 ! branch factor b_j: 1, the N15(p,alpha) fraction f or 1 - f, or the Be7
 ! electron-capture fraction f_e or 1 - f_e
-      integer, parameter :: unbranched = 0, n15_to_c12 = 1, n15_to_o16 = 2, &
+      integer, parameter, public :: unbranched = 0, n15_to_c12 = 1, n15_to_o16 = 2, &
            be7_electron_capture = 3, be7_proton_capture = 4
 
 ! burn_implicitly's ierr: 0, or the Newton iteration ran out of
@@ -127,7 +132,7 @@ module network
 
 ! when a reaction burns: with hydrogen present, or at helium-burning
 ! temperatures (log T >= logT_cutoffs(4))
-      integer, parameter :: hydrogen_burning = 1, helium_burning = 2
+      integer, parameter, public :: hydrogen_burning = 1, helium_burning = 2
 
 ! the chain a reaction's energy is counted under, and its name
 ! (nuclear_energy_result%eps_by_chain is indexed by these)
@@ -146,22 +151,22 @@ module network
 ! row conserves baryon number exactly: sum_i A_i nu_i + emitted_mass = 0.
 ! q_mev is the energy released (from the atomic masses, so positron
 ! annihilation included) less the mean energy of the row's neutrinos:
-! never more than the mass-energy released. network_table_errors checks
-! both; net/test/test_net pins the table. The rate: rate_law (a rate law
+! never more than the mass-energy released. network_checks checks both;
+! net/test/test_net pins the table. The rate: rate_law (a rate law
 ! of reaction_rates, or shares_rate), burns_in (hydrogen_burning or
 ! helium_burning), fit (the S-factor law's q1..q8; its multipliers are
 ! the settings' scales at the row's slot), s0_kevb (the S0 in keV b the
 ! fit is normalized to, Bahcall & Ulrich 1988: the reference the input
 ! S0 is scaled against, reference_s0) and screening (the charges of its
 ! two nuclei; triple alpha takes C12 + alpha's, as engeb did).
-      integer, parameter :: max_reactants = 3, max_change = 5
+      integer, parameter, public :: max_reactants = 3, max_change = 5
 ! the composition path drops a rate (per gram per s, abundance factors
 ! omitted) at or below min_composition_rate (compute_network_rates); the
 ! implicit burn drops off-diagonal Jacobian entries below
 ! min_jacobian_entry in magnitude, as kemcom did (burn_implicitly)
       real(dp), parameter :: min_composition_rate = 1.0d-5, &
            min_jacobian_entry = 1.0d-8
-      type :: reaction_t
+      type, public :: reaction_t
          character(len=24) :: name
          integer :: slot
          integer :: branch
@@ -181,8 +186,8 @@ module network
       end type reaction_t
 
 ! rows of the reaction table
-      integer, parameter :: n_rows = 13
-      type(reaction_t), parameter :: reactions(n_rows) = [ &
+      integer, parameter, public :: n_rows = 13
+      type(reaction_t), parameter, public :: reactions(n_rows) = [ &
 !                     name                  rate slot  branch                reactants                 changes (species, nu)
            reaction_t('pp chain to He3',     r_pp,      unbranched,           [s_h1, s_h1, 0],          &
                       [s_h1, -3, s_he3, 1, 0, 0, 0, 0, 0, 0], &
@@ -253,82 +258,12 @@ module network
                       rate_law=cf88_triple_alpha, burns_in=helium_burning, &
                       screening=screening_t(2, 6)) ]
 
-      public :: burn_implicitly, network_table_errors, write_network_table, &
-           compute_abundance_rates, compute_reaction_energies, &
-           compute_reaction_rates, compute_network_rates, reaction_counts, &
-           s_factor_slots, reference_s0, set_net_settings, inert_scale_count
+      public :: burn_implicitly, compute_abundance_rates, &
+           compute_reaction_energies, compute_reaction_rates, &
+           compute_network_rates, reaction_counts, s_factor_slots, &
+           reference_s0, branch_fraction
 
 contains
-
-!----------------------------------------------------------------------
-! set_net_settings: check the reaction table and install the run's
-! settings (net_configuration's net_settings_t). The star layer calls it
-! at the start of every run, with the record it builds from the controls
-! (setup/net_settings_setup). A wrong table (network_table_errors) is
-! reported row by row and returns ierr = 1, without installing. A
-! reaction scale set to anything but 1 on a reaction whose rate law
-! takes none (only the S-factor law reads the per-reaction scales) gets
-! a warning: it has no effect.
-subroutine set_net_settings(settings, ierr)
-      use net_messages, only: net_report, message_length
-      type(net_settings_t), intent(in) :: settings
-      integer, intent(out) :: ierr
-      character(len=message_length) :: line(1)
-      integer :: j, k
-
-      ierr = 0
-      do j = 1, n_rows
-         if (len_trim(table_row_problem(j)) == 0) cycle
-         write(line(1), '(4a)') ' ERROR: net: reaction table row "', &
-              trim(reactions(j)%name), '": ', trim(table_row_problem(j))
-         call net_report(line)
-         ierr = 1
-      end do
-      do k = 1, num_reactions
-         if (slot_owner_count(k) == 1) cycle
-         write(line(1), '(a,i0,a,i0,a)') ' ERROR: net: reaction slot ', k, ' has ', &
-              slot_owner_count(k), ' table rows computing its rate (it needs one)'
-         call net_report(line)
-         ierr = 1
-      end do
-      if (ierr /= 0) return
-      do j = 1, n_rows
-         if (.not. scale_has_no_effect(settings, j)) cycle
-         write(line(1), '(4a)') ' WARNING: net: a cross-section scale of ', &
-              trim(reactions(j)%name), ' is not 1, but its rate law', &
-              ' takes no scale; it has no effect'
-         call net_report(line)
-      end do
-      call store_net_settings(settings)
-end subroutine set_net_settings
-
-! Row j computes its rate with a law that takes no scale (only the
-! S-factor law reads the per-reaction scales), yet one of its scales in
-! settings is not 1.
-pure logical function scale_has_no_effect(settings, j)
-      type(net_settings_t), intent(in) :: settings
-      integer, intent(in) :: j
-      integer :: k
-
-      scale_has_no_effect = .false.
-      if (reactions(j)%rate_law == shares_rate .or. &
-           reactions(j)%rate_law == s_factor_fit) return
-      k = reactions(j)%slot
-      scale_has_no_effect = settings%cross_section_scale(k) /= 1.0d0 .or. &
-           settings%s_prime_scale(k) /= 1.0d0 .or. &
-           settings%s_double_prime_scale(k) /= 1.0d0
-end function scale_has_no_effect
-
-! The number of rows scale_has_no_effect reports.
-pure integer function inert_scale_count(settings)
-      type(net_settings_t), intent(in) :: settings
-      integer :: j
-
-      inert_scale_count = 0
-      do j = 1, n_rows
-         if (scale_has_no_effect(settings, j)) inert_scale_count = inert_scale_count + 1
-      end do
-end function inert_scale_count
 
 !----------------------------------------------------------------------
 ! compute_reaction_rates: the H/He reaction rates of one zone and their
@@ -449,150 +384,6 @@ pure function s_factor_slots() result(mask)
          if (reactions(j)%rate_law == s_factor_fit) mask(reactions(j)%slot) = .true.
       end do
 end function s_factor_slots
-
-! ---------------------------------------------------------------
-! The table's self-check. A row is wrong when it names a reaction slot,
-! a chain, a branch, a rate law, a burning group or a species that does
-! not exist; shares the rate of a slot no row computes; has a reactant
-! outside the implicit solve (an explicit product cannot feed back);
-! is an S-factor reaction without a fit or its reference S0; computes a
-! rate with screening charges outside 1..max_screening_charge; does not
-! conserve baryon
-! number; or deposits more energy than its atomic masses release
-! (beyond the q_rounding_mev the Q values are rounded to). A reaction
-! slot is wrong unless exactly one row computes its rate (so no slot is
-! dead, and none is written twice). network_table_errors counts the
-! wrong rows and slots; table_row_problem and slot_owner_count say what
-! is wrong; set_net_settings reports them.
-pure integer function network_table_errors()
-      integer :: j, k
-
-      network_table_errors = 0
-      do j = 1, n_rows
-         if (len_trim(table_row_problem(j)) > 0) &
-              network_table_errors = network_table_errors + 1
-      end do
-      do k = 1, num_reactions
-         if (slot_owner_count(k) /= 1) &
-              network_table_errors = network_table_errors + 1
-      end do
-end function network_table_errors
-
-! What is wrong with row j ('' if nothing).
-pure function table_row_problem(j) result(problem)
-      integer, intent(in) :: j
-      character(len=64) :: problem
-      type(reaction_t) :: row
-      integer :: c
-
-      problem = ''
-      row = reactions(j)
-      if (row%slot < 1 .or. row%slot > num_reactions) then
-         problem = 'its rate slot is not a reaction slot'
-      else if (row%chain < 1 .or. row%chain > n_chains) then
-         problem = 'its chain does not exist'
-      else if (row%branch < unbranched .or. row%branch > be7_proton_capture) then
-         problem = 'its branch does not exist'
-      else if (row%rate_law < shares_rate .or. row%rate_law > num_rate_laws) then
-         problem = 'its rate law does not exist'
-      else if (row%burns_in /= hydrogen_burning .and. &
-           row%burns_in /= helium_burning) then
-         problem = 'its burning group does not exist'
-      else if (row%rate_law == shares_rate .and. &
-           slot_owner_count(row%slot) == 0) then
-         problem = 'it shares the rate of a slot no row computes'
-      else if (any(row%reactants < 0) .or. any(row%reactants > n_solved)) then
-         problem = 'a reactant is not a solved species'
-      else if (row%rate_law == s_factor_fit .and. all(row%fit == 0.0d0)) then
-         problem = 'it is an S-factor reaction without a fit'
-      else if (row%rate_law == s_factor_fit .and. row%s0_kevb <= 0.0d0) then
-         problem = 'it is an S-factor reaction without its reference S0'
-      else if (row%rate_law /= shares_rate .and. &
-           (min(row%screening%z1, row%screening%z2) < 1 .or. &
-           max(row%screening%z1, row%screening%z2) > max_screening_charge)) then
-         problem = 'its screening charges are not 1 to max_screening_charge'
-      end if
-      if (len_trim(problem) > 0) return
-      do c = 1, 2*max_change - 1, 2
-         if (row%change(c) < 0 .or. row%change(c) > n_network) &
-              problem = 'its change list names a species that does not exist'
-      end do
-      if (len_trim(problem) > 0) return
-      if (baryon_imbalance(j) /= 0) then
-         problem = 'it does not conserve baryon number'
-      else if (neutrino_energy(j) < -q_rounding_mev) then
-         problem = 'it deposits more energy than its masses release'
-      end if
-end function table_row_problem
-
-! The number of rows that compute the rate of slot k.
-pure integer function slot_owner_count(k)
-      integer, intent(in) :: k
-      integer :: j
-
-      slot_owner_count = 0
-      do j = 1, n_rows
-         if (reactions(j)%slot == k .and. &
-              reactions(j)%rate_law /= shares_rate) &
-              slot_owner_count = slot_owner_count + 1
-      end do
-end function slot_owner_count
-
-! The energy row j releases, MeV, from the atomic mass excesses of what
-! it consumes and makes (neutrinos included; positron annihilation
-! included, through the atomic masses).
-pure real(dp) function q_from_masses(j)
-      integer, intent(in) :: j
-      integer :: c
-
-      q_from_masses = -reactions(j)%emitted_mass*neutron_mass_excess_mev
-      do c = 1, 2*max_change - 1, 2
-         if (reactions(j)%change(c) /= 0) q_from_masses = q_from_masses - &
-              reactions(j)%change(c+1)*mass_excess_mev(reactions(j)%change(c))
-      end do
-end function q_from_masses
-
-! The mean neutrino energy per reaction the table implies, MeV: zero,
-! to the 1 keV the table's Q values are rounded to, for a row with no
-! beta+ decay or electron capture.
-pure real(dp) function neutrino_energy(j)
-      integer, intent(in) :: j
-      neutrino_energy = q_from_masses(j) - reactions(j)%q_mev
-end function neutrino_energy
-
-pure integer function baryon_imbalance(j)
-      integer, intent(in) :: j
-      integer :: c
-
-      baryon_imbalance = reactions(j)%emitted_mass
-      do c = 1, 2*max_change - 1, 2
-         if (reactions(j)%change(c) /= 0) baryon_imbalance = baryon_imbalance + &
-              nint(mass_number(reactions(j)%change(c)))*reactions(j)%change(c+1)
-      end do
-end function baryon_imbalance
-
-! ---------------------------------------------------------------
-! The table, one row per reaction, for tests and documentation: each
-! row's slot, branch, baryon imbalance, Q, chain, the Q its masses give
-! and the neutrino energy that implies.
-subroutine write_network_table(unit)
-      integer, intent(in) :: unit
-      character(len=len(chain_name)) :: chain
-      integer :: j
-
-      write(unit, '(a)') '# reaction                     slot  branch  baryon imbalance     Q (MeV)  chain' // &
-           '           Q masses (MeV)  neutrinos (MeV)'
-      do j = 1, n_rows
-         chain = '?'
-         if (reactions(j)%chain >= 1 .and. reactions(j)%chain <= n_chains) &
-              chain = chain_name(reactions(j)%chain)
-         write(unit, '(a24, 2x, i8, 2x, i6, 2x, i16, 2x, f10.6, 2x, a14, 2x, f14.6, 2x, f15.6)') &
-              reactions(j)%name, reactions(j)%slot, reactions(j)%branch, &
-              baryon_imbalance(j), reactions(j)%q_mev, chain, &
-              q_from_masses(j), neutrino_energy(j)
-      end do
-      write(unit, '(a, i0)') '# table errors: ', network_table_errors()
-end subroutine write_network_table
 
 ! ---------------------------------------------------------------
 ! Rate of reaction j at abundances x: R_j = b_j g_j prod X(law).

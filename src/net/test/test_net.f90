@@ -60,8 +60,9 @@ program test_net
       use net_configuration, only: num_reactions, num_extra_scales, r_3alpha, &
            r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, net_settings, num_sstandard, &
            cross_section_scales_from_sstandard
-      use network, only: s_c12, s_o16, write_network_table, compute_reaction_rates, &
-           network_table_errors, inert_scale_count
+      use network, only: s_c12, s_o16, compute_reaction_rates
+      use network_checks, only: write_network_table, network_table_errors, &
+           inert_scale_count
       use thermal_neutrinos, only: sneut, azbar
       use net_settings_setup, only: net_settings_from_star
       implicit none

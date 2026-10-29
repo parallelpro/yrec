@@ -11,7 +11,9 @@
 !                      run's settings record, the legacy sstandard map
 !   network            the rate evaluation, the implicit burn and its
 !                      error codes, the chains, each reaction's reference
-!                      S0, set_net_settings
+!                      S0
+!   network_checks     set_net_settings (the table's self-check, then
+!                      the install)
 !   reaction_rates     the reference values of the rates outside the
 !                      table (pep, Be7, hep, the N15 + p branches)
 !   nuclear_energy     the energy generation of a zone
@@ -39,7 +41,7 @@ module net_lib
            num_reactions, r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, &
            r_po16, num_extra_scales, xs_pep, xs_be7e, xs_be7p, xs_hep, &
            cross_section_scales_from_sstandard
-      use network, only: set_net_settings
+      use network_checks, only: set_net_settings
 ! the values the input S0 of each rate is scaled against (map_user_inputs):
 ! a table reaction's reference_s0(r_*); pep, Be7 + e-, Be7 + p, hep; the
 ! N15 + p branches
