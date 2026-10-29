@@ -2,54 +2,54 @@
 ! math_lib
 !----------------------------------------------------------------------
 ! The one place YREC gets its elementary math (2026, reproducibility
-! campaign; modeled on MESA's math_lib). Two backends, chosen at
-! build time:
+! campaign; modeled on MESA's math_lib; src/math/README.md). Two
+! backends, chosen at build time:
 !
 !   make USE_CRMATH=1   correctly-rounded backend: crmath (Townsend's
 !                       Fortran wrapper over crlibm, shipped in the
 !                       MESA SDK). Every elementary function returns
 !                       the IEEE-nearest result, so results are
-!                       bit-identical across platforms/architectures
-!                       when combined with -ffp-contract=off (set
-!                       unconditionally in the Makefile) and the same
-!                       gfortran major version.
-!   make                intrinsic backend: pow/exp10 reduce to
-!                       EXACTLY ** and the compiler's functions -- the
-!                       historical behavior, byte-for-byte, so the
-!                       call-site migration is verifiable against the
-!                       existing pins. Fast, platform-dependent in the
-!                       last bits.
+!                       bit-identical across platforms and architectures
+!                       with -ffp-contract=off (set unconditionally in
+!                       the Makefile) and the same gfortran major
+!                       version.
+!   make                intrinsic backend: pow and exp10 are ** and the
+!                       compiler's functions, verbatim -- the historical
+!                       behaviour bit for bit, so converting a call site
+!                       leaves the pins unchanged. Fast, and
+!                       platform-dependent in the last bits.
 !
 ! Usage contract (enforced by tools/check_boundaries.py):
-!   * every source file that calls an elementary transcendental
-!     (exp/log/log10/sin/cos/...) has `use math_lib` -- under the
-!     crmath backend the module procedures SHADOW the intrinsics, so
-!     call sites are unchanged;
-!   * no real-exponent ** anywhere: x**y with real y is a hidden libm
-!     pow -- write pow(x,y); 10**x is written exp10(x). Integer
-!     exponents (x**2, x**n with integer n) are exact repeated
-!     multiplication and stay as **.
+!   * every procedure that calls an elementary transcendental
+!     (exp, log, log10, sin, cos, ...) has `use math_lib` in scope:
+!     under the crmath backend the module procedures shadow the
+!     intrinsics, so call sites are unchanged;
+!   * no real exponent after **: x**y with real y is a hidden libm pow,
+!     written pow(x, y); 10**x is written exp10(x). Integer exponents
+!     (x**2, x**n with integer n) stay as **.
 !
-! Under crmath, pow and exp10 follow MESA's definitions exactly: an
-! integer-valued exponent takes the repeated-multiplication fast path
-! (bit-exact), otherwise pow(x,y) = exp(log(x)*y) and exp10(x) =
-! exp(x*ln10) -- fully determined by crmath's exp/log, hence
-! reproducible. Under the intrinsic backend they are PURE passthroughs
-! (x**y, 10**x) with no fast path, so converting a call site is a
-! no-op bit-for-bit.
+! Under crmath, pow and exp10 follow MESA's definitions: an
+! integer-valued exponent below 100 in magnitude takes repeated
+! multiplication, anything else pow(x,y) = exp(log(x)*y) and exp10(x) =
+! exp(x*ln10), which crmath's exp and log determine completely. Under
+! the intrinsic backend they are passthroughs (x**y, 10**x) with no
+! fast path. Where the two differ (pow(0, y <= 0), integer exponents,
+! negative bases) is listed in src/math/README.md and checked by
+! test_math.
 module math_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
 #ifdef YREC_CRMATH
       use crmath
 #endif
       implicit none
       private
 
-      public :: pow, exp10, safe_divide_by_exp
+      public :: pow, exp10
 
 ! pow is generic over real and integer exponents: pow(x, iy) with
 ! integer iy exists so ** conversions never need to know the
-! exponent's type (integer-typed sites route through the exact
-! integer path; under the intrinsic backend it is x**iy verbatim).
+! exponent's type (integer-typed sites take the repeated
+! multiplication; under the intrinsic backend it is x**iy verbatim).
       interface pow
          module procedure pow_r
          module procedure pow_i
@@ -68,7 +68,7 @@ module math_lib
 ! log(10.0d0) here: with crmath use-associated that names a module
 ! function, which is not a constant expression -- and gfortran 15.2
 ! ICEs on it rather than diagnosing it)
-      double precision, parameter :: ln10 = 2.302585092994045684d0
+      real(dp), parameter :: ln10 = 2.302585092994045684d0
 #else
       character(len=*), parameter, public :: math_backend = 'intrinsic'
 #endif
@@ -85,8 +85,8 @@ contains
 ! log of a negative number). x = 0 returns 0 for every y, as in MESA
 ! (the intrinsic x**y gives 1 for y = 0 and +Inf for y < 0).
 elemental function pow_r(x, y) result(pow_x)
-      double precision, intent(in) :: x, y
-      double precision :: pow_x
+      real(dp), intent(in) :: x, y
+      real(dp) :: pow_x
       integer :: iy, i
 
       if (x == 0.0d0) then
@@ -112,9 +112,9 @@ end function pow_r
 ! integer exponent: repeated multiplication (MESA's pow_i); x = 0
 ! returns 0 for every iy, as pow_r does
 elemental function pow_i(x, iy) result(pow_x)
-      double precision, intent(in) :: x
+      real(dp), intent(in) :: x
       integer, intent(in) :: iy
-      double precision :: pow_x
+      real(dp) :: pow_x
       integer :: i
 
       if (x == 0.0d0) then
@@ -129,13 +129,13 @@ elemental function pow_i(x, iy) result(pow_x)
 end function pow_i
 
 ! single-precision exponent (legacy literals like 0.6666667): Fortran's
-! mixed-mode ** promotes the exponent to dp, so pow_r(x, dble(y))
-! matches x**y exactly
+! mixed-mode ** promotes the exponent to real(dp), so pow_r(x,
+! real(y, dp)) matches x**y exactly
 elemental function pow_r_sp(x, y) result(pow_x)
-      double precision, intent(in) :: x
+      real(dp), intent(in) :: x
       real, intent(in) :: y
-      double precision :: pow_x
-      pow_x = pow_r(x, dble(y))
+      real(dp) :: pow_x
+      pow_x = pow_r(x, real(y, dp))
 end function pow_r_sp
 
 ! ---------------------------------------------------------------
@@ -144,8 +144,8 @@ end function pow_r_sp
 ! largest power of ten a double holds exactly) and correctly rounded
 ! for -22 <= x < 0 (one division); exp(x*ln10) otherwise.
 elemental function exp10(x) result(exp10_x)
-      double precision, intent(in) :: x
-      double precision :: exp10_x
+      real(dp), intent(in) :: x
+      real(dp) :: exp10_x
       integer :: ix, i
 
 ! the test on |x| comes first, so that int(x) cannot overflow
@@ -164,51 +164,34 @@ end function exp10
 #else
 
 ! ---------------------------------------------------------------
-! Intrinsic backend: pure passthroughs, bit-identical to the
-! expressions they replace at the call sites.
+! Intrinsic backend: passthroughs, bit-identical to the expressions
+! they replace at the call sites.
 elemental function pow_r(x, y) result(pow_x)
-      double precision, intent(in) :: x, y
-      double precision :: pow_x
+      real(dp), intent(in) :: x, y
+      real(dp) :: pow_x
       pow_x = x**y
 end function pow_r
 
 elemental function pow_i(x, iy) result(pow_x)
-      double precision, intent(in) :: x
+      real(dp), intent(in) :: x
       integer, intent(in) :: iy
-      double precision :: pow_x
+      real(dp) :: pow_x
       pow_x = x**iy
 end function pow_i
 
 elemental function pow_r_sp(x, y) result(pow_x)
-      double precision, intent(in) :: x
+      real(dp), intent(in) :: x
       real, intent(in) :: y
-      double precision :: pow_x
+      real(dp) :: pow_x
       pow_x = x**y
 end function pow_r_sp
 
 elemental function exp10(x) result(exp10_x)
-      double precision, intent(in) :: x
-      double precision :: exp10_x
+      real(dp), intent(in) :: x
+      real(dp) :: exp10_x
       exp10_x = 10.0d0**x
 end function exp10
 
 #endif
-
-! safe_divide_by_exp (formerly safedivexp, net_lib; KC 2025-05-31)
-! Overflow-safe numerator/exp(exponent): returns 0 when exp(exponent)
-! would overflow (709.78 is ln(huge(1.0d0))).
-subroutine safe_divide_by_exp(numerator, exponent)
-      implicit none
-      double precision, intent(inout) :: numerator
-      double precision, intent(in) :: exponent
-
-      if (exponent .lt. 709.7827d0) then
-         numerator = numerator/exp(exponent)
-      else
-         numerator = 0.0d0
-      endif
-
-      return
-end subroutine safe_divide_by_exp
 
 end module math_lib
