@@ -749,6 +749,7 @@ end subroutine write_mhd_part
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
 !                          mixture (eos_set_debye_huckel_z)
 !   gamma1_checks          eos_get_gamma1 outside the OPAL table
+!   scv_mean_weight_checks R/mu and 1/mu_e where SCV gives the density
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
 !                          one where Z is the envelope's
 !   settings_checks        eos_init's check of the OPAL vintage
@@ -760,6 +761,7 @@ subroutine check_physics()
       call envelope_table_checks()
       call debye_huckel_checks()
       call gamma1_checks()
+      call scv_mean_weight_checks()
       call diffusion_z_checks()
       call settings_checks()
 end subroutine check_physics
@@ -843,6 +845,40 @@ subroutine gamma1_checks()
            ierr1 == 0 .and. ierr2 == 0 .and. abs(g1/g1_yale - 1.0d0) < 1.0d-6 .and. &
            abs(ga/ga_yale - 1.0d0) < 1.0d-6)
 end subroutine gamma1_checks
+
+! Where SCV gives the density (below the Saha ramp, inside its table),
+! R/mu is the gas constant that density implies, beta P/(rho T), and
+! 1/mu_e = (R/mu)/R - 1/mu_ion, both on the envelope table's path and on
+! the general one (the Saha solution's own R/mu would differ by percents
+! where SCV has molecules), and R/mu is continuous at the ramp's foot.
+subroutine scv_mean_weight_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+      real(dp), parameter :: lt(3) = [3.6d0, 4.0d0, 5.2d0], lp(3) = [5.0d0, 7.0d0, 12.0d0]
+      real(dp), parameter :: h = 1.0d-7
+      type(eos_result) :: r, below, above
+      integer :: k, c, ierr, ierr1, ierr2
+      real(dp) :: x_c
+      logical :: ok
+      call configure_eos("scv_only", scv=.true.)
+      ok = .true.
+      do c = 1, 2
+         x_c = x
+         if (c == 2) x_c = x + 2.0d-5
+         do k = 1, size(lt)
+            call eos_at(lt(k), lp(k), x_c, z, r, ierr)
+            ok = ok .and. ierr == 0 .and. &
+                 abs(r%specific_gas_constant/(r%beta*r%pressure/(r%density*r%temperature)) - 1.0d0) < 1.0d-12 &
+                 .and. abs(r%electron_mean_weight_inverse - (r%specific_gas_constant/gas_constant - &
+                 r%ion_mean_weight_inverse)) < 1.0d-12
+         end do
+      end do
+      call check("SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths", ok)
+      call eos_at(5.5d0 - h, 13.0d0, x, z, below, ierr1)
+      call eos_at(5.5d0 + h, 13.0d0, x, z, above, ierr2)
+      call check("SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot", ierr1 == 0 .and. ierr2 == 0 .and. &
+           abs(above%specific_gas_constant/below%specific_gas_constant - 1.0d0) < 1.0d-6 .and. &
+           abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
+end subroutine scv_mean_weight_checks
 
 subroutine ideal_radiation_gas(b, r_mu, cp, grad_ad)
       real(dp), intent(in) :: b, r_mu

@@ -9,8 +9,11 @@
 !     ion_mean_weight_excess  1/mu_ion of a mixture with other X and Z
 !     compute_mean_weights    1/mu_ion, 1/mu_e and the gas constant of
 !                             a zone
+!     mean_weights_from_density  R/mu and 1/mu_e that a result's density
+!                             implies
 module eos_mixture
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use eos_results, only: eos_result
       use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, n_mix_species
       use physical_constants, only: gas_constant
@@ -44,7 +47,7 @@ module eos_mixture
            26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
            14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
-      public :: ion_mean_weight_excess, compute_mean_weights
+      public :: ion_mean_weight_excess, compute_mean_weights, mean_weights_from_density
 
 contains
 
@@ -116,5 +119,19 @@ pure subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fr
            electron_mean_weight_inverse)
 
 end subroutine compute_mean_weights
+
+! mean_weights_from_density: the mean weights of a result whose density
+! comes from a table or a blend (SCV, the Saha ramp) rather than from
+! the composition: R/mu = beta P/(rho T), the gas constant the
+! ideal-gas law needs for r's density, and 1/mu_e = (R/mu)/R - 1/mu_ion,
+! r's 1/mu_ion kept. (The Saha solution's own R/mu is this by
+! construction; OPAL's and MHD's come from compute_mean_weights, which
+! backs 1/mu_e out the same way.)
+pure subroutine mean_weights_from_density(r)
+      type(eos_result), intent(inout) :: r
+      r%specific_gas_constant = r%beta*r%pressure/(r%density*r%temperature)
+      r%electron_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
+           r%ion_mean_weight_inverse
+end subroutine mean_weights_from_density
 
 end module eos_mixture

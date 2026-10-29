@@ -618,6 +618,9 @@ ok   envelope tables: a table built for another composition is not used
 ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe
 # test_eos: configuration production
 ok   eos_get_gamma1: below the OPAL table, the Yale/SCV value
+# test_eos: configuration scv_only
+ok   SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths
+ok   SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 # test_eos: configuration yale_only

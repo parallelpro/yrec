@@ -22,8 +22,8 @@ module blended_eos
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
       use eos_messages, only: eos_log, message_length, unwritten_line
-      use eos_mixture, only: eos_mix, ion_mean_weight_excess, ix_c, ix_h, &
-           ix_he, ix_na, ix_ne, ix_o, n_mix_species
+      use eos_mixture, only: eos_mix, ion_mean_weight_excess, mean_weights_from_density, &
+           ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings, opal_vintage_none
       use math_lib
 
@@ -207,7 +207,8 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       else
          call compute_saha_eos(saha_mass_fractions, log10_temperature, &
               log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
-! SCV replaces Saha's density and first derivatives (Saha's second
+! SCV replaces Saha's density, the mean weights that density implies,
+! the ionization fractions and the first derivatives (Saha's second
 ! derivatives stay) where its table covers the point; elsewhere Saha's
 ! result stands
          if (eos_settings%use_scv_eos) then
@@ -367,9 +368,7 @@ subroutine blend_saha_into(saha, ramp_weight, want_derivatives, r)
       f = ramp_weight_sq*ramp_weight*(6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)
       r%log10_density = r%log10_density + f*(saha%log10_density - r%log10_density)
       r%density = exp(ln10*r%log10_density)
-      r%specific_gas_constant = r%beta*r%pressure/(r%density*r%temperature)
-      r%electron_mean_weight_inverse = r%specific_gas_constant/gas_constant - &
-           r%ion_mean_weight_inverse
+      call mean_weights_from_density(r)
       r%ion_fraction = r%ion_fraction + f*(saha%ion_fraction - r%ion_fraction)
       r%dlnrho_dlnt = r%dlnrho_dlnt + f*(saha%dlnrho_dlnt - r%dlnrho_dlnt)
       r%dlnrho_dlnp = r%dlnrho_dlnp + f*(saha%dlnrho_dlnp - r%dlnrho_dlnp)

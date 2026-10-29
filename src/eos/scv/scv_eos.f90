@@ -29,6 +29,7 @@ module scv_eos
       use physical_constants, only: cc13, ln10, radiation_constant_over_3
       use numerics_lib, only: inter3, interp, lagrange4, natural_spline, splint
       use eos_messages, only: eos_log, message_length, unwritten_line
+      use eos_mixture, only: mean_weights_from_density
       use math_lib
       implicit none
       private
@@ -302,9 +303,10 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
              interp_result(j) = interp_result_press_smoothed(j)
           end do
        end if
-!  density
+!  density, and the mean weights it implies (R/mu = beta P/(rho T))
       r%log10_density = interp_result(1)
       r%density = exp(ln10*r%log10_density)
+      call mean_weights_from_density(r)
 ! d ln rho/ d ln p = qdp
 ! for gas pressure qdp(tot) = qdp(x)*x*rho/rho(x)+qdp(y)*y*rho/rho(y)
 ! for radiation pressure qdp = 0, so qdp(tot) = qdp(gas)*p/pgas
@@ -613,6 +615,8 @@ real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       r%density = 1.0d0/(hydrogen_fraction/density_pure_h + &
            helium_fraction/density_pure_he + metal_fraction/density_pure_z)
       r%log10_density = log10(r%density)
+! the mean weights it implies (R/mu = beta P/(rho T))
+      call mean_weights_from_density(r)
       volume_frac_h = hydrogen_fraction*r%density/density_pure_h
       volume_frac_he = helium_fraction*r%density/density_pure_he
       volume_frac_z = metal_fraction*r%density/density_pure_z
