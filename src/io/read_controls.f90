@@ -18,6 +18,7 @@ module controls_reader
       use legacy_controls
       use run_files, only: assign_unit_numbers, expand_paths, open_run_files
       use derived_controls, only: derive_controls
+      use controls_check, only: check_controls, warn_inert_controls
       use run_cards, only: interpret_kind_cards
       implicit none
       private
@@ -69,13 +70,6 @@ subroutine read_input(s, ierr)
       print *,''
       print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
 
-! the run log banner's format, fitted to the version strings (a zero
-! width is illegal)
-      write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
-           max(1, len_trim(git_hash_string))
-      315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
-           &        ', '')'')')
-
 ! The deck: the first command-line argument (default yrec8.nml1), or
 ! the override an embedding host (pyyrec) sets, since argv is the host's.
       if (control_nml_override .ne. ' ') then
@@ -89,15 +83,17 @@ subroutine read_input(s, ierr)
       if (ierr /= 0) return
       call adopt_canonical_names(s)
       call map_user_inputs(s)
-! open_run_files' output_init_mesa reads its controls from star%ctrl
+! check_controls, below, reads the controls from star%ctrl and star%job
       call store_controls_to_star(s)
       call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call expand_paths
       call open_run_files(s, ierr)
       call store_table_paths(s)
       if (ierr /= 0) return
-      call derive_controls(s, ierr)
+      call check_controls(s, ierr)
       if (ierr /= 0) return
+      call warn_inert_controls
+      call derive_controls(s)
       call interpret_kind_cards(s)
 
 end subroutine read_input

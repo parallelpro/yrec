@@ -22,9 +22,8 @@ module legacy_controls
 ! same in both reads straight into controls_buffer and needs no copy.
 ! defaults/controls_registry.tsv maps every legacy name to its
 ! canonical and new-inlist names. ies and imu are read and then
-! unused. version_fmt, element_id, the mixture tables, the inlist file
+! unused. element_id, the mixture tables, the inlist file
 ! names are the reader's own working variables.
-      character(len=256) :: version_fmt
       character(len=256) :: flaol, fpurez
       character(len=256) :: flaol2, fopal2, fkur2
       character(len=3) :: anewcp, atmp
@@ -389,7 +388,6 @@ subroutine set_legacy_defaults
       flast = '{YREC_OUTPUT}/final.mod'
       fshort = '{YREC_OUTPUT}/run.log'
 ! no default
-      version_fmt = repeat(achar(0), len(version_fmt))
       flaol = repeat(achar(0), len(flaol))
       fpurez = repeat(achar(0), len(fpurez))
       flaol2 = repeat(achar(0), len(flaol2))

@@ -4,81 +4,34 @@
 ! The controls computed from the ones read: the light-element rate
 ! scales, one OPAL EOS and one low-temperature opacity source, a fresh
 ! envelope triangle for rotating runs, the starting model's mixture
-! changes, and the switches that diffusion options imply. It also
-! rejects semiconvection with overshoot and writes the run log's
-! header. Everything here works on the canonical names, after
+! changes, and the switches that diffusion options imply; and it writes
+! the run log's header. Its messages go to the terminal and the run log
+! through controls_check's report_control; the errors are
+! controls_check's. Everything here works on the canonical names, after
 ! adopt_canonical_names; the legacy names it reads (amix, aiso,
 ! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
 module derived_controls
       use physical_constants
       use io_units
       use legacy_controls
+      use controls_check, only: report_control
       implicit none
       private
       public :: derive_controls
 
-! The Bulirsch-Stoer integrator's limits (numerics/bulirsch_stoer.f90):
-! its stage sequence has 11 entries and its extrapolation tableau 7
-! columns; order 1 would index the stage sequence at 0.
-      integer, parameter :: bulirsch_stoer_max_stages = 11, bulirsch_stoer_max_order = 7
+      integer, parameter :: message_length = 512
 
 contains
 
 ! ---------------------------------------------------------------
-! ierr = 1: semiconvection and overshoot are both on, the envelope
-! triangle's size is not positive, a rotating run's max_diffusion_iters
-! is outside 1..16, or the Bulirsch-Stoer controls are outside the
-! integrator's limits.
-subroutine derive_controls(s, ierr)
+! The derivations, in order, and the run log's header. (controls_check's
+! check_controls has rejected the controls the run cannot use.)
+subroutine derive_controls(s)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
-      integer, intent(inout) :: ierr
 
       call derive_rate_scales
       call select_eos_and_opacity_tables(s)
-      if (use_semiconvection) then
-         if (core_overshoot_active .or. envelope_overshoot_active .or. lovstm) then
-            write(run_log_unit,2) use_semiconvection, envelope_overshoot_active, &
-                 core_overshoot_active, lovstm
-      2       format(1x,'ERROR IN SUBROUTINE PARMIN'/'SEMI-CONVECTION', &
-           &  ' AND OVERSHOOT FLAGS BOTH TURNED ON'/'FLAGS LSEMIC',l2, &
-           &  ' OVERSHOOT - CORE,ENVELOPE,INTERMEDIATE-',3l2/'RUN STOPPED')
-            ierr = 1
-            return
-         end if
-      end if
-! The envelope triangle needs a positive size: with zero area its walk
-! never contains the model (surface_boundary).
-      if (tri_delta_teffl <= 0.0d0 .or. tri_delta_logl <= 0.0d0) then
-         write(terminal_unit,3) tri_delta_teffl, tri_delta_logl
-         write(run_log_unit,3) tri_delta_teffl, tri_delta_logl
-      3  format(1x,'ERROR: the envelope triangle''s size must be positive:', &
-           &  ' tri_delta_teffl (TRIDT) =',1pe11.3,', tri_delta_logl (TRIDL) =',1pe11.3)
-         ierr = 1
-         return
-      end if
-! The rotation transport's iterations: its history holds 16
-! (rotation/seculr/transport_checks' max_recorded_iterations;
-! docs/bug_sweep.md O14).
-      if (rotation_active .and. (max_diffusion_iters < 1 .or. max_diffusion_iters > 16)) then
-         write(terminal_unit,4) max_diffusion_iters
-         write(run_log_unit,4) max_diffusion_iters
-      4  format(1x,'ERROR: max_diffusion_iters (ITDIF2) must be 1 to 16, not ',i0)
-         ierr = 1
-         return
-      end if
-! The Bulirsch-Stoer integrator's limits.
-      if (tolerance_fraction <= 0.0d0 .or. max_stage_index < 1 .or. &
-           max_stage_index > bulirsch_stoer_max_stages .or. extrap_order < 2 .or. &
-           extrap_order > bulirsch_stoer_max_order) then
-         write(terminal_unit,5) tolerance_fraction, max_stage_index, extrap_order
-         write(run_log_unit,5) tolerance_fraction, max_stage_index, extrap_order
-      5  format(1x,'ERROR: the Bulirsch-Stoer controls need tolerance_fraction (STOLR0) > 0,', &
-           &  ' max_stage_index (IMAX) 1 to 11 and extrap_order (NUSE) 2 to 7, not', &
-           &  1pe11.3,', ',i0,', ',i0)
-         ierr = 1
-         return
-      end if
       s%tenv = 0.5d0*(tenv0 + tenv1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
@@ -145,6 +98,7 @@ end subroutine derive_rotation_controls
 ! whether its new value is relative to hydrogen (atmp /= 'ABS').
 subroutine find_rescaled_species
       integer :: i
+      character(len=message_length) :: line
 
       value_relative_to_h = .true.
       if (atmp == 'ABS') value_relative_to_h = .false.
@@ -156,9 +110,10 @@ subroutine find_rescaled_species
       end do
       if (i > 12) then
          rescale_species_active = .false.
-         write(run_log_unit,20) anewcp
-      20    format(1x,'VARIABLE',a4,1x,'NOT A RECOGNIZED ELEMENT'/1x, &
-           &    'RESCALING NOT PERFORMED')
+         write(line,20) anewcp
+      20    format(1x,'warning: change_species_name (ANEWCP) ',a3, &
+           &    ' is not a species of the starting model; no species rescaled')
+         call report_control(line)
       end if
 end subroutine find_rescaled_species
 
@@ -169,28 +124,27 @@ end subroutine find_rescaled_species
 subroutine select_cno_mixture
       double precision :: sum_frac
       integer :: i
+      character(len=message_length) :: line
 
       change_cno_mixture_active = .false.
       if (mixture_change_mode == 1) then
          if (amix == 'CUS') then
             if (target_carbon_cno_fraction < 0.0d0 .or. target_nitrogen_cno_fraction < 0.0d0 &
                  .or. target_oxygen_cno_fraction < 0.0d0) then
-               write(*,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
+               write(line,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
                     target_oxygen_cno_fraction
-               write(run_log_unit,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-                    target_oxygen_cno_fraction
-      591          format('NEGATIVE INPUT CNO FRACTION ',3e12.4, &
-           &              ' MIX NOT MODIFIED')
+      591          format(1x,'warning: negative CNO fraction (',3es12.4, &
+           &              '); mixture not modified')
+               call report_control(line)
             else
                sum_frac = target_carbon_cno_fraction + target_nitrogen_cno_fraction &
                     + target_oxygen_cno_fraction
                if (sum_frac >= 1.0d0) then
-                  write(*,598) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
+                  write(line,598) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
                        target_oxygen_cno_fraction
-                  write(run_log_unit,598) target_carbon_cno_fraction, &
-                       target_nitrogen_cno_fraction, target_oxygen_cno_fraction
-      598             format('INPUT CNO FRACTION ',3e12.4, &
-           &                 ' EXCEEDS 1. MIX NOT MODIFIED')
+      598             format(1x,'warning: the CNO fractions (',3es12.4, &
+           &                 ') sum to 1 or more; mixture not modified')
+                  call report_control(line)
                else
                   change_cno_mixture_active = .true.
                end if
@@ -207,19 +161,18 @@ subroutine select_cno_mixture
                end if
             end do
             if (.not. change_cno_mixture_active) then
-               write(*,589) amix
-               write(run_log_unit,589) amix
+               write(line,589) amix
       589       format(1x,'warning: CNO mixture ',a8,' not recognized; mixture not altered')
+               call report_control(line)
             end if
          end if
       end if
       if (change_cno_mixture_active) then
-         write(*,604) amix, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
+         write(line,604) amix, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
               target_oxygen_cno_fraction
-         write(run_log_unit,604) amix, target_carbon_cno_fraction, &
-              target_nitrogen_cno_fraction, target_oxygen_cno_fraction
       604    format(1x,'CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
            &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
+         call report_control(line)
       end if
 end subroutine select_cno_mixture
 
@@ -229,6 +182,7 @@ end subroutine select_cno_mixture
 ! negative or summing to 1 or more.
 subroutine select_isotope_mixture
       double precision :: sum_frac
+      character(len=message_length) :: line
 
       change_isotope_ratios_active = .false.
       if (isotope_change_mode == 1) then
@@ -239,48 +193,45 @@ subroutine select_isotope_mixture
                  .or. initial_li6_fraction < 0.0d0 .or. initial_li7_fraction < 0.0d0 &
                  .or. initial_be9_fraction < 0.0d0 .or. initial_b10_fraction < 0.0d0 &
                  .or. initial_b11_fraction < 0.0d0) then
-               write(*,596) c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
-                    o16_to_o18_ratio, initial_h2_fraction, initial_he3_fraction, &
-                    initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
-                    initial_b10_fraction, initial_b11_fraction
-               write(run_log_unit,596) c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
+               write(line,596) c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
                     o16_to_o18_ratio, initial_h2_fraction, initial_he3_fraction, &
                     initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                     initial_b10_fraction, initial_b11_fraction
       596          format(1x,'warning: negative isotope ratio or light-element', &
            &   ' mass fraction (',11es12.4,'); mixture not modified')
+               call report_control(line)
             else
                sum_frac = initial_h2_fraction + initial_he3_fraction + initial_li6_fraction &
                     + initial_li7_fraction + initial_be9_fraction + initial_b10_fraction &
                     + initial_b11_fraction
                if (sum_frac >= 1.0d0) then
-                  write(*,595) initial_h2_fraction, initial_he3_fraction, &
-                       initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
-                       initial_b10_fraction, initial_b11_fraction
-                  write(run_log_unit,595) initial_h2_fraction, initial_he3_fraction, &
+                  write(line,595) initial_h2_fraction, initial_he3_fraction, &
                        initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                        initial_b10_fraction, initial_b11_fraction
       595             format(1x,'warning: light-element mass fractions sum above 1', &
-           &     ' (',11es12.4,'); mixture not modified')
+           &     ' (',7es12.4,'); mixture not modified')
+                  call report_control(line)
                else
                   change_isotope_ratios_active = .true.
                end if
             end if
          else if (aiso == 'L21') then
             change_isotope_ratios_active = .true.
+         else
+            write(line,597) aiso
+      597    format(1x,'warning: isotope mixture ',a8,' not recognized; mixture not altered')
+            call report_control(line)
          end if
       end if
       if (change_isotope_ratios_active) then
-         write(*,605) aiso, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
+         write(line,605) aiso, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
               initial_he3_fraction, initial_li6_fraction, initial_li7_fraction, &
               initial_be9_fraction
-         write(run_log_unit,605) aiso, c12_to_c13_ratio, o16_to_o18_ratio, &
-              initial_h2_fraction, initial_he3_fraction, initial_li6_fraction, &
-              initial_li7_fraction, initial_be9_fraction
       605    format(1x,'isotope/light-element mixture ',a8,': C12/C13 =', &
            &    es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4, &
            &    '  Li6 =',es12.4,'  Li7 =',es12.4,'  Be9 =',es12.4, &
            &    '; applied to the starting model')
+         call report_control(line)
       end if
 end subroutine select_isotope_mixture
 
@@ -306,6 +257,14 @@ end subroutine derive_diffusion_switches
 ! The surface boundary condition, the pure C and N opacity tables, and
 ! the version and description banner.
 subroutine write_run_log_header
+! the banner's format, fitted to the version strings (a zero width is
+! illegal)
+      character(len=64) :: version_fmt
+
+      write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
+           max(1, len_trim(git_hash_string))
+      315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
+           &        ', '')'')')
       select case (atm_choice)
       case (0)
          write(run_log_unit,'(1x,a)') 'surface boundary: Eddington gray T(tau) relation'
