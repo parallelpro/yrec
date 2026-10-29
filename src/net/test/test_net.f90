@@ -19,7 +19,7 @@
 !     atomic mass excesses (the difference is the row's neutrinos);
 !   * burn_implicitly against backward Euler's closed form for one
 !     reaction at a time, its mass conservation with all of them, and its
-!     ierr when it runs out of iterations;
+!     ierr codes (out of iterations, a singular Newton system);
 !   * the trace integrator (surviving_fraction, accreted_survival)
 !     against closed forms and an independent quadrature;
 !   * compute_nuclear_energy at three reference points, and its
@@ -50,7 +50,8 @@ program test_net
            linear_in_log, compute_nuclear_energy, nuclear_energy_result, &
            net_settings_t, set_net_settings, compute_abundance_rates, &
            burn_deuterium_region, surface_accretion, compute_li_be_rates, &
-           network_species_slot, chain_pp1, chain_cno, chain_triple_alpha
+           network_species_slot, chain_pp1, chain_cno, chain_triple_alpha, &
+           burn_not_converged, burn_singular_jacobian
 ! the domain's own test: it also reaches net/'s internal modules
       use screening, only: num_isotopes, iso_h1, iso_h2, iso_he3, iso_he4, &
            iso_c12, iso_c13, iso_n14, iso_o16, iso_o18
@@ -793,12 +794,16 @@ contains
       end function zp
 
 ! burn_implicitly's error contract: a step that needs more Newton
-! iterations than it is given returns ierr = 1 (here the every-rate
-! step of check_burn_implicitly with a single iteration); with enough,
-! ierr = 0.
+! iterations than it is given returns burn_not_converged (here the
+! every-rate step of check_burn_implicitly with a single iteration);
+! with enough, 0. A singular Newton system returns
+! burn_singular_jacobian: O16(p,g) alone with g dt = 1/16 from the guess
+! X(H) = -1, X(O16) = 0, where dF_O/dX_O = 1 + 16 g dt X(H) is exactly
+! zero and O16, the last solved species, has no other entry in its
+! column at or below the diagonal.
       subroutine check_burn_nonconvergence()
          double precision :: g(num_rate_rows), x0(n_network), x(n_network)
-         integer :: ierr1, ierr50
+         integer :: ierr1, ierr50, ierr_singular
 
          x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
          call compute_network_rates(2.2d0, 7.3d0, test_xa, g)
@@ -806,8 +811,16 @@ contains
          call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 1, x, ierr1)
          x = x0
          call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 50, x, ierr50)
-         call report("burn_implicitly: ierr 1 when out of iterations, 0 when converged", &
-              ierr1 == 1 .and. ierr50 == 0)
+         g = 0.0d0
+         g(r_po16) = 1.0d0/16.0d0
+         x0 = 0.0d0
+         x = 0.0d0
+         x(s_h1) = -1.0d0
+         call burn_implicitly(x0, g, 1.0d0, 1.0d-20, 1.0d-5, 1.0d-4, 50, x, ierr_singular)
+         call report("burn_implicitly: burn_not_converged when out of iterations, " // &
+              "burn_singular_jacobian for a singular system, 0 when converged", &
+              ierr1 == burn_not_converged .and. ierr50 == 0 .and. &
+              ierr_singular == burn_singular_jacobian)
       end subroutine check_burn_nonconvergence
 
 ! The configuration's contracts: the reaction table passes its

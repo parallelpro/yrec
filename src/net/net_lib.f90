@@ -42,7 +42,8 @@ module net_lib
 ! the implicit burn, with the network species a caller maps its
 ! abundances onto, and the network's dX/dt
       use network, only: compute_network_rates, burn_implicitly, n_solved, n_network, &
-           network_species_slot, s_h1, s_he3, s_he4, compute_abundance_rates
+           network_species_slot, s_h1, s_he3, s_he4, compute_abundance_rates, &
+           burn_not_converged, burn_singular_jacobian
 ! the energy generation, by chain (eps_by_chain(chain_*))
       use nuclear_energy, only: nuclear_energy_result, compute_nuclear_energy
       use network, only: n_chains, chain_name, chain_pp1, chain_pp2, chain_pp3, &

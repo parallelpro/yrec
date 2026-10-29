@@ -66,7 +66,7 @@ Code outside net/ uses only `net_lib`, its public interface: a module with no co
    4. with hydrogen, the Be7 branching and the N15(p,α) fraction.
 
    `compute_network_rates` then drops rates at or below `min_composition_rate` (10⁻⁵) and returns the rate vector per s per amu: the reactions at `r_*`, the two fractions at `rv_*`.
-2. `burn_network` → per region `burn_network_region` → `burn_implicitly`: Newton iteration on X − X₀ − dt A Σ ν R(X) = 0, its equations and Jacobian from the table rows (`compute_abundance_rates`, `reaction_rate_derivative`); the explicit products (O18) from the converged abundances. `ierr = 1` when it runs out of iterations.
+2. `burn_network` → per region `burn_network_region` → `burn_implicitly`: Newton iteration on X − X₀ − dt A Σ ν R(X) = 0, its equations and Jacobian from the table rows (`compute_abundance_rates`, `reaction_rate_derivative`); the explicit products (O18) from the converged abundances. `ierr` is `burn_not_converged` when it runs out of iterations and `burn_singular_jacobian` when the Newton system is singular; `burn_network_region` writes a message for each (`report_error`: terminal and run log) and the run stops.
 3. `burn_deuterium` → per region `burn_deuterium_region`: exponential decay with the rate linear in time between its start- and end-of-step values (`surviving_fraction`), D → He3, and the accreted gas (`accreted_survival`).
 
 ### 2.2 `compute_nuclear_energy`
@@ -127,14 +127,14 @@ Two things often surprise newcomers:
 - **Screening** (`screening`). Each row carries the charges of its two nuclei, `screening_t(Z₁, Z₂)`; the weak form takes Z₁Z₂, and the intermediate and strong forms Graboske et al.'s (1973, table 4) z_p = (Z₁+Z₂)^p − Z₁^p − Z₂^p for p = 1.86 (intermediate) and 5/3, 4/3, 2/3 (strong), which `graboske_z` holds for every pair of charges from 1 to `max_screening_charge` (14), computed at compile time. The exponent is weak (Salpeter) below `weak_screening_threshold`, intermediate up to `max_intermediate_weak_exponent` (2), and above that the smaller of strong and intermediate, strong always from `min_strong_weak_exponent` (5).
 - **Scales.** Only the S-factor law reads the per-reaction scales (`cross_section_scale`, `s_prime_scale`, `s_double_prime_scale` at the row's slot); a scale set on another reaction has no effect, and `set_net_settings` warns about it.
 - **Temperature cutoffs** (`logT_cutoffs`, the control `nuclear_logT_cutoffs`): (1) gates everything, (4) helium burning, (5) the thermal neutrino losses; (2) and (3) are read and unused. The solar neutrino fluxes depend on `calc_neutrinos` only.
-- **Errors and messages.** The kernels print nothing and are `pure`; failures return `ierr` (positive): `burn_implicitly` (out of iterations, or a singular solve), `set_net_settings` (a wrong table). The configuration's messages go through `net_messages`' `net_report`: the table's errors, and the warnings for a scale without effect or a legacy `sstandard` entry that belongs to no reaction.
+- **Errors and messages.** The kernels print nothing and are `pure`; failures return `ierr` (positive): `burn_implicitly` (`burn_not_converged`, `burn_singular_jacobian`), `set_net_settings` (a wrong table). The configuration's messages go through `net_messages`' `net_report`: the table's errors, and the warnings for a scale without effect or a legacy `sstandard` entry that belongs to no reaction.
 
 ## 4. Tests
 
 `test_net` (`make tests` in `src/`, then `pytest test_net.py`) prints values for byte-comparison with `net/test/expected_test_net.out`, and 20 checks that print `ok` or `FAIL`:
 - the configuration: `set_net_settings` installs `net_settings_from_star`'s record; the table's self-check; the legacy `sstandard` map; the scale reported as without effect;
 - the rates' derivatives against centred differences (2×10⁻⁴ in T; 2×10⁻³ in ρ, where the screening plasma is held fixed);
-- `burn_implicitly` against backward Euler's closed form with only pp, then only C12(α,γ); its mass conservation with every rate on; `ierr = 1` when it runs out of iterations;
+- `burn_implicitly` against backward Euler's closed form with only pp, then only C12(α,γ); its mass conservation with every rate on; `burn_not_converged` when it runs out of iterations and `burn_singular_jacobian` for a singular Newton system;
 - `surviving_fraction` and `accreted_survival` against closed forms and an independent quadrature;
 - `compute_nuclear_energy`'s derivatives at the solar centre, a CNO core and a helium core (5×10⁻³); the thermal neutrino losses alone, on a C/O mixture where nothing burns, with both fits: negative, and their derivatives (BPS 10⁻⁶, Itoh 10⁻⁵); deuterium burning outside and inside the surface convection zone with the cap binding, with its derivatives; nothing below the burning cutoff;
 - strong screening at log T 7, log ρ 6: the regime, the derivatives, and the exponent against Graboske et al.'s formula;

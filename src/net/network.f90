@@ -120,6 +120,11 @@ module network
       integer, parameter :: unbranched = 0, n15_to_c12 = 1, n15_to_o16 = 2, &
            be7_electron_capture = 3, be7_proton_capture = 4
 
+! burn_implicitly's ierr: 0, or the Newton iteration ran out of
+! iterations, or its linear system was singular (simeqc)
+      integer, parameter, public :: burn_not_converged = 1, &
+           burn_singular_jacobian = 2
+
 ! when a reaction burns: with hydrogen present, or at helium-burning
 ! temperatures (log T >= logT_cutoffs(4))
       integer, parameter :: hydrogen_burning = 1, helium_burning = 2
@@ -690,13 +695,14 @@ end subroutine compute_abundance_rates
 !             solution, with the explicit products (O18) updated
 ! Newton converges when every |correction| < absolute_tolerance and every
 ! |correction/X| < relative_tolerance (species below min_abundance are
-! set to zero and skip the relative test); ierr = 1 after
-! max_iterations attempts. As in kemcom, Jacobian entries below
-! min_jacobian_entry in magnitude (off the diagonal) are dropped, and if none remain the
-! residual itself is taken as the correction.
+! set to zero and skip the relative test). ierr = burn_not_converged
+! after max_iterations attempts, burn_singular_jacobian when the Newton
+! system is singular. As in kemcom, Jacobian entries below
+! min_jacobian_entry in magnitude (off the diagonal) are dropped, and
+! if none remain the residual itself is taken as the correction.
 pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
      absolute_tolerance, relative_tolerance, max_iterations, x, ierr)
-      use numerics_lib, only: simeqc
+      use numerics_lib, only: simeqc, numerics_ok
       real(dp), intent(in) :: x_start(n_network), rate_vec(:), dt
       real(dp), intent(in) :: min_abundance, absolute_tolerance, &
            relative_tolerance
@@ -709,7 +715,7 @@ pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
       real(dp) :: system(n_solved, n_solved+1), dt_a(n_network)
       real(dp) :: dxdt_per_a(n_network), correction(n_solved)
       real(dp) :: max_abs_change, max_rel_change
-      integer :: i, k, j, c, iterations
+      integer :: i, k, j, c, iterations, solve_status
       logical :: off_diagonal
 
       ierr = 0
@@ -745,8 +751,11 @@ pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
             end do
          end do
          if (off_diagonal) then
-            call simeqc(system, n_solved+1, n_solved, ierr)
-            if (ierr /= 0) return
+            call simeqc(system, n_solved+1, n_solved, solve_status)
+            if (solve_status /= numerics_ok) then
+               ierr = burn_singular_jacobian
+               return
+            end if
          end if
          correction = system(:, n_solved+1)
 
@@ -765,7 +774,7 @@ pure subroutine burn_implicitly(x_start, rate_vec, dt, min_abundance, &
               max_rel_change < relative_tolerance) exit
          iterations = iterations + 1
          if (iterations >= max_iterations) then
-            ierr = 1
+            ierr = burn_not_converged
             return
          end if
       end do

@@ -449,8 +449,9 @@ end subroutine store_end_li_be_rates
 ! 1 - X - Y - He3.
 ! log_temperature, rate_by_zone and composition are arguments because
 ! the two callers differ: burn_network passes the model's, burn_and_settle the
-! rotation sub-step's temperatures (sub_model). If the Newton
-! iteration fails, ierr = 1 and the run stops.
+! rotation sub-step's temperatures (sub_model). If the implicit burn
+! fails, ierr is burn_implicitly's code (burn_not_converged,
+! burn_singular_jacobian), reported here, and the run stops.
 !   star reads: ctrl%absolute_tolerance, ctrl%max_burn_iterations,
 !     ctrl%min_abundance, ctrl%nuclear_logT_cutoffs,
 !     ctrl%relative_tolerance, xa_start
@@ -460,8 +461,9 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
 
       use star_info_lib, only: json, i_h1, i_metals, n_species_basic
       use net_lib, only: burn_implicitly, n_solved, n_network, &
-           network_species_slot, s_h1, s_he3, s_he4
-      use io_units, only: run_log_unit
+           network_species_slot, s_h1, s_he3, s_he4, burn_not_converged, &
+           burn_singular_jacobian
+      use io_units, only: report_error
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: log_temperature(json)
@@ -476,6 +478,7 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       double precision :: region_start(n_species_basic), rate_vec(num_rate_rows)
       double precision :: x_start(n_network), x(n_network), region_mass, metals
       integer :: k, guess_zone
+      character(len=160) :: message
 
       ierr = 0
 
@@ -516,10 +519,19 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
            s%ctrl%min_abundance, s%ctrl%absolute_tolerance, &
            s%ctrl%relative_tolerance, s%ctrl%max_burn_iterations, x, ierr)
       if (ierr /= 0) then
-         write (run_log_unit,'(a,i0,a,i0,a)') ' burn_network_region: no '// &
-              'convergence for the new abundances of shell ', zone_begin, &
-              ' in ', s%ctrl%max_burn_iterations, &
-              ' iterations (ctrl%max_burn_iterations); run stopped'
+         select case (ierr)
+         case (burn_not_converged)
+            write (message,'(a,i0,a,i0,a)') 'burn_network_region: no convergence '// &
+                 'for the new abundances of shell ', zone_begin, ' in ', &
+                 s%ctrl%max_burn_iterations, ' iterations (ctrl%max_burn_iterations); run stopped'
+         case (burn_singular_jacobian)
+            write (message,'(a,i0,a)') 'burn_network_region: the Newton system for '// &
+                 'the new abundances of shell ', zone_begin, ' is singular; run stopped'
+         case default
+            write (message,'(a,i0,a,i0,a)') 'burn_network_region: shell ', zone_begin, &
+                 ': burn_implicitly failed (ierr ', ierr, '); run stopped'
+         end select
+         call report_error(trim(message))
          return
       end if
 

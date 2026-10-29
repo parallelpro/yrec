@@ -66,7 +66,7 @@ all rates, log T 7.3, log rho 2.2, dt 1e17 s (ierr 0): H He3 He4 C12 C13 N14 O16
   7.776352216452E-02  3.872079044650E-08  9.024998671789E-01  3.602325989512E-05
   8.185098149071E-06  1.076800214616E-02  1.494361431568E-03  2.000000000000E-05
 sum X conserved (1e-14): ok
-burn_implicitly: ierr 1 when out of iterations, 0 when converged: ok
+burn_implicitly: burn_not_converged when out of iterations, burn_singular_jacobian for a singular system, 0 when converged: ok
 # test_net: trace integrator
 surviving_fraction vs closed form (1e-13): ok
 accreted_survival vs reference (1e-6): ok
