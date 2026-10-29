@@ -2,7 +2,7 @@
 """Mutation check of test_numerics: each check must fail under a mutation
 of the code it covers.
 
-    python3 src/numerics/test/mutate_numerics.py [--only REGEX]
+    python3 src/numerics/test/mutate_numerics.py [--only REGEX] [--check]
 
 from the repository root, after `make tests` in src/. For each mutation
 it edits one source file, rebuilds test_numerics, runs it and expects the
@@ -10,7 +10,9 @@ named check to print FAIL (a crash, a nonzero exit or a run longer than
 120 s also counts as caught); the file is restored afterwards, whatever
 happens. make uses
 1 s mtimes, so the script sleeps a second around each write. Exit status
-1 if any mutation survives.
+1 if any mutation survives. --check only verifies that every mutation's
+text occurs exactly once in its file (run it after editing a mutated
+routine: a rewrite can leave a mutation pointing at text that is gone).
 """
 import argparse
 import pathlib
@@ -60,7 +62,7 @@ MUTATIONS = [
     ('numerics/table_interpolation.f90', '      y = y0 + t*d1 + 0.5d0*t*(t-1.d0)*d2', '      y = y0 + t*d1 + 0.5d0*t*(t+1.d0)*d2', 'quint: exact on a quadratic'),
     ('numerics/table_interpolation.f90', '          den = w/den', '          den = w/(2*den)', 'polint: exact on a quartic'),
     ('numerics/table_interpolation.f90', 'abs(den) <= coincidence_tolerance*max(abs(ho), abs(hp))', 'abs(den) < 1.0d-20', 'polint: scale-free'),
-    ('numerics/table_interpolation.f90', '             ierr = numerics_coincident_points\n             return', '             ierr = numerics_bad_input\n             return', 'polint: coincident abscissae'),
+    ('numerics/table_interpolation.f90', ['             ierr = numerics_coincident_points\n             return', '               ierr = numerics_coincident_points\n               return'], ['             ierr = numerics_bad_input\n             return', '               ierr = numerics_bad_input\n               return'], 'polint: coincident abscissae'),
     ('numerics/table_interpolation.f90', ['      weight(closest)=(1.d0+weight(closest))-diff', '         weight(closest) = (1.d0 + weight(closest)) - weight_sum', '         weight(corrected) = (1.d0 + weight(corrected)) - weight_sum'], ['      weight(closest)=(1.d0+weight(closest))-0.999d0*diff', '         weight(closest) = (1.d0 + weight(closest)) - 0.999d0*weight_sum', '         weight(corrected) = (1.d0 + weight(corrected)) - 0.999d0*weight_sum'], 'lir: exact on a cubic and a line'),
     ('numerics/table_interpolation.f90', ['            if (table_z(search_idx) < target_z) exit', '            if (table_z(above) < target_z) exit'], ['            if (table_z(search_idx) > target_z) exit', '            if (table_z(above) > target_z) exit'], 'lir: a decreasing table as the same table increasing'),
     ('numerics/table_interpolation.f90', ['      y2=1.0d0-y1', '      frac_upper = 1.0d0 - frac_lower'], ['      y2=1.001d0-y1', '      frac_upper = 1.001d0 - frac_lower'], 'lir: linear below four points'),
@@ -76,11 +78,11 @@ MUTATIONS = [
     ('numerics/table_interpolation.f90', '      if (index == n_grid) index = -n_grid', '      if (index == n_grid) index = n_grid - 1', 'findex: brackets x from any guess'),
     ('numerics/table_interpolation.f90', ['      if (target_value >= table(index_mid).eqv.ascending) then', '         if ((x >= table(index_mid)) .eqv. ascending) then'], ['      if (target_value > table(index_mid).eqv.ascending) then', '         if ((x > table(index_mid)) .eqv. ascending) then'], 'hunt: brackets x from any guess'),
     ('numerics/table_interpolation.f90', '         index = 0\n         index_hi = n + 1', '         index = 0\n         index_hi = n', 'hunt: brackets x from any guess'),
-    ('numerics/linear_solvers.f90', '          b(i) = sum/a(i,i)', '          b(i) = sum/(a(i,i)*(1.0d0+1.0d-12))', 'ludcmp/lubksb: the residual of a 6x6 solve'),
+    ('numerics/linear_solvers.f90', 'b(i) = sum/a(i,i)', 'b(i) = sum/(a(i,i)*(1.0d0+1.0d-12))', 'ludcmp/lubksb: the residual of a 6x6 solve'),
     ('numerics/linear_solvers.f90', 'if (aamax <= singular_pivot_tolerance) ierr', 'if (aamax <= 0.0d0) ierr', 'ludcmp: a round-off pivot'),
     ('numerics/linear_solvers.f90', 'if (aamax <= singular_pivot_tolerance) ierr', 'if (aamax < 0.0d0) ierr', 'ludcmp: a zero pivot'),
-    ('numerics/linear_solvers.f90', '          if (aamax == 0d0) then', '          if (aamax < 0d0) then', 'ludcmp: a zero row is numerics_singular, the matrix untouched'),
-    ('numerics/linear_solvers.f90', '          if (ieee_is_nan(a(imax,j))) then', '          if (.false.) then', 'ludcmp: a NaN column is numerics_bad_input'),
+    ('numerics/linear_solvers.f90', 'if (aamax == 0d0) then', 'if (aamax < 0d0) then', 'ludcmp: a zero row is numerics_singular, the matrix untouched'),
+    ('numerics/linear_solvers.f90', 'if (ieee_is_nan(a(imax,j))) then', 'if (.false.) then', 'ludcmp: a NaN column is numerics_bad_input'),
     ('numerics/linear_solvers.f90', ['      system_matrix(ib)=system_matrix(ib)-system_matrix(ia)*system_matrix(ic)', '            a(row,num_cols) = a(row,num_cols) - a(row,k)*a(k,num_cols)'], ['      system_matrix(ib)=system_matrix(ib)+system_matrix(ia)*system_matrix(ic)', '            a(row,num_cols) = a(row,num_cols) + a(row,k)*a(k,num_cols)'], "simeqc: LU's solution for two right-hand sides"),
     ('numerics/linear_solvers.f90', ['      if (abs(biga) == 0.0d0) then', '         if (abs(pivot) == 0.0d0) then', '         if (largest_scaled <= singular_pivot_tolerance) then'], ['      if (abs(biga) < 0.0d0) then', '         if (abs(pivot) < 0.0d0) then', '         if (largest_scaled < 0.0d0) then'], 'simeqc: a singular matrix is numerics_singular'),
     ('numerics/linear_solvers.f90', '         if (largest_scaled <= singular_pivot_tolerance) then', '         if (largest_scaled <= 0.0d0) then', 'simeqc: a round-off pivot'),
@@ -109,7 +111,18 @@ def run(cmd, **kw):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="")
+    ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
+    if a.check:
+        missing = 0
+        for path, old, new, label in MUTATIONS:
+            text = (SRC / path).read_text()
+            olds = old if isinstance(old, list) else [old]
+            if not any(text.count(o) == 1 for o in olds):
+                print(f"MISSING  {label}  ({path})")
+                missing += 1
+        print(f"{len(MUTATIONS) - missing} of {len(MUTATIONS)} mutations apply")
+        return 1 if missing else 0
     survived = 0
     for path, old, new, label in MUTATIONS:
         if a.only and not re.search(a.only, label):

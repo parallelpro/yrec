@@ -2,7 +2,7 @@
 """Mutation check of test_math: each check must fail under a mutation of
 the math_lib code it covers, under the backend that code belongs to.
 
-    python3 src/math/test/mutate_math.py [--only REGEX]
+    python3 src/math/test/mutate_math.py [--only REGEX] [--check]
 
 from the repository root, after `make tests` in src/. For each mutation
 it edits math/math_lib.f90, rebuilds the test program of the mutated
@@ -12,7 +12,8 @@ reported as skipped), runs it and expects the named check to print FAIL
 (a crash, a nonzero exit without the check's line, or a run longer than
 120 s also counts as caught). The file is restored afterwards, whatever
 happens; make uses 1 s mtimes, so the script sleeps a second around each
-write. Exit status 1 if any mutation survives.
+write. Exit status 1 if any mutation survives. --check only verifies
+that every mutation's text occurs exactly once in math_lib.f90.
 """
 import argparse
 import os
@@ -98,9 +99,16 @@ def crmath_available():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="")
+    ap.add_argument("--check", action="store_true")
     a = ap.parse_args()
-    survived = skipped = 0
     original = MATH_LIB.read_text()
+    if a.check:
+        missing = [label for backend, old, new, label in MUTATIONS if original.count(old) != 1]
+        for label in missing:
+            print(f"MISSING  {label}")
+        print(f"{len(MUTATIONS) - len(missing)} of {len(MUTATIONS)} mutations apply")
+        return 1 if missing else 0
+    survived = skipped = 0
     for backend, old, new, label in MUTATIONS:
         if a.only and not re.search(a.only, label):
             continue

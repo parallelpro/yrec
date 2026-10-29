@@ -49,3 +49,11 @@ def test_math(binary, tmp_path):
     backend = result.stdout.splitlines()[0].split()[-1]
     expected = TESTS / f"expected_test_math_{backend}.out"
     compare_output(result.stdout, expected.read_text(), binary)
+
+
+def test_math_mutations_apply():
+    """Every mutation of mutate_math.py still finds its text in
+    math_lib.f90."""
+    script = TESTS / "mutate_math.py"
+    result = subprocess.run(["python3", str(script), "--check"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr

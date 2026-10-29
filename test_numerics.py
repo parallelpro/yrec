@@ -48,3 +48,11 @@ def test_numerics_standalone(tmp_path):
             out.append(f"{m.group(1)} [{m.group(2)}]" if m else line)
         return "\n".join(out) + "\n"
     compare_output(masked(result.stdout), masked(EXPECTED.read_text()), "test_numerics")
+
+
+def test_numerics_mutations_apply():
+    """Every mutation of mutate_numerics.py still finds its text (a
+    rewrite of a mutated routine must update its mutations)."""
+    script = REPO / "src" / "numerics" / "test" / "mutate_numerics.py"
+    result = subprocess.run(["python3", str(script), "--check"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
