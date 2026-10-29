@@ -149,40 +149,43 @@ subroutine polint(xa, ya, n, x, y, dy, ierr)
       real(dp), parameter :: coincidence_tolerance = 4.0d0*epsilon(1.0d0)
 
       ierr = numerics_ok
+! the nearest abscissa, where the tableau starts
       ns = 1
       dif = abs(x-xa(1))
       do i = 1, n
-       dift = abs(x-xa(i))
-       if (dift < dif) then
-          ns = i
-          dif = dift
-       end if
-       c(i) = ya(i)
-       d(i) = ya(i)
+         dift = abs(x-xa(i))
+         if (dift < dif) then
+            ns = i
+            dif = dift
+         end if
+         c(i) = ya(i)
+         d(i) = ya(i)
       end do
       y = ya(ns)
       ns = ns - 1
+! each column of the tableau: the corrections c and d, and the one that
+! leads to y along the path closest to the middle of the table
       do j = 1, n-1
-       do i = 1, n-j
-          ho = xa(i)-x
-          hp = xa(i+j)-x
-          w = c(i+1) - d(i)
-          den = ho - hp
-          if (abs(den) <= coincidence_tolerance*max(abs(ho), abs(hp))) then
-             ierr = numerics_coincident_points
-             return
-          end if
-          den = w/den
-          d(i) = hp*den
-          c(i) = ho*den
-       end do
-       if (2*ns < n-j) then
-          dy = c(ns+1)
-       else
-          dy = d(ns)
-          ns = ns-1
-       end if
-       y = y + dy
+         do i = 1, n-j
+            ho = xa(i)-x
+            hp = xa(i+j)-x
+            w = c(i+1) - d(i)
+            den = ho - hp
+            if (abs(den) <= coincidence_tolerance*max(abs(ho), abs(hp))) then
+               ierr = numerics_coincident_points
+               return
+            end if
+            den = w/den
+            d(i) = hp*den
+            c(i) = ho*den
+         end do
+         if (2*ns < n-j) then
+            dy = c(ns+1)
+         else
+            dy = d(ns)
+            ns = ns-1
+         end if
+         y = y + dy
       end do
 end subroutine polint
 

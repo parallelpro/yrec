@@ -58,75 +58,74 @@ subroutine ludcmp(a, n, np, indx, d, ierr)
       real(dp) :: aamax, dum, sum
 
       ierr = numerics_ok
-
       d = 1.d0
+! each row's implicit scale, 1/max|a(i,j)|; a zero row is singular
       do i = 1, n
-          aamax = 0.d0
-          do j = 1, n
-              if (abs(a(i,j)) > aamax) aamax = abs(a(i,j))
-          end do
-          if (aamax == 0d0) then
-             ierr = numerics_singular
-             return
-          end if
-          vv(i) = 1.d0/aamax
+         aamax = 0.d0
+         do j = 1, n
+            if (abs(a(i,j)) > aamax) aamax = abs(a(i,j))
+         end do
+         if (aamax == 0d0) then
+            ierr = numerics_singular
+            return
+         end if
+         vv(i) = 1.d0/aamax
       end do
+! Crout's method, column by column
       do j = 1, n
-          if (j > 1) then
-              do i = 1, j - 1
-                  sum = a(i,j)
-                  if (i > 1) then
-                      do k = 1, i - 1
-                          sum = sum - a(i,k)*a(k,j)
-                      end do
-                      a(i,j) = sum
-                  end if
-
-              end do
-          end if
-
-          aamax = 0.d0
-          imax = j
-          do i = j, n
-              sum = a(i,j)
-              if (j > 1) then
-                  do k = 1, j - 1
-                      sum = sum - a(i,k)*a(k,j)
+! the upper triangle above the diagonal
+         if (j > 1) then
+            do i = 1, j - 1
+               sum = a(i,j)
+               if (i > 1) then
+                  do k = 1, i - 1
+                     sum = sum - a(i,k)*a(k,j)
                   end do
                   a(i,j) = sum
-              end if
-
-              dum = vv(i)*abs(sum)
-              if (dum >= aamax) then
-                  imax = i
-                  aamax = dum
-              end if
-
-          end do
-          if (ieee_is_nan(a(imax,j))) then
-             ierr = numerics_bad_input
-             return
-          end if
-          if (aamax <= singular_pivot_tolerance) ierr = numerics_singular
-          if (j /= imax) then
-              do k = 1, n
-                  dum = a(imax,k)
-                  a(imax,k) = a(j,k)
-                  a(j,k) = dum
-              end do
-              d = -d
-              vv(imax) = vv(j)
-          end if
-
-          indx(j) = imax
-          if (j /= n) then
-              if (a(j,j) == 0d0) a(j,j) = tiny
-              dum = 1.d0/a(j,j)
-              do i = j + 1, n
-                  a(i,j) = a(i,j)*dum
-              end do
-          end if
-
+               end if
+            end do
+         end if
+! the diagonal and below, and the largest scaled candidate for the pivot
+         aamax = 0.d0
+         imax = j
+         do i = j, n
+            sum = a(i,j)
+            if (j > 1) then
+               do k = 1, j - 1
+                  sum = sum - a(i,k)*a(k,j)
+               end do
+               a(i,j) = sum
+            end if
+            dum = vv(i)*abs(sum)
+            if (dum >= aamax) then
+               imax = i
+               aamax = dum
+            end if
+         end do
+         if (ieee_is_nan(a(imax,j))) then
+            ierr = numerics_bad_input
+            return
+         end if
+         if (aamax <= singular_pivot_tolerance) ierr = numerics_singular
+! the row interchange
+         if (j /= imax) then
+            do k = 1, n
+               dum = a(imax,k)
+               a(imax,k) = a(j,k)
+               a(j,k) = dum
+            end do
+            d = -d
+            vv(imax) = vv(j)
+         end if
+         indx(j) = imax
+! divide by the pivot (a zero pivot replaced by tiny)
+         if (j /= n) then
+            if (a(j,j) == 0d0) a(j,j) = tiny
+            dum = 1.d0/a(j,j)
+            do i = j + 1, n
+               a(i,j) = a(i,j)*dum
+            end do
+         end if
       end do
       if (a(n,n) == 0d0) a(n,n) = tiny
 end subroutine ludcmp
@@ -144,31 +143,31 @@ pure subroutine lubksb(a, n, np, indx, b)
       integer :: i, ii, j, ll
       real(dp) :: sum
 
+! forward substitution, unscrambling the permutation as it goes; ii is
+! the first nonzero element of b, from which the sums start
       ii = 0
       do i = 1, n
-          ll = indx(i)
-          sum = b(ll)
-          b(ll) = b(i)
-          if (ii /= 0) then
-              do j = ii, i - 1
-                  sum = sum - a(i,j)*b(j)
-              end do
-
-          else if (sum /= 0d0) then
-              ii = i
-          end if
-
-          b(i) = sum
+         ll = indx(i)
+         sum = b(ll)
+         b(ll) = b(i)
+         if (ii /= 0) then
+            do j = ii, i - 1
+               sum = sum - a(i,j)*b(j)
+            end do
+         else if (sum /= 0d0) then
+            ii = i
+         end if
+         b(i) = sum
       end do
+! back substitution
       do i = n, 1, -1
-          sum = b(i)
-          if (i < n) then
-              do j = i + 1, n
-                  sum = sum - a(i,j)*b(j)
-              end do
-          end if
-
-          b(i) = sum/a(i,i)
+         sum = b(i)
+         if (i < n) then
+            do j = i + 1, n
+               sum = sum - a(i,j)*b(j)
+            end do
+         end if
+         b(i) = sum/a(i,i)
       end do
 end subroutine lubksb
 
