@@ -1174,7 +1174,36 @@ subroutine debye_huckel_checks()
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe", &
            ok .and. raise(1) > 0.0d0 .and. raise(2) > raise(1))
+! the heavier metals follow the zone's Z: a zone at twice the envelope's
+! Z (its C, N and O doubled too) gets the density rise of an envelope at
+! that Z, to 3e-3 (the gas under the correction differs a little: the
+! envelope's 1/mu_ion; 3e-4 here); with the heavier metals left at the
+! envelope's Z the rise is 3% smaller
+      ok = .true.
+      do k = 1, 2
+         if (k == 1) call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+         if (k == 2) call set_envelope_mixture(envelope_hydrogen_fraction, 2.0d0*envelope_metal_fraction)
+         call configure_eos("yale_only")
+         call eos_at(lt, lp, x, 2.0d0*z, none, ierr1)
+         call configure_eos("debye_huckel", debye_huckel=.true.)
+         call eos_at(lt, lp, x, 2.0d0*z, with_dh, ierr2, comp=doubled_z(comp))
+         ok = ok .and. ierr1 == 0 .and. ierr2 == 0
+         raise(k) = with_dh%density/none%density - 1.0d0
+      end do
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check("Debye-Hueckel: the heavier metals scale with the zone's Z", &
+           ok .and. abs(raise(1)/raise(2) - 1.0d0) < 3.0d-3)
 end subroutine debye_huckel_checks
+
+! a composition (star%xa layout) with its metals doubled, at the expense
+! of He-4
+pure function doubled_z(c) result(d)
+      real(dp), intent(in) :: c(:)
+      real(dp) :: d(size(c))
+      d = c
+      d(2) = c(2) - c(3)
+      d(3:15) = 2.0d0*c(3:15)
+end function doubled_z
 
 subroutine check(label, ok)
       character(len=*), intent(in) :: label

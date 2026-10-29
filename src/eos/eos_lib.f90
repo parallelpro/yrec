@@ -207,9 +207,12 @@ end subroutine eos_get_gamma1
 ! Z, the mean atomic mass and the species fractions. The star layer
 ! sets it whenever it recomputes the envelope composition. The
 ! Debye-Hueckel correction takes its metals heavier than O from it, as
-! mass fractions X_i = fx_i amu A_i: Ne, Na, Mg, Al, Si, Ar and Fe (its
-! P, S, Cl, Ca, Ti, Cr, Mn and Ni are not in the mixture and stay zero;
-! C, N and O come from each zone's composition).
+! mass fractions X_i = fx_i A_i sum_j(X_j/A_j): Ne, Na, Mg, Al, Si, Ar
+! and Fe (its P, S, Cl, Ca, Ti, Cr, Mn and Ni are not in the mixture and
+! stay zero; C, N and O come from each zone's composition); here the
+! mixture's own, and in each zone in the mixture's proportions with the
+! zone's Z less its C, N and O for their sum
+! (eos_set_debye_huckel_composition).
 subroutine eos_set_mixture(envelope_hydrogen_fraction, &
      envelope_metal_fraction, mean_atomic_mass, species_fractions)
       real(dp), intent(in) :: envelope_hydrogen_fraction, &
@@ -220,22 +223,44 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
       eos_mix%envelope_metal_fraction = envelope_metal_fraction
       eos_mix%amuenv = mean_atomic_mass
       eos_mix%fxenv = species_fractions
-      debye_huckel_z(idh_ne) = mixture_mass_fraction(ix_ne)
-      debye_huckel_z(idh_na) = mixture_mass_fraction(ix_na)
-      debye_huckel_z(idh_mg) = mixture_mass_fraction(ix_mg)
-      debye_huckel_z(idh_al) = mixture_mass_fraction(ix_al)
-      debye_huckel_z(idh_si) = mixture_mass_fraction(ix_si)
-      debye_huckel_z(idh_ar) = mixture_mass_fraction(ix_ar)
-      debye_huckel_z(idh_fe) = mixture_mass_fraction(ix_fe)
+      call set_debye_huckel_heavy_metals()
+end subroutine eos_set_mixture
+
+! The Debye-Hueckel correction's metals heavier than O: the envelope
+! mixture's mass fractions; given beyond_o, a zone's Z less its C, N
+! and O, in the mixture's proportions with beyond_o for their sum, so
+! that the correction's metals add up to the zone's Z (where a core
+! burns helium its Z grows by the C and O it makes, not by Ne..Fe; none
+! when the mixture has none).
+subroutine set_debye_huckel_heavy_metals(beyond_o)
+      real(dp), intent(in), optional :: beyond_o
+      real(dp) :: metal_scale, envelope_beyond_o
+
+      metal_scale = 1.0d0
+      if (present(beyond_o)) then
+         envelope_beyond_o = envelope_mass_fraction(ix_ne) + envelope_mass_fraction(ix_na) + &
+              envelope_mass_fraction(ix_mg) + envelope_mass_fraction(ix_al) + &
+              envelope_mass_fraction(ix_si) + envelope_mass_fraction(ix_ar) + &
+              envelope_mass_fraction(ix_fe)
+         metal_scale = 0.0d0
+         if (envelope_beyond_o > 0.0d0) metal_scale = max(beyond_o, 0.0d0)/envelope_beyond_o
+      end if
+      debye_huckel_z(idh_ne) = metal_scale*envelope_mass_fraction(ix_ne)
+      debye_huckel_z(idh_na) = metal_scale*envelope_mass_fraction(ix_na)
+      debye_huckel_z(idh_mg) = metal_scale*envelope_mass_fraction(ix_mg)
+      debye_huckel_z(idh_al) = metal_scale*envelope_mass_fraction(ix_al)
+      debye_huckel_z(idh_si) = metal_scale*envelope_mass_fraction(ix_si)
+      debye_huckel_z(idh_ar) = metal_scale*envelope_mass_fraction(ix_ar)
+      debye_huckel_z(idh_fe) = metal_scale*envelope_mass_fraction(ix_fe)
 
 contains
 
-real(dp) function mixture_mass_fraction(i)
+real(dp) function envelope_mass_fraction(i)
       integer, intent(in) :: i
-      mixture_mass_fraction = species_fractions(i)*mean_atomic_mass*mixture_atomic_weights(i)
-end function mixture_mass_fraction
+      envelope_mass_fraction = eos_mix%fxenv(i)*eos_mix%amuenv*mixture_atomic_weights(i)
+end function envelope_mass_fraction
 
-end subroutine eos_set_mixture
+end subroutine set_debye_huckel_heavy_metals
 
 !----------------------------------------------------------------------
 ! eos_set_debye_huckel_composition
@@ -245,7 +270,10 @@ end subroutine eos_set_mixture
 ! composition_at_zone at every call (private since 2026-10: the star
 ! layer used to set the surface zone's before an envelope integration,
 ! whose calls then passed none, so the integration used whatever the
-! last setter left). Does nothing when the correction is off.
+! last setter left): X, Y, Z, C, N and O the zone's, the heavier metals
+! the envelope mixture's in its proportions, summing to the zone's Z less
+! its C, N and O (set_debye_huckel_heavy_metals). Does nothing when the
+! correction is off.
 subroutine eos_set_debye_huckel_composition(composition)
       real(dp), intent(in) :: composition(:)
 
@@ -256,6 +284,8 @@ subroutine eos_set_debye_huckel_composition(composition)
       debye_huckel_z(idh_c) = composition(i_c12)+composition(i_c13)
       debye_huckel_z(idh_n) = composition(i_n14)+composition(i_n15)
       debye_huckel_z(idh_o) = composition(i_o16)+composition(i_o17)+composition(i_o18)
+      call set_debye_huckel_heavy_metals(composition(i_metals) - debye_huckel_z(idh_c) - &
+           debye_huckel_z(idh_n) - debye_huckel_z(idh_o))
 end subroutine eos_set_debye_huckel_composition
 
 !----------------------------------------------------------------------
