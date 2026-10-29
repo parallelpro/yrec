@@ -57,7 +57,7 @@ end subroutine warn
 ! check_controls: the errors, from the controls as read (the read stores
 ! them into s before it opens the run's files). ierr = 1 when
 !   - semiconvection is on with any overshoot (rejected since the F77
-!     PARMIN: semiconvection assumes the Schwarzschild boundary);
+!     PARMIN);
 !   - the envelope triangle's size is not positive (with zero area its
 !     walk never contains the model, surface_boundary);
 !   - a rotating run's max_diffusion_iters is outside 1 to 16;
