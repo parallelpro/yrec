@@ -16,10 +16,12 @@
 !                      and the trace-element integrator
 !   thermal_neutrinos  thermal neutrino losses (Itoh et al. 1996); used
 !                      by nuclear_energy only, so nothing is exported
+! (reaction_rates, the rate laws, screening and net_messages export
+! nothing either.)
 !
-! The individual reaction rates, the table and the neutrino routines
-! stay inside; net/test/test_net reaches them through the internal
-! modules.
+! The individual reaction rates, the table, the screening and the
+! neutrino routines stay inside; net/test/test_net reaches them through
+! the internal modules.
 ! net/ reads no model state and no star%ctrl: its configuration is the
 ! net_settings record, built at the start of every run by the star
 ! layer (net_settings_from_star, setup/net_settings_setup.f90) and

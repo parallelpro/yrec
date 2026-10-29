@@ -1,206 +1,191 @@
-# Nuclear burning in YREC: `net/` and `core/step/burn_step.f90`
+# net/ — nuclear burning
 
-This note explains how YREC computes nuclear reaction rates, energy generation and composition changes: which routine does what, who calls it during a timestep, and how data flows between them. It ends with recipes for the most common extensions. File references are relative to `src/`.
+This directory computes, for one zone (log ρ, log T, composition):
+- the hydrogen- and helium-burning reaction rates and their derivatives, screened;
+- the composition change over a step, by an implicit network built from a reaction table;
+- the nuclear energy generation ε with its absolute derivatives for the Henyey Jacobian, by chain, with the thermal neutrino losses and the solar neutrino fluxes;
+- deuterium and Li6, Li7, Be9 in the trace approximation, with the closed-form integrator they share.
 
-Two layers are involved:
+net/ never touches `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (`net_configuration`), which the star layer builds from the controls (`net_settings_from_star`, `setup/net_settings_setup.f90`) and installs with `set_net_settings` at the start of every Monte-Carlo run. `tools/check_boundaries.py` enforces this (`STAR_FREE_DIRS`).
 
-- **`net/` is the physics.** Routines here compute rates, energies and abundance changes from the values they are given. They never touch `star`: the model comes in as arguments, and the run's configuration as one record, `net_settings` (in `net_configuration`), which the star layer builds at the start of every run (`net_settings_from_star`, `setup/net_settings_setup.f90`) and installs with `set_net_settings`. `tools/check_boundaries.py` enforces this.
-- **`core/step/burn_step.f90` is the star-layer driver.** It loops over the model's shells and regions, reads `star`, calls `net/`, and stores the results back in `star`.
-
-Callers elsewhere in the code (the composition step `core/step/composition_step.f90`, the Henyey solver, the rotation sub-steps, the timestep limiters) go through `burn_step`, or call a `net/` routine directly with explicit arguments. Either way they `use net_lib`, net/'s **public interface**: a module with no code of its own that re-exports what the rest of YREC uses from the five modules below, and nothing more. The individual reaction rates, the reaction table and the neutrino routines stay internal. Read `net/net_lib.f90` to see net/'s whole interface in one page; `tools/check_boundaries.py` rejects a `use` of any other net/ module from outside net/.
-
-Names follow the project rules (`docs/GUIDELINES.md`): modules are nouns named for what they hold, procedures are verbs (`compute_…`, `burn_…`), and functions returning a quantity are named for it (`deuterium_rate`).
+Code outside net/ uses only `net_lib`, its public interface: a module with no code of its own that re-exports what the rest of YREC uses. Read `net/net_lib.f90` to see net/'s whole interface in one page; `check_boundaries.py` rejects a `use` of any other net/ module from outside (`FACADE_ONLY_DOMAINS`) and lists the procedures others may call (`PUBLIC["net"]`). The star-layer driver is `core/step/burn_step.f90` (§1.2); the Henyey solve calls `compute_nuclear_energy` itself, from the shell kernel `core/structure/shell_equations.f90`.
 
 ---
 
 ## 1. What lives where
 
-### `net/reaction_rates.f90` (module `reaction_rates`)
+### 1.1 net/
 
-The rate physics: the formulas `network`'s table rows name, and the run's settings.
-
-| Routine | What it does |
+| Module (file) | What it holds |
 |---|---|
-| `compute_zone_conditions` | What every rate of a zone needs: the density, T9 and its powers, and the screening plasma (composition moments, Salpeter's degeneracy correction, Graboske et al.'s Λ₀, the mean charge). |
-| `compute_screened_rate` | One reaction's screened rate (per gram per second, abundance factors omitted) and its dln rate/dln T and dln rate/dln ρ, from its table row's rate law, fit coefficients, scale slot and screening constants. The screening is weak (Salpeter), intermediate or strong (Graboske et al.). |
-| the rate laws | `compute_s_factor_rate` (reactions 1–7: the S-factor expansion with the row's q1..q8) and the Caughlan & Fowler forms `compute_c13_alpha_n_rate`, `compute_c12_alpha_gamma_rate`, `compute_n14_alpha_gamma_rate`, `compute_triple_alpha_rate`, each with its exact derivatives. |
-| `compute_be7_branching`, `compute_n15_branching`, `compute_hep_rate` | The fates of Be7 and N15 + p, and the screened hep factor for the neutrino flux. |
-| `deuterium_proton_capture_rate` | The d(p,γ)³He fit, shared by the energy and deuterium code. |
-It also holds the data the rate laws use:
-- `iso_*`: isotopes in the rate and screening composition;
-- the rate-law names (`s_factor_fit`, `cf88_*`, `shares_rate`), the screening constants' type, the Be7(p,γ) fit, and the isotope masses and charges.
+| `net_lib` | The facade (above). |
+| `net_configuration` | The layout and the settings: the reaction slots `r_*` (1 to `num_reactions`, 11), the two branching rows of the composition rate vector after them (`rv_frac_n15_pa`, `rv_frac_be7_ecap`; `num_rate_rows`), the extra cross-section scales `xs_*` (pep, Be7 + e, Be7 + p, hep: the rates outside the table; `num_extra_scales`), the settings record `net_settings_t` and the run's `net_settings` (protected), and `cross_section_scales_from_sstandard`, the legacy `sstandard` vector onto the scales. |
+| `network` | The reaction table `reactions(:)` and the species `s_*`; `compute_reaction_rates` (the one rate evaluation), `compute_network_rates` (the composition rate vector), `burn_implicitly` (the implicit network), `compute_abundance_rates`, `compute_reaction_energies` (ε by slot and by chain from the table), `reaction_counts`; the chains `chain_*` with `chain_name`; the table's self-check (`network_table_errors`, `table_row_problem`, `slot_owner_count`) and printout (`write_network_table`); `set_net_settings`, which runs the check and installs the settings, and `inert_scale_count`. |
+| `reaction_rates` | The rate physics the table rows name: `compute_zone_conditions` (density, electron density, T9 powers, the screening plasma), `compute_screened_rate` (one row's rate and derivatives from its rate law, screened), the rate laws (`compute_s_factor_rate` and the Caughlan & Fowler `compute_c13_alpha_n_rate`, `compute_c12_alpha_gamma_rate`, `compute_n14_alpha_gamma_rate`, `compute_triple_alpha_rate`), `compute_be7_branching`, `n15_alpha_fraction`, `hep_rate_factor`, the d(p,γ) fit `compute_deuterium_proton_capture` and its overturn cap `cap_deuterium_rate`; the records `zone_conditions`, `nuclear_rates`, `be7_branching`, `t9_powers`; the rate-law names (`s_factor_fit`, `cf88_*`, `shares_rate`; `num_rate_laws`). |
+| `screening` | The electron screening: the isotopes `iso_*` of the screening composition with their bare masses and charges, `screening_mass_fractions`, the plasma of a zone (`compute_composition_moments`, `compute_screening_plasma`), and one reaction's exponent with its derivatives (`compute_reaction_screening`: weak, intermediate or strong; `weak_intermediate_screening` for Be7 + p and hep), from its constants `screening_t`. |
+| `nuclear_energy` | `compute_nuclear_energy`, the energy generation of one zone, as a `nuclear_energy_result` (§2.2). |
+| `light_elements` | `deuterium_rate`, `burn_deuterium_region` (with `surface_accretion`), `compute_li_be_rates`, and the trace-element integrator `burn_exposure`, `surviving_fraction`, `accreted_survival` (`linear_in_time`, `linear_in_log`). |
+| `thermal_neutrinos` | The Itoh et al. (1996) thermal neutrino losses as coded by F. X. Timmes: YREC's wrapper `compute_thermal_neutrino_losses` (G. Newsham 2006) and Timmes' `sneut`, `azbar`, `ifermi12`, `zfermim12` under their own names. Only `nuclear_energy` uses it. |
+| `net_messages` | `net_report`: net's one kind of message (an error or a configuration warning), to the terminal and to the run log once it is open (§3). |
 
-### `net/net_configuration.f90` (module `net_configuration`)
+`retired/f77_rate_comments.txt` (not compiled) keeps the F77 comments of `rates.f` and `engeb.f` verbatim; each of `reaction_rates.f90` and `nuclear_energy.f90` ends with a Sources section that replaces them.
 
-The layout and the settings:
-- `r_*`: the reaction slots 1–`num_reactions` (11), used by the rate record, the composition rate vector, the energies and the per-reaction scales alike; each belongs to exactly one table row that computes its rate;
-- `rv_frac_n15_pa`, `rv_frac_be7_ecap`: the two branching fractions that follow the reactions in the composition rate vector;
-- `xs_pep`, `xs_be7e`, `xs_be7p`, `xs_hep`: the extra cross-section scales, of the rates outside the table;
-- `net_settings_t` and the run's `net_settings`: temperature cutoffs, screening threshold, the per-reaction S-factor scales and their derivative scales, the extra scales, Be7 + p's derivative scales, the N15 + p branch scales, Li/Be rate scales, neutrino switches;
-- `cross_section_scales_from_sstandard`: the legacy `sstandard` vector onto the scales (a warning for its entries 9 and 13, which belong to no reaction).
+### 1.2 Outside net/
 
-`network`'s `set_net_settings` installs the settings (warning about a scale set on a reaction whose rate law takes none).
-
-### `net/nuclear_energy.f90` (module `nuclear_energy`)
-
-| Routine | What it does |
+| File | What it does for net/ |
 |---|---|
-| `compute_nuclear_energy` | Energy generation of one zone, returned as a `nuclear_energy_result`. It contains ε (erg/g/s) and its **absolute** derivatives dε/dln ρ and dε/dln T for the Henyey Jacobian, plus the shares of the pp chain, Be7 branches, CNO and triple-α. It also holds the α-capture and thermal-neutrino terms, the He3 energy rates, and (when `ctrl%calc_neutrinos`) the solar neutrino fluxes and Be7 abundance. It takes the zone's composition as one array (the `star%xa` layout) and is a short sequence of steps with explicit arguments: `compute_reaction_rates` → `energy_path_rates` → `compute_deuterium_burning` → `compute_reaction_energies` (the table) → `sum_energy_generation` → `store_chain_energies` → `compute_solar_neutrino_fluxes` → `add_thermal_neutrino_loss`. |
+| `setup/net_settings_setup.f90` | `net_settings_from_star`: the settings from the controls and the star's cross-section scales (pure, `intent(in)` star). |
+| `setup/user_inputs.f90` | `map_user_inputs`, during the controls read: the S0, S′ and S″ inputs (`s0_*`, `s0p_*`, `s0pp_*`) into `star%cross_section_scale`, `qs0e_scale`, `qqs0ee_scale` (by reaction slot), `extra_cross_section_scale` (by `xs_*`), `be7p_qs0e_scale`, `be7p_qqs0ee_scale` and the N15 + p branch scales. |
+| `io/read_controls.f90` | With `use_new_nuclear_rates` off, the legacy `sstandard` through `cross_section_scales_from_sstandard`. |
+| `core/run/monte_carlo.f90` | A Monte-Carlo run rescales pp, He3 + He3, He3 + He4 (`r_*`) and Be7 + p (`xs_be7p`). |
+| `core/run/run_driver.f90` | `run_yrec` installs the settings: `set_net_settings(net_settings_from_star(s), ierr)`, once per Monte-Carlo run. |
+| `core/step/burn_step.f90` | The star-layer driver (table below). |
+| `core/structure/shell_equations.f90` | `form_nuclear_energy_terms`: `compute_nuclear_energy` at every shell and Newton iteration of the Henyey solve. |
+| `core/structure/structure_equations.f90` | The chains into `star%luminosity_breakdown` (`luminosity_channel_of_chain`) and `star%eps_channels` (`eps_channel_of_chain`); `eps_total`, the sum of every chain's ε. |
 
-### `net/network.f90` (module `network`)
-
-| Routine | What it does |
-|---|---|
-| `compute_reaction_rates` | **The one rate evaluation.** For one zone (log ρ, log T, composition), it evaluates every table row that owns a rate (with `compute_screened_rate`), when the row burns: hydrogen-burning rows need hydrogen, helium-burning rows log T ≥ `logT_cutoffs(4)`. It returns a `nuclear_rates` record: each slot's rate per gram per second with the abundance factors omitted, its derivatives, the Be7 and N15 branchings and the hep factor. |
-| `compute_network_rates` | Calls `compute_reaction_rates`, zeroes any rate at or below 10⁻⁵, and repacks the result as the **composition rate vector** `rate_vec`, per s per amu: the reactions at their `r_*` slots, then the two branching fractions at `rv_frac_n15_pa` and `rv_frac_be7_ecap`. This is what the composition solve uses. |
-| `reaction_counts` | Each slot's reactions per gram per second (rate × reactants), for the solar neutrino fluxes. |
-| `burn_implicitly` | **The implicit network.** One backward-Euler step for one zone or region: solves X_i − X0_i − dt·A_i·Σ_j ν_ij R_j(X) = 0 by Newton iteration, with equations and Jacobian built from the reaction table. |
-| `compute_abundance_rates` | dX_i/dt / A_i of every network species from the table, at given abundances and rate vector. The hydrogen-shell timestep limiter reads it. |
-| `compute_reaction_energies` | The energy generation of the table's reactions, Σ b_j·rate·ΠX·Q_j, by rate slot and by chain. `nuclear_energy` calls it, so a reaction's composition change and its energy come from the same row. |
-| `network_table_errors`, `write_network_table` | The table's self-check and a printout, both pinned by `test_net`. The check: every row conserves baryon number, and no row deposits more than the energy its atomic mass excesses release. The printout shows each row's Q from the masses and the neutrino energy that implies. |
-
-The **reaction table** (`reactions(:)`) has one row per reaction. Each row gives:
-- the rate slot it fills and reads (`r_*`);
-- a branching factor (none; f or 1 − f for the two N15 outcomes; f_e or 1 − f_e for the two Be7 branches);
-- the reactants (the mass fractions that multiply the rate);
-- the change list of (species, ν) pairs;
-- `emitted_mass` for particles the network does not track (the neutron of C13(α,n)O16);
-- `q_mev`, the energy deposited per reaction net of neutrino losses, and the `chain` it counts under (pp I, pp II, pp III, CNO, α captures, triple-α);
-- how the rate is computed: `rate_law` (a rate law of `reaction_rates`, or `shares_rate` for a second outcome of the row above), `burns_in` (hydrogen or helium burning), `fit` (the S-factor law's q1..q8), `scale_slot` (its multipliers in the settings; 0 for none) and `screening` (Z₁Z₂ and the Graboske et al. factors).
-
-He3(He4,γ)Be7 appears twice, once per Be7 branch: the same abundance change, with the two branch fractions and their own Q-values.
-
-The solved species are, in this order, H, He3, He4, C12, C13, N14 and O16. O18 is an explicit product.
-
-### `net/light_elements.f90` (module `light_elements`)
-
-Light elements are burned in the trace approximation, separately from the network.
-
-| Routine | What it does |
-|---|---|
-| `deuterium_rate` | The deuterium burning rate per shell, per s, with the cap that keeps deuterium in the surface convection zone from burning faster than the convective overturn. |
-| `burn_deuterium_region` | Deuterium over a step for one shell or one convection zone: exponential decay with the rate linear in time between its start- and end-of-step values (`surviving_fraction`), the D → He3 bookkeeping, and mass-weighted blending of accreted gas (`accreted_survival`). |
-| `burn_exposure`, `surviving_fraction`, `accreted_survival` | **The trace-element integrator** shared by deuterium and Li/Be: a species destroyed at rate λ per unit abundance, with λ interpolated over the step linearly in time (`linear_in_time`) or in log λ (`linear_in_log`). The exposure Λ = ∫λ dt has a closed form for both; the species keeps exp(−Λ) of itself, and gas accreted steadily over the step keeps `accreted_survival` of its own. |
-| `compute_li_be_rates` | The Li6, Li7 and Be9 proton-capture rates at T9 (Caughlan & Fowler 1988), scaled by the controls `li6_rate_scale`, `li7_rate_scale` and `be9_*_rate_scale`. |
-
-### `net/thermal_neutrinos.f90` (module `thermal_neutrinos`)
-
-Thermal neutrino losses from the fits of Itoh et al. (1996), as coded by F. X. Timmes and adapted by G. Newsham (2006).
-- **YREC's wrappers:** `compute_thermal_neutrino_losses` and `compute_mixture_neutrino_losses`.
-- **Timmes' routines, under their public names:** `sneut` (the emissivities), `azbar` (mean A and Z), `ifermi12` and `zfermim12` (inverse Fermi integrals).
-
-### `core/step/burn_step.f90` (module `burn_step`): the star-layer driver
+`core/step/burn_step.f90`'s procedures:
 
 | Routine | Called from | What it does |
 |---|---|---|
 | `network_rates_of_model` | `compute_burn_rates`, `mid_timestep_model` | The composition rate vector of every shell of the model passed in that is hotter than the nuclear cutoff; zero below. |
-| `compute_burn_rates` | `advance_composition` | Each shell's rate vector (`network_rates_of_model`) and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
-| `burn_regions` | `burn_network`, `burn_deuterium`, `mid_timestep_model` (`advance_rotation_substep`, `burn_and_settle`) | The regions a burn visits, in order: each radiative shell above the nuclear cutoff, then each mixed region as a unit. It takes the temperatures and region tables as arguments, so the rotation sub-steps pass their midpoint model's. |
-| `burn_network` | `advance_composition` | `burn_network_region` for each of the `burn_regions`. |
-| `burn_network_region` | `burn_network`, `mid_timestep_model`'s `burn_and_settle` | Model bookkeeping around `burn_implicitly`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
-| `burn_deuterium` | `advance_composition` | `burn_deuterium_region` for each of the `burn_regions`. |
-| `surface_accretion_now` | `burn_deuterium`, `mid_timestep_model` | The accreted gas over a step (`surface_accretion`: on, inflow, its deuterium fraction, the mass accreted) for `burn_deuterium_region`. |
-| `compute_zone_energy` | `compute_henyey_coefficients`, `write_neutrino_flux_table`, `timestep_limit_heburn` | `nuclear_energy` with the two inputs that depend on the shell's place in the model filled in (inside the surface convection zone? its turnover time). Returns the `nuclear_energy_result`; stores nothing. |
-| `store_start_li_be_rates` | `evolve_step` | Li/Be rates of the start-of-step model → `star%rate_*_start`. |
-| `store_end_li_be_rates` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates of the model passed in (converged, or a rotation sub-step's midpoint) → `star%rate_*`. |
-| `burn_li_be` | `evolve_step`, `evolve_angular_momentum` | Li/Be depletion over a step, with the trace-element integrator (log interpolation): radiative shells, then the surface convection zone as one unit on its mass-averaged rates (`average_li_be_over_cz`), then the shells a retreating CZ left. The CZ base at the start and end of the step, overshoot included, comes from `locate_surface_mixing_base` in `core/step/convection_geometry.f90`. |
+| `compute_burn_rates` | `advance_composition` | Each shell's rate vector and deuterium rate (`deuterium_rate`), stored in `rate_by_zone`, `star%deuterium_burning_rate` (and `_start` in the predictor pass). |
+| `burn_regions` | `burn_network`, `burn_deuterium`, `mid_timestep_model` | The regions a burn visits, in order: each radiative shell above the nuclear cutoff, then each mixed region as a unit. |
+| `burn_network`, `burn_network_region` | `advance_composition`; `mid_timestep_model`'s `burn_and_settle` | Model bookkeeping around `burn_implicitly`: convection-zone averaging, the temperature cutoff, the first guess, the metallicity rule, writing `star%xa` back. |
+| `burn_deuterium`, `surface_accretion_now` | `advance_composition`; `mid_timestep_model` | `burn_deuterium_region` for each region, with the step's accreted gas. |
+| `compute_zone_energy` | `timestep_limit_heburn`, `write_neutrino_flux_table` | `compute_nuclear_energy` with the shell's place in the model filled in (in the surface convection zone? its turnover time); stores nothing. |
+| `store_start_li_be_rates`, `store_end_li_be_rates`, `burn_li_be`, `average_li_be_over_cz` | `evolve_step`, `evolve_angular_momentum` | Li/Be rates per shell (`compute_li_be_rates`) and their depletion over a step with the trace-element integrator: radiative shells, then the surface convection zone on its mass-averaged rates, then the shells a retreating zone left. |
 
----
+## 2. The flow
 
-The commented-out Bulirsch–Stoer path keeps its own single-midpoint Li/Be variant, `burn_li_be_midpoint`, in `rotation/burn_li_be_midpoint.f90` beside the other two files of that path; build with `-DYREC_BULIRSCH_STOER_BURN` to include it.
+### 2.1 A burn (the composition step)
 
-## 2. When each piece runs during a timestep
+1. `compute_burn_rates` → `network_rates_of_model` → per shell `compute_network_rates`, which calls `compute_reaction_rates`:
+   1. below `logT_cutoffs(1)` everything is zero;
+   2. `compute_zone_conditions`: the density, the electron density, T9 and its powers, the screening plasma (composition moments, Salpeter's degeneracy factor, Λ₀, z̃, the mean charge), from `screening_mass_fractions(xa)`;
+   3. each table row that computes a rate, when it burns (hydrogen-burning rows need hydrogen, helium-burning rows log T ≥ `logT_cutoffs(4)`): `compute_screened_rate` → its screening and its rate law, scaled at the row's slot;
+   4. with hydrogen, the Be7 branching and the N15(p,α) fraction; always the hep factor.
 
-`core/step/step_driver.f90` advances one model. The calls that involve burning, in order:
+   `compute_network_rates` then drops rates at or below `min_composition_rate` (10⁻⁵) and returns the rate vector per s per amu: the reactions at `r_*`, the two fractions at `rv_*`.
+2. `burn_network` → per region `burn_network_region` → `burn_implicitly`: Newton iteration on X − X₀ − dt A Σ ν R(X) = 0, its equations and Jacobian from the table rows (`compute_abundance_rates`, `reaction_rate_derivative`); the explicit products (O18) from the converged abundances. `ierr = 1` when it runs out of iterations.
+3. `burn_deuterium` → per region `burn_deuterium_region`: exponential decay with the rate linear in time between its start- and end-of-step values (`surviving_fraction`), D → He3, and the accreted gas (`accreted_survival`).
+
+### 2.2 `compute_nuclear_energy`
+
+1. Below `logT_cutoffs(1)` it returns `burning = .false.` and zeros.
+2. `compute_reaction_rates` (as above).
+3. `energy_path_rates`: the S-factor reactions' rates below `min_energy_path_rate` (10⁻³⁰) dropped, with their derivatives.
+4. `compute_deuterium_burning`: the d(p,γ) energy and its d ln ε/d ln ρ, d ln ε/d ln T; capped in the surface convection zone (`cap_deuterium_rate`), where both derivatives are zero.
+5. `reaction_counts` (for the fluxes) and `compute_reaction_energies`: Σ b_j R_j ΠX Q_j by slot and by chain, from the table, so a reaction's composition change and its energy come from one row.
+6. `sum_energy_generation`: ε and its absolute derivatives Σ ε_j d ln r_j/d ln (ρ, T), plus deuterium's; zero derivatives at or below `min_eps_with_derivatives` (10⁻¹² erg/g/s).
+7. `store_chain_energies`: `eps_by_chain(chain_*)`, d(p,γ) in pp I.
+8. With `calc_neutrinos`, `compute_solar_neutrino_fluxes` (and the equilibrium Be7 abundance).
+9. Above `logT_cutoffs(5)`, `add_thermal_neutrino_loss`: Beaudet, Petrosian & Salpeter (1967), or Itoh et al. (1996) with `use_itoh_neutrino_loss`, subtracted from ε with its derivatives.
+
+### 2.3 When each piece runs during a timestep
 
 ```
-evolve_step
+evolve_step                                       core/step/step_driver.f90
  advance_composition_and_age
-   star%xa_start := star%xa                      start-of-step composition
-   advance_composition(predictor_pass)           core/step/composition_step.f90
-     find_convection_zones                       radiative shells and mixed regions
-     compute_burn_rates      [burn_step]         per shell: compute_network_rates, deuterium_rate
-     burn_network            [burn_step]         per region: burn_network_region -> burn_implicitly
+   advance_composition(predictor_pass)            core/step/composition_step.f90
+     compute_burn_rates      [burn_step]          per shell: compute_network_rates, deuterium_rate
+     burn_network            [burn_step]          per region: burn_network_region -> burn_implicitly
      (semiconvection), homogenize mixed regions, settling, renormalize
-     burn_deuterium          [burn_step]         per region: burn_deuterium_region
+     burn_deuterium          [burn_step]          per region: burn_deuterium_region
  rezone_or_snapshot
-   store_start_li_be_rates   [burn_step]         if extended composition
- solve_structure, levels 1-3: solve_level, each level
-   refresh_surface_bc                            surface boundary condition
+   store_start_li_be_rates   [burn_step]          with the extended composition
+ solve_structure, levels 1-3: solve_level
+   refresh_surface_bc
    (levels >= 3) star%xa := star%xa_start; advance_composition(corrector_pass)
-                                                 re-burn with the updated structure
    henyey_iterate, the Newton loop
-     henyey_coefficients, every shell, every Newton iteration:
-       compute_zone_energy   [burn_step]         -> compute_nuclear_energy -> compute_reaction_rates [network]
-                                                 eps and d eps/dln rho, d eps/dln T enter the luminosity equation
+     compute_henyey_coefficients, every shell, every iteration:
+       evaluate_shell_equations -> form_nuclear_energy_terms -> compute_nuclear_energy
+                                                  eps and its derivatives in the luminosity equation
  converge_with_rotation
-   level 4 (solve_level again)
    evolve_angular_momentum (rotating runs), per sub-step:
      mid_timestep_model: network_rates_of_model (midpoint model) -> burn_and_settle -> burn_network_region;
                          burn_deuterium_region (the sub-step's accreted mass)
      store_end_li_be_rates (midpoint model), burn_li_be
- burn_light_elements                             non-rotating, or no rotational mixing
+ burn_light_elements                              non-rotating, or no rotational mixing
    store_end_li_be_rates (converged model), burn_li_be
  compute_timestep
    timestep_limit_hburn: compute_network_rates + compute_abundance_rates at the H-shell midpoint
-   timestep_limit_heburn: compute_zone_energy at the hottest zone (triple-alpha share)
+   timestep_limit_heburn: compute_zone_energy at the hottest zone (the triple-alpha chain)
  output
-   neutrino_flux_table (when solar neutrino output is on): compute_zone_energy per shell
+   write_neutrino_flux_table (compute_neutrino_fluxes): compute_zone_energy per shell
 ```
 
 Two things often surprise newcomers:
-- **Composition and structure are operator-split.** Burning runs at fixed structure in the composition step (`advance_composition`), then the structure is solved with the new composition. At iteration levels ≥ 3, `solve_level` runs the composition step again (the corrector pass) to re-burn with the updated structure, between the surface boundary condition and the Newton loop.
-- **There are two rate paths from one evaluation.** The composition path uses `compute_network_rates`: per s per amu, no derivatives, rates at or below 10⁻⁵ dropped. The energy path uses `nuclear_energy`: erg/g/s with derivatives, and only reactions 1–7 below 10⁻³⁰ dropped before ε is summed. Both call `compute_reaction_rates`, so a rate is defined in exactly one place.
+- **Composition and structure are operator-split.** Burning runs at fixed structure in the composition step, then the structure is solved with the new composition; from iteration level 3 the composition step runs again (the corrector pass) with the updated structure.
+- **There are two rate paths from one evaluation.** The composition path (`compute_network_rates`: per s per amu, no derivatives, rates at or below 10⁻⁵ dropped) and the energy path (`compute_nuclear_energy`: erg/g/s with derivatives, the S-factor rates below 10⁻³⁰ dropped) both call `compute_reaction_rates`, so a rate is defined in one place.
 
----
+## 3. Conventions
 
-## 3. Units and conventions
+- **Units** are CGS and log is log₁₀; T9 = T/10⁹ K. Every time is in seconds. Energy derivatives are **absolute**, d ε/d ln T and d ε/d ln ρ, as the luminosity equation and GYRE's eps_eps_T want.
+- **Composition.** `xa(i, k)` holds mass fractions in the slots of `state/composition_layout.f90` (net/ takes them from there, never from `star_info_lib`); the network species `s_*` map onto them with `network_species_slot`. The light elements (`i_h2`…`i_be9`) come with the extended composition.
+- **Rates.** `nuclear_rates%rate(r_*)` is reactions per gram per second with the abundance factors omitted. The rate laws turn N_A⟨σv⟩ into it with ρ N_A/(A₁ A₂): the S-factor law through its fit (q7 holds −ln(A₀A₁) with bare nuclear masses and −ln(1 + δ₀₁) for identical nuclei); the Caughlan & Fowler laws through `per_gram_*` with the reactants' neutral atomic masses, and ρ² N_A/(3! A³) for triple α. A row's `reactants` list the mass fractions that multiply the rate (repeat a species for a square or a cube). The composition rate vector is the rate times `amu_cgs`, per s per amu, so that with Y = X/A, dY/dt = Σ ν R (integer mass numbers convert X to Y).
+- **Q values** (`q_mev`) are the energy deposited per reaction, net of the neutrinos it emits: never more than the atomic mass excesses release. The self-check enforces that, to the table's 1 keV rounding (`q_rounding_mev`), and `write_network_table` prints the neutrino energy each row implies.
+- **Screening** (`screening`). Each row carries `screening_t(Z₁Z₂, z86, z53, z43, z23)`, where z_p = (Z₁+Z₂)^p − Z₁^p − Z₂^p for p = 1.86, 5/3, 4/3, 2/3 (Graboske et al. 1973, table 4; z86 is the intermediate form's, the others the strong form's). The exponent is weak (Salpeter) below `weak_screening_threshold`, intermediate up to `max_intermediate_weak_exponent` (2), and above that the smaller of strong and intermediate, strong always from `min_strong_weak_exponent` (5).
+- **Scales.** Only the S-factor law reads the per-reaction scales (`cross_section_scale`, `s_prime_scale`, `s_double_prime_scale` at the row's slot); a scale set on another reaction has no effect, and `set_net_settings` warns about it.
+- **Temperature cutoffs** (`logT_cutoffs`, the control `nuclear_logT_cutoffs`): (1) gates everything, (4) helium burning, (5) the thermal neutrino losses; (2) and (3) are read and unused. The solar neutrino fluxes depend on `calc_neutrinos` only.
+- **Errors and messages.** The kernels print nothing and are `pure`; failures return `ierr` (positive): `burn_implicitly` (out of iterations, or a singular solve), `set_net_settings` (a wrong table). The configuration's messages go through `net_messages`' `net_report`: the table's errors, and the warnings for a scale without effect or a legacy `sstandard` entry that belongs to no reaction.
 
-- **Composition.** `star%xa(i, k)` holds mass fractions in the slots of `state/composition_layout.f90` (net/ takes them from there, never from `star_info_lib`): `i_h1`=1, `i_he4`=2, `i_metals`=3, `i_he3`=4, `i_c12`=5, `i_c13`=6, `i_n14`=7, `i_n15`=8, `i_o16`=9, `i_o17`=10, `i_o18`=11, `i_h2`=12, `i_li6`=13, `i_li7`=14, `i_be9`=15. The light elements (12–15) are tracked with the extended composition.
-- **Rates.** `nuclear_rates%rate` is reactions per gram per second with the abundance factors omitted. The composition rate vector is that times the atomic mass unit in grams, per s per amu: with Y = X/A, dY/dt = Σ ν R. Every time in the burning code is in seconds (2026-10; it used to mix years and Gyr, with a year length that differed by 4.7×10⁻⁶ between the timestep and the rates). Integer mass numbers convert X to Y.
-- **Energy derivatives are absolute:** dε/dln T, not dln ε/dln T. That's what the luminosity equation needs (see the header of `core/structure/henyey_elimination.f90`).
-- **Temperature cutoffs.** `net_settings%logT_cutoffs` (from `ctrl%nuclear_logT_cutoffs`): `(1)` gates all burning, `(4)` gates helium burning, and `(5)` the solar neutrino fluxes and thermal neutrino losses. `(2)` and `(3)` gated the level-1 equilibrium burn, removed in 2026-10; they are read and unused.
+## 4. Tests
 
----
-
-## 4. Extending the network
-
-Run `test_net` after any change (`make tests` in `src/`, then `pytest test_net.py` from the repository root). It pins:
-- the composition rate vector at four temperatures (log T = 6.9 to 7.6);
-- the cross-section scales;
-- `sneut` and `azbar`;
-- the deuterium rate;
-- a finite-difference check of every rate's derivatives;
-- the reaction table, with its baryon balance and each row's Q against the atomic mass excesses (the difference is the row's mean neutrino energy);
-- `burn_implicitly` against backward Euler's closed form with only pp on, then with only C12(α,γ) on, and its mass conservation with every rate on;
+`test_net` (`make tests` in `src/`, then `pytest test_net.py`) prints values for byte-comparison with `net/test/expected_test_net.out`, and 20 checks that print `ok` or `FAIL`:
+- the configuration: `set_net_settings` installs `net_settings_from_star`'s record; the table's self-check; the legacy `sstandard` map; the scale reported as without effect;
+- the rates' derivatives against centred differences (2×10⁻⁴ in T; 2×10⁻³ in ρ, where the screening plasma is held fixed);
+- `burn_implicitly` against backward Euler's closed form with only pp, then only C12(α,γ); its mass conservation with every rate on; `ierr = 1` when it runs out of iterations;
 - `surviving_fraction` and `accreted_survival` against closed forms and an independent quadrature;
-- `compute_nuclear_energy` at the solar centre, a CNO core and a helium core, with a finite-difference check of its derivatives;
-- `compute_abundance_rates` (the network's dX/dt) on a hydrogen- and a helium-burning zone;
-- `burn_deuterium_region` on a shell, a region, an accreting surface region and a region below the threshold;
-- `compute_li_be_rates`, the deuterium-rate cap in the surface convection zone, and the solar neutrino fluxes.
+- `compute_nuclear_energy`'s derivatives at the solar centre, a CNO core and a helium core (5×10⁻³); the thermal neutrino losses alone, on a C/O mixture where nothing burns, with both fits: negative, and their derivatives (BPS 10⁻⁶, Itoh 10⁻⁵); deuterium burning outside and inside the surface convection zone with the cap binding, with its derivatives; nothing below the burning cutoff;
+- strong screening at log T 7, log ρ 6: the regime, the derivatives, and the exponent against Graboske et al.'s formula;
+- `deuterium_rate`'s cap, exactly N_A/(m_d τ).
 
-The checks print `ok` or `FAIL`.
+It also pins the composition rate vector at four temperatures, the cross-section scales, `sneut` and `azbar`, the reaction table with each row's Q against the mass excesses, `compute_abundance_rates`, `burn_deuterium_region` on a shell, a region, an accreting surface region and a region below the threshold, `compute_li_be_rates`, and the solar neutrino fluxes.
 
-A deliberate change to its output means regenerating `net/test/expected_test_net.out` and committing it.
+Each check was confirmed to fail under a mutation of the code it covers (25 mutations, 2026-10-29). A deliberate change to the output means regenerating `expected_test_net.out` in a commit that says why. The decks pin the rest: every solar and testsuite deck runs the network, the energy and the light elements.
 
-**Change a rate fit or coefficient.** An S-factor reaction's coefficients are the `fit` of its row in `network`'s table. A Caughlan & Fowler form is its rate-law routine in `reaction_rates.f90`; if you change the functional form, update the `dlnrate_dlnt` expression next to it, and `test_net`'s derivative check will tell you if they disagree.
+`python3 src/tools/coverage.py --work DIR --dir net --test test_net --deck ...` measures the line coverage of net/ under `test_net` and the decks given (a -O0 --coverage build in DIR). COVERAGE_FIGURE
 
-**Add a reaction to the implicit network.** Add one row to `network`'s `reactions(:)`: its rate slot, branch, reactants, change list, `emitted_mass` for any untracked particle, Q-value and chain, and its rate (`rate_law`, `burns_in`, and for an S-factor reaction its `fit` and `scale_slot`), with its `screening` constants. Name the slot in `reaction_rates` (`r_*`, raising `num_reactions`; the `rv_*` slots and `num_rate_rows` follow). The rate evaluation, the composition step, the energy generation and the neutrino reaction counts all read the row. `network_table_errors` must stay 0. A rate of a new functional form also needs its rate law in `reaction_rates`: a routine like `compute_c12_alpha_gamma_rate` and a `case` in `compute_screened_rate`.
+## 5. Extending
 
-**Add a tracked isotope.** Today this needs:
-- a slot in `state/composition_layout.f90` (the species count is still a literal 15 in many declarations, which Phase 5 removes);
-- an entry in `network`'s species list (`s_*`, `mass_number`, and its `xa` slot in `network_species_slot`) if it is solved implicitly;
-- any reactions, as above.
+**Change a rate fit or coefficient.** An S-factor reaction's coefficients are the `fit` of its row in `network`'s table. A Caughlan & Fowler form is its rate-law routine in `reaction_rates.f90`; change its `dlnrate_dlnt` next to it, and `test_net`'s derivative check tells you whether they agree. Either moves results: a measured commit.
 
-**Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments), driven per region from `burn_step`.
+**Add a reaction** (among the tracked species, without input scales):
+1. `net/net_configuration.f90`: name its slot (`r_<name> = num_reactions + 1`) and raise `num_reactions`. The composition rate vector's `rv_*` rows, the star's scale arrays and every per-reaction array follow.
+2. `net/network.f90`: one row in `reactions(:)` (and `n_rows` + 1), importing the slot: its name, slot, branch (`unbranched`), reactants, change list (species, ν), `emitted_mass` for an untracked particle, `q_mev` net of neutrinos and its `chain`, `rate_law`, `burns_in` and `screening` (§3). The rate evaluation, the burn, the energy and the reaction counts all read the row; `set_net_settings` refuses a row that breaks the self-check.
+3. A rate of a new functional form: in `net/reaction_rates.f90`, a rate-law constant (`num_rate_laws` + 1), a pure routine like `compute_c12_alpha_gamma_rate` with its exact derivatives and the prefactor convention of §3, and its `case` in `compute_screened_rate`.
+4. Regenerate the pins: `net/test/expected_test_net.out` (the table, the derivative errors per slot) and the controls dumps (`YREC_REGEN_CONTROLS=1 pytest test_controls.py`: the star's scale arrays gain a slot).
 
-**Add an energy source that is not nuclear** (tidal or magnetic heating, for example). That belongs to the structure equations, not here. Phase 2 of `docs/TARGET_ARCHITECTURE.md` adds an energy-source list with a user hook. Until then the energy term is assembled in `core/structure/structure_equations.f90`; see the conventions in `core/structure/henyey_elimination.f90` before touching it.
+**Add an S-factor reaction with input S0, S′ and S″ scales:** steps 1, 2 and 4 above, with `rate_law = s_factor_fit` and its `fit` (q1…q8: the S-factor law, `compute_s_factor_rate`, and the Sources at the end of `reaction_rates.f90`); its scales are the settings' at its slot already. Then:
+1. `net/net_lib.f90`: export its slot.
+2. Its three controls (`s0_<name>`, `s0p_<name>`, `s0pp_<name>`), as `io/README.md` §5 says: `io/controls_buffer.f90`, `defaults/controls_registry.tsv`, the generators.
+3. `setup/user_inputs.f90`: the fit's reference S0 (`s0_<name>_ref`) and its Solar Fusion S′, S″ (`qs0e_<name>_a98`, `qqs0ee_<name>_a98`, with `s0_<name>_a98`), and the three lines of `set_cross_section_scales`, `set_first_derivative_scales` and `set_second_derivative_scales` for its slot.
+`net_settings_from_star`, `star_info` and Monte Carlo need nothing.
 
----
+**Add a chain:**
+1. `net/network.f90`: `chain_<name>` (`n_chains` + 1) and its `chain_name`; the rows that count under it. `nuclear_energy_result%eps_by_chain` follows.
+2. `net/net_lib.f90`: export it.
+3. `state/star_info_lib.f90`: its luminosity channel `i_lum_<name>` (`n_lum_channels` + 1), and an `i_eps_*` slot if it gets a fraction column (`eps_channels` is sized 7).
+4. `core/structure/structure_equations.f90`: its case in `luminosity_channel_of_chain` (and `eps_channel_of_chain`, else 0). `eps_total` sums every chain already.
+5. `core/diagnostics/observables.f90`: add the channel to `renormalize_luminosity_breakdown`'s sum.
+6. For output, a history column that reads `s%luminosity_breakdown(i_lum_<name>)` (`io/history_output.f90`, `defaults/history_columns.list`).
 
-## 5. Known limitations and open items
+**Add an isotope** (say Ne20, solved implicitly). This is the expensive extension:
+1. `state/composition_layout.f90`: a slot `i_<name>` (`n_species_extended` + 1). The species count is still a literal 15 in some forty declarations across the code (Phase 5 removes them), and `io/model_files.f90` writes the 15 slots (a model-format change).
+2. `net/network.f90`: the species `s_<name>`, before `s_o18` if solved (which renumbers `s_o18` and changes the pivot order: a measured change), `n_solved`/`n_network`, `network_species_slot`, `mass_number`, `mass_excess_mev`; then the reactions that make or burn it (above).
+3. `net/screening.f90`: `screening_mass_fractions` (Ne20 and Mg24 have screening isotopes already); `nuclear_energy`'s thermal-neutrino mixture if it matters there.
+4. Outside net/: the starting models (`core/model/starting_model.f90`), element diffusion's species (`element_diffusion/species_table.f90`), rotation's mixed species (`rotation_configuration`'s `num_tracked_species`), the outputs, the tests' compositions.
+
+**Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments, the integrator from `burn_exposure`), driven per region from `core/step/burn_step.f90`.
+
+**Add a control.** Add the field to `net_settings_t` (`net/net_configuration.f90`) with the control's default as its declared default, copy it in `net_settings_from_star` (`setup/net_settings_setup.f90`), and read `net_settings%<field>`; the control itself as `io/README.md` §5 says.
+
+**Add an energy source that is not nuclear** (tidal or magnetic heating). That belongs to the structure equations, not here: `core/structure/energy_sources.f90` holds a list of extra sources a program registers (`add_energy_source`; `examples/other_energy` is one).
+
+## 6. Known limitations and open items
 
 These are tracked in `docs/ROADMAP.md` §13.
 - **Special-purpose operators.** Deuterium and Li/Be are not entries in the reaction table. Making deuterium a network species would change the pp-chain model (p + p → d would no longer be instantaneous).
-- **Surface Li has a numerical noise floor of about 0.005 dex.** The start-of-step CZ rate average uses the integer zone index of the CZ base (only the end of the step is interpolated within the zone), so a roundoff-level change in the structure can move it by one zone and shift surface Li7 by ~1% (ROADMAP §13).
-- **Legacy cross sections.** `LNEWNUC = .false.` takes the cross sections from the legacy `SSTANDARD` ratios. Every shipped deck uses `.true.`.
+- **Surface Li has a numerical noise floor of about 0.005 dex.** The start-of-step CZ rate average uses the integer zone index of the CZ base, so a roundoff-level change in the structure can move it by one zone and shift surface Li7 by ~1%.
+- **Legacy cross sections.** `use_new_nuclear_rates = .false.` takes the cross sections from the legacy `sstandard` ratios; its entries for the helium-burning reactions and for O16 + α and C12 + C12 have no effect (a warning says so). Every shipped deck uses the new path.
+- **The resonant terms of the Caughlan & Fowler rates** matter only above T9 ≈ 1, which YREC does not reach; no check exercises them.
