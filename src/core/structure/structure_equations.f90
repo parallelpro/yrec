@@ -109,12 +109,11 @@ subroutine start_energy_bookkeeping()
 end subroutine start_energy_bookkeeping
 
 ! ---------------------------------------------------------------
-! The settings every shell shares: the time step, the burning cutoff,
-! log Teff (spots), the turnover time (the deuterium cap), ln10/Lsun,
-! the rotation switch and log10 G.
+! The settings every shell shares: the time step, log Teff (spots), the
+! turnover time (the deuterium cap), ln10/Lsun, the rotation switch and
+! log10 G.
 subroutine set_structure_settings()
       cfg%dt = delta_time
-      cfg%burning_log_temperature_cutoff = s%ctrl%nuclear_logT_cutoffs(1)
       cfg%log_teff = s%log_Teff
       cfg%turnover_timescale = s%convective_turnover_timescale
       cfg%ln10_over_lsun = s%ln10_over_lsun
@@ -171,7 +170,7 @@ end subroutine store_shell_structure
 ! is the flux at the Earth per gram of the shell (10^10 cm^-2 s^-1 g^-1,
 ! nuclear_energy.f90), so times dm it is the shell's flux.
 subroutine add_shell_energy_budget()
-       if (diag%burned) then
+       if (diag%burn%burning) then
             if (s%ctrl%calc_neutrinos) then
                do j = 1,n_nu_fluxes
                   s%neutrino_flux_total(j) = s%neutrino_flux_total(j) + &
@@ -237,9 +236,10 @@ end subroutine eliminate_shell_pair
 !     eps_channel_of_chain),
 !   eps_channels(i_eps_neu) = eps_nu and eps_channels(i_eps_grav) =
 !   eps_grav (erg/g/s).
-! Below the burning cutoff only eps_grav is nonzero.
+! Below net's burning cutoff (diag%burn%burning false) only eps_grav is
+! nonzero.
 subroutine store_zone_energy_channels()
-         if (s%logT(im).lt.s%ctrl%nuclear_logT_cutoffs(1)) then
+         if (.not. diag%burn%burning) then
             s%eps_total(im) = 0.0d0
             s%eps_channels(i_eps_grav,im) = s%eps_grav(im)
             do j = 1,6

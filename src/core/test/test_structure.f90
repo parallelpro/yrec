@@ -171,7 +171,6 @@ end subroutine die
 ! 1e6 yr step.
 subroutine set_settings()
       cfg%dt = 1.0d6*3.1558d7
-      cfg%burning_log_temperature_cutoff = star%ctrl%nuclear_logT_cutoffs(1)
       cfg%log_teff = star%log_Teff
       cfg%turnover_timescale = star%convective_turnover_timescale
       cfg%ln10_over_lsun = star%ln10_over_lsun
@@ -244,7 +243,7 @@ subroutine check_selected_shells()
          eos0%log10_density = star%logRho(im)
          call evaluate(sh, eos0, q, terms, diag)
          conv(im) = diag%convective
-         if (diag%burned) then
+         if (diag%burn%burning) then
             if (diag%burn%total_energy_gen_rate > best_eps) then
                best_eps = diag%burn%total_energy_gen_rate; i_burn = im
             end if
@@ -331,7 +330,7 @@ subroutine check_shell(label, im)
          end do
       end do
       write(*,'(a,a,a,i5,a,l2,a,l2,a,f8.4)') '# shell ', label, ' (', im, ') convective', &
-           d0%convective, ' burning', d0%burned, ' log T', sh0%log_temperature
+           d0%convective, ' burning', d0%burn%burning, ' log T', sh0%log_temperature
       write(*,'(a,4(1pe12.4))') '  q = ', q0
       if (extra_source) call check_extra_term(sh0, eos_base, t0, d0)
       write(*,'(a)') '  term/var     analytic        f.d.   rel.diff  status'

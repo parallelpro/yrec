@@ -75,13 +75,11 @@ module shell_equations
       end type shell_state
 
 ! The settings the shells share: the time step dt (s; zero or negative
-! means no time derivatives), the log T above which nuclear burning is
-! computed, the model's log Teff (the depth-varying spot contrast), the
-! convective turnover time (s, the deuterium cap), ln10/Lsun, whether
-! the star rotates, and log10 G (cgs).
+! means no time derivatives), the model's log Teff (the depth-varying
+! spot contrast), the convective turnover time (s, the deuterium cap),
+! ln10/Lsun, whether the star rotates, and log10 G (cgs).
       type :: structure_settings
          double precision :: dt = 0.0d0
-         double precision :: burning_log_temperature_cutoff = 0.0d0
          double precision :: log_teff = 0.0d0
          double precision :: turnover_timescale = 0.0d0
          double precision :: ln10_over_lsun = 0.0d0
@@ -91,9 +89,9 @@ module shell_equations
 
 ! The shell's values for output: the eos density, whether the shell is
 ! convective, the radiative and actual gradients and the convective
-! velocity, the opacity results, Gamma1; above the burning cutoff
-! (burned) the nuclear energy record (its chains' energies, the neutrino
-! loss) and its derivatives, all zero below;
+! velocity, the opacity results, Gamma1; the nuclear energy record (its
+! chains' energies, the neutrino loss; burn%burning above net's burning
+! cutoff, everything zero below) and its derivatives;
 ! and, when the step has a duration (has_eps_grav), eps_grav (erg/g/s);
 ! eps_extra, the extra energy sources' sum (erg/g/s; zero without any).
       type :: shell_diagnostics
@@ -103,7 +101,6 @@ module shell_equations
               convective_velocity = 0.0d0
          double precision :: kap_res(num_kap_results) = 0.0d0
          double precision :: gamma1 = 0.0d0
-         logical :: burned = .false.
          type(nuclear_energy_result) :: burn
          double precision :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
          logical :: has_eps_grav = .false.
@@ -120,7 +117,7 @@ contains
 ! shell (terms), and its values for output (diag), in named steps:
 !   evaluate_eos_opacity_gradients   eos, opacity, temperature gradients
 !   form_radius_pressure_temperature_terms
-!   form_nuclear_energy_terms        above the burning cutoff
+!   form_nuclear_energy_terms        the nuclear term (zero below net's cutoff)
 !   form_gravitational_energy_terms  when the step has a duration
 !   form_extra_energy_terms          the registered extra sources, if any
 !   scale_luminosity_terms           ql to dL/dlog m in Lsun
@@ -245,14 +242,14 @@ subroutine form_radius_pressure_temperature_terms()
 end subroutine form_radius_pressure_temperature_terms
 
 ! ---------------------------------------------------------------
-! The luminosity equation's nuclear term and partials above the burning
-! cutoff (log T > burning_log_temperature_cutoff). Before the
+! The luminosity equation's nuclear term and partials. Before the
 ! ln10 m/Lsun scaling of scale_luminosity_terms,
 !   ql = eps_nuc,
 !   ql_dt = d eps/dln T + (d eps/dln rho)(dln rho/dln T),
 !   ql_dp = (d eps/dln rho)(dln rho/dln P).
-! Below the cutoff the burn values (deps_*, the record burn, which keeps
-! its default) are zero. (The F77 coefft.f left them at the last burning shell's values,
+! At or below net's burning cutoff (nuclear_logT_cutoffs(1)) the record
+! burn has burning = .false. and every value zero, and so are the terms.
+! (The F77 coefft.f left them at the last burning shell's values,
 ! which reached the pulse output's d eps columns of every cooler shell,
 ! and eps_total of a shell exactly at the cutoff; fixed 2026-10.)
 subroutine form_nuclear_energy_terms()
@@ -261,10 +258,9 @@ subroutine form_nuclear_energy_terms()
        terms%ql_dp = 0.0d0
        diag%deps_dlnrho = 0.0d0
        diag%deps_dlnt = 0.0d0
-       diag%burned = sh%log_temperature.gt.cfg%burning_log_temperature_cutoff
-       if (diag%burned) then
-            call compute_nuclear_energy(diag%log_density, sh%log_temperature, &
-                 sh%xa, sh%in_surface_cz, cfg%turnover_timescale, diag%burn)
+       call compute_nuclear_energy(diag%log_density, sh%log_temperature, &
+            sh%xa, sh%in_surface_cz, cfg%turnover_timescale, diag%burn)
+       if (diag%burn%burning) then
             diag%deps_dlnrho = diag%burn%deps_dlnrho
             diag%deps_dlnt = diag%burn%deps_dlnt
             terms%ql = diag%burn%total_energy_gen_rate

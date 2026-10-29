@@ -34,7 +34,8 @@ module nuclear_energy
       private
 
       type, public :: nuclear_energy_result
-! .false. at or below nuclear_logT_cutoffs(1): nothing else is set
+! .false. at or below nuclear_logT_cutoffs(1), where nothing else is
+! set (core's shell equations gate on it)
          logical :: burning = .false.
 ! erg/g/s; derivatives absolute (d eps/dln rho, d eps/dln T)
          real(dp) :: total_energy_gen_rate = 0.0d0
@@ -42,8 +43,8 @@ module nuclear_energy
 ! each chain's energy generation, erg/g/s (network's chain_* slots)
          real(dp) :: eps_by_chain(n_chains) = 0.0d0
          real(dp) :: eps_neutrino_loss = 0.0d0
-! set only when net_settings%calc_neutrinos (fluxes_set) and X > 1e-6 (be7_set)
-         logical :: fluxes_set = .false., be7_set = .false.
+! with net_settings%calc_neutrinos: the solar neutrino fluxes and, where
+! X(H) > min_flux_hydrogen, the equilibrium Be7 mass fraction
          real(dp) :: neutrino_flux(n_nu_fluxes) = 0.0d0
          real(dp) :: be7_mass_fraction = 0.0d0
       end type nuclear_energy_result
@@ -279,7 +280,6 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       real(dp) :: counts(num_reactions)
       integer :: k
 
-      e%fluxes_set = .true.
       if (xa(i_h1) <= min_flux_hydrogen) then
          e%neutrino_flux = 0.0d0
          return
@@ -299,7 +299,6 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       e%neutrino_flux(i_nu_hep) = hep_rate_factor(nr%zone)
       e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &
            four_pi_au2
-      e%be7_set = .true.
       e%be7_mass_fraction = counts(r_he3he4)/(nr%be7%proton + nr%be7%electron)
       e%neutrino_flux(i_nu_be7) = counts(r_he3he4)*nr%be7%frac_ecap/four_pi_au2
       e%neutrino_flux(i_nu_b8) = counts(r_he3he4)*nr%be7%frac_pcap/four_pi_au2
