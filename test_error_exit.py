@@ -252,12 +252,14 @@ def test_unknown_pulse_format_exits_nonzero(tmp_path):
 @pytest.mark.parametrize("damage, needle", [
     ("zones", "zones, not 1 to 5000"),
     ("truncated", "cannot read the shells of the starting model"),
+    ("empty", "cannot read the format tag of the starting model"),
 ])
 def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
     """A MODEL2 starting model whose zone count does not fit the star's
-    arrays, or that ends inside its shells, is a clean exit 1 with a
-    message naming the file (model_files' read_model2), where it once
-    wrote past the arrays or ended in a Fortran runtime error."""
+    arrays, that ends inside its shells, or an empty file, is a clean
+    exit 1 with a message naming the file (model_files' read_model2 and
+    read_model_format_tag), where it once wrote past the arrays or ended
+    in a Fortran runtime error."""
     if not YREC.exists():
         pytest.skip("src/yrec not built")
     for name in (NML1, NML2):
@@ -267,8 +269,10 @@ def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
     assert lines[0].startswith("MOD2")
     if damage == "zones":
         lines[0] = lines[0][:13] + f"{99999:8d}" + lines[0][21:]
-    else:
+    elif damage == "truncated":
         lines = lines[:20]
+    else:
+        lines = []
     bad = tmp_path / "bad.first"
     bad.write_text("".join(lines))
     nml1 = tmp_path / NML1

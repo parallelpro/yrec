@@ -6,7 +6,7 @@
 ! source, and the Monte Carlo runs' models. read_mod_model reads it back.
 ! read_yrec7 and read_model2 read the two older starting-model formats
 ! (read_starting_model, in core, picks the reader from the file's format
-! tag):
+! tag, read_model_format_tag):
 !   YREC7 (tag NMOD): a header, the physics flags, the luminosities, the
 !     three envelope-triangle records, then the shells in four parts: the
 !     structure with X and Z, one line per shell; He3 and CNO, one value
@@ -27,7 +27,8 @@ module model_files
            i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9
       implicit none
       private
-      public :: write_mod_model, read_mod_model, read_yrec7, read_model2
+      public :: read_model_format_tag, write_mod_model, read_mod_model, &
+           read_yrec7, read_model2
 
 ! The .mod format's composition columns, by slot, and its column-header
 ! line (the writer writes it, the reader requires it).
@@ -40,6 +41,23 @@ module model_files
            // ' h2 li6 li7 be9'
 
 contains
+
+! ---------------------------------------------------------------
+! The format tag of the model file on unit iread, its first four
+! characters (YMOD, NMOD or MOD2), the unit rewound first. A file it
+! cannot read (an empty one) is reported and returns ierr = 1.
+subroutine read_model_format_tag(iread, tag, ierr)
+      integer, intent(in) :: iread
+      character(len=4), intent(out) :: tag
+      integer, intent(out) :: ierr
+      character(len=256) :: msg
+      integer :: ios
+
+      ierr = 0
+      rewind iread
+      read(iread,'(a4)',iostat=ios,iomsg=msg) tag
+      call check_model_read(ios, msg, iread, 'the format tag', ierr)
+end subroutine read_model_format_tag
 
 ! ---------------------------------------------------------------
 ! The .mod format holds exactly what a reload uses: the global scalars,

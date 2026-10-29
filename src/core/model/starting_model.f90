@@ -67,7 +67,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
       use io_units
-      use model_files, only: read_mod_model, read_yrec7, read_model2
+      use model_files, only: read_model_format_tag, read_mod_model, read_yrec7, &
+           read_model2
       use physical_constants
       use eos_lib
       use kap_lib
@@ -282,12 +283,11 @@ end subroutine acquire_starting_model
 ! Read the model file on unit iread, in the layout its first keyword
 ! names (YMOD: YREC .mod; NMOD: YREC7; MOD2: MODEL2), and set the
 ! timestep and star%log_total_mass from it. Sets ierr on an unknown layout or
-! a failed read.
+! a failed read (an empty file among them).
 subroutine read_starting_model_file
 
-      rewind iread
-      read(iread,10) format_tag
- 10   format(a4)
+      call read_model_format_tag(iread, format_tag, ierr)
+      if (ierr /= 0) return
 
       if (format_tag .eq. 'YMOD') then
          write(run_log_unit,11)
