@@ -8,17 +8,17 @@
 ! centre to the top of the atmosphere; the column schema of pts is
 ! documented there); M_star, R_star and L_star refer to the photosphere,
 ! so atmosphere points sit above R_star, as in MESA's add_atmosphere.
-! write_gyre_ext writes the GYRE file that goes with each profile, and
-! write_gyre_pulse the interior-only GYRE file every pulse_gyre_interval
-! models. GSM output needs HDF5 (make USE_HDF5=1); without it,
-! write_gsm_pulse is a stub and gsm_supported is .false.
+! write_gyre_pulse writes the GYRE text file, both the one that goes
+! with each profile (the extended point set) and the interior-only one
+! every pulse_gyre_interval models (the point set's first nz points;
+! yrec_output passes them). GSM output needs HDF5 (make USE_HDF5=1);
+! without it, write_gsm_pulse is a stub and gsm_supported is .false.
 module pulsation_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: check_io
       implicit none
       private
-      public :: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, write_gyre_ext, &
-           gsm_supported
+      public :: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, gsm_supported
 
 contains
 
@@ -138,112 +138,6 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
 end subroutine write_fgong_pulse
 
 ! ---------------------------------------------------------------
-! GYRE text format (schema 101, 18 columns) from the interior shells,
-! centre (1) to surface, from the star%pulse_* arrays the Henyey
-! coefficients fill for every shell.
-subroutine write_gyre_pulse(s, num_shells, mass_coordinate, &
-     log_density, log_luminosity, log_pressure, log_radius, &
-     log_temperature, omega, pulse_path, ierr)
-      use star_info_lib, only: star_info
-      use physical_constants, only: cgl, ln10
-      use math_lib
-      type(star_info), intent(in) :: s
-      integer, intent(in) :: num_shells
-      real(dp), intent(in) :: mass_coordinate(:), &
-           log_density(:), log_luminosity(:), log_pressure(:), &
-           log_radius(:), log_temperature(:), omega(:)
-      character(len=*), intent(in) :: pulse_path
-      integer, intent(inout) :: ierr
-      integer :: gyre_unit, i, ios
-      character(len=256) :: msg
-      integer, parameter :: gyre_schema = 101
-      real(dp) :: radius_cm, mass_g, luminosity_erg_s, &
-           pressure_cgs, temperature_k, density_cgs, delta, grav, &
-           global_data(3)
-      real(dp) :: brunt_n2(num_shells), dr
-      real(dp) :: grav_const_cgs
-
-      open(newunit=gyre_unit,file=pulse_path,status='UNKNOWN',form='FORMATTED', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write', pulse_path, ierr)
-      if (ierr /= 0) return
-
-      global_data(1) = mass_coordinate(num_shells)
-      global_data(2) = exp(ln10*log_radius(num_shells))
-      global_data(3) = log_luminosity(num_shells)*s%solar_luminosity_cgs
-      write(gyre_unit,100) num_shells,global_data,gyre_schema
- 100  format(I6,3(1X,1PE26.16),1X,I6)
-
-! Brunt-Vaisala N^2, exact gradient form (centered differences in r):
-!     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
-! The thermal-only form g^2 rho delta (grada - gradT)/P previously used
-! here is exact only for homogeneous composition -- it omits the Ledoux
-! mu-gradient term that dominates N^2 in composition-gradient layers
-! (see the matching note in core/diagnostics/stitched_model.f90's
-! build_pulse_points, which fixes the same formula for the
-! profile-coupled GSM/FGONG/GYRE writers). CONVECTIVE shells (where
-! the thermal form is negative) keep the thermal value: the mixture is
-! homogeneous there, so the thermal form is exact and smooth, while
-! the centered difference of a near-adiabatic stratification is
-! cancellation noise of random sign.
-      grav_const_cgs = exp(ln10*cgl)
-      do i = 2, num_shells - 1
-         radius_cm = exp(ln10*log_radius(i))
-         dr = exp(ln10*log_radius(i+1)) - exp(ln10*log_radius(i-1))
-         if (radius_cm > 0.0d0 .and. dr > 0.0d0 .and. &
-              s%adiabatic_index_gamma1(i) > 0.0d0) then
-            grav = grav_const_cgs*mass_coordinate(i)/(radius_cm*radius_cm)
-            brunt_n2(i) = grav*grav* &
-                 (exp(ln10*(log_density(i) - log_pressure(i))))* &
-                 (-s%pulse_dlnrho_dlnt(i))* &
-                 (s%grada(i) - s%gradT(i))
-            if (brunt_n2(i) >= 0.0d0) then
-               brunt_n2(i) = grav*ln10*( &
-                    (log_pressure(i+1) - log_pressure(i-1)) / &
-                    s%adiabatic_index_gamma1(i) - &
-                    (log_density(i+1) - log_density(i-1)) ) / dr
-            end if
-         else
-            brunt_n2(i) = 0.0d0
-         end if
-      end do
-      if (num_shells >= 2) then
-         brunt_n2(1) = brunt_n2(2)
-         brunt_n2(num_shells) = brunt_n2(num_shells-1)
-      end if
-
-      do i = 1,num_shells
-         radius_cm = exp(ln10*log_radius(i))
-         mass_g = mass_coordinate(i)
-         luminosity_erg_s = log_luminosity(i)*s%solar_luminosity_cgs
-         pressure_cgs = exp(ln10*log_pressure(i))
-         temperature_k = exp(ln10*log_temperature(i))
-         density_cgs = exp(ln10*log_density(i))
-! delta = chiT/chiRho = -star%pulse_dlnrho_dlnt, since chiRho = 1/(dln rho/dln P)_T
-! and chiT = -chiRho*star%pulse_dlnrho_dlnt (see core/structure/structure_equations.f90).
-         delta = -s%pulse_dlnrho_dlnt(i)
-! kap_kap_T/eps_eps_T columns follow the GSM/GYRE convention (MESA
-! pulse_gyre.f90): the ABSOLUTE derivatives kap*dlnkap/dlnT and
-! eps*dlneps/dlnT = deps/dlnT, not the bare log-derivatives.
-! pulse_deps_* already hold deps/dln (see core/diagnostics/stitched_model.f90's
-! build_pulse_points), so they are not multiplied by eps.
-         write(gyre_unit,110) i,radius_cm,mass_g,luminosity_erg_s, &
-              pressure_cgs,temperature_k,density_cgs,s%gradT(i), &
-              brunt_n2(i),s%adiabatic_index_gamma1(i),s%grada(i),delta, &
-              s%opacity_zone(i), &
-              s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i), &
-              s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i), &
-              s%eps_total(i), &
-              s%pulse_deps_dlnt(i), &
-              s%pulse_deps_dlnrho(i),omega(i)
- 110     format(I6,99(1X,1PE26.16))
-      end do
-
-      close(gyre_unit)
-
-      return
-end subroutine write_gyre_pulse
-
-! ---------------------------------------------------------------
 ! GSM, the GYRE Stellar Model HDF5 format (v1.10): root attributes n,
 ! M_star, R_star, L_star and version, and one double dataset per column,
 ! the same 18 columns as the GYRE text file from the same point set.
@@ -331,9 +225,13 @@ logical function gsm_supported()
 end function gsm_supported
 
 ! ---------------------------------------------------------------
-! GYRE text format (schema 101) over the extended point set: the file
-! written with each profile when pulse_format is 'GYRE'.
-subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
+! GYRE text format (schema 101, 18 columns), points 1..n of a pulse
+! point set, centre outward: the file written with each profile when
+! pulse_format is 'GYRE' (the extended point set, M_star, R_star and
+! L_star the photosphere's), and the interior-only file every
+! pulse_gyre_interval models (the interior points, M_star, R_star and
+! L_star the outermost interior shell's).
+subroutine write_gyre_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
       use stitched_model, only: ipul_gyre_last
       integer, intent(in) :: n
       real(dp), intent(in) :: pts(:,:)
@@ -353,6 +251,6 @@ subroutine write_gyre_ext(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
          write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, ipul_gyre_last)
       end do
       close(u)
-end subroutine write_gyre_ext
+end subroutine write_gyre_pulse
 
 end module pulsation_output

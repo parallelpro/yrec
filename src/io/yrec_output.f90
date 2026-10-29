@@ -30,7 +30,7 @@ module yrec_output
            write_profile
       use run_log, only: progress_lines, log_model_line, log_final_model_line
       use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, &
-           write_gyre_pulse, write_gyre_ext, gsm_supported
+           write_gyre_pulse, gsm_supported
       use model_files, only: write_mod_model
       use math_lib
       implicit none
@@ -140,8 +140,6 @@ subroutine output_write_model(s, output, ierr)
       integer :: iprof
       real(dp) :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams
-      character(len=5) :: gyre_suffix
-      character(len=320) :: gyre_path
 
 ! the progress line (every terminal_interval models)
       call log_model_line(s, output%progress)
@@ -187,17 +185,33 @@ subroutine output_write_model(s, output, ierr)
 ! that fails
       call write_mod_model(s, last_model_unit, replace=.true.)
 
-! the interval GYRE file (independent of write_pulse_flag): numbered by
-! the model (zero-padded), with the profiles' prefix and directory
+! the interval GYRE file (independent of write_pulse_flag)
       if (s%ctrl%pulse_gyre_interval > 0 .and. &
-          mod(s%model_number,s%ctrl%pulse_gyre_interval) == 0) then
-         write(gyre_suffix,'(I5.5)') s%model_number
-         gyre_path = trim(output%out_dir)//trim(s%ctrl%profile_data_prefix)//gyre_suffix//'.data.GYRE'
-         call write_gyre_pulse(s, s%nz,s%m, &
-              s%logRho,s%luminosity_lsun,s%logP,s%logR, &
-              s%logT,s%omega, gyre_path, ierr)
-      endif
+          mod(s%model_number,s%ctrl%pulse_gyre_interval) == 0) &
+           call write_interior_gyre(s, output, ierr)
 end subroutine output_write_model
+
+! ---------------------------------------------------------------
+! The interior-only GYRE file, profile<model>.data.GYRE (the model
+! number zero-padded to five digits, with the profiles' prefix and
+! directory): the stitched model's interior points, which are the first
+! nz of its point set (centre to the fitting point), with the outermost
+! interior shell's mass, radius and luminosity as M_star, R_star and
+! L_star.
+subroutine write_interior_gyre(s, output, ierr)
+      use star_info_lib, only: star_info
+      use stitched_model, only: ipul_m, ipul_r, ipul_L
+      type(star_info), intent(in) :: s
+      type(output_state), intent(in) :: output
+      integer, intent(inout) :: ierr
+      character(len=5) :: model_suffix
+      character(len=320) :: path
+
+      write(model_suffix,'(I5.5)') s%model_number
+      path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // model_suffix // '.data.GYRE'
+      call write_gyre_pulse(s%nz, s%stitched%pulse(:,1:s%nz), s%stitched%pulse(ipul_m,s%nz), &
+           s%stitched%pulse(ipul_r,s%nz), s%stitched%pulse(ipul_L,s%nz), path, ierr)
+end subroutine write_interior_gyre
 
 ! ---------------------------------------------------------------
 ! The end of a card: the progress line of its last converged model,
@@ -255,7 +269,7 @@ subroutine write_pulse(s, output, iprof, stitched, ierr)
          call write_gsm_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.GSM', ierr)
       case default
-         call write_gyre_ext(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
+         call write_gyre_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.GYRE', ierr)
       end select
 end subroutine write_pulse

@@ -297,10 +297,11 @@ end subroutine store_zone_thermodynamics
 
 ! ---------------------------------------------------------------
 ! Store the shell's derivatives and mean molecular weights for the
-! pulsation output, for every model: the GYRE-format writer
-! (pulsation_output's write_gyre_pulse) runs every pulse_gyre_interval
-! models, independently of the older OPAL pulsation writer's flag, and
-! needs them (MHP 8/25). No other output file reads these arrays.
+! pulsation output, for every model: the stitched model's pulse point
+! set (build_pulse_points) reads them, for the pulse files written with
+! the profiles and for the interior GYRE file written every
+! pulse_gyre_interval models whatever write_pulse_flag says (MHP 8/25).
+! No other output file reads these arrays.
 ! pulse_deps_dlnrho/dlnt are the derivatives of eps_total (eps_nuc,
 ! without the thermal neutrino loss), the eps the pulsation files write
 ! beside them (MESA's convention); zero below the burning cutoff.

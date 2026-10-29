@@ -12,6 +12,8 @@
 !     their named indices ip_<name>; column ip_zone is left 0 (the
 !     writer numbers the zones)
 !   s%stitched%pulse(1:n_pulse_cols, 1:n_ext) -- the GYRE/FGONG pulse set
+!     (its first nz points, the interior's, are also the interior GYRE
+!     file every pulse_gyre_interval models)
 ! The profile column table (profile_columns: each column's name and
 ! kind) is here, next to the values (interior_value, envelope_value,
 ! atmosphere_value). The io writers only read these arrays; nothing in
