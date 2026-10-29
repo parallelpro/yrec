@@ -53,6 +53,16 @@ module nuclear_energy
       real(dp), parameter :: min_deuterium = 1.0d-11
 ! energy released by d(p,g)3He, MeV
       real(dp), parameter :: q_deuterium_mev = 5.494d0
+! the energy path drops a rate of the S-factor reactions (r_pp to r_po16)
+! below this (per gram per s, abundance factors omitted), with its
+! derivatives (the composition path drops rates at or below
+! network's min_composition_rate instead)
+      real(dp), parameter :: min_energy_path_rate = 1.0d-30
+! eps (erg/g/s, before the thermal neutrino loss) at or below which its
+! derivatives are zero, and the solar neutrino fluxes' reaction counts
+      real(dp), parameter :: min_eps_with_derivatives = 1.0d-12
+! X(H) at or below which the solar neutrino fluxes are zero (MHP 9/91)
+      real(dp), parameter :: min_flux_hydrogen = 1.0d-6
 
 contains
 
@@ -70,15 +80,15 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       type(nuclear_energy_result), intent(out) :: e
 
       type(nuclear_rates) :: nr
-! the energy path's rates: reactions 1-7 below 1e-30 are dropped (with
-! their derivatives) before eps is summed (the composition path drops
-! rates at or below 1e-5 instead)
+! the energy path's rates (energy_path_rates)
       real(dp) :: rate(num_reactions), dlnrate_dlnrho(num_reactions), &
            dlnrate_dlnt(num_reactions)
 ! each slot's rate times its reactants' mass fractions, per gram per s
       real(dp) :: reactions_per_gram(num_reactions)
       real(dp) :: energy_by_slot(num_reactions), energy_by_chain(n_chains)
       real(dp) :: deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt
+! the network species' mass fractions (network's s_* order)
+      real(dp) :: x(n_network)
 
       if (log_temperature <= net_settings%logT_cutoffs(1)) return
       e%burning = .true.
@@ -88,12 +98,12 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
       call energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       call compute_deuterium_burning(nr, xa, in_surface_cz, turnover_timescale, &
            deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt)
-      reactions_per_gram = reaction_counts(rate, network_mass_fractions(xa))
-      call compute_reaction_energies(rate, network_mass_fractions(xa), &
-           nr%frac_n15_pa, nr%be7%frac_ecap, energy_by_slot, energy_by_chain)
+      x = network_mass_fractions(xa)
+      reactions_per_gram = reaction_counts(rate, x)
+      call compute_reaction_energies(rate, x, nr%frac_n15_pa, nr%be7%frac_ecap, &
+           energy_by_slot, energy_by_chain)
       call sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
-           deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, &
-           reactions_per_gram, e)
+           deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, e)
       call store_chain_energies(energy_by_chain, deuterium_energy, e)
       if (net_settings%calc_neutrinos) &
            call compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
@@ -102,8 +112,8 @@ pure subroutine compute_nuclear_energy(log_density, log_temperature, xa, &
 end subroutine compute_nuclear_energy
 
 !----------------------------------------------------------------------
-! The energy path's copy of the rates: reactions 1-7 below 1e-30 are
-! set to zero together with their derivatives.
+! The energy path's copy of the rates: those of the S-factor reactions
+! below min_energy_path_rate are set to zero with their derivatives.
 pure subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       type(nuclear_rates), intent(in) :: nr
       real(dp), intent(out) :: rate(num_reactions), &
@@ -114,7 +124,7 @@ pure subroutine energy_path_rates(nr, rate, dlnrate_dlnrho, dlnrate_dlnt)
       dlnrate_dlnrho = nr%dlnrate_dlnrho
       dlnrate_dlnt = nr%dlnrate_dlnt
       do i = r_pp, r_po16
-         if (rate(i) < 1.d-30) then
+         if (rate(i) < min_energy_path_rate) then
             rate(i) = 0.d0
             dlnrate_dlnrho(i) = 0.d0
             dlnrate_dlnt(i) = 0.d0
@@ -168,17 +178,18 @@ end function network_mass_fractions
 
 !----------------------------------------------------------------------
 ! eps and its absolute derivatives: the sum over reactions of eps_j and
-! eps_j * d ln rate_j / d ln (rho, T), plus deuterium burning's. Below eps = 1e-12 the derivatives are zero,
-! and so are the reaction counts the neutrino fluxes use. These are
-! absolute derivatives, not d ln eps: the Henyey Jacobian and the
-! pulsation output (GYRE's eps*eps_T) both want this form.
+! eps_j * d ln rate_j / d ln (rho, T), plus deuterium burning's. At or
+! below eps = min_eps_with_derivatives the derivatives are zero (and so
+! are the solar neutrino fluxes' reaction counts:
+! compute_solar_neutrino_fluxes). These are absolute derivatives, not
+! d ln eps: the Henyey Jacobian and the pulsation output (GYRE's
+! eps*eps_T) both want this form.
 pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dlnt, &
-     deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, &
-     reactions_per_gram, e)
+     deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt, e)
       real(dp), intent(in) :: energy_by_slot(num_reactions), &
            deuterium_energy, deuterium_dlneps_dlnrho, deuterium_dlneps_dlnt
-      real(dp), intent(inout) :: dlnrate_dlnrho(num_reactions), &
-           dlnrate_dlnt(num_reactions), reactions_per_gram(num_reactions)
+      real(dp), intent(in) :: dlnrate_dlnrho(num_reactions), &
+           dlnrate_dlnt(num_reactions)
       type(nuclear_energy_result), intent(inout) :: e
       real(dp) :: sum_rho, sum_t
       integer :: i
@@ -194,10 +205,9 @@ pure subroutine sum_energy_generation(energy_by_slot, dlnrate_dlnrho, dlnrate_dl
       e%total_energy_gen_rate = e%total_energy_gen_rate + deuterium_energy
       sum_rho = sum_rho + deuterium_energy*deuterium_dlneps_dlnrho
       sum_t = sum_t + deuterium_energy*deuterium_dlneps_dlnt
-      if (e%total_energy_gen_rate <= 1.d-12) then
+      if (e%total_energy_gen_rate <= min_eps_with_derivatives) then
          e%deps_dlnrho = 0.d0
          e%deps_dlnt = 0.d0
-         reactions_per_gram = 0.d0
       else
          e%deps_dlnrho = sum_rho
          e%deps_dlnt = sum_t
@@ -227,7 +237,11 @@ end subroutine store_chain_energies
 ! counts in the same units (diagnostic "fictional" fluxes). Also the
 ! equilibrium Be7 mass fraction (Be7 is always in equilibrium with the
 ! slower He3 + He4 production; computed because some applications want
-! it). Off in hydrogen-exhausted zones (X <= 1e-6, MHP 9/91).
+! it). Off in hydrogen-exhausted zones (X <= min_flux_hydrogen, MHP
+! 9/91). reactions_per_gram is each slot's reactions per gram per s; it
+! counts as zero where eps is at or below min_eps_with_derivatives (e,
+! from sum_energy_generation, has the zone's eps), so that only the hep
+! flux, from its own rate factor, is left there.
 pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       use composition_layout, only: i_h1, i_he3
       use neutrino_flux_layout, only: i_nu_b8, i_nu_be7, i_nu_f17, i_nu_hep, &
@@ -237,38 +251,45 @@ pure subroutine compute_solar_neutrino_fluxes(nr, xa, reactions_per_gram, e)
       type(nuclear_energy_result), intent(inout) :: e
 ! 4 pi (1 AU)^2, cm^2
       real(dp), parameter :: four_pi_au2 = 2.812295d+27
-      real(dp) :: eg(num_reactions)
+! the fluxes' unit, 1e10 per cm^2 per s per g, inverted
+      real(dp), parameter :: flux_unit_inverse = 1.0d-10
+! the reactions per gram per s that make the neutrinos
+      real(dp) :: counts(num_reactions)
       integer :: k
 
       e%fluxes_set = .true.
-      if (xa(i_h1) <= 1.0d-6) then
+      if (xa(i_h1) <= min_flux_hydrogen) then
          e%neutrino_flux = 0.0d0
          return
       end if
-      eg = reactions_per_gram
-      e%neutrino_flux(i_nu_pp) = eg(r_pp)/four_pi_au2
+      if (e%total_energy_gen_rate <= min_eps_with_derivatives) then
+         counts = 0.0d0
+      else
+         counts = reactions_per_gram
+      end if
+      e%neutrino_flux(i_nu_pp) = counts(r_pp)/four_pi_au2
 ! pep from pp (Neutrino Astrophysics eq. 3.17); xs_pep scales the pep/pp
 ! ratio, so leave it at 1 unless that ratio is meant to change
       e%neutrino_flux(i_nu_pep) = (3.4848d-6)*nr%zone%electron_density_na*nr%zone%t%m12* &
-           (1.0d0 + 20.d0*nr%zone%t%t9)*eg(r_pp)
+           (1.0d0 + 20.d0*nr%zone%t%t9)*counts(r_pp)
       e%neutrino_flux(i_nu_pep) = e%neutrino_flux(i_nu_pep)*net_settings%extra_cross_section_scale(xs_pep)/four_pi_au2
 ! hep (eq. 3.12), from the screened rate factor of compute_reaction_rates
       e%neutrino_flux(i_nu_hep) = nr%hep
       e%neutrino_flux(i_nu_hep) = e%neutrino_flux(i_nu_hep)*xa(i_h1)*xa(i_he3)/ &
            four_pi_au2
       e%be7_set = .true.
-      e%be7_mass_fraction = eg(r_he3he4)/(nr%be7%proton + nr%be7%electron)
-      e%neutrino_flux(i_nu_be7) = eg(r_he3he4)*nr%be7%frac_ecap/four_pi_au2
-      e%neutrino_flux(i_nu_b8) = eg(r_he3he4)*nr%be7%frac_pcap/four_pi_au2
-      e%neutrino_flux(i_nu_n13) = eg(r_pc12)/four_pi_au2
-      e%neutrino_flux(i_nu_o15) = eg(r_pn14)/four_pi_au2
-      e%neutrino_flux(i_nu_f17) = eg(r_po16)/four_pi_au2
-      e%neutrino_flux(i_nu_he3he3) = eg(r_he3he3)/four_pi_au2
-      e%neutrino_flux(i_nu_he3he4) = eg(r_he3he4)/four_pi_au2
+      e%be7_mass_fraction = counts(r_he3he4)/(nr%be7%proton + nr%be7%electron)
+      e%neutrino_flux(i_nu_be7) = counts(r_he3he4)*nr%be7%frac_ecap/four_pi_au2
+      e%neutrino_flux(i_nu_b8) = counts(r_he3he4)*nr%be7%frac_pcap/four_pi_au2
+      e%neutrino_flux(i_nu_n13) = counts(r_pc12)/four_pi_au2
+      e%neutrino_flux(i_nu_o15) = counts(r_pn14)/four_pi_au2
+      e%neutrino_flux(i_nu_f17) = counts(r_po16)/four_pi_au2
+      e%neutrino_flux(i_nu_he3he3) = counts(r_he3he3)/four_pi_au2
+      e%neutrino_flux(i_nu_he3he4) = counts(r_he3he4)/four_pi_au2
 ! to 10^10 per cm^2 per s per g; non-positive values to zero (KC
 ! 2025-05-30: was a 1e-50 floor, which underflowed)
-      do k = 1,10
-         e%neutrino_flux(k) = (1.0d-10)*e%neutrino_flux(k)
+      do k = 1, n_nu_fluxes
+         e%neutrino_flux(k) = flux_unit_inverse*e%neutrino_flux(k)
          if (e%neutrino_flux(k) <= 0.0d0) e%neutrino_flux(k) = 0.0d0
       end do
 end subroutine compute_solar_neutrino_fluxes
