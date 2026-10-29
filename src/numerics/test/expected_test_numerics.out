@@ -103,6 +103,10 @@ osplin
 osplin
    3.600000000000000E+01   4.900000000000000E+01   4.900000000000000E+01
    6.416666666666669E+01
+# osplin: a repeated abscissa inside the table (finite slopes around it)
+osplin
+   3.750000000000000E-01   2.687500000000000E+00   5.770833333333334E+00
+   1.220833333333333E+01
 # osplin: error codes (n < 3; decreasing points; none)
 osplin n = 2: ierr, yval untouched  3  -1.0  -1.0
 osplin decreasing: ierr, yval untouched  5  -1.0  -1.0

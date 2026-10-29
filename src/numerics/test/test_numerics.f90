@@ -181,6 +181,14 @@ program test_numerics
       call osplin_case(8, [-1.0d0, 7.5d0, 8.0d0])
       call osplin_case(8, [7.0d0, 7.5d0, 8.0d0])
       call osplin_case(8, [6.0d0, 7.0d0, 7.0d0, 8.0d0])
+      write(*,'(a)') "# osplin: a repeated abscissa inside the table (finite slopes around it)"
+      jx(1:6) = [0.0d0, 1.0d0, 2.0d0, 2.0d0, 3.0d0, 4.0d0]
+      jy(1:6) = [0.0d0, 1.0d0, 4.0d0, 4.0d0, 9.0d0, 16.0d0]
+      call osplin_case(6, [0.5d0, 1.5d0, 2.5d0, 3.5d0])
+      do i = 1, 8
+         jx(i) = dble(i - 1)
+      end do
+      jy(1:8) = [0.0d0, 1.0d0, 4.0d0, 9.0d0, 16.0d0, 25.0d0, 36.0d0, 49.0d0]
       write(*,'(a)') "# osplin: error codes (n < 3; decreasing points; none)"
       jout = -1.0d0
       call osplin(jval, jout, jx, jy, 2, 2, ierr)

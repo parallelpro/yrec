@@ -66,8 +66,10 @@ end subroutine osplin
 ! needs one knot per interval and keeps the data's convexity and
 ! monotonicity. Interior points get a weighted mean of the two
 ! adjacent secants (zero where they differ in sign or one is zero); the
-! end points extrapolate from their neighbour. (KC 2025-05-31:
-! safedivide guards two divisions by zero.)
+! end points extrapolate from their neighbour. Every secant, and the
+! end slopes' divisions, go through safedivide, which gives zero for a
+! zero-width interval (repeated abscissae) instead of an infinity or a
+! NaN (KC 2025-05-31 guarded the last interval; 2026-10 the others).
 pure subroutine slopes(table_x, table_y, first_derivs, num_points)
       integer, intent(in) :: num_points
       real(dp), intent(in) :: table_x(num_points), table_y(num_points)
@@ -85,9 +87,9 @@ pure subroutine slopes(table_x, table_y, first_derivs, num_points)
 ! POINTS
       y_diff1=table_y(2) - table_y(1)
       y_diff2=table_y(3) - table_y(2)
-      slope1=y_diff1/(table_x(2) - table_x(1))
+      call safedivide(y_diff1, (table_x(2) - table_x(1)), slope1)
       slope1_saved=slope1
-      slope2=y_diff2/(table_x(3)-table_x(2))
+      call safedivide(y_diff2, (table_x(3) - table_x(2)), slope2)
       slope2_saved=slope2
 !
 ! MAIN LOOP OVER THE INTERIOR POINTS. (Restructured 2026 from the
@@ -122,7 +124,7 @@ pure subroutine slopes(table_x, table_y, first_derivs, num_points)
 ! POINTS.
       y_diff1=table_y(idx) - table_y(prev_idx)
       y_diff2=table_y(next_idx) - table_y(idx)
-      slope1=y_diff1/(table_x(idx) - table_x(prev_idx))
+      call safedivide(y_diff1, (table_x(idx) - table_x(prev_idx)), slope1)
 ! KC 2025-05-31 PREVENT FLOATING POINT EXCEPTION
 !       M2=YDIF2/(XTAB(I1) - XTAB(I))
       call safedivide(y_diff2, (table_x(next_idx) - table_x(idx)), slope2)
@@ -151,7 +153,7 @@ pure subroutine slopes(table_x, table_y, first_derivs, num_points)
       end if
       x_mid=(table_x(1) + table_x(2))/2.d0
       y_x_mid=first_derivs(2)*(x_mid - table_x(2)) + table_y(2)
-      first_derivs(1)=(y_x_mid - table_y(1))/(x_mid - table_x(1))
+      call safedivide((y_x_mid - table_y(1)), (x_mid - table_x(1)), first_derivs(1))
       if ((first_derivs(1) * slope1_saved) < 0.d0) then
          first_derivs(1)=0.d0
       end if
