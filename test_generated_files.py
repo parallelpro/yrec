@@ -12,7 +12,7 @@ import pytest
 
 SRC = pathlib.Path(__file__).parent / "src"
 GENERATORS = ["gen_controls_state.py", "gen_inlist.py", "gen_controls_dump.py",
-              "gen_makefile_deps.py", "gen_default_columns.py"]
+              "gen_makefile_deps.py", "gen_default_columns.py", "gen_star_docs.py"]
 
 
 @pytest.mark.parametrize("generator", GENERATORS)
