@@ -252,7 +252,7 @@ program test_net
 ! reaction slot over three (log T, log rho) points; slots that are zero
 ! everywhere print 0. Guards the hand-derived Jacobian terms; the
 ! screening derivatives are approximate (their plasma terms are held
-! fixed), so the check allows 5e-3.
+! fixed), so the check allows 2e-4 in d/d ln T and 2e-3 in d/d ln rho.
       write(*,'(a)') "# test_net: rate derivatives, max |analytic/numerical - 1| (dlnT, dlnrho)"
       fd_mass = 0.0d0
       fd_mass(iso_h1) = 0.70d0
@@ -282,8 +282,8 @@ program test_net
       do k = 1, num_reactions
          write(*,'(i3, 2es10.2)') k, fd_err_t(k), fd_err_d(k)
       end do
-      call report("rate derivatives vs centred differences (5e-3)", &
-           maxval(fd_err_t) < 5.0d-3 .and. maxval(fd_err_d) < 5.0d-3)
+      call report("rate derivatives vs centred differences (2e-4 in T, 2e-3 in rho)", &
+           maxval(fd_err_t) < 2.0d-4 .and. maxval(fd_err_d) < 2.0d-3)
 
 ! the burning network's reaction table and its baryon-balance check
       write(*,'(a)') "# test_net: network table"

@@ -42,7 +42,7 @@ snu  4  3.968154157521E-04  7.826757114974E-11  6.929765014536E-08
   9  2.66E-05  3.69E-04
  10  1.68E-05  4.22E-04
  11  1.39E-05  1.87E-04
-rate derivatives vs centred differences (5e-3): ok
+rate derivatives vs centred differences (2e-4 in T, 2e-3 in rho): ok
 # test_net: network table
 # reaction                     slot  branch  baryon imbalance     Q (MeV)  chain           Q masses (MeV)  neutrinos (MeV)
 pp chain to He3                  1       0                 0    6.664000  pp I                  6.935694         0.271694
