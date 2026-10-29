@@ -62,6 +62,8 @@ The builders are exercised by every run; the tests build records the same way th
 - `eos/test`, `kap/test`, `convection/test`: `set_up_constants_and_tables` on a test star, i.e. the per-run builders;
 - `test_boundaries.py`: the builders' star contracts, and the boundary rules of §3.
 
+`python3 src/tools/coverage.py --work DIR --dir setup --test test_structure --test test_net --test test_rotation --test test_element_diffusion --deck examples/run_config_matrix/cm_base.inlist --deck examples/run_config_matrix/cm_rot_base.inlist --deck examples/run_config_matrix/cm_settle_he.inlist` measures the line coverage of setup/: 95.2% of 252 lines (2026-10-29). The builders are covered completely; the 12 lines not run are `map_user_inputs`'s branches for a reaction whose input S0 is zero (its derivative scales are then set to 0).
+
 ## 5. How to extend
 
 **Add a field to a domain's settings record:**
