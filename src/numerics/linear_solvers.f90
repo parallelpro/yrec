@@ -4,8 +4,9 @@
 ! Linear systems (YREC's numerics_lib, split 2026-10):
 !   ludcmp, lubksb     LU decomposition with partial pivoting and the
 !                      back substitution (Numerical Recipes)
-!   simeqc             Gauss-Jordan elimination with partial pivoting,
-!                      for one or more right-hand sides
+!   simeqc             Gaussian elimination with partial pivoting and
+!                      back substitution (IBM SSP's SIMQ), for one or
+!                      more right-hand sides
 !   solve_tridiagonal  the Thomas algorithm (formerly tridiag_gs and
 !                      ctridi, the same algorithm twice)
 ! A singular system returns numerics_singular (numerics_status).
@@ -169,83 +170,65 @@ end subroutine lubksb
 !----------------------------------------------------------------------
 ! simeqc
 !----------------------------------------------------------------------
-! Gauss-Jordan elimination with partial pivoting on a system matrix
-! stored as a flat array, column-major: num_unknowns equations (rows)
-! and num_cols columns (num_cols > num_unknowns: the augmented
-! right-hand sides, overwritten with the solutions). A singular matrix
-! returns ierr = 1. (2026-10: sized from the arguments, it was a fixed
-! system_matrix(56), the 7x8 kemcom case; the singular case no longer
-! writes "STOPPED AT 1010" to unit 5, which is standard input.)
-pure subroutine simeqc(system_matrix, num_cols, num_unknowns, ierr)
+! Gaussian elimination with partial pivoting and back substitution
+! (IBM SSP's SIMQ, extended to several right-hand sides) on the
+! num_unknowns x num_cols system a = [A | B]: columns 1..num_unknowns
+! hold A, the rest (num_cols > num_unknowns) the right-hand sides,
+! which are overwritten with the solutions. A is destroyed. The pivot
+! of column j is the first largest |a(i,j)|, i >= j. ierr
+! (numerics_status): numerics_singular for a zero pivot. (2026-10: on a
+! 2-D array, with the flat-index arithmetic of SIMQ written as
+! subscripts in the same order of operations; sized from the arguments,
+! it was a fixed system_matrix(56), the 7x8 kemcom case; the singular
+! case no longer writes "STOPPED AT 1010" to unit 5, standard input.)
+pure subroutine simeqc(a, num_cols, num_unknowns, ierr)
       integer, intent(in) :: num_cols, num_unknowns
-      real(dp), intent(inout) :: system_matrix(num_unknowns*num_cols)
-      integer :: jj, j, jy, it, i, ij, imax, ia, ib, ic, id, ix, jx, ny, &
-           n1, ig, ih
-      real(dp) :: biga, swap_val
-
+      real(dp), intent(inout) :: a(num_unknowns, num_cols)
       integer, intent(out) :: ierr
 
-      ierr = 0
+      integer :: n, j, i, k, pivot_row, row, col
+      real(dp) :: pivot, swap
 
-      jj=-num_unknowns
-      do j=1,num_unknowns
-      jy=j+1
-      jj=jj+num_unknowns+1
-      biga=0.0d0
-      it=jj-j
-      do i=j,num_unknowns
-      ij=it+i
-      if(abs(biga) >= abs(system_matrix(ij))) cycle
-      biga=system_matrix(ij)
-      imax=i
+      ierr = numerics_ok
+      n = num_unknowns
+! forward elimination: row j scaled by its pivot, then subtracted from
+! the rows below
+      do j = 1, n
+         pivot = 0.0d0
+         do i = j, n
+            if (abs(pivot) >= abs(a(i,j))) cycle
+            pivot = a(i,j)
+            pivot_row = i
+         end do
+         if (abs(pivot) == 0.0d0) then
+            ierr = numerics_singular
+            return
+         end if
+         do col = j, num_cols
+            swap = a(j,col)
+            a(j,col) = a(pivot_row,col)
+            a(pivot_row,col) = swap
+            a(j,col) = a(j,col)/pivot
+         end do
+         if (j == n) exit
+         do row = j+1, n
+            do col = j+1, num_cols
+               a(row,col) = a(row,col) - a(row,j)*a(j,col)
+            end do
+         end do
       end do
-      if (abs(biga) == 0.0d0) then
-      ierr = numerics_singular
-      return
-      end if
-      ia=j+num_unknowns*(j-2)
-      it=imax-j
-      do i=j,num_cols
-      ia=ia+num_unknowns
-      ib=ia+it
-      swap_val=system_matrix(ia)
-      system_matrix(ia)=system_matrix(ib)
-      system_matrix(ib)=swap_val
-      system_matrix(ia)=system_matrix(ia)/biga
-      end do
-      if(j == num_unknowns) exit
-      ia=num_unknowns*(j-1)
-      do ix=jy,num_unknowns
-      ib=ia+ix
-      it=j-ix
-      do jx=jy,num_cols
-      ic=num_unknowns*(jx-1)+ix
-      id=ic+it
-      system_matrix(ic)=system_matrix(ic)-system_matrix(ib)*system_matrix(id)
-      end do
-      end do
-      end do
-      ny=num_unknowns-1
-      it=num_unknowns*num_unknowns
-      do j=1,ny
-      ia=it-j
-      ic=num_unknowns*num_cols
-      ib=ic-j
-      do i=1,j
-      system_matrix(ib)=system_matrix(ib)-system_matrix(ia)*system_matrix(ic)
-      n1=num_cols-1
-      ig=ib
-      ih=ic
-      do
-      if(n1 <= num_unknowns) exit
-      ig=ig-num_unknowns
-      ih=ih-num_unknowns
-      system_matrix(ig)=system_matrix(ig)-system_matrix(ia)*system_matrix(ih)
-      n1=n1-1
-      end do
-      ia=ia-num_unknowns
-      ic=ic-1
-      end do
+! back substitution, from row n-1 up: for each column k of the upper
+! triangle, the last right-hand side first, then the others from the
+! last but one down
+      do j = 1, n-1
+         row = n - j
+         do i = 1, j
+            k = n - i + 1
+            a(row,num_cols) = a(row,num_cols) - a(row,k)*a(k,num_cols)
+            do col = num_cols-1, n+1, -1
+               a(row,col) = a(row,col) - a(row,k)*a(k,col)
+            end do
+         end do
       end do
 end subroutine simeqc
 
