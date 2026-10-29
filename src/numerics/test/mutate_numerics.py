@@ -89,6 +89,8 @@ MUTATIONS = [
     ('numerics/bulirsch_stoer.f90', '          max_stage_index < extrap_order .or. ', '', 'bsstep: limits out of range'),
     ('numerics/bulirsch_stoer.f90', 'if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand', 'if (present(derivatives_ierr)) derivatives_ierr = 0', 'bsstep: failed derivatives'),
     ('numerics/bulirsch_stoer.f90', '       ierr = numerics_step_underflow', '       ierr = numerics_bad_input', 'bsstep: zero tolerance ends in numerics_step_underflow'),
+    ('numerics/bulirsch_stoer.f90', ' derivatives_ierr = jerr_integrand\n               y = y_sav\n', ' derivatives_ierr = jerr_integrand\n', 'bsstep: on a failure y and x are as they came in'),
+    ('numerics/bulirsch_stoer.f90', '            ierr = numerics_step_underflow\n            y = y_sav\n', '            ierr = numerics_step_underflow\n', 'bsstep: on a failure y and x are as they came in'),
     ('numerics/numerics_status.f90', "         text = 'step underflow'", "         text = 'singular matrix'", 'numerics_status: distinct codes'),
 ]
 

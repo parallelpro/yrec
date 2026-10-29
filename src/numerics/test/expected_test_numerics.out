@@ -318,4 +318,5 @@ bsstep: x advances by h_did on every step                                  0.00E
 bsstep: limits out of range are numerics_bad_input, no step                0.00E+00  ok
 bsstep: failed derivatives are numerics_derivatives_failed                 0.00E+00  ok
 bsstep: zero tolerance ends in numerics_step_underflow                     0.00E+00  ok
+bsstep: on a failure y and x are as they came in                           0.00E+00  ok
 numerics_status: distinct codes, each with its own text                    0.00E+00  ok

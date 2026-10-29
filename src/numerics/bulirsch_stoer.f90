@@ -75,9 +75,17 @@ contains
 ! (nothing is done); numerics_derivatives_failed when the derivatives
 ! fail (their code in derivatives_ierr, if present); and
 ! numerics_step_underflow when h underflows, i.e. when
-! underflow_reference + h == underflow_reference. (The envelope passes
-! its hydrogen fraction there: the F77 BSSTEP tested X+H.EQ.X with X
-! its hydrogen-fraction argument, not the independent variable X0.)
+! underflow_reference + h == underflow_reference. On any failure y and
+! indep_var are as they came in, and h_did, h_next and step_err are not
+! meaningful.
+! underflow_reference sets the scale against which h vanishes. The
+! envelope passes its hydrogen fraction there (the F77 BSSTEP tested
+! X+H.EQ.X with X its hydrogen-fraction argument, not the independent
+! variable X0). A reference of zero makes the test h == 0: a step that
+! never meets the tolerance then fails only after h has shrunk by 16 per
+! retry to the smallest subnormal, about 270 retries of max_stage_index
+! midpoint integrations (some 84 000 derivative calls with 11 stages);
+! a new caller passes a value of the order of its independent variable.
 subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scale, &
      h_did, h_next, step_err, max_stage_index, extrap_order, &
      underflow_reference, ierr, derivatives_ierr)
@@ -125,6 +133,7 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
             if (jerr_integrand /= 0) then
                ierr = numerics_derivatives_failed
                if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand
+               y = y_sav
                return
             end if
             x_est = (h/substep_sequence(i))**2
@@ -161,6 +170,7 @@ subroutine bsstep(system, y, dydx, num_eqs, indep_var, h_step, tolerance, y_scal
          h = 0.25d0*h/2.0d0**((max_stage_index-extrap_order)/2)
          if (underflow_reference+h == underflow_reference) then
             ierr = numerics_step_underflow
+            y = y_sav
             return
          end if
       end do

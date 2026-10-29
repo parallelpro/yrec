@@ -31,12 +31,14 @@ module test_numerics_callbacks
       implicit none
 
 ! dy1/dx = y2, dy2/dx = -y1, dy3/dx = -decay*y3: a rotation and a decay.
-! Counts its calls; fails past x = 0.75 when fail is set; returns a NaN
-! derivative for component nan_component (0: none).
+! Counts its calls; fails past x = 0.75 when fail is set, and once it
+! has been called fail_after_calls times; returns a NaN derivative for
+! component nan_component (0: none).
       type, extends(ode_system) :: harmonic_system
          real(dp) :: decay = 0.3d0
          integer :: calls = 0
          logical :: fail = .false.
+         integer :: fail_after_calls = huge(1)
          integer :: nan_component = 0
       contains
          procedure :: derivatives => harmonic_derivatives
@@ -52,7 +54,7 @@ subroutine harmonic_derivatives(self, x, y, dydx, ierr)
       real(dp), parameter :: fail_x = 0.75d0
       ierr = 0
       self%calls = self%calls + 1
-      if (self%fail .and. x > fail_x) then
+      if ((self%fail .and. x > fail_x) .or. self%calls > self%fail_after_calls) then
          ierr = 3
          return
       end if
@@ -1147,10 +1149,19 @@ subroutine bsstep_checks()
       call report_true("bsstep: failed derivatives are numerics_derivatives_failed", &
            ierr == numerics_derivatives_failed .and. jerr == 3)
       sys%fail = .false.
+! derivatives that fail at the third stage, after two have extrapolated
+      sys%fail_after_calls = sys%calls + 2 + 4 + 1
+      call bsstep(sys, y, dydx, 3, x, 0.5d0, 1.0d-10, yscale, h_did, h_next, err, &
+           11, 7, underflow_reference, ierr)
+      sys%fail_after_calls = huge(1)
+      advanced = ierr == numerics_derivatives_failed .and. &
+           all(y == [0.0d0, 1.0d0, 1.0d0]) .and. x == 0.0d0
       call bsstep(sys, y, dydx, 3, x, 0.5d0, 0.0d0, yscale, h_did, h_next, err, &
            11, 7, underflow_reference, ierr)
       call report_true("bsstep: zero tolerance ends in numerics_step_underflow", &
            ierr == numerics_step_underflow)
+      advanced = advanced .and. all(y == [0.0d0, 1.0d0, 1.0d0]) .and. x == 0.0d0
+      call report_true("bsstep: on a failure y and x are as they came in", advanced)
 end subroutine bsstep_checks
 
 ! every status code has its own description
