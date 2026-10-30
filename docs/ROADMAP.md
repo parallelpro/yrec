@@ -2786,7 +2786,7 @@ passed, 1 skipped (HDF5); 63 before the round. The card-1 fix was
 checked on the merged binary on the nine decks it reaches, to a cap of
 300 models. Bugs went into docs/bug_sweep.md section 8 as M47-M88. The
 pins in standard/ were reseeded once, after the round: pins reseeded
-at <RESEED2> (for NET2's two fixes, CTL2's run-log warnings and EOS2's
+at 810a552c, the round's last code commit (for NET2's two fixes, CTL2's run-log warnings and EOS2's
 four moving fixes, below).
 
 #### numerics/ and math/ (NUM2, 22 commits)
