@@ -18,6 +18,7 @@ program test_controls
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use io_units, only: last_model_unit, run_log_unit, terminal_unit
       use controls_reader, only: read_controls
+      use run_files, only: open_run_files
 ! the members the star does not hold (registry home buffer) are dumped
 ! from the read's buffer
       use controls_buffer
@@ -40,6 +41,8 @@ program test_controls
 ! read_controls writes its banner to standard output; the dump goes to
 ! unit 6 after a marker so the two can be told apart
          call read_controls(star, ierr)
+! the run's files, as run_yrec opens them after the read
+         if (ierr == 0) call open_run_files(ierr)
 ! YREC_TEST_READ_TWICE=1: scribble on star%job as a run would (the
 ! Newton factor, a card's envelope X, a Monte-Carlo sample), close the
 ! run's files, then read the deck again into the same star; the dump
@@ -54,6 +57,7 @@ program test_controls
                close(i1)
             end do
             call read_controls(star, ierr)
+            if (ierr == 0) call open_run_files(ierr)
             if (any(star%job%s11_rate /= 0.0d0)) write(u,'(a)') "job%s11_rate kept"
          end if
          write(u,'(a)') "# controls"

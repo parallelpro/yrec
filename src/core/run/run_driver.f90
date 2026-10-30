@@ -85,6 +85,7 @@ subroutine run_yrec(ierr)
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
       use controls_reader, only: read_controls
+      use run_files, only: open_run_files
       implicit none
       integer :: step_status
 
@@ -131,6 +132,11 @@ subroutine run_yrec(ierr)
       s%punch_pending_flag = .false.
 ! Read the controls into star%ctrl and star%job.
       call read_controls(s, ierr)
+      if (ierr /= 0) return
+! the files the deck names: the starting and final models, the run log
+! (which then receives the read's messages), the Monte Carlo and
+! isochrone files
+      call open_run_files(ierr)
       if (ierr /= 0) return
       call output_open(s, output, ierr)
       if (ierr /= 0) return

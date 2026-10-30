@@ -13,7 +13,7 @@
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: run_log_unit, report_warning, report_note
+      use io_units, only: report_warning, report_note, log_line
       use legacy_controls
       use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006
@@ -282,6 +282,7 @@ subroutine write_run_log_header
 ! the banner's format, fitted to the version strings (a zero width is
 ! illegal)
       character(len=64) :: version_fmt
+      character(len=message_length) :: line
 
       write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
            max(1, len_trim(git_hash_string))
@@ -289,26 +290,26 @@ subroutine write_run_log_header
            &        ', '')'')')
       select case (atm_choice)
       case (0)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Eddington gray T(tau) relation'
+         call log_line(' surface boundary: Eddington gray T(tau) relation')
       case (1)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Krishna-Swamy T(tau) relation'
+         call log_line(' surface boundary: Krishna-Swamy T(tau) relation')
       case (2)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Harvard-Smithsonian reference atmosphere'
+         call log_line(' surface boundary: Harvard-Smithsonian reference atmosphere')
       case (3)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Kurucz atmosphere tables'
+         call log_line(' surface boundary: Kurucz atmosphere tables')
       case (4)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Allard atmosphere tables'
+         call log_line(' surface boundary: Allard atmosphere tables')
       case (5)
-         write(run_log_unit,'(1x,a)') 'surface boundary: Kurucz/Castelli atmosphere tables'
+         call log_line(' surface boundary: Kurucz/Castelli atmosphere tables')
       end select
-      if (use_pure_z_table) &
-           write(run_log_unit,'(1x,a)') 'opacity: pure C and N tables enabled'
-      write(run_log_unit,'(/,1x,100(''=''))')
-      write(run_log_unit,version_fmt) yrec_version_string, git_hash_string
-      write(run_log_unit,'(1x,2a)') 'description: ', trim(descrip(1))
-      if (len_trim(descrip(2)) > 0) &
-           write(run_log_unit,'(14x,a)') trim(descrip(2))
-      write(run_log_unit,'(1x,100(''=''))')
+      if (use_pure_z_table) call log_line(' opacity: pure C and N tables enabled')
+      call log_line('')
+      call log_line(' ' // repeat('=', 100))
+      write(line, version_fmt) yrec_version_string, git_hash_string
+      call log_line(trim(line))
+      call log_line(' description: ' // trim(descrip(1)))
+      if (len_trim(descrip(2)) > 0) call log_line(repeat(' ', 14) // trim(descrip(2)))
+      call log_line(' ' // repeat('=', 100))
 end subroutine write_run_log_header
 
 end module derived_controls

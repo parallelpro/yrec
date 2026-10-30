@@ -61,6 +61,7 @@ end module test_structure_source
 
 program test_structure
       use controls_reader, only: read_controls
+      use run_files, only: open_run_files
       use run_setup, only: set_up_constants_and_tables
       use net_lib, only: set_net_settings
       use net_settings_setup, only: net_settings_from_star
@@ -132,6 +133,8 @@ subroutine load_deck_model(path)
       physics_nml_override = path
       call read_controls(star, ierr)
       if (ierr /= 0) call die('read_controls')
+      call open_run_files(ierr)
+      if (ierr /= 0) call die('open_run_files')
       call set_up_constants_and_tables(star, ierr)
       if (ierr /= 0) call die('set_up_constants_and_tables')
       call set_net_settings(net_settings_from_star(star), ierr)

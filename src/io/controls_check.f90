@@ -19,7 +19,10 @@ module controls_check
       use io_units, only: report_error, report_warning
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
-      use controls_buffer, only: max_runs
+      use controls_buffer, only: max_runs, use_semiconvection, core_overshoot_active, &
+           envelope_overshoot_active, lovstm, tri_delta_teffl, tri_delta_logl, &
+           rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
+           extrap_order, num_runs
       use rotation_configuration, only: max_transport_iterations
       implicit none
       private
@@ -38,8 +41,7 @@ subroutine warn(text)
 end subroutine warn
 
 !----------------------------------------------------------------------
-! check_controls: the errors, from the controls as read (the read stores
-! them into s before it opens the run's files). ierr = 1 when
+! check_controls: the errors, from the controls as read. ierr = 1 when
 !   - semiconvection is on with any overshoot (rejected since the F77
 !     PARMIN);
 !   - the envelope triangle's size is not positive (with zero area its
@@ -55,60 +57,54 @@ end subroutine warn
 !     (above, its step-size retry loop has no end); or the tolerance is
 !     not positive;
 !   - num_runs is outside 0 to max_runs (the run cards' arrays).
-!   star reads: ctrl%core_overshoot_active,
-!     ctrl%envelope_overshoot_active, ctrl%extrap_order, ctrl%lovstm,
-!     ctrl%max_diffusion_iters, ctrl%max_stage_index,
-!     ctrl%rotation_active, ctrl%tolerance_fraction,
-!     ctrl%tri_delta_logl, ctrl%tri_delta_teffl,
-!     ctrl%use_semiconvection, job%num_runs
-!   star writes: none
-subroutine check_controls(s, ierr)
-      type(star_info), intent(in) :: s
+! It reads the controls in the read's buffer, after adopt_canonical_names
+! and map_user_inputs.
+subroutine check_controls(ierr)
       integer, intent(inout) :: ierr
       character(len=message_length) :: line
 
-      if (s%ctrl%use_semiconvection .and. (s%ctrl%core_overshoot_active .or. &
-           s%ctrl%envelope_overshoot_active .or. s%ctrl%lovstm)) then
+      if (use_semiconvection .and. (core_overshoot_active .or. &
+           envelope_overshoot_active .or. lovstm)) then
          write(line,'(a,3l2)') 'SEMI-CONVECTION and overshoot are both on:' &
               //' use_semiconvection (LSEMIC) with core, envelope, intermediate overshoot' &
-              //' (LOVSTC, LOVSTE, LOVSTM) =', s%ctrl%core_overshoot_active, &
-              s%ctrl%envelope_overshoot_active, s%ctrl%lovstm
+              //' (LOVSTC, LOVSTE, LOVSTM) =', core_overshoot_active, &
+              envelope_overshoot_active, lovstm
          call report_error(line)
          ierr = 1
          return
       end if
-      if (s%ctrl%tri_delta_teffl <= 0.0d0 .or. s%ctrl%tri_delta_logl <= 0.0d0) then
+      if (tri_delta_teffl <= 0.0d0 .or. tri_delta_logl <= 0.0d0) then
          write(line,'(a,1pe11.3,a,1pe11.3)') 'the envelope triangle''s size must be' &
-              //' positive: tri_delta_teffl (TRIDT) =', s%ctrl%tri_delta_teffl, &
-              ', tri_delta_logl (TRIDL) =', s%ctrl%tri_delta_logl
+              //' positive: tri_delta_teffl (TRIDT) =', tri_delta_teffl, &
+              ', tri_delta_logl (TRIDL) =', tri_delta_logl
          call report_error(line)
          ierr = 1
          return
       end if
-      if (s%ctrl%rotation_active .and. (s%ctrl%max_diffusion_iters < 1 .or. &
-           s%ctrl%max_diffusion_iters > max_transport_iterations)) then
+      if (rotation_active .and. (max_diffusion_iters < 1 .or. &
+           max_diffusion_iters > max_transport_iterations)) then
          write(line,'(a,i0,a,i0)') 'max_diffusion_iters (ITDIF2) must be 1 to ', &
-              max_transport_iterations, ', not ', s%ctrl%max_diffusion_iters
+              max_transport_iterations, ', not ', max_diffusion_iters
          call report_error(line)
          ierr = 1
          return
       end if
-      if (s%ctrl%tolerance_fraction <= 0.0d0 .or. s%ctrl%max_stage_index < 1 .or. &
-           s%ctrl%max_stage_index > bsstep_max_stages .or. s%ctrl%extrap_order < 2 &
-           .or. s%ctrl%extrap_order > bsstep_max_extrap_order &
-           .or. s%ctrl%extrap_order > s%ctrl%max_stage_index) then
+      if (tolerance_fraction <= 0.0d0 .or. max_stage_index < 1 .or. &
+           max_stage_index > bsstep_max_stages .or. extrap_order < 2 &
+           .or. extrap_order > bsstep_max_extrap_order &
+           .or. extrap_order > max_stage_index) then
          write(line,'(a,i0,a,i0,a,1pe11.3,a,i0,a,i0)') 'the Bulirsch-Stoer controls need' &
               //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to ', &
               bsstep_max_stages, ' and extrap_order (NUSE) 2 to ', bsstep_max_extrap_order, &
-              ' and at most IMAX, not', s%ctrl%tolerance_fraction, ', ', &
-              s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
+              ' and at most IMAX, not', tolerance_fraction, ', ', &
+              max_stage_index, ', ', extrap_order
          call report_error(line)
          ierr = 1
          return
       end if
-      if (s%job%num_runs < 0 .or. s%job%num_runs > max_runs) then
+      if (num_runs < 0 .or. num_runs > max_runs) then
          write(line,'(a,i0,a,i0)') 'num_runs (NUMRUN) must be 0 to ', max_runs, &
-              ', not ', s%job%num_runs
+              ', not ', num_runs
          call report_error(line)
          ierr = 1
          return

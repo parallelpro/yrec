@@ -66,7 +66,7 @@ How to read the tables:
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
 | `ctrl` (type `controls_state`) | the namelist controls the run reads, by their canonical names | - | `controls_reader` (read_controls); `controls_sync` (store_controls_to_star) | 33 modules (core/ 23, io/ 7, setup/ 3) | Reset to the declared defaults before each read; members: `src/defaults/controls_registry.md`, generated into `controls_state_def.inc` |
-| `job` (type `star_job`) | the run's job: the run-card arrays and latches (the controls the run changes), the Monte-Carlo samples and the run-card cursor nk | - | `envelope_integration`, `model_rescaling`, `starting_model`, `calibration`, `monte_carlo`, `run_driver`, `mass_change`, `step_driver`, `henyey_iteration`, `surface_boundary`, `controls_reader`, `controls_sync` (22 procedures) | 20 modules (core/ 14, io/ 5, setup/ 1) | Changed by the run: the calibrations rewrite the next cards, the stop conditions disarm thresholds, the atmosphere switch changes `atm_choice`, the solver ramps fcorr |
+| `job` (type `star_job`) | the run's job: the run-card arrays and latches (the controls the run changes), the Monte-Carlo samples and the run-card cursor nk | - | `envelope_integration`, `model_rescaling`, `starting_model`, `calibration`, `monte_carlo`, `run_driver`, `mass_change`, `step_driver`, `henyey_iteration`, `surface_boundary`, `controls_reader`, `controls_sync` (22 procedures) | 19 modules (core/ 14, io/ 4, setup/ 1) | Changed by the run: the calibrations rewrite the next cards, the stop conditions disarm thresholds, the atmosphere switch changes `atm_choice`, the solver ramps fcorr |
 
 ### 3.2 Constants set at setup
 

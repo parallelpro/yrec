@@ -5,7 +5,10 @@
 ! pristine defaults: star%ctrl = controls_state() and star%job =
 ! star_job() (generated from controls_buffer's declarations), seeded
 ! into the buffer (seed_controls_buffer); read_input reads the deck over
-! the buffer, and store_controls_to_star copies the result back. The read's steps
+! the buffer, the steps below turn it into the controls the run uses,
+! and store_controls_to_star copies the result back. The read opens no
+! file of the run (run_yrec's open_run_files does, after it); its
+! messages reach the run log when that opens (io_units). The read's steps
 ! live in legacy_controls (the namelist variables and their defaults),
 ! run_files, controls_check (the errors and warnings), derived_controls
 ! and run_cards; the copies between the legacy and the canonical names
@@ -20,10 +23,10 @@ module controls_reader
            control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: check_io
+      use io_units, only: check_io, discard_pending_log
 ! the generated includes name every namelist variable
       use legacy_controls
-      use run_files, only: assign_unit_numbers, expand_paths, open_run_files
+      use run_files, only: assign_unit_numbers, expand_paths
       use derived_controls, only: derive_controls
       use controls_check, only: check_controls, warn_inert_controls
       use run_cards, only: interpret_kind_cards
@@ -39,29 +42,36 @@ subroutine read_controls(s, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
+      call discard_pending_log
 ! the declared defaults, whatever an earlier read or run left on s
       s%ctrl = controls_state()
       s%job = star_job()
       call seed_controls_buffer(s)
       call set_solver_diagnostics(report_solver_diagnostics)
-      call read_input(s, ierr)
+! the deck, under the canonical names, and the readable inputs mapped
+      call read_input(ierr)
       if (ierr /= 0) return
+      call adopt_canonical_names(s)
+      call map_user_inputs(s)
+      call expand_paths
+! the errors, the inert legacy controls, the derived controls, the run
+! plan
+      call check_controls(ierr)
+      if (ierr /= 0) return
+      call warn_inert_controls
+      call derive_controls(s)
+      call interpret_kind_cards(s)
       call store_controls_to_star(s)
       call set_solver_diagnostics(report_solver_diagnostics)
-
-      return
 end subroutine read_controls
 
 !----------------------------------------------------------------------
 ! read_input
 !----------------------------------------------------------------------
-! Reads the deck: a single-file inlist (&control and &physics) or a
-! legacy CONTROL/PHYSICS namelist pair (yrec8.nml1 and yrec8.nml2, or
-! the two files named on the command line). Then copies the values to
-! their canonical names, opens the run's files, derives the remaining
-! controls and turns the kind cards into the run plan.
-subroutine read_input(s, ierr)
-      type(star_info), intent(inout) :: s
+! Reads the deck over the defaults: a single-file inlist (&control and
+! &physics) or a legacy CONTROL/PHYSICS namelist pair (yrec8.nml1 and
+! yrec8.nml2, or the two files named on the command line).
+subroutine read_input(ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -81,21 +91,6 @@ subroutine read_input(s, ierr)
       end if
       print *, ' '
       call read_namelist_files(ierr)
-      if (ierr /= 0) return
-      call adopt_canonical_names(s)
-      call map_user_inputs(s)
-! check_controls, below, reads the controls from star%ctrl and star%job
-      call store_controls_to_star(s)
-      call set_solver_diagnostics(report_solver_diagnostics)
-      call expand_paths
-      call open_run_files(s, ierr)
-      if (ierr /= 0) return
-      call check_controls(s, ierr)
-      if (ierr /= 0) return
-      call warn_inert_controls
-      call derive_controls(s)
-      call interpret_kind_cards(s)
-
 end subroutine read_input
 
 

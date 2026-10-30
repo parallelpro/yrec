@@ -6,7 +6,7 @@
 ! terminal and the run log.
 module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: run_log_unit, terminal_unit
+      use io_units, only: terminal_unit, log_line
       use eos_lib, only: eos_set_mixture
       use legacy_controls, only: numrun, kindrn, nmodls, endage, &
            setdt, end_dcen, end_xcen, end_ycen, rsclm, rsclx, rsclz, rsclcm
@@ -33,8 +33,9 @@ subroutine interpret_kind_cards(s)
       type(star_info), intent(inout) :: s
       integer :: n
 
-      write(run_log_unit,200)
-  200 format(/1x,'run plan',/)
+      call log_line('')
+      call log_line(' run plan')
+      call log_line('')
 
 ! card 1 has no previous card's model: it starts from the starting
 ! model whatever the deck says (as the F77 PARMIN forced LFIRST(1))
@@ -133,7 +134,7 @@ end subroutine echo_card
 subroutine echo(line)
       character(len=*), intent(in) :: line
       write(terminal_unit,'(a)') trim(line)
-      write(run_log_unit,'(a)') trim(line)
+      call log_line(trim(line))
 end subroutine echo
 
 end module run_cards

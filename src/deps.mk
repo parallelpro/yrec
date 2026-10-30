@@ -355,7 +355,7 @@ core/model/shell_boundaries.o: controls_buffer.mod star_info_lib.mod
 core/model/starting_model.o: am_regions.mod controls_buffer.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/run/calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/run/monte_carlo.o: io_units.mod math_lib.mod model_files.mod net_lib.mod physical_constants.mod star_info_lib.mod
-core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod io_units.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
+core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod io_units.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
 core/run/run_setup.o: math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod io_units.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
@@ -377,7 +377,7 @@ core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod io_units
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
-core/test/test_structure.o: controls_reader.mod convection_lib.mod energy_sources.mod eos_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
+core/test/test_structure.o: controls_reader.mod convection_lib.mod energy_sources.mod eos_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod run_files.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod
 element_diffusion/diffusion_scheme.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod physical_constants.mod
@@ -417,9 +417,9 @@ io/output_columns.o: io_units.mod
 io/profile_output.o: io_units.mod output_columns.mod star_info_lib.mod stitched_model.mod stitched_model_state.mod
 io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 io/run_cards.o: controls_buffer.mod eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
-io/run_files.o: io_units.mod legacy_controls.mod star_info_lib.mod
+io/run_files.o: io_units.mod legacy_controls.mod
 io/run_log.o: io_units.mod star_info_lib.mod
-io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod star_info_lib.mod
+io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod run_files.mod star_info_lib.mod
 io/user_inputs.o: controls_buffer.mod net_lib.mod star_info_lib.mod
 io/yrec_output.o: history_output.mod io_units.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod stitched_model_state.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod

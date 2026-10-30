@@ -8,7 +8,7 @@
 module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
-           isochrone_unit
+           isochrone_unit, flush_pending_log
       use legacy_controls
       implicit none
       private
@@ -87,12 +87,10 @@ end subroutine expand_paths
 ! deck names one), then the run's files opened: the starting
 ! model, the final model (the restart file, and the solver's recovery
 ! source when a step diverges), the run log, and the Monte Carlo and
-! isochrone files when those are on. (The history and profile files
-! are the output's: yrec_output's output_open, after the read. s is
-! unused.)
-subroutine open_run_files(s, ierr)
-      use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
+! isochrone files when those are on: the files the controls read named,
+! which run_yrec opens after the read. (The history and profile files
+! are the output's: yrec_output's output_open.)
+subroutine open_run_files(ierr)
       integer, intent(inout) :: ierr
       character(len=256) :: msg, inlist_copy
       integer :: ios
@@ -191,6 +189,7 @@ subroutine open_run_log(log_output_file, ierr)
       open(run_log_unit, file=log_path, form='FORMATTED', &
            status='REPLACE', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the run log', log_path, ierr)
+      if (ierr == 0) call flush_pending_log
 end subroutine open_run_log
 
 ! ---------------------------------------------------------------
