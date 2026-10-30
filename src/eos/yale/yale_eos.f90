@@ -1101,13 +1101,14 @@ end subroutine compute_internal_energy_and_cp
 ! Reads the Fermi-Dirac integral table of the degenerate electron gas
 ! (FERMI.TAB: 43 abscissas, 43 degeneracies, 860 cards of 5 values)
 ! into yale, and bins the abscissas into fermi_table_x_lookup, the
-! interval index compute_fully_ionized_eos looks up. A non-increasing
-! abscissa is a corrupt table: ierr = 1.
+! interval index compute_fully_ionized_eos looks up. A table that cannot
+! be opened, a read that fails (a truncated or corrupt table) and a
+! non-increasing abscissa are ierr = 1, with a message.
 subroutine read_fermi_table(fermi_table_path, ierr)
       character(len=*), intent(in) :: fermi_table_path
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
-      integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx
+      integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx, ios
       integer :: bin_start, bin_width, bin_end
 
       ierr = 0
@@ -1120,12 +1121,21 @@ subroutine read_fermi_table(fermi_table_path, ierr)
          ierr = 1
          return
       end if
-      read(fermi_unit,150)  (yale%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,150)  (yale%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      read(fermi_unit,160) (grid_idx,iden_idx,(yale%fermi_table_data(col_idx,grid_idx,iden_idx), &
-           col_idx=1,5),card_idx=1,860)
+      read(fermi_unit,150,iostat=ios)  (yale%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
+      if (ios == 0) read(fermi_unit,150,iostat=ios)  (yale%fermi_table_eta(grid_idx), grid_idx = 1,43)
+      if (ios == 0) read(fermi_unit,160,iostat=ios) (grid_idx,iden_idx, &
+           (yale%fermi_table_data(col_idx,grid_idx,iden_idx), col_idx=1,5),card_idx=1,860)
   150 format(8x,9f8.4)
   160 format(2i5,5f12.7)
+      if (ios /= 0) then
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'eos_init: the Fermi-Dirac table ends early or is corrupt: ', &
+              trim(fermi_table_path)
+         call eos_report(eos_lines)
+         close(fermi_unit)
+         ierr = 1
+         return
+      end if
       bin_start = 1
       do grid_idx=1,41
 ! a non-increasing abscissa is a corrupt table

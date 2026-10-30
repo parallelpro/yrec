@@ -665,4 +665,13 @@ ok   SCV reader: a missing table returns ierr = 1 and leaves no table open
 eos_init: an SCV table ends early or is corrupt, at T row 9; the H table: scv_truncated
 ok   SCV reader: a truncated table returns ierr = 1
 # test_eos: configuration scv_only
+ eos_init: cannot open the Fermi-Dirac table fermi_missing
+ eos_init: the Fermi-Dirac table ends early or is corrupt: fermi_truncated
+ok   Fermi table: a missing or truncated table returns ierr = 1, its unit closed
+# test_eos: configuration production
+OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density column 15
+ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed
+ eos_init: cannot open the OPAL EOS table opal06_missing
+ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
+# test_eos: configuration production
 test_eos: done

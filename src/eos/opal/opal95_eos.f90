@@ -339,14 +339,14 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
       density_value = density
 
       if (opal_shared%table_loaded_flag(iv_opal95) /= opal_flag_set) then
-         opal_shared%table_loaded_flag(iv_opal95) = opal_flag_set
          do species_idx = 1, mx
             v%x_grid_copy(species_idx) = lay95%x_grid(species_idx)
          end do
 !
-! ..... read the data files
+! ..... read the data files (the table counts as loaded once it is read)
          call readco(v, ierr)
          if (ierr /= 0) return
+         opal_shared%table_loaded_flag(iv_opal95) = opal_flag_set
          opal_shared%table_metal_fraction(iv_opal95) = v%z_table(1)
 
          if (opal_shared%table_metal_fraction(iv_opal95) + hydrogen_fraction - 1.0d-6 > 1.0d0) then
@@ -965,6 +965,8 @@ subroutine readco(v, ierr)
       integer :: density_row, t6_row, record_number
       real(dp) :: unused_field
       character(len=message_length) :: eos_lines(4)
+      integer :: ios
+      logical :: layout_error
 
       ierr = 0
 
@@ -983,58 +985,29 @@ subroutine readco(v, ierr)
          opal_shared%readco_init_flag(iv_opal95) = opal_flag_set
       end if
 
-! ..... read  tables (on the unit eos_init's open_opal_eos_table opened)
-      do x_loop_index = 1, mx
-
-         read (opal_shared%table_unit,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)') &
-              v%hydrogen_fraction_header(x_loop_index), &
-              v%z_table(x_loop_index), &
-              v%moles_per_gram_table(x_loop_index), &
-              v%mean_molecular_weight_header(x_loop_index)
-         read (opal_shared%table_unit,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
-              &4X,E11.4)') (v%species_fraction_header(x_loop_index,var_idx), &
-              var_idx=1,6)
-         read (opal_shared%table_unit,'(A)') blank_line
-         do density_row = 1, nr
-            read (opal_shared%table_unit,'(2I5,2F12.7,17X,E15.7)') record_number, &
-                 v%temperature_count_used(x_loop_index,density_row), &
-                 unused_field, unused_field, &
-                 v%density_grid_table(x_loop_index,density_row)
-            if (record_number /= density_row) then
-               eos_lines = unwritten_line
-               write(eos_lines,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') record_number, density_row
-               call eos_report(eos_lines)
-               ierr = 1
-               return
-            end if
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-            if (v%temperature_count_used(x_loop_index,density_row) < &
-                 lay95%t6_index_lo(density_row)) then
-               eos_lines = unwritten_line
-               write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') v%hydrogen_fraction_header(x_loop_index), &
-                    v%density_grid_table(x_loop_index,density_row)
-               call eos_report(eos_lines)
-               ierr = 1
-               return
-            end if
-            do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
-               if (t6_row > lay95%t6_index_lo(density_row)) then
-                  read (opal_shared%table_unit,'(A)') blank_line
-                  cycle
-               end if
-               read (opal_shared%table_unit,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)') &
-                    v%t6_list(density_row,t6_row), &
-                    v%log10_r_value(density_row,t6_row), &
-                    (v%eos_table(x_loop_index,var_idx, &
-                    t6_row,density_row), var_idx=1,10)
-            end do
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-         end do
-         read(opal_shared%table_unit,'(A)') blank_line
-      end do
+! ..... read  tables (on the unit eos_init's open_opal_eos_table opened);
+! a read that fails or a block out of its layout ends the read with
+! ierr = 1, the unit closed
+      if (opal_shared%table_unit == 0) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(a)') ' OPAL 1995 EOS: no table is open to read (eos_init opens it)'
+         call eos_report(eos_lines)
+         ierr = 1
+         return
+      end if
+      call read_table_blocks(ios, layout_error)
+      if (ios /= 0 .or. layout_error) then
+         if (ios /= 0) then
+            eos_lines = unwritten_line
+            write(eos_lines,'(a,i0,a,i0)') ' OPAL 1995 EOS: the table ends early or is corrupt: X block ', &
+                 x_loop_index, ', density column ', density_row
+            call eos_report(eos_lines)
+         end if
+         close (opal_shared%table_unit)
+         opal_shared%table_unit = 0
+         ierr = 1
+         return
+      end if
 
       do t6_scan_idx = 1, nt
          if (v%t6_list(1,t6_scan_idx) == 0.0d0) exit
@@ -1062,6 +1035,79 @@ subroutine readco(v, ierr)
       do t6_idx = 1, nt
          v%density_edge_at_t(t6_idx) = v%density_grid(lay95%density_index_edge(t6_idx))
       end do
+contains
+
+! Each X block of the table: its header, then for each density column
+! its record (its number, with at least the T6 rows the table needs)
+! and its T6 rows.
+subroutine read_table_blocks(ios, layout_error)
+      integer, intent(out) :: ios
+      logical, intent(out) :: layout_error
+      integer :: u
+      u = opal_shared%table_unit
+      layout_error = .false.
+      density_row = 0
+      do x_loop_index = 1, mx
+         read (u,'(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)',iostat=ios) &
+              v%hydrogen_fraction_header(x_loop_index), &
+              v%z_table(x_loop_index), &
+              v%moles_per_gram_table(x_loop_index), &
+              v%mean_molecular_weight_header(x_loop_index)
+         if (ios /= 0) return
+         read (u,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+              &4X,E11.4)',iostat=ios) (v%species_fraction_header(x_loop_index,var_idx), &
+              var_idx=1,6)
+         if (ios /= 0) return
+         read (u,'(A)',iostat=ios) blank_line
+         if (ios /= 0) return
+         do density_row = 1, nr
+            read (u,'(2I5,2F12.7,17X,E15.7)',iostat=ios) record_number, &
+                 v%temperature_count_used(x_loop_index,density_row), &
+                 unused_field, unused_field, &
+                 v%density_grid_table(x_loop_index,density_row)
+            if (ios /= 0) return
+            if (record_number /= density_row) then
+               eos_lines = unwritten_line
+               write(eos_lines,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') record_number, density_row
+               call eos_report(eos_lines)
+               layout_error = .true.
+               return
+            end if
+            read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios /= 0) return
+            if (v%temperature_count_used(x_loop_index,density_row) < &
+                 lay95%t6_index_lo(density_row)) then
+               eos_lines = unwritten_line
+               write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') v%hydrogen_fraction_header(x_loop_index), &
+                    v%density_grid_table(x_loop_index,density_row)
+               call eos_report(eos_lines)
+               layout_error = .true.
+               return
+            end if
+            do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
+               if (t6_row > lay95%t6_index_lo(density_row)) then
+                  read (u,'(A)',iostat=ios) blank_line
+                  if (ios /= 0) return
+                  cycle
+               end if
+               read (u,'(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)',iostat=ios) &
+                    v%t6_list(density_row,t6_row), &
+                    v%log10_r_value(density_row,t6_row), &
+                    (v%eos_table(x_loop_index,var_idx, &
+                    t6_row,density_row), var_idx=1,10)
+               if (ios /= 0) return
+            end do
+            read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios /= 0) return
+         end do
+         read(u,'(A)',iostat=ios) blank_line
+         if (ios /= 0) return
+      end do
+end subroutine read_table_blocks
+
 end subroutine readco
 
 end module opal95_eos

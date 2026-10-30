@@ -496,14 +496,14 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       density_value = density
 !
       if (opal_shared%table_loaded_flag(vintage) /= opal_flag_set) then
-         opal_shared%table_loaded_flag(vintage) = opal_flag_set
          do species_idx = 1, mx
             v%x_grid_copy(species_idx) = x_grid(species_idx)
          end do
 !
-! ..... read the data files
+! ..... read the data files (the table counts as loaded once it is read)
          call readcoeos(v, vintage, ierr)
          if (ierr /= 0) return
+         opal_shared%table_loaded_flag(vintage) = opal_flag_set
          opal_shared%table_metal_fraction(vintage) = v%z_table(1)
 
          if (opal_shared%table_metal_fraction(vintage)+hydrogen_fraction-1.0d-6 > 1) then
@@ -839,10 +839,17 @@ subroutine readcoeos(v, vintage, ierr)
       integer :: density_row, t6_row, record_number
       integer :: column_idx, table_var_idx
       real(dp) :: unused_field, unused_header(2), unused_species(6), unused_columns(2)
+      integer :: ios
+      logical :: layout_error
 
       nr = opal_layout(vintage)%nr
       nt = opal_layout(vintage)%nt
       ierr = 0
+      if (opal_shared%table_unit == 0) then
+         call report_no_table(vintage)
+         ierr = 1
+         return
+      end if
 
       blank_line = ' '
 
@@ -862,54 +869,23 @@ subroutine readcoeos(v, vintage, ierr)
          opal_shared%readco_init_flag(vintage) = opal_flag_set
       end if
 
-! .....read  tables (on the unit open_opal_eos_table opened)
-      do x_loop_index = 1, mx
-         read (opal_shared%table_unit,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)') &
-              v%hydrogen_fraction_header(x_loop_index), &
-              v%z_table(x_loop_index), unused_header(1), unused_header(2)
-         read (opal_shared%table_unit,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
-              &4X,E11.4)') unused_species
-         read (opal_shared%table_unit,'(A)') blank_line
-         do density_row = 1, nr
-            read (opal_shared%table_unit,'(2I5,2F12.7,17X,E15.7)') record_number, &
-                 v%temperature_count_used(x_loop_index,density_row), &
-                 unused_field, unused_field, &
-                 v%density_grid_table(x_loop_index,density_row)
-            if (record_number /= density_row) then
-               call report_record_number(vintage, record_number, density_row)
-               ierr = 1
-               return
-            end if
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-            if (v%temperature_count_used(x_loop_index,density_row) < &
-                 opal_layout(vintage)%t6_index_lo(density_row)) then
-               call report_short_column(vintage, v%hydrogen_fraction_header(x_loop_index), &
-                    v%density_grid_table(x_loop_index,density_row))
-               ierr = 1
-               return
-            end if
-            do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
-               if (t6_row > opal_layout(vintage)%t6_index_lo(density_row)) then
-                  read (opal_shared%table_unit,'(A)') blank_line
-                  cycle
-               end if
-               read (opal_shared%table_unit, opal_layout(vintage)%row_format) &
-                    v%t6_list(density_row,t6_row), &
-                    (unused_columns(column_idx), column_idx=1,opal_layout(vintage)%n_skipped_columns), &
-                    (v%eos_table(x_loop_index,table_var_idx,t6_row,density_row), &
-                    table_var_idx=1,9)
-            end do
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-            read(opal_shared%table_unit,'(A)') blank_line
-         end do
-         read(opal_shared%table_unit,'(A)') blank_line
-      end do
+! .....read  tables (on the unit open_opal_eos_table opened); a read
+! that fails or a block out of its layout ends the read with ierr = 1,
+! the unit closed
+      call read_table_blocks(ios, layout_error)
+      if (ios /= 0 .or. layout_error) then
+         if (ios /= 0) call report_bad_table(vintage, x_loop_index, density_row)
+         close (opal_shared%table_unit)
+         opal_shared%table_unit = 0
+         ierr = 1
+         return
+      end if
 
       do t6_scan_idx = 1, nt
          if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
             call report_zero_t6(vintage, t6_scan_idx)
+            close (opal_shared%table_unit)
+            opal_shared%table_unit = 0
             ierr = 1
             return
          end if
@@ -936,6 +912,72 @@ subroutine readcoeos(v, vintage, ierr)
       do t6_idx = 1, nt
          v%density_edge_at_t(t6_idx) = v%density_grid(opal_layout(vintage)%density_index_edge(t6_idx))
       end do
+
+contains
+
+! Each X block of the table: its header, then for each density column
+! its record (which must be the column's number, with at least the
+! T6 rows the table needs) and its T6 rows in the vintage's row format.
+subroutine read_table_blocks(ios, layout_error)
+      integer, intent(out) :: ios
+      logical, intent(out) :: layout_error
+      integer :: u
+      u = opal_shared%table_unit
+      layout_error = .false.
+      density_row = 0
+      do x_loop_index = 1, mx
+         read (u,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)',iostat=ios) &
+              v%hydrogen_fraction_header(x_loop_index), &
+              v%z_table(x_loop_index), unused_header(1), unused_header(2)
+         if (ios /= 0) return
+         read (u,'(21X,E14.7,4X,E14.7,3X,E11.4,3X,E11.4,3X,E11.4, &
+              &4X,E11.4)',iostat=ios) unused_species
+         if (ios /= 0) return
+         read (u,'(A)',iostat=ios) blank_line
+         if (ios /= 0) return
+         do density_row = 1, nr
+            read (u,'(2I5,2F12.7,17X,E15.7)',iostat=ios) record_number, &
+                 v%temperature_count_used(x_loop_index,density_row), &
+                 unused_field, unused_field, &
+                 v%density_grid_table(x_loop_index,density_row)
+            if (ios /= 0) return
+            if (record_number /= density_row) then
+               call report_record_number(vintage, record_number, density_row)
+               layout_error = .true.
+               return
+            end if
+            read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios /= 0) return
+            if (v%temperature_count_used(x_loop_index,density_row) < &
+                 opal_layout(vintage)%t6_index_lo(density_row)) then
+               call report_short_column(vintage, v%hydrogen_fraction_header(x_loop_index), &
+                    v%density_grid_table(x_loop_index,density_row))
+               layout_error = .true.
+               return
+            end if
+            do t6_row = 1, v%temperature_count_used(x_loop_index,density_row)
+               if (t6_row > opal_layout(vintage)%t6_index_lo(density_row)) then
+                  read (u,'(A)',iostat=ios) blank_line
+                  if (ios /= 0) return
+                  cycle
+               end if
+               read (u, opal_layout(vintage)%row_format,iostat=ios) &
+                    v%t6_list(density_row,t6_row), &
+                    (unused_columns(column_idx), column_idx=1,opal_layout(vintage)%n_skipped_columns), &
+                    (v%eos_table(x_loop_index,table_var_idx,t6_row,density_row), &
+                    table_var_idx=1,9)
+               if (ios /= 0) return
+            end do
+            read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios == 0) read(u,'(A)',iostat=ios) blank_line
+            if (ios /= 0) return
+         end do
+         read(u,'(A)',iostat=ios) blank_line
+         if (ios /= 0) return
+      end do
+end subroutine read_table_blocks
 
 end subroutine readcoeos
 
@@ -1341,6 +1383,28 @@ subroutine report_short_column(vintage, hydrogen_fraction, density)
          call eos_report(eos_lines)
       end if
 end subroutine report_short_column
+
+! the reader: no table open (eos_init opens the selected vintage's; a
+! vintage installed without it, or a table read before, has none)
+subroutine report_no_table(vintage)
+      integer, intent(in) :: vintage
+      character(len=message_length) :: eos_lines(4)
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a)') trim(opal_layout(vintage)%routine_id), &
+           ' no OPAL EOS table is open to read (eos_init opens it)'
+      call eos_report(eos_lines)
+end subroutine report_no_table
+
+! the reader: a read that failed (the table ends early or is corrupt)
+subroutine report_bad_table(vintage, x_block, density_row)
+      integer, intent(in) :: vintage, x_block, density_row
+      character(len=message_length) :: eos_lines(4)
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a,i0,a,i0)') trim(opal_layout(vintage)%routine_id), &
+           ' the OPAL EOS table ends early or is corrupt: X block ', x_block, ', density column ', &
+           density_row
+      call eos_report(eos_lines)
+end subroutine report_bad_table
 
 ! the reader: a zero T6
 subroutine report_zero_t6(vintage, t6_idx)

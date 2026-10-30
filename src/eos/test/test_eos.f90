@@ -32,7 +32,7 @@ program test_eos
       use eos_lib
       use eos_configuration, only: eos_settings, set_eos_settings
       use blended_eos, only: gamma1_at_density
-      use opal_eos_tables, only: opal_tables, opal95, i_opal_cv, i_opal01_cv, &
+      use opal_eos_tables, only: opal_tables, opal95, opal_shared, i_opal_cv, i_opal01_cv, &
            i_opal_p, i_opal01_p
       use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal01, iv_opal06
       use opal95_eos, only: esac
@@ -806,6 +806,8 @@ end subroutine write_mhd_part
 !   opal_trial_call_checks the 1995 and 2001 density searches' trial calls
 !   scv_reader_checks      the SCV reader: a re-read drops the envelope
 !                          table; a missing or truncated table is ierr
+!   table_reader_checks    the Fermi-Dirac and OPAL 2006 readers: a
+!                          missing or truncated table is ierr
 subroutine check_physics()
       write(*,'(a)') "# test_eos: physics checks"
       call ideal_gas_checks()
@@ -819,7 +821,68 @@ subroutine check_physics()
       call settings_checks()
       call opal_trial_call_checks()
       call scv_reader_checks()
+      call table_reader_checks()
 end subroutine check_physics
+
+! The Fermi-Dirac reader (at eos_init) and the OPAL 2006 reader (on
+! first use): a missing table and one cut short return ierr = 1, the
+! cut table's unit closed. (The OPAL table is read once per process:
+! its loaded flag is cleared here to read the cut copy, and again to
+! read the real table back.)
+subroutine table_reader_checks()
+      type(eos_settings_t) :: s
+      type(eos_table_paths_t) :: paths
+      type(eos_result) :: r
+      integer :: ierr, ierr_missing, ierr_cut, it
+      logical :: cut_open
+      s = eos_settings
+      s%opal_vintage = opal_vintage_none
+      s%use_scv_eos = .false.
+      paths = table_paths
+      paths%fermi = "fermi_missing"
+      call eos_init(s, paths, ierr_missing)
+      call copy_head(fermi_path, "fermi_truncated", 40)
+      paths%fermi = "fermi_truncated"
+      call eos_init(s, paths, ierr_cut)
+      inquire(file="fermi_truncated", opened=cut_open)
+      call check("Fermi table: a missing or truncated table returns ierr = 1, its unit closed", &
+           ierr_missing == 1 .and. ierr_cut == 1 .and. .not. cut_open)
+      call copy_head(opal06_path, "opal06_truncated", 3000)
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_truncated")
+      opal_shared%table_loaded_flag(iv_opal06) = 0
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
+      inquire(file="opal06_truncated", opened=cut_open)
+      call check("OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed", &
+           ierr == 1 .and. .not. cut_open)
+      paths = table_paths
+      paths%opal = "opal06_missing"
+      s = eos_settings
+      call eos_init(s, paths, ierr_missing)
+      call check("OPAL 2006 table: a missing table returns ierr = 1 at eos_init", ierr_missing == 1)
+      call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
+      if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
+end subroutine table_reader_checks
+
+! the first n_lines lines of the file src, into dst
+subroutine copy_head(src, dst, n_lines)
+      character(len=*), intent(in) :: src, dst
+      integer, intent(in) :: n_lines
+      character(len=400) :: line
+      integer :: u_in, u_out, k, ios
+      open(newunit=u_in, file=src, status="old", action="read")
+      open(newunit=u_out, file=dst, status="replace")
+      do k = 1, n_lines
+         read(u_in, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         write(u_out, '(a)') trim(line)
+      end do
+      close(u_in)
+      close(u_out)
+end subroutine copy_head
 
 ! The SCV reader. After eos_init reads the tables again, the envelope
 ! table, built from the earlier ones, is not used: a lookup at the
