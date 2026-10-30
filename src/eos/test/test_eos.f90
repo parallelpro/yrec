@@ -67,11 +67,10 @@ program test_eos
       double precision :: w(12), wsum, scale
       integer :: i, ipt, eos_ierr
 
-! the EOS variables the sections print (see eval_eos)
-      double precision :: logt, t, logp, p, logd, d
+! the point the sections evaluate, and its result (eval_eos)
+      double precision :: logt, logp
       double precision :: x_frac, z_frac
-      double precision :: beta, betai, beta14, fxion(3), rmu, amu, emu, eta
-      double precision :: qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp
+      type(eos_result) :: ev
       logical :: lderiv, latmo, in_table
       integer :: saha_iterations
 
@@ -185,21 +184,22 @@ program test_eos
       do ipt = 1, npts
          logt = grid_logt(ipt)
          logp = grid_logp(ipt)
-         logd = 0.0d0
-         d = 0.0d0
+         ev = eos_result()
          saha_iterations = 0
          lderiv = .true.
          latmo = .false.
-         fxion = 0.0d0
          call eval_eos(x_frac, z_frac, lderiv, latmo, gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2)') "point ", ipt
-         write(*,'(4(1pe24.15))') logt, logp, logd, beta
-         write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
-         write(*,'(4(1pe24.15))') rmu, amu, emu, eta
-         write(*,'(3(1pe24.15))') fxion(1), fxion(2), fxion(3)
-         write(*,'(4(1pe24.15))') qdtt, qdtp, qat, qap
-         write(*,'(2(1pe24.15),i4)') qcpt, qcpp, saha_iterations
+         write(*,'(4(1pe24.15))') logt, logp, ev%log10_density, ev%beta
+         write(*,'(4(1pe24.15))') ev%dlnrho_dlnt, ev%dlnrho_dlnp, ev%specific_heat_cp, &
+              ev%adiabatic_gradient
+         write(*,'(4(1pe24.15))') ev%specific_gas_constant, ev%ion_mean_weight_inverse, &
+              ev%electron_mean_weight_inverse, ev%electron_degeneracy_parameter
+         write(*,'(3(1pe24.15))') ev%ion_fraction(1), ev%ion_fraction(2), ev%ion_fraction(3)
+         write(*,'(4(1pe24.15))') ev%dlnrho_dlnt_dt, ev%dlnrho_dlnt_dp, ev%adiabatic_gradient_dt, &
+              ev%adiabatic_gradient_dp
+         write(*,'(2(1pe24.15),i4)') ev%specific_heat_cp_dt, ev%specific_heat_cp_dp, saha_iterations
       end do
 
       write(*,'(a)') "# test_eos: gamma1_at_density, OPAL2006 branch"
@@ -255,16 +255,16 @@ program test_eos
          do ipt = 1, npts
             logt = grid_logt(ipt)
             logp = grid_logp(ipt)
-            logd = 0.0d0
+            ev = eos_result()
             saha_iterations = 0
             lderiv = .true.
             latmo = .false.
-            fxion = 0.0d0
             call eval_eos(x_frac, z_frac, lderiv, latmo, gerr)
       if (gerr /= 0) stop 1
             write(*,'(a,i2)') "mhd point ", ipt
-            write(*,'(4(1pe24.15))') logt, logp, logd, beta
-            write(*,'(4(1pe24.15))') qdt, qdp, qcp, dela
+            write(*,'(4(1pe24.15))') logt, logp, ev%log10_density, ev%beta
+            write(*,'(4(1pe24.15))') ev%dlnrho_dlnt, ev%dlnrho_dlnp, ev%specific_heat_cp, &
+                 ev%adiabatic_gradient
          end do
       end if
 
@@ -282,12 +282,10 @@ program test_eos
       write(*,'(a)') "# test_eos: error paths via ierr"
       logt = 6.30d0
       logp = 14.0d0
-      logd = 0.0d0
-      d = 0.0d0
+      ev = eos_result()
       saha_iterations = 0
       lderiv = .true.
       latmo = .false.
-      fxion = 0.0d0
       call eval_eos(x_frac, z_frac, lderiv, latmo, eos_ierr)
       write(*,'(a,i4)') "err facade-success ierr = ", eos_ierr
       call esac06(opal_tables(iv_opal06), 0.70d0, 2.0d0, 0.1d0, 9, 2, eos_ierr, in_table)
@@ -417,10 +415,8 @@ contains
          do k = 1, npts
             logt = grid_logt(k)
             logp = grid_logp(k)
-            logd = 0.0d0
-            d = 0.0d0
+            ev = eos_result()
             saha_iterations = 0
-            fxion = 0.0d0
             if (present(with_composition)) then
                call eval_eos(x, z, .true., .false., ierr, comp)
             else
@@ -429,52 +425,23 @@ contains
             if (ierr /= 0) then
                write(*,'(a,2f7.3,a,i0)') "eos logT logP", logt, logp, " ierr ", ierr
             else
-               write(*,'(a,2f7.3,4(1pe23.15))') "eos", logt, logp, logd, beta, qdt, qdp
-               write(*,'(a,14x,3(1pe23.15),i3)') "   ", qcp, dela, eta, saha_iterations
+               write(*,'(a,2f7.3,4(1pe23.15))') "eos", logt, logp, ev%log10_density, ev%beta, &
+                    ev%dlnrho_dlnt, ev%dlnrho_dlnp
+               write(*,'(a,14x,3(1pe23.15),i3)') "   ", ev%specific_heat_cp, ev%adiabatic_gradient, &
+                    ev%electron_degeneracy_parameter, saha_iterations
             end if
          end do
       end subroutine evaluate_grid
 
-! eos_get on the test's variables: they go into an eos_result and come
-! back out (log T and log P are inputs only)
+! eos_get at the program's (log T, log P) and (x, z), into its record ev
+! (which the caller sets, eos_result() for a fresh one)
       subroutine eval_eos(x, z, want, atm, ierr, comp)
          double precision, intent(in) :: x, z
          logical, intent(in) :: want, atm
          integer, intent(out) :: ierr
          double precision, intent(in), optional :: comp(:)
-         type(eos_result) :: res
-         res = eos_result(temperature=t, pressure=p, log10_density=logd, density=d, &
-              beta=beta, beta_inverse=betai, beta14=beta14, ion_fraction=fxion, &
-              specific_gas_constant=rmu, ion_mean_weight_inverse=amu, &
-              electron_mean_weight_inverse=emu, electron_degeneracy_parameter=eta, &
-              dlnrho_dlnt=qdt, dlnrho_dlnp=qdp, specific_heat_cp=qcp, &
-              adiabatic_gradient=dela, dlnrho_dlnt_dt=qdtt, dlnrho_dlnt_dp=qdtp, &
-              adiabatic_gradient_dt=qat, adiabatic_gradient_dp=qap, &
-              specific_heat_cp_dt=qcpt, specific_heat_cp_dp=qcpp)
-         call eos_get(logt, logp, x, z, res, want, atm, saha_iterations, &
+         call eos_get(logt, logp, x, z, ev, want, atm, saha_iterations, &
               composition_at_zone=comp, ierr=ierr)
-         t = res%temperature
-         p = res%pressure
-         logd = res%log10_density
-         d = res%density
-         beta = res%beta
-         betai = res%beta_inverse
-         beta14 = res%beta14
-         fxion = res%ion_fraction
-         rmu = res%specific_gas_constant
-         amu = res%ion_mean_weight_inverse
-         emu = res%electron_mean_weight_inverse
-         eta = res%electron_degeneracy_parameter
-         qdt = res%dlnrho_dlnt
-         qdp = res%dlnrho_dlnp
-         qcp = res%specific_heat_cp
-         dela = res%adiabatic_gradient
-         qdtt = res%dlnrho_dlnt_dt
-         qdtp = res%dlnrho_dlnt_dp
-         qat = res%adiabatic_gradient_dt
-         qap = res%adiabatic_gradient_dp
-         qcpt = res%specific_heat_cp_dt
-         qcpp = res%specific_heat_cp_dp
       end subroutine eval_eos
 
 ! The derivative check: at points in each regime, every configuration's
@@ -562,13 +529,14 @@ contains
             integer :: ierr
             logt = lt
             logp = lp
-            logd = 0.0d0
-            d = 0.0d0
+            ev = eos_result()
             saha_iterations = 0
-            fxion = 0.0d0
             call eval_eos(0.70d0, 0.016492d0, want, .false., ierr)
             if (ierr /= 0) write(*,'(a,2f8.4,a,i0)') "eos logT logP", lt, lp, " ierr ", ierr
-            v = [logd, qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp]
+            v = [ev%log10_density, ev%dlnrho_dlnt, ev%dlnrho_dlnp, ev%specific_heat_cp, &
+                 ev%adiabatic_gradient, ev%dlnrho_dlnt_dt, ev%dlnrho_dlnt_dp, &
+                 ev%adiabatic_gradient_dt, ev%adiabatic_gradient_dp, ev%specific_heat_cp_dt, &
+                 ev%specific_heat_cp_dp]
          end subroutine eval_point
 
          subroutine row(name, analytic, fd, worst)
