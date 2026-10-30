@@ -338,10 +338,10 @@ end subroutine check_star_calibration
 !   star writes: job%end_age_stop_active, job%first_call_flag,
 !     job%has_senv0_array, job%initial_x_array, job%initial_z_array,
 !     job%mixing_length_array, job%num_models, job%num_runs,
-!     job%rescale_kind, job%rescale_params, job%rsclzc, job%rsclzm1,
-!     job%rsclzm2, job%senv0_array, job%target_end_age,
-!     job%timestep_override, job%timestep_override_active,
-!     solar_calibration_converged
+!     job%rescale_core_z, job%rescale_kind, job%rescale_params,
+!     job%rescale_z_mix1, job%rescale_z_mix2, job%senv0_array,
+!     job%target_end_age, job%timestep_override,
+!     job%timestep_override_active, solar_calibration_converged
 subroutine setup_solar_calibration(s, age_scale_factor)
 
       use controls_buffer, only: max_runs
@@ -370,9 +370,9 @@ subroutine setup_solar_calibration(s, age_scale_factor)
          s%job%rescale_kind(i) = s%job%rescale_kind(1)
          s%job%first_call_flag(i) = .true.
          s%job%num_models(i) = s%job%num_models(1)
-         s%job%rsclzc(i) = s%job%rsclzc(1)
-         s%job%rsclzm1(i) = s%job%rsclzm1(1)
-         s%job%rsclzm2(i) = s%job%rsclzm2(1)
+         s%job%rescale_core_z(i) = s%job%rescale_core_z(1)
+         s%job%rescale_z_mix1(i) = s%job%rescale_z_mix1(1)
+         s%job%rescale_z_mix2(i) = s%job%rescale_z_mix2(1)
          do j = 1,4
             s%job%rescale_params(j,i) = s%job%rescale_params(j,1)
          end do
@@ -426,11 +426,11 @@ end subroutine setup_solar_calibration
 !   star writes: job%end_age_stop_active, job%first_call_flag,
 !     job%has_senv0_array, job%initial_x_array, job%initial_z_array,
 !     job%mixing_length_array, job%num_models, job%num_runs,
-!     job%rescale_kind, job%rescale_params, job%rsclzc, job%rsclzm1,
-!     job%rsclzm2, job%senv0_array, job%target_end_age,
-!     job%target_radius_rsun, job%target_teff, job%timestep_override,
-!     job%timestep_override_active, just_passed_target_radius_flag,
-!     r_rsun_prev_model, star_found_flag
+!     job%rescale_core_z, job%rescale_kind, job%rescale_params,
+!     job%rescale_z_mix1, job%rescale_z_mix2, job%senv0_array,
+!     job%target_end_age, job%target_radius_rsun, job%target_teff,
+!     job%timestep_override, job%timestep_override_active,
+!     just_passed_target_radius_flag, r_rsun_prev_model, star_found_flag
 subroutine setup_star_calibration(s)
 
       use controls_buffer, only: max_runs
@@ -472,9 +472,9 @@ subroutine setup_star_calibration(s)
          s%job%rescale_kind(i) = s%job%rescale_kind(1)
          s%job%first_call_flag(i) = .true.
          s%job%num_models(i) = s%job%num_models(1)
-         s%job%rsclzc(i) = s%job%rsclzc(1)
-         s%job%rsclzm1(i) = s%job%rsclzm1(1)
-         s%job%rsclzm2(i) = s%job%rsclzm2(1)
+         s%job%rescale_core_z(i) = s%job%rescale_core_z(1)
+         s%job%rescale_z_mix1(i) = s%job%rescale_z_mix1(1)
+         s%job%rescale_z_mix2(i) = s%job%rescale_z_mix2(1)
          do j = 1,4
             s%job%rescale_params(j,i) = s%job%rescale_params(j,1)
          end do

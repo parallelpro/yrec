@@ -24,14 +24,14 @@ module derived_controls
            initial_be9_fraction, initial_h2_fraction, initial_he3_fraction, &
            initial_li6_fraction, initial_li7_fraction, isotope_change_mode, &
            li6_rate_scale, li6_reference_xs, li7_rate_scale, li7_reference_xs, &
-           lnew0, lxbe91, lxbe92, lxbe93, lxli6, lxli7, mixture_change_mode, &
-           mixture_id_table, n14_to_n15_ratio, new_species_index, npenv, &
+           new_triangle_init_flag, lxbe91, lxbe92, lxbe93, lxli6, lxli7, mixture_change_mode, &
+           mixture_id_table, n14_to_n15_ratio, new_species_index, envelope_print_points, &
            o16_to_o17_ratio, o16_to_o18_ratio, opal2001_eos_table_path, &
            opal2006_eos_table_path, opal95_eos_table_path, opal_eos_table_path, &
            opal_eos_vintage, pulse_gyre_interval, rescale_species_active, &
            rotation_active, sbe91, sbe92, sbe93, sli6, sli7, &
            target_carbon_cno_fraction, target_metal_fraction, &
-           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, tenv0, tenv1, &
+           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, rezone_env_logt0, rezone_env_logt1, &
            use_alex06_tables, use_alex95_tables, use_diffusion_z, &
            use_kurucz90_tables, use_new_diffusion_routines, use_opal2001_eos, &
            use_opal2006_eos, use_opal95_eos, use_pure_z_table, use_thoul_diffusion, &
@@ -56,13 +56,13 @@ subroutine derive_controls(s)
 
       call derive_rate_scales
       call select_eos_and_opacity_tables
-      s%envelope_store_log_temperature = 0.5d0*(tenv0 + tenv1)
+      s%envelope_store_log_temperature = 0.5d0*(rezone_env_logt0 + rezone_env_logt1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
       call select_cno_mixture
       call select_isotope_mixture
       call derive_diffusion_switches
-      if (npenv <= 0) npenv = 9999
+      if (envelope_print_points <= 0) envelope_print_points = 9999
       if (pulse_gyre_interval < 0) pulse_gyre_interval = 0
       call write_run_log_header
 end subroutine derive_controls
@@ -128,10 +128,10 @@ end subroutine select_eos_and_opacity_tables
 
 ! ---------------------------------------------------------------
 ! Rotating runs start with a fresh envelope-fit triangle. (The wind
-! law's coefficients, the walpcz clamp and the solid-body flag are the
+! law's coefficients, the cz_rotation_law_exponent clamp and the solid-body flag are the
 ! rotation settings builder's, setup/rotation_settings_setup.f90.)
 subroutine derive_rotation_controls
-      lnew0 = .true.
+      new_triangle_init_flag = .true.
 end subroutine derive_rotation_controls
 
 ! ---------------------------------------------------------------

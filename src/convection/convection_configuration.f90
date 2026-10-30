@@ -20,7 +20,7 @@ module convection_configuration
 ! adiabatic)
          real(dp) :: log10_t_cut = 0.0d0
 ! the adiabatic gradient in the overshoot region below the envelope
-! (ctrl%ladov)
+! (ctrl%adiabatic_overshoot_active)
          logical :: adiabatic_overshoot = .false.
 ! the Sun's luminosity, cgs and log10
          real(dp) :: solar_luminosity_cgs = 0.0d0, log10_solar_luminosity = 0.0d0

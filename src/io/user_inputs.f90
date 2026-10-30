@@ -11,10 +11,10 @@
 !    the derivative scales s%s_prime_scale and s%s_double_prime_scale (legacy QS0E,
 !    QQS0EE; Be7 + p's are s%be7p_s_prime_scale and s%be7p_s_double_prime_scale)
 !    and the two N15 + p branch scales.
-!  - With lnewvars (use_new_rate_variables, which despite its name has
+!  - With use_new_rate_variables (use_new_rate_variables, which despite its name has
 !    nothing to do with reaction rates), the tol_*, flag_* and time_*
 !    controls overwrite the rezoning tolerances chi_grid_scale (legacy
-!    HPTTOL) and the timestep limiters atime, and set
+!    HPTTOL) and the timestep limiters timestep_factors, and set
 !    use_structure_dt_limits, max_domega_global and
 !    diffusion_timestep_factor.
 ! The derivative and N15 + p branch scales are always first reset to
@@ -33,7 +33,7 @@
 module user_inputs
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
-      use controls_buffer, only: use_new_nuclear_rates, lnewvars, &
+      use controls_buffer, only: use_new_nuclear_rates, use_new_rate_variables, &
            s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, s0_p_n14, s0_p_o16, &
            s0_pep, s0_be7_electron, s0_be7_p, s0_hep, s0_n15_p_c12_branch, &
            s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
@@ -45,14 +45,14 @@ module user_inputs
            tol_dm_min, tol_dm_max, tol_dl_max, tol_dp_core_max, tol_dp_env_max, &
            tol_dp_czbase_max, tol_czbase_fine_width, tol_dx_max, tol_dz_max, &
            flag_dx, flag_dz, flag_dw, &
-           atime, itime_core_min, itime_dx_core_tot, itime_dx_core_frac, &
+           timestep_factors, itime_core_min, itime_dx_core_tot, itime_dx_core_frac, &
            itime_dx_total, itime_dx_shell, itime_dy_core_tot, itime_dy_core_frac, &
            itime_dy_shell, itime_dy_total, itime_dt, itime_dp, itime_dr, itime_dl, &
            itime_max_dt_frac, &
            time_core_min, time_dx_core_tot, time_dx_core_frac, time_dx_total, &
            time_dx_shell, time_dy_core_tot, time_dy_core_frac, time_dy_shell, &
            time_dy_total, time_dt, time_dp, time_dr, time_dl, time_max_dt_frac, &
-           time_dw_global, time_dw_mix, lstruct_time, &
+           time_dw_global, time_dw_mix, use_structure_time_limits, &
            use_structure_dt_limits, max_domega_global, diffusion_timestep_factor
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, reference_s0, pep_coefficient, &
@@ -105,7 +105,7 @@ subroutine map_user_inputs(s)
          call set_first_derivative_scales(s)
          call set_second_derivative_scales(s)
       end if
-      if (lnewvars) then
+      if (use_new_rate_variables) then
          call map_zoning_tolerances
          call map_timestep_tolerances
       end if
@@ -224,7 +224,7 @@ subroutine map_zoning_tolerances
 end subroutine map_zoning_tolerances
 
 ! ---------------------------------------------------------------
-! The named timestep tolerances into atime (the itime_* slots: the core-
+! The named timestep tolerances into timestep_factors (the itime_* slots: the core-
 ! burning criterion's minimum central abundance; the X and Y burned in
 ! the core, absolutely and as a fraction, in the shell, and in total
 ! (Msun); the largest changes of T, P, R and L at any shell; the largest
@@ -235,23 +235,23 @@ end subroutine map_zoning_tolerances
 ! largest change of omega per global timestep, diffusion_timestep_factor
 ! the largest in one of rotational mixing's sub-steps.
 subroutine map_timestep_tolerances
-      atime(itime_core_min) = time_core_min
-      atime(itime_dx_core_tot) = time_dx_core_tot
-      atime(itime_dx_core_frac) = time_dx_core_frac
-      atime(itime_dx_total) = time_dx_total
-      atime(itime_dx_shell) = time_dx_shell
-      atime(itime_dy_core_tot) = time_dy_core_tot
-      atime(itime_dy_core_frac) = time_dy_core_frac
-      atime(itime_dy_shell) = time_dy_shell
-      atime(itime_dy_total) = time_dy_total
-      atime(itime_dt) = time_dt
-      atime(itime_dp) = time_dp
-      atime(itime_dr) = time_dr
-      atime(itime_dl) = time_dl
-      use_structure_dt_limits = lstruct_time
+      timestep_factors(itime_core_min) = time_core_min
+      timestep_factors(itime_dx_core_tot) = time_dx_core_tot
+      timestep_factors(itime_dx_core_frac) = time_dx_core_frac
+      timestep_factors(itime_dx_total) = time_dx_total
+      timestep_factors(itime_dx_shell) = time_dx_shell
+      timestep_factors(itime_dy_core_tot) = time_dy_core_tot
+      timestep_factors(itime_dy_core_frac) = time_dy_core_frac
+      timestep_factors(itime_dy_shell) = time_dy_shell
+      timestep_factors(itime_dy_total) = time_dy_total
+      timestep_factors(itime_dt) = time_dt
+      timestep_factors(itime_dp) = time_dp
+      timestep_factors(itime_dr) = time_dr
+      timestep_factors(itime_dl) = time_dl
+      use_structure_dt_limits = use_structure_time_limits
       max_domega_global = time_dw_global
       diffusion_timestep_factor = time_dw_mix
-      atime(itime_max_dt_frac) = time_max_dt_frac
+      timestep_factors(itime_max_dt_frac) = time_max_dt_frac
 end subroutine map_timestep_tolerances
 
 end module user_inputs

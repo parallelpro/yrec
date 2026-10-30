@@ -41,7 +41,6 @@
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
       integer :: run_kind(max_runs)
-      integer :: envelope_print_points
       integer :: max_model_number(max_runs)
       character(len=256) :: alex95_opacity_table_files(7)
       character(len=256) :: alex95_table_z_list(7)
@@ -49,9 +48,6 @@
       real(dp) :: rescale_x(max_runs)
       real(dp) :: rescale_z(max_runs)
       real(dp) :: rescale_core_mass(max_runs)
-      real(dp) :: rescale_core_z(max_runs)
-      real(dp) :: rescale_z_mix1(max_runs)
-      real(dp) :: rescale_z_mix2(max_runs)
       real(dp) :: opal95_z2
       real(dp) :: alex_z2
       character(len=256) :: opal01_eos_table_file
@@ -62,36 +58,12 @@
       character(len=8) :: isotope_mixture_name
       character(len=3) :: change_species_name
       character(len=3) :: new_species_value_mode
-      real(dp) :: fpft_average_weight
-      real(dp) :: timestep_factors(14)
-      real(dp) :: overshoot_alpha_min
-      real(dp) :: overshoot_beta_core
-      real(dp) :: envelope_logP_step
-      real(dp) :: solver_underrelax_start
-      real(dp) :: solver_underrelax_increment
-      real(dp) :: coupling_factor
-      real(dp) :: settling_y_factor
-      real(dp) :: settling_z_factor
-      real(dp) :: solver_tolerances(5,2)
       real(dp) :: zoning_tolerances(12)
-      integer :: fpft_iter1
-      integer :: fpft_iter2
-      logical :: velocity_form_correction
-      logical :: intermediate_overshoot_active
-      logical :: overshoot_max_extent_flag
       logical :: rotation_flag
-      logical :: new_triangle_init_flag
-      logical :: adiabatic_overshoot_active
-      real(dp) :: rezone_env_logT0
-      real(dp) :: rezone_env_logT1
-      real(dp) :: gradient_logT_cutoff
       real(dp) :: laol_z_tolerance
-      real(dp) :: cz_rotation_law_exponent
       real(dp) :: new_zone_omega_weight
       real(dp) :: change_species_value
       real(dp) :: mass_change
-      real(dp) :: accretion_cz_fraction
-      real(dp) :: accretion_total_fraction
       logical :: use_mass_change
       logical :: use_rotation_scaled_solar_wind
       logical :: use_pmm_wind
@@ -106,7 +78,6 @@
       logical :: scale_be9_rate1
       logical :: scale_be9_rate2
       logical :: scale_be9_rate3
-      logical :: use_new_rate_variables
       namelist /control/ &
            & mixing_length_alpha, target_solar_age, target_solar_zx, &
            & run_description, max_age, laol_opacity_table_file, &

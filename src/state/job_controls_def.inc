@@ -14,9 +14,9 @@
             logical :: timestep_override_active(50) = .false.
             integer :: mc_run_start = 1
             integer :: mc_run_end = 1
-            double precision :: fcorr = 0.0d0
+            double precision :: solver_underrelax_factor = 0.0d0
             integer :: num_rotation_structure_iters = 1
-            double precision :: fgrz = 1.0d0
+            double precision :: settling_z_factor = 1.0d0
             integer :: atm_choice = 0
             double precision :: requested_envelope_mass = 0.0d0
             logical :: change_envelope_mass_flag = .false.
@@ -35,8 +35,8 @@
             double precision :: mixing_length_array(50) = 0
             double precision :: senv0_array(50) = 1.26d-4
             logical :: has_senv0_array(50) = .false.
-            double precision :: rsclzc(50) = -1.0d0
-            double precision :: rsclzm1(50) = -1.0d0
-            double precision :: rsclzm2(50) = -1.0d0
+            double precision :: rescale_core_z(50) = -1.0d0
+            double precision :: rescale_z_mix1(50) = -1.0d0
+            double precision :: rescale_z_mix2(50) = -1.0d0
             double precision :: target_teff = 0
             double precision :: target_radius_rsun = 0

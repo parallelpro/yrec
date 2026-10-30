@@ -410,20 +410,20 @@ end subroutine set_helium_from_x_and_z
 ! (Z_old - Z_new)/Z_old, the fraction of Z removed: right only for a
 ! halved Z, zero for an unchanged one, negative for a raised one.)
 subroutine ramp_interior_z
-      if(s%ctrl%use_z_ramp.and.(s%job%rsclzc(run_index).gt.0d0).and.(s%job%rsclzm1(run_index).gt.0d0) &
-           .and.(s%job%rsclzm2(run_index).gt.0d0))then
-            z_ramp_slope = (s%surface_metal_fraction - s%job%rsclzc(run_index))/(s%job%rsclzm2(run_index)-s%job%rsclzm1(run_index))
+      if(s%ctrl%use_z_ramp.and.(s%job%rescale_core_z(run_index).gt.0d0).and.(s%job%rescale_z_mix1(run_index).gt.0d0) &
+           .and.(s%job%rescale_z_mix2(run_index).gt.0d0))then
+            z_ramp_slope = (s%surface_metal_fraction - s%job%rescale_core_z(run_index))/(s%job%rescale_z_mix2(run_index)-s%job%rescale_z_mix1(run_index))
             do zone_idx = 1,num_zones
                mass_fraction_local = exp10(shell_mass_log(zone_idx))/(star_mass*s%solar_mass_cgs)
-               if (mass_fraction_local .lt. s%job%rsclzm1(run_index)) then
-                  z_rescale_factor = s%job%rsclzc(run_index)/(composition(3,zone_idx)+1.d-30)
-                  composition(3,zone_idx) = s%job%rsclzc(run_index)
+               if (mass_fraction_local .lt. s%job%rescale_z_mix1(run_index)) then
+                  z_rescale_factor = s%job%rescale_core_z(run_index)/(composition(3,zone_idx)+1.d-30)
+                  composition(3,zone_idx) = s%job%rescale_core_z(run_index)
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)
                   do species_idx = 5,11
                       composition(species_idx,zone_idx) = composition(species_idx,zone_idx)*z_rescale_factor
                   enddo
-               else if (mass_fraction_local .lt. s%job%rsclzm2(run_index)) then
-                  z_ramp_value = (mass_fraction_local-s%job%rsclzm1(run_index))*z_ramp_slope+s%job%rsclzc(run_index)
+               else if (mass_fraction_local .lt. s%job%rescale_z_mix2(run_index)) then
+                  z_ramp_value = (mass_fraction_local-s%job%rescale_z_mix1(run_index))*z_ramp_slope+s%job%rescale_core_z(run_index)
                   z_rescale_factor = z_ramp_value/(composition(3,zone_idx)+1.d-30)
                   composition(3, zone_idx) = z_ramp_value
                   composition(1, zone_idx) = 1.0d0-composition(3,zone_idx)-composition(4,zone_idx)-composition(2,zone_idx)

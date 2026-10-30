@@ -96,15 +96,15 @@ module controls_buffer
 ! shell) written to the short/log stream at the start of each run
       logical :: compute_neutrino_fluxes = .false.
 
-! Timestep factors (atime) and log T cutoffs: nuclear burning, Saha
-! ionization, the envelope's temperature window (tenv0, tenv1; star%envelope_store_log_temperature
-! is their mean) and the simplified temperature gradient (tgcut).
-      real(dp) :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
+! Timestep factors (timestep_factors) and log T cutoffs: nuclear burning, Saha
+! ionization, the envelope's temperature window (rezone_env_logt0, rezone_env_logt1; star%envelope_store_log_temperature
+! is their mean) and the simplified temperature gradient (gradient_logt_cutoff).
+      real(dp) :: timestep_factors(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
       real(dp) :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       real(dp) :: saha_log10t_cutoff = 6.0d0
-      real(dp) :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
+      real(dp) :: rezone_env_logt0 = 3.0d0, rezone_env_logt1 = 9.0d0, gradient_logt_cutoff = 6.9d0
 
 ! Nuclear rate selection and weak screening.
       logical :: use_new_nuclear_rates = .false.
@@ -112,31 +112,31 @@ module controls_buffer
 
 ! Overshoot and semiconvection. The overshoot range is model state
 ! (star%envelope_overshoot_bottom_index/envelope_overshoot_top_index).
-      real(dp) :: dpenv = 1.0d0
+      real(dp) :: envelope_logp_step = 1.0d0
       logical :: core_overshoot_active = .false.
       real(dp) :: overshoot_alpha_core = 0.0d0
       logical :: envelope_overshoot_active = .false.
       real(dp) :: overshoot_alpha_envelope = 0.0d0
-      logical :: lovstm = .false.
-      real(dp) :: alpham = 0.0d0
-      logical :: ladov = .false.
-      logical :: lovmax = .false.
-      real(dp) :: betac = 0.15d0
+      logical :: intermediate_overshoot_active = .false.
+      real(dp) :: overshoot_alpha_min = 0.0d0
+      logical :: adiabatic_overshoot_active = .false.
+      logical :: overshoot_max_extent_flag = .false.
+      real(dp) :: overshoot_beta_core = 0.15d0
       logical :: use_semiconvection = .false.
 
-! Rotation. A rotating run's settings clamp walpcz to [-2, 0]
+! Rotation. A rotating run's settings clamp cz_rotation_law_exponent to [-2, 0]
 ! (setup/rotation_settings_setup.f90).
-      real(dp) :: acfpft = 1.0d-36
-      integer :: itfp1 = 5, itfp2 = 20
+      real(dp) :: fpft_average_weight = 1.0d-36
+      integer :: fpft_iter1 = 5, fpft_iter2 = 20
       logical :: rotation_active = .false.
-      real(dp) :: walpcz = 0.0d0
+      real(dp) :: cz_rotation_law_exponent = 0.0d0
       logical :: instability_transport_active = .false., set_initial_omega = .false.
       real(dp) :: initial_omega = 0.0d0
 
 ! Mass accretion and the Reimers wind. core/mass_change switches
 ! star%job%use_mass_accretion off when the disk is exhausted.
       real(dp) :: mass_accretion_rate = -1.0d-14
-      real(dp) :: fczdmdt = 0.1d0, ftotdmdt = 1.0d-2
+      real(dp) :: accretion_cz_fraction = 0.1d0, accretion_total_fraction = 1.0d-2
       real(dp) :: accreted_composition(15) = (/0.71668d0, &
            0.265721d0,0.01757d0,2.9d-5,3.013d-3,3.385d-5,9.346d-4, &
            0.0d0,8.462d-3,0.0d0,1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11/)
@@ -191,7 +191,7 @@ module controls_buffer
       real(dp) :: metal_fraction_match_tolerance = 1.0d-8
 
 ! Envelope profile print count.
-      integer :: npenv = 0
+      integer :: envelope_print_points = 0
 
 
 ! Monte Carlo runs.
@@ -199,11 +199,11 @@ module controls_buffer
       integer :: mc_run_start = 1, mc_run_end = 1
 
 ! Newton iteration: tolerances, corrections, zoning scales and iteration
-! limits. fcorr has no input; the run's copy, star%job%fcorr, is set by
+! limits. solver_underrelax_factor has no input; the run's copy, star%job%solver_underrelax_factor, is set by
 ! the Newton iteration.
-      real(dp) :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
+      real(dp) :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
-      real(dp) :: fcorr0 = 0.8d0, fcorri = 0.1d0, fcorr
+      real(dp) :: solver_underrelax_start = 0.8d0, solver_underrelax_increment = 0.1d0, solver_underrelax_factor
       real(dp) :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, &
            5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, &
            1.0d-1 /)
@@ -224,7 +224,7 @@ module controls_buffer
       real(dp) :: hydrogen_diffusion_floor = 1.0d-3
       real(dp) :: helium_diffusion_min = 1.0d-3
       logical :: use_thoul_fit = .false.
-      real(dp) :: fgry = 1.0d0, fgrz = 1.0d0
+      real(dp) :: settling_y_factor = 1.0d0, settling_z_factor = 1.0d0
       logical :: use_thoul_diffusion = .false.
       logical :: use_diffusion_z = .false.
       logical :: use_new_diffusion_routines = .false.
@@ -267,11 +267,11 @@ module controls_buffer
 ! GYRE pulsation-output cadence.
       integer :: pulse_gyre_interval = 0
 
-! The envelope-fit triangle (its limits; lnew0 forces a fresh one at run
+! The envelope-fit triangle (its limits; new_triangle_init_flag forces a fresh one at run
 ! start) and the requested envelope mass (set from the starting model).
       real(dp) :: tri_delta_teffl = 1.0d-2
       real(dp) :: tri_delta_logl = 8.0d-2
-      logical :: lnew0 = .false.
+      logical :: new_triangle_init_flag = .false.
       real(dp) :: requested_envelope_mass
       logical :: change_envelope_mass_flag
 
@@ -327,17 +327,17 @@ module controls_buffer
       real(dp) :: initial_b10_fraction = 1.002d-9
       real(dp) :: initial_b11_fraction = 4.405d-9
 
-! Rotational mixing velocity and coefficient scales (the legacy ies, imu
+! Rotational mixing velocity and coefficient scales (the legacy enable_eddington_sweet, enable_mu_gradient
 ! and fmu are read and then unused).
-      real(dp) :: fo = 1.0d0
+      real(dp) :: coupling_factor = 1.0d0
       real(dp) :: difad_velocity_scale = 1.0d0
       real(dp) :: mixing_velocity_scale = 1.0d0
       real(dp) :: es_velocity_scale = 1.0d0
       real(dp) :: gsf_velocity_scale = 1.0d0
       real(dp) :: secular_shear_velocity_scale = 1.0d0
       real(dp) :: critical_reynolds = 1.0d3
-      integer :: ies = 1
-      integer :: imu = 1
+      integer :: enable_eddington_sweet = 1
+      integer :: enable_mu_gradient = 1
       real(dp) :: es_mixing_scale = 1.0d0
       real(dp) :: secular_shear_mixing_scale = 1.0d0
       real(dp) :: gsf_mixing_scale = 1.0d0
@@ -380,8 +380,8 @@ module controls_buffer
       logical :: calibrate_solar_zx = .false.
 
 ! The metallicity ramp, per run.
-      real(dp) :: rsclzc(max_runs) = -1.0d0, rsclzm1(max_runs) = -1.0d0, &
-           rsclzm2(max_runs) = -1.0d0
+      real(dp) :: rescale_core_z(max_runs) = -1.0d0, rescale_z_mix1(max_runs) = -1.0d0, &
+           rescale_z_mix2(max_runs) = -1.0d0
       logical :: use_z_ramp = .false.
 
 ! Calibrating a star to a target luminosity, Teff or radius.
@@ -423,9 +423,9 @@ module controls_buffer
       logical :: use_kurucz90_tables = .false.
       logical :: use_alex95_tables = .false.
 
-! The LAOL89 interpolators extrapolate linearly within log(tollaol) of a
+! The LAOL89 interpolators extrapolate linearly within log(laol_extrapolation_tolerance) of a
 ! table edge.
-      real(dp) :: tollaol = 10.0d0
+      real(dp) :: laol_extrapolation_tolerance = 10.0d0
       logical :: use_pure_z_table = .false.
 
 ! The table files, by the domain that reads them; a path the deck
@@ -477,8 +477,8 @@ module controls_buffer
       logical :: use_conductive_opacity = .false.
 
 ! Angular momentum transport options: the alternative velocity form in
-! the diffusion coefficients (lvfc) and diffusion-advection transport.
-      logical :: lvfc = .false.
+! the diffusion coefficients (velocity_form_correction) and diffusion-advection transport.
+      logical :: velocity_form_correction = .false.
       logical :: use_diffusion_advection_transport = .false.
 
 ! No angular momentum transport in the core.
@@ -530,8 +530,8 @@ module controls_buffer
       real(dp) :: constant_background_diffusion_coeff = 2.5d4
       logical :: use_constant_background_diffusion = .false.
 
-! The timestep and zoning tolerances under readable names; when lnewvars
-! is set, map_user_inputs fills atime and chi_grid_scale from them.
+! The timestep and zoning tolerances under readable names; when use_new_rate_variables
+! is set, map_user_inputs fills timestep_factors and chi_grid_scale from them.
       real(dp) :: flag_dx = 0.05d0, flag_dw = 0.10d0, flag_dz = 0.05d0
       real(dp) :: time_core_min = 1.0d-3, time_dl = 2.0d-2, &
            time_dp = 4.0d-2, time_dr = 2.0d-2, time_dt = 2.0d-2, &
@@ -545,7 +545,7 @@ module controls_buffer
            tol_dm_max = 0.08d0, tol_dm_min = 1.0d-8, &
            tol_dp_core_max = 0.05d0, tol_dp_czbase_max = 0.05d0, &
            tol_dp_env_max = 0.05d0, tol_dx_max = 1.0d0, tol_dz_max = 1.0d0
-      logical :: lstruct_time = .false., lnewvars = .false.
+      logical :: use_structure_time_limits = .false., use_new_rate_variables = .false.
 
 ! The nuclear S-factors (keV b) and their first and second derivatives
 ! (b, b/keV), used with use_new_nuclear_rates: Solar Fusion II

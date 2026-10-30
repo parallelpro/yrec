@@ -75,7 +75,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_opal95_tables` | `lopal95` | `use_opal95_tables` | ctrl | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
 | `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | ctrl | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
 | `use_alex95_tables` | `lalex95` | `use_alex95_tables` | ctrl | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
-| `envelope_print_points` | `npenv` | `npenv` | buffer | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
+| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
 | `num_runs` | `numrun` | `num_runs` | job | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | job | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | ctrl | run | string(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
@@ -83,9 +83,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `rescale_x` | `rsclx` | `-` | - | - | real(50) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
 | `rescale_z` | `rsclz` | `-` | - | - | real(50) | `0.0d0` | live | Per-run target metallicity for rescale runs |
 | `rescale_core_mass` | `rsclcm` | `-` | - | - | real(50) | `0.0d0` | live | Per-run rescale: core mass bound |
-| `rescale_core_z` | `rsclzc` | `rsclzc` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: core-Z rescale target |
-| `rescale_z_mix1` | `rsclzm1` | `rsclzm1` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 1 |
-| `rescale_z_mix2` | `rsclzm2` | `rsclzm2` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 2 |
+| `rescale_core_z` | `rsclzc` | `rescale_core_z` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: core-Z rescale target |
+| `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 1 |
+| `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | job | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 2 |
 | `timestep_override` | `setdt` | `timestep_override` | job | run | real(50) | `0.0d0` | live | Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits |
 | `senv0_array` | `senv0a` | `senv0_array` | job | run | real(50) | `1.26d-4` | live | Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array) |
 | `target_teff` | `steff` | `target_teff` | job | run | real | `0` | live | Star calibration: the target Teff (K), with specify_teff_flag |
@@ -159,21 +159,21 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `atm_step_initial` | `atmd0` | `atm_step_initial` | ctrl | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
 | `change_species_name` | `anewcp` | `-` | - | - | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
 | `new_species_value_mode` | `atmp` | `-` | - | - | string | `''` | live | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
-| `fpft_average_weight` | `acfpft` | `acfpft` | ctrl | run | real | `1.0d-36` | live | Averaging weight in the fp/ft update (shape, checkj) |
-| `timestep_factors` | `atime` | `atime` | ctrl | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | live | Per-phase timestep-control factor array (wtime/ytime governors) |
+| `fpft_average_weight` | `acfpft` | `fpft_average_weight` | ctrl | run | real | `1.0d-36` | live | Averaging weight in the fp/ft update (shape, checkj) |
+| `timestep_factors` | `atime` | `timestep_factors` | ctrl | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | live | Per-phase timestep-control factor array (wtime/ytime governors) |
 | `overshoot_alpha_core` | `alphac` | `overshoot_alpha_core` | ctrl | run | real | `0.0d0` | live | Core overshoot extent in pressure scale heights |
 | `overshoot_alpha_envelope` | `alphae` | `overshoot_alpha_envelope` | ctrl | run | real | `0.0d0` | live | Envelope overshoot extent in pressure scale heights |
 | `wind_law_index` | `alfa` | `wind_law_index` | ctrl | run | real | `1.5d0` | live | Kawaler wind law: the index alfa (Jdot ~ Omega**(1+4 alfa/3) ...); K97 takes m = alfa/3 |
-| `overshoot_alpha_min` | `alpham` | `alpham` | ctrl | run | real | `0.0d0` | live | Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights |
+| `overshoot_alpha_min` | `alpham` | `overshoot_alpha_min` | ctrl | run | real | `0.0d0` | live | Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights |
 | `atm_step_size` | `atmstp` | `atm_step_size` | ctrl | run | real | `0.5d0` | live | Envelope generation: the atmosphere step size |
 | `absolute_tolerance` | `abstol` | `absolute_tolerance` | ctrl | run | real | `1.0d-5` | live | Burning network: absolute tolerance |
-| `overshoot_beta_core` | `betac` | `betac` | ctrl | run | real | `0.15d0` | live | With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius |
+| `overshoot_beta_core` | `betac` | `overshoot_beta_core` | ctrl | run | real | `0.15d0` | live | With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius |
 | `min_abundance` | `cmin` | `min_abundance` | ctrl | run | real | `1.0d-20` | live | Burning network: abundances below this are treated as zero |
 | `solar_luminosity_cgs` | `clsun` | `solar_luminosity_cgs` | ctrl | run | real | `3.8515d33` | live | Solar luminosity (erg/s) |
 | `solar_radius_cgs` | `crsun` | `solar_radius_cgs` | ctrl | run | real | `6.9598d10` | live | The solar radius (cm) used for the tracks and the output |
 | `solar_mass_cgs` | `solar_mass_cgs` | `solar_mass_cgs` | ctrl | run | real | `1.9891d33` | live | Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups. |
 | `G_cgs` | `G_cgs` | `g_cgs` | ctrl | run | real | `-1.0d0` | live | Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups. |
-| `envelope_logP_step` | `dpenv` | `dpenv` | ctrl | run | real | `1.0d0` | live | mix: envelope pressure step control |
+| `envelope_logP_step` | `dpenv` | `envelope_logp_step` | ctrl | run | real | `1.0d0` | live | mix: envelope pressure step control |
 | `diffusion_timestep_factor` | `dtdif` | `diffusion_timestep_factor` | ctrl | run | real | `1.0d-2` | live | Sub-timestep factor for rotation diffusion |
 | `max_domega_global` | `dtwind` | `max_domega_global` | ctrl | run | real | `1.0d1` | live | Timestep limit: the largest fractional change of omega per step |
 | `convergence_tolerance` | `djok` | `convergence_tolerance` | ctrl | run | real | `1.0d-4` | live | Angular momentum transport: the convergence tolerance of the transport iterations |
@@ -185,12 +185,12 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `envelope_step_size` | `envstp` | `envelope_step_size` | ctrl | run | real | `0.5d0` | live | Envelope generation: the envelope step size |
 | `debye_huckel_eta_min` | `etadh0` | `debye_huckel_eta_min` | ctrl | run | real | `-1.0d0` | live | Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain |
 | `debye_huckel_eta_max` | `etadh1` | `debye_huckel_eta_max` | ctrl | run | real | `1.0d0` | live | Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain |
-| `solver_underrelax_start` | `fcorr0` | `fcorr0` | ctrl | run | real | `0.8d0` | live | Henyey under-relaxation: each step starts with the correction factor \|fcorr0\| - fcorri; a positive fcorr0 lets it grow each iteration |
-| `solver_underrelax_increment` | `fcorri` | `fcorri` | ctrl | run | real | `0.1d0` | live | Henyey under-relaxation: the correction factor grows by this each corrector pass, up to 1 |
+| `solver_underrelax_start` | `fcorr0` | `solver_underrelax_start` | ctrl | run | real | `0.8d0` | live | Henyey under-relaxation: each step starts with the correction factor \|fcorr0\| - fcorri; a positive fcorr0 lets it grow each iteration |
+| `solver_underrelax_increment` | `fcorri` | `solver_underrelax_increment` | ctrl | run | real | `0.1d0` | live | Henyey under-relaxation: the correction factor grows by this each corrector pass, up to 1 |
 | `wind_law_constant` | `fk` | `wind_law_constant` | ctrl | run | real | `1.0d0` | live | The constant factor of both wind laws (1 reproduces the solar angular momentum loss) |
 | `difad_velocity_scale` | `fw` | `difad_velocity_scale` | ctrl | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
 | `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | ctrl | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
-| `coupling_factor` | `fo` | `fo` | buffer | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
+| `coupling_factor` | `fo` | `coupling_factor` | buffer | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
 | `(legacy only)` | `fmu` | `-` | - | - | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | ctrl | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
 | `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | job | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
@@ -201,23 +201,23 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `gsf_mixing_scale` | `fgsfc` | `gsf_mixing_scale` | ctrl | run | real | `1.0d0` | live | Scale of the GSF instability's chemical mixing relative to its angular momentum transport |
 | `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | ctrl | run | real | `0.0d0` | live | Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor) |
 | `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | ctrl | run | real | `1.0d0` | live | Rotational mixing: the Solberg-Hoiland instability's mixing efficiency |
-| `settling_y_factor` | `fgry` | `fgry` | ctrl | run | real | `1.0d0` | live | Gravitational settling multiplier for helium (microdiff) |
-| `settling_z_factor` | `fgrz` | `fgrz` | job | run | real | `1.0d0` | live | Gravitational settling multiplier for metals (microdiff) |
+| `settling_y_factor` | `fgry` | `settling_y_factor` | ctrl | run | real | `1.0d0` | live | Gravitational settling multiplier for helium (microdiff) |
+| `settling_z_factor` | `fgrz` | `settling_z_factor` | job | run | real | `1.0d0` | live | Gravitational settling multiplier for metals (microdiff) |
 | `settling_tolerance` | `grtol` | `settling_tolerance` | ctrl | run | real | `1.0d-8` | live | Gravitational settling: solver tolerance |
-| `solver_tolerances` | `htoler` | `htoler` | ctrl | run | real(5,2) | `6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6` | live | The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test |
+| `solver_tolerances` | `htoler` | `solver_tolerances` | ctrl | run | real(5,2) | `6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6` | live | The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test |
 | `zoning_tolerances` | `hpttol` | `chi_grid_scale` | ctrl | run | real(12) | `1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1` | live | The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in controls_buffer): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead |
-| `fpft_iter1` | `itfp1` | `itfp1` | ctrl | run | integer | `5` | live | shape/fpft iteration bound 1 |
-| `fpft_iter2` | `itfp2` | `itfp2` | ctrl | run | integer | `20` | live | shape/fpft iteration bound 2 |
+| `fpft_iter1` | `itfp1` | `fpft_iter1` | ctrl | run | integer | `5` | live | shape/fpft iteration bound 1 |
+| `fpft_iter2` | `itfp2` | `fpft_iter2` | ctrl | run | integer | `20` | live | shape/fpft iteration bound 2 |
 | `max_stage_index` | `imax` | `max_stage_index` | ctrl | run | integer | `11` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11 |
 | `num_rotation_structure_iters` | `itdif1` | `num_rotation_structure_iters` | job | run | integer | `1` | live | Structure<->rotation iterations per step (itrot loop) |
 | `max_diffusion_iters` | `itdif2` | `max_diffusion_iters` | ctrl | run | integer | `10` | live | Rotation diffusion-solve iteration limit (seculr/checkj) |
-| `(legacy only)` | `ies` | `ies` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `(legacy only)` | `ies` | `enable_eddington_sweet` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
 | `gsf_inhibition_mode` | `igsf` | `gsf_inhibition_mode` | ctrl | run | integer | `1` | live | The stability condition of the GSF and ABCD instabilities (1 is recommended) |
-| `(legacy only)` | `imu` | `imu` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `(legacy only)` | `imu` | `enable_mu_gradient` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
 | `coulomb_log_choice` | `ilambda` | `coulomb_log_choice` | ctrl | run | integer | `1` | live | The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended) |
 | `atm_choice` | `kttau` | `atm_choice` | job | run | integer | `0` | live | Surface boundary condition: 0 Eddington gray T(tau), 1 Krishna-Swamy T(tau), 2 Harvard-Smithsonian atmosphere, 3 Kurucz tables, 4 Allard tables, 5 Kurucz/Castelli tables |
 | `max_burn_iterations` | `kemmax` | `max_burn_iterations` | ctrl | run | integer | `50` | live | The burning network solver's largest number of iterations |
-| `velocity_form_correction` | `lvfc` | `lvfc` | ctrl | run | logical | `.false.` | live | Rotational mixing: scale the composition diffusion coefficient by the Zahn (1992) coupling factor (D_mix = D_omega f_Zahn) instead of the fixed efficiencies (mixing_velocity_scale and the per-mechanism mixing scales) |
+| `velocity_form_correction` | `lvfc` | `velocity_form_correction` | ctrl | run | logical | `.false.` | live | Rotational mixing: scale the composition diffusion coefficient by the Zahn (1992) coupling factor (D_mix = D_omega f_Zahn) instead of the fixed efficiencies (mixing_velocity_scale and the per-mechanism mixing scales) |
 | `use_diffusion_advection_transport` | `ldifad` | `use_diffusion_advection_transport` | ctrl | run | logical | `.false.` | live | Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out) |
 | `no_am_transport_in_core` | `lnoj` | `no_am_transport_in_core` | ctrl | run | logical | `.false.` | live | No angular momentum transport in the convective core |
 | `use_new_diffusion_routines` | `lnewdif` | `use_new_diffusion_routines` | ctrl | run | logical | `.false.` | live | Use the new diffusion routines |
@@ -230,16 +230,16 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `helium_flash_active` | `lkuthe` | `helium_flash_active` | ctrl | run | logical | `.false.` | live | Helium flash run: no rezoning, the starting model written to the .mod file for timestep cuts, and flash-specific solver handling |
 | `core_overshoot_active` | `lovstc` | `core_overshoot_active` | ctrl | run | logical | `.false.` | live | Enable convective-core overshoot |
 | `envelope_overshoot_active` | `lovste` | `envelope_overshoot_active` | ctrl | run | logical | `.false.` | live | Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights |
-| `intermediate_overshoot_active` | `lovstm` | `lovstm` | ctrl | run | logical | `.false.` | live | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
-| `overshoot_max_extent_flag` | `lovmax` | `lovmax` | ctrl | run | logical | `.false.` | live | Cap the core overshoot extent at overshoot_beta_core times the core radius |
+| `intermediate_overshoot_active` | `lovstm` | `intermediate_overshoot_active` | ctrl | run | logical | `.false.` | live | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
+| `overshoot_max_extent_flag` | `lovmax` | `overshoot_max_extent_flag` | ctrl | run | logical | `.false.` | live | Cap the core overshoot extent at overshoot_beta_core times the core radius |
 | `use_extended_composition` | `lexcom` | `use_extended_composition` | ctrl | run | logical | `.false.` | live | Extended composition: also follow H2, Li6, Li7 and Be9 (15 species) |
 | `rotation_flag` | `lrot` | `rotation_active` | ctrl | run | logical | `.false.` | live | Rotation: evolve the rotation curve and the angular momentum transport |
-| `new_triangle_init_flag` | `lnew0` | `lnew0` | ctrl | run | logical | `.false.` | live | Force a fresh envelope-fit triangle at run start |
+| `new_triangle_init_flag` | `lnew0` | `new_triangle_init_flag` | ctrl | run | logical | `.false.` | live | Force a fresh envelope-fit triangle at run start |
 | `instability_transport_active` | `linstb` | `instability_transport_active` | ctrl | run | logical | `.false.` | live | Rotationally induced mixing and hydrodynamic angular momentum transport |
 | `set_initial_omega` | `lwnew` | `set_initial_omega` | ctrl | run | logical | `.false.` | live | Initialize solid-body rotation at omega = initial_omega |
 | `use_wind_torque` | `ljdot0` | `use_wind_torque` | ctrl | run | logical | `.true.` | live | Apply magnetic wind angular-momentum loss |
 | `use_structure_dt_limits` | `lptime` | `use_structure_dt_limits` | job | run | logical | `.true.` | live | Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl) |
-| `adiabatic_overshoot_active` | `ladov` | `ladov` | ctrl | run | logical | `.false.` | live | tpgrad: treat overshoot region adiabatically |
+| `adiabatic_overshoot_active` | `ladov` | `adiabatic_overshoot_active` | ctrl | run | logical | `.false.` | live | tpgrad: treat overshoot region adiabatically |
 | `use_envelope_triangle_dt` | `ltrist` | `use_envelope_triangle_dt` | ctrl | run | logical | `.false.` | live | Limit the timestep by the envelope-fit triangle |
 | `envelope_generation_flag` | `lenvg` | `envelope_generation_flag` | buffer | none | logical | `.false.` | live | Inert: read and stored, used nowhere (the outer layers are built by stitched_model) |
 | `use_itoh_neutrino_loss` | `lnulos1` | `use_itoh_neutrino_loss` | ctrl | run | logical | `.false.` | live | Neutrino losses from Itoh et al. (1996) |
@@ -263,14 +263,14 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `tolerance_fraction` | `stolr0` | `tolerance_fraction` | ctrl | run | real | `1.0d-3` | live | The envelope integration stops when log(m/M) is within this fraction of senv (also the atmosphere integration's step tolerance) |
 | `nuclear_logT_cutoffs` | `tcut` | `nuclear_logt_cutoffs` | ctrl | run | real(5) | `6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0` | live | log T cutoffs (5) below which burning groups are switched off |
 | `saha_log10t_cutoff` | `tscut` | `saha_log10t_cutoff` | ctrl | run | real | `6.0d0` | live | log10 T above which the default EOS assumes full ionization |
-| `rezone_env_logT0` | `tenv0` | `tenv0` | ctrl | run | real | `3.0d0` | live | hpoint envelope rezoning temperature bound (lower) |
-| `rezone_env_logT1` | `tenv1` | `tenv1` | ctrl | run | real | `9.0d0` | live | hpoint envelope rezoning temperature bound (upper) |
-| `gradient_logT_cutoff` | `tgcut` | `tgcut` | ctrl | run | real | `6.9d0` | live | tpgrad: above this logT simplified gradient handling applies |
+| `rezone_env_logT0` | `tenv0` | `rezone_env_logt0` | ctrl | run | real | `3.0d0` | live | hpoint envelope rezoning temperature bound (lower) |
+| `rezone_env_logT1` | `tenv1` | `rezone_env_logt1` | ctrl | run | real | `9.0d0` | live | hpoint envelope rezoning temperature bound (upper) |
+| `gradient_logT_cutoff` | `tgcut` | `gradient_logt_cutoff` | ctrl | run | real | `6.9d0` | live | tpgrad: above this logT simplified gradient handling applies |
 | `tri_delta_teffl` | `tridt` | `tri_delta_teffl` | ctrl | run | real | `1.0d-2` | live | Envelope-fit triangle: size in log Teff |
 | `tri_delta_logl` | `tridl` | `tri_delta_logl` | ctrl | run | real | `8.0d-2` | live | Envelope-fit triangle: size in log L |
-| `laol_z_tolerance` | `tollaol` | `tollaol` | ctrl | run | real | `10.0d0` | live | The LAOL 1989 interpolators extrapolate linearly within log(tollaol) of a table edge |
+| `laol_z_tolerance` | `tollaol` | `laol_extrapolation_tolerance` | ctrl | run | real | `10.0d0` | live | The LAOL 1989 interpolators extrapolate linearly within log(tollaol) of a table edge |
 | `mixture_weights_seed` | `vnew` | `mixture_weights_seed` | ctrl | run | real(12) | `0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0` | live | Species mixture-weight vector seeding starin's mixture algorithm |
-| `cz_rotation_law_exponent` (`new_zone_omega_weight`) | `walpcz` | `walpcz` | ctrl | run | real | `0.0d0` | live | Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes |
+| `cz_rotation_law_exponent` (`new_zone_omega_weight`) | `walpcz` | `cz_rotation_law_exponent` | ctrl | run | real | `0.0d0` | live | Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes |
 | `initial_omega` | `wnew` | `initial_omega` | ctrl | run | real | `0.0d0` | live | Initial rotation rate when set_initial_omega |
 | `weak_screening_threshold` | `weakscreening` | `weak_screening_threshold` | ctrl | run | real | `0.03d0` | live | Threshold of the screening parameter below which nuclear rates use weak screening |
 | `change_species_value` | `xnewcp` | `new_species_value` | ctrl | run | real | `1.3d1` | live | New abundance for change_species_name |
@@ -290,8 +290,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `force_solid_body_rotation` | `lsolid` | `force_solid_body_rotation` | ctrl | run | logical | `.false.` | live | Force solid-body rotation (sets solid_body_mode_flag = 1) |
 | `solid_body_mode_flag` | `impjmod` | `solid_body_mode_flag` | ctrl | run | integer | `0` | live | Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone |
 | `mass_change` | `dmdt0` | `mass_accretion_rate` | ctrl | run | real | `-1.0d-14` | live | Mass change rate (Msun/yr; negative for loss) when use_mass_change is set |
-| `accretion_cz_fraction` | `fczdmdt` | `fczdmdt` | ctrl | run | real | `0.1d0` | live | mdot: accreted-mass fraction deposited in the CZ |
-| `accretion_total_fraction` | `ftotdmdt` | `ftotdmdt` | ctrl | run | real | `1.0d-2` | live | mdot: total accreted-mass fraction parameter |
+| `accretion_cz_fraction` | `fczdmdt` | `accretion_cz_fraction` | ctrl | run | real | `0.1d0` | live | mdot: accreted-mass fraction deposited in the CZ |
+| `accretion_total_fraction` | `ftotdmdt` | `accretion_total_fraction` | ctrl | run | real | `1.0d-2` | live | mdot: total accreted-mass fraction parameter |
 | `accreted_composition` | `compacc` | `accreted_composition` | ctrl | run | real(15) | `0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, 8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11` | live | Mass fractions of the accreted material (star%xa layout) |
 | `reimers_scaling_factor` | `creim` | `reimers_scaling_factor` | ctrl | run | real | `-4.0d-13` | live | Reimers mass-loss efficiency eta |
 | `use_reimers_wind` | `lreimer` | `use_reimers_wind` | ctrl | run | logical | `.false.` | live | Enable Reimers red-giant mass loss |
@@ -372,7 +372,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `flag_dx` | `flag_dx` | `flag_dx` | buffer | read | real | `0.05d0` | live | Zoning: an X jump between shells larger than this flags a shell |
 | `flag_dw` | `flag_dw` | `flag_dw` | buffer | read | real | `0.10d0` | live | Zoning: the largest log-omega spacing (rotating models) |
 | `flag_dz` | `flag_dz` | `flag_dz` | buffer | read | real | `0.05d0` | live | Zoning: a Z jump between shells larger than this flags a shell |
-| `lstruct_time` | `lstruct_time` | `lstruct_time` | buffer | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
+| `lstruct_time` | `lstruct_time` | `use_structure_time_limits` | buffer | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
 | `time_core_min` | `time_core_min` | `time_core_min` | buffer | read | real | `1.0d-3` | live | With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria |
 | `time_dl` | `time_dl` | `time_dl` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence) |
 | `time_dp` | `time_dp` | `time_dp` | buffer | read | real | `4.0d-2` | live | With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence) |
@@ -398,7 +398,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `tol_dx_max` | `tol_dx_max` | `tol_dx_max` | buffer | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in X between points (usually off) |
 | `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | buffer | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
 | `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | buffer | read | real | `1.5d0` | live | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
-| `use_new_rate_variables` | `lnewvars` | `lnewvars` | buffer | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
+| `use_new_rate_variables` | `lnewvars` | `use_new_rate_variables` | buffer | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
 | `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | ctrl | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
 | `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | ctrl | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
 | `star_history_name` | `star_history_name` | `star_history_name` | ctrl | run | string | `'history.data'` | live | MESA mode: history file name (written to the output directory) |
@@ -424,7 +424,7 @@ or the run keeps them.
 | `opal_eos_vintage` | ctrl | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
 | `end_age_stop_active` | job | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | job | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
-| `fcorr` | job | run | real | `0` | The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri) |
+| `solver_underrelax_factor` | job | run | real | `0` | The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri) |
 | `requested_envelope_mass` | job | run | real | `0` | The current card's fitting-point envelope mass (from senv0_array at the card start) |
 | `change_envelope_mass_flag` | job | run | logical | `0` | The current card moves the fitting point (from has_senv0_array at the card start) |
 | `rescale_params` | job | run | real(4,50) | `0` | Per run: the rescaling targets M, X, Z and core mass (from rescale_mass, _x, _z and _core_mass; the calibration rewrites them) |

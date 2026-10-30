@@ -49,16 +49,16 @@ contains
 ! previous step). The reset block below (evolve_step_reset_pending)
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
-!   star reads: ctrl%envelope_overshoot_active, ctrl%fcorr0,
-!     ctrl%fcorri, ctrl%helium_flash_active,
-!     ctrl%improved_first_guess_flag, ctrl%instability_transport_active,
-!     ctrl%max_iter_level1, ctrl%max_iter_level2, ctrl%max_iter_level3,
-!     ctrl%max_iter_level4, ctrl%overshoot_alpha_envelope,
-!     ctrl%rewind_short_file, ctrl%rotation_active,
-!     ctrl%use_extended_composition, ctrl%use_wind_torque, grada, gradr,
-!     job%end_age_stop_active, job%nk, job%rescale_kind,
-!     job%target_end_age, log_L_lsun, log_Teff, log_total_mass,
-!     luminosity_breakdown_lsun, omega
+!   star reads: ctrl%envelope_overshoot_active,
+!     ctrl%helium_flash_active, ctrl%improved_first_guess_flag,
+!     ctrl%instability_transport_active, ctrl%max_iter_level1,
+!     ctrl%max_iter_level2, ctrl%max_iter_level3, ctrl%max_iter_level4,
+!     ctrl%overshoot_alpha_envelope, ctrl%rewind_short_file,
+!     ctrl%rotation_active, ctrl%solver_underrelax_increment,
+!     ctrl%solver_underrelax_start, ctrl%use_extended_composition,
+!     ctrl%use_wind_torque, grada, gradr, job%end_age_stop_active,
+!     job%nk, job%rescale_kind, job%target_end_age, log_L_lsun,
+!     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
 !     cz_base_radius_last_call, disk_gate_age_gyr, dln_luminosity_dt,
 !     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dm, dt,
@@ -67,15 +67,16 @@ contains
 !     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
 !     envelope_overshoot_top_index, eps_grav, eta_squared, fp_rot,
 !     ft_rot, h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
-!     has_h_shell, i_rot, j_rot, j_rot_iteration_start, job%fcorr,
-!     job%num_rotation_structure_iters, job%use_structure_dt_limits,
-!     kinetic_energy_rot, kinetic_energy_rot_start, log_mass,
-!     log_pressure_delta, log_Teff_start, log_temperature_delta, logP,
-!     logP_start, logR, logR_start, logRho, logRho_start, logT,
-!     logT_start, luminosity_lsun, luminosity_lsun_start, m,
-!     max_domega_frac, mean_gravity, mean_radius, mixed_zone_bounds,
-!     model_diverged_flag, model_number, nz, punch_pending_flag,
-!     recompute_envelope_triangle, reset_triangle, stored_vertex_index,
+!     has_h_shell, i_rot, j_rot, j_rot_iteration_start,
+!     job%num_rotation_structure_iters, job%solver_underrelax_factor,
+!     job%use_structure_dt_limits, kinetic_energy_rot,
+!     kinetic_energy_rot_start, log_mass, log_pressure_delta,
+!     log_Teff_start, log_temperature_delta, logP, logP_start, logR,
+!     logR_start, logRho, logRho_start, logT, logT_start,
+!     luminosity_lsun, luminosity_lsun_start, m, max_domega_frac,
+!     mean_gravity, mean_radius, mixed_zone_bounds, model_diverged_flag,
+!     model_number, nz, punch_pending_flag, recompute_envelope_triangle,
+!     reset_triangle, stored_vertex_index,
 !     surface_luminosity_lsun_start, timestep_yr,
 !     total_angular_momentum, total_rotational_ke, triangle_orientation,
 !     xa, xa_iteration_start, xa_start
@@ -408,10 +409,10 @@ end subroutine rezone_or_snapshot
 ! star%model_diverged_flag set when a level diverges (evolve_step then
 ! cycles retry_step); ierr on error.
 subroutine solve_structure
-! Flags for henyey_iterate: with ctrl%lnew0, a new envelope triangle is
+! Flags for henyey_iterate: with ctrl%new_triangle_init_flag, a new envelope triangle is
 ! computed on the first iteration (the previous model's is ignored);
 ! converged and star%model_diverged_flag report the outcome.
-          if (s%ctrl%lnew0) s%recompute_envelope_triangle = .true.
+          if (s%ctrl%new_triangle_init_flag) s%recompute_envelope_triangle = .true.
 ! A model that is solved but not aged (evolve_model_flag false) keeps
 ! its s%dt; the stages that age read the flag: the first guess below,
 ! the rates of change after level 2, the composition rerun and the
@@ -420,9 +421,9 @@ subroutine solve_structure
 ! encoded as a negative s%dt, made positive again before
 ! compute_timestep.)
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
-! ctrl%fcorr0 selects whether henyey_iterate raises it by fcorri per
+! ctrl%solver_underrelax_start selects whether henyey_iterate raises it by fcorri per
 ! iteration, up to 1 (fcorr0 > 0), or holds it fixed.
-            s%job%fcorr = dabs(s%ctrl%fcorr0) - s%ctrl%fcorri
+            s%job%solver_underrelax_factor = dabs(s%ctrl%solver_underrelax_start) - s%ctrl%solver_underrelax_increment
             iterations_done = 0
             s%model_diverged_flag = .false.
             converged = .false.

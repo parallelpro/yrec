@@ -28,35 +28,35 @@
             integer :: terminal_interval = 50
             integer :: set_initial_model_number = 1
             logical :: compute_neutrino_fluxes = .false.
-            double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)
+            double precision :: timestep_factors(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)
             double precision :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
             double precision :: saha_log10t_cutoff = 6.0d0
-            double precision :: tenv0 = 3.0d0
-            double precision :: tenv1 = 9.0d0
-            double precision :: tgcut = 6.9d0
+            double precision :: rezone_env_logt0 = 3.0d0
+            double precision :: rezone_env_logt1 = 9.0d0
+            double precision :: gradient_logt_cutoff = 6.9d0
             double precision :: weak_screening_threshold = 0.03d0
-            double precision :: dpenv = 1.0d0
+            double precision :: envelope_logp_step = 1.0d0
             logical :: core_overshoot_active = .false.
             double precision :: overshoot_alpha_core = 0.0d0
             logical :: envelope_overshoot_active = .false.
             double precision :: overshoot_alpha_envelope = 0.0d0
-            logical :: lovstm = .false.
-            double precision :: alpham = 0.0d0
-            logical :: ladov = .false.
-            logical :: lovmax = .false.
-            double precision :: betac = 0.15d0
+            logical :: intermediate_overshoot_active = .false.
+            double precision :: overshoot_alpha_min = 0.0d0
+            logical :: adiabatic_overshoot_active = .false.
+            logical :: overshoot_max_extent_flag = .false.
+            double precision :: overshoot_beta_core = 0.15d0
             logical :: use_semiconvection = .false.
-            double precision :: acfpft = 1.0d-36
-            integer :: itfp1 = 5
-            integer :: itfp2 = 20
+            double precision :: fpft_average_weight = 1.0d-36
+            integer :: fpft_iter1 = 5
+            integer :: fpft_iter2 = 20
             logical :: rotation_active = .false.
-            double precision :: walpcz = 0.0d0
+            double precision :: cz_rotation_law_exponent = 0.0d0
             logical :: instability_transport_active = .false.
             logical :: set_initial_omega = .false.
             double precision :: initial_omega = 0.0d0
             double precision :: mass_accretion_rate = -1.0d-14
-            double precision :: fczdmdt = 0.1d0
-            double precision :: ftotdmdt = 1.0d-2
+            double precision :: accretion_cz_fraction = 0.1d0
+            double precision :: accretion_total_fraction = 1.0d-2
             double precision :: accreted_composition(15) = (/0.71668d0, 0.265721d0,0.01757d0,2.9d-5,3.013d-3,3.385d-5,9.346d-4, 0.0d0,8.462d-3,0.0d0,1.696d-5,0.0d0,2.0d-9,2.0d-9,3.0d-11/)
             double precision :: reimers_scaling_factor = -4.0d-13
             logical :: use_reimers_wind = .false.
@@ -80,9 +80,9 @@
             logical :: use_mhd_eos = .false.
             double precision :: metal_fraction_match_tolerance = 1.0d-8
             logical :: monte_carlo_active = .false.
-            double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
-            double precision :: fcorr0 = 0.8d0
-            double precision :: fcorri = 0.1d0
+            double precision :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
+            double precision :: solver_underrelax_start = 0.8d0
+            double precision :: solver_underrelax_increment = 0.1d0
             double precision :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1 /)
             integer :: max_iter_level1 = 2
             integer :: max_iter_level2 = 20
@@ -98,7 +98,7 @@
             double precision :: hydrogen_diffusion_floor = 1.0d-3
             double precision :: helium_diffusion_min = 1.0d-3
             logical :: use_thoul_fit = .false.
-            double precision :: fgry = 1.0d0
+            double precision :: settling_y_factor = 1.0d0
             logical :: use_thoul_diffusion = .false.
             logical :: use_diffusion_z = .false.
             logical :: use_new_diffusion_routines = .false.
@@ -119,7 +119,7 @@
             integer :: pulse_gyre_interval = 0
             double precision :: tri_delta_teffl = 1.0d-2
             double precision :: tri_delta_logl = 8.0d-2
-            logical :: lnew0 = .false.
+            logical :: new_triangle_init_flag = .false.
             double precision :: max_domega_global = 1.0d1
             double precision :: atm_step_size = 0.5d0
             double precision :: envelope_step_size = 0.5d0
@@ -192,7 +192,7 @@
             logical :: use_opal95_tables = .false.
             logical :: use_kurucz90_tables = .false.
             logical :: use_alex95_tables = .false.
-            double precision :: tollaol = 10.0d0
+            double precision :: laol_extrapolation_tolerance = 10.0d0
             logical :: use_pure_z_table = .false.
             character(len=256) :: laol_table_path = repeat(achar(0), 256)
             character(len=256) :: laol_table2_path = repeat(achar(0), 256)
@@ -222,7 +222,7 @@
             character(len=256) :: atm_table_path = repeat(achar(0), 256)
             character(len=256) :: allard_table_path = repeat(achar(0), 256)
             logical :: use_conductive_opacity = .false.
-            logical :: lvfc = .false.
+            logical :: velocity_form_correction = .false.
             logical :: use_diffusion_advection_transport = .false.
             logical :: no_am_transport_in_core = .false.
             double precision :: allard_target_feh = 0d0

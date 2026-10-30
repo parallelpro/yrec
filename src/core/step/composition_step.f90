@@ -16,7 +16,7 @@
 !
 ! The order of operations (with the options that switch each one):
 !   1. the mixed regions: convection zones with overshoot
-!      (find_convection_zones), with the ctrl%dpenv deep-mixing option
+!      (find_convection_zones), with the ctrl%envelope_logp_step deep-mixing option
 !      (deep_mixing)
 !   2. the burning rates of every shell (compute_burn_rates; with
 !      store_start_rates, the deuterium rates are also kept as the
@@ -50,7 +50,7 @@ module composition_step
          logical :: homogenize = .false.
 ! Run semiconvection, when ctrl%use_semiconvection is set.
          logical :: semiconvection = .false.
-! Apply the deep-mixing option, when ctrl%dpenv < 1.
+! Apply the deep-mixing option, when ctrl%envelope_logp_step < 1.
          logical :: deep_mixing = .false.
       end type composition_step_options
 
@@ -71,7 +71,7 @@ contains
 ! of the surface convection zone (core_cz_edge, envelope_cz_edge) and the
 ! mixed-region bounds without overshoot. ierr /= 0 on a failure in the
 ! zone search, the network burn, semiconvection or settling.
-!   star reads: ctrl%dpenv, ctrl%helium_diffusion_min,
+!   star reads: ctrl%envelope_logp_step, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%settling_timestep_fraction,
 !     ctrl%use_extended_composition, ctrl%use_semiconvection, dm, gradT,
 !     log_mass, log_Teff, log_total_mass, logP, logR, logT,
@@ -170,7 +170,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 ! 8. After deep mixing (MHP 1/95), recompute the zone bounds and the
 ! edges (core_cz_edge, envelope_cz_edge; legacy JCORE, JENV) from the
 ! ordinary convective flags.
-      if (s%ctrl%dpenv.lt.1.0d0 .and. opts%deep_mixing) then
+      if (s%ctrl%envelope_logp_step.lt.1.0d0 .and. opts%deep_mixing) then
          call find_convection_zones(s%xa, s%logRho, s%logP, s%logR, &
               s%log_mass, s%logT, s%convective_flag, s%nz, &
               radiative_zone_bounds, s%mixed_zone_bounds, &
@@ -187,15 +187,15 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 
 contains
 
-! deep_mix_flag: the mixing flag of each shell. ctrl%dpenv < 1 (with
+! deep_mix_flag: the mixing flag of each shell. ctrl%envelope_logp_step < 1 (with
 ! deep_mixing) forces mixing from the centre out to the mass fraction
 ! dpenv, m <= dpenv M; outside that, and otherwise, each shell keeps its
 ! ordinary convective flag.
 subroutine set_deep_mix_flags
       double precision :: max_mixed_mass
       integer :: k, j
-      if (s%ctrl%dpenv.lt.1.0d0 .and. opts%deep_mixing) then
-         max_mixed_mass = s%ctrl%dpenv*exp(ln10*s%log_total_mass)
+      if (s%ctrl%envelope_logp_step.lt.1.0d0 .and. opts%deep_mixing) then
+         max_mixed_mass = s%ctrl%envelope_logp_step*exp(ln10*s%log_total_mass)
          do k = 1, s%nz
             if (s%m(k).gt.max_mixed_mass) then
                do j = k, s%nz

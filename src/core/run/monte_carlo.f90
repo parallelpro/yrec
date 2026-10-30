@@ -77,7 +77,7 @@ end subroutine setup_monte_carlo_runs
 !     job%diffusion_factor, job%luminosity_target, job%s11_rate,
 !     job%s17_rate, job%s33_rate, job%s34_rate
 !   star writes: cross_section_scale, extra_cross_section_scale,
-!     job%fgrz, job%target_end_age, ln10_over_lsun,
+!     job%settling_z_factor, job%target_end_age, ln10_over_lsun,
 !     log10_solar_luminosity, solar_luminosity_cgs
 subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
      age_scale_factor)
@@ -110,7 +110,7 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! only; the helium factor fgry keeps its control value. (The F77 code
 ! also copied it to FGRSET, which nothing read.) The sampled Z/X
 ! (metal_to_h_ratio) is only written to the summary.
-         s%job%fgrz = s%job%diffusion_factor(monte_carlo_run_number)
+         s%job%settling_z_factor = s%job%diffusion_factor(monte_carlo_run_number)
          s%solar_luminosity_cgs = reference_solar_luminosity*s%job%luminosity_target(monte_carlo_run_number)
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs

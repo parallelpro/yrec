@@ -20,7 +20,7 @@ module controls_check
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
       use controls_buffer, only: max_runs, use_semiconvection, core_overshoot_active, &
-           envelope_overshoot_active, lovstm, tri_delta_teffl, tri_delta_logl, &
+           envelope_overshoot_active, intermediate_overshoot_active, tri_delta_teffl, tri_delta_logl, &
            rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
            extrap_order, num_runs
       use rotation_configuration, only: max_transport_iterations
@@ -64,11 +64,11 @@ subroutine check_controls(ierr)
       character(len=message_length) :: line
 
       if (use_semiconvection .and. (core_overshoot_active .or. &
-           envelope_overshoot_active .or. lovstm)) then
+           envelope_overshoot_active .or. intermediate_overshoot_active)) then
          write(line,'(a,3l2)') 'SEMI-CONVECTION and overshoot are both on:' &
               //' use_semiconvection (LSEMIC) with core, envelope, intermediate overshoot' &
               //' (LOVSTC, LOVSTE, LOVSTM) =', core_overshoot_active, &
-              envelope_overshoot_active, lovstm
+              envelope_overshoot_active, intermediate_overshoot_active
          call report_error(line)
          ierr = 1
          return
@@ -138,10 +138,10 @@ end subroutine warn_inert_controls
 ! self-cancelling (the class of mistake that shipped a template with
 ! overshoot_alpha_envelope = 0.5 and envelope_overshoot_active unset for
 ! years). Each rule is checked against the gating code named above it.
-!   star reads: ctrl%betac, ctrl%calibrate_solar_model,
-!     ctrl%calibrate_star_flag, ctrl%core_overshoot_active,
-!     ctrl%envelope_overshoot_active, ctrl%lovmax,
-!     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope
+!   star reads: ctrl%calibrate_solar_model, ctrl%calibrate_star_flag,
+!     ctrl%core_overshoot_active, ctrl%envelope_overshoot_active,
+!     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope,
+!     ctrl%overshoot_beta_core, ctrl%overshoot_max_extent_flag
 !   star writes: none
 subroutine warn_inconsistent_controls(s)
       type(star_info), intent(in) :: s
@@ -166,11 +166,11 @@ subroutine warn_inconsistent_controls(s)
            call warn('envelope_overshoot_active is on but ' &
            //'overshoot_alpha_envelope is zero -- zero-extent overshoot')
 
-! lovmax caps the core overshoot extent at betac times the core radius
+! overshoot_max_extent_flag caps the core overshoot extent at overshoot_beta_core times the core radius
 ! (convection/convection_zones.f90's extend_by_overshoot) -- with
 ! overshoot_beta_core = 0 the cap is zero
-      if (s%ctrl%core_overshoot_active .and. s%ctrl%lovmax .and. &
-           s%ctrl%betac <= 0.0d0) &
+      if (s%ctrl%core_overshoot_active .and. s%ctrl%overshoot_max_extent_flag .and. &
+           s%ctrl%overshoot_beta_core <= 0.0d0) &
            call warn('overshoot_max_extent_flag is on with ' &
            //'overshoot_beta_core = 0 -- core overshoot is capped to zero')
 

@@ -213,7 +213,7 @@ most once per call, before the Newton loop:
    updates (used for solar calibration; harmful where semiconvection
    matters, per the code's own comments).
 
-Corrections beyond the divergence tolerances (`star%ctrl%htoler(:,2)`) at
+Corrections beyond the divergence tolerances (`star%ctrl%solver_tolerances(:,2)`) at
 any level, or a model still unconverged after level 4, set the divergence
 flag (`star%model_diverged_flag`). `evolve_step`'s retry loop (`retry_step`)
 then calls `read_starting_model` (`starin`), which **stops the run** with
@@ -263,7 +263,7 @@ hydrogen/helium depletion, CZ-base migration, ω changes (global and in the
 mixing region), the H-shell mass scale for shell-burning stages
 (`hydrogen_dt`), and a hard `time_max_dt_frac` growth limit. The `time_*`
 controls are the named slots of the 14-element per-phase factor array
-`star%ctrl%atime` (inlist name `timestep_factors`). A structure-based
+`star%ctrl%timestep_factors` (inlist name `timestep_factors`). A structure-based
 limiter (`star%job%use_structure_dt_limits`, legacy `LPTIME`) switches
 itself off once log T_c > 7.1 with L_grav < 0 (the terminal reports
 "structure-based limits disabled"). Timestep override
@@ -424,7 +424,7 @@ mixed region is extended a fixed number of pressure scale heights
 (`oversh`), `convection/convection_zones.f90`, called from
 `find_convection_zones` (`convec`)) — mixing only ("step"
 overshoot), optionally with an adiabatic temperature gradient in the
-overshoot region (`star%ctrl%ladov`, inlist name
+overshoot region (`star%ctrl%adiabatic_overshoot_active`, inlist name
 `adiabatic_overshoot_active`); `extend_by_semiconvection` (`sconvec`,
 `convection/semiconvection.f90`) implements the
 rate-limited "semiconvective" overshoot variant with a propagation-speed

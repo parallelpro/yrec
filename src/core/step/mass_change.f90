@@ -336,10 +336,11 @@ end subroutine change_mass
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
 ! boundary is the surface zone.
-!   star reads: ctrl%accreted_composition, ctrl%disk_locking_active,
-!     ctrl%disk_locking_age_gyr, ctrl%fczdmdt, ctrl%ftotdmdt,
-!     ctrl%rotation_active, ctrl%walpcz, disk_gate_age_gyr,
-!     envelope_cz_bottom_index, logRho, nz, omega, solar_mass_cgs
+!   star reads: ctrl%accreted_composition, ctrl%accretion_cz_fraction,
+!     ctrl%accretion_total_fraction, ctrl%cz_rotation_law_exponent,
+!     ctrl%disk_locking_active, ctrl%disk_locking_age_gyr,
+!     ctrl%rotation_active, disk_gate_age_gyr, envelope_cz_bottom_index,
+!     logRho, nz, omega, solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
 !     delta_log_temperature, dm, dt, j_rot, log_fit_point_mass_fraction,
 !     log_mass, log_total_mass, logP, logR, logT, m,
@@ -444,9 +445,9 @@ subroutine limit_mass_change_timestep()
 ! A zero rate sets no limit (it used to divide by zero, which traps in
 ! the devel builds).
       if(mass_loss_rate_cgs.gt.0.0d0)then
-         timestep_limit_total_mass = s%ctrl%ftotdmdt*s%star_mass*s%solar_mass_cgs/ &
+         timestep_limit_total_mass = s%ctrl%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
               mass_loss_rate_cgs
-         timestep_limit_cz_mass = s%ctrl%fczdmdt*cz_mass_grams/mass_loss_rate_cgs
+         timestep_limit_cz_mass = s%ctrl%accretion_cz_fraction*cz_mass_grams/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! Nor by more than half the mass outside the fitting point (the outer
 ! zone), (M - m(nz))/2, for loss and accretion alike.
@@ -559,7 +560,7 @@ end subroutine update_masses
 ! J_cz + dJ on its new masses (remove_wind_angular_momentum).
 subroutine spin_down_cz_by_wind()
       if(wind_carries_angular_momentum)then
-         wind_j_surface = wind_specific_angular_momentum(s%ctrl%walpcz, &
+         wind_j_surface = wind_specific_angular_momentum(s%ctrl%cz_rotation_law_exponent, &
               total_radius_cm, s%omega(nz), s%logR(nz), s%j_rot(nz))
          call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
               cz_shell_masses_before, s%dm(jenv:nz), s%j_rot(jenv:nz), &

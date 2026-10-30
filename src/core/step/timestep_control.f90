@@ -40,7 +40,7 @@ contains
 ! evolved: the limits are skipped and only its magnitude is kept.
 ! On return previous_timestep holds the new timestep (s), also in
 ! chosen_dt and, in years, timestep_years.
-!   star reads: ctrl%atime, ctrl%rotation_active,
+!   star reads: ctrl%rotation_active, ctrl%timestep_factors,
 !     ctrl%use_envelope_triangle_dt, job%end_age_stop_active,
 !     job%target_end_age, job%timestep_override,
 !     job%timestep_override_active, job%use_structure_dt_limits
@@ -215,7 +215,7 @@ end subroutine limit_by_hr_motion
 !            rotation_dt, structure_dt, envelope_dt).
 subroutine take_tightest_limit()
       if(previous_timestep.gt.1.0d0) then
-         previous_timestep = s%ctrl%atime(itime_max_dt_frac)*previous_timestep
+         previous_timestep = s%ctrl%timestep_factors(itime_max_dt_frac)*previous_timestep
          previous_timestep = min(previous_timestep,hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       else
 ! A zero (or sub-second) previous timestep: the smallest limit alone.
@@ -257,8 +257,8 @@ end subroutine compute_timestep
 ! a = atime(itime_max_dt_frac); and struct_dt = previous_timestep/f.
 ! This limit dominates on the pre-main sequence, where it must be on
 ! (star%job%use_structure_dt_limits, legacy LPTIME).
-!   star reads: ctrl%atime, logP_start, logR_start, logT_start,
-!     luminosity_lsun_start
+!   star reads: ctrl%timestep_factors, logP_start, logR_start,
+!     logT_start, luminosity_lsun_start
 !   star writes: none
 subroutine timestep_limit_structure(s, previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
@@ -325,17 +325,17 @@ subroutine timestep_limit_structure(s, previous_timestep, luminosity, log_pressu
 ! The factor f that brings the largest change of every quantity down to
 ! its limit, the changes taken to scale with the timestep (2.3026 is
 ! ln 10).
-      dt_factor = max_change(1)/s%ctrl%atime(itime_dp)
-      if (max_change(2)/s%ctrl%atime(itime_dt).gt.dt_factor) dt_factor=max_change(2)/s%ctrl%atime(itime_dt)
-      if (max_change(3)/s%ctrl%atime(itime_dr).gt.dt_factor) dt_factor=max_change(3)/s%ctrl%atime(itime_dr)
-      if (max_change(4)/(s%ctrl%atime(itime_dl)*2.3026d0).gt.dt_factor) then
-        dt_factor=max_change(4)/(s%ctrl%atime(itime_dl)*2.3026d0)
+      dt_factor = max_change(1)/s%ctrl%timestep_factors(itime_dp)
+      if (max_change(2)/s%ctrl%timestep_factors(itime_dt).gt.dt_factor) dt_factor=max_change(2)/s%ctrl%timestep_factors(itime_dt)
+      if (max_change(3)/s%ctrl%timestep_factors(itime_dr).gt.dt_factor) dt_factor=max_change(3)/s%ctrl%timestep_factors(itime_dr)
+      if (max_change(4)/(s%ctrl%timestep_factors(itime_dl)*2.3026d0).gt.dt_factor) then
+        dt_factor=max_change(4)/(s%ctrl%timestep_factors(itime_dl)*2.3026d0)
       endif
 ! No change since the previous model: keep the previous timestep.
       if (dt_factor.eq.0.d0) dt_factor=1.0d0
 ! Let the timestep change by at most a factor atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
-      dt_factor_limit = s%ctrl%atime(itime_max_dt_frac)
+      dt_factor_limit = s%ctrl%timestep_factors(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       struct_dt = previous_timestep/dt_factor
@@ -353,7 +353,8 @@ end subroutine timestep_limit_structure
 ! clipped to [1/a, a] with a = atime(itime_max_dt_frac), and
 ! rotation_dt = previous_timestep/f; dt_unlimited when omega did not
 ! change.
-!   star reads: ctrl%atime, ctrl%max_domega_global, omega_start
+!   star reads: ctrl%max_domega_global, ctrl%timestep_factors,
+!     omega_start
 !   star writes: none
 subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
@@ -395,7 +396,7 @@ subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotatio
       endif
 ! Let the timestep change by at most a factor atime(itime_max_dt_frac)
 ! (the global timestep limiter) up or down.
-      dt_factor_limit = s%ctrl%atime(itime_max_dt_frac)
+      dt_factor_limit = s%ctrl%timestep_factors(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor=dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor=1.0d0/dt_factor_limit
       rotation_dt = previous_timestep/dt_factor
@@ -424,8 +425,8 @@ end subroutine timestep_limit_omega
 ! the zone's rates and its start-of-step abundances. (The legacy code
 ! took dX/dt from the equilibrium burn, with He3 and the CN cycle in
 ! equilibrium.)
-!   star reads: ctrl%atime, solar_luminosity_cgs, solar_mass_cgs,
-!     xa_start
+!   star reads: ctrl%timestep_factors, solar_luminosity_cgs,
+!     solar_mass_cgs, xa_start
 !   star writes: none
 subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclosed_mass, &
      log_temperature, hydrogen_luminosity, &
@@ -465,14 +466,14 @@ subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclose
 
 ! Core burning. With a convective core, the limit is the time to burn
 ! the given amount of hydrogen in the whole core, not only at the centre.
-      if(composition(i_h1,1).ge.s%ctrl%atime(itime_core_min)) then
-       delta_x = min(s%ctrl%atime(itime_dx_core_tot),s%ctrl%atime(itime_dx_core_frac)*composition(i_h1,convective_core_edge_zone))
+      if(composition(i_h1,1).ge.s%ctrl%timestep_factors(itime_core_min)) then
+       delta_x = min(s%ctrl%timestep_factors(itime_dx_core_tot),s%ctrl%timestep_factors(itime_dx_core_frac)*composition(i_h1,convective_core_edge_zone))
        hydrogen_dt =(h_burn_energy_per_gram/s%solar_luminosity_cgs)* &
             (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))*delta_x
        return
       endif
 ! Shell burning: limit the total mass of hydrogen burned,
-      delta_x = s%ctrl%atime(itime_dx_total)*composition(i_h1,num_points)*(s%solar_mass_cgs/s%solar_luminosity_cgs)
+      delta_x = s%ctrl%timestep_factors(itime_dx_total)*composition(i_h1,num_points)*(s%solar_mass_cgs/s%solar_luminosity_cgs)
       hydrogen_dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity
 ! and the depletion of X at the shell midpoint, with dX/dt from the
 ! network (A = 1 for hydrogen).
@@ -484,8 +485,8 @@ subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclose
       call compute_abundance_rates(rate_vec, &
            s%xa_start(network_species_slot, zone_end), dxdt_per_a)
       dx_dt = dxdt_per_a(s_h1)
-      if(dx_dt.lt.0.0d0 .and. s%ctrl%atime(itime_dx_shell).gt.0.0d0) then
-         shell_dt_x_depletion = abs(s%ctrl%atime(itime_dx_shell)/dx_dt)
+      if(dx_dt.lt.0.0d0 .and. s%ctrl%timestep_factors(itime_dx_shell).gt.0.0d0) then
+         shell_dt_x_depletion = abs(s%ctrl%timestep_factors(itime_dx_shell)/dx_dt)
          hydrogen_dt = min(hydrogen_dt,shell_dt_x_depletion)
       endif
       return
@@ -507,7 +508,7 @@ end subroutine timestep_limit_hburn
 ! L_cc there,
 !   helium_dt = E_He Delta Y m_cc/(L_cc Lsun).
 ! Shell burning (core helium exhausted): see that branch below.
-!   star reads: ctrl%atime, ctrl%use_extended_composition,
+!   star reads: ctrl%timestep_factors, ctrl%use_extended_composition,
 !     solar_luminosity_cgs, solar_mass_cgs
 !   star writes: none
 subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
@@ -569,8 +570,8 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
 ! which approximates the core Y since X is negligible in a
 ! helium-burning core.
        core_helium_fraction = 1d0 - composition(i_metals,convective_core_edge_zone)
-       if(core_helium_fraction.ge.s%ctrl%atime(itime_core_min)) then
-            helium_dt = min(s%ctrl%atime(itime_dy_core_tot),s%ctrl%atime(itime_dy_core_frac)*core_helium_fraction)
+       if(core_helium_fraction.ge.s%ctrl%timestep_factors(itime_core_min)) then
+            helium_dt = min(s%ctrl%timestep_factors(itime_dy_core_tot),s%ctrl%timestep_factors(itime_dy_core_frac)*core_helium_fraction)
             helium_dt = (he_burn_energy_per_gram/s%solar_luminosity_cgs)*helium_dt* &
                (enclosed_mass(convective_core_edge_zone)/luminosity(convective_core_edge_zone))
          else
@@ -590,11 +591,11 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
             shell_zone = max(h_shell_bot_index-1, 1)
             helium_dt = dt_unlimited
             if (luminosity(shell_zone) .gt. 0.0d0) then
-               if (s%ctrl%atime(itime_dy_total) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (he_burn_energy_per_gram/s%solar_luminosity_cgs)*s%ctrl%atime(itime_dy_total)* &
+               if (s%ctrl%timestep_factors(itime_dy_total) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (he_burn_energy_per_gram/s%solar_luminosity_cgs)*s%ctrl%timestep_factors(itime_dy_total)* &
                     (s%solar_mass_cgs/luminosity(shell_zone)))
-               if (s%ctrl%atime(itime_dy_shell) .gt. 0.0d0) helium_dt = min(helium_dt, &
-                    (he_burn_energy_per_gram/s%solar_luminosity_cgs)*s%ctrl%atime(itime_dy_shell)* &
+               if (s%ctrl%timestep_factors(itime_dy_shell) .gt. 0.0d0) helium_dt = min(helium_dt, &
+                    (he_burn_energy_per_gram/s%solar_luminosity_cgs)*s%ctrl%timestep_factors(itime_dy_shell)* &
                     composition(i_he4,shell_zone)* &
                     (enclosed_mass(shell_zone)/luminosity(shell_zone)))
             end if
@@ -612,8 +613,9 @@ end subroutine timestep_limit_heburn
 !   f = max(|Delta log Teff|/tri_delta_teffl, |Delta log L|/tri_delta_logl),
 ! f = 1 when nothing changed, clipped to [1/a, a] with
 ! a = atime(itime_max_dt_frac), and envelope_dt = previous_timestep/f.
-!   star reads: ctrl%atime, ctrl%tri_delta_logl, ctrl%tri_delta_teffl,
-!     log_Teff_start, surface_luminosity_lsun_start
+!   star reads: ctrl%timestep_factors, ctrl%tri_delta_logl,
+!     ctrl%tri_delta_teffl, log_Teff_start,
+!     surface_luminosity_lsun_start
 !   star writes: none
 subroutine timestep_limit_hr(s, previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
@@ -655,7 +657,7 @@ subroutine timestep_limit_hr(s, previous_timestep, luminosity, log_teff, &
       if (dt_factor .eq. 0.0d0) dt_factor = 1.0d0
 ! Let the timestep change by at most a factor atime(itime_max_dt_frac)
 ! up or down.
-      dt_factor_limit = s%ctrl%atime(itime_max_dt_frac)
+      dt_factor_limit = s%ctrl%timestep_factors(itime_max_dt_frac)
       if (dt_factor.gt.dt_factor_limit) dt_factor = dt_factor_limit
       if (dt_factor.lt.1.0d0/dt_factor_limit) dt_factor = 1.0d0/dt_factor_limit
       envelope_dt = previous_timestep/dt_factor

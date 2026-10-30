@@ -272,14 +272,14 @@ end subroutine compute_new_shell_masses
 ! or omega ~ r^walpcz. Each shell's specific moment of inertia is
 ! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
-         if(s%ctrl%walpcz.le.-2.0D0)then
+         if(s%ctrl%cz_rotation_law_exponent.le.-2.0D0)then
 ! walpcz <= -2: constant specific angular momentum j.
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                s%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
-         else if(s%ctrl%walpcz.ge.0.0D0)then
+         else if(s%ctrl%cz_rotation_law_exponent.ge.0.0D0)then
 ! walpcz >= 0: solid-body rotation, omega constant.
             do zone_index = old_num_zones+1,num_zones
                s%omega(zone_index) = s%omega(old_num_zones)
@@ -289,9 +289,9 @@ subroutine guess_new_shell_rotation()
          else
 ! Otherwise omega ~ r^walpcz, the law enforce_rotation_profile
 ! (omega_profile) imposes: omega = omega_old (r/r_old)^walpcz.
-            omega_ref = s%omega(old_num_zones)/exp10((log_radius(old_num_zones)*s%ctrl%walpcz))
+            omega_ref = s%omega(old_num_zones)/exp10((log_radius(old_num_zones)*s%ctrl%cz_rotation_law_exponent))
             do zone_index = old_num_zones+1,num_zones
-               s%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*s%ctrl%walpcz))
+               s%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*s%ctrl%cz_rotation_law_exponent))
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = s%omega(zone_index)*moment_of_inertia(zone_index)
             end do

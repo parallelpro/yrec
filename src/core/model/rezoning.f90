@@ -47,11 +47,12 @@ contains
 ! new mesh (rotating models). ierr /= 0 on failure.
 !   star reads: conv_vel, cp, ctrl%chi_grid_scale,
 !     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
-!     ctrl%rotation_active, ctrl%tenv0, ctrl%tenv1,
-!     ctrl%use_extended_composition, disk_gate_age_gyr, dlnrho_dlnt,
-!     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
-!     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
-!     opacity_zone, stored_envelope_state, thermal_diffusivity
+!     ctrl%rezone_env_logt0, ctrl%rezone_env_logt1,
+!     ctrl%rotation_active, ctrl%use_extended_composition,
+!     disk_gate_age_gyr, dlnrho_dlnt, eps_channels, eps_total,
+!     fit_point_logP, fit_point_logR, grada, gradr, gradT,
+!     kinematic_viscosity, log_Teff, log_total_mass, mu, opacity_zone,
+!     stored_envelope_state, thermal_diffusivity
 !   star writes: am_transport_convective_flag, conv_vel_start,
 !     convective_flag, convective_flag_start, core_cz_top_index,
 !     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,
@@ -192,9 +193,9 @@ contains
 subroutine check_envelope_temperature_range
 ! The outer point is cooler than tenv0: delete points down to the first
 ! one hotter than tenv0.
-      if (s%logT(s%nz).lt.s%ctrl%tenv0) then
+      if (s%logT(s%nz).lt.s%ctrl%rezone_env_logt0) then
        do i = s%nz-1,1,-1
-          if (s%logT(i).gt.s%ctrl%tenv0) then
+          if (s%logT(i).gt.s%ctrl%rezone_env_logt0) then
              write(run_log_unit,10) s%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
@@ -218,7 +219,7 @@ subroutine check_envelope_temperature_range
 ! log P and log R by the stored state's offsets from the fitting point,
 ! with Delta log T = Delta log P/4, L and the composition copied, and
 ! log rho = log P - log T - 8 (a rough ideal-gas estimate).
-      else if (s%logT(s%nz).gt.s%ctrl%tenv1.and. &
+      else if (s%logT(s%nz).gt.s%ctrl%rezone_env_logt1.and. &
            envelope_store_index.ne.0) then
        s%nz = s%nz + 1
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)

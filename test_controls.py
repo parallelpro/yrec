@@ -146,7 +146,7 @@ def test_zoning_tolerances_without_new_rate_variables():
     zoning = dumped(dump, "chi_grid_scale")
     assert zoning == documented("zoning_tolerances"), zoning
     assert all(v > 0 for i, v in enumerate(zoning) if i != 6), "a zero zoning tolerance"
-    assert dumped(dump, "atime") == documented("timestep_factors")
+    assert dumped(dump, "timestep_factors") == documented("timestep_factors")
 
 
 def test_pristine_controls_are_the_defaults(tmp_path):
@@ -337,6 +337,6 @@ def test_older_inlist_names_still_read(tmp_path):
         assert "ierr = 0" in dumps[name], name
     assert dumps["old"] == dumps["new"]
     assert dumps["both"] == dumps["new"]
-    assert "ctrl%walpcz = -1.50000000000000000E+000" in dumps["new"]
+    assert "ctrl%cz_rotation_law_exponent = -1.50000000000000000E+000" in dumps["new"]
     assert 'ctrl%kurucz_table_path = "kurucz1"' in dumps["new"]
     assert 'ctrl%alex95_table_paths(3) = "alex3"' in dumps["new"]

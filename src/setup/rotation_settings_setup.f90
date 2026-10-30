@@ -21,25 +21,27 @@ contains
 
 !----------------------------------------------------------------------
 ! rotation_settings_from_star: rotation's settings from the controls.
-!   star reads: ctrl%acfpft, ctrl%chi_grid_scale,
+!   star reads: ctrl%chi_grid_scale,
 !     ctrl%constant_background_diffusion_coeff,
 !     ctrl%convergence_tolerance, ctrl%critical_reynolds,
-!     ctrl%difad_velocity_scale, ctrl%diffusion_timestep_factor,
-!     ctrl%disk_locking_active, ctrl%disk_locking_age_gyr,
-!     ctrl%disk_omega_rad_s, ctrl%es_mixing_scale,
-!     ctrl%es_velocity_scale, ctrl%force_solid_body_rotation,
-!     ctrl%G_cgs, ctrl%gsf_inhibition_mode, ctrl%gsf_mixing_scale,
+!     ctrl%cz_rotation_law_exponent, ctrl%difad_velocity_scale,
+!     ctrl%diffusion_timestep_factor, ctrl%disk_locking_active,
+!     ctrl%disk_locking_age_gyr, ctrl%disk_omega_rad_s,
+!     ctrl%es_mixing_scale, ctrl%es_velocity_scale,
+!     ctrl%force_solid_body_rotation, ctrl%fpft_average_weight,
+!     ctrl%fpft_iter1, ctrl%fpft_iter2, ctrl%G_cgs,
+!     ctrl%gsf_inhibition_mode, ctrl%gsf_mixing_scale,
 !     ctrl%gsf_velocity_scale, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%instability_transport_active,
-!     ctrl%itfp1, ctrl%itfp2, ctrl%lovstm, ctrl%lvfc,
-!     ctrl%max_diffusion_iters, ctrl%max_domega_global,
-!     ctrl%mixing_velocity_scale, ctrl%no_am_transport_in_core,
-!     ctrl%overshoot_alpha_envelope, ctrl%pmm_exponent_a,
-!     ctrl%pmm_exponent_b, ctrl%pmm_exponent_c, ctrl%pmm_exponent_d,
-!     ctrl%pmm_exponent_m, ctrl%pmm_norm_jdot, ctrl%pmm_solar_omega,
-!     ctrl%pmm_solar_pressure, ctrl%pmm_solar_turnover_timescale,
-!     ctrl%rotation_active, ctrl%scale_by_b_field,
-!     ctrl%scale_by_rossby_number, ctrl%secular_shear_mixing_scale,
+!     ctrl%intermediate_overshoot_active, ctrl%max_diffusion_iters,
+!     ctrl%max_domega_global, ctrl%mixing_velocity_scale,
+!     ctrl%no_am_transport_in_core, ctrl%overshoot_alpha_envelope,
+!     ctrl%pmm_exponent_a, ctrl%pmm_exponent_b, ctrl%pmm_exponent_c,
+!     ctrl%pmm_exponent_d, ctrl%pmm_exponent_m, ctrl%pmm_norm_jdot,
+!     ctrl%pmm_solar_omega, ctrl%pmm_solar_pressure,
+!     ctrl%pmm_solar_turnover_timescale, ctrl%rotation_active,
+!     ctrl%scale_by_b_field, ctrl%scale_by_rossby_number,
+!     ctrl%secular_shear_mixing_scale,
 !     ctrl%secular_shear_velocity_scale,
 !     ctrl%settling_timestep_fraction, ctrl%solar_omega_sat,
 !     ctrl%solberg_hoiland_mixing_scale,
@@ -47,8 +49,8 @@ contains
 !     ctrl%use_constant_background_diffusion,
 !     ctrl%use_diffusion_advection_transport,
 !     ctrl%use_extended_composition, ctrl%use_pmm_wind_law,
-!     ctrl%use_wind_torque, ctrl%walpcz, ctrl%wind_law_constant,
-!     ctrl%wind_law_index, ctrl%wind_law_name,
+!     ctrl%use_wind_torque, ctrl%velocity_form_correction,
+!     ctrl%wind_law_constant, ctrl%wind_law_index, ctrl%wind_law_name,
 !     ctrl%wind_saturation_omega, log10_solar_luminosity,
 !     solar_luminosity_cgs, solar_mass_cgs, solar_radius_cgs
 !   star writes: none
@@ -83,14 +85,14 @@ function rotation_settings_from_star(s) result(settings)
       settings%max_domega_global = s%ctrl%max_domega_global
       settings%max_diffusion_iters = s%ctrl%max_diffusion_iters
       settings%convergence_tolerance = s%ctrl%convergence_tolerance
-      settings%shape_outer_iterations = s%ctrl%itfp1
-      settings%shape_inner_iterations = s%ctrl%itfp2
-      settings%shape_tolerance = s%ctrl%acfpft
-      settings%cz_rotation_law_exponent = s%ctrl%walpcz
+      settings%shape_outer_iterations = s%ctrl%fpft_iter1
+      settings%shape_inner_iterations = s%ctrl%fpft_iter2
+      settings%shape_tolerance = s%ctrl%fpft_average_weight
+      settings%cz_rotation_law_exponent = s%ctrl%cz_rotation_law_exponent
       settings%force_solid_body_rotation = s%ctrl%force_solid_body_rotation
       settings%solid_body_mode_flag = s%ctrl%solid_body_mode_flag
       if (s%ctrl%rotation_active) then
-         settings%cz_rotation_law_exponent = min(0.0d0, max(-2.0d0, s%ctrl%walpcz))
+         settings%cz_rotation_law_exponent = min(0.0d0, max(-2.0d0, s%ctrl%cz_rotation_law_exponent))
          if (s%ctrl%force_solid_body_rotation) settings%solid_body_mode_flag = 1
       end if
       settings%velocity_scale(i_mech_eddington_sweet) = s%ctrl%es_velocity_scale
@@ -99,7 +101,7 @@ function rotation_settings_from_star(s) result(settings)
       settings%velocity_scale(i_mech_solberg_hoiland) = s%ctrl%solberg_hoiland_velocity_scale
       settings%critical_reynolds = s%ctrl%critical_reynolds
       settings%gsf_inhibition_mode = s%ctrl%gsf_inhibition_mode
-      settings%use_zahn_coupling_factor = s%ctrl%lvfc
+      settings%use_zahn_coupling_factor = s%ctrl%velocity_form_correction
       settings%no_am_transport_in_core = s%ctrl%no_am_transport_in_core
       settings%mixing_velocity_scale = s%ctrl%mixing_velocity_scale
       settings%mixing_scale(i_mech_eddington_sweet) = s%ctrl%es_mixing_scale
@@ -138,7 +140,7 @@ function rotation_settings_from_star(s) result(settings)
       settings%helium_diffusion_min = s%ctrl%helium_diffusion_min
       settings%settling_timestep_fraction = s%ctrl%settling_timestep_fraction
       settings%use_extended_composition = s%ctrl%use_extended_composition
-      settings%intermediate_overshoot = s%ctrl%lovstm
+      settings%intermediate_overshoot = s%ctrl%intermediate_overshoot_active
       settings%overshoot_alpha_envelope = s%ctrl%overshoot_alpha_envelope
       settings%solar_luminosity_cgs = s%solar_luminosity_cgs
       settings%log10_solar_luminosity = s%log10_solar_luminosity

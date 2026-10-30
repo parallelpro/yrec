@@ -16,7 +16,7 @@
 !                        boundary-condition rows from the envelope fit
 !                        (star%envelope_fit_coeffs), solves for the
 !                        P, T, R and L corrections (henyey_solve), tests
-!                        them against the tolerances (ctrl%htoler),
+!                        them against the tolerances (ctrl%solver_tolerances),
 !                        applies them, and with rotation updates the
 !                        rotation curve and the rotational P and T
 !                        factors (omega_from_j, rotation_shape_factors).
@@ -158,7 +158,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
 
       integer :: i, j, iter, max_correction_pos
 ! The sign of the fcorr0 control: > 0 means the under-relaxation factor
-! star%job%fcorr (started at |fcorr0| - fcorri by evolve_step) is ramped
+! star%job%solver_underrelax_factor (started at |fcorr0| - fcorri by evolve_step) is ramped
 ! up by fcorri each iteration; <= 0 holds it fixed.
       logical :: underrelax_ramp_active
       double precision :: temp, test, total_luminosity_terms, &
@@ -168,7 +168,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       integer :: jerr
 
       ierr = 0
-      underrelax_ramp_active = s%ctrl%fcorr0.gt.0.0d0
+      underrelax_ramp_active = s%ctrl%solver_underrelax_start.gt.0.0d0
 ! If the model converged at the previous level and the envelope triangle
 ! was checked without any new envelope, there is nothing to correct.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
@@ -248,10 +248,10 @@ end subroutine renormalize_luminosity_channels
 ! residuals are not checked.
 subroutine accept_small_residuals()
        if (iter.gt.1) then
-          if (s%max_residual(1).le.s%ctrl%htoler(5,1) .and. &
-               s%max_residual(2).le.s%ctrl%htoler(5,2) .and. &
-               s%max_residual(3).le.s%ctrl%htoler(5,1) .and. &
-               s%max_residual(4).le. s%ctrl%htoler(5,2)) then
+          if (s%max_residual(1).le.s%ctrl%solver_tolerances(5,1) .and. &
+               s%max_residual(2).le.s%ctrl%solver_tolerances(5,2) .and. &
+               s%max_residual(3).le.s%ctrl%solver_tolerances(5,1) .and. &
+               s%max_residual(4).le. s%ctrl%solver_tolerances(5,2)) then
              s%newton_iterations = iterations_done + 1
              if (solver_diagnostics()) then
                 write(run_log_unit,20) (s%max_residual(j),j=1,4)
@@ -334,14 +334,14 @@ end subroutine find_largest_corrections
 subroutine test_henyey_convergence()
 ! The largest L correction, for the helium flash's correction factor.
        luminosity_correction_max = s%max_residual(4)
-       converged = s%max_residual(1).lt.s%ctrl%htoler(1,1) .and. &
-            s%max_residual(2).lt.s%ctrl%htoler(2,1) &
-         .and. s%max_residual(3).lt.s%ctrl%htoler(3,1) .and. &
-         s%max_residual(4).lt.s%ctrl%htoler(4,1)
-       corrections_too_large = s%max_residual(1).gt.s%ctrl%htoler(1,2) .or. &
-            s%max_residual(2).gt.s%ctrl%htoler(2,2) &
-         .or. s%max_residual(3).gt.s%ctrl%htoler(3,2) .or. &
-         s%max_residual(4).gt.s%ctrl%htoler(4,2)
+       converged = s%max_residual(1).lt.s%ctrl%solver_tolerances(1,1) .and. &
+            s%max_residual(2).lt.s%ctrl%solver_tolerances(2,1) &
+         .and. s%max_residual(3).lt.s%ctrl%solver_tolerances(3,1) .and. &
+         s%max_residual(4).lt.s%ctrl%solver_tolerances(4,1)
+       corrections_too_large = s%max_residual(1).gt.s%ctrl%solver_tolerances(1,2) .or. &
+            s%max_residual(2).gt.s%ctrl%solver_tolerances(2,2) &
+         .or. s%max_residual(3).gt.s%ctrl%solver_tolerances(3,2) .or. &
+         s%max_residual(4).gt.s%ctrl%solver_tolerances(4,2)
        do j = 1,4
           max_correction_pos = s%max_correction_index(j)
           s%max_residual(j) = s%elim_rhs(j,max_correction_pos)
@@ -352,10 +352,10 @@ end subroutine test_henyey_convergence
 ! Ramp the under-relaxation factor and pick the correction factor (eased
 ! in during the helium flash); count the iterations if converged.
 subroutine set_henyey_correction_factor()
-       if (underrelax_ramp_active) s%job%fcorr = dmin1(1.d0,s%job%fcorr+s%ctrl%fcorri)
+       if (underrelax_ramp_active) s%job%solver_underrelax_factor = dmin1(1.d0,s%job%solver_underrelax_factor+s%ctrl%solver_underrelax_increment)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
-       correction_factor = s%job%fcorr
+       correction_factor = s%job%solver_underrelax_factor
        if (s%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
@@ -374,7 +374,7 @@ subroutine log_henyey_corrections()
 ! The correction trace is written only with solver diagnostics on.
        if (solver_diagnostics()) then
           write (run_log_unit,60) converged,s%max_residual(4), &
-               s%ctrl%htoler(4,1),s%max_correction_index(4)
+               s%ctrl%solver_tolerances(4,1),s%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
           write(run_log_unit,70)(s%max_correction_index(j),s%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &

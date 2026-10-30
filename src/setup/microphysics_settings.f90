@@ -32,11 +32,12 @@ contains
 !----------------------------------------------------------------------
 ! kap_settings_from_star: kap's settings from the controls.
 !   star reads: ctrl%alex_table_z1, ctrl%kurucz_table_z1,
-!     ctrl%kurucz_table_z2, ctrl%laol_table_z1, ctrl%laol_table_z2,
+!     ctrl%kurucz_table_z2, ctrl%laol_extrapolation_tolerance,
+!     ctrl%laol_table_z1, ctrl%laol_table_z2,
 !     ctrl%metal_fraction_match_tolerance,
 !     ctrl%molecular_opacity_logt_max, ctrl%molecular_opacity_logt_min,
 !     ctrl%opal95_single_table_z, ctrl%opal_table_z1,
-!     ctrl%opal_table_z2, ctrl%tollaol, ctrl%use_alex06_tables,
+!     ctrl%opal_table_z2, ctrl%use_alex06_tables,
 !     ctrl%use_alex95_tables, ctrl%use_conductive_opacity,
 !     ctrl%use_kurucz90_tables, ctrl%use_laol89_tables,
 !     ctrl%use_opal92_tables, ctrl%use_opal95_tables,
@@ -67,7 +68,7 @@ function kap_settings_from_star(s) result(settings)
       settings%molecular_opacity_logt_min = s%ctrl%molecular_opacity_logt_min
       settings%molecular_opacity_logt_max = s%ctrl%molecular_opacity_logt_max
       settings%metal_fraction_match_tolerance = s%ctrl%metal_fraction_match_tolerance
-      settings%laol_extrapolation_tolerance = s%ctrl%tollaol
+      settings%laol_extrapolation_tolerance = s%ctrl%laol_extrapolation_tolerance
 end function kap_settings_from_star
 
 !----------------------------------------------------------------------
@@ -184,13 +185,15 @@ end function atm_table_paths_from_star
 ! convection_settings_from_star: convection's settings from the
 ! controls and the run card's mixing length; log10 G is derived from
 ! G_cgs (log10_newton_g).
-!   star reads: ctrl%alpham, ctrl%betac, ctrl%core_overshoot_active,
-!     ctrl%envelope_overshoot_active, ctrl%G_cgs,
-!     ctrl%instability_transport_active, ctrl%ladov, ctrl%lovmax,
-!     ctrl%lovstm, ctrl%overshoot_alpha_core,
-!     ctrl%overshoot_alpha_envelope, ctrl%rotation_active,
-!     ctrl%spot_depth_varies, ctrl%spot_filling_factor,
-!     ctrl%spot_temp_contrast, ctrl%tgcut,
+!   star reads: ctrl%adiabatic_overshoot_active,
+!     ctrl%core_overshoot_active, ctrl%envelope_overshoot_active,
+!     ctrl%G_cgs, ctrl%gradient_logt_cutoff,
+!     ctrl%instability_transport_active,
+!     ctrl%intermediate_overshoot_active, ctrl%overshoot_alpha_core,
+!     ctrl%overshoot_alpha_envelope, ctrl%overshoot_alpha_min,
+!     ctrl%overshoot_beta_core, ctrl%overshoot_max_extent_flag,
+!     ctrl%rotation_active, ctrl%spot_depth_varies,
+!     ctrl%spot_filling_factor, ctrl%spot_temp_contrast,
 !     ctrl%use_extended_composition, envelope_metals_no_cno,
 !     log10_solar_luminosity, mixing_length_alpha, solar_luminosity_cgs
 !   star writes: none
@@ -201,8 +204,8 @@ function convection_settings_from_star(s) result(settings)
       type(convection_settings_t) :: settings
 
       settings%mixing_length_alpha = s%mixing_length_alpha
-      settings%log10_t_cut = s%ctrl%tgcut
-      settings%adiabatic_overshoot = s%ctrl%ladov
+      settings%log10_t_cut = s%ctrl%gradient_logt_cutoff
+      settings%adiabatic_overshoot = s%ctrl%adiabatic_overshoot_active
       settings%solar_luminosity_cgs = s%solar_luminosity_cgs
       settings%log10_solar_luminosity = s%log10_solar_luminosity
       settings%log10_gravitational_constant = log10_newton_g(s%ctrl%G_cgs)
@@ -211,12 +214,12 @@ function convection_settings_from_star(s) result(settings)
       settings%spot_depth_varies = s%ctrl%spot_depth_varies
       settings%core_overshoot = s%ctrl%core_overshoot_active
       settings%envelope_overshoot = s%ctrl%envelope_overshoot_active
-      settings%intermediate_overshoot = s%ctrl%lovstm
+      settings%intermediate_overshoot = s%ctrl%intermediate_overshoot_active
       settings%overshoot_alpha_core = s%ctrl%overshoot_alpha_core
       settings%overshoot_alpha_envelope = s%ctrl%overshoot_alpha_envelope
-      settings%overshoot_alpha_intermediate = s%ctrl%alpham
-      settings%limit_core_overshoot = s%ctrl%lovmax
-      settings%core_overshoot_limit = s%ctrl%betac
+      settings%overshoot_alpha_intermediate = s%ctrl%overshoot_alpha_min
+      settings%limit_core_overshoot = s%ctrl%overshoot_max_extent_flag
+      settings%core_overshoot_limit = s%ctrl%overshoot_beta_core
       settings%rotation_active = s%ctrl%rotation_active
       settings%instability_transport_active = s%ctrl%instability_transport_active
       settings%use_extended_composition = s%ctrl%use_extended_composition
@@ -228,11 +231,12 @@ end function convection_settings_from_star
 ! controls (the Monte-Carlo run's fgrz included).
 !   star reads: ctrl%constant_mixing_coeff,
 !     ctrl%constant_settling_reduction, ctrl%coulomb_log_choice,
-!     ctrl%diffuse_lithium, ctrl%fgry, ctrl%helium_diffusion_min,
+!     ctrl%diffuse_lithium, ctrl%helium_diffusion_min,
 !     ctrl%hydrogen_diffusion_floor, ctrl%settling_num_iterations,
-!     ctrl%settling_tolerance, ctrl%use_diffusion_z,
-!     ctrl%use_new_diffusion_routines, ctrl%use_thoul_diffusion,
-!     ctrl%use_thoul_fit, job%fgrz
+!     ctrl%settling_tolerance, ctrl%settling_y_factor,
+!     ctrl%use_diffusion_z, ctrl%use_new_diffusion_routines,
+!     ctrl%use_thoul_diffusion, ctrl%use_thoul_fit,
+!     job%settling_z_factor
 !   star writes: none
 function diffusion_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -242,8 +246,8 @@ function diffusion_settings_from_star(s) result(settings)
       settings%use_new_diffusion_routines = s%ctrl%use_new_diffusion_routines
       settings%use_diffusion_z = s%ctrl%use_diffusion_z
       settings%diffuse_lithium = s%ctrl%diffuse_lithium
-      settings%fgry = s%ctrl%fgry
-      settings%fgrz = s%job%fgrz
+      settings%fgry = s%ctrl%settling_y_factor
+      settings%fgrz = s%job%settling_z_factor
       settings%hydrogen_diffusion_floor = s%ctrl%hydrogen_diffusion_floor
       settings%helium_diffusion_min = s%ctrl%helium_diffusion_min
       settings%settling_num_iterations = s%ctrl%settling_num_iterations

@@ -204,8 +204,8 @@ module star_info_lib
 ! scale of the N15(p,alpha)C12 branch [-]; user_inputs
             double precision :: n15_pa_scale
 ! log T at which an envelope integration stores its state for the surface
-! boundary (stored_envelope_state): the mean of ctrl%tenv0 and
-! ctrl%tenv1 [log10 K]; derived_controls
+! boundary (stored_envelope_state): the mean of ctrl%rezone_env_logt0 and
+! ctrl%rezone_env_logt1 [log10 K]; derived_controls
             double precision :: envelope_store_log_temperature
 ! atm_choice as read from the deck [-]; controls_reader. The run may
 ! change job%atm_choice (see use_ttau_relation); this keeps the original.
@@ -472,7 +472,7 @@ module star_info_lib
             integer :: envelope_cz_bottom_index
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
-! evolve_rotation. From find_convection_zones; with ctrl%ladov the
+! evolve_rotation. From find_convection_zones; with ctrl%adiabatic_overshoot_active the
 ! radiative points envelope_overshoot_bottom_index to
 ! envelope_overshoot_top_index take the adiabatic gradient.
             integer :: envelope_overshoot_bottom_index
@@ -486,7 +486,7 @@ module star_info_lib
 ! the model burns hydrogen in a shell rather than in the core [logical];
 ! step_driver, run_driver
             logical :: has_h_shell
-! first point of the H-burning shell, where X > ctrl%atime(1) [-];
+! first point of the H-burning shell, where X > ctrl%timestep_factors(1) [-];
 ! step_driver, run_driver. Valid when has_h_shell.
             integer :: h_shell_bot_index
 ! first point where X exceeds half its surface value [-]; step_driver,
@@ -521,7 +521,7 @@ module star_info_lib
             logical :: punch_pending_flag
 ! build a new envelope-fit triangle at the next solve [logical];
 ! step_driver, run_driver, mass_change. Set by a model read, the mass
-! change, the envelope rebuild or ctrl%lnew0; cleared by
+! change, the envelope rebuild or ctrl%new_triangle_init_flag; cleared by
 ! compute_surface_boundary.
             logical :: recompute_envelope_triangle
 ! the rezone moved the outer point: redo the triangle at level 2

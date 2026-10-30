@@ -235,6 +235,43 @@ module legacy_controls
       logical :: lsdepth
 
 
+! The legacy spellings of controls whose code names changed in 2026-10
+! (ctl2_renames.py): the legacy namelists bind these, and
+! adopt_canonical_names copies them to the code names.
+      real(dp) :: acfpft
+      real(dp) :: alpham
+      real(dp) :: atime(14)
+      real(dp) :: betac
+      real(dp) :: dpenv
+      real(dp) :: fcorr0
+      real(dp) :: fcorri
+      real(dp) :: fczdmdt
+      real(dp) :: fgry
+      real(dp) :: fgrz
+      real(dp) :: fo
+      real(dp) :: ftotdmdt
+      real(dp) :: htoler(5,2)
+      integer :: ies
+      integer :: imu
+      integer :: itfp1
+      integer :: itfp2
+      logical :: ladov
+      logical :: lnew0
+      logical :: lnewvars
+      logical :: lovmax
+      logical :: lovstm
+      logical :: lstruct_time
+      logical :: lvfc
+      integer :: npenv
+      real(dp) :: rsclzc(max_runs)
+      real(dp) :: rsclzm1(max_runs)
+      real(dp) :: rsclzm2(max_runs)
+      real(dp) :: tenv0
+      real(dp) :: tenv1
+      real(dp) :: tgcut
+      real(dp) :: tollaol
+      real(dp) :: walpcz
+
       namelist /control/ &
            &    cmixla, calsolage, calsolzx, &
            &    descrip, &

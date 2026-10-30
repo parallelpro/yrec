@@ -49,7 +49,7 @@ program test_controls
 ! must be a single read's
          call get_environment_variable("YREC_TEST_READ_TWICE", twice)
          if (twice == "1") then
-            star%job%fcorr = 7.0d0
+            star%job%solver_underrelax_factor = 7.0d0
             star%job%initial_envelope_x = 7.0d0
             star%job%s11_rate = 7.0d0
 ! the run's files closed, as run_yrec's prologue closes them

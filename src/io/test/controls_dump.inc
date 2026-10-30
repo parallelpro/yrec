@@ -44,38 +44,38 @@
       write(u,'(a," = ",i0)') 'ctrl%set_initial_model_number', star%ctrl%set_initial_model_number
       write(u,'(a," = ",l1)') 'ctrl%compute_neutrino_fluxes', star%ctrl%compute_neutrino_fluxes
       do i1 = 1, 14
-      write(u,'(a," = ",es25.17e3)') 'ctrl%atime('//itoa(i1)//')', star%ctrl%atime(i1)
+      write(u,'(a," = ",es25.17e3)') 'ctrl%timestep_factors('//itoa(i1)//')', star%ctrl%timestep_factors(i1)
       end do
       do i1 = 1, 5
       write(u,'(a," = ",es25.17e3)') 'ctrl%nuclear_logT_cutoffs('//itoa(i1)//')', star%ctrl%nuclear_logT_cutoffs(i1)
       end do
       write(u,'(a," = ",es25.17e3)') 'ctrl%saha_log10t_cutoff', star%ctrl%saha_log10t_cutoff
-      write(u,'(a," = ",es25.17e3)') 'ctrl%tenv0', star%ctrl%tenv0
-      write(u,'(a," = ",es25.17e3)') 'ctrl%tenv1', star%ctrl%tenv1
-      write(u,'(a," = ",es25.17e3)') 'ctrl%tgcut', star%ctrl%tgcut
+      write(u,'(a," = ",es25.17e3)') 'ctrl%rezone_env_logt0', star%ctrl%rezone_env_logt0
+      write(u,'(a," = ",es25.17e3)') 'ctrl%rezone_env_logt1', star%ctrl%rezone_env_logt1
+      write(u,'(a," = ",es25.17e3)') 'ctrl%gradient_logt_cutoff', star%ctrl%gradient_logt_cutoff
       write(u,'(a," = ",es25.17e3)') 'ctrl%weak_screening_threshold', star%ctrl%weak_screening_threshold
-      write(u,'(a," = ",es25.17e3)') 'ctrl%dpenv', star%ctrl%dpenv
+      write(u,'(a," = ",es25.17e3)') 'ctrl%envelope_logp_step', star%ctrl%envelope_logp_step
       write(u,'(a," = ",l1)') 'ctrl%core_overshoot_active', star%ctrl%core_overshoot_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_alpha_core', star%ctrl%overshoot_alpha_core
       write(u,'(a," = ",l1)') 'ctrl%envelope_overshoot_active', star%ctrl%envelope_overshoot_active
       write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_alpha_envelope', star%ctrl%overshoot_alpha_envelope
-      write(u,'(a," = ",l1)') 'ctrl%lovstm', star%ctrl%lovstm
-      write(u,'(a," = ",es25.17e3)') 'ctrl%alpham', star%ctrl%alpham
-      write(u,'(a," = ",l1)') 'ctrl%ladov', star%ctrl%ladov
-      write(u,'(a," = ",l1)') 'ctrl%lovmax', star%ctrl%lovmax
-      write(u,'(a," = ",es25.17e3)') 'ctrl%betac', star%ctrl%betac
+      write(u,'(a," = ",l1)') 'ctrl%intermediate_overshoot_active', star%ctrl%intermediate_overshoot_active
+      write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_alpha_min', star%ctrl%overshoot_alpha_min
+      write(u,'(a," = ",l1)') 'ctrl%adiabatic_overshoot_active', star%ctrl%adiabatic_overshoot_active
+      write(u,'(a," = ",l1)') 'ctrl%overshoot_max_extent_flag', star%ctrl%overshoot_max_extent_flag
+      write(u,'(a," = ",es25.17e3)') 'ctrl%overshoot_beta_core', star%ctrl%overshoot_beta_core
       write(u,'(a," = ",l1)') 'ctrl%use_semiconvection', star%ctrl%use_semiconvection
-      write(u,'(a," = ",es25.17e3)') 'ctrl%acfpft', star%ctrl%acfpft
-      write(u,'(a," = ",i0)') 'ctrl%itfp1', star%ctrl%itfp1
-      write(u,'(a," = ",i0)') 'ctrl%itfp2', star%ctrl%itfp2
+      write(u,'(a," = ",es25.17e3)') 'ctrl%fpft_average_weight', star%ctrl%fpft_average_weight
+      write(u,'(a," = ",i0)') 'ctrl%fpft_iter1', star%ctrl%fpft_iter1
+      write(u,'(a," = ",i0)') 'ctrl%fpft_iter2', star%ctrl%fpft_iter2
       write(u,'(a," = ",l1)') 'ctrl%rotation_active', star%ctrl%rotation_active
-      write(u,'(a," = ",es25.17e3)') 'ctrl%walpcz', star%ctrl%walpcz
+      write(u,'(a," = ",es25.17e3)') 'ctrl%cz_rotation_law_exponent', star%ctrl%cz_rotation_law_exponent
       write(u,'(a," = ",l1)') 'ctrl%instability_transport_active', star%ctrl%instability_transport_active
       write(u,'(a," = ",l1)') 'ctrl%set_initial_omega', star%ctrl%set_initial_omega
       write(u,'(a," = ",es25.17e3)') 'ctrl%initial_omega', star%ctrl%initial_omega
       write(u,'(a," = ",es25.17e3)') 'ctrl%mass_accretion_rate', star%ctrl%mass_accretion_rate
-      write(u,'(a," = ",es25.17e3)') 'ctrl%fczdmdt', star%ctrl%fczdmdt
-      write(u,'(a," = ",es25.17e3)') 'ctrl%ftotdmdt', star%ctrl%ftotdmdt
+      write(u,'(a," = ",es25.17e3)') 'ctrl%accretion_cz_fraction', star%ctrl%accretion_cz_fraction
+      write(u,'(a," = ",es25.17e3)') 'ctrl%accretion_total_fraction', star%ctrl%accretion_total_fraction
       do i1 = 1, 15
       write(u,'(a," = ",es25.17e3)') 'ctrl%accreted_composition('//itoa(i1)//')', star%ctrl%accreted_composition(i1)
       end do
@@ -103,11 +103,11 @@
       write(u,'(a," = ",l1)') 'ctrl%monte_carlo_active', star%ctrl%monte_carlo_active
       do i2 = 1, 2
       do i1 = 1, 5
-      write(u,'(a," = ",es25.17e3)') 'ctrl%htoler('//itoa(i1)//','//itoa(i2)//')', star%ctrl%htoler(i1,i2)
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solver_tolerances('//itoa(i1)//','//itoa(i2)//')', star%ctrl%solver_tolerances(i1,i2)
       end do
       end do
-      write(u,'(a," = ",es25.17e3)') 'ctrl%fcorr0', star%ctrl%fcorr0
-      write(u,'(a," = ",es25.17e3)') 'ctrl%fcorri', star%ctrl%fcorri
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solver_underrelax_start', star%ctrl%solver_underrelax_start
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solver_underrelax_increment', star%ctrl%solver_underrelax_increment
       do i1 = 1, 12
       write(u,'(a," = ",es25.17e3)') 'ctrl%chi_grid_scale('//itoa(i1)//')', star%ctrl%chi_grid_scale(i1)
       end do
@@ -125,7 +125,7 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%hydrogen_diffusion_floor', star%ctrl%hydrogen_diffusion_floor
       write(u,'(a," = ",es25.17e3)') 'ctrl%helium_diffusion_min', star%ctrl%helium_diffusion_min
       write(u,'(a," = ",l1)') 'ctrl%use_thoul_fit', star%ctrl%use_thoul_fit
-      write(u,'(a," = ",es25.17e3)') 'ctrl%fgry', star%ctrl%fgry
+      write(u,'(a," = ",es25.17e3)') 'ctrl%settling_y_factor', star%ctrl%settling_y_factor
       write(u,'(a," = ",l1)') 'ctrl%use_thoul_diffusion', star%ctrl%use_thoul_diffusion
       write(u,'(a," = ",l1)') 'ctrl%use_diffusion_z', star%ctrl%use_diffusion_z
       write(u,'(a," = ",l1)') 'ctrl%use_new_diffusion_routines', star%ctrl%use_new_diffusion_routines
@@ -148,7 +148,7 @@
       write(u,'(a," = ",i0)') 'ctrl%pulse_gyre_interval', star%ctrl%pulse_gyre_interval
       write(u,'(a," = ",es25.17e3)') 'ctrl%tri_delta_teffl', star%ctrl%tri_delta_teffl
       write(u,'(a," = ",es25.17e3)') 'ctrl%tri_delta_logl', star%ctrl%tri_delta_logl
-      write(u,'(a," = ",l1)') 'ctrl%lnew0', star%ctrl%lnew0
+      write(u,'(a," = ",l1)') 'ctrl%new_triangle_init_flag', star%ctrl%new_triangle_init_flag
       write(u,'(a," = ",es25.17e3)') 'ctrl%max_domega_global', star%ctrl%max_domega_global
       write(u,'(a," = ",es25.17e3)') 'ctrl%atm_step_size', star%ctrl%atm_step_size
       write(u,'(a," = ",es25.17e3)') 'ctrl%envelope_step_size', star%ctrl%envelope_step_size
@@ -221,7 +221,7 @@
       write(u,'(a," = ",l1)') 'ctrl%use_opal95_tables', star%ctrl%use_opal95_tables
       write(u,'(a," = ",l1)') 'ctrl%use_kurucz90_tables', star%ctrl%use_kurucz90_tables
       write(u,'(a," = ",l1)') 'ctrl%use_alex95_tables', star%ctrl%use_alex95_tables
-      write(u,'(a," = ",es25.17e3)') 'ctrl%tollaol', star%ctrl%tollaol
+      write(u,'(a," = ",es25.17e3)') 'ctrl%laol_extrapolation_tolerance', star%ctrl%laol_extrapolation_tolerance
       write(u,'(a," = ",l1)') 'ctrl%use_pure_z_table', star%ctrl%use_pure_z_table
       write(u,'(a," = ",a)') 'ctrl%laol_table_path', '"'//trim(star%ctrl%laol_table_path)//'"'
       write(u,'(a," = ",a)') 'ctrl%laol_table2_path', '"'//trim(star%ctrl%laol_table2_path)//'"'
@@ -253,7 +253,7 @@
       write(u,'(a," = ",a)') 'ctrl%atm_table_path', '"'//trim(star%ctrl%atm_table_path)//'"'
       write(u,'(a," = ",a)') 'ctrl%allard_table_path', '"'//trim(star%ctrl%allard_table_path)//'"'
       write(u,'(a," = ",l1)') 'ctrl%use_conductive_opacity', star%ctrl%use_conductive_opacity
-      write(u,'(a," = ",l1)') 'ctrl%lvfc', star%ctrl%lvfc
+      write(u,'(a," = ",l1)') 'ctrl%velocity_form_correction', star%ctrl%velocity_form_correction
       write(u,'(a," = ",l1)') 'ctrl%use_diffusion_advection_transport', star%ctrl%use_diffusion_advection_transport
       write(u,'(a," = ",l1)') 'ctrl%no_am_transport_in_core', star%ctrl%no_am_transport_in_core
       write(u,'(a," = ",es25.17e3)') 'ctrl%allard_target_feh', star%ctrl%allard_target_feh
@@ -308,9 +308,9 @@
       end do
       write(u,'(a," = ",i0)') 'job%mc_run_start', star%job%mc_run_start
       write(u,'(a," = ",i0)') 'job%mc_run_end', star%job%mc_run_end
-      write(u,'(a," = ",es25.17e3)') 'job%fcorr', star%job%fcorr
+      write(u,'(a," = ",es25.17e3)') 'job%solver_underrelax_factor', star%job%solver_underrelax_factor
       write(u,'(a," = ",i0)') 'job%num_rotation_structure_iters', star%job%num_rotation_structure_iters
-      write(u,'(a," = ",es25.17e3)') 'job%fgrz', star%job%fgrz
+      write(u,'(a," = ",es25.17e3)') 'job%settling_z_factor', star%job%settling_z_factor
       write(u,'(a," = ",i0)') 'job%atm_choice', star%job%atm_choice
       write(u,'(a," = ",es25.17e3)') 'job%requested_envelope_mass', star%job%requested_envelope_mass
       write(u,'(a," = ",l1)') 'job%change_envelope_mass_flag', star%job%change_envelope_mass_flag
@@ -350,20 +350,20 @@
       write(u,'(a," = ",l1)') 'job%has_senv0_array('//itoa(i1)//')', star%job%has_senv0_array(i1)
       end do
       do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%rsclzc('//itoa(i1)//')', star%job%rsclzc(i1)
+      write(u,'(a," = ",es25.17e3)') 'job%rescale_core_z('//itoa(i1)//')', star%job%rescale_core_z(i1)
       end do
       do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%rsclzm1('//itoa(i1)//')', star%job%rsclzm1(i1)
+      write(u,'(a," = ",es25.17e3)') 'job%rescale_z_mix1('//itoa(i1)//')', star%job%rescale_z_mix1(i1)
       end do
       do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'job%rsclzm2('//itoa(i1)//')', star%job%rsclzm2(i1)
+      write(u,'(a," = ",es25.17e3)') 'job%rescale_z_mix2('//itoa(i1)//')', star%job%rescale_z_mix2(i1)
       end do
       write(u,'(a," = ",es25.17e3)') 'job%target_teff', star%job%target_teff
       write(u,'(a," = ",es25.17e3)') 'job%target_radius_rsun', star%job%target_radius_rsun
       write(u,'(a," = ",a)') 'buffer%inlist_used_file', '"'//trim(inlist_used_file)//'"'
       write(u,'(a," = ",l1)') 'buffer%report_solver_diagnostics', report_solver_diagnostics
       write(u,'(a," = ",l1)') 'buffer%use_new_nuclear_rates', use_new_nuclear_rates
-      write(u,'(a," = ",i0)') 'buffer%npenv', npenv
+      write(u,'(a," = ",i0)') 'buffer%envelope_print_points', envelope_print_points
       write(u,'(a," = ",a)') 'buffer%monte_carlo_file1_path', '"'//trim(monte_carlo_file1_path)//'"'
       write(u,'(a," = ",a)') 'buffer%monte_carlo_file2_path', '"'//trim(monte_carlo_file2_path)//'"'
       write(u,'(a," = ",l1)') 'buffer%envelope_generation_flag', envelope_generation_flag
@@ -374,9 +374,9 @@
       write(u,'(a," = ",es25.17e3)') 'buffer%target_metal_fraction', target_metal_fraction
       write(u,'(a," = ",es25.17e3)') 'buffer%initial_b10_fraction', initial_b10_fraction
       write(u,'(a," = ",es25.17e3)') 'buffer%initial_b11_fraction', initial_b11_fraction
-      write(u,'(a," = ",es25.17e3)') 'buffer%fo', fo
-      write(u,'(a," = ",i0)') 'buffer%ies', ies
-      write(u,'(a," = ",i0)') 'buffer%imu', imu
+      write(u,'(a," = ",es25.17e3)') 'buffer%coupling_factor', coupling_factor
+      write(u,'(a," = ",i0)') 'buffer%enable_eddington_sweet', enable_eddington_sweet
+      write(u,'(a," = ",i0)') 'buffer%enable_mu_gradient', enable_mu_gradient
       write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos
@@ -412,8 +412,8 @@
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dp_env_max', tol_dp_env_max
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dx_max', tol_dx_max
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dz_max', tol_dz_max
-      write(u,'(a," = ",l1)') 'buffer%lstruct_time', lstruct_time
-      write(u,'(a," = ",l1)') 'buffer%lnewvars', lnewvars
+      write(u,'(a," = ",l1)') 'buffer%use_structure_time_limits', use_structure_time_limits
+      write(u,'(a," = ",l1)') 'buffer%use_new_rate_variables', use_new_rate_variables
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_pp', s0_pp
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_he3he3', s0_he3he3
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_he3he4', s0_he3he4
