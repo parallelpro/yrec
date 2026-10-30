@@ -16,8 +16,10 @@
       character(len=256) :: fermi_table_file
       character(len=256) :: log_output_file
       character(len=256) :: dynamics_file
+      character(len=256) :: opal92_opacity_table_file
       character(len=256) :: ll_data_file
       character(len=256) :: surface_composition_file
+      character(len=256) :: kurucz_opacity_table_file
       character(len=256) :: kurucz_atm_table_file
       character(len=256) :: mhd_table_file_1
       character(len=256) :: mhd_table_file_2
@@ -29,16 +31,19 @@
       character(len=256) :: mhd_table_file_8
       character(len=256) :: isochrone_file
       character(len=256) :: atm_table_file
+      character(len=256) :: kurucz_opacity_table2_file
       character(len=256) :: kurucz_castelli_atm_table_file
       character(len=256) :: allard_atm_table_file
       character(len=256) :: scv_h_table_file
       character(len=256) :: scv_he_table_file
       character(len=256) :: scv_z_table_file
+      character(len=256) :: opal95_eos_table_file
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
       integer :: run_kind(50)
       integer :: envelope_print_points
       integer :: max_model_number(50)
+      character(len=256) :: alex95_opacity_table_files(7)
       character(len=256) :: alex95_table_z_list(7)
       real(dp) :: rescale_mass(50)
       real(dp) :: rescale_x(50)
@@ -83,6 +88,7 @@
       real(dp) :: rezone_env_logT1
       real(dp) :: gradient_logT_cutoff
       real(dp) :: laol_z_tolerance
+      real(dp) :: cz_rotation_law_exponent
       real(dp) :: new_zone_omega_weight
       real(dp) :: change_species_value
       real(dp) :: mass_change
@@ -109,32 +115,34 @@
            & pure_z_opacity_table_file, laol_opacity_table2_file, &
            & opal92_opacity_table2_file, last_model_file, &
            & first_model_file, fermi_table_file, dynamics_file, &
-           & ll_data_file, surface_composition_file, &
+           & opal92_opacity_table_file, ll_data_file, &
+           & surface_composition_file, kurucz_opacity_table_file, &
            & kurucz_atm_table_file, mhd_table_file_1, mhd_table_file_2, &
            & mhd_table_file_3, mhd_table_file_4, mhd_table_file_5, &
            & mhd_table_file_6, mhd_table_file_7, mhd_table_file_8, &
-           & isochrone_file, atm_table_file, &
+           & isochrone_file, atm_table_file, kurucz_opacity_table2_file, &
            & kurucz_castelli_atm_table_file, allard_atm_table_file, &
            & scv_h_table_file, scv_he_table_file, scv_z_table_file, &
-           & opal_eos_table_file, opal95_opacity_table_file, &
-           & monte_carlo_file1_path, monte_carlo_file2_path, run_kind, &
-           & first_call_flag, set_initial_model_number, use_z_ramp, &
-           & specify_teff_flag, calibrate_star_flag, use_pure_z_table, &
+           & opal95_eos_table_file, opal_eos_table_file, &
+           & opal95_opacity_table_file, monte_carlo_file1_path, &
+           & monte_carlo_file2_path, run_kind, first_call_flag, &
+           & set_initial_model_number, use_z_ramp, specify_teff_flag, &
+           & calibrate_star_flag, use_pure_z_table, &
            & isochrone_output_active, rewind_short_file, &
            & has_senv0_array, calibrate_solar_model, calibrate_solar_zx, &
            & use_laol89_tables, use_opal92_tables, use_opal95_tables, &
            & use_kurucz90_tables, use_alex95_tables, &
            & envelope_print_points, num_runs, max_model_number, &
-           & alex95_table_z_list, rescale_mass, rescale_x, rescale_z, &
-           & rescale_core_mass, rescale_core_z, rescale_z_mix1, &
-           & rescale_z_mix2, timestep_override, senv0_array, &
-           & target_teff, target_radius_rsun, radius_tolerance, &
-           & luminosity_tolerance, zx_tolerance, initial_x_array, &
-           & target_luminosity_lsun, target_star_luminosity_tolerance, &
-           & initial_z_array, laol_table_z1, laol_table_z2, &
-           & opal_table_z1, opal_table_z2, opal95_single_table_z, &
-           & opal95_z2, alex_table_z1, alex_z2, kurucz_table_z1, &
-           & kurucz_table_z2, opal01_eos_table_file, &
+           & alex95_opacity_table_files, alex95_table_z_list, &
+           & rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
+           & rescale_core_z, rescale_z_mix1, rescale_z_mix2, &
+           & timestep_override, senv0_array, target_teff, &
+           & target_radius_rsun, radius_tolerance, luminosity_tolerance, &
+           & zx_tolerance, initial_x_array, target_luminosity_lsun, &
+           & target_star_luminosity_tolerance, initial_z_array, &
+           & laol_table_z1, laol_table_z2, opal_table_z1, opal_table_z2, &
+           & opal95_single_table_z, opal95_z2, alex_table_z1, alex_z2, &
+           & kurucz_table_z1, kurucz_table_z2, opal01_eos_table_file, &
            & conductive_opacity_table_file, opal06_eos_table_file, &
            & alex06_opacity_table_file, use_alex06_tables, &
            & central_deuterium_stop, central_hydrogen_stop, &
@@ -201,15 +209,15 @@
            & nuclear_logT_cutoffs, saha_log10t_cutoff, rezone_env_logT0, &
            & rezone_env_logT1, gradient_logT_cutoff, tri_delta_teffl, &
            & tri_delta_logl, laol_z_tolerance, mixture_weights_seed, &
-           & new_zone_omega_weight, initial_omega, &
-           & weak_screening_threshold, change_species_value, &
-           & hydrogen_diffusion_floor, helium_diffusion_min, &
-           & molecular_opacity_logt_min, molecular_opacity_logt_max, &
-           & monte_carlo_active, mc_run_start, mc_run_end, use_scv_eos, &
-           & disk_locking_active, disk_locking_age_gyr, &
-           & disk_omega_rad_s, wind_saturation_omega, &
-           & force_solid_body_rotation, solid_body_mode_flag, &
-           & mass_change, accretion_cz_fraction, &
+           & cz_rotation_law_exponent, new_zone_omega_weight, &
+           & initial_omega, weak_screening_threshold, &
+           & change_species_value, hydrogen_diffusion_floor, &
+           & helium_diffusion_min, molecular_opacity_logt_min, &
+           & molecular_opacity_logt_max, monte_carlo_active, &
+           & mc_run_start, mc_run_end, use_scv_eos, disk_locking_active, &
+           & disk_locking_age_gyr, disk_omega_rad_s, &
+           & wind_saturation_omega, force_solid_body_rotation, &
+           & solid_body_mode_flag, mass_change, accretion_cz_fraction, &
            & accretion_total_fraction, accreted_composition, &
            & reimers_scaling_factor, use_reimers_wind, use_mass_change, &
            & use_opal2001_eos, use_conductive_opacity, use_opal2006_eos, &

@@ -60,15 +60,17 @@
 
       ! OPAL 1992 opacity table (use_opal92_tables)
       ! (legacy name: flldat)
-      ll_data_file = ''
+      ! (also accepted: ll_data_file)
+      opal92_opacity_table_file = ''
 
-      ! Inert: the path is expanded and used nowhere; the controls read warns when it is set
+      ! Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read
       ! (legacy name: fscomp)
       surface_composition_file = ''
 
       ! Kurucz 1990 low-temperature opacity table (use_kurucz90_tables)
       ! (legacy name: fkur)
-      kurucz_atm_table_file = ''
+      ! (also accepted: kurucz_atm_table_file)
+      kurucz_opacity_table_file = ''
 
       ! MHD EOS table 1 of 8: the first ZAMS-type composition
       ! (legacy name: fmhd1)
@@ -112,7 +114,8 @@
 
       ! Kurucz 1990 low-temperature opacity table, second Z
       ! (legacy name: fkur2)
-      kurucz_castelli_atm_table_file = ''
+      ! (also accepted: kurucz_castelli_atm_table_file)
+      kurucz_opacity_table2_file = ''
 
       ! Allard NextGen model-atmosphere table
       ! (legacy name: fallard)
@@ -132,7 +135,8 @@
 
       ! OPAL 1995 EOS table (use_opal95_eos)
       ! (legacy name: fopale)
-      opal_eos_table_file = ''
+      ! (also accepted: opal_eos_table_file)
+      opal95_eos_table_file = ''
 
       ! OPAL 1995-format opacity table (use_opal95_tables)
       ! (legacy name: fliv95)
@@ -225,9 +229,10 @@
       ! (legacy name: nmodls)
       max_model_number = 0
 
-      ! The seven Alexander & Ferguson 1994 low-temperature opacity table files (the historical name says z_list)
+      ! The seven Alexander & Ferguson 1994 low-temperature opacity table files
       ! (legacy name: opecalex)
-      alex95_table_z_list = ''
+      ! (also accepted: alex95_table_z_list)
+      alex95_opacity_table_files = ''
 
       ! Per-run target mass (Msun) for rescale runs
       ! (legacy name: rsclm)

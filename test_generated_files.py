@@ -25,9 +25,9 @@ def test_generated_files_current(generator):
 
 
 # String controls that are not file paths (names, codes, the output
-# file's own name and prefix).
+# file's own name and prefix), and a path accepted and ignored (fscomp).
 NOT_PATHS = {"amix", "aiso", "anewcp", "atmp", "awind", "descrip", "pulse_format",
-             "profile_data_prefix", "star_history_name"}
+             "profile_data_prefix", "star_history_name", "fscomp"}
 
 
 def test_every_path_control_is_expanded():
@@ -43,7 +43,7 @@ def test_every_path_control_is_expanded():
     rows = [dict(zip(cols, r)) for r in registry[1:]]
     paths = {(r["canonical"] if r["home"] else r["legacy"]).lower() for r in rows
              if r["type"].startswith("string") and r["legacy"].lower() not in NOT_PATHS
-             and r["status"] != "derived"}
+             and r["status"] not in ("derived", "unused")}
     code = (SRC / "io" / "run_files.f90").read_text()
     body = re.search(r"subroutine expand_paths(.*?)end subroutine", code, re.S).group(1)
     expanded = {n.lower() for n in re.findall(r"expand_value\((\w+)", body)}

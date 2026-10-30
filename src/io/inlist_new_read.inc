@@ -20,8 +20,10 @@
       fermi_table_file = ffermi
       log_output_file = fshort
       dynamics_file = fdyn
+      opal92_opacity_table_file = flldat
       ll_data_file = flldat
       surface_composition_file = fscomp
+      kurucz_opacity_table_file = fkur
       kurucz_atm_table_file = fkur
       mhd_table_file_1 = fmhd1
       mhd_table_file_2 = fmhd2
@@ -33,11 +35,13 @@
       mhd_table_file_8 = fmhd8
       isochrone_file = fiso
       atm_table_file = fatm
+      kurucz_opacity_table2_file = fkur2
       kurucz_castelli_atm_table_file = fkur2
       allard_atm_table_file = fallard
       scv_h_table_file = fscvh
       scv_he_table_file = fscvhe
       scv_z_table_file = fscvz
+      opal95_eos_table_file = fopale
       opal_eos_table_file = fopale
       opal95_opacity_table_file = fliv95
       monte_carlo_file1_path = fmonte1
@@ -61,6 +65,7 @@
       envelope_print_points = npenv
       num_runs = numrun
       max_model_number = nmodls
+      alex95_opacity_table_files = opecalex
       alex95_table_z_list = opecalex
       rescale_mass = rsclm
       rescale_x = rsclx
@@ -228,6 +233,7 @@
       tri_delta_logl = tridl
       laol_z_tolerance = tollaol
       mixture_weights_seed = vnew
+      cz_rotation_law_exponent = walpcz
       new_zone_omega_weight = walpcz
       initial_omega = wnew
       weak_screening_threshold = weakscreening
@@ -338,6 +344,20 @@
       call check_io(ios, msg, 'read &physics from', control_nml_file, ierr, namelist_unit)
       if (ierr /= 0) return
       close(namelist_unit)
+! An older inlist name (an alias) counts when the deck sets it and not
+! the inlist name:
+      if (any([ll_data_file /= flldat]) .and. .not. any([opal92_opacity_table_file /= flldat])) &
+           opal92_opacity_table_file = ll_data_file
+      if (any([kurucz_atm_table_file /= fkur]) .and. .not. any([kurucz_opacity_table_file /= fkur])) &
+           kurucz_opacity_table_file = kurucz_atm_table_file
+      if (any([kurucz_castelli_atm_table_file /= fkur2]) .and. .not. any([kurucz_opacity_table2_file /= fkur2])) &
+           kurucz_opacity_table2_file = kurucz_castelli_atm_table_file
+      if (any([opal_eos_table_file /= fopale]) .and. .not. any([opal95_eos_table_file /= fopale])) &
+           opal95_eos_table_file = opal_eos_table_file
+      if (any([alex95_table_z_list /= opecalex]) .and. .not. any([alex95_opacity_table_files /= opecalex])) &
+           alex95_opacity_table_files = alex95_table_z_list
+      if (any([new_zone_omega_weight /= walpcz]) .and. .not. any([cz_rotation_law_exponent /= walpcz])) &
+           cz_rotation_law_exponent = new_zone_omega_weight
 ! Map the new-style values back onto the legacy names:
       cmixla = mixing_length_alpha
       calsolage = target_solar_age
@@ -353,9 +373,9 @@
       ffermi = fermi_table_file
       fshort = log_output_file
       fdyn = dynamics_file
-      flldat = ll_data_file
+      flldat = opal92_opacity_table_file
       fscomp = surface_composition_file
-      fkur = kurucz_atm_table_file
+      fkur = kurucz_opacity_table_file
       fmhd1 = mhd_table_file_1
       fmhd2 = mhd_table_file_2
       fmhd3 = mhd_table_file_3
@@ -366,12 +386,12 @@
       fmhd8 = mhd_table_file_8
       fiso = isochrone_file
       fatm = atm_table_file
-      fkur2 = kurucz_castelli_atm_table_file
+      fkur2 = kurucz_opacity_table2_file
       fallard = allard_atm_table_file
       fscvh = scv_h_table_file
       fscvhe = scv_he_table_file
       fscvz = scv_z_table_file
-      fopale = opal_eos_table_file
+      fopale = opal95_eos_table_file
       fliv95 = opal95_opacity_table_file
       fmonte1 = monte_carlo_file1_path
       fmonte2 = monte_carlo_file2_path
@@ -394,7 +414,7 @@
       npenv = envelope_print_points
       numrun = num_runs
       nmodls = max_model_number
-      opecalex = alex95_table_z_list
+      opecalex = alex95_opacity_table_files
       rsclm = rescale_mass
       rsclx = rescale_x
       rsclz = rescale_z
@@ -561,7 +581,7 @@
       tridl = tri_delta_logl
       tollaol = laol_z_tolerance
       vnew = mixture_weights_seed
-      walpcz = new_zone_omega_weight
+      walpcz = cz_rotation_law_exponent
       wnew = initial_omega
       weakscreening = weak_screening_threshold
       xnewcp = change_species_value

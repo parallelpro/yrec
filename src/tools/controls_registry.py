@@ -9,15 +9,17 @@ Columns:
   type           real, integer, logical or string, with (dims) for an array
   proposed_name  the name in a single-file inlist (for a derived member,
                  the member's name)
-  status         verified, canonical: a live control (canonical: the
-                     inlist name is the code's name);
-                 keep: a live control whose inlist name is its legacy name;
+  status         live: read by both formats, the inlist under
+                     proposed_name (and its aliases), the legacy decks under
+                     legacy (tools/gen_inlist.py works out how: the inlist
+                     name may be the legacy name, the canonical name, or a
+                     third name it copies);
                  legacy: read from the legacy decks only, and used;
                  unused: read from the legacy decks only, and used nowhere
                      (dropped from the inlist format);
                  derived: a controls_buffer member that the read computes
-                     (a unit number, a flag derived from other controls) or
-                     that the run keeps (the Newton factor fcorr)
+                     (a flag derived from other controls) or that the run
+                     keeps (the Newton factor fcorr)
   mesa_note      the MESA control it corresponds to, if any
   doc            what it does
   canonical      the controls_buffer member the value lands in (star%<x>
@@ -29,6 +31,10 @@ Columns:
   used           run: read after the controls read; read: only during the
                  read (map_user_inputs, derive_controls: an input-only
                  control); none: nowhere. tools/check_boundaries.py checks it.
+  aliases        older inlist names the inlist format still accepts (comma
+                 separated; a live control whose proposed_name replaced a
+                 misleading one). A deck that sets the proposed name wins
+                 over one that sets an alias.
 """
 import pathlib
 import re
@@ -37,8 +43,8 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 REG = SRC / "defaults" / "controls_registry.tsv"
 
 COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note", "doc",
-           "canonical", "home", "used"]
-STATUSES = {"verified", "canonical", "keep", "legacy", "unused", "derived"}
+           "canonical", "home", "used", "aliases"]
+STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
 HOMES = {"ctrl", "job", ""}
 USES = {"run", "read", "none", ""}
@@ -61,6 +67,8 @@ def rows():
                              f"{r['status']!r}/{r['home']!r}/{r['used']!r}")
         if bool(r["home"]) != (bool(r["canonical"]) and not r["canonical"].startswith("star%")):
             raise SystemExit(f"controls_registry.tsv:{n}: a buffer member needs a home, and only it")
+        if r["aliases"] and r["status"] != "live":
+            raise SystemExit(f"controls_registry.tsv:{n}: only a live control has aliases")
         out.append(r)
     return out
 

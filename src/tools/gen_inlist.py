@@ -20,10 +20,12 @@ Source of truth: defaults/controls_registry.tsv. Emits:
   defaults/controls_registry.md -- the registry as a table (every row's
                                names, home, use, type, default, description)
 
-Entry classes (per row): keep (new == legacy: the legacy variable itself
-joins the new group), direct (new == the canonical internal name read_input
-already copies into post-read: that variable joins the group), newlocal
-(a fresh local is declared). Rows with status 'unused' are dead legacy
+Entry classes (per live row): keep (new == legacy: the legacy variable
+itself joins the new group), direct (new == the canonical internal name
+read_input already copies into post-read: that variable joins the group),
+newlocal (a fresh local is declared). A row's aliases (older inlist names)
+are locals in the group too; one the deck sets counts when the deck does
+not set the inlist name. Rows with status 'unused' are dead legacy
 controls, accepted by the legacy path only and read nowhere; rows with
 status 'legacy' are accepted by the legacy path only but still used
 (documented separately in the .defaults files).
@@ -118,7 +120,8 @@ def shown(value):
 def main():
     rows = [dict(group=r["group"], legacy=r["legacy"], typ=r["type"],
                  new=r["proposed_name"], status=r["status"], mesa=r["mesa_note"],
-                 doc=r["doc"], canonical=r["canonical"], home=r["home"], used=r["used"])
+                 doc=r["doc"], canonical=r["canonical"], home=r["home"], used=r["used"],
+                 aliases=[a for a in r["aliases"].split(",") if a])
             for r in controls_registry.rows()]
     derived = [r for r in rows if r["status"] == "derived"]
     rows = [r for r in rows if r["status"] != "derived"]
@@ -140,6 +143,9 @@ def main():
             r["cls"] = "direct"
         else:
             r["cls"] = "newlocal"
+        if r["aliases"] and r["cls"] == "keep":
+            sys.exit(f"gen_inlist: {r['legacy']}: an alias needs an inlist name other than "
+                     "the legacy one")
     # each row's type is its legacy variable's (which the inlist name shares)
     wrong = []
     for r in rows:
@@ -158,17 +164,20 @@ def main():
             "! legacy_controls' groups of the same names in read_inlist). See",
             "! defaults/*.defaults for docs."]
     for r in live:
-        if r["cls"] != "newlocal":
+        if r["cls"] != "newlocal" and not r["aliases"]:
             continue
         typ, dims = legacy_decl(r["legacy"], decls)
         if typ is None:
             print("WARNING: no legacy declaration found for", r["legacy"])
             typ, dims = "double precision", ""
         d = f"({dims})" if dims else ""
-        decl.append(f"      {typ} :: {r['new']}{d}")
+        if r["cls"] == "newlocal":
+            decl.append(f"      {typ} :: {r['new']}{d}")
+        for alias in r["aliases"]:
+            decl.append(f"      {typ} :: {alias}{d}")
     for gname in ("control", "physics"):
-        members = [r["new"] if r["cls"] != "keep" else r["legacy"]
-                   for r in live if r["group"] == gname]
+        members = [n for r in live if r["group"] == gname
+                   for n in [r["new"] if r["cls"] != "keep" else r["legacy"]] + r["aliases"]]
         decl.append(f"      namelist /{gname}/ &")
         line = "           & "
         outl = []
@@ -213,6 +222,8 @@ def main():
         if r["cls"] == "keep":
             continue
         rd.append(f"      {r['new']} = {r['legacy']}")
+        for alias in r["aliases"]:
+            rd.append(f"      {alias} = {r['legacy']}")
     rd += [
         "! Read &control and &physics, in either order, from the one file.",
         "      open(newunit=namelist_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)",
@@ -226,8 +237,18 @@ def main():
         "      call check_io(ios, msg, 'read &physics from', control_nml_file, ierr, namelist_unit)",
         "      if (ierr /= 0) return",
         "      close(namelist_unit)",
-        "! Map the new-style values back onto the legacy names:",
     ]
+    aliased = [r for r in live if r["aliases"]]
+    if aliased:
+        rd.append("! An older inlist name (an alias) counts when the deck sets it and not")
+        rd.append("! the inlist name:")
+    for r in aliased:
+        ne = ".neqv." if r["typ"].startswith("logical") else "/="
+        for alias in r["aliases"]:
+            rd.append(f"      if (any([{alias} {ne} {r['legacy']}]) .and. "
+                      f".not. any([{r['new']} {ne} {r['legacy']}])) &")
+            rd.append(f"           {r['new']} = {alias}")
+    rd.append("! Map the new-style values back onto the legacy names:")
     for r in live:
         if r["cls"] == "keep":
             continue
@@ -250,6 +271,8 @@ def main():
                 out.append(f"      ! {r['doc']}")
             if r["legacy"] != name:
                 out.append(f"      ! (legacy name: {r['legacy']})")
+            if r["aliases"]:
+                out.append(f"      ! (also accepted: {', '.join(r['aliases'])})")
             if r["legacy"].lower() not in code_default:
                 sys.exit(f"gen_inlist: no default for {r['legacy']} in "
                          "set_legacy_defaults or controls_buffer")
@@ -285,11 +308,11 @@ def main():
           "  read (an input-only control: `map_user_inputs` or `derive_controls`",
           "  turns it into others); `none`, nowhere. `tools/check_boundaries.py`",
           "  checks it.",
-          "- **status**: `verified` and `canonical` are live controls (two labels of",
-          "  the 2026 renaming); `keep`, a live control whose inlist name is its",
-          "  legacy name; `legacy`, read from the legacy decks only; `unused`, read",
-          "  from the legacy decks only and used nowhere; `derived`, a member no deck",
-          "  sets. The columns are described in `tools/controls_registry.py`.",
+          "- **status**: `live`, read by both formats (an inlist name in",
+          "  parentheses is an older one the inlist format still accepts);",
+          "  `legacy`, read from the legacy decks only; `unused`, read from the",
+          "  legacy decks only and used nowhere; `derived`, a member no deck sets.",
+          "  The columns are described in `tools/controls_registry.py`.",
           ""]
     for gname in ("control", "physics"):
         md += [f"## &{gname}", "",
@@ -299,8 +322,9 @@ def main():
             if r["group"] != gname:
                 continue
             name = r["new"] if r["status"] not in controls_registry.DEAD else "(legacy only)"
+            name = f"`{name}`" + "".join(f" (`{a}`)" for a in r["aliases"])
             default = shown(code_default.get(r["legacy"].lower(), "")) or " "
-            md.append(f"| `{name}` | `{r['legacy']}` | `{r['canonical'] or '-'}` | {r['home'] or '-'} | "
+            md.append(f"| {name} | `{r['legacy']}` | `{r['canonical'] or '-'}` | {r['home'] or '-'} | "
                       f"{r['used'] or '-'} | {r['typ']} | `{cell(default)}` | {r['status']} | {cell(r['doc'])} |")
         md.append("")
     md += ["## Members no deck sets", "",

@@ -181,7 +181,8 @@ def test_inert_controls_warn_on_the_terminal(tmp_path):
     terminal (controls_check's warn_inert_controls), and the run log stays
     as it was: a giant deck sets use_rotation_scaled_solar_wind = .TRUE.
     (its wind is commented out), cm_base sets it .FALSE.; both set
-    surface_composition_file, which nothing writes."""
+    surface_composition_file, which is accepted and ignored without a
+    word."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     giant = next((REPO / "examples" / "giant_differential_rotation").glob("*RGp2diffrotI0.inlist"))
@@ -196,7 +197,7 @@ def test_inert_controls_warn_on_the_terminal(tmp_path):
         assert "WARNING (controls)" not in log
     wind = "WARNING (controls): use_rotation_scaled_solar_wind"
     assert wind in out[giant] and wind not in out[base]
-    assert all("WARNING (controls): surface_composition_file" in o for o in out.values())
+    assert not any("surface_composition_file" in o for o in out.values())
 
 
 def test_card_one_starts_from_the_starting_model(tmp_path):
@@ -296,3 +297,47 @@ def test_a_second_read_starts_from_the_defaults(tmp_path):
         dumps.append(lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):])
     assert "ierr = 0" in dumps[1]
     assert dumps[1] == dumps[0], [l for l in dumps[1] if l not in dumps[0]][:5]
+
+
+def test_older_inlist_names_still_read(tmp_path):
+    """Six inlist names that misdescribed their control were replaced
+    (new_zone_omega_weight -> cz_rotation_law_exponent, kurucz_atm_table_file
+    -> kurucz_opacity_table_file, ...); the registry keeps the old ones as
+    aliases. A deck written with the old name reads exactly as one with the
+    new name, and a deck that sets both gets the new name's value."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_rot_base.inlist"
+    text = deck.read_text()
+    old = " new_zone_omega_weight = 0.0"
+    assert old in text
+    extra = (" kurucz_atm_table_file = 'kurucz1'\n alex95_table_z_list(3) = 'alex3'\n"
+             " ll_data_file = 'opal92'\n opal_eos_table_file = 'opal95'\n"
+             " kurucz_castelli_atm_table_file = 'kurucz2'\n")
+    new_extra = extra.replace("kurucz_atm_table_file", "kurucz_opacity_table_file") \
+        .replace("alex95_table_z_list", "alex95_opacity_table_files") \
+        .replace("ll_data_file", "opal92_opacity_table_file") \
+        .replace("opal_eos_table_file", "opal95_eos_table_file") \
+        .replace("kurucz_castelli_atm_table_file", "kurucz_opacity_table2_file")
+    variants = {
+        "old": text.replace(old, " new_zone_omega_weight = -1.5").replace("&control", "&control\n" + extra, 1),
+        "new": text.replace(old, " cz_rotation_law_exponent = -1.5").replace("&control", "&control\n" + new_extra, 1),
+        "both": text.replace(old, " new_zone_omega_weight = -0.5\n cz_rotation_law_exponent = -1.5")
+                    .replace("&control", "&control\n" + extra.replace("kurucz1", "x") + new_extra, 1),
+    }
+    dumps = {}
+    for name, body in variants.items():
+        d = tmp_path / f"{name}.inlist"
+        d.write_text(body)
+        out = tmp_path / name
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out)))
+        lines = r.stdout.decode("latin-1").splitlines()
+        dumps[name] = lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):]
+        assert "ierr = 0" in dumps[name], name
+    assert dumps["old"] == dumps["new"]
+    assert dumps["both"] == dumps["new"]
+    assert "ctrl%walpcz = -1.50000000000000000E+000" in dumps["new"]
+    assert 'ctrl%kurucz_table_path = "kurucz1"' in dumps["new"]
+    assert 'ctrl%alex95_table_paths(3) = "alex3"' in dumps["new"]

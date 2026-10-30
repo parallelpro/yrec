@@ -131,7 +131,7 @@ end subroutine check_controls
 ! warn_inert_controls: legacy controls that a deck may set and that
 ! nothing uses (each warns only when set away from its default).
 subroutine warn_inert_controls
-      use legacy_controls, only: lsolwind, lpmm, pmmwmax, zopal952, zalex2, fscomp
+      use legacy_controls, only: lsolwind, lpmm, pmmwmax, zopal952, zalex2
 ! core/step/mass_change.f90: the rotation-scaled solar wind is commented out
       if (lsolwind) call warn('use_rotation_scaled_solar_wind (LSOLWIND) is on, but the' &
            //' rotation-scaled solar wind is commented out: it does nothing')
@@ -147,10 +147,6 @@ subroutine warn_inert_controls
            //' table takes one Z, opal95_single_table_z')
       if (zalex2 /= 0.0d0) call warn('alex_z2 (ZALEX2) does nothing; the Alexander tables' &
            //' take one Z, alex_table_z1')
-! the path is expanded (run_files) and opened nowhere
-      if (len_trim(fscomp) > 0 .and. fscomp(1:1) /= achar(0)) &
-           call warn('surface_composition_file (FSCOMP) is set, but no surface' &
-           //' composition file is written')
 end subroutine warn_inert_controls
 
 !----------------------------------------------------------------------

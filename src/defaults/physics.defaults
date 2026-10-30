@@ -468,7 +468,8 @@
 
       ! Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes
       ! (legacy name: walpcz)
-      new_zone_omega_weight = 0.0d0
+      ! (also accepted: new_zone_omega_weight)
+      cz_rotation_law_exponent = 0.0d0
 
       ! Initial rotation rate when set_initial_omega
       ! (legacy name: wnew)
