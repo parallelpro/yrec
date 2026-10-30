@@ -37,7 +37,7 @@ contains
 ! namelist (legacy IMBEG, IMEND). Only the records up to mc_run_end (at
 ! most max_mc_runs) are read (MHP 3/96). Without Monte Carlo the range
 ! is the single run 1.
-!   star reads: ctrl%dynamics_unit, ctrl%monte_carlo_active
+!   star reads: ctrl%monte_carlo_active
 !   star writes: job%age_target, job%diffusion_factor,
 !     job%helium_fraction_param, job%luminosity_target, job%mc_run_end,
 !     job%mc_run_start, job%metal_to_h_ratio, job%s11_rate,
@@ -49,7 +49,7 @@ subroutine setup_monte_carlo_runs(s)
          s%job%mc_run_end = min(s%job%mc_run_end,max_mc_runs)
 ! Read the sampled parameters, one two-line record per run.
          do i = 1,s%job%mc_run_end
-            read(s%ctrl%dynamics_unit,1511)s%job%s11_rate(i),s%job%s33_rate(i),s%job%s34_rate(i), &
+            read(dynamics_unit,1511)s%job%s11_rate(i),s%job%s33_rate(i),s%job%s34_rate(i), &
                  s%job%s17_rate(i),s%job%metal_to_h_ratio(i),s%job%helium_fraction_param(i), &
                  s%job%luminosity_target(i),s%job%age_target(i)
  1511       format(7X,1P7E10.3/E9.3)
@@ -142,8 +142,7 @@ end subroutine apply_monte_carlo_parameters
 ! verdicts are in the .log file.
 !
 !   star reads: ctrl%calc_neutrinos, ctrl%calibrate_solar_model,
-!     ctrl%first_unit, ctrl%monte_carlo_active, job%nk,
-!     solar_calibration_converged
+!     ctrl%monte_carlo_active, job%nk, solar_calibration_converged
 !   star writes: none
 subroutine write_run_summaries(s, monte_carlo_run_number, &
      convergence_iterations, log_r_rsun)
@@ -155,13 +154,13 @@ subroutine write_run_summaries(s, monte_carlo_run_number, &
 ! and write the model with its cycle count.
       if (s%ctrl%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.s%solar_calibration_converged) then
          rewind(last_model_unit)
-         rewind(s%ctrl%first_unit)
+         rewind(starting_model_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
               s%job%nk, monte_carlo_run_number)
       else if (s%ctrl%calibrate_solar_model .and. s%ctrl%calc_neutrinos .and. s%solar_calibration_converged) then
          rewind(last_model_unit)
-         rewind(s%ctrl%first_unit)
+         rewind(starting_model_unit)
          rewind(run_log_unit)
          if (s%ctrl%monte_carlo_active) then
             call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
@@ -182,14 +181,13 @@ end subroutine write_run_summaries
 ! contraction. local_log_radius is log(R/Rsun), and run_index = nk is
 ! the last card of the calibration triple.
 !   star reads: central_log10_density, central_log10_pressure,
-!     central_log10_temperature, cl37_snu_rate, ctrl%monte_carlo_unit1,
-!     ctrl%monte_carlo_unit2, dlum_dalpha, dlum_dx, drad_dalpha,
-!     drad_dx, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
-!     job%age_target, job%diffusion_factor, job%helium_fraction_param,
-!     job%luminosity_target, job%metal_to_h_ratio,
-!     job%mixing_length_array, job%rescale_params, job%s11_rate,
-!     job%s17_rate, job%s33_rate, job%s34_rate, log_L_lsun,
-!     luminosity_breakdown_lsun, neutrino_flux_total, nz, xa
+!     central_log10_temperature, cl37_snu_rate, dlum_dalpha, dlum_dx,
+!     drad_dalpha, drad_dx, envelope_mass_msun, envelope_radius_rsun,
+!     ga71_snu_rate, job%age_target, job%diffusion_factor,
+!     job%helium_fraction_param, job%luminosity_target,
+!     job%metal_to_h_ratio, job%mixing_length_array, job%rescale_params,
+!     job%s11_rate, job%s17_rate, job%s33_rate, job%s34_rate,
+!     log_L_lsun, luminosity_breakdown_lsun, neutrino_flux_total, nz, xa
 !   star writes: none
 subroutine write_monte_carlo_model(s, local_log_radius, &
      convergence_iterations, run_index, monte_carlo_run_number)
@@ -203,12 +201,12 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
 ! Append the last converged model to monte_carlo_unit2 (legacy IMONTE2).
-      iwrite = s%ctrl%monte_carlo_unit2
+      iwrite = mc_model_unit
       call write_mod_model(s, iwrite, replace=.false.)
 ! The summary on monte_carlo_unit1. The surface Z/X:
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
 ! Record 1: the run number and its sampled parameters.
-      write(s%ctrl%monte_carlo_unit1,10)monte_carlo_run_number,s%job%s11_rate(monte_carlo_run_number), &
+      write(mc_summary_unit,10)monte_carlo_run_number,s%job%s11_rate(monte_carlo_run_number), &
               s%job%s33_rate(monte_carlo_run_number),s%job%s34_rate(monte_carlo_run_number), &
               s%job%s17_rate(monte_carlo_run_number), &
               s%job%metal_to_h_ratio(monte_carlo_run_number),s%job%helium_fraction_param(monte_carlo_run_number), &
@@ -217,37 +215,37 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
    10 format(I7,1P9E10.3)
 ! Record 2: the number of calibration cycles, and the partial
 ! derivatives d log L/dX, d log R/dX, d log L/d alpha, d log R/d alpha.
-      write(s%ctrl%monte_carlo_unit1,20)convergence_iterations,s%dlum_dx,s%drad_dx, &
+      write(mc_summary_unit,20)convergence_iterations,s%dlum_dx,s%drad_dx, &
            s%dlum_dalpha,s%drad_dalpha
  20   format(1X,I2,1P4E11.4)
 ! Record 3: the Cl37 and Ga71 capture rates (SNU) and the first eight
 ! neutrino fluxes, pp, pep, hep, Be7, B8, N13, O15 and F17 (see
 ! compute_solar_neutrino_fluxes).
-      write(s%ctrl%monte_carlo_unit1,30) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total(j),j=1,8)
+      write(mc_summary_unit,30) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 ! Record 4: the central T/1e6 K, density (g cm^-3),
 ! P/1e17 dyn cm^-2, X and Z.
       tcen = exp10((s%central_log10_temperature-6.0d0))
       pcen = exp10((s%central_log10_pressure-17.0d0))
       dcen = exp10(s%central_log10_density)
-      write(s%ctrl%monte_carlo_unit1,40)tcen,dcen,pcen,s%xa(i_h1,1),s%xa(i_metals,1)
+      write(mc_summary_unit,40)tcen,dcen,pcen,s%xa(i_h1,1),s%xa(i_metals,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! Record 5: the number of shells, alpha, the initial Y and Z (from the
 ! triple's rescale card, nk-2), and the final log(L/Lsun) and
 ! log(R/Rsun).
       yini = 1.0d0 - s%job%rescale_params(2,run_index-2) - s%job%rescale_params(3,run_index-2)
       zini = s%job%rescale_params(3,run_index-2)
-      write(s%ctrl%monte_carlo_unit1,50)s%nz,s%job%mixing_length_array(run_index),yini,zini, &
+      write(mc_summary_unit,50)s%nz,s%job%mixing_length_array(run_index),yini,zini, &
            s%log_L_lsun,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 ! Record 6: the radius (Rsun) of the base of the surface convection
 ! zone and the mass above it (Msun), and the surface Y, Z and Z/X.
-      write(s%ctrl%monte_carlo_unit1,60)s%envelope_radius_rsun,s%envelope_mass_msun,s%xa(i_he4,s%nz), &
+      write(mc_summary_unit,60)s%envelope_radius_rsun,s%envelope_mass_msun,s%xa(i_he4,s%nz), &
            s%xa(i_metals,s%nz),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 ! Record 7: the luminosities (Lsun) of the pp I, pp II, pp III and CNO
 ! channels and of gravitational energy release.
-      write(s%ctrl%monte_carlo_unit1,70)(s%luminosity_breakdown_lsun(j),j=1,4),s%luminosity_breakdown_lsun(i_lum_grav)
+      write(mc_summary_unit,70)(s%luminosity_breakdown_lsun(j),j=1,4),s%luminosity_breakdown_lsun(i_lum_grav)
  70   format(1P5E10.3)
 end subroutine write_monte_carlo_model
 

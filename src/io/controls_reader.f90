@@ -108,7 +108,7 @@ end subroutine read_input
 subroutine read_namelist_files(ierr)
       integer, intent(inout) :: ierr
       logical :: single_inlist
-      integer :: ios
+      integer :: ios, namelist_unit
       character(len=256) :: msg
 
       if (nml_file_has_group(control_nml_file, 'star_job')) then
@@ -140,20 +140,20 @@ subroutine read_namelist_files(ierr)
       if (single_inlist) then
       call read_inlist(ierr)
       else
-      open(unit=standard_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
+      open(newunit=namelist_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the CONTROL namelist file', control_nml_file, ierr)
       if (ierr /= 0) return
-      read(unit=standard_unit, nml=control, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read the CONTROL namelist from', control_nml_file, ierr, standard_unit)
+      read(unit=namelist_unit, nml=control, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read the CONTROL namelist from', control_nml_file, ierr, namelist_unit)
       if (ierr /= 0) return
-      close(standard_unit)
-      open(unit=run_unit, file=physics_nml_file, status='OLD', iostat=ios, iomsg=msg)
+      close(namelist_unit)
+      open(newunit=namelist_unit, file=physics_nml_file, status='OLD', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the PHYSICS namelist file', physics_nml_file, ierr)
       if (ierr /= 0) return
-      read(unit=run_unit, nml=physics, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read the PHYSICS namelist from', physics_nml_file, ierr, run_unit)
+      read(unit=namelist_unit, nml=physics, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read the PHYSICS namelist from', physics_nml_file, ierr, namelist_unit)
       if (ierr /= 0) return
-      close(run_unit)
+      close(namelist_unit)
       end if
 end subroutine read_namelist_files
 
@@ -168,7 +168,7 @@ end subroutine read_namelist_files
 ! legacy names.
 subroutine read_inlist(ierr)
       integer, intent(inout) :: ierr
-      integer :: ios
+      integer :: ios, namelist_unit
       character(len=256) :: msg
       include 'inlist_new_decl.inc'
 

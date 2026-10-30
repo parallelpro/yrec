@@ -327,17 +327,17 @@
       use_new_rate_variables = lnewvars
       calc_envelope_flag = lcalcenv
 ! Read &control and &physics, in either order, from the one file.
-      open(unit=standard_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
+      open(newunit=namelist_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the inlist', control_nml_file, ierr)
       if (ierr /= 0) return
-      read(unit=standard_unit, nml=control, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read &control from', control_nml_file, ierr, standard_unit)
+      read(unit=namelist_unit, nml=control, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read &control from', control_nml_file, ierr, namelist_unit)
       if (ierr /= 0) return
-      rewind(standard_unit)
-      read(unit=standard_unit, nml=physics, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read &physics from', control_nml_file, ierr, standard_unit)
+      rewind(namelist_unit)
+      read(unit=namelist_unit, nml=physics, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'read &physics from', control_nml_file, ierr, namelist_unit)
       if (ierr /= 0) return
-      close(standard_unit)
+      close(namelist_unit)
 ! Map the new-style values back onto the legacy names:
       cmixla = mixing_length_alpha
       calsolage = target_solar_age

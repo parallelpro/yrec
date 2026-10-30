@@ -122,7 +122,6 @@ program test_net
 
 ! the run log's unit, as io/run_files.f90 assigns it
       run_log_unit = 20
-      star%ctrl%fermi_unit = 15
       open(run_log_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement

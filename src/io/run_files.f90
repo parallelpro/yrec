@@ -6,7 +6,9 @@
 ! directory created with a verbatim copy of the inlists (inlist_used),
 ! and the files opened.
 module run_files
-      use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io
+      use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
+           starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
+           isochrone_unit
       use legacy_controls
       implicit none
       private
@@ -20,45 +22,12 @@ module run_files
 contains
 
 ! ---------------------------------------------------------------
-! The fixed unit numbers of the run's files and tables (the newer
-! readers and writers use newunit instead).
+! The fixed units written from everywhere: the terminal, the final
+! model and the run log (io_units).
 subroutine assign_unit_numbers
       terminal_unit = 6
       last_model_unit = 11
-      first_unit = 12
-! the physics and control namelists
-      run_unit = 13
-      standard_unit = 14
-      fermi_unit = 15
       run_log_unit = 20
-      dynamics_unit = 30
-      opal92_table_unit = 32
-      opal95_table_unit = 48
-      composition_unit = 34
-      kurucz_table_unit = 36
-      isochrone_file_unit = 37
-      alex94_table_unit = 39
-! the MHD EOS tables (mhdst treats a unit <= 0 as a missing table)
-      unit_zams_a = 40
-      unit_zams_b = 41
-      unit_zams_c = 42
-      unit_centre1 = 43
-      unit_centre2 = 44
-      unit_centre3 = 45
-      unit_centre4 = 46
-      unit_centre5 = 47
-! the OPAL EOS
-      iopale = 49
-      kurucz_table2_unit = 65
-      allard_table_unit = 66
-      monte_carlo_unit1 = 70
-      monte_carlo_unit2 = 71
-      scv_h_unit = 72
-      scv_he_unit = 73
-      scv_z_unit = 74
-! the Potekhin conductive opacities
-      icondopacp = 75
-      alex06_table_unit = 90
 end subroutine assign_unit_numbers
 
 ! ---------------------------------------------------------------
@@ -139,7 +108,9 @@ subroutine open_run_files(s, ierr)
       call copy_inlists_used(trim(inlist_copy), ierr)
       if (ierr /= 0) return
 
-      open(unit=first_unit,file=ffirst,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
+      call close_run_files
+      open(newunit=starting_model_unit, file=ffirst, form='FORMATTED', status='OLD', &
+           iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the starting model', ffirst, ierr)
       if (ierr /= 0) return
       open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
@@ -148,24 +119,47 @@ subroutine open_run_files(s, ierr)
       call open_run_log(fshort, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
-         open(unit=dynamics_unit,file=fdyn,form='FORMATTED',status='OLD', iostat=ios, iomsg=msg)
+         open(newunit=dynamics_unit, file=fdyn, form='FORMATTED', status='OLD', &
+              iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo dynamics file', fdyn, ierr)
          if (ierr /= 0) return
-         open(monte_carlo_unit1, file=monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
+         open(newunit=mc_summary_unit, file=monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo summary file', monte_carlo_file1_path, ierr)
          if (ierr /= 0) return
-         open(monte_carlo_unit2, file=monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
+         open(newunit=mc_model_unit, file=monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo model file', monte_carlo_file2_path, ierr)
          if (ierr /= 0) return
       endif
       if (isochrone_output_active) then
-         open(isochrone_file_unit, file=fiso,status='UNKNOWN', form='FORMATTED', iostat=ios, iomsg=msg)
+         open(newunit=isochrone_unit, file=fiso, status='UNKNOWN', form='FORMATTED', &
+              iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the isochrone file', fiso, ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
+
+! ---------------------------------------------------------------
+! The files an earlier read opened (an in-process rerun), closed before
+! they are opened again.
+subroutine close_run_files
+      call close_unit(starting_model_unit)
+      call close_unit(dynamics_unit)
+      call close_unit(mc_summary_unit)
+      call close_unit(mc_model_unit)
+      call close_unit(isochrone_unit)
+contains
+subroutine close_unit(unit)
+      integer, intent(inout) :: unit
+      logical :: is_open
+      integer :: ios
+      if (unit == -1) return
+      inquire(unit=unit, opened=is_open, iostat=ios)
+      if (ios == 0 .and. is_open) close(unit)
+      unit = -1
+end subroutine close_unit
+end subroutine close_run_files
 
 ! ---------------------------------------------------------------
 ! The run's output directory: the run log's (blank for the working

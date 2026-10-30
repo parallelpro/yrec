@@ -53,8 +53,6 @@ program test_kap
 
 ! unit numbers, per core/read_input.f90
       run_log_unit = 20
-      star%ctrl%fermi_unit = 15
-      star%ctrl%opal95_table_unit = 48
       open(run_log_unit, file="test_kap.short", status="replace")
 
 ! kap configuration: OPAL95 atomic tables only, per the reference

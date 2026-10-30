@@ -423,25 +423,7 @@ or the run keeps them.
 | `opal_eos_table_path` | ctrl | run | string | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
 | `end_age_stop_active` | job | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | job | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
-| `unit_zams_a` | ctrl | none | integer | `0` | Unit number of the first ZAMS (MHD) table (set by the reader) |
-| `unit_zams_b` | ctrl | none | integer | `0` | Unit number of the second ZAMS (MHD) table (set by the reader) |
-| `unit_zams_c` | ctrl | none | integer | `0` | Unit number of the third ZAMS (MHD) table (set by the reader) |
-| `unit_centre1` | ctrl | none | integer | `0` | Unit number of the first central-conditions (MHD) table (set by the reader) |
-| `unit_centre2` | ctrl | none | integer | `0` | Unit number of the second central-conditions (MHD) table (set by the reader) |
-| `unit_centre3` | ctrl | none | integer | `0` | Unit number of the third central-conditions (MHD) table (set by the reader) |
-| `unit_centre4` | ctrl | none | integer | `0` | Unit number of the fourth central-conditions (MHD) table (set by the reader) |
-| `unit_centre5` | ctrl | none | integer | `0` | Unit number of the fifth central-conditions (MHD) table (set by the reader) |
-| `first_unit` | ctrl | run | integer | `0` | Unit number of the starting model (set by the reader) |
-| `run_unit` | ctrl | read | integer | `0` | Unit number the PHYSICS namelist is read on (set by the reader) |
-| `standard_unit` | ctrl | read | integer | `0` | Unit number the CONTROL namelist or the inlist is read on (set by the reader) |
-| `fermi_unit` | ctrl | none | integer | `0` | Unit number of the Fermi-Dirac integral table (set by the reader) |
-| `dynamics_unit` | ctrl | run | integer | `0` | Unit number of the dynamics output (set by the reader) |
-| `opal92_table_unit` | ctrl | none | integer | `0` | Unit number of the OPAL 1992 opacity table (set by the reader) |
-| `composition_unit` | ctrl | none | integer | `0` | Unit number of the surface-composition file (set by the reader) |
-| `kurucz_table_unit` | ctrl | none | integer | `0` | Unit number of the Kurucz atmosphere table (set by the reader) |
 | `fcorr` | job | run | real | `0` | The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri) |
-| `monte_carlo_unit1` | ctrl | run | integer | `0` | Unit number of the first Monte-Carlo summary file (set by the reader) |
-| `monte_carlo_unit2` | ctrl | run | integer | `0` | Unit number of the second Monte-Carlo summary file (set by the reader) |
 | `requested_envelope_mass` | job | run | real | `0` | The current card's fitting-point envelope mass (from senv0_array at the card start) |
 | `change_envelope_mass_flag` | job | run | logical | `0` | The current card moves the fitting point (from has_senv0_array at the card start) |
 | `rescale_params` | job | run | real(4,50) | `0` | Per run: the rescaling targets M, X, Z and core mass (from rescale_mass, _x, _z and _core_mass; the calibration rewrites them) |
@@ -452,14 +434,3 @@ or the run keeps them.
 | `value_relative_to_h` | ctrl | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
 | `change_cno_mixture_active` | ctrl | run | logical | `0` | The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture) |
 | `change_isotope_ratios_active` | ctrl | run | logical | `0` | The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture) |
-| `opal95_table_unit` | ctrl | none | integer | `0` | Unit number of the OPAL 1995 opacity table (set by the reader) |
-| `isochrone_file_unit` | ctrl | run | integer | `0` | Unit number of the isochrone output (set by the reader) |
-| `iopale` | ctrl | none | integer | `0` | Unit number of the OPAL EOS table (set by the reader) |
-| `kurucz_table2_unit` | ctrl | none | integer | `0` | Unit number of the second Kurucz table (set by the reader) |
-| `icondopacp` | ctrl | none | integer | `0` | Unit number of the conductive opacity table (set by the reader) |
-| `alex94_table_unit` | ctrl | none | integer | `0` | Unit number of the Alexander & Ferguson 1994 tables (set by the reader) |
-| `alex06_table_unit` | ctrl | none | integer | `0` | Unit number of the Ferguson et al. 2005 tables (set by the reader) |
-| `scv_h_unit` | ctrl | none | integer | `0` | Unit number of the SCV hydrogen EOS table (set by the reader) |
-| `scv_he_unit` | ctrl | none | integer | `0` | Unit number of the SCV helium EOS table (set by the reader) |
-| `scv_z_unit` | ctrl | none | integer | `0` | Unit number of the SCV metal EOS table (set by the reader) |
-| `allard_table_unit` | ctrl | none | integer | `0` | Unit number of the Allard atmosphere tables (set by the reader) |

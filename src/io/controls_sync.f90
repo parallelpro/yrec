@@ -37,14 +37,11 @@ module controls_sync
            disk_locking_age_gyr, disk_omega_rad_s, disk_locking_active, &
            target_end_age, timestep_override, central_deuterium_stop, &
            central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
-           timestep_override_active, use_mhd_eos, unit_zams_a, unit_zams_b, &
-           unit_zams_c, unit_centre1, unit_centre2, unit_centre3, &
-           unit_centre4, unit_centre5, metal_fraction_match_tolerance, &
-           npenv, first_unit, run_unit, standard_unit, fermi_unit, &
-           dynamics_unit, opal92_table_unit, composition_unit, &
-           kurucz_table_unit, monte_carlo_active, mc_run_start, mc_run_end, &
-           htoler, fcorr0, fcorri, fcorr, chi_grid_scale, max_iter_level1, &
-           max_iter_level2, max_iter_level3, diffusion_timestep_factor, &
+           timestep_override_active, use_mhd_eos, &
+           metal_fraction_match_tolerance, npenv, monte_carlo_active, &
+           mc_run_start, mc_run_end, htoler, fcorr0, fcorri, fcorr, &
+           chi_grid_scale, max_iter_level1, max_iter_level2, &
+           max_iter_level3, diffusion_timestep_factor, &
            convergence_tolerance, num_rotation_structure_iters, &
            max_diffusion_iters, settling_tolerance, coulomb_log_choice, &
            settling_num_iterations, diffuse_helium_active, &
@@ -56,15 +53,15 @@ module controls_sync
            env_error_tol, env_step_begin, env_step_min, env_step_max, &
            tolerance_fraction, max_stage_index, extrap_order, atm_choice, &
            mixture_weights_seed, monte_carlo_file1_path, &
-           monte_carlo_file2_path, monte_carlo_unit1, monte_carlo_unit2, &
-           pulse_gyre_interval, tri_delta_teffl, tri_delta_logl, lnew0, &
-           requested_envelope_mass, change_envelope_mass_flag, &
-           rescale_params, rescale_kind, num_models, num_runs, &
-           first_call_flag, max_domega_global, use_structure_dt_limits, &
-           atm_step_size, envelope_step_size, envelope_generation_flag, &
-           helium_flash_active, initial_envelope_x, initial_envelope_z, &
-           new_species_value, new_species_index, rescale_species_active, &
-           value_relative_to_h, mixture_change_mode, isotope_change_mode, &
+           monte_carlo_file2_path, pulse_gyre_interval, tri_delta_teffl, &
+           tri_delta_logl, lnew0, requested_envelope_mass, &
+           change_envelope_mass_flag, rescale_params, rescale_kind, &
+           num_models, num_runs, first_call_flag, max_domega_global, &
+           use_structure_dt_limits, atm_step_size, envelope_step_size, &
+           envelope_generation_flag, helium_flash_active, &
+           initial_envelope_x, initial_envelope_z, new_species_value, &
+           new_species_index, rescale_species_active, value_relative_to_h, &
+           mixture_change_mode, isotope_change_mode, &
            change_cno_mixture_active, change_isotope_ratios_active, &
            target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
            target_oxygen_cno_fraction, c12_to_c13_ratio, n14_to_n15_ratio, &
@@ -78,10 +75,9 @@ module controls_sync
            secular_shear_mixing_scale, gsf_mixing_scale, &
            solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
            gsf_inhibition_mode, min_abundance, absolute_tolerance, &
-           relative_tolerance, max_burn_iterations, opal95_table_unit, &
-           extend_core_inward, num_core_shells_added, &
-           core_mass_reduction_factor, rewind_short_file, &
-           isochrone_output_active, isochrone_file_unit, initial_x_array, &
+           relative_tolerance, max_burn_iterations, extend_core_inward, &
+           num_core_shells_added, core_mass_reduction_factor, &
+           rewind_short_file, isochrone_output_active, initial_x_array, &
            initial_z_array, mixing_length_array, senv0_array, &
            has_senv0_array, luminosity_tolerance, radius_tolerance, &
            zx_tolerance, target_solar_zx, target_solar_age, &
@@ -90,7 +86,7 @@ module controls_sync
            target_star_luminosity_tolerance, target_teff, &
            target_radius_rsun, specify_teff_flag, calibrate_star_flag, &
            use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           use_numerical_derivatives, iopale, use_scv_eos, &
+           use_numerical_derivatives, use_scv_eos, &
            use_debye_huckel_correction, debye_huckel_eta_min, &
            debye_huckel_eta_max, laol_table_z1, laol_table_z2, &
            opal_table_z1, opal_table_z2, opal95_single_table_z, &
@@ -108,17 +104,14 @@ module controls_sync
            centre3_table_path, centre4_table_path, centre5_table_path, &
            opal95_eos_table_path, opal2001_eos_table_path, &
            opal2006_eos_table_path, opal_eos_table_path, atm_table_path, &
-           allard_table_path, kurucz_table2_unit, icondopacp, &
-           use_conductive_opacity, alex94_table_unit, alex06_table_unit, &
-           lvfc, use_diffusion_advection_transport, &
-           no_am_transport_in_core, scv_h_unit, scv_he_unit, scv_z_unit, &
+           allard_table_path, use_conductive_opacity, lvfc, &
+           use_diffusion_advection_transport, no_am_transport_in_core, &
            allard_target_feh, allard_target_alpha, allard_use_tau100, &
-           allard_table_unit, force_solid_body_rotation, &
-           solid_body_mode_flag, constant_mixing_coeff, &
-           constant_settling_reduction, use_envelope_triangle_dt, &
-           pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, pmm_exponent_d, &
-           pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, &
+           force_solid_body_rotation, solid_body_mode_flag, &
+           constant_mixing_coeff, constant_settling_reduction, &
+           use_envelope_triangle_dt, pmm_exponent_a, pmm_exponent_b, &
+           pmm_exponent_c, pmm_exponent_d, pmm_exponent_m, pmm_norm_jdot, &
+           pmm_norm_mdot, pmm_solar_pressure, pmm_solar_omega, &
            pmm_solar_turnover_timescale, use_pmm_wind_law, &
            scale_by_rossby_number, scale_by_b_field, wind_law_name, &
            wind_law_index, wind_law_constant, wind_saturation_omega, &
@@ -232,24 +225,8 @@ subroutine seed_controls_buffer(s)
       end_age_stop_active = s%job%end_age_stop_active
       timestep_override_active = s%job%timestep_override_active
       use_mhd_eos = s%ctrl%use_mhd_eos
-      unit_zams_a = s%ctrl%unit_zams_a
-      unit_zams_b = s%ctrl%unit_zams_b
-      unit_zams_c = s%ctrl%unit_zams_c
-      unit_centre1 = s%ctrl%unit_centre1
-      unit_centre2 = s%ctrl%unit_centre2
-      unit_centre3 = s%ctrl%unit_centre3
-      unit_centre4 = s%ctrl%unit_centre4
-      unit_centre5 = s%ctrl%unit_centre5
       metal_fraction_match_tolerance = s%ctrl%metal_fraction_match_tolerance
       npenv = s%ctrl%npenv
-      first_unit = s%ctrl%first_unit
-      run_unit = s%ctrl%run_unit
-      standard_unit = s%ctrl%standard_unit
-      fermi_unit = s%ctrl%fermi_unit
-      dynamics_unit = s%ctrl%dynamics_unit
-      opal92_table_unit = s%ctrl%opal92_table_unit
-      composition_unit = s%ctrl%composition_unit
-      kurucz_table_unit = s%ctrl%kurucz_table_unit
       monte_carlo_active = s%ctrl%monte_carlo_active
       mc_run_start = s%job%mc_run_start
       mc_run_end = s%job%mc_run_end
@@ -295,8 +272,6 @@ subroutine seed_controls_buffer(s)
       mixture_weights_seed = s%ctrl%mixture_weights_seed
       monte_carlo_file1_path = s%ctrl%monte_carlo_file1_path
       monte_carlo_file2_path = s%ctrl%monte_carlo_file2_path
-      monte_carlo_unit1 = s%ctrl%monte_carlo_unit1
-      monte_carlo_unit2 = s%ctrl%monte_carlo_unit2
       pulse_gyre_interval = s%ctrl%pulse_gyre_interval
       tri_delta_teffl = s%ctrl%tri_delta_teffl
       tri_delta_logl = s%ctrl%tri_delta_logl
@@ -358,13 +333,11 @@ subroutine seed_controls_buffer(s)
       absolute_tolerance = s%ctrl%absolute_tolerance
       relative_tolerance = s%ctrl%relative_tolerance
       max_burn_iterations = s%ctrl%max_burn_iterations
-      opal95_table_unit = s%ctrl%opal95_table_unit
       extend_core_inward = s%ctrl%extend_core_inward
       num_core_shells_added = s%job%num_core_shells_added
       core_mass_reduction_factor = s%job%core_mass_reduction_factor
       rewind_short_file = s%ctrl%rewind_short_file
       isochrone_output_active = s%ctrl%isochrone_output_active
-      isochrone_file_unit = s%ctrl%isochrone_file_unit
       initial_x_array = s%job%initial_x_array
       initial_z_array = s%job%initial_z_array
       mixing_length_array = s%job%mixing_length_array
@@ -391,7 +364,6 @@ subroutine seed_controls_buffer(s)
       use_opal2001_eos = s%ctrl%use_opal2001_eos
       use_opal2006_eos = s%ctrl%use_opal2006_eos
       use_numerical_derivatives = s%ctrl%use_numerical_derivatives
-      iopale = s%ctrl%iopale
       use_scv_eos = s%ctrl%use_scv_eos
       use_debye_huckel_correction = s%ctrl%use_debye_huckel_correction
       debye_huckel_eta_min = s%ctrl%debye_huckel_eta_min
@@ -443,21 +415,13 @@ subroutine seed_controls_buffer(s)
       opal_eos_table_path = s%ctrl%opal_eos_table_path
       atm_table_path = s%ctrl%atm_table_path
       allard_table_path = s%ctrl%allard_table_path
-      kurucz_table2_unit = s%ctrl%kurucz_table2_unit
-      icondopacp = s%ctrl%icondopacp
       use_conductive_opacity = s%ctrl%use_conductive_opacity
-      alex94_table_unit = s%ctrl%alex94_table_unit
-      alex06_table_unit = s%ctrl%alex06_table_unit
       lvfc = s%ctrl%lvfc
       use_diffusion_advection_transport = s%ctrl%use_diffusion_advection_transport
       no_am_transport_in_core = s%ctrl%no_am_transport_in_core
-      scv_h_unit = s%ctrl%scv_h_unit
-      scv_he_unit = s%ctrl%scv_he_unit
-      scv_z_unit = s%ctrl%scv_z_unit
       allard_target_feh = s%ctrl%allard_target_feh
       allard_target_alpha = s%ctrl%allard_target_alpha
       allard_use_tau100 = s%ctrl%allard_use_tau100
-      allard_table_unit = s%ctrl%allard_table_unit
       force_solid_body_rotation = s%ctrl%force_solid_body_rotation
       solid_body_mode_flag = s%ctrl%solid_body_mode_flag
       constant_mixing_coeff = s%ctrl%constant_mixing_coeff
@@ -628,24 +592,8 @@ subroutine store_controls_to_star(s)
       s%job%end_age_stop_active = end_age_stop_active
       s%job%timestep_override_active = timestep_override_active
       s%ctrl%use_mhd_eos = use_mhd_eos
-      s%ctrl%unit_zams_a = unit_zams_a
-      s%ctrl%unit_zams_b = unit_zams_b
-      s%ctrl%unit_zams_c = unit_zams_c
-      s%ctrl%unit_centre1 = unit_centre1
-      s%ctrl%unit_centre2 = unit_centre2
-      s%ctrl%unit_centre3 = unit_centre3
-      s%ctrl%unit_centre4 = unit_centre4
-      s%ctrl%unit_centre5 = unit_centre5
       s%ctrl%metal_fraction_match_tolerance = metal_fraction_match_tolerance
       s%ctrl%npenv = npenv
-      s%ctrl%first_unit = first_unit
-      s%ctrl%run_unit = run_unit
-      s%ctrl%standard_unit = standard_unit
-      s%ctrl%fermi_unit = fermi_unit
-      s%ctrl%dynamics_unit = dynamics_unit
-      s%ctrl%opal92_table_unit = opal92_table_unit
-      s%ctrl%composition_unit = composition_unit
-      s%ctrl%kurucz_table_unit = kurucz_table_unit
       s%ctrl%monte_carlo_active = monte_carlo_active
       s%job%mc_run_start = mc_run_start
       s%job%mc_run_end = mc_run_end
@@ -691,8 +639,6 @@ subroutine store_controls_to_star(s)
       s%ctrl%mixture_weights_seed = mixture_weights_seed
       s%ctrl%monte_carlo_file1_path = monte_carlo_file1_path
       s%ctrl%monte_carlo_file2_path = monte_carlo_file2_path
-      s%ctrl%monte_carlo_unit1 = monte_carlo_unit1
-      s%ctrl%monte_carlo_unit2 = monte_carlo_unit2
       s%ctrl%pulse_gyre_interval = pulse_gyre_interval
       s%ctrl%tri_delta_teffl = tri_delta_teffl
       s%ctrl%tri_delta_logl = tri_delta_logl
@@ -754,13 +700,11 @@ subroutine store_controls_to_star(s)
       s%ctrl%absolute_tolerance = absolute_tolerance
       s%ctrl%relative_tolerance = relative_tolerance
       s%ctrl%max_burn_iterations = max_burn_iterations
-      s%ctrl%opal95_table_unit = opal95_table_unit
       s%ctrl%extend_core_inward = extend_core_inward
       s%job%num_core_shells_added = num_core_shells_added
       s%job%core_mass_reduction_factor = core_mass_reduction_factor
       s%ctrl%rewind_short_file = rewind_short_file
       s%ctrl%isochrone_output_active = isochrone_output_active
-      s%ctrl%isochrone_file_unit = isochrone_file_unit
       s%job%initial_x_array = initial_x_array
       s%job%initial_z_array = initial_z_array
       s%job%mixing_length_array = mixing_length_array
@@ -787,7 +731,6 @@ subroutine store_controls_to_star(s)
       s%ctrl%use_opal2001_eos = use_opal2001_eos
       s%ctrl%use_opal2006_eos = use_opal2006_eos
       s%ctrl%use_numerical_derivatives = use_numerical_derivatives
-      s%ctrl%iopale = iopale
       s%ctrl%use_scv_eos = use_scv_eos
       s%ctrl%use_debye_huckel_correction = use_debye_huckel_correction
       s%ctrl%debye_huckel_eta_min = debye_huckel_eta_min
@@ -839,21 +782,13 @@ subroutine store_controls_to_star(s)
       s%ctrl%opal_eos_table_path = opal_eos_table_path
       s%ctrl%atm_table_path = atm_table_path
       s%ctrl%allard_table_path = allard_table_path
-      s%ctrl%kurucz_table2_unit = kurucz_table2_unit
-      s%ctrl%icondopacp = icondopacp
       s%ctrl%use_conductive_opacity = use_conductive_opacity
-      s%ctrl%alex94_table_unit = alex94_table_unit
-      s%ctrl%alex06_table_unit = alex06_table_unit
       s%ctrl%lvfc = lvfc
       s%ctrl%use_diffusion_advection_transport = use_diffusion_advection_transport
       s%ctrl%no_am_transport_in_core = no_am_transport_in_core
-      s%ctrl%scv_h_unit = scv_h_unit
-      s%ctrl%scv_he_unit = scv_he_unit
-      s%ctrl%scv_z_unit = scv_z_unit
       s%ctrl%allard_target_feh = allard_target_feh
       s%ctrl%allard_target_alpha = allard_target_alpha
       s%ctrl%allard_use_tau100 = allard_use_tau100
-      s%ctrl%allard_table_unit = allard_table_unit
       s%ctrl%force_solid_body_rotation = force_solid_body_rotation
       s%ctrl%solid_body_mode_flag = solid_body_mode_flag
       s%ctrl%constant_mixing_coeff = constant_mixing_coeff

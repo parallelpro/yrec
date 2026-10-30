@@ -133,7 +133,7 @@ end function pulse_format_code
 ! .mod model, and the interval GYRE file.
 subroutine output_write_model(s, output, ierr)
       use star_info_lib, only: star_info, i_he4
-      use io_units, only: last_model_unit
+      use io_units, only: last_model_unit, isochrone_unit
       type(star_info), intent(in) :: s
       type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
@@ -160,7 +160,7 @@ subroutine output_write_model(s, output, ierr)
         else
            he_core_mass_grams = 0.0D0
         end if
-        write(s%ctrl%isochrone_file_unit,1005) s%model_number, &
+        write(isochrone_unit,1005) s%model_number, &
              age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
              ycenter_local,he_core_mass_grams
  1005   format(1X, I5, 1P7E17.8)
@@ -265,7 +265,7 @@ end subroutine write_pulse
 ! the isochrone file's header.
 subroutine output_run_header(s, total_mass_msun)
       use star_info_lib, only: star_info
-      use io_units, only: terminal_unit
+      use io_units, only: terminal_unit, isochrone_unit
       use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: total_mass_msun
@@ -291,7 +291,7 @@ subroutine output_run_header(s, total_mass_msun)
 
       if (s%ctrl%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
-         write(s%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
+         write(isochrone_unit, 1495) total_mass_grams, &
               s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if

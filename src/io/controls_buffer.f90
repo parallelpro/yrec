@@ -179,12 +179,8 @@ module controls_buffer
       real(dp) :: central_helium_stop(max_runs) = 0.0d0
       logical :: end_age_stop_active(max_runs), timestep_override_active(max_runs)
 
-! The MHD EOS, and the units of the ZAMS and central tables (set by the
-! reader).
+! The MHD EOS.
       logical :: use_mhd_eos = .false.
-      integer :: unit_zams_a, unit_zams_b, unit_zams_c
-      integer :: unit_centre1, unit_centre2, unit_centre3, unit_centre4, &
-           unit_centre5
 
 ! Opacity-table metallicity matching.
       real(dp) :: metal_fraction_match_tolerance = 1.0d-8
@@ -192,12 +188,6 @@ module controls_buffer
 ! Envelope profile print count.
       integer :: npenv = 0
 
-
-! Unit numbers, set by the reader. opal92_table_unit is the unit
-! kap/opal92/read_opal92_tables.f90 opens the OPAL92 table on.
-      integer :: first_unit, run_unit, standard_unit, fermi_unit
-      integer :: dynamics_unit, opal92_table_unit
-      integer :: composition_unit, kurucz_table_unit
 
 ! Monte Carlo runs.
       logical :: monte_carlo_active = .false.
@@ -265,11 +255,9 @@ module controls_buffer
            0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, &
            0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
 
-! Monte Carlo input files and their units (set by the reader). The paths
-! have no default.
+! The Monte Carlo summary and model files. The paths have no default.
       character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
       character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
-      integer :: monte_carlo_unit1, monte_carlo_unit2
 
 ! GYRE pulsation-output cadence.
       integer :: pulse_gyre_interval = 0
@@ -360,9 +348,6 @@ module controls_buffer
       real(dp) :: relative_tolerance = 1.0d-4
       integer :: max_burn_iterations = 50
 
-! OPAL95 table unit (set by the reader).
-      integer :: opal95_table_unit
-
 
 ! Extending the core inward.
       logical :: extend_core_inward = .false.
@@ -372,7 +357,6 @@ module controls_buffer
 ! Isochrone output and the short file.
       logical :: rewind_short_file = .false.
       logical :: isochrone_output_active = .false.
-      integer :: isochrone_file_unit
 
 ! Per-run starting composition, mixing length and envelope mass.
       real(dp) :: initial_x_array(max_runs) = 0
@@ -403,12 +387,11 @@ module controls_buffer
       logical :: specify_teff_flag = .false.
       logical :: calibrate_star_flag = .false.
 
-! The OPAL EOS tables and numerical EOS derivatives (iopale is a unit).
+! The OPAL EOS tables and numerical EOS derivatives.
       logical :: use_opal95_eos = .false.
       logical :: use_opal2001_eos = .false.
       logical :: use_opal2006_eos = .false.
       logical :: use_numerical_derivatives = .false.
-      integer :: iopale
 ! the SCV low-temperature EOS (namelist lscv), and the Debye-Hueckel
 ! correction with its eta limits (namelist ldh, etadh0, etadh1)
       logical :: use_scv_eos = .false.
@@ -482,17 +465,8 @@ module controls_buffer
       character(len=256) :: atm_table_path = repeat(achar(0), 256)
       character(len=256) :: allard_table_path = repeat(achar(0), 256)
 
-! Conductive opacities, and the second Kurucz table's unit (icondopacp is
-! a unit too).
-      integer :: kurucz_table2_unit, icondopacp
+! Conductive opacities.
       logical :: use_conductive_opacity = .false.
-
-! Alexander table units (set by the reader). alex94_table_unit reads the
-! Alexander 1994 low-T tables (kap/alex94/alex94_opacity.f90); the
-! namelist names lalex95, use_alex95_tables and alex95_table_z_list keep
-! their historical "95".
-      integer :: alex94_table_unit
-      integer :: alex06_table_unit
 
 ! Angular momentum transport options: the alternative velocity form in
 ! the diffusion coefficients (lvfc) and diffusion-advection transport.
@@ -502,15 +476,11 @@ module controls_buffer
 ! No angular momentum transport in the core.
       logical :: no_am_transport_in_core = .false.
 
-! SCV EOS table units (set by the reader).
-      integer :: scv_h_unit, scv_he_unit, scv_z_unit
-
-! Allard atmosphere tables: the target [Fe/H] and [alpha/Fe], tau=100
-! tables, and the unit (set by the reader).
+! Allard atmosphere tables: the target [Fe/H] and [alpha/Fe], and the
+! tau = 100 tables.
       real(dp) :: allard_target_feh = 0d0
       real(dp) :: allard_target_alpha = 0d0
       logical :: allard_use_tau100 = .false.
-      integer :: allard_table_unit
 
 ! Solid-body rotation.
       logical :: force_solid_body_rotation = .false.

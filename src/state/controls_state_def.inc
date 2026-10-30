@@ -79,24 +79,8 @@
             double precision :: disk_omega_rad_s = 7.2722d-6
             logical :: disk_locking_active = .false.
             logical :: use_mhd_eos = .false.
-            integer :: unit_zams_a = 0
-            integer :: unit_zams_b = 0
-            integer :: unit_zams_c = 0
-            integer :: unit_centre1 = 0
-            integer :: unit_centre2 = 0
-            integer :: unit_centre3 = 0
-            integer :: unit_centre4 = 0
-            integer :: unit_centre5 = 0
             double precision :: metal_fraction_match_tolerance = 1.0d-8
             integer :: npenv = 0
-            integer :: first_unit = 0
-            integer :: run_unit = 0
-            integer :: standard_unit = 0
-            integer :: fermi_unit = 0
-            integer :: dynamics_unit = 0
-            integer :: opal92_table_unit = 0
-            integer :: composition_unit = 0
-            integer :: kurucz_table_unit = 0
             logical :: monte_carlo_active = .false.
             double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             double precision :: fcorr0 = 0.8d0
@@ -136,8 +120,6 @@
             double precision :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
             character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
             character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
-            integer :: monte_carlo_unit1 = 0
-            integer :: monte_carlo_unit2 = 0
             integer :: pulse_gyre_interval = 0
             double precision :: tri_delta_teffl = 1.0d-2
             double precision :: tri_delta_logl = 8.0d-2
@@ -189,11 +171,9 @@
             double precision :: absolute_tolerance = 1.0d-5
             double precision :: relative_tolerance = 1.0d-4
             integer :: max_burn_iterations = 50
-            integer :: opal95_table_unit = 0
             logical :: extend_core_inward = .false.
             logical :: rewind_short_file = .false.
             logical :: isochrone_output_active = .false.
-            integer :: isochrone_file_unit = 0
             double precision :: luminosity_tolerance = 1.0d-5
             double precision :: radius_tolerance = 1.0d-4
             double precision :: zx_tolerance = 1.0d-3
@@ -210,7 +190,6 @@
             logical :: use_opal2001_eos = .false.
             logical :: use_opal2006_eos = .false.
             logical :: use_numerical_derivatives = .false.
-            integer :: iopale = 0
             logical :: use_scv_eos = .false.
             logical :: use_debye_huckel_correction = .false.
             double precision :: debye_huckel_eta_min = -1.0d0
@@ -262,21 +241,13 @@
             character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
             character(len=256) :: atm_table_path = repeat(achar(0), 256)
             character(len=256) :: allard_table_path = repeat(achar(0), 256)
-            integer :: kurucz_table2_unit = 0
-            integer :: icondopacp = 0
             logical :: use_conductive_opacity = .false.
-            integer :: alex94_table_unit = 0
-            integer :: alex06_table_unit = 0
             logical :: lvfc = .false.
             logical :: use_diffusion_advection_transport = .false.
             logical :: no_am_transport_in_core = .false.
-            integer :: scv_h_unit = 0
-            integer :: scv_he_unit = 0
-            integer :: scv_z_unit = 0
             double precision :: allard_target_feh = 0d0
             double precision :: allard_target_alpha = 0d0
             logical :: allard_use_tau100 = .false.
-            integer :: allard_table_unit = 0
             logical :: force_solid_body_rotation = .false.
             integer :: solid_body_mode_flag = 0
             double precision :: constant_mixing_coeff = 1.0d0

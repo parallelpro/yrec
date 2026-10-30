@@ -184,9 +184,9 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
             return
       endif
 
-! The model file is on unit star%ctrl%first_unit (legacy IFIRST).
+! The model file is on io_units' starting_model_unit (legacy IFIRST).
       ikut_flag = 0
-      iread = s%ctrl%first_unit
+      iread = starting_model_unit
 
 ! Initial value: no convective velocity.
       convective_velocity = 0.0d0
