@@ -43,17 +43,14 @@ end subroutine profile_output_init
 
 ! ---------------------------------------------------------------
 ! Profile iprof, <out_dir><profile_data_prefix><iprof>.data, of the
-! stitched model.
-subroutine write_profile(s, profiles, out_dir, iprof, stitched, ierr)
+! stitched model (s%stitched).
+subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       use star_info_lib, only: star_info
-      use stitched_model_state, only: stitched_model_record
       use io_units, only: check_io
       type(star_info), intent(in) :: s
       type(profile_selection), intent(in) :: profiles
       character(len=*), intent(in) :: out_dir
       integer, intent(in) :: iprof
-! stitched: the stitched model whose columns are written.
-      type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
       type(output_column) :: cols(n_prof_cols)
       character(len=256) :: path, msg
@@ -78,7 +75,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, stitched, ierr)
 ! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
 ! time_step are in years, matching MESA's profile header.
       write(u, '(2(1x,i40),6(1x,es40.16e3))') s%model_number, &
-           stitched%n_ext, s%pulsation_mass_msun, &
+           s%stitched%n_ext, s%pulsation_mass_msun, &
            s%job%initial_envelope_z, s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
       write(u, '(a)') ''
@@ -88,13 +85,13 @@ subroutine write_profile(s, profiles, out_dir, iprof, stitched, ierr)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
 ! is stored inward-to-outward, so walk it in reverse.
-      do k = 1, stitched%n_ext
-         kz = stitched%n_ext - k + 1
+      do k = 1, s%stitched%n_ext
+         kz = s%stitched%n_ext - k + 1
          do i = 1, profiles%nsel
             if (profiles%sel(i) == ip_zone) then
                v = dble(k)
             else
-               v = stitched%prof(profiles%sel(i), kz)
+               v = s%stitched%prof(profiles%sel(i), kz)
             end if
             if (cols(profiles%sel(i))%kind == integer_column) then
                write(u, '(1x,i40)', advance='no') nint(v)

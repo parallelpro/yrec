@@ -160,10 +160,9 @@ subroutine output_write_model(s, output, ierr)
         else
            he_core_mass_grams = 0.0D0
         end if
-        write(isochrone_unit,1005) s%model_number, &
+        write(isochrone_unit,'(1X, I5, 1P7E17.8)') s%model_number, &
              age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
              ycenter_local,he_core_mass_grams
- 1005   format(1X, I5, 1P7E17.8)
       end if
 
 ! Profiles and pulse files share the trigger and the number (MESA's
@@ -176,9 +175,9 @@ subroutine output_write_model(s, output, ierr)
          output%profile_counter = output%profile_counter + 1
          iprof = output%profile_counter
          if (s%ctrl%write_profile_flag) call write_profile(s, output%profiles, &
-              output%out_dir, iprof, s%stitched, ierr)
+              output%out_dir, iprof, ierr)
          if (ierr /= 0) return
-         if (s%ctrl%write_pulse_flag) call write_pulse(s, output, iprof, s%stitched, ierr)
+         if (s%ctrl%write_pulse_flag) call write_pulse(s, output, iprof, ierr)
          if (ierr /= 0) return
       end if
       call write_history_row(s, output%history, iprof, ierr)
@@ -240,21 +239,19 @@ end function profile_write_due
 
 ! ---------------------------------------------------------------
 ! The pulsation file of profile iprof, profile<N>.data.GYRE / .FGONG /
-! .GSM, over the whole extended model. M_star, R_star and L_star refer
-! to the photosphere (atmosphere points sit above R_star, as in MESA's
-! add_atmosphere).
-subroutine write_pulse(s, output, iprof, stitched, ierr)
+! .GSM, over the whole extended model (s%stitched's pulse points).
+! M_star, R_star and L_star refer to the photosphere (atmosphere points
+! sit above R_star, as in MESA's add_atmosphere).
+subroutine write_pulse(s, output, iprof, ierr)
       use star_info_lib, only: star_info
-      use stitched_model_state, only: stitched_model_record
       type(star_info), intent(in) :: s
       type(output_state), intent(in) :: output
       integer, intent(in) :: iprof
-! stitched: the stitched model whose pulse columns are written.
-      type(stitched_model_record), intent(in) :: stitched
       integer, intent(inout) :: ierr
       character(len=256) :: path
       character(len=12) :: numstr
       real(dp) :: mstar_g, rstar_cm, lstar_cgs
+      integer :: n
 
       mstar_g = exp(ln10*s%log_total_mass)
       rstar_cm = exp(ln10*(s%log_R_surface_rsun + s%log10_solar_radius))
@@ -262,16 +259,17 @@ subroutine write_pulse(s, output, iprof, stitched, ierr)
 
       write(numstr, '(i0)') iprof
       path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+      n = s%stitched%n_ext
 ! (output_open has rejected any other format)
       select case (output%pulse_format)
       case (pulse_fgong)
-         call write_fgong_pulse(s, stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
+         call write_fgong_pulse(s, n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.FGONG', ierr)
       case (pulse_gsm)
-         call write_gsm_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
+         call write_gsm_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.GSM', ierr)
       case default
-         call write_gyre_pulse(stitched%n_ext, stitched%pulse(:,1:stitched%n_ext), mstar_g, rstar_cm, &
+         call write_gyre_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
               lstar_cgs, trim(path) // '.GYRE', ierr)
       end select
 end subroutine write_pulse
@@ -287,29 +285,34 @@ subroutine output_run_header(s, total_mass_msun)
       real(dp), intent(in) :: total_mass_msun
       real(dp) :: total_mass_grams
 
+! the card's line: its kind, the rescale targets, the mixing length and
+! the number of models
+      character(len=*), parameter :: evolve_format = &
+           "(/,1x,'card',i3,' (evolve):  mixing length =',f8.6,'  models =',i6)", &
+           rescale_format = "(/,1x,'card',i3,' (rescale):         X =',f8.6," // &
+           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)", &
+           rescale_and_evolve_format = "(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6," // &
+           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)"
+
       select case (s%job%rescale_kind(s%job%nk))
       case (card_evolve)
-         write(terminal_unit, 47) s%job%nk, &
+         write(terminal_unit, evolve_format) s%job%nk, &
               s%mixing_length_alpha, s%job%num_models(s%job%nk)
       case (card_rescale)
-         write(terminal_unit, 48) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
-              s%mixing_length_alpha, s%job%num_models(s%job%nk)
+         write(terminal_unit, rescale_format) s%job%nk, s%job%initial_envelope_x, &
+              s%job%initial_envelope_z, s%mixing_length_alpha, s%job%num_models(s%job%nk)
       case (card_rescale_and_evolve)
-         write(terminal_unit, 49) s%job%nk, s%job%initial_envelope_x, s%job%initial_envelope_z, &
-              s%mixing_length_alpha, s%job%num_models(s%job%nk)
+         write(terminal_unit, rescale_and_evolve_format) s%job%nk, s%job%initial_envelope_x, &
+              s%job%initial_envelope_z, s%mixing_length_alpha, s%job%num_models(s%job%nk)
       end select
-  47  format(/,1x,'card',i3,' (evolve):  mixing length =',f8.6, &
-             '  models =',i6)
-  48  format(/,1x,'card',i3,' (rescale):         X =',f8.6, &
-             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
-  49  format(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6, &
-             '  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)
 
+! the isochrone file's card header: the mass (g), X, Z, the mixing
+! length and the solar bolometric magnitude
       if (s%ctrl%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
-         write(isochrone_unit, 1495) total_mass_grams, &
-              s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,solar_bolometric_magnitude
- 1495    format(7X, 1P5E16.8)
+         write(isochrone_unit, '(7X, 1P5E16.8)') total_mass_grams, &
+              s%job%initial_envelope_x, s%job%initial_envelope_z, s%mixing_length_alpha, &
+              solar_bolometric_magnitude
       end if
 end subroutine output_run_header
 

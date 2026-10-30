@@ -308,7 +308,7 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `stitched` (type `stitched_model_record`) | the stitched model: the converged star (interior, envelope and atmosphere) on one extended grid, with its profile and pulse columns | cgs | `stitched_model` (build_stitched_model, compute_seismic_columns, fill_stitched_arrays) | `observables`, `stitched_model`, `turnover_timescale`, `yrec_output` | Allocated, and zeroed, by the first build |
+| `stitched` (type `stitched_model_record`) | the stitched model: the converged star (interior, envelope and atmosphere) on one extended grid, with its profile and pulse columns | cgs | `stitched_model` (build_stitched_model, compute_seismic_columns, fill_stitched_arrays) | `observables`, `stitched_model`, `turnover_timescale`, `profile_output`, `yrec_output` | Allocated, and zeroed, by the first build |
 | `mechanism_velocity(n_transport_mechanisms, json)` | each rotational transport mechanism's velocity at interface k, slots `i_mech_*` of `transport_mechanism_layout` | cm/s | `secular_transport` (compute_velocities) | `stitched_model`, `secular_transport` | From the last iteration of the step's last rotation sub-step |
 | `am_diffusion_coeff(json)` | angular-momentum diffusion coefficient `D_omega` on the model grid | cm^2/s | `secular_transport` (set_diffusion_coefficients) | `stitched_model` | The step's last sub-step wins; 0 without rotation |
 | `mixing_diffusion_coeff(json)` | rotational mixing coefficient `D_mix` on the model grid | cm^2/s | `secular_transport` (set_diffusion_coefficients) | `stitched_model` | As `am_diffusion_coeff` |
