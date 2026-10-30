@@ -266,8 +266,6 @@ end subroutine mhdst
 !----------------------------------------------------------------------
 ! mhdst1
 !----------------------------------------------------------------------
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! Reads one MHD equation-of-state table unit. table_kind=0 reads a
 ! single ZAMS-type table pair (lower/upper T region). table_kind=1
 ! reads a centre-type table plus the down/up-composition tables
@@ -482,7 +480,7 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
          ierr = 1
          return
       end if
-      if(t_idx == 1) num_rho_points=rho_count_read
+      if (t_idx == 1) num_rho_points=rho_count_read
 !     Check limits and number of density points of table
       if ( num_t_points > max_t_points .or.  num_rho_points > max_rho_points ) then
          ierr = 1
@@ -543,10 +541,7 @@ end subroutine mhdpx
 !----------------------------------------------------------------------
 ! mhdpx1
 !----------------------------------------------------------------------
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!     mhdst must be called in main.
-!     Interpolation in tables with different X and fixed Z
+!     The tables (read by mhdst at eos_init), with different X and fixed Z:
 !     TL < TLIM1:         Lower part of ZAMS tables
 !     TLIM1 < TL < TLIM2: Upper part of ZAMS tables
 !     TL > TLIM2:         Centre tables
@@ -573,11 +568,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !     Quantities for interpolation in X
       real(dp) :: cubic_vars(ivarx,4), cubic_x_nodes(4)
       integer :: cubic_table_index(4)
-! LIR's "type" flag (an integer, despite the original's L-prefixed name).
-!     Read from appropriate tables
-!     and fill arrays varout and XC
-!     CAN WE DO IT?
-!
+! the X interpolation's lir settings (interp_mode: lir's flag, unused)
       integer :: i, family, n_tables, iv, ixmin, num_vars, var_leading_dim, &
            num_points, interp_mode
       real(dp) :: x_grid_origin, x_grid_spacing, &
@@ -667,10 +658,6 @@ end subroutine mhdpx1
 !----------------------------------------------------------------------
 ! mhdpx2
 !----------------------------------------------------------------------
-!
-!
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-!$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 ! Interpolates table ic of a family (imhd_family_zams_lower or _upper,
 ! compositions A, B, C; imhd_family_centre, compositions 1..5) at
 ! (log10 P, log10 T) and stores the result as row ic (ZAMS) or
@@ -784,12 +771,12 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
       ierr = 0
       t_indices(1)=1
       do n=1,num_t
-         if (table_log10t(n).ge.log10_temperature) exit
+         if (table_log10t(n) >= log10_temperature) exit
          t_indices(1)=n
       end do
-      if(t_indices(1).ge.2) t_indices(1)=t_indices(1)-1
+      if (t_indices(1) >= 2) t_indices(1)=t_indices(1)-1
       t_idx_max=num_t-3
-      if(t_indices(1).gt.t_idx_max) t_indices(1)=t_idx_max
+      if (t_indices(1) > t_idx_max) t_indices(1)=t_idx_max
       do i=2,4
          t_indices(i)=t_indices(1)+i-1
       end do
@@ -797,17 +784,17 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
          r_lo_guess(i)=1
          t_idx=t_indices(i)
          p_max=table_data(t_idx,num_r,2)
-         if(log10_pressure.gt.p_max) then
+         if (log10_pressure > p_max) then
             in_range = .false.
             return
          end if
          do m=1,num_r
-            if(table_data(t_idx,m,2).ge.log10_pressure) exit
+            if (table_data(t_idx,m,2) >= log10_pressure) exit
             r_lo_guess(i)=m
          end do
-         if(r_lo_guess(i).ge.2) r_lo_guess(i)=r_lo_guess(i)-1
+         if (r_lo_guess(i) >= 2) r_lo_guess(i)=r_lo_guess(i)-1
          r_idx_max=num_r-3
-         if(r_lo_guess(i).gt.r_idx_max) r_lo_guess(i)=r_idx_max
+         if (r_lo_guess(i) > r_idx_max) r_lo_guess(i)=r_idx_max
       end do
       do i=1,4
          do j=1,4
