@@ -3189,3 +3189,51 @@ four moving fixes, below).
 - A mutation that loops forever hangs a mutation script, so both
   numerics scripts now time out at 120 s; an equivalent mutant (one the
   code overwrites later) says nothing about a check's strength.
+
+### Third evaluation (yrec-next, 2026-10-30)
+
+The five read-only reviews were repeated a third time at 6e058523,
+after round 2, on the same scale (audit/module-evaluation-3-2026-10-30/
+SUMMARY.md; out of 5 relative to rotation/, the average of
+readability, organization, maintainability, extensibility and docs):
+
+| Module | First evaluation | After round 1 (7aa138b2) | Now (6e058523) | Now: readability / organization / maintainability / extensibility / docs |
+|---|---|---|---|---|
+| math | 3.2 | 4.4 | 4.8 | 5 / 5 / 4.5 / 5 / 4.5 |
+| numerics | 3.1 | 3.8 | 4.4 | 4.5 / 4.5 / 4 / 4.5 / 4.5 |
+| net | 3.4 | 4.0 | 4.3 | 4.5 / 4.5 / 4.5 / 4 / 4 |
+| setup | 3.3 | 3.7 | 4.1 | 4.5 / 4 / 4 / 4 / 4 |
+| eos | 2.6 | 3.3 | 3.8 | 4 / 4 / 3.5 / 3.5 / 4 |
+| io | 2.4 | 3.3 | 3.8 | 4 / 3.5 / 3.5 / 4 / 4 |
+| state | 2.4 | 3.4 | 3.8 | 4 / 3.5 / 4 / 4 / 3.5 |
+
+Math, numerics and net are at or near the 4.5 asked for, and setup at
+4.1; eos, io and state stay at 3.8, and what holds them there is
+structure more than bugs. io: a control still travels through three
+copies, its inlist name (the namelist groups read into locals named
+after it), its legacy name and its canonical name; controls_buffer and
+legacy_controls declare about 700 module variables, public by default,
+and the read's working state outlives the read in them; and the
+physics domains import io for their messages (io_units and run_log, in
+19 files of net, eos, kap, atm, convection, rotation and
+element_diffusion). eos: the OPAL, Fermi-Dirac and MHD code keeps the
+F77's shape (index arithmetic, module-level tables and search state),
+and OPAL 1995 is a family of its own beside the 2001 and 2006 pair
+(M94). state: derived and per-card values live in three homes,
+the controls, the run's job and the star's own members with the
+settings records copied from them, so one copy can go stale (M85,
+M96); and star_job's Monte Carlo samples are outside the checks (no
+member comments, not in gen_star_docs, their indices unchecked:
+M115).
+
+The defects the reviews found went into docs/bug_sweep.md section 9 as
+M89-M125, all open: recorded, not fixed, each with its proposed fix and
+whether it would change results. Ten would change results when fixed
+(M89-M98: the deuterium burn's start-of-step X and He3, the
+screening's missing metals, the S-factor law's 1973 Avogadro number,
+SCV's NaN c_P before its table is built, ...), twenty are latent
+defects and error paths, two tests that check less than they say,
+four documentation traps, and one is CI, which has not run since
+2026-09-04 and as configured would fail before any test. Each was
+checked again in the code and against the F77 before its entry was
+written; none was dropped.
