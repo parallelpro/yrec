@@ -4,14 +4,15 @@
 ! The Yale equation of state of Prather (1976): analytic gas physics,
 ! no tables but the Fermi-Dirac integrals.
 !     compute_saha_eos           partial ionization: the Saha equations
-!                                for H, He and 11 metals, solved by
-!                                Newton iteration on the free-electron
-!                                number
+!                                of 11 species (H and 10 metals) and
+!                                He's two stages, solved by Newton
+!                                iteration on the free-electron number
 !     compute_fully_ionized_eos  full ionization, with a degenerate,
 !                                relativistic electron gas and the
 !                                optional Debye-Hueckel correction
-! The Fermi-Dirac table and the Debye-Hueckel state live in
-! yale_eos_tables (yale).
+! The Fermi-Dirac table lives in yale_eos_tables (yale), with the
+! Debye-Hueckel constants and its composition record, which eos_get
+! builds for each call.
 module yale_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result

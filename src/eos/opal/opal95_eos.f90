@@ -526,16 +526,12 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
 
       end if
       do eos_var_idx = 1, deriv_order
+! the stencil's entries of this variable, for each X table
       do x_loop_index = v%x_index_lo, x_index_hi
-
-      recompute_flag = 0
-
-!__________
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
             v%x_interp_workspace(x_loop_index,t6_scan_idx,density_scan_idx) = &
                  v%eos_table(x_loop_index,eos_var_idx,t6_scan_idx,density_scan_idx)
-            recompute_flag = 1
          end do
       end do
       end do
@@ -945,10 +941,9 @@ end function gmass
 ! readco
 !----------------------------------------------------------------------
 ! Reads the OPAL 1995 EOS data tables (one block per tabulated X
-! value) into opal_eos_tables's opal_shared state and derives the auxiliary
-! grid-spacing arrays used by t6rinterp for
-! interpolation. Called once from esac (guarded by
-! opal_shared%table_loaded_flag).
+! value) into v (opal95) and derives the auxiliary grid-spacing arrays
+! used by t6rinterp for interpolation. Called once from esac (guarded
+! by opal_shared%table_loaded_flag), on the unit eos_init opened.
 subroutine readco(v, ierr)
 
       type(opal_eos_vintage95), intent(inout) :: v

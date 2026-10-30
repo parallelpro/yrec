@@ -673,15 +673,12 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
       end if
       do eos_var_idx = 1, deriv_order
+! the stencil's entries of this variable, for each X table
       do x_loop_index = v%x_index_lo, x_index_hi
-
-      recompute_flag = 0
-!__________
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
             v%x_interp_workspace(x_loop_index,t6_scan_idx,density_scan_idx) = &
                  v%eos_table(x_loop_index,eos_var_idx,t6_scan_idx,density_scan_idx)
-            recompute_flag = 1
          end do
       end do
       end do
