@@ -371,7 +371,7 @@ PATH_RE = re.compile(r"(?<![\w`/])((?:(?:src|core|io|state|setup|rotation|net|ka
                      r"convection|element_diffusion|defaults|tools|docs)/[\w*./-]*\w)|"
                      r"(?:[\w*-]+/)*[\w*-]+\.(?:f90|inc|md|py|list|defaults|tsv|mod))(?![\w`])")
 # member names that read as plain words in prose
-PLAIN_WORDS = {"job", "stitched"}
+PLAIN_WORDS = {"control", "physics", "stitched"}
 
 
 def escape(text):

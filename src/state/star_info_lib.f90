@@ -2,8 +2,10 @@
 ! star_info_lib
 !----------------------------------------------------------------------
 ! The type of the stellar model, star_info (MESA's name), with the
-! records nested in it (the controls, controls_state; the Monte-Carlo
-! samples, monte_carlo_samples) and the capacities and slot constants its
+! records nested in it (the controls, control_group_controls and
+! physics_group_controls, and while the code moves to them the old
+! record controls_state; the Monte-Carlo samples, monte_carlo_samples)
+! and the capacities and slot constants its
 ! members are sized and indexed by.
 ! The module declares no star: run_yrec (core/run/run_driver.f90) owns
 ! the run's star, and every star-layer procedure takes it as its
@@ -111,6 +113,25 @@ module star_info_lib
             include 'controls_state_def.inc'
       end type controls_state
 
+! The deck's controls in two records named for the inlist's namelist
+! groups: star%control (the &control group: the run cards, the files, the
+! output, the calibrations, the starting model's mixture) and
+! star%physics (the &physics group). A control is in the record of its
+! registry group (defaults/controls_registry.tsv; a derived member takes
+! the group of its topic); the input-only and unused ones stay in the
+! read's buffer (registry home buffer). The component lists are
+! GENERATED from the read buffer's declarations (io/controls_buffer.f90)
+! and the registry by tools/gen_controls_state.py; regenerate on any
+! change. The controls read alone writes them (io/controls_sync.f90);
+! nothing changes them after the read. The controls are documented in
+! src/defaults/controls_registry.md.
+      type, public :: control_group_controls
+            include 'control_group_def.inc'
+      end type control_group_controls
+      type, public :: physics_group_controls
+            include 'physics_group_def.inc'
+      end type physics_group_controls
+
 ! The Monte-Carlo samples (star%mc_samples), one entry per Monte-Carlo
 ! run, read from the sample file by monte_carlo's setup_monte_carlo_runs
 ! and read by apply_monte_carlo_parameters and the Monte-Carlo summary:
@@ -151,6 +172,16 @@ module star_info_lib
 ! each read; members: src/defaults/controls_registry.md, generated into
 ! controls_state_def.inc.
             type(controls_state) :: ctrl
+! the &control group's controls, by their canonical names [-];
+! controls_reader, controls_sync. Reset to the declared defaults before
+! each read; members: src/defaults/controls_registry.md, generated into
+! control_group_def.inc.
+            type(control_group_controls) :: control
+! the &physics group's controls, by their canonical names [-];
+! controls_reader, controls_sync. Reset to the declared defaults before
+! each read; members: src/defaults/controls_registry.md, generated into
+! physics_group_def.inc.
+            type(physics_group_controls) :: physics
 
 ! ==== Constants set at setup ===========================================
 ! Values fixed for the whole run by the controls read, the controls'

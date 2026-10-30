@@ -21,8 +21,8 @@ module controls_reader
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
       use net_lib, only: cross_section_scales_from_sstandard
-      use star_info_lib, only: star_info, controls_state, &
-           control_nml_override, physics_nml_override
+      use star_info_lib, only: star_info, controls_state, control_group_controls, &
+           physics_group_controls, control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
@@ -48,6 +48,8 @@ subroutine read_controls(s, ierr)
       call discard_pending_log
 ! the declared defaults, whatever an earlier read left on s
       s%ctrl = controls_state()
+      s%control = control_group_controls()
+      s%physics = physics_group_controls()
       call seed_controls_buffer(s)
       call set_solver_diagnostics(report_solver_diagnostics)
 ! the deck, under the canonical names, and the readable inputs mapped

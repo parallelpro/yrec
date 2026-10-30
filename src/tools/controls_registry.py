@@ -3,8 +3,11 @@ control, read by the controls generators (gen_controls_state, gen_inlist),
 tools/upgrade_inlist.py and tools/check_boundaries.py.
 
 Columns:
-  group          the namelist group, control or physics; '-' for a
-                 derived member, which no deck sets
+  group          the namelist group, control or physics (the inlist's
+                 &control and &physics); a derived member, which no deck
+                 sets, takes the group of its topic (the controls it is
+                 derived from). The star holds each control in the record
+                 of its group, star%control or star%physics.
   legacy         the name in the legacy CONTROL/PHYSICS decks ('-': none)
   type           real, integer, logical or string, with (dims) for an array
   proposed_name  the name in a single-file inlist (for a derived member,
@@ -24,10 +27,11 @@ Columns:
   doc            what it does
   canonical      the controls_buffer member the value lands in (star%<x>
                  for a star member; blank for a legacy-only variable)
-  home           ctrl: star%ctrl, read after the controls read and never
-                 changed after it; buffer: the controls read's buffer only
-                 (an input-only or unused control, used read or none);
-                 blank without a canonical member.
+  home           control or physics, the group: the star's record of that
+                 group (star%control, star%physics), read after the controls
+                 read and never changed after it; buffer: the controls
+                 read's buffer only (an input-only or unused control, used
+                 read or none); blank without a canonical member.
                  tools/check_boundaries.py checks it.
   run_copy       for a control the run changes (the run cards the
                  calibrations rewrite, the stops they disarm, the latches,
@@ -55,7 +59,8 @@ COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note", "d
            "canonical", "home", "run_copy", "used", "aliases"]
 STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
-HOMES = {"ctrl", "buffer", ""}
+GROUPS = {"control", "physics"}
+HOMES = GROUPS | {"buffer", ""}
 USES = {"run", "read", "none", ""}
 
 
@@ -71,6 +76,11 @@ def rows():
         if len(fields) != len(cols):
             raise SystemExit(f"controls_registry.tsv:{n}: {len(fields)} fields, expected {len(cols)}")
         r = dict(zip(cols, fields))
+        if r["group"] not in GROUPS:
+            raise SystemExit(f"controls_registry.tsv:{n}: group {r['group']!r}, expected control or physics")
+        if r["home"] in GROUPS and r["home"] != r["group"]:
+            raise SystemExit(f"controls_registry.tsv:{n}: home {r['home']}, but group {r['group']}: "
+                             "the star holds a control in the record of its group")
         if r["status"] not in STATUSES or r["home"] not in HOMES or r["used"] not in USES:
             raise SystemExit(f"controls_registry.tsv:{n}: status/home/used "
                              f"{r['status']!r}/{r['home']!r}/{r['used']!r}")

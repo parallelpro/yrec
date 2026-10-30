@@ -489,4 +489,4 @@ io/controls_reader.o: io/adopt_canonical.inc io/inlist_new_decl.inc io/inlist_ne
 io/legacy_controls.o: io/legacy_mirror.inc
 io/output_columns.o: io/default_columns.inc
 io/test/test_controls.o: io/test/controls_dump.inc
-state/star_info_lib.o: state/controls_state_def.inc
+state/star_info_lib.o: state/control_group_def.inc state/controls_state_def.inc state/physics_group_def.inc

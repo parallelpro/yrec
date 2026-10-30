@@ -490,11 +490,11 @@ def check_control_homes(src_root):
         if copy and copy not in star_written:
             problems.append(f"{m}: its run copy {copy} is never assigned outside the read "
                             "(read the control instead, and drop run_copy)")
-        home = "ctrl" if m in referenced or copy else "buffer"
+        home = r["group"] if m in referenced or copy else "buffer"
         if home != r["home"]:
             problems.append(f"{m}: registry home {r['home']}, but code outside the read "
-                            + {"ctrl": "reads it (ctrl)",
-                               "buffer": "never reads it (buffer)"}[home])
+                            + ("never reads it (buffer)" if home == "buffer" else
+                               f"reads it (the record of its group, {home})"))
         # the read's own copies (m = legacy, m = s%ctrl%m) are not uses
         rest = re.sub(r"(?m)^\s*" + m + r"\s*(\([^=\n]*\))?\s*=.*$", "", read_code)
         rest = re.sub(r"(?m)^\s*" + re.escape(r["legacy"].lower()) + r"\s*=\s*" + m + r"\s*$", "", rest)
