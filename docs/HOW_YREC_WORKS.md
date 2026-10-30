@@ -634,7 +634,9 @@ receive T, P or ρ and the composition as arguments, and the envelope
 kernel `core/envelope/envelope_integration_kernel.f90` is star-blind.
 Configuration comes from one settings record per domain, which the
 builders in `setup/` make from the controls and the star layer installs
-at the start of a run, of each Monte-Carlo run (`net_settings`, from
+(every install in `setup/settings_install.f90`, which
+`tools/check_boundaries.py` checks) at the start of a run, of each
+Monte-Carlo run (`net_settings`, from
 `net_settings_from_star`) or of each run card (`convection_settings`,
 `rotation_settings`, `diffusion_settings`; those of eos, kap and atm
 per run); the domains in `STAR_FREE_DIRS` of
