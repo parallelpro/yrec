@@ -140,39 +140,7 @@ STAR_PAT = r"star%(\w+)"
 WHOLE_REF = r"(\s*\([^()]*(\([^()]*\)[^()]*)*\))?(%\w+(\s*\([^()]*\))?)*$"
 
 
-def matching_paren(s, i):
-    depth, q = 0, None
-    for j in range(i, len(s)):
-        ch = s[j]
-        if q:
-            if ch == q:
-                q = None
-        elif ch in "'\"":
-            q = ch
-        elif ch == "(":
-            depth += 1
-        elif ch == ")":
-            depth -= 1
-            if depth == 0:
-                return j
-    return len(s) - 1
-
-
-def io_targets(items, name_re):
-    """the names a read statement's io-list assigns: its items, and the
-    items of its implied-do loops (not their bounds)"""
-    out = []
-    for part in csc.split_args(items):
-        part = part.strip()
-        if part.startswith("(") and matching_paren(part, 0) == len(part) - 1:
-            inner = csc.split_args(part[1:-1])
-            j = next((k for k, x in enumerate(inner) if re.match(r"^\w+\s*=", x)), len(inner))
-            out += io_targets(",".join(inner[:j]), name_re)
-            continue
-        m = name_re.match(part)
-        if m:
-            out.append(m.group(1).lower())
-    return out
+matching_paren, io_targets = csc.matching_paren, csc.io_targets
 
 
 def declared_names(text):
@@ -181,31 +149,40 @@ def declared_names(text):
 
 
 def scan(files):
-    """every procedure: module, file, dummies, intents, locals and
-    executable statements (the star argument's s% written star%)"""
+    """every procedure, keyed as check_star_contracts keys them ((module,
+    name), an internal procedure by its host's key and its name):
+    module, file, dummies, intents, locals, the modules its scope uses,
+    and its executable statements (the star argument's s% written
+    star%)"""
     procs, order = {}, []
     for path in files:
         lines = path.read_text(errors="replace").splitlines()
-        stack, module = [], path.stem
+        stack, module, module_uses = [], path.stem.lower(), []
         for _, code in csc.logical_lines(lines):
             mm = MODULE_RE.match(code)
             if mm and not stack:
-                module = mm.group(1).lower()
+                module, module_uses = mm.group(1).lower(), []
                 continue
             m = csc.PROC_RE.match(code)
             if m and not re.match(r"^\s*end\b", code, re.I):
-                p = dict(name=m.group(2).lower(), module=module, path=path,
+                name = m.group(2).lower()
+                key = (stack[-1]["key"] if stack else (module,)) + (name,)
+                p = dict(name=name, key=key, module=module, path=path,
                          dummies=[a.strip().lower() for a in (m.group(3) or "").split(",") if a.strip()],
-                         intents={}, local=set(), stmts=[], parent=stack[-1] if stack else None,
-                         star_s=False)
-                if (module, p["name"]) not in procs:
-                    procs[(module, p["name"])] = p
+                         intents={}, local=set(), stmts=[], uses=[], module_uses=module_uses,
+                         parent=stack[-1]["key"] if stack else None, star_s=False)
+                if key not in procs:
+                    procs[key] = p
                     order.append(p)
                 stack.append(p)
                 continue
             if csc.END_RE.match(code):
                 if stack:
                     stack.pop()
+                continue
+            u = csc.parse_use(code)
+            if u:
+                (stack[-1]["uses"] if stack else module_uses).append(u)
                 continue
             if not stack:
                 continue
@@ -229,22 +206,10 @@ def scan(files):
     return procs, order
 
 
-def resolve(procs, caller, name):
-    """the procedure a call names: an internal procedure of the caller or
-    its hosts, then one of the caller's module, then any module's"""
-    q = caller
-    while q is not None:
-        r = procs.get((q["module"], name))
-        if r is not None and r["parent"] is q:
-            return r
-        q = q["parent"]
-    r = procs.get((caller["module"], name))
-    if r is not None:
-        return r
-    return next((p for p in procs.values() if p["name"] == name and p["parent"] is None), None)
+resolve = csc.resolve
 
 
-def visible_dummies(p):
+def visible_dummies(procs, p):
     """name -> the procedure whose dummy it is: p's own and its hosts'
     (host association), unless p declares the name itself"""
     vis, q, hidden = {}, p, set()
@@ -253,7 +218,7 @@ def visible_dummies(p):
             if d not in vis and d not in hidden:
                 vis[d] = q
         hidden |= q["local"] | set(q["dummies"])
-        q = q["parent"]
+        q = procs.get(q["parent"]) if q["parent"] else None
     return vis
 
 
@@ -268,9 +233,10 @@ def classify(stmt, pat):
         read = {f.lower() for f in find.findall(stmt[eq + 1:])}
         read |= {f.lower() for f in find.findall(stmt[:eq])[1:]}
         return {m.group(1).lower()}, read
-    if READ_STMT_RE.match(stmt):
-        j = matching_paren(stmt, stmt.index("(", stmt.lower().index("read")))
-        targets = set(io_targets(stmt[j + 1:], re.compile(r"^" + pat, re.I)))
+    mr = READ_STMT_RE.match(stmt)
+    if mr:
+        j = matching_paren(stmt, mr.end() - 1)
+        targets = {n.lower() for n in io_targets(stmt[j + 1:], re.compile(r"^" + pat, re.I))}
         return targets, {f.lower() for f in find.findall(stmt)} - targets
     if ALLOC_RE.match(stmt):
         return {f.lower() for f in find.findall(stmt)}, set()
@@ -284,7 +250,7 @@ def analyse(procs, order):
     for p in order:
         p.update(s_w=set(), s_r=set(), d_w=set(), d_r=set(), args=[])
     for p in order:
-        vis = visible_dummies(p)
+        vis = visible_dummies(procs, p)
         dpat = ("(" + "|".join(re.escape(d) for d in sorted(vis, key=len, reverse=True)) + r")\b") if vis else None
 
         def note(kind, written, read):

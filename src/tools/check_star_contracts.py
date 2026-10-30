@@ -15,9 +15,16 @@ The lists cover the procedure's own body (with its internal procedures,
 which share its scope); calls to other procedures are visible in the
 code and carry their own contracts.
 
-A write is an assignment to star%<member>, or star%<member> passed as an
-actual argument to a dummy declared intent(out) or intent(inout). A
-member that is both read and written is listed under writes only.
+A write is an assignment to star%<member>, a read statement's or an
+allocate's target, or star%<member> passed as an actual argument to a
+dummy declared intent(out) or intent(inout). A member that is both read
+and written is listed under writes only.
+
+Procedures are told apart by module (and host): two modules may each
+have a wind_now, and a call resolves as the compiler does: an internal
+procedure of the caller or its hosts, the caller's module, a module the
+scope uses (by name in an only-list, or whole), then the one procedure
+of that name in the tree.
 
 The check is opt-in: only procedures that carry the two lines are
 checked, so contracts can be added driver by driver (docs/GUIDELINES.md,
@@ -42,6 +49,11 @@ STAR_RE = re.compile(r"(?<![\w%])star%(ctrl%\w+|job%\w+|\w+)", re.I)
 ASSIGN_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?star%(ctrl%\w+|job%\w+|\w+)"
                        r"(?:\s*\([^=]*\))?(?:%\w+(?:\s*\([^=]*\))?)*\s*=(?!=)", re.I)
 CALL_RE = re.compile(r"\bcall\s+(\w+)\s*\((.*)\)\s*$", re.I)
+MODULE_RE = re.compile(r"^\s*module\s+(\w+)\s*$", re.I)
+USE_RE = re.compile(r"^\s*use\s*(?:,\s*(?:non_)?intrinsic\s*::\s*|::\s*)?(\w+)\s*(?:,\s*only\s*:\s*(.*))?$",
+                    re.I)
+READ_STMT_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?read\s*\(", re.I)
+ALLOC_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?(?:allocate|deallocate)\s*\(", re.I)
 INTENT_RE = re.compile(r"^\s*(?:double precision|integer|logical|real|character|"
                        r"type\s*\(\s*\w+\s*\))[^:]*intent\s*\(\s*(in|out|inout)\s*\)"
                        r"[^:]*::\s*(.*)$", re.I)
@@ -121,28 +133,91 @@ def spelled(name):
     return forms.most_common(1)[0][0] if forms else name
 
 
+def matching_paren(s, i):
+    depth, q = 0, None
+    for j in range(i, len(s)):
+        ch = s[j]
+        if q:
+            if ch == q:
+                q = None
+        elif ch in "'\"":
+            q = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return j
+    return len(s) - 1
+
+
+def io_targets(items, name_re):
+    """the names a read statement's io-list assigns: its items, and the
+    items of its implied-do loops (not their bounds)"""
+    out = []
+    for part in split_args(items):
+        part = part.strip()
+        if part.startswith("(") and matching_paren(part, 0) == len(part) - 1:
+            inner = split_args(part[1:-1])
+            j = next((k for k, x in enumerate(inner) if re.match(r"^\w+\s*=", x)), len(inner))
+            out += io_targets(",".join(inner[:j]), name_re)
+            continue
+        m = name_re.match(part)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
+def parse_use(code):
+    """(module, {local name: remote name} or None for a whole use)"""
+    m = USE_RE.match(code)
+    if not m:
+        return None
+    if m.group(2) is None:
+        return m.group(1).lower(), None
+    names = {}
+    for item in m.group(2).split(","):
+        item = item.strip().lower()
+        if "=>" in item:
+            local, remote = (x.strip() for x in item.split("=>", 1))
+            names[local] = remote
+        elif item:
+            names[item] = item
+    return m.group(1).lower(), names
+
+
 def scan(files):
-    """Every procedure: file, statement line, dummies, intents, star
-    refs/writes in its own scope, its parent (for internal procedures),
-    and its calls."""
+    """Every procedure, keyed by (module, name) -- an internal procedure
+    by its host's key and its name: file, statement line, dummies,
+    intents, star refs/writes in its own scope, its host (parent), the
+    modules its scope uses, and its calls."""
     procs = {}
     for path in files:
         lines = path.read_text(errors="replace").splitlines()
-        stack = []
+        stack, module, module_uses = [], path.stem.lower(), []
         for idx, code in logical_lines(lines):
+            mm = MODULE_RE.match(code)
+            if mm and not stack:
+                module, module_uses = mm.group(1).lower(), []
+                continue
             m = PROC_RE.match(code)
             if m and not re.match(r"^\s*end\b", code, re.I):
                 name = m.group(2).lower()
-                p = dict(name=name, path=path, line=idx,
+                key = (stack[-1]["key"] if stack else (module,)) + (name,)
+                p = dict(name=name, key=key, module=module, path=path, line=idx,
                          dummies=[a.strip().lower() for a in (m.group(3) or "").split(",") if a.strip()],
-                         intents={}, reads=set(), writes=set(), calls=[],
-                         parent=stack[-1]["name"] if stack else None)
-                procs.setdefault(name, p)
+                         intents={}, reads=set(), writes=set(), calls=[], uses=[],
+                         module_uses=module_uses, parent=stack[-1]["key"] if stack else None)
+                procs.setdefault(key, p)
                 stack.append(p)
                 continue
             if END_RE.match(code):
                 if stack:
                     stack.pop()
+                continue
+            u = parse_use(code)
+            if u:
+                (stack[-1]["uses"] if stack else module_uses).append(u)
                 continue
             if not stack:
                 continue
@@ -157,6 +232,20 @@ def scan(files):
                     n = n.split("=")[0].strip().lower()
                     if n:
                         p["intents"][n] = mi.group(1).lower()
+                continue
+            mr = READ_STMT_RE.match(code)
+            if mr:
+                j = matching_paren(code, mr.end() - 1)
+                targets = io_targets(code[j + 1:], re.compile(r"^star%(ctrl%\w+|job%\w+|\w+)", re.I))
+                for f in targets:
+                    p["writes"].add(note_spelling(f))
+                for f in STAR_RE.findall(code):
+                    if f.lower() not in {x.lower() for x in targets}:
+                        p["reads"].add(note_spelling(f))
+                continue
+            if ALLOC_RE.match(code):
+                for f in STAR_RE.findall(code):
+                    p["writes"].add(note_spelling(f))
                 continue
             ma = ASSIGN_RE.match(code)
             if ma:
@@ -177,17 +266,57 @@ def scan(files):
     return procs
 
 
-def footprint(procs, name):
+_BY_NAME = {}
+
+
+def resolve(procs, caller, name):
+    """the procedure a call from caller names, as the compiler finds it:
+    scope by scope from the caller out to its module, a procedure the
+    scope contains, then one a module it uses provides (by name in an
+    only-list, then a whole use); else the only top-level procedure of
+    that name in the tree (a facade's re-export)"""
+    def from_uses(uses):
+        for mod, only in uses:
+            if only is not None and name in only:
+                r = procs.get((mod, only[name]))
+                if r is not None:
+                    return r
+        for mod, only in uses:
+            if only is None:
+                r = procs.get((mod, name))
+                if r is not None:
+                    return r
+        return None
+    q = caller
+    while q is not None:
+        r = procs.get(q["key"] + (name,)) or from_uses(q["uses"])
+        if r is not None:
+            return r
+        q = procs.get(q["parent"]) if q["parent"] else None
+    r = procs.get((caller["module"], name)) or from_uses(caller["module_uses"])
+    if r is not None:
+        return r
+    if id(procs) not in _BY_NAME:
+        by = collections.defaultdict(list)
+        for p in procs.values():
+            if p["parent"] is None:
+                by[p["name"]].append(p)
+        _BY_NAME[id(procs)] = by
+    top = _BY_NAME[id(procs)].get(name, [])
+    return top[0] if len(top) == 1 else None
+
+
+def footprint(procs, key):
     """reads, writes of a procedure's scope (itself and its internal
     procedures), with star% actual arguments to intent(out/inout)
-    dummies counted as writes."""
-    scope = [p for p in procs.values() if p["name"] == name or _ancestor(procs, p, name)]
+    dummies counted as writes. key is the procedure's key in procs."""
+    scope = [p for p in procs.values() if p["key"][:len(key)] == key]
     reads, writes = set(), set()
     for p in scope:
         reads |= p["reads"]
         writes |= p["writes"]
         for callee, args in p["calls"]:
-            q = procs.get(callee)
+            q = resolve(procs, p, callee)
             for i, a in enumerate(args):
                 kw = re.match(r"^(\w+)\s*=\s*(.*)$", a)
                 dummy = None
@@ -202,16 +331,6 @@ def footprint(procs, name):
                     writes.add(ma.group(1).lower())
     reads -= writes
     return reads, writes
-
-
-def _ancestor(procs, p, name):
-    while p["parent"]:
-        if p["parent"] == name:
-            return True
-        p = procs.get(p["parent"])
-        if p is None:
-            return False
-    return False
 
 
 def declared(lines, stmt_line):
@@ -273,7 +392,7 @@ def main():
         d = declared(lines, p["line"])
         if d is None:
             continue
-        reads, writes = footprint(procs, p["name"])
+        reads, writes = footprint(procs, p["key"])
         dr, dw, span = d
         rendered = render("star reads", reads) + render("star writes", writes)
         if (dr, dw) != (reads, writes) or (fix and lines[span[0]:span[1] + 1] != rendered):
