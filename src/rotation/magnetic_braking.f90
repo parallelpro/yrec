@@ -350,7 +350,8 @@ subroutine compute_solid_body_braking(log_luminosity_lsun, full_timestep, cz_mom
 ! the solar centrifugal term, (1/2) Omega_sun^2 R_sun^3/(G M_sun), as
 ! brake_convection_zone's (the original divided by exp(ln10*gl) with gl
 ! an unset local, zero, so it lacked the 1/G; docs/bug_sweep.md O17)
-         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/exp(ln10*rotation_settings%log10_gravitational_constant)/rotation_settings%solar_mass_cgs
+         law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3 &
+              /exp(ln10*rotation_settings%log10_gravitational_constant)/rotation_settings%solar_mass_cgs
          law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
               rotation_settings%log10_solar_luminosity)
          fcen1 = matt_centrifugal_factor(omega_old, law%fsun, law%log10_radius, total_mass_msun)
@@ -464,7 +465,8 @@ subroutine set_matt_law(log_luminosity_lsun, total_mass_msun, log_teff, law)
       endif
       law%structure_factor = matt_structure_factor(total_mass_msun, log_luminosity_lsun, log_teff, &
               law%conditions)
-      law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3/exp(ln10*rotation_settings%log10_gravitational_constant)/rotation_settings%solar_mass_cgs
+      law%fsun = 0.5*rotation_settings%pmm_solar_omega**2*rotation_settings%solar_radius_cgs**3 &
+           /exp(ln10*rotation_settings%log10_gravitational_constant)/rotation_settings%solar_mass_cgs
       law%log10_radius = log10_radius_from_l_teff(log_luminosity_lsun, log_teff, &
            rotation_settings%log10_solar_luminosity)
 end subroutine set_matt_law

@@ -621,7 +621,8 @@ subroutine store_atmosphere_gradients()
 ! with 10^cdelrl = 3/(64 pi sigma), L = luminosity_linear Lsun and M the
 ! total mass. The gradient is grad_rad where grad_rad <= grad_ad + 1e-6,
 ! and grad_ad above.
-       pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl+cfg%log10_solar_luminosity-cfg%log10_gravitational_constant+ &
+       pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl &
+              +cfg%log10_solar_luminosity-cfg%log10_gravitational_constant+ &
               cdelrl))*temperature_rotation_factor/pressure_rotation_factor
        if (pulse_radiative_gradient-pt%qdela .le. 1.0d-6) then
          pulse_gradient = pulse_radiative_gradient
