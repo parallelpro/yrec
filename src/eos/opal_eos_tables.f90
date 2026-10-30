@@ -2,7 +2,8 @@
 ! opal_eos_tables
 !----------------------------------------------------------------------
 ! The OPAL EOS tables and interpolation state, one instance per
-! vintage (opal95, opal01, opal06), plus opal_shared for what the vintages
+! vintage (opal95, opal_tables(iv_opal01), opal_tables(iv_opal06)), plus
+! opal_shared for what the vintages
 ! share: the table unit, the loaded flags and each table's Z. The
 ! interpolation routines take the instance as their first argument,
 ! "v". Also here: each vintage's read-only grids (x_grid,
@@ -44,8 +45,8 @@ module opal_eos_tables
            i_opal_gamma2_ratio, i_opal_gamma3m1, i_opal_p, i_opal_s, &
            interpolate_opal_t6_rho, iv_opal01, iv_opal06, iv_opal95, &
            n_eos01_nr, n_eos01_nt, n_eos06_nr, n_eos06_nt, n_eos95_nr, &
-           n_eos95_nt, n_eos_mv, n_eos_mx, opal01, opal01_density_index_edge, &
-           opal01_t6_index_lo, opal01_x_grid, opal06, &
+           n_eos95_nt, n_eos_mv, n_eos_mx, opal_tables, opal01_density_index_edge, &
+           opal01_t6_index_lo, opal01_x_grid, &
            opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
            opal95, opal95_density_index_edge, opal95_t6_index_lo, &
            opal95_x_grid, opal_shared, opal_eos_vintage, &
@@ -64,7 +65,7 @@ module opal_eos_tables
       integer, parameter :: iv_opal95 = opal_vintage_1995, iv_opal01 = opal_vintage_2001, &
            iv_opal06 = opal_vintage_2006
 ! Variable numbers of the OPAL EOS results (the slots of
-! opal95%eos_output and opal06%eos_output): the 1995 and 2006 tables
+! opal95%eos_output and opal_tables(iv_opal06)%eos_output): the 1995 and 2006 tables
 ! carry the same variables in the same order (2006 without gamma3 - 1).
 ! Units as documented in esac (pressure in 1e12 dyn/cm**2, energy in
 ! 1e12 erg/g, ...).
@@ -78,7 +79,7 @@ module opal_eos_tables
       integer, parameter :: i_opal_gamma1 = 8       ! gamma1
       integer, parameter :: i_opal_gamma2_ratio = 9 ! gamma2/(gamma2-1)
       integer, parameter :: i_opal_gamma3m1 = 10    ! gamma3-1
-! The 2001 tables (opal01%eos_output) carry no dE/dRho variable, so
+! The 2001 tables (opal_tables(iv_opal01)%eos_output) carry no dE/dRho variable, so
 ! every slot after entropy is one lower.
       integer, parameter :: i_opal01_p = 1
       integer, parameter :: i_opal01_e = 2
@@ -89,7 +90,7 @@ module opal_eos_tables
       integer, parameter :: i_opal01_gamma1 = 7
       integer, parameter :: i_opal01_gamma2_ratio = 8
       integer, parameter :: i_opal01_gamma3m1 = 9
-! Density returned by rhoofp/rhoofp01/rhoofp06 when the (P,T6) point
+! Density returned by rhoofp and opal_density_search when the (P,T6) point
 ! is not in the table (compute_opal_eos tests for .le. -998).
       real(dp), parameter :: opal_rho_not_found = -999.0d0
 ! a/3 in OPAL's units, Mb per T6^4 (radiation_constant_over_3 times
@@ -139,6 +140,15 @@ module opal_eos_tables
             (125,i=1,2),(123,i=1,5),(122,i=1,2),(121,i=1,6),(119,i=1,4), &
             (116,i=1,8),(115,i=1,9),(113,i=1,5),(111,i=1,7),(110,i=1,6), &
             (109,i=1,34),107,104,(100,i=1,40),(99,i=1,10),98,97,96,95,94,93,92]
+! The 2001 density search's highest density column at each T6 row: the
+! values of opal01_density_index_edge except at rows 78-80 (113 here,
+! 115 there), as in OPAL's rhoofp01.
+      integer, parameter :: opal01_search_density_index_edge(n_eos01_nt) = &
+           [(169,i=1,16), 168, 167, 166, 165, (164,i=1,2), 163, (162,i=1,2), 161, 160, &
+            (159,i=1,2), (143,i=1,4), (137,i=1,5), (134,i=1,6), (125,i=1,2), (123,i=1,5), &
+            (122,i=1,2), (121,i=1,6), (119,i=1,4), (116,i=1,8), (115,i=1,6), (113,i=1,8), &
+            (111,i=1,7), (110,i=1,6), (109,i=1,34), 107, 104, (100,i=1,40), (99,i=1,10), &
+            98, 97, 96, 95, 94, 93, 92]
       integer, parameter :: opal06_density_index_edge(n_eos06_nt) = &
            [(169,i=1,26),168,(167,i=1,2),166,165,164,(163,i=1,2),162, &
             161,160,(159,i=1,2),158,(130,i=1,2),129,(128,i=1,2), &
@@ -182,6 +192,22 @@ module opal_eos_tables
 ! interpolated pressure reproduces P (1995)
          real(dp) :: t6_min, t6_max
          logical :: checks_pressure
+! the density search (opal_density_search; 1995: rhoofp): its highest
+! density column at each T6 row, its a/c [Mb/T6^4] (2001 and 2006:
+! OPAL's single-precision literal, widened), whether it subtracts the
+! radiation pressure from the target and asks the interpolator for the
+! gas alone (2006) or adds it to the table's pressure bounds and asks
+! for gas plus radiation (1995, 2001), and its name in messages
+         integer :: search_density_index_edge(n_eos_nt_max)
+         real(dp) :: search_rad_const_over_c
+         logical :: search_subtracts_radiation
+         character(len=8) :: search_name
+! the table's edge (find_opal_edge_ramp): the 2006 table's ragged edge
+! (by column and row, find_ragged_edge_ramp), else one table edge in
+! rho per T6 row (find_opal_ramp) below the lowest log10 rho the ramp
+! test admits
+         logical :: ragged_edge
+         real(dp) :: ramp_log10_rho_min
 ! blend_eos's window, inside which the vintage is consulted at all: T in
 ! K, and the 1995 test of log10 T (the original literals, kept as
 ! written: 1995 bounds log10 T by 8, the others T by 1e8 and 2e8 K)
@@ -196,6 +222,9 @@ module opal_eos_tables
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.1446304d0, &
                 row_format="", n_skipped_columns=0, routine_id="", &
                 t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
+                search_density_index_edge=[opal95_density_index_edge, (0, i=n_eos95_nt+1, n_eos_nt_max)], &
+                search_rad_const_over_c=1.8914785d-3, search_subtracts_radiation=.false., &
+                search_name="RHOOFP", ragged_edge=.false., ramp_log10_rho_min=-14.0d0, &
                 window_t_min=5.0d3, window_t_max=huge(1.0d0), window_log10_t_max=8.0d0, &
                 window_log10_rho_max=5.0d0), &
            opal_vintage_layout(nr=n_eos01_nr, nt=n_eos01_nt, x_grid=opal01_x_grid, &
@@ -207,6 +236,10 @@ module opal_eos_tables
                 row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
                 routine_id="OPALEOS/ESAC01:", &
                 t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
+                search_density_index_edge=[opal01_search_density_index_edge, &
+                (0, i=n_eos01_nt+1, n_eos_nt_max)], &
+                search_rad_const_over_c=real(1.8914785e-3, dp), search_subtracts_radiation=.false., &
+                search_name="RHOOFP01", ragged_edge=.false., ramp_log10_rho_min=-14.0d0, &
                 window_t_min=2.0d3, window_t_max=100d6, window_log10_t_max=huge(1.0d0), &
                 window_log10_rho_max=7.0d0), &
            opal_vintage_layout(nr=n_eos06_nr, nt=n_eos06_nt, x_grid=opal06_x_grid, &
@@ -217,6 +250,9 @@ module opal_eos_tables
                 row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
                 routine_id="OPALEOS/ESAC06:", &
                 t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
+                search_density_index_edge=opal06_density_index_edge, &
+                search_rad_const_over_c=real(1.8914785e-3, dp), search_subtracts_radiation=.true., &
+                search_name="RHOOFP06", ragged_edge=.true., ramp_log10_rho_min=-14.0d0, &
                 window_t_min=1.870d3, window_t_max=200d6, window_log10_t_max=huge(1.0d0), &
                 window_log10_rho_max=7.0d0)]
 
@@ -261,7 +297,7 @@ module opal_eos_tables
                 density_grid_table(n_eos_mx,n_eos_nr_max)
            integer :: temperature_count_used(n_eos_mx,n_eos_nr_max)
 ! the table edge at each T6 row and the cached row (find_opal_ramp;
-! find_opal2006_ramp works from density_index_edge directly)
+! find_ragged_edge_ramp works from density_index_edge directly)
            real(dp) :: density_edge_at_t(n_eos_nt_max)
            integer :: t_row_index
       end type opal_eos_vintage
@@ -321,7 +357,8 @@ module opal_eos_tables
 
       type(opal_eos_state) :: opal_shared
       type(opal_eos_vintage95) :: opal95
-      type(opal_eos_vintage) :: opal01, opal06
+! the 2001 and 2006 tables' instances, indexed by vintage
+      type(opal_eos_vintage) :: opal_tables(iv_opal01:iv_opal06)
 
 
 contains
@@ -421,8 +458,8 @@ end subroutine interpolate_opal_t6_rho
 ! find_opal_ramp (formerly eqbound_core)
 !----------------------------------------------------------------------
 ! The table-edge search and ramp factor of the OPAL 1995 and 2001
-! tables, called by find_opal95_ramp and find_opal2001_ramp after
-! their own density checks. find_opal2006_ramp searches the 2006
+! tables, called by find_opal95_ramp and find_table_edge_ramp after
+! their own density checks. find_ragged_edge_ramp searches the 2006
 ! table's ragged edge differently.
 !
 ! Arguments: the vintage's row count nt, t6_grid (nt
@@ -541,8 +578,8 @@ end subroutine find_opal_ramp
 ! in question -- this is a straight transliteration of the original
 ! caching scheme, not a redesign of it).
 !
-! Each vintage passes its own cache (opal95%quad, opal01%quad,
-! opal06%quad).
+! Each vintage passes its own cache (opal95%quad,
+! opal_tables(vintage)%quad).
 real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
      y1, y2, y3, x1, x2, x3)
 

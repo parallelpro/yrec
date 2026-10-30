@@ -3,31 +3,33 @@
 !----------------------------------------------------------------------
 ! The OPAL equation of state: the entry points for all three vintages,
 ! and the 2001 and 2006 tables, which share one state layout
-! (opal_eos_vintage; the 1995 tables, with their own layout, are in
-! opal95_eos).
+! (opal_eos_vintage, their instances opal_tables(iv_opal01:iv_opal06);
+! the 1995 tables, with their own layout, are in opal95_eos).
 !     compute_opal_eos     density and the thermodynamic derivatives of
 !                          one vintage at (log T, log P, X, Z)
 !     find_opal_edge_ramp  whether the vintage's table holds the point,
 !                          and the OPAL weight near its edge
-! Under these: rhoofp01/06 (OPAL's density search; the two differ),
-! interpolate_opal_eos (OPAL's esac01/esac06, which remain its entry
-! points; esac06 is also public for eos_get_gamma1 and test_eos),
-! t6rinteos, add_radiation (the radiation correction) and readcoeos
-! (the table reader, run once per vintage). The 2001 and 2006 code is
-! written once: what the vintages differ in (the table's size and grids,
-! the slots, the radiation constants, the reader's row format) is their
-! row of opal_layout (opal_eos_tables), and the report_* procedures keep
-! each vintage's messages in its own words. The 2001 code follows
-! Rogers & Nayfonov (2002); the 2006 tables are the 2005 update.
+! Under these, for 2001 and 2006: opal_density_search (OPAL's rhoofp01
+! and rhoofp06), interpolate_opal_eos (OPAL's esac01 and esac06, which
+! remain its entry points, public for eos_get_gamma1 and test_eos),
+! t6rinteos, add_radiation (the radiation correction), readcoeos (the
+! table reader, run once per vintage), and the edge ramps
+! find_table_edge_ramp (2001) and find_ragged_edge_ramp (2006). This
+! code is written once: what the vintages differ in (the table's size
+! and grids, the slots, the radiation constants, the reader's row
+! format, how the density search treats radiation, which edge the table
+! has) is their row of opal_layout (opal_eos_tables); compute_opal_eos
+! branches only between the 1995 code and the rest. The report_*
+! procedures keep each vintage's messages in its own words. The 2001
+! code follows Rogers & Nayfonov (2002); the 2006 tables are the 2005
+! update.
 module opal_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use opal95_eos, only: esac, rhoofp, find_opal95_ramp
-      use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal01_p, i_opal_p, &
-           interpolate_opal_t6_rho, iv_opal95, iv_opal01, iv_opal06, n_eos01_nt, &
-           n_eos06_nr, n_eos06_nt, n_eos_mv, n_eos_mx, opal95, opal01, opal06, &
-           opal01_density_index_edge, opal01_x_grid, opal06_density_index_edge, &
-           opal06_t6_index_lo, opal06_x_grid, opal_layout, opal_shared, &
+      use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal_p, &
+           interpolate_opal_t6_rho, iv_opal95, iv_opal01, iv_opal06, &
+           n_eos_mv, n_eos_mx, opal95, opal_tables, opal_layout, opal_shared, &
            opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad, &
            opal_radiation_constant_over_3
       use physical_constants, only: gas_constant
@@ -88,16 +90,14 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       end if
       hydrogen_fraction_work = hydrogen_fraction
 
-      select case (vintage)
-      case (iv_opal95)
+! the density that gives P (the 1995 tables have their own state layout
+! and code; 2001 and 2006 one search, driven by the vintage's row)
+      if (vintage == iv_opal95) then
          density_cgs = rhoofp(opal95, hydrogen_fraction_work, t_million_k, p_e12, rad_flag, ierr)
-      case (iv_opal01)
-         density_cgs = rhoofp01(opal01, hydrogen_fraction_work, t_million_k, p_e12, &
-              rad_flag, ierr)
-      case default
-         density_cgs = rhoofp06(opal06, hydrogen_fraction_work, t_million_k, p_e12, &
-              rad_flag, ierr)
-      end select
+      else
+         density_cgs = opal_density_search(opal_tables(vintage), vintage, hydrogen_fraction_work, &
+              t_million_k, p_e12, rad_flag, ierr)
+      end if
       if (ierr /= 0) return
       if (density_cgs <= -998.0d0) then
          in_table = .false.
@@ -106,17 +106,14 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       r%density = density_cgs
       r%log10_density = log10(r%density)
 
-      select case (vintage)
-      case (iv_opal95)
+! the thermodynamic quantities there, into the vintage's eos_output
+      if (vintage == iv_opal95) then
          call esac(opal95, hydrogen_fraction_work, t_million_k, density_cgs, &
               deriv_order, rad_flag, ierr, in_table)
-      case (iv_opal01)
-         call esac01(opal01, hydrogen_fraction_work, t_million_k, density_cgs, &
-              deriv_order, rad_flag, ierr, in_table)
-      case default
-         call esac06(opal06, hydrogen_fraction_work, t_million_k, density_cgs, &
-              deriv_order, rad_flag, ierr, in_table)
-      end select
+      else
+         call interpolate_opal_eos(opal_tables(vintage), vintage, hydrogen_fraction_work, &
+              t_million_k, density_cgs, deriv_order, rad_flag, ierr, in_table)
+      end if
       if (.not. in_table) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'WARNNING... OPAL TBL FAIL'
@@ -127,14 +124,11 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
 
 ! dln P/dln rho, dln P/dln T6, cv, gamma1 and gamma2/(gamma2-1) from the
 ! vintage's results, in its slots
-      select case (vintage)
-      case (iv_opal95)
+      if (vintage == iv_opal95) then
          output = opal95%eos_output
-      case (iv_opal01)
-         output = opal01%eos_output
-      case default
-         output = opal06%eos_output
-      end select
+      else
+         output = opal_tables(vintage)%eos_output
+      end if
       if (opal_layout(vintage)%checks_pressure .and. &
            abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > pressure_check_tolerance) then
          eos_lines = unwritten_line
@@ -175,8 +169,9 @@ end subroutine compute_opal_eos
 ! find_opal_edge_ramp
 !----------------------------------------------------------------------
 ! Whether the vintage's table holds (T, log rho), and the weight of the
-! OPAL result near the table's edge (find_opal95_ramp,
-! find_opal2001_ramp, find_opal2006_ramp; the last returns no ierr).
+! OPAL result near the table's edge: the 1995 table (find_opal95_ramp),
+! the 2006 table's ragged edge (find_ragged_edge_ramp), or the 2001
+! table's one edge per T6 row (find_table_edge_ramp).
 subroutine find_opal_edge_ramp(vintage, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
       integer, intent(in) :: vintage
@@ -185,149 +180,130 @@ subroutine find_opal_edge_ramp(vintage, temperature, log10_density, ramp_factor,
       logical, intent(out) :: in_opal_table, needs_ramp
       integer, intent(out) :: ierr
 
-      select case (vintage)
-      case (iv_opal95)
+      ierr = 0
+      if (vintage == iv_opal95) then
          call find_opal95_ramp(temperature, log10_density, ramp_factor, &
               in_opal_table, needs_ramp, ierr)
-      case (iv_opal01)
-         call find_opal2001_ramp(temperature, log10_density, ramp_factor, &
-              in_opal_table, needs_ramp, ierr)
-      case default
-         ierr = 0
-         call find_opal2006_ramp(temperature, log10_density, ramp_factor, &
-              in_opal_table, needs_ramp)
-      end select
+      else if (opal_layout(vintage)%ragged_edge) then
+         call find_ragged_edge_ramp(opal_tables(vintage), opal_layout(vintage), temperature, &
+              log10_density, ramp_factor, in_opal_table, needs_ramp)
+      else
+         call find_table_edge_ramp(opal_tables(vintage), opal_layout(vintage), temperature, &
+              log10_density, ramp_factor, in_opal_table, needs_ramp, ierr)
+      end if
 end subroutine find_opal_edge_ramp
 
 !----------------------------------------------------------------------
-! find_opal2001_ramp (formerly eqbound01)
+! find_table_edge_ramp (formerly eqbound01)
 !----------------------------------------------------------------------
-! MHP 7/2003: checks whether a (T, log10 rho) point falls within the
-! OPAL 2001 EOS table, and if it is near the table's edge, computes
-! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (blend_eos calls it, through find_opal_edge_ramp, right after
-! compute_opal_eos).
-!
-! The 2001 density check (log10 rho outside -14..7 is outside the
-! table), then find_opal_ramp.
-subroutine find_opal2001_ramp(temperature, log10_density, ramp_factor, &
+! MHP 7/2003: whether a (T, log10 rho) point falls within the OPAL 2001
+! EOS table, and near its edge the ramp factor that blends the OPAL
+! result with the Yale/SCV one (blend_eos's opal_step calls it, through
+! find_opal_edge_ramp, right after compute_opal_eos): the vintage's
+! density range (log10 rho from ramp_log10_rho_min to the window's
+! top), then find_opal_ramp on the instance's grids.
+subroutine find_table_edge_ramp(v, lay, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
-
+      type(opal_eos_vintage), intent(inout) :: v
+      type(opal_vintage_layout), intent(in) :: lay
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-
       integer, intent(out) :: ierr
-
-      integer, parameter :: nt = n_eos01_nt
-! --- locals ---
       real(dp) :: t6
 
       ierr = 0
-
       t6 = temperature*1.0d-6
 !     exit if outside table in rho
-      if (log10_density < -14d0 .or. log10_density > 7.0d0) then
+      if (log10_density < lay%ramp_log10_rho_min .or. log10_density > lay%window_log10_rho_max) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
          return
       end if
-      call find_opal_ramp(nt, opal01%t6_grid, opal01%t_row_index, opal01%density_edge_at_t, &
-           opal01_density_index_edge, opal01%density_grid, t6, log10_density, ramp_factor, &
+      call find_opal_ramp(lay%nt, v%t6_grid, v%t_row_index, v%density_edge_at_t, &
+           lay%density_index_edge, v%density_grid, t6, log10_density, ramp_factor, &
            in_opal_table, needs_ramp, ierr)
-
-end subroutine find_opal2001_ramp
+end subroutine find_table_edge_ramp
 
 !----------------------------------------------------------------------
-! rhoofp01
+! opal_density_search (formerly rhoofp01 and rhoofp06)
 !----------------------------------------------------------------------
-! OPAL 2001 EOS analogue of rhoofp (see there for the general
-! description: the bracket, at most 30 regula falsi steps, the run-log
-! message on failure), with the same convergence tolerance (0.5d-7) as
-! rhoofp and rhoofp06.
-real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
-     pressure_e12, rad_flag, ierr)
-
-
+! The density at which the 2001 or 2006 table gives the pressure P (in
+! Mb) at (X, T6), by regula falsi through the interpolator's pressure
+! alone (trial calls, deriv_order = 1), from a bracket: a first density
+! from the table's highest one scaled by P over the pressure there, then
+! the lower density shrunk by 0.2 until its pressure is below the target
+! (at most 20 times, down to the table's 1e-14), or the upper one grown
+! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7. The
+! vintage's row of opal_layout says how radiation enters (2006 subtracts
+! its pressure from the target and asks for the gas alone; 2001 adds it
+! to the table's bounds and asks for gas plus radiation), the highest
+! density at each T6 row, a/c, and the name in messages. Returns
+! opal_rho_not_found (-999) when the point is not in the table, and,
+! with a run-log message, when the search does not converge.
+! (2026 bug sweep, batch 2: the bracket and the tolerance, once loosened
+! to 1e-5 to hide a cv slot rescaled from stale values on every trial
+! call, fixed in batch 0; 2026-10: the 2001 search the same, M41.)
+function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
+     pressure_e12, rad_flag, ierr) result(found_density)
       type(opal_eos_vintage), intent(inout) :: v
-
-      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
-           pressure_e12
+      integer, intent(in) :: vintage
+      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, pressure_e12
       integer, intent(in) :: rad_flag
       integer, intent(out) :: ierr
-
-      integer, parameter :: mx = n_eos_mx, nt = n_eos01_nt
-
-
-! --- locals ---
-      integer :: t6_scan_idx
-      real(dp) :: rat, radiation_pressure, pressure_no_rad
-      real(dp) :: hydrogen_fraction_dbg, t6_dbg, density_dbg
-      integer :: ideriv_dbg
-      integer :: lo_idx, hi_idx, mid_idx
-      integer :: x_bisect_idx, t6_bisect_idx
+      real(dp) :: found_density
+      character(len=message_length) :: eos_lines(4)
+      integer, parameter :: mx = n_eos_mx, max_refine = 30, max_shrink = 20
+! the table-priming call's point (its result is discarded)
+      real(dp), parameter :: priming_x = 0.5d0, priming_t6 = 1.0d0, priming_density = 0.001d0
+      real(dp) :: rat, radiation_pressure, bound_radiation, pressure_no_rad
       real(dp) :: pressure_max, pressure_min
       real(dp) :: density_trial1, density_trial2, density_trial3
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
-      integer :: refine_count, shrink_count
-      integer, parameter :: max_refine = 30, max_shrink = 20
-
-! The highest valid density column at each T6 row. These are the
-! values of opal01_density_index_edge except at rows 78-80 (113 here,
-! 115 there), as in OPAL's rhoofp01.
-      integer, parameter :: density_index_edge(nt) = [ &
-           (169,t6_scan_idx=1,16), 168, 167, 166, 165, &
-           (164,t6_scan_idx=1,2), 163, (162,t6_scan_idx=1,2), 161, 160, &
-           (159,t6_scan_idx=1,2), (143,t6_scan_idx=1,4), &
-           (137,t6_scan_idx=1,5), (134,t6_scan_idx=1,6), &
-           (125,t6_scan_idx=1,2), (123,t6_scan_idx=1,5), &
-           (122,t6_scan_idx=1,2), (121,t6_scan_idx=1,6), &
-           (119,t6_scan_idx=1,4), (116,t6_scan_idx=1,8), &
-           (115,t6_scan_idx=1,6), (113,t6_scan_idx=1,8), &
-           (111,t6_scan_idx=1,7), (110,t6_scan_idx=1,6), &
-           (109,t6_scan_idx=1,34), 107, 104, (100,t6_scan_idx=1,40), &
-           (99,t6_scan_idx=1,10), 98, 97, 96, 95, 94, 93, 92]
-      character(len=message_length) :: eos_lines(4)
+      integer :: lo_idx, hi_idx, mid_idx, x_bisect_idx, t6_bisect_idx, nt, edge
+      integer :: refine_count, shrink_count, trial_rad
       logical :: in_table
 
       ierr = 0
-
-      rat = opal_layout(iv_opal01)%rad_const_over_c
-! The radiation pressure is deliberately not subtracted from the target
-! here (the original's IF(IRAD.EQ.1) PR=4/3*RAT*T6**4 is commented out);
-! rad_flag instead adds it to pressure_max/pressure_min below.
+      nt = opal_layout(vintage)%nt
+      rat = opal_layout(vintage)%search_rad_const_over_c
       radiation_pressure = 0.0d0
+      bound_radiation = 0.0d0
+      if (opal_layout(vintage)%search_subtracts_radiation) then
+         if (rad_flag == 1) radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
+         trial_rad = 0
+      else
+         bound_radiation = rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
+         trial_rad = rad_flag
+      end if
       pressure_no_rad = pressure_e12 - radiation_pressure
 
-      if (opal_shared%table_loaded_flag(iv_opal01) /= opal_flag_set) then
-         hydrogen_fraction_dbg = 0.5d0
-         t6_dbg = 1.0d0
-         density_dbg = 0.001d0
-         ideriv_dbg = 1
-         call esac01(v, hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              rad_flag, ierr, in_table)
+! load the table on first use (the priming call's output is discarded)
+      if (opal_shared%table_loaded_flag(vintage) /= opal_flag_set) then
+         call interpolate_opal_eos(v, vintage, priming_x, priming_t6, priming_density, 1, &
+              trial_rad, ierr, in_table)
          if (ierr /= 0 .or. .not. in_table) then
-            rhoofp01 = opal_rho_not_found
+            found_density = opal_rho_not_found
             return
          end if
       end if
 
+! the X interval and the T6 row of the point
       lo_idx = 2
       hi_idx = mx
-    do while (hi_idx-lo_idx > 1)
+      do while (hi_idx-lo_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction <= opal01_x_grid(mid_idx)+1.0d-7) then
+         if (hydrogen_fraction <= opal_layout(vintage)%x_grid(mid_idx)+1.0d-7) then
             hi_idx = mid_idx
          else
             lo_idx = mid_idx
          end if
-    end do
+      end do
       x_bisect_idx = lo_idx
-
       lo_idx = nt
       hi_idx = 2
-   do while (lo_idx-hi_idx > 1)
+      do while (lo_idx-hi_idx > 1)
          mid_idx = (hi_idx+lo_idx)/2
          if (t6_temperature == v%t6_list(1,mid_idx)) then
             lo_idx = mid_idx
@@ -338,96 +314,90 @@ real(dp) function rhoofp01(v, hydrogen_fraction, t6_temperature, &
          else
             lo_idx = mid_idx
          end if
-   end do
+      end do
       t6_bisect_idx = lo_idx
+      edge = opal_layout(vintage)%search_density_index_edge(t6_bisect_idx)
 
-      pressure_max = v%eos_table(x_bisect_idx,1,t6_bisect_idx, &
-           density_index_edge(t6_bisect_idx))*t6_temperature* &
-           v%density_grid(density_index_edge(t6_bisect_idx)) + &
-           rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
+! the table's pressure range at that row; outside it the point is not
+! in the table
+      pressure_max = v%eos_table(x_bisect_idx,1,t6_bisect_idx,edge)*t6_temperature* &
+           v%density_grid(edge) + bound_radiation
       pressure_min = v%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
-           v%density_grid(1) + rad_flag*4.0d0/3.0d0*rat*t6_temperature**4
+           v%density_grid(1) + bound_radiation
       if ((pressure_no_rad > 1.25d0*pressure_max) .or. &
            (pressure_no_rad < pressure_min)) then
-!        requested pressure-temperature not in table
-         rhoofp01 = opal_rho_not_found
+         found_density = opal_rho_not_found
          return
       end if
 
-      density_trial1 = v%density_grid(density_index_edge(t6_bisect_idx))* &
-           pressure_no_rad/pressure_max
-      call esac01(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
-           rad_flag, ierr, in_table)
-      if (ierr /= 0 .or. .not. in_table) then
-         rhoofp01 = opal_rho_not_found
-         return
-      end if
-      pressure_trial1 = v%eos_output(i_opal01_p)
+! the bracket
+      density_trial1 = v%density_grid(edge)*pressure_no_rad/pressure_max
+      if (.not. trial_pressure(density_trial1, pressure_trial1)) return
       if (pressure_trial1 > pressure_no_rad) then
          pressure_trial2 = pressure_trial1
          density_trial2 = density_trial1
-! shrink the lower density until it brackets the root (regula falsi
-! converges only from a bracket), down to the table's floor
          shrink_count = 0
          shrink: do
             shrink_count = shrink_count + 1
             density_trial1 = 0.2d0*density_trial1
             if (density_trial1 < 1.0d-14) density_trial1 = 1.0d-14
-            call esac01(v, hydrogen_fraction, t6_temperature, density_trial1, 1, &
-                 rad_flag, ierr, in_table)
-            if (ierr /= 0 .or. .not. in_table) then
-               rhoofp01 = opal_rho_not_found
-               return
-            end if
-            pressure_trial1 = v%eos_output(i_opal01_p)
+            if (.not. trial_pressure(density_trial1, pressure_trial1)) return
             if (pressure_trial1 <= pressure_no_rad) exit shrink
             if (density_trial1 <= 1.0d-14 .or. shrink_count >= max_shrink) exit shrink
          end do shrink
       else
          density_trial2 = 5.0d0*density_trial1
-         if (density_trial2 > v%density_grid(density_index_edge(t6_bisect_idx))) &
-              density_trial2 = v%density_grid(density_index_edge(t6_bisect_idx))
-         call esac01(v, hydrogen_fraction, t6_temperature, density_trial2, 1, &
-              rad_flag, ierr, in_table)
-         if (ierr /= 0 .or. .not. in_table) then
-            rhoofp01 = opal_rho_not_found
-            return
-         end if
-         pressure_trial2 = v%eos_output(i_opal01_p)
+         if (density_trial2 > v%density_grid(edge)) density_trial2 = v%density_grid(edge)
+         if (.not. trial_pressure(density_trial2, pressure_trial2)) return
       end if
 
+! regula falsi
       refine_count = 0
       refine: do
-      refine_count = refine_count + 1
-      density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
-           (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
-      call esac01(v, hydrogen_fraction, t6_temperature, density_trial3, 1, &
-           rad_flag, ierr, in_table)
-      if (ierr /= 0 .or. .not. in_table) then
-         rhoofp01 = opal_rho_not_found
+         refine_count = refine_count + 1
+         density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
+              (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
+         if (.not. trial_pressure(density_trial3, pressure_trial3)) return
+         if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
+            found_density = density_trial3
+            return
+         end if
+         if (pressure_trial3 > pressure_no_rad) then
+            density_trial2 = density_trial3
+            pressure_trial2 = pressure_trial3
+         else
+            density_trial1 = density_trial3
+            pressure_trial1 = pressure_trial3
+         end if
+         if (refine_count < max_refine) cycle refine
+         eos_lines = unwritten_line
+         write(eos_lines,'(A,": no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
+              trim(opal_layout(vintage)%search_name), max_refine, &
+              hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+         call eos_log(eos_lines)
+         found_density = opal_rho_not_found
          return
-      end if
-      pressure_trial3 = v%eos_output(i_opal01_p)
-      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
-         rhoofp01 = density_trial3
-         return
-      end if
-      if (pressure_trial3 > pressure_no_rad) then
-         density_trial2 = density_trial3
-         pressure_trial2 = pressure_trial3
-      else
-         density_trial1 = density_trial3
-         pressure_trial1 = pressure_trial3
-      end if
-      if (refine_count < max_refine) cycle refine
-      eos_lines = unwritten_line
-      write(eos_lines,'("RHOOFP01: no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') max_refine, &
-           hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
-      call eos_log(eos_lines)
-      rhoofp01 = opal_rho_not_found
-      return
       end do refine
-end function rhoofp01
+
+contains
+
+! The table's pressure at density (a trial call); false (with the
+! search's result opal_rho_not_found) when the interpolator fails or the
+! point is outside the table.
+logical function trial_pressure(density, pressure)
+      real(dp), intent(in) :: density
+      real(dp), intent(out) :: pressure
+      call interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, density, 1, &
+           trial_rad, ierr, in_table)
+      trial_pressure = ierr == 0 .and. in_table
+      if (trial_pressure) then
+         pressure = v%eos_output(opal_layout(vintage)%i_p)
+      else
+         found_density = opal_rho_not_found
+      end if
+end function trial_pressure
+
+end function opal_density_search
 
 !----------------------------------------------------------------------
 ! interpolate_opal_eos (formerly esac01 and esac06)
@@ -990,25 +960,27 @@ end subroutine t6rinteos
 
 
 !----------------------------------------------------------------------
-! find_opal2006_ramp (formerly eqbound06)
+! find_ragged_edge_ramp (formerly eqbound06)
 !----------------------------------------------------------------------
 ! LLP 10/16/06: checks whether a (T, log10 rho) point falls within the
 ! OPAL 2006 EOS table, and if it is near the table's edge, computes
 ! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (blend_eos calls it, through find_opal_edge_ramp, right after
-! compute_opal_eos). Unlike find_opal95_ramp/find_opal2001_ramp (1995/2001),
-! this version tracks the table's ragged edge via per-row/per-column
-! index arrays (opal06_t6_index_lo/opal06_density_index_edge) rather than a single
-! linear-interpolated edge value.
-pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
+! result (blend_eos's opal_step calls it, through find_opal_edge_ramp,
+! right after compute_opal_eos). Unlike find_table_edge_ramp (1995 and
+! 2001), it tracks the table's ragged edge through the vintage's
+! per-column and per-row index arrays (lay%t6_index_lo,
+! lay%density_index_edge) rather than one edge value per T6 row, from
+! the stencil the last interpolation left in v.
+pure subroutine find_ragged_edge_ramp(v, lay, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
+      type(opal_eos_vintage), intent(in) :: v
+      type(opal_vintage_layout), intent(in) :: lay
 
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
 
 
-      integer, parameter :: nr = n_eos06_nr, nt = n_eos06_nt
 
       integer :: t6_row, density_row
 ! --- locals ---
@@ -1019,7 +991,7 @@ pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
       density = pow(10d0, log10_density)
 
 !     Exit if outside table in rho
-      if ((density < opal06%density_grid(1)) .or. (density >= opal06%density_grid(nr))) then
+      if ((density < v%density_grid(1)) .or. (density >= v%density_grid(lay%nr))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -1027,7 +999,7 @@ pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
       end if
 
 !     Exit if outside table in T6
-      if ((t6 > opal06%t6_grid(1)) .or. (t6 <= opal06%t6_grid(nt))) then
+      if ((t6 > v%t6_grid(1)) .or. (t6 <= v%t6_grid(lay%nt))) then
          in_opal_table = .false.
          needs_ramp = .true.
          ramp_factor = 0d0
@@ -1042,279 +1014,82 @@ pure subroutine find_opal2006_ramp(temperature, log10_density, ramp_factor, &
                                    ! i.e. we are not in the border of the table.
 
 !     Check for easy borders
-      if (t6 > opal06%t6_grid(2)) then
-          t6_ramp_factor = (t6-opal06%t6_grid(1))/(opal06%t6_grid(2)-opal06%t6_grid(1)) ! Ramp in temperature
+      if (t6 > v%t6_grid(2)) then
+          t6_ramp_factor = (t6-v%t6_grid(1))/(v%t6_grid(2)-v%t6_grid(1)) ! Ramp in temperature
           needs_ramp = .true.
       end if
-      if (density < opal06%density_grid(2)) then
-          density_ramp_factor = (density - opal06%density_grid(1))/ &
-               (opal06%density_grid(2)-opal06%density_grid(1)) ! Ramp in density
+      if (density < v%density_grid(2)) then
+          density_ramp_factor = (density - v%density_grid(1))/ &
+               (v%density_grid(2)-v%density_grid(1)) ! Ramp in density
           needs_ramp = .true.
       end if
 
-!     Find a t6_row such that opal06%t6_grid(t6_row-1) >= T6 > opal06%t6_grid(t6_row)
-!     and a density_row such that opal06%density_grid(density_row-1) < D <=
-!     opal06%density_grid(density_row)
-!     The ESAC06 variables (k=)opal06%t6_index_3 and (l-)opal06%density_index_2 are
+!     Find a t6_row such that v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
+!     and a density_row such that v%density_grid(density_row-1) < D <=
+!     v%density_grid(density_row)
+!     The ESAC06 variables (k=)v%t6_index_3 and (l-)v%density_index_2 are
 !     close to what we need. A linear search will work fine.
-      t6_row = opal06%t6_index_3
-   do while (t6 <= opal06%t6_grid(t6_row))
+      t6_row = v%t6_index_3
+   do while (t6 <= v%t6_grid(t6_row))
         t6_row = t6_row+1
    end do
-   do while (t6 > opal06%t6_grid(t6_row-1))
+   do while (t6 > v%t6_grid(t6_row-1))
         t6_row = t6_row-1
    end do
-!     We now have: opal06%t6_grid(t6_row-1) >= T6 > opal06%t6_grid(t6_row)
+!     We now have: v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
 
-      density_row = opal06%density_index_2
-   do while (density > opal06%density_grid(density_row))
+      density_row = v%density_index_2
+   do while (density > v%density_grid(density_row))
         density_row = density_row+1
    end do
-   do while (density <= opal06%density_grid(density_row-1))
+   do while (density <= v%density_grid(density_row-1))
         density_row = density_row-1
    end do
-!     We now have: opal06%density_grid(density_row-1) < D <= opal06%density_grid(density_row)
+!     We now have: v%density_grid(density_row-1) < D <= v%density_grid(density_row)
 
-!     For a given temperature in array opal06%t6_grid with index t6_row, e.g.,
-!     opal06%t6_grid(t6_row), element opal06_density_index_edge(t6_row) of array
-!     opal06_density_index_edge contains the index to the max allowed density
-!     in array opal06%density_grid. So, for a given opal06%t6_grid(t6_row), the
-!     associated D must be less than opal06%density_grid(opal06_density_index_edge(t6_row)).
-!     A valid index in array opal06%density_grid must be less than or equal
-!     to opal06_density_index_edge(t6_row)
+!     For a given temperature in array v%t6_grid with index t6_row, e.g.,
+!     v%t6_grid(t6_row), element lay%density_index_edge(t6_row) of array
+!     lay%density_index_edge contains the index to the max allowed density
+!     in array v%density_grid. So, for a given v%t6_grid(t6_row), the
+!     associated D must be less than v%density_grid(lay%density_index_edge(t6_row)).
+!     A valid index in array v%density_grid must be less than or equal
+!     to lay%density_index_edge(t6_row)
 
-      if (density_row > opal06_density_index_edge(t6_row)) then
+      if (density_row > lay%density_index_edge(t6_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (density_row == opal06_density_index_edge(t6_row)) then
+      if (density_row == lay%density_index_edge(t6_row)) then
         needs_ramp = .true.
-        density_ramp_factor = (opal06%density_grid(density_row)-density)/ &
-             (opal06%density_grid(density_row)-opal06%density_grid(density_row-1))
+        density_ramp_factor = (v%density_grid(density_row)-density)/ &
+             (v%density_grid(density_row)-v%density_grid(density_row-1))
       end if
 
-!     For a given density in array opal06%density_grid with index density_row,
-!     i.e., opal06%density_grid(density_row), element opal06_t6_index_lo(density_row)
-!     of array opal06_t6_index_lo contains the index to the min allowed
-!     temperature in array opal06%t6_grid. So for a given
-!     opal06%density_grid(density_row), the associated T6 must be greater
-!     than opal06%t6_grid(opal06_t6_index_lo(density_row)). (Note that opal06%t6_grid is a
-!     decreasing array.) A valid index in opal06%t6_grid must be less than or
-!     equal to opal06_t6_index_lo(density_row).
+!     For a given density in array v%density_grid with index density_row,
+!     i.e., v%density_grid(density_row), element lay%t6_index_lo(density_row)
+!     of array lay%t6_index_lo contains the index to the min allowed
+!     temperature in array v%t6_grid. So for a given
+!     v%density_grid(density_row), the associated T6 must be greater
+!     than v%t6_grid(lay%t6_index_lo(density_row)). (Note that v%t6_grid is a
+!     decreasing array.) A valid index in v%t6_grid must be less than or
+!     equal to lay%t6_index_lo(density_row).
 
-      if (t6_row > opal06_t6_index_lo(density_row)) then
+      if (t6_row > lay%t6_index_lo(density_row)) then
         in_opal_table = .false.
         needs_ramp = .true.
         ramp_factor = 0d0
         return
       end if
-      if (t6_row == opal06_t6_index_lo(density_row)) then
+      if (t6_row == lay%t6_index_lo(density_row)) then
         needs_ramp = .true.
-        t6_ramp_factor = (t6-opal06%t6_grid(t6_row))/(opal06%t6_grid(t6_row-1)-opal06%t6_grid(t6_row))
+        t6_ramp_factor = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
       end if
 
       ramp_factor = density_ramp_factor * t6_ramp_factor
-end subroutine find_opal2006_ramp
+end subroutine find_ragged_edge_ramp
 
-!----------------------------------------------------------------------
-! rhoofp06
-!----------------------------------------------------------------------
-! OPAL 2006 EOS analogue of rhoofp01 (see there and rhoofp
-! for the general description), with two preserved differences:
-! (1) pressure_max/pressure_min here do NOT add a radiation term
-! (rhoofp01 both add rad_flag*4/3*rat*t6**4); (2) the
-! trial esac06 calls below pass a hardcoded 0 for the radiation
-! flag (not rad_flag); since Batch 3 so does the table-priming call
-! (see the note at that call).
-!
-! 2026 (bugsweep Batch 2): the convergence tolerance is back at the
-! original 0.5d-7 (same as rhoofp/rhoofp01). It had been loosened to
-! 1.0d-5 in 2025 to stop v%eos_output(5) from "growing
-! without bound"; the real cause was esac06's derivative tail
-! rescaling the cv slot from stale data on every deriv_order=1 trial
-! call, fixed in bug-sweep batch 0 (the tail is now gated on
-! deriv_order). The loose tolerance only hid the symptom by making
-! the inversion converge in fewer trials. Also in this change: the
-! lower bracket is verified (repeat the x0.2 shrink until
-! P(rho1) <= P_target or the floor is reached -- plain regula falsi
-! only converges from a valid bracket), the refinement cap is raised
-! from 11 to 30 (regula falsi is linear once an endpoint sticks), and
-! the non-convergence message is written to the run log instead of
-! silently returning -999 (which blend_eos's opal_step turns into the
-! Yale/SCV result with ierr = 0).
-real(dp) function rhoofp06(v, hydrogen_fraction, t6_temperature, &
-     pressure_e12, rad_flag, ierr)
-
-
-      type(opal_eos_vintage), intent(inout) :: v
-
-      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
-           pressure_e12
-      integer, intent(in) :: rad_flag
-
-      integer, intent(out) :: ierr
-
-      integer, parameter :: mx = n_eos_mx, nt = n_eos06_nt
-
-! NOTE: no D-suffix in the original (rhoofp06.f) -- preserved
-! verbatim: parsed as a single-precision constant and then widened to
-! double precision, which is NOT bit-identical to the correctly-
-! rounded double value.
-      real(dp), parameter :: rad_const_over_c = 1.8914785e-3
-! --- locals ---
-      real(dp) :: rat, radiation_pressure, pressure_no_rad
-      real(dp) :: hydrogen_fraction_dbg, t6_dbg, density_dbg
-      integer :: ideriv_dbg
-      integer :: lo_idx, hi_idx, mid_idx
-      integer :: x_bisect_idx, t6_bisect_idx
-      real(dp) :: pressure_max, pressure_min
-      real(dp) :: density_trial1, density_trial2, density_trial3
-      real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
-      integer :: refine_count, shrink_count
-      integer, parameter :: max_refine = 30, max_shrink = 20
-      character(len=message_length) :: eos_lines(4)
-      logical :: in_table
-
-      ierr = 0
-
-      rat = rad_const_over_c
-      radiation_pressure = 0.0d0
-      if (rad_flag == 1) radiation_pressure = 4.0d0/3.0d0*rat*t6_temperature**4   ! Mb
-      pressure_no_rad = pressure_e12 - radiation_pressure
-
-      if (opal_shared%table_loaded_flag(iv_opal06) /= opal_flag_set) then
-         hydrogen_fraction_dbg = 0.5d0
-         t6_dbg = 1.0d0
-         density_dbg = 0.001d0
-         ideriv_dbg = 1
-! 2026 (bugsweep Batch 3): radiation flag 0 here, not rad_flag. This
-! call only loads the tables and its output is discarded; with
-! ideriv=1 only the pressure slot is interpolated, so radsub06 would
-! divide by a zero cv (0/0 -> NaN in the gamma slots, a trap under
-! -ffpe-trap=invalid). The next full esac06 call rewrites every slot.
-         call esac06(v, hydrogen_fraction_dbg, t6_dbg, density_dbg, ideriv_dbg, &
-              0, ierr, in_table)
-         if (ierr /= 0 .or. .not. in_table) then
-            rhoofp06 = opal_rho_not_found
-            return
-         end if
-      end if
-
-      lo_idx = 2
-      hi_idx = mx
-    do while (hi_idx-lo_idx > 1)
-         mid_idx = (hi_idx+lo_idx)/2
-         if (hydrogen_fraction <= opal06_x_grid(mid_idx)+1.0d-7) then
-            hi_idx = mid_idx
-         else
-            lo_idx = mid_idx
-         end if
-    end do
-      x_bisect_idx = lo_idx
-
-      lo_idx = nt
-      hi_idx = 2
-   do while (lo_idx-hi_idx > 1)
-         mid_idx = (hi_idx+lo_idx)/2
-         if (t6_temperature == v%t6_list(1,mid_idx)) then
-            lo_idx = mid_idx
-            exit
-         end if
-         if (t6_temperature <= v%t6_list(1,mid_idx)) then
-            hi_idx = mid_idx
-         else
-            lo_idx = mid_idx
-         end if
-   end do
-      t6_bisect_idx = lo_idx
-
-      pressure_max = v%eos_table(x_bisect_idx,1,t6_bisect_idx, &
-           opal06_density_index_edge(t6_bisect_idx))*t6_temperature* &
-           v%density_grid(opal06_density_index_edge(t6_bisect_idx))
-      pressure_min = v%eos_table(x_bisect_idx,1,t6_bisect_idx,1)*t6_temperature* &
-           v%density_grid(1)
-      if ((pressure_no_rad > 1.25d0*pressure_max) .or. &
-           (pressure_no_rad < pressure_min)) then
-!        requested pressure-temperature not in the OPAL 2006 EOS table
-         rhoofp06 = opal_rho_not_found
-         return
-      end if
-
-      density_trial1 = v%density_grid(opal06_density_index_edge(t6_bisect_idx))* &
-           pressure_no_rad/pressure_max
-      call esac06(v, hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, in_table)
-      if (ierr /= 0 .or. .not. in_table) then
-         rhoofp06 = opal_rho_not_found
-         return
-      end if
-      pressure_trial1 = v%eos_output(i_opal_p)
-      if (pressure_trial1 > pressure_no_rad) then
-         pressure_trial2 = pressure_trial1
-         density_trial2 = density_trial1
-         shrink_count = 0
-         shrink: do
-            shrink_count = shrink_count + 1
-            density_trial1 = 0.2d0*density_trial1
-            if (density_trial1 < 1.0d-14) density_trial1 = 1.0d-14
-            call esac06(v, hydrogen_fraction, t6_temperature, density_trial1, 1, 0, ierr, in_table)
-            if (ierr /= 0 .or. .not. in_table) then
-               rhoofp06 = opal_rho_not_found
-               return
-            end if
-            pressure_trial1 = v%eos_output(i_opal_p)
-! 2026 (bugsweep Batch 2): keep shrinking until the root is bracketed
-! (the original did a single x0.2 step and let regula falsi
-! extrapolate from an unbracketed pair).
-            if (pressure_trial1 <= pressure_no_rad) exit shrink
-            if (density_trial1 <= 1.0d-14 .or. shrink_count >= max_shrink) exit shrink
-         end do shrink
-      else
-         density_trial2 = 5.0d0*density_trial1
-         if (density_trial2 > v%density_grid(opal06_density_index_edge(t6_bisect_idx))) &
-              density_trial2 = v%density_grid(opal06_density_index_edge(t6_bisect_idx))
-         call esac06(v, hydrogen_fraction, t6_temperature, density_trial2, 1, 0, ierr, in_table)
-         if (ierr /= 0 .or. .not. in_table) then
-            rhoofp06 = opal_rho_not_found
-            return
-         end if
-         pressure_trial2 = v%eos_output(i_opal_p)
-      end if
-
-      refine_count = 0
-      refine: do
-      refine_count = refine_count + 1
-      density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
-           (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
-      call esac06(v, hydrogen_fraction, t6_temperature, density_trial3, 1, 0, ierr, in_table)
-      if (ierr /= 0 .or. .not. in_table) then
-         rhoofp06 = opal_rho_not_found
-         return
-      end if
-      pressure_trial3 = v%eos_output(i_opal_p)
-! 2026 (bugsweep Batch 2): tolerance restored to the original 0.5d-7
-! (was 1.0d-5 from 2025-10-10 to 2026-09; see the header note).
-      if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
-         rhoofp06 = density_trial3
-         return
-      end if
-      if (pressure_trial3 > pressure_no_rad) then
-         density_trial2 = density_trial3
-         pressure_trial2 = pressure_trial3
-      else
-         density_trial1 = density_trial3
-         pressure_trial1 = pressure_trial3
-      end if
-      if (refine_count < max_refine) cycle refine
-      eos_lines = unwritten_line
-      write(eos_lines,'("RHOOFP06: no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') max_refine, &
-           hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
-      call eos_log(eos_lines)
-      rhoofp06 = opal_rho_not_found
-      return
-      end do refine
-end function rhoofp06
 
 
 !----------------------------------------------------------------------

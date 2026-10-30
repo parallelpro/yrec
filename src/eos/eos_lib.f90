@@ -32,8 +32,8 @@ module eos_lib
       use scv_eos, only: build_scv_envelope_table, read_scv_tables
       use yale_eos, only: read_fermi_table
       use eos_mixture, only: eos_mix
-      use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal06, &
-           open_opal_eos_table, n_opal_vintages
+      use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal_tables, &
+           iv_opal06, open_opal_eos_table, n_opal_vintages
       use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
            idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
       use eos_mixture, only: ix_ne, ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe, ix_c, ix_n, &
@@ -177,7 +177,7 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
       in_table = .false.
 
       if (eos_settings%opal_vintage == opal_vintage_2006) then
-         call esac06(opal06, hydrogen_fraction, temperature_1e6k, density, &
+         call esac06(opal_tables(iv_opal06), hydrogen_fraction, temperature_1e6k, density, &
               opal06_variables, with_radiation, jerr, in_table)
          if (jerr /= 0) then
             ierr = jerr
@@ -185,8 +185,8 @@ subroutine eos_get_gamma1(hydrogen_fraction, metal_fraction, &
          end if
       end if
       if (eos_settings%opal_vintage == opal_vintage_2006 .and. in_table) then
-         gamma1 = opal06%eos_output(i_opal_gamma1)
-         adiabatic_gradient = 1.0d0/opal06%eos_output(i_opal_gamma2_ratio)
+         gamma1 = opal_tables(iv_opal06)%eos_output(i_opal_gamma1)
+         adiabatic_gradient = 1.0d0/opal_tables(iv_opal06)%eos_output(i_opal_gamma2_ratio)
       else
 ! (rho is the density guess; P and T are set from their logs)
          g%density = density
