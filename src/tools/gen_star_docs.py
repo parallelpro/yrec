@@ -34,8 +34,14 @@ continuation lines, the star argument s, the declared intents). Tests
 
 Fails, writing nothing, when a member has no comment in that form, names
 a writer that does not write it, or is never written or never read
-outside the tests, or when the first column of README section 4's table
-(the members removed) names a live member.
+outside the tests; when the first column of README section 4's table
+(the members removed) names a live member; or when a member breaks a
+class rule:
+- an earlier value, named <member>_start, <member>_prev or
+  <member>_iteration_start, is in the Step snapshot class, and that
+  class holds nothing else;
+- any other member that one module alone writes and reads is in the
+  class "Private to one module", and that class holds nothing else.
 
 usage: gen_star_docs.py           rewrite state/README.md's generated parts
        gen_star_docs.py --check   exit 1 if they are stale
@@ -121,6 +127,35 @@ def parse_star_info(path):
         if not valid:
             errors.append(f"class {c['name']}: its banner needs a 'Valid:' sentence")
     return classes, members, errors
+
+
+# the class rules
+SNAPSHOT_CLASS = "Step snapshot"
+PRIVATE_CLASS = "Private to one module"
+SNAPSHOT_NAME_RE = re.compile(r"_(start|prev|iteration_start)$", re.I)
+# members named like earlier values that are not (a value of the previous
+# call within the step); the prepared renames make them *_last_call
+NAME_RULE_PENDING = {"cz_base_radius_prev", "envelope_cz_base_zone_prev"}
+
+
+def class_rule_errors(members, writers, readers):
+    out = []
+    for e in members:
+        key = e["name"].lower()
+        mods = sorted(set(writers[key]) | readers[key])
+        snapshot = bool(SNAPSHOT_NAME_RE.search(e["name"])) and key not in NAME_RULE_PENDING
+        if snapshot and e["cls"] != SNAPSHOT_CLASS:
+            out.append(f"{e['name']}: an earlier value (<member>_start, _prev, _iteration_start) "
+                       f"belongs in the class '{SNAPSHOT_CLASS}', not '{e['cls']}'")
+        elif e["cls"] == SNAPSHOT_CLASS and not snapshot:
+            out.append(f"{e['name']}: the class '{SNAPSHOT_CLASS}' holds earlier values only "
+                       f"(<member>_start, _prev, _iteration_start)")
+        elif not snapshot and len(mods) == 1 and e["cls"] != PRIVATE_CLASS:
+            out.append(f"{e['name']}: only {mods[0]} uses it, so it belongs in the class "
+                       f"'{PRIVATE_CLASS}' (or is a local of {mods[0]}), not '{e['cls']}'")
+        elif e["cls"] == PRIVATE_CLASS and len(mods) > 1:
+            out.append(f"{e['name']}: in the class '{PRIVATE_CLASS}', but {', '.join(mods)} use it")
+    return out
 
 
 # ---------------------------------------------------------------------
@@ -454,6 +489,7 @@ def main():
             errors.append(f"{e['name']}: nothing outside the tests writes it")
         if not readers[key]:
             errors.append(f"{e['name']}: nothing outside the tests reads it")
+    errors += class_rule_errors(members, writers, readers)
     text = README.read_text()
     live = {e["name"].lower() for e in members}
     for line, n in removed_names(text):

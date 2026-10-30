@@ -16,7 +16,8 @@
 ! (bookkeeping), per model (the model, its rotation state and regions),
 ! per step (control, the start-of-step snapshot, working state), per
 ! Newton iteration (the solve, the diagnostics written during it), then
-! the diagnostics written once per converged model and scratch. Each
+! the diagnostics written once per converged model, and last the members
+! one module alone uses. Each
 ! class opens with a banner,
 !   ! ==== <class> ====
 ! and a paragraph on what it holds, ending with "Valid:" and when its
@@ -27,8 +28,11 @@
 ! then optional notes. tools/gen_star_docs.py turns these comments into
 ! the tables of state/README.md, with every writer and reader taken from
 ! the code, and fails (--check, run by test_generated_files.py) when a
-! member has no comment or names a module that does not write it. Keep
-! one member per declaration.
+! member has no comment or names a module that does not write it, or is
+! in the wrong class: an earlier value (<member>_start, _prev,
+! _iteration_start) belongs in the Step snapshot class, and a member one
+! module alone uses in "Private to one module". Keep one member per
+! declaration.
 !
 ! A run starts from a static template star (core/run/yrec_reset.f90), so
 ! every member starts each run at zero, .false. or blank unless its
@@ -285,17 +289,6 @@ module star_info_lib
 ! d log R/d alpha of the last Newton step, dlogr_dalpha_fixed, -0.050
 ! [-]; calibration
             double precision :: drad_dalpha
-! log(L/Lsun) at the previous solar-calibration check, only printed
-! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_prev_check
-! log(R/Rsun) at the previous solar-calibration check, only printed
-! [log10 Rsun]; calibration
-            double precision :: log_r_rsun_prev_check
-! the solar calibration's Newton correction to X [-]; calibration
-            double precision :: delta_x
-! the solar calibration's Newton correction to the mixing length [-];
-! calibration
-            double precision :: delta_alpha
 ! the solar calibration has converged [logical]; calibration
             logical :: solar_calibration_converged
 ! the star calibration found a track through the target L and R, so the
@@ -304,21 +297,6 @@ module star_info_lib
 ! this model has just crossed the star calibration's target radius
 ! [logical]; calibration
             logical :: just_passed_target_radius_flag = .false.
-! age interpolated at the target radius [Gyr]; calibration
-            double precision :: age_gyr_at_target_radius
-! age of the previous model, for the star calibration [Gyr]; calibration
-            double precision :: age_gyr_prev_model
-! log(L/Lsun) interpolated at the target radius [log10 Lsun]; calibration
-            double precision :: log_l_lsun_at_target_radius
-! log(L/Lsun) at the target radius in the previous calibration run
-! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_at_target_radius_prev_run
-! log(L/Lsun) of the previous model, for the star calibration
-! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_prev_model
-! R/Rsun of the previous model, for the star calibration [Rsun];
-! calibration
-            double precision :: r_rsun_prev_model
 
 ! ==== Model ============================================================
 ! The converged model: the mesh, the structure, the composition, the
@@ -499,10 +477,6 @@ module star_info_lib
 ! innermost point of the surface convection zone (nz: none) [-];
 ! step_driver, rezoning, run_driver. Set as core_cz_top_index is.
             integer :: envelope_cz_bottom_index
-! base point of the surface convection zone as the deuterium-burning cap
-! uses it (nz: none) [-]; step_driver, run_driver, mass_change. A copy of
-! envelope_cz_bottom_index taken at the card start and each rezone.
-            integer :: envelope_cz_bottom_index_start
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
 ! evolve_rotation. From find_convection_zones; with ctrl%ladov the
@@ -679,6 +653,10 @@ module star_info_lib
 ! xa_start at the start of the structure-rotation iteration [-];
 ! step_driver
             double precision :: xa_iteration_start(n_species_extended,json)
+! base point of the surface convection zone as the deuterium-burning cap
+! uses it (nz: none) [-]; step_driver, run_driver, mass_change. A copy of
+! envelope_cz_bottom_index taken at the card start and each rezone.
+            integer :: envelope_cz_bottom_index_start
 
 ! ==== Step working state ===============================================
 ! Values one stage computes for a later stage of the same or the next
@@ -738,9 +716,6 @@ module star_info_lib
 ! ctrl%use_extended_composition; zeroed at each step start to mean none
 ! yet.
             double precision :: cz_base_radius_prev
-! zone of that base, the starting zone of the next call within the step
-! [-]; convection_geometry
-            integer :: envelope_cz_base_zone_prev
 ! mass accreted during the step [g]; mass_change. Set only when the star
 ! accretes; its readers check that it does.
             double precision :: accreted_mass
@@ -763,9 +738,6 @@ module star_info_lib
 ! kinematic viscosity (radiative plus ionic), from viscos, for rotational
 ! mixing [cm^2/s]; shell_physics
             double precision :: kinematic_viscosity(json)
-! the Saha state the central EOS call carries from one model to the next
-! [-]; observables
-            integer :: central_saha_state = 0
 ! the envelope of the latest envelope integration, point by point: log P,
 ! log T, log m, log rho, log r, X, Z, the gradients, the opacity and its
 ! derivatives [cgs, logs base 10]; envelope_integration, envelope_rebuild,
@@ -805,12 +777,6 @@ module star_info_lib
 ! henyey_elimination, henyey_iteration. Misnamed: holds residuals or
 ! corrections depending on the stage of the iteration.
             double precision :: max_residual(4)
-! point of the largest correction of each variable, for the convergence
-! log [-]; henyey_iteration
-            integer :: max_correction_index(4)
-! outer boundary-condition rows from the envelope fit, in henyey_solve's
-! form [-]; henyey_iteration
-            double precision :: surface_bc(6)
 ! Newton iterations of the step's solve, counted over its levels up to
 ! the last convergence, for the run-log model line [-]; henyey_iteration
             integer :: newton_iterations = 0
@@ -998,11 +964,56 @@ module star_info_lib
 ! ctrl%calc_neutrinos.
             double precision :: ga71_snu_rate
 
-! ==== Scratch ==========================================================
-! Values stored in the star but used only inside the module (often the
-! procedure) that writes them.
-! Valid: only inside that module.
+! ==== Private to one module ===========================================
+! Values kept on the star for one module alone, which writes and reads
+! them: the state it carries between its calls (the calibrations'
+! previous checks, models and corrections, the central EOS call's Saha
+! state, the Newton solve's boundary rows and convergence log, the
+! surface-mixing search's starting zone). tools/gen_star_docs.py places
+! every member that one module alone uses here, and nothing else.
+! Valid: only inside that module; each member says when.
 
+! log(L/Lsun) at the previous solar-calibration check, only printed
+! [log10 Lsun]; calibration
+            double precision :: log_l_lsun_prev_check
+! log(R/Rsun) at the previous solar-calibration check, only printed
+! [log10 Rsun]; calibration
+            double precision :: log_r_rsun_prev_check
+! the solar calibration's Newton correction to X [-]; calibration
+            double precision :: delta_x
+! the solar calibration's Newton correction to the mixing length [-];
+! calibration
+            double precision :: delta_alpha
+! age interpolated at the star calibration's target radius [Gyr];
+! calibration
+            double precision :: age_gyr_at_target_radius
+! age of the previous model, for the star calibration [Gyr]; calibration
+            double precision :: age_gyr_prev_model
+! log(L/Lsun) interpolated at the star calibration's target radius
+! [log10 Lsun]; calibration
+            double precision :: log_l_lsun_at_target_radius
+! log(L/Lsun) at the target radius in the previous star-calibration
+! run [log10 Lsun]; calibration
+            double precision :: log_l_lsun_at_target_radius_prev_run
+! log(L/Lsun) of the previous model, for the star calibration
+! [log10 Lsun]; calibration
+            double precision :: log_l_lsun_prev_model
+! R/Rsun of the previous model, for the star calibration [Rsun];
+! calibration
+            double precision :: r_rsun_prev_model
+! zone of the base of the surface mixed region found by the last call
+! within the step (cz_base_radius_prev), the starting zone of the
+! next call [-]; convection_geometry
+            integer :: envelope_cz_base_zone_prev
+! the Saha state the central EOS call carries from one model to the next
+! [-]; observables
+            integer :: central_saha_state = 0
+! point of the largest correction of each variable, for the convergence
+! log [-]; henyey_iteration
+            integer :: max_correction_index(4)
+! outer boundary-condition rows from the envelope fit, in henyey_solve's
+! form [-]; henyey_iteration
+            double precision :: surface_bc(6)
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds
