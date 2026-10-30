@@ -46,6 +46,7 @@ CONTROLS_BUFFER_IMPORTERS = {
     "io/controls_sync.f90",
     "setup/user_inputs.f90",
     "net/test/test_net.f90",
+    "io/test/test_controls.f90",
 }
 
 # Named constants in controls_buffer that are not buffer state: any file
@@ -436,12 +437,13 @@ def check_controls_free(src_root):
 
 
 # The controls' homes and uses (2026-10-29): defaults/controls_registry.tsv
-# says, for each controls_buffer member, whether it lives on star%ctrl or
-# star%job and where it is used. star%job holds exactly the members that
-# code outside the controls read assigns (star%ctrl never changes after
-# the read); `used` is run when code outside the read references the
-# member, read when only the read does (an input-only control), none when
-# nothing does. Tests are not code here. A write is an assignment to
+# says, for each controls_buffer member, whether it lives on star%ctrl,
+# star%job or only in the read's buffer, and where it is used. star%job
+# holds exactly the members that code outside the controls read assigns
+# (star%ctrl never changes after the read), star%ctrl the others that code
+# outside the read reads; `used` is run when code outside the read
+# references the member, read when only the read does (an input-only
+# control: home buffer), none when nothing does (home buffer). Tests are not code here. A write is an assignment to
 # s%<home>%<name> (or star%...), or the member passed to an intent(out) or
 # intent(inout) dummy (tools/check_star_contracts.py's analysis).
 CONTROLS_READ_FILES = {
@@ -476,10 +478,12 @@ def check_control_homes(src_root):
     problems = []
     for r in rows:
         m = r["canonical"]
-        home = "job" if m in written else "ctrl"
+        home = "job" if m in written else "ctrl" if m in referenced else "buffer"
         if home != r["home"]:
             problems.append(f"{m}: registry home {r['home']}, but code outside the read "
-                            + ("assigns it (job)" if home == "job" else "never assigns it (ctrl)"))
+                            + {"job": "assigns it (job)",
+                               "ctrl": "reads it and never assigns it (ctrl)",
+                               "buffer": "never reads it (buffer)"}[home])
         # the read's own copies (m = legacy, m = s%ctrl%m) are not uses
         rest = re.sub(r"(?m)^\s*" + m + r"\s*(\([^=\n]*\))?\s*=.*$", "", read_code)
         rest = re.sub(r"(?m)^\s*" + re.escape(r["legacy"].lower()) + r"\s*=\s*" + m + r"\s*$", "", rest)

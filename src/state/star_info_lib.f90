@@ -97,10 +97,11 @@ module star_info_lib
       public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17, i_nu_he3he3, i_nu_he3he4, n_nu_fluxes
 
-! The namelist controls, by their canonical names (star%ctrl). The
-! component list is GENERATED from the read buffer's declarations
-! (io/controls_buffer.f90) by tools/gen_controls_state.py; regenerate on
-! any change. read_controls resets star%ctrl (star%ctrl =
+! The namelist controls the run reads, by their canonical names
+! (star%ctrl; the input-only and unused ones stay in the read's buffer,
+! registry home buffer). The component list is GENERATED from the read
+! buffer's declarations (io/controls_buffer.f90) and the registry's home
+! column by tools/gen_controls_state.py; regenerate on any change. read_controls resets star%ctrl (star%ctrl =
 ! controls_state()) before every read and stores the buffer into it;
 ! nothing changes it after the read. The controls are documented in
 ! src/defaults/controls_registry.md.
@@ -145,8 +146,8 @@ module star_info_lib
 ! Valid: from the controls read on; ctrl is not changed after it, job is
 ! changed by the run (see the type star_job).
 
-! the namelist controls, by their canonical names [-]; controls_reader,
-! controls_sync. Reset to the declared defaults before each read; members:
+! the namelist controls the run reads, by their canonical names [-];
+! controls_reader, controls_sync. Reset to the declared defaults before each read; members:
 ! src/defaults/controls_registry.md, generated into controls_state_def.inc.
             type(controls_state) :: ctrl
 ! the run's job: the run-card arrays and latches (the controls the run

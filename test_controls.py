@@ -274,7 +274,7 @@ def test_monte_carlo_paths_are_expanded(tmp_path):
     dump = r.stdout.decode("latin-1").splitlines()
     assert "ierr = 0" in dump
     for k in ("1", "2"):
-        assert f'ctrl%monte_carlo_file{k}_path = "{out}/mc.mc{k}"' in dump
+        assert f'buffer%monte_carlo_file{k}_path = "{out}/mc.mc{k}"' in dump
         assert (out / f"mc.mc{k}").is_file()
 
 

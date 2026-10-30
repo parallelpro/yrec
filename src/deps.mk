@@ -419,7 +419,7 @@ io/pulsation_output.o: io_units.mod math_lib.mod physical_constants.mod star_inf
 io/run_cards.o: controls_buffer.mod eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod
 io/run_files.o: io_units.mod legacy_controls.mod star_info_lib.mod
 io/run_log.o: io_units.mod star_info_lib.mod
-io/test/test_controls.o: controls_reader.mod io_units.mod star_info_lib.mod
+io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod star_info_lib.mod
 io/yrec_output.o: history_output.mod io_units.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod stitched_model_state.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: io_units.mod math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod

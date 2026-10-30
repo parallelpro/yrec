@@ -42,12 +42,12 @@ subroutine read_controls(s, ierr)
 ! the declared defaults, whatever an earlier read or run left on s
       s%ctrl = controls_state()
       s%job = star_job()
-      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
       call seed_controls_buffer(s)
+      call set_solver_diagnostics(report_solver_diagnostics)
       call read_input(s, ierr)
       if (ierr /= 0) return
       call store_controls_to_star(s)
-      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
+      call set_solver_diagnostics(report_solver_diagnostics)
 
       return
 end subroutine read_controls
@@ -86,7 +86,7 @@ subroutine read_input(s, ierr)
       call map_user_inputs(s)
 ! check_controls, below, reads the controls from star%ctrl and star%job
       call store_controls_to_star(s)
-      call set_solver_diagnostics(s%ctrl%report_solver_diagnostics)
+      call set_solver_diagnostics(report_solver_diagnostics)
       call expand_paths
       call open_run_files(s, ierr)
       if (ierr /= 0) return

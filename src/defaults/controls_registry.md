@@ -54,10 +54,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `scv_h_table_file` | `fscvh` | `scv_h_table_path` | ctrl | run | string | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
 | `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | ctrl | run | string | `''` | live | SCV EOS: helium table |
 | `scv_z_table_file` | `fscvz` | `scv_z_table_path` | ctrl | run | string | `''` | live | SCV EOS: metals table |
-| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | ctrl | read | string | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
+| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | buffer | read | string | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
 | `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | ctrl | run | string | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
-| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | ctrl | read | string | `''` | live | Monte Carlo runs: the file for each run's summary |
-| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | ctrl | read | string | `''` | live | Monte Carlo runs: the file for each run's final model |
+| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | buffer | read | string | `''` | live | Monte Carlo runs: the file for each run's summary |
+| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | buffer | read | string | `''` | live | Monte Carlo runs: the file for each run's final model |
 | `run_kind` | `kindrn` | `-` | - | - | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
 | `first_call_flag` | `lfirst` | `first_call_flag` | job | run | logical(50) | `.true.` | live | DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly. |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | ctrl | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
@@ -75,7 +75,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_opal95_tables` | `lopal95` | `use_opal95_tables` | ctrl | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
 | `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | ctrl | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
 | `use_alex95_tables` | `lalex95` | `use_alex95_tables` | ctrl | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
-| `envelope_print_points` | `npenv` | `npenv` | ctrl | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
+| `envelope_print_points` | `npenv` | `npenv` | buffer | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
 | `num_runs` | `numrun` | `num_runs` | job | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | job | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | ctrl | run | string(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
@@ -107,37 +107,37 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `alex_z2` | `zalex2` | `-` | - | - | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
 | `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | ctrl | run | real | `0` | live | Z of the first Kurucz 1990 opacity table |
 | `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | ctrl | run | real | `0` | live | Z of the second Kurucz 1990 opacity table |
-| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | ctrl | read | string | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
+| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | read | string | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
 | `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | ctrl | run | string | `''` | live | Potekhin conductive opacity table |
-| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | ctrl | read | string | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
+| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | read | string | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
 | `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | ctrl | run | string | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
 | `use_alex06_tables` | `lalex06` | `use_alex06_tables` | ctrl | run | logical | `.false.` | live | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
 | `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | job | run | real(50) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
 | `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | job | run | real(50) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
 | `central_helium_stop` | `end_ycen` | `central_helium_stop` | job | run | real(50) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
-| `mixture_change_mode` | `isetmix` | `mixture_change_mode` | ctrl | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
-| `isotope_change_mode` | `isetiso` | `isotope_change_mode` | ctrl | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
+| `mixture_change_mode` | `isetmix` | `mixture_change_mode` | buffer | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
+| `isotope_change_mode` | `isetiso` | `isotope_change_mode` | buffer | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
 | `cno_mixture_name` | `amix` | `-` | - | - | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
 | `isotope_mixture_name` | `aiso` | `-` | - | - | string | `'L21'` | live | Isotope-ratio set selector (L21 default or CUS custom) |
 | `target_carbon_cno_fraction` | `frac_c` | `target_carbon_cno_fraction` | ctrl | run | real | `0.172148d0` | live | Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with cno_mixture_mode = 1) |
 | `target_nitrogen_cno_fraction` | `frac_n` | `target_nitrogen_cno_fraction` | ctrl | run | real | `0.050426d0` | live | Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS' |
 | `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | ctrl | run | real | `0.468195d0` | live | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
 | `c12_to_c13_ratio` | `r12_13` | `c12_to_c13_ratio` | ctrl | run | real | `88.27d0` | live | C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_mixture_mode = 1) |
-| `n14_to_n15_ratio` | `r14_15` | `n14_to_n15_ratio` | ctrl | read | real | `411.9d0` | live | N14/N15 number ratio for isotope_mixture_name 'CUS' |
-| `o16_to_o17_ratio` | `r16_17` | `o16_to_o17_ratio` | ctrl | read | real | `471.4d0` | live | O16/O17 number ratio for isotope_mixture_name 'CUS' |
+| `n14_to_n15_ratio` | `r14_15` | `n14_to_n15_ratio` | buffer | read | real | `411.9d0` | live | N14/N15 number ratio for isotope_mixture_name 'CUS' |
+| `o16_to_o17_ratio` | `r16_17` | `o16_to_o17_ratio` | buffer | read | real | `471.4d0` | live | O16/O17 number ratio for isotope_mixture_name 'CUS' |
 | `o16_to_o18_ratio` | `r16_18` | `o16_to_o18_ratio` | ctrl | run | real | `2693.0d0` | live | O16/O18 number ratio for isotope_mixture_name 'CUS' |
-| `target_metal_fraction` | `zxmix` | `target_metal_fraction` | ctrl | none | real | `0.02292d0` | live | Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting model keeps its Z) |
+| `target_metal_fraction` | `zxmix` | `target_metal_fraction` | buffer | none | real | `0.02292d0` | live | Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting model keeps its Z) |
 | `initial_h2_fraction` | `xh2_ini` | `initial_h2_fraction` | ctrl | run | real | `2.781d-5` | live | Initial H2 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_he3_fraction` | `xhe3_ini` | `initial_he3_fraction` | ctrl | run | real | `3.461d-5` | live | Initial He3 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_li6_fraction` | `xli6_ini` | `initial_li6_fraction` | ctrl | run | real | `7.187d-10` | live | Initial Li6 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_li7_fraction` | `xli7_ini` | `initial_li7_fraction` | ctrl | run | real | `1.025d-8` | live | Initial Li7 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_be9_fraction` | `xbe9_ini` | `initial_be9_fraction` | ctrl | run | real | `1.595d-10` | live | Initial Be9 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | ctrl | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | ctrl | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | buffer | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | buffer | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
 | `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | ctrl | run | integer | `0` | live | Write the interior-only GYRE file every this many models (0 = off) |
 | `history_columns_file` | `history_columns_file` | `history_columns_file` | ctrl | run | string | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
 | `profile_columns_file` | `profile_columns_file` | `profile_columns_file` | ctrl | run | string | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
-| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | ctrl | read | string | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
+| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | buffer | read | string | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
 | `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | ctrl | run | real(50) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
 | `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | ctrl | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
 | `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | ctrl | run | real(50) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
@@ -190,7 +190,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `wind_law_constant` | `fk` | `wind_law_constant` | ctrl | run | real | `1.0d0` | live | The constant factor of both wind laws (1 reproduces the solar angular momentum loss) |
 | `difad_velocity_scale` | `fw` | `difad_velocity_scale` | ctrl | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
 | `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | ctrl | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
-| `coupling_factor` | `fo` | `fo` | ctrl | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
+| `coupling_factor` | `fo` | `fo` | buffer | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
 | `(legacy only)` | `fmu` | `-` | - | - | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | ctrl | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
 | `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | job | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
@@ -211,9 +211,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `max_stage_index` | `imax` | `max_stage_index` | ctrl | run | integer | `11` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11 |
 | `num_rotation_structure_iters` | `itdif1` | `num_rotation_structure_iters` | job | run | integer | `1` | live | Structure<->rotation iterations per step (itrot loop) |
 | `max_diffusion_iters` | `itdif2` | `max_diffusion_iters` | ctrl | run | integer | `10` | live | Rotation diffusion-solve iteration limit (seculr/checkj) |
-| `(legacy only)` | `ies` | `ies` | ctrl | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `(legacy only)` | `ies` | `ies` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
 | `gsf_inhibition_mode` | `igsf` | `gsf_inhibition_mode` | ctrl | run | integer | `1` | live | The stability condition of the GSF and ABCD instabilities (1 is recommended) |
-| `(legacy only)` | `imu` | `imu` | ctrl | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `(legacy only)` | `imu` | `imu` | buffer | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
 | `coulomb_log_choice` | `ilambda` | `coulomb_log_choice` | ctrl | run | integer | `1` | live | The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended) |
 | `atm_choice` | `kttau` | `atm_choice` | job | run | integer | `0` | live | Surface boundary condition: 0 Eddington gray T(tau), 1 Krishna-Swamy T(tau), 2 Harvard-Smithsonian atmosphere, 3 Kurucz tables, 4 Allard tables, 5 Kurucz/Castelli tables |
 | `max_burn_iterations` | `kemmax` | `max_burn_iterations` | ctrl | run | integer | `50` | live | The burning network solver's largest number of iterations |
@@ -241,7 +241,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_structure_dt_limits` | `lptime` | `use_structure_dt_limits` | job | run | logical | `.true.` | live | Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl) |
 | `adiabatic_overshoot_active` | `ladov` | `ladov` | ctrl | run | logical | `.false.` | live | tpgrad: treat overshoot region adiabatically |
 | `use_envelope_triangle_dt` | `ltrist` | `use_envelope_triangle_dt` | ctrl | run | logical | `.false.` | live | Limit the timestep by the envelope-fit triangle |
-| `envelope_generation_flag` | `lenvg` | `envelope_generation_flag` | ctrl | none | logical | `.false.` | live | Inert: read and stored, used nowhere (the outer layers are built by stitched_model) |
+| `envelope_generation_flag` | `lenvg` | `envelope_generation_flag` | buffer | none | logical | `.false.` | live | Inert: read and stored, used nowhere (the outer layers are built by stitched_model) |
 | `use_itoh_neutrino_loss` | `lnulos1` | `use_itoh_neutrino_loss` | ctrl | run | logical | `.false.` | live | Neutrino losses from Itoh et al. (1996) |
 | `use_thoul_diffusion` | `lthoul` | `use_thoul_diffusion` | ctrl | run | logical | `.false.` | live | Thoul et al. diffusion coefficients |
 | `use_thoul_fit` | `lthoulfit` | `use_thoul_fit` | ctrl | run | logical | `.false.` | live | Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended) |
@@ -317,7 +317,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | ctrl | run | real | `0.0d0` | live | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
 | `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | ctrl | run | real | `0.5d0` | live | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
 | `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | ctrl | run | real | `1.32d30` | live | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
-| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | ctrl | none | real | `1.27d12` | live | Matt wind law: the solar mass-loss rate (g/s), its zero point |
+| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | buffer | none | real | `1.27d12` | live | Matt wind law: the solar mass-loss rate (g/s), its zero point |
 | `pmm_omega_sat` | `pmmwmax` | `-` | - | - | real | `0` | live | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
 | `pmm_solar_pressure` | `pmmsolp` | `pmm_solar_pressure` | ctrl | run | real | `4.9304d0` | live | Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength |
 | `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | ctrl | run | real | `2.836d-6` | live | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
@@ -340,65 +340,65 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `be9_pg_rate_scale` | `sbe91` | `be9_pg_rate_scale` | ctrl | run | real | `1.0d0` | live | Scale of the Be9(p,g) rate (overridden by xsbe91 with lxbe91) |
 | `be9_pd_rate_scale` | `sbe92` | `be9_pd_rate_scale` | ctrl | run | real | `1.0d0` | live | Scale of the Be9(p,d) rate (overridden by xsbe92 with lxbe92) |
 | `be9_palpha_rate_scale` | `sbe93` | `be9_palpha_rate_scale` | ctrl | run | real | `1.0d0` | live | Scale of the Be9(p,a) rate (overridden by xsbe93 with lxbe93) |
-| `use_new_nuclear_rates` | `lnewnuc` | `use_new_nuclear_rates` | ctrl | read | logical | `.false.` | live | Take the cross sections from the s0_* controls (Adelberger et al. 2011 defaults) instead of the ratios to Bahcall & Ulrich (1988) |
+| `use_new_nuclear_rates` | `lnewnuc` | `use_new_nuclear_rates` | buffer | read | logical | `.false.` | live | Take the cross sections from the s0_* controls (Adelberger et al. 2011 defaults) instead of the ratios to Bahcall & Ulrich (1988) |
 | `spot_filling_factor` | `spotf` | `spot_filling_factor` | ctrl | run | real | `0.00d0` | live | Starspots: the filling factor |
 | `spot_temp_contrast` | `spotx` | `spot_temp_contrast` | ctrl | run | real | `1.00d0` | live | Starspots: the spot temperature contrast (with spot_filling_factor > 0; 0.85 is typical of sunspots) |
 | `spot_depth_varies` | `lsdepth` | `spot_depth_varies` | ctrl | run | logical | `.false.` | live | Starspots: decrease the spot contrast with depth, at constant B |
-| `s0_pp` | `s0_1_1` | `s0_pp` | ctrl | read | real | `4.01d-22` | live | S-factor of p+p (keV b), used with use_new_nuclear_rates |
-| `s0_he3he3` | `s0_3_3` | `s0_he3he3` | ctrl | read | real | `5.21d3` | live | S-factor of He3+He3 (keV b), used with use_new_nuclear_rates |
-| `s0_he3he4` | `s0_3_4` | `s0_he3he4` | ctrl | read | real | `5.6d-1` | live | S-factor of He3+He4 (keV b), used with use_new_nuclear_rates |
-| `s0_p_c12` | `s0_1_12` | `s0_p_c12` | ctrl | read | real | `1.34d0` | live | S-factor of p+C12 (keV b), used with use_new_nuclear_rates |
-| `s0_p_c13` | `s0_1_13` | `s0_p_c13` | ctrl | read | real | `7.6d0` | live | S-factor of p+C13 (keV b), used with use_new_nuclear_rates |
-| `s0_p_n14` | `s0_1_14` | `s0_p_n14` | ctrl | read | real | `1.66d0` | live | S0 of N14(p,g)O15 (keV b), with use_new_nuclear_rates |
-| `s0_p_o16` | `s0_1_16` | `s0_p_o16` | ctrl | read | real | `1.06d1` | live | S0 of O16(p,g)F17 (keV b), with use_new_nuclear_rates |
-| `s0_pep` | `s0_pep` | `s0_pep` | ctrl | read | real | `3.5734d-6` | live | The pep rate relative to pp, with use_new_nuclear_rates |
-| `s0_be7_electron` | `s0_1_be7e` | `s0_be7_electron` | ctrl | read | real | `1.7709d-10` | live | The constant of the linear term of Be7 electron capture, with use_new_nuclear_rates |
-| `s0_be7_p` | `s0_1_be7p` | `s0_be7_p` | ctrl | read | real | `0.0208d0` | live | S0 of Be7(p,g)B8 (keV b), with use_new_nuclear_rates |
-| `s0_hep` | `s0_hep` | `s0_hep` | ctrl | read | real | `8.6d-20` | live | S0 of He3(p,e+ nu)He4 (keV b), with use_new_nuclear_rates |
-| `s0_n15_p_c12_branch` | `s0_1_15_c12alp` | `s0_n15_p_c12_branch` | ctrl | read | real | `7.3d4` | live | S0 of N15(p,a)C12 (keV b), which sets the N15 + p branching |
-| `s0_n15_p_o16_branch` | `s0_1_15_o16` | `s0_n15_p_o16_branch` | ctrl | read | real | `3.6d1` | live | S0 of N15(p,g)O16 (keV b), which sets the N15 + p branching |
-| `s0p_pp` | `s0p_1_1` | `s0p_pp` | ctrl | read | real | `4.49d-24` | live | dS/dE of H1(p,e+ nu)H2 (b), with use_new_nuclear_rates |
-| `s0p_he3he3` | `s0p_3_3` | `s0p_he3he3` | ctrl | read | real | `-4.9d0` | live | dS/dE of He3(He3,2p)He4 (b), with use_new_nuclear_rates |
-| `s0p_he3he4` | `s0p_3_4` | `s0p_he3he4` | ctrl | read | real | `-3.6d-4` | live | dS/dE of He3(a,g)Be7 (b), with use_new_nuclear_rates |
-| `s0p_p_c12` | `s0p_1_12` | `s0p_p_c12` | ctrl | read | real | `2.6d-3` | live | dS/dE of C12(p,g)N13 (b), with use_new_nuclear_rates |
-| `s0p_p_c13` | `s0p_1_13` | `s0p_p_c13` | ctrl | read | real | `-7.83d-3` | live | dS/dE of C13(p,g)N14 (b), with use_new_nuclear_rates |
-| `s0p_p_n14` | `s0p_1_14` | `s0p_p_n14` | ctrl | read | real | `-3.3d-3` | live | dS/dE of N14(p,g)O15 (b), with use_new_nuclear_rates |
-| `s0p_p_o16` | `s0p_1_16` | `s0p_p_o16` | ctrl | read | real | `-5.4d-2` | live | dS/dE of O16(p,g)F17 (b), with use_new_nuclear_rates |
-| `s0pp_p_c12` | `s0pp_1_12` | `s0pp_p_c12` | ctrl | read | real | `8.3d-5` | live | d2S/dE2 of C12(p,g)N13 (b/keV), with use_new_nuclear_rates |
-| `s0pp_p_c13` | `s0pp_1_13` | `s0pp_p_c13` | ctrl | read | real | `7.29d-4` | live | d2S/dE2 of C13(p,g)N14 (b/keV), with use_new_nuclear_rates |
-| `s0pp_p_o16` | `s0pp_1_16` | `s0pp_p_o16` | ctrl | read | real | `0.0d0` | live | d2S/dE2 of O16(p,g)F17 (b/keV), with use_new_nuclear_rates |
-| `s0p_be7_p` | `s0p_1_be7p` | `s0p_be7_p` | ctrl | read | real | `-3.12d-5` | live | dS/dE of Be7(p,g)B8 (b), with use_new_nuclear_rates |
-| `s0pp_be7_p` | `s0pp_1_be7p` | `s0pp_be7_p` | ctrl | read | real | `-2.288d-7` | live | d2S/dE2 of Be7(p,g)B8 (b/keV), with use_new_nuclear_rates |
-| `flag_dx` | `flag_dx` | `flag_dx` | ctrl | read | real | `0.05d0` | live | Zoning: an X jump between shells larger than this flags a shell |
-| `flag_dw` | `flag_dw` | `flag_dw` | ctrl | read | real | `0.10d0` | live | Zoning: the largest log-omega spacing (rotating models) |
-| `flag_dz` | `flag_dz` | `flag_dz` | ctrl | read | real | `0.05d0` | live | Zoning: a Z jump between shells larger than this flags a shell |
-| `lstruct_time` | `lstruct_time` | `lstruct_time` | ctrl | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
-| `time_core_min` | `time_core_min` | `time_core_min` | ctrl | read | real | `1.0d-3` | live | With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria |
-| `time_dl` | `time_dl` | `time_dl` | ctrl | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence) |
-| `time_dp` | `time_dp` | `time_dp` | ctrl | read | real | `4.0d-2` | live | With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence) |
-| `time_dr` | `time_dr` | `time_dr` | ctrl | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of r at any point per step (pre-main sequence) |
-| `time_dt` | `time_dt` | `time_dt` | ctrl | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of T at any point per step (pre-main sequence) |
-| `time_dw_global` | `time_dw_global` | `time_dw_global` | ctrl | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per step |
-| `time_dw_mix` | `time_dw_mix` | `time_dw_mix` | ctrl | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per rotational-mixing sub-step |
-| `time_dx_core_frac` | `time_dx_core_frac` | `time_dx_core_frac` | ctrl | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central X burned per step |
-| `time_dx_core_tot` | `time_dx_core_tot` | `time_dx_core_tot` | ctrl | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central X per step |
-| `time_dx_shell` | `time_dx_shell` | `time_dx_shell` | ctrl | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of X burned in the shell per step |
-| `time_dx_total` | `time_dx_total` | `time_dx_total` | ctrl | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of hydrogen burned per step (Msun) |
-| `time_dy_core_frac` | `time_dy_core_frac` | `time_dy_core_frac` | ctrl | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central Y burned per step |
-| `time_dy_core_tot` | `time_dy_core_tot` | `time_dy_core_tot` | ctrl | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central Y per step |
-| `time_dy_shell` | `time_dy_shell` | `time_dy_shell` | ctrl | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of Y burned in the shell per step |
-| `time_dy_total` | `time_dy_total` | `time_dy_total` | ctrl | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of helium burned per step (Msun) |
-| `tol_czbase_fine_width` | `tol_czbase_fine_width` | `tol_czbase_fine_width` | ctrl | read | real | `0.0d0` | live | With use_new_rate_variables: the width in log P of the finely zoned region at the base of the convection zone |
-| `tol_dl_max` | `tol_dl_max` | `tol_dl_max` | ctrl | read | real | `0.02d0` | live | With use_new_rate_variables: the largest spacing in L/L_surface between points |
-| `tol_dm_max` | `tol_dm_max` | `tol_dm_max` | ctrl | read | real | `0.08d0` | live | With use_new_rate_variables: the largest spacing in log m between points |
-| `tol_dm_min` | `tol_dm_min` | `tol_dm_min` | ctrl | read | real | `1.0d-8` | live | With use_new_rate_variables: the smallest spacing in log m between points |
-| `tol_dp_core_max` | `tol_dp_core_max` | `tol_dp_core_max` | ctrl | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P below the surface convection zone |
-| `tol_dp_czbase_max` | `tol_dp_czbase_max` | `tol_dp_czbase_max` | ctrl | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P near the base of the surface convection zone |
-| `tol_dp_env_max` | `tol_dp_env_max` | `tol_dp_env_max` | ctrl | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P in the surface convection zone |
-| `tol_dx_max` | `tol_dx_max` | `tol_dx_max` | ctrl | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in X between points (usually off) |
-| `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | ctrl | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
-| `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | ctrl | read | real | `1.5d0` | live | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
-| `use_new_rate_variables` | `lnewvars` | `lnewvars` | ctrl | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
+| `s0_pp` | `s0_1_1` | `s0_pp` | buffer | read | real | `4.01d-22` | live | S-factor of p+p (keV b), used with use_new_nuclear_rates |
+| `s0_he3he3` | `s0_3_3` | `s0_he3he3` | buffer | read | real | `5.21d3` | live | S-factor of He3+He3 (keV b), used with use_new_nuclear_rates |
+| `s0_he3he4` | `s0_3_4` | `s0_he3he4` | buffer | read | real | `5.6d-1` | live | S-factor of He3+He4 (keV b), used with use_new_nuclear_rates |
+| `s0_p_c12` | `s0_1_12` | `s0_p_c12` | buffer | read | real | `1.34d0` | live | S-factor of p+C12 (keV b), used with use_new_nuclear_rates |
+| `s0_p_c13` | `s0_1_13` | `s0_p_c13` | buffer | read | real | `7.6d0` | live | S-factor of p+C13 (keV b), used with use_new_nuclear_rates |
+| `s0_p_n14` | `s0_1_14` | `s0_p_n14` | buffer | read | real | `1.66d0` | live | S0 of N14(p,g)O15 (keV b), with use_new_nuclear_rates |
+| `s0_p_o16` | `s0_1_16` | `s0_p_o16` | buffer | read | real | `1.06d1` | live | S0 of O16(p,g)F17 (keV b), with use_new_nuclear_rates |
+| `s0_pep` | `s0_pep` | `s0_pep` | buffer | read | real | `3.5734d-6` | live | The pep rate relative to pp, with use_new_nuclear_rates |
+| `s0_be7_electron` | `s0_1_be7e` | `s0_be7_electron` | buffer | read | real | `1.7709d-10` | live | The constant of the linear term of Be7 electron capture, with use_new_nuclear_rates |
+| `s0_be7_p` | `s0_1_be7p` | `s0_be7_p` | buffer | read | real | `0.0208d0` | live | S0 of Be7(p,g)B8 (keV b), with use_new_nuclear_rates |
+| `s0_hep` | `s0_hep` | `s0_hep` | buffer | read | real | `8.6d-20` | live | S0 of He3(p,e+ nu)He4 (keV b), with use_new_nuclear_rates |
+| `s0_n15_p_c12_branch` | `s0_1_15_c12alp` | `s0_n15_p_c12_branch` | buffer | read | real | `7.3d4` | live | S0 of N15(p,a)C12 (keV b), which sets the N15 + p branching |
+| `s0_n15_p_o16_branch` | `s0_1_15_o16` | `s0_n15_p_o16_branch` | buffer | read | real | `3.6d1` | live | S0 of N15(p,g)O16 (keV b), which sets the N15 + p branching |
+| `s0p_pp` | `s0p_1_1` | `s0p_pp` | buffer | read | real | `4.49d-24` | live | dS/dE of H1(p,e+ nu)H2 (b), with use_new_nuclear_rates |
+| `s0p_he3he3` | `s0p_3_3` | `s0p_he3he3` | buffer | read | real | `-4.9d0` | live | dS/dE of He3(He3,2p)He4 (b), with use_new_nuclear_rates |
+| `s0p_he3he4` | `s0p_3_4` | `s0p_he3he4` | buffer | read | real | `-3.6d-4` | live | dS/dE of He3(a,g)Be7 (b), with use_new_nuclear_rates |
+| `s0p_p_c12` | `s0p_1_12` | `s0p_p_c12` | buffer | read | real | `2.6d-3` | live | dS/dE of C12(p,g)N13 (b), with use_new_nuclear_rates |
+| `s0p_p_c13` | `s0p_1_13` | `s0p_p_c13` | buffer | read | real | `-7.83d-3` | live | dS/dE of C13(p,g)N14 (b), with use_new_nuclear_rates |
+| `s0p_p_n14` | `s0p_1_14` | `s0p_p_n14` | buffer | read | real | `-3.3d-3` | live | dS/dE of N14(p,g)O15 (b), with use_new_nuclear_rates |
+| `s0p_p_o16` | `s0p_1_16` | `s0p_p_o16` | buffer | read | real | `-5.4d-2` | live | dS/dE of O16(p,g)F17 (b), with use_new_nuclear_rates |
+| `s0pp_p_c12` | `s0pp_1_12` | `s0pp_p_c12` | buffer | read | real | `8.3d-5` | live | d2S/dE2 of C12(p,g)N13 (b/keV), with use_new_nuclear_rates |
+| `s0pp_p_c13` | `s0pp_1_13` | `s0pp_p_c13` | buffer | read | real | `7.29d-4` | live | d2S/dE2 of C13(p,g)N14 (b/keV), with use_new_nuclear_rates |
+| `s0pp_p_o16` | `s0pp_1_16` | `s0pp_p_o16` | buffer | read | real | `0.0d0` | live | d2S/dE2 of O16(p,g)F17 (b/keV), with use_new_nuclear_rates |
+| `s0p_be7_p` | `s0p_1_be7p` | `s0p_be7_p` | buffer | read | real | `-3.12d-5` | live | dS/dE of Be7(p,g)B8 (b), with use_new_nuclear_rates |
+| `s0pp_be7_p` | `s0pp_1_be7p` | `s0pp_be7_p` | buffer | read | real | `-2.288d-7` | live | d2S/dE2 of Be7(p,g)B8 (b/keV), with use_new_nuclear_rates |
+| `flag_dx` | `flag_dx` | `flag_dx` | buffer | read | real | `0.05d0` | live | Zoning: an X jump between shells larger than this flags a shell |
+| `flag_dw` | `flag_dw` | `flag_dw` | buffer | read | real | `0.10d0` | live | Zoning: the largest log-omega spacing (rotating models) |
+| `flag_dz` | `flag_dz` | `flag_dz` | buffer | read | real | `0.05d0` | live | Zoning: a Z jump between shells larger than this flags a shell |
+| `lstruct_time` | `lstruct_time` | `lstruct_time` | buffer | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
+| `time_core_min` | `time_core_min` | `time_core_min` | buffer | read | real | `1.0d-3` | live | With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria |
+| `time_dl` | `time_dl` | `time_dl` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence) |
+| `time_dp` | `time_dp` | `time_dp` | buffer | read | real | `4.0d-2` | live | With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence) |
+| `time_dr` | `time_dr` | `time_dr` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of r at any point per step (pre-main sequence) |
+| `time_dt` | `time_dt` | `time_dt` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of T at any point per step (pre-main sequence) |
+| `time_dw_global` | `time_dw_global` | `time_dw_global` | buffer | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per step |
+| `time_dw_mix` | `time_dw_mix` | `time_dw_mix` | buffer | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per rotational-mixing sub-step |
+| `time_dx_core_frac` | `time_dx_core_frac` | `time_dx_core_frac` | buffer | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central X burned per step |
+| `time_dx_core_tot` | `time_dx_core_tot` | `time_dx_core_tot` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central X per step |
+| `time_dx_shell` | `time_dx_shell` | `time_dx_shell` | buffer | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of X burned in the shell per step |
+| `time_dx_total` | `time_dx_total` | `time_dx_total` | buffer | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of hydrogen burned per step (Msun) |
+| `time_dy_core_frac` | `time_dy_core_frac` | `time_dy_core_frac` | buffer | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central Y burned per step |
+| `time_dy_core_tot` | `time_dy_core_tot` | `time_dy_core_tot` | buffer | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central Y per step |
+| `time_dy_shell` | `time_dy_shell` | `time_dy_shell` | buffer | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of Y burned in the shell per step |
+| `time_dy_total` | `time_dy_total` | `time_dy_total` | buffer | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of helium burned per step (Msun) |
+| `tol_czbase_fine_width` | `tol_czbase_fine_width` | `tol_czbase_fine_width` | buffer | read | real | `0.0d0` | live | With use_new_rate_variables: the width in log P of the finely zoned region at the base of the convection zone |
+| `tol_dl_max` | `tol_dl_max` | `tol_dl_max` | buffer | read | real | `0.02d0` | live | With use_new_rate_variables: the largest spacing in L/L_surface between points |
+| `tol_dm_max` | `tol_dm_max` | `tol_dm_max` | buffer | read | real | `0.08d0` | live | With use_new_rate_variables: the largest spacing in log m between points |
+| `tol_dm_min` | `tol_dm_min` | `tol_dm_min` | buffer | read | real | `1.0d-8` | live | With use_new_rate_variables: the smallest spacing in log m between points |
+| `tol_dp_core_max` | `tol_dp_core_max` | `tol_dp_core_max` | buffer | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P below the surface convection zone |
+| `tol_dp_czbase_max` | `tol_dp_czbase_max` | `tol_dp_czbase_max` | buffer | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P near the base of the surface convection zone |
+| `tol_dp_env_max` | `tol_dp_env_max` | `tol_dp_env_max` | buffer | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P in the surface convection zone |
+| `tol_dx_max` | `tol_dx_max` | `tol_dx_max` | buffer | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in X between points (usually off) |
+| `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | buffer | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
+| `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | buffer | read | real | `1.5d0` | live | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
+| `use_new_rate_variables` | `lnewvars` | `lnewvars` | buffer | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
 | `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | ctrl | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
 | `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | ctrl | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
 | `star_history_name` | `star_history_name` | `star_history_name` | ctrl | run | string | `'history.data'` | live | MESA mode: history file name (written to the output directory) |
@@ -406,7 +406,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `nu_max_sun` | `nu_max_sun` | `nu_max_sun` | ctrl | run | real | `3090.0d0` | live | Solar nu_max [uHz] for the scaling relation (Huber et al. 2011) |
 | `delta_nu_sun` | `delta_nu_sun` | `delta_nu_sun` | ctrl | run | real | `135.1d0` | live | Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011) |
 | `Teff_sun` | `Teff_sun` | `teff_sun` | ctrl | run | real | `5772.0d0` | live | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
-| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | ctrl | read | logical | `.false.` | live | Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping |
+| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | read | logical | `.false.` | live | Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping |
 | `profile_interval` | `profile_interval` | `profile_interval` | ctrl | run | integer | `50` | live | MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles |
 | `pulse_format` | `pulse_format` | `pulse_format` | ctrl | run | string | `'GYRE'` | live | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
 | `write_profile_flag` | `write_profile_flag` | `write_profile_flag` | ctrl | run | logical | `.false.` | live | MESA mode: master toggle for profile{N}.data output (cadence from profile_interval) |

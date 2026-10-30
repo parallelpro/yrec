@@ -24,9 +24,11 @@ Columns:
   doc            what it does
   canonical      the controls_buffer member the value lands in (star%<x>
                  for a star member; blank for a legacy-only variable)
-  home           ctrl: star%ctrl, never changed after the read; job:
-                 star%job, which code outside the read assigns (the run
-                 cards, the calibration, the latches); blank without a
+  home           ctrl: star%ctrl, read after the controls read and never
+                 changed by it; job: star%job, which code outside the read
+                 assigns (the run cards, the calibration, the latches);
+                 buffer: the controls read's buffer only (an input-only or
+                 unused control, used read or none); blank without a
                  canonical member. tools/check_boundaries.py checks it.
   used           run: read after the controls read; read: only during the
                  read (map_user_inputs, derive_controls: an input-only
@@ -46,7 +48,7 @@ COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note", "d
            "canonical", "home", "used", "aliases"]
 STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
-HOMES = {"ctrl", "job", ""}
+HOMES = {"ctrl", "job", "buffer", ""}
 USES = {"run", "read", "none", ""}
 
 
@@ -67,6 +69,9 @@ def rows():
                              f"{r['status']!r}/{r['home']!r}/{r['used']!r}")
         if bool(r["home"]) != (bool(r["canonical"]) and not r["canonical"].startswith("star%")):
             raise SystemExit(f"controls_registry.tsv:{n}: a buffer member needs a home, and only it")
+        if (r["home"] == "buffer") != (r["used"] in ("read", "none")):
+            raise SystemExit(f"controls_registry.tsv:{n}: home buffer is for an input-only "
+                             "or unused control, and only for it")
         if r["aliases"] and r["status"] != "live":
             raise SystemExit(f"controls_registry.tsv:{n}: only a live control has aliases")
         out.append(r)

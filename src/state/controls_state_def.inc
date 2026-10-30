@@ -20,13 +20,11 @@
             double precision :: delta_nu_sun = 135.1d0
             double precision :: Teff_sun = 5772.0d0
             character(len=256) :: profile_data_prefix = 'profile'
-            character(len=256) :: inlist_used_file = ' '
             character(len=8) :: pulse_format = 'GYRE'
             logical :: write_profile_flag = .false.
             logical :: write_pulse_flag = .false.
             integer :: terminal_interval = 50
             integer :: set_initial_model_number = 1
-            logical :: report_solver_diagnostics = .false.
             logical :: compute_neutrino_fluxes = .false.
             double precision :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)
             double precision :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
@@ -34,7 +32,6 @@
             double precision :: tenv0 = 3.0d0
             double precision :: tenv1 = 9.0d0
             double precision :: tgcut = 6.9d0
-            logical :: use_new_nuclear_rates = .false.
             double precision :: weak_screening_threshold = 0.03d0
             double precision :: dpenv = 1.0d0
             logical :: core_overshoot_active = .false.
@@ -80,7 +77,6 @@
             logical :: disk_locking_active = .false.
             logical :: use_mhd_eos = .false.
             double precision :: metal_fraction_match_tolerance = 1.0d-8
-            integer :: npenv = 0
             logical :: monte_carlo_active = .false.
             double precision :: htoler(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             double precision :: fcorr0 = 0.8d0
@@ -118,8 +114,6 @@
             integer :: max_stage_index = 11
             integer :: extrap_order = 7
             double precision :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0/)
-            character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
-            character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
             integer :: pulse_gyre_interval = 0
             double precision :: tri_delta_teffl = 1.0d-2
             double precision :: tri_delta_logl = 8.0d-2
@@ -127,40 +121,29 @@
             double precision :: max_domega_global = 1.0d1
             double precision :: atm_step_size = 0.5d0
             double precision :: envelope_step_size = 0.5d0
-            logical :: envelope_generation_flag = .false.
             logical :: helium_flash_active = .false.
             double precision :: new_species_value = 1.3d1
             integer :: new_species_index = 0
             logical :: rescale_species_active = .false.
             logical :: value_relative_to_h = .false.
-            integer :: mixture_change_mode = 0
-            integer :: isotope_change_mode = 0
             logical :: change_cno_mixture_active = .false.
             logical :: change_isotope_ratios_active = .false.
             double precision :: target_carbon_cno_fraction = 0.172148d0
             double precision :: target_nitrogen_cno_fraction = 0.050426d0
             double precision :: target_oxygen_cno_fraction = 0.468195d0
             double precision :: c12_to_c13_ratio = 88.27d0
-            double precision :: n14_to_n15_ratio = 411.9d0
-            double precision :: o16_to_o17_ratio = 471.4d0
             double precision :: o16_to_o18_ratio = 2693.0d0
-            double precision :: target_metal_fraction = 0.02292d0
             double precision :: initial_h2_fraction = 2.781d-5
             double precision :: initial_he3_fraction = 3.461d-5
             double precision :: initial_li6_fraction = 7.187d-10
             double precision :: initial_li7_fraction = 1.025d-8
             double precision :: initial_be9_fraction = 1.595d-10
-            double precision :: initial_b10_fraction = 1.002d-9
-            double precision :: initial_b11_fraction = 4.405d-9
-            double precision :: fo = 1.0d0
             double precision :: difad_velocity_scale = 1.0d0
             double precision :: mixing_velocity_scale = 1.0d0
             double precision :: es_velocity_scale = 1.0d0
             double precision :: gsf_velocity_scale = 1.0d0
             double precision :: secular_shear_velocity_scale = 1.0d0
             double precision :: critical_reynolds = 1.0d3
-            integer :: ies = 1
-            integer :: imu = 1
             double precision :: es_mixing_scale = 1.0d0
             double precision :: secular_shear_mixing_scale = 1.0d0
             double precision :: gsf_mixing_scale = 1.0d0
@@ -235,9 +218,6 @@
             character(len=256) :: centre3_table_path = repeat(achar(0), 256)
             character(len=256) :: centre4_table_path = repeat(achar(0), 256)
             character(len=256) :: centre5_table_path = repeat(achar(0), 256)
-            character(len=256) :: opal95_eos_table_path = repeat(achar(0), 256)
-            character(len=256) :: opal2001_eos_table_path = repeat(achar(0), 256)
-            character(len=256) :: opal2006_eos_table_path = repeat(achar(0), 256)
             character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
             character(len=256) :: atm_table_path = repeat(achar(0), 256)
             character(len=256) :: allard_table_path = repeat(achar(0), 256)
@@ -259,7 +239,6 @@
             double precision :: pmm_exponent_d = 0.0d0
             double precision :: pmm_exponent_m = 0.5d0
             double precision :: pmm_norm_jdot = 1.32d30
-            double precision :: pmm_norm_mdot = 1.27d12
             double precision :: pmm_solar_pressure = 4.9304d0
             double precision :: pmm_solar_omega = 2.836d-6
             double precision :: pmm_solar_turnover_timescale = 9.4805d5
@@ -274,58 +253,3 @@
             logical :: use_wind_torque = .true.
             double precision :: constant_background_diffusion_coeff = 2.5d4
             logical :: use_constant_background_diffusion = .false.
-            double precision :: flag_dx = 0.05d0
-            double precision :: flag_dw = 0.10d0
-            double precision :: flag_dz = 0.05d0
-            double precision :: time_core_min = 1.0d-3
-            double precision :: time_dl = 2.0d-2
-            double precision :: time_dp = 4.0d-2
-            double precision :: time_dr = 2.0d-2
-            double precision :: time_dt = 2.0d-2
-            double precision :: time_dw_global = 8.0d-2
-            double precision :: time_dw_mix = 8.0d-2
-            double precision :: time_dx_core_frac = 0.5d0
-            double precision :: time_dx_core_tot = 2.0d-2
-            double precision :: time_dx_shell = 0.1d0
-            double precision :: time_dx_total = 1.5d-3
-            double precision :: time_dy_core_frac = 0.5d0
-            double precision :: time_dy_core_tot = 2.0d-2
-            double precision :: time_dy_shell = 0.1d0
-            double precision :: time_dy_total = 1.5d-3
-            double precision :: time_max_dt_frac = 1.5d0
-            double precision :: tol_czbase_fine_width = 0.0d0
-            double precision :: tol_dl_max = 0.02d0
-            double precision :: tol_dm_max = 0.08d0
-            double precision :: tol_dm_min = 1.0d-8
-            double precision :: tol_dp_core_max = 0.05d0
-            double precision :: tol_dp_czbase_max = 0.05d0
-            double precision :: tol_dp_env_max = 0.05d0
-            double precision :: tol_dx_max = 1.0d0
-            double precision :: tol_dz_max = 1.0d0
-            logical :: lstruct_time = .false.
-            logical :: lnewvars = .false.
-            double precision :: s0_pp = 4.01d-22
-            double precision :: s0_he3he3 = 5.21d3
-            double precision :: s0_he3he4 = 5.6d-1
-            double precision :: s0_p_c12 = 1.34d0
-            double precision :: s0_p_c13 = 7.6d0
-            double precision :: s0_p_n14 = 1.66d0
-            double precision :: s0_p_o16 = 1.06d1
-            double precision :: s0_be7_electron = 1.7709d-10
-            double precision :: s0_be7_p = 0.0208d0
-            double precision :: s0_n15_p_c12_branch = 7.3d4
-            double precision :: s0_n15_p_o16_branch = 3.6d1
-            double precision :: s0p_pp = 4.49d-24
-            double precision :: s0p_he3he3 = -4.9d0
-            double precision :: s0p_he3he4 = -3.6d-4
-            double precision :: s0p_p_c12 = 2.6d-3
-            double precision :: s0p_p_c13 = -7.83d-3
-            double precision :: s0p_p_n14 = -3.3d-3
-            double precision :: s0p_p_o16 = -5.4d-2
-            double precision :: s0pp_p_c12 = 8.3d-5
-            double precision :: s0pp_p_c13 = 7.29d-4
-            double precision :: s0pp_p_o16 = 0.0d0
-            double precision :: s0p_be7_p = -3.12d-5
-            double precision :: s0pp_be7_p = -2.288d-7
-            double precision :: s0_pep = 3.5734d-6
-            double precision :: s0_hep = 8.6d-20

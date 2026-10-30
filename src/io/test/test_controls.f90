@@ -18,6 +18,9 @@ program test_controls
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use io_units, only: last_model_unit, run_log_unit, terminal_unit
       use controls_reader, only: read_controls
+! the members the star does not hold (registry home buffer) are dumped
+! from the read's buffer
+      use controls_buffer
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
