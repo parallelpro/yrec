@@ -11,7 +11,7 @@
 !                          and the OPAL weight near its edge
 ! Under these, for 2001 and 2006: opal_density_search (OPAL's rhoofp01
 ! and rhoofp06), interpolate_opal_eos (OPAL's esac01 and esac06, which
-! remain its entry points, public for eos_get_gamma1 and test_eos),
+! remain its entry points, public for blended_eos's gamma1_at_density and test_eos),
 ! t6rinteos, add_radiation (the radiation correction), readcoeos (the
 ! table reader, run once per vintage), and the edge ramps
 ! find_table_edge_ramp (2001) and find_ragged_edge_ramp (2006). This

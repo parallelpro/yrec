@@ -56,12 +56,12 @@ point  8
    1.000000000000000E+00   0.000000000000000E+00   1.000000000000000E+00
   -1.184277081748892E-01   4.609200200745683E-02  -7.971038834786642E-03   1.480432073191137E-03
    8.656190222748643E-02  -3.132713332115659E-02   0
-# test_eos: eos_get_gamma1, OPAL2006 branch
+# test_eos: gamma1_at_density, OPAL2006 branch
 g1  1   1.622770955662772E+00   3.819689051698335E-01
 g1  2   1.561990116447061E+00   3.410726867781327E-01
 g1  3   1.662861447743696E+00   3.957986221946234E-01
 g1  4   1.666295617340983E+00   3.966366433217322E-01
-# test_eos: eos_get_gamma1, Yale/SCV branch
+# test_eos: gamma1_at_density, Yale/SCV branch
 g1  1   1.620593105443258E+00   3.810706770342555E-01
 g1  2   1.646682907104789E+00   3.864599726402390E-01
 g1  3   1.664268850065454E+00   3.983747568277380E-01
@@ -635,7 +635,7 @@ ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals a
 # test_eos: configuration debye_huckel
 ok   Debye-Hueckel: the heavier metals scale with the zone's Z
 # test_eos: configuration production
-ok   eos_get_gamma1: below the OPAL table, the Yale/SCV value
+ok   gamma1_at_density: below the OPAL table, the Yale/SCV value
 # test_eos: configuration scv_only
 ok   SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths
 ok   SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot

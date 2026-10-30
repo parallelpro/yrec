@@ -392,17 +392,17 @@ element_diffusion/settling_grid.o: composition_layout.mod element_diffusion_conf
 element_diffusion/species_table.o: composition_layout.mod physical_constants.mod
 element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod io_units.mod microphysics_settings.mod star_info_lib.mod
 element_diffusion/thoul_solver.o: numerics_lib.mod
-eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
+eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_configuration.o: mhd_eos_tables.mod
-eos/eos_lib.o: blended_eos.mod composition_layout.mod eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod mhd_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
+eos/eos_lib.o: blended_eos.mod eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod mhd_eos.mod opal_eos_tables.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_messages.o: io_units.mod
-eos/eos_mixture.o: composition_layout.mod eos_results.mod physical_constants.mod
+eos/eos_mixture.o: composition_layout.mod eos_results.mod physical_constants.mod yale_eos_tables.mod
 eos/mhd/mhd_eos.o: eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod mhd_eos_tables.mod numerics_lib.mod
 eos/opal/opal95_eos.o: eos_messages.mod math_lib.mod opal_eos_tables.mod physical_constants.mod
 eos/opal/opal_eos.o: eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal95_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/opal_eos_tables.o: eos_configuration.mod eos_messages.mod math_lib.mod
 eos/scv/scv_eos.o: eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal95_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod
+eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod io_units.mod mhd_eos.mod opal95_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_buffer.o: control_slots.mod

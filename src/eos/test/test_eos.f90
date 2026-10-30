@@ -9,7 +9,7 @@
 ! once the SCV tables are read. Its output is byte-compared with
 ! expected_test_eos.out (regenerated only on purpose). In order:
 !   the production EOS (SCV and OPAL 2006) over a (log T, log P) grid;
-!   eos_get_gamma1 on its two branches; the MHD EOS when YREC_MHD_TABLES
+!   gamma1_at_density (gamma1 and grad_ad at T, rho) on its two branches; the MHD EOS when YREC_MHD_TABLES
 !   names a directory with the real tables (none ship with YREC: SKIPPED
 !   otherwise); the error paths; every configuration a deck can choose
 !   (check_configurations); the derivatives against finite differences
@@ -30,7 +30,8 @@
 program test_eos
       use io_units
       use eos_lib
-      use eos_configuration, only: eos_settings
+      use eos_configuration, only: eos_settings, set_eos_settings
+      use blended_eos, only: gamma1_at_density
       use opal_eos_tables, only: opal_tables, opal95, i_opal_cv, i_opal01_cv, &
            i_opal_p, i_opal01_p
       use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal01, iv_opal06
@@ -83,7 +84,7 @@ program test_eos
       integer, parameter :: nd = 6
       double precision :: worst_first(nd), worst_second(nd)
 
-! eos_get_gamma1 argument set
+! gamma1_at_density argument set
       double precision :: t6, rho, pres, gamma1, grad_ad
 
 ! test point grids
@@ -201,13 +202,13 @@ program test_eos
          write(*,'(2(1pe24.15),i4)') qcpt, qcpp, saha_iterations
       end do
 
-      write(*,'(a)') "# test_eos: eos_get_gamma1, OPAL2006 branch"
+      write(*,'(a)') "# test_eos: gamma1_at_density, OPAL2006 branch"
       do ipt = 1, ng1
          t6 = g1_t6(ipt)
          rho = g1_rho(ipt)
          pres = g1_p(ipt)
          saha_iterations = 0
-         call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
+         call gamma1_at_density(x_frac, z_frac, t6, rho, pres, gamma1, &
               grad_ad, saha_iterations, ierr=gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
@@ -216,7 +217,7 @@ program test_eos
 ! The Yale/SCV branch at the same four points (it once asked blend_eos
 ! to skip the Saha solver's derivatives, so its two cool points read
 ! unset values).
-      write(*,'(a)') "# test_eos: eos_get_gamma1, Yale/SCV branch"
+      write(*,'(a)') "# test_eos: gamma1_at_density, Yale/SCV branch"
       settings = eos_settings
       settings%opal_vintage = opal_vintage_none
       call set_eos_settings(settings)
@@ -225,7 +226,7 @@ program test_eos
          rho = g1_rho(ipt)
          pres = g1_p(ipt)
          saha_iterations = 0
-         call eos_get_gamma1(x_frac, z_frac, t6, rho, pres, gamma1, &
+         call gamma1_at_density(x_frac, z_frac, t6, rho, pres, gamma1, &
               grad_ad, saha_iterations, ierr=gerr)
       if (gerr /= 0) stop 1
          write(*,'(a,i2,2(1pe24.15))') "g1 ", ipt, gamma1, grad_ad
@@ -797,7 +798,7 @@ end subroutine write_mhd_part
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
 !                          mixture (the envelope's, eos_set_mixture,
 !                          scaled to the zone's Z)
-!   gamma1_checks          eos_get_gamma1 outside the OPAL table
+!   gamma1_checks          gamma1_at_density outside the OPAL table
 !   scv_mean_weight_checks R/mu and 1/mu_e where SCV gives the density
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
 !                          one where Z is the envelope's
@@ -997,7 +998,7 @@ subroutine settings_checks()
            .not. (s%use_scv_eos .or. s%use_mhd_eos .or. s%use_debye_huckel_correction))
 end subroutine settings_checks
 
-! Below the OPAL 2006 table (T = 1500 K) eos_get_gamma1 takes the
+! Below the OPAL 2006 table (T = 1500 K) gamma1_at_density takes the
 ! Yale/SCV value (to 1e-6: the Saha solver starts from the previous
 ! call's solution), with OPAL selected as without it.
 subroutine gamma1_checks()
@@ -1009,14 +1010,14 @@ subroutine gamma1_checks()
       s%opal_vintage = opal_vintage_none
       call set_eos_settings(s)
       iterations = 0
-      call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1_yale, ga_yale, &
+      call gamma1_at_density(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1_yale, ga_yale, &
            iterations, ierr=ierr1)
       s%opal_vintage = opal_vintage_2006
       call set_eos_settings(s)
       iterations = 0
-      call eos_get_gamma1(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1, ga, &
+      call gamma1_at_density(0.70d0, 0.016492d0, 0.0015d0, 1.0d-9, 1.0d3, g1, ga, &
            iterations, ierr=ierr2)
-      call check("eos_get_gamma1: below the OPAL table, the Yale/SCV value", &
+      call check("gamma1_at_density: below the OPAL table, the Yale/SCV value", &
            ierr1 == 0 .and. ierr2 == 0 .and. abs(g1/g1_yale - 1.0d0) < 1.0d-6 .and. &
            abs(ga/ga_yale - 1.0d0) < 1.0d-6)
 end subroutine gamma1_checks
