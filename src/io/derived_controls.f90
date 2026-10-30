@@ -14,7 +14,29 @@ module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: report_warning, report_note, log_line
-      use legacy_controls
+      use legacy_controls, only: aiso, amix, anewcp, atm_choice, atmp, &
+           be9_palpha_rate_scale, be9_palpha_reference_xs, be9_pd_rate_scale, &
+           be9_pd_reference_xs, be9_pg_rate_scale, be9_pg_reference_xs, &
+           c12_to_c13_ratio, change_cno_mixture_active, &
+           change_isotope_ratios_active, coulomb_log_choice, descrip, &
+           diffuse_helium_active, diffuse_lithium, element_id, frac_c_table, &
+           frac_n_table, frac_o_table, initial_b10_fraction, initial_b11_fraction, &
+           initial_be9_fraction, initial_h2_fraction, initial_he3_fraction, &
+           initial_li6_fraction, initial_li7_fraction, isotope_change_mode, &
+           li6_rate_scale, li6_reference_xs, li7_rate_scale, li7_reference_xs, &
+           lnew0, lxbe91, lxbe92, lxbe93, lxli6, lxli7, mixture_change_mode, &
+           mixture_id_table, n14_to_n15_ratio, new_species_index, npenv, &
+           o16_to_o17_ratio, o16_to_o18_ratio, opal2001_eos_table_path, &
+           opal2006_eos_table_path, opal95_eos_table_path, opal_eos_table_path, &
+           opal_eos_vintage, pulse_gyre_interval, rescale_species_active, &
+           rotation_active, sbe91, sbe92, sbe93, sli6, sli7, &
+           target_carbon_cno_fraction, target_metal_fraction, &
+           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, tenv0, tenv1, &
+           use_alex06_tables, use_alex95_tables, use_diffusion_z, &
+           use_kurucz90_tables, use_new_diffusion_routines, use_opal2001_eos, &
+           use_opal2006_eos, use_opal95_eos, use_pure_z_table, use_thoul_diffusion, &
+           use_thoul_fit, value_relative_to_h, xsbe91, xsbe92, xsbe93, xsli6, &
+           xsli7, zx_mix_table
       use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006
       use star_info_lib, only: star_info

@@ -9,7 +9,19 @@ module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
            isochrone_unit, flush_pending_log
-      use legacy_controls
+      use legacy_controls, only: alex06_table_path, alex95_table_paths, &
+           allard_table_path, atm_table_path, centre1_table_path, &
+           centre2_table_path, centre3_table_path, centre4_table_path, &
+           centre5_table_path, conductive_table_path, control_nml_file, fdyn, &
+           fermi_table_path, ffirst, fiso, flast, fshort, history_columns_file, &
+           inlist_used_file, isochrone_output_active, kurucz_table2_path, &
+           kurucz_table_path, laol_table2_path, laol_table_path, &
+           monte_carlo_active, monte_carlo_file1_path, monte_carlo_file2_path, &
+           opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
+           opal92_table_path, opal95_eos_table_path, opal95_table_path, &
+           physics_nml_file, profile_columns_file, pure_z_table_path, &
+           scv_h_table_path, scv_he_table_path, scv_z_table_path, &
+           zams_a_table_path, zams_b_table_path, zams_c_table_path
       implicit none
       private
       public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &

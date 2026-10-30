@@ -471,10 +471,11 @@ def check_control_homes(src_root):
     read_files = [src_root / f for f in sorted(CONTROLS_READ_FILES)
                   if f not in ("io/controls_buffer.f90", "io/controls_sync.f90")
                   and (src_root / f).exists()]
-    # a namelist group's list of names is not a use
+    # a namelist group's list of names, or a use statement's only-list, is
+    # not a use
     read_code = "\n".join(l for p in read_files
                           for l in join_continuations(strip_comments(p.read_text(errors="replace")))
-                          if not re.match(r"(?i)^\s*namelist\b", l)).lower()
+                          if not re.match(r"(?i)^\s*(namelist|use)\b", l)).lower()
     problems = []
     for r in rows:
         m = r["canonical"]
