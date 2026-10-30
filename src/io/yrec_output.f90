@@ -37,6 +37,8 @@ module yrec_output
       private
       public :: output_state, output_open, output_close, output_run_header, &
            output_write_model, output_final_model_line
+      public :: pulse_format_code, unknown_pulse_format, pulse_gyre, pulse_fgong, &
+           pulse_gsm
 
 ! The pulsation file formats pulse_format names (case-insensitive);
 ! unknown_pulse_format for any other name.

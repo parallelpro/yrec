@@ -20,7 +20,7 @@ module history_output
       implicit none
       private
       public :: history_file, history_output_init, write_history_row, &
-           close_history
+           close_history, history_columns
 
 ! The history columns' named indices, in the order of the column table.
       integer, parameter :: &

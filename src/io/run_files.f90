@@ -25,7 +25,7 @@ module run_files
       implicit none
       private
       public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &
-           output_directory
+           output_directory, directory_of
 
 ! The run's output directory, the run log's (open_run_files sets it at
 ! every read; output_directory returns it).

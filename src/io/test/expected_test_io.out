@@ -1,0 +1,64 @@
+paths: {YREC_INPUT} set becomes its value                              ok
+paths: {YREC_START} unset becomes ../../startmodels                    ok
+paths: {YREC_OUTPUT} empty becomes output                              ok
+paths: {YREC_INPUT} unset becomes ../../input                          ok
+paths: no leading placeholder, the value unchanged                     ok
+paths: an expansion to a later placeholder is expanded again           ok
+directories: the path up to its last '/'                               ok
+directories: blank for a bare file name                                ok
+pulse format: GYRE, FGONG, GSM in any case                             ok
+pulse format: leading and trailing blanks ignored                      ok
+pulse format: any other name unknown                                   ok
+columns: a blank file name selects the defaults, in order              ok
+columns: a file selects its names in order, past comments              ok
+columns: an unknown name is an error                                   ok
+columns: the run log lists the valid names                             ok
+columns: a file that selects nothing is an error                       ok
+columns: a missing file is an error                                    ok
+columns: more than max_cols names is an error                          ok
+groups: found in any case, after blanks                                ok
+groups: a blank, a tab or '/' may end the name                         ok
+groups: not a prefix of a longer name, nor a comment                   ok
+groups: none in a comment, none in a missing file                      ok
+.mod: read back without error                                          ok
+.mod: every global value bit for bit                                   ok
+.mod: every shell's structure bit for bit                              ok
+.mod: every shell's composition bit for bit, in its slot               ok
+.mod: the columns line, and a row in its order                         ok
+.mod: replace keeps one model, append adds one                         ok
+.mod: an unknown global is noted and skipped                           ok
+.mod: another columns line is an error                                 ok
+.mod: a file cut inside its shells is an error                         ok
+.mod: a zone count above json is an error                              ok
+format tag: the first four characters, from the start                  ok
+format tag: an empty file is an error                                  ok
+YREC7: read without error                                              ok
+YREC7: the header and the flags                                        ok
+YREC7: the shells' structure                                           ok
+YREC7: X and Z in units of 1e-6                                        ok
+YREC7: He3-O18 per shell, copied through the convection zones          ok
+YREC7: He4 = 1 - X - Z - He3                                           ok
+YREC7: H2-Be9 two shells per line, the odd one alone                   ok
+YREC7: omega from -log10(omega), zero at the sentinel                  ok
+YREC7: the envelope records, the triangle reflected                    ok
+YREC7: luminosities in Lsun kept                                       ok
+YREC7: luminosities in erg/s converted to Lsun                         ok
+YREC7: no negative record number, the triangle as it is                ok
+YREC7: a rotating file without omega reads, omega zero                 ok
+YREC7: a file cut inside its shells is an error                        ok
+YREC7: a zone count of 0 is an error                                   ok
+YREC7: a shell mass above the star's is an error                       ok
+YREC7: an envelope convection zone outside the model is an error       ok
+MODEL2: read without error                                             ok
+MODEL2: the header                                                     ok
+MODEL2: the codes, the flags and the disk constants                    ok
+MODEL2: the luminosities and the envelope records                      ok
+MODEL2: every shell's columns                                          ok
+MODEL2: a file cut inside its shells is an error                       ok
+MODEL2: a zone count above json is an error                            ok
+tables: history names nonblank, short enough and unique                ok
+tables: history kinds real_column or integer_column                    ok
+tables: history default selection resolves, in order                   ok
+tables: profile names nonblank, short enough and unique                ok
+tables: profile kinds real_column or integer_column                    ok
+tables: profile default selection resolves, in order                   ok

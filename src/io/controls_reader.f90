@@ -32,7 +32,7 @@ module controls_reader
       use run_cards, only: interpret_kind_cards
       implicit none
       private
-      public :: read_controls
+      public :: read_controls, nml_file_has_group
 
 contains
 

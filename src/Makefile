@@ -321,6 +321,10 @@ test_controls: FFLAGS += $(REL_FFLAGS)
 test_controls: io/test/test_controls.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+test_io: FFLAGS += $(REL_FFLAGS)
+test_io: io/test/test_io.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+
 test_numerics: FFLAGS += $(REL_FFLAGS)
 test_numerics: numerics/test/test_numerics.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
@@ -363,7 +367,7 @@ $(OTHER_ENERGY_DIR)/yrec_extra_heat: $(OTHER_ENERGY_DIR)/yrec_extra_heat.o $(fil
 other_energy: $(OTHER_ENERGY_DIR)/yrec_extra_heat
 
 .PHONY: tests
-tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
+tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_regrid
 
 # Targets
 default: FFLAGS += $(REL_FFLAGS)
@@ -415,7 +419,7 @@ clean:
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
 	@rm -f $(OTHER_ENERGY_DIR)/yrec_extra_heat $(OTHER_ENERGY_DIR)/*.o
-	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_structure test_triangle_fit test_mass_change test_regrid
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_regrid
 	@rm -rf $(MATH_CRMATH_DIR)
 
 install:
