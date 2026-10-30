@@ -34,6 +34,7 @@ format tag: the first four characters, from the start                  ok
 format tag: an empty file is an error                                  ok
 YREC7: read without error                                              ok
 YREC7: the header and the flags                                        ok
+YREC7: MODEL2's header values at their defaults                        ok
 YREC7: the shells' structure                                           ok
 YREC7: X and Z in units of 1e-6                                        ok
 YREC7: He3-O18 per shell, copied through the convection zones          ok

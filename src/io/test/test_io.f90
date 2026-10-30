@@ -40,7 +40,8 @@
 !   format tag   read_model_format_tag reads the first four characters;
 !                an empty file is an error with its message;
 !   YREC7        read_yrec7 on a six-shell file written here in the
-!                layout model_files' header gives: the header values; X
+!                layout model_files' header gives: the header values
+!                (MODEL2's at their defaults); X
 !                and Z in units of 1e-6; He3-O18 per radiative shell and
 !                once per convection zone, copied through the zone; He4
 !                = 1 - X - Z - He3; H2-Be9 two shells per line, the odd
@@ -83,8 +84,8 @@ program test_io
            parse_columns, max_cols, column_name_len, hist_default_names, &
            prof_default_names
       use controls_reader, only: nml_file_has_group
-      use model_files, only: write_mod_model, read_mod_model, read_yrec7, &
-           read_model2, read_model_format_tag
+      use model_files, only: model_file_header, write_mod_model, read_mod_model, &
+           read_yrec7, read_model2, read_model_format_tag
       use history_output, only: history_columns
       use stitched_model, only: profile_columns
       implicit none
@@ -120,14 +121,6 @@ program test_io
          real(dp) :: col(6,m2_nz), omega(m2_nz), xa(15,m2_nz), lums(7), env(8,3)
          logical :: conv(m2_nz), flags(12)
       end type model2_fixture
-! the readers' header values (read_yrec7's and read_model2's arguments)
-      type :: yrec7_header
-         real(dp) :: mixing_length, timestep_yr, orientation, disk_p, disk_t, wsat
-         integer :: core_top, env_bottom
-         logical :: ext, rot, l(10)
-         character(len=4) :: atm_code, hik_code, alok_code
-         character(len=6) :: eos_code
-      end type yrec7_header
 
       type(star_info), save :: s, s2
       integer :: failures
@@ -459,9 +452,10 @@ end subroutine fill_mod_model
 subroutine mod_round_trip_check()
       integer, parameter :: slots(15) = [i_h1, i_he4, i_metals, i_he3, i_c12, &
            i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, i_be9]
+      type(model_file_header) :: h
       integer :: u, ierr, n, izone
-      real(dp) :: timestep_yr, mixing_length, row(22)
-      logical :: extended, rotating, ok, conv
+      real(dp) :: row(22)
+      logical :: ok, conv
       character(len=1024) :: line
 
       call fill_mod_model(s)
@@ -469,7 +463,7 @@ subroutine mod_round_trip_check()
       call write_mod_model(s, u, replace=.true.)
       s2%nz = 0
       s2%xa = -1.0d0
-      call read_mod_model(s2, u, timestep_yr, mixing_length, extended, rotating, ierr)
+      call read_mod_model(s2, u, h, ierr)
       close(u)
       n = s%nz
       call report(".mod: read back without error", ierr == 0)
@@ -477,11 +471,11 @@ subroutine mod_round_trip_check()
            same_bits(s2%star_mass, s%star_mass) .and. &
            same_bits(s2%log_total_mass, s%log_total_mass) .and. &
            same_bits(s2%age_gyr, s%age_gyr) .and. &
-           same_bits(timestep_yr, s%timestep_yr) .and. &
+           same_bits(h%timestep_yr, s%timestep_yr) .and. &
            same_bits(s2%log_L_lsun, s%log_L_lsun) .and. &
            same_bits(s2%log_Teff, s%log_Teff) .and. &
-           same_bits(mixing_length, s%mixing_length_alpha) .and. &
-           (extended .eqv. .true.) .and. (rotating .eqv. .false.)
+           same_bits(h%mixing_length, s%mixing_length_alpha) .and. &
+           h%use_extended_composition .and. .not. h%rotation_active
       call report(".mod: every global value bit for bit", ok)
       ok = all(same_bits(s2%log_mass(1:n), s%log_mass(1:n))) .and. &
            all(same_bits(s2%logR(1:n), s%logR(1:n))) .and. &
@@ -515,9 +509,8 @@ end subroutine mod_round_trip_check
 ! the .mod's files: unknown globals, replace and append, errors
 subroutine mod_files_check()
       character(len=1024) :: lines(40)
+      type(model_file_header) :: h
       integer :: u, ierr, n, i
-      real(dp) :: timestep_yr, mixing_length
-      logical :: extended, rotating
 
       call fill_mod_model(s)
 ! one model replaced, then two appended
@@ -539,7 +532,7 @@ subroutine mod_files_check()
       call write_text_file('unknown_global.mod', [lines(1:2), &
            [character(len=1024) :: 'future_global        1.5'], lines(3:n)])
       open(newunit=u, file='unknown_global.mod', status='old')
-      call read_mod_model(s2, u, timestep_yr, mixing_length, extended, rotating, ierr)
+      call read_mod_model(s2, u, h, ierr)
       close(u)
       call report(".mod: an unknown global is noted and skipped", ierr == 0 .and. &
            s2%nz == s%nz .and. same_bits(s2%logT(s%nz), s%logT(s%nz)) .and. &
@@ -592,11 +585,10 @@ end function read_back
 ! read_mod_model on a damaged file: ierr = 1 and the message
 subroutine read_mod_error(file, message, label)
       character(len=*), intent(in) :: file, message, label
+      type(model_file_header) :: h
       integer :: u, ierr
-      real(dp) :: timestep_yr, mixing_length
-      logical :: extended, rotating
       open(newunit=u, file=file, status='old')
-      call read_mod_model(s2, u, timestep_yr, mixing_length, extended, rotating, ierr)
+      call read_mod_model(s2, u, h, ierr)
       close(u)
       call report(label, ierr == 1 .and. captured(terminal_file, message))
 end subroutine read_mod_error
@@ -713,22 +705,17 @@ end subroutine write_yrec7
 ! read_yrec7 on a file; ierr out
 subroutine read_yrec7_file(file, header, ierr)
       character(len=*), intent(in) :: file
-      type(yrec7_header), intent(out) :: header
+      type(model_file_header), intent(out) :: header
       integer, intent(out) :: ierr
       integer :: u
       open(newunit=u, file=file, status='old')
-      call read_yrec7(s, header%mixing_length, header%timestep_yr, header%orientation, u, &
-           header%core_top, header%env_bottom, header%ext, header%rot, header%atm_code, &
-           header%eos_code, header%hik_code, header%l(1), header%l(2), header%l(3), &
-           header%l(4), header%l(5), header%alok_code, header%l(6), header%l(7), &
-           header%l(8), header%l(9), header%l(10), header%disk_p, header%disk_t, &
-           header%wsat, ierr)
+      call read_yrec7(s, u, header, ierr)
       close(u)
 end subroutine read_yrec7_file
 
 subroutine yrec7_check()
       type(yrec7_fixture) :: f
-      type(yrec7_header) :: h
+      type(model_file_header) :: h
       integer :: k, i, ierr
       logical :: ok
       real(dp) :: saved_log_mass
@@ -745,9 +732,17 @@ subroutine yrec7_check()
            s%log_L_lsun == through('(F8.5)', 0.0123d0) .and. &
            s%log_total_mass == through('(F14.10)', 33.2d0) .and. &
            s%age_gyr == through('(F13.9)', 4.567d0) .and. h%timestep_yr == 1.0d6 .and. &
-           h%rot .and. h%ext .and. h%core_top == y7_jcore .and. h%env_bottom == y7_jenv &
+           h%rotation_active .and. h%use_extended_composition .and. h%core_cz_top_index == y7_jcore .and. h%envelope_cz_bottom_index == y7_jenv &
            .and. h%mixing_length == through('(F7.3)', 1.875d0)
       call report("YREC7: the header and the flags", ok)
+      ok = h%eos_code == '    ? ' .and. h%atm_code == '  ? ' .and. h%alok_code == '  ? ' &
+           .and. h%hik_code == '  ? ' .and. .not. (h%use_diffusion_y .or. h%use_diffusion_z &
+           .or. h%disk_locking_active .or. h%instability_transport_active .or. &
+           h%use_wind_torque .or. h%core_overshoot_active .or. h%envelope_overshoot_active &
+           .or. h%lovstm .or. h%use_pure_z_table .or. h%use_semiconvection) .and. &
+           h%disk_pressure == 7.2722d-6 .and. h%disk_temperature == 0.0d0 .and. &
+           h%wind_saturation_omega == 3.0d-4
+      call report("YREC7: MODEL2's header values at their defaults", ok)
       ok = all(s%log_mass(1:y7_nz) == f%log_mass) .and. all(s%logR(1:y7_nz) == f%log_r) &
            .and. all(s%luminosity_lsun(1:y7_nz) == f%lum) .and. &
            all(s%logP(1:y7_nz) == f%log_p) .and. all(s%logT(1:y7_nz) == f%log_t) .and. &
@@ -783,7 +778,7 @@ subroutine yrec7_check()
            all(s%fit_point_temperature == f%env(4,:)) .and. &
            all(s%fit_point_radius == f%env(5,:)) .and. &
            all(s%envelope_fit_coeffs == reshape(f%env(6:8,:), [9])) .and. &
-           h%orientation == -1.0d0
+           h%triangle_orientation == -1.0d0
       call report("YREC7: the envelope records, the triangle reflected", ok)
       call report("YREC7: luminosities in Lsun kept", &
            all(s%luminosity_breakdown_lsun(1:7) == f%lums))
@@ -794,7 +789,7 @@ subroutine yrec7_check()
       call report("YREC7: luminosities in erg/s converted to Lsun", ierr == 0 .and. &
            all(s%luminosity_breakdown_lsun(1:7) == f%erg_lums/s%solar_luminosity_cgs))
       call report("YREC7: no negative record number, the triangle as it is", &
-           ierr == 0 .and. h%orientation == 1.0d0)
+           ierr == 0 .and. h%triangle_orientation == 1.0d0)
 
       call write_yrec7('no_omega.yrec7', f, y7_nz, y7_jenv, &
            with_omega=.false., erg=.false., reflected=.true.)
@@ -825,7 +820,7 @@ end subroutine yrec7_check
 ! read_yrec7 on a damaged file: ierr = 1 and the message
 subroutine yrec7_error(file, message, label)
       character(len=*), intent(in) :: file, message, label
-      type(yrec7_header) :: h
+      type(model_file_header) :: h
       integer :: ierr
       call read_yrec7_file(file, h, ierr)
       call report(label, ierr == 1 .and. captured(terminal_file, message))
@@ -907,22 +902,17 @@ end subroutine write_model2
 ! read_model2 on a file; ierr out
 subroutine read_model2_file(file, header, ierr)
       character(len=*), intent(in) :: file
-      type(yrec7_header), intent(out) :: header
+      type(model_file_header), intent(out) :: header
       integer, intent(out) :: ierr
       integer :: u
       open(newunit=u, file=file, status='old')
-      call read_model2(s, header%mixing_length, header%timestep_yr, header%orientation, u, &
-           header%core_top, header%env_bottom, header%ext, header%rot, header%atm_code, &
-           header%eos_code, header%hik_code, header%l(1), header%l(2), header%l(3), &
-           header%l(4), header%l(5), header%alok_code, header%l(6), header%l(7), &
-           header%l(8), header%l(9), header%l(10), header%disk_p, header%disk_t, &
-           header%wsat, ierr)
+      call read_model2(s, u, header, ierr)
       close(u)
 end subroutine read_model2_file
 
 subroutine model2_check()
       type(model2_fixture) :: f
-      type(yrec7_header) :: h
+      type(model_file_header) :: h
       integer :: ierr
       logical :: ok
 
@@ -938,23 +928,23 @@ subroutine model2_check()
            s%log_total_mass == through('(F16.12)', 33.3d0) .and. &
            s%age_gyr == through('(F16.12)', 4.5d0) .and. &
            h%timestep_yr == through('(1PE18.10)', 1.0d5/3.0d0) .and. &
-           h%core_top == 1 .and. h%env_bottom == 3 .and. &
-           h%mixing_length == through('(F16.10)', 1.9d0) .and. h%orientation == -1.0d0
+           h%core_cz_top_index == 1 .and. h%envelope_cz_bottom_index == 3 .and. &
+           h%mixing_length == through('(F16.10)', 1.9d0) .and. h%triangle_orientation == -1.0d0
       call report("MODEL2: the header", ok)
-! the readers' flag arguments l(1..10): diffusion of Y and of Z, disk
-! locking, instability transport, the wind torque, core and envelope
-! overshoot, lovstm, the pure-Z table, semiconvection
       ok = h%eos_code == 'OPAL06' .and. h%atm_code == 'GRAY' .and. &
            h%alok_code == 'ALEX' .and. h%hik_code == 'OP17' .and. &
-           (h%l(9) .eqv. f%flags(1)) .and. (h%ext .eqv. f%flags(2)) .and. &
-           (h%l(1) .eqv. f%flags(3)) .and. (h%l(2) .eqv. f%flags(4)) .and. &
-           (h%l(10) .eqv. f%flags(5)) .and. (h%l(6) .eqv. f%flags(6)) .and. &
-           (h%l(7) .eqv. f%flags(7)) .and. (h%l(8) .eqv. f%flags(8)) .and. &
-           (h%rot .eqv. f%flags(9)) .and. (h%l(4) .eqv. f%flags(10)) .and. &
-           (h%l(5) .eqv. f%flags(11)) .and. (h%l(3) .eqv. f%flags(12)) .and. &
-           h%disk_t == through('(1PE18.10)', 1.0d0/3.0d0) .and. &
-           h%disk_p == through('(1PE18.10)', 7.2722d-6) .and. &
-           h%wsat == through('(1PE18.10)', 3.0d-4)
+           (h%use_pure_z_table .eqv. f%flags(1)) .and. &
+           (h%use_extended_composition .eqv. f%flags(2)) .and. &
+           (h%use_diffusion_y .eqv. f%flags(3)) .and. (h%use_diffusion_z .eqv. f%flags(4)) .and. &
+           (h%use_semiconvection .eqv. f%flags(5)) .and. &
+           (h%core_overshoot_active .eqv. f%flags(6)) .and. &
+           (h%envelope_overshoot_active .eqv. f%flags(7)) .and. (h%lovstm .eqv. f%flags(8)) .and. &
+           (h%rotation_active .eqv. f%flags(9)) .and. &
+           (h%instability_transport_active .eqv. f%flags(10)) .and. &
+           (h%use_wind_torque .eqv. f%flags(11)) .and. (h%disk_locking_active .eqv. f%flags(12)) &
+           .and. h%disk_temperature == through('(1PE18.10)', 1.0d0/3.0d0) .and. &
+           h%disk_pressure == through('(1PE18.10)', 7.2722d-6) .and. &
+           h%wind_saturation_omega == through('(1PE18.10)', 3.0d-4)
       call report("MODEL2: the codes, the flags and the disk constants", ok)
       ok = all(s%luminosity_breakdown_lsun(1:7) == f%lums) .and. &
            all(s%triangle_log_teff == f%env(1,:)) .and. &
@@ -983,7 +973,7 @@ end subroutine model2_check
 ! read_model2 on a damaged file: ierr = 1 and the message
 subroutine model2_error(file, message, label)
       character(len=*), intent(in) :: file, message, label
-      type(yrec7_header) :: h
+      type(model_file_header) :: h
       integer :: ierr
       call read_model2_file(file, h, ierr)
       call report(label, ierr == 1 .and. captured(terminal_file, message))

@@ -67,8 +67,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
       use io_units
-      use model_files, only: read_model_format_tag, read_mod_model, read_yrec7, &
-           read_model2
+      use model_files, only: model_file_header, read_model_format_tag, read_mod_model, &
+           read_yrec7, read_model2
       use physical_constants
       use eos_lib
       use kap_lib
@@ -93,8 +93,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 
       integer :: saha_state
       character(len=4) :: format_tag
-      character(len=6) :: eos_code
-      character(len=4) :: atm_code, alok_code, hik_code
+! the model file's header values that the star does not hold
+      type(model_file_header) :: header
 ! Atomic weights of the surface-mixture elements, in ix_* slot order
 ! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He).
       double precision :: atomic_weight(n_mix_species)
@@ -107,14 +107,12 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 
 ! --- locals ---
       integer :: iread
-      double precision :: mixing_length0
       logical :: mixing_length_matches
       logical :: mixture_ok
 ! lexcp0 is never assigned: the mismatch warning in
-! check_model_against_controls prints it where it presumably means
-! use_extended_composition0 (a bug kept from starin).
+! check_model_against_controls prints it where it presumably means the
+! model's flag, header%use_extended_composition (a bug kept from starin).
       logical :: lexcp0
-      logical :: use_extended_composition0
       double precision :: fraction_diff
       integer :: i, j, k
       double precision :: total_carbon_cno_fraction, &
@@ -156,14 +154,6 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       integer :: radiative_zone_bounds(max_radiative_zones,2), &
            convective_zone_bounds(max_convective_zones,2)
       integer :: num_radiative_zones, num_convective_zones
-      integer :: core_cz_top_index0, envelope_cz_bottom_index0
-      logical :: rotation_active0
-      logical :: use_diffusion_y0, use_diffusion_z0, disk_locking_active0, &
-           instability_transport_active0, ljdot00
-      logical :: lovstc0, envelope_overshoot_active0, lovstm0, &
-           use_pure_z_table0, lsemic0
-      double precision :: disk_pressure0, disk_temperature0, &
-           wind_saturation_omega0
 ! Error code from the library calls, passed on through ierr.
       integer :: jerr
 
@@ -282,8 +272,13 @@ end subroutine acquire_starting_model
 ! ---------------------------------------------------------------
 ! Read the model file on unit iread, in the layout its first keyword
 ! names (YMOD: YREC .mod; NMOD: YREC7; MOD2: MODEL2), and set the
-! timestep and star%log_total_mass from it. Sets ierr on an unknown layout or
-! a failed read (an empty file among them).
+! timestep and star%log_total_mass from it. The readers fill the star%
+! model directly and return the file's other header values in header
+! (mixing length, timestep, flags, physics codes), which
+! check_model_against_controls compares with the controls. (The file's
+! triangle orientation is not used: reset_state_after_read sets it to 1
+! and asks for a fresh envelope.) Sets ierr on an unknown layout or a
+! failed read (an empty file among them).
 subroutine read_starting_model_file
 
       call read_model_format_tag(iread, format_tag, ierr)
@@ -292,45 +287,18 @@ subroutine read_starting_model_file
       if (format_tag .eq. 'YMOD') then
          write(run_log_unit,11)
  11      format(1x,'loading starting model (YREC .mod format)')
-         call read_mod_model(s, iread, timestep_yr, mixing_length0, &
-              use_extended_composition0, rotation_active0, jerr)
-         if (jerr /= 0) then
-            ierr = jerr
-            return
-         end if
+         call read_mod_model(s, iread, header, ierr)
+         if (ierr /= 0) return
       else if (format_tag .eq. 'NMOD') then
          write(run_log_unit,12)
  12      format(1x,'loading starting model (YREC7 format)')
-! read_yrec7 fills the star% model directly; its arguments are the
-! file's own header values (mixing length, timestep, flags, physics
-! codes), which check_model_against_controls compares with the
-! controls.
-         call read_yrec7(s, mixing_length0,timestep_yr,triangle_orientation,iread, &
-              core_cz_top_index0,envelope_cz_bottom_index0, &
-              use_extended_composition0,rotation_active0, &
-              atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
-              disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
-              use_pure_z_table0,lsemic0,disk_pressure0, &
-              disk_temperature0,wind_saturation_omega0, ierr)
+         call read_yrec7(s, iread, header, ierr)
          if (ierr /= 0) return
-! The header values up to rotation_active0 are YREC7's; those from
-! atm_code on were added by the MODEL2 layout.
-
       else if (format_tag .eq. 'MOD2 ') then
          write(run_log_unit,16)
  16      format(1x,'loading starting model (MODEL2 format)')
-! Same header values as read_yrec7.
-         call read_model2(s, mixing_length0,timestep_yr,triangle_orientation,iread, &
-              core_cz_top_index0,envelope_cz_bottom_index0, &
-              use_extended_composition0,rotation_active0, &
-              atm_code,eos_code,hik_code,use_diffusion_y0,use_diffusion_z0, &
-              disk_locking_active0,instability_transport_active0,ljdot00, &
-              alok_code,lovstc0,envelope_overshoot_active0,lovstm0, &
-              use_pure_z_table0,lsemic0,disk_pressure0, &
-              disk_temperature0,wind_saturation_omega0, ierr)
+         call read_model2(s, iread, header, ierr)
          if (ierr /= 0) return
-
       else
          write(run_log_unit,20)
  20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
@@ -342,6 +310,7 @@ subroutine read_starting_model_file
       endif
 
 ! The timestep in s, and the log total mass.
+      timestep_yr = header%timestep_yr
       delta_time = seconds_per_year*timestep_yr
       delta_time_abs = dabs(delta_time)
 end subroutine read_starting_model_file
@@ -356,16 +325,16 @@ subroutine check_model_against_controls
 ! The tolerance 2e-3 allows for model files storing the mixing length
 ! to four significant digits; a model mixing length <= 0 is not
 ! checked.
-       if (mixing_length0.gt.0.0d0) mixing_length_matches = &
-            (dabs(s%mixing_length_alpha-mixing_length0).lt.2.0d-3)
+       if (header%mixing_length.gt.0.0d0) mixing_length_matches = &
+            (dabs(s%mixing_length_alpha-header%mixing_length).lt.2.0d-3)
 ! The warning prints lexcp0, which is never set (see its declaration),
 ! for the model's flag.
-       if (.not.mixing_length_matches .or. use_extended_composition0.neqv. &
+       if (.not.mixing_length_matches .or. header%use_extended_composition.neqv. &
             s%ctrl%use_extended_composition) then
-          write(run_log_unit,1040) s%mixing_length_alpha,mixing_length0, &
+          write(run_log_unit,1040) s%mixing_length_alpha,header%mixing_length, &
                s%ctrl%use_extended_composition,lexcp0
-          write(terminal_unit,1040) s%mixing_length_alpha,mixing_length0,s%ctrl%use_extended_composition, &
-               lexcp0
+          write(terminal_unit,1040) s%mixing_length_alpha,header%mixing_length, &
+               s%ctrl%use_extended_composition,lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
              ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
