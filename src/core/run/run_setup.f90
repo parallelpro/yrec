@@ -20,6 +20,8 @@ contains
 ! loads (set_up_constants_and_tables, which passes ierr through the
 ! kap, eos and atm initializations), then the Monte-Carlo run range and
 ! each run's sampled parameters. Errors return through ierr.
+!   star reads: none
+!   star writes: none
 subroutine prepare_run(s, ierr)
 
       use monte_carlo, only: setup_monte_carlo_runs
@@ -51,6 +53,10 @@ end subroutine prepare_run
 !
 ! The table paths are read from star%job, so the caller must fill
 ! star%job (read_controls) first. Errors return through ierr.
+!   star reads: ctrl%G_cgs, ctrl%solar_mass_cgs, solar_luminosity_cgs,
+!     solar_radius_cgs
+!   star writes: ln10_over_lsun, log10_solar_luminosity,
+!     log10_solar_radius, solar_mass_cgs
 subroutine set_up_constants_and_tables(s, ierr)
       use settings_install, only: install_run_settings
       use physical_constants

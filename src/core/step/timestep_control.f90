@@ -40,6 +40,11 @@ contains
 ! evolved: the limits are skipped and only its magnitude is kept.
 ! On return previous_timestep holds the new timestep (s), also in
 ! chosen_dt and, in years, timestep_years.
+!   star reads: ctrl%atime, ctrl%rotation_active,
+!     ctrl%use_envelope_triangle_dt, job%end_age_stop_active,
+!     job%target_end_age, job%timestep_override,
+!     job%timestep_override_active, job%use_structure_dt_limits
+!   star writes: none
 subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_density, &
      luminosity, enclosed_mass, log_temperature, composition, &
      convective_core_edge_zone, h_shell_midpoint_zone, &
@@ -252,6 +257,9 @@ end subroutine compute_timestep
 ! a = atime(itime_max_dt_frac); and struct_dt = previous_timestep/f.
 ! This limit dominates on the pre-main sequence, where it must be on
 ! (star%job%use_structure_dt_limits, legacy LPTIME).
+!   star reads: ctrl%atime, logP_start, logR_start, logT_start,
+!     luminosity_lsun_start
+!   star writes: none
 subroutine timestep_limit_structure(s, previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
 
@@ -345,6 +353,8 @@ end subroutine timestep_limit_structure
 ! clipped to [1/a, a] with a = atime(itime_max_dt_frac), and
 ! rotation_dt = previous_timestep/f; dt_unlimited when omega did not
 ! change.
+!   star reads: ctrl%atime, ctrl%max_domega_global, omega_start
+!   star writes: none
 subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
 
@@ -414,6 +424,9 @@ end subroutine timestep_limit_omega
 ! the zone's rates and its start-of-step abundances. (The legacy code
 ! took dX/dt from the equilibrium burn, with He3 and the CN cycle in
 ! equilibrium.)
+!   star reads: ctrl%atime, solar_luminosity_cgs, solar_mass_cgs,
+!     xa_start
+!   star writes: none
 subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclosed_mass, &
      log_temperature, hydrogen_luminosity, &
      convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
@@ -494,6 +507,9 @@ end subroutine timestep_limit_hburn
 ! L_cc there,
 !   helium_dt = E_He Delta Y m_cc/(L_cc Lsun).
 ! Shell burning (core helium exhausted): see that branch below.
+!   star reads: ctrl%atime, ctrl%use_extended_composition,
+!     solar_luminosity_cgs, solar_mass_cgs
+!   star writes: none
 subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
      num_points, helium_dt, h_shell_zone_begin)
@@ -596,6 +612,9 @@ end subroutine timestep_limit_heburn
 !   f = max(|Delta log Teff|/tri_delta_teffl, |Delta log L|/tri_delta_logl),
 ! f = 1 when nothing changed, clipped to [1/a, a] with
 ! a = atime(itime_max_dt_frac), and envelope_dt = previous_timestep/f.
+!   star reads: ctrl%atime, ctrl%tri_delta_logl, ctrl%tri_delta_teffl,
+!     log_Teff_start, surface_luminosity_lsun_start
+!   star writes: none
 subroutine timestep_limit_hr(s, previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 

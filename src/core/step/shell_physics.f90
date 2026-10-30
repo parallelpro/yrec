@@ -26,6 +26,12 @@ contains
 ! opacity, c_P, dlnrho/dlnT (dlnrho_dlnt) and the convective velocity;
 ! then viscos gives the kinematic viscosity and the thermal diffusivity.
 ! log_luminosity holds L/Lsun, not its log (callers pass star%luminosity_lsun).
+!   star reads: envelope_he3_fraction, envelope_helium_fraction,
+!     envelope_hydrogen_fraction, envelope_inverse_atomic_weight,
+!     envelope_metal_fraction, envelope_overshoot_bottom_index,
+!     envelope_overshoot_top_index
+!   star writes: conv_vel, cp, dlnrho_dlnt, grada, gradr, gradT,
+!     kinematic_viscosity, mu, opacity_zone, thermal_diffusivity
 subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_luminosity, &
      log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
      num_zones, log_teff, ierr)

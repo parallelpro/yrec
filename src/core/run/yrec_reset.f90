@@ -31,6 +31,12 @@ module yrec_reset
 
 contains
 
+! Gives run_yrec its star: s becomes a copy of star_template, after
+! re-arming evolve_step's reset and closing the units an earlier run
+! left open. It writes the whole record, which the contract's member
+! lists do not show.
+!   star reads: none
+!   star writes: none
 subroutine yrec_run_prologue(s)
       type(star_info), allocatable, intent(inout) :: s
       integer :: u

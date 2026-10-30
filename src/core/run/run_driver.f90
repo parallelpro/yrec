@@ -41,6 +41,31 @@ contains
 ! envelope_termination (the historical "solution diverged" stop, which
 ! exits 0).
 !
+!   star reads: age_gyr, convective_flag, ctrl%calibrate_solar_model,
+!     ctrl%calibrate_star_flag, ctrl%compute_neutrino_fluxes,
+!     ctrl%diffuse_helium_active, ctrl%helium_flash_active,
+!     ctrl%set_initial_model_number, ctrl%use_diffusion_z,
+!     ctrl%use_z_ramp, job%first_call_flag, job%has_senv0_array,
+!     job%initial_x_array, job%initial_z_array, job%mc_run_end,
+!     job%mc_run_start, job%mixing_length_array, job%num_models,
+!     job%num_runs, job%senv0_array, log10_solar_luminosity,
+!     log10_solar_radius, log_L_lsun, log_Teff, logP, logR, logRho,
+!     logT, luminosity_breakdown_lsun, luminosity_lsun, m, nz, omega,
+!     solar_calibration_converged, star_found_flag, star_mass, xa
+!   star writes: convective_turnover_timescale, core_cz_top_index,
+!     dln_luminosity_dt, dlog_pressure_dt, dlog_radius_dt,
+!     dlog_temperature_dt, dt, dt_saved, envelope_cz_bottom_index,
+!     envelope_cz_bottom_index_start, h_shell_bot_index,
+!     h_shell_mid_index, h_shell_top_index, has_h_shell, job%atm_choice,
+!     job%change_envelope_mass_flag, job%initial_envelope_x,
+!     job%initial_envelope_z, job%mixture_weights, job%nk,
+!     job%requested_envelope_mass, job%use_structure_dt_limits,
+!     max_domega_frac, mixing_length_alpha, model_diverged_flag,
+!     model_number, pulsation_mass_msun, punch_pending_flag,
+!     recompute_envelope_triangle, reset_triangle, settling_active,
+!     stored_vertex_index, termination_reason, timestep_yr,
+!     total_angular_momentum, total_rotational_ke, triangle_orientation,
+!     use_two_z_tables
 subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings

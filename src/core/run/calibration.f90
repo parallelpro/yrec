@@ -50,6 +50,13 @@ contains
 ! Inputs: log_l_lsun = log(L/Lsun) and log_r_rsun = log(R/Rsun) of the
 ! model (both zero for the Sun), run_index = nk, and current_zx, the
 ! surface Z/X.
+!   star reads: ctrl%calibrate_solar_zx, ctrl%luminosity_tolerance,
+!     ctrl%radius_tolerance, ctrl%target_solar_zx, ctrl%zx_tolerance
+!   star writes: delta_alpha, delta_x, dlum_dalpha, dlum_dx,
+!     drad_dalpha, drad_dx, job%initial_x_array, job%initial_z_array,
+!     job%mixing_length_array, job%rescale_params,
+!     log_l_lsun_prev_check, log_r_rsun_prev_check,
+!     solar_calibration_converged
 subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current_zx)
 
       use io_units
@@ -155,6 +162,14 @@ end subroutine check_solar_calibration
 !  - sets X for the next pair: on the first pass (nk = 2), X - 0.01
 !    (Y + 0.01 at fixed Z); after that, a secant step in X against
 !    log L(R*).
+!   star reads: ctrl%target_luminosity_lsun,
+!     ctrl%target_star_luminosity_tolerance, job%target_radius_rsun,
+!     solar_luminosity_cgs, solar_radius_cgs
+!   star writes: age_gyr_at_target_radius, age_gyr_prev_model,
+!     job%end_age_stop_active, job%initial_x_array, job%rescale_params,
+!     job%target_end_age, just_passed_target_radius_flag,
+!     log_l_lsun_at_target_radius, log_l_lsun_at_target_radius_prev_run,
+!     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag
 subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_index)
 
       use io_units
@@ -319,6 +334,14 @@ end subroutine check_star_calibration
 ! and their timestep overrides are scaled by the same factor.
 ! check_solar_calibration writes each new (X, Z, alpha) guess into the
 ! next triple.
+!   star reads: ctrl%target_solar_age
+!   star writes: job%end_age_stop_active, job%first_call_flag,
+!     job%has_senv0_array, job%initial_x_array, job%initial_z_array,
+!     job%mixing_length_array, job%num_models, job%num_runs,
+!     job%rescale_kind, job%rescale_params, job%rsclzc, job%rsclzm1,
+!     job%rsclzm2, job%senv0_array, job%target_end_age,
+!     job%timestep_override, job%timestep_override_active,
+!     solar_calibration_converged
 subroutine setup_solar_calibration(s, age_scale_factor)
 
       use controls_buffer, only: max_runs
@@ -398,6 +421,16 @@ end subroutine setup_solar_calibration
 ! 1's rescaling, and the even cards 4, 6, ..., 50 continue the model
 ! with card 2's model count, stop age and timestep, as in
 ! setup_solar_calibration.
+!   star reads: ctrl%specify_teff_flag, ctrl%target_luminosity_lsun,
+!     solar_luminosity_cgs, solar_radius_cgs
+!   star writes: job%end_age_stop_active, job%first_call_flag,
+!     job%has_senv0_array, job%initial_x_array, job%initial_z_array,
+!     job%mixing_length_array, job%num_models, job%num_runs,
+!     job%rescale_kind, job%rescale_params, job%rsclzc, job%rsclzm1,
+!     job%rsclzm2, job%senv0_array, job%target_end_age,
+!     job%target_radius_rsun, job%target_teff, job%timestep_override,
+!     job%timestep_override_active, just_passed_target_radius_flag,
+!     r_rsun_prev_model, star_found_flag
 subroutine setup_star_calibration(s)
 
       use controls_buffer, only: max_runs

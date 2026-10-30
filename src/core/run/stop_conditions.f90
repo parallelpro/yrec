@@ -59,6 +59,8 @@ contains
 ! Configuration check shared by run_yrec (after the starting model is
 ! read) and evolve_step (after a diverged-model reload): a rotating
 ! run whose model carries no rotation rate is an error (ierr = 1).
+!   star reads: ctrl%rotation_active, omega
+!   star writes: none
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
@@ -81,6 +83,9 @@ end subroutine check_rotation_initialised
 ! wrote NaN models to the end of its budget and exited 0. Called by
 ! evolve_step on the converged structure, before it is written;
 ! a hit is a real error (positive ierr -> exit 1), not a stop.
+!   star reads: age_gyr, dt, log_L_lsun, log_Teff, logP, logR, logRho,
+!     logT, luminosity_lsun, model_number, nz
+!   star writes: termination_reason
 logical function converged_model_is_nan(s)
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
       type(star_info), intent(inout) :: s
@@ -124,6 +129,11 @@ end function converged_model_is_nan
 ! check_star_calibration protocol: iteration 1 only primes
 ! previous-model state, so the calibration comparison starts at
 ! iteration 2).
+!   star reads: age_gyr, ctrl%calibrate_star_flag, job%nk,
+!     job%rescale_kind, job%target_end_age,
+!     just_passed_target_radius_flag, log_L_lsun, log_Teff,
+!     star_found_flag, termination_reason
+!   star writes: none
 subroutine check_stop_conditions(s, model_iteration, step_status)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: model_iteration
@@ -175,6 +185,12 @@ end subroutine check_stop_conditions
 ! before this, so log_g_surface and the scaling-relation nu_max_uhz are
 ! current). Prints one STOP line per hit to the terminal and the
 ! run log.
+!   star reads: ctrl%log_g_lower_limit, ctrl%log_g_upper_limit,
+!     ctrl%log_L_lower_limit, ctrl%log_L_upper_limit,
+!     ctrl%nu_max_lower_limit, ctrl%nu_max_upper_limit,
+!     ctrl%Teff_lower_limit, ctrl%Teff_upper_limit, job%nk,
+!     log_g_surface, log_L_lsun, log_Teff, nu_max_uhz
+!   star writes: termination_reason
 logical function structure_limit_stop_triggered(s)
       type(star_info), intent(inout) :: s
       integer :: nk
@@ -223,6 +239,8 @@ end function structure_limit_stop_triggered
 ! end age. Also used directly by evolve_step BEFORE the model is
 ! written, to keep the final model's saved timestep from being
 ! zeroed (that use runs earlier than check_stop_conditions can).
+!   star reads: age_gyr, job%end_age_stop_active, job%target_end_age
+!   star writes: none
 logical function reached_end_age(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
@@ -234,6 +252,8 @@ end function reached_end_age
 ! ---------------------------------------------------------------
 ! Post-step trigger check: has any configured central-abundance stop
 ! been crossed? Prints the historical CENTRAL <el> message per hit.
+!   star reads: job%end_age_stop_active, xa
+!   star writes: termination_reason
 logical function abundance_stop_triggered(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
@@ -259,6 +279,8 @@ end function abundance_stop_triggered
 ! with the historical STARTING <el> ... STOP DISABLED message to the
 ! terminal and the run log. The message reports the disarmed
 ! (negative) threshold, as the original did.
+!   star reads: job%end_age_stop_active, xa
+!   star writes: termination_reason
 subroutine init_stop_conditions(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
@@ -283,6 +305,9 @@ subroutine init_stop_conditions(s, nk)
 end subroutine init_stop_conditions
 
 ! ---------------------------------------------------------------
+!   star reads: job%central_deuterium_stop, job%central_helium_stop,
+!     job%central_hydrogen_stop
+!   star writes: none
 double precision function stop_value(s, k, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk
@@ -293,6 +318,9 @@ double precision function stop_value(s, k, nk)
       end select
 end function stop_value
 
+!   star reads: job%central_deuterium_stop, job%central_helium_stop,
+!     job%central_hydrogen_stop
+!   star writes: none
 subroutine set_stop_value(s, k, nk, val)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk

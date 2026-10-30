@@ -37,6 +37,11 @@ contains
 ! namelist (legacy IMBEG, IMEND). Only the records up to mc_run_end (at
 ! most max_mc_runs) are read (MHP 3/96). Without Monte Carlo the range
 ! is the single run 1.
+!   star reads: ctrl%dynamics_unit, ctrl%monte_carlo_active
+!   star writes: job%age_target, job%diffusion_factor,
+!     job%helium_fraction_param, job%luminosity_target, job%mc_run_end,
+!     job%mc_run_start, job%metal_to_h_ratio, job%s11_rate,
+!     job%s17_rate, job%s33_rate, job%s34_rate
 subroutine setup_monte_carlo_runs(s)
       type(star_info), intent(inout) :: s
       integer :: i
@@ -68,6 +73,12 @@ end subroutine setup_monte_carlo_runs
 ! (1996) value; the metal diffusion factor; the solar luminosity; and
 ! the age scale factor. Outside Monte Carlo it only sets
 ! age_scale_factor = 1.
+!   star reads: ctrl%monte_carlo_active, job%age_target,
+!     job%diffusion_factor, job%luminosity_target, job%s11_rate,
+!     job%s17_rate, job%s33_rate, job%s34_rate
+!   star writes: cross_section_scale, extra_cross_section_scale,
+!     job%fgrz, job%target_end_age, ln10_over_lsun,
+!     log10_solar_luminosity, solar_luminosity_cgs
 subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
      age_scale_factor)
       use math_lib
@@ -130,6 +141,10 @@ end subroutine apply_monte_carlo_parameters
 ! energy summary is the final model's history row; the calibration
 ! verdicts are in the .log file.
 !
+!   star reads: ctrl%calc_neutrinos, ctrl%calibrate_solar_model,
+!     ctrl%first_unit, ctrl%monte_carlo_active, job%nk,
+!     solar_calibration_converged
+!   star writes: none
 subroutine write_run_summaries(s, monte_carlo_run_number, &
      convergence_iterations, log_r_rsun)
       type(star_info), intent(inout) :: s
@@ -166,6 +181,16 @@ end subroutine write_run_summaries
 ! the luminosities of the burning channels and of gravitational
 ! contraction. local_log_radius is log(R/Rsun), and run_index = nk is
 ! the last card of the calibration triple.
+!   star reads: central_log10_density, central_log10_pressure,
+!     central_log10_temperature, cl37_snu_rate, ctrl%monte_carlo_unit1,
+!     ctrl%monte_carlo_unit2, dlum_dalpha, dlum_dx, drad_dalpha,
+!     drad_dx, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
+!     job%age_target, job%diffusion_factor, job%helium_fraction_param,
+!     job%luminosity_target, job%metal_to_h_ratio,
+!     job%mixing_length_array, job%rescale_params, job%s11_rate,
+!     job%s17_rate, job%s33_rate, job%s34_rate, log_L_lsun,
+!     luminosity_breakdown_lsun, neutrino_flux_total, nz, xa
+!   star writes: none
 subroutine write_monte_carlo_model(s, local_log_radius, &
      convergence_iterations, run_index, monte_carlo_run_number)
       use math_lib
