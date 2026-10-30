@@ -5,11 +5,16 @@
 ! X, Z), one named field per quantity (cgs units). eos_get fills it;
 ! the EOS families take it as their result argument r.
 !
-! The record is intent(inout) everywhere, because two of its fields are
-! also inputs:
+! The record is intent(inout) everywhere, because three groups of its
+! fields are also inputs:
 ! - density and log10_density are the starting guess of the fully
 !   ionized density iteration (the result depends on them within that
 !   iteration's tolerance);
+! - the Saha solver's three unknowns (saha_*) are its starting point and
+!   come back as its solution, so a record carried from one call to the
+!   next warm-starts the solver (a new record starts from E = 0.1, no
+!   ionized helium; the result depends on the start within the solver's
+!   tolerance, 1e-9 in E);
 ! - the six second derivatives are set only with want_derivatives, and
 !   otherwise keep their values.
 ! Every other field is overwritten on each call.
@@ -44,6 +49,10 @@ module eos_results
          real(dp) :: dlnrho_dlnt_dt = 0.0d0, dlnrho_dlnt_dp = 0.0d0, &
               adiabatic_gradient_dt = 0.0d0, adiabatic_gradient_dp = 0.0d0, &
               specific_heat_cp_dt = 0.0d0, specific_heat_cp_dp = 0.0d0
+! the Saha solver's unknowns, its start and its solution: E, the mean
+! number of free electrons per ion, and the He+ and He++ fractions
+         real(dp) :: saha_electrons_per_ion = 0.1d0, saha_helium_plus = 0.0d0, &
+              saha_helium_plus2 = 0.0d0
       end type eos_result
 
 end module eos_results

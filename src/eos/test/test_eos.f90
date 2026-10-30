@@ -1062,8 +1062,7 @@ subroutine settings_checks()
 end subroutine settings_checks
 
 ! Below the OPAL 2006 table (T = 1500 K) gamma1_at_density takes the
-! Yale/SCV value (to 1e-6: the Saha solver starts from the previous
-! call's solution), with OPAL selected as without it.
+! Yale/SCV value (to 1e-6), with OPAL selected as without it.
 subroutine gamma1_checks()
       type(eos_settings_t) :: s
       real(dp) :: g1_yale, ga_yale, g1, ga
@@ -1358,8 +1357,7 @@ end subroutine without_opal
 ! in_atmosphere = .true. at Saha points, in the ramp and below it, with
 ! and without SCV: the same density, beta, ionization fractions, first
 ! derivatives, cp and grad_ad as a full evaluation (to 1e-10, and the
-! derivatives to 1e-8: the Saha solver starts from the previous call's
-! solution)
+! derivatives to 1e-8)
 subroutine atmosphere_checks()
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0
       real(dp), parameter :: lt(3) = [3.7d0, 4.6d0, 5.8d0], lp(3) = [4.5d0, 9.0d0, 12.6d0]

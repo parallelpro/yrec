@@ -49,8 +49,8 @@ contains
 ! the six second derivatives; in_atmosphere skips the Saha solver's
 ! second derivatives (the first ones are always computed);
 ! saha_iterations is a counter the Saha solver adds its Newton iterations
-! to (eos reads it nowhere; the solver's starting guess is its own
-! module state, the previous call's solution).
+! to (eos reads it nowhere; the solver's starting point is res's saha_*
+! fields, the record's previous solution).
 ! composition_at_zone (a zone's composition, star%xa layout) gives the
 ! Debye-Hueckel correction its composition (debye_huckel_composition_of;
 ! every star-layer call passes it, and without it, as in the unit

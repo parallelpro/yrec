@@ -27,11 +27,8 @@ module yale_eos
       public :: compute_saha_eos, compute_fully_ionized_eos, read_fermi_table
 
 ! Single-precision literals, as in eqsaha.f: widened to double, they
-! differ from the correctly rounded doubles in the last bits. The
-! three saved values are the Saha solver's starting guesses (E, x1, x2):
-! module state, the previous call's solution, whoever made it (so a
-! result depends on the call before it within the solver's tolerance,
-! 1e-9 in E).
+! differ from the correctly rounded doubles in the last bits. (The
+! solver's starting point is the caller's: eos_result's saha_* fields.)
 ! the first ionization energies as temperatures (K) of the 11 species
 ! before He in the mixture's ix_* order (Na, Al, Mg, Fe, Si, C, H, O, N,
 ! Ar, Ne: slot ix_h is hydrogen), and helium's two
@@ -55,7 +52,6 @@ module yale_eos
 ! the products of the elimination are dropped (or floored) below this
 ! magnitude, as on the DEC-20 the code was written for
       real(dp), parameter :: log10_smallest_product = -38.0d0
-      real(dp), save :: saha_e_guess = 0.1D0, saha_x1_guess = 0.0D0, saha_x2_guess = 0.0D0
       real(dp), parameter :: saha_convergence_tol = 1.0D-09
 
 ! The Saha system of one compute_saha_eos call: its constants, the
@@ -212,14 +208,14 @@ subroutine compute_saha_eos(saha_number_fractions, log10_temperature, &
       s%helium_mass_fraction = saha_number_fractions(ix_he)
       s%max_electrons_per_ion = 1.0d0 + s%helium_mass_fraction
       s%temperature_inverse = 1.0d0/r%temperature
-      s%mean_electrons_per_ion = saha_e_guess
-      s%helium_ion_fraction_1 = saha_x1_guess
-      s%helium_ion_fraction_2 = saha_x2_guess
+      s%mean_electrons_per_ion = r%saha_electrons_per_ion
+      s%helium_ion_fraction_1 = r%saha_helium_plus
+      s%helium_ion_fraction_2 = r%saha_helium_plus2
       call set_saha_constants(log10_temperature, log10_pressure, r, s)
       call solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, s, saha_iterations)
-      saha_e_guess = s%mean_electrons_per_ion
-      saha_x1_guess = s%helium_ion_fraction_1
-      saha_x2_guess = s%helium_ion_fraction_2
+      r%saha_electrons_per_ion = s%mean_electrons_per_ion
+      r%saha_helium_plus = s%helium_ion_fraction_1
+      r%saha_helium_plus2 = s%helium_ion_fraction_2
 ! the gas: electron weight, gas constant, density, ionization fractions
       r%electron_mean_weight_inverse = s%mean_electrons_per_ion*r%ion_mean_weight_inverse
       r%specific_gas_constant = gas_constant*(r%electron_mean_weight_inverse + &
@@ -296,8 +292,8 @@ end subroutine set_saha_constants
 ! solve_saha_system
 !----------------------------------------------------------------------
 ! Newton iteration on E and the He fractions (at most
-! max_saha_iterations, each added to saha_iterations), from the previous
-! call's solution: each step forms the charge balance (charge_balance)
+! max_saha_iterations, each added to saha_iterations), from the start
+! in s (the caller's record's saha_* fields): each step forms the charge balance (charge_balance)
 ! and, with helium, its two balances and the elimination of their
 ! columns (eliminate_helium), then solves the triangular system from the
 ! bottom up, each fraction clamped to [0, 1] and E to
