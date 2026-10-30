@@ -16,8 +16,7 @@
 !                                     (set_diffusion_settings, per run card)
 module microphysics_settings
       use kap_lib, only: kap_settings_t, kap_table_paths_t
-      use eos_lib, only: eos_settings_t, eos_table_paths_t, opal_vintage_none, &
-           opal_vintage_1995, opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict
+      use eos_lib, only: eos_settings_t, eos_table_paths_t
       use atm_lib, only: atm_settings_t, atm_table_paths_t
       use convection_lib, only: convection_settings_t
       use element_diffusion_lib, only: diffusion_settings_t
@@ -100,13 +99,12 @@ function kap_table_paths_from_star(s) result(paths)
 end function kap_table_paths_from_star
 
 !----------------------------------------------------------------------
-! eos_settings_from_star: eos's settings from the controls; the one
-! derived field is opal_vintage, from the three OPAL-vintage flags.
+! eos_settings_from_star: eos's settings from the controls (the OPAL
+! vintage is derive_controls' opal_eos_vintage).
 !   star reads: ctrl%debye_huckel_eta_max, ctrl%debye_huckel_eta_min,
-!     ctrl%saha_log10t_cutoff, ctrl%use_debye_huckel_correction,
-!     ctrl%use_diffusion_z, ctrl%use_mhd_eos,
-!     ctrl%use_numerical_derivatives, ctrl%use_opal2001_eos,
-!     ctrl%use_opal2006_eos, ctrl%use_opal95_eos, ctrl%use_scv_eos
+!     ctrl%opal_eos_vintage, ctrl%saha_log10t_cutoff,
+!     ctrl%use_debye_huckel_correction, ctrl%use_diffusion_z,
+!     ctrl%use_mhd_eos, ctrl%use_numerical_derivatives, ctrl%use_scv_eos
 !   star writes: none
 function eos_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -114,20 +112,8 @@ function eos_settings_from_star(s) result(settings)
       type(eos_settings_t) :: settings
 
       settings%use_mhd_eos = s%ctrl%use_mhd_eos
-! the OPAL vintage the controls select (derive_controls lets the newest
-! win, so more than one is a conflict eos_init reports)
-      if (count([s%ctrl%use_opal95_eos, s%ctrl%use_opal2001_eos, &
-           s%ctrl%use_opal2006_eos]) > 1) then
-         settings%opal_vintage = opal_vintage_conflict
-      else if (s%ctrl%use_opal95_eos) then
-         settings%opal_vintage = opal_vintage_1995
-      else if (s%ctrl%use_opal2001_eos) then
-         settings%opal_vintage = opal_vintage_2001
-      else if (s%ctrl%use_opal2006_eos) then
-         settings%opal_vintage = opal_vintage_2006
-      else
-         settings%opal_vintage = opal_vintage_none
-      end if
+! the OPAL vintage derive_controls chose (the newest selected)
+      settings%opal_vintage = s%ctrl%opal_eos_vintage
       settings%use_scv_eos = s%ctrl%use_scv_eos
       settings%use_numerical_derivatives = s%ctrl%use_numerical_derivatives
       settings%use_diffusion_z = s%ctrl%use_diffusion_z

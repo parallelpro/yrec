@@ -127,9 +127,7 @@ program test_net
 ! everything gated off; only the Fermi table is a hard requirement
       star%ctrl%use_mhd_eos = .false.
       star%ctrl%use_scv_eos = .false.
-      star%ctrl%use_opal95_eos = .false.
-      star%ctrl%use_opal2001_eos = .false.
-      star%ctrl%use_opal2006_eos = .false.
+      star%ctrl%opal_eos_vintage = 0
       star%ctrl%use_opal95_tables = .false.
       star%ctrl%use_opal92_tables = .false.
       star%ctrl%use_laol89_tables = .false.

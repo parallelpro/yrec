@@ -200,9 +200,6 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%target_star_luminosity_tolerance', star%ctrl%target_star_luminosity_tolerance
       write(u,'(a," = ",l1)') 'ctrl%specify_teff_flag', star%ctrl%specify_teff_flag
       write(u,'(a," = ",l1)') 'ctrl%calibrate_star_flag', star%ctrl%calibrate_star_flag
-      write(u,'(a," = ",l1)') 'ctrl%use_opal95_eos', star%ctrl%use_opal95_eos
-      write(u,'(a," = ",l1)') 'ctrl%use_opal2001_eos', star%ctrl%use_opal2001_eos
-      write(u,'(a," = ",l1)') 'ctrl%use_opal2006_eos', star%ctrl%use_opal2006_eos
       write(u,'(a," = ",l1)') 'ctrl%use_numerical_derivatives', star%ctrl%use_numerical_derivatives
       write(u,'(a," = ",l1)') 'ctrl%use_scv_eos', star%ctrl%use_scv_eos
       write(u,'(a," = ",l1)') 'ctrl%use_debye_huckel_correction', star%ctrl%use_debye_huckel_correction
@@ -252,6 +249,7 @@
       write(u,'(a," = ",a)') 'ctrl%centre4_table_path', '"'//trim(star%ctrl%centre4_table_path)//'"'
       write(u,'(a," = ",a)') 'ctrl%centre5_table_path', '"'//trim(star%ctrl%centre5_table_path)//'"'
       write(u,'(a," = ",a)') 'ctrl%opal_eos_table_path', '"'//trim(star%ctrl%opal_eos_table_path)//'"'
+      write(u,'(a," = ",i0)') 'ctrl%opal_eos_vintage', star%ctrl%opal_eos_vintage
       write(u,'(a," = ",a)') 'ctrl%atm_table_path', '"'//trim(star%ctrl%atm_table_path)//'"'
       write(u,'(a," = ",a)') 'ctrl%allard_table_path', '"'//trim(star%ctrl%allard_table_path)//'"'
       write(u,'(a," = ",l1)') 'ctrl%use_conductive_opacity', star%ctrl%use_conductive_opacity
@@ -379,6 +377,9 @@
       write(u,'(a," = ",es25.17e3)') 'buffer%fo', fo
       write(u,'(a," = ",i0)') 'buffer%ies', ies
       write(u,'(a," = ",i0)') 'buffer%imu', imu
+      write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
+      write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
+      write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos
       write(u,'(a," = ",a)') 'buffer%opal95_eos_table_path', '"'//trim(opal95_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2001_eos_table_path', '"'//trim(opal2001_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2006_eos_table_path', '"'//trim(opal2006_eos_table_path)//'"'

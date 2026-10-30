@@ -171,9 +171,6 @@
             double precision :: target_star_luminosity_tolerance = 0
             logical :: specify_teff_flag = .false.
             logical :: calibrate_star_flag = .false.
-            logical :: use_opal95_eos = .false.
-            logical :: use_opal2001_eos = .false.
-            logical :: use_opal2006_eos = .false.
             logical :: use_numerical_derivatives = .false.
             logical :: use_scv_eos = .false.
             logical :: use_debye_huckel_correction = .false.
@@ -221,6 +218,7 @@
             character(len=256) :: centre4_table_path = repeat(achar(0), 256)
             character(len=256) :: centre5_table_path = repeat(achar(0), 256)
             character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
+            integer :: opal_eos_vintage = 0
             character(len=256) :: atm_table_path = repeat(achar(0), 256)
             character(len=256) :: allard_table_path = repeat(achar(0), 256)
             logical :: use_conductive_opacity = .false.

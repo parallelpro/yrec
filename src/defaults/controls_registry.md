@@ -245,7 +245,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_itoh_neutrino_loss` | `lnulos1` | `use_itoh_neutrino_loss` | ctrl | run | logical | `.false.` | live | Neutrino losses from Itoh et al. (1996) |
 | `use_thoul_diffusion` | `lthoul` | `use_thoul_diffusion` | ctrl | run | logical | `.false.` | live | Thoul et al. diffusion coefficients |
 | `use_thoul_fit` | `lthoulfit` | `use_thoul_fit` | ctrl | run | logical | `.false.` | live | Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended) |
-| `use_opal95_eos` | `lopale` | `use_opal95_eos` | ctrl | run | logical | `.false.` | live | Use the OPAL 1995 EOS (a newer OPAL EOS selected wins) |
+| `use_opal95_eos` | `lopale` | `use_opal95_eos` | buffer | read | logical | `.false.` | live | Use the OPAL 1995 EOS (a newer OPAL EOS selected wins) |
 | `use_mhd_eos` | `lmhd` | `use_mhd_eos` | ctrl | run | logical | `.false.` | live | Use the MHD EOS |
 | `extend_core_inward` | `lcore` | `extend_core_inward` | ctrl | run | logical | `.false.` | live | Add shells inward of the starting model's innermost shell |
 | `use_semiconvection` | `lsemic` | `use_semiconvection` | ctrl | run | logical | `.false.` | live | Semiconvection treatment (conflicts with core overshoot) |
@@ -296,9 +296,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `reimers_scaling_factor` | `creim` | `reimers_scaling_factor` | ctrl | run | real | `-4.0d-13` | live | Reimers mass-loss efficiency eta |
 | `use_reimers_wind` | `lreimer` | `use_reimers_wind` | ctrl | run | logical | `.false.` | live | Enable Reimers red-giant mass loss |
 | `use_mass_change` | `lmdot` | `use_mass_accretion` | job | run | logical | `.false.` | live | Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted |
-| `use_opal2001_eos` | `lopale01` | `use_opal2001_eos` | ctrl | run | logical | `.false.` | live | Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins) |
+| `use_opal2001_eos` | `lopale01` | `use_opal2001_eos` | buffer | read | logical | `.false.` | live | Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins) |
 | `use_conductive_opacity` | `lcondopacp` | `use_conductive_opacity` | ctrl | run | logical | `.false.` | live | Use the conductive opacity tables (conductive_opacity_table_file) |
-| `use_opal2006_eos` | `lopale06` | `use_opal2006_eos` | ctrl | run | logical | `.false.` | live | Use the OPAL 2006 EOS |
+| `use_opal2006_eos` | `lopale06` | `use_opal2006_eos` | buffer | read | logical | `.false.` | live | Use the OPAL 2006 EOS |
 | `use_numerical_derivatives` | `lnumderiv` | `use_numerical_derivatives` | ctrl | run | logical | `.false.` | live | Use numerical derivatives of the EOS instead of analytic ones (much slower) |
 | `allard_target_feh` | `alatm_feh` | `allard_target_feh` | ctrl | run | real | `0d0` | live | Allard atmosphere tables: [Fe/H] |
 | `allard_target_alpha` | `alatm_alpha` | `allard_target_alpha` | ctrl | run | real | `0d0` | live | Allard atmosphere tables: [alpha/Fe] |
@@ -421,6 +421,7 @@ or the run keeps them.
 | code name | home | used | type | default | description |
 |---|---|---|---|---|---|
 | `opal_eos_table_path` | ctrl | run | string | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
+| `opal_eos_vintage` | ctrl | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
 | `end_age_stop_active` | job | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | job | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
 | `fcorr` | job | run | real | `0` | The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri) |

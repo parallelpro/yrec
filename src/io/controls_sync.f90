@@ -106,8 +106,8 @@ module controls_sync
            zams_c_table_path, centre1_table_path, centre2_table_path, &
            centre3_table_path, centre4_table_path, centre5_table_path, &
            opal95_eos_table_path, opal2001_eos_table_path, &
-           opal2006_eos_table_path, opal_eos_table_path, atm_table_path, &
-           allard_table_path, use_conductive_opacity, lvfc, &
+           opal2006_eos_table_path, opal_eos_table_path, opal_eos_vintage, &
+           atm_table_path, allard_table_path, use_conductive_opacity, lvfc, &
            use_diffusion_advection_transport, no_am_transport_in_core, &
            allard_target_feh, allard_target_alpha, allard_use_tau100, &
            force_solid_body_rotation, solid_body_mode_flag, &
@@ -365,9 +365,9 @@ subroutine seed_controls_buffer(s)
       target_radius_rsun = s%job%target_radius_rsun
       specify_teff_flag = s%ctrl%specify_teff_flag
       calibrate_star_flag = s%ctrl%calibrate_star_flag
-      use_opal95_eos = s%ctrl%use_opal95_eos
-      use_opal2001_eos = s%ctrl%use_opal2001_eos
-      use_opal2006_eos = s%ctrl%use_opal2006_eos
+      use_opal95_eos = .false.
+      use_opal2001_eos = .false.
+      use_opal2006_eos = .false.
       use_numerical_derivatives = s%ctrl%use_numerical_derivatives
       use_scv_eos = s%ctrl%use_scv_eos
       use_debye_huckel_correction = s%ctrl%use_debye_huckel_correction
@@ -418,6 +418,7 @@ subroutine seed_controls_buffer(s)
       opal2001_eos_table_path = repeat(achar(0), 256)
       opal2006_eos_table_path = repeat(achar(0), 256)
       opal_eos_table_path = s%ctrl%opal_eos_table_path
+      opal_eos_vintage = s%ctrl%opal_eos_vintage
       atm_table_path = s%ctrl%atm_table_path
       allard_table_path = s%ctrl%allard_table_path
       use_conductive_opacity = s%ctrl%use_conductive_opacity
@@ -717,9 +718,6 @@ subroutine store_controls_to_star(s)
       s%job%target_radius_rsun = target_radius_rsun
       s%ctrl%specify_teff_flag = specify_teff_flag
       s%ctrl%calibrate_star_flag = calibrate_star_flag
-      s%ctrl%use_opal95_eos = use_opal95_eos
-      s%ctrl%use_opal2001_eos = use_opal2001_eos
-      s%ctrl%use_opal2006_eos = use_opal2006_eos
       s%ctrl%use_numerical_derivatives = use_numerical_derivatives
       s%ctrl%use_scv_eos = use_scv_eos
       s%ctrl%use_debye_huckel_correction = use_debye_huckel_correction
@@ -767,6 +765,7 @@ subroutine store_controls_to_star(s)
       s%ctrl%centre4_table_path = centre4_table_path
       s%ctrl%centre5_table_path = centre5_table_path
       s%ctrl%opal_eos_table_path = opal_eos_table_path
+      s%ctrl%opal_eos_vintage = opal_eos_vintage
       s%ctrl%atm_table_path = atm_table_path
       s%ctrl%allard_table_path = allard_table_path
       s%ctrl%use_conductive_opacity = use_conductive_opacity

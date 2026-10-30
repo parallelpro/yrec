@@ -467,6 +467,9 @@ module controls_buffer
       character(len=256) :: opal2001_eos_table_path = repeat(achar(0), 256)
       character(len=256) :: opal2006_eos_table_path = repeat(achar(0), 256)
       character(len=256) :: opal_eos_table_path = repeat(achar(0), 256)
+! the OPAL EOS vintage the run uses (eos_lib's opal_vintage_*: 0 none,
+! 1 1995, 2 2001, 3 2006; derive_controls: the newest selected)
+      integer :: opal_eos_vintage = 0
       character(len=256) :: atm_table_path = repeat(achar(0), 256)
       character(len=256) :: allard_table_path = repeat(achar(0), 256)
 

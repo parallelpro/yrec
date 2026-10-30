@@ -89,6 +89,7 @@ control	fopale01	string	opal01_eos_table_file	live		OPAL 2001 EOS table (use_opa
 control	fcondopacp	string	conductive_opacity_table_file	live		Potekhin conductive opacity table	conductive_table_path	ctrl	run	
 control	fopale06	string	opal06_eos_table_file	live		OPAL 2006 EOS table (use_opal2006_eos)	opal2006_eos_table_path	buffer	read	
 -	-	string	opal_eos_table_path	derived		The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls)	opal_eos_table_path	ctrl	run	
+-	-	integer	opal_eos_vintage	derived		The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls)	opal_eos_vintage	ctrl	run	
 control	falex06	string	alex06_opacity_table_file	live		Ferguson/Alexander 2006 low-T opacity tables	alex06_table_path	ctrl	run	
 control	lalex06	logical	use_alex06_tables	live		Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file)	use_alex06_tables	ctrl	run	
 control	end_dcen	real(50)	central_deuterium_stop	live		Per run: stop when the central deuterium mass fraction falls below this (0: off)	central_deuterium_stop	job	run	
@@ -207,7 +208,7 @@ physics	lenvg	logical	envelope_generation_flag	live		Inert: read and stored, use
 physics	lnulos1	logical	use_itoh_neutrino_loss	live		Neutrino losses from Itoh et al. (1996)	use_itoh_neutrino_loss	ctrl	run	
 physics	lthoul	logical	use_thoul_diffusion	live		Thoul et al. diffusion coefficients	use_thoul_diffusion	ctrl	run	
 physics	lthoulfit	logical	use_thoul_fit	live		Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended)	use_thoul_fit	ctrl	run	
-physics	lopale	logical	use_opal95_eos	live		Use the OPAL 1995 EOS (a newer OPAL EOS selected wins)	use_opal95_eos	ctrl	run	
+physics	lopale	logical	use_opal95_eos	live		Use the OPAL 1995 EOS (a newer OPAL EOS selected wins)	use_opal95_eos	buffer	read	
 physics	lmhd	logical	use_mhd_eos	live		Use the MHD EOS	use_mhd_eos	ctrl	run	
 physics	lcore	logical	extend_core_inward	live		Add shells inward of the starting model's innermost shell	extend_core_inward	ctrl	run	
 physics	lsemic	logical	use_semiconvection	live		Semiconvection treatment (conflicts with core overshoot)	use_semiconvection	ctrl	run	
@@ -258,9 +259,9 @@ physics	compacc	real(15)	accreted_composition	live		Mass fractions of the accret
 physics	creim	real	reimers_scaling_factor	live	mesa: Reimers_scaling_factor	Reimers mass-loss efficiency eta	reimers_scaling_factor	ctrl	run	
 physics	lreimer	logical	use_reimers_wind	live		Enable Reimers red-giant mass loss	use_reimers_wind	ctrl	run	
 physics	lmdot	logical	use_mass_change	live	mesa: mass_change on/off	Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted	use_mass_accretion	job	run	
-physics	lopale01	logical	use_opal2001_eos	live		Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins)	use_opal2001_eos	ctrl	run	
+physics	lopale01	logical	use_opal2001_eos	live		Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins)	use_opal2001_eos	buffer	read	
 physics	lcondopacp	logical	use_conductive_opacity	live		Use the conductive opacity tables (conductive_opacity_table_file)	use_conductive_opacity	ctrl	run	
-physics	lopale06	logical	use_opal2006_eos	live		Use the OPAL 2006 EOS	use_opal2006_eos	ctrl	run	
+physics	lopale06	logical	use_opal2006_eos	live		Use the OPAL 2006 EOS	use_opal2006_eos	buffer	read	
 physics	lnumderiv	logical	use_numerical_derivatives	live		Use numerical derivatives of the EOS instead of analytic ones (much slower)	use_numerical_derivatives	ctrl	run	
 physics	alatm_feh	real	allard_target_feh	live		Allard atmosphere tables: [Fe/H]	allard_target_feh	ctrl	run	
 physics	alatm_alpha	real	allard_target_alpha	live		Allard atmosphere tables: [alpha/Fe]	allard_target_alpha	ctrl	run	

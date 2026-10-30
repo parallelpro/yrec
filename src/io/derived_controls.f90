@@ -15,6 +15,8 @@ module derived_controls
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: run_log_unit, report_warning, report_note
       use legacy_controls
+      use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
+           opal_vintage_2006
       use star_info_lib, only: star_info
       implicit none
       private
@@ -61,20 +63,39 @@ subroutine derive_rate_scales
 end subroutine derive_rate_scales
 
 ! ---------------------------------------------------------------
-! The newest OPAL EOS and Alexander opacities requested win; eos_init
-! opens opal_eos_table_path.
+! One OPAL EOS vintage and one family of molecular opacity tables. The
+! newest OPAL EOS requested wins: opal_eos_vintage and its table path,
+! opal_eos_table_path, which the eos settings builder copies. Of the
+! molecular tables, Alexander 2006 wins over Alexander 1994/95, which wins
+! over Kurucz 1990: the losers are switched off (kap reads one family, and
+! rebuilds the Alexander 1994/95 surface table whenever that switch is on).
+! Selecting more than one of either is a warning.
 subroutine select_eos_and_opacity_tables
+      character(len=message_length) :: line
+
+      if (count([use_opal95_eos, use_opal2001_eos, use_opal2006_eos]) > 1) then
+         write(line,'(a,3l2,a)') 'use_opal95_eos, use_opal2001_eos, use_opal2006_eos =', &
+              use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
+              ': more than one OPAL EOS; the newest is used'
+         call report_warning(line)
+      end if
+      opal_eos_vintage = opal_vintage_none
       opal_eos_table_path = ""
       if (use_opal2006_eos) then
-         use_opal2001_eos = .false.
-         use_opal95_eos = .false.
+         opal_eos_vintage = opal_vintage_2006
          opal_eos_table_path = opal2006_eos_table_path
-      end if
-      if (use_opal2001_eos) then
+      else if (use_opal2001_eos) then
+         opal_eos_vintage = opal_vintage_2001
          opal_eos_table_path = opal2001_eos_table_path
-         use_opal95_eos = .false.
       else if (use_opal95_eos) then
+         opal_eos_vintage = opal_vintage_1995
          opal_eos_table_path = opal95_eos_table_path
+      end if
+      if (count([use_alex06_tables, use_alex95_tables, use_kurucz90_tables]) > 1) then
+         write(line,'(a,3l2,a)') 'use_alex06_tables, use_alex95_tables, use_kurucz90_tables =', &
+              use_alex06_tables, use_alex95_tables, use_kurucz90_tables, &
+              ': more than one molecular opacity family; the first is used'
+         call report_warning(line)
       end if
       if (use_alex06_tables) then
          use_alex95_tables = .false.

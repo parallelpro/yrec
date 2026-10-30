@@ -75,9 +75,7 @@ program test_kap
 ! calls eos_init unconditionally)
       star%ctrl%use_mhd_eos = .false.
       star%ctrl%use_scv_eos = .false.
-      star%ctrl%use_opal95_eos = .false.
-      star%ctrl%use_opal2001_eos = .false.
-      star%ctrl%use_opal2006_eos = .false.
+      star%ctrl%opal_eos_vintage = 0
       star%job%atm_choice = 0
 
       star%envelope_hydrogen_fraction = 0.70d0
