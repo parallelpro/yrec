@@ -50,6 +50,10 @@ subroutine write_neutrino_flux_table(s)
       type(star_info), intent(inout) :: s
 
       double precision :: shell_center_mass(json), shell_mass(json)
+! each shell's X(Be7), and its contributions to the fluxes, then their
+! normalized profile (10^10 cm^-2 s^-1, then a fraction of the total);
+! zero where the table computes none
+      double precision, allocatable :: be7_mass_fraction(:), flux_zone(:,:)
       double precision :: shell_log_density, shell_log_temperature
 ! burn: the shell's energy record; only its solar-neutrino fluxes and
 ! Be7 abundance are used here.
@@ -64,11 +68,11 @@ subroutine write_neutrino_flux_table(s)
       call shell_masses_from_log_mass(s%log_mass, s%log_total_mass, &
            s%nz, shell_center_mass, shell_mass)
 
+      allocate(be7_mass_fraction(s%nz), flux_zone(n_nu_fluxes,s%nz))
+      be7_mass_fraction = 0.0d0
+      flux_zone = 0.0d0
       do j = 1,n_nu_fluxes
          s%neutrino_flux_total(j) = 0.0d0
-         do i = 1,s%nz
-            s%neutrino_flux_zone(j,i) = 0.0d0
-         end do
       end do
 
 ! The production in each shell, from compute_zone_energy.
@@ -82,15 +86,15 @@ subroutine write_neutrino_flux_table(s)
          call compute_zone_energy(s, shell_log_density, &
               shell_log_temperature, s%xa(:,i), i, burn)
 ! The Be7 mass fraction (zero where X <= 1e-6, where none is computed).
-         s%be7_mass_fraction_zone(i) = burn%be7_mass_fraction
+         be7_mass_fraction(i) = burn%be7_mass_fraction
 ! The shell's fluxes: the per-gram fluxes times the shell mass (g).
          do j = 1,n_nu_fluxes
-            s%neutrino_flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
+            flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
             s%neutrino_flux_total(j) = s%neutrino_flux_total(j) &
-                 + s%neutrino_flux_zone(j,i)
+                 + flux_zone(j,i)
          end do
          write(run_log_unit,911)i,shell_mass(i), &
-              (s%neutrino_flux_zone(j,i),j=1,n_nu_fluxes)
+              (flux_zone(j,i),j=1,n_nu_fluxes)
  911     format(I5,1P11E10.3)
       end do
 
@@ -102,7 +106,7 @@ subroutine write_neutrino_flux_table(s)
       do j = 1,n_nu_fluxes
          if (s%neutrino_flux_total(j) .ne. 0.0d0) then
             do i = 1,s%nz
-               s%neutrino_flux_zone(j,i) = s%neutrino_flux_zone(j,i) &
+               flux_zone(j,i) = flux_zone(j,i) &
                     /s%neutrino_flux_total(j)
             end do
          end if
@@ -121,15 +125,15 @@ subroutine write_neutrino_flux_table(s)
 ! The fluxes in the order Bahcall & Pinsonneault use.
          write(run_log_unit,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &
-              s%be7_mass_fraction_zone(i), &
-              s%neutrino_flux_zone(i_nu_pp,i), &
-              s%neutrino_flux_zone(i_nu_b8,i), &
-              s%neutrino_flux_zone(i_nu_n13,i), &
-              s%neutrino_flux_zone(i_nu_o15,i), &
-              s%neutrino_flux_zone(i_nu_f17,i), &
-              s%neutrino_flux_zone(i_nu_be7,i), &
-              s%neutrino_flux_zone(i_nu_pep,i), &
-              s%neutrino_flux_zone(i_nu_hep,i)
+              be7_mass_fraction(i), &
+              flux_zone(i_nu_pp,i), &
+              flux_zone(i_nu_b8,i), &
+              flux_zone(i_nu_n13,i), &
+              flux_zone(i_nu_o15,i), &
+              flux_zone(i_nu_f17,i), &
+              flux_zone(i_nu_be7,i), &
+              flux_zone(i_nu_pep,i), &
+              flux_zone(i_nu_hep,i)
  145     format(F9.5,F7.3,F6.3,1P10E10.3)
       end do
       return

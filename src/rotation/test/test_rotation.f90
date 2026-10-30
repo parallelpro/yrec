@@ -451,7 +451,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       zmin = 2
       zmax = count(.not. convective(1:n))
       circ_scr%velocity_prev = 0.0d0
-      star%zahn_coupling = 0.0d0
+      circ_scr%zahn_coupling = 0.0d0
       call rotation_stability_setup(stab, sub_physics, &
            log_rho, hg, lum, log_p, log_r, m, log_t, zmin, zmax, n)
       radius = stab%radius
@@ -479,9 +479,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
               v_total, lum_total, log_p, star%mechanism_velocity)
       end do
       if (zahn) call zahn_coupling_factor(stab, log_rho, radius, v_total, zmin, zmax, w, &
-           star%zahn_coupling)
+           circ_scr%zahn_coupling)
       call diffusion_velocity_scales(radius, n, radius_mid, d_am, d_mix, &
-           star%mechanism_velocity, star%zahn_coupling)
+           star%mechanism_velocity, circ_scr%zahn_coupling)
       write(*,'(a)') "## "//label
       write(*,'(a,i2,a,l2,a,i3)') "quadrupole ierr", ierr, "  transport active", active, &
            "  zone_max", zmax
@@ -494,7 +494,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       write(*,'(a)') "zone  total-velocity D_omega D_mix vfc quadrupole"
       do s = 1, size(shown)
          i = shown(s)
-         write(*,'(i4,5(1pe24.15))') i, v_total(i), d_am(i), d_mix(i), star%zahn_coupling(i), &
+         write(*,'(i4,5(1pe24.15))') i, v_total(i), d_am(i), d_mix(i), circ_scr%zahn_coupling(i), &
               stab%quadrupole_moment(i)
       end do
       if (chain) then

@@ -162,9 +162,9 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
       call set_up_interfaces(s, sub_model, sub_physics, stab, zone_min, zone_max, ierr)
       if (ierr /= 0) return
 ! The velocities of the unperturbed model, the first iteration's. The
-! Zahn coupling factor star%zahn_coupling is zero unless compute_velocities sets
-! it.
-      s%zahn_coupling(1:s%nz) = 0.0d0
+! Zahn coupling factor circ_scr%zahn_coupling is zero unless
+! compute_velocities sets it.
+      circ_scr%zahn_coupling(1:s%nz) = 0.0d0
       iteration = 1
       call compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
            zone_min, zone_max, iteration, total_velocity, transport_active)
@@ -197,7 +197,7 @@ subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, ci
 ! The diffusion coefficients at every interface from the velocities:
 ! D_omega (legacy COD) and D_mix; on the star, they are the profile
 ! columns D_omega and D_mix_rot (the step's last sub-step).
-         call set_diffusion_coefficients(s, stab, am_diffusion_coeff, mixing_diffusion_coeff)
+         call set_diffusion_coefficients(s, stab, circ_scr, am_diffusion_coeff, mixing_diffusion_coeff)
          call transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid, wind, &
               zone_min, zone_max, iteration, sub_timestep, total_velocity, &
               am_diffusion_coeff, mixing_diffusion_coeff, omega_start, &
@@ -316,7 +316,7 @@ end subroutine set_up_interfaces
 ! (total_velocity, U; each mechanism's on the star) and whether any
 ! transport acts (transport_active), from the surface luminosity (erg/s)
 ! and stab. Under use_zahn_coupling_factor (legacy LVFC), also the Zahn
-! (1992) coupling factor star%zahn_coupling, by which diffusion_velocity_scales
+! (1992) coupling factor circ_scr%zahn_coupling, by which diffusion_velocity_scales
 ! scales D_mix (gated on LVFC as in the F77 seculr.f, not on LDIFAD).
 subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
      zone_min, zone_max, iteration, total_velocity, transport_active)
@@ -336,7 +336,7 @@ subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
            sub_model%log_pressure, s%mechanism_velocity)
       if (rotation_settings%use_zahn_coupling_factor) &
            call zahn_coupling_factor(stab, sub_model%log_density, stab%radius, &
-                total_velocity, zone_min, zone_max, s%omega_substep, s%zahn_coupling)
+                total_velocity, zone_min, zone_max, s%omega_substep, circ_scr%zahn_coupling)
 end subroutine compute_velocities
 
 ! ---------------------------------------------------------------
@@ -433,20 +433,21 @@ end subroutine spin_down_uncoupled_surface
 
 ! ---------------------------------------------------------------
 ! The diffusion coefficients at every interface from the velocities
-! (diffusion_velocity_scales): D_omega (am_diffusion_coeff, legacy COD)
-! and D_mix (mixing_diffusion_coeff), copied to the star for the
-! profile.
-subroutine set_diffusion_coefficients(s, stab, am_diffusion_coeff, mixing_diffusion_coeff)
+! (diffusion_velocity_scales, with circ_scr's Zahn coupling factor):
+! D_omega (am_diffusion_coeff, legacy COD) and D_mix
+! (mixing_diffusion_coeff), copied to the star for the profile.
+subroutine set_diffusion_coefficients(s, stab, circ_scr, am_diffusion_coeff, mixing_diffusion_coeff)
       use circulation, only: diffusion_velocity_scales
       type(star_info), intent(inout) :: s
       type(stability_state), intent(in) :: stab
+      type(circulation_velocity_state), intent(in) :: circ_scr
       double precision, intent(out) :: am_diffusion_coeff(json)
       double precision, intent(inout) :: mixing_diffusion_coeff(json)
 ! the interface radii, which diffusion_velocity_scales also returns
       double precision :: radius_mid(json)
       integer :: i
       call diffusion_velocity_scales(stab%radius, s%nz, radius_mid, &
-           am_diffusion_coeff, mixing_diffusion_coeff, s%mechanism_velocity, s%zahn_coupling)
+           am_diffusion_coeff, mixing_diffusion_coeff, s%mechanism_velocity, circ_scr%zahn_coupling)
       do i = 1, s%nz
          s%am_diffusion_coeff(i) = am_diffusion_coeff(i)
          s%mixing_diffusion_coeff(i) = mixing_diffusion_coeff(i)

@@ -2,9 +2,9 @@
 ! neutrino_flux_layout
 !----------------------------------------------------------------------
 ! The slots of the solar-neutrino flux vectors: net/'s
-! nuclear_energy_result%neutrino_flux and the model's
-! neutrino_flux_total(n_nu_fluxes) and neutrino_flux_zone(n_nu_fluxes,json)
-! (the SNU tables). Slots 1-8 are the real neutrino sources; slots 9-10
+! nuclear_energy_result%neutrino_flux, the model's
+! neutrino_flux_total(n_nu_fluxes) and the neutrino table's per-shell
+! fluxes (the SNU tables). Slots 1-8 are the real neutrino sources; slots 9-10
 ! hold the He3+He3 and He3+He4 reaction rates in the same flux units, as
 ! if each reaction emitted one neutrino ("fictional" fluxes, tabulated
 ! with the others by neutrino_flux_table). Constants only, shared like

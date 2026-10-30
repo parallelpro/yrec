@@ -55,8 +55,7 @@ contains
 !     logP, logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
 !   star writes: atm_point, convective_turnover_timescale,
-!     envelope_cz_bottom_index_start, envelope_specific_entropy,
-!     job%use_mass_accretion
+!     envelope_cz_bottom_index_start, job%use_mass_accretion
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: old_log_envelope_mass_fraction
@@ -79,6 +78,10 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       double precision :: local_radius_cm, delta_accretion_energy, &
            thermal_energy_accreted, local_entropy, thermal_energy_per_gram
       double precision :: mean_thermal_energy
+! the mass-weighted mean specific entropy of the convective envelope
+! (ideal gas, up to a constant; erg/(g K)), zeroed after it is computed
+! (below), so the accretion shifts it drives are zero
+      double precision :: envelope_specific_entropy
       double precision :: log10_gravity
       logical :: allard_surface_failed
       double precision :: log10_temperature_local, log10_pressure_local, &
@@ -101,6 +104,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       log10_density_local = 0.0d0
       beta_local = 0.0d0
       mass_loss_rate_msun_yr = s%ctrl%mass_accretion_rate
+      envelope_specific_entropy = 0.0d0
       if(.not.s%job%use_mass_accretion) return
       nz = s%nz
       jenv = s%envelope_cz_bottom_index
@@ -115,12 +119,12 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
          if (ierr /= 0) return
 ! The envelope entropy is zeroed after all, so apply_mass_change shifts
 ! R, P and T by zero: the entropy correction is switched off.
-         s%envelope_specific_entropy = 0.0d0
+         envelope_specific_entropy = 0.0d0
       endif
       call apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
            accretion_specific_energy, mean_thermal_energy, &
-           cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
-           disk_exhausted, ierr)
+           cz_total_mass_below_fitting, envelope_specific_entropy, &
+           old_log_envelope_mass_fraction, disk_exhausted, ierr)
 ! The disk-locking age was reached this step: the mass change stops for
 ! the rest of the run.
       if(disk_exhausted) s%job%use_mass_accretion = .false.
@@ -199,7 +203,7 @@ subroutine average_envelope_energies()
 ! down), of the thermal energy per gram and of the specific entropy.
       sum_thermal_energy = 0.0d0
       thermal_energy_accreted_bar = 0.0d0
-      s%envelope_specific_entropy = 0.0d0
+      envelope_specific_entropy = 0.0d0
       do zone_idx = jenv, nz
          local_temperature = exp10(s%logT(zone_idx))
          local_pressure = exp10(s%logP(zone_idx))
@@ -221,7 +225,7 @@ subroutine average_envelope_energies()
               (local_density*local_temperature)
          local_entropy = mean_molecular_weight_local* &
               (1.5d0*log(local_temperature)-log(local_density))
-         s%envelope_specific_entropy = s%envelope_specific_entropy+ &
+         envelope_specific_entropy = envelope_specific_entropy+ &
               local_entropy*s%dm(zone_idx)
 ! The thermal energy per gram of the shell, taken as P_gas/rho =
 ! kT/(mu m_u) (2/3 of the monatomic ideal-gas value 3/2 P_gas/rho).
@@ -235,7 +239,7 @@ subroutine average_envelope_energies()
       mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
       accretion_specific_energy = thermal_energy_accreted_bar/ &
            cz_total_mass_below_fitting
-      s%envelope_specific_entropy = s%envelope_specific_entropy/ &
+      envelope_specific_entropy = envelope_specific_entropy/ &
            cz_total_mass_below_fitting
 end subroutine average_envelope_energies
 
@@ -325,8 +329,9 @@ end subroutine change_mass
 ! them and stores the results. Inputs: total_radius_cm (R), the rate
 ! mass_loss_rate_msun_yr (Msun/yr, positive for accretion),
 ! accretion_specific_energy and mean_thermal_energy (the energies per
-! gram of the accreted matter and of the convection zone), and
-! cz_total_mass_below_fitting (the convective envelope's mass).
+! gram of the accreted matter and of the convection zone),
+! cz_total_mass_below_fitting (the convective envelope's mass) and
+! envelope_specific_entropy (its mean specific entropy, zero at present).
 ! Outputs: old_log_envelope_mass_fraction = log10(m(nz)/M) before the
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
@@ -334,22 +339,22 @@ end subroutine change_mass
 !   star reads: ctrl%accreted_composition, ctrl%disk_locking_active,
 !     ctrl%disk_locking_age_gyr, ctrl%fczdmdt, ctrl%ftotdmdt,
 !     ctrl%rotation_active, ctrl%walpcz, disk_gate_age_gyr,
-!     envelope_cz_bottom_index, envelope_specific_entropy, logRho, nz,
-!     omega, solar_mass_cgs
+!     envelope_cz_bottom_index, logRho, nz, omega, solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
 !     delta_log_temperature, dm, dt, j_rot, log_fit_point_mass_fraction,
 !     log_mass, log_total_mass, logP, logR, logT, m,
 !     recompute_envelope_triangle, star_mass, xa
 subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
      accretion_specific_energy, mean_thermal_energy, &
-     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
-     disk_exhausted, ierr)
+     cz_total_mass_below_fitting, envelope_specific_entropy, &
+     old_log_envelope_mass_fraction, disk_exhausted, ierr)
       type(star_info), intent(inout) :: s
       double precision, intent(in) :: total_radius_cm
       double precision, intent(inout) :: mass_loss_rate_msun_yr
       double precision, intent(in) :: accretion_specific_energy, &
            mean_thermal_energy
       double precision, intent(in) :: cz_total_mass_below_fitting
+      double precision, intent(in) :: envelope_specific_entropy
       double precision, intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
@@ -491,7 +496,7 @@ subroutine adjust_cz_for_accreted_entropy()
          mean_molecular_weight_local = local_pressure*local_beta/ &
               (local_density*local_temperature)
          delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
-              s%envelope_specific_entropy/mean_molecular_weight_local
+              envelope_specific_entropy/mean_molecular_weight_local
 ! The mass term d ln M = ln((M_cz + dM)/M_cz) is deliberately left out.
          delta_ln_mass = 0.0d0
          delta_log_radius = (cc23*delta_log_specific_entropy- &

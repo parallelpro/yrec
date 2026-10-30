@@ -17,7 +17,8 @@
 !   transport_grid_state    the equally spaced grid of the current
 !                           transport region (equal_spaced_grid; chi_grid);
 !   circulation_velocity_state  the mechanisms' velocities at the
-!                           previous iteration (circ_scr).
+!                           previous iteration and the Zahn coupling
+!                           factor (circ_scr).
 ! These are working arrays, not properties of the star (what the output
 ! or other domains read, and what outlives a step, lives on star%).
 ! evolve_angular_momentum allocates one of each for the step and passes
@@ -167,6 +168,10 @@ module rotation_scratch_lib
 ! each mechanism's velocity at the previous iteration (the current ones
 ! are the star's mechanism_velocity, which the output reads)
             double precision :: velocity_prev(n_transport_mechanisms, json)
+! the Zahn (1992) coupling factor between angular-momentum transport and
+! mixing, <= 1, at each interface (zahn_coupling_factor; zero unless
+! use_zahn_coupling_factor), which scales D_mix
+            double precision :: zahn_coupling(json)
       end type circulation_velocity_state
 
 ! ---------------------------------------------------------------

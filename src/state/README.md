@@ -43,9 +43,9 @@ The rest of this README describes the members of `star_info`: what each one is, 
 | [Newton](#310-newton) | 8 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve; `log_pressure_delta` and `log_temperature_delta`, the changes over the step, until the next step's solve starts. |
 | [Diagnostics written during the solve](#311-diagnostics-written-during-the-solve) | 22 | Per-zone physics stored for output by `compute_henyey_coefficients` at every shell on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). Rule 5 of the six (diagnostics written once, after convergence) is the planned replacement. | After convergence they hold the last iteration's values, the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
 | [Diagnostics written after convergence](#312-diagnostics-written-after-convergence) | 34 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
-| [Scratch](#313-scratch) | 4 | Values stored in the star but used only inside the module (often the procedure) that writes them. | Only inside that module. |
+| [Scratch](#313-scratch) | 0 | Values stored in the star but used only inside the module (often the procedure) that writes them. | Only inside that module. |
 
-242 members in all, 6 of them records (the two input bundles among them).
+238 members in all, 6 of them records (the two input bundles among them).
 <!-- END GENERATED classes -->
 
 ## 3. The members
@@ -130,7 +130,7 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `nz` | number of points of the interior model, out to the fitting point | - | `rezoning`, `starting_model`, `step_driver`, `model_files` (9 procedures) | 23 modules (core/ 16, io/ 4, rotation/ 3) | In .mod |
+| `nz` | number of points of the interior model, out to the fitting point | - | `neutrino_flux_output`, `rezoning`, `starting_model`, `step_driver`, `model_files` (10 procedures) | 23 modules (core/ 16, io/ 4, rotation/ 3) | In .mod |
 | `model_number` | counter of converged models in the run; the step ages the model only when it is &gt;= 0 | - | `run_driver` (begin_kind_card); `step_driver` (evolve_step); `model_files` (read_mod_model, read_model2, read_yrec7) | 9 modules (io/ 6, core/ 3) | In .mod; reset per card from `ctrl%set_initial_model_number` |
 | `age_gyr` | age of the model | Gyr | `step_driver` (advance_composition_and_age); `model_files` (read_mod_model, read_model2, read_yrec7) | 9 modules (io/ 6, core/ 3) | In .mod |
 | `star_mass` | total mass M | Msun | `starting_model` (rescale_and_refit_envelope); `mass_change` (update_masses); `model_files` (read_mod_model, read_model2, read_yrec7) | 10 modules (core/ 5, io/ 3, rotation/ 2) | In .mod; MESA's history name, without the _msun suffix |
@@ -362,10 +362,6 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `be7_mass_fraction_zone(json)` | Be7 mass fraction of each shell in the neutrino table | - | `neutrino_flux_output` (write_neutrino_flux_table) | `neutrino_flux_output` | Used only inside `write_neutrino_flux_table` |
-| `neutrino_flux_zone(n_nu_fluxes,json)` | each shell's contribution to the neutrino fluxes, then its normalized profile | 10^10/(cm^2 s) | `neutrino_flux_output` (write_neutrino_flux_table) | `neutrino_flux_output` | Used only inside `write_neutrino_flux_table` |
-| `zahn_coupling(json)` | Zahn (1992) coupling factor between angular-momentum transport and mixing, &lt;= 1 | - | `secular_transport` (apply_secular_transport, compute_velocities) | `secular_transport` | Rotation transport only |
-| `envelope_specific_entropy` | mass-weighted mean specific entropy of the convective envelope (ideal gas, up to a constant) | erg/(g K) | `mass_change` (average_envelope_energies, change_mass) | `mass_change` | `change_mass` zeroes it right after computing it, so the accretion shifts it drives are zero |
 <!-- END GENERATED members -->
 
 ## 4. Members removed
@@ -386,6 +382,9 @@ Removed in 2026-10, with what became of each. `tools/gen_star_docs.py --check` f
 | `dlnrho_dlnp` and the first d ln ρ/d ln T member | reached the next coefficient pass only as an EOS starting value every EOS family overwrites (`docs/bug_sweep.md` O23) | locals of `compute_henyey_coefficients`; the member now named `dlnrho_dlnt` is the former `qdt`, `compute_shell_physics`'s value for rotation |
 | `solar_wind_mass_loss_rate_msun_yr`, `wind_reference_omega`, `wind_max_omega`, `use_rotation_scaled_solar_wind` | read only by the rotation-scaled solar wind, commented out on 2026-10-12 | deleted; `star_info_lib.f90`'s Sources section says how to revive them |
 | `stotal` | a copy of `log_total_mass`, kept equal by the same writers | merged into `log_total_mass` |
+| `be7_mass_fraction_zone`, `neutrino_flux_zone` | used by one procedure, the neutrino table's | locals of `write_neutrino_flux_table` |
+| `zahn_coupling` | rotation's working value within a sub-step | a field of rotation's `circulation_velocity_state` (`circ_scr`) |
+| `envelope_specific_entropy` | passed from `change_mass` to `apply_mass_change` | a local of `change_mass`, passed as an argument |
 
 The generator keeps the count of never-referenced members at zero.
 

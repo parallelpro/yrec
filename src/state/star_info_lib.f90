@@ -1008,20 +1008,6 @@ module star_info_lib
 ! procedure) that writes them.
 ! Valid: only inside that module.
 
-! Be7 mass fraction of each shell in the neutrino table [-];
-! neutrino_flux_output. Used only inside write_neutrino_flux_table.
-            double precision :: be7_mass_fraction_zone(json)
-! each shell's contribution to the neutrino fluxes, then its normalized
-! profile [10^10/(cm^2 s)]; neutrino_flux_output. Used only inside
-! write_neutrino_flux_table.
-            double precision :: neutrino_flux_zone(n_nu_fluxes,json)
-! Zahn (1992) coupling factor between angular-momentum transport and
-! mixing, <= 1 [-]; secular_transport. Rotation transport only.
-            double precision :: zahn_coupling(json)
-! mass-weighted mean specific entropy of the convective envelope (ideal
-! gas, up to a constant) [erg/(g K)]; mass_change. change_mass zeroes it
-! right after computing it, so the accretion shifts it drives are zero.
-            double precision :: envelope_specific_entropy
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds
