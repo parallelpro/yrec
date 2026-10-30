@@ -20,19 +20,12 @@ module controls_check
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
       use controls_buffer, only: max_runs
+      use rotation_configuration, only: max_transport_iterations
       implicit none
       private
       public :: check_controls, warn_inert_controls, warn_inconsistent_controls
 
-! The rotation transport's iteration history holds 16 iterations
-! (rotation/seculr/transport_checks' max_recorded_iterations;
-! docs/bug_sweep.md O14).
-      integer, parameter :: max_transport_iterations = 16
-! The Bulirsch-Stoer integrator's limits are numerics_lib's
-! bsstep_max_stages (11, its stage sequence) and bsstep_max_extrap_order
-! (7, its extrapolation tableau's columns); order 1 would index the stage
-! sequence at 0, and an order above the stage count leaves its step-size
-! retry loop without an end.
+! the longest message line
       integer, parameter :: message_length = 512
 
 contains
@@ -51,10 +44,16 @@ end subroutine warn
 !     PARMIN);
 !   - the envelope triangle's size is not positive (with zero area its
 !     walk never contains the model, surface_boundary);
-!   - a rotating run's max_diffusion_iters is outside 1 to 16;
-!   - the Bulirsch-Stoer controls are outside the integrator's limits
-!     (1 <= max_stage_index <= 11, 2 <= extrap_order <= 7, extrap_order
-!     <= max_stage_index) or the tolerance is not positive;
+!   - a rotating run's max_diffusion_iters is outside 1 to
+!     max_transport_iterations (rotation_configuration, 16: the transport
+!     check's iteration history; docs/bug_sweep.md O14);
+!   - the Bulirsch-Stoer controls are outside the integrator's limits,
+!     numerics_lib's bsstep_max_stages (11, its stage sequence) and
+!     bsstep_max_extrap_order (7, its extrapolation tableau's columns):
+!     1 <= max_stage_index <= 11, 2 <= extrap_order <= 7 (order 1 would
+!     index the stage sequence at 0) and extrap_order <= max_stage_index
+!     (above, its step-size retry loop has no end); or the tolerance is
+!     not positive;
 !   - num_runs is outside 0 to max_runs (the run cards' arrays).
 !   star reads: ctrl%core_overshoot_active,
 !     ctrl%envelope_overshoot_active, ctrl%extrap_order, ctrl%lovstm,
@@ -88,8 +87,8 @@ subroutine check_controls(s, ierr)
       end if
       if (s%ctrl%rotation_active .and. (s%ctrl%max_diffusion_iters < 1 .or. &
            s%ctrl%max_diffusion_iters > max_transport_iterations)) then
-         write(line,'(a,i0)') 'max_diffusion_iters (ITDIF2) must be 1 to 16, not ', &
-              s%ctrl%max_diffusion_iters
+         write(line,'(a,i0,a,i0)') 'max_diffusion_iters (ITDIF2) must be 1 to ', &
+              max_transport_iterations, ', not ', s%ctrl%max_diffusion_iters
          call report_error(line)
          ierr = 1
          return
@@ -98,10 +97,11 @@ subroutine check_controls(s, ierr)
            s%ctrl%max_stage_index > bsstep_max_stages .or. s%ctrl%extrap_order < 2 &
            .or. s%ctrl%extrap_order > bsstep_max_extrap_order &
            .or. s%ctrl%extrap_order > s%ctrl%max_stage_index) then
-         write(line,'(a,1pe11.3,a,i0,a,i0)') 'the Bulirsch-Stoer controls need' &
-              //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to 11 and' &
-              //' extrap_order (NUSE) 2 to 7 and at most IMAX, not', &
-              s%ctrl%tolerance_fraction, ', ', s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
+         write(line,'(a,i0,a,i0,a,1pe11.3,a,i0,a,i0)') 'the Bulirsch-Stoer controls need' &
+              //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to ', &
+              bsstep_max_stages, ' and extrap_order (NUSE) 2 to ', bsstep_max_extrap_order, &
+              ' and at most IMAX, not', s%ctrl%tolerance_fraction, ', ', &
+              s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
          call report_error(line)
          ierr = 1
          return
@@ -144,9 +144,8 @@ end subroutine warn_inert_controls
 ! years). Each rule is checked against the gating code named above it.
 !   star reads: ctrl%betac, ctrl%calibrate_solar_model,
 !     ctrl%calibrate_star_flag, ctrl%core_overshoot_active,
-!     ctrl%diffuse_lithium, ctrl%envelope_overshoot_active, ctrl%lovmax,
-!     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope,
-!     ctrl%use_new_diffusion_routines
+!     ctrl%envelope_overshoot_active, ctrl%lovmax,
+!     ctrl%overshoot_alpha_core, ctrl%overshoot_alpha_envelope
 !   star writes: none
 subroutine warn_inconsistent_controls(s)
       type(star_info), intent(in) :: s
@@ -178,15 +177,6 @@ subroutine warn_inconsistent_controls(s)
            s%ctrl%betac <= 0.0d0) &
            call warn('overshoot_max_extent_flag is on with ' &
            //'overshoot_beta_core = 0 -- core overshoot is capped to zero')
-
-! light-element settling lives only in the microdiff pipeline
-! (element_diffusion/; core/step/composition_step.f90's settle hands it
-! to diffuse_elements, which takes that path only with
-! use_new_diffusion_routines)
-      if (s%ctrl%diffuse_lithium .and. &
-           .not. s%ctrl%use_new_diffusion_routines) &
-           call warn('diffuse_lithium is on but use_new_diffusion_routines' &
-           //' is off -- light-element settling is NOT computed')
 
 ! the two calibration modes expand the run list with incompatible card
 ! protocols (core/run/calibration.f90: solar triples against star pairs)

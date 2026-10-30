@@ -4,9 +4,9 @@
 ! the &control and &physics groups under the new names (they hide
 ! legacy_controls' groups of the same names in read_inlist). See
 ! defaults/*.defaults for docs.
-      real(dp) :: mixing_length_alpha(50)
+      real(dp) :: mixing_length_alpha(max_runs)
       character(len=256) :: run_description(2)
-      real(dp) :: max_age(50)
+      real(dp) :: max_age(max_runs)
       character(len=256) :: laol_opacity_table_file
       character(len=256) :: pure_z_opacity_table_file
       character(len=256) :: laol_opacity_table2_file
@@ -40,15 +40,15 @@
       character(len=256) :: opal95_eos_table_file
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
-      integer :: run_kind(50)
+      integer :: run_kind(max_runs)
       integer :: envelope_print_points
-      integer :: max_model_number(50)
+      integer :: max_model_number(max_runs)
       character(len=256) :: alex95_opacity_table_files(7)
       character(len=256) :: alex95_table_z_list(7)
-      real(dp) :: rescale_mass(50)
-      real(dp) :: rescale_x(50)
-      real(dp) :: rescale_z(50)
-      real(dp) :: rescale_core_mass(50)
+      real(dp) :: rescale_mass(max_runs)
+      real(dp) :: rescale_x(max_runs)
+      real(dp) :: rescale_z(max_runs)
+      real(dp) :: rescale_core_mass(max_runs)
       real(dp) :: rescale_core_z(max_runs)
       real(dp) :: rescale_z_mix1(max_runs)
       real(dp) :: rescale_z_mix2(max_runs)

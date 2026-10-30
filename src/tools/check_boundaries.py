@@ -447,7 +447,7 @@ def check_controls_free(src_root):
 CONTROLS_READ_FILES = {
     "io/controls_reader.f90", "io/legacy_controls.f90", "io/run_files.f90",
     "io/derived_controls.f90", "io/run_cards.f90", "io/controls_buffer.f90",
-    "io/controls_sync.f90", "state/controls_sync.f90", "setup/user_inputs.f90",
+    "io/controls_sync.f90", "setup/user_inputs.f90",
 }
 
 
@@ -467,8 +467,7 @@ def check_control_homes(src_root):
         written |= {w.split("%", 1)[1] for w in writes if w.startswith(("ctrl%", "job%"))}
     referenced = set(re.findall(r"\b(?:s|star)%(?:ctrl|job)%(\w+)", code))
     read_files = [src_root / f for f in sorted(CONTROLS_READ_FILES)
-                  if f not in ("io/controls_buffer.f90", "io/controls_sync.f90",
-                               "state/controls_sync.f90")
+                  if f not in ("io/controls_buffer.f90", "io/controls_sync.f90")
                   and (src_root / f).exists()]
     # a namelist group's list of names is not a use
     read_code = "\n".join(l for p in read_files

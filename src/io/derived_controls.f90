@@ -21,13 +21,6 @@ module derived_controls
       public :: derive_controls
 
       integer, parameter :: message_length = 512
-! The light-element cross sections (keV b) the rate scales are relative
-! to: Li6 5500 (Fowler et al. 1967), Li7 52 (Rolfs & Kavanagh 1986),
-! Be9(p,g) 1.1 (approximate, from Fowler 1988), Be9(p,d) and Be9(p,a)
-! 15000 (Fowler et al. 1967).
-      real(dp), parameter :: li6_reference_xs = 5.5d3, li7_reference_xs = 5.2d1, &
-           be9_pg_reference_xs = 1.1d0, be9_pd_reference_xs = 1.5d4, &
-           be9_palpha_reference_xs = 1.5d4
 
 contains
 
@@ -52,7 +45,8 @@ end subroutine derive_controls
 
 ! ---------------------------------------------------------------
 ! The light-element cross sections (keV b, the xs* controls) as scales
-! of their reference values, which are also their defaults.
+! of their reference values (legacy_controls' *_reference_xs), which are
+! also their defaults.
 subroutine derive_rate_scales
       if (lxli6) sli6 = xsli6/li6_reference_xs
       if (lxli7) sli7 = xsli7/li7_reference_xs
@@ -100,19 +94,22 @@ end subroutine derive_rotation_controls
 ! ---------------------------------------------------------------
 ! The species anewcp names (an index into the composition array), and
 ! whether its new value is relative to hydrogen (atmp /= 'ABS').
+! element_id lists the species from He3 on, in composition-slot order
+! (He3 is slot i_he3).
 subroutine find_rescaled_species
+      use composition_layout, only: i_he3
       integer :: i
       character(len=message_length) :: line
 
       value_relative_to_h = .true.
       if (atmp == 'ABS') value_relative_to_h = .false.
-      do i = 1, 12
+      do i = 1, size(element_id)
          if (anewcp == element_id(i)) then
-            new_species_index = i + 3
+            new_species_index = i_he3 - 1 + i
             exit
          end if
       end do
-      if (i > 12) then
+      if (i > size(element_id)) then
          rescale_species_active = .false.
          write(line,20) anewcp
       20    format('change_species_name (ANEWCP) ',a3, &

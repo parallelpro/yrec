@@ -10,16 +10,21 @@ Emits:
   state/controls_state_def.inc  -- the component list of the
       controls_state type (star_info_lib defines
       `type, public :: controls_state` around an include of this
-      file). Every component gets a default initializer: the
-      buffer's own where it has one, otherwise the explicit
-      zero/blank/.false. that static module storage gave it -- so
+      file): the members whose registry home is ctrl. Every
+      component gets a default initializer: the buffer's own where
+      it has one, otherwise the explicit zero/blank/.false. that
+      static module storage gave it -- so
       `star%ctrl = controls_state()` reproduces the pristine
       pre-read_input state exactly.
 
+  state/job_controls_def.inc  -- the members whose registry home is
+      job (code outside the read assigns them), included into
+      star_job the same way.
+
   io/controls_sync.f90      -- module controls_sync (part of the controls
       read, so in io/) with
-      seed_controls_buffer  (buffer member = star%ctrl%member) and
-      store_controls_to_star (star%ctrl%member = buffer member),
+      seed_controls_buffer  (buffer member = star%ctrl%member or
+      star%job%member) and store_controls_to_star (the reverse),
       one assignment per member, in declaration order.
 
 Regenerate (and commit the results) whenever controls_buffer's member

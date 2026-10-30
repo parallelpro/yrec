@@ -7,7 +7,8 @@
 ! on the new abundances, from which they also derive the new mean
 ! molecular weight (check_composition).
 module transport_checks
-      use rotation_configuration, only: rotation_settings, last_mu_species
+      use rotation_configuration, only: rotation_settings, last_mu_species, &
+           max_transport_iterations
       use rotation_messages, only: rotation_report, rotation_note, message_length, &
            unwritten_line
       implicit none
@@ -15,12 +16,11 @@ module transport_checks
       public :: check_angular_momentum, check_composition, check_mixed_species
 
 ! check_angular_momentum's iteration history holds
-! max_recorded_iterations (io's derive_controls rejects a rotating run
-! with more). A negative interior abundance smaller than
+! max_transport_iterations (rotation_configuration; io's check_controls
+! rejects a rotating run with more). A negative interior abundance smaller than
 ! small_abundance_fraction of the surface value is repaired; a larger
 ! one cuts the sub-step, and the cut after max_substep_cuts stops the
 ! run.
-      integer, parameter :: max_recorded_iterations = 16
       double precision, parameter :: small_abundance_fraction = 1.0d-5
       integer, parameter :: max_substep_cuts = 3
 contains
@@ -99,8 +99,8 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
 ! locals
 ! The history of measure_convergence, one entry per iteration: room for
 ! 16 iterations, and max_diffusion_iters is not checked against it.
-      double precision :: max_delta_j_by_iter(max_recorded_iterations)
-      integer :: max_delta_j_zone_by_iter(max_recorded_iterations)
+      double precision :: max_delta_j_by_iter(max_transport_iterations)
+      integer :: max_delta_j_zone_by_iter(max_transport_iterations)
       integer :: zone_index, scan_index
       double precision :: delta_j_fraction
       double precision :: inertia_tolerance, shape_tolerance

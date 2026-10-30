@@ -43,8 +43,8 @@ module legacy_controls
            fdyn, &
            flldat, fscomp, fkur, &
            fmhd1, fmhd2, fmhd3, fmhd4, fmhd5, fmhd6, fmhd7, fmhd8
-      integer :: kindrn(50)
-      real(dp) :: rsclm(50), rsclx(50), rsclz(50), rsclcm(50)
+      integer :: kindrn(max_runs)
+      real(dp) :: rsclm(max_runs), rsclx(max_runs), rsclz(max_runs), rsclcm(max_runs)
       character(len=256) :: fliv95
       character(len=256) :: fopale, fopale01, fcondopacp, fopale06
       character(len=256) :: opecalex(7)
@@ -65,8 +65,8 @@ module legacy_controls
 
       real(dp) :: tridt, tridl
 
-      integer :: nmodls(50), numrun
-      logical :: lfirst(50)
+      integer :: nmodls(max_runs), numrun
+      logical :: lfirst(max_runs)
 
       real(dp) :: clsun, crsun
 
@@ -107,7 +107,7 @@ module legacy_controls
 
       logical :: lrot, linstb
 
-      real(dp) :: endage(50), setdt(50), end_dcen(50), end_xcen(50), end_ycen(50)
+      real(dp) :: endage(max_runs), setdt(max_runs), end_dcen(max_runs), end_xcen(max_runs), end_ycen(max_runs)
 
       real(dp) :: fw, fc, fes, fgsf, fmu, fss, rcrit
 
@@ -143,8 +143,8 @@ module legacy_controls
 
       logical :: lrwsh, liso
 
-      real(dp) :: xenv0a(50), zenv0a(50), cmixla(50), senv0a(50)
-      logical :: lsenv0a(50)
+      real(dp) :: xenv0a(max_runs), zenv0a(max_runs), cmixla(max_runs), senv0a(max_runs)
+      logical :: lsenv0a(max_runs)
 
       logical :: lnulos1
 
@@ -219,6 +219,13 @@ module legacy_controls
       real(dp) :: codm
       logical :: lcodm
 
+! The light-element cross sections (keV b) the rate scales are relative
+! to, which are also the xs* inputs' defaults: Li6 5500 (Fowler et al.
+! 1967), Li7 52 (Rolfs & Kavanagh 1986), Be9(p,g) 1.1 (approximate, from
+! Fowler 1988), Be9(p,d) and Be9(p,a) 15000 (Fowler et al. 1967).
+      real(dp), parameter :: li6_reference_xs = 5.5d3, li7_reference_xs = 5.2d1, &
+           be9_pg_reference_xs = 1.1d0, be9_pd_reference_xs = 1.5d4, &
+           be9_palpha_reference_xs = 1.5d4
       real(dp) :: xsli6, xsli7, xsbe91, xsbe92, xsbe93
       logical :: lxli6, lxli7, lxbe91, lxbe92, lxbe93
 
@@ -375,15 +382,12 @@ subroutine set_legacy_defaults
       clsun = 3.8515d33
       crsun = 6.9598d10
       lsolwind = .false.
-! Light-element cross sections in keV b (used when lxli6 etc are set):
-! Li6 5500 (Fowler et al. 1967), Li7 52 (Rolfs & Kavanagh 1986),
-! Be9(p,g) 1.1 (approximate, inferred from Fowler 1988), Be9(p,d) and
-! Be9(p,a) 15000 (Fowler et al. 1967)
-      xsli6 = 5.5d3
-      xsli7 = 5.2d1
-      xsbe91 = 1.1d0
-      xsbe92 = 1.5d4
-      xsbe93 = 1.5d4
+! the light-element cross sections (used when lxli6 etc are set)
+      xsli6 = li6_reference_xs
+      xsli7 = li7_reference_xs
+      xsbe91 = be9_pg_reference_xs
+      xsbe92 = be9_pd_reference_xs
+      xsbe93 = be9_palpha_reference_xs
       lxli6 = .false.
       lxli7 = .false.
       lxbe91 = .false.

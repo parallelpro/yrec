@@ -325,11 +325,11 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | ctrl | run | logical | `.false.` | live | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
 | `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | ctrl | run | real | `2.5d4` | live | Constant background diffusion coefficient for angular momentum (cm^2/s) |
 | `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | ctrl | run | real | `1000.0d0` | live | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
-| `li6_rate_value` | `xsli6` | `-` | - | - | real | `5.5d3` | live | Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate) |
-| `li7_rate_value` | `xsli7` | `-` | - | - | real | `5.2d1` | live | Li7 burning cross-section override (value/5.2e1) |
-| `be9_rate_value1` | `xsbe91` | `-` | - | - | real | `1.1d0` | live | Be9 cross-section override 1 (value/1.1) |
-| `be9_rate_value2` | `xsbe92` | `-` | - | - | real | `1.5d4` | live | Be9 cross-section override 2 (value/1.5e4) |
-| `be9_rate_value3` | `xsbe93` | `-` | - | - | real | `1.5d4` | live | Be9 cross-section override 3 (value/1.5e4) |
+| `li6_rate_value` | `xsli6` | `-` | - | - | real | `li6_reference_xs` | live | Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate) |
+| `li7_rate_value` | `xsli7` | `-` | - | - | real | `li7_reference_xs` | live | Li7 burning cross-section override (value/5.2e1) |
+| `be9_rate_value1` | `xsbe91` | `-` | - | - | real | `be9_pg_reference_xs` | live | Be9 cross-section override 1 (value/1.1) |
+| `be9_rate_value2` | `xsbe92` | `-` | - | - | real | `be9_pd_reference_xs` | live | Be9 cross-section override 2 (value/1.5e4) |
+| `be9_rate_value3` | `xsbe93` | `-` | - | - | real | `be9_palpha_reference_xs` | live | Be9 cross-section override 3 (value/1.5e4) |
 | `scale_li6_rate` | `lxli6` | `-` | - | - | logical | `.false.` | live | Apply li6_rate_value |
 | `scale_li7_rate` | `lxli7` | `-` | - | - | logical | `.false.` | live | Apply li7_rate_value |
 | `scale_be9_rate1` | `lxbe91` | `-` | - | - | logical | `.false.` | live | Apply be9_rate_value1 |

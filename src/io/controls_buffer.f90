@@ -16,11 +16,11 @@
 ! name its canonical twin's default, and holds only the defaults of the
 ! legacy names that have no canonical home. The legacy namelists are
 ! frozen: a new control is read only by the new format. Only the
-! controls reader, map_user_inputs,
-! controls_sync and test_net use this module; any file may import its
+! controls read's files (tools/check_boundaries.py's
+! CONTROLS_BUFFER_IMPORTERS) use this module; any file may import its
 ! named constants (max_runs, and the slot names itime_* and ichi_*,
 ! which are state/control_slots.f90's, re-exported here).
-! tools/check_boundaries.py enforces both.
+! check_boundaries enforces both.
 
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -120,7 +120,8 @@ module controls_buffer
       real(dp) :: betac = 0.15d0
       logical :: use_semiconvection = .false.
 
-! Rotation. The reader clamps walpcz to [-2, 0].
+! Rotation. A rotating run's settings clamp walpcz to [-2, 0]
+! (setup/rotation_settings_setup.f90).
       real(dp) :: acfpft = 1.0d-36
       integer :: itfp1 = 5, itfp2 = 20
       logical :: rotation_active = .false.

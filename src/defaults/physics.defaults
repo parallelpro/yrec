@@ -685,23 +685,23 @@
 
       ! Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate)
       ! (legacy name: xsli6)
-      li6_rate_value = 5.5d3
+      li6_rate_value = li6_reference_xs
 
       ! Li7 burning cross-section override (value/5.2e1)
       ! (legacy name: xsli7)
-      li7_rate_value = 5.2d1
+      li7_rate_value = li7_reference_xs
 
       ! Be9 cross-section override 1 (value/1.1)
       ! (legacy name: xsbe91)
-      be9_rate_value1 = 1.1d0
+      be9_rate_value1 = be9_pg_reference_xs
 
       ! Be9 cross-section override 2 (value/1.5e4)
       ! (legacy name: xsbe92)
-      be9_rate_value2 = 1.5d4
+      be9_rate_value2 = be9_pd_reference_xs
 
       ! Be9 cross-section override 3 (value/1.5e4)
       ! (legacy name: xsbe93)
-      be9_rate_value3 = 1.5d4
+      be9_rate_value3 = be9_palpha_reference_xs
 
       ! Apply li6_rate_value
       ! (legacy name: lxli6)
