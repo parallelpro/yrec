@@ -44,8 +44,8 @@ end subroutine prepare_run
 ! set_up_constants_and_tables (legacy setups.f)
 !----------------------------------------------------------------------
 ! One-time, model-independent setup at the start of a run: log10 G
-! (physical_constants' cgl) and the solar constants on star, the HSRA
-! T(tau) offset, and the per-run settings records with their tables
+! (physical_constants' cgl) and the solar constants on star, and the
+! per-run settings records with their tables
 ! (settings_install's install_run_settings: the opacities, the equation
 ! of state and the tabulated surface boundary conditions).
 !
@@ -53,7 +53,6 @@ end subroutine prepare_run
 ! star%job (read_controls) first. Errors return through ierr.
 subroutine set_up_constants_and_tables(s, ierr)
       use settings_install, only: install_run_settings
-      use atm_lib, only: hsra_t_tau_offset
       use physical_constants
       use math_lib
       implicit none
@@ -70,13 +69,8 @@ subroutine set_up_constants_and_tables(s, ierr)
       s%solar_mass_cgs = s%ctrl%solar_mass_cgs
 ! Solar radius.
       s%log10_solar_radius = log10(s%solar_radius_cgs)
-! Bolometric magnitude of the Sun.
-      s%solar_bolometric_magnitude = 4.79d0
 ! log10 G: the control G_cgs when positive, else the CODATA 1986 value.
       cgl = log10_newton_g(s%ctrl%G_cgs)
-! --- HSRA T(tau) offset -----------------------------------------------
-! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
-      s%hsra_log_t_offset = hsra_t_tau_offset()
 ! --- The per-run settings records and their tables ------------------
       call install_run_settings(s, ierr)
 end subroutine set_up_constants_and_tables

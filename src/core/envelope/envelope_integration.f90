@@ -98,6 +98,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! (the drivers that used to overwrite and restore star%job).
       use envelope_integration_kernel
       use physical_constants, only: cgl
+      use atm_lib, only: hsra_t_tau_offset
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -153,7 +154,8 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%atm_error_tol = s%ctrl%atm_error_tol
       cfg%env_error_tol = s%ctrl%env_error_tol
       cfg%atm_step_initial = s%ctrl%atm_step_initial
-      cfg%atm_hras = s%hsra_log_t_offset
+! the HSRA T(tau) fit at tau = 2/3, for atm_choice = 2
+      cfg%atm_hras = hsra_t_tau_offset()
       cfg%log10_total_mass = s%log_total_mass
       cfg%surface_composition = surface_composition
       cfg%senv = s%log_fit_point_mass_fraction

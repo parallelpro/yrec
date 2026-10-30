@@ -339,7 +339,7 @@ core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_l
 core/diagnostics/stitched_model.o: envelope_integration.mod io_units.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
-core/envelope/envelope_integration.o: envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/envelope/envelope_integration.o: atm_lib.mod envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod
 core/envelope/envelope_rebuild.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
@@ -352,7 +352,7 @@ core/model/starting_model.o: am_regions.mod controls_buffer.mod convection_lib.m
 core/run/calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/run/monte_carlo.o: io_units.mod math_lib.mod model_files.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod io_units.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
-core/run/run_setup.o: atm_lib.mod math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
+core/run/run_setup.o: math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod io_units.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
 core/run/yrec_reset.o: star_info_lib.mod

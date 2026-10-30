@@ -184,8 +184,6 @@ module star_info_lib
             double precision :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
             double precision :: log10_solar_radius
-! bolometric magnitude of the Sun, 4.79 [mag]; run_setup
-            double precision :: solar_bolometric_magnitude
 ! per-reaction scale of the cross section S0 against Bahcall & Ulrich
 ! (1988), by net_lib's reaction slot r_* [-]; user_inputs,
 ! controls_reader, monte_carlo. Those of pp, He3 + He3 and He3 + He4 are
@@ -209,9 +207,6 @@ module star_info_lib
             double precision :: o16_gamma_scale
 ! scale of the N15(p,alpha)C12 branch [-]; user_inputs
             double precision :: c12_alpha_scale
-! the HSRA T(tau) fit at tau = 2/3 (atm's hsra_t_tau_offset), for
-! atm_choice = 2 [log10 K]; run_setup
-            double precision :: hsra_log_t_offset
 ! log T at which an envelope integration stores its state for the surface
 ! boundary (stored_envelope_state): the mean of ctrl%tenv0 and
 ! ctrl%tenv1 [log10 K]; derived_controls
@@ -1039,7 +1034,8 @@ end module star_info_lib
 !   /cent/      central_log10_temperature, central_log10_pressure,
 !               central_log10_density, envelope_mass_msun, envelope_radius_rsun
 !   /comp2/     envelope_helium_fraction, envelope_he3_fraction
-!   /const/     the solar units (solar_luminosity_cgs ...
+!   /const/     the solar units (solar_luminosity_cgs ...; CMBOL, the
+!               Sun's bolometric magnitude, is physical_constants'
 !               solar_bolometric_magnitude)
 !   CMIXL       mixing_length_alpha (the one mutable value the constants
 !               module carried)

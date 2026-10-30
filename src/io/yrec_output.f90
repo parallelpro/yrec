@@ -23,7 +23,7 @@
 ! quantity first.
 module yrec_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants, only: ln10
+      use physical_constants, only: ln10, solar_bolometric_magnitude
       use history_output, only: history_file, history_output_init, &
            write_history_row, close_history
       use profile_output, only: profile_selection, profile_output_init, &
@@ -292,7 +292,7 @@ subroutine output_run_header(s, total_mass_msun)
       if (s%ctrl%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
          write(s%ctrl%isochrone_file_unit, 1495) total_mass_grams, &
-              s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,s%solar_bolometric_magnitude
+              s%job%initial_envelope_x,s%job%initial_envelope_z,s%mixing_length_alpha,solar_bolometric_magnitude
  1495    format(7X, 1P5E16.8)
       end if
 end subroutine output_run_header

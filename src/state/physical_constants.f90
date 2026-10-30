@@ -21,7 +21,8 @@ module physical_constants
            radiation_constant_over_3, cmkh, cdelrl, cmixl2, cmixl3
       public :: log10_newton_g_default, cgl, log10_newton_g
       public :: amu_cgs, m_proton_cgs, amu_cgs_legacy, m_electron_amu, &
-           rsun_cgs_legacy, sigma_sb_cgs_legacy, rad_viscosity_coeff_cgs
+           rsun_cgs_legacy, sigma_sb_cgs_legacy, rad_viscosity_coeff_cgs, &
+           solar_bolometric_magnitude
       public :: log10_radius_from_l_teff
 
 ! mathematical constants (former common/const1/, and clndp and
@@ -98,6 +99,10 @@ module physical_constants
 ! literal's own precision): coefficient of the Ledoux (1958)
 ! radiative viscosity nu_rad = 4aT^4/(15 c kappa rho^2) in viscos.f90
       real(dp), parameter :: rad_viscosity_coeff_cgs = 6.7282653d-26
+! the Sun's absolute bolometric magnitude [mag], the value YREC has
+! always used (the former common/const/'s CMBOL; IAU 2015 Resolution B2
+! fixes 4.74), written in the isochrone file's header
+      real(dp), parameter :: solar_bolometric_magnitude = 4.79d0
 
 contains
 

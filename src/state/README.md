@@ -32,7 +32,7 @@ The rest of this README describes the members of `star_info`: what each one is, 
 | Class | Members | What it is | When its value is valid |
 |---|---|---|---|
 | [Input bundles](#31-input-bundles) | 2 | The controls (`ctrl`) and the run's job (job), read by `read_controls` at the start of every `run_yrec` call. Their members are documented in `src/defaults/controls_registry.md` and the `*.defaults` files, not here. | From the controls read on; `ctrl` is not changed after it, job is changed by the run (see the type `star_job`). |
-| [Constants set at setup](#32-constants-set-at-setup) | 19 | Values fixed for the whole run by the controls read, the controls' derivation or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales the solar luminosity and the first rate scales. |
+| [Constants set at setup](#32-constants-set-at-setup) | 17 | Values fixed for the whole run by the controls read, the controls' derivation or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales the solar luminosity and the first rate scales. |
 | [Run and card bookkeeping](#33-run-and-card-bookkeeping) | 30 | Per-run and per-card state: the card's mixing length and mass, the atmosphere switch, the surface mixture of the first card, the solar and star calibration loops, the reason the run ended. | From the card (or run) that sets them. |
 | [Model](#34-model) | 29 | The converged model: the mesh, the structure, the composition, the global scalars, and the envelope fit that is its outer boundary condition. Persists from step to step; the core of it is written to the .mod file (`io/model_files.f90`; "in .mod" below). Point 1 is the innermost point, point `nz` the fitting point. | Between steps, and inside a step for the model being solved; the Newton corrections overwrite the structure in place, so during a step it holds the current iterate. |
 | [Rotation state](#35-rotation-state) | 12 | The rotation curve and the shape of the rotating star. The specific angular momentum `j_rot` is conserved; `omega`, the moments of inertia and the shape factors follow from it and the structure. | Between steps. Meaningful only with `ctrl%rotation_active`; without rotation the shape factors are 1. |
@@ -45,7 +45,7 @@ The rest of this README describes the members of `star_info`: what each one is, 
 | [Diagnostics written after convergence](#312-diagnostics-written-after-convergence) | 34 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
 | [Scratch](#313-scratch) | 0 | Values stored in the star but used only inside the module (often the procedure) that writes them. | Only inside that module. |
 
-238 members in all, 6 of them records (the two input bundles among them).
+236 members in all, 6 of them records (the two input bundles among them).
 <!-- END GENERATED classes -->
 
 ## 3. The members
@@ -77,7 +77,6 @@ How to read the tables:
 | `solar_mass_cgs` | Msun, a copy of `ctrl%solar_mass_cgs` | g | `run_setup` (set_up_constants_and_tables) | 10 modules (core/ 7, io/ 1, rotation/ 1, setup/ 1) |  |
 | `solar_radius_cgs` | Rsun, from the namelist crsun | cm | `controls_reader` (adopt_canonical_names) | 8 modules (core/ 6, io/ 1, setup/ 1) |  |
 | `log10_solar_radius` | log10 Rsun | log10 cm | `run_setup` (set_up_constants_and_tables) | `observables`, `run_driver`, `yrec_output` |  |
-| `solar_bolometric_magnitude` | bolometric magnitude of the Sun, 4.79 | mag | `run_setup` (set_up_constants_and_tables) | `yrec_output` |  |
 | `cross_section_scale(num_reactions)` | per-reaction scale of the cross section S0 against Bahcall & Ulrich (1988), by `net_lib`'s reaction slot `r_*` | - | `monte_carlo` (apply_monte_carlo_parameters); `controls_reader` (adopt_canonical_names); `user_inputs` (set_cross_section_scales) | `net_settings_setup` | Those of pp, He3 + He3 and He3 + He4 are rescaled per Monte-Carlo run |
 | `qs0e_scale(num_reactions)` | scale of each reaction's S'/S against Solar Fusion I, by reaction slot `r_*` | - | `user_inputs` (reset_rate_scale_defaults, set_first_derivative_scales) | `net_settings_setup` |  |
 | `qqs0ee_scale(num_reactions)` | scale of each reaction's S''/S against Solar Fusion I, by reaction slot `r_*` | - | `user_inputs` (reset_rate_scale_defaults, set_second_derivative_scales) | `net_settings_setup` |  |
@@ -86,7 +85,6 @@ How to read the tables:
 | `be7p_qqs0ee_scale` | scale of Be7 + p's S''/S against Solar Fusion I | - | `user_inputs` (reset_rate_scale_defaults, set_second_derivative_scales) | `net_settings_setup` |  |
 | `o16_gamma_scale` | scale of the N15(p,gamma)O16 branch | - | `user_inputs` (reset_rate_scale_defaults, set_cross_section_scales) | `net_settings_setup` |  |
 | `c12_alpha_scale` | scale of the N15(p,alpha)C12 branch | - | `user_inputs` (reset_rate_scale_defaults, set_cross_section_scales) | `net_settings_setup` |  |
-| `hsra_log_t_offset` | the HSRA T(tau) fit at tau = 2/3 (atm's `hsra_t_tau_offset`), for `atm_choice` = 2 | log10 K | `run_setup` (set_up_constants_and_tables) | `envelope_integration` |  |
 | `envelope_store_log_temperature` | log T at which an envelope integration stores its state for the surface boundary (`stored_envelope_state`): the mean of `ctrl%tenv0` and `ctrl%tenv1` | log10 K | `derived_controls` (derive_controls) | `envelope_integration` |  |
 | `atm_choice_initial` | `atm_choice` as read from the deck | - | `controls_reader` (adopt_canonical_names) | `surface_boundary` | The run may change `job%atm_choice` (see `use_ttau_relation`); this keeps the original |
 | `use_two_z_tables` | load a second opacity-table set at another Z (the Z ramp or Z diffusion) | logical | `run_driver` (run_yrec) | `microphysics_settings` |  |
@@ -382,6 +380,8 @@ Removed in 2026-10, with what became of each. `tools/gen_star_docs.py --check` f
 | `dlnrho_dlnp` and the first d ln ρ/d ln T member | reached the next coefficient pass only as an EOS starting value every EOS family overwrites (`docs/bug_sweep.md` O23) | locals of `compute_henyey_coefficients`; the member now named `dlnrho_dlnt` is the former `qdt`, `compute_shell_physics`'s value for rotation |
 | `solar_wind_mass_loss_rate_msun_yr`, `wind_reference_omega`, `wind_max_omega`, `use_rotation_scaled_solar_wind` | read only by the rotation-scaled solar wind, commented out on 2026-10-12 | deleted; `star_info_lib.f90`'s Sources section says how to revive them |
 | `stotal` | a copy of `log_total_mass`, kept equal by the same writers | merged into `log_total_mass` |
+| `solar_bolometric_magnitude` | a constant, 4.79 | a parameter of `physical_constants` |
+| `hsra_log_t_offset` | the HSRA T(τ) fit at τ = 2/3, a constant | the envelope kernel's configuration takes atm's pure `hsra_t_tau_offset()` |
 | `be7_mass_fraction_zone`, `neutrino_flux_zone` | used by one procedure, the neutrino table's | locals of `write_neutrino_flux_table` |
 | `zahn_coupling` | rotation's working value within a sub-step | a field of rotation's `circulation_velocity_state` (`circ_scr`) |
 | `envelope_specific_entropy` | passed from `change_mass` to `apply_mass_change` | a local of `change_mass`, passed as an argument |
