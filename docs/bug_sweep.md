@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [6e058523](https://github.com/parallelpro/yrec/commit/6e058523) (2026-10-30). There are 194 items: 132 fixed and 62 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [9dabfccf](https://github.com/parallelpro/yrec/commit/9dabfccf) (2026-10-30). There are 195 items: 132 fixed and 63 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -36,7 +36,7 @@ Each item answers the same questions:
 | | In the F77 code | 2025-26 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
 | Fixed | 92 | 4 (S5, L9, M21, M24) | 36 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46, M47, M49-M53, M56, M57, M61, M62, M69, M70, M72, M78, M80, M82, M83) | 132 |
-| Open | 36 | 2 (O4, with a 2026 part; M84) | 24 (O5, O22, M33, M87, M92, M98-M100, M103-M105, M109-M112, M114, M116, M117, M119, M120, M122-M125) | 62 |
+| Open | 37 | 2 (O4, with a 2026 part; M84) | 24 (O5, O22, M33, M87, M92, M98-M100, M103-M105, M109-M112, M114, M116, M117, M119, M120, M122-M125) | 63 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's. Of section 8's items, M66, M73, M75 and M77 are counted with the F77 although each has a 2026 part (M66's form is M37's fix; M73's silent SCV spline and M75's read of unit 0 are 2026; M77's GYRE writer is 2026, its pairing the F77 pulse file's), and M57, M69 and M70 with the modernization although each has an F77 part (M57's underflow test, M69's reads without IOSTAT, M70's split between the envelope composition and the SCV table). Of section 9's, M102, M107 and M118 are counted with the F77 although each has a 2026 part (the network's message for `simeqc`'s bad input; every run's first SCV lookup since d8a034d8; net_configuration's comment), and M92, M100, M103-M105 and M110-M112 with the modernization although each has an F77 part (the mixing-entropy formula; the searches' asymmetry; hunt's behaviour; the saved guesses; the read-once guards; MODEL2's writes without IOSTAT; the isochrone record's I5; the F77's writes to the run log before its open).
 
@@ -264,6 +264,7 @@ Decided by default in round 2 (2026-10-29/30), revisable: M47 (card 1's `first_c
 | M123 | adopt and blend drop a new source's ionization fractions | No (2026) | Open (doc) |
 | M124 | Three math statements: "exactly", "a few ulp", CI | No (2026) | Open (doc) |
 | M125 | CI has not run since 2026-09-04 and would fail before any test | No (2026) | Open (CI) |
+| M126 | A second core extension in one run starts from the first one's log-mass shift | Yes | Open |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -3177,3 +3178,12 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
   - It builds 7 of the test programs (not `test_numerics`, `test_io`, `test_controls`, `test_structure`, `test_element_diffusion`, `test_convection`, `test_reentry`, `test_triangle_fit`, `test_mass_change`, `test_regrid`), runs 11 of the 28 `test_*.py` files (not `test_generated_files.py`, `test_controls.py`, `test_io.py`, ...), and checks two of the six generators (`gen_makefile_deps`, `gen_default_columns`; not `gen_controls_state`, `gen_inlist`, `gen_controls_dump`, `gen_star_docs`).
 - **Expected behaviour, and why:** what the docs say of CI is true (`docs/GUIDELINES.md`'s verification tiers: CI "backstops every push"; `math/README.md`, M124), so that a push that breaks a test is seen.
 - **What we did:** recorded, not fixed. Proposed fix: add `examples/other_energy/`, the cm_base deck and the three test files to the sparse checkout, build the `tests` target and run the remaining unit tests and generator checks, add `workflow_dispatch` and `yrec-next` to the triggers, then push and see it pass once. No code or output changes.
+
+### M126. A second core extension in one run starts from the first one's log-mass shift, not the deck's factor
+
+- **Status:** open. Found by the controls split (2026-10-30), which made the factor's working copy a star member, `core_mass_reduction`; recorded on the member, not fixed.
+- **In the original F77?** Yes. STARIN overwrites the factor with the shift it computes: `MCORE = INT(DLOG10(FCORE)/HPTTOL(2))+1` and `FCORE = DBLE(MCORE)*HPTTOL(2)` ([starin.f:375-376](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L375-L376)), with FCORE in /CORE/; MHP 9/14 made the extension run on every card that reads the starting model (LFIRST(NK)).
+- **Now:** [starting_model.f90:509-515](https://github.com/parallelpro/yrec/blob/9dabfccf/src/core/model/starting_model.f90#L509-L515): `s%num_core_points_added = int(log10(s%core_mass_reduction)/ ...)+1`, then `s%core_mass_reduction = dble(s%num_core_points_added)* ...`.
+- **What is wrong:** the extension runs on every card that reads its model from file, so a second such card in one run (every solar-calibration cycle, for one) takes the first card's log10 mass shift N dlog m as if it were the reduction factor: log10 of a number below 1 gives N = 0 or 1 points, whatever the deck asked for.
+- **Expected behaviour, and why:** each extension takes the deck's `core_mass_reduction_factor`; the shift is a result, not a new factor.
+- **What we did:** recorded, not fixed. 199 shipped decks set `extend_core_inward`; which of them read the starting model on more than one card was not checked, and nothing was measured. Proposed fix: keep the factor and compute the shift into a local; results change for the decks it reaches, so its own measured commit.

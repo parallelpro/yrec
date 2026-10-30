@@ -3237,3 +3237,47 @@ four documentation traps, and one is CI, which has not run since
 2026-09-04 and as configured would fail before any test. Each was
 checked again in the code and against the F77 before its entry was
 written; none was dropped.
+
+### The controls follow the inlist groups (yrec-next, 2026-10-30)
+
+The owner decided that the star's controls follow the inlist's namelist
+groups, `&control` and `&physics` (YREC's own convention, already used by
+all 1,027 shipped inlists), instead of MESA's controls/star_job split, and
+that this is enforced throughout the code. Seven commits, every one
+byte-identical in every per-deck output file (the 56 decks of the full
+set, against the outputs of 6e058523) and in the unit tests (74 passed,
+1 skipped):
+1. d86d5dce: the 36 values the run changes (the run plan the calibrations
+   rewrite, the stops init_stop_conditions disarms, the atmosphere and the
+   latches the run switches, the Newton factor, the Monte-Carlo range) are
+   star members of their own, each the run copy of a control (registry
+   column `run_copy`; a generated `arm_run_copies`, called where star%job
+   got its values); a new lifetime class "Run plan"; the Monte-Carlo
+   samples a record `mc_samples`; the card cursor `current_card` (was nk).
+   star%job is gone. The controls dumps hold the same values under the
+   label map.
+2. cbf9fbb2, dc457870, e8a05ec4: the controls records follow the groups,
+   `star%control` (type `control_group_controls`) and `star%physics`
+   (`physics_group_controls`), generated from the registry (home = group;
+   the 15 derived rows took the group of their topic); the code and the
+   test programs moved by a rename script; star%ctrl and controls_state
+   removed; the dumps' labels changed on purpose (values identical for the
+   pristine dump and all 314 decks).
+3. 5ac2f634: the READMEs (state, io, setup, rotation, eos, net,
+   element_diffusion), GLOSSARY, HOW_YREC_WORKS and GUIDELINES.
+4. d1459318: check_boundaries enforces it: the old names stay gone (all of
+   src/), only io/controls_sync.f90 assigns the two records, each control
+   is in its group's record, rotation reads neither, and every copy of a
+   control into a star member (the run copies, settling_active, the solar
+   units) is declared, documented and set where its comment says; 17
+   planted violations caught.
+5. 9dabfccf: contract lists in canonical order; the add-a-control recipe
+   re-traced with three dummy controls (one into rotation's settings, one
+   read by core, one with a run copy).
+The C interface exposes only yrec_run(control_nml, physics_nml), so no
+caller sees a change. Known bugs behave as before (M95: the run copies,
+like star%job's members, are not reset between Monte-Carlo runs). Found:
+M126 (a second core extension in one run starts from the first one's
+log-mass shift; F77). Open: docs/TARGET_ARCHITECTURE.md's controls section
+predates the decision; the five derived controls with no deck input could
+leave the buffer.
