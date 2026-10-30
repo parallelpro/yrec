@@ -87,9 +87,9 @@ end function first_zone_above
 ! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
 ! cz_base_zone is kept in star%envelope_cz_base_zone_last_call, the starting
 ! zone of the next call within the step.
-!   star reads: physics%envelope_overshoot_active,
-!     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
-!     logR_start
+!   star reads: envelope_overshoot_depth_end,
+!     envelope_overshoot_depth_start, logR_start,
+!     physics%envelope_overshoot_active
 !   star writes: cz_base_radius_last_call,
 !     envelope_cz_base_zone_last_call
 subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &

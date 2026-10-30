@@ -138,10 +138,11 @@ end subroutine warn_inert_controls
 ! self-cancelling (the class of mistake that shipped a template with
 ! overshoot_alpha_envelope = 0.5 and envelope_overshoot_active unset for
 ! years). Each rule is checked against the gating code named above it.
-!   star reads: control%calibrate_solar_model, control%calibrate_star_flag,
-!     physics%core_overshoot_active, physics%envelope_overshoot_active,
-!     physics%overshoot_alpha_core, physics%overshoot_alpha_envelope,
-!     physics%overshoot_beta_core, physics%overshoot_max_extent_flag
+!   star reads: control%calibrate_solar_model,
+!     control%calibrate_star_flag, physics%core_overshoot_active,
+!     physics%envelope_overshoot_active, physics%overshoot_alpha_core,
+!     physics%overshoot_alpha_envelope, physics%overshoot_beta_core,
+!     physics%overshoot_max_extent_flag
 !   star writes: none
 subroutine warn_inconsistent_controls(s)
       type(star_info), intent(in) :: s

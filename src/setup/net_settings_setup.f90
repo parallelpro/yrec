@@ -18,12 +18,13 @@ contains
 ! the star's cross-section scales (io/user_inputs.f90 builds those
 ! from the s0_* inputs; the Monte-Carlo runs rescale four of them).
 !   star reads: be7p_s_double_prime_scale, be7p_s_prime_scale,
-!     cross_section_scale, physics%be9_palpha_rate_scale,
+!     cross_section_scale, extra_cross_section_scale, n15_pa_scale,
+!     n15_pg_scale, physics%be9_palpha_rate_scale,
 !     physics%be9_pd_rate_scale, physics%be9_pg_rate_scale,
-!     physics%calc_neutrinos, physics%li6_rate_scale, physics%li7_rate_scale,
-!     physics%nuclear_logT_cutoffs, physics%use_itoh_neutrino_loss,
-!     physics%weak_screening_threshold, extra_cross_section_scale,
-!     n15_pa_scale, n15_pg_scale, s_double_prime_scale, s_prime_scale
+!     physics%calc_neutrinos, physics%li6_rate_scale,
+!     physics%li7_rate_scale, physics%nuclear_logT_cutoffs,
+!     physics%use_itoh_neutrino_loss, physics%weak_screening_threshold,
+!     s_double_prime_scale, s_prime_scale
 !   star writes: none
 pure function net_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info

@@ -71,11 +71,11 @@ contains
 ! of the surface convection zone (core_cz_edge, envelope_cz_edge) and the
 ! mixed-region bounds without overshoot. ierr /= 0 on a failure in the
 ! zone search, the network burn, semiconvection or settling.
-!   star reads: physics%envelope_logp_step, physics%helium_diffusion_min,
-!     physics%hydrogen_diffusion_floor, physics%settling_timestep_fraction,
-!     physics%use_extended_composition, physics%use_semiconvection, dm, gradT,
-!     log_mass, log_Teff, log_total_mass, logP, logR, logT,
-!     luminosity_lsun, nz
+!   star reads: dm, gradT, log_mass, log_Teff, log_total_mass, logP,
+!     logR, logT, luminosity_lsun, nz, physics%envelope_logp_step,
+!     physics%helium_diffusion_min, physics%hydrogen_diffusion_floor,
+!     physics%settling_timestep_fraction,
+!     physics%use_extended_composition, physics%use_semiconvection
 !   star writes: convective_flag, envelope_overshoot_bottom_index,
 !     envelope_overshoot_top_index, logRho, m, mixed_zone_bounds,
 !     settling_active, settling_suspended_reported, xa

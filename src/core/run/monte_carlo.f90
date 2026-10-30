@@ -71,7 +71,7 @@ end subroutine setup_monte_carlo_runs
 ! (1996) value; the metal diffusion factor; the solar luminosity; and
 ! the age scale factor. Outside Monte Carlo it only sets
 ! age_scale_factor = 1.
-!   star reads: physics%monte_carlo_active, mc_samples
+!   star reads: mc_samples, physics%monte_carlo_active
 !   star writes: card_max_age_yr, cross_section_scale,
 !     extra_cross_section_scale, ln10_over_lsun, log10_solar_luminosity,
 !     settling_z_factor_in_use, solar_luminosity_cgs
@@ -137,8 +137,9 @@ end subroutine apply_monte_carlo_parameters
 ! energy summary is the final model's history row; the calibration
 ! verdicts are in the .log file.
 !
-!   star reads: physics%calc_neutrinos, control%calibrate_solar_model,
-!     physics%monte_carlo_active, current_card, solar_calibration_converged
+!   star reads: control%calibrate_solar_model, current_card,
+!     physics%calc_neutrinos, physics%monte_carlo_active,
+!     solar_calibration_converged
 !   star writes: none
 subroutine write_run_summaries(s, monte_carlo_run_number, &
      convergence_iterations, log_r_rsun)

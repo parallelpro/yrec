@@ -50,8 +50,9 @@ contains
 ! Inputs: log_l_lsun = log(L/Lsun) and log_r_rsun = log(R/Rsun) of the
 ! model (both zero for the Sun), run_index = current_card, and current_zx, the
 ! surface Z/X.
-!   star reads: control%calibrate_solar_zx, control%luminosity_tolerance,
-!     control%radius_tolerance, control%target_solar_zx, control%zx_tolerance
+!   star reads: control%calibrate_solar_zx,
+!     control%luminosity_tolerance, control%radius_tolerance,
+!     control%target_solar_zx, control%zx_tolerance
 !   star writes: card_initial_x, card_initial_z,
 !     card_mixing_length_alpha, card_rescale_targets, delta_alpha,
 !     delta_x, dlum_dalpha, dlum_dx, drad_dalpha, drad_dx,
@@ -423,8 +424,9 @@ end subroutine setup_solar_calibration
 ! 1's rescaling, and the even cards 4, 6, ..., 50 continue the model
 ! with card 2's model count, stop age and timestep, as in
 ! setup_solar_calibration.
-!   star reads: control%specify_teff_flag, control%target_luminosity_lsun,
-!     solar_luminosity_cgs, solar_radius_cgs
+!   star reads: control%specify_teff_flag,
+!     control%target_luminosity_lsun, solar_luminosity_cgs,
+!     solar_radius_cgs
 !   star writes: calibration_target_radius_rsun,
 !     calibration_target_teff, card_fixed_timestep_active,
 !     card_fixed_timestep_yr, card_from_starting_model, card_initial_x,

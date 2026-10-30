@@ -41,8 +41,8 @@ contains
 ! whether accretion is on, whether matter flows in (mass_accretion_rate
 ! > 0), the deuterium fraction of the accreted gas, and the mass accreted
 ! over the step (mass, g).
-!   star reads: physics%accreted_composition, physics%mass_accretion_rate,
-!     mass_change_active
+!   star reads: mass_change_active, physics%accreted_composition,
+!     physics%mass_accretion_rate
 !   star writes: none
 function surface_accretion_now(s, mass) result(accretion)
       use star_info_lib, only: i_h2
@@ -191,9 +191,10 @@ end subroutine average_li_be_over_cz
 ! The model arrays are arguments because the two callers burn different
 ! models: burn_light_elements the converged end-of-step model,
 ! evolve_angular_momentum each rotation sub-step's model (sub_model).
-!   star reads: accreted_mass, physics%accreted_composition,
-!     physics%mass_accretion_rate, mass_change_active, rate_be9,
-!     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
+!   star reads: accreted_mass, mass_change_active,
+!     physics%accreted_composition, physics%mass_accretion_rate,
+!     rate_be9, rate_be9_start, rate_li6, rate_li6_start, rate_li7,
+!     rate_li7_start
 !   star writes: none
 subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
      shell_mass, log_temperature, grada, gradr, env_cz_zone, env_cz_zone_old, &
@@ -635,9 +636,9 @@ end subroutine network_rates_of_model
 ! The rotation sub-steps compute their own rate vectors on the
 ! sub-step's midpoint model (mid_timestep_model, for burn_and_settle).
 !   star reads: convective_turnover_timescale,
-!     physics%accreted_composition, physics%mass_accretion_rate,
-!     physics%nuclear_logT_cutoffs, envelope_cz_bottom_index_start, logRho,
-!     logT, mass_change_active, nz, xa
+!     envelope_cz_bottom_index_start, logRho, logT, mass_change_active,
+!     nz, physics%accreted_composition, physics%mass_accretion_rate,
+!     physics%nuclear_logT_cutoffs, xa
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
       use star_info_lib, only: json, i_h1, i_h2

@@ -45,14 +45,15 @@ contains
 ! h_shell_active: the base of the H-burning shell and whether there is
 ! one. total_angular_momentum, total_rotational_ke: re-totalled on the
 ! new mesh (rotating models). ierr /= 0 on failure.
-!   star reads: conv_vel, cp, physics%chi_grid_scale,
-!     physics%envelope_overshoot_active, physics%overshoot_alpha_envelope,
-!     physics%rezone_env_logt0, physics%rezone_env_logt1,
-!     physics%rotation_active, physics%use_extended_composition,
-!     disk_gate_age_gyr, dlnrho_dlnt, eps_channels, eps_total,
-!     fit_point_logP, fit_point_logR, grada, gradr, gradT,
-!     kinematic_viscosity, log_Teff, log_total_mass, mu, opacity_zone,
-!     stored_envelope_state, thermal_diffusivity
+!   star reads: conv_vel, cp, disk_gate_age_gyr, dlnrho_dlnt,
+!     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
+!     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
+!     opacity_zone, physics%chi_grid_scale,
+!     physics%envelope_overshoot_active,
+!     physics%overshoot_alpha_envelope, physics%rezone_env_logt0,
+!     physics%rezone_env_logt1, physics%rotation_active,
+!     physics%use_extended_composition, stored_envelope_state,
+!     thermal_diffusivity
 !   star writes: am_transport_convective_flag, conv_vel_start,
 !     convective_flag, convective_flag_start, core_cz_top_index,
 !     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,

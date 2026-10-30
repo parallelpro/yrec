@@ -50,15 +50,16 @@ contains
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
 !   star reads: card_kind, card_max_age_yr, card_stops_active,
+!     control%rewind_short_file, current_card, grada, gradr, log_L_lsun,
+!     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega,
 !     physics%envelope_overshoot_active, physics%helium_flash_active,
-!     physics%improved_first_guess_flag, physics%instability_transport_active,
-!     physics%max_iter_level1, physics%max_iter_level2, physics%max_iter_level3,
+!     physics%improved_first_guess_flag,
+!     physics%instability_transport_active, physics%max_iter_level1,
+!     physics%max_iter_level2, physics%max_iter_level3,
 !     physics%max_iter_level4, physics%overshoot_alpha_envelope,
-!     control%rewind_short_file, physics%rotation_active,
-!     physics%solver_underrelax_increment, physics%solver_underrelax_start,
-!     physics%use_extended_composition, physics%use_wind_torque, current_card,
-!     grada, gradr, log_L_lsun, log_Teff, log_total_mass,
-!     luminosity_breakdown_lsun, omega
+!     physics%rotation_active, physics%solver_underrelax_increment,
+!     physics%solver_underrelax_start, physics%use_extended_composition,
+!     physics%use_wind_torque
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
 !     cz_base_radius_last_call, disk_gate_age_gyr, dln_luminosity_dt,
 !     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dm, dt,

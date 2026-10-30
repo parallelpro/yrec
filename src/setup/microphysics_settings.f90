@@ -32,16 +32,17 @@ contains
 !----------------------------------------------------------------------
 ! kap_settings_from_star: kap's settings from the controls.
 !   star reads: control%alex_table_z1, control%kurucz_table_z1,
-!     control%kurucz_table_z2, physics%laol_extrapolation_tolerance,
-!     control%laol_table_z1, control%laol_table_z2,
-!     physics%metal_fraction_match_tolerance,
-!     physics%molecular_opacity_logt_max, physics%molecular_opacity_logt_min,
-!     control%opal95_single_table_z, control%opal_table_z1,
-!     control%opal_table_z2, control%use_alex06_tables,
-!     control%use_alex95_tables, physics%use_conductive_opacity,
+!     control%kurucz_table_z2, control%laol_table_z1,
+!     control%laol_table_z2, control%opal95_single_table_z,
+!     control%opal_table_z1, control%opal_table_z2,
+!     control%use_alex06_tables, control%use_alex95_tables,
 !     control%use_kurucz90_tables, control%use_laol89_tables,
 !     control%use_opal92_tables, control%use_opal95_tables,
-!     control%use_pure_z_table, use_two_z_tables
+!     control%use_pure_z_table, physics%laol_extrapolation_tolerance,
+!     physics%metal_fraction_match_tolerance,
+!     physics%molecular_opacity_logt_max,
+!     physics%molecular_opacity_logt_min,
+!     physics%use_conductive_opacity, use_two_z_tables
 !   star writes: none
 function kap_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -102,10 +103,11 @@ end function kap_table_paths_from_star
 !----------------------------------------------------------------------
 ! eos_settings_from_star: eos's settings from the controls (the OPAL
 ! vintage is derive_controls' opal_eos_vintage).
-!   star reads: physics%debye_huckel_eta_max, physics%debye_huckel_eta_min,
-!     physics%opal_eos_vintage, physics%saha_log10t_cutoff,
-!     physics%use_debye_huckel_correction, physics%use_diffusion_z,
-!     physics%use_mhd_eos, physics%use_numerical_derivatives, physics%use_scv_eos
+!   star reads: physics%debye_huckel_eta_max,
+!     physics%debye_huckel_eta_min, physics%opal_eos_vintage,
+!     physics%saha_log10t_cutoff, physics%use_debye_huckel_correction,
+!     physics%use_diffusion_z, physics%use_mhd_eos,
+!     physics%use_numerical_derivatives, physics%use_scv_eos
 !   star writes: none
 function eos_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -130,10 +132,10 @@ end function eos_settings_from_star
 !   star reads: control%centre1_table_path, control%centre2_table_path,
 !     control%centre3_table_path, control%centre4_table_path,
 !     control%centre5_table_path, control%fermi_table_path,
-!     physics%opal_eos_table_path, control%scv_h_table_path,
-!     control%scv_he_table_path, control%scv_z_table_path,
-!     control%zams_a_table_path, control%zams_b_table_path,
-!     control%zams_c_table_path
+!     control%scv_h_table_path, control%scv_he_table_path,
+!     control%scv_z_table_path, control%zams_a_table_path,
+!     control%zams_b_table_path, control%zams_c_table_path,
+!     physics%opal_eos_table_path
 !   star writes: none
 function eos_table_paths_from_star(s) result(paths)
       use star_info_lib, only: star_info
@@ -185,17 +187,18 @@ end function atm_table_paths_from_star
 ! convection_settings_from_star: convection's settings from the
 ! controls and the run card's mixing length; log10 G is derived from
 ! G_cgs (log10_newton_g).
-!   star reads: physics%adiabatic_overshoot_active,
+!   star reads: envelope_metals_no_cno, log10_solar_luminosity,
+!     mixing_length_alpha, physics%adiabatic_overshoot_active,
 !     physics%core_overshoot_active, physics%envelope_overshoot_active,
 !     physics%G_cgs, physics%gradient_logt_cutoff,
 !     physics%instability_transport_active,
-!     physics%intermediate_overshoot_active, physics%overshoot_alpha_core,
-!     physics%overshoot_alpha_envelope, physics%overshoot_alpha_min,
-!     physics%overshoot_beta_core, physics%overshoot_max_extent_flag,
-!     physics%rotation_active, physics%spot_depth_varies,
-!     physics%spot_filling_factor, physics%spot_temp_contrast,
-!     physics%use_extended_composition, envelope_metals_no_cno,
-!     log10_solar_luminosity, mixing_length_alpha, solar_luminosity_cgs
+!     physics%intermediate_overshoot_active,
+!     physics%overshoot_alpha_core, physics%overshoot_alpha_envelope,
+!     physics%overshoot_alpha_min, physics%overshoot_beta_core,
+!     physics%overshoot_max_extent_flag, physics%rotation_active,
+!     physics%spot_depth_varies, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, physics%use_extended_composition,
+!     solar_luminosity_cgs
 !   star writes: none
 function convection_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info

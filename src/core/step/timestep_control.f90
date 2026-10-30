@@ -257,8 +257,8 @@ end subroutine compute_timestep
 ! a = atime(itime_max_dt_frac); and struct_dt = previous_timestep/f.
 ! This limit dominates on the pre-main sequence, where it must be on
 ! (star%structure_dt_limits_active, legacy LPTIME).
-!   star reads: physics%timestep_factors, logP_start, logR_start,
-!     logT_start, luminosity_lsun_start
+!   star reads: logP_start, logR_start, logT_start,
+!     luminosity_lsun_start, physics%timestep_factors
 !   star writes: none
 subroutine timestep_limit_structure(s, previous_timestep, luminosity, log_pressure, log_radius, &
      log_temperature, num_points, struct_dt)
@@ -353,8 +353,8 @@ end subroutine timestep_limit_structure
 ! clipped to [1/a, a] with a = atime(itime_max_dt_frac), and
 ! rotation_dt = previous_timestep/f; dt_unlimited when omega did not
 ! change.
-!   star reads: physics%max_domega_global, physics%timestep_factors,
-!     omega_start
+!   star reads: omega_start, physics%max_domega_global,
+!     physics%timestep_factors
 !   star writes: none
 subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotation_dt, &
      max_domega_frac)
@@ -508,8 +508,9 @@ end subroutine timestep_limit_hburn
 ! L_cc there,
 !   helium_dt = E_He Delta Y m_cc/(L_cc Lsun).
 ! Shell burning (core helium exhausted): see that branch below.
-!   star reads: physics%timestep_factors, physics%use_extended_composition,
-!     solar_luminosity_cgs, solar_mass_cgs
+!   star reads: physics%timestep_factors,
+!     physics%use_extended_composition, solar_luminosity_cgs,
+!     solar_mass_cgs
 !   star writes: none
 subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
@@ -613,8 +614,8 @@ end subroutine timestep_limit_heburn
 !   f = max(|Delta log Teff|/tri_delta_teffl, |Delta log L|/tri_delta_logl),
 ! f = 1 when nothing changed, clipped to [1/a, a] with
 ! a = atime(itime_max_dt_frac), and envelope_dt = previous_timestep/f.
-!   star reads: physics%timestep_factors, physics%tri_delta_logl,
-!     physics%tri_delta_teffl, log_Teff_start,
+!   star reads: log_Teff_start, physics%timestep_factors,
+!     physics%tri_delta_logl, physics%tri_delta_teffl,
 !     surface_luminosity_lsun_start
 !   star writes: none
 subroutine timestep_limit_hr(s, previous_timestep, luminosity, log_teff, &

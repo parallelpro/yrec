@@ -46,9 +46,9 @@ contains
 ! hydrogen_fraction, metal_fraction and the two rotation factors are
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
-!   star reads: atm_choice_initial, physics%spot_filling_factor,
+!   star reads: atm_choice_initial, nz, physics%spot_filling_factor,
 !     physics%spot_temp_contrast, physics%tri_delta_logl,
-!     physics%tri_delta_teffl, nz, xa
+!     physics%tri_delta_teffl, xa
 !   star writes: atm_choice_in_use, use_ttau_relation
 subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &

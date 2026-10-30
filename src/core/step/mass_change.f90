@@ -49,10 +49,10 @@ contains
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
 ! when matter was accreted.
-!   star reads: physics%mass_accretion_rate, physics%reimers_scaling_factor,
-!     physics%use_reimers_wind, dm, envelope_cz_bottom_index,
-!     log10_solar_luminosity, log_L_lsun, log_Teff, log_total_mass,
-!     logP, logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
+!   star reads: dm, envelope_cz_bottom_index, log10_solar_luminosity,
+!     log_L_lsun, log_Teff, log_total_mass, logP, logR, logRho, logT,
+!     nz, physics%mass_accretion_rate, physics%reimers_scaling_factor,
+!     physics%use_reimers_wind, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
 !   star writes: atm_point, convective_turnover_timescale,
 !     envelope_cz_bottom_index_start, mass_change_active
@@ -336,11 +336,12 @@ end subroutine change_mass
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
 ! boundary is the surface zone.
-!   star reads: physics%accreted_composition, physics%accretion_cz_fraction,
-!     physics%accretion_total_fraction, physics%cz_rotation_law_exponent,
-!     physics%disk_locking_active, physics%disk_locking_age_gyr,
-!     physics%rotation_active, disk_gate_age_gyr, envelope_cz_bottom_index,
-!     logRho, nz, omega, solar_mass_cgs
+!   star reads: disk_gate_age_gyr, envelope_cz_bottom_index, logRho, nz,
+!     omega, physics%accreted_composition,
+!     physics%accretion_cz_fraction, physics%accretion_total_fraction,
+!     physics%cz_rotation_law_exponent, physics%disk_locking_active,
+!     physics%disk_locking_age_gyr, physics%rotation_active,
+!     solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
 !     delta_log_temperature, dm, dt, j_rot, log_fit_point_mass_fraction,
 !     log_mass, log_total_mass, logP, logR, logT, m,

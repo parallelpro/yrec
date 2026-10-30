@@ -59,7 +59,7 @@ contains
 ! Configuration check shared by run_yrec (after the starting model is
 ! read) and evolve_step (after a diverged-model reload): a rotating
 ! run whose model carries no rotation rate is an error (ierr = 1).
-!   star reads: physics%rotation_active, omega
+!   star reads: omega, physics%rotation_active
 !   star writes: none
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
