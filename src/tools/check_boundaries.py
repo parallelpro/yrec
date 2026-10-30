@@ -51,7 +51,9 @@ CONTROLS_BUFFER_IMPORTERS = {
 # Named constants in controls_buffer that are not buffer state: any file
 # may `use controls_buffer, only: <these>` (an only-list drawn entirely
 # from these is not a buffer import). max_runs dimensions the per-run
-# arrays; ichi_*/itime_* name the chi_grid_scale/atime slots.
+# arrays; ichi_*/itime_* name the chi_grid_scale/atime slots (declared in
+# state/control_slots.f90, which new code uses; the buffer re-exports
+# them).
 CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
 
 # domain -> names callable from outside that domain.
@@ -287,6 +289,40 @@ def check_no_global_g(src_root):
         if GLOBAL_G_RE.search(code):
             problems.append(f"{rel}: reads physical_constants' cgl (take log10 G from "
                             "the settings record)")
+    return problems
+
+
+# The settings install (2026-10-29): every star-layer call of a domain's
+# installer (set_<domain>_settings, set_convection_envelope_metals, and
+# the kap_init, eos_init and atm_init of the domains that also load
+# tables) is in setup/settings_install.f90, one procedure per lifetime
+# (per run, per Monte-Carlo run, per card, after the first card's model
+# read), so that file is the list of what is installed when. A domain's
+# calls inside its own directory are its own business, and a set_*_settings
+# the star layer defines for itself (core's set_structure_settings, the
+# shell equations' record filled at every call) is not a domain's. The
+# test programs install records themselves.
+INSTALL_FILES = ["setup/settings_install.f90"]
+INSTALLER_CALL_RE = re.compile(
+    r"(?i)\bcall\s+(set_\w+_settings|set_convection_envelope_metals|kap_init|eos_init|atm_init)\s*\(")
+
+def check_install_sites(src_root):
+    layer = [f for f in sorted(src_root.rglob("*.f90"))
+             if f.relative_to(src_root).parts[0] not in DOMAINS + ["math"]
+             and "/test/" not in f.relative_to(src_root).as_posix()]
+    own = set()
+    for f in layer:
+        own |= {m.group(1).lower() for m in re.finditer(
+            r"(?im)^\s*subroutine\s+(set_\w+_settings)\b", strip_comments(f.read_text(errors="replace")))}
+    problems = []
+    for f in layer:
+        rel = f.relative_to(src_root).as_posix()
+        if rel in INSTALL_FILES:
+            continue
+        for m in INSTALLER_CALL_RE.finditer(strip_comments(f.read_text(errors="replace"))):
+            if m.group(1).lower() not in own:
+                problems.append(f"{rel}: calls {m.group(1)} (install settings in "
+                                "setup/settings_install.f90)")
     return problems
 
 
@@ -723,6 +759,13 @@ def main():
     if g_problems:
         print("GLOBAL-G CONTRACT VIOLATIONS (physical_constants' cgl):")
         for b in g_problems:
+            print("  " + b)
+        return 1
+
+    install_problems = check_install_sites(SRC)
+    if install_problems:
+        print("SETTINGS-INSTALL CONTRACT VIOLATIONS (INSTALL_FILES):")
+        for b in install_problems:
             print("  " + b)
         return 1
 

@@ -2,13 +2,14 @@
 ! rotation_settings_setup
 !----------------------------------------------------------------------
 ! The rotation domain's settings record, built from the run's controls
-! by the star layer; run_yrec installs it (set_rotation_settings) at
-! the start of every run card, before the starting model is read. For a
-! rotating run it also derives the wind law's coefficients
-! (magnetic_braking's derive_wind_law), clamps the convection zone's
-! rotation law to [-2, 0] and makes force_solid_body_rotation imply
-! solid_body_mode_flag = 1; a run without rotation keeps the controls as
-! read and no wind law.
+! by the star layer; settings_install's install_card_settings installs
+! it (set_rotation_settings) at the start of every run card, before the
+! starting model is read. For a rotating run it also derives the wind
+! law's coefficients (magnetic_braking's derive_wind_law), clamps the
+! convection zone's rotation law to [-2, 0] and makes
+! force_solid_body_rotation imply solid_body_mode_flag = 1; a run without
+! rotation keeps the controls as read and no wind law. log10 G is
+! derived from G_cgs (log10_newton_g), as convection's.
 module rotation_settings_setup
       use rotation_configuration, only: rotation_settings_t
       use magnetic_braking, only: wind_law_inputs, wind_law_coefficients, derive_wind_law
@@ -54,7 +55,7 @@ contains
 function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       use physical_constants, only: log10_newton_g
-      use controls_buffer, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
+      use control_slots, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
       use transport_mechanism_layout, only: i_mech_eddington_sweet, i_mech_gsf, &
            i_mech_shear, i_mech_solberg_hoiland
       type(star_info), intent(in) :: s

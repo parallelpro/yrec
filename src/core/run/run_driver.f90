@@ -45,8 +45,7 @@ subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings
 
-      use net_lib, only: set_net_settings
-      use net_settings_setup, only: net_settings_from_star
+      use settings_install, only: install_monte_carlo_settings, install_card_settings
       use star_info_lib, only: star_info, i_h1, i_metals
       use yrec_output, only: output_state, output_open, output_close, &
            output_run_header, output_final_model_line
@@ -61,13 +60,7 @@ subroutine run_yrec(ierr)
            check_rotation_initialised
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
-      use convection_lib, only: set_convection_settings
-      use rotation_configuration, only: set_rotation_settings
-      use element_diffusion_lib, only: set_diffusion_settings
-      use rotation_settings_setup, only: rotation_settings_from_star
       use controls_reader, only: read_controls
-      use microphysics_settings, only: convection_settings_from_star, &
-           diffusion_settings_from_star
       implicit none
       integer :: step_status
 
@@ -133,7 +126,7 @@ subroutine run_yrec(ierr)
 ! calibration protocols.
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)
-      call set_net_settings(net_settings_from_star(s), ierr)
+      call install_monte_carlo_settings(s, ierr)
       if (ierr /= 0) return
       call begin_calibration
 
@@ -317,11 +310,9 @@ subroutine begin_kind_card
          s%job%initial_envelope_x = s%job%initial_x_array(s%job%nk)
          s%job%initial_envelope_z = s%job%initial_z_array(s%job%nk)
          s%mixing_length_alpha = s%job%mixing_length_array(s%job%nk)
-! Pass the card's mixing length to the convection domain's settings,
-         call set_convection_settings(convection_settings_from_star(s))
-! and refresh the rotation and element-diffusion domains' settings.
-         call set_rotation_settings(rotation_settings_from_star(s))
-         call set_diffusion_settings(diffusion_settings_from_star(s))
+! The card's settings records: convection's takes the card's mixing
+! length; rotation's and element diffusion's are refreshed.
+         call install_card_settings(s)
        s%job%change_envelope_mass_flag = s%job%has_senv0_array(s%job%nk)
        s%job%requested_envelope_mass = s%job%senv0_array(s%job%nk)
        s%reset_triangle = .false.

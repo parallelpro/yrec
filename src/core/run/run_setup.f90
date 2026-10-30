@@ -45,24 +45,15 @@ end subroutine prepare_run
 !----------------------------------------------------------------------
 ! One-time, model-independent setup at the start of a run: log10 G
 ! (physical_constants' cgl) and the solar constants on star, the HSRA
-! T(tau) offset, and the tables, loaded through the domain
-! initializations: the opacities (kap_init); the equation of state
-! (eos_init: the Fermi-Dirac degenerate-electron table, and the OPAL,
-! MHD and SCVH tables when selected); and the tabulated surface
-! boundary conditions (atm_init: the Kurucz, Allard or Kurucz/Castelli
-! tables for atm_choice 3-5).
+! T(tau) offset, and the per-run settings records with their tables
+! (settings_install's install_run_settings: the opacities, the equation
+! of state and the tabulated surface boundary conditions).
 !
-! The table paths and the mixture weights are read from star%job, so
-! the caller must fill star%job (read_controls) first. The paths are
-! passed as character arguments rather than through common blocks,
-! where character strings can cause problems (MHP 8/25). Errors return
-! through ierr.
+! The table paths are read from star%job, so the caller must fill
+! star%job (read_controls) first. Errors return through ierr.
 subroutine set_up_constants_and_tables(s, ierr)
-      use eos_lib
-      use kap_lib
-      use microphysics_settings, only: opacity_settings, equation_of_state_settings, &
-           equation_of_state_table_paths, atmosphere_settings
-      use atm_lib, only: atm_init, hsra_t_tau_offset
+      use settings_install, only: install_run_settings
+      use atm_lib, only: hsra_t_tau_offset
       use physical_constants
       use math_lib
       implicit none
@@ -86,29 +77,8 @@ subroutine set_up_constants_and_tables(s, ierr)
 ! --- HSRA T(tau) offset -----------------------------------------------
 ! The HSRA T(tau) fit evaluated at tau = 2/3, used by atm_choice = 2.
       s%hsra_log_t_offset = hsra_t_tau_offset()
-! --- Opacity tables ---------------------------------------------------
-      ierr = 0
-      call kap_init(opacity_settings(s), s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction, s%job%mixture_weights, &
-           s%job%alex06_table_path,s%job%kurucz_table_path,s%job%kurucz_table2_path, &
-           s%job%laol_table_path,s%job%laol_table2_path, &
-           s%job%opal95_table_path,s%job%opal92_table_path,s%job%opal92_table2_path, &
-           s%job%pure_z_table_path,s%job%alex95_table_paths, &
-           s%job%conductive_table_path, ierr)
-      if (ierr /= 0) return
-! --- Equation-of-state tables -----------------------------------------
-! eos_init reads the Fermi-Dirac degenerate-electron table always, and
-! the OPAL, MHD and SCVH tables when the settings select them.
-      call eos_init(equation_of_state_settings(s), equation_of_state_table_paths(s), ierr)
-      if (ierr /= 0) return
-! --- Surface-pressure tables for the surface boundary condition -------
-! atm_init reads the Kurucz (atm_choice 3 and 4), Allard (atm_choice 4)
-! and Kurucz/Castelli (atm_choice 5) tables.
-      call atm_init(atmosphere_settings(s), s%job%atm_table_path, &
-           s%job%allard_table_path, ierr)
-      if (ierr /= 0) return
-
-      return
+! --- The per-run settings records and their tables ------------------
+      call install_run_settings(s, ierr)
 end subroutine set_up_constants_and_tables
 
 end module run_setup

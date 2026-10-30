@@ -18,11 +18,13 @@
 ! frozen: a new control is read only by the new format. Only the
 ! controls reader, map_user_inputs,
 ! controls_sync and test_net use this module; any file may import its
-! named constants (max_runs, itime_*, ichi_*). tools/check_boundaries.py
-! enforces both.
+! named constants (max_runs, and the slot names itime_* and ichi_*,
+! which are state/control_slots.f90's, re-exported here).
+! tools/check_boundaries.py enforces both.
 
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use control_slots
       implicit none
 ! Everything here is public: the buffer is the controls read's shared
 ! state (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS lists the
@@ -94,25 +96,6 @@ module controls_buffer
       real(dp) :: atime(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
-! Slot names for atime (the per-phase timestep-control factors). The
-! meaning of each slot is fixed by setup/user_inputs.f90, which
-! fills it from the like-named time_* namelist inputs when lnewvars
-! is set; readers subscript with these names.
-      integer, parameter :: &
-           itime_core_min = 1, &      ! time_core_min: min central abundance for the core-burning criterion
-           itime_dx_core_tot = 2, &   ! time_dx_core_tot: max absolute delta-X burned in core per step
-           itime_dx_core_frac = 3, &  ! time_dx_core_frac: max fraction of core X burned per step
-           itime_dy_core_tot = 4, &   ! time_dy_core_tot: max absolute delta-Y burned in core per step
-           itime_dy_core_frac = 5, &  ! time_dy_core_frac: max fraction of core Y burned per step
-           itime_dx_total = 6, &      ! time_dx_total: max Msun of X burned per step
-           itime_dx_shell = 7, &      ! time_dx_shell: max fraction of X burned in the shell per step
-           itime_dt = 8, &            ! time_dt: max change in T at any shell per step
-           itime_dp = 9, &            ! time_dp: max change in P at any shell per step
-           itime_dr = 10, &           ! time_dr: max change in R at any shell per step
-           itime_dl = 11, &           ! time_dl: max change in L at any shell per step
-           itime_dy_shell = 12, &     ! time_dy_shell: max fraction of Y burned in the shell per step
-           itime_max_dt_frac = 13, &  ! time_max_dt_frac: max timestep change factor model to model
-           itime_dy_total = 14        ! time_dy_total: max Msun of Y burned in the shell per step
       real(dp) :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       real(dp) :: saha_log10t_cutoff = 6.0d0
       real(dp) :: tenv0 = 3.0d0, tenv1 = 9.0d0, tgcut = 6.9d0
@@ -227,23 +210,6 @@ module controls_buffer
       real(dp) :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, &
            5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, &
            1.0d-1 /)
-! Slot names for chi_grid_scale, the zoning tolerances: the deck's
-! hpttol (zoning_tolerances), or, when lnewvars is set, the like-named
-! tol_*/flag_* controls (setup/user_inputs.f90); readers subscript with
-! these names.
-      integer, parameter :: &
-           ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing
-           ichi_dm_max = 2, &            ! tol_dm_max: max log-m spacing
-           ichi_flag_dx = 3, &           ! flag_dx: X jump that flags a shell
-           ichi_flag_dz = 4, &           ! flag_dz: Z jump that flags a shell
-           ichi_dx_max = 5, &            ! tol_dx_max: max X spacing
-           ichi_dz_max = 6, &            ! tol_dz_max: max Z spacing
-           ichi_czbase_fine_width = 7, & ! tol_czbase_fine_width: log-P width of fine zoning at CZ base
-           ichi_dp_env_max = 8, &        ! tol_dp_env_max: max log-P spacing, convective envelope
-           ichi_dl_max = 9, &            ! tol_dl_max: max L/Lsurf spacing
-           ichi_dp_czbase_max = 10, &    ! tol_dp_czbase_max: max log-P spacing near CZ base
-           ichi_dp_core_max = 11, &      ! tol_dp_core_max: max log-P spacing, radiative interior
-           ichi_flag_dw = 12             ! flag_dw: max log-omega spacing (rotating models)
       integer :: max_iter_level1 = 2, max_iter_level2 = 20, max_iter_level3 = 2
 
 ! Angular momentum transport: the sub-timestep factor, iteration limits

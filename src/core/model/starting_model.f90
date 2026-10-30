@@ -60,7 +60,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use am_regions, only: am_convective_regions
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use convection_lib, only: compute_temperature_gradients, set_convection_envelope_metals
+      use convection_lib, only: compute_temperature_gradients
+      use settings_install, only: install_surface_mixture_settings
       use star_info_lib, only: i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
@@ -1011,7 +1012,7 @@ subroutine update_surface_mixture
       s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
-      call set_convection_envelope_metals(s%envelope_metals_no_cno)
+      call install_surface_mixture_settings(s)
 ! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
 ! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
 ! fraction too. Then w_i becomes X_i/A_i, and
