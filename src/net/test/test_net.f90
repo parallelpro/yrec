@@ -67,7 +67,7 @@ program test_net
       use reaction_layout, only: num_reactions, num_extra_scales, r_3alpha, &
            r_ac12, r_ac13, r_an14, rv_frac_be7_ecap, num_sstandard
       use net_configuration, only: net_settings, cross_section_scales_from_sstandard
-      use network, only: s_c12, s_o16, compute_reaction_rates
+      use network, only: s_c12, s_o16, compute_reaction_rates, s_factor_slots
       use network_checks, only: write_network_table, network_table_errors, &
            inert_scale_count
       use thermal_neutrinos, only: sneut, azbar
@@ -354,7 +354,7 @@ contains
          integer :: ierr
 
          write(*,'(a)') "# test_net: burn_implicitly"
-         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         x0 = test_xa(network_species_slot)
          g = 0.0d0
          g(r_pp) = 10.0d0/(12.0d0*x0(s_h1))
          x = x0
@@ -365,7 +365,8 @@ contains
               abs(x(s_he3)/(x0(s_he3) + x0(s_h1) - exact) - 1.0d0) < 1.0d-12 .and. &
               all(x(s_he4:) == x0(s_he4:)))
 
-         x0 = [0.0d0, 0.0d0, 0.5d0, 0.3d0, 0.0d0, 0.0d0, 0.2d0, 0.0d0]
+         x0 = 0.0d0
+         x0([s_he4, s_c12, s_o16]) = [0.5d0, 0.3d0, 0.2d0]
          g = 0.0d0
          g(r_ac12) = 2.0d0
          gdt = g(r_ac12)*dt
@@ -380,7 +381,7 @@ contains
               abs(x(s_c12)/(x0(s_c12) - 12.0d0*u) - 1.0d0) < 1.0d-12 .and. &
               abs(x(s_o16)/(x0(s_o16) + 16.0d0*u) - 1.0d0) < 1.0d-12)
 
-         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         x0 = test_xa(network_species_slot)
          call compute_network_rates(2.2d0, 7.3d0, test_xa, g)
          x = x0
          call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 50, x, ierr)
@@ -833,7 +834,7 @@ contains
          double precision :: g(num_rate_rows), x0(n_network), x(n_network)
          integer :: ierr1, ierr50, ierr_singular
 
-         x0 = [0.70d0, 3.0d-5, 0.28d0, 3.5d-3, 4.0d-5, 1.0d-3, 8.0d-3, 2.0d-5]
+         x0 = test_xa(network_species_slot)
          call compute_network_rates(2.2d0, 7.3d0, test_xa, g)
          x = x0
          call burn_implicitly(x0, g, 1.0d17, 1.0d-20, 1.0d-5, 1.0d-4, 1, x, ierr1)
@@ -884,8 +885,9 @@ contains
 ! threshold moved, one logical on and the other off, then the other
 ! way); the builder's record and, once set_net_settings has installed
 ! it, net_settings must carry each member in its own component, so a
-! dropped or swapped copy fails. (The Caughlan & Fowler slots' scales
-! stay 1: a scale there has no effect, and set_net_settings would warn.)
+! dropped or swapped copy fails. (The scales of the slots whose rate
+! law takes none stay 1: they have no effect, and set_net_settings would
+! warn.)
       subroutine check_settings_install()
          type(star_info), save :: probe
          type(net_settings_t) :: built
@@ -900,9 +902,11 @@ contains
             probe%cross_section_scale = [(1.0d0 + 0.01d0*i, i = 1, num_reactions)]
             probe%qs0e_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
             probe%qqs0ee_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
-            probe%cross_section_scale(r_ac13:r_3alpha) = 1.0d0
-            probe%qs0e_scale(r_ac13:r_3alpha) = 1.0d0
-            probe%qqs0ee_scale(r_ac13:r_3alpha) = 1.0d0
+            where (.not. s_factor_slots())
+               probe%cross_section_scale = 1.0d0
+               probe%qs0e_scale = 1.0d0
+               probe%qqs0ee_scale = 1.0d0
+            end where
             probe%extra_cross_section_scale = [(1.0d0 + 0.05d0*i, i = 1, num_extra_scales)]
             probe%be7p_qs0e_scale = 1.41d0
             probe%be7p_qqs0ee_scale = 1.42d0
