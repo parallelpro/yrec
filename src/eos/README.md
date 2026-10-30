@@ -119,7 +119,7 @@ A deliberate change to the output means regenerating `eos/test/expected_test_eos
 3. `eos/eos_lib.f90`: `eos_init` reads its tables when the switch is on.
 4. `eos/blended_eos.f90`: a step in `blend_eos` (before the OPAL step if OPAL should win where both cover the point, after it otherwise): inside the source's window, call `compute_<name>_eos`, then `adopt_table_result` where it covers the point, or `blend_table_result` with its edge weight (1 inside, falling continuously to 0 at the table's edge, as `find_opal_edge_ramp`'s does). A source that replaces everything instead, as MHD does, is a branch in `eos_get`.
 5. `setup/microphysics_settings.f90`: copy the control in `equation_of_state_settings` and the path in `eos_table_paths_from_star`; then `python3 tools/check_star_contracts.py --fix`.
-6. The control and the path: the recipes in `io/README.md` §7, "Add a control" and "Add a table path" (`io/controls_buffer.f90`, `defaults/controls_registry.tsv`, the generators, the controls dumps); a table path is a string control like `fermi_table_path`, expanded by `io/run_files.f90`'s `expand_paths`.
+6. The control and the path: the recipes in `io/README.md` §5, "Add a control" and "Add a table path" (`io/controls_buffer.f90`, `defaults/controls_registry.tsv`, the generators, the controls dumps); a table path is a string control like `fermi_table_path`, expanded by `io/run_files.f90`'s `expand_paths`.
 7. `eos/test/test_eos.f90`: an option of `configure_eos` (its switch and table path), a configuration in `check_configurations`, and ok/FAIL checks that a mistake would break: a limit it must reproduce, continuity at both ends of its edge ramp (`ramp_end_is_continuous`); regenerate `eos/test/expected_test_eos.out`.
 8. This README: §1, §2.1, §5.
 

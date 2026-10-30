@@ -87,7 +87,7 @@ The builders are exercised by every run; the tests build records the same way th
 5. The build: the Makefile finds the sources by itself; add the directory to `DOMAIN_DIRS` and its library to `YREC_LIBS_ORDER` (`src/Makefile`), then `python3 tools/gen_makefile_deps.py`. Its test program: a `test_<dom>` target like `test_convection`'s, added to `tests` and to `clean`'s list of binaries, its binary in `.gitignore`, and a `test_<dom>.py` at the root that runs it (`test_convection.py` is the pattern); CI (`.github/workflows/ci.yml`) builds and runs the test programs it names. The constants of `state/physical_constants` are compile-time parameters, so a domain's unit test needs no setup for them; log10 G is the one run-time value (`cgl`, set by `run_setup` from the control `G_cgs`), and a domain takes it from its settings record, as convection's and rotation's `log10_gravitational_constant` (`tools/check_boundaries.py` fails on a domain or a star-blind kernel that reads `cgl`).
 6. Its controls, by "Add a control" below, and a `README.md` for the directory (`rotation/README.md` is the standard).
 
-**Add a control:** the full recipe is `io/README.md` §7, "Add a control" (traced end to end on 2026-10-29). In short:
+**Add a control:** the full recipe is `io/README.md` §5, "Add a control" (traced end to end on 2026-10-29). In short:
 1. Declare it in `io/controls_buffer.f90` with its default as the initializer, the only place its default is written.
 2. Its row in `defaults/controls_registry.tsv`, with `canonical` its name, `home` `ctrl` (`job` only if code outside the read will assign it) and `used` `run`.
 3. From `src/`: `python3 tools/gen_controls_state.py`, `python3 tools/gen_inlist.py`, `python3 tools/gen_controls_dump.py`.

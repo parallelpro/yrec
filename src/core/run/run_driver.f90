@@ -146,8 +146,8 @@ subroutine run_yrec(ierr)
       s%use_two_z_tables = s%ctrl%use_z_ramp .or. s%ctrl%use_diffusion_z
       call prepare_run(s, ierr)
       if (ierr /= 0) return
-! Warn (terminal only) about control combinations that are silently
-! inert or cancel each other.
+! Warn (on the terminal and in the run log) about control combinations
+! that are silently inert or cancel each other.
       call warn_inconsistent_controls(s)
 
       do monte_carlo_run_number = s%job%mc_run_start,s%job%mc_run_end

@@ -175,7 +175,7 @@ The four recipes below were traced on 2026-10-29 by doing them, on a throwaway b
 
 **Add an S-factor reaction with input S0, S′ and S″ scales:** steps 1, 2 and 4 above, with `rate_law = s_factor_fit`, its `fit` (q1…q8: the S-factor law, `compute_s_factor_rate`, and the Sources at the end of `reaction_rates.f90`) and its `s0_kevb`, the S0 the fit is normalized to (the self-check wants it); its scales are the settings' at its slot already. Then:
 1. `net/net_lib.f90`: export its slot (`map_user_inputs` takes slots from `net_lib`).
-2. Its three controls (`s0_<name>`, `s0p_<name>`, `s0pp_<name>`), as `io/README.md` §7 ("Add a control") says: `io/controls_buffer.f90` (the default as the initializer, next to the other S0 inputs), `defaults/controls_registry.tsv` (`physics` group, `canonical` its own name, `home` `ctrl`, `used` `read`: `map_user_inputs` reads them during the controls read), then from `src/` `python3 tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
+2. Its three controls (`s0_<name>`, `s0p_<name>`, `s0pp_<name>`), as `io/README.md` §5 ("Add a control") says: `io/controls_buffer.f90` (the default as the initializer, next to the other S0 inputs), `defaults/controls_registry.tsv` (`physics` group, `canonical` its own name, `home` `ctrl`, `used` `read`: `map_user_inputs` reads them during the controls read), then from `src/` `python3 tools/gen_controls_state.py`, `tools/gen_inlist.py` and `tools/gen_controls_dump.py`.
 3. `io/user_inputs.f90`: its line in `set_cross_section_scales` (`s0_<name>/reference_s0(r_<name>)`), and, with its Solar Fusion I S0, S′ and S″ as parameters next to the others (`s0_<name>_a98`, `qs0e_<name>_a98`, `qqs0ee_<name>_a98`), its lines in `set_first_derivative_scales` and `set_second_derivative_scales` (each a `derivative_scale` call). `check_boundaries.py` fails while a control the registry says is read is read by nothing (the trace forgot the S″ line, and it said so).
 `net_settings_from_star`, `star_info` and Monte Carlo need nothing.
 
@@ -193,7 +193,7 @@ The four recipes below were traced on 2026-10-29 by doing them, on a throwaway b
 
 **Add a light element in the trace approximation.** Follow deuterium: a rate function and a region integrator in `light_elements.f90` (pure, everything as arguments, the integrator from `burn_exposure`), driven per region from `core/step/burn_step.f90`.
 
-**Add a control.** Add the field to `net_settings_t` (`net/net_configuration.f90`) with the control's default as its declared default, copy it in `net_settings_from_star` (`setup/net_settings_setup.f90`), read `net_settings%<field>`, and give it a value of its own in `test_net`'s install probe (`check_settings_install`, `carries_probe`), so a dropped copy fails; the control itself as `io/README.md` §7 ("Add a control") says.
+**Add a control.** Add the field to `net_settings_t` (`net/net_configuration.f90`) with the control's default as its declared default, copy it in `net_settings_from_star` (`setup/net_settings_setup.f90`), read `net_settings%<field>`, and give it a value of its own in `test_net`'s install probe (`check_settings_install`, `carries_probe`), so a dropped copy fails; the control itself as `io/README.md` §5 ("Add a control") says.
 
 **Add an energy source that is not nuclear** (tidal or magnetic heating). That belongs to the structure equations, not here: `core/structure/energy_sources.f90` holds a list of extra sources a program registers (`add_energy_source`; `examples/other_energy` is one).
 
