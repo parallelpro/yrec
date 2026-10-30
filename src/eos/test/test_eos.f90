@@ -32,6 +32,9 @@ program test_eos
       use eos_lib
       use eos_configuration, only: eos_settings, set_eos_settings
       use blended_eos, only: gamma1_at_density
+      use eos_mixture, only: debye_huckel_composition_of
+      use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
+           idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
       use opal_eos_tables, only: opal_tables, opal95, opal_shared, i_opal_cv, i_opal01_cv, &
            i_opal_p, i_opal01_p
       use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal01, iv_opal06
@@ -764,8 +767,9 @@ end subroutine write_mhd_part
 !   envelope_table_checks  the SCV envelope table eos_set_mixture builds
 !                          for a new envelope composition
 !   debye_huckel_checks    the Debye-Hueckel correction and its metal
-!                          mixture (the envelope's, eos_set_mixture,
-!                          scaled to the zone's Z)
+!                          mixture (the envelope's, eos_set_mixture; in
+!                          a zone, the metals beyond O summing to its Z
+!                          less its C, N and O)
 !   gamma1_checks          gamma1_at_density outside the OPAL table
 !   scv_mean_weight_checks R/mu and 1/mu_e where SCV gives the density
 !   diffusion_z_checks     the diffusion-of-Z mixture against the default
@@ -1470,7 +1474,41 @@ subroutine debye_huckel_checks()
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("Debye-Hueckel: the heavier metals scale with the zone's Z", &
            ok .and. abs(raise(1)/raise(2) - 1.0d0) < 3.0d-3)
+      call record_metals_check(x, z, comp)
 end subroutine debye_huckel_checks
+
+! The record debye_huckel_composition_of builds from a zone's
+! composition: its metals add up to the zone's Z, those beyond O in the
+! envelope mixture's proportions. A zone whose Z exceeds another's by
+! carbon alone, as where a core burns helium, has the other's Ne..Fe
+! (scaling them with the zone's Z would multiply them by 31 here); a
+! zone with every metal doubled has them doubled.
+subroutine record_metals_check(x, z, comp)
+      real(dp), intent(in) :: x, z, comp(:)
+      integer, parameter :: beyond_o(7) = [idh_ne, idh_na, idh_mg, idh_al, idh_si, &
+           idh_ar, idh_fe]
+      real(dp), parameter :: burnt_carbon = 0.5d0
+      real(dp) :: carbon_rich(size(comp))
+      type(debye_huckel_composition) :: zone, burnt, doubled
+      logical :: ok
+
+      carbon_rich = comp
+      carbon_rich(2) = comp(2) - burnt_carbon
+      carbon_rich(3) = comp(3) + burnt_carbon
+      carbon_rich(5) = comp(5) + burnt_carbon
+      zone = debye_huckel_composition_of(x, z, comp)
+      burnt = debye_huckel_composition_of(x, z + burnt_carbon, carbon_rich)
+      doubled = debye_huckel_composition_of(x, 2.0d0*z, doubled_z(comp))
+      ok = abs(sum(zone%metals) - z) < 1.0d-12*z .and. &
+           abs(sum(burnt%metals) - (z + burnt_carbon)) < 1.0d-12 .and. &
+           all(abs(burnt%metals(beyond_o) - zone%metals(beyond_o)) <= &
+           1.0d-10*zone%metals(beyond_o)) .and. &
+           all(abs(doubled%metals(beyond_o) - 2.0d0*zone%metals(beyond_o)) <= &
+           1.0d-10*zone%metals(beyond_o)) .and. &
+           burnt%metals(idh_c) == carbon_rich(5) .and. zone%metals(idh_n) == comp(7) .and. &
+           zone%metals(idh_o) == comp(9) .and. all(zone%metals(beyond_o) > 0.0d0)
+      call check("Debye-Hueckel: a zone's metals add up to its Z; carbon a core makes leaves Ne..Fe alone", ok)
+end subroutine record_metals_check
 
 ! a composition (star%xa layout) with its metals doubled, at the expense
 ! of He-4

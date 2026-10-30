@@ -634,6 +634,7 @@ ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals a
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 ok   Debye-Hueckel: the heavier metals scale with the zone's Z
+ok   Debye-Hueckel: a zone's metals add up to its Z; carbon a core makes leaves Ne..Fe alone
 # test_eos: configuration production
 ok   gamma1_at_density: below the OPAL table, the Yale/SCV value
 # test_eos: configuration scv_only
