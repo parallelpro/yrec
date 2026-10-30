@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [72de2124](https://github.com/parallelpro/yrec/commit/72de2124) (2026-10-29). There are 115 items: 95 fixed and 20 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [810a552c](https://github.com/parallelpro/yrec/commit/810a552c) (2026-10-30). There are 157 items: 132 fixed and 25 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -21,6 +21,7 @@ Each item answers the same questions:
 - A fix that changes results is its own commit. Its message records the drift, as matched-age differences in log L, log Teff, log R, X_c and surface Li, and the pins are reseeded in that commit.
 - "Byte-identical" below means that no pinned file changed.
 - Section 7's items, from the module evaluation of 2026-10-29, were verified on a 56-deck set against a snapshot; its introduction says how.
+- Section 8's items, from the re-evaluation and round 2 (2026-10-29/30), were verified the same way against a snapshot of 7aa138b2; its introduction says how.
 - Several fixes are protected by unit tests that fail if the fix is reverted: `test_structure` (every Henyey partial against finite differences), `test_mass_change`, `test_net`, `test_eos`, `test_triangle_fit` and `test_braking`.
 
 **Conventions.**
@@ -33,10 +34,10 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025-26 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 72 | 4 (S5, L9, M21, M24) | 19 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46) | 95 |
-| Open | 16 | 1 (O4, with a 2026 part) | 3 (O5, O22, M33) | 20 |
+| Fixed | 92 | 4 (S5, L9, M21, M24) | 36 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46, M47, M49-M53, M56, M57, M61, M62, M69, M70, M72, M78, M80, M82, M83) | 132 |
+| Open | 19 | 2 (O4, with a 2026 part; M84) | 4 (O5, O22, M33, M87) | 25 |
 
-In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's.
+In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's. Of section 8's items, M66, M73, M75 and M77 are counted with the F77 although each has a 2026 part (M66's form is M37's fix; M73's silent SCV spline and M75's read of unit 0 are 2026; M77's GYRE writer is 2026, its pairing the F77 pulse file's), and M57, M69 and M70 with the modernization although each has an F77 part (M57's underflow test, M69's reads without IOSTAT, M70's split between the envelope composition and the SCV table).
 
 ### Decisions needed from the authors
 
@@ -44,14 +45,17 @@ These open items depend on what the code was meant to do, not only on what it do
 
 - **O20:** is the calibration's dL/dα 0.0139 or 0.139?
 - **O1, O2, O3:** may the low-mass convergence work change the Jacobian? It would move every deck at the solver tolerance.
-- **M32:** should `target_metal_fraction`, `envelope_generation_flag` and `pmm_norm_mdot`, which are read and used nowhere, be wired to what they name or retired?
-- **M33:** should `use_diffusion_z` without Thoul's coefficients settle no metals (zero coefficients, as the F77 did) or be rejected at read time?
-- **The EOS's R/μ at the Saha cutoff** (not a defect entry; `docs/ROADMAP.md`, module evaluation follow-up): below the cutoff the ramp sets R/μ = βP/(ρT), the effective value with the degeneracy correction, and at and above it R(1/μ_ion + 1/μ_e) from the composition; at log T = 6, log P = 13 they differ by 7e-4 (ρ, ∇_ad and c_P are continuous). Semiconvection's mean weights and the profile's μ read it. Which definition is meant?
-- **The read-time envelope Z** (not a defect entry; `docs/ROADMAP.md`, module evaluation follow-up): the run plan sets the envelope Z, which the opacity setup reads before the starting model sets it again, to the last card's positive rescale Z, as PARMIN did ([parmin.f:1378](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1378)). Is the last card's, rather than the first's, intended?
+- **M32:** should `target_metal_fraction`, `coupling_factor`, `envelope_generation_flag` and `pmm_norm_mdot`, which are read and used nowhere, be wired to what they name or retired?
+- **The EOS's R/μ at the Saha cutoff** (not a defect entry; `docs/ROADMAP.md`, module evaluation follow-up): below the cutoff R/μ = βP/(ρT), the gas constant the ideal-gas law needs for the density returned (the ramp's definition, OPAL's and MHD's, and since M65 SCV's), and at and above it R(1/μ_ion + 1/μ_e) from the composition; at log T = 6, log P = 13 they differ by 7e-4 (ρ, ∇_ad and c_P are continuous). Semiconvection's mean weights and the profile's μ read it. Which definition is meant?
+- **The read-time envelope Z** (not a defect entry; `docs/ROADMAP.md`, module evaluation follow-up): the run plan sets the envelope Z, which the opacity setup reads before the starting model sets it again, to the last card's positive rescale Z, as PARMIN did ([parmin.f:1378](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1378)); since [498cb8c7](https://github.com/parallelpro/yrec/commit/498cb8c7) `prepare_run` sets it, not the controls read. Is the last card's, rather than the first's, intended? (M86 is what the EOS sees meanwhile.)
+- **M66, the Debye-Hückel metals beyond O** (decided by default, revisable): Ne to Fe keep the envelope mixture's proportions and sum to the zone's Z less its C, N and O. That moves every deck, mostly because the shipped starting models' C, N and O tracers are 69% of Z at the surface, where the seed mixture has 73% (`mixture_change_mode = 0` leaves the two unreconciled), so Ne to Fe grow by 15% there. Keeping the old baseline while still following settling and burning would take the surface zone's Z less C, N and O from core, as an argument of `eos_set_mixture`. Which is meant?
+- **Controls warnings in the run log** (decided by default, revisable; [d694adf9](https://github.com/parallelpro/yrec/commit/d694adf9)): a controls warning now reaches the terminal and the run log, as rotation's reports do, where round 1 kept it on the terminal; the run logs of 55 of the 56 decks gained lines (the envelope-overshoot warning in 54). `report_warning` can skip the log in one line.
 
 Answered with the bug list's proposed defaults on 2026-10-28, revisable: O12 (1e-14), O13 (the end cell includes an adjacent convection zone in its sums and its write-back), O15 (the safeguard removed), O25 (a convection zone reaching the centre is a solid body under walpcz ≤ -2).
 
 Decided by default on 2026-10-29, revisable: M5 (the scales on the Caughlan & Fowler rates stay without effect, with a warning; making them apply would be byte-identical for the shipped decks), M12 (`ludcmp`'s singular tolerance, 1e-14 on the scaled pivot), M14 (`locate`'s slack, 1% of the table's span), M16 (`polint`'s coincidence, 4 ε of the larger distance), M17 (crmath's pow(0, y) = 0 for every y, MESA's definition), M22 (an unknown `pulse_format` stops the run only when pulse output is on), M27 (`hpttol`'s inlist name, `zoning_tolerances`), M28 (the settling latch re-armed at every run card, so at every Monte Carlo run too), after O15, `mu_gradient_scale` retired (legacy decks may still set `FMU`; the inlist format no longer offers it), M35 and M36 (the MHD EOS needs all eight tables, and a point outside them is an error), M37 (the Debye-Hückel metals from eos's own envelope mixture, the metals YREC's mixture lacks left out) and M40 (`in_atmosphere` skips only the Saha solver's second derivatives).
+
+Decided by default in round 2 (2026-10-29/30), revisable: M47 (card 1's `first_call_flag` forced without a warning, as PARMIN did), M57 (bsstep's underflow test keeps the hydrogen fraction as its scale, the F77's; the independent variable would end a failing X = 0 envelope step sooner), M59 (N_A = 1/m_u with the CODATA 1986 m_u of `physical_constants`, not CODATA 2018's 6.02214076e23), M60 (the metals no slot holds count as Ne20 in the Itoh et al. mixture, about 0.6% of the Sun's mass), M63 (the screening constants computed from the two charges), M77 (GYRE's ε and its derivative columns are ε_nuc's, without the thermal neutrino loss, MESA's convention; ε_total + ε_ν with the Henyey derivatives would let GYRE's nonadiabatic equations see the loss; FGONG's var(9) stays `eps_total`, where MESA writes ε_nuc + ε_grav), M80 (the profile's chain fractions stay each chain's own share; an α-capture column would need an `eps_channels` row), `surface_composition_file` accepted and ignored without a warning ([1cd89324](https://github.com/parallelpro/yrec/commit/1cd89324)), and a controls error reported on the terminal only, since it now stops the run before the run log exists ([c5532dfe](https://github.com/parallelpro/yrec/commit/c5532dfe)).
 
 ### Summary
 
@@ -102,7 +106,7 @@ Decided by default on 2026-10-29, revisable: M5 (the scales on the Caughlan & Fo
 | L17 | `cz_moment_of_inertia` read before set (`intent(out)`) | No (2026) | Fixed, [2d62df76](https://github.com/parallelpro/yrec/commit/2d62df76) |
 | **O** | **Open: structure, solver and composition (§5)** | | |
 | O1 | Jacobian gaps: convective gradient, OPAL ρ derivatives | Yes | Open |
-| O2 | EOS second derivatives with OPAL and in the Saha ramp | Yes | Open |
+| O2 | EOS second derivatives with OPAL and in the Saha ramp | Yes | Open (the ramp's QDTT/QDTP blend fixed, M39) |
 | O3 | Low-mass convergence (0.03, 0.05, 0.1 Msun) | Yes | Open |
 | O4 | Starting model's stitched atmosphere reads out of bounds | No (2025/2026) | Open |
 | O5 | Accretion entropy term at levels 1-2 (latent) | No (2026) | Open |
@@ -119,7 +123,7 @@ Decided by default on 2026-10-29, revisable: M5 (the scales on the Caughlan & Fo
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Fixed (removed; documented) |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Fixed |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
-| O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open |
+| O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open (`beta14` fixed, [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc); MHD tested on synthetic tables) |
 | O19 | Allard reader's misspelled flag; failed lookup used | Yes | Open |
 | O20 | Calibration dL/dα 0.0139 against the recorded 0.139 | Yes | Open |
 | O21 | Settling stencil out of bounds for a 2-point grid | Yes | Open |
@@ -175,9 +179,52 @@ Decided by default on 2026-10-29, revisable: M5 (the scales on the Caughlan & Fo
 | M45 | `eos_get_gamma1` used derivatives it had asked not to compute | No (2026) | Fixed, [341d222a](https://github.com/parallelpro/yrec/commit/341d222a) |
 | M46 | `test_eos`'s SCV values were Saha's (no envelope table) | No (2026) | Fixed, [c71c3ba0](https://github.com/parallelpro/yrec/commit/c71c3ba0) |
 | M31 | `use_structure_dt_limits` off for the rest of the run | Yes | Open |
-| M32 | Three controls stored and used nowhere | Yes | Open (documented) |
-| M33 | `test_element_diffusion` reads stale metal coefficients | Branch yes; stale values no (2026) | Open |
+| M32 | Four controls stored and used nowhere | Yes | Open (documented) |
+| M33 | `test_element_diffusion` reads stale metal coefficients (no deck can reach it) | Branch yes; stale values no (2026) | Open |
 | M34 | Monte Carlo summary prints zero derivatives after a first-check convergence | Yes | Open (cosmetic) |
+| **M** | **Found in the re-evaluation and round 2 (§8)** | | |
+| M47 | Card 1 of ten shipped decks evolved an empty model | No (2026) | Fixed, [fb46cfe8](https://github.com/parallelpro/yrec/commit/fb46cfe8) |
+| M48 | `num_runs` never checked against the 50 run cards | Yes | Fixed, [6730c3ae](https://github.com/parallelpro/yrec/commit/6730c3ae) |
+| M49 | The copy of the deck ignored the output directory | No (2026) | Fixed, [34997232](https://github.com/parallelpro/yrec/commit/34997232) |
+| M50 | The canonical Monte Carlo paths were never expanded | No (2026) | Fixed (latent), [be059f10](https://github.com/parallelpro/yrec/commit/be059f10) |
+| M51 | A second controls read inherited `star%job` | No (2026) | Fixed (latent), [957ec3da](https://github.com/parallelpro/yrec/commit/957ec3da) |
+| M52 | The registry misdescribed four table paths | No (2026) | Fixed (docs), [745af296](https://github.com/parallelpro/yrec/commit/745af296) |
+| M53 | meval's tail arcs unset after a point on node n−1 | No (2026, M9's fix) | Fixed (latent), [6721d0b3](https://github.com/parallelpro/yrec/commit/6721d0b3) |
+| M54 | osplin's NaN from a zero-width end interval | Yes | Fixed (latent), [d367ecd0](https://github.com/parallelpro/yrec/commit/d367ecd0) |
+| M55 | simeqc passed a rank-deficient matrix as solved | Yes | Fixed (latent), [def22898](https://github.com/parallelpro/yrec/commit/def22898) |
+| M56 | The conductive opacity's hunts started from unset guesses | No (2026) | Fixed, [4a814b28](https://github.com/parallelpro/yrec/commit/4a814b28) |
+| M57 | bsstep's failure left y at a failed extrapolation | Test yes; y state no (2026) | Fixed (test documented), [acb65d9d](https://github.com/parallelpro/yrec/commit/acb65d9d) |
+| M58 | O16(p,γ)'s reference S₀ a single-precision literal | Yes | Fixed, [efefc632](https://github.com/parallelpro/yrec/commit/efefc632) |
+| M59 | Three Avogadro numbers in the reaction rates | Yes | Fixed, [dbb5f570](https://github.com/parallelpro/yrec/commit/dbb5f570) |
+| M60 | The Itoh et al. losses saw only H, He, C and O | Yes | Fixed, [e1d89c2f](https://github.com/parallelpro/yrec/commit/e1d89c2f) |
+| M61 | A singular burn reported as running out of iterations | No (2026) | Fixed, [360944cf](https://github.com/parallelpro/yrec/commit/360944cf) |
+| M62 | burn_network_region indexed a basic-slot copy with network slots | No (2026) | Fixed (latent), [3d4ce49b](https://github.com/parallelpro/yrec/commit/3d4ce49b) |
+| M63 | Screening constants hand-rounded per row | Yes | Computed, [68d01eec](https://github.com/parallelpro/yrec/commit/68d01eec) |
+| M64 | SCV's general path searched a column unbuilt before the first build | Yes | Fixed, [4a06cd08](https://github.com/parallelpro/yrec/commit/4a06cd08) |
+| M65 | Under SCV, R/μ and 1/μ_e were Saha's | Yes | Fixed, [26751395](https://github.com/parallelpro/yrec/commit/26751395) |
+| M66 | Debye-Hückel metals beyond O did not add up to the zone's Z | Partly (the form: 2026) | Fixed, [d3a4e8c1](https://github.com/parallelpro/yrec/commit/d3a4e8c1) |
+| M67 | Diffusion of Z divided by Z_env = 0 | Yes | Fixed (latent), [c6efd005](https://github.com/parallelpro/yrec/commit/c6efd005) |
+| M68 | OPAL 1995/2001 trial calls rewrote every slot | Yes | Fixed, [12c42467](https://github.com/parallelpro/yrec/commit/12c42467) |
+| M69 | read_scv_tables: stale envelope table, leaked unit, no iostat | Partly (no iostat: yes) | Fixed, [835a923b](https://github.com/parallelpro/yrec/commit/835a923b) |
+| M70 | eos_set_mixture and eos_update_envelope_tables as a pair | Partly (2026 API) | Fixed, [debdb797](https://github.com/parallelpro/yrec/commit/debdb797) |
+| M71 | Debye-Hückel mass unit from a mistyped Avogadro number | Yes | Fixed, [bc1bb502](https://github.com/parallelpro/yrec/commit/bc1bb502) |
+| M72 | eos_settings_t's defaults were not the controls' | No (2026) | Fixed, [65ca207c](https://github.com/parallelpro/yrec/commit/65ca207c) |
+| M73 | eos's errors in the run log only; lir's and splint's statuses dropped | Mostly (SCV's silence 2026) | Fixed, [8ea4f7d2](https://github.com/parallelpro/yrec/commit/8ea4f7d2) |
+| M74 | blend_eos's OPAL step returned from blend_eos | Yes (latent) | Fixed, [2b671c3a](https://github.com/parallelpro/yrec/commit/2b671c3a) |
+| M75 | Fermi-Dirac and OPAL readers without iostat; unit 0 read | Mostly (unit 0: 2026) | Fixed, [771557ec](https://github.com/parallelpro/yrec/commit/771557ec) |
+| M76 | The Saha solver started from the last solve anywhere | Yes | Fixed, [be874f6c](https://github.com/parallelpro/yrec/commit/be874f6c) |
+| M77 | GYRE's ε and its derivative columns described different ε | Partly (the F77 pulse file's pairing) | Fixed, [9168a576](https://github.com/parallelpro/yrec/commit/9168a576) |
+| M78 | The interior GYRE file computed its own N² | No (2026) | Fixed, [86b3fa63](https://github.com/parallelpro/yrec/commit/86b3fa63) |
+| M79 | An empty starting model ended in a runtime error | Yes | Fixed, [55cf35e5](https://github.com/parallelpro/yrec/commit/55cf35e5) |
+| M80 | The profile's chain fractions do not add up to 1 where the α captures burn | No (2026) | Decided (documented), [aca05304](https://github.com/parallelpro/yrec/commit/aca05304) |
+| M81 | log10 G was 0 until run_setup set it | Yes | Fixed (latent), [454014c0](https://github.com/parallelpro/yrec/commit/454014c0) |
+| M82 | The neutrino table printed a stale X(⁷Be) for shells it did not compute | No (2026) | Fixed (latent), [33760aa0](https://github.com/parallelpro/yrec/commit/33760aa0) |
+| M83 | check_star_contracts told procedures apart by name only | No (2026) | Fixed, [f5a88324](https://github.com/parallelpro/yrec/commit/f5a88324) |
+| M84 | sample_cases/LowM_HB names a missing starting model | No (2026, YREC team) | Open |
+| M85 | A later card's Z rescale keeps the first card's EOS metals | Yes | Open |
+| M86 | The EOS mixture before the first card's `update_surface_mixture` | Yes | Open |
+| M87 | test_eos's Debye-Hückel check cannot see a wrong charge | No (2026) | Open (test only) |
+| M88 | SCV's table edge is a step | Yes | Open |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -914,7 +961,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O2. The EOS second derivatives with an OPAL table, and in the Saha ramp
 
-- **Status:** open. A mislabelled name was fixed; the numbers are unchanged.
+- **Status:** open in part. The third point below, the ramp's blend of `QDTT` and `QDTP`, was fixed by M39 ([f8114dca](https://github.com/parallelpro/yrec/commit/f8114dca), 2026-10-29); the OPAL second derivatives and the ramp's dw/dlog T term are open. A mislabelled name was fixed earlier.
 - **In the original F77?** Yes. The ramp weight's derivative is commented out, and `QDTT`/`QDTP` are blended without forming the difference ([eqstat2.f:236-266](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L236-L266)). The OPAL branches replace only ρ and the first derivatives ([eqstat2.f:281-310](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L281-L310)):
   ```fortran
         WT0 = WTS2*WTS*(6.0D0*WTS2 - 15.0D0*WTS + 10.0D0)
@@ -928,7 +975,7 @@ These are found, recorded and left as they are, because each fix changes results
 - **What is wrong:**
   - Inside an OPAL table, ρ and its first derivatives are OPAL's, but the six second derivatives (dχ_T/dln T, dχ_T/dln P, d∇_ad/dln T and dln P, dc_P/dln T and dln P) are left from the Yale solution. They are 8-180% off, with one sign flip.
   - In the Saha-to-fully-ionized ramp the weight w(log T) is applied without dw/dlog T.
-  - `QDTT` and `QDTP` are blended as f_full + w·f_saha instead of f_full + w(f_saha − f_full).
+  - `QDTT` and `QDTP` are blended as f_full + w·f_saha instead of f_full + w(f_saha − f_full) (fixed by M39).
 - **Expected behaviour, and why:** the second derivatives must belong to the EOS actually returned. For a blend f = f_full + w(T)(f_saha − f_full), d/dln T must include (dw/dln T)(f_saha − f_full). These derivatives feed the ε_grav and convective-gradient partials (S3, O1), so they affect convergence, not converged models.
 - **What we did / proposed fix:** `test_eos` (1c177c25, b96442be) checks every derivative against centred finite differences and pins the numbers; `eos/README.md` documents the OPAL caveat. `use_numerical_derivatives` agrees with finite differences to ~1e-6. Proposed, tied to O3: use numerical derivatives inside OPAL, restore the dw terms, and keep the change only if it measurably helps convergence.
 
@@ -1203,7 +1250,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O18. EOS and opacity details: two meanings of `beta14`, the opacity ramp's derivatives, OPAL 2001's density edge, and the untested MHD path
 
-- **Status:** open.
+- **Status:** open in part. `beta14` has one meaning, 4(1−β)/β, on every path since [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc) (2026-10-29, byte-identical), and `test_eos` runs the MHD reader and lookup on eight synthetic tables since M35 ([43e9b717](https://github.com/parallelpro/yrec/commit/43e9b717)). The opacity ramp's derivatives, OPAL 2001's density edge (kept as data, `opal01_search_density_index_edge`, since [7bc47cd6](https://github.com/parallelpro/yrec/commit/7bc47cd6)) and a pin on the real MHD tables are open.
 - **In the original F77?** Yes for the first three; the missing test is a 2026 matter, since the F77 had no tests.
   - `BETA14` is 4(1−β)/β on the Yale/SCV path but 1−β after OPAL or MHD ([eqstat2.f:126-135](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L126-L135) against [:281-302](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L281-L302)):
     ```fortran
@@ -1441,7 +1488,7 @@ On 2026-10-29 five read-only reviews scored eos/, net/, io/, numerics/ with math
 - **Now:** `cross_section_scales_from_sstandard`, [net_configuration.f90:108-130](https://github.com/parallelpro/yrec/blob/396bbb7c/src/net/net_configuration.f90#L108-L130), and `set_net_settings`, [network.f90:264-295](https://github.com/parallelpro/yrec/blob/396bbb7c/src/net/network.f90#L264-L295).
 - **What was wrong:** with `use_new_nuclear_rates = .false.`, `sstandard(8..13)` went into `cross_section_scale` and nothing used them: every Caughlan & Fowler rate had no scale slot, and entries 9 (¹⁶O+α) and 13 (¹²C+¹²C) have no reaction at all. A deck setting `sstandard(10)` to scale ¹²C(α,γ) got no effect and no message.
 - **Expected behaviour, and why:** a control that does nothing should say so.
-- **What we did:** the legacy vector goes through `cross_section_scales_from_sstandard`, which warns (net's message, terminal and run log) when entry 9 or 13 is not 1; `set_net_settings` warns at configure time when a scale is set on a reaction whose rate law takes none (`inert_scale_count`). Making the scales apply to the Caughlan & Fowler rates is one factor in each rate law and byte-identical for every shipped deck (all have 1 there); it is listed under "Decisions needed". Byte-identical: the full set.
+- **What we did:** the legacy vector goes through `cross_section_scales_from_sstandard`, which warns when entry 9 or 13 is not 1 (net's message, on the terminal only: it runs in the controls read, before the run log opens, and `net_report` writes to the run log once it is open); `set_net_settings` warns at configure time when a scale is set on a reaction whose rate law takes none (`inert_scale_count`). Making the scales apply to the Caughlan & Fowler rates is one factor in each rate law and byte-identical for every shipped deck (all have 1 there); it is listed under "Decisions needed". Byte-identical: the full set.
 
 ### M6. Two dead reaction slots, and scale arrays that a new reaction would alias
 
@@ -1802,7 +1849,7 @@ On 2026-10-29 five read-only reviews scored eos/, net/, io/, numerics/ with math
 - **Now:** `eos_set_mixture`, [eos_lib.f90:213](https://github.com/parallelpro/yrec/blob/a568e084/src/eos/eos_lib.f90#L213), which fills the correction's named slots `idh_*`.
 - **What was wrong:** without the LAOL89 opacities, as in every shipped deck, the slots of the metals heavier than O were zero, so the charge-weighted sum `almix` counted only C, N and O, about 60% of it.
 - **Expected behaviour, and why:** the correction is that of the gas being modelled; it should not depend on which opacity tables are read.
-- **What we did:** `eos_set_mixture` fills Ne, Na, Mg, Al, Si, Ar and Fe from eos's envelope mixture, as mass fractions X_i = fx_i m_u A_i; P, S, Cl, Ca, Ti, Cr, Mn and Ni, which YREC's 12-species mixture lacks, stay zero (about 6% of `almix`). kap no longer hands eos the LAOL mixture, and `eos_set_debye_huckel_z` is gone. `test_eos` checks that the correction raises ρ, and more when the heavier metals are all Fe.
+- **What we did:** `eos_set_mixture` fills Ne, Na, Mg, Al, Si, Ar and Fe from eos's envelope mixture, as mass fractions X_i = fx_i A_i Σ_j X_j/A_j (fx_i is species i's number fraction, X_i/A_i over Σ_j X_j/A_j, the mixture's inverse mean atomic weight, `amuenv` then and `inverse_atomic_weight` now); round 2 makes them follow the zone's Z (M66). P, S, Cl, Ca, Ti, Cr, Mn and Ni, which YREC's 12-species mixture lacks, stay zero (about 6% of `almix`). kap no longer hands eos the LAOL mixture, and `eos_set_debye_huckel_z` is gone. `test_eos` checks that the correction raises ρ, and more when the heavier metals are all Fe.
   - All 56 decks change (every one turns the correction on). Solar decks with OPAL 2006 and SCV: final |Δlog L| ≤ 2.7e-5, |ΔX_c| ≤ 3.3e-5; age-matched up to 2.9e-4 in log L before the main sequence.
   - The Yale-EOS solar deck `Test_solarGS98_yaleeos`: final Δlog L +1.09e-3, Δlog Teff +1.19e-4, ΔX_c −7.9e-4. Where OPAL covers a point it replaces the Yale result, so only the Yale-only decks feel the correction throughout the star; there `almix` grows by about two thirds and the density at fixed P by about 2%.
   - Measured on the integration branch, for decks the package did not run: the 0.03 Msun dbl-to-ZAMS deck, a marginal one, stops at a different age (1.2544e7 → 1.2255e7 yr; final Δlog L +6.9e-3); the 1 Msun ZAHB deck, final Δlog L −5.1e-4; `o24_rescale_rotating` ends on its model budget at a different age (1.645e8 → 1.345e8 yr).
@@ -1928,12 +1975,12 @@ On 2026-10-29 five read-only reviews scored eos/, net/, io/, numerics/ with math
 - **Expected behaviour, and why:** each card starts with the deck's switch.
 - **Proposed fix:** as for M28, a star latch armed from the control at every card start. One measured commit; only decks that re-read a pre-MS model after an evolve card move, and none is shipped besides the calibration, which already restores it.
 
-### M32. Three controls are stored and used nowhere
+### M32. Four controls are stored and used nowhere
 
-- **Status:** open, documented: the registry's `used` column says `none` for each, and `tools/check_boundaries.py` keeps that true.
-- **In the original F77?** Yes. `ZXMIX` is set from the mixture tables and read by no computation ([parmin.f:1065](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1065)); `LENVG` is only printed ([parmin.f:1164](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1164)); `PMMMD` appears only in COMMON statements.
-- **Now:** the rows `zxmix` (`target_metal_fraction`), `lenvg` (`envelope_generation_flag`) and `pmmmd` (`pmm_norm_mdot`) of [controls_registry.tsv](https://github.com/parallelpro/yrec/blob/396bbb7c/src/defaults/controls_registry.tsv).
-- **What is wrong:** a deck can set the CUS mixture's Z/X, the envelope generation flag and the Matt law's solar mass-loss rate, and none of them changes anything: the mixture change keeps the starting model's Z, the outer layers are built by the stitched model, and the mass-loss rate's use was the commented-out rotation-scaled solar wind.
+- **Status:** open, documented: the registry's `used` column says `none` for each, and `tools/check_boundaries.py` keeps that true. Since [88b19e32](https://github.com/parallelpro/yrec/commit/88b19e32) (round 2) they stay in the controls read's buffer (registry home `buffer`), so `star%ctrl` no longer carries them. Two more, `ies` and `imu` (`enable_eddington_sweet`, `enable_mu_gradient`), are read and ignored too; the registry already calls them `unused`.
+- **In the original F77?** Yes. `ZXMIX` is set from the mixture tables and read by no computation ([parmin.f:1065](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1065)); `LENVG` is only printed ([parmin.f:1164](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1164)); `FO`, which CODIFF's header calls one of the user's factors on the diffusion coefficients ([codiff.f:45-46](https://github.com/parallelpro/yrec/blob/6cd56739/src/codiff.f#L45-L46)), is only printed ([parmin.f:905-906](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L905-L906)); `PMMMD` appears only in COMMON statements.
+- **Now:** the rows `zxmix` (`target_metal_fraction`), `fo` (`coupling_factor`), `lenvg` (`envelope_generation_flag`) and `pmmmd` (`pmm_norm_mdot`) of [controls_registry.tsv](https://github.com/parallelpro/yrec/blob/810a552c/src/defaults/controls_registry.tsv).
+- **What is wrong:** a deck can set the CUS mixture's Z/X, a factor on the diffusion coefficients, the envelope generation flag and the Matt law's solar mass-loss rate, and none of them changes anything: the mixture change keeps the starting model's Z, no coefficient reads the factor, the outer layers are built by the stitched model, and the mass-loss rate's use was the commented-out rotation-scaled solar wind.
 - **Proposed fix (the authors' choice):** wire each to what it names, or retire it as `mu_gradient_scale` was (status `unused`: the legacy decks may still set it, the inlist format no longer offers it). Either is byte-identical for the shipped decks unless wired.
 
 ### M33. test_element_diffusion reads stale metal coefficients
@@ -1948,9 +1995,9 @@ On 2026-10-29 five read-only reviews scored eos/, net/, io/, numerics/ with math
                  COD1Z(I) = CSTDIFFMIX*CSTMIXING*FAC*HQPR(I)*ZZ*(AP+AT)
   ```
 - **Now:** `gravitational_settling_setup`, [original_settling.f90:616-640](https://github.com/parallelpro/yrec/blob/396bbb7c/src/element_diffusion/original_settling.f90#L616-L640).
-- **What is wrong:** with `use_diffusion_z` on and `use_thoul_diffusion` off, the metals settle with whatever `diff_scr`'s metal coefficients hold: the previous call's values, or memory not written in this run. The unit test's case "old: without the Thoul et al. coefficients" is that combination, so its dY/dZ split varies from run to run and its pin holds one draw. No shipped deck sets `use_diffusion_z` without `use_thoul_diffusion`.
+- **What is wrong:** with `use_diffusion_z` on and `use_thoul_diffusion` off, the metals settle with whatever `diff_scr`'s metal coefficients hold: the previous call's values, or memory not written in this run. The unit test's case "old: without the Thoul et al. coefficients" is that combination, so its dY/dZ split varies from run to run and its pin holds one draw. No deck can reach it: `derive_controls` turns `use_thoul_diffusion` on whenever `use_diffusion_z` is on, before the controls reach the star ([derived_controls.f90:285-298](https://github.com/parallelpro/yrec/blob/810a552c/src/io/derived_controls.f90#L285-L298)), as PARMIN did ([parmin.f:1131-1134](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1131-L1134)); only the unit test, which fills the settings by hand, gets the combination.
 - **Expected behaviour, and why:** the same input gives the same output; the Bahcall & Loeb scheme has no metal coefficients of its own.
-- **Proposed fix (element_diffusion's, and the authors' choice):** zero the metal coefficients outside the Thoul branch (the F77's behaviour), or reject or warn on the combination in `controls_check`; then repin the test case. One measured commit; no shipped deck moves.
+- **Proposed fix (element_diffusion's):** zero the metal coefficients outside the Thoul branch (the F77's behaviour), and repin the test case. A read-time check of the combination could never fire. No deck moves.
 
 ### M34. The Monte Carlo summary prints zero calibration derivatives when a run converges at its first check
 
@@ -1967,3 +2014,580 @@ On 2026-10-29 five read-only reviews scored eos/, net/, io/, numerics/ with math
 - **Now:** `check_solar_calibration`, [calibration.f90:53-87](https://github.com/parallelpro/yrec/blob/396bbb7c/src/core/run/calibration.f90#L53-L87), which reads its own parameters `dlogl_dx_fixed` ... since [368078df](https://github.com/parallelpro/yrec/commit/368078df); record 2 of the summary, [monte_carlo.f90:195](https://github.com/parallelpro/yrec/blob/396bbb7c/src/core/run/monte_carlo.f90#L195), prints the star members `dlum_dx` ... `drad_dalpha`.
 - **What is wrong:** in the first Monte Carlo run of a process, a calibration that converges at its first check prints 0 for the four derivatives (later runs print the previous run's, the fixed values). The values used are always the fixed ones.
 - **Proposed fix:** print the calibration's parameters in record 2 and delete the four members. That record changes only in this case; no deck exercises it.
+
+## 8. Found in the re-evaluation and round 2 (2026-10-29/30)
+
+On 2026-10-29 the five reviews of section 7 were repeated at [7aa138b2](https://github.com/parallelpro/yrec/commit/7aa138b2), after the work section 7 describes, on the same scale ([audit/module-reevaluation-2026-10-29](https://github.com/parallelpro/yrec/blob/d4862175/audit/module-reevaluation-2026-10-29/SUMMARY.md), [d4862175](https://github.com/parallelpro/yrec/commit/d4862175)). Each review listed the possible bugs it found; six work packages then took up every finding (`docs/ROADMAP.md`, "Round 2: the re-evaluation's items"). These items are the reviews' possible bugs and what the packages found on the way.
+
+- M47-M52 are the controls', M53-M57 the numerics', M58-M63 the network's, M64-M76 the EOS's, M77-M80 the output's and M81-M83 the star layer's and its tools'. M84-M88 are open.
+- **How they were verified.** As in section 7, against a snapshot of 7aa138b2, whose outputs the pins then held: every per-deck output file of the 56-deck set byte-compared (the decks of one directory share history.data and inlist_used, so those are left out), the run logs also against the pins, and the unit tests. A fix that changes results is its own commit, measured against its parent; where no deck of the set reaches the defect, decks that do were run before and after on their own (M47's nine decks, a 1 Msun ZAHB-to-TAHB deck with the Itoh losses or with GYRE files, the solar deck with the default screening threshold). The packages were merged one after another and the set rerun on the merged code after each; the EOS package was merged in segments, so that each of its moving fixes was measured again there. The pins in `standard/` were reseeded once, after the round: pins reseeded at <RESEED2>.
+- Current-code links point at [810a552c](https://github.com/parallelpro/yrec/tree/810a552c/src), the end of the round, after its four rename commits.
+
+### M47. Card 1 of ten shipped decks evolved an empty model
+
+- **Status:** fixed in [fb46cfe8](https://github.com/parallelpro/yrec/commit/fb46cfe8) (2026-10-29). Checked by hand when the re-evaluation was written; a one-line note in `docs/ROADMAP.md` section 10 since August. Results change for the ten decks, none of them in the deck set.
+- **In the original F77?** No. PARMIN forced `LFIRST(1)`, which is both the CONTROL namelist variable and the working variable STARIN reads through `COMMON /CKIND/`, so card 1 always loaded the starting model ([parmin.f:62-63](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L62-L63), [:1282](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1282), [starin.f:153](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L153)):
+  ```fortran
+        COMMON /CKIND/RESCAL(4,50),NMODLS(50),IRESCA(50),LFIRST(50),
+       1     NUMRUN
+  ...
+        LFIRST(1) = .TRUE.                                      ! parmin.f
+        IF(.NOT.LFIRST(NK)) THEN                                ! starin.f
+  ```
+  The split came with sweep batch 7 ([60cf4907](https://github.com/parallelpro/yrec/commit/60cf4907), 2026-08-20), which copied `lfirst` into `first_call_flag`, the control the starting model reads, before the force.
+- **Now:** `interpret_kind_cards`, [run_cards.f90:30-48](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_cards.f90#L30-L48) (the force at [:39-41](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_cards.f90#L39-L41)); its reader, `acquire_starting_model` in `read_starting_model`, [starting_model.f90:241-270](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/starting_model.f90#L241-L270).
+- **What was wrong:** the force set the legacy variable after `adopt_canonical_names` had copied it, so it reached only the run plan's echo. A deck with `first_call_flag(1) = .FALSE.` evolved, or rescaled, an empty model, while the run plan said "from the starting model". Ten shipped decks set it: the three `giant_differential_rotation` decks (RGp2diffrotI0, I1, I3cz2) in examples/ and in testsuite/, `run_rotation_to_RG`'s RGp2diffrotI2, the PARSEC TAHB deck in `run_from_zahb_to_tahb`, and `sample_cases/TAHB`'s and `sample_cases/LowM_HB`'s PARSEC TAHB decks.
+- **What we did:** the force sets `first_call_flag(1)`, and the echo reads it; forcing it without a warning, as PARMIN did, is a revisable default. Each deck ran before and after in a copy, every evolving card capped at 300 models: before, the nine that find their starting model stopped at model 1 with exit 1 (the seven 3 Msun decks with "ERROR IN BSSTEP" and "LROT set to TRUE, but OMEGA(1) = 0", the two TAHB decks with a bare STOP 1 in card 1's rescale); after, all nine run to the cap, the 3 Msun decks to 0.34 Gyr and the TAHB decks through card 1's ten relaxation models and 300 models of card 2. Uncapped, RGp2diffrotI0 stops at central Y < 0.5 at model 2514 and the PARSEC TAHB deck at central Y < 0.001 at model 1667. The nine were run again on the merged code, to the cap. The tenth, `sample_cases/LowM_HB`'s, names a missing starting model (M84). `test_controls` checks that card 1 starts from the starting model whatever the deck says.
+
+### M48. num_runs was never checked against the 50 run cards
+
+- **Status:** fixed in [6730c3ae](https://github.com/parallelpro/yrec/commit/6730c3ae) (2026-10-29). The io re-evaluation's possible bug 2. Error path only (the largest shipped value is 11).
+- **In the original F77?** Yes. The run cards' arrays have 50 elements, and `NUMRUN`, a CONTROL namelist value, bounds the card loops of PARMIN and MAIN unchecked ([parmin.f:28-29](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L28-L29), [parmin.f:1285-1287](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1285-L1287), [main.f:275](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L275)):
+  ```fortran
+        DIMENSION KINDRN(50),RSCLM(50),RSCLX(50),RSCLZ(50),
+       1          RSCLCM(50)
+  ...
+        DO 1000 NKIND=1, NUMRUN
+  ```
+- **Now:** `check_controls`, [controls_check.f90:105-111](https://github.com/parallelpro/yrec/blob/810a552c/src/io/controls_check.f90#L105-L111).
+- **What was wrong:** a deck with more than 50 cards wrote past the arrays in `interpret_kind_cards` and in `run_yrec`'s card loop, silently without `-fcheck`.
+- **What we did:** `check_controls` rejects `num_runs` outside 0 to `max_runs` with exit 1 and a message naming the control. `test_error_exit` checks 51 and −1.
+
+### M49. The copy of the deck ignored the output directory
+
+- **Status:** fixed in [34997232](https://github.com/parallelpro/yrec/commit/34997232) (2026-10-29). The io re-evaluation's possible bug 3. The file's location moves; nothing else.
+- **In the original F77?** No. The F77 wrote no copy; PARMIN echoed both namelists into the run log ([parmin.f:754-756](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L754-L756)). The copy came with [b38ec9c3](https://github.com/parallelpro/yrec/commit/b38ec9c3) (2026-08-28), into the run log's directory, and [40fa5fd8](https://github.com/parallelpro/yrec/commit/40fa5fd8) the same day gave it its own control, defaulting to `{YREC_OUTPUT}/inlist_used`.
+- **Now:** `open_run_files`, [run_files.f90:105-149](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_files.f90#L105-L149) (the default at [:114-116](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_files.f90#L114-L116)).
+- **What was wrong:** the default was independent of the output directory, the run log's, so a deck whose run log goes to a subdirectory split its files between two directories (the six `class_exercises/exercise_2` decks and 200 of the 201 `sample_cases` decks), and with `YREC_OUTPUT` pointing at a missing directory the run stopped with "cannot write the copy of the inlist" although its own output directory had been made.
+- **What we did:** the default is blank, and blank means `inlist_used` in the output directory, as `io/README.md` says; a deck that names `inlist_used_file` still gets that place. A test checks a nested run-log directory.
+
+### M50. The canonical Monte Carlo paths were never expanded
+
+- **Status:** fixed in [be059f10](https://github.com/parallelpro/yrec/commit/be059f10) (2026-10-29). The io re-evaluation's possible bug 4. Latent: the canonical members were unused.
+- **In the original F77?** No. The F77 has no placeholders; PARMIN opens `FMONTE1` and `FMONTE2` as read ([parmin.f:888-890](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L888-L890)). Sweep batch 7 ([60cf4907](https://github.com/parallelpro/yrec/commit/60cf4907)) made the canonical copies, and M21's fix ([b1e7ae2c](https://github.com/parallelpro/yrec/commit/b1e7ae2c)) expanded only the legacy names, after the copy.
+- **Now:** `expand_paths`, [run_files.f90:77-78](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_files.f90#L77-L78), and `open_run_files`, [:134-140](https://github.com/parallelpro/yrec/blob/810a552c/src/io/run_files.f90#L134-L140).
+- **What was wrong:** `star%ctrl`'s `monte_carlo_file1_path` and `monte_carlo_file2_path` held a literal `{YREC_OUTPUT}`, while `open_run_files` opened the legacy names.
+- **What we did:** `expand_paths` expands the canonical names and `open_run_files` opens them: one name per path after the copy. A test runs `cm_monte_carlo` with placeholders in both paths.
+
+### M51. A second controls read inherited star%job
+
+- **Status:** fixed in [957ec3da](https://github.com/parallelpro/yrec/commit/957ec3da) (2026-10-29). The io re-evaluation's possible bug 5. Latent: `run_yrec` resets the whole star first.
+- **In the original F77?** No. MAIN reads the deck once per process ([main.f:206-208](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L206-L208)). The split that let `star%job` survive a read came with [176106b5](https://github.com/parallelpro/yrec/commit/176106b5) (2026-08-24), which moved the run-card arrays and latches from `star%ctrl` to `star%job`, while `read_controls` reset `star%ctrl` only.
+- **Now:** `read_controls`, [controls_reader.f90:47-49](https://github.com/parallelpro/yrec/blob/810a552c/src/io/controls_reader.f90#L47-L49).
+- **What was wrong:** the read seeded its buffer from whatever `star%job` held, so a second read into the same star (an embedding host, a test) inherited the latches a run had switched off, the calibration's rewritten cards and the Monte Carlo samples.
+- **What we did:** `star%job = star_job()` as well, now that every `star_job` component has a default. `test_controls` reads a deck twice into one star, with the first run's scribbles in between.
+
+### M52. The registry misdescribed four table paths
+
+- **Status:** fixed in [745af296](https://github.com/parallelpro/yrec/commit/745af296) (2026-10-29), the inlist names in [1cd89324](https://github.com/parallelpro/yrec/commit/1cd89324) (the old names still read). Documentation only.
+- **In the original F77?** No; the F77 labels all four correctly ([parmin.f:665-666](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L665-L666), [:673-674](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L673-L674)):
+  ```fortran
+  C YCK INPUT: OPAL92 OPACITY TABLES
+        ILLDAT = 32
+  C YCK INPUT: KURUCZ LOW T OPACITIES
+        IKUR = 36
+  ```
+  The descriptions came with the registry's draft ([4b6b6470](https://github.com/parallelpro/yrec/commit/4b6b6470), 2026-08-22).
+- **Now:** the rows `flldat`, `fkur`, `fkur2` and `fopale` of [controls_registry.tsv](https://github.com/parallelpro/yrec/blob/810a552c/src/defaults/controls_registry.tsv).
+- **What was wrong:** `fkur` and `fkur2` were called Kurucz model-atmosphere tables; they are the Kurucz 1990 low-temperature opacity tables (kap's `read_kurucz_tables`). `flldat`, "Livermore opacity auxiliary data file", is the OPAL 1992 opacity table, and `fopale`, "OPAL 1995/2001 EOS table", is the 1995 one only. Their inlist names repeated the mistakes.
+- **What we did:** the descriptions say what the files are, and the inlist names are `kurucz_opacity_table_file`, `kurucz_opacity_table2_file`, `opal92_opacity_table_file` and `opal95_eos_table_file`, with the old ones accepted as aliases.
+
+### M53. meval left the last interval's arcs unset after a point on node n−1
+
+- **Status:** fixed in [6721d0b3](https://github.com/parallelpro/yrec/commit/6721d0b3) (2026-10-29). Checked by hand when the re-evaluation was written. Latent: the full set is byte-identical after the fix.
+- **In the original F77?** No. The flag that lets the points above the table reuse the arcs in hand is the F77's ([meval.f:211](https://github.com/parallelpro/yrec/blob/6cd56739/src/meval.f#L211)), but the F77's walk over the nodes never stops at the last point in range, so on these inputs it reads past the table (M9's defect) instead of reaching the flag with no arcs computed ([meval.f:151-162](https://github.com/parallelpro/yrec/blob/6cd56739/src/meval.f#L151-L162)):
+  ```fortran
+    100 IF (XVAL(START) - XTAB(LCN1)) 130,110,120
+  ...
+    120 LCN=LCN1
+        LCN1=LCN1+1
+        GO TO 100
+  ...
+        IF ((LCN1 .EQ. NUM) .AND. (XVAL(END) .NE. XTAB(NUM))) GO TO 210
+  ```
+  M9's fix ([c08569b0](https://github.com/parallelpro/yrec/commit/c08569b0), 2026-10-29) stopped the walk after the last point in range, which left the unchanged flag set after a point on node n−1 with the in-range arcs skipped.
+- **Now:** `meval`, [quadratic_spline.f90:522-582](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/quadratic_spline.f90#L522-L582), around one `interval_arcs` record ([:37-46](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/quadratic_spline.f90#L37-L46)).
+- **What was wrong:** the points above the table after a point on node n−1, reached by the search or by the walk over the nodes, took arcs never computed for that interval: the first interval's (4.4935 instead of 5.1667 on the re-evaluation's case), zeros under `-finit-local-zero`, NaN under `-finit-real=snan`. 2.5% of random sorted runs met it.
+- **What we did:** meval is three steps around one "arcs of interval i" record, recomputed whenever the interval differs; the tail flag and the search's found flag are gone. `test_numerics`' "a run equals its points" check is exhaustive: every sorted subset of 16 candidate points (65535 runs), against the points one at a time, bit for bit; it fails on the old meval.
+
+### M54. osplin extrapolated from a zero-width end interval as NaN with ierr 0
+
+- **Status:** fixed in [d367ecd0](https://github.com/parallelpro/yrec/commit/d367ecd0) (2026-10-29). Latent.
+- **In the original F77?** Yes: nothing guards an interval of zero width. CHOOSE's secant divides by it, and so does SPLINE's chord, through which MEVAL extrapolates from the end intervals ([choose.f:46-47](https://github.com/parallelpro/yrec/blob/6cd56739/src/choose.f#L46-L47), [spline.f:58-59](https://github.com/parallelpro/yrec/blob/6cd56739/src/spline.f#L58-L59)):
+  ```fortran
+        SPQ=(Q2-P2)/(Q1-P1)                                    ! choose.f
+         FS = (XVALS - XTABS)/(XTABS1 - XTABS)                  ! spline.f
+         SPLINE = YTABS + FS*(YTABS1 - YTABS)
+  ```
+  M10's guard ([d4135f2d](https://github.com/parallelpro/yrec/commit/d4135f2d)) covered the slopes only.
+- **Now:** `osplin`'s guard, [quadratic_spline.f90:84-88](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/quadratic_spline.f90#L84-L88).
+- **What was wrong:** with x = (0, 1, 2, 3, 3), osplin at 3.5 and 4.0, and with x = (0, 0, 1, 2, 3) at −0.5, returned NaN with `ierr = 0`. Since M10 both end slopes of such an interval are 0, so CHOOSE picks its zero-slope case after computing a 0/0 secant it does not use; the NaN comes from the chord, ±∞ times a zero difference.
+- **What we did:** osplin returns `numerics_coincident_points` and leaves `yval` as it was when a point below the table would use x(1) = x(2), or one above x(n−1) = x(n); points inside such a table are evaluated as before. A test and two mutations.
+
+### M55. simeqc passed a rank-deficient matrix as solved
+
+- **Status:** fixed in [def22898](https://github.com/parallelpro/yrec/commit/def22898) (2026-10-29). Latent.
+- **In the original F77?** Yes. SIMEQC takes the largest entry of the column as the pivot and rejects only an exactly zero one, on which it stops ([simeqc.f:16-28](https://github.com/parallelpro/yrec/blob/6cd56739/src/simeqc.f#L16-L28)):
+  ```fortran
+        IF(DABS(BIGA).GE.DABS(A(IJ))) GO TO 30
+  ...
+        IF(DABS(BIGA).EQ.0.0D0) GOTO 1010
+  ...
+   1010 WRITE (5,1011)
+   1011 FORMAT (1X,'STOPPED AT 1010')
+        STOP29
+  ```
+- **Now:** `simeqc`, [linear_solvers.f90:194-264](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/linear_solvers.f90#L194-L264), with `singular_pivot_tolerance` ([:28](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/linear_solvers.f90#L28)).
+- **What was wrong:** a pivot that is the round-off of a singular matrix passed: rows (1,2,3), (4,5,6), (7,8,9) gave `ierr = 0` and (−0.262, 0.524, 0.071).
+- **What we did:** `numerics_singular` when no candidate pivot exceeds 1e-14 of its row's largest entry, as `ludcmp` tests (M12); a NaN pivot is `numerics_bad_input`. The pivot choice and the arithmetic are unchanged. On five decks the smallest such scaled pivot is 6.2e-7, far above the tolerance. `test_numerics` checks a pivoting matrix, a round-off pivot, a row scaled by 1e-30 and a NaN column.
+
+### M56. The conductive opacity's hunts started from undefined guesses
+
+- **Status:** fixed in [4a814b28](https://github.com/parallelpro/yrec/commit/4a814b28) (2026-10-29). No result depends on the guess.
+- **In the original F77?** No. CondOpacP saves its locals and sets the three guesses to the grid's middles once, after reading the table; every later call's HUNT starts from the index the previous one found ([condopacp.f:28](https://github.com/parallelpro/yrec/blob/6cd56739/src/condopacp.f#L28), [:52-55](https://github.com/parallelpro/yrec/blob/6cd56739/src/condopacp.f#L52-L55)):
+  ```fortran
+        save
+  ...
+           IZ=MAXZ/2+1
+           IT=MAXT/2+1
+           IR=MAXR/2+1
+  ```
+  [5cadb1e7](https://github.com/parallelpro/yrec/commit/5cadb1e7) (2026-08-22) dropped the `save`, so the guesses were set on the first call only, and [6e979f91](https://github.com/parallelpro/yrec/commit/6e979f91) (2026-10-11) moved the table read, and the setting with it, to `kap_init`, so every call's guesses were undefined.
+- **Now:** `condopacp`, [conductive_opacity.f90:298-300](https://github.com/parallelpro/yrec/blob/810a552c/src/kap/conductive/conductive_opacity.f90#L298-L300).
+- **What was wrong:** where `hunt` started was whatever the stack held. The bracket it finds, and so the opacity, does not depend on the start, so no result moved, but the read was undefined behaviour.
+- **What we did:** the guesses are 0, "no guess", so `hunt` bisects (the F77 warm-started; only the cost differs); `hunt` itself is converted to the code style.
+
+### M57. bsstep's failure left y at a failed extrapolation
+
+- **Status:** fixed in [acb65d9d](https://github.com/parallelpro/yrec/commit/acb65d9d) (2026-10-29); its underflow test is documented, not changed (by decision).
+- **In the original F77?** Partly. The underflow test X + H = X, with X BSSTEP's hydrogen-fraction argument rather than the independent variable, is the F77's; the F77 never returned after a failure, it stopped ([bsstep.f:51-53](https://github.com/parallelpro/yrec/blob/6cd56739/src/bsstep.f#L51-L53)):
+  ```fortran
+        IF(X+H.EQ.X) THEN
+           WRITE(*,*) 'ERROR IN BSSTEP'
+           STOP
+  ```
+  The return with y holding the last failed stage came with [d874cfcb](https://github.com/parallelpro/yrec/commit/d874cfcb) (2026-08-21, ierr instead of stop), which the envelope takes since [bfd5c794](https://github.com/parallelpro/yrec/commit/bfd5c794) (2026-08-25).
+- **Now:** `bsstep`, [bulirsch_stoer.f90:89-178](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/bulirsch_stoer.f90#L89-L178), its header on the failure state, [:74-88](https://github.com/parallelpro/yrec/blob/810a552c/src/numerics/bulirsch_stoer.f90#L74-L88).
+- **What was wrong:** on a failure y held the last failed extrapolation, and the header did not say so; at X = 0 a failing step takes about 270 retries (about 84 000 derivative calls) before the test fires.
+- **What we did:** both failures restore y as it came in, and the header and `numerics/README.md` state the failure state and the X = 0 case. Keeping the hydrogen fraction as the test's scale is a revisable default ("Decisions needed"). Two `test_numerics` checks, with mutations.
+
+### M58. O16(p,γ)'s reference S₀ was a single-precision literal
+
+- **Status:** fixed in [efefc632](https://github.com/parallelpro/yrec/commit/efefc632) (2026-10-29). Checked by hand when the re-evaluation was written. Results change in 35 of the 56 decks.
+- **In the original F77?** Yes. REMAP's DATA gives `S0_1_16_REF` the default-real 9.4E0, stored in a REAL*8, while `S0_1_16_A98` beside it is 9.4D0 ([remap.f:45-46](https://github.com/parallelpro/yrec/blob/6cd56739/src/remap.f#L45-L46), [:54-55](https://github.com/parallelpro/yrec/blob/6cd56739/src/remap.f#L54-L55)):
+  ```fortran
+        DATA S0_1_14_REF,S0_1_16_REF,S0_PEP_REF,S0_1_BE7E_REF/
+       *     3.32D0,9.4E0,3.4848D-6,1.752D-10/
+  ```
+- **Now:** the O16(p,γ) row's `s0_kevb=9.4d0`, [network.f90:241](https://github.com/parallelpro/yrec/blob/810a552c/src/net/network.f90#L241), read by `set_cross_section_scales` ([user_inputs.f90:134-152](https://github.com/parallelpro/yrec/blob/810a552c/src/io/user_inputs.f90#L134-L152)).
+- **What was wrong:** 9.4E0 is 9.3999996185 in double precision, so `cross_section_scale(r_po16)` was 1.127659620 for the Solar Fusion II input 10.6 keV b instead of 1.127659574: O16(p,γ) ran 4.1e-8 fast on the new-rates path, which every shipped deck takes.
+- **What we did:** 9.4d0; since [a902a116](https://github.com/parallelpro/yrec/commit/a902a116) the reference values are net's, in the reaction table, and `map_user_inputs` takes them from there. Measured against its parent: 35 of the 56 decks differ (every deck that evolves past a few models). `Test_solarGS98_base`: final Δlog L +4.1e-6, Δlog Teff +7.6e-7, ΔX_c +7.0e-5, age-matched up to 1.0e-4 in log L near the ZAMS, where the transient convective core of CN burning changes by a zone; a 1e-10 relative change of N_A moves it as much there (that deck's noise floor). The 1 Msun ZAHB deck: final −5.9e-4, model-matched at most 1.4e-5.
+
+### M59. Three Avogadro numbers in the reaction rates
+
+- **Status:** fixed in [dbb5f570](https://github.com/parallelpro/yrec/commit/dbb5f570) (2026-10-29). Results change in all 56 decks.
+- **In the original F77?** Yes. ENGEB (and its twin RATES) takes 6.023D23 for d(p,γ) and its convective-overturn cap, Caughlan & Fowler prefactors whose implied N_A is 6.0225e23, and a single-precision Be7 factor ([engeb.f:520](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L520), [:526](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L526), [:753](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L753), [:819](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L819)):
+  ```fortran
+          RDEUT = RHO*2.240D3*T9P23*EXP(ZZ)*TFACDEUT*6.023D23/ANUC(3)
+             RDEUTMAX = 6.023D23/ANUC(3)/TAUCZ
+           CAMUBE7 = RHO*8.584981E+22
+        RATE(8) = 1.157126D22*RHO*EXP(UTOT(8))*(A1*R1+T9M32*(A2+A3+A4+A5))
+  ```
+- **Now:** `avogadro_number = 1/amu_cgs` and the prefactors built from it, [reaction_rates.f90:62-112](https://github.com/parallelpro/yrec/blob/810a552c/src/net/reaction_rates.f90#L62-L112).
+- **What was wrong:** the per-gram rates are multiplied by m_u (`amu_cgs` = 1.6605402e-24 g) to give the per-amu composition rates, so with N_A m_u = 1.000143 the per-amu d(p,γ) rate and its cap were 1.43e-4 high, and the α captures and triple α 6.4e-5 to 6.9e-5.
+- **What we did:** one N_A = 1/m_u (CODATA 1986, the vintage of the other constants; a revisable default), and every prefactor computed from it and named atomic masses. A per-gram rate times m_u is then ρ N_A⟨σv⟩/(A₁A₂) exactly. Effect: d(p,γ) −1.43e-4, the α captures and triple α −6.4e-5 to −6.9e-5, the Be7 captures −3e-9.
+  - All 56 decks differ (deuterium burns in every deck's pre-main-sequence or surface layers). `Test_solarGS98_base`: final Δlog L −2.0e-5, ΔX_c +5.2e-5 (age-matched 2.0e-4 near the ZAMS, the noise floor above); `cm_base` +6.4e-6; the 1 Msun ZAHB deck 1-2e-7.
+  - The 3 Msun TAMS deck (testsuite, outside the set): at fixed X_c, Δlog L −2.4e-5 at X_c 0.68, growing to −3.4e-4 at X_c 0.02; it stops one model earlier. Root cause: the slower pre-main-sequence deuterium burning shifts the approach to the ZAMS and the convective core's mass there (−4.4e-4 Msun), which the main sequence carries; a linear response, not noise (N_A × (1 + 1e-6) moves the deck 140 times less).
+
+### M60. The Itoh et al. neutrino losses saw only H, He, C and O
+
+- **Status:** fixed in [e1d89c2f](https://github.com/parallelpro/yrec/commit/e1d89c2f) (2026-10-29). Results change only with `use_itoh_neutrino_loss` above log T 7.5; no deck of the set.
+- **In the original F77?** Yes. G. Newsham's NEUTRINO wrapper (9/06) builds the mixture from four species, and ENGEB passes it X, Y, C12 + C13 and O16 + O18 ([neutrino.f:48-51](https://github.com/parallelpro/yrec/blob/6cd56739/src/neutrino.f#L48-L51), [engeb.f:1144-1145](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L1144-L1145)):
+  ```fortran
+            ZC = XC12+XC13                                    ! engeb.f
+            ZO = XO16+XO18
+           xmass(1) = x                                       ! neutrino.f
+           xmass(2) = y
+           xmass(3) = zc
+           xmass(4) = zo
+  ```
+- **Now:** `add_thermal_neutrino_loss`, [nuclear_energy.f90:333-417](https://github.com/parallelpro/yrec/blob/810a552c/src/net/nuclear_energy.f90#L333-L417).
+- **What was wrong:** the mean A and Z left out He3, N14 (about 1% by mass in a CNO-processed helium core), N15, O17, deuterium, Li, Be and the metals no slot holds, so the electron fraction Ye that the pair, plasma and photo losses depend on was low by their share.
+- **What we did:** the wrapper takes a mixture as mass fractions, nucleon numbers and charges; `nuclear_energy` gives it every nucleus of the composition, plus the metals no slot holds (Z less its tracers) as one species with Ne20's A and Z (a revisable default). `test_net`'s helium core loss moves by +0.97% (the N14). The full set is byte-identical. The 1 Msun ZAHB deck with the Itoh losses: at fixed Y_c within 1e-6 in log L down to Y_c 0.2, then the runs part at the breathing pulses near core-helium exhaustion (1656 → 1546 models, final Δlog L +2.9e-3), as M3's Jacobian-only change did.
+
+### M61. burn_implicitly reported a singular Newton system as running out of iterations
+
+- **Status:** fixed in [360944cf](https://github.com/parallelpro/yrec/commit/360944cf) (2026-10-29). Latent: no deck fails the burn.
+- **In the original F77?** No. The F77 stopped with two different messages: SIMEQC's "STOPPED AT 1010" for a zero pivot, KEMCOM's for iterations ([simeqc.f:24-28](https://github.com/parallelpro/yrec/blob/6cd56739/src/simeqc.f#L24-L28), [kemcom.f:327-337](https://github.com/parallelpro/yrec/blob/6cd56739/src/kemcom.f#L327-L337)):
+  ```fortran
+       *      1X,'UNABLE TO SOLVE FOR NEW ABUNDANCES IN SHELL',I4/1X,
+       *      'RUN STOPPED AFTER 50 ATTEMPTS')
+              STOP
+  ```
+  The table-driven solver ([6846ee78](https://github.com/parallelpro/yrec/commit/6846ee78), 2026-10-10) passed simeqc's code through as the same `ierr = 1`.
+- **Now:** `burn_implicitly`, [network.f90:533-617](https://github.com/parallelpro/yrec/blob/810a552c/src/net/network.f90#L533-L617), its codes at [:133-134](https://github.com/parallelpro/yrec/blob/810a552c/src/net/network.f90#L133-L134); `burn_network_region`, [burn_step.f90:459-552](https://github.com/parallelpro/yrec/blob/810a552c/src/core/step/burn_step.f90#L459-L552).
+- **What was wrong:** both failures returned `ierr = 1`, and `burn_network_region` wrote "no convergence in N iterations" for either, to the run log only.
+- **What we did:** `burn_not_converged` and `burn_singular_jacobian`; simeqc's status is mapped, not passed through, and `burn_network_region` writes one message per code through `report_error`, terminal and run log. `test_net` builds a burn whose last pivot is exactly zero.
+
+### M62. burn_network_region indexed a basic-slot copy with the network's slots
+
+- **Status:** fixed in [3d4ce49b](https://github.com/parallelpro/yrec/commit/3d4ce49b) (2026-10-29). Latent: no network species sits above slot 11.
+- **In the original F77?** No. KEMCOM reads and writes fixed slots ([kemcom.f:15](https://github.com/parallelpro/yrec/blob/6cd56739/src/kemcom.f#L15)); the copy came with [6846ee78](https://github.com/parallelpro/yrec/commit/6846ee78) (2026-10-10), and [d06db92b](https://github.com/parallelpro/yrec/commit/d06db92b) (2026-10-11) indexed it with net's `network_species_slot`.
+- **Now:** `burn_network_region`, [burn_step.f90:478-518](https://github.com/parallelpro/yrec/blob/810a552c/src/core/step/burn_step.f90#L478-L518).
+- **What was wrong:** the region's start composition held the basic slots only (`n_species_basic`) and was read at `network_species_slot`, so a solved species in an extended or new slot would have been read out of bounds: the "add an isotope" recipe would have broken here without naming the file.
+- **What we did:** the start composition holds every slot (`n_species_extended`); the too-cool branch still homogenizes the basic slots only. Byte-identical.
+
+### M63. The screening constants were hand-rounded per reaction
+
+- **Status:** computed in [68d01eec](https://github.com/parallelpro/yrec/commit/68d01eec) (2026-10-29). Not a wrong value (M4 fixed the one transposition), but measured, because results move. No shipped deck moves.
+- **In the original F77?** Yes. ENGEB's DATA holds the charge products and Graboske et al.'s four factors per reaction to 3-5 digits, and its comment says that only Z86 was checked ([engeb.f:385-399](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L385-L399)):
+  ```fortran
+        DATA ZPRD/1.,4.,4.,6.,6.,7.,8.,12.,16.,12.,14.,12.,36./,Z53/1.175,
+       1   3.73,3.73,4.804,4.804,5.385,5.941,9.014,11.24,9.014,10.15,
+       2   9.104,23.28/,Z43/0.52,1.31,1.31,1.488,1.488,1.61,1.721,2.577,
+  ```
+- **Now:** `graboske_z`, [screening.f90:36-69](https://github.com/parallelpro/yrec/blob/810a552c/src/net/screening.f90#L36-L69), and each row's `screening_t(Z1, Z2)` in `network.f90`.
+- **What was wrong:** a newcomer adding a reaction had to compute and round four factors; the literals were the formula z_p = (Z₁+Z₂)^p − Z₁^p − Z₂^p rounded by up to 1e-3 relative (pp's z23).
+- **What we did:** a row gives its two charges; `graboske_z` holds the four factors for every pair of charges 1 to 14, computed at compile time from the formula, and the self-check rejects a charge outside that range. Every shipped deck sets `weak_screening_threshold = 30`, so it screens weakly throughout, which takes Z₁Z₂ alone: the full set and the drift decks are byte-identical. With the default threshold, 0.03, `Test_solarGS98_base` moves by +4.2e-6 in final log L.
+
+### M64. SCV's general path searched the pressure in a column only the envelope table's build fills
+
+- **Status:** fixed in [4a06cd08](https://github.com/parallelpro/yrec/commit/4a06cd08) (2026-10-29). The re-evaluation's possible bug 2.
+- **In the original F77?** Yes. EQSCVG, the lookup at a composition other than the envelope's, finds its pressure cell and its interpolation nodes in `TABLENV(:,:,1)`, which only SETSCV fills, as a copy of `TABLEX(:,:,1)` ([eqscvg.f:58-95](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqscvg.f#L58-L95), [setscv.f:151](https://github.com/parallelpro/yrec/blob/6cd56739/src/setscv.f#L151)); and STARIN evaluates the EOS of the new last shell ([starin.f:554-556](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L554-L556)) before its only call of SETSCV ([starin.f:826-827](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L826-L827)):
+  ```fortran
+        JJJ = MIN(NPTSX(IDT)-3,IDP)
+        IF(PP.LT.TABLENV(IDT,JJJ+1,1))THEN               ! eqscvg.f
+              TABLENV(I,J,1) = TABLEX(I,J,1)              ! setscv.f
+  ```
+- **Now:** `compute_scv_eos`, [scv_eos.f90:366-536](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L366-L536), through `find_scv_cell`, [:549-606](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L549-L606).
+- **What was wrong:** before the first build of the envelope table that column is zero, so every general-path lookup ended "outside the table" and the zone kept the Saha result without a word. A run's first card reaches the general path so: `set_new_last_shell_convection` runs before `update_surface_mixture` builds the table.
+- **What we did:** the search and the nodes read `tablex`'s log P_gas column, which the He and Z tables share and the envelope table copies: after a build the same numbers, so only lookups before the first build change. `test_eos` evaluates the general path before the build and checks that the result is SCV's (9e-4 dex from Saha's) and equals the lookup after it. 54 of the 56 decks are byte-identical; the 0.03 Msun dbl-to-ZAMS deck moves by +1.9e-8 in final log L and the 1 Msun pp-chain ZAMS deck by −1.7e-10.
+
+### M65. Under SCV, R/μ and 1/μ_e were the Saha solution's
+
+- **Status:** fixed in [26751395](https://github.com/parallelpro/yrec/commit/26751395) (2026-10-29). Possible bug 1. Byte-identical on the decks.
+- **In the original F77?** Yes. EQSCVE and EQSCVG take `RMU` and `EMU` as arguments and never assign them, so under `LSCV` the values EQSAHA set just before stand beside SCV's density; the ramp then backs `RMU` out of the blended density ([eqstat2.f:150-155](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L150-L155), [:249-252](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L249-L252)):
+  ```fortran
+           CALL EQSAHA(FX,TL,T,PL,P,DL,D,BETA,BETAI,BETA14,FXION,RMU,
+  ...
+           CALL EQSCVE(TL,T,PL,P,DL,D,X,Z,BETA,BETAI,BETA14,FXION,
+       *        RMU,AMU,EMU,ETA,QDT,QDP,QCP,DELA,LCALC)
+  ...
+        RMU = BETA*P/(D*T)
+        EMU = RMU/CGAS - AMU
+  ```
+- **Now:** `mean_weights_from_density`, [eos_mixture.f90:145-150](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_mixture.f90#L145-L150), called by both SCV lookups ([scv_eos.f90:247](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L247) and [:434](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L434)) and by the ramp's `blend_saha_into` ([blended_eos.f90:426](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L426)).
+- **What was wrong:** where SCV gives the density (with H₂), R/μ and 1/μ_e stayed Saha's (without molecules), and at the ramp's foot they stepped to βP/(ρ_SCV T). Core reads them for the pulse μ, the semiconvective mean weights and the envelope points.
+- **Expected behaviour, and why:** for a density that does not come from the composition, R/μ is the gas constant the ideal-gas law needs for it, βP/(ρT), as the ramp, OPAL and MHD already define it.
+- **What we did:** R/μ = βP/(ρT) and 1/μ_e = (R/μ)/R − 1/μ_ion after each SCV density, through one helper. `test_eos` checks both on both SCV paths at three points and their continuity at the ramp's foot under SCV. All 56 decks are byte-identical: there OPAL 2006 replaces the result, R/μ included, wherever it covers the point. At and above the Saha cutoff the fully ionized gas keeps the composition's R/μ; the step there is under "Decisions needed".
+
+### M66. The Debye-Hückel metals beyond O did not add up to the zone's Z
+
+- **Status:** fixed in [d3a4e8c1](https://github.com/parallelpro/yrec/commit/d3a4e8c1) (2026-10-29); the record of [8bcfb584](https://github.com/parallelpro/yrec/commit/8bcfb584) keeps the rule. Possible bug 4. Results change in every deck.
+- **In the original F77?** Partly. The F77's metals beyond O did not follow the zone either: `ZDH` holds the LAOL89 table header's mass fractions, scaled to the table's own Z (0.0188), or zero without LAOL89; the callers overwrite only its C, N and O with the zone's, and EQRELV sums it as it is ([rdlaol.f:49-52](https://github.com/parallelpro/yrec/blob/6cd56739/src/rdlaol.f#L49-L52), [physic.f:61-66](https://github.com/parallelpro/yrec/blob/6cd56739/src/physic.f#L61-L66), [eqrelv.f:67-74](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqrelv.f#L67-L74)):
+  ```fortran
+  C     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
+        READ(IOLAOL,130)ZHIT,ZDH                              ! rdlaol.f
+                 ZDH(1) = HCOMP(5,IM)+HCOMP(6,IM)             ! physic.f
+              ALMIX = ALMIX + DHNUE(II)*ZDH(II)              ! eqrelv.f
+  ```
+  The form fixed here, Ne to Fe at the envelope mixture's mass fractions in every zone, came with M37's fix ([15af2ef3](https://github.com/parallelpro/yrec/commit/15af2ef3), 2026-10-29).
+- **Now:** `debye_huckel_composition_of`, [eos_mixture.f90:165-213](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_mixture.f90#L165-L213), called by `eos_get` ([eos_lib.f90:79](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_lib.f90#L79)).
+- **What was wrong:** with settling a zone's metals differ from the envelope's, and where a core burns helium its Z grows by the C and O it makes (to 1 at the ZAHB deck's centre), but the correction counted the envelope's Ne to Fe there, so its metals did not add up to the zone's Z.
+- **Expected behaviour, and why:** the correction is that of the zone's gas: its metals add up to the zone's Z, and the C and O a core makes stay C and O.
+- **What we did:** Ne, Na, Mg, Al, Si, Ar and Fe keep the envelope mixture's proportions, and their sum is the zone's Z less its C, N and O (none when the mixture has none). Scaling them by the zone's Z over the envelope's, the literal fix, was measured first and rejected before any later commit: it put a helium-burning core's C and O into Ne to Fe (44 times the envelope's at the ZAHB deck's centre; that deck's final log L moved by −6.3e-3). `test_eos` checks that a zone at twice the envelope's Z gets the density rise of an envelope at that Z, and that the record's metals add up to Z ([1fb891ca](https://github.com/parallelpro/yrec/commit/1fb891ca)).
+  - Every deck moves, mostly for another reason: the shipped starting models' C, N and O tracers make 69% of Z at the surface, where the seed mixture gives C, N and O 73% (`mixture_change_mode = 0` leaves the two unreconciled), so their metals beyond O are 15% more than before (6% at the centres). Which baseline is meant is under "Decisions needed".
+  - Final log L moves by 4e-9 in the configuration matrix, 2e-10 to 2e-5 in the solar, rotation, nuclear-rate and pre-main-sequence decks (age-matched up to 3e-4), +1.8e-4 in `Test_solarGS98_yaleeos` (+1.73e-4 on the merged tree), +7e-5 at the end of the ZAHB deck, and +9e-4 in `o24_rescale_rotating`, whose last card ends 7% later in age; the 0.03 Msun dbl-to-ZAMS deck by 3.9e-4 age-matched, its ZAMS stop at 1.242e7 instead of 1.216e7 yr.
+
+### M67. With diffusion of Z, an envelope without metals divided by zero
+
+- **Status:** fixed in [c6efd005](https://github.com/parallelpro/yrec/commit/c6efd005) (2026-10-29). Possible bug 5. Latent: core's mixture algorithm divides by Z first.
+- **In the original F77?** Yes. EQSTAT2's diffusion-of-Z branch divides the zone's Z by `ZENV` unguarded ([eqstat2.f:62-70](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L62-L70)):
+  ```fortran
+        IF(LDIFZ)THEN
+  ...
+           RAT = Z/ZENV
+           R1A = (RAT-1.0D0)*AMUENV
+  ```
+- **Now:** `zone_mixture`, [blended_eos.f90:329-330](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L329-L330).
+- **What was wrong:** with `use_diffusion_z` and Z_env = 0, 1/μ_ion was infinite or NaN.
+- **What we did:** such an envelope takes the default branch, which counts the zone's excess metals as carbon. Byte-identical.
+
+### M68. The OPAL 1995 and 2001 density searches' trial calls rewrote every slot from stale ones
+
+- **Status:** fixed in [12c42467](https://github.com/parallelpro/yrec/commit/12c42467) (2026-10-29). Possible bug 3. Byte-identical.
+- **In the original F77?** Yes. RHOOFP and RHOOFP01 make their trial calls with only the pressure interpolated (`IORDER = 1`) but with the radiation correction on (`IRAD = 1`), and RADSUB then rebuilds every slot from what the previous call left ([rhoofp.f:74](https://github.com/parallelpro/yrec/blob/6cd56739/src/rhoofp.f#L74), [rhoofp01.f:85](https://github.com/parallelpro/yrec/blob/6cd56739/src/rhoofp01.f#L85), [esac.f:315-316](https://github.com/parallelpro/yrec/blob/6cd56739/src/esac.f#L315-L316), [radsub.f:38-73](https://github.com/parallelpro/yrec/blob/6cd56739/src/radsub.f#L38-L73)):
+  ```fortran
+        CALL ESAC (X,ZTAB,T6,RHOG1,1,IRAD,*999)              ! rhoofp.f
+        IF (IRAD .EQ. 1) THEN                                ! esac.f
+        CALL RADSUB (T6,R,MOLES,TMASS)
+        CVTT=(EOS(IRI(5))*MOLENAK/TMASS+4.D0*ER/T6)          ! radsub.f
+        EOS(IRI(5))=CVTT
+  ```
+  RHOOFP06's trial calls already passed `IRAD = 0`.
+- **Now:** the pressure-only branches of `esac`, [opal95_eos.f90:642-651](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/opal/opal95_eos.f90#L642-L651), and `interpolate_opal_eos`, [opal_eos.f90:764-776](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/opal/opal_eos.f90#L764-L776).
+- **What was wrong:** each trial call grew c_v about a hundredfold, and changed E, S, χ and the Γs; the full call afterwards overwrote them, so no result moved, but a long search could overflow under floating-point traps.
+- **What we did:** a trial call adds the radiation pressure to its pressure slot alone. `test_eos` checks it for both vintages.
+
+### M69. read_scv_tables kept a stale envelope table, leaked a unit and trusted its reads
+
+- **Status:** fixed in [835a923b](https://github.com/parallelpro/yrec/commit/835a923b) (2026-10-29). The re-evaluation's issue 11. Byte-identical: decks call `eos_init` once, before any build.
+- **In the original F77?** Partly. SETUPS's SCV reader also opened and read the three tables without `IOSTAT` and never closed them ([setups.f:305-332](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L305-L332)):
+  ```fortran
+        IF(LSCV)THEN
+           OPEN(UNIT=ISCVH,FILE=FSCVH,STATUS='OLD')
+           OPEN(UNIT=ISCVHE,FILE=FSCVHE,STATUS='OLD')
+           OPEN(UNIT=ISCVZ,FILE=FSCVZ,STATUS='OLD')
+  ```
+  The rest is 2026: a second read needs a second `eos_init`, which the F77 never made (SETUPS runs once), the composition record that was not reset came with M43 ([72de2124](https://github.com/parallelpro/yrec/commit/72de2124)), and the leak after a failed open with [5cbfb7a0](https://github.com/parallelpro/yrec/commit/5cbfb7a0) (2026-10-11), which gave the opens an `iostat` and returned early.
+- **Now:** `read_scv_tables`, [scv_eos.f90:872-892](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L872-L892), and `read_scv_rows`, [:898-936](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L898-L936).
+- **What was wrong:** a second `eos_init` read the H, He and Z tables again but kept the envelope table and the composition it records, so it could pair a table built from the earlier tables with the new ones; when the He or Z table could not be opened, the units opened before stayed open; and a truncated or corrupt table ended the run in a runtime error, although `eos_init` promises `ierr`.
+- **What we did:** each read resets the envelope table's composition, so the table waits for its next build; every unit opened is closed; every read has an `iostat`, and a row count outside 4 to 76 is corrupt too (`ierr = 1` with a message). `test_eos` checks each, confirmed by mutations.
+
+### M70. eos_set_mixture and eos_update_envelope_tables had to be called as a pair
+
+- **Status:** fixed in [debdb797](https://github.com/parallelpro/yrec/commit/debdb797) (2026-10-29). The re-evaluation's issue 12. Byte-identical.
+- **In the original F77?** Partly. The pair is a 2026 interface (`eos_set_mixture` came with [50f40772](https://github.com/parallelpro/yrec/commit/50f40772), 2026-08-21, `eos_update_envelope_tables` with [c00a9a20](https://github.com/parallelpro/yrec/commit/c00a9a20), 2026-10-11), but the F77 also kept the two steps apart: STARIN and RSCALE write the envelope composition ([starin.f:799-800](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L799-L800), [rscale.f:80-84](https://github.com/parallelpro/yrec/blob/6cd56739/src/rscale.f#L80-L84)), while SETSCV is rebuilt only at the end of STARIN ([starin.f:826-827](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L826-L827)), after the envelope refit's EOS calls:
+  ```fortran
+        XENV = XNEW                                     ! starin.f
+        ZENV = ZNEW
+              ZENV = ZENV0                              ! rscale.f
+        IF(LSCV)THEN                                    ! starin.f
+           CALL SETSCV
+  ```
+- **Now:** `eos_set_mixture`, [eos_lib.f90:147-159](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_lib.f90#L147-L159), which calls `build_scv_envelope_table` ([scv_eos.f90:668-858](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L668-L858)).
+- **What was wrong:** between the two calls (after a rescaling of Z, which called only the first, until the starting model's `update_surface_mixture`) the table stood for another composition, which M43's guard then kept unused.
+- **What we did:** `eos_set_mixture` builds the table for its X and Z when SCV is on, once the tables are read and unless it is built for that composition already; `eos_update_envelope_tables` is gone. Every change of the envelope X or Z (the run plan's Z, the starting model, the rescaling of Z) is followed by `eos_set_mixture`. `test_eos` checks the build. All 56 decks are byte-identical, those that rescale Z included.
+
+### M71. The Debye-Hückel coefficient's mass unit had a mistyped Avogadro number
+
+- **Status:** fixed in [bc1bb502](https://github.com/parallelpro/yrec/commit/bc1bb502) (2026-10-29). Listed in `docs/ROADMAP.md` section 11 (pass 2). Results change in every deck.
+- **In the original F77?** Yes. SETUPS takes the mass unit as 1/6.0222137e23 g, for 1/6.0221367e23 (CODATA 1986): the seven-figure 6.022137 with one 2 too many ([setups.f:119-124](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L119-L124)):
+  ```fortran
+  C mass hydrogen atom (gm)
+        HMASS = 1.0D0/6.0222137D23
+  ...
+        CDH = -SQRT(CPI/(CBOLTZ*HMASS*HMASS*HMASS))*ELEC*ELEC*ELEC/3.0D0
+  ```
+- **Now:** `debye_huckel_mass_unit = amu_cgs`, [yale_eos_tables.f90:39-47](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/yale_eos_tables.f90#L39-L47).
+- **What was wrong:** m_u was 1.28e-5 too small, so the coefficient, ∝ m_u^(−3/2), was 1.9e-5 too large.
+- **What we did:** the mass unit is `amu_cgs` (1.6605402e-24 g, CODATA 1986, from `physical_constants`). Where OPAL covers a point it replaces the Yale result, so the change reaches the fully ionized Yale gas: the ramp below the Saha cutoff, the centre above the OPAL table and the Yale-only decks. Every deck moves: final log L by 5e-13 to 6e-11 in the configuration matrix and the pre-main-sequence decks, 1e-9 to 4e-5 in the solar, rotation and nuclear-rate decks (age-matched up to 3e-4), −1.1e-7 at the end of the ZAHB deck; the 0.03 Msun deck by 4.5e-4 age-matched (its ZAMS stop at 1.234e7 instead of 1.242e7 yr) and `o24_rescale_rotating` by 3.9e-4, its last card ending 14% later in age.
+
+### M72. eos_settings_t's defaults were not the controls'
+
+- **Status:** fixed in [65ca207c](https://github.com/parallelpro/yrec/commit/65ca207c) (2026-10-29). The re-evaluation's issue 5. Byte-identical: every run copies them from the controls.
+- **In the original F77?** No. The F77 had no settings record, and its controls had the right defaults, the Saha cutoff `TSCUT` 6.0 and the degeneracy range `ETADH0`, `ETADH1` −1 and 1 ([parmin.f:397-398](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L397-L398), [:479](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L479)):
+  ```fortran
+        DATA ETADH0, ETADH1, LDH/-1.0D0, 1.0D0, .FALSE./
+  ```
+  The record came with [c00a9a20](https://github.com/parallelpro/yrec/commit/c00a9a20) (2026-10-11), with 0 for all three.
+- **Now:** `eos_settings_t`, [eos_configuration.f90:22-40](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_configuration.f90#L22-L40); the refusal in `eos_init`, [eos_lib.f90:110-118](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_lib.f90#L110-L118).
+- **What was wrong:** a caller that installs eos's settings without copying every control (a test, an embedding host) got a Saha cutoff at log T = 0 and a degeneracy range of zero width, which the Debye-Hückel correction's ramp divides by.
+- **What we did:** the record's defaults are the controls' (cutoff 6, η from −1 to 1), and with the correction on `eos_init` refuses η_max ≤ η_min with `ierr = 1` and a message. `test_eos` checks the defaults and the refusal.
+
+### M73. eos's errors reached the run log only, and lir's and splint's statuses were dropped
+
+- **Status:** fixed in [8ea4f7d2](https://github.com/parallelpro/yrec/commit/8ea4f7d2) (2026-10-29). The re-evaluation's issue 2, and items 3 and 5 of the numerics review.
+- **In the original F77?** Partly. The F77 EOS wrote its errors to `ISHORT`, the diagnostic file that is today's run log, and then mostly stopped; LIR returned from its two error cases without a word ([esac.f:322-324](https://github.com/parallelpro/yrec/blob/6cd56739/src/esac.f#L322-L324), [lir.f:123-127](https://github.com/parallelpro/yrec/blob/6cd56739/src/lir.f#L123-L127)):
+  ```fortran
+     61 WRITE(ISHORT,'(" MASS FRACTIONS EXCEED UNITY (61)")')   ! esac.f
+        WRITE(ISHORT,*)Z, XH
+        STOP
+    101 CONTINUE                                                ! lir.f
+        RETURN
+  ```
+  SCV's spline failures were loud there (KSPLINT printed and stopped, [ksplint.f:20-23](https://github.com/parallelpro/yrec/blob/6cd56739/src/ksplint.f#L20-L23)); they became silent with [ecce23f0](https://github.com/parallelpro/yrec/commit/ecce23f0) (2026-10-29, numerics' one error contract). The run-log-only errors came with eos's one message module, [077d26a5](https://github.com/parallelpro/yrec/commit/077d26a5) (2026-10-29), and lir's optional `ierr`, which the MHD calls did not pass, with M15's fix ([df8a8487](https://github.com/parallelpro/yrec/commit/df8a8487)).
+- **Now:** `eos_log` and `eos_report`, [eos_messages.f90:27-36](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_messages.f90#L27-L36); lir's status at MHD's calls, [mhd_eos.f90:653-654](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/mhd/mhd_eos.f90#L653-L654), [:821-835](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/mhd/mhd_eos.f90#L821-L835); `report_spline_failure`, [scv_eos.f90:342-351](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L342-L351).
+- **What was wrong:** the 35 errors eos returns `ierr` for (β ≤ 0, MHD and OPAL points off their tables, failed searches, bad compositions) went to the run log only, so a run that stopped on one said nothing on the terminal; lir's failures went unreported at MHD's three calls; SCV's two splint failures returned `ierr` without a message.
+- **What we did:** every error goes through `eos_report`, terminal and run log; `eos_log` keeps the notes. lir's `ierr` is passed at the three MHD calls and up to `compute_mhd_eos`, and SCV's splint failures are reported before they return. `test_eos` checks lir's status. Byte-identical.
+
+### M74. blend_eos's OPAL step returned from blend_eos
+
+- **Status:** fixed in [2b671c3a](https://github.com/parallelpro/yrec/commit/2b671c3a) (2026-10-29). The re-evaluation's issue 1. Byte-identical.
+- **In the original F77?** Yes, harmlessly. Each OPAL block of EQSTAT2 leaves with `GOTO 998`, the routine's end ([eqstat2.f:270-312](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L270-L312), [:409-412](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L409-L412)):
+  ```fortran
+           IF(.NOT.LTAB)GOTO 998  ! Point is not in OPAL 1995 EOS table, so exit.
+  ...
+   998  CONTINUE
+        Z = Z0
+        RETURN
+  ```
+  Nothing followed the OPAL blocks, so the jump skipped nothing. It became a defect when eos/README.md's recipe ([6927b7ce](https://github.com/parallelpro/yrec/commit/6927b7ce), 2026-10-29) offered "a step in blend_eos ... after [OPAL] otherwise".
+- **Now:** `blend_eos`, [blended_eos.f90:156-179](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L156-L179), and `opal_step`, [:271-302](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L271-L302).
+- **What was wrong:** the OPAL step's early returns left `blend_eos` itself, so a step a newcomer placed after it, as the README said, would never run.
+- **What we did:** `blend_eos` calls four step subroutines in order (`zone_mixture`, `radiation_share`, `gas_eos`, `opal_step`); OPAL's returns leave `opal_step` only. `test_eos`'s pin is unchanged.
+
+### M75. The Fermi-Dirac and OPAL readers trusted their tables, and an OPAL vintage without an open table read unit 0
+
+- **Status:** fixed in [771557ec](https://github.com/parallelpro/yrec/commit/771557ec) (2026-10-29). Byte-identical.
+- **In the original F77?** Partly. The readers' reads had no `IOSTAT`, and their layout errors stopped without closing the table ([setups.f:164-167](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L164-L167), [readco.f:54-87](https://github.com/parallelpro/yrec/blob/6cd56739/src/readco.f#L54-L87), [readcoeos01.f:64-97](https://github.com/parallelpro/yrec/blob/6cd56739/src/readcoeos01.f#L64-L97), [readcoeos06.f:61-95](https://github.com/parallelpro/yrec/blob/6cd56739/src/readcoeos06.f#L61-L95)):
+  ```fortran
+        OPEN(UNIT=IFERMI,FILE=FFERMI,FORM='FORMATTED',STATUS='OLD')
+        READ(IFERMI,150)  (DVAL(I), I = 1,43)                    ! setups.f
+  ```
+  The read of unit 0 is 2026: each F77 OPAL reader opened its own table ([readco.f:48](https://github.com/parallelpro/yrec/blob/6cd56739/src/readco.f#L48)); the YREC-team commit [bbdfa0f6](https://github.com/parallelpro/yrec/commit/bbdfa0f6) (2025-08-22) moved the open to PARMIN, and [c00a9a20](https://github.com/parallelpro/yrec/commit/c00a9a20) (2026-10-11) into `eos_init` on a `newunit`, so a vintage installed without `eos_init` found its unit at 0.
+- **Now:** `read_fermi_table`, [yale_eos.f90:1104-1159](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/yale/yale_eos.f90#L1104-L1159); `readco` (1995), [opal95_eos.f90:947-1106](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/opal/opal95_eos.f90#L947-L1106); `readcoeos` (2001, 2006), [opal_eos.f90:821-979](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/opal/opal_eos.f90#L821-L979).
+- **What was wrong:** a truncated Fermi-Dirac or OPAL table ended the run in a runtime error, although `eos_init` promises `ierr`; the layout errors left the unit open; a vintage counted as loaded before its table was read; and a vintage switched on by `set_eos_settings` alone (test code) read unit 0.
+- **What we did:** every read has an `iostat`; a failed read or a layout error is `ierr = 1` with a message naming the table, and closes it; a table counts as loaded once it is read; a reader with no table open says so and returns `ierr = 1`. `test_eos` checks a missing and a truncated table of each kind.
+
+### M76. The Saha solver started from the last solve anywhere
+
+- **Status:** fixed in [be874f6c](https://github.com/parallelpro/yrec/commit/be874f6c) (2026-10-29). The first evaluation's F6. Results change in 14 of the 56 decks, at the solver's tolerance.
+- **In the original F77?** Yes. EQSAHA's three unknowns start from DATA values and are SAVEd, so each solve starts from the previous call's solution, whichever caller made it ([eqsaha.f:25-27](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqsaha.f#L25-L27), [:155-158](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqsaha.f#L155-L158)):
+  ```fortran
+        DATA E,SAHEX1,SAHEX2/0.1D0,0.0D0,0.0D0/
+        DATA STOLEE/1.0D-09/
+        SAVE
+  ```
+- **Now:** `compute_saha_eos`, [yale_eos.f90:198-233](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/yale/yale_eos.f90#L198-L233), and the record's `saha_*` fields, [eos_results.f90:54-55](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/eos_results.f90#L54-L55).
+- **What was wrong:** a zone's result depended, within the solver's tolerance (1e-9 in E), on which EOS call had come before it anywhere in the code.
+- **Expected behaviour, and why:** the same input gives the same output; a warm start is the caller's choice.
+- **What we did:** the three unknowns (E and the He⁺ and He⁺⁺ fractions) are fields of `eos_result`, which the solver starts from and returns its solution in, as the fully ionized iteration does with the density: a record the caller carries from zone to zone warm-starts from the zone before, and a new record starts from E = 0.1 with no ionized helium, the old first start. The numerical derivatives' shifted evaluations leave the caller's record as it was. `yale_eos` keeps no state of the solver.
+  - EOS2's measurement (the series' end against the readers' commit): 42 decks byte-identical; six move by 4e-14 to 3e-12 in final log L, the 0.03 Msun deck by 3e-9, six settling solar decks by 8e-8 to 1.5e-5 (each one model more or fewer), and `rv_sbm2` by 8e-6 (age-matched 4e-4; 900 models for 896). On the merged tree 12 decks move, the settling solar decks by up to 2.4e-5.
+
+### M77. GYRE's ε and its derivative columns described different ε
+
+- **Status:** fixed in [9168a576](https://github.com/parallelpro/yrec/commit/9168a576) (2026-10-29). The net re-evaluation's possible bug 1. Results change in the GYRE and GSM files only, above log T 7.5.
+- **In the original F77?** Partly. The F77 had no GYRE writer, but its pulse model file wrote the same pair: COEFFT's `SESUM`, the five chains without the thermal neutrino loss, beside ENGEB's derivatives, from which the loss's are subtracted above `TCUT(5)` = 7.5 ([coefft.f:347](https://github.com/parallelpro/yrec/blob/6cd56739/src/coefft.f#L347), [:414-415](https://github.com/parallelpro/yrec/blob/6cd56739/src/coefft.f#L414-L415), [engeb.f:1227-1228](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L1227-L1228), [wrtmod.f:217-219](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtmod.f#L217-L219)):
+  ```fortran
+              SESUM(IM) = EG(1)+EG(2)+EG(3)+EG(4)+EG(5)          ! coefft.f
+              PQED(IM) = QED
+              PQET(IM) = QET
+           PET = PET - QETNX                                    ! engeb.f
+           PEP = PEP - QEDNX
+  ```
+  The GYRE writer came with [9df62b7e](https://github.com/parallelpro/yrec/commit/9df62b7e) (2026-08-20) and kept the pairing.
+- **Now:** `deps_nuc_dlnrho` and `deps_nuc_dlnt`, taken in `compute_nuclear_energy` before the thermal neutrino loss is added ([nuclear_energy.f90:139-140](https://github.com/parallelpro/yrec/blob/810a552c/src/net/nuclear_energy.f90#L139-L140)), and `store_pulse_derivatives` ([structure_equations.f90:309-324](https://github.com/parallelpro/yrec/blob/810a552c/src/core/structure/structure_equations.f90#L309-L324)).
+- **What was wrong:** the GYRE and GSM files write ε = `eps_total`, the chains' sum without the thermal neutrino loss, but `eps_eps_T` and `eps_eps_rho` were the Henyey's dε/d ln T and dε/d ln ρ, which subtract the loss's derivatives. Above log T 7.5, where the loss is computed, the two described different ε: in a neutrino-cooled layer ε was zero while `eps_eps_T` was not, and negative.
+- **Expected behaviour, and why:** GYRE's nonadiabatic equations use ε with its derivatives, so they must be one ε's. MESA's `pulse_gyre.f90` writes `eps_nuc` with `d_epsnuc_dlnT` and `d_epsnuc_dlnd`, all three without the thermal neutrinos (MESA keeps those in `non_nuc_neu`).
+- **What we did:** the derivative columns are ε_nuc's; ε and the Henyey derivatives are unchanged, and FGONG has no derivative columns. On the 1 Msun ZAHB-to-TAHB deck with GYRE files every 150 models (41 files) only `eps_eps_T` and `eps_eps_rho` change, at the points above log T 7.5: at the centre (log T 8.07 to 8.26) `eps_eps_T` by 3e-5 to 3e-3 relative; in the cooler layers where the loss dominates, the old column was negative at 162-413 points and nonzero at 82-133 points where ε = 0, the new one at none. No shipped deck writes GYRE files, and the solar baselines' (log T < 7.5) are unchanged. MESA's convention is a revisable choice (under "Decisions needed").
+
+### M78. The interior GYRE file computed its own N²
+
+- **Status:** fixed in [86b3fa63](https://github.com/parallelpro/yrec/commit/86b3fa63) (2026-10-29). The io re-evaluation's issue 12. Results change in that file's N² column only.
+- **In the original F77?** No. The F77's pulse model file had no N² column; it left N² to the pulsation code ([wrtmod.f:217-220](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtmod.f#L217-L220)). The interval file's writer came with [9df62b7e](https://github.com/parallelpro/yrec/commit/9df62b7e) (2026-08-20), its own thermal-form N², and its second copy of the gradient form with [2ed398ca](https://github.com/parallelpro/yrec/commit/2ed398ca) and [67b36131](https://github.com/parallelpro/yrec/commit/67b36131) (2026-08-30).
+- **Now:** `write_interior_gyre`, [yrec_output.f90:202-215](https://github.com/parallelpro/yrec/blob/810a552c/src/io/yrec_output.f90#L202-L215), writes the stitched model's first `nz` pulse points through the one GYRE text writer, `write_gyre_pulse` ([pulsation_output.f90:234-254](https://github.com/parallelpro/yrec/blob/810a552c/src/io/pulsation_output.f90#L234-L254)).
+- **What was wrong:** `write_gyre_pulse` (the file every `pulse_gyre_interval` models) recomputed every column from the star's arrays, among them a second copy of `build_pulse_points`' N² with its operands in another order, and copied point nz−1's N² to the last point. It took the star and six of the star's own arrays (`docs/GUIDELINES.md` star rule 3), and the luminosity under the name `log_luminosity` although it held L/L☉.
+- **What we did:** the interval file is the stitched model's interior points (the interior always comes first), with the outermost interior shell's M, R and L as its globals, as before; the one GYRE text writer takes the name `write_gyre_pulse` (it was `write_gyre_ext`). On the solar deck (17 interval files) and the ZAHB deck (11) only N² changes: at points 2 to nz−1 by round-off (at most 3.5e-12 and 1.5e-12 of the file's largest |N²|), and the last point is its own value now, 4.2% and 4.9% from its neighbour's. No shipped deck sets `pulse_gyre_interval`. O22 (the profile's N² column) is unchanged.
+
+### M79. An empty starting model ended in a runtime error
+
+- **Status:** fixed in [55cf35e5](https://github.com/parallelpro/yrec/commit/55cf35e5) (2026-10-29). The io re-evaluation's possible bug 6. Error path only.
+- **In the original F77?** Yes. STARIN rewinds the model unit and reads the four-character tag with no `IOSTAT` ([starin.f:167-169](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L167-L169)):
+  ```fortran
+        REWIND IREAD
+        READ(IREAD,10) ATEMP
+   10   FORMAT(A4)
+  ```
+- **Now:** `read_model_format_tag`, [model_files.f90:129-140](https://github.com/parallelpro/yrec/blob/810a552c/src/io/model_files.f90#L129-L140), called by `read_starting_model_file` ([starting_model.f90:284](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/starting_model.f90#L284)).
+- **What was wrong:** the format tag was read without `iostat`, so an empty starting model stopped the run with "Fortran runtime error: End of file" and exit status 2. M23's fix had checked every other read of the model file.
+- **What we did:** `model_files` reads the tag with `iostat` and reports "cannot read the format tag of the starting model <path>: <reason>", terminal and run log; the run exits 1. `test_error_exit`'s malformed-model test has an empty case, and `test_io` checks it too.
+
+### M80. The profile's chain fractions do not add up to 1 where the α captures burn
+
+- **Status:** decided and documented in [aca05304](https://github.com/parallelpro/yrec/commit/aca05304) (2026-10-29); no output changes. The state re-evaluation's possible bug 5.
+- **In the original F77?** No. COEFFT's fractions are of the five chains' own sum, so they add up to 1, and the α captures go to the luminosity budget only ([coefft.f:347-357](https://github.com/parallelpro/yrec/blob/6cd56739/src/coefft.f#L347-L357)):
+  ```fortran
+              SESUM(IM) = EG(1)+EG(2)+EG(3)+EG(4)+EG(5)
+  ...
+              DO J = 1,5
+                 SEG(J,IM) = EG(J)*ESUMI
+  ```
+  The case came with M1's fix ([ee268284](https://github.com/parallelpro/yrec/commit/ee268284), 2026-10-29), which put the α captures into the total and kept the five fractions.
+- **Now:** `store_zone_energy_channels`, [structure_equations.f90:242-267](https://github.com/parallelpro/yrec/blob/810a552c/src/core/structure/structure_equations.f90#L242-L267), and the profile's `interior_value`, [stitched_model.f90:514-525](https://github.com/parallelpro/yrec/blob/810a552c/src/core/diagnostics/stitched_model.f90#L514-L525).
+- **What is the case:** since M1, the profile's `eps_nuc` (`eps_total`) includes the α captures, while `eps_ppI` … `eps_he3` (`eps_channels` rows 1-5) are the fractions of the five chains that have a slot; the α captures have none, so where they burn the five add up to 1 minus their share. On the 1 Msun ZAHB deck they add up to 1 on the ZAHB; in core helium burning the α captures' share at the centre is 3.6% at Y_c = 0.76, 18% at 0.30, 42% at 0.087 and 99% at 0.002, and close to all of ε_nuc toward the convective core's edge, where ¹²C(α,γ) outruns the triple α.
+- **What we did:** each column stays its own chain's share; the α captures' is 1 minus the sum (folding it into `eps_he3` would lose the triple α's). The comments where the fractions are made say so, as do `io/README.md` and `star_info`'s member comment. A column of its own would need an `eps_channels` row; it is left to the authors.
+
+### M81. log10 G was 0 until run_setup set it
+
+- **Status:** fixed in [454014c0](https://github.com/parallelpro/yrec/commit/454014c0) (2026-10-29). The state re-evaluation's possible bug 3. Latent: every run set it before any reader.
+- **In the original F77?** Yes, in kind. `CGL` is a member of `COMMON /CONST2/`, assigned only in SETUPS, which MAIN calls right after PARMIN; nothing initializes it ([setups.f:51](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L51), [:106-107](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L106-L107)):
+  ```fortran
+        COMMON/CONST2/CGAS,CA3,CA3L,CSIG,CSIGL,CGL,CMKH,CMKHN
+  C log of Gravitational constant G=6.67259D-8
+        CGL = -7.17571D0
+  ```
+  The F77 had no kernel that ran without SETUPS. The module variable without an initializer came with [a7f1bee4](https://github.com/parallelpro/yrec/commit/a7f1bee4) (2026-08-20).
+- **Now:** `cgl`'s initializer, [physical_constants.f90:69](https://github.com/parallelpro/yrec/blob/810a552c/src/state/physical_constants.f90#L69); the kernels read `log10_gravitational_constant` from their records (rotation's settings, the envelope kernel's `envint_config`, the shell equations' `structure_settings`).
+- **What was wrong:** `physical_constants`' `cgl` had no initializer, so it was 0 until `set_up_constants_and_tables` assigned it. Star-blind kernels read it (the envelope integrands and kernel, the shell equations, rotation's shape, stability coefficients and magnetic braking), so a kernel test that did not run `run_setup` computed with G = 1 without a word; rotation's tests set the literal −7.17571 by hand to avoid it.
+- **What we did:** `cgl` starts at `log10_newton_g_default`; rotation's settings record and the envelope kernel's and shell equations' configuration records carry log10 G, which those kernels read instead of the global, copied by their builders from the same function; `tools/check_boundaries.py` fails when a physics domain, rotation or a star-blind kernel reads `cgl`. The tests' hand-set values are gone. Byte-identical: the rotating decks, the unit tests, and the full set with the next commits.
+
+### M82. The neutrino table printed a stale X(⁷Be) for shells it did not compute
+
+- **Status:** fixed in [33760aa0](https://github.com/parallelpro/yrec/commit/33760aa0) (2026-10-29). Latent: no deck reaches it.
+- **In the original F77?** No. MAIN's table fills every shell with log T ≥ 6, with no cutoff gate, and prints only the shells with T ≥ 5e6 K, so every printed shell was filled; the table was also switched off in the source ([main.f:324](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L324), [:353](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L353), [:370](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L370), [:393](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L393)):
+  ```fortran
+        LNUTAB = .FALSE.
+           IF(TL.LT.6.0D0)GOTO 666
+           BE7M(I) = BE7MASSFRACTION
+           IF(T6.LT.5.0D0)GOTO 141
+  ```
+  [9be2a129](https://github.com/parallelpro/yrec/commit/9be2a129) (2026-10-10) added the cutoff to the fill loop's exit, on a star member that kept its values from card to card since [732cf038](https://github.com/parallelpro/yrec/commit/732cf038) (2026-08-21).
+- **Now:** `write_neutrino_flux_table`, [neutrino_flux_output.f90:39-140](https://github.com/parallelpro/yrec/blob/810a552c/src/core/diagnostics/neutrino_flux_output.f90#L39-L140).
+- **What was wrong:** the table fills a shell's X(⁷Be) only for shells with log T ≥ 6 above the burning cutoff, and its profile loop prints every shell with T ≥ 5e6 K. With the cutoff control `nuclear_logT_cutoffs(1)` above log T = 6.7 (the default is 6.5), the shells between were printed with whatever an earlier card's table had left in the star member, or 0.
+- **What we did:** the per-shell arrays are locals of the procedure, zeroed at entry, as its fluxes already were, so such a shell prints 0, "not computed"; the two star members are gone. Byte-identical on every deck and on a variant of `cm_base` that writes the table.
+
+### M83. check_star_contracts told procedures apart by name only
+
+- **Status:** fixed in [f5a88324](https://github.com/parallelpro/yrec/commit/f5a88324) (2026-10-29). The state re-evaluation's issue 7. A tool; no output.
+- **In the original F77?** No; `tools/check_star_contracts.py` is 2026 (since [758cab27](https://github.com/parallelpro/yrec/commit/758cab27), 2026-10-10).
+- **Now:** `tools/check_star_contracts.py` ([check_star_contracts.py](https://github.com/parallelpro/yrec/blob/810a552c/src/tools/check_star_contracts.py)).
+- **What was wrong:** the checker kept one procedure per name, so the second of two procedures with the same name (`secular_transport`'s `wind_now`, the second `write_gsm_pulse`) was never checked, and a callee's intents came from whichever was found first; it also counted `read(...) s%x` as a read of `s%x`.
+- **What we did:** procedures are keyed by module and host, calls are resolved by scope and `use`, and a read statement's target or an (de)allocated member is a write; `gen_star_docs.py` reuses the keys and the resolution. A contract on `secular_transport`'s `wind_now` is now checked, and a wrong one fails, where the old checker passed it.
+
+### M84. The sample_cases/LowM_HB decks name a starting model that does not exist
+
+- **Status:** open (found 2026-10-29 by the controls package, measuring M47). A deck fix; no code changes.
+- **In the original F77?** No; the F77 import has no sample_cases/ and no ZAHB model. The decks came with the YREC-team commit [3f057e31](https://github.com/parallelpro/yrec/commit/3f057e31) (2026-02-23), whose `FFIRST` named `../../input/models/zahb/...`; the ZAHB models were added straight to `startmodels/zahb/` ([e1fd39c8](https://github.com/parallelpro/yrec/commit/e1fd39c8), 2026-03-05), and [029f978d](https://github.com/parallelpro/yrec/commit/029f978d) (2026-08-29) carried the path into the inlists.
+- **Now:** `first_model_file` in each of the 28 decks of `sample_cases/LowM_HB/` (for example [Solar_m1p0feh+0p0_PARSEC_TAHB.inlist:68](https://github.com/parallelpro/yrec/blob/810a552c/sample_cases/LowM_HB/Solar_m1p0feh+0p0_PARSEC_TAHB.inlist#L68)).
+- **What is wrong:** 27 of the decks name `../../input/models/zahb/<mass>preZAHB.last` and one an absolute path on an author's machine; none of those files exists, so every deck stops at the open. The models ship as `startmodels/zahb/<mass>preZAHB.last`, which `sample_cases/TAHB`'s decks reach as `{YREC_START}/zahb/...`. `sample_cases/TAHB/Solar_m1p0feh+0p0_GN93_MESA_TAHB.inlist` names `{YREC_INPUT}/models/zahb/100mSOLpreZAHB.last`, missing too.
+- **Proposed fix:** `first_model_file = "{YREC_START}/zahb/<mass>preZAHB.last"` in the 29 decks, then a run of each to its first card's end. No code changes.
+
+### M85. After a later card's Z rescale, the EOS mixture keeps the first card's metals
+
+- **Status:** open (found 2026-10-29 by the EOS package).
+- **In the original F77?** Yes. STARIN computes the envelope mixture (`XENV`, `ZENV`, `AMUENV`, `FXENV`) on the first card only, and on a later card RSCALE sets `ZENV` to the new Z and leaves the rest ([starin.f:781](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L781), [rscale.f:80-84](https://github.com/parallelpro/yrec/blob/6cd56739/src/rscale.f#L80-L84)):
+  ```fortran
+        IF(NK.GT.1) GOTO 630                                   ! starin.f
+              ZENV0 = RESCAL(3,NK)                             ! rscale.f
+  C DBG 4/95 BUG FIX ZENV IS USED IN MANY ROUTINES AND NOT ZENV0 SO CHANGE
+  C     ZENV WHENEVER Z IS CHANGED.
+              ZENV = ZENV0
+  ```
+- **Now:** `rescale_interior_z`, [model_rescaling.f90:140-170](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/model_rescaling.f90#L140-L170), calls `eos_set_mixture` with the new Z and the old inverse weight and number fractions ([:158-160](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/model_rescaling.f90#L158-L160)); `update_surface_mixture` recomputes the mixture only on the first card ([starting_model.f90:958](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/starting_model.f90#L958)).
+- **What is wrong:** from the second card on, eos's mixture has the new Z_env but the metals of the first card's Z, so 1/μ_ion and the Saha abundances are the old Z's. `testsuite/Test_m0p7feh-0p75_GN93_TAHB` rescales Z on ten cards, nine after the first; it rescales X too, so its zones take the excess branch with Z − Z_env = 0, still with the first card's metals.
+- **Expected behaviour, and why:** the EOS's mixture is the model's.
+- **Proposed fix:** `rescale_interior_z` recomputes the envelope mixture with `update_surface_mixture`'s algorithm (one shared routine) before `eos_set_mixture`; then `eos_set_mixture` can check that the metals add up to Z (Σ fx_i A_i times the inverse weight). One measured commit, in core/model; the decks with a later card's Z rescale move. Until then `eos_set_mixture` checks nothing about the mixture, since this case would trip such a check in a shipped deck.
+
+### M86. Before the first card's update_surface_mixture, the EOS mixture holds the run plan's values
+
+- **Status:** open (found 2026-10-29 by the EOS package).
+- **In the original F77?** Yes. On the first card STARIN's envelope refit evaluates the EOS of the new last shell ([starin.f:554-556](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L554-L556)) and integrates a shallower envelope ([starin.f:609-611](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L609-L611)) before its mixture block sets `XENV`, `AMUENV` and `FXENV` ([starin.f:795-820](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L795-L820)); `ZENV` is PARMIN's, the last card's rescale Z ([parmin.f:1378](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1378)):
+  ```fortran
+           IF(RESCAL(3,NKIND).GE.0.0D0)  ZENV=RESCAL(3,NKIND)    ! parmin.f
+  ```
+- **Now:** `set_run_plan_envelope_z`, [run_setup.f90:59-71](https://github.com/parallelpro/yrec/blob/810a552c/src/core/run/run_setup.f90#L59-L71), called by `prepare_run`; in `read_starting_model` the first card's `rescale_and_refit_envelope` ([starting_model.f90:189](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/starting_model.f90#L189)) runs before `update_surface_mixture` ([:194](https://github.com/parallelpro/yrec/blob/810a552c/src/core/model/starting_model.f90#L194)).
+- **What is wrong:** `prepare_run`'s `eos_set_mixture` passes X_env = 0 and an inverse weight and number fractions not yet set (zero storage: the star members have no initializer), as the read-time call did before [498cb8c7](https://github.com/parallelpro/yrec/commit/498cb8c7) moved it. An envelope refit on the first card (`change_envelope_mass_flag`) evaluates the EOS with them, and a Z rescale on the first card passes them on again.
+- **Proposed fix:** compute `update_surface_mixture`'s mixture before the refit, or skip `prepare_run`'s call while the star's mixture is unset. Results change for the decks that refit the envelope on their first card.
+
+### M87. test_eos's Debye-Hückel check cannot see a wrong charge
+
+- **Status:** open (test only).
+- **In the original F77?** No; the check came with M37's fix ([15af2ef3](https://github.com/parallelpro/yrec/commit/15af2ef3), 2026-10-29).
+- **Now:** `debye_huckel_checks`, [test_eos.f90:1428-1478](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/test/test_eos.f90#L1428-L1478); the check is [:1456-1457](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/test/test_eos.f90#L1456-L1457).
+- **What is wrong:** "it raises ρ, the more with the envelope's heavier metals as Fe" asks only that the second rise exceed the first and the first be positive. The EOS package reports that it passes a mutation that gives every metal C's charge, because the base gas's 1/μ_ion moves the comparison (that mutation is not in the recorded mutation lists and was not re-run).
+- **Proposed fix:** compare the rise with the ratio of the charge-weighted sums the correction predicts.
+
+### M88. SCV's table edge is a step
+
+- **Status:** open.
+- **In the original F77?** Yes. EQSTAT2 solves Saha first and then calls EQSCVE, which overwrites the result where its table covers the point and returns without touching it outside, with no weight at the edge ([eqstat2.f:150-155](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L150-L155), [eqscve.f:36-39](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqscve.f#L36-L39)):
+  ```fortran
+        IF(TL.LT.TLOGX(1) .OR. TL.GT.TLOGX(NTS) .OR. PP.LT.4.0D0)THEN
+           LCALC = .FALSE.   ! Error exit - no valid table entry
+           RETURN
+        ENDIF
+  ```
+- **Now:** `gas_eos`, [blended_eos.f90:223-260](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L223-L260), which takes SCV's result whole where `find_scv_cell` says the table covers the point ([scv_eos.f90:549-606](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/scv/scv_eos.f90#L549-L606)).
+- **What is wrong:** outside SCV's table the Saha result stands, inside it SCV's, with no ramp between, so the EOS jumps where a model crosses the edge (the re-evaluation's "falls back without a word").
+- **Proposed fix:** `blend_table_result` with an edge weight, as the OPAL edge ramps use ([blended_eos.f90:480-504](https://github.com/parallelpro/yrec/blob/810a552c/src/eos/blended_eos.f90#L480-L504)). Results change where a model crosses the edge.
