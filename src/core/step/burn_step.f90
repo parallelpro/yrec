@@ -22,7 +22,7 @@ module burn_step
       use convection_geometry, only: locate_surface_mixing_base
 ! exp and log: crmath's under USE_CRMATH
       use math_lib
-      use star_info_lib, only: star_info
+      use star_info_lib, only: star_info, n_species_extended
       implicit none
       private
       public :: surface_accretion_now, &
@@ -112,7 +112,7 @@ subroutine average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
      x_start, log_rate_start, x_end, cz_mass_end, log_rate_end)
       use star_info_lib, only: json, i_li6, i_li7, i_be9
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: composition(15,json)
+      double precision, intent(in) :: composition(n_species_extended,json)
       double precision, intent(in) :: mass_coordinate(json)
       double precision, intent(in) :: shell_mass(json)
       integer, intent(in) :: cz_base_zone, cz_base_zone_old, num_zones
@@ -205,7 +205,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 
 ! timestep: s
       double precision, intent(in) :: timestep
-      double precision, intent(inout) :: composition(15,json)
+      double precision, intent(inout) :: composition(n_species_extended,json)
       double precision, intent(in) :: radius(json)
       double precision, intent(in) :: mass_coordinate(json)
       double precision, intent(in) :: shell_mass(json)
@@ -360,7 +360,7 @@ subroutine store_li_be_rates(s, composition, log_density, log_temperature, &
       use net_lib, only: compute_li_be_rates
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: composition(15,json)
+      double precision, intent(in) :: composition(n_species_extended,json)
       double precision, intent(in) :: log_density(json)
       double precision, intent(in) :: log_temperature(json)
       integer, intent(in) :: num_zones
@@ -418,7 +418,7 @@ end subroutine store_start_li_be_rates
 subroutine store_end_li_be_rates(s, composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: json
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: composition(15,json), log_density(json), &
+      double precision, intent(in) :: composition(n_species_extended,json), log_density(json), &
            log_temperature(json)
       integer, intent(in) :: num_zones
       call store_li_be_rates(s, composition, log_density, log_temperature, &
@@ -459,8 +459,7 @@ end subroutine store_end_li_be_rates
 subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep, ierr)
 
-      use star_info_lib, only: json, i_h1, i_metals, n_species_basic, &
-           n_species_extended
+      use star_info_lib, only: json, i_h1, i_metals, n_species_basic
       use net_lib, only: burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4, burn_not_converged, &
            burn_singular_jacobian
@@ -471,7 +470,7 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       integer, intent(in) :: zone_begin, zone_end
       double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
       double precision, intent(in) :: shell_mass(json)
-      double precision, intent(inout) :: composition(15,json)
+      double precision, intent(inout) :: composition(n_species_extended,json)
 ! timestep: s
       double precision, intent(in) :: timestep
       integer, intent(out) :: ierr
@@ -608,7 +607,7 @@ subroutine network_rates_of_model(s, log_density, log_temperature, &
       use net_lib, only: compute_network_rates
       type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_density(json), &
-           log_temperature(json), composition(15,json)
+           log_temperature(json), composition(n_species_extended,json)
       integer, intent(in) :: num_zones
       double precision, intent(out) :: rate_by_zone(num_rate_rows, json)
       integer :: zone_idx, clear_idx
