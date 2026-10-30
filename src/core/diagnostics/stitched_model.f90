@@ -67,8 +67,9 @@ module stitched_model
       integer, parameter :: n_pulse_cols = 35
 ! The pulse columns' named indices. Columns 1..18 are the GYRE
 ! schema-101 set, in file order (ipul_gyre_last marks the end of that
-! block); 19..34 the FGONG extras. 23..33 are the 11 FGONG-ordered species at
-! ipul_species_base + k, k = 1..11 (see species_slot).
+! block); 19..34 the FGONG extras. 23..33 are the n_pulse_species
+! FGONG-ordered species at ipul_species_base + k, k = 1..n_pulse_species
+! (see species_slot).
       integer, parameter :: ipul_r = 1, ipul_m = 2, ipul_L = 3, &
            ipul_P = 4, ipul_T = 5, ipul_rho = 6, ipul_grad = 7, &
            ipul_N2 = 8, ipul_gamma1 = 9, ipul_grada = 10, &
@@ -77,7 +78,7 @@ module stitched_model
            ipul_eps_eps_rho = 17, ipul_omega = 18, ipul_cp = 19, &
            ipul_mu_e_inv = 20, ipul_h1 = 21, ipul_z = 22, &
            ipul_species_base = 22, ipul_eps_grav = 34
-      integer, parameter :: ipul_gyre_last = ipul_omega
+      integer, parameter :: ipul_gyre_last = ipul_omega, n_pulse_species = 11
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward. Profiles and pulse files both cover the
@@ -698,11 +699,11 @@ subroutine build_pulse_points(s, pts)
          i = s%stitched%index(j)
          pts(:,j) = 0.0d0
          select case (s%stitched%region(j))
-         case (1)
+         case (region_interior)
             call gather_interior_point()
-         case (2)
+         case (region_envelope)
             call gather_envelope_point()
-         case default   ! atmosphere
+         case default   ! region_atmosphere
             call gather_atmosphere_point()
          end select
          call store_common_columns()
@@ -746,7 +747,7 @@ subroutine gather_interior_point()
       pts(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
       pts(ipul_h1,j) = s%xa(i_h1,i)
       pts(ipul_z,j) = s%xa(i_metals,i)
-      do k = 1, 11
+      do k = 1, n_pulse_species
          pts(ipul_species_base+k,j) = s%xa(species_slot(k),i)
       end do
       pts(ipul_eps_grav,j) = s%eps_channels(i_eps_grav,i)
@@ -779,7 +780,7 @@ subroutine gather_envelope_point()
       pts(ipul_cp,j) = s%env_points%env_specific_heat_cp(i)
       pts(ipul_h1,j) = s%env_points%env_hydrogen_fraction(i)
       pts(ipul_z,j) = s%env_points%env_metal_fraction(i)
-      do k = 1, 11
+      do k = 1, n_pulse_species
          pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_envelope_point
@@ -805,7 +806,7 @@ subroutine gather_atmosphere_point()
       pts(ipul_cp,j) = s%atm_points%atmo_specific_heat_cp(i)
       pts(ipul_h1,j) = s%xa(i_h1,s%nz)
       pts(ipul_z,j) = s%xa(i_metals,s%nz)
-      do k = 1, 11
+      do k = 1, n_pulse_species
          pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_atmosphere_point
@@ -873,13 +874,13 @@ end subroutine difference_brunt_n2
 
 end subroutine build_pulse_points
 
-! star%xa slot for pulse column 22+k (k = 1..11), in FGONG species
-! order (column 34 is eps_grav, not a species; be9 has no FGONG
-! column).
+! star%xa slot for pulse column ipul_species_base + k (k = 1 ..
+! n_pulse_species), in FGONG species order (column 34 is eps_grav, not a
+! species; be9 has no FGONG column).
 integer function species_slot(k)
       use star_info_lib, only: i_he3, i_c12, i_c13, i_n14, i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18
       integer, intent(in) :: k
-      integer, parameter :: slots(11) = [i_he3, i_c12, i_c13, i_n14, &
+      integer, parameter :: slots(n_pulse_species) = [i_he3, i_c12, i_c13, i_n14, &
            i_o16, i_h2, i_he4, i_li7, i_n15, i_o17, i_o18]
       species_slot = slots(k)
 end function species_slot
