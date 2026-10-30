@@ -246,6 +246,8 @@ deriv yale_only  7.161 17.350
         grad_ad_dp   1.4804E-03   1.4212E-03   4.1689E-02
              cp_dt   8.6562E-02   8.6364E-02   2.2915E-03
              cp_dp  -3.1327E-02  -3.1271E-02  -1.8007E-03
+ok   derivatives: the Saha solution's first and second, against finite differences
+ok   derivatives: the fully ionized gas's first (1e-3) and second (0.1)
 # test_eos: configuration scv_only
 deriv scv_only  3.900  6.000
        dlnrho_dlnt  -1.0159E+00  -1.0195E+00   3.5009E-03
@@ -466,6 +468,7 @@ deriv opal2001  7.161 17.350
         grad_ad_dp   1.4804E-03  -3.6215E-04   5.0879E+00
              cp_dt   8.6562E-02   7.1603E-02   2.0891E-01
              cp_dp  -3.1327E-02  -2.8864E-02  -8.5334E-02
+ok   derivatives: OPAL 2006's first, against finite differences (3e-3)
 # test_eos: configuration numerical
 deriv numerical  3.900  6.000
        dlnrho_dlnt  -1.0246E+00  -1.0246E+00  -1.5333E-05
@@ -521,6 +524,7 @@ deriv numerical  7.161 17.350
         grad_ad_dp  -4.7831E-04  -4.7831E-04  -1.6765E-06
              cp_dt   6.9219E-02   6.9219E-02   1.6261E-06
              cp_dp  -2.7738E-02  -2.7738E-02  -1.0140E-06
+ok   derivatives: the numerical second derivatives, against finite differences (1e-4)
 # test_eos: configuration debye_huckel
 deriv debye_huckel  3.900  6.000
        dlnrho_dlnt  -1.0225E+00  -1.0225E+00   3.3125E-08

@@ -78,6 +78,11 @@ program test_eos
 ! built, and the Saha result there (scv_general_path_before_table)
       type(eos_result) :: general_before_table(2)
 
+! the derivative check's points, and the largest relative difference of
+! the first and of the second derivatives at each (derivative_points)
+      integer, parameter :: nd = 6
+      double precision :: worst_first(nd), worst_second(nd)
+
 ! eos_get_gamma1 argument set
       double precision :: t6, rho, pres, gamma1, grad_ad
 
@@ -490,6 +495,14 @@ contains
          write(*,'(a)') "# test_eos: derivative check (analytic, finite difference, relative difference)"
          call configure_eos("yale_only")
          call derivative_points("yale_only")
+! the Saha solver's derivatives are analytic (log T 3.9 to 5.5), the
+! fully ionized gas's carry the Fermi table's interpolation (6.9 and
+! 7.161); the ramp (5.8) blends derivatives, not the derivative of the
+! blend, and is not checked
+         call check("derivatives: the Saha solution's first and second, against finite differences", &
+              all(worst_first(1:3) < 1.0d-6) .and. all(worst_second(1:3) < 1.0d-4))
+         call check("derivatives: the fully ionized gas's first (1e-3) and second (0.1)", &
+              all(worst_first(5:6) < 1.0d-3) .and. all(worst_second(5:6) < 0.1d0))
          call configure_eos("scv_only", scv=.true.)
          call derivative_points("scv_only")
          call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
@@ -498,15 +511,22 @@ contains
          call derivative_points("opal95")
          call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
          call derivative_points("opal2001")
+         call check("derivatives: OPAL 2006's first, against finite differences (3e-3)", &
+              all(worst_first < 3.0d-3))
          call configure_eos("numerical", opal2006=.true., scv=.true., numerical=.true., file=opal06_path)
          call derivative_points("numerical")
+         call check("derivatives: the numerical second derivatives, against finite differences (1e-4)", &
+              all(worst_second < 1.0d-4))
          call configure_eos("debye_huckel", debye_huckel=.true.)
          call derivative_points("debye_huckel")
       end subroutine check_derivatives
 
+! Each point's analytic derivatives against centred differences, one
+! row each; the largest relative difference of the first and of the
+! second derivatives at each point stays in worst_first/worst_second
+! for the checks.
          subroutine derivative_points(label)
             character(len=*), intent(in) :: label
-            integer, parameter :: nd = 6
             double precision, parameter :: dlogt(nd) = [3.90d0, 4.50d0, 5.50d0, 5.80d0, 6.90d0, 7.161d0]
             double precision, parameter :: dlogp(nd) = [6.0d0, 8.0d0, 11.5d0, 12.6d0, 16.0d0, 17.35d0]
             double precision, parameter :: h = 1.0d-4, ln10 = 2.302585092994045684d0
@@ -521,14 +541,16 @@ contains
                write(*,'(a,1x,a,2f7.3)') "deriv", trim(label), dlogt(k), dlogp(k)
 ! slots of c: 1 log rho, 2 dlnrho_dlnt, 3 dlnrho_dlnp, 4 cp, 5 grad_ad,
 ! 6-11 the six second derivatives
-               call row("dlnrho_dlnt", c(2), (tp(1) - tm(1))/(2.0d0*h))
-               call row("dlnrho_dlnp", c(3), (pp(1) - pm(1))/(2.0d0*h))
-               call row("dlnrho_dlnt_dt", c(6), (tp(2) - tm(2))/(2.0d0*h*ln10))
-               call row("dlnrho_dlnt_dp", c(7), (pp(2) - pm(2))/(2.0d0*h*ln10))
-               call row("grad_ad_dt", c(8), (log10(tp(5)) - log10(tm(5)))/(2.0d0*h))
-               call row("grad_ad_dp", c(9), (log10(pp(5)) - log10(pm(5)))/(2.0d0*h))
-               call row("cp_dt", c(10), (log10(tp(4)) - log10(tm(4)))/(2.0d0*h))
-               call row("cp_dp", c(11), (log10(pp(4)) - log10(pm(4)))/(2.0d0*h))
+               worst_first(k) = 0.0d0
+               worst_second(k) = 0.0d0
+               call row("dlnrho_dlnt", c(2), (tp(1) - tm(1))/(2.0d0*h), worst_first(k))
+               call row("dlnrho_dlnp", c(3), (pp(1) - pm(1))/(2.0d0*h), worst_first(k))
+               call row("dlnrho_dlnt_dt", c(6), (tp(2) - tm(2))/(2.0d0*h*ln10), worst_second(k))
+               call row("dlnrho_dlnt_dp", c(7), (pp(2) - pm(2))/(2.0d0*h*ln10), worst_second(k))
+               call row("grad_ad_dt", c(8), (log10(tp(5)) - log10(tm(5)))/(2.0d0*h), worst_second(k))
+               call row("grad_ad_dp", c(9), (log10(pp(5)) - log10(pm(5)))/(2.0d0*h), worst_second(k))
+               call row("cp_dt", c(10), (log10(tp(4)) - log10(tm(4)))/(2.0d0*h), worst_second(k))
+               call row("cp_dp", c(11), (log10(pp(4)) - log10(pm(4)))/(2.0d0*h), worst_second(k))
             end do
          end subroutine derivative_points
 
@@ -548,12 +570,14 @@ contains
             v = [logd, qdt, qdp, qcp, dela, qdtt, qdtp, qat, qap, qcpt, qcpp]
          end subroutine eval_point
 
-         subroutine row(name, analytic, fd)
+         subroutine row(name, analytic, fd, worst)
             character(len=*), intent(in) :: name
             double precision, intent(in) :: analytic, fd
+            double precision, intent(inout) :: worst
             double precision :: rel
             rel = (analytic - fd)/max(abs(fd), 1.0d-30)
             write(*,'(2x,a16,3(1pe13.4))') name, analytic, fd, rel
+            worst = max(worst, abs(rel))
          end subroutine row
 ! The MHD tables' (log P, log T) interpolation on a 7 (T) x 6 (rho) x 3
 ! table whose column 2 is log P: inside, at the table corners (the
