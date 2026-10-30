@@ -187,22 +187,22 @@ module star_info_lib
             double precision :: cross_section_scale(num_reactions)
 ! scale of each reaction's S'/S against Solar Fusion I, by reaction slot
 ! r_* [-]; user_inputs
-            double precision :: qs0e_scale(num_reactions)
+            double precision :: s_prime_scale(num_reactions)
 ! scale of each reaction's S''/S against Solar Fusion I, by reaction slot
 ! r_* [-]; user_inputs
-            double precision :: qqs0ee_scale(num_reactions)
+            double precision :: s_double_prime_scale(num_reactions)
 ! scale of the rates outside the reaction table, by reaction_layout's
 ! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; user_inputs,
 ! controls_reader, monte_carlo. Be7 + p's is rescaled per Monte-Carlo run.
             double precision :: extra_cross_section_scale(num_extra_scales)
 ! scale of Be7 + p's S'/S against Solar Fusion I [-]; user_inputs
-            double precision :: be7p_qs0e_scale
+            double precision :: be7p_s_prime_scale
 ! scale of Be7 + p's S''/S against Solar Fusion I [-]; user_inputs
-            double precision :: be7p_qqs0ee_scale
+            double precision :: be7p_s_double_prime_scale
 ! scale of the N15(p,gamma)O16 branch [-]; user_inputs
-            double precision :: o16_gamma_scale
+            double precision :: n15_pg_scale
 ! scale of the N15(p,alpha)C12 branch [-]; user_inputs
-            double precision :: c12_alpha_scale
+            double precision :: n15_pa_scale
 ! log T at which an envelope integration stores its state for the surface
 ! boundary (stored_envelope_state): the mean of ctrl%tenv0 and
 ! ctrl%tenv1 [log10 K]; derived_controls

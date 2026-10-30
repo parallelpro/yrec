@@ -893,18 +893,18 @@ contains
             probe%ctrl%nuclear_logT_cutoffs = [6.6d0, 6.7d0, 6.9d0, 7.8d0, 7.6d0]
             probe%ctrl%weak_screening_threshold = 0.04d0
             probe%cross_section_scale = [(1.0d0 + 0.01d0*i, i = 1, num_reactions)]
-            probe%qs0e_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
-            probe%qqs0ee_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
+            probe%s_prime_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
+            probe%s_double_prime_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
             where (.not. s_factor_slots())
                probe%cross_section_scale = 1.0d0
-               probe%qs0e_scale = 1.0d0
-               probe%qqs0ee_scale = 1.0d0
+               probe%s_prime_scale = 1.0d0
+               probe%s_double_prime_scale = 1.0d0
             end where
             probe%extra_cross_section_scale = [(1.0d0 + 0.05d0*i, i = 1, num_extra_scales)]
-            probe%be7p_qs0e_scale = 1.41d0
-            probe%be7p_qqs0ee_scale = 1.42d0
-            probe%o16_gamma_scale = 1.43d0
-            probe%c12_alpha_scale = 1.44d0
+            probe%be7p_s_prime_scale = 1.41d0
+            probe%be7p_s_double_prime_scale = 1.42d0
+            probe%n15_pg_scale = 1.43d0
+            probe%n15_pa_scale = 1.44d0
             probe%ctrl%li6_rate_scale = 1.45d0
             probe%ctrl%li7_rate_scale = 1.46d0
             probe%ctrl%be9_pg_rate_scale = 1.47d0
@@ -931,13 +931,13 @@ contains
          carries_probe = all(r%logT_cutoffs == probe%ctrl%nuclear_logT_cutoffs) .and. &
               r%weak_screening_threshold == probe%ctrl%weak_screening_threshold .and. &
               all(r%cross_section_scale == probe%cross_section_scale) .and. &
-              all(r%s_prime_scale == probe%qs0e_scale) .and. &
-              all(r%s_double_prime_scale == probe%qqs0ee_scale) .and. &
+              all(r%s_prime_scale == probe%s_prime_scale) .and. &
+              all(r%s_double_prime_scale == probe%s_double_prime_scale) .and. &
               all(r%extra_cross_section_scale == probe%extra_cross_section_scale) .and. &
-              r%be7p_s_prime_scale == probe%be7p_qs0e_scale .and. &
-              r%be7p_s_double_prime_scale == probe%be7p_qqs0ee_scale .and. &
-              r%n15_pg_scale == probe%o16_gamma_scale .and. &
-              r%n15_pa_scale == probe%c12_alpha_scale .and. &
+              r%be7p_s_prime_scale == probe%be7p_s_prime_scale .and. &
+              r%be7p_s_double_prime_scale == probe%be7p_s_double_prime_scale .and. &
+              r%n15_pg_scale == probe%n15_pg_scale .and. &
+              r%n15_pa_scale == probe%n15_pa_scale .and. &
               r%li6_rate_scale == probe%ctrl%li6_rate_scale .and. &
               r%li7_rate_scale == probe%ctrl%li7_rate_scale .and. &
               r%be9_pg_rate_scale == probe%ctrl%be9_pg_rate_scale .and. &
