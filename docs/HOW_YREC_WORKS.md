@@ -75,7 +75,7 @@ Separately, after the second iteration level it stores per-shell rates of
 change of (log T, log P, L, log R) (`star%dlog_temperature_dt`,
 `star%dlog_pressure_dt`, `star%dln_luminosity_dt`,
 `star%dlog_radius_dt`) and uses them to extrapolate the first guess of
-the next model (`star%ctrl%improved_first_guess_flag`, namelist `lnews`); the
+the next model (`star%physics%improved_first_guess_flag`, namelist `lnews`); the
 extrapolated change also seeds the log T / log P accumulators.
 
 ### 1.2 Composition equations
@@ -196,7 +196,7 @@ the singular ODE forms).
 
 `henyey_iterate` (`core/structure/henyey_iteration.f90`) is called up to four times
 per timestep by `evolve_step` (through its `solve_level` wrapper), with
-different boundary-condition policies (`star%ctrl%max_iter_level1..4`
+different boundary-condition policies (`star%physics%max_iter_level1..4`
 control the iteration budget). The surface BC is refreshed (`compute_surface_boundary`) at
 most once per call, before the Newton loop:
 
@@ -213,7 +213,7 @@ most once per call, before the Newton loop:
    updates (used for solar calibration; harmful where semiconvection
    matters, per the code's own comments).
 
-Corrections beyond the divergence tolerances (`star%ctrl%solver_tolerances(:,2)`) at
+Corrections beyond the divergence tolerances (`star%physics%solver_tolerances(:,2)`) at
 any level, or a model still unconverged after level 4, set the divergence
 flag (`star%model_diverged_flag`). `evolve_step`'s retry loop (`retry_step`)
 then calls `read_starting_model` (`starin`), which **stops the run** with
@@ -263,11 +263,11 @@ hydrogen/helium depletion, CZ-base migration, ω changes (global and in the
 mixing region), the H-shell mass scale for shell-burning stages
 (`hydrogen_dt`), and a hard `time_max_dt_frac` growth limit. The `time_*`
 controls are the named slots of the 14-element per-phase factor array
-`star%ctrl%timestep_factors` (inlist name `timestep_factors`). A structure-based
-limiter (`star%job%use_structure_dt_limits`, legacy `LPTIME`) switches
+`star%physics%timestep_factors` (inlist name `timestep_factors`). A structure-based
+limiter (`star%structure_dt_limits_active`, legacy `LPTIME`) switches
 itself off once log T_c > 7.1 with L_grav < 0 (the terminal reports
 "structure-based limits disabled"). Timestep override
-(`star%job%timestep_override`) forces fixed Δt per run.
+(`star%card_fixed_timestep_yr`) forces fixed Δt per run.
 
 ### 2.7 Rezoning
 
@@ -275,7 +275,7 @@ itself off once log T_c > 7.1 with L_grav < 0 (the terminal reports
 model: shells are inserted/deleted so that a structure function
 χ = Δlog m/δm + ΔL/δL − ΔlogP/δP, with separate ΔX and ΔZ limits, stays
 within tolerance per shell (the scales come from
-`star%ctrl%chi_grid_scale(1:12)`, whose named slots are the `tol_*`/`flag_*`
+`star%physics%chi_grid_scale(1:12)`, whose named slots are the `tol_*`/`flag_*`
 controls; the log P scale differs between the envelope, the CZ base and
 the radiative interior); extra resolution is forced around the
 H-burning shell (three flag points at its base/mid/top), the convective
@@ -417,14 +417,14 @@ giving ∇_conv between ∇_ad and ∇_rad, with α = `star%mixing_length_alpha`
 (per-run; the solar-calibrated value is the free parameter of the solar
 calibration). Analytic ∂∇/∂(lnP, lnT, ln r) derivatives feed the Henyey
 Jacobian. Starspot-modified variants (Somers: spot filling factor/flux
-contrast `star%ctrl%spot_filling_factor`/`spot_temp_contrast`, namelist
+contrast `star%physics%spot_filling_factor`/`spot_temp_contrast`, namelist
 `spotf/spotx`) adjust the effective ∇_rad. **Overshoot**: the
 mixed region is extended a fixed number of pressure scale heights
-(`star%ctrl%overshoot_alpha_core`/`_envelope`; `extend_by_overshoot`
+(`star%physics%overshoot_alpha_core`/`_envelope`; `extend_by_overshoot`
 (`oversh`), `convection/convection_zones.f90`, called from
 `find_convection_zones` (`convec`)) — mixing only ("step"
 overshoot), optionally with an adiabatic temperature gradient in the
-overshoot region (`star%ctrl%adiabatic_overshoot_active`, inlist name
+overshoot region (`star%physics%adiabatic_overshoot_active`, inlist name
 `adiabatic_overshoot_active`); `extend_by_semiconvection` (`sconvec`,
 `convection/semiconvection.f90`) implements the
 rate-limited "semiconvective" overshoot variant with a propagation-speed
@@ -566,7 +566,7 @@ modules.
 
 ## 6. Calibration modes
 
-- **Solar calibration** (`star%ctrl%calibrate_solar_model`, kind-card
+- **Solar calibration** (`star%control%calibrate_solar_model`, kind-card
   triples; cards prepared by `setup_solar_calibration` (`setcal`)): runs
   the model to the solar age, compares (log L, log R) — and optionally
   Z/X — to solar targets, and updates (X₀, α_MLT) (and Z₀ for Z/X) with
@@ -575,10 +575,10 @@ modules.
   which `check_solar_calibration` (`chkcal`) uses), iterating whole evolutionary runs
   to tolerance (`toll/tolr` ≈ 3×10⁻⁵). Yields the classic calibrated solar
   model in a handful of runs.
-- **Star calibration** (`star%ctrl%calibrate_star_flag`, namelist `lcalst`;
+- **Star calibration** (`star%control%calibrate_star_flag`, namelist `lcalst`;
   `setup_star_calibration`/`check_star_calibration` (`setscal`/`chkscal`)):
   same machinery against arbitrary (Teff, L) targets.
-- **Monte-Carlo mode** (`star%ctrl%monte_carlo_active`, namelist `lmonte`;
+- **Monte-Carlo mode** (`star%physics%monte_carlo_active`, namelist `lmonte`;
   `core/run/monte_carlo.f90`): repeated runs drawing physics
   parameters (rate S-factors, diffusion factors, Z/X…) per realization —
   the classic solar-model uncertainty machinery (the configuration-matrix
@@ -619,11 +619,18 @@ All model state hangs off one root, the run's star (type `star_info`,
 star-layer routine as `s` (there is no module-level star since 2026-10).
 It is flat MESA-style: the start-of-step snapshot is the `*_start` family
 (`star%xa_start`, `star%logP_start`, …) and driver-step scalars are plain
-members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
-bundles are nested: `star%ctrl` (the controls, fixed after
-`read_controls`) and `star%job` (the controls the run changes: the
-run-card arrays the calibration rewrites, the stop thresholds, the
-latches; and the Monte-Carlo samples and the card cursor `nk`). Solver
+members (`star%dt`, `star%model_diverged_flag`, …). The deck's controls
+are nested in two records named for the inlist's namelist groups,
+`star%control` (`&control`) and `star%physics` (`&physics`), which only the
+controls read writes (`io/controls_sync.f90`) and which never change after
+it. A value the run changes is a plain member of its own, the control's
+run copy, armed from the control by the read: the run plan's per-card
+arrays the calibrations rewrite and whose stops are disarmed
+(`star%card_kind`, `star%card_initial_x`, `star%card_max_age_yr`, …), the
+current card's values, `star%atm_choice_in_use`, the latches
+`star%structure_dt_limits_active` and `star%mass_change_active`. The
+Monte-Carlo samples are a record of their own (`star%mc_samples`), and the
+card cursor is `star%current_card`. Solver
 scratch with a one-step lifetime is a record its driver allocates and
 passes down (rotation's `rot_scr`, `mid_scr`, `circ_scr`; element
 diffusion's `diff_scr`; the envelope integration's point values are the

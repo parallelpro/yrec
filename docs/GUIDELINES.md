@@ -279,6 +279,25 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    bookkeeping (call this stage, copy that array, accumulate output) stay
    in drivers that use `star`.
 
+**The controls (2026-10-30).** The deck's controls are in two records named
+for the inlist's namelist groups, `star%control` (`&control`) and
+`star%physics` (`&physics`), each control in the record of its registry
+group (`defaults/controls_registry.tsv`). Only the controls read writes
+them (the generated `io/controls_sync.f90`), and nothing changes them after
+it. A value the run changes is not a control: it is a star member of its
+lifetime class, named for what it holds, the control's run copy (the
+registry's `run_copy` column; the run plan's `card_*` arrays,
+`atm_choice_in_use`, `structure_dt_limits_active`, ...), which the read
+arms from the control while the control keeps the deck's value; a latch
+that every card re-arms is armed in `begin_kind_card` (`settling_active`).
+`tools/check_boundaries.py` enforces all of it: the old record names
+(`ctrl`, `job`) stay gone; nothing but `controls_sync` assigns the two
+records; every control is in its group's record; the controls-free domains
+read neither record; and a star member that copies a control is declared
+with the control's shape, names the control in its comment, and is set
+only where its comment says. Add a control by `io/README.md` §5, and a
+value the run changes by `state/README.md` §7.
+
 `STAR_ACCESS_BUDGET` in `tools/check_boundaries.py` was the ratchet
 that took the star layer from the global to the argument: per directory,
 the number of `star%` references and of files that import a module-level
@@ -395,7 +414,7 @@ the test file(s) owning the touched subsystem:
   stop conditions                          -> test_stop_conditions.py
 
 **Tier 3 -- full battery (only for these change classes):** derived-type
-layout changes (star_info / controls_state members), output-format
+layout changes (star_info / the controls records' members), output-format
 changes (with the deliberate reseed ritual), cross-cutting renames or
 interface changes touching many domains, and anything where a Tier-1/2
 result surprised you. Full battery = gate3 (3 legacy pins + MESA pins)

@@ -84,7 +84,7 @@
 !
 !      ierr = 0
 !
-!      if (star%job%use_extended_composition) then
+!      if (star%physics%use_extended_composition) then
 !         num_species = 15
 !      else
 !         num_species = 11
@@ -142,7 +142,7 @@
 !                 convective_flag, final_iteration_flag, num_zones, &
 !                 composition, species_begin, species_end, ierr)
 !            if (ierr /= 0) return
-!            if (star%job%use_extended_composition) then
+!            if (star%physics%use_extended_composition) then
 !               call burn_li_be_midpoint(substep_dt, composition, log_radius, &
 !                    enclosed_mass, shell_mass, log_temperature, &
 !                    env_cz_zone, env_cz_zone_old, num_zones)
@@ -179,7 +179,7 @@
 !         composition(2,zone_idx) = 1.0d0 - composition(1,zone_idx) - &
 !              composition(3,zone_idx) - composition(4,zone_idx)
 !      end do
-!      if (star%job%use_extended_composition) then
+!      if (star%physics%use_extended_composition) then
 !         do zone_idx = 1, num_zones
 !            star%rate_li6_start(zone_idx) = star%rate_li6(zone_idx)
 !            star%rate_li7_start(zone_idx) = star%rate_li7(zone_idx)

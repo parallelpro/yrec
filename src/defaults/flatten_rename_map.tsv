@@ -152,15 +152,15 @@ run	SPLIT	delta_alpha		star%delta_alpha		SCRATCH(self-contained)	core	core
 run	SPLIT	solar_calibration_active		star%solar_calibration_active		PROPERTY(read-by-output)	core,setup	core,io
 run	SPLIT	adiabatic_index_gamma1	(json)	star%adiabatic_index_gamma1		PROPERTY(read-by-output)	core	io
 run	SPLIT	sound_speed_output_active		star%sound_speed_output_active		PROPERTY(read-by-output)	core	io
-run	SPLIT	s11_rate	(1000)	star%job%s11_rate		READ-ONLY(?)	-	core,io
-run	SPLIT	s33_rate	(1000)	star%job%s33_rate		READ-ONLY(?)	-	core,io
-run	SPLIT	s34_rate	(1000)	star%job%s34_rate		READ-ONLY(?)	-	core,io
-run	SPLIT	s17_rate	(1000)	star%job%s17_rate		READ-ONLY(?)	-	core,io
-run	SPLIT	metal_to_h_ratio	(1000)	star%job%metal_to_h_ratio		READ-ONLY(?)	-	core,io
-run	SPLIT	helium_fraction_param	(1000)	star%job%helium_fraction_param		READ-ONLY(?)	-	core,io
-run	SPLIT	diffusion_factor	(1000)	star%job%diffusion_factor		PROPERTY(read-by-output)	core	core,io
-run	SPLIT	luminosity_target	(1000)	star%job%luminosity_target		READ-ONLY(?)	-	core,io
-run	SPLIT	age_target	(1000)	star%job%age_target		READ-ONLY(?)	-	core,io
+run	SPLIT	s11_rate	(1000)	star%mc_samples%s11_rate		READ-ONLY(?)	-	core,io
+run	SPLIT	s33_rate	(1000)	star%mc_samples%s33_rate		READ-ONLY(?)	-	core,io
+run	SPLIT	s34_rate	(1000)	star%mc_samples%s34_rate		READ-ONLY(?)	-	core,io
+run	SPLIT	s17_rate	(1000)	star%mc_samples%s17_rate		READ-ONLY(?)	-	core,io
+run	SPLIT	metal_to_h_ratio	(1000)	star%mc_samples%metal_to_h_ratio		READ-ONLY(?)	-	core,io
+run	SPLIT	helium_fraction_param	(1000)	star%mc_samples%helium_fraction_param		READ-ONLY(?)	-	core,io
+run	SPLIT	diffusion_factor	(1000)	star%mc_samples%diffusion_factor		PROPERTY(read-by-output)	core	core,io
+run	SPLIT	luminosity_target	(1000)	star%mc_samples%luminosity_target		READ-ONLY(?)	-	core,io
+run	SPLIT	age_target	(1000)	star%mc_samples%age_target		READ-ONLY(?)	-	core,io
 run	SPLIT	central_log10_temperature		star%central_log10_temperature		PROPERTY(read-by-output)	core	core,io
 run	SPLIT	central_log10_pressure		star%central_log10_pressure		PROPERTY(read-by-output)	core	core,io
 run	SPLIT	central_log10_density		star%central_log10_density		PROPERTY(read-by-output)	core	core,io

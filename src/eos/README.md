@@ -114,7 +114,7 @@ A deliberate change to the output means regenerating `eos/test/expected_test_eos
 
 ## 7. Extending
 
-**Add a control:** add the field to `eos_settings_t` (with the control's default), copy it from `star%ctrl` in `eos_settings_from_star` (`setup/microphysics_settings.f90`; then `tools/check_star_contracts.py --fix`), and read `eos_settings%<field>`. The control itself comes through the registry (`defaults/controls_registry.tsv` and the generators; io/README.md's controls recipe).
+**Add a control:** add the field to `eos_settings_t` (with the control's default), copy it from `star%physics` in `eos_settings_from_star` (`setup/microphysics_settings.f90`; then `tools/check_star_contracts.py --fix`), and read `eos_settings%<field>`. The control itself comes through the registry (`defaults/controls_registry.tsv` and the generators; io/README.md's controls recipe).
 
 **Add an EOS source** (a table or a solver that covers part of the (T, rho) plane and is blended in like OPAL; this recipe was traced on 2026-10-29 by adding a throwaway source, steps 1 to 4 and 7, which built and passed its checks). A source is four things: a reader, a window (where it is consulted at all), a lookup that fills an `eos_result` and says whether it covers the point, and an edge weight (1 inside, falling continuously to 0 at its table's edge). The files:
 1. `eos/<name>/<name>_eos.f90`, a module with

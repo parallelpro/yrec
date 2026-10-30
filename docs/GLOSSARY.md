@@ -16,7 +16,7 @@ This file is the authority on names in YREC (see `TARGET_ARCHITECTURE.md` sectio
 | Units | cgs unless stated. "dex" means a log₁₀ quantity. "—" means dimensionless or a flag. "unconfirmed" means the units could not be settled from the code. |
 | Current name(s) | Name in the code today. Several names separated by commas are copies or aliases of the same quantity. "also" lists the name a different routine uses for it. |
 | Legacy | F77 name before the 2026 modernization: a COMMON member, a `main.f` array, or a namelist variable. An arrow (`A → B`) records an intermediate 2026 name. "—" means the quantity is new since 2026. |
-| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mid_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`. The envelope integration's point values `pt` are the kernel's own (`core/envelope/envelope_integrands.f90`'s `point_physics`). Controls are declared in the generated `state/controls_state_def.inc` (`ctrl`) and `state/job_controls_def.inc` (`job`). |
+| Owner | File that computes (writes) the value. Every `star%` member is *declared* in `state/star_info_lib.f90`. `rot_scr`, `mid_scr` and `circ_scr` are declared in `rotation/rotation_scratch_lib.f90`. The envelope integration's point values `pt` are the kernel's own (`core/envelope/envelope_integrands.f90`'s `point_physics`). Controls are declared in the generated `state/control_group_def.inc` (`star%control`, the `&control` group) and `state/physics_group_def.inc` (`star%physics`, the `&physics` group); in section 2.14 the Owner column gives a control's group. |
 
 **Naming rules** (from `TARGET_ARCHITECTURE.md` 4.7, plus what the code already practises):
 
@@ -98,7 +98,7 @@ Declared in `state/star_info_lib.f90:40-55`. The composition array is `star%xa(n
 | `i_li7` | 14 | ⁷Li | extended only |
 | `i_be9` | 15 | ⁹Be | extended only |
 
-The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`, `ix_mg`, `ix_fe`, `ix_si`, `ix_c`, `ix_h`=7, `ix_o`, `ix_n`, `ix_ar`, `ix_ne`, `ix_he`=12 (`n_mix_species = 12`; `star_info_lib.f90:61-64`). It is used by `ctrl%mixture_weights_seed`, `envelope_number_fractions` and `read_starting_model`'s weights.
+The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`, `ix_mg`, `ix_fe`, `ix_si`, `ix_c`, `ix_h`=7, `ix_o`, `ix_n`, `ix_ar`, `ix_ne`, `ix_he`=12 (`n_mix_species = 12`; `star_info_lib.f90:61-64`). It is used by `physics%mixture_weights_seed`, `envelope_number_fractions` and `read_starting_model`'s weights.
 
 ### 1.6 Snapshot families
 
@@ -185,7 +185,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Δlog₁₀P over step | dex | `star%log_pressure_delta` | `HPP` | core/step/step_driver.f90, core/structure/henyey_iteration.f90 | Change of logP since the step began (first guess plus accumulated corrections); enters ε_grav. |
 | Δlog₁₀T over step | dex | `star%log_temperature_delta` | `HTT` | core/step/step_driver.f90, core/structure/henyey_iteration.f90 | Same for logT. |
 | dlog₁₀T/dt etc. | dex s⁻¹ | `star%dlog_temperature_dt`, `dlog_pressure_dt`, `dlog_radius_dt`; `dln_luminosity_dt` (≈ dlnL/dt, s⁻¹) | `HTT0`, `HPP0`, `HRR0`, `HLL0` (`/ENTROP/`) | core/step/step_driver.f90:388-391 | Rates of change from the last step, used to extrapolate the next first guess. Not entropy (trap 12). |
-| f_corr | — | `star%job%solver_underrelax_factor` | `FCORR` | core/step/step_driver.f90, core/structure/henyey_iteration.f90 | Newton under-relaxation factor applied to the corrections. |
+| f_corr | — | `star%newton_correction_factor` | `FCORR` | core/step/step_driver.f90, core/structure/henyey_iteration.f90 | Newton under-relaxation factor applied to the corrections. |
 
 ### 2.3 Thermodynamics, opacity and transport coefficients (per zone)
 
@@ -225,7 +225,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Z − Z_CNO | mass fraction | `star%envelope_metals_no_cno` | `ZENVM` | core/model/starting_model.f90:901 | Surface Z excluding C, N and O. |
 | 1/μ_ion | — | `star%envelope_inverse_atomic_weight` | `AMUENV` | core/model/starting_model.f90:915 | Σ X_i/A_i of the 12-element surface mixture (the inverse mean ion weight; a nearby comment calls it "mean atomic weight"). |
 | — | number fraction | `star%envelope_number_fractions(12)` | `FXENV` | core/model/starting_model.f90 | Number fractions of the surface-mixture elements (`ix_*` order) for the EOS. |
-| — | — | `star%ctrl%mixture_weights_seed(12)` | `V` | core/model/starting_model.f90 | Relative abundances of the 12-element surface mixture. |
+| — | — | `star%physics%mixture_weights_seed(12)` | `V` | core/model/starting_model.f90 | Relative abundances of the 12-element surface mixture. |
 
 ### 2.5 Energy generation and nuclear network
 
@@ -326,7 +326,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| α_MLT | — | `star%mixing_length_alpha` | `CMIXL` (`/CONST3/`) | core/run/run_driver.f90:270, core/run/calibration.f90 | Working mixing length in pressure scale heights, copied from `job%mixing_length_array(nk)` each kind card. |
+| α_MLT | — | `star%mixing_length_alpha` | `CMIXL` (`/CONST3/`) | core/run/run_driver.f90:270, core/run/calibration.f90 | Working mixing length in pressure scale heights, copied from `card_mixing_length_alpha(current_card)` each kind card. |
 | — | zone index | `star%mixed_zone_bounds(12,2)` | `MXZONE` | convection/convection_zones.f90 (`find_convection_zones`, called from core/step/composition_step.f90, core/step/step_driver.f90) | First and last zone of each mixed (convective plus overshoot) region. |
 | — | zone index | `star%core_cz_top_index` | `JCORE` | core/model/rezoning.f90:558, core/step/composition_step.f90 | Top zone of the convective core (1 if none). |
 | — | zone index | `star%envelope_cz_bottom_index` | `JENV` | core/model/rezoning.f90:567, core/step/composition_step.f90 | Bottom zone of the surface convection zone (`nz` if none). |
@@ -346,7 +346,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | Δt | yr | `star%timestep_yr` | `DDAGE` | core/step/step_driver.f90:261 | dt in years. |
 | t | Gyr | `star%age_gyr` | `DAGE` (`/THEAGE/`) | core/step/step_driver.f90:262 | Stellar age. |
 | — | — | `star%model_number` | `MODEL` | core/step/step_driver.f90:162 | Model counter (not advanced on rescale-only cards). |
-| — | — | `star%job%nk` | `NK` (`/ZRAMP/`) | core/run/run_driver.f90 | Index of the current kind card (run). |
+| — | — | `star%current_card` | `NK` (`/ZRAMP/`) | core/run/run_driver.f90 | Index of the current kind card (run). |
 | — | logical | `star%model_diverged_flag` | `LARGE` | core/structure/henyey_iteration.f90 (`corrections_too_large`) | Newton corrections exceeded `solver_tolerances(:,2)` (legacy `htoler`). No timestep is cut: `reload_model_if_diverged` calls `read_starting_model`, which stops the run with ierr = 1 (`core/step/step_driver.f90:94-99`, `:200-206`). |
 | — | zone index | `star%h_shell_bot_index`, `h_shell_mid_index`, `h_shell_top_index` | `JXBEG`, `JXMID`, `JXEND` | core/model/shell_boundaries.f90 | Bottom, middle and top zones of the H-burning shell. |
 | — | logical | `star%has_h_shell` | `LSHELL` | core/model/shell_boundaries.f90 | A hydrogen-burning shell exists. |
@@ -399,7 +399,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | ln 10 | — | `ln10`, `clndp` | `CLN`, `CLNDP` | state/physical_constants.f90 (parameters) | Natural log of 10 (two copies). |
 | 1/ln 10 | — | `clni` | `CLNI` | state/physical_constants.f90 (parameter) | |
 | 4π, log₁₀ 4π, log₁₀(4π/3) | — | `c4pi`, `c4pil`, `c4pi3l` | `C4PI`, `C4PIL`, `C4PI3L` | state/physical_constants.f90 (parameters) | |
-| log₁₀ G | dex (cgs) | `cgl`; `log10_newton_g(G_cgs)`, `log10_newton_g_default`; the records' `log10_gravitational_constant` (convection's, rotation's, the envelope kernel's `envint_config`, the shell equations' `structure_settings`) | `CGL` | core/run/run_setup.f90 (`cgl = log10_newton_g(s%ctrl%G_cgs)`), state/physical_constants.f90 | The one run-time constant: log₁₀ of the control `G_cgs` if > 0, else −7.17571 (CODATA 1986's G, rounded in log₁₀), which is also `cgl`'s initial value. The star layer (core/'s drivers, io/) reads `cgl`; the domains, rotation and the star-blind kernels read their records (`tools/check_boundaries.py` checks it). |
+| log₁₀ G | dex (cgs) | `cgl`; `log10_newton_g(G_cgs)`, `log10_newton_g_default`; the records' `log10_gravitational_constant` (convection's, rotation's, the envelope kernel's `envint_config`, the shell equations' `structure_settings`) | `CGL` | core/run/run_setup.f90 (`cgl = log10_newton_g(s%physics%G_cgs)`), state/physical_constants.f90 | The one run-time constant: log₁₀ of the control `G_cgs` if > 0, else −7.17571 (CODATA 1986's G, rounded in log₁₀), which is also `cgl`'s initial value. The star layer (core/'s drivers, io/) reads `cgl`; the domains, rotation and the star-blind kernels read their records (`tools/check_boundaries.py` checks it). |
 | R_gas | erg mol⁻¹ K⁻¹ | `gas_constant` | `CGAS` | state/physical_constants.f90 (parameter) | 8.314510×10⁷ (CODATA 1986). |
 | a/3 | erg cm⁻³ K⁻⁴ | `radiation_constant_over_3` | `CA3` | state/physical_constants.f90 (parameter) | Radiation constant over 3 (4σ/3c, with `speed_of_light_cgs`). The log `CA3L` was never read and is gone. |
 | σ | erg cm⁻² s⁻¹ K⁻⁴ | `csig`, `csigl`; `sigma_sb_cgs_legacy` (5.669×10⁻⁵, viscos only) | `CSIG`, `CSIGL` | state/physical_constants.f90 (parameters) | Stefan–Boltzmann constant, 5.67051×10⁻⁵ (CODATA 1986; two values coexist). |
@@ -407,55 +407,55 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | yr | s | `seconds_per_year` | `CSECYR` | state/physical_constants.f90 (parameter) | 3.1558×10⁷. |
 | L☉ | erg s⁻¹ | `star%solar_luminosity_cgs`, `log10_solar_luminosity` | `CLSUN`, `CLSUNL` (`/CONST/`) | core/run/run_setup.f90 | Solar luminosity (namelist `clsun`; rescaled per Monte-Carlo run). |
 | ln10/L☉ | s erg⁻¹ | `star%ln10_over_lsun` | `CLNSUN` | core/run/run_setup.f90 (`set_up_constants_and_tables`) | ln 10 divided by L☉. **Not a logarithm** (trap 22). |
-| M☉ | g | `star%solar_mass_cgs` (control `ctrl%solar_mass_cgs`), `log10_solar_mass` | `CMSUN`, `CMSUNL` | core/run/run_setup.f90 | Solar mass. |
+| M☉ | g | `star%solar_mass_cgs` (control `physics%solar_mass_cgs`), `log10_solar_mass` | `CMSUN`, `CMSUNL` | core/run/run_setup.f90 | Solar mass. |
 | R☉ | cm | `star%solar_radius_cgs`, `log10_solar_radius`; `rsun_cgs_legacy` (microdiff) | `CRSUN`, `CRSUNL` | core/run/run_setup.f90 | Solar radius (namelist `crsun`). |
 
 ### 2.14 Key controls
 
 - **Inlist name:** the name in an inlist's `&physics` group, or in its `&control` group where marked (c).
 - **Legacy:** the F77 namelist name, read by the legacy reader (`io/controls_reader.f90`).
-- **Code field:** where the value lives at run time. `ctrl` means `star%ctrl%`, which never changes after the controls read. `job` means `star%job%`, which holds exactly the controls that code outside the read assigns (the run-card arrays the calibration rewrites, the stop thresholds, `atm_choice`, `solver_underrelax_factor`, the latches `use_structure_dt_limits` and `use_mass_accretion`), besides the Monte-Carlo samples and the card cursor `nk`. `buffer` means a control only the read uses (the S-factor inputs, the `tol_*` and `time_*` inputs, the per-vintage OPAL EOS switches and paths): it stays in the read's buffer, `io/controls_buffer.f90`, and is not in the star. The registry's `home` column says which, and `tools/check_boundaries.py` checks it.
+- **Code field:** where the value lives at run time. `control%` and `physics%` are the star's records of the inlist's two namelist groups, `star%control` and `star%physics`, which never change after the controls read; a control is in the record of its group. A value the run changes is the control's **run copy**, a star member of its own (the run plan's `card_*` arrays the calibrations rewrite, `atm_choice_in_use`, `structure_dt_limits_active`, `mass_change_active`, `newton_correction_factor`, ...; `state/README.md` documents each), which the read arms from the control; the control keeps the deck's value. `buffer` means a control only the read uses (the S-factor inputs, the `tol_*` and `time_*` inputs, the per-vintage OPAL EOS switches and paths): it stays in the read's buffer, `io/controls_buffer.f90`, and is not in the star. The registry's `home` and `run_copy` columns say which, and `tools/check_boundaries.py` checks them.
 - **Full list:** the ~380 controls are in `defaults/controls_registry.tsv` and the generated `defaults/*.defaults`.
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
-| α_MLT | — | inlist `mixing_length_alpha` (c, per card); code `job%mixing_length_array(50)` | `CMIXLA` | job | Mixing length per kind card; copied to `star%mixing_length_alpha`. |
-| α_ov,core | H_P | `overshoot_alpha_core`; code `ctrl%overshoot_alpha_core` | `ALPHAC` | ctrl | Core overshoot extent. |
-| α_ov,env | H_P | `overshoot_alpha_envelope`; code `ctrl%overshoot_alpha_envelope` | `ALPHAE` | ctrl | Envelope (undershoot) extent below the surface CZ. |
-| — | logical | `core_overshoot_active`, `envelope_overshoot_active`, `intermediate_overshoot_active`; code `ctrl%core_overshoot_active`, `ctrl%envelope_overshoot_active`, `ctrl%intermediate_overshoot_active`; `adiabatic_overshoot_active` → `ctrl%adiabatic_overshoot_active` | `LOVSTC`, `LOVSTE`, `LOVSTM`; `LADOV` | ctrl | Enable overshoot at the core, at the surface-CZ base, and at intermediate CZs; treat overshoot regions as adiabatic. |
-| — | logical | `use_semiconvection`; code `ctrl%use_semiconvection` | `LSEMIC` | ctrl | Semiconvection treatment (conflicts with core overshoot). |
-| — | logical | `use_diffusion_z`, `diffuse_helium_active`, `diffuse_lithium`, `use_thoul_diffusion`; code `ctrl%use_diffusion_z`, `ctrl%diffuse_helium_active`, `ctrl%diffuse_lithium`, `ctrl%use_thoul_diffusion` | `LDIFZ`, `LDIFY`, `LDIFLI`, `LTHOUL` | ctrl | Gravitational settling of Z, of He and of Li/Be; use the Thoul et al. coefficients. Helium settling stops for the rest of a run card once X_c falls below `hydrogen_diffusion_floor`: that latch is the star's `settling_active`, armed from `diffuse_helium_active` at every card. |
-| f_Y, f_Z | — | `settling_y_factor`, `settling_z_factor`; code `ctrl%settling_y_factor`, `job%settling_z_factor` | `FGRY`, `FGRZ` | ctrl / job | Multipliers on the He and metal settling velocities. |
-| — | logical | `rotation_flag`; code `ctrl%rotation_active` | `LROT` | ctrl | Rotation on (structure corrections, Ω, j). |
-| — | logical | `instability_transport_active`; code `ctrl%instability_transport_active` | `LINSTB` | ctrl | Rotational AM and composition transport by instabilities. |
-| Ω₀ | rad s⁻¹ | `initial_omega` (with `set_initial_omega`); code `ctrl%initial_omega`, `ctrl%set_initial_omega` | `WNEW`, `LWNEW` | ctrl | Initial solid-body Ω assigned to every zone (`read_starting_model.f90:355-359`). |
-| — | — | `num_rotation_structure_iters`; code `job%num_rotation_structure_iters` | `ITDIF1` | job | Structure⇄rotation passes per step (the level-4 loop). |
-| — | — | `max_diffusion_iters`; code `ctrl%max_diffusion_iters` | `ITDIF2` | ctrl | Iteration limit of the AM diffusion solve. |
-| — | — | `convergence_tolerance`; code `ctrl%convergence_tolerance` | `DJOK` | ctrl | Relative Δj (and ΔΩ) tolerance of the AM diffusion iteration. |
-| max ΔΩ/Ω per sub-step | — | `diffusion_timestep_factor`; code `ctrl%diffusion_timestep_factor` | `DTDIF` | ctrl | Largest fractional ΔΩ allowed per rotational sub-step; sets the sub-step count (`evolve_angular_momentum.f90:191`). Overwritten by `time_dw_mix` when `use_new_rate_variables` is set (trap 23). |
-| f_ES, f_GSF, f_SS, f_SH, f_c | — | `es_velocity_scale`, `gsf_velocity_scale`, `secular_shear_velocity_scale`, `solberg_hoiland_velocity_scale`, `mixing_velocity_scale`; code `ctrl%` same names | `FES`, `FGSF`, `FSS`, none (new in 2026), `FC` (`/VMULT/`) | ctrl | Efficiency multipliers of the transport velocities; `fc` also caps the Zahn factor. The μ-gradient scale `FMU` (`mu_gradient_scale`) is retired: it had no effect (bug_sweep O15); legacy decks may still set it, the inlist format no longer offers it. |
-| — | — | `fpft_average_weight`; code `ctrl%fpft_average_weight` | `ACFPFT` | ctrl | Used as the **relative tolerance** of the r₀/η₂ iterations (`shape.f90:65,112`), not as an averaging weight (trap 24). |
-| — | — | `solver_tolerances`; code `ctrl%solver_tolerances(5,2)` | `HTOLER` | ctrl | Rows 1–4: per-variable convergence (col 1) and too-large (col 2) correction limits; row 5: residual test. |
-| — | — | `max_iter_level1` ... `max_iter_level4`; code `ctrl%max_iter_level1..4` | `NITER1`..`NITER4` | ctrl | Newton iteration limits of the four solve levels (level 3 defaults to 2). |
-| — | — | `solver_underrelax_start`, `solver_underrelax_increment`; code `ctrl%solver_underrelax_start`, `ctrl%solver_underrelax_increment` | `FCORR0`, `FCORRI` | ctrl | Start value of `fcorr` (\|fcorr0\| − fcorri) and its per-iteration growth; the sign of `fcorr0` enables the ramp. |
-| — | — | `atm_choice`; code `job%atm_choice` | `KTTAU` | job | Surface BC: 0 Eddington gray, 1 Krishna-Swamy, 2 HSRA, 3–5 tabulated (Kurucz, Allard, Kurucz/Castelli). May be reset to 0 at run time. |
-| — | — | `env_error_tol`, `atm_error_tol`; code `ctrl%env_error_tol`, `ctrl%atm_error_tol` | `ENVERR`, `ATMERR` | ctrl | Error tolerances of the envelope and atmosphere integrations. |
-| Δlog T_eff, Δlog L | dex | `tri_delta_teffl`, `tri_delta_logl`; code `ctrl%tri_delta_teffl`, `ctrl%tri_delta_logl` | `TRIDT`, `TRIDL` | ctrl | Size of the envelope-fit triangle. |
-| — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code: the three OPAL switches stay in the read's buffer and select one derived control, `ctrl%opal_eos_vintage` (`derive_controls`); `ctrl%use_mhd_eos`, `ctrl%use_scv_eos` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | buffer / ctrl | EOS table selection on top of the Yale/Saha base. |
-| — | logical | `use_opal95_tables` (c), `use_alex06_tables` (c), `use_conductive_opacity`; code `ctrl%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | ctrl | Opacity table selection. |
-| — | logical | `use_extended_composition`; code `ctrl%use_extended_composition` | `LEXCOM` | ctrl | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
-| log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `compute_henyey_coefficients`. |
-| — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `solver_underrelax_factor` (legacy `fcorr`). |
-| — | — | `timestep_factors`; code `ctrl%timestep_factors(14)` (slots `itime_*` in `state/control_slots.f90`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
-| — | logical | `improved_first_guess_flag`; code `ctrl%improved_first_guess_flag` | `LNEWS` | ctrl | Extrapolate the next first guess from `*_entropy_term` rates. |
-| — | logical | `use_new_rate_variables`; code `use_new_rate_variables` (the read's buffer) | `LNEWVARS` | buffer | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `ctrl%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `ctrl%timestep_factors`. Not a nuclear-rate switch (trap 23). |
-| t_end | yr | `max_age` (c, per card); code `job%target_end_age(50)` | `ENDAGE` | job | Stop age per kind card. |
-| X₀, Z₀ | mass fraction | `initial_x_array`, `initial_z_array` (c); code `job%initial_x_array(50)`, `job%initial_z_array(50)` | `XENV0A`, `ZENV0A` | job | Initial X and Z per kind card. |
-| — | — | `run_kind` (c); code `job%rescale_kind(50)` | `KINDRN` | job | 1 evolve, 2 rescale (no aging), 3 rescale and evolve (pre-MS). |
-| — | logical; dex | `calibrate_solar_model` (c), `luminosity_tolerance`, `radius_tolerance` (c); code `ctrl%` same names | `LCALS`, `TOLL`, `TOLR` | ctrl | Automatic solar calibration and its L and R tolerances. |
-| — | logical; Gyr; rad s⁻¹ | `disk_locking_active`, `disk_locking_age_gyr`, `disk_omega_rad_s`; code `ctrl%` same names | `LDISK`, `TDISK`, `PDISK` | ctrl | Disk locking: surface CZ held at `disk_omega_rad_s` while age ≤ `disk_locking_age_gyr`. Old deck comments give wrong units. |
-| Ω_sat | rad s⁻¹ or Ω_sat·τ_cz | `wind_saturation_omega`; code `ctrl%wind_saturation_omega` | `WMAX` | ctrl | Wind saturation threshold. Its meaning depends on its magnitude (trap 25). |
-| η_R | M☉ yr⁻¹ per (L R/M) in solar units | `use_reimers_wind`, `reimers_scaling_factor`; code `ctrl%use_reimers_wind`, `ctrl%reimers_scaling_factor` | `LREIMER`, `CREIM` | ctrl | Reimers mass loss Ṁ = η_R (L/L☉)(R/R☉)/(M/M☉) (`core/step/mass_change.f90:103-107`). |
+| α_MLT | — | inlist `mixing_length_alpha` (c, per card); code `control%mixing_length_array(50)` (the run's copy `card_mixing_length_alpha`) | `CMIXLA` | control (run copy) | Mixing length per kind card; copied to `star%mixing_length_alpha`. |
+| α_ov,core | H_P | `overshoot_alpha_core`; code `physics%overshoot_alpha_core` | `ALPHAC` | physics | Core overshoot extent. |
+| α_ov,env | H_P | `overshoot_alpha_envelope`; code `physics%overshoot_alpha_envelope` | `ALPHAE` | physics | Envelope (undershoot) extent below the surface CZ. |
+| — | logical | `core_overshoot_active`, `envelope_overshoot_active`, `intermediate_overshoot_active`; code `physics%core_overshoot_active`, `physics%envelope_overshoot_active`, `physics%intermediate_overshoot_active`; `adiabatic_overshoot_active` → `physics%adiabatic_overshoot_active` | `LOVSTC`, `LOVSTE`, `LOVSTM`; `LADOV` | physics | Enable overshoot at the core, at the surface-CZ base, and at intermediate CZs; treat overshoot regions as adiabatic. |
+| — | logical | `use_semiconvection`; code `physics%use_semiconvection` | `LSEMIC` | physics | Semiconvection treatment (conflicts with core overshoot). |
+| — | logical | `use_diffusion_z`, `diffuse_helium_active`, `diffuse_lithium`, `use_thoul_diffusion`; code `physics%use_diffusion_z`, `physics%diffuse_helium_active`, `physics%diffuse_lithium`, `physics%use_thoul_diffusion` | `LDIFZ`, `LDIFY`, `LDIFLI`, `LTHOUL` | physics | Gravitational settling of Z, of He and of Li/Be; use the Thoul et al. coefficients. Helium settling stops for the rest of a run card once X_c falls below `hydrogen_diffusion_floor`: that latch is the star's `settling_active`, armed from `diffuse_helium_active` at every card. |
+| f_Y, f_Z | — | `settling_y_factor`, `settling_z_factor`; code `physics%settling_y_factor`, `physics%settling_z_factor` (the run's copy `settling_z_factor_in_use`) | `FGRY`, `FGRZ` | physics (run copy) | Multipliers on the He and metal settling velocities. |
+| — | logical | `rotation_flag`; code `physics%rotation_active` | `LROT` | physics | Rotation on (structure corrections, Ω, j). |
+| — | logical | `instability_transport_active`; code `physics%instability_transport_active` | `LINSTB` | physics | Rotational AM and composition transport by instabilities. |
+| Ω₀ | rad s⁻¹ | `initial_omega` (with `set_initial_omega`); code `physics%initial_omega`, `physics%set_initial_omega` | `WNEW`, `LWNEW` | physics | Initial solid-body Ω assigned to every zone (`read_starting_model.f90:355-359`). |
+| — | — | `num_rotation_structure_iters`; code `physics%num_rotation_structure_iters` (the run's copy `num_rotation_structure_passes`) | `ITDIF1` | physics (run copy) | Structure⇄rotation passes per step (the level-4 loop). |
+| — | — | `max_diffusion_iters`; code `physics%max_diffusion_iters` | `ITDIF2` | physics | Iteration limit of the AM diffusion solve. |
+| — | — | `convergence_tolerance`; code `physics%convergence_tolerance` | `DJOK` | physics | Relative Δj (and ΔΩ) tolerance of the AM diffusion iteration. |
+| max ΔΩ/Ω per sub-step | — | `diffusion_timestep_factor`; code `physics%diffusion_timestep_factor` | `DTDIF` | physics | Largest fractional ΔΩ allowed per rotational sub-step; sets the sub-step count (`evolve_angular_momentum.f90:191`). Overwritten by `time_dw_mix` when `use_new_rate_variables` is set (trap 23). |
+| f_ES, f_GSF, f_SS, f_SH, f_c | — | `es_velocity_scale`, `gsf_velocity_scale`, `secular_shear_velocity_scale`, `solberg_hoiland_velocity_scale`, `mixing_velocity_scale`; code `physics%` same names | `FES`, `FGSF`, `FSS`, none (new in 2026), `FC` (`/VMULT/`) | physics | Efficiency multipliers of the transport velocities; `fc` also caps the Zahn factor. The μ-gradient scale `FMU` (`mu_gradient_scale`) is retired: it had no effect (bug_sweep O15); legacy decks may still set it, the inlist format no longer offers it. |
+| — | — | `fpft_average_weight`; code `physics%fpft_average_weight` | `ACFPFT` | physics | Used as the **relative tolerance** of the r₀/η₂ iterations (`shape.f90:65,112`), not as an averaging weight (trap 24). |
+| — | — | `solver_tolerances`; code `physics%solver_tolerances(5,2)` | `HTOLER` | physics | Rows 1–4: per-variable convergence (col 1) and too-large (col 2) correction limits; row 5: residual test. |
+| — | — | `max_iter_level1` ... `max_iter_level4`; code `physics%max_iter_level1..4` | `NITER1`..`NITER4` | physics | Newton iteration limits of the four solve levels (level 3 defaults to 2). |
+| — | — | `solver_underrelax_start`, `solver_underrelax_increment`; code `physics%solver_underrelax_start`, `physics%solver_underrelax_increment` | `FCORR0`, `FCORRI` | physics | Start value of `fcorr` (\|fcorr0\| − fcorri) and its per-iteration growth; the sign of `fcorr0` enables the ramp. |
+| — | — | `atm_choice`; code `physics%atm_choice` (the run's copy `atm_choice_in_use`) | `KTTAU` | physics (run copy) | Surface BC: 0 Eddington gray, 1 Krishna-Swamy, 2 HSRA, 3–5 tabulated (Kurucz, Allard, Kurucz/Castelli). May be reset to 0 at run time. |
+| — | — | `env_error_tol`, `atm_error_tol`; code `physics%env_error_tol`, `physics%atm_error_tol` | `ENVERR`, `ATMERR` | physics | Error tolerances of the envelope and atmosphere integrations. |
+| Δlog T_eff, Δlog L | dex | `tri_delta_teffl`, `tri_delta_logl`; code `physics%tri_delta_teffl`, `physics%tri_delta_logl` | `TRIDT`, `TRIDL` | physics | Size of the envelope-fit triangle. |
+| — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code: the three OPAL switches stay in the read's buffer and select one derived control, `physics%opal_eos_vintage` (`derive_controls`); `physics%use_mhd_eos`, `physics%use_scv_eos` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | buffer / ctrl | EOS table selection on top of the Yale/Saha base. |
+| — | logical | `use_opal95_tables` (c), `use_alex06_tables` (c), `use_conductive_opacity`; code `control%` (c) and `physics%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | control / physics | Opacity table selection. |
+| — | logical | `use_extended_composition`; code `physics%use_extended_composition` | `LEXCOM` | physics | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
+| log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `physics%nuclear_logT_cutoffs` | `TCUT` | physics | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `compute_henyey_coefficients`. |
+| — | logical | `helium_flash_active`; code `physics%helium_flash_active` | `LKUTHE` | physics | He-flash mode: no rezoning, no luminosity renormalization, adaptive `solver_underrelax_factor` (legacy `fcorr`). |
+| — | — | `timestep_factors`; code `physics%timestep_factors(14)` (slots `itime_*` in `state/control_slots.f90`); `use_structure_dt_limits` → `physics%use_structure_dt_limits` (the run's copy `structure_dt_limits_active`) | `ATIME`; `LPTIME` | physics (run copy) | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
+| — | logical | `improved_first_guess_flag`; code `physics%improved_first_guess_flag` | `LNEWS` | physics | Extrapolate the next first guess from `*_entropy_term` rates. |
+| — | logical | `use_new_rate_variables`; code `use_new_rate_variables` (the read's buffer) | `LNEWVARS` | buffer | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `physics%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `physics%timestep_factors`. Not a nuclear-rate switch (trap 23). |
+| t_end | yr | `max_age` (c, per card); code `control%target_end_age(50)` (the run's copy `card_max_age_yr`) | `ENDAGE` | control (run copy) | Stop age per kind card. |
+| X₀, Z₀ | mass fraction | `initial_x_array`, `initial_z_array` (c); code `control%initial_x_array(50)` (the run's copy `card_initial_x`), `control%initial_z_array(50)` (the run's copy `card_initial_z`) | `XENV0A`, `ZENV0A` | control (run copy) | Initial X and Z per kind card. |
+| — | — | `run_kind` (c); code `control%rescale_kind(50)` (the run's copy `card_kind`) | `KINDRN` | control (run copy) | 1 evolve, 2 rescale (no aging), 3 rescale and evolve (pre-MS). |
+| — | logical; dex | `calibrate_solar_model` (c), `luminosity_tolerance`, `radius_tolerance` (c); code `control%` same names | `LCALS`, `TOLL`, `TOLR` | control | Automatic solar calibration and its L and R tolerances. |
+| — | logical; Gyr; rad s⁻¹ | `disk_locking_active`, `disk_locking_age_gyr`, `disk_omega_rad_s`; code `physics%` same names | `LDISK`, `TDISK`, `PDISK` | physics | Disk locking: surface CZ held at `disk_omega_rad_s` while age ≤ `disk_locking_age_gyr`. Old deck comments give wrong units. |
+| Ω_sat | rad s⁻¹ or Ω_sat·τ_cz | `wind_saturation_omega`; code `physics%wind_saturation_omega` | `WMAX` | physics | Wind saturation threshold. Its meaning depends on its magnitude (trap 25). |
+| η_R | M☉ yr⁻¹ per (L R/M) in solar units | `use_reimers_wind`, `reimers_scaling_factor`; code `physics%use_reimers_wind`, `physics%reimers_scaling_factor` | `LREIMER`, `CREIM` | physics | Reimers mass loss Ṁ = η_R (L/L☉)(R/R☉)/(M/M☉) (`core/step/mass_change.f90:103-107`). |
 
 ---
 
@@ -507,7 +507,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - The entropy term itself is ε_grav, formed from `log_*_delta`.
 13. **`pressure_scale_height_start/end` hold α_ov·H_P, and the two writers gate it differently.**
     - The value is the envelope overshoot distance, and zero when overshoot is off (`core/step/step_driver.f90:537-545`).
-    - `evolve_step` gates it on `envelope_overshoot_active` (`LOVSTE`). `rotation/evolve_angular_momentum.f90:343-348` gates it on `ctrl%intermediate_overshoot_active` (intermediate overshoot), which looks like a bug.
+    - `evolve_step` gates it on `envelope_overshoot_active` (`LOVSTE`). `rotation/evolve_angular_momentum.f90:343-348` gates it on `physics%intermediate_overshoot_active` (intermediate overshoot), which looks like a bug.
 14. **`neutrino_loss_fraction` is not a neutrino fraction.**
     - It is (ε_nuc − ε_ν − ε_grav)/ε_nuc with ε_ν stored negative (`core/structure/structure_equations.f90:378-385`), legacy `FRACNUC`.
 15. **`luminosity_breakdown_lsun` is renormalized every Newton iteration.**
