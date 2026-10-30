@@ -32,18 +32,18 @@ contains
 !                 and the structure-based limits are off;
 ! and, for a previous timestep above 1 s, atime(itime_max_dt_frac) times
 ! the previous timestep.
-! A fixed timestep (timestep_override_active for this kind card)
+! A fixed timestep (card_fixed_timestep_active for this kind card)
 ! replaces all of these; caveat user. When evolving to a fixed age
-! (end_age_stop_active with target_end_age > 0), the timestep is cut so
+! (card_stops_active with card_max_age_yr > 0), the timestep is cut so
 ! that the model does not pass that age.
 ! A negative previous_timestep marks a model being relaxed rather than
 ! evolved: the limits are skipped and only its magnitude is kept.
 ! On return previous_timestep holds the new timestep (s), also in
 ! chosen_dt and, in years, timestep_years.
-!   star reads: ctrl%rotation_active, ctrl%timestep_factors,
-!     ctrl%use_envelope_triangle_dt, job%end_age_stop_active,
-!     job%target_end_age, job%timestep_override,
-!     job%timestep_override_active, job%use_structure_dt_limits
+!   star reads: card_fixed_timestep_active, card_fixed_timestep_yr,
+!     card_max_age_yr, card_stops_active, ctrl%rotation_active,
+!     ctrl%timestep_factors, ctrl%use_envelope_triangle_dt,
+!     structure_dt_limits_active
 !   star writes: none
 subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_density, &
      luminosity, enclosed_mass, log_temperature, composition, &
@@ -78,12 +78,12 @@ subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_den
       double precision, intent(in) :: log_teff
 ! disable_structure_dt_limits: set when this call switches the
 ! structure-based limits off; the driver then clears
-! star%job%use_structure_dt_limits.
+! star%structure_dt_limits_active.
       logical, intent(out) :: disable_structure_dt_limits
       double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
 ! structure_limits_active: whether the structure-based limits apply to
-! this step: star%job%use_structure_dt_limits, unless
+! this step: star%structure_dt_limits_active, unless
 ! decide_structure_limits switches them off (log Tc > 7.1 with
 ! L_grav < 0). The job flag itself is left to the driver.
       logical :: structure_limits_active
@@ -93,8 +93,8 @@ subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_den
       disable_structure_dt_limits = .false.
       if (previous_timestep.ge.0.0d0) then
 ! A fixed timestep for this kind card overrides the limits.
-      if(s%job%timestep_override_active(kind_card_index)) then
-       chosen_dt = s%job%timestep_override(kind_card_index)*seconds_per_year
+      if(s%card_fixed_timestep_active(kind_card_index)) then
+       chosen_dt = s%card_fixed_timestep_yr(kind_card_index)*seconds_per_year
        previous_timestep = chosen_dt
       else
        call decide_structure_limits()
@@ -118,7 +118,7 @@ contains
 ! off (MHP 9/01) once the centre is hotter than log Tc = 7.1 while the
 ! gravothermal luminosity L_grav (luminosity_components(7)) is negative.
 subroutine decide_structure_limits()
-      structure_limits_active = s%job%use_structure_dt_limits
+      structure_limits_active = s%structure_dt_limits_active
       if(structure_limits_active) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
             write(*, 100) log_temperature(1), luminosity_components(7)
@@ -226,12 +226,12 @@ end subroutine take_tightest_limit
 
 ! ---------------------------------------------------------------
 ! When evolving to a given age, shorten the timestep so the model does not
-! pass it: dt = min(dt, target_end_age - age), in years. Only for a true
-! stop age (target_end_age > 0), since end_age_stop_active also covers
+! pass it: dt = min(dt, card_max_age_yr - age), in years. Only for a true
+! stop age (card_max_age_yr > 0), since card_stops_active also covers
 ! other stop conditions (MHP 10/24).
 subroutine clip_to_end_age()
-      if(s%job%end_age_stop_active(kind_card_index) .and. s%job%target_end_age(kind_card_index).gt.0.0d0) then
-       time_left_years = s%job%target_end_age(kind_card_index) - age_gyr*1.0d9
+      if(s%card_stops_active(kind_card_index) .and. s%card_max_age_yr(kind_card_index).gt.0.0d0) then
+       time_left_years = s%card_max_age_yr(kind_card_index) - age_gyr*1.0d9
        if(time_left_years.lt. timestep_years) then
          timestep_years = time_left_years
          chosen_dt = timestep_years*seconds_per_year
@@ -256,7 +256,7 @@ end subroutine compute_timestep
 ! log L. f = 1 when nothing changed; f is clipped to [1/a, a] with
 ! a = atime(itime_max_dt_frac); and struct_dt = previous_timestep/f.
 ! This limit dominates on the pre-main sequence, where it must be on
-! (star%job%use_structure_dt_limits, legacy LPTIME).
+! (star%structure_dt_limits_active, legacy LPTIME).
 !   star reads: ctrl%timestep_factors, logP_start, logR_start,
 !     logT_start, luminosity_lsun_start
 !   star writes: none

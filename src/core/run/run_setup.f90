@@ -52,18 +52,18 @@ end subroutine prepare_run
 ! PARMIN's did; kap_init reads it, and the EOS mixture takes it with the
 ! star's envelope mixture as it stands (the starting model sets both
 ! again).
-!   star reads: envelope_hydrogen_fraction,
+!   star reads: card_rescale_targets, envelope_hydrogen_fraction,
 !     envelope_inverse_atomic_weight, envelope_number_fractions,
-!     job%num_runs, job%rescale_params
+!     num_cards
 !   star writes: envelope_metal_fraction
 subroutine set_run_plan_envelope_z(s)
       use eos_lib, only: eos_set_mixture
       type(star_info), intent(inout) :: s
       integer :: n
 
-      do n = 1, s%job%num_runs
-         if (s%job%rescale_params(3,n) > 0.0d0) &
-              s%envelope_metal_fraction = s%job%rescale_params(3,n)
+      do n = 1, s%num_cards
+         if (s%card_rescale_targets(3,n) > 0.0d0) &
+              s%envelope_metal_fraction = s%card_rescale_targets(3,n)
       end do
       call eos_set_mixture(s%envelope_hydrogen_fraction, &
            s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &

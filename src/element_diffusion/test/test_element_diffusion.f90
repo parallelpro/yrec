@@ -66,10 +66,10 @@ program test_element_diffusion
       star%ctrl%constant_mixing_coeff = 1.0d0
       star%ctrl%constant_settling_reduction = 1.0d0
       star%ctrl%settling_y_factor = 0.7d0
-      star%job%settling_z_factor = 0.9d0
+      star%settling_z_factor_in_use = 0.9d0
       call settle_case('old: helium factor 0.7, metal factor 0.9', .false.)
       star%ctrl%settling_y_factor = 1.0d0
-      star%job%settling_z_factor = 1.0d0
+      star%settling_z_factor_in_use = 1.0d0
       star%ctrl%use_thoul_fit = .true.
       call settle_case('old: the Thoul et al. fit for metals', .false.)
       star%ctrl%use_thoul_fit = .false.
@@ -162,7 +162,7 @@ subroutine reset_controls()
       star%ctrl%constant_mixing_coeff = 1.0d0
       star%ctrl%constant_settling_reduction = 1.0d0
       star%ctrl%settling_y_factor = 1.0d0
-      star%job%settling_z_factor = 1.0d0
+      star%settling_z_factor_in_use = 1.0d0
       star%settling_suspended_reported = .false.
 end subroutine reset_controls
 

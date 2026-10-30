@@ -2,9 +2,10 @@
 ! test_controls
 !----------------------------------------------------------------------
 ! Reads one deck through read_controls, exactly as a run does, and
-! prints every resulting control: each element of star%ctrl and
-! star%job (controls_dump.inc, generated from their declarations), the
-! star fields read_controls sets directly and the unit numbers. Doubles
+! prints every resulting control: each element of star%ctrl
+! (controls_dump.inc, generated from its declarations) and of the
+! buffer-only members, the star fields read_controls sets directly and
+! the unit numbers. Doubles
 ! print at full precision, so two dumps agree exactly when the controls
 ! are bit-identical.
 !   test_controls                  the pristine defaults (no deck read)
@@ -43,22 +44,26 @@ program test_controls
          call read_controls(star, ierr)
 ! the run's files, as run_yrec opens them after the read
          if (ierr == 0) call open_run_files(ierr)
-! YREC_TEST_READ_TWICE=1: scribble on star%job as a run would (the
-! Newton factor, a card's envelope X, a Monte-Carlo sample), close the
-! run's files, then read the deck again into the same star; the dump
-! must be a single read's
+! YREC_TEST_READ_TWICE=1: scribble on the run's working copies of the
+! controls as a run would (the Newton factor, the card's envelope X, a
+! card's mixing length), close the run's files, then read the deck again
+! into the same star; the dump must be a single read's, and the read
+! must have armed the copies from their controls again
          call get_environment_variable("YREC_TEST_READ_TWICE", twice)
          if (twice == "1") then
-            star%job%solver_underrelax_factor = 7.0d0
-            star%job%initial_envelope_x = 7.0d0
-            star%job%s11_rate = 7.0d0
+            star%newton_correction_factor = 7.0d0
+            star%current_card_envelope_x = 7.0d0
+            star%card_mixing_length_alpha(1) = 7.0d0
 ! the run's files closed, as run_yrec's prologue closes them
             do i1 = 7, 99
                close(i1)
             end do
             call read_controls(star, ierr)
             if (ierr == 0) call open_run_files(ierr)
-            if (any(star%job%s11_rate /= 0.0d0)) write(u,'(a)') "job%s11_rate kept"
+            if (star%newton_correction_factor /= star%ctrl%solver_underrelax_factor .or. &
+                 star%current_card_envelope_x /= star%ctrl%initial_envelope_x .or. &
+                 any(star%card_mixing_length_alpha /= star%ctrl%mixing_length_array)) &
+                 write(u,'(a)') "a run copy kept the first run's value"
          end if
          write(u,'(a)') "# controls"
          write(u,'(a,i0)') "ierr = ", ierr

@@ -150,7 +150,7 @@ def test_zoning_tolerances_without_new_rate_variables():
 
 
 def test_pristine_controls_are_the_defaults(tmp_path):
-    """controls_state(), the pristine star%ctrl and star%job, is what a deck
+    """controls_state(), the pristine star%ctrl, is what a deck
     that sets nothing reads: each default is written once, as its
     controls_buffer initializer, and the legacy names take theirs from it
     (defaults/*.defaults document the same initializers). The exceptions are
@@ -158,7 +158,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     run kinds, the OPAL EOS table path)."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
-    derived = re.compile(r"^(ctrl%(npenv|opal_eos_table_path)|job%rescale_kind)(\(|$)")
+    derived = re.compile(r"^ctrl%(npenv|opal_eos_table_path|rescale_kind)(\(|$)")
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
@@ -171,7 +171,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
 
     pristine, empty = dump([]), dump([str(deck)])
     assert empty.get("ierr") == "0"
-    diff = [k for k in pristine if k.startswith(("ctrl%", "job%"))
+    diff = [k for k in pristine if k.startswith("ctrl%")
             and pristine[k] != empty.get(k) and not derived.match(k)]
     assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]
 
@@ -202,7 +202,7 @@ def test_warnings_reach_the_terminal_and_the_run_log(tmp_path):
 def test_card_one_starts_from_the_starting_model(tmp_path):
     """Card 1 has no previous card's model, so it always loads the starting
     model: a deck that sets first_call_flag(1) = .FALSE. (ten shipped decks
-    did) reads job%first_call_flag(1) = T, and the run plan says so; card
+    did) reads ctrl%first_call_flag(1) = T, and the run plan says so; card
     2's flag stays as the deck sets it."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
@@ -216,8 +216,8 @@ def test_card_one_starts_from_the_starting_model(tmp_path):
     out = result.stdout.decode("latin-1")
     dump = out.splitlines()
     assert "ierr = 0" in dump
-    assert "job%first_call_flag(1) = T" in dump
-    assert "job%first_call_flag(2) = F" in dump
+    assert "ctrl%first_call_flag(1) = T" in dump
+    assert "ctrl%first_call_flag(2) = F" in dump
     assert "card  1: rescale and evolve the starting model" in out, out[-500:]
 
 
@@ -279,9 +279,11 @@ def test_monte_carlo_paths_are_expanded(tmp_path):
 
 
 def test_a_second_read_starts_from_the_defaults(tmp_path):
-    """read_controls resets star%job as well as star%ctrl: a deck read into a
-    star that a run has used (the Newton factor ramped, a card's envelope X
-    set, a Monte-Carlo sample read) dumps exactly as a fresh read, as an
+    """read_controls resets the controls and re-arms the run's working
+    copies of them: a deck read into a star that a run has used (the Newton
+    factor ramped, the card's envelope X set, a card's mixing length
+    rewritten) dumps exactly as a fresh read, and the copies equal their
+    controls again (test_controls prints a line otherwise), as an
     embedding host or a second in-process run needs."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")

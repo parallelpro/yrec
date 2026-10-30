@@ -430,7 +430,7 @@ def render(classes, members, writers, readers, where):
     n_rec = sum(1 for e in members if e["record"])
     cls_rows.append("")
     cls_rows.append(f"{len(members)} members in all, {n_rec} of them records "
-                    f"(the two input bundles among them).")
+                    f"(the controls among them).")
     tables = []
     for i, c in enumerate(classes, 1):
         tables += [f"### {anchor(i, c['name'])}", "",

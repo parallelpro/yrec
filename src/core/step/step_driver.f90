@@ -49,16 +49,16 @@ contains
 ! previous step). The reset block below (evolve_step_reset_pending)
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
-!   star reads: ctrl%envelope_overshoot_active,
-!     ctrl%helium_flash_active, ctrl%improved_first_guess_flag,
-!     ctrl%instability_transport_active, ctrl%max_iter_level1,
-!     ctrl%max_iter_level2, ctrl%max_iter_level3, ctrl%max_iter_level4,
-!     ctrl%overshoot_alpha_envelope, ctrl%rewind_short_file,
-!     ctrl%rotation_active, ctrl%solver_underrelax_increment,
-!     ctrl%solver_underrelax_start, ctrl%use_extended_composition,
-!     ctrl%use_wind_torque, grada, gradr, job%end_age_stop_active,
-!     job%nk, job%rescale_kind, job%target_end_age, log_L_lsun,
-!     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega
+!   star reads: card_kind, card_max_age_yr, card_stops_active,
+!     ctrl%envelope_overshoot_active, ctrl%helium_flash_active,
+!     ctrl%improved_first_guess_flag, ctrl%instability_transport_active,
+!     ctrl%max_iter_level1, ctrl%max_iter_level2, ctrl%max_iter_level3,
+!     ctrl%max_iter_level4, ctrl%overshoot_alpha_envelope,
+!     ctrl%rewind_short_file, ctrl%rotation_active,
+!     ctrl%solver_underrelax_increment, ctrl%solver_underrelax_start,
+!     ctrl%use_extended_composition, ctrl%use_wind_torque, current_card,
+!     grada, gradr, log_L_lsun, log_Teff, log_total_mass,
+!     luminosity_breakdown_lsun, omega
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
 !     cz_base_radius_last_call, disk_gate_age_gyr, dln_luminosity_dt,
 !     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dm, dt,
@@ -68,18 +68,17 @@ contains
 !     envelope_overshoot_top_index, eps_grav, eta_squared, fp_rot,
 !     ft_rot, h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
 !     has_h_shell, i_rot, j_rot, j_rot_iteration_start,
-!     job%num_rotation_structure_iters, job%solver_underrelax_factor,
-!     job%use_structure_dt_limits, kinetic_energy_rot,
-!     kinetic_energy_rot_start, log_mass, log_pressure_delta,
-!     log_Teff_start, log_temperature_delta, logP, logP_start, logR,
-!     logR_start, logRho, logRho_start, logT, logT_start,
-!     luminosity_lsun, luminosity_lsun_start, m, max_domega_frac,
-!     mean_gravity, mean_radius, mixed_zone_bounds, model_diverged_flag,
-!     model_number, nz, punch_pending_flag, recompute_envelope_triangle,
-!     reset_triangle, stored_vertex_index,
-!     surface_luminosity_lsun_start, timestep_yr,
-!     total_angular_momentum, total_rotational_ke, triangle_orientation,
-!     xa, xa_iteration_start, xa_start
+!     kinetic_energy_rot, kinetic_energy_rot_start, log_mass,
+!     log_pressure_delta, log_Teff_start, log_temperature_delta, logP,
+!     logP_start, logR, logR_start, logRho, logRho_start, logT,
+!     logT_start, luminosity_lsun, luminosity_lsun_start, m,
+!     max_domega_frac, mean_gravity, mean_radius, mixed_zone_bounds,
+!     model_diverged_flag, model_number, newton_correction_factor,
+!     num_rotation_structure_passes, nz, punch_pending_flag,
+!     recompute_envelope_triangle, reset_triangle, stored_vertex_index,
+!     structure_dt_limits_active, surface_luminosity_lsun_start,
+!     timestep_yr, total_angular_momentum, total_rotational_ke,
+!     triangle_orientation, xa, xa_iteration_start, xa_start
 subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
@@ -115,7 +114,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! the job's output state (yrec_output), which run_yrec owns
       type(output_state), intent(inout) :: output
 
-! The run-card index is star%job%nk (legacy NK in /ZRAMP/), not an
+! The run-card index is star%current_card (legacy NK in /ZRAMP/), not an
 ! argument.
       integer, intent(in) :: model_iteration
       integer, intent(out) :: step_status, ierr
@@ -132,7 +131,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
            wind_loss_active
 ! Set by compute_timestep when it switches the structure-based timestep
 ! limits off (log Tc > 7.1 with L_grav < 0); the driver then clears
-! star%job%use_structure_dt_limits.
+! star%structure_dt_limits_active.
       logical :: disable_structure_dt_limits
       save
    ! INTENTIONAL: cross-step driver state (see the header); reset via
@@ -224,17 +223,17 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
        s%dt_saved = s%dt
        disable_structure_dt_limits = .false.
        call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
-              s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%job%nk,s%logP,s%logR,s%omega, &
+              s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%current_card,s%logP,s%logR,s%omega, &
               s%max_domega_frac,s%h_shell_bot_index,s%log_Teff, disable_structure_dt_limits)
-       if (disable_structure_dt_limits) s%job%use_structure_dt_limits = .false.
-! With a fixed end age (target_end_age > 0) that this model reached,
+       if (disable_structure_dt_limits) s%structure_dt_limits_active = .false.
+! With a fixed end age (card_max_age_yr > 0) that this model reached,
 ! compute_timestep has clipped the next timestep to (nearly) zero. Write
 ! the timestep just taken (dt_saved, floored at 1e-3 of the age, dage
 ! in Gyr) to the model instead, so that the sequence can be continued.
 ! Other stops keep the new timestep. (The floor read 1e-3*dage years,
 ! dage taken as years, until 2026-10, as in main.f.)
-       if (s%job%end_age_stop_active(s%job%nk) .and. s%job%target_end_age(s%job%nk).gt.0.0D0) then
-          if (reached_end_age(s, s%job%nk)) then
+       if (s%card_stops_active(s%current_card) .and. s%card_max_age_yr(s%current_card).gt.0.0D0) then
+          if (reached_end_age(s, s%current_card)) then
              s%dt = max(s%dt_saved,1.0D-3*s%age_gyr*1.0D9*seconds_per_year)
              s%timestep_yr = s%dt/seconds_per_year
           else
@@ -243,8 +242,8 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
        else
           s%dt_saved = s%dt
        endif
-! A rescale-only card (rescale_kind = 2) does not count models.
-       if (s%job%rescale_kind(s%job%nk).ne.2) s%model_number = s%model_number+1
+! A rescale-only card (card_kind = 2) does not count models.
+       if (s%card_kind(s%current_card).ne.2) s%model_number = s%model_number+1
 ! Assemble the whole converged star (interior, envelope and atmosphere)
 ! into the stitched arrays before the observables: the turnover-time
 ! observable walks them, star%photosphere_logP comes from this build, and the output
@@ -290,7 +289,7 @@ subroutine reload_model_if_diverged
             if (s%model_diverged_flag) then
              call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, &
                   s%triangle_orientation, ikut_flag, s%stored_vertex_index, &
-                  s%model_diverged_flag, s%recompute_envelope_triangle, s%job%nk, &
+                  s%model_diverged_flag, s%recompute_envelope_triangle, s%current_card, &
                   s%total_angular_momentum, &
                   s%total_rotational_ke, convective_velocity, ierr)
              if (ierr /= 0) return
@@ -307,11 +306,11 @@ end subroutine reload_model_if_diverged
 ! pass of composition_step), and the new age. Sets ierr on failure.
 subroutine advance_composition_and_age
 ! The model is aged when model_number >= 0, except on a rescale-only
-! card (rescale_kind = 2), where it is aged only while the centre is
+! card (card_kind = 2), where it is aged only while the centre is
 ! cooler than log Tc = 6.6: pre-main-sequence models are rescaled and
 ! aged at the same time (MHP 7/98).
             evolve_model_flag = s%model_number.ge.0 .and. &
-                 (s%job%rescale_kind(s%job%nk).ne.2 .or. s%logT(1).lt.6.6D0)
+                 (s%card_kind(s%current_card).ne.2 .or. s%logT(1).lt.6.6D0)
             new_atmosphere_fit_needed = .false.
             if (evolve_model_flag) then
 ! Mass loss or accretion at the surface. change_mass sets
@@ -423,7 +422,7 @@ subroutine solve_structure
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
 ! ctrl%solver_underrelax_start selects whether henyey_iterate raises it by fcorri per
 ! iteration, up to 1 (fcorr0 > 0), or holds it fixed.
-            s%job%solver_underrelax_factor = dabs(s%ctrl%solver_underrelax_start) - s%ctrl%solver_underrelax_increment
+            s%newton_correction_factor = dabs(s%ctrl%solver_underrelax_start) - s%ctrl%solver_underrelax_increment
             iterations_done = 0
             s%model_diverged_flag = .false.
             converged = .false.
@@ -500,7 +499,7 @@ subroutine solve_structure
 end subroutine solve_structure
 
 ! ---------------------------------------------------------------
-! The structure-rotation iteration (num_rotation_structure_iters
+! The structure-rotation iteration (num_rotation_structure_passes
 ! passes; one without rotation). Each pass: corrector level 4, the
 ! convergence check, the convection zones mixed fully
 ! (homogenize_convection_zones, formerly mixcz), then the angular
@@ -510,12 +509,12 @@ end subroutine solve_structure
 ! passes, so that nothing is counted twice.
 subroutine converge_with_rotation
             if (.not.s%ctrl%rotation_active) then
-               s%job%num_rotation_structure_iters = 1
+               s%num_rotation_structure_passes = 1
             endif
 ! When the structure and rotation are iterated (MHP 05/02), keep copies
 ! of the start-of-step specific angular momentum (j_rot) and composition
 ! (xa_start, legacy HCOMPP), so that every pass starts from them.
-            if (s%job%num_rotation_structure_iters.gt.1) then
+            if (s%num_rotation_structure_passes.gt.1) then
                do i = 1,s%nz
                   s%j_rot_iteration_start(i) = s%j_rot(i)
                   do j = 1,n_species_extended
@@ -523,7 +522,7 @@ subroutine converge_with_rotation
                   end do
                end do
             endif
-            do itrot = 1, s%job%num_rotation_structure_iters
+            do itrot = 1, s%num_rotation_structure_passes
 ! On repeat passes, restore the start-of-step composition (MHP 05/02).
                if (itrot.gt.1) then
                   do i = 1,s%nz

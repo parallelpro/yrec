@@ -76,7 +76,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
 ! time_step are in years, matching MESA's profile header.
       write(u, '(2(1x,i40),6(1x,es40.16e3))') s%model_number, &
            s%stitched%n_ext, s%pulsation_mass_msun, &
-           s%job%initial_envelope_z, s%age_gyr*1.0d9, &
+           s%current_card_envelope_z, s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
       write(u, '(a)') ''
       write(u, '(999(1x,i40))') (k, k = 1, profiles%nsel)

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Generate star%ctrl's type body and the buffer sync module.
+"""Generate the star's controls record and the buffer sync module.
 
 Source of truth: io/controls_buffer.f90's declarations (names, types,
 dims, and declaration-time defaults: each control's one default) and the
-registry's home column (defaults/controls_registry.tsv: star%ctrl or
-star%job). Every buffer member needs a registry row of its declared type.
-Emits:
+registry (defaults/controls_registry.tsv): its home column (ctrl: the
+star's record star%ctrl; buffer: the read's buffer only) and its run_copy
+column (the star member the run keeps as its working copy of a control
+it changes). Every buffer member needs a registry row of its declared
+type. Emits:
 
   state/controls_state_def.inc  -- the component list of the
       controls_state type (star_info_lib defines
@@ -17,21 +19,19 @@ Emits:
       `star%ctrl = controls_state()` reproduces the pristine
       pre-read_input state exactly.
 
-  state/job_controls_def.inc  -- the members whose registry home is
-      job (code outside the read assigns them), included into
-      star_job the same way.
-
   io/controls_sync.f90      -- module controls_sync (part of the controls
       read, so in io/) with
-      seed_controls_buffer  (buffer member = star%ctrl%member or
-      star%job%member, and each member whose home is buffer -- an
-      input-only or unused control, which the star does not hold --
-      set to its declared default) and store_controls_to_star (the
-      star's members from the buffer), one assignment per member, in
-      declaration order.
+      seed_controls_buffer  (buffer member = star%ctrl%member, and each
+      member whose home is buffer -- an input-only or unused control,
+      which the star does not hold -- set to its declared default),
+      store_controls_to_star (the star's record from the buffer), one
+      assignment per member, in declaration order, and arm_run_copies
+      (each run copy, a star member star_info_lib declares, set from
+      its control: star%<run_copy> = star%ctrl%member).
 
 Regenerate (and commit the results) whenever controls_buffer's member
-list changes:  python3 tools/gen_controls_state.py
+list or the registry's home or run_copy column changes:
+python3 tools/gen_controls_state.py
 The build breaks loudly on drift (unknown/missing components).
 """
 import pathlib
@@ -42,21 +42,21 @@ import controls_registry
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 LIB = SRC / "io" / "controls_buffer.f90"
+SLOTS = SRC / "state" / "control_slots.f90"
 DEF = SRC / "state" / "controls_state_def.inc"
-JOBDEF = SRC / "state" / "job_controls_def.inc"
 SYNC = SRC / "io" / "controls_sync.f90"
 
-# Each member's home, star%ctrl or star%job, is the registry's home column
-# (tools/controls_registry.py; check_boundaries checks it against the code):
-# job holds the members that code outside the read assigns.
+# Each member's home, star%ctrl or the read's buffer, is the registry's home
+# column (tools/controls_registry.py; check_boundaries checks it against the
+# code); a control the run changes has a run copy, a star member.
 TYPE_RE = re.compile(
     r"^\s*(double precision|real\s*\(\s*dp\s*\)|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
     r"\s*(,\s*public)?\s*::\s*(.*)$",
     re.IGNORECASE,
 )
 
-# Named integer constants declared in controls_buffer (e.g. max_runs)
-# that its array dims use. star_info_lib includes the generated type
+# Named integer constants declared in controls_buffer or control_slots
+# (max_runs) that the buffer's array dims use. star_info_lib includes the generated type
 # bodies without `use controls_buffer`, so the emitted dims carry the
 # literal value instead of the name.
 PARAM_RE = re.compile(
@@ -110,6 +110,10 @@ def split_entities(s):
 def parse():
     members = []  # (typespec, name, dims, init)
     params = {}   # name -> literal value
+    for line in joined_decl_lines(SLOTS.read_text()):
+        pm = PARAM_RE.match(line)
+        if pm:
+            params[pm.group(2)] = pm.group(3)
     for line in joined_decl_lines(LIB.read_text()):
         pm = PARAM_RE.match(line)
         if pm:
@@ -138,10 +142,11 @@ def parse():
 
 
 def homes(members):
-    """{member: 'ctrl' or 'job'} from the registry, which must give every
-    buffer member a row of its declared type"""
+    """({member: 'ctrl' or 'buffer'}, {member: its run copy}) from the
+    registry, which must give every buffer member a row of its declared
+    type"""
     rows = [r for r in controls_registry.rows() if r["home"]]
-    home, problems = {}, []
+    home, copy, problems = {}, {}, []
     for typespec, name, dims, _ in members:
         mine = [r for r in rows if r["canonical"] == name.lower()]
         if not mine:
@@ -151,9 +156,11 @@ def homes(members):
         for r in mine:
             if r["type"].replace(" ", "") != declared:
                 problems.append(f"{name}: registry type {r['type']} ({r['legacy']}), declared {declared}")
-        if len({r["home"] for r in mine}) > 1:
-            problems.append(f"{name}: two homes in the registry")
+        if len({r["home"] for r in mine}) > 1 or len({r["run_copy"] for r in mine}) > 1:
+            problems.append(f"{name}: two homes or run copies in the registry")
         home[name] = mine[0]["home"]
+        if mine[0]["run_copy"]:
+            copy[name] = mine[0]["run_copy"]
     known = {n.lower() for _, n, _, _ in members}
     for r in rows:
         if r["canonical"] not in known:
@@ -161,12 +168,12 @@ def homes(members):
     if problems:
         raise SystemExit("gen_controls_state: the registry and controls_buffer disagree:\n  "
                          + "\n  ".join(problems))
-    return home
+    return home, copy
 
 
 def main():
     members = parse()
-    home = homes(members)
+    home, copy = homes(members)
     with Out(DEF) as f:
         f.write(
             "! GENERATED by tools/gen_controls_state.py from\n"
@@ -178,35 +185,24 @@ def main():
             if home[name] != "ctrl":
                 continue
             f.write(f"            {typespec} :: {name}{dims} = {init}\n")
-    with Out(JOBDEF) as f:
-        f.write(
-            "! GENERATED by tools/gen_controls_state.py from\n"
-            "! io/controls_buffer.f90 -- do not edit; regenerate instead.\n"
-            "! The members whose registry home is job (code outside the\n"
-            "! controls read assigns them: the run cards, the calibration,\n"
-            "! the latches), included into star_job. Default-initialized\n"
-            "! like controls_state, so the declared state is the pristine one.\n"
-        )
-        for typespec, name, dims, init in members:
-            if home[name] != "job":
-                continue
-            f.write(f"            {typespec} :: {name}{dims} = {init}\n")
     with Out(SYNC) as f:
         f.write(
             "!----------------------------------------------------------------------\n"
             "! controls_sync\n"
             "!----------------------------------------------------------------------\n"
             "! GENERATED by tools/gen_controls_state.py from\n"
-            "! io/controls_buffer.f90 -- do not edit; regenerate instead.\n"
-            "! The two copies between controls_buffer, the buffer the decks\n"
-            "! are read into, and star%ctrl and star%job. read_controls runs:\n"
+            "! io/controls_buffer.f90 and defaults/controls_registry.tsv --\n"
+            "! do not edit; regenerate instead.\n"
+            "! The copies between controls_buffer, the buffer the decks are\n"
+            "! read into, and the star. read_controls runs:\n"
             "!   star%ctrl = controls_state()   (pristine defaults)\n"
-            "!   call seed_controls_buffer(s)   (buffer <- s%ctrl, s%job, and\n"
-            "!                                   the defaults of the members\n"
-            "!                                   the star does not hold)\n"
+            "!   call seed_controls_buffer(s)   (buffer <- s%ctrl, and the\n"
+            "!                                   defaults of the members the\n"
+            "!                                   star does not hold)\n"
             "!   call read_input(s, ierr)       (the deck read over the buffer)\n"
-            "!   call store_controls_to_star(s) (s%ctrl, s%job <- buffer)\n"
-            "! Both take the star as an argument s.\n"
+            "!   call store_controls_to_star(s) (s%ctrl <- buffer)\n"
+            "!   call arm_run_copies(s)         (each run copy <- its control)\n"
+            "! All take the star as an argument s.\n"
             "module controls_sync\n"
         )
         names = [name for _, name, _, _ in members]
@@ -222,7 +218,7 @@ def main():
             "      use star_info_lib, only: star_info\n"
             "      implicit none\n"
             "      private\n"
-            "      public :: seed_controls_buffer, store_controls_to_star\n"
+            "      public :: seed_controls_buffer, store_controls_to_star, arm_run_copies\n"
             "\n"
             "contains\n"
             "\n"
@@ -246,10 +242,22 @@ def main():
         f.write(
             "end subroutine store_controls_to_star\n"
             "\n"
+            "! The run's working copies of the controls it changes (the registry's\n"
+            "! run_copy column), from the controls just stored: star_info_lib\n"
+            "! documents each copy and who changes it.\n"
+            "subroutine arm_run_copies(s)\n"
+            "      type(star_info), intent(inout) :: s\n"
+        )
+        for _, name, _, _ in members:
+            if name in copy:
+                f.write(f"      s%{copy[name]} = s%{home[name]}%{name}\n")
+        f.write(
+            "end subroutine arm_run_copies\n"
+            "\n"
             "end module controls_sync\n"
         )
     finish("gen_controls_state.py")
-    print(f"{len(members)} members -> {DEF.name}, {SYNC.name}")
+    print(f"{len(members)} members -> {DEF.name}, {SYNC.name}; {len(copy)} run copies")
 
 
 if __name__ == "__main__":

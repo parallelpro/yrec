@@ -137,7 +137,7 @@ program test_net
       star%use_two_z_tables = .false.
       star%ctrl%use_pure_z_table = .false.
       star%ctrl%use_conductive_opacity = .false.
-      star%job%atm_choice = 0
+      star%atm_choice_in_use = 0
       star%ctrl%alex06_table_path = dummy_path
       star%ctrl%allard_table_path = dummy_path
       star%ctrl%atm_table_path = dummy_path

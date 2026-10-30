@@ -482,11 +482,11 @@ setup/rotation_settings_setup.o: control_slots.mod magnetic_braking.mod physical
 setup/settings_install.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod
 state/physical_constants.o: math_lib.mod
-state/star_info_lib.o: composition_layout.mod envelope_points.mod neutrino_flux_layout.mod reaction_layout.mod stitched_model_state.mod transport_mechanism_layout.mod
+state/star_info_lib.o: composition_layout.mod control_slots.mod envelope_points.mod neutrino_flux_layout.mod reaction_layout.mod stitched_model_state.mod transport_mechanism_layout.mod
 
 # real prerequisites: include files
 io/controls_reader.o: io/adopt_canonical.inc io/inlist_new_decl.inc io/inlist_new_read.inc
 io/legacy_controls.o: io/legacy_mirror.inc
 io/output_columns.o: io/default_columns.inc
 io/test/test_controls.o: io/test/controls_dump.inc
-state/star_info_lib.o: state/controls_state_def.inc state/job_controls_def.inc
+state/star_info_lib.o: state/controls_state_def.inc

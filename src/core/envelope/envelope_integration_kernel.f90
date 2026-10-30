@@ -18,7 +18,8 @@
 ! The kernel is star-blind: its code uses neither star_info_lib nor
 ! star%, which src/tools/check_boundaries.py checks (STAR_BLIND_FILES).
 ! Its settings arrive in an envint_config that the driver, atm_get in
-! envelope_integration, fills from star%job and star%ctrl. Its two
+! envelope_integration, fills from the star's controls and
+! atm_choice_in_use. Its two
 ! effects on the star, the photospheric pressure (star%photosphere_logP)
 ! and the switch to a gray atmosphere when the Allard table lookup fails,
 ! come back as outputs that the driver applies.

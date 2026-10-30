@@ -129,8 +129,8 @@ end function converged_model_is_nan
 ! check_star_calibration protocol: iteration 1 only primes
 ! previous-model state, so the calibration comparison starts at
 ! iteration 2).
-!   star reads: age_gyr, ctrl%calibrate_star_flag, job%nk,
-!     job%rescale_kind, job%target_end_age,
+!   star reads: age_gyr, card_kind, card_max_age_yr,
+!     ctrl%calibrate_star_flag, current_card,
 !     just_passed_target_radius_flag, log_L_lsun, log_Teff,
 !     star_found_flag, termination_reason
 !   star writes: none
@@ -141,15 +141,15 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 
       step_status = step_continue
 
-      if (reached_end_age(s, s%job%nk)) then
+      if (reached_end_age(s, s%current_card)) then
          write(s%termination_reason,'(a,es10.3,a)') &
               'target age reached (', &
-              s%job%target_end_age(s%job%nk), ' yr)'
+              s%card_max_age_yr(s%current_card), ' yr)'
          step_status = step_kind_card_done
          return
       end if
 
-      if (abundance_stop_triggered(s, s%job%nk)) then
+      if (abundance_stop_triggered(s, s%current_card)) then
          step_status = step_kind_card_done
          return
       end if
@@ -160,7 +160,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 ! stopping criteria (a limit at its +-1d99 sentinel is off). Not
 ! checked on pure-rescale relax cards, where the structure is
 ! mid-relaxation.
-      if (s%job%rescale_kind(s%job%nk) /= 2) then
+      if (s%card_kind(s%current_card) /= 2) then
          if (structure_limit_stop_triggered(s)) then
             step_status = step_kind_card_done
             return
@@ -169,9 +169,9 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
       if (s%ctrl%calibrate_star_flag .and. .not. s%star_found_flag) then
-         if (mod(s%job%nk,2).eq.0 .and. model_iteration.ne.1) then
+         if (mod(s%current_card,2).eq.0 .and. model_iteration.ne.1) then
             call check_star_calibration(s, s%log_L_lsun, s%log_Teff, &
-                 s%age_gyr, s%job%nk)
+                 s%age_gyr, s%current_card)
             if (s%just_passed_target_radius_flag) then
                step_status = step_leave_run_loop
             end if
@@ -188,7 +188,7 @@ end subroutine check_stop_conditions
 !   star reads: ctrl%log_g_lower_limit, ctrl%log_g_upper_limit,
 !     ctrl%log_L_lower_limit, ctrl%log_L_upper_limit,
 !     ctrl%nu_max_lower_limit, ctrl%nu_max_upper_limit,
-!     ctrl%Teff_lower_limit, ctrl%Teff_upper_limit, job%nk,
+!     ctrl%Teff_lower_limit, ctrl%Teff_upper_limit, current_card,
 !     log_g_surface, log_L_lsun, log_Teff, nu_max_uhz
 !   star writes: termination_reason
 logical function structure_limit_stop_triggered(s)
@@ -203,7 +203,7 @@ logical function structure_limit_stop_triggered(s)
       double precision :: qval(nlim), qup(nlim), qlo(nlim)
       integer :: k
 
-      nk = s%job%nk
+      nk = s%current_card
       qval = [s%log_L_lsun, exp10(s%log_Teff), s%log_g_surface, &
               s%nu_max_uhz]
       qup = [s%ctrl%log_L_upper_limit(nk), s%ctrl%Teff_upper_limit(nk), &
@@ -239,20 +239,20 @@ end function structure_limit_stop_triggered
 ! end age. Also used directly by evolve_step BEFORE the model is
 ! written, to keep the final model's saved timestep from being
 ! zeroed (that use runs earlier than check_stop_conditions can).
-!   star reads: age_gyr, job%end_age_stop_active, job%target_end_age
+!   star reads: age_gyr, card_max_age_yr, card_stops_active
 !   star writes: none
 logical function reached_end_age(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
-      reached_end_age = s%job%end_age_stop_active(nk) .and. &
-           s%job%target_end_age(nk).gt.0.0d0 .and. &
-           (s%job%target_end_age(nk)-s%age_gyr*1.0d9).le.1.0d0
+      reached_end_age = s%card_stops_active(nk) .and. &
+           s%card_max_age_yr(nk).gt.0.0d0 .and. &
+           (s%card_max_age_yr(nk)-s%age_gyr*1.0d9).le.1.0d0
 end function reached_end_age
 
 ! ---------------------------------------------------------------
 ! Post-step trigger check: has any configured central-abundance stop
 ! been crossed? Prints the historical CENTRAL <el> message per hit.
-!   star reads: job%end_age_stop_active, xa
+!   star reads: card_stops_active, xa
 !   star writes: termination_reason
 logical function abundance_stop_triggered(s, nk)
       type(star_info), intent(inout) :: s
@@ -260,7 +260,7 @@ logical function abundance_stop_triggered(s, nk)
       integer :: k
       abundance_stop_triggered = .false.
       do k = 1, nstops
-         if (s%job%end_age_stop_active(nk) .and. stop_value(s, k,nk).gt.0.0d0 .and. &
+         if (s%card_stops_active(nk) .and. stop_value(s, k,nk).gt.0.0d0 .and. &
              s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
             write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
@@ -279,7 +279,7 @@ end function abundance_stop_triggered
 ! with the historical STARTING <el> ... STOP DISABLED message to the
 ! terminal and the run log. The message reports the disarmed
 ! (negative) threshold, as the original did.
-!   star reads: job%end_age_stop_active, xa
+!   star reads: card_stops_active, xa
 !   star writes: termination_reason
 subroutine init_stop_conditions(s, nk)
       type(star_info), intent(inout) :: s
@@ -288,7 +288,7 @@ subroutine init_stop_conditions(s, nk)
 ! default end-of-card reason; overridden by whichever stop fires
 ! (read by run_log's end-of-run summary)
       s%termination_reason = 'model budget exhausted'
-      if (.not. s%job%end_age_stop_active(nk)) return
+      if (.not. s%card_stops_active(nk)) return
       do k = 1, nstops
          if (stop_value(s, k,nk).gt.0.0d0 .and. &
              s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
@@ -305,30 +305,30 @@ subroutine init_stop_conditions(s, nk)
 end subroutine init_stop_conditions
 
 ! ---------------------------------------------------------------
-!   star reads: job%central_deuterium_stop, job%central_helium_stop,
-!     job%central_hydrogen_stop
+!   star reads: card_central_deuterium_stop, card_central_helium_stop,
+!     card_central_hydrogen_stop
 !   star writes: none
 double precision function stop_value(s, k, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk
       select case (k)
-      case (1);      stop_value = s%job%central_deuterium_stop(nk)
-      case (2);      stop_value = s%job%central_hydrogen_stop(nk)
-      case default;  stop_value = s%job%central_helium_stop(nk)
+      case (1);      stop_value = s%card_central_deuterium_stop(nk)
+      case (2);      stop_value = s%card_central_hydrogen_stop(nk)
+      case default;  stop_value = s%card_central_helium_stop(nk)
       end select
 end function stop_value
 
-!   star reads: job%central_deuterium_stop, job%central_helium_stop,
-!     job%central_hydrogen_stop
+!   star reads: card_central_deuterium_stop, card_central_helium_stop,
+!     card_central_hydrogen_stop
 !   star writes: none
 subroutine set_stop_value(s, k, nk, val)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk
       double precision, intent(in) :: val
       select case (k)
-      case (1);      s%job%central_deuterium_stop(nk) = val
-      case (2);      s%job%central_hydrogen_stop(nk) = val
-      case default;  s%job%central_helium_stop(nk) = val
+      case (1);      s%card_central_deuterium_stop(nk) = val
+      case (2);      s%card_central_hydrogen_stop(nk) = val
+      case default;  s%card_central_helium_stop(nk) = val
       end select
 end subroutine set_stop_value
 

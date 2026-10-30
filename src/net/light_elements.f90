@@ -35,7 +35,7 @@ module light_elements
 ! surface_accretion_now) from the controls and the step's accreted mass
 ! (star%accreted_mass, which core/step/mass_change.f90 sets).
       type, public :: surface_accretion
-! accretion is on (job%use_mass_accretion): the accreted gas is blended
+! accretion is on (mass_change_active): the accreted gas is blended
 ! into the outermost burned region
          logical :: on = .false.
 ! the accretion rate is positive (ctrl%mass_accretion_rate > 0). The

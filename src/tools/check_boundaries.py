@@ -29,8 +29,8 @@ DOMAINS = ["eos", "kap", "atm", "net", "convection",
            "rotation", "element_diffusion", "numerics"]
 
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
-# star%ctrl / star%job are the authoritative post-read home, and every
-# consumer reads them. Only the read pipeline itself may import the
+# star%ctrl is the authoritative post-read home, and every consumer reads
+# it (or the run's working copy of a control the run changes). Only the read pipeline itself may import the
 # buffer's bare names -- read_controls (the reader), controls_sync
 # (the generated buffer<->star copies), map_user_inputs (runs inside
 # the read, before the store), and net's test harness (which seeds
@@ -412,15 +412,15 @@ def check_star_free(src_root):
 
 # Domains that use the star object for their state but read their
 # configuration from a settings record (2026-10): their code may not
-# read star%ctrl or star%job, except the listed members, which are
-# state shared with core rather than settings (none left: the settling
-# latch is star%settling_active since 2026-10-29).
+# read star%ctrl, except the listed members, which are state shared with
+# core rather than settings (none left: the settling latch is
+# star%settling_active since 2026-10-29).
 CONTROLS_FREE_DIRS = {"rotation": set()}
 
 def check_controls_free(src_root):
     problems = []
     # the global star, or the star as an argument s
-    read = re.compile(r"(?i)\b(?:star|s)%((?:ctrl|job)%\w+)")
+    read = re.compile(r"(?i)\b(?:star|s)%(ctrl%\w+)")
     for d, allowed in CONTROLS_FREE_DIRS.items():
         for f in sorted((src_root / d).rglob("*.f90")):
             rel = f.relative_to(src_root).as_posix()
@@ -434,15 +434,18 @@ def check_controls_free(src_root):
     return problems
 
 
-# The controls' homes and uses (2026-10-29): defaults/controls_registry.tsv
-# says, for each controls_buffer member, whether it lives on star%ctrl,
-# star%job or only in the read's buffer, and where it is used. star%job
-# holds exactly the members that code outside the controls read assigns
-# (star%ctrl never changes after the read), star%ctrl the others that code
-# outside the read reads; `used` is run when code outside the read
-# references the member, read when only the read does (an input-only
-# control: home buffer), none when nothing does (home buffer). Tests are not code here. A write is an assignment to
-# s%<home>%<name> (or star%...), or the member passed to an intent(out) or
+# The controls' homes and uses (2026-10-29, run copies 2026-10-30):
+# defaults/controls_registry.tsv says, for each controls_buffer member,
+# whether it lives on star%ctrl or only in the read's buffer, whether the
+# run keeps a working copy of it (run_copy, a star member), and where it is
+# used. Code outside the controls read never assigns star%ctrl: a control
+# the run changes has a run copy, which the run assigns instead. star%ctrl
+# holds the controls that code outside the read reads, directly or through
+# their run copies; `used` is run when it does, read when only the read
+# does (an input-only control: home buffer), none when nothing does (home
+# buffer). A run copy is assigned outside the read (otherwise the code
+# reads the control). Tests are not code here. A write is an assignment to
+# s%<x> (or star%...), or the member passed to an intent(out) or
 # intent(inout) dummy (tools/check_star_contracts.py's analysis).
 CONTROLS_READ_FILES = {
     "io/controls_reader.f90", "io/legacy_controls.f90", "io/run_files.f90",
@@ -459,13 +462,16 @@ def check_control_homes(src_root):
                if "/test/" not in p.relative_to(src_root).as_posix()
                and p.relative_to(src_root).as_posix() not in CONTROLS_READ_FILES]
     code = "\n".join(strip_comments(p.read_text(errors="replace")) for p in outside).lower()
-    written = set(m.group(2) for m in re.finditer(
-        r"\b(?:s|star)%(ctrl|job)%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
+    written = set(m.group(1) for m in re.finditer(
+        r"\b(?:s|star)%ctrl%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
+    star_written = set(m.group(1) for m in re.finditer(
+        r"\b(?:s|star)%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
     procs = contracts.scan(outside)
     for name in procs:
         _, writes = contracts.footprint(procs, name)
-        written |= {w.split("%", 1)[1] for w in writes if w.startswith(("ctrl%", "job%"))}
-    referenced = set(re.findall(r"\b(?:s|star)%(?:ctrl|job)%(\w+)", code))
+        written |= {w.split("%", 1)[1] for w in writes if w.startswith("ctrl%")}
+        star_written |= {w for w in writes if "%" not in w}
+    referenced = set(re.findall(r"\b(?:s|star)%ctrl%(\w+)", code))
     read_files = [src_root / f for f in sorted(CONTROLS_READ_FILES)
                   if f not in ("io/controls_buffer.f90", "io/controls_sync.f90")
                   and (src_root / f).exists()]
@@ -477,17 +483,23 @@ def check_control_homes(src_root):
     problems = []
     for r in rows:
         m = r["canonical"]
-        home = "job" if m in written else "ctrl" if m in referenced else "buffer"
+        if m in written:
+            problems.append(f"{m}: code outside the read assigns the control; give it a run "
+                            "copy (registry run_copy, a star member) and assign that")
+        copy = r["run_copy"]
+        if copy and copy not in star_written:
+            problems.append(f"{m}: its run copy {copy} is never assigned outside the read "
+                            "(read the control instead, and drop run_copy)")
+        home = "ctrl" if m in referenced or copy else "buffer"
         if home != r["home"]:
             problems.append(f"{m}: registry home {r['home']}, but code outside the read "
-                            + {"job": "assigns it (job)",
-                               "ctrl": "reads it and never assigns it (ctrl)",
+                            + {"ctrl": "reads it (ctrl)",
                                "buffer": "never reads it (buffer)"}[home])
         # the read's own copies (m = legacy, m = s%ctrl%m) are not uses
         rest = re.sub(r"(?m)^\s*" + m + r"\s*(\([^=\n]*\))?\s*=.*$", "", read_code)
         rest = re.sub(r"(?m)^\s*" + re.escape(r["legacy"].lower()) + r"\s*=\s*" + m + r"\s*$", "", rest)
-        used = ("run" if m in referenced else
-                "read" if re.search(r"(?<![%\w])" + m + r"\b|%(?:ctrl|job)%" + m + r"\b", rest)
+        used = ("run" if m in referenced or copy else
+                "read" if re.search(r"(?<![%\w])" + m + r"\b|%ctrl%" + m + r"\b", rest)
                 else "none")
         if used != r["used"]:
             problems.append(f"{m}: registry used {r['used']}, but the code says {used}")
@@ -778,7 +790,7 @@ def main():
                 break
     if buffer_violations:
         print("controls_buffer buffer imported outside the read pipeline "
-              "(read star%ctrl / star%job instead):")
+              "(read star%ctrl instead):")
         for rel in sorted(buffer_violations):
             print(f"  {rel}")
         return 1

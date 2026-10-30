@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The mass-change step of a timestep (formerly wind/massloss and
 ! wind/mdot, MHP 10/01): mass loss or accretion at the surface, when
-! use_mass_accretion is set. The rate (Msun/yr, positive for accretion)
+! mass_change_active is set. The rate (Msun/yr, positive for accretion)
 ! is mass_accretion_rate, or the Reimers law with use_reimers_wind. (A
 ! solar wind scaled by the surface rotation, MHP 8/10, is commented out
 ! in apply_mass_change.) The step
@@ -55,7 +55,7 @@ contains
 !     logP, logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
 !   star writes: atm_point, convective_turnover_timescale,
-!     envelope_cz_bottom_index_start, job%use_mass_accretion
+!     envelope_cz_bottom_index_start, mass_change_active
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
       double precision, intent(out) :: old_log_envelope_mass_fraction
@@ -98,14 +98,14 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
            temperature_from_wind
 
 ! Start from the constant rate mass_accretion_rate (Msun/yr); the step
-! runs only with use_mass_accretion.
+! runs only with mass_change_active.
       ierr = 0
       new_atmosphere_fit_needed = .false.
       log10_density_local = 0.0d0
       beta_local = 0.0d0
       mass_loss_rate_msun_yr = s%ctrl%mass_accretion_rate
       envelope_specific_entropy = 0.0d0
-      if(.not.s%job%use_mass_accretion) return
+      if(.not.s%mass_change_active) return
       nz = s%nz
       jenv = s%envelope_cz_bottom_index
       call set_mass_change_rate()
@@ -127,7 +127,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
            old_log_envelope_mass_fraction, disk_exhausted, ierr)
 ! The disk-locking age was reached this step: the mass change stops for
 ! the rest of the run.
-      if(disk_exhausted) s%job%use_mass_accretion = .false.
+      if(disk_exhausted) s%mass_change_active = .false.
 
 contains
 

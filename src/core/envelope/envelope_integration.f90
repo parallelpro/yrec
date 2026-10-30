@@ -19,8 +19,8 @@ module envelope_integration
       implicit none
 
 ! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
-! driver can hand atm_get in place of the star%job%{atm,env}_step_*
-! values -- replaces the former save/override/restore of star%job
+! driver can hand atm_get in place of the controls' {atm,env}_step_*
+! values -- replaces the former save/override/restore of those controls
 ! around the call in rebuild_envelope, read_starting_model and
 ! build_stitched_model.
       type, public :: envint_step_config
@@ -80,11 +80,11 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
      vtx_logp, vtx_logr, vtx_logt, atm_steps, env_steps)
 
 ! 2026 envint purity split phase B: atm_get is now the thin star-layer
-! DRIVER. It snapshots the configuration out of star%job / star%ctrl
-! into an envint_config, calls the star-blind kernel
+! DRIVER. It snapshots the configuration out of the star (its controls
+! and atm_choice_in_use) into an envint_config, calls the star-blind kernel
 ! (core/envelope/envelope_integration_kernel.f90), and applies the star-state consequences:
 ! star%photosphere_logP from the integrated photosphere, and the Allard
-! gray-fallback switch (atm_choice -> 0, use_ttau_relation) when the
+! gray-fallback switch (atm_choice_in_use -> 0, use_ttau_relation) when the
 ! kernel reports it.
 !
 ! 2026 W2 (readability, core 5): the fit-vertex bookkeeping
@@ -94,8 +94,8 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! .false., under which the kernel never writes them (it only
 ! compares stored_vertex_index against vertex_index), so they get
 ! zero-valued scratch here. atm_steps/env_steps, when present,
-! replace the star%job%{atm,env}_step_* triples for this call only
-! (the drivers that used to overwrite and restore star%job).
+! replace the controls' {atm,env}_step_* triples for this call only
+! (the drivers that used to overwrite and restore the controls).
       use envelope_integration_kernel
       use physical_constants, only: cgl
       use atm_lib, only: hsra_t_tau_offset
@@ -132,7 +132,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
            scratch_logt(3)
       integer :: scratch_vertex_index, scratch_stored_vertex_index
 
-      cfg%atm_choice = s%job%atm_choice
+      cfg%atm_choice = s%atm_choice_in_use
       if (present(atm_steps)) then
          cfg%atm_step_begin = atm_steps%step_begin
          cfg%atm_step_min = atm_steps%step_min
@@ -188,7 +188,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       if (switched_to_gray) then
 ! Allard table lookup out of range: the kernel fell back to a gray
 ! atmosphere for this and all future calls (historical behavior)
-         s%job%atm_choice = 0
+         s%atm_choice_in_use = 0
          s%use_ttau_relation = .true.
       end if
 

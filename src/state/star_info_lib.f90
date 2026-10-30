@@ -1,9 +1,10 @@
 !----------------------------------------------------------------------
 ! star_info_lib
 !----------------------------------------------------------------------
-! The type of the stellar model, star_info (MESA's name), with the two
-! input bundles nested in it (controls_state, star_job) and the
-! capacities and slot constants its members are sized and indexed by.
+! The type of the stellar model, star_info (MESA's name), with the
+! records nested in it (the controls, controls_state; the Monte-Carlo
+! samples, monte_carlo_samples) and the capacities and slot constants its
+! members are sized and indexed by.
 ! The module declares no star: run_yrec (core/run/run_driver.f90) owns
 ! the run's star, and every star-layer procedure takes it as its
 ! argument s (docs/GUIDELINES.md, "The star object: six rules"). The
@@ -12,7 +13,7 @@
 ! configuration from the settings records setup/ builds.
 !
 ! The members of star_info are grouped by lifetime, longest-lived first:
-! per run (the input bundles, the constants set at setup), per run card
+! per run (the controls, the constants set at setup, the run plan), per run card
 ! (bookkeeping), per model (the model, its rotation state and regions),
 ! per step (control, the start-of-step snapshot, working state), per
 ! Newton iteration (the solve, the diagnostics written during it), then
@@ -49,6 +50,8 @@ module star_info_lib
       use transport_mechanism_layout
 ! the sizes of the reaction-rate scales
       use reaction_layout, only: num_reactions, num_extra_scales
+! the length of the run plan's per-card arrays
+      use control_slots, only: max_runs
       implicit none
       private
       public :: json
@@ -63,8 +66,7 @@ module star_info_lib
       public :: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, &
            ix_ar, ix_ne, ix_he, n_mix_species
 
-! Monte-Carlo sample capacity of the job%s11_rate .. job%age_target
-! arrays.
+! Monte-Carlo sample capacity of the arrays of monte_carlo_samples.
       integer, parameter, public :: max_mc_runs = 1000
 
 ! Capacity of the convective (mixed) and radiative zone-bound lists
@@ -109,56 +111,46 @@ module star_info_lib
             include 'controls_state_def.inc'
       end type controls_state
 
-! The run's job (star%job): the controls the run changes
-! (job_controls_def.inc, generated from the registry's home column: the
-! read sets them, then the calibrations rewrite the next cycle's cards,
-! the stop conditions disarm thresholds, the atmosphere switch changes
-! atm_choice, the solver ramps solver_underrelax_factor), the
-! Monte-Carlo samples and the run-card cursor. The table paths are
-! controls (star%ctrl).
-      type, public :: star_job
-! the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample
-! file: the S-factor scales of p+p, 3He+3He, 3He+4He and 7Be+p, Z/X,
-! the helium (diffusion) parameter and its copy diffusion_factor, the
-! solar-luminosity and age factors [-]; monte_carlo
-! (setup_monte_carlo_runs). Read by apply_monte_carlo_parameters and the
-! Monte-Carlo summary.
-            double precision :: s11_rate(max_mc_runs) = 0.0d0, &
-                 s33_rate(max_mc_runs) = 0.0d0, s34_rate(max_mc_runs) = 0.0d0, &
-                 s17_rate(max_mc_runs) = 0.0d0, metal_to_h_ratio(max_mc_runs) = 0.0d0, &
-                 helium_fraction_param(max_mc_runs) = 0.0d0, &
-                 diffusion_factor(max_mc_runs) = 0.0d0, &
-                 luminosity_target(max_mc_runs) = 0.0d0, age_target(max_mc_runs) = 0.0d0
-! the current run card's index, the run list's cursor [-]; run_driver
-! (run_yrec's card loop runs a local index, as a structure component
-! cannot be a DO variable, and leaves num_runs+1 after the last card).
-! Read by the step, the writers and the calibrations' cycle arithmetic.
-            integer :: nk = 0
-! The run-card arrays and latches. GENERATED component list; regenerate
-! with tools/gen_controls_state.py.
-            include 'job_controls_def.inc'
-      end type star_job
+! The Monte-Carlo samples (star%mc_samples), one entry per Monte-Carlo
+! run, read from the sample file by monte_carlo's setup_monte_carlo_runs
+! and read by apply_monte_carlo_parameters and the Monte-Carlo summary:
+! run data, not controls.
+      type, public :: monte_carlo_samples
+! the S-factor scale of p + p [-]
+            double precision :: s11_rate(max_mc_runs) = 0.0d0
+! the S-factor scale of 3He + 3He [-]
+            double precision :: s33_rate(max_mc_runs) = 0.0d0
+! the S-factor scale of 3He + 4He [-]
+            double precision :: s34_rate(max_mc_runs) = 0.0d0
+! the S-factor scale of 7Be + p [-]
+            double precision :: s17_rate(max_mc_runs) = 0.0d0
+! Z/X [-]
+            double precision :: metal_to_h_ratio(max_mc_runs) = 0.0d0
+! the helium (diffusion) parameter [-]
+            double precision :: helium_fraction_param(max_mc_runs) = 0.0d0
+! a copy of helium_fraction_param, the run's settling_z_factor_in_use [-]
+            double precision :: diffusion_factor(max_mc_runs) = 0.0d0
+! the solar-luminosity factor [-]
+            double precision :: luminosity_target(max_mc_runs) = 0.0d0
+! the age factor [-]
+            double precision :: age_target(max_mc_runs) = 0.0d0
+      end type monte_carlo_samples
 
       type, public :: star_info
-! ==== Input bundles ====================================================
-! The controls (ctrl) and the run's job (job), read by read_controls at
-! the start of every run_yrec call. Their members are documented in
+! ==== Controls =========================================================
+! The deck's controls (ctrl), read by read_controls at the start of every
+! run_yrec call. Their members are documented in
 ! src/defaults/controls_registry.md and the *.defaults files, not here.
-! Valid: from the controls read on; ctrl is not changed after it, job is
-! changed by the run (see the type star_job).
+! A control the run changes has a working copy, a star member of its
+! lifetime class below (the registry's run_copy column), which the read
+! arms from it; the control keeps the deck's value.
+! Valid: from the controls read on; never changed after it.
 
 ! the namelist controls the run reads, by their canonical names [-];
 ! controls_reader, controls_sync. Reset to the declared defaults before
 ! each read; members: src/defaults/controls_registry.md, generated into
 ! controls_state_def.inc.
             type(controls_state) :: ctrl
-! the run's job: the run-card arrays and latches (the controls the run
-! changes), the Monte-Carlo samples and the run-card cursor nk [-];
-! controls_sync, run_driver, calibration, monte_carlo. Changed by the
-! run: the calibrations rewrite the next cards, the stop conditions
-! disarm thresholds, the atmosphere switch changes atm_choice, the
-! solver ramps solver_underrelax_factor.
-            type(star_job) :: job
 
 ! ==== Constants set at setup ===========================================
 ! Values fixed for the whole run by the controls read, the controls'
@@ -209,20 +201,184 @@ module star_info_lib
 ! ctrl%rezone_env_logt1 [log10 K]; derived_controls
             double precision :: envelope_store_log_temperature
 ! atm_choice as read from the deck [-]; controls_reader. The run may
-! change job%atm_choice (see use_ttau_relation); this keeps the original.
+! change atm_choice_in_use (see use_ttau_relation); this keeps the original.
             integer :: atm_choice_initial
 ! load a second opacity-table set at another Z (the Z ramp or Z
 ! diffusion) [logical]; run_driver
             logical :: use_two_z_tables = .false.
+! the first Monte-Carlo run of the process [-]; controls_sync,
+! monte_carlo. From ctrl%mc_run_start; setup_monte_carlo_runs makes it 1
+! without Monte Carlo.
+            integer :: first_mc_run
+! the last Monte-Carlo run of the process [-]; controls_sync, monte_carlo.
+! From ctrl%mc_run_end; setup_monte_carlo_runs clamps it to max_mc_runs,
+! or makes it 1 without Monte Carlo.
+            integer :: last_mc_run
+! the metal settling multiplier the run uses [-]; controls_sync,
+! monte_carlo. From ctrl%settling_z_factor; each Monte-Carlo run sets it
+! to its sample's diffusion_factor (apply_monte_carlo_parameters).
+            double precision :: settling_z_factor_in_use
+
+! ==== Run plan =========================================================
+! The run cards, one entry per card (max_runs): each card's kind, its
+! number of models, its composition, mixing length and fitting-point
+! mass, its rescale targets and Z ramp, its stops and its fixed timestep.
+! They are the run's working copies of their controls: the controls read
+! arms them (controls_sync's arm_run_copies, after interpret_kind_cards
+! has derived the kinds, the rescale targets and the stop flags); the
+! calibrations rewrite them at every Monte-Carlo run
+! (setup_solar_calibration and setup_star_calibration lay out their
+! cycles) and after every cycle (the next cycle's guesses); and
+! init_stop_conditions disarms the stops a card's starting model has
+! already passed. The controls keep the deck's values.
+! Valid: from the controls read on; a card's entries once the
+! calibration has written them, before the card starts.
+
+! the number of run cards [-]; controls_sync, calibration. From
+! ctrl%num_runs; the calibrations expand it to their cycles.
+            integer :: num_cards
+! each card's kind: evolve, rescale, or rescale and evolve (run_cards'
+! card_evolve, card_rescale, card_rescale_and_evolve) [-]; controls_sync,
+! calibration. From ctrl%rescale_kind.
+            integer :: card_kind(max_runs)
+! the card starts from the starting model (first_model_file), not from
+! the previous card's model [logical]; controls_sync, calibration. From
+! ctrl%first_call_flag.
+            logical :: card_from_starting_model(max_runs)
+! each card's number of models; a rescale card relaxes its model this
+! many times [-]; controls_sync, calibration. From ctrl%num_models.
+            integer :: card_num_models(max_runs)
+! each card's starting X [-]; controls_sync, calibration. From
+! ctrl%initial_x_array; the solar calibration writes its guesses here.
+            double precision :: card_initial_x(max_runs)
+! each card's starting Z [-]; controls_sync, calibration. From
+! ctrl%initial_z_array.
+            double precision :: card_initial_z(max_runs)
+! each card's mixing-length parameter [-]; controls_sync, calibration.
+! From ctrl%mixing_length_array; the solar calibration writes its
+! guesses here.
+            double precision :: card_mixing_length_alpha(max_runs)
+! the card moves the fitting point to card_log_fit_point_mass_fraction
+! [logical]; controls_sync, calibration. From ctrl%has_senv0_array.
+            logical :: card_moves_fit_point(max_runs)
+! each card's fitting-point mass, log10(m_fit/M), made negative when the
+! card starts [log10]; controls_sync, calibration. From ctrl%senv0_array.
+            double precision :: card_log_fit_point_mass_fraction(max_runs)
+! each rescale card's targets: the total mass, X, Z and the core mass,
+! 0 to keep one [Msun, -, -, Msun]; controls_sync, calibration. From
+! ctrl%rescale_params (interpret_kind_cards); the solar calibration
+! writes its X and Z guesses here.
+            double precision :: card_rescale_targets(4,max_runs)
+! the Z ramp's core Z (with ctrl%use_z_ramp: model_rescaling's
+! ramp_interior_z) [-]; controls_sync, calibration. From
+! ctrl%rescale_core_z.
+            double precision :: card_z_ramp_core_z(max_runs)
+! the mass fraction m/M inside which the Z ramp sets the core Z [-];
+! controls_sync, calibration. From ctrl%rescale_z_mix1.
+            double precision :: card_z_ramp_inner_mass_fraction(max_runs)
+! the mass fraction m/M at which the Z ramp reaches the surface Z [-];
+! controls_sync, calibration. From ctrl%rescale_z_mix2.
+            double precision :: card_z_ramp_outer_mass_fraction(max_runs)
+! each card's stop age, 0 for none [yr]; controls_sync, calibration,
+! monte_carlo. From ctrl%target_end_age; the calibrations set their
+! cycles' ages.
+            double precision :: card_max_age_yr(max_runs)
+! the card's stops are armed: its age or a central-abundance stop
+! [logical]; controls_sync, calibration. From ctrl%end_age_stop_active
+! (interpret_kind_cards).
+            logical :: card_stops_active(max_runs)
+! each card's central deuterium stop, 0 for none [-]; controls_sync. From
+! ctrl%central_deuterium_stop; init_stop_conditions disarms (negates) a
+! stop the card's starting model has already passed (through
+! stop_conditions' set_stop_value, whose case-statement writes this
+! table's analysis does not see).
+            double precision :: card_central_deuterium_stop(max_runs)
+! each card's central hydrogen stop, 0 for none [-]; controls_sync. From
+! ctrl%central_hydrogen_stop; disarmed as card_central_deuterium_stop.
+            double precision :: card_central_hydrogen_stop(max_runs)
+! each card's central helium stop, 0 for none [-]; controls_sync. From
+! ctrl%central_helium_stop; disarmed as card_central_deuterium_stop.
+            double precision :: card_central_helium_stop(max_runs)
+! each card's fixed timestep [yr]; controls_sync, calibration. From
+! ctrl%timestep_override; the solar calibration scales its cycles' by the
+! Monte-Carlo age factor.
+            double precision :: card_fixed_timestep_yr(max_runs)
+! the card takes the fixed timestep card_fixed_timestep_yr [logical];
+! controls_sync, calibration. From ctrl%timestep_override_active
+! (interpret_kind_cards).
+            logical :: card_fixed_timestep_active(max_runs)
 
 ! ==== Run and card bookkeeping =========================================
-! Per-run and per-card state: the card's mixing length and mass, the
-! atmosphere switch, the surface mixture of the first card, the solar
-! and star calibration loops, the reason the run ended.
+! Per-run and per-card state: the current card, its composition, mixing
+! length, mass and fitting-point request, the atmosphere and the latches
+! the run switches, the core extension, the surface mixture of the first
+! card, the solar and star calibration loops, the reason the run ended.
+! The members armed from a control (each names it) are the run's working
+! copies of controls it changes; the controls keep the deck's values.
 ! Valid: from the card (or run) that sets them.
 
+! the current run card's index, the run plan's cursor [-]; run_driver.
+! run_yrec's card loop runs a local index (a structure component cannot be
+! a DO variable) and leaves num_cards+1 after the last card. Read by the
+! step, the writers and the calibrations' cycle arithmetic.
+            integer :: current_card
+! the current card's envelope X: card_initial_x at the card start, or a
+! rescale's X target [-]; run_driver, model_rescaling, controls_sync. From
+! ctrl%initial_envelope_x until the first card; in the history and
+! terminal headers.
+            double precision :: current_card_envelope_x
+! the current card's envelope Z, as current_card_envelope_x [-];
+! run_driver, model_rescaling, controls_sync. From
+! ctrl%initial_envelope_z until the first card.
+            double precision :: current_card_envelope_z
+! the current card moves the fitting point (card_moves_fit_point at the
+! card start) [logical]; run_driver, controls_sync. From
+! ctrl%change_envelope_mass_flag until the first card.
+            logical :: fit_point_move_requested
+! the fitting-point mass the current card asks for, log10(m_fit/M):
+! card_log_fit_point_mass_fraction at the card start, made negative and at
+! most -1e-12 by the starting model [log10]; run_driver, starting_model,
+! controls_sync. From ctrl%requested_envelope_mass until the first card.
+            double precision :: requested_log_fit_point_mass_fraction
+! the atmosphere (surface boundary condition) the run uses now, an
+! atm_choice code [-]; surface_boundary, envelope_integration,
+! run_driver, controls_sync. From ctrl%atm_choice. The surface boundary
+! switches to the gray T(tau) relation (0) while Teff is outside the
+! Kurucz or Allard table, the envelope integration when a table lookup
+! fails, and each solar-calibration cycle restores the value its
+! Monte-Carlo run started with.
+            integer :: atm_choice_in_use
+! the structure-based timestep limits are on [logical]; run_driver,
+! step_driver, controls_sync. From ctrl%use_structure_dt_limits;
+! compute_timestep switches them off, and each solar-calibration cycle
+! restores the value its Monte-Carlo run started with.
+            logical :: structure_dt_limits_active
+! the mass change (accretion or the Reimers wind) runs [logical];
+! mass_change, controls_sync. From ctrl%use_mass_accretion; switched off
+! for the rest of the run when the disk is exhausted.
+            logical :: mass_change_active
+! the core extension's mass factor: the factor by which the innermost
+! mass is reduced, then the log10 mass shift N dlogm the extension made
+! [-]; starting_model, controls_sync. From
+! ctrl%core_mass_reduction_factor. A second extension in one run (a later
+! card read from file) starts from the shift, as found.
+            double precision :: core_mass_reduction
+! the number of points the core extension added [-]; starting_model,
+! controls_sync. From ctrl%num_core_shells_added; the extension
+! recomputes it from core_mass_reduction.
+            integer :: num_core_points_added
+! the star calibration's target Teff [K]; calibration, controls_sync.
+! From ctrl%target_teff; setup_star_calibration computes it from the
+! target luminosity and radius unless ctrl%specify_teff_flag.
+            double precision :: calibration_target_teff
+! the star calibration's target radius [Rsun]; calibration,
+! controls_sync. From ctrl%target_radius_rsun; setup_star_calibration
+! computes it from the target luminosity and Teff with
+! ctrl%specify_teff_flag.
+            double precision :: calibration_target_radius_rsun
+
 ! mixing-length parameter of the current run card [-]; run_driver. From
-! job%mixing_length_array(nk) at each card start (the solar calibration
+! card_mixing_length_alpha(current_card) at each card start (the solar calibration
 ! changes the later cards' entries); in .mod; 1.4 before the first card.
             double precision :: mixing_length_alpha = 1.4d0
 ! star_mass at the start of the card, for the profile and pulsation
@@ -501,6 +657,11 @@ module star_info_lib
 ! The timestep and the flags that steer one step's solve.
 ! Valid: during and between steps.
 
+! the passes of the structure-rotation iteration per step [-];
+! step_driver, controls_sync. From ctrl%num_rotation_structure_iters;
+! converge_with_rotation makes it 1 without rotation.
+            integer :: num_rotation_structure_passes
+
 ! timestep of the step being taken (the next step's after
 ! compute_timestep) [s]; step_driver, run_driver, mass_change. Negative
 ! means solve without aging (a rescale or relaxation); made positive
@@ -642,7 +803,7 @@ module star_info_lib
             double precision :: photosphere_logP_prev
 ! j_rot at the start of the structure-rotation iteration [cm^2/s];
 ! step_driver. Restored on each repeat pass when
-! job%num_rotation_structure_iters > 1.
+! num_rotation_structure_passes > 1.
             double precision :: j_rot_iteration_start(json)
 ! xa_start at the start of the structure-rotation iteration [-];
 ! step_driver
@@ -774,6 +935,13 @@ module star_info_lib
 ! Newton iterations of the step's solve, counted over its levels up to
 ! the last convergence, for the run-log model line [-]; henyey_iteration
             integer :: newton_iterations = 0
+! the Newton iteration's correction factor (the corrections are applied
+! times it) [-]; step_driver, henyey_iteration, controls_sync. From
+! ctrl%solver_underrelax_factor (no input; 0 until the first step);
+! solve_structure starts it at |ctrl%solver_underrelax_start| -
+! ctrl%solver_underrelax_increment each step, and henyey_iterate raises
+! it by the increment per iteration, up to 1, when the start is positive.
+            double precision :: newton_correction_factor
 
 ! ==== Diagnostics written during the solve =============================
 ! Per-zone physics stored for output by compute_henyey_coefficients at
@@ -1009,6 +1177,10 @@ module star_info_lib
 ! outer boundary-condition rows from the envelope fit, in henyey_solve's
 ! form [-]; henyey_iteration
             double precision :: surface_bc(6)
+! the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample
+! file [-]; monte_carlo. Read by apply_monte_carlo_parameters and the
+! Monte-Carlo summary.
+            type(monte_carlo_samples) :: mc_samples
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds
@@ -1051,7 +1223,7 @@ end module star_info_lib
 !   /entrop/    dlog_temperature_dt, dlog_pressure_dt, dln_luminosity_dt,
 !               dlog_radius_dt
 !   /liov/      envelope_overshoot_depth_start, envelope_overshoot_depth_end
-!   /monte2/    job%s11_rate ... job%age_target
+!   /monte2/    mc_samples%s11_rate ... mc_samples%age_target
 !   /newrat/, /oldrat/  rate_li6, rate_li7, rate_be9 and their _start
 !               copies
 !   /oldrot/    omega_start, j_rot_start, mean_gravity_start (HG),
@@ -1061,7 +1233,7 @@ end module star_info_lib
 !   /sound/     adiabatic_index_gamma1
 !   /theage/    age_gyr (DAGE)
 !   /varfc/     zahn_coupling (VFC)
-!   /zramp/     job%nk (NK)
+!   /zramp/     current_card (NK)
 ! and the per-zone diagnostics of the former shell_diagnostics_state:
 ! eps_total (SESUM), eps_channels (SEG), beta (SBETA), eta (SETA),
 ! conv_vel (SVEL), opacity_zone (SO, the opacity, not O16), and gradr,

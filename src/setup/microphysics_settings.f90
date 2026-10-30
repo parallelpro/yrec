@@ -153,15 +153,15 @@ end function eos_table_paths_from_star
 
 !----------------------------------------------------------------------
 ! atm_settings_from_star: atm's settings from the controls.
-!   star reads: ctrl%allard_target_alpha, ctrl%allard_target_feh,
-!     ctrl%allard_use_tau100, job%atm_choice
+!   star reads: atm_choice_in_use, ctrl%allard_target_alpha,
+!     ctrl%allard_target_feh, ctrl%allard_use_tau100
 !   star writes: none
 function atm_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       type(atm_settings_t) :: settings
 
-      settings%atm_choice = s%job%atm_choice
+      settings%atm_choice = s%atm_choice_in_use
       settings%allard_use_tau100 = s%ctrl%allard_use_tau100
       settings%allard_target_feh = s%ctrl%allard_target_feh
       settings%allard_target_alpha = s%ctrl%allard_target_alpha
@@ -236,7 +236,7 @@ end function convection_settings_from_star
 !     ctrl%settling_tolerance, ctrl%settling_y_factor,
 !     ctrl%use_diffusion_z, ctrl%use_new_diffusion_routines,
 !     ctrl%use_thoul_diffusion, ctrl%use_thoul_fit,
-!     job%settling_z_factor
+!     settling_z_factor_in_use
 !   star writes: none
 function diffusion_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -247,7 +247,7 @@ function diffusion_settings_from_star(s) result(settings)
       settings%use_diffusion_z = s%ctrl%use_diffusion_z
       settings%diffuse_lithium = s%ctrl%diffuse_lithium
       settings%fgry = s%ctrl%settling_y_factor
-      settings%fgrz = s%job%settling_z_factor
+      settings%fgrz = s%settling_z_factor_in_use
       settings%hydrogen_diffusion_floor = s%ctrl%hydrogen_diffusion_floor
       settings%helium_diffusion_min = s%ctrl%helium_diffusion_min
       settings%settling_num_iterations = s%ctrl%settling_num_iterations

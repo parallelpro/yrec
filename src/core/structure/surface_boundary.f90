@@ -49,7 +49,7 @@ contains
 !   star reads: atm_choice_initial, ctrl%spot_filling_factor,
 !     ctrl%spot_temp_contrast, ctrl%tri_delta_logl,
 !     ctrl%tri_delta_teffl, nz, xa
-!   star writes: job%atm_choice, use_ttau_relation
+!   star writes: atm_choice_in_use, use_ttau_relation
 subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
@@ -121,27 +121,27 @@ contains
 ! triangle as well. (The switch back used to keep the triangle, whose
 ! vertices held gray-atmosphere envelopes, until each was reflected.)
 subroutine switch_atmosphere_choice()
-      if (s%job%atm_choice.eq.3) then
+      if (s%atm_choice_in_use.eq.3) then
          if (log10_teff.ge.3.95d0) then
             write(*,*)
             write(*,5) log10_teff
  5          format('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH' &
                    ,'TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            s%job%atm_choice = 0
+            s%atm_choice_in_use = 0
             start_new_triangle = .true.
 ! Remember the switch.
             s%use_ttau_relation = .true.
          endif
       endif
-      if (s%job%atm_choice.eq.4) then
+      if (s%atm_choice_in_use.eq.4) then
          if (log10_teff.ge.atm_allard_teff_max()) then
             write(*,*)
             write(*,7) log10_teff, atm_allard_teff_max()
  7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
                    ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
             write(*,*)
-            s%job%atm_choice = 0
+            s%atm_choice_in_use = 0
             start_new_triangle = .true.
 ! Remember the switch.
             s%use_ttau_relation = .true.
@@ -149,14 +149,14 @@ subroutine switch_atmosphere_choice()
       endif
       if (s%use_ttau_relation) then
          if (s%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            s%job%atm_choice = s%atm_choice_initial
+            s%atm_choice_in_use = s%atm_choice_initial
             start_new_triangle = .true.
             s%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
          else if (s%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
-            s%job%atm_choice = s%atm_choice_initial
+            s%atm_choice_in_use = s%atm_choice_initial
             start_new_triangle = .true.
             s%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_allard_teff_max()

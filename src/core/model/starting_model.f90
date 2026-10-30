@@ -21,7 +21,7 @@ contains
 ! Sets up the starting model of run card run_index, at the start of
 ! every card, in named steps:
 !   acquire_starting_model      read the model file (.mod, YREC7 or
-!                               MODEL2 layout) when first_call_flag is
+!                               MODEL2 layout) when card_from_starting_model is
 !                               set, else reuse the model in memory;
 !   extend_core_toward_center   optionally add points inward of the
 !                               innermost shell (file models only);
@@ -231,7 +231,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 contains
 
 ! ---------------------------------------------------------------
-! Obtain the starting model. With first_call_flag(run_index) false,
+! Obtain the starting model. With card_from_starting_model(run_index) false,
 ! reuse the model in memory (legacy LFIRST). With it true, read the
 ! model file on unit iread, warn if its mixing length or composition
 ! set differs from the controls, reset the step state, set the
@@ -240,11 +240,11 @@ contains
 ! failure.
 subroutine acquire_starting_model
 
-! A reused model (first_call_flag false) stays as it is in memory. On a
+! A reused model (card_from_starting_model false) stays as it is in memory. On a
 ! rescale card it is rescaled once, in rescale_and_refit_envelope, as a
 ! model read from file is. (starin rescaled a reused model here as well,
 ! so it was rescaled twice.)
-      if (s%job%first_call_flag(run_index)) then
+      if (s%card_from_starting_model(run_index)) then
          call read_starting_model_file
          if (ierr /= 0) return
          call check_model_against_controls
@@ -259,7 +259,7 @@ subroutine acquire_starting_model
 ! abundances. Between them they can overwrite mass fractions 4-15.
 ! (The test below is always true inside this branch; starin once also
 ! required the first card.)
-         if (s%job%first_call_flag(run_index)) then
+         if (s%card_from_starting_model(run_index)) then
             call check_mixture_homogeneity
             if (mixture_ok) then
                call rescale_cno_mixture
@@ -505,16 +505,16 @@ end subroutine set_isotope_ratios
 subroutine extend_core_toward_center
       use math_lib
 
-      if (s%ctrl%extend_core_inward .and. s%job%first_call_flag(run_index)) then
+      if (s%ctrl%extend_core_inward .and. s%card_from_starting_model(run_index)) then
 ! The innermost mass is to drop by the factor core_mass_reduction_factor
 ! (legacy FCORE): that takes N = int(log10(factor)/dlogm) + 1 steps
-! (num_core_shells_added, legacy MCORE). The control is then
+! (num_core_points_added, legacy MCORE). core_mass_reduction is then
 ! overwritten with the log10 shift N dlogm actually made.
-          s%job%num_core_shells_added = int(log10(s%job%core_mass_reduction_factor)/ &
+          s%num_core_points_added = int(log10(s%core_mass_reduction)/ &
                s%ctrl%chi_grid_scale(ichi_dm_max))+1
-          s%job%core_mass_reduction_factor = dble(s%job%num_core_shells_added)* &
+          s%core_mass_reduction = dble(s%num_core_points_added)* &
                s%ctrl%chi_grid_scale(ichi_dm_max)
-          num_shells_extended = s%nz + s%job%num_core_shells_added
+          num_shells_extended = s%nz + s%num_core_points_added
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
 ! 2026-10).
@@ -533,18 +533,18 @@ subroutine extend_core_toward_center
           core_shell_spacing = s%ctrl%chi_grid_scale(ichi_dm_max)
 ! Move every old point up by N slots (logRho is not moved).
           do i=s%nz,1, -1
-             s%log_mass(i+s%job%num_core_shells_added) = s%log_mass(i)
-             s%logR(i+s%job%num_core_shells_added) = s%logR(i)
-             s%luminosity_lsun(i+s%job%num_core_shells_added) = s%luminosity_lsun(i)
-             s%logP(i+s%job%num_core_shells_added) = s%logP(i)
-             s%logT(i+s%job%num_core_shells_added) = s%logT(i)
-             s%convective_flag(i+s%job%num_core_shells_added) = s%convective_flag(i)
+             s%log_mass(i+s%num_core_points_added) = s%log_mass(i)
+             s%logR(i+s%num_core_points_added) = s%logR(i)
+             s%luminosity_lsun(i+s%num_core_points_added) = s%luminosity_lsun(i)
+             s%logP(i+s%num_core_points_added) = s%logP(i)
+             s%logT(i+s%num_core_points_added) = s%logT(i)
+             s%convective_flag(i+s%num_core_points_added) = s%convective_flag(i)
              do j=1, 15
-                s%xa(j,i+s%job%num_core_shells_added) = s%xa(j,i)
+                s%xa(j,i+s%num_core_points_added) = s%xa(j,i)
              end do
-             s%omega(i+s%job%num_core_shells_added) = s%omega(i)
+             s%omega(i+s%num_core_points_added) = s%omega(i)
           end do
-          first_original_shell = s%job%num_core_shells_added+1
+          first_original_shell = s%num_core_points_added+1
 ! March inward in mass from the innermost old point (now slot N+1).
 ! Slots 1 and 2 still hold the old innermost values here, so rho_c is
 ! the old central density and del = d log T/d log P is taken between
@@ -560,7 +560,7 @@ subroutine extend_core_toward_center
           density_estimate_offset = s%logP(first_original_shell)- &
                s%logRho(first_original_shell)- &
                s%logT(first_original_shell)
-          do i = s%job%num_core_shells_added,1,-1
+          do i = s%num_core_points_added,1,-1
              s%log_mass(i) = s%log_mass(i+1)-core_shell_spacing
 ! Constant density, m = (4 pi/3) rho_c r^3:
 !   log r = (1/3)(log m - log(4 pi/3) - log rho_c).
@@ -602,9 +602,9 @@ subroutine extend_core_toward_center
 end subroutine extend_core_toward_center
 
 ! ---------------------------------------------------------------
-! On a rescale card (rescale_kind /= 1), rescale the model's X, Z or
-! mass (rescale_model). Then, with change_envelope_mass_flag, move the
-! envelope fitting point to requested_envelope_mass = log10(m_fit/M)
+! On a rescale card (card_kind /= 1), rescale the model's X, Z or
+! mass (rescale_model). Then, with fit_point_move_requested, move the
+! envelope fitting point to requested_log_fit_point_mass_fraction = log10(m_fit/M)
 ! (legacy SENV0), on the first model of every card (DBG 2/92):
 ! - deeper than now: drop the points outside the new fitting mass and
 !   put the new last point at it, linear in log m between the old
@@ -617,25 +617,25 @@ end subroutine extend_core_toward_center
 subroutine rescale_and_refit_envelope
       use math_lib
 
-      if (s%job%rescale_kind(run_index).ne.1) call rescale_model(s, s%luminosity_lsun, &
+      if (s%card_kind(run_index).ne.1) call rescale_model(s, s%luminosity_lsun, &
            s%xa,s%log_mass,s%log_total_mass,s%nz,run_index, &
            s%star_mass,s%convective_flag, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
-      if (s%job%change_envelope_mass_flag) then
+      if (s%fit_point_move_requested) then
       envelope_rescale: do
        call clamp_requested_envelope_mass
-       if (s%log_fit_point_mass_fraction.eq.s%job%requested_envelope_mass) exit envelope_rescale
+       if (s%log_fit_point_mass_fraction.eq.s%requested_log_fit_point_mass_fraction) exit envelope_rescale
        num_species = n_species_basic
        if (s%ctrl%use_extended_composition) num_species = n_species_extended
-       if (s%job%requested_envelope_mass.lt.s%log_fit_point_mass_fraction) then
+       if (s%requested_log_fit_point_mass_fraction.lt.s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit
           if (i < (1)) then
 ! The requested fitting mass lies inside the innermost shell: report
 ! it and leave the envelope mass unchanged.
-          write(run_log_unit,576)s%job%requested_envelope_mass
+          write(run_log_unit,576)s%requested_log_fit_point_mass_fraction
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
@@ -666,11 +666,11 @@ end subroutine rescale_and_refit_envelope
 ! shallower than -1e-12, and record the current one, log m(nz) - log M,
 ! in log_fit_point_mass_fraction and the local old_senv.
 subroutine clamp_requested_envelope_mass
-       if (s%job%requested_envelope_mass.gt.0.0d0) s%job%requested_envelope_mass = &
-            -s%job%requested_envelope_mass
+       if (s%requested_log_fit_point_mass_fraction.gt.0.0d0) s%requested_log_fit_point_mass_fraction = &
+            -s%requested_log_fit_point_mass_fraction
 ! The limit -1e-12 stands for the base of the atmosphere, tau = 2/3
 ! (DBG 2/92; it was -1e-10).
-       if (s%job%requested_envelope_mass.gt.-1.0d-12) s%job%requested_envelope_mass = &
+       if (s%requested_log_fit_point_mass_fraction.gt.-1.0d-12) s%requested_log_fit_point_mass_fraction = &
             -1.d-12
        s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
        old_senv = s%log_fit_point_mass_fraction
@@ -678,10 +678,10 @@ end subroutine clamp_requested_envelope_mass
 
 ! ---------------------------------------------------------------
 ! Find the outermost shell i inside the new (deeper) fitting mass,
-! log m_fit = log M + requested_envelope_mass; i = 0 when the fitting
+! log m_fit = log M + requested_log_fit_point_mass_fraction; i = 0 when the fitting
 ! mass lies inside the innermost shell.
 subroutine find_shell_below_new_fit
-          target_log_mass_at_fit = s%log_total_mass+s%job%requested_envelope_mass
+          target_log_mass_at_fit = s%log_total_mass+s%requested_log_fit_point_mass_fraction
           do i = s%nz-1,1,-1
              if (s%log_mass(i).lt.target_log_mass_at_fit) exit
           end do
@@ -696,7 +696,7 @@ end subroutine find_shell_below_new_fit
 ! Its X and Z become surface_hydrogen_fraction and surface_metal_fraction.
 subroutine interpolate_new_fitting_point
             s%nz = i + 1
-          s%log_fit_point_mass_fraction = s%job%requested_envelope_mass
+          s%log_fit_point_mass_fraction = s%requested_log_fit_point_mass_fraction
           interior_interp_fraction = (target_log_mass_at_fit-s%log_mass(i))/ &
                (s%log_mass(i+1) - s%log_mass(i))
           s%log_mass(s%nz) = target_log_mass_at_fit
@@ -827,7 +827,7 @@ subroutine integrate_envelope_to_new_fit
              ierr = jerr_atm
              return
           end if
-          s%log_fit_point_mass_fraction = s%job%requested_envelope_mass
+          s%log_fit_point_mass_fraction = s%requested_log_fit_point_mass_fraction
 end subroutine integrate_envelope_to_new_fit
 
 ! ---------------------------------------------------------------

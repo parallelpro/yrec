@@ -42,7 +42,7 @@ contains
 ! equilibrium in optical depth, dP/dtau = g_eff/kappa:
 !   d log P / d log tau = g_eff tau / (kappa P),   g_eff = g f_P,
 ! with x = log tau and y(1) = log P. T(tau) comes from the T-tau
-! relation of star%job%atm_choice (atm/t_tau_relations.f90; for the
+! relation of star%atm_choice_in_use (atm/t_tau_relations.f90; for the
 ! Eddington gray atmosphere T^4 = (3/4) Teff^4 (tau + 2/3)), and rho
 ! and kappa from the EOS and opacity at (P, T). Also stores the point
 ! (tau, P, T, rho, kappa, the ionization fractions) in atm_point and
@@ -75,7 +75,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       integer, intent(inout) :: saha_iterations
 ! atm_choice: the integration's T(tau) relation, the kernel's (which
 ! falls back to gray, 0, after a failed Allard lookup, while
-! star%job%atm_choice is reset only after the integration; reading the
+! star%atm_choice_in_use is reset only after the integration; reading the
 ! star's here gave HSRA for that one integration, a 2026 regression,
 ! fixed 2026-10; the F77 envint.f switched the common KTTAU qatm read)
       integer, intent(in) :: atm_choice

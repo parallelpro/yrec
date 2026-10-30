@@ -76,7 +76,7 @@ program test_kap
       star%ctrl%use_mhd_eos = .false.
       star%ctrl%use_scv_eos = .false.
       star%ctrl%opal_eos_vintage = 0
-      star%job%atm_choice = 0
+      star%atm_choice_in_use = 0
 
       star%envelope_hydrogen_fraction = 0.70d0
       star%envelope_metal_fraction = 0.016232d0

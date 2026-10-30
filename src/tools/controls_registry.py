@@ -25,11 +25,18 @@ Columns:
   canonical      the controls_buffer member the value lands in (star%<x>
                  for a star member; blank for a legacy-only variable)
   home           ctrl: star%ctrl, read after the controls read and never
-                 changed by it; job: star%job, which code outside the read
-                 assigns (the run cards, the calibration, the latches);
-                 buffer: the controls read's buffer only (an input-only or
-                 unused control, used read or none); blank without a
-                 canonical member. tools/check_boundaries.py checks it.
+                 changed after it; buffer: the controls read's buffer only
+                 (an input-only or unused control, used read or none);
+                 blank without a canonical member.
+                 tools/check_boundaries.py checks it.
+  run_copy       for a control the run changes (the run cards the
+                 calibrations rewrite, the stops they disarm, the latches,
+                 the working values): the star member the run keeps as its
+                 working copy, declared and documented in star_info_lib and
+                 set from the control by the controls read
+                 (controls_sync's arm_run_copies); the control keeps the
+                 deck's value. Blank for the others.
+                 tools/check_boundaries.py checks it.
   used           run: read after the controls read; read: only during the
                  read (map_user_inputs, derive_controls: an input-only
                  control); none: nowhere. tools/check_boundaries.py checks it.
@@ -45,10 +52,10 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 REG = SRC / "defaults" / "controls_registry.tsv"
 
 COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note", "doc",
-           "canonical", "home", "used", "aliases"]
+           "canonical", "home", "run_copy", "used", "aliases"]
 STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
-HOMES = {"ctrl", "job", "buffer", ""}
+HOMES = {"ctrl", "buffer", ""}
 USES = {"run", "read", "none", ""}
 
 
@@ -72,9 +79,15 @@ def rows():
         if (r["home"] == "buffer") != (r["used"] in ("read", "none")):
             raise SystemExit(f"controls_registry.tsv:{n}: home buffer is for an input-only "
                              "or unused control, and only for it")
+        if r["run_copy"] and (r["home"] in ("buffer", "") or not re.fullmatch(r"[a-z]\w*", r["run_copy"])):
+            raise SystemExit(f"controls_registry.tsv:{n}: a run copy is a star member's name, "
+                             "for a control the star holds")
         if r["aliases"] and r["status"] != "live":
             raise SystemExit(f"controls_registry.tsv:{n}: only a live control has aliases")
         out.append(r)
+    copies = [r["run_copy"] for r in out if r["run_copy"]]
+    if len(copies) != len(set(copies)):
+        raise SystemExit("controls_registry.tsv: two controls share a run copy")
     return out
 
 

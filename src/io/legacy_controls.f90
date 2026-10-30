@@ -24,7 +24,7 @@ module legacy_controls
 ! The legacy namelists are frozen: new controls go only into the new
 ! format (controls_buffer and the registry), so nothing is added here.
 ! After the read, adopt_canonical_names copies each into its canonical
-! home (a controls_buffer variable or star%job); a control spelled the
+! home (a controls_buffer variable or a star member); a control spelled the
 ! same in both reads straight into controls_buffer and needs no copy.
 ! defaults/controls_registry.tsv maps every legacy name to its
 ! canonical and new-inlist names. ies and imu are read and then

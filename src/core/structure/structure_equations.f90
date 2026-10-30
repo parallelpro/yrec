@@ -139,7 +139,7 @@ subroutine gather_shell_state()
        sh%ft = s%ft_rot(im)
        sh%log_temperature_delta = s%log_temperature_delta(im)
        sh%log_pressure_delta = s%log_pressure_delta(im)
-       if (s%job%use_mass_accretion.and.s%ctrl%mass_accretion_rate.gt.0.0d0) then
+       if (s%mass_change_active.and.s%ctrl%mass_accretion_rate.gt.0.0d0) then
           if (im.ge.envelope_zone_index) then
              sh%log_temperature_delta = s%log_temperature_delta(im)+ &
                   s%delta_log_temperature

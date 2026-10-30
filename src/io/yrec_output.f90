@@ -294,16 +294,16 @@ subroutine output_run_header(s, total_mass_msun)
            rescale_and_evolve_format = "(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6," // &
            "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)"
 
-      select case (s%job%rescale_kind(s%job%nk))
+      select case (s%card_kind(s%current_card))
       case (card_evolve)
-         write(terminal_unit, evolve_format) s%job%nk, &
-              s%mixing_length_alpha, s%job%num_models(s%job%nk)
+         write(terminal_unit, evolve_format) s%current_card, &
+              s%mixing_length_alpha, s%card_num_models(s%current_card)
       case (card_rescale)
-         write(terminal_unit, rescale_format) s%job%nk, s%job%initial_envelope_x, &
-              s%job%initial_envelope_z, s%mixing_length_alpha, s%job%num_models(s%job%nk)
+         write(terminal_unit, rescale_format) s%current_card, s%current_card_envelope_x, &
+              s%current_card_envelope_z, s%mixing_length_alpha, s%card_num_models(s%current_card)
       case (card_rescale_and_evolve)
-         write(terminal_unit, rescale_and_evolve_format) s%job%nk, s%job%initial_envelope_x, &
-              s%job%initial_envelope_z, s%mixing_length_alpha, s%job%num_models(s%job%nk)
+         write(terminal_unit, rescale_and_evolve_format) s%current_card, s%current_card_envelope_x, &
+              s%current_card_envelope_z, s%mixing_length_alpha, s%card_num_models(s%current_card)
       end select
 
 ! the isochrone file's card header: the mass (g), X, Z, the mixing
@@ -311,7 +311,7 @@ subroutine output_run_header(s, total_mass_msun)
       if (s%ctrl%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
          write(isochrone_unit, '(7X, 1P5E16.8)') total_mass_grams, &
-              s%job%initial_envelope_x, s%job%initial_envelope_z, s%mixing_length_alpha, &
+              s%current_card_envelope_x, s%current_card_envelope_z, s%mixing_length_alpha, &
               solar_bolometric_magnitude
       end if
 end subroutine output_run_header

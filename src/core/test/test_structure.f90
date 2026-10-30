@@ -139,19 +139,19 @@ subroutine load_deck_model(path)
       if (ierr /= 0) call die('set_up_constants_and_tables')
       call set_net_settings(net_settings_from_star(star), ierr)
       if (ierr /= 0) call die('set_net_settings')
-      star%job%nk = 1
-      star%job%initial_envelope_x = star%job%initial_x_array(1)
-      star%job%initial_envelope_z = star%job%initial_z_array(1)
-      star%mixing_length_alpha = star%job%mixing_length_array(1)
+      star%current_card = 1
+      star%current_card_envelope_x = star%card_initial_x(1)
+      star%current_card_envelope_z = star%card_initial_z(1)
+      star%mixing_length_alpha = star%card_mixing_length_alpha(1)
       call set_convection_settings(convection_settings_from_star(star))
       call set_rotation_settings(rotation_settings_from_star(star))
-      star%job%change_envelope_mass_flag = star%job%has_senv0_array(1)
-      star%job%requested_envelope_mass = star%job%senv0_array(1)
+      star%fit_point_move_requested = star%card_moves_fit_point(1)
+      star%requested_log_fit_point_mass_fraction = star%card_log_fit_point_mass_fraction(1)
       star%total_angular_momentum = 0.0d0
       star%total_rotational_ke = 0.0d0
       call read_starting_model(star, star%timestep_yr, star%dt, chosen_dt, star%triangle_orientation, &
            ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
-           star%recompute_envelope_triangle, star%job%nk, &
+           star%recompute_envelope_triangle, star%current_card, &
            star%total_angular_momentum, star%total_rotational_ke, &
            convective_velocity, ierr)
       if (ierr /= 0) call die('read_starting_model')

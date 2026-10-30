@@ -1,12 +1,14 @@
 !----------------------------------------------------------------------
 ! controls_reader
 !----------------------------------------------------------------------
-! Reads a deck into star%ctrl and star%job. Each read starts from the
-! pristine defaults: star%ctrl = controls_state() and star%job =
-! star_job() (generated from controls_buffer's declarations), seeded
-! into the buffer (seed_controls_buffer); read_input reads the deck over
-! the buffer, the steps below turn it into the controls the run uses,
-! and store_controls_to_star copies the result back. The read opens no
+! Reads a deck into star%ctrl. Each read starts from the pristine
+! defaults, star%ctrl = controls_state() (generated from controls_buffer's
+! declarations), seeded into the buffer (seed_controls_buffer); read_input
+! reads the deck over the buffer, the steps below turn it into the
+! controls the run uses, store_controls_to_star copies the result back,
+! and arm_run_copies sets the run's working copies of the controls it
+! changes (the run plan, the latches; the registry's run_copy column)
+! from them. The read never reads the star's run state. The read opens no
 ! file of the run (run_yrec's open_run_files does, after it); its
 ! messages reach the run log when that opens (io_units). The read's steps
 ! live in legacy_controls (the namelist variables and their defaults),
@@ -19,9 +21,10 @@ module controls_reader
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
       use net_lib, only: cross_section_scales_from_sstandard
-      use star_info_lib, only: star_info, controls_state, star_job, &
+      use star_info_lib, only: star_info, controls_state, &
            control_nml_override, physics_nml_override
-      use controls_sync, only: seed_controls_buffer, store_controls_to_star
+      use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
+           arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: check_io, discard_pending_log
 ! the generated includes name every namelist variable
@@ -43,9 +46,8 @@ subroutine read_controls(s, ierr)
 
       ierr = 0
       call discard_pending_log
-! the declared defaults, whatever an earlier read or run left on s
+! the declared defaults, whatever an earlier read left on s
       s%ctrl = controls_state()
-      s%job = star_job()
       call seed_controls_buffer(s)
       call set_solver_diagnostics(report_solver_diagnostics)
 ! the deck, under the canonical names, and the readable inputs mapped
@@ -62,6 +64,7 @@ subroutine read_controls(s, ierr)
       call derive_controls(s)
       call interpret_kind_cards(s)
       call store_controls_to_star(s)
+      call arm_run_copies(s)
       call set_solver_diagnostics(report_solver_diagnostics)
 end subroutine read_controls
 
@@ -184,7 +187,7 @@ subroutine adopt_canonical_names(s)
 ! inlist gets the default ratios.
       if (.not. lnewnuc) call cross_section_scales_from_sstandard(sstandard, &
            s%cross_section_scale, s%extra_cross_section_scale)
-! the atmosphere choice as read; the run may change star%job%atm_choice
+! the atmosphere choice as read; the run may change star%atm_choice_in_use
       s%atm_choice_initial = kttau
       s%use_ttau_relation = .false.
 end subroutine adopt_canonical_names

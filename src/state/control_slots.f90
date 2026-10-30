@@ -3,14 +3,23 @@
 !----------------------------------------------------------------------
 ! The slot names of the controls that are vectors: atime(itime_*), the
 ! timestep-control factors, and chi_grid_scale(ichi_*), the zoning
-! tolerances (star%ctrl%timestep_factors, star%ctrl%chi_grid_scale). Constants
-! only, so that any module may use them: the controls buffer
+! tolerances (star%ctrl%timestep_factors, star%ctrl%chi_grid_scale);
+! and max_runs, the length of the run-card arrays. Constants only, so
+! that any module may use them: the controls buffer
 ! (io/controls_buffer.f90) re-exports them for the controls read, and
-! the star layer and setup/'s builders use this module. (They were the
-! buffer's own until 2026-10-29.)
+! the star layer (star_info_lib's run plan) and setup/'s builders use
+! this module. (They were the buffer's own until 2026-10-29, max_runs
+! until 2026-10-30.)
 module control_slots
       implicit none
       private
+
+! Maximum number of runs (kind cards) in one job: the dimension of
+! every per-run array of the controls and of the star's run plan (the
+! calibration protocols in core/run/calibration.f90 fill them up to
+! this limit). tools/gen_controls_state.py substitutes the literal value
+! into the generated type bodies of the controls.
+      integer, parameter, public :: max_runs = 50
 
 ! Slot names for atime (the per-phase timestep-control factors). The
 ! meaning of each slot is fixed by io/user_inputs.f90, which

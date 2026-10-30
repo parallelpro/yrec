@@ -10,7 +10,7 @@
 ! Runs one full YREC job (equivalent to `yrec <nml1> <nml2>` from the
 ! current working directory) and returns 0 on success, nonzero on the
 ! errors that run_yrec reports via ierr. The namelist paths are
-! injected through star_job_lib's overrides rather than argv, since
+! injected through star_info_lib's overrides rather than argv, since
 ! an embedded engine must not read the host process's command line.
 ! Empty strings fall back to the CLI defaults (yrec8.nml1/.nml2).
 !

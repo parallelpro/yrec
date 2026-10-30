@@ -335,9 +335,9 @@ subroutine write_history_row(s, history, iprof, ierr)
               adjustr('mixing_length_alpha')
          write(hist_unit, '(1x,a40,5(1x,es40.16e3))') &
               adjustr('"' // trim(yrec_version_string) // '"'), &
-              s%star_mass, s%job%initial_envelope_x, &
-              1.0d0 - s%job%initial_envelope_x - s%job%initial_envelope_z, &
-              s%job%initial_envelope_z, s%mixing_length_alpha
+              s%star_mass, s%current_card_envelope_x, &
+              1.0d0 - s%current_card_envelope_x - s%current_card_envelope_z, &
+              s%current_card_envelope_z, s%mixing_length_alpha
          write(hist_unit, '(a)') ''
          write(hist_unit, '(999(1x,i40))') (k, k = 1, history%nsel)
          write(hist_unit, '(999(1x,a40))') &

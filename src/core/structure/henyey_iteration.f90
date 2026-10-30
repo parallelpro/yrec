@@ -158,7 +158,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
 
       integer :: i, j, iter, max_correction_pos
 ! The sign of the fcorr0 control: > 0 means the under-relaxation factor
-! star%job%solver_underrelax_factor (started at |fcorr0| - fcorri by evolve_step) is ramped
+! star%newton_correction_factor (started at |fcorr0| - fcorri by evolve_step) is ramped
 ! up by fcorri each iteration; <= 0 holds it fixed.
       logical :: underrelax_ramp_active
       double precision :: temp, test, total_luminosity_terms, &
@@ -352,10 +352,10 @@ end subroutine test_henyey_convergence
 ! Ramp the under-relaxation factor and pick the correction factor (eased
 ! in during the helium flash); count the iterations if converged.
 subroutine set_henyey_correction_factor()
-       if (underrelax_ramp_active) s%job%solver_underrelax_factor = dmin1(1.d0,s%job%solver_underrelax_factor+s%ctrl%solver_underrelax_increment)
+       if (underrelax_ramp_active) s%newton_correction_factor = dmin1(1.d0,s%newton_correction_factor+s%ctrl%solver_underrelax_increment)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
-       correction_factor = s%job%solver_underrelax_factor
+       correction_factor = s%newton_correction_factor
        if (s%ctrl%helium_flash_active) then
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0

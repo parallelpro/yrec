@@ -6,9 +6,11 @@
 ! defaults (seed_controls_buffer), the namelists read over it, and
 ! adopt_canonical_names and map_user_inputs fill the members the decks
 ! set under other names; store_controls_to_star then copies it into
-! star%ctrl and star%job, where the rest of the code reads its controls.
-! The declarations below are the defaults: tools/gen_controls_state.py
-! generates star%ctrl's type and the two copies (io/controls_sync.f90)
+! star%ctrl, where the rest of the code reads its controls, and
+! arm_run_copies sets the run's working copies of the controls the run
+! changes. The declarations below are the defaults:
+! tools/gen_controls_state.py generates star%ctrl's type and the copies
+! (io/controls_sync.f90)
 ! from them, so regenerate after changing a member, and add the control
 ! to defaults/controls_registry.tsv, which maps it to its legacy and
 ! new-inlist names. Each control's default is stated once in the code:
@@ -18,7 +20,7 @@
 ! frozen: a new control is read only by the new format. Only the
 ! controls read's files (tools/check_boundaries.py's
 ! CONTROLS_BUFFER_IMPORTERS) use this module; any file may import its
-! named constants (max_runs, and the slot names itime_* and ichi_*,
+! named constants (max_runs and the slot names itime_* and ichi_*,
 ! which are state/control_slots.f90's, re-exported here).
 ! check_boundaries enforces both.
 
@@ -33,13 +35,7 @@ module controls_buffer
       public
       private :: dp
 
-! Maximum number of runs (kind cards) in one job: the dimension of
-! every per-run array below (the calibration protocols in
-! core/run/calibration.f90 / setup_solar_calibration.f90 fill
-! them up to this limit). tools/gen_controls_state.py substitutes the
-! literal value into the generated star%ctrl / star%job type bodies,
-! which star_info_lib includes without seeing this module.
-      integer, parameter :: max_runs = 50
+! The per-run arrays below have max_runs entries (state/control_slots.f90).
 
 ! MESA-style output (new-format inlists only). The run-log, profile and
 ! pulsation-output switches below apply to both output modes.
@@ -134,7 +130,7 @@ module controls_buffer
       real(dp) :: initial_omega = 0.0d0
 
 ! Mass accretion and the Reimers wind. core/mass_change switches
-! star%job%use_mass_accretion off when the disk is exhausted.
+! star%mass_change_active off when the disk is exhausted.
       real(dp) :: mass_accretion_rate = -1.0d-14
       real(dp) :: accretion_cz_fraction = 0.1d0, accretion_total_fraction = 1.0d-2
       real(dp) :: accreted_composition(15) = (/0.71668d0, &
@@ -199,7 +195,7 @@ module controls_buffer
       integer :: mc_run_start = 1, mc_run_end = 1
 
 ! Newton iteration: tolerances, corrections, zoning scales and iteration
-! limits. solver_underrelax_factor has no input; the run's copy, star%job%solver_underrelax_factor, is set by
+! limits. solver_underrelax_factor has no input; the run's copy, star%newton_correction_factor, is set by
 ! the Newton iteration.
       real(dp) :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
@@ -250,7 +246,7 @@ module controls_buffer
       integer :: extrap_order = 7
 
 ! The atmosphere choice as read. The run's working copy is
-! star%job%atm_choice (the surface boundary condition and the
+! star%atm_choice_in_use (the surface boundary condition and the
 ! calibration cycles change it); star%atm_choice_initial keeps this value.
       integer :: atm_choice = 0
 

@@ -42,7 +42,7 @@ contains
 ! > 0), the deuterium fraction of the accreted gas, and the mass accreted
 ! over the step (mass, g).
 !   star reads: ctrl%accreted_composition, ctrl%mass_accretion_rate,
-!     job%use_mass_accretion
+!     mass_change_active
 !   star writes: none
 function surface_accretion_now(s, mass) result(accretion)
       use star_info_lib, only: i_h2
@@ -50,7 +50,7 @@ function surface_accretion_now(s, mass) result(accretion)
       double precision, intent(in) :: mass
       type(surface_accretion) :: accretion
 
-      accretion%on = s%job%use_mass_accretion
+      accretion%on = s%mass_change_active
       accretion%inflow = s%ctrl%mass_accretion_rate.gt.0.0d0
       accretion%deuterium_fraction = s%ctrl%accreted_composition(i_h2)
       accretion%mass = mass
@@ -192,7 +192,7 @@ end subroutine average_li_be_over_cz
 ! models: burn_light_elements the converged end-of-step model,
 ! evolve_angular_momentum each rotation sub-step's model (sub_model).
 !   star reads: accreted_mass, ctrl%accreted_composition,
-!     ctrl%mass_accretion_rate, job%use_mass_accretion, rate_be9,
+!     ctrl%mass_accretion_rate, mass_change_active, rate_be9,
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
 !   star writes: none
 subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
@@ -275,7 +275,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 ! This assumes that all the accreted matter lands in a convection zone
 ! of the end-of-step depth: not strictly true, but not a bad
 ! approximation either.
-      accreting = s%job%use_mass_accretion .and. &
+      accreting = s%mass_change_active .and. &
            s%ctrl%mass_accretion_rate.gt.0.0d0
       do isp = 1,3
          x_cz_end(isp) = x_cz_start(isp)*surviving_fraction(exp(log_rate_cz_start(isp)), &
@@ -636,8 +636,8 @@ end subroutine network_rates_of_model
 ! sub-step's midpoint model (mid_timestep_model, for burn_and_settle).
 !   star reads: convective_turnover_timescale,
 !     ctrl%accreted_composition, ctrl%mass_accretion_rate,
-!     ctrl%nuclear_logT_cutoffs, envelope_cz_bottom_index_start,
-!     job%use_mass_accretion, logRho, logT, nz, xa
+!     ctrl%nuclear_logT_cutoffs, envelope_cz_bottom_index_start, logRho,
+!     logT, mass_change_active, nz, xa
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
       use star_info_lib, only: json, i_h1, i_h2
@@ -657,7 +657,7 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
 ! deuterium, or with inflowing accretion the larger of it and the
 ! accreted gas's, exceeds min_deuterium_step (1e-11); zero from the
 ! first shell at or below the nuclear cutoff out.
-      if (s%job%use_mass_accretion .and. s%ctrl%mass_accretion_rate.gt.0.0d0) then
+      if (s%mass_change_active .and. s%ctrl%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(s%xa(i_h2,s%nz), &
               s%ctrl%accreted_composition(i_h2))
       else
