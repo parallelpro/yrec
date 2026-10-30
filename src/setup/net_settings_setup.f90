@@ -25,7 +25,7 @@ contains
 !     ctrl%weak_screening_threshold, extra_cross_section_scale,
 !     o16_gamma_scale, qqs0ee_scale, qs0e_scale
 !   star writes: none
-function net_settings_from_star(s) result(settings)
+pure function net_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       type(net_settings_t) :: settings

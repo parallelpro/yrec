@@ -367,7 +367,7 @@ def check_settings_fields(src_root):
     built = {}
     for f in sorted((src_root / "setup").glob("*.f90")):
         code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
-        for m in re.finditer(r"(?ims)^\s*function\s+(\w+)\s*\([^)]*\)\s*result\s*\(\s*settings\s*\)(.*?)^\s*end\s*function\b",
+        for m in re.finditer(r"(?ims)^\s*(?:(?:pure|elemental|impure|recursive)\s+)*function\s+(\w+)\s*\([^)]*\)\s*result\s*\(\s*settings\s*\)(.*?)^\s*end\s*function\b",
                              code):
             t = re.search(r"(?im)^\s*type\s*\(\s*(\w+_settings_t)\s*\)\s*::\s*settings\s*$", m.group(2))
             if t:
