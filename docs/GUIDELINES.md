@@ -231,8 +231,9 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    `net_settings`, built by `net_settings_from_star` in
    `setup/net_settings_setup.f90` and installed by `set_net_settings`,
    which checks the reaction table first and returns `ierr`). They take the slot constants from the
-   constants-only modules `composition_layout` (`i_h1`, ...) and
-   `neutrino_flux_layout`, and do not use `star_info_lib` at all.
+   constants-only modules `composition_layout` (`i_h1`, ...),
+   `neutrino_flux_layout` and `reaction_layout` (`r_*`), and do not use
+   `star_info_lib` at all.
    `tools/check_boundaries.py` enforces this for the directories in
    `STAR_FREE_DIRS` (`net/`, `kap/`, `eos/`, `atm/`, `numerics/`, `convection/` and
    `element_diffusion/` so far); add a
