@@ -21,10 +21,11 @@ dummy declared intent(out) or intent(inout). A member that is both read
 and written is listed under writes only.
 
 Procedures are told apart by module (and host): two modules may each
-have a wind_now, and a call resolves as the compiler does: an internal
-procedure of the caller or its hosts, the caller's module, a module the
-scope uses (by name in an only-list, or whole), then the one procedure
-of that name in the tree.
+have a wind_now, and a call resolves as the compiler does, scope by
+scope from the caller out to its module: a procedure the scope
+contains, then one a module the scope uses provides (by name in an
+only-list, then a whole use); failing those, the one top-level
+procedure of that name in the tree (a facade's re-export).
 
 The check is opt-in: only procedures that carry the two lines are
 checked, so contracts can be added driver by driver (docs/GUIDELINES.md,

@@ -326,6 +326,66 @@ def check_install_sites(src_root):
     return problems
 
 
+# Every field of a domain's settings record is set by its builder
+# (2026-10-29): a field the builder does not set keeps its declared
+# default for every run, which is how a newly added field is forgotten.
+# The builders are setup/'s functions that return a record of a
+# *_settings_t type (`type(<t>) :: settings` in the function); a field is
+# set when the function assigns settings%<field> (or an element of it).
+# A field that is deliberately left at its default is listed here, with
+# the reason.
+SETTINGS_DEFAULT_ONLY = {}
+
+def settings_type_fields(src_root):
+    """{type name: [field, ...]} for the *_settings_t types the domains
+    declare"""
+    out = {}
+    for d in DOMAINS:
+        for f in sorted((src_root / d).rglob("*.f90")):
+            if "/test/" in f.relative_to(src_root).as_posix():
+                continue
+            code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
+            for m in re.finditer(r"(?ims)^\s*type\s*(?:,\s*public\s*)?(?:::)?\s*(\w+_settings_t)\s*$(.*?)^\s*end\s*type\b",
+                                 code):
+                fields = []
+                for line in m.group(2).splitlines():
+                    if "::" not in line:
+                        continue
+                    decl = line.split("::", 1)[1]
+                    while re.search(r"\([^()]*\)", decl):
+                        decl = re.sub(r"\([^()]*\)", "", decl)
+                    decl = re.sub(r"\[[^\]]*\]", "", decl)
+                    for item in decl.split(","):
+                        name = item.split("=")[0].strip().lower()
+                        if re.match(r"^\w+$", name):
+                            fields.append(name)
+                out[m.group(1).lower()] = fields
+    return out
+
+def check_settings_fields(src_root):
+    types = settings_type_fields(src_root)
+    built = {}
+    for f in sorted((src_root / "setup").glob("*.f90")):
+        code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
+        for m in re.finditer(r"(?ims)^\s*function\s+(\w+)\s*\([^)]*\)\s*result\s*\(\s*settings\s*\)(.*?)^\s*end\s*function\b",
+                             code):
+            t = re.search(r"(?im)^\s*type\s*\(\s*(\w+_settings_t)\s*\)\s*::\s*settings\s*$", m.group(2))
+            if t:
+                built[t.group(1).lower()] = (m.group(1), {a.lower() for a in re.findall(
+                    r"(?im)^\s*(?:if\s*\(.*\)\s*)?settings%(\w+)(?:\s*\([^=]*\))?\s*=(?!=)", m.group(2))})
+    problems = []
+    for t, fields in sorted(types.items()):
+        if t not in built:
+            problems.append(f"{t}: no builder in setup/ returns it")
+            continue
+        name, assigned = built[t]
+        for fld in fields:
+            if fld not in assigned and fld not in SETTINGS_DEFAULT_ONLY.get(t, {}):
+                problems.append(f"{t}%{fld}: {name} does not set it (copy its control, or list it "
+                                "in SETTINGS_DEFAULT_ONLY with the reason)")
+    return problems
+
+
 # Physics domains whose code may not touch the star object (2026-10):
 # their state comes in as arguments and their configuration as a
 # settings record (net: net_lib's net_settings, filled by the star
@@ -766,6 +826,13 @@ def main():
     if install_problems:
         print("SETTINGS-INSTALL CONTRACT VIOLATIONS (INSTALL_FILES):")
         for b in install_problems:
+            print("  " + b)
+        return 1
+
+    field_problems = check_settings_fields(SRC)
+    if field_problems:
+        print("SETTINGS-FIELD CONTRACT VIOLATIONS (setup/'s builders):")
+        for b in field_problems:
             print("  " + b)
         return 1
 
