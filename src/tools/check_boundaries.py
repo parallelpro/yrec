@@ -44,7 +44,7 @@ CONTROLS_BUFFER_IMPORTERS = {
     "io/run_cards.f90",
     "io/controls_check.f90",
     "io/controls_sync.f90",
-    "setup/user_inputs.f90",
+    "io/user_inputs.f90",
     "net/test/test_net.f90",
     "io/test/test_controls.f90",
 }
@@ -449,7 +449,7 @@ def check_controls_free(src_root):
 CONTROLS_READ_FILES = {
     "io/controls_reader.f90", "io/legacy_controls.f90", "io/run_files.f90",
     "io/derived_controls.f90", "io/run_cards.f90", "io/controls_buffer.f90",
-    "io/controls_sync.f90", "setup/user_inputs.f90",
+    "io/controls_sync.f90", "io/user_inputs.f90",
 }
 
 

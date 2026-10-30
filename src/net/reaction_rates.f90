@@ -41,7 +41,7 @@ module reaction_rates
       real(dp), parameter, public :: erg_per_mev = 1.602177d-6
 ! The rates outside the reaction table, each scaled by its extra scale
 ! (xs_*), with the value its input is scaled against
-! (setup/user_inputs): pep, the ratio of its rate to pp's,
+! (io/user_inputs.f90): pep, the ratio of its rate to pp's,
 ! pep_coefficient rho/mu_e T9^(-1/2) (1 + 20 T9) (Neutrino Astrophysics
 ! eq. 3.17; nuclear_energy's fluxes); Be7 + e-, be7_ecapture_coefficient
 ! T9^(-1/2) (1 + 0.004 (T6 - 16)) rho/mu_e per unit Be7 (eq. 3.18); Be7 +

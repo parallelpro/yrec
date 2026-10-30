@@ -13,7 +13,7 @@ module control_slots
       private
 
 ! Slot names for atime (the per-phase timestep-control factors). The
-! meaning of each slot is fixed by setup/user_inputs.f90, which
+! meaning of each slot is fixed by io/user_inputs.f90, which
 ! fills it from the like-named time_* namelist inputs when lnewvars
 ! is set; readers subscript with these names.
       integer, parameter, public :: &
@@ -34,7 +34,7 @@ module control_slots
 
 ! Slot names for chi_grid_scale, the zoning tolerances: the deck's
 ! hpttol (zoning_tolerances), or, when lnewvars is set, the like-named
-! tol_*/flag_* controls (setup/user_inputs.f90); readers subscript with
+! tol_*/flag_* controls (io/user_inputs.f90); readers subscript with
 ! these names.
       integer, parameter, public :: &
            ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing

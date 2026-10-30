@@ -443,7 +443,7 @@ The routines, their call order and how to extend them are described in
   newer-rate set with **Solar Fusion II** S-factors and per-reaction
   namelist scale factors (`s0_*` controls, turned into
   `star%cross_section_scale` by `map_user_inputs` (`remap`) in
-  `setup/user_inputs.f90`);
+  `io/user_inputs.f90`);
 - **weak, intermediate and strong screening** (Salpeter; Graboske et al.
   1973), the form chosen from the weak exponent (`net/screening.f90`);
   `test_net` checks the strong form against Graboske's formula;

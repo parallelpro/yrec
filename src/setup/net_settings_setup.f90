@@ -15,7 +15,7 @@ contains
 
 !----------------------------------------------------------------------
 ! net_settings_from_star: the network's settings from the controls and
-! the star's cross-section scales (setup/user_inputs.f90 builds those
+! the star's cross-section scales (io/user_inputs.f90 builds those
 ! from the s0_* inputs; the Monte-Carlo runs rescale four of them).
 !   star reads: be7p_qqs0ee_scale, be7p_qs0e_scale, c12_alpha_scale,
 !     cross_section_scale, ctrl%be9_palpha_rate_scale,
