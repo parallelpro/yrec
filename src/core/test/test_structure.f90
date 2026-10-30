@@ -215,10 +215,10 @@ subroutine evaluate(sh, eos0, q, terms, diag)
       type(henyey_shell_terms), intent(out) :: terms
       type(shell_diagnostics), intent(out) :: diag
       type(eos_result) :: eos
-      integer :: saha_state
+      integer :: saha_iterations
       eos = eos0
-      saha_state = 0
-      call evaluate_shell_equations(sh, cfg, eos, saha_state, terms, diag, ierr)
+      saha_iterations = 0
+      call evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, ierr)
       if (ierr /= 0) call die('evaluate_shell_equations')
       q = [terms%qp, terms%qt, terms%qr, terms%ql]
 end subroutine evaluate

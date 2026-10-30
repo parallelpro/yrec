@@ -73,7 +73,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
       logical :: up_semiconv_flag, down_semiconv_flag
       integer :: cz_edge_idx, adjacent_radiative_idx
       logical :: want_derivatives, in_atmosphere, is_convective
-      integer :: saha_state
+      integer :: saha_iterations
       double precision :: luminosity_lsun_zone, log_mass_zone, &
            log_pressure_zone, log_temperature_zone, log_density_zone, &
            log_radius_zone
@@ -144,7 +144,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
 ! SET UP FLAGS FOR CALLS TO THE BASIC PHYSICS ROUTINES.
             want_derivatives = .false.
             in_atmosphere = .true.
-            saha_state = 0
+            saha_iterations = 0
 ! USE THE STRUCTURE VARIABLES FOR THE FIRST POINT OUTSIDE THE CZ
 ! AND THE ABUNDANCES OF THE CZ TO DETERMINE THE MODIFIED MU AND
 ! RADIATIVE AND ADIABATIC TEMPERATURE GRADIENTS.
@@ -163,7 +163,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
             eos_res%log10_density = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
-                 want_derivatives, in_atmosphere, saha_state, &
+                 want_derivatives, in_atmosphere, saha_iterations, &
                  composition_at_zone=composition(:,cz_edge_idx), ierr=ierr)
             if (ierr /= 0) return
             log_density_zone = eos_res%log10_density
@@ -196,7 +196,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
             eos_res%log10_density = log_density_zone
             call eos_get(log_temperature_zone, log_pressure_zone, &
                  hydrogen_fraction, metal_fraction, eos_res, &
-                 want_derivatives, in_atmosphere, saha_state, &
+                 want_derivatives, in_atmosphere, saha_iterations, &
                  composition_at_zone=composition(:,adjacent_radiative_idx), ierr=ierr)
             if (ierr /= 0) return
             log_density_zone = eos_res%log10_density
@@ -267,7 +267,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
                eos_res%log10_density = log_density_zone
                call eos_get(log_temperature_zone, log_pressure_zone, &
                     hydrogen_fraction, metal_fraction, eos_res, &
-                    want_derivatives, in_atmosphere, saha_state, &
+                    want_derivatives, in_atmosphere, saha_iterations, &
                     composition_at_zone=composition(:,search_zone_idx), ierr=ierr)
                if (ierr /= 0) return
                log_density_zone = eos_res%log10_density

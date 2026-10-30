@@ -54,7 +54,7 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
      stored_envelope_state, &
-     start_new_triangle, reset_triangle, saha_state, &
+     start_new_triangle, reset_triangle, saha_iterations, &
      log10_star_mass, log_luminosity, &
      log10_teff, hydrogen_fraction, metal_fraction, &
      pressure_rotation_factor, temperature_rotation_factor, &
@@ -80,7 +80,7 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
       integer, intent(inout) :: stored_vertex_index
       double precision, intent(inout) :: stored_envelope_state(4)
       logical, intent(inout) :: start_new_triangle, reset_triangle
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       double precision, intent(in) :: log10_star_mass, log_luminosity
       double precision, intent(in) :: log10_teff
       double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
@@ -247,7 +247,7 @@ subroutine integrate_vertex_envelopes()
                  log10_star_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
-                 s%xa(:,s%nz),saha_state,ierr=jerr_atm, &
+                 s%xa(:,s%nz),saha_iterations,ierr=jerr_atm, &
                  vertex_index=vertex_being_computed, &
                  stored_envelope_state=stored_envelope_state, &
                  stored_vertex_index=stored_vertex_index, &

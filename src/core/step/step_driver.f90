@@ -632,7 +632,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       use star_info_lib, only: max_convective_zones
       integer, intent(in) :: level, level_max_iterations
       logical, intent(in) :: check_surface_bc
-      integer :: saha_state, envelope_zone_index, num_species, i, j
+      integer :: saha_iterations, envelope_zone_index, num_species, i, j
       logical :: envelope_recomputed_flag
 ! The zone outputs of the redone composition step. Only the envelope
 ! edge is used (by the Newton iterations, below); the others are
@@ -649,7 +649,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
 
       call refresh_surface_bc(s, iteration_level, s%recompute_envelope_triangle, &
            s%reset_triangle, recompute_surface_bc, s%triangle_orientation, &
-           s%stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
+           s%stored_vertex_index, saha_iterations, envelope_recomputed_flag, ierr)
       if (ierr /= 0) return
 
 ! envelope_zone_index gates the accretion correction to the entropy term
@@ -679,7 +679,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
 ! time derivatives).
       call henyey_iterate(s, merge(s%dt, 0.0d0, evolve_model_flag), max_iterations, converged, &
            s%model_diverged_flag, recompute_surface_bc, &
-           envelope_recomputed_flag, saha_state, envelope_zone_index, &
+           envelope_recomputed_flag, saha_iterations, envelope_zone_index, &
            iterations_done, ierr)
 end subroutine solve_level
 

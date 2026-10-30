@@ -413,7 +413,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       integer, intent(out) :: ierr
 
       logical :: lderiv, latmo
-      integer :: ksaha
+      integer :: saha_iterations
       double precision :: hydrogen_fraction, metal_fraction, log10_pressure, &
            log10_temperature, log10_density
 ! 2026 named-index results: the former 20-variable eos output soup is
@@ -426,7 +426,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       ierr = 0
       lderiv = .false.
       latmo = .true.
-      ksaha = 0
+      saha_iterations = 0
       hydrogen_fraction = composition(1,edge_zone)
       metal_fraction = composition(3,edge_zone)
       log10_pressure = log_pressure(edge_zone)
@@ -436,7 +436,7 @@ subroutine compute_scale_height(composition, log_density, log_pressure, &
       eos_res%log10_density = log10_density
       call eos_get(log10_temperature, log10_pressure, &
            hydrogen_fraction, metal_fraction, eos_res, lderiv, latmo, &
-           ksaha, composition_at_zone=composition(:,edge_zone), ierr=ierr)
+           saha_iterations, composition_at_zone=composition(:,edge_zone), ierr=ierr)
       if (ierr /= 0) return
 !  COMPUTE PRESSURE SCALE HEIGHT  H_P = P R^2/(G M rho).
       log10_mass = log_mass(edge_zone)

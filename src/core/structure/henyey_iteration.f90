@@ -21,7 +21,7 @@
 !                        rotation curve and the rotational P and T
 !                        factors (omega_from_j, rotation_shape_factors).
 !
-! The two share the Saha-state counter of the eos calls (saha_state)
+! The two share the Saha iteration counter of the eos calls (saha_iterations)
 ! and whether compute_surface_boundary integrated a new envelope
 ! (envelope_recomputed_flag). Legacy crrect did both, with the
 ! composition step in between.
@@ -46,13 +46,13 @@ contains
 ! refresh_surface_bc: start an iteration level. Sets log L
 ! (star%log_L_lsun), the log mass fraction inside the fitting point,
 !   log_fit_point_mass_fraction = log m(nz) - log M,
-! and resets the Saha-state counter. When recompute_surface_bc is set
+! and resets the Saha iteration counter. When recompute_surface_bc is set
 ! (forced on for a new triangle, or for a reset one at level 2), it
 ! rebuilds the envelope fit with compute_surface_boundary.
 !----------------------------------------------------------------------
 subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
-     stored_vertex_index, saha_state, envelope_recomputed_flag, ierr)
+     stored_vertex_index, saha_iterations, envelope_recomputed_flag, ierr)
       use math_lib
       use star_info_lib, only: i_c12, i_c13, i_h1, i_he3, i_he4, i_metals, &
            i_n14, i_n15, i_o16, i_o17, i_o18
@@ -64,7 +64,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
       logical, intent(inout) :: recompute_surface_bc
       double precision, intent(inout) :: tri_orientation
       integer, intent(inout) :: stored_vertex_index
-      integer, intent(out) :: saha_state
+      integer, intent(out) :: saha_iterations
       logical, intent(out) :: envelope_recomputed_flag
       integer, intent(out) :: ierr
 
@@ -78,7 +78,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
 ! False unless compute_surface_boundary integrates a new envelope.
       envelope_recomputed_flag = .false.
       s%log_L_lsun = log10(s%luminosity_lsun(s%nz))
-      saha_state = 0
+      saha_iterations = 0
       s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
       if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
@@ -103,7 +103,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
             s%envelope_fit_coeffs,s%fit_point_logP,s%fit_point_logT, &
             s%fit_point_logR,tri_orientation,stored_vertex_index, &
             s%stored_envelope_state, &
-            start_new_triangle,reset_triangle,saha_state, &
+            start_new_triangle,reset_triangle,saha_iterations, &
             s%log_total_mass,s%log_L_lsun, &
             s%log_Teff,hydrogen_fraction,metal_fraction, &
             surface_pressure_rotation_factor, &
@@ -135,7 +135,7 @@ end subroutine refresh_surface_bc
 !----------------------------------------------------------------------
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
-     saha_state, envelope_zone_index, iterations_done, ierr)
+     saha_iterations, envelope_zone_index, iterations_done, ierr)
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
            i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
       use energy_sources, only: num_energy_sources
@@ -151,7 +151,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       logical, intent(inout) :: converged
       logical, intent(out) :: corrections_too_large
       logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       integer, intent(in) :: envelope_zone_index
       integer, intent(inout) :: iterations_done
       integer, intent(out) :: ierr
@@ -208,7 +208,7 @@ subroutine linearize_structure_equations()
        s%max_residual(2) = 0.0d0
        s%max_residual(3) = 0.0d0
        s%max_residual(4) = 0.0d0
-       call compute_henyey_coefficients(s, delta_time, saha_state, &
+       call compute_henyey_coefficients(s, delta_time, saha_iterations, &
             envelope_zone_index, jerr)
        if (jerr /= 0) then
        ! Propagate the failure to the caller.

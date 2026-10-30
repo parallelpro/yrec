@@ -91,7 +91,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 ! the surface mixture, from the controls' weights to X_i/A_i (first card)
       double precision :: species_mix_weights(n_mix_species)
 
-      integer :: saha_state
+      integer :: saha_iterations
       character(len=4) :: format_tag
 ! the model file's header values that the star does not hold
       type(model_file_header) :: header
@@ -736,7 +736,7 @@ subroutine set_new_last_shell_convection
           else
              want_derivatives = .false.
              in_atmosphere = .true.
-             saha_state = 0
+             saha_iterations = 0
              hydrogen_fraction = s%xa(i_h1,s%nz)
              metal_fraction = s%xa(i_metals,s%nz)
              log10_pressure = s%logP(s%nz)
@@ -750,7 +750,7 @@ subroutine set_new_last_shell_convection
                eos_res%log10_density = log10_density
                call eos_get(log10_temperature, log10_pressure, &
                     hydrogen_fraction, metal_fraction, eos_res, &
-                    want_derivatives, in_atmosphere, saha_state, &
+                    want_derivatives, in_atmosphere, saha_iterations, &
                     composition_at_zone=s%xa(:,s%nz), ierr=ierr)
                if (ierr /= 0) return
 ! The opacity is taken at the density eos_get returns.
@@ -789,7 +789,7 @@ subroutine integrate_envelope_to_new_fit
             env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
           save_boundary_flag = .false.
           print_flag = .true.
-          saha_state = 0
+          saha_iterations = 0
 ! Surface radius and gravity from L = 4 pi R^2 sigma Teff^4 and
 ! g = G M/R^2:
 !   log R = (log L/Lsun + log Lsun - 4 log Teff - log(4 pi) - log sigma)/2,
@@ -819,7 +819,7 @@ subroutine integrate_envelope_to_new_fit
                  point_temperature_rotation_factor,log10_gravity,s%log_total_mass, &
                  print_flag,save_boundary_flag, &
                  log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
-                 hydrogen_fraction,metal_fraction,s%xa(:,s%nz),saha_state, &
+                 hydrogen_fraction,metal_fraction,s%xa(:,s%nz),saha_iterations, &
                  ierr=jerr_atm,env_steps=env_steps)
 ! atm_get returns integration failures (envelope_termination among
 ! them) in jerr_atm; pass them on.

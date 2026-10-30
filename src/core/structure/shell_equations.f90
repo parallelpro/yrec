@@ -124,16 +124,16 @@ contains
 !   compute_gamma1
 ! eos is the eos result: on entry the previous shell's, which the eos
 ! takes as its starting point (with the density set to sh%log_density);
-! on return this shell's. saha_state is the eos's Saha-solver state,
+! on return this shell's. saha_iterations is the eos's Saha iteration counter,
 ! carried from shell to shell. ierr is nonzero when the eos, the opacity,
 ! the gradients or an extra energy source fail.
-subroutine evaluate_shell_equations(sh, cfg, eos, saha_state, terms, diag, ierr)
+subroutine evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, ierr)
       use physical_constants
       use math_lib
       type(shell_state), intent(in) :: sh
       type(structure_settings), intent(in) :: cfg
       type(eos_result), intent(inout) :: eos
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       type(henyey_shell_terms), intent(out) :: terms
       type(shell_diagnostics), intent(out) :: diag
       integer, intent(out) :: ierr
@@ -175,7 +175,7 @@ subroutine evaluate_eos_opacity_gradients()
          eos%log10_density = sh%log_density
          call eos_get(sh%log_temperature, sh%log_pressure, &
               hydrogen_fraction, metal_fraction, eos, &
-              want_derivatives, in_atmosphere, saha_state, &
+              want_derivatives, in_atmosphere, saha_iterations, &
               composition_at_zone=sh%xa, ierr=ierr)
          if (ierr /= 0) return
 ! The density the eos returns at (P, T) is the one everything below uses

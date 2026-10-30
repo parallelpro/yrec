@@ -108,7 +108,7 @@ subroutine build_stitched_model(s, ierr)
       integer :: j, i, jerr
       type(envint_step_config) :: atm_steps, env_steps
       real(dp) :: b, gl, rl, ateffl, plim
-      integer :: ksaha
+      integer :: saha_iterations
       logical :: lprt, lsbc0
 
 ! The record's arrays, allocated and zeroed on the first build.
@@ -145,7 +145,7 @@ subroutine build_stitched_model(s, ierr)
       atm_steps = fixed_envint_step(s%ctrl%atm_step_size)
       env_steps = fixed_envint_step(s%ctrl%envelope_step_size)
 
-      ksaha = 0
+      saha_iterations = 0
       lprt = .false.
       lsbc0 = .false.
       b = exp(ln10*s%log_L_lsun)
@@ -166,7 +166,7 @@ subroutine build_stitched_model(s, ierr)
 ! always current.
       call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
            s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
-           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), ksaha, jerr, &
+           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), saha_iterations, jerr, &
            atm_steps=atm_steps, env_steps=env_steps)
 
       if (jerr /= 0) then

@@ -76,7 +76,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
       double precision :: envelope_mass_before
       type(envint_step_config) :: env_steps
       logical :: surface_bc_flag, print_flag
-      integer :: ksaha
+      integer :: saha_iterations
       double precision :: luminosity_linear
       double precision :: log_radius_surface, log_gravity_surface
       double precision :: hydrogen_fraction, metal_fraction
@@ -160,11 +160,11 @@ subroutine prepare_envelope_rebuild()
       envelope_mass_before = s%log_fit_point_mass_fraction
 ! The envelope integration takes a fixed step in log P,
 ! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
-! only. No boundary vertex is saved, and saha_state starts at 0.
+! only. No boundary vertex is saved, and saha_iterations starts at 0.
       env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
       surface_bc_flag = .false.
       print_flag = .true.
-      ksaha = 0
+      saha_iterations = 0
 end subroutine prepare_envelope_rebuild
 
 ! ---------------------------------------------------------------
@@ -205,7 +205,7 @@ subroutine integrate_new_envelope()
            log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
            spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
-           composition(:,num_zones),ksaha,ierr=jerr_atm,env_steps=env_steps)
+           composition(:,num_zones),saha_iterations,ierr=jerr_atm,env_steps=env_steps)
 ! An integration failure goes back to evolve_step in ierr.
       if (jerr_atm /= 0) then
          ierr = jerr_atm

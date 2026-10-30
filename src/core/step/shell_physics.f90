@@ -75,7 +75,7 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
 ! changes rotating runs (the byte gate catches it).
       type(eos_result) :: eos_res
       double precision :: kap_res(num_kap_results)
-      integer :: saha_state
+      integer :: saha_iterations
       double precision :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
@@ -89,7 +89,7 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
       want_derivatives = .false.
       in_atmosphere = .false.
 ! The Saha solver state starts at 0 and carries over from zone to zone.
-      saha_state = 0
+      saha_iterations = 0
       do im = 1,num_zones
          log10_mass = log_mass(im)
          log10_temperature = log_temperature(im)
@@ -105,7 +105,7 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
          eos_res%log10_density = log10_density
          call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
-              want_derivatives, in_atmosphere, saha_state, &
+              want_derivatives, in_atmosphere, saha_iterations, &
               composition_at_zone=composition(:,im), ierr=ierr)
          if (ierr /= 0) return
          call kap_get(eos_res%log10_density, log10_temperature, &

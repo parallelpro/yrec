@@ -35,7 +35,7 @@ contains
 ! and dln rho/dln T were carried into the next pass through the star, as
 ! a starting value every eos family overwrites before reading it;
 ! docs/bug_sweep.md O23.)
-subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
+subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
      envelope_zone_index, ierr)
       use henyey_elimination
       use shell_equations, only: henyey_shell_terms, shell_state, &
@@ -51,7 +51,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: delta_time
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       integer, intent(in) :: envelope_zone_index
       integer, intent(out) :: ierr
 
@@ -77,7 +77,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
       call set_structure_settings()
       do im = 1,s%nz
        call gather_shell_state()
-       call evaluate_shell_equations(sh, cfg, eos_res, saha_state, cur, diag, ierr)
+       call evaluate_shell_equations(sh, cfg, eos_res, saha_iterations, cur, diag, ierr)
        if (ierr /= 0) return
        dlnrho_dlnt = eos_res%dlnrho_dlnt
        dlnrho_dlnp = eos_res%dlnrho_dlnp

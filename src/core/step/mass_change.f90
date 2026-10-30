@@ -88,7 +88,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
            log10_density_local
       double precision :: hydrogen_fraction_local, metal_fraction_local
       logical :: eos_deriv_flag, eos_atmosphere_flag
-      integer :: saha_flag
+      integer :: saha_iterations
       double precision :: beta_local
 ! Nothing here is saved between calls: the eos seeds log10 rho and beta
 ! start at zero on every call (below). The legacy blanket SAVE carried
@@ -264,13 +264,13 @@ subroutine find_accreted_surface_state()
       hydrogen_fraction_local = s%xa(1,nz)
       metal_fraction_local = s%xa(3,nz)
       eos_deriv_flag = .false.
-      saha_flag = 1
+      saha_iterations = 1
       eos_atmosphere_flag = .true.
       eos_res%log10_density = log10_density_local
       eos_res%beta = beta_local
       call eos_get(log10_temperature_local, log10_pressure_local, &
            hydrogen_fraction_local, metal_fraction_local, eos_res, &
-           eos_deriv_flag, eos_atmosphere_flag, saha_flag, &
+           eos_deriv_flag, eos_atmosphere_flag, saha_iterations, &
            composition_at_zone=s%xa(:,nz), ierr=ierr)
       if (ierr /= 0) return
 ! The new seeds; beta and P_gas/(rho T) at the surface (the latter is
@@ -310,7 +310,7 @@ subroutine evaluate_stahler_surface()
          eos_res%beta = beta_local
          call eos_get(log10_temperature_local, log10_pressure_local, &
               hydrogen_fraction_local, metal_fraction_local, eos_res, &
-              eos_deriv_flag, eos_atmosphere_flag, saha_flag, &
+              eos_deriv_flag, eos_atmosphere_flag, saha_iterations, &
               composition_at_zone=s%xa(:,nz), ierr=ierr)
          if (ierr /= 0) return
       endif

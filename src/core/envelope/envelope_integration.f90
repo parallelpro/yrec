@@ -75,7 +75,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     surface_composition, saha_state, ierr, &
+     surface_composition, saha_iterations, ierr, &
      vertex_index, stored_envelope_state, stored_vertex_index, &
      vtx_logp, vtx_logr, vtx_logt, atm_steps, env_steps)
 
@@ -115,7 +115,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       ! surface_composition: the outer shell's composition (star%xa layout),
       ! for the EOS's Debye-Hueckel correction.
       double precision, intent(in) :: surface_composition(:)
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
       integer, intent(in), optional :: vertex_index
       double precision, intent(inout), optional :: stored_envelope_state(4)
@@ -205,7 +205,7 @@ contains
                  temperature_rotation_factor, log10_gravity, log10_star_mass, &
                  vidx, print_flag, save_boundary_flag, log10_pressure_limit, &
                  log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-                 state, sidx, saha_state, logp, logr, logt, &
+                 state, sidx, saha_iterations, logp, logr, logt, &
                  s%env_points, s%atm_points, s%atm_point, ierr)
       end subroutine run_kernel
 

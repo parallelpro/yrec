@@ -51,7 +51,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, atm_choice, hsra_log_t_offset, composition, atm_point, pt, ierr)
+     saha_iterations, atm_choice, hsra_log_t_offset, composition, atm_point, pt, ierr)
 
       use eos_lib
       use kap_lib
@@ -72,7 +72,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       double precision, intent(in) :: log10_radius
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
 ! atm_choice: the integration's T(tau) relation, the kernel's (which
 ! falls back to gray, 0, after a failed Allard lookup, while
 ! star%job%atm_choice is reset only after the integration; reading the
@@ -108,7 +108,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, composition_at_zone=composition, ierr=ierr)
+           saha_iterations, composition_at_zone=composition, ierr=ierr)
       if (ierr /= 0) return
 ! The opacity at the density the EOS returned.
       call kap_get(eos_res%log10_density, log10_temperature, &
@@ -171,7 +171,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, log10_total_mass, log10_gravitational_constant, composition, pt, ierr)
+     saha_iterations, log10_total_mass, log10_gravitational_constant, composition, pt, ierr)
 
       use convection_lib, only: compute_temperature_gradients
       use eos_lib
@@ -190,7 +190,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       double precision, intent(inout) :: log10_radius
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
 ! log10_total_mass: log10 M (g), the origin of y(1) = log(m/M).
       double precision, intent(in) :: log10_total_mass
 ! log10_gravitational_constant: log10 G (cgs).
@@ -223,7 +223,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       log10_radius = y(3)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, composition_at_zone=composition, ierr=ierr)
+           saha_iterations, composition_at_zone=composition, ierr=ierr)
       if (ierr /= 0) return
 ! The opacity at the density the EOS returned.
       call kap_get(eos_res%log10_density, log10_temperature, &

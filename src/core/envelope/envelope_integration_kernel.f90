@@ -81,7 +81,7 @@ module envelope_integration_kernel
 ! the envelope (compute_envelope_derivs: log(m/M), log T and log r
 ! against log P) as an ode_system for bsstep. It carries the values the
 ! integrands read, and the three they update (log10_radius, log10_teff,
-! saha_state).
+! saha_iterations).
       type, extends(ode_system) :: envelope_equations
             logical :: atmosphere = .true.
             double precision :: luminosity_linear = 0.0d0, &
@@ -91,7 +91,7 @@ module envelope_integration_kernel
                  conductive_opacity_flag = .false.
             double precision :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
-            integer :: saha_state = 0
+            integer :: saha_iterations = 0
 ! the T(tau) relation of the atmosphere integration (cfg%atm_choice,
 ! gray after a failed Allard lookup), its HSRA offset, log10 of the
 ! total mass in g, and log10 G (cgs)
@@ -122,7 +122,7 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
-              self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
+              self%hydrogen_fraction, self%metal_fraction, self%saha_iterations, &
               self%atm_choice, self%hsra_log_t_offset, self%surface_composition, &
               self%atm_point, self%pt, ierr)
       else
@@ -130,7 +130,7 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
-              self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
+              self%hydrogen_fraction, self%metal_fraction, self%saha_iterations, &
               self%log10_total_mass, self%log10_gravitational_constant, &
               self%surface_composition, self%pt, ierr)
       end if
@@ -162,7 +162,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      stored_envelope_state, stored_vertex_index, &
-     saha_state, vtx_logp, vtx_logr, vtx_logt, &
+     saha_iterations, vtx_logp, vtx_logr, vtx_logt, &
      env_points, atm_points, atm_point, ierr)
 
       use eos_lib
@@ -194,7 +194,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       double precision, intent(inout) :: stored_envelope_state(4)
       integer, intent(inout) :: stored_vertex_index
-      integer, intent(inout) :: saha_state
+      integer, intent(inout) :: saha_iterations
       double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
 ! The results (envelope_points): the envelope and atmosphere points, and
 ! the atmosphere integration's current point (whose last values the
@@ -424,7 +424,7 @@ subroutine find_atmosphere_start()
       eos_res%specific_heat_cp_dp = specific_heat_cp_dp
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
-           saha_state, composition_at_zone=cfg%surface_composition, ierr=jerr)
+           saha_iterations, composition_at_zone=cfg%surface_composition, ierr=jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
@@ -561,7 +561,7 @@ subroutine take_atmosphere_step()
        call compute_atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
-            log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+            log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
             cfg%atm_choice, cfg%hsra_log_t_offset, cfg%surface_composition, &
             atm_point, pt, jerr)
        if (jerr /= 0) then
@@ -715,7 +715,7 @@ subroutine start_envelope_integration()
       call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
            temperature_rotation_factor,log10_gravity,in_atmosphere, &
            want_derivatives,conductive_opacity_flag,log10_radius, &
-           log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+           log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
            cfg%log10_total_mass, cfg%log10_gravitational_constant, &
            cfg%surface_composition, pt, jerr)
       if (jerr /= 0) then
@@ -878,7 +878,7 @@ subroutine take_envelope_step()
        call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
               temperature_rotation_factor,log10_gravity,in_atmosphere, &
               want_derivatives,conductive_opacity_flag,log10_radius, &
-              log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
+              log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
               cfg%log10_total_mass, cfg%log10_gravitational_constant, &
               cfg%surface_composition, pt, jerr)
        if (jerr /= 0) then
@@ -1027,7 +1027,7 @@ subroutine load_equations(atmosphere)
       equations%log10_teff = log10_teff
       equations%hydrogen_fraction = hydrogen_fraction
       equations%metal_fraction = metal_fraction
-      equations%saha_state = saha_state
+      equations%saha_iterations = saha_iterations
       equations%atm_choice = cfg%atm_choice
       equations%hsra_log_t_offset = cfg%hsra_log_t_offset
       equations%log10_total_mass = cfg%log10_total_mass
@@ -1042,7 +1042,7 @@ end subroutine load_equations
 subroutine unload_equations()
       log10_radius = equations%log10_radius
       log10_teff = equations%log10_teff
-      saha_state = equations%saha_state
+      saha_iterations = equations%saha_iterations
       atm_point = equations%atm_point
       pt = equations%pt
 end subroutine unload_equations
