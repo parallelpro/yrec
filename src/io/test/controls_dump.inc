@@ -30,6 +30,8 @@
       write(u,'(a," = ",es25.17e3)') 'ctrl%nu_max_lower_limit('//itoa(i1)//')', star%ctrl%nu_max_lower_limit(i1)
       end do
       write(u,'(a," = ",es25.17e3)') 'ctrl%solar_mass_cgs', star%ctrl%solar_mass_cgs
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solar_luminosity_cgs', star%ctrl%solar_luminosity_cgs
+      write(u,'(a," = ",es25.17e3)') 'ctrl%solar_radius_cgs', star%ctrl%solar_radius_cgs
       write(u,'(a," = ",es25.17e3)') 'ctrl%G_cgs', star%ctrl%G_cgs
       write(u,'(a," = ",es25.17e3)') 'ctrl%nu_max_sun', star%ctrl%nu_max_sun
       write(u,'(a," = ",es25.17e3)') 'ctrl%delta_nu_sun', star%ctrl%delta_nu_sun

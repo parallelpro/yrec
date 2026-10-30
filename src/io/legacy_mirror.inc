@@ -105,6 +105,8 @@
       atmstp = atm_step_size
       abstol = absolute_tolerance
       cmin = min_abundance
+      clsun = solar_luminosity_cgs
+      crsun = solar_radius_cgs
       dtdif = diffusion_timestep_factor
       dtwind = max_domega_global
       djok = convergence_tolerance

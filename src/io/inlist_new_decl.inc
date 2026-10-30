@@ -66,8 +66,6 @@
       real(dp) :: timestep_factors(14)
       real(dp) :: overshoot_alpha_min
       real(dp) :: overshoot_beta_core
-      real(dp) :: solar_luminosity_cgs
-      real(dp) :: solar_radius_cgs
       real(dp) :: envelope_logP_step
       real(dp) :: solver_underrelax_start
       real(dp) :: solver_underrelax_increment

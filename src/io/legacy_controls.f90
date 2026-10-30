@@ -379,8 +379,6 @@ subroutine set_legacy_defaults
       frac_n_table = (/ 0.050426d0, 0.050344d0, 0.059012d0, 0.058716d0 /)
       frac_o_table = (/ 0.468195d0, 0.416592d0, 0.415631d0, 0.413545d0 /)
       fmu = 1.0d0
-      clsun = 3.8515d33
-      crsun = 6.9598d10
       lsolwind = .false.
 ! the light-element cross sections (used when lxli6 etc are set)
       xsli6 = li6_reference_xs

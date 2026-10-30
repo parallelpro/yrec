@@ -15,6 +15,8 @@
             double precision :: nu_max_upper_limit(50) = 1.0d99
             double precision :: nu_max_lower_limit(50) = -1.0d99
             double precision :: solar_mass_cgs = 1.9891d33
+            double precision :: solar_luminosity_cgs = 3.8515d33
+            double precision :: solar_radius_cgs = 6.9598d10
             double precision :: G_cgs = -1.0d0
             double precision :: nu_max_sun = 3090.0d0
             double precision :: delta_nu_sun = 135.1d0

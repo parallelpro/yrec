@@ -58,10 +58,14 @@ module controls_buffer
       real(dp) :: log_g_lower_limit(max_runs) = -1.0d99
       real(dp) :: nu_max_upper_limit(max_runs) = 1.0d99
       real(dp) :: nu_max_lower_limit(max_runs) = -1.0d99
-! The solar mass and Newton's G. G_cgs < 0 (the default) keeps the
-! historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set a
-! positive value (e.g. 6.6743d-8, CODATA 2018) to override.
+! The solar units (run_setup copies them to the star, where a
+! Monte-Carlo run rescales the luminosity) and Newton's G. G_cgs < 0 (the
+! default) keeps the historical log10 G = -7.17571 (G = 6.6726e-8)
+! bit-for-bit; set a positive value (e.g. 6.6743d-8, CODATA 2018) to
+! override.
       real(dp) :: solar_mass_cgs = 1.9891d33
+      real(dp) :: solar_luminosity_cgs = 3.8515d33
+      real(dp) :: solar_radius_cgs = 6.9598d10
       real(dp) :: G_cgs = -1.0d0
 ! solar reference values for the asteroseismic scaling relations:
       real(dp) :: nu_max_sun = 3090.0d0

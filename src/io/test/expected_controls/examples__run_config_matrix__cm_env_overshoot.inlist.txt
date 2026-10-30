@@ -1,5 +1,7 @@
 # controls
 ierr = 0
+ctrl%solar_luminosity_cgs =  3.82800000000000026E+033
+ctrl%solar_radius_cgs =  6.95700000000000000E+010
 ctrl%atime(1) =  2.00000000000000004E-003
 ctrl%atime(2) =  2.00000000000000004E-003
 ctrl%atime(3) =  5.00000000000000028E-002
@@ -168,8 +170,6 @@ star%extra_cross_section_scale(2) =  1.01078767123287672E+000
 star%extra_cross_section_scale(3) =  8.55967078189300401E-001
 star%extra_cross_section_scale(4) =  1.07500000000000018E+000
 star%envelope_metal_fraction =  1.64919999999999997E-002
-star%solar_luminosity_cgs =  3.82800000000000026E+033
-star%solar_radius_cgs =  6.95700000000000000E+010
 last_model_unit = 11
 run_log_unit = 20
 terminal_unit = 6

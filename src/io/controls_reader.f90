@@ -182,10 +182,7 @@ end subroutine read_inlist
 subroutine adopt_canonical_names(s)
       type(star_info), intent(inout) :: s
       include 'adopt_canonical.inc'
-! The legacy names whose home is in the star, and what the copies
-! do not give.
-      s%solar_luminosity_cgs = clsun
-      s%solar_radius_cgs = crsun
+! What the copies do not give.
 ! lnewnuc = .false. takes the cross sections from sstandard (ratios to
 ! Bahcall & Ulrich 1988, mapped onto the reaction and extra scales by
 ! net); map_user_inputs sets them from the s0_* inputs otherwise. An

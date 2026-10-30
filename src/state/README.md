@@ -72,11 +72,11 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `solar_luminosity_cgs` | Lsun, from the namelist clsun | erg/s | `monte_carlo` (apply_monte_carlo_parameters); `controls_reader` (adopt_canonical_names) | 12 modules (core/ 6, io/ 3, setup/ 2, rotation/ 1) | A Monte-Carlo run scales it |
+| `solar_luminosity_cgs` | Lsun, a copy of `ctrl%solar_luminosity_cgs` (legacy clsun) | erg/s | `monte_carlo` (apply_monte_carlo_parameters); `run_setup` (set_up_constants_and_tables) | 12 modules (core/ 6, io/ 3, setup/ 2, rotation/ 1) | A Monte-Carlo run scales it |
 | `log10_solar_luminosity` | log10 Lsun | log10 erg/s | `monte_carlo` (apply_monte_carlo_parameters); `run_setup` (set_up_constants_and_tables) | `observables`, `envelope_integration`, `starting_model`, `run_driver`, `mass_change`, `microphysics_settings`, `rotation_settings_setup` |  |
 | `ln10_over_lsun` | ln(10)/Lsun, not a logarithm: times the enclosed mass it scales the luminosity-equation terms | s/erg | `monte_carlo` (apply_monte_carlo_parameters); `run_setup` (set_up_constants_and_tables) | `structure_equations` |  |
 | `solar_mass_cgs` | Msun, a copy of `ctrl%solar_mass_cgs` | g | `run_setup` (set_up_constants_and_tables) | 10 modules (core/ 7, io/ 1, rotation/ 1, setup/ 1) |  |
-| `solar_radius_cgs` | Rsun, from the namelist crsun | cm | `controls_reader` (adopt_canonical_names) | 8 modules (core/ 6, io/ 1, setup/ 1) |  |
+| `solar_radius_cgs` | Rsun, a copy of `ctrl%solar_radius_cgs` (legacy crsun) | cm | `run_setup` (set_up_constants_and_tables) | 8 modules (core/ 6, io/ 1, setup/ 1) |  |
 | `log10_solar_radius` | log10 Rsun | log10 cm | `run_setup` (set_up_constants_and_tables) | `observables`, `run_driver`, `yrec_output` |  |
 | `cross_section_scale(num_reactions)` | per-reaction scale of the cross section S0 against Bahcall & Ulrich (1988), by `reaction_layout`'s slot `r_*` | - | `monte_carlo` (apply_monte_carlo_parameters); `controls_reader` (adopt_canonical_names); `user_inputs` (set_cross_section_scales) | `net_settings_setup` | Those of pp, He3 + He3 and He3 + He4 are rescaled per Monte-Carlo run |
 | `qs0e_scale(num_reactions)` | scale of each reaction's S'/S against Solar Fusion I, by reaction slot `r_*` | - | `user_inputs` (reset_rate_scale_defaults, set_first_derivative_scales) | `net_settings_setup` |  |

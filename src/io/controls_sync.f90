@@ -17,27 +17,28 @@ module controls_sync
            profile_columns_file, profile_interval, log_L_upper_limit, &
            log_L_lower_limit, Teff_upper_limit, Teff_lower_limit, &
            log_g_upper_limit, log_g_lower_limit, nu_max_upper_limit, &
-           nu_max_lower_limit, solar_mass_cgs, G_cgs, nu_max_sun, &
-           delta_nu_sun, Teff_sun, profile_data_prefix, inlist_used_file, &
-           pulse_format, write_profile_flag, write_pulse_flag, &
-           terminal_interval, set_initial_model_number, &
-           report_solver_diagnostics, compute_neutrino_fluxes, atime, &
-           nuclear_logT_cutoffs, saha_log10t_cutoff, tenv0, tenv1, tgcut, &
-           use_new_nuclear_rates, weak_screening_threshold, dpenv, &
-           core_overshoot_active, overshoot_alpha_core, &
-           envelope_overshoot_active, overshoot_alpha_envelope, lovstm, &
-           alpham, ladov, lovmax, betac, use_semiconvection, acfpft, itfp1, &
-           itfp2, rotation_active, walpcz, instability_transport_active, &
-           set_initial_omega, initial_omega, mass_accretion_rate, fczdmdt, &
-           ftotdmdt, accreted_composition, reimers_scaling_factor, &
-           use_reimers_wind, use_mass_accretion, max_iter_level4, &
-           improved_first_guess_flag, calc_neutrinos, li6_rate_scale, &
-           li7_rate_scale, be9_pg_rate_scale, be9_pd_rate_scale, &
-           be9_palpha_rate_scale, use_itoh_neutrino_loss, &
-           calc_envelope_flag, use_extended_composition, &
-           spot_filling_factor, spot_temp_contrast, spot_depth_varies, &
-           disk_locking_age_gyr, disk_omega_rad_s, disk_locking_active, &
-           target_end_age, timestep_override, central_deuterium_stop, &
+           nu_max_lower_limit, solar_mass_cgs, solar_luminosity_cgs, &
+           solar_radius_cgs, G_cgs, nu_max_sun, delta_nu_sun, Teff_sun, &
+           profile_data_prefix, inlist_used_file, pulse_format, &
+           write_profile_flag, write_pulse_flag, terminal_interval, &
+           set_initial_model_number, report_solver_diagnostics, &
+           compute_neutrino_fluxes, atime, nuclear_logT_cutoffs, &
+           saha_log10t_cutoff, tenv0, tenv1, tgcut, use_new_nuclear_rates, &
+           weak_screening_threshold, dpenv, core_overshoot_active, &
+           overshoot_alpha_core, envelope_overshoot_active, &
+           overshoot_alpha_envelope, lovstm, alpham, ladov, lovmax, betac, &
+           use_semiconvection, acfpft, itfp1, itfp2, rotation_active, &
+           walpcz, instability_transport_active, set_initial_omega, &
+           initial_omega, mass_accretion_rate, fczdmdt, ftotdmdt, &
+           accreted_composition, reimers_scaling_factor, use_reimers_wind, &
+           use_mass_accretion, max_iter_level4, improved_first_guess_flag, &
+           calc_neutrinos, li6_rate_scale, li7_rate_scale, &
+           be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale, &
+           use_itoh_neutrino_loss, calc_envelope_flag, &
+           use_extended_composition, spot_filling_factor, &
+           spot_temp_contrast, spot_depth_varies, disk_locking_age_gyr, &
+           disk_omega_rad_s, disk_locking_active, target_end_age, &
+           timestep_override, central_deuterium_stop, &
            central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
            timestep_override_active, use_mhd_eos, &
            metal_fraction_match_tolerance, npenv, monte_carlo_active, &
@@ -155,6 +156,8 @@ subroutine seed_controls_buffer(s)
       nu_max_upper_limit = s%ctrl%nu_max_upper_limit
       nu_max_lower_limit = s%ctrl%nu_max_lower_limit
       solar_mass_cgs = s%ctrl%solar_mass_cgs
+      solar_luminosity_cgs = s%ctrl%solar_luminosity_cgs
+      solar_radius_cgs = s%ctrl%solar_radius_cgs
       G_cgs = s%ctrl%G_cgs
       nu_max_sun = s%ctrl%nu_max_sun
       delta_nu_sun = s%ctrl%delta_nu_sun
@@ -522,6 +525,8 @@ subroutine store_controls_to_star(s)
       s%ctrl%nu_max_upper_limit = nu_max_upper_limit
       s%ctrl%nu_max_lower_limit = nu_max_lower_limit
       s%ctrl%solar_mass_cgs = solar_mass_cgs
+      s%ctrl%solar_luminosity_cgs = solar_luminosity_cgs
+      s%ctrl%solar_radius_cgs = solar_radius_cgs
       s%ctrl%G_cgs = G_cgs
       s%ctrl%nu_max_sun = nu_max_sun
       s%ctrl%delta_nu_sun = delta_nu_sun

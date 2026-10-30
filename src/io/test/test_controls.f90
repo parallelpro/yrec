@@ -75,8 +75,6 @@ program test_controls
       end do
       write(u,'(a," = ",es25.17e3)') 'star%envelope_hydrogen_fraction', star%envelope_hydrogen_fraction
       write(u,'(a," = ",es25.17e3)') 'star%envelope_metal_fraction', star%envelope_metal_fraction
-      write(u,'(a," = ",es25.17e3)') 'star%solar_luminosity_cgs', star%solar_luminosity_cgs
-      write(u,'(a," = ",es25.17e3)') 'star%solar_radius_cgs', star%solar_radius_cgs
       write(u,'(a," = ",i0)') 'last_model_unit', last_model_unit
       write(u,'(a," = ",i0)') 'run_log_unit', run_log_unit
       write(u,'(a," = ",i0)') 'terminal_unit', terminal_unit

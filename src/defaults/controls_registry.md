@@ -169,8 +169,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `absolute_tolerance` | `abstol` | `absolute_tolerance` | ctrl | run | real | `1.0d-5` | live | Burning network: absolute tolerance |
 | `overshoot_beta_core` | `betac` | `betac` | ctrl | run | real | `0.15d0` | live | With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius |
 | `min_abundance` | `cmin` | `min_abundance` | ctrl | run | real | `1.0d-20` | live | Burning network: abundances below this are treated as zero |
-| `solar_luminosity_cgs` | `clsun` | `star%solar_luminosity_cgs` | - | - | real | `3.8515d33` | live | Solar luminosity (erg/s) |
-| `solar_radius_cgs` | `crsun` | `star%solar_radius_cgs` | - | - | real | `6.9598d10` | live | The solar radius (cm) used for the tracks and the output |
+| `solar_luminosity_cgs` | `clsun` | `solar_luminosity_cgs` | ctrl | run | real | `3.8515d33` | live | Solar luminosity (erg/s) |
+| `solar_radius_cgs` | `crsun` | `solar_radius_cgs` | ctrl | run | real | `6.9598d10` | live | The solar radius (cm) used for the tracks and the output |
 | `solar_mass_cgs` | `solar_mass_cgs` | `solar_mass_cgs` | ctrl | run | real | `1.9891d33` | live | Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups. |
 | `G_cgs` | `G_cgs` | `g_cgs` | ctrl | run | real | `-1.0d0` | live | Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups. |
 | `envelope_logP_step` | `dpenv` | `dpenv` | ctrl | run | real | `1.0d0` | live | mix: envelope pressure step control |

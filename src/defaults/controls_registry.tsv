@@ -131,8 +131,8 @@ physics	atmstp	real	atm_step_size	live		Envelope generation: the atmosphere step
 physics	abstol	real	absolute_tolerance	live		Burning network: absolute tolerance	absolute_tolerance	ctrl	run	
 physics	betac	real	overshoot_beta_core	live		With overshoot_max_extent_flag: the core overshoot extent is capped at betac times the core radius	betac	ctrl	run	
 physics	cmin	real	min_abundance	live		Burning network: abundances below this are treated as zero	min_abundance	ctrl	run	
-physics	clsun	real	solar_luminosity_cgs	live		Solar luminosity (erg/s)	star%solar_luminosity_cgs			
-physics	crsun	real	solar_radius_cgs	live		The solar radius (cm) used for the tracks and the output	star%solar_radius_cgs			
+physics	clsun	real	solar_luminosity_cgs	live		Solar luminosity (erg/s)	solar_luminosity_cgs	ctrl	run	
+physics	crsun	real	solar_radius_cgs	live		The solar radius (cm) used for the tracks and the output	solar_radius_cgs	ctrl	run	
 physics	solar_mass_cgs	real	solar_mass_cgs	live		Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g, seismic scalings). Formerly hard-coded in setups.	solar_mass_cgs	ctrl	run	
 physics	G_cgs	real	G_cgs	live		Newton's G (cgs). Negative (default) keeps YREC's historical log10 G = -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA 2018) to override. Formerly hard-coded in setups.	g_cgs	ctrl	run	
 physics	dpenv	real	envelope_logP_step	live		mix: envelope pressure step control	dpenv	ctrl	run	

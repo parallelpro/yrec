@@ -165,8 +165,8 @@ module star_info_lib
 ! Valid: after read_controls and prepare_run; a Monte-Carlo run rescales
 ! the solar luminosity and the first rate scales.
 
-! Lsun, from the namelist clsun [erg/s]; controls_reader, monte_carlo. A
-! Monte-Carlo run scales it.
+! Lsun, a copy of ctrl%solar_luminosity_cgs (legacy clsun) [erg/s];
+! run_setup, monte_carlo. A Monte-Carlo run scales it.
             double precision :: solar_luminosity_cgs
 ! log10 Lsun [log10 erg/s]; run_setup, monte_carlo
             double precision :: log10_solar_luminosity
@@ -175,7 +175,7 @@ module star_info_lib
             double precision :: ln10_over_lsun
 ! Msun, a copy of ctrl%solar_mass_cgs [g]; run_setup
             double precision :: solar_mass_cgs
-! Rsun, from the namelist crsun [cm]; controls_reader
+! Rsun, a copy of ctrl%solar_radius_cgs (legacy crsun) [cm]; run_setup
             double precision :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
             double precision :: log10_solar_radius
