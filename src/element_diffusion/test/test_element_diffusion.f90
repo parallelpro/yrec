@@ -49,45 +49,45 @@ program test_element_diffusion
       call build_model()
 
       call reset_controls()
-      star%ctrl%diffuse_helium_active = .true.
+      star%physics%diffuse_helium_active = .true.
       call settle_case('old: helium', .false.)
-      star%ctrl%use_diffusion_z = .true.
+      star%physics%use_diffusion_z = .true.
       call settle_case('old: helium and metals', .false.)
-      star%ctrl%coulomb_log_choice = 2
+      star%physics%coulomb_log_choice = 2
       call settle_case('old: Coulomb logarithm choice 2', .false.)
-      star%ctrl%coulomb_log_choice = 3
+      star%physics%coulomb_log_choice = 3
       call settle_case('old: Coulomb logarithm choice 3', .false.)
-      star%ctrl%coulomb_log_choice = 4
+      star%physics%coulomb_log_choice = 4
       call settle_case('old: Coulomb logarithm choice 4', .false.)
-      star%ctrl%coulomb_log_choice = 1
-      star%ctrl%constant_mixing_coeff = 0.5d0
-      star%ctrl%constant_settling_reduction = 0.8d0
+      star%physics%coulomb_log_choice = 1
+      star%physics%constant_mixing_coeff = 0.5d0
+      star%physics%constant_settling_reduction = 0.8d0
       call settle_case('old: constant mixing 0.5, settling reduction 0.8', .false.)
-      star%ctrl%constant_mixing_coeff = 1.0d0
-      star%ctrl%constant_settling_reduction = 1.0d0
-      star%ctrl%settling_y_factor = 0.7d0
+      star%physics%constant_mixing_coeff = 1.0d0
+      star%physics%constant_settling_reduction = 1.0d0
+      star%physics%settling_y_factor = 0.7d0
       star%settling_z_factor_in_use = 0.9d0
       call settle_case('old: helium factor 0.7, metal factor 0.9', .false.)
-      star%ctrl%settling_y_factor = 1.0d0
+      star%physics%settling_y_factor = 1.0d0
       star%settling_z_factor_in_use = 1.0d0
-      star%ctrl%use_thoul_fit = .true.
+      star%physics%use_thoul_fit = .true.
       call settle_case('old: the Thoul et al. fit for metals', .false.)
-      star%ctrl%use_thoul_fit = .false.
-      star%ctrl%use_thoul_diffusion = .false.
+      star%physics%use_thoul_fit = .false.
+      star%physics%use_thoul_diffusion = .false.
       call settle_case('old: without the Thoul et al. coefficients', .false.)
-      star%ctrl%use_thoul_diffusion = .true.
-      star%ctrl%settling_num_iterations = 1
+      star%physics%use_thoul_diffusion = .true.
+      star%physics%settling_num_iterations = 1
       call settle_case('old: one iteration, short of convergence', .false.)
-      star%ctrl%settling_num_iterations = 10
+      star%physics%settling_num_iterations = 10
       call floors(.false.)
 
       call reset_controls()
-      star%ctrl%diffuse_helium_active = .true.
+      star%physics%diffuse_helium_active = .true.
       call settle_case('new: helium', .true.)
-      star%ctrl%use_diffusion_z = .true.
+      star%physics%use_diffusion_z = .true.
       call settle_case('new: helium and metals', .true.)
-      star%ctrl%diffuse_lithium = .true.
-      star%ctrl%coulomb_log_choice = 4
+      star%physics%diffuse_lithium = .true.
+      star%physics%coulomb_log_choice = 4
       call settle_case('new: helium, metals and light elements', .true.)
       call floors(.true.)
 
@@ -149,19 +149,19 @@ end subroutine build_model
 ! The settling controls at their defaults (the tolerance 1e-7: the original
 ! solve stalls near 4e-8 at this model's centre), the switches off.
 subroutine reset_controls()
-      star%ctrl%diffuse_helium_active = .false.
-      star%ctrl%use_diffusion_z = .false.
-      star%ctrl%diffuse_lithium = .false.
-      star%ctrl%use_thoul_fit = .false.
-      star%ctrl%use_thoul_diffusion = .true.
-      star%ctrl%coulomb_log_choice = 1
-      star%ctrl%settling_num_iterations = 10
-      star%ctrl%settling_tolerance = 1.0d-7
-      star%ctrl%hydrogen_diffusion_floor = 1.0d-3
-      star%ctrl%helium_diffusion_min = 1.0d-3
-      star%ctrl%constant_mixing_coeff = 1.0d0
-      star%ctrl%constant_settling_reduction = 1.0d0
-      star%ctrl%settling_y_factor = 1.0d0
+      star%physics%diffuse_helium_active = .false.
+      star%physics%use_diffusion_z = .false.
+      star%physics%diffuse_lithium = .false.
+      star%physics%use_thoul_fit = .false.
+      star%physics%use_thoul_diffusion = .true.
+      star%physics%coulomb_log_choice = 1
+      star%physics%settling_num_iterations = 10
+      star%physics%settling_tolerance = 1.0d-7
+      star%physics%hydrogen_diffusion_floor = 1.0d-3
+      star%physics%helium_diffusion_min = 1.0d-3
+      star%physics%constant_mixing_coeff = 1.0d0
+      star%physics%constant_settling_reduction = 1.0d0
+      star%physics%settling_y_factor = 1.0d0
       star%settling_z_factor_in_use = 1.0d0
       star%settling_suspended_reported = .false.
 end subroutine reset_controls
@@ -173,16 +173,16 @@ subroutine floors(new_routines)
       logical, intent(in) :: new_routines
       character(len=4) :: tag
       tag = merge('new:', 'old:', new_routines)
-      star%ctrl%helium_diffusion_min = 0.5d0
+      star%physics%helium_diffusion_min = 0.5d0
       call settle_case(tag//' outer edge where Y > 0.5', new_routines)
-      star%ctrl%helium_diffusion_min = 0.99d0
+      star%physics%helium_diffusion_min = 0.99d0
       star%settling_suspended_reported = .false.
       call settle_case(tag//' Y below its floor everywhere', new_routines)
-      star%ctrl%helium_diffusion_min = 1.0d-3
-      star%ctrl%hydrogen_diffusion_floor = 0.9d0
+      star%physics%helium_diffusion_min = 1.0d-3
+      star%physics%hydrogen_diffusion_floor = 0.9d0
       star%settling_suspended_reported = .false.
       call settle_case(tag//' X below its floor everywhere', new_routines)
-      star%ctrl%hydrogen_diffusion_floor = 1.0d-3
+      star%physics%hydrogen_diffusion_floor = 1.0d-3
 end subroutine floors
 
 ! One settling step from the pristine model; prints the changes.
@@ -200,11 +200,11 @@ subroutine settle_case(label, new_routines)
       local_dlnp_dr = dlnp_dr
       local_m = m
       ierr = 0
-      star%ctrl%use_new_diffusion_routines = new_routines
+      star%physics%use_new_diffusion_routines = new_routines
 ! the controls set above, as a run card installs them
       call set_diffusion_settings(diffusion_settings_from_star(star))
       call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
-           log_t, del, convective, nz, mass, star%ctrl%diffuse_helium_active, &
+           log_t, del, convective, nz, mass, star%physics%diffuse_helium_active, &
            star%settling_suspended_reported, ierr)
       write(*,'(/,a)') '# '//label
       write(*,'(a,i0)') 'ierr = ', ierr

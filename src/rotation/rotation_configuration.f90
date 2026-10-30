@@ -47,7 +47,7 @@ module rotation_configuration
          real(dp) :: convergence_tolerance = 0.0d0
 ! the shape of the rotating star (rotating_shape): the iteration limits
 ! on the equipotential radius (outer and inner loops) and the relative
-! tolerance on r0^3 (the former ctrl%fpft_average_weight; check_angular_momentum
+! tolerance on r0^3 (the former physics%fpft_average_weight; check_angular_momentum
 ! loosens it for one omega_from_j call through its shape_tolerance
 ! argument)
          integer :: shape_outer_iterations = 0, shape_inner_iterations = 0
@@ -122,7 +122,7 @@ module rotation_configuration
          real(dp) :: hydrogen_diffusion_floor = 0.0d0, helium_diffusion_min = 0.0d0, &
               settling_timestep_fraction = 0.0d0
 ! the extended (15-species) composition; overshoot of intermediate
-! convection zones (ctrl%intermediate_overshoot_active) and the envelope's overshoot extent
+! convection zones (physics%intermediate_overshoot_active) and the envelope's overshoot extent
          logical :: use_extended_composition = .false., intermediate_overshoot = .false.
          real(dp) :: overshoot_alpha_envelope = 0.0d0
 ! the solar units: the luminosity (erg/s; star%solar_luminosity_cgs,

@@ -38,12 +38,12 @@ contains
 ! to last_mc_run (at
 ! most max_mc_runs) are read (MHP 3/96). Without Monte Carlo the range
 ! is the single run 1.
-!   star reads: ctrl%monte_carlo_active
+!   star reads: physics%monte_carlo_active
 !   star writes: first_mc_run, last_mc_run, mc_samples
 subroutine setup_monte_carlo_runs(s)
       type(star_info), intent(inout) :: s
       integer :: i
-      if (s%ctrl%monte_carlo_active) then
+      if (s%physics%monte_carlo_active) then
          s%last_mc_run = min(s%last_mc_run,max_mc_runs)
 ! Read the sampled parameters, one two-line record per run.
          do i = 1,s%last_mc_run
@@ -71,7 +71,7 @@ end subroutine setup_monte_carlo_runs
 ! (1996) value; the metal diffusion factor; the solar luminosity; and
 ! the age scale factor. Outside Monte Carlo it only sets
 ! age_scale_factor = 1.
-!   star reads: ctrl%monte_carlo_active, mc_samples
+!   star reads: physics%monte_carlo_active, mc_samples
 !   star writes: card_max_age_yr, cross_section_scale,
 !     extra_cross_section_scale, ln10_over_lsun, log10_solar_luminosity,
 !     settling_z_factor_in_use, solar_luminosity_cgs
@@ -96,7 +96,7 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! luminosity_target scales.
       double precision, parameter :: reference_solar_luminosity = 3.844D33
 
-      if (s%ctrl%monte_carlo_active) then
+      if (s%physics%monte_carlo_active) then
          s%cross_section_scale(r_pp) = s%mc_samples%s11_rate(monte_carlo_run_number)*bp96_pp_factor
          s%cross_section_scale(r_he3he3) = s%mc_samples%s33_rate(monte_carlo_run_number)*bp96_he3he3_factor
          s%cross_section_scale(r_he3he4) = s%mc_samples%s34_rate(monte_carlo_run_number)*bp96_he3he4_factor
@@ -137,8 +137,8 @@ end subroutine apply_monte_carlo_parameters
 ! energy summary is the final model's history row; the calibration
 ! verdicts are in the .log file.
 !
-!   star reads: ctrl%calc_neutrinos, ctrl%calibrate_solar_model,
-!     ctrl%monte_carlo_active, current_card, solar_calibration_converged
+!   star reads: physics%calc_neutrinos, control%calibrate_solar_model,
+!     physics%monte_carlo_active, current_card, solar_calibration_converged
 !   star writes: none
 subroutine write_run_summaries(s, monte_carlo_run_number, &
      convergence_iterations, log_r_rsun)
@@ -148,17 +148,17 @@ subroutine write_run_summaries(s, monte_carlo_run_number, &
 
 ! A Monte-Carlo run that failed to converge: rewind the output units
 ! and write the model with its cycle count.
-      if (s%ctrl%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.s%solar_calibration_converged) then
+      if (s%physics%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.s%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(starting_model_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
               s%current_card, monte_carlo_run_number)
-      else if (s%ctrl%calibrate_solar_model .and. s%ctrl%calc_neutrinos .and. s%solar_calibration_converged) then
+      else if (s%control%calibrate_solar_model .and. s%physics%calc_neutrinos .and. s%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(starting_model_unit)
          rewind(run_log_unit)
-         if (s%ctrl%monte_carlo_active) then
+         if (s%physics%monte_carlo_active) then
             call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
                  s%current_card, monte_carlo_run_number)
          endif

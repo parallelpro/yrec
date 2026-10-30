@@ -54,8 +54,8 @@ subroutine log_model_line(s, progress)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       type(progress_lines), intent(inout) :: progress
-      if (s%ctrl%terminal_interval <= 0) return
-      if (mod(s%model_number, s%ctrl%terminal_interval) /= 0) return
+      if (s%physics%terminal_interval <= 0) return
+      if (mod(s%model_number, s%physics%terminal_interval) /= 0) return
       call write_model_line(s, progress)
 end subroutine log_model_line
 

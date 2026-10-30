@@ -38,7 +38,7 @@ contains
 ! opacity_table%opal92(2)) became the internal read_opal92_table
 ! below, called once per set in the original order. The two OPEN
 ! statements stay here as they were (the first table on the fixed
-! star%ctrl%opal92_table_unit, the second on a NEWUNIT); the READ,
+! unit opal92_table_unit, the second on a NEWUNIT); the READ,
 ! FORMAT and CLOSE statements moved into the helper verbatim, and the
 ! loop's working scalars stay host-associated.
 subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)

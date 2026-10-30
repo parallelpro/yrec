@@ -44,11 +44,11 @@ contains
 !   star reads: age_gyr, card_from_starting_model, card_initial_x,
 !     card_initial_z, card_log_fit_point_mass_fraction,
 !     card_mixing_length_alpha, card_moves_fit_point, card_num_models,
-!     convective_flag, ctrl%calibrate_solar_model,
-!     ctrl%calibrate_star_flag, ctrl%compute_neutrino_fluxes,
-!     ctrl%diffuse_helium_active, ctrl%helium_flash_active,
-!     ctrl%set_initial_model_number, ctrl%use_diffusion_z,
-!     ctrl%use_z_ramp, first_mc_run, last_mc_run,
+!     convective_flag, control%calibrate_solar_model,
+!     control%calibrate_star_flag, physics%compute_neutrino_fluxes,
+!     physics%diffuse_helium_active, physics%helium_flash_active,
+!     control%set_initial_model_number, physics%use_diffusion_z,
+!     control%use_z_ramp, first_mc_run, last_mc_run,
 !     log10_solar_luminosity, log10_solar_radius, log_L_lsun, log_Teff,
 !     logP, logR, logRho, logT, luminosity_breakdown_lsun,
 !     luminosity_lsun, m, num_cards, nz, omega,
@@ -133,7 +133,7 @@ subroutine run_yrec(ierr)
 ! punch_pending_flag (legacy LPUNCH) becomes true once a model has been
 ! computed.
       s%punch_pending_flag = .false.
-! Read the controls into star%ctrl, and arm the run's working copies of
+! Read the controls into star%control and star%physics, and arm the run's working copies of
 ! the controls it changes (the run plan, the latches).
       call read_controls(s, ierr)
       if (ierr /= 0) return
@@ -147,7 +147,7 @@ subroutine run_yrec(ierr)
 ! A second opacity-table set at a different Z is needed under the Z
 ! ramp or with Z diffusion; the kap table loaders read this flag from
 ! kap_init (called in prepare_run) on.
-      s%use_two_z_tables = s%ctrl%use_z_ramp .or. s%ctrl%use_diffusion_z
+      s%use_two_z_tables = s%control%use_z_ramp .or. s%physics%use_diffusion_z
       call prepare_run(s, ierr)
       if (ierr /= 0) return
 ! Warn (on the terminal and in the run log) about control combinations
@@ -259,7 +259,7 @@ contains
 subroutine begin_calibration
 ! Automatic solar calibration (MHP 1/93). convergence_iterations counts
 ! the calibration cycles: it starts at 1, and is 0 without calibration.
-      if (s%ctrl%calibrate_solar_model) then
+      if (s%control%calibrate_solar_model) then
          call setup_solar_calibration(s, age_scale_factor)
          convergence_iterations = 1
          saved_use_structure_dt_limits = s%structure_dt_limits_active   ! restored after each cycle
@@ -269,7 +269,7 @@ subroutine begin_calibration
       endif
 ! Automatic calibration (DBG 12/94) of a star to a target L and a
 ! target Teff or radius.
-      if (s%ctrl%calibrate_star_flag) then
+      if (s%control%calibrate_star_flag) then
          call setup_star_calibration(s)
       endif
 end subroutine begin_calibration
@@ -288,7 +288,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! Solar calibration: after each completed triple, compare the model
 ! with the Sun. log_r_rsun = log(R/Rsun), with R from
 ! L = 4 pi R^2 sigma Teff^4.
-         if (s%ctrl%calibrate_solar_model) then
+         if (s%control%calibrate_solar_model) then
             if (mod(s%current_card,solar_calib_cards_per_cycle).eq.0) then
                log_r_rsun = log10_radius_from_l_teff(s%log_L_lsun,s%log_Teff, &
                     s%log10_solar_luminosity)-s%log10_solar_radius
@@ -319,7 +319,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! Star calibration: the final run to the interpolated age, armed by
 ! check_star_calibration, has finished on an even card, so no more runs
 ! are needed.
-         if (s%ctrl%calibrate_star_flag .and. s%star_found_flag.and.(mod(s%current_card,star_calib_cards_per_cycle).eq.0)) then
+         if (s%control%calibrate_star_flag .and. s%star_found_flag.and.(mod(s%current_card,star_calib_cards_per_cycle).eq.0)) then
             s%termination_reason = 'star calibration converged'
             runs_complete = .true.
             return
@@ -353,7 +353,7 @@ subroutine begin_kind_card
        s%model_diverged_flag = .false.
 ! Arm helium settling for the card (the settling routines switch it off
 ! when the centre runs out of hydrogen).
-       s%settling_active = s%ctrl%diffuse_helium_active
+       s%settling_active = s%physics%diffuse_helium_active
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
          s%total_angular_momentum = 0.0D0
@@ -375,8 +375,8 @@ subroutine begin_kind_card
 ! the stored number still gates the evolved-model consistency warnings
 ! there.
        if (s%card_from_starting_model(s%current_card) .and. &
-           s%ctrl%set_initial_model_number > 0) then
-          s%model_number = s%ctrl%set_initial_model_number - 1
+           s%control%set_initial_model_number > 0) then
+          s%model_number = s%control%set_initial_model_number - 1
        end if
 
       call check_rotation_initialised(s, ierr)
@@ -388,7 +388,7 @@ subroutine begin_kind_card
 ! Optional diagnostic: the per-shell neutrino-flux table of each card's
 ! starting model (compute_neutrino_fluxes, legacy LNUTAB;
 ! core/diagnostics/neutrino_flux_output.f90).
-      if (s%ctrl%compute_neutrino_fluxes) then
+      if (s%physics%compute_neutrino_fluxes) then
          call write_neutrino_flux_table(s)
       endif
 ! The stellar mass in solar units, for the pulsation output.
@@ -400,7 +400,7 @@ subroutine begin_kind_card
 ! Write the headers of the output files.
       call output_run_header(s, s%star_mass)
 
-       if (s%ctrl%helium_flash_active) then
+       if (s%physics%helium_flash_active) then
 ! Through the helium flash a timestep cut reloads the model stored on
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.

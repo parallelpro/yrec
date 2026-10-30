@@ -44,7 +44,7 @@ module species_table
            thoul_electron = species_props('e-', m_electron_amu, -1.0d0)
 
 ! Light elements diffused one at a time by microdiff when
-! ctrl%diffuse_lithium is set, with their composition rows.
+! physics%diffuse_lithium is set, with their composition rows.
       integer, parameter, public :: num_light_diffused = 3
       type(species_props), parameter, public :: &
            light_diffused(num_light_diffused) = [ &

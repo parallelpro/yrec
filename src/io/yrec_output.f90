@@ -82,11 +82,11 @@ subroutine output_open(s, output, ierr)
       if (ierr /= 0) return
       call profile_output_init(s, output%profiles, ierr)
       if (ierr /= 0) return
-      output%pulse_format = pulse_format_code(s%ctrl%pulse_format)
-      if (s%ctrl%write_pulse_flag) then
+      output%pulse_format = pulse_format_code(s%physics%pulse_format)
+      if (s%physics%write_pulse_flag) then
          select case (output%pulse_format)
          case (unknown_pulse_format)
-            call report_error("pulse_format = '" // trim(s%ctrl%pulse_format) // &
+            call report_error("pulse_format = '" // trim(s%physics%pulse_format) // &
                  "' is not GYRE, FGONG or GSM")
             ierr = 1
             return
@@ -148,7 +148,7 @@ subroutine output_write_model(s, output, ierr)
 
 ! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, He-core mass (g)
-      if (s%ctrl%isochrone_output_active) then
+      if (s%control%isochrone_output_active) then
         age_yr = s%age_gyr*1.0D9
         luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
         radius_cm = exp10(s%log_R_surface_rsun)*s%solar_radius_cgs
@@ -174,10 +174,10 @@ subroutine output_write_model(s, output, ierr)
       if (profile_write_due(s)) then
          output%profile_counter = output%profile_counter + 1
          iprof = output%profile_counter
-         if (s%ctrl%write_profile_flag) call write_profile(s, output%profiles, &
+         if (s%physics%write_profile_flag) call write_profile(s, output%profiles, &
               output%out_dir, iprof, ierr)
          if (ierr /= 0) return
-         if (s%ctrl%write_pulse_flag) call write_pulse(s, output, iprof, ierr)
+         if (s%physics%write_pulse_flag) call write_pulse(s, output, iprof, ierr)
          if (ierr /= 0) return
       end if
       call write_history_row(s, output%history, iprof, ierr)
@@ -187,8 +187,8 @@ subroutine output_write_model(s, output, ierr)
       call write_mod_model(s, last_model_unit, replace=.true.)
 
 ! the interval GYRE file (independent of write_pulse_flag)
-      if (s%ctrl%pulse_gyre_interval > 0 .and. &
-          mod(s%model_number,s%ctrl%pulse_gyre_interval) == 0) &
+      if (s%control%pulse_gyre_interval > 0 .and. &
+          mod(s%model_number,s%control%pulse_gyre_interval) == 0) &
            call write_interior_gyre(s, output, ierr)
 end subroutine output_write_model
 
@@ -209,7 +209,7 @@ subroutine write_interior_gyre(s, output, ierr)
       character(len=320) :: path
 
       write(model_suffix,'(I5.5)') s%model_number
-      path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // model_suffix // '.data.GYRE'
+      path = trim(output%out_dir) // trim(s%physics%profile_data_prefix) // model_suffix // '.data.GYRE'
       call write_gyre_pulse(s%nz, s%stitched%pulse(:,1:s%nz), s%stitched%pulse(ipul_m,s%nz), &
            s%stitched%pulse(ipul_r,s%nz), s%stitched%pulse(ipul_L,s%nz), path, ierr)
 end subroutine write_interior_gyre
@@ -231,10 +231,10 @@ logical function profile_write_due(s)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       profile_write_due = .false.
-      if (s%ctrl%profile_interval <= 0) return
-      if (.not. (s%ctrl%write_profile_flag .or. &
-           s%ctrl%write_pulse_flag)) return
-      profile_write_due = mod(s%model_number, s%ctrl%profile_interval) == 0
+      if (s%physics%profile_interval <= 0) return
+      if (.not. (s%physics%write_profile_flag .or. &
+           s%physics%write_pulse_flag)) return
+      profile_write_due = mod(s%model_number, s%physics%profile_interval) == 0
 end function profile_write_due
 
 ! ---------------------------------------------------------------
@@ -258,7 +258,7 @@ subroutine write_pulse(s, output, iprof, ierr)
       lstar_cgs = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
 
       write(numstr, '(i0)') iprof
-      path = trim(output%out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+      path = trim(output%out_dir) // trim(s%physics%profile_data_prefix) // trim(numstr) // '.data'
       n = s%stitched%n_ext
 ! (output_open has rejected any other format)
       select case (output%pulse_format)
@@ -308,7 +308,7 @@ subroutine output_run_header(s, total_mass_msun)
 
 ! the isochrone file's card header: the mass (g), X, Z, the mixing
 ! length and the solar bolometric magnitude
-      if (s%ctrl%isochrone_output_active) then
+      if (s%control%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
          write(isochrone_unit, '(7X, 1P5E16.8)') total_mass_grams, &
               s%current_card_envelope_x, s%current_card_envelope_z, s%mixing_length_alpha, &

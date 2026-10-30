@@ -29,8 +29,9 @@ DOMAINS = ["eos", "kap", "atm", "net", "convection",
            "rotation", "element_diffusion", "numerics"]
 
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
-# star%ctrl is the authoritative post-read home, and every consumer reads
-# it (or the run's working copy of a control the run changes). Only the read pipeline itself may import the
+# star%control and star%physics are the authoritative post-read home, and
+# every consumer reads them (or the run's working copy of a control the
+# run changes). Only the read pipeline itself may import the
 # buffer's bare names -- read_controls (the reader), controls_sync
 # (the generated buffer<->star copies), map_user_inputs (runs inside
 # the read, before the store), and net's test harness (which seeds
@@ -412,7 +413,7 @@ def check_star_free(src_root):
 
 # Domains that use the star object for their state but read their
 # configuration from a settings record (2026-10): their code may not
-# read star%ctrl, except the listed members, which are state shared with
+# read star%control or star%physics, except the listed members, which are state shared with
 # core rather than settings (none left: the settling latch is
 # star%settling_active since 2026-10-29).
 CONTROLS_FREE_DIRS = {"rotation": set()}
@@ -420,7 +421,7 @@ CONTROLS_FREE_DIRS = {"rotation": set()}
 def check_controls_free(src_root):
     problems = []
     # the global star, or the star as an argument s
-    read = re.compile(r"(?i)\b(?:star|s)%(ctrl%\w+)")
+    read = re.compile(r"(?i)\b(?:star|s)%((?:control|physics)%\w+)")
     for d, allowed in CONTROLS_FREE_DIRS.items():
         for f in sorted((src_root / d).rglob("*.f90")):
             rel = f.relative_to(src_root).as_posix()
@@ -436,11 +437,12 @@ def check_controls_free(src_root):
 
 # The controls' homes and uses (2026-10-29, run copies 2026-10-30):
 # defaults/controls_registry.tsv says, for each controls_buffer member,
-# whether it lives on star%ctrl or only in the read's buffer, whether the
-# run keeps a working copy of it (run_copy, a star member), and where it is
-# used. Code outside the controls read never assigns star%ctrl: a control
-# the run changes has a run copy, which the run assigns instead. star%ctrl
-# holds the controls that code outside the read reads, directly or through
+# whether it lives in the star's record of its group (star%control,
+# star%physics) or only in the read's buffer, whether the run keeps a
+# working copy of it (run_copy, a star member), and where it is used. Code
+# outside the controls read never assigns a control: a control the run
+# changes has a run copy, which the run assigns instead. The records hold
+# the controls that code outside the read reads, directly or through
 # their run copies; `used` is run when it does, read when only the read
 # does (an input-only control: home buffer), none when nothing does (home
 # buffer). A run copy is assigned outside the read (otherwise the code
@@ -463,15 +465,15 @@ def check_control_homes(src_root):
                and p.relative_to(src_root).as_posix() not in CONTROLS_READ_FILES]
     code = "\n".join(strip_comments(p.read_text(errors="replace")) for p in outside).lower()
     written = set(m.group(1) for m in re.finditer(
-        r"\b(?:s|star)%ctrl%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
+        r"\b(?:s|star)%(?:control|physics)%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
     star_written = set(m.group(1) for m in re.finditer(
         r"\b(?:s|star)%(\w+)\s*(?:\([^=\n]*\))?\s*=(?!=)", code))
     procs = contracts.scan(outside)
     for name in procs:
         _, writes = contracts.footprint(procs, name)
-        written |= {w.split("%", 1)[1] for w in writes if w.startswith("ctrl%")}
+        written |= {w.split("%", 1)[1] for w in writes if w.startswith(("control%", "physics%"))}
         star_written |= {w for w in writes if "%" not in w}
-    referenced = set(re.findall(r"\b(?:s|star)%ctrl%(\w+)", code))
+    referenced = set(re.findall(r"\b(?:s|star)%(?:control|physics)%(\w+)", code))
     read_files = [src_root / f for f in sorted(CONTROLS_READ_FILES)
                   if f not in ("io/controls_buffer.f90", "io/controls_sync.f90")
                   and (src_root / f).exists()]
@@ -495,11 +497,11 @@ def check_control_homes(src_root):
             problems.append(f"{m}: registry home {r['home']}, but code outside the read "
                             + ("never reads it (buffer)" if home == "buffer" else
                                f"reads it (the record of its group, {home})"))
-        # the read's own copies (m = legacy, m = s%ctrl%m) are not uses
+        # the read's own copies (m = legacy, m = s%<group>%m) are not uses
         rest = re.sub(r"(?m)^\s*" + m + r"\s*(\([^=\n]*\))?\s*=.*$", "", read_code)
         rest = re.sub(r"(?m)^\s*" + re.escape(r["legacy"].lower()) + r"\s*=\s*" + m + r"\s*$", "", rest)
         used = ("run" if m in referenced or copy else
-                "read" if re.search(r"(?<![%\w])" + m + r"\b|%ctrl%" + m + r"\b", rest)
+                "read" if re.search(r"(?<![%\w])" + m + r"\b|%(?:control|physics)%" + m + r"\b", rest)
                 else "none")
         if used != r["used"]:
             problems.append(f"{m}: registry used {r['used']}, but the code says {used}")
@@ -790,7 +792,7 @@ def main():
                 break
     if buffer_violations:
         print("controls_buffer buffer imported outside the read pipeline "
-              "(read star%ctrl instead):")
+              "(read star%control / star%physics instead):")
         for rel in sorted(buffer_violations):
             print(f"  {rel}")
         return 1

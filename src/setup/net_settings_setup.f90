@@ -18,11 +18,11 @@ contains
 ! the star's cross-section scales (io/user_inputs.f90 builds those
 ! from the s0_* inputs; the Monte-Carlo runs rescale four of them).
 !   star reads: be7p_s_double_prime_scale, be7p_s_prime_scale,
-!     cross_section_scale, ctrl%be9_palpha_rate_scale,
-!     ctrl%be9_pd_rate_scale, ctrl%be9_pg_rate_scale,
-!     ctrl%calc_neutrinos, ctrl%li6_rate_scale, ctrl%li7_rate_scale,
-!     ctrl%nuclear_logT_cutoffs, ctrl%use_itoh_neutrino_loss,
-!     ctrl%weak_screening_threshold, extra_cross_section_scale,
+!     cross_section_scale, physics%be9_palpha_rate_scale,
+!     physics%be9_pd_rate_scale, physics%be9_pg_rate_scale,
+!     physics%calc_neutrinos, physics%li6_rate_scale, physics%li7_rate_scale,
+!     physics%nuclear_logT_cutoffs, physics%use_itoh_neutrino_loss,
+!     physics%weak_screening_threshold, extra_cross_section_scale,
 !     n15_pa_scale, n15_pg_scale, s_double_prime_scale, s_prime_scale
 !   star writes: none
 pure function net_settings_from_star(s) result(settings)
@@ -30,8 +30,8 @@ pure function net_settings_from_star(s) result(settings)
       type(star_info), intent(in) :: s
       type(net_settings_t) :: settings
 
-      settings%logT_cutoffs = s%ctrl%nuclear_logT_cutoffs
-      settings%weak_screening_threshold = s%ctrl%weak_screening_threshold
+      settings%logT_cutoffs = s%physics%nuclear_logT_cutoffs
+      settings%weak_screening_threshold = s%physics%weak_screening_threshold
       settings%cross_section_scale = s%cross_section_scale
       settings%s_prime_scale = s%s_prime_scale
       settings%s_double_prime_scale = s%s_double_prime_scale
@@ -40,13 +40,13 @@ pure function net_settings_from_star(s) result(settings)
       settings%be7p_s_double_prime_scale = s%be7p_s_double_prime_scale
       settings%n15_pg_scale = s%n15_pg_scale
       settings%n15_pa_scale = s%n15_pa_scale
-      settings%li6_rate_scale = s%ctrl%li6_rate_scale
-      settings%li7_rate_scale = s%ctrl%li7_rate_scale
-      settings%be9_pg_rate_scale = s%ctrl%be9_pg_rate_scale
-      settings%be9_pd_rate_scale = s%ctrl%be9_pd_rate_scale
-      settings%be9_palpha_rate_scale = s%ctrl%be9_palpha_rate_scale
-      settings%calc_neutrinos = s%ctrl%calc_neutrinos
-      settings%use_itoh_neutrino_loss = s%ctrl%use_itoh_neutrino_loss
+      settings%li6_rate_scale = s%physics%li6_rate_scale
+      settings%li7_rate_scale = s%physics%li7_rate_scale
+      settings%be9_pg_rate_scale = s%physics%be9_pg_rate_scale
+      settings%be9_pd_rate_scale = s%physics%be9_pd_rate_scale
+      settings%be9_palpha_rate_scale = s%physics%be9_palpha_rate_scale
+      settings%calc_neutrinos = s%physics%calc_neutrinos
+      settings%use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
 end function net_settings_from_star
 
 end module net_settings_setup

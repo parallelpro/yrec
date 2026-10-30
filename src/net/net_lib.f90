@@ -26,7 +26,7 @@
 ! The individual reaction rates, the table, the screening and the
 ! neutrino routines stay inside; net/test/test_net reaches them through
 ! the internal modules.
-! net/ reads no model state and no star%ctrl: its configuration is the
+! net/ reads no model state and no control record: its configuration is the
 ! net_settings record, built at the start of every run by the star
 ! layer (net_settings_from_star, setup/net_settings_setup.f90) and
 ! installed with set_net_settings. How the pieces are

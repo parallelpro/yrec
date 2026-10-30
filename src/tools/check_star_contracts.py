@@ -10,7 +10,8 @@ writes -- through the global `star`, or through the argument `s`
     !   star writes: none
 
 Long lists continue on further comment lines indented past the label.
-Members of the controls record are written ctrl%<name>.
+Members of the two controls records are written control%<name> and
+physics%<name>.
 The lists cover the procedure's own body (with its internal procedures,
 which share its scope); calls to other procedures are visible in the
 code and carry their own contracts.
@@ -46,8 +47,8 @@ PROC_RE = re.compile(
     r"real(?:\*8)?|character(?:\*\d+)?)\s+)*(subroutine|function)\s+(\w+)"
     r"\s*(?:\(([^)]*)\))?", re.I)
 END_RE = re.compile(r"^\s*end\s*(subroutine|function)\b", re.I)
-STAR_RE = re.compile(r"(?<![\w%])star%(ctrl%\w+|\w+)", re.I)
-ASSIGN_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?star%(ctrl%\w+|\w+)"
+STAR_RE = re.compile(r"(?<![\w%])star%(control%\w+|physics%\w+|\w+)", re.I)
+ASSIGN_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?star%(control%\w+|physics%\w+|\w+)"
                        r"(?:\s*\([^=]*\))?(?:%\w+(?:\s*\([^=]*\))?)*\s*=(?!=)", re.I)
 CALL_RE = re.compile(r"\bcall\s+(\w+)\s*\((.*)\)\s*$", re.I)
 MODULE_RE = re.compile(r"^\s*module\s+(\w+)\s*$", re.I)
@@ -237,7 +238,7 @@ def scan(files):
             mr = READ_STMT_RE.match(code)
             if mr:
                 j = matching_paren(code, mr.end() - 1)
-                targets = io_targets(code[j + 1:], re.compile(r"^star%(ctrl%\w+|\w+)", re.I))
+                targets = io_targets(code[j + 1:], re.compile(r"^star%(control%\w+|physics%\w+|\w+)", re.I))
                 for f in targets:
                     p["writes"].add(note_spelling(f))
                 for f in STAR_RE.findall(code):
@@ -323,7 +324,7 @@ def footprint(procs, key):
                 dummy = None
                 if kw and not a.lower().startswith("star%"):
                     dummy, a = kw.group(1).lower(), kw.group(2)
-                ma = re.match(r"^star%(ctrl%\w+|\w+)", a, re.I)
+                ma = re.match(r"^star%(control%\w+|physics%\w+|\w+)", a, re.I)
                 if not ma or q is None:
                     continue
                 if dummy is None:

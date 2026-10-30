@@ -37,7 +37,7 @@ subroutine profile_output_init(s, profiles, ierr)
       type(profile_selection), intent(out) :: profiles
       integer, intent(out) :: ierr
 
-      call parse_columns(s%ctrl%profile_columns_file, profile_columns(), &
+      call parse_columns(s%control%profile_columns_file, profile_columns(), &
            prof_default_names, profiles%sel, profiles%nsel, 'profile', ierr)
 end subroutine profile_output_init
 
@@ -60,7 +60,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
 
       cols = profile_columns()
       write(numstr, '(i0)') iprof
-      path = trim(out_dir) // trim(s%ctrl%profile_data_prefix) // trim(numstr) // '.data'
+      path = trim(out_dir) // trim(s%physics%profile_data_prefix) // trim(numstr) // '.data'
       open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', path, ierr)
       if (ierr /= 0) return

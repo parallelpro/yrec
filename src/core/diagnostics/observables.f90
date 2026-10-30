@@ -123,7 +123,7 @@ subroutine renormalize_luminosity_breakdown(s)
 ! renormalization, which also guards against a zero sum; kept separate
 ! on purpose (audit/readability-sweep-2026-09-03/reports/henyey-wave2.md,
 ! item 6).
-      if(.not.s%ctrl%helium_flash_active) then
+      if(.not.s%physics%helium_flash_active) then
        total_luminosity_sum = luminosity_channel_sum(s%luminosity_breakdown_lsun, &
             num_energy_sources() > 0)
        temp_value = s%luminosity_lsun(s%nz)/total_luminosity_sum
@@ -301,11 +301,11 @@ subroutine compute_seismic_observables(s)
 
       log_g_solar = cgl + log10(s%solar_mass_cgs) &
            - 2.0d0*log10(s%solar_radius_cgs)
-      s%nu_max_uhz = s%ctrl%nu_max_sun &
+      s%nu_max_uhz = s%physics%nu_max_sun &
            * exp10((s%log_g_surface - log_g_solar)) &
-           * sqrt(s%ctrl%Teff_sun/exp10(s%log_Teff))
+           * sqrt(s%physics%Teff_sun/exp10(s%log_Teff))
 ! The mean-density scaling.
-      s%delta_nu_rho_uhz = s%ctrl%delta_nu_sun &
+      s%delta_nu_rho_uhz = s%physics%delta_nu_sun &
            * sqrt(s%star_mass) * exp10((-1.5d0*s%log_R_surface_rsun))
 
 ! The asymptotic p-mode large separation from the sound travel time,
@@ -367,7 +367,7 @@ subroutine compute_moment_of_inertia(s)
       integer :: i
 
       s%total_moment_of_inertia = 0.0d0
-      if (.not. s%ctrl%rotation_active) then
+      if (.not. s%physics%rotation_active) then
          do i = 1, s%nz
             s%total_moment_of_inertia = &
                  s%total_moment_of_inertia + &
@@ -390,7 +390,7 @@ subroutine compute_snu_rates(s)
 
       s%cl37_snu_rate = 0.0d0
       s%ga71_snu_rate = 0.0d0
-      if (s%ctrl%calc_neutrinos) then
+      if (s%physics%calc_neutrinos) then
          do i = 1, 8
             s%cl37_snu_rate = s%cl37_snu_rate + &
                  clsnuf_diag(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
@@ -416,7 +416,7 @@ subroutine compute_rotation_observables(s)
       integer :: i
 
       s%cz_moment_of_inertia = 0.0d0
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
          s%rotation_period_days = min(9999.0d0, &
               0.5d0*c4pi/s%omega(s%nz)/8.64d4)
          s%surf_velocity_kms = s%omega(s%nz)* &

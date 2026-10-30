@@ -58,24 +58,24 @@ program test_kap
 ! kap configuration: OPAL95 atomic tables only, per the reference
 ! solar namelists (LOPAL95=T, ZOPAL951=0.016232, TMOLMIN/TMOLMAX
 ! 4.0/4.1); molecular and conductive paths off
-      star%ctrl%use_opal95_tables = .true.
-      star%ctrl%use_opal92_tables = .false.
-      star%ctrl%use_laol89_tables = .false.
-      star%ctrl%use_alex06_tables = .false.
-      star%ctrl%use_alex95_tables = .false.
-      star%ctrl%use_kurucz90_tables = .false.
+      star%control%use_opal95_tables = .true.
+      star%control%use_opal92_tables = .false.
+      star%control%use_laol89_tables = .false.
+      star%control%use_alex06_tables = .false.
+      star%control%use_alex95_tables = .false.
+      star%control%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      star%ctrl%use_pure_z_table = .false.
-      star%ctrl%use_conductive_opacity = .false.
-      star%ctrl%opal95_single_table_z = 0.016232d0
-      star%ctrl%molecular_opacity_logt_min = 4.0d0
-      star%ctrl%molecular_opacity_logt_max = 4.1d0
+      star%control%use_pure_z_table = .false.
+      star%physics%use_conductive_opacity = .false.
+      star%control%opal95_single_table_z = 0.016232d0
+      star%physics%molecular_opacity_logt_min = 4.0d0
+      star%physics%molecular_opacity_logt_max = 4.1d0
 
 ! eos side gated off except the always-loaded Fermi table (setups
 ! calls eos_init unconditionally)
-      star%ctrl%use_mhd_eos = .false.
-      star%ctrl%use_scv_eos = .false.
-      star%ctrl%opal_eos_vintage = 0
+      star%physics%use_mhd_eos = .false.
+      star%physics%use_scv_eos = .false.
+      star%physics%opal_eos_vintage = 0
       star%atm_choice_in_use = 0
 
       star%envelope_hydrogen_fraction = 0.70d0
@@ -83,31 +83,31 @@ program test_kap
 
 ! constants + table loads (real setups; kap_init inside it reads the
 ! OPAL95 table and builds the surface-X slice)
-      star%ctrl%alex06_table_path = dummy_path
-      star%ctrl%allard_table_path = dummy_path
-      star%ctrl%atm_table_path = dummy_path
-      star%ctrl%fermi_table_path = fermi_path
-      star%ctrl%kurucz_table_path = dummy_path
-      star%ctrl%kurucz_table2_path = dummy_path
-      star%ctrl%laol_table_path = dummy_path
-      star%ctrl%laol_table2_path = dummy_path
-      star%ctrl%opal95_table_path = opal95_path
-      star%ctrl%opal92_table_path = dummy_path
-      star%ctrl%zams_a_table_path = dummy_path
-      star%ctrl%zams_b_table_path = dummy_path
-      star%ctrl%zams_c_table_path = dummy_path
-      star%ctrl%centre1_table_path = dummy_path
-      star%ctrl%centre2_table_path = dummy_path
-      star%ctrl%centre3_table_path = dummy_path
-      star%ctrl%centre4_table_path = dummy_path
-      star%ctrl%centre5_table_path = dummy_path
-      star%ctrl%opal92_table2_path = dummy_path
-      star%ctrl%pure_z_table_path = dummy_path
-      star%ctrl%conductive_table_path = dummy_path
-      star%ctrl%scv_h_table_path = dummy_path
-      star%ctrl%scv_he_table_path = dummy_path
-      star%ctrl%scv_z_table_path = dummy_path
-      star%ctrl%alex95_table_paths = dummy_paths7
+      star%control%alex06_table_path = dummy_path
+      star%control%allard_table_path = dummy_path
+      star%control%atm_table_path = dummy_path
+      star%control%fermi_table_path = fermi_path
+      star%control%kurucz_table_path = dummy_path
+      star%control%kurucz_table2_path = dummy_path
+      star%control%laol_table_path = dummy_path
+      star%control%laol_table2_path = dummy_path
+      star%control%opal95_table_path = opal95_path
+      star%control%opal92_table_path = dummy_path
+      star%control%zams_a_table_path = dummy_path
+      star%control%zams_b_table_path = dummy_path
+      star%control%zams_c_table_path = dummy_path
+      star%control%centre1_table_path = dummy_path
+      star%control%centre2_table_path = dummy_path
+      star%control%centre3_table_path = dummy_path
+      star%control%centre4_table_path = dummy_path
+      star%control%centre5_table_path = dummy_path
+      star%control%opal92_table2_path = dummy_path
+      star%control%pure_z_table_path = dummy_path
+      star%control%conductive_table_path = dummy_path
+      star%control%scv_h_table_path = dummy_path
+      star%control%scv_he_table_path = dummy_path
+      star%control%scv_z_table_path = dummy_path
+      star%control%alex95_table_paths = dummy_paths7
       call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_kap: FAIL (setups error)"

@@ -83,8 +83,8 @@ subroutine history_output_init(s, history, out_dir, ierr)
       integer, intent(out) :: ierr
 
       call close_history(history)
-      history%path = trim(out_dir) // trim(s%ctrl%star_history_name)
-      call parse_columns(s%ctrl%history_columns_file, history_columns(), &
+      history%path = trim(out_dir) // trim(s%physics%star_history_name)
+      call parse_columns(s%control%history_columns_file, history_columns(), &
            hist_default_names, history%sel, history%nsel, 'history', ierr)
       if (ierr /= 0) return
       call hoist_id_columns(history%sel, history%nsel)

@@ -62,7 +62,7 @@ def test_mechanism_controls():
         for field, control in (("velocity_scale", velocity[k - 1]),
                                ("mixing_scale", mixing[k - 1])):
             assert control in canonical, f"{control} is not a registry control"
-            copy = rf"settings%{field}\({slot}\)\s*=\s*s%ctrl%{control}\b"
+            copy = rf"settings%{field}\({slot}\)\s*=\s*s%physics%{control}\b"
             assert re.search(copy, setup), \
                 f"rotation_settings_from_star does not copy {control} into {field}({slot})"
 

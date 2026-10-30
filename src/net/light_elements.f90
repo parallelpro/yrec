@@ -38,7 +38,7 @@ module light_elements
 ! accretion is on (mass_change_active): the accreted gas is blended
 ! into the outermost burned region
          logical :: on = .false.
-! the accretion rate is positive (ctrl%mass_accretion_rate > 0). The
+! the accretion rate is positive (physics%mass_accretion_rate > 0). The
 ! burn-or-zero threshold test counts the accreted deuterium only when
 ! this is set too; the blend needs only on. (The two tests have always
 ! differed.)

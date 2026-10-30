@@ -60,9 +60,9 @@ program test_controls
             end do
             call read_controls(star, ierr)
             if (ierr == 0) call open_run_files(ierr)
-            if (star%newton_correction_factor /= star%ctrl%solver_underrelax_factor .or. &
-                 star%current_card_envelope_x /= star%ctrl%initial_envelope_x .or. &
-                 any(star%card_mixing_length_alpha /= star%ctrl%mixing_length_array)) &
+            if (star%newton_correction_factor /= star%physics%solver_underrelax_factor .or. &
+                 star%current_card_envelope_x /= star%control%initial_envelope_x .or. &
+                 any(star%card_mixing_length_alpha /= star%control%mixing_length_array)) &
                  write(u,'(a)') "a run copy kept the first run's value"
          end if
          write(u,'(a)') "# controls"

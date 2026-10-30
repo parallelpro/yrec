@@ -41,7 +41,7 @@ contains
 ! whether accretion is on, whether matter flows in (mass_accretion_rate
 ! > 0), the deuterium fraction of the accreted gas, and the mass accreted
 ! over the step (mass, g).
-!   star reads: ctrl%accreted_composition, ctrl%mass_accretion_rate,
+!   star reads: physics%accreted_composition, physics%mass_accretion_rate,
 !     mass_change_active
 !   star writes: none
 function surface_accretion_now(s, mass) result(accretion)
@@ -51,8 +51,8 @@ function surface_accretion_now(s, mass) result(accretion)
       type(surface_accretion) :: accretion
 
       accretion%on = s%mass_change_active
-      accretion%inflow = s%ctrl%mass_accretion_rate.gt.0.0d0
-      accretion%deuterium_fraction = s%ctrl%accreted_composition(i_h2)
+      accretion%inflow = s%physics%mass_accretion_rate.gt.0.0d0
+      accretion%deuterium_fraction = s%physics%accreted_composition(i_h2)
       accretion%mass = mass
 end function surface_accretion_now
 
@@ -191,8 +191,8 @@ end subroutine average_li_be_over_cz
 ! The model arrays are arguments because the two callers burn different
 ! models: burn_light_elements the converged end-of-step model,
 ! evolve_angular_momentum each rotation sub-step's model (sub_model).
-!   star reads: accreted_mass, ctrl%accreted_composition,
-!     ctrl%mass_accretion_rate, mass_change_active, rate_be9,
+!   star reads: accreted_mass, physics%accreted_composition,
+!     physics%mass_accretion_rate, mass_change_active, rate_be9,
 !     rate_be9_start, rate_li6, rate_li6_start, rate_li7, rate_li7_start
 !   star writes: none
 subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
@@ -276,12 +276,12 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 ! of the end-of-step depth: not strictly true, but not a bad
 ! approximation either.
       accreting = s%mass_change_active .and. &
-           s%ctrl%mass_accretion_rate.gt.0.0d0
+           s%physics%mass_accretion_rate.gt.0.0d0
       do isp = 1,3
          x_cz_end(isp) = x_cz_start(isp)*surviving_fraction(exp(log_rate_cz_start(isp)), &
               exp(log_rate_cz_end(isp)), timestep, linear_in_log)
          if (accreting) x_cz_end(isp) = (x_cz_end(isp)*cz_mass_end + &
-              s%ctrl%accreted_composition(species(isp))* &
+              s%physics%accreted_composition(species(isp))* &
               accreted_survival(exp(log_rate_cz_start(isp)), exp(log_rate_cz_end(isp)), &
               timestep, linear_in_log)*s%accreted_mass)/ &
               (cz_mass_end + s%accreted_mass)
@@ -437,7 +437,7 @@ end subroutine store_end_li_be_rates
 ! network.
 !
 !  log_temperature     run of log10 T; shells below
-!                      ctrl%nuclear_logT_cutoffs(1) are only mixed
+!                      physics%nuclear_logT_cutoffs(1) are only mixed
 !  rate_by_zone(r_*/rv_*,k) net_lib's rate vectors, per s per amu
 !  shell_mass          the mass weights for a convection zone
 !  composition         out: the new abundances (star%xa layout); the
@@ -452,9 +452,9 @@ end subroutine store_end_li_be_rates
 ! rotation sub-step's temperatures (sub_model). If the implicit burn
 ! fails, ierr is burn_implicitly's code (burn_not_converged,
 ! burn_singular_jacobian), reported here, and the run stops.
-!   star reads: ctrl%absolute_tolerance, ctrl%max_burn_iterations,
-!     ctrl%min_abundance, ctrl%nuclear_logT_cutoffs,
-!     ctrl%relative_tolerance, xa_start
+!   star reads: physics%absolute_tolerance, physics%max_burn_iterations,
+!     physics%min_abundance, physics%nuclear_logT_cutoffs,
+!     physics%relative_tolerance, xa_start
 !   star writes: none
 subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
      rate_by_zone, shell_mass, composition, timestep, ierr)
@@ -503,8 +503,8 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
          rate_vec = rate_by_zone(:,zone_begin)
       end if
 
-! Too cool to burn (below ctrl%nuclear_logT_cutoffs(1)): only homogenize.
-      if (log_temperature(zone_begin) < s%ctrl%nuclear_logT_cutoffs(1)) then
+! Too cool to burn (below physics%nuclear_logT_cutoffs(1)): only homogenize.
+      if (log_temperature(zone_begin) < s%physics%nuclear_logT_cutoffs(1)) then
          do k = zone_begin, zone_end
             composition(1:n_species_basic,k) = region_start(1:n_species_basic)
          end do
@@ -519,14 +519,14 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       x(n_solved+1:) = x_start(n_solved+1:)
 
       call burn_implicitly(x_start, rate_vec, timestep, &
-           s%ctrl%min_abundance, s%ctrl%absolute_tolerance, &
-           s%ctrl%relative_tolerance, s%ctrl%max_burn_iterations, x, ierr)
+           s%physics%min_abundance, s%physics%absolute_tolerance, &
+           s%physics%relative_tolerance, s%physics%max_burn_iterations, x, ierr)
       if (ierr /= 0) then
          select case (ierr)
          case (burn_not_converged)
             write (message,'(a,i0,a,i0,a)') 'burn_network_region: no convergence '// &
                  'for the new abundances of shell ', zone_begin, ' in ', &
-                 s%ctrl%max_burn_iterations, ' iterations (ctrl%max_burn_iterations); run stopped'
+                 s%physics%max_burn_iterations, ' iterations (max_burn_iterations); run stopped'
          case (burn_singular_jacobian)
             write (message,'(a,i0,a)') 'burn_network_region: the Newton system for '// &
                  'the new abundances of shell ', zone_begin, ' is singular; run stopped'
@@ -560,12 +560,12 @@ end subroutine burn_network_region
 !----------------------------------------------------------------------
 ! The regions a burn visits, in the order it visits them: each shell of
 ! each radiative region in turn, up to the first shell of that region at
-! or below the nuclear cutoff ctrl%nuclear_logT_cutoffs(1), then each
+! or below the nuclear cutoff physics%nuclear_logT_cutoffs(1), then each
 ! mixed region as a unit (burned whatever its temperature). Column r is
 ! region r's first and last zone. The temperatures and region tables
 ! are arguments: the composition step passes the model's, the rotation
 ! sub-steps their midpoint model's.
-!   star reads: ctrl%nuclear_logT_cutoffs
+!   star reads: physics%nuclear_logT_cutoffs
 !   star writes: none
 function burn_regions(s, log_temperature, radiative_zone_bounds, &
      num_radiative_zones, mixed_zone_bounds, num_mixed_zones) result(regions)
@@ -580,7 +580,7 @@ function burn_regions(s, log_temperature, radiative_zone_bounds, &
       n = 0
       do r = 1, num_radiative_zones
          do k = radiative_zone_bounds(r,1), radiative_zone_bounds(r,2)
-            if (log_temperature(k) <= s%ctrl%nuclear_logT_cutoffs(1)) exit
+            if (log_temperature(k) <= s%physics%nuclear_logT_cutoffs(1)) exit
             n = n + 1
             list(:,n) = [k, k]
          end do
@@ -599,7 +599,7 @@ end function burn_regions
 ! shell of a model hotter than the nuclear cutoff; zero in the cooler
 ! shells. The model is in the arguments: compute_burn_rates passes the
 ! star's, mid_timestep_model a rotation sub-step's (sub_model).
-!   star reads: ctrl%nuclear_logT_cutoffs
+!   star reads: physics%nuclear_logT_cutoffs
 !   star writes: none
 subroutine network_rates_of_model(s, log_density, log_temperature, &
      composition, num_zones, rate_by_zone)
@@ -614,7 +614,7 @@ subroutine network_rates_of_model(s, log_density, log_temperature, &
 
       do zone_idx = 1, num_zones
 ! Stop at the first shell at or below the nuclear cutoff.
-         if (log_temperature(zone_idx).le.s%ctrl%nuclear_logT_cutoffs(1)) exit
+         if (log_temperature(zone_idx).le.s%physics%nuclear_logT_cutoffs(1)) exit
          call compute_network_rates(log_density(zone_idx), log_temperature(zone_idx), &
               composition(:,zone_idx), rate_by_zone(:, zone_idx))
       end do
@@ -635,8 +635,8 @@ end subroutine network_rates_of_model
 ! The rotation sub-steps compute their own rate vectors on the
 ! sub-step's midpoint model (mid_timestep_model, for burn_and_settle).
 !   star reads: convective_turnover_timescale,
-!     ctrl%accreted_composition, ctrl%mass_accretion_rate,
-!     ctrl%nuclear_logT_cutoffs, envelope_cz_bottom_index_start, logRho,
+!     physics%accreted_composition, physics%mass_accretion_rate,
+!     physics%nuclear_logT_cutoffs, envelope_cz_bottom_index_start, logRho,
 !     logT, mass_change_active, nz, xa
 !   star writes: deuterium_burning_rate, deuterium_burning_rate_start
 subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
@@ -657,14 +657,14 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
 ! deuterium, or with inflowing accretion the larger of it and the
 ! accreted gas's, exceeds min_deuterium_step (1e-11); zero from the
 ! first shell at or below the nuclear cutoff out.
-      if (s%mass_change_active .and. s%ctrl%mass_accretion_rate.gt.0.0d0) then
+      if (s%mass_change_active .and. s%physics%mass_accretion_rate.gt.0.0d0) then
          deuterium_test = max(s%xa(i_h2,s%nz), &
-              s%ctrl%accreted_composition(i_h2))
+              s%physics%accreted_composition(i_h2))
       else
          deuterium_test = s%xa(i_h2,s%nz)
       end if
       do zone_idx = 1, s%nz
-         if (s%logT(zone_idx).le.s%ctrl%nuclear_logT_cutoffs(1)) exit
+         if (s%logT(zone_idx).le.s%physics%nuclear_logT_cutoffs(1)) exit
          if (deuterium_test > min_deuterium_step) then
             s%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  s%logRho(zone_idx), s%logT(zone_idx), s%xa(i_h1,zone_idx), &

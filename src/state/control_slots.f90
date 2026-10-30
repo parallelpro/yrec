@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The slot names of the controls that are vectors: atime(itime_*), the
 ! timestep-control factors, and chi_grid_scale(ichi_*), the zoning
-! tolerances (star%ctrl%timestep_factors, star%ctrl%chi_grid_scale);
+! tolerances (star%physics%timestep_factors, star%physics%chi_grid_scale);
 ! and max_runs, the length of the run-card arrays. Constants only, so
 ! that any module may use them: the controls buffer
 ! (io/controls_buffer.f90) re-exports them for the controls read, and

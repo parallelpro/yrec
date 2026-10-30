@@ -49,8 +49,8 @@ contains
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
 ! when matter was accreted.
-!   star reads: ctrl%mass_accretion_rate, ctrl%reimers_scaling_factor,
-!     ctrl%use_reimers_wind, dm, envelope_cz_bottom_index,
+!   star reads: physics%mass_accretion_rate, physics%reimers_scaling_factor,
+!     physics%use_reimers_wind, dm, envelope_cz_bottom_index,
 !     log10_solar_luminosity, log_L_lsun, log_Teff, log_total_mass,
 !     logP, logR, logRho, logT, nz, solar_mass_cgs, solar_radius_cgs,
 !     star_mass, xa
@@ -103,7 +103,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       new_atmosphere_fit_needed = .false.
       log10_density_local = 0.0d0
       beta_local = 0.0d0
-      mass_loss_rate_msun_yr = s%ctrl%mass_accretion_rate
+      mass_loss_rate_msun_yr = s%physics%mass_accretion_rate
       envelope_specific_entropy = 0.0d0
       if(.not.s%mass_change_active) return
       nz = s%nz
@@ -146,8 +146,8 @@ subroutine set_mass_change_rate()
 ! (2026 fix: the legacy code evaluated reimers_scaling_factor L/(g R) in
 ! CGS, a rate in g/s, but stored it as Msun/yr, and mdot converted it
 ! to CGS again, a rate about 1e25 too large.)
-      if(s%ctrl%use_reimers_wind)then
-         mass_loss_rate_msun_yr = s%ctrl%reimers_scaling_factor* &
+      if(s%physics%use_reimers_wind)then
+         mass_loss_rate_msun_yr = s%physics%reimers_scaling_factor* &
               exp10(s%log_L_lsun)* &
               (total_radius_cm/s%solar_radius_cgs)/s%star_mass
       endif
@@ -336,10 +336,10 @@ end subroutine change_mass
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
 ! boundary is the surface zone.
-!   star reads: ctrl%accreted_composition, ctrl%accretion_cz_fraction,
-!     ctrl%accretion_total_fraction, ctrl%cz_rotation_law_exponent,
-!     ctrl%disk_locking_active, ctrl%disk_locking_age_gyr,
-!     ctrl%rotation_active, disk_gate_age_gyr, envelope_cz_bottom_index,
+!   star reads: physics%accreted_composition, physics%accretion_cz_fraction,
+!     physics%accretion_total_fraction, physics%cz_rotation_law_exponent,
+!     physics%disk_locking_active, physics%disk_locking_age_gyr,
+!     physics%rotation_active, disk_gate_age_gyr, envelope_cz_bottom_index,
 !     logRho, nz, omega, solar_mass_cgs
 !   star writes: accreted_mass, delta_log_pressure,
 !     delta_log_temperature, dm, dt, j_rot, log_fit_point_mass_fraction,
@@ -394,7 +394,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 ! is read but never reached them), so it never ran. To revive it,
 ! uncomment this block, its locals and its star members
 ! (state/star_info_lib), and set them.
-!      if(star%use_rotation_scaled_solar_wind .and. star%ctrl%rotation_active) then
+!      if(star%use_rotation_scaled_solar_wind .and. star%physics%rotation_active) then
 !         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
 !         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
 !         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
@@ -412,7 +412,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
            seconds_per_year
 ! With mass loss from a rotating star, the lost matter carries off
 ! angular momentum (a thermal wind).
-      wind_carries_angular_momentum = s%ctrl%rotation_active .and. &
+      wind_carries_angular_momentum = s%physics%rotation_active .and. &
            delta_mass_cgs.lt.0.0d0
       call adjust_cz_for_accreted_entropy()
       call update_masses()
@@ -445,9 +445,9 @@ subroutine limit_mass_change_timestep()
 ! A zero rate sets no limit (it used to divide by zero, which traps in
 ! the devel builds).
       if(mass_loss_rate_cgs.gt.0.0d0)then
-         timestep_limit_total_mass = s%ctrl%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
+         timestep_limit_total_mass = s%physics%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
               mass_loss_rate_cgs
-         timestep_limit_cz_mass = s%ctrl%accretion_cz_fraction*cz_mass_grams/mass_loss_rate_cgs
+         timestep_limit_cz_mass = s%physics%accretion_cz_fraction*cz_mass_grams/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! Nor by more than half the mass outside the fitting point (the outer
 ! zone), (M - m(nz))/2, for loss and accretion alike.
@@ -462,10 +462,10 @@ subroutine limit_mass_change_timestep()
       endif
 ! With accretion only (Mdot > 0, MHP 8/10): a step that would pass the
 ! disk-locking age is clipped to end there, and the mass change stops.
-      if(s%ctrl%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
+      if(s%physics%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
          disk_age_test = s%disk_gate_age_gyr + 1.0d-9*s%dt/seconds_per_year
-         if(disk_age_test.gt.s%ctrl%disk_locking_age_gyr)then
-            s%dt = (s%ctrl%disk_locking_age_gyr-s%disk_gate_age_gyr)*1.0d9*seconds_per_year
+         if(disk_age_test.gt.s%physics%disk_locking_age_gyr)then
+            s%dt = (s%physics%disk_locking_age_gyr-s%disk_gate_age_gyr)*1.0d9*seconds_per_year
             disk_exhausted = .true.
          endif
       endif
@@ -560,7 +560,7 @@ end subroutine update_masses
 ! J_cz + dJ on its new masses (remove_wind_angular_momentum).
 subroutine spin_down_cz_by_wind()
       if(wind_carries_angular_momentum)then
-         wind_j_surface = wind_specific_angular_momentum(s%ctrl%cz_rotation_law_exponent, &
+         wind_j_surface = wind_specific_angular_momentum(s%physics%cz_rotation_law_exponent, &
               total_radius_cm, s%omega(nz), s%logR(nz), s%j_rot(nz))
          call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
               cz_shell_masses_before, s%dm(jenv:nz), s%j_rot(jenv:nz), &
@@ -588,7 +588,7 @@ end subroutine report_new_mass
 subroutine mix_in_accreted_composition()
       if(delta_mass_cgs.gt.0.0d0)then
          call mix_accreted_composition(cz_total_mass_below_fitting, &
-              delta_mass_cgs, s%ctrl%accreted_composition, &
+              delta_mass_cgs, s%physics%accreted_composition, &
               s%xa(:,jenv:nz))
          s%accreted_mass = delta_mass_cgs
       endif

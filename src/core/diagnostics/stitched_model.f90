@@ -131,7 +131,7 @@ subroutine build_stitched_model(s, ierr)
          s%stitched%region(s%stitched%n_ext) = region_interior
          s%stitched%index(s%stitched%n_ext) = j
       end do
-      if (.not. s%ctrl%calc_envelope_flag) then
+      if (.not. s%physics%calc_envelope_flag) then
          s%stitched%n_ie = s%stitched%n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
 ! byte-for-byte: the seismic columns are NOT recomputed on this
@@ -142,8 +142,8 @@ subroutine build_stitched_model(s, ierr)
 
 ! ---- re-integrate at the converged model ----
 ! with the fixed output step sizes, for this atm_get call only
-      atm_steps = fixed_envint_step(s%ctrl%atm_step_size)
-      env_steps = fixed_envint_step(s%ctrl%envelope_step_size)
+      atm_steps = fixed_envint_step(s%physics%atm_step_size)
+      env_steps = fixed_envint_step(s%physics%envelope_step_size)
 
       saha_iterations = 0
       lprt = .false.
@@ -152,10 +152,10 @@ subroutine build_stitched_model(s, ierr)
       rl = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
       gl = cgl + s%log_total_mass - rl - rl
       plim = s%logP(s%nz)
-      if (s%convective_flag(s%nz) .and. s%ctrl%spot_filling_factor /= 0.0d0 &
-          .and. s%ctrl%spot_temp_contrast /= 1.0d0) then
-         ateffl = s%log_Teff - 0.25d0*log10(s%ctrl%spot_filling_factor* &
-              pow(s%ctrl%spot_temp_contrast, 4.0d0) + 1.0d0 - s%ctrl%spot_filling_factor)
+      if (s%convective_flag(s%nz) .and. s%physics%spot_filling_factor /= 0.0d0 &
+          .and. s%physics%spot_temp_contrast /= 1.0d0) then
+         ateffl = s%log_Teff - 0.25d0*log10(s%physics%spot_filling_factor* &
+              pow(s%physics%spot_temp_contrast, 4.0d0) + 1.0d0 - s%physics%spot_filling_factor)
       else
          ateffl = s%log_Teff
       end if

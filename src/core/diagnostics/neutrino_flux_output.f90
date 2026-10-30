@@ -82,7 +82,7 @@ subroutine write_neutrino_flux_table(s)
 ! Stop at the first shell cooler than log T = 6, or at or below the
 ! nuclear cutoff, where nothing burns.
          if (shell_log_temperature.lt.6.0d0 .or. &
-              shell_log_temperature.le.s%ctrl%nuclear_logT_cutoffs(1)) exit
+              shell_log_temperature.le.s%physics%nuclear_logT_cutoffs(1)) exit
          call compute_zone_energy(s, shell_log_density, &
               shell_log_temperature, s%xa(:,i), i, burn)
 ! The Be7 mass fraction (zero where X <= 1e-6, where none is computed).

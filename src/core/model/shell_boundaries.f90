@@ -35,7 +35,7 @@ contains
 !   luminosity : run of luminosity as a function of mass (solar units).
 !   is_convective : flag set t if a shell is convective.
 !   num_points : number of points in the model.
-! star%ctrl:
+! star%physics:
 !   atime(1) : user parameter; if x < atime(1) then the program considers
 !        the star to have a hydrogen-burning shell rather than a hydrogen-
 !        burning core.
@@ -82,14 +82,14 @@ subroutine locate_shell_boundaries(s, composition, luminosity, is_convective, nu
       shell_end = 1
       has_h_shell = .false.
 !  if central x below threshold then calculate h shell values
-      if(composition(1,1).le.s%ctrl%timestep_factors(itime_core_min)) then
+      if(composition(1,1).le.s%physics%timestep_factors(itime_core_min)) then
        has_h_shell = .true.
        half_surface_x = 0.50d0*composition(1,num_points)
        luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
 !  find beginning(shell_begin), middle(shell_mid) and end(shell_end) of h shell
        do i = 1,num_points
 !          IF(HCOMP(1,I).LE.1.0D-10) THEN  ! Changed after discussion with Marc
-          if(composition(1,i).le.s%ctrl%timestep_factors(itime_core_min)) then ! to force consistency with above LLP 9/24/08
+          if(composition(1,i).le.s%physics%timestep_factors(itime_core_min)) then ! to force consistency with above LLP 9/24/08
              shell_begin = shell_begin+1
              shell_mid = shell_mid+1
           else if(composition(1,i).le.half_surface_x) then

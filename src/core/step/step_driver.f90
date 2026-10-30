@@ -50,13 +50,13 @@ contains
 ! clears them for a second run in the same process, alongside
 ! evolve_state.
 !   star reads: card_kind, card_max_age_yr, card_stops_active,
-!     ctrl%envelope_overshoot_active, ctrl%helium_flash_active,
-!     ctrl%improved_first_guess_flag, ctrl%instability_transport_active,
-!     ctrl%max_iter_level1, ctrl%max_iter_level2, ctrl%max_iter_level3,
-!     ctrl%max_iter_level4, ctrl%overshoot_alpha_envelope,
-!     ctrl%rewind_short_file, ctrl%rotation_active,
-!     ctrl%solver_underrelax_increment, ctrl%solver_underrelax_start,
-!     ctrl%use_extended_composition, ctrl%use_wind_torque, current_card,
+!     physics%envelope_overshoot_active, physics%helium_flash_active,
+!     physics%improved_first_guess_flag, physics%instability_transport_active,
+!     physics%max_iter_level1, physics%max_iter_level2, physics%max_iter_level3,
+!     physics%max_iter_level4, physics%overshoot_alpha_envelope,
+!     control%rewind_short_file, physics%rotation_active,
+!     physics%solver_underrelax_increment, physics%solver_underrelax_start,
+!     physics%use_extended_composition, physics%use_wind_torque, current_card,
 !     grada, gradr, log_L_lsun, log_Teff, log_total_mass,
 !     luminosity_breakdown_lsun, omega
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
@@ -268,12 +268,12 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 contains
 
 ! ---------------------------------------------------------------
-! Per-step run-log bookkeeping: with ctrl%rewind_short_file (legacy
+! Per-step run-log bookkeeping: with control%rewind_short_file (legacy
 ! LRWSH), rewind the run log (run_log_unit, log_output_file / run.log)
 ! so that it holds only the current model's solver diagnostics.
 subroutine update_output_flags_for_step
 
-          if (s%ctrl%rewind_short_file) then
+          if (s%control%rewind_short_file) then
              rewind(run_log_unit)
           endif
 end subroutine update_output_flags_for_step
@@ -321,7 +321,7 @@ subroutine advance_composition_and_age
                if (ierr /= 0) return
 ! Store the composition at the start of the timestep (xa_start).
                num_species = n_species_basic
-               if (s%ctrl%use_extended_composition) num_species=n_species_extended
+               if (s%physics%use_extended_composition) num_species=n_species_extended
                do i = 1,s%nz
                   do j = 1,num_species
                      s%xa_start(j,i) = s%xa(j,i)
@@ -356,7 +356,7 @@ end subroutine advance_composition_and_age
 subroutine rezone_or_snapshot
       use math_lib
 ! Rezone the new model, except with the helium-flash option.
-          if (.not.s%ctrl%helium_flash_active) then
+          if (.not.s%physics%helium_flash_active) then
              call rezone(s, s%stored_vertex_index, s%reset_triangle, s%h_shell_bot_index, &
                   s%has_h_shell, s%total_angular_momentum, &
                   s%total_rotational_ke, ierr)
@@ -379,7 +379,7 @@ subroutine rezone_or_snapshot
                s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
           endif
 ! The start-of-step rotational kinetic energy of each zone.
-            if (s%ctrl%rotation_active) then
+            if (s%physics%rotation_active) then
                do i = 1,s%nz
                   s%kinetic_energy_rot_start(i) = s%kinetic_energy_rot(i)
                end do
@@ -389,7 +389,7 @@ subroutine rezone_or_snapshot
 ! below it (envelope_overshoot_depth_start).
 ! cz_base_radius_last_call = 0 tells locate_surface_mixing_base that no base
 ! radius has been stored yet this step.
-            if (s%ctrl%use_extended_composition) then
+            if (s%physics%use_extended_composition) then
                s%cz_base_radius_last_call = 0.0D0
                envelope_cz_zone_prev = s%envelope_cz_bottom_index
                s%envelope_overshoot_depth_start = envelope_overshoot_depth()
@@ -401,17 +401,17 @@ end subroutine rezone_or_snapshot
 ! ---------------------------------------------------------------
 ! The structure solve, Henyey corrector levels 1-3 (solve_level): the
 ! first guess (the previous model or, with
-! ctrl%improved_first_guess_flag, the previous model extrapolated by its
+! physics%improved_first_guess_flag, the previous model extrapolated by its
 ! rates of change); level 1 on the previous model's envelope triangle;
 ! level 2 after re-checking the surface boundary condition; the rates of
 ! change for the next model's first guess; level 3. Returns early with
 ! star%model_diverged_flag set when a level diverges (evolve_step then
 ! cycles retry_step); ierr on error.
 subroutine solve_structure
-! Flags for henyey_iterate: with ctrl%new_triangle_init_flag, a new envelope triangle is
+! Flags for henyey_iterate: with physics%new_triangle_init_flag, a new envelope triangle is
 ! computed on the first iteration (the previous model's is ignored);
 ! converged and star%model_diverged_flag report the outcome.
-          if (s%ctrl%new_triangle_init_flag) s%recompute_envelope_triangle = .true.
+          if (s%physics%new_triangle_init_flag) s%recompute_envelope_triangle = .true.
 ! A model that is solved but not aged (evolve_model_flag false) keeps
 ! its s%dt; the stages that age read the flag: the first guess below,
 ! the rates of change after level 2, the composition rerun and the
@@ -420,9 +420,9 @@ subroutine solve_structure
 ! encoded as a negative s%dt, made positive again before
 ! compute_timestep.)
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
-! ctrl%solver_underrelax_start selects whether henyey_iterate raises it by fcorri per
+! physics%solver_underrelax_start selects whether henyey_iterate raises it by fcorri per
 ! iteration, up to 1 (fcorr0 > 0), or holds it fixed.
-            s%newton_correction_factor = dabs(s%ctrl%solver_underrelax_start) - s%ctrl%solver_underrelax_increment
+            s%newton_correction_factor = dabs(s%physics%solver_underrelax_start) - s%physics%solver_underrelax_increment
             iterations_done = 0
             s%model_diverged_flag = .false.
             converged = .false.
@@ -430,7 +430,7 @@ subroutine solve_structure
 ! the previous model: zero the changes of log T and log P over the step
 ! (from which the energy equation builds the entropy term T dS/dt) and
 ! the rates of change of the previous step.
-            if (.not.s%ctrl%improved_first_guess_flag .or. .not.evolve_model_flag &
+            if (.not.s%physics%improved_first_guess_flag .or. .not.evolve_model_flag &
                  .or. s%dt.le.0.0D0) then
                do i = 1,s%nz
                   s%log_temperature_delta(i) = 0.0D0
@@ -469,17 +469,17 @@ subroutine solve_structure
 ! model of a run the triangle is generated here. The four levels differ
 ! only in their arguments to solve_level: the level, its iteration limit
 ! and whether the surface boundary condition is re-checked.
-            call solve_level(1, s%ctrl%max_iter_level1, .false.)
+            call solve_level(1, s%physics%max_iter_level1, .false.)
             if (ierr /= 0) return
 ! Level 2 checks the envelope triangle (the surface boundary condition)
 ! before iterating.
             if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
-            call solve_level(2, s%ctrl%max_iter_level2, .true.)
+            call solve_level(2, s%physics%max_iter_level2, .true.)
             if (ierr /= 0) return
             if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 ! The rates of change of the structure over this step, from the level-2
 ! solution, for the improved first guess of the next model
-! (ctrl%improved_first_guess_flag, legacy LNEWS; 7/91):
+! (physics%improved_first_guess_flag, legacy LNEWS; 7/91):
 !   d log T/dt = log_temperature_delta/dt,  d log P/dt = log_pressure_delta/dt,
 !   d ln L/dt = 2 (L - L_start)/(L + L_start)/dt,
 !   d log R/dt = (log R - log R_start)/dt.
@@ -493,7 +493,7 @@ subroutine solve_structure
             endif
 ! Level 3: from here on, solve_level redoes the composition step on the
 ! updated structure before iterating.
-            call solve_level(3, s%ctrl%max_iter_level3, .false.)
+            call solve_level(3, s%physics%max_iter_level3, .false.)
             if (ierr /= 0) return
             if (s%model_diverged_flag) return   ! (host cycles retry_step on the flag)
 end subroutine solve_structure
@@ -508,7 +508,7 @@ end subroutine solve_structure
 ! start-of-step composition and angular momentum are restored on repeat
 ! passes, so that nothing is counted twice.
 subroutine converge_with_rotation
-            if (.not.s%ctrl%rotation_active) then
+            if (.not.s%physics%rotation_active) then
                s%num_rotation_structure_passes = 1
             endif
 ! When the structure and rotation are iterated (MHP 05/02), keep copies
@@ -539,7 +539,7 @@ subroutine converge_with_rotation
 ! iteration. The surface boundary condition is not re-checked here
 ! (check_surface_bc = .false.), although level 3 changed the composition
 ! and hence the structure; the legacy comment left that check for later.
-            call solve_level(4, s%ctrl%max_iter_level4, .false.)
+            call solve_level(4, s%physics%max_iter_level4, .false.)
             if (ierr /= 0) return
             if (.not.converged) then
 ! Not converged within the iterations of levels 1-4 (max_iter_level1 to
@@ -553,7 +553,7 @@ subroutine converge_with_rotation
 
 ! The age (Gyr) that the disk-locking test reads.
             s%disk_gate_age_gyr = s%age_gyr
-            if (s%ctrl%rotation_active) then
+            if (s%physics%rotation_active) then
 ! On repeat passes, restore the start-of-step angular momentum.
                if (itrot.gt.1) then
                   do i = 1,s%nz
@@ -561,12 +561,12 @@ subroutine converge_with_rotation
                   end do
                endif
 ! Evolve the angular momentum over the step: the new run of omega (with
-! the wind torque when ctrl%use_wind_torque is set). A model not aged
+! the wind torque when physics%use_wind_torque is set). A model not aged
 ! gets a zero step, as the Henyey pass does: it spans no time, so no
 ! angular momentum moves or leaves. (Until 2026-10 it got its step
 ! negated, and without instability transport the wind brake applied it,
 ! spinning the surface convection zone up; docs/bug_sweep.md O24.)
-               wind_loss_active = s%ctrl%use_wind_torque
+               wind_loss_active = s%physics%use_wind_torque
                call evolve_angular_momentum(s, merge(s%dt, 0.0d0, evolve_model_flag), &
                     s%max_domega_frac, wind_loss_active, &
                     envelope_cz_zone_prev, jerr)
@@ -592,10 +592,10 @@ end subroutine converge_with_rotation
 subroutine burn_light_elements
       use math_lib
 ! Only with the extended composition, for a model being aged.
-         if (s%ctrl%use_extended_composition .and. s%model_number.ge.0 .and. &
+         if (s%physics%use_extended_composition .and. s%model_number.ge.0 .and. &
               evolve_model_flag .and. s%dt.gt.0.0D0) then
 ! Only without rotation, or without rotational mixing.
-            if (.not.s%ctrl%rotation_active .or. .not.s%ctrl%instability_transport_active) then
+            if (.not.s%physics%rotation_active .or. .not.s%physics%instability_transport_active) then
 ! The convection zones at the end of the step.
                call find_convection_zones(s%xa,s%logRho,s%logP,s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,radiative_zone_bounds,s%mixed_zone_bounds, &
                             mixed_zone_bounds_no_overshoot,s%core_cz_top_index,s%envelope_cz_bottom_index,num_radiative_zones,num_mixed_zones,num_mixed_zones_no_overshoot, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
@@ -662,7 +662,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       mixed_zone_bounds_rerun = 0
       if (iteration_level.gt.2 .and. evolve_model_flag .and. s%dt.gt.0.0d0) then
          num_species = n_species_basic
-         if (s%ctrl%use_extended_composition) num_species = n_species_extended
+         if (s%physics%use_extended_composition) num_species = n_species_extended
          do i = 1,s%nz
             do j = 1,num_species
                s%xa(j,i) = s%xa_start(j,i)
@@ -685,14 +685,14 @@ end subroutine solve_level
 ! ---------------------------------------------------------------
 ! The envelope-overshoot depth below the base of the surface convection
 ! zone, in cm: d_ov = alpha_ov H_P, with alpha_ov =
-! ctrl%overshoot_alpha_envelope and H_P the pressure scale height at the
+! physics%overshoot_alpha_envelope and H_P the pressure scale height at the
 ! base zone (envelope_cz_bottom_index); zero when envelope overshoot is
 ! off. The same formula serves the start and the end of the step
 ! (rezone_or_snapshot, burn_light_elements).
 double precision function envelope_overshoot_depth()
       use math_lib
-      if (s%ctrl%envelope_overshoot_active) then
-         envelope_overshoot_depth = s%ctrl%overshoot_alpha_envelope* &
+      if (s%physics%envelope_overshoot_active) then
+         envelope_overshoot_depth = s%physics%overshoot_alpha_envelope* &
               pressure_scale_height(s%logP(s%envelope_cz_bottom_index), &
               s%logR(s%envelope_cz_bottom_index), &
               s%logRho(s%envelope_cz_bottom_index), &

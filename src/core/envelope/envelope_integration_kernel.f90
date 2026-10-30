@@ -46,8 +46,8 @@ module envelope_integration_kernel
 ! fraction (the atmosphere's step tolerance, and the envelope's stop at
 ! tolerance_fraction |log_fit_point_mass_fraction| of
 ! log_fit_point_mass_fraction), the number of stages and the
-! extrapolation order (ctrl%tolerance_fraction, ctrl%max_stage_index,
-! ctrl%extrap_order).
+! extrapolation order (physics%tolerance_fraction, physics%max_stage_index,
+! physics%extrap_order).
       type, public :: envint_config
             integer :: atm_choice
             double precision :: atm_step_begin, atm_step_min, atm_step_max

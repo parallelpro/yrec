@@ -125,43 +125,43 @@ program test_net
       open(run_log_unit, file="test_net.short", status="replace")
 
 ! everything gated off; only the Fermi table is a hard requirement
-      star%ctrl%use_mhd_eos = .false.
-      star%ctrl%use_scv_eos = .false.
-      star%ctrl%opal_eos_vintage = 0
-      star%ctrl%use_opal95_tables = .false.
-      star%ctrl%use_opal92_tables = .false.
-      star%ctrl%use_laol89_tables = .false.
-      star%ctrl%use_alex06_tables = .false.
-      star%ctrl%use_alex95_tables = .false.
-      star%ctrl%use_kurucz90_tables = .false.
+      star%physics%use_mhd_eos = .false.
+      star%physics%use_scv_eos = .false.
+      star%physics%opal_eos_vintage = 0
+      star%control%use_opal95_tables = .false.
+      star%control%use_opal92_tables = .false.
+      star%control%use_laol89_tables = .false.
+      star%control%use_alex06_tables = .false.
+      star%control%use_alex95_tables = .false.
+      star%control%use_kurucz90_tables = .false.
       star%use_two_z_tables = .false.
-      star%ctrl%use_pure_z_table = .false.
-      star%ctrl%use_conductive_opacity = .false.
+      star%control%use_pure_z_table = .false.
+      star%physics%use_conductive_opacity = .false.
       star%atm_choice_in_use = 0
-      star%ctrl%alex06_table_path = dummy_path
-      star%ctrl%allard_table_path = dummy_path
-      star%ctrl%atm_table_path = dummy_path
-      star%ctrl%fermi_table_path = fermi_path
-      star%ctrl%kurucz_table_path = dummy_path
-      star%ctrl%kurucz_table2_path = dummy_path
-      star%ctrl%laol_table_path = dummy_path
-      star%ctrl%laol_table2_path = dummy_path
-      star%ctrl%opal95_table_path = dummy_path
-      star%ctrl%opal92_table_path = dummy_path
-      star%ctrl%zams_a_table_path = dummy_path
-      star%ctrl%zams_b_table_path = dummy_path
-      star%ctrl%zams_c_table_path = dummy_path
-      star%ctrl%centre1_table_path = dummy_path
-      star%ctrl%centre2_table_path = dummy_path
-      star%ctrl%centre3_table_path = dummy_path
-      star%ctrl%centre4_table_path = dummy_path
-      star%ctrl%centre5_table_path = dummy_path
-      star%ctrl%opal92_table2_path = dummy_path
-      star%ctrl%pure_z_table_path = dummy_path
-      star%ctrl%scv_h_table_path = dummy_path
-      star%ctrl%scv_he_table_path = dummy_path
-      star%ctrl%scv_z_table_path = dummy_path
-      star%ctrl%alex95_table_paths = dummy_paths7
+      star%control%alex06_table_path = dummy_path
+      star%control%allard_table_path = dummy_path
+      star%control%atm_table_path = dummy_path
+      star%control%fermi_table_path = fermi_path
+      star%control%kurucz_table_path = dummy_path
+      star%control%kurucz_table2_path = dummy_path
+      star%control%laol_table_path = dummy_path
+      star%control%laol_table2_path = dummy_path
+      star%control%opal95_table_path = dummy_path
+      star%control%opal92_table_path = dummy_path
+      star%control%zams_a_table_path = dummy_path
+      star%control%zams_b_table_path = dummy_path
+      star%control%zams_c_table_path = dummy_path
+      star%control%centre1_table_path = dummy_path
+      star%control%centre2_table_path = dummy_path
+      star%control%centre3_table_path = dummy_path
+      star%control%centre4_table_path = dummy_path
+      star%control%centre5_table_path = dummy_path
+      star%control%opal92_table2_path = dummy_path
+      star%control%pure_z_table_path = dummy_path
+      star%control%scv_h_table_path = dummy_path
+      star%control%scv_he_table_path = dummy_path
+      star%control%scv_z_table_path = dummy_path
+      star%control%alex95_table_paths = dummy_paths7
       call set_up_constants_and_tables(star, setups_ierr)
       if (setups_ierr /= 0) then
          write(*,'(a)') "test_net: FAIL (setups error)"
@@ -890,8 +890,8 @@ contains
          built_ok = .true.
          installed_ok = .true.
          do flags = 1, 2
-            probe%ctrl%nuclear_logT_cutoffs = [6.6d0, 6.7d0, 6.9d0, 7.8d0, 7.6d0]
-            probe%ctrl%weak_screening_threshold = 0.04d0
+            probe%physics%nuclear_logT_cutoffs = [6.6d0, 6.7d0, 6.9d0, 7.8d0, 7.6d0]
+            probe%physics%weak_screening_threshold = 0.04d0
             probe%cross_section_scale = [(1.0d0 + 0.01d0*i, i = 1, num_reactions)]
             probe%s_prime_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
             probe%s_double_prime_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
@@ -905,13 +905,13 @@ contains
             probe%be7p_s_double_prime_scale = 1.42d0
             probe%n15_pg_scale = 1.43d0
             probe%n15_pa_scale = 1.44d0
-            probe%ctrl%li6_rate_scale = 1.45d0
-            probe%ctrl%li7_rate_scale = 1.46d0
-            probe%ctrl%be9_pg_rate_scale = 1.47d0
-            probe%ctrl%be9_pd_rate_scale = 1.48d0
-            probe%ctrl%be9_palpha_rate_scale = 1.49d0
-            probe%ctrl%calc_neutrinos = flags == 1
-            probe%ctrl%use_itoh_neutrino_loss = flags == 2
+            probe%physics%li6_rate_scale = 1.45d0
+            probe%physics%li7_rate_scale = 1.46d0
+            probe%physics%be9_pg_rate_scale = 1.47d0
+            probe%physics%be9_pd_rate_scale = 1.48d0
+            probe%physics%be9_palpha_rate_scale = 1.49d0
+            probe%physics%calc_neutrinos = flags == 1
+            probe%physics%use_itoh_neutrino_loss = flags == 2
             built = net_settings_from_star(probe)
             built_ok = built_ok .and. carries_probe(built, probe)
             call set_net_settings(built, ierr)
@@ -928,8 +928,8 @@ contains
       logical function carries_probe(r, probe)
          type(net_settings_t), intent(in) :: r
          type(star_info), intent(in) :: probe
-         carries_probe = all(r%logT_cutoffs == probe%ctrl%nuclear_logT_cutoffs) .and. &
-              r%weak_screening_threshold == probe%ctrl%weak_screening_threshold .and. &
+         carries_probe = all(r%logT_cutoffs == probe%physics%nuclear_logT_cutoffs) .and. &
+              r%weak_screening_threshold == probe%physics%weak_screening_threshold .and. &
               all(r%cross_section_scale == probe%cross_section_scale) .and. &
               all(r%s_prime_scale == probe%s_prime_scale) .and. &
               all(r%s_double_prime_scale == probe%s_double_prime_scale) .and. &
@@ -938,12 +938,12 @@ contains
               r%be7p_s_double_prime_scale == probe%be7p_s_double_prime_scale .and. &
               r%n15_pg_scale == probe%n15_pg_scale .and. &
               r%n15_pa_scale == probe%n15_pa_scale .and. &
-              r%li6_rate_scale == probe%ctrl%li6_rate_scale .and. &
-              r%li7_rate_scale == probe%ctrl%li7_rate_scale .and. &
-              r%be9_pg_rate_scale == probe%ctrl%be9_pg_rate_scale .and. &
-              r%be9_pd_rate_scale == probe%ctrl%be9_pd_rate_scale .and. &
-              r%be9_palpha_rate_scale == probe%ctrl%be9_palpha_rate_scale .and. &
-              (r%calc_neutrinos .eqv. probe%ctrl%calc_neutrinos) .and. &
-              (r%use_itoh_neutrino_loss .eqv. probe%ctrl%use_itoh_neutrino_loss)
+              r%li6_rate_scale == probe%physics%li6_rate_scale .and. &
+              r%li7_rate_scale == probe%physics%li7_rate_scale .and. &
+              r%be9_pg_rate_scale == probe%physics%be9_pg_rate_scale .and. &
+              r%be9_pd_rate_scale == probe%physics%be9_pd_rate_scale .and. &
+              r%be9_palpha_rate_scale == probe%physics%be9_palpha_rate_scale .and. &
+              (r%calc_neutrinos .eqv. probe%physics%calc_neutrinos) .and. &
+              (r%use_itoh_neutrino_loss .eqv. probe%physics%use_itoh_neutrino_loss)
       end function carries_probe
 end program test_net

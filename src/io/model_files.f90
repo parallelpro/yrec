@@ -171,8 +171,8 @@ subroutine write_mod_model(s, iwrite, replace)
       write(iwrite,mod_real_format)    'log_L               ', s%log_L_lsun
       write(iwrite,mod_real_format)    'log_Teff            ', s%log_Teff
       write(iwrite,mod_real_format)    'mixing_length_alpha ', s%mixing_length_alpha
-      write(iwrite,mod_logical_format) 'extended_composition', s%ctrl%use_extended_composition
-      write(iwrite,mod_logical_format) 'rotation_active     ', s%ctrl%rotation_active
+      write(iwrite,mod_logical_format) 'extended_composition', s%physics%use_extended_composition
+      write(iwrite,mod_logical_format) 'rotation_active     ', s%physics%rotation_active
       write(iwrite,'(a)') mod_columns
       do k = 1, s%nz
          write(iwrite,mod_row_format) k, &

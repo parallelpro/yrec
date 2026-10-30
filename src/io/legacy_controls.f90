@@ -382,7 +382,7 @@ contains
 ! test_reentry) must start from the same state. Each default is stated
 ! once: a variable the read copies to a canonical control takes that
 ! control's default, its controls_buffer initializer (alphac =
-! overshoot_alpha_core; the buffer holds the pristine star%ctrl at this
+! overshoot_alpha_core; the buffer holds the pristine controls at this
 ! point); only the variables without a canonical home have theirs here.
 ! A variable without a default starts at zero, .false. or NUL bytes, as
 ! when these were the reader's locals under -finit-local-zero.

@@ -330,11 +330,11 @@ subroutine check_model_against_controls
 ! The warning prints lexcp0, which is never set (see its declaration),
 ! for the model's flag.
        if (.not.mixing_length_matches .or. header%use_extended_composition.neqv. &
-            s%ctrl%use_extended_composition) then
+            s%physics%use_extended_composition) then
           write(run_log_unit,1040) s%mixing_length_alpha,header%mixing_length, &
-               s%ctrl%use_extended_composition,lexcp0
+               s%physics%use_extended_composition,lexcp0
           write(terminal_unit,1040) s%mixing_length_alpha,header%mixing_length, &
-               s%ctrl%use_extended_composition,lexcp0
+               s%physics%use_extended_composition,lexcp0
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
              ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
@@ -364,12 +364,12 @@ end subroutine reset_state_after_read
 ! unit rotation factors fp and ft (non-rotating runs).
 subroutine set_starting_rotation_curve
 
-      if (s%ctrl%rotation_active) then
-       if (s%ctrl%set_initial_omega) then
+      if (s%physics%rotation_active) then
+       if (s%physics%set_initial_omega) then
 ! Solid-body rotation, omega = initial_omega (legacy WNEW) in every
 ! shell: this turns a non-rotating model into a rotating one.
           do i = 1,s%nz
-             s%omega(i) = s%ctrl%initial_omega
+             s%omega(i) = s%physics%initial_omega
           end do
        endif
       else
@@ -386,7 +386,7 @@ end subroutine set_starting_rotation_curve
 ! is altered; mixture_ok is false, with a message, if not.
 subroutine check_mixture_homogeneity
       mixture_ok = .true.
-      if (s%ctrl%change_cno_mixture_active .or. s%ctrl%change_isotope_ratios_active) then
+      if (s%control%change_cno_mixture_active .or. s%control%change_isotope_ratios_active) then
          do i = 1,15
             reference_composition(i)=s%xa(i,1)
          end do
@@ -411,7 +411,7 @@ end subroutine check_mixture_homogeneity
 ! Scale the C, N and O isotopes in every shell so that C, N and O make
 ! up the requested fractions of Z. Z itself is not changed.
 subroutine rescale_cno_mixture
-      if (s%ctrl%change_cno_mixture_active) then
+      if (s%control%change_cno_mixture_active) then
 ! The current fractions, from the (homogeneous) central composition:
 !   f_C = (X(C12) + X(C13))/Z,  f_N = (X(N14) + X(N15))/Z,
 !   f_O = (X(O16) + X(O17) + X(O18))/Z.
@@ -424,11 +424,11 @@ subroutine rescale_cno_mixture
          total_oxygen_cno_fraction = (reference_composition(i_o16)+ &
               reference_composition(i_o17)+reference_composition(i_o18))/ &
               reference_composition(i_metals)
-         carbon_scale_ratio = s%ctrl%target_carbon_cno_fraction/ &
+         carbon_scale_ratio = s%control%target_carbon_cno_fraction/ &
               total_carbon_cno_fraction
-         nitrogen_scale_ratio = s%ctrl%target_nitrogen_cno_fraction/ &
+         nitrogen_scale_ratio = s%control%target_nitrogen_cno_fraction/ &
               total_nitrogen_cno_fraction
-         oxygen_scale_ratio = s%ctrl%target_oxygen_cno_fraction/ &
+         oxygen_scale_ratio = s%control%target_oxygen_cno_fraction/ &
               total_oxygen_cno_fraction
          do i = i_c12,i_c13
             do j = 1,s%nz
@@ -464,21 +464,21 @@ end subroutine rescale_cno_mixture
 ! and likewise for O16 and O18. N15 and O17 are not altered, and B10
 ! and B11 are not species of the model.
 subroutine set_isotope_ratios
-      if (s%ctrl%change_isotope_ratios_active) then
+      if (s%control%change_isotope_ratios_active) then
          sum_c12_c13 = s%xa(i_c12,1)+s%xa(i_c13,1)
          sum_o16_o18 = s%xa(i_o16,1)+s%xa(i_o18,1)
          do j = 1,s%nz
-            s%xa(i_he3,j)=s%ctrl%initial_he3_fraction
-            s%xa(i_c12,j)= s%ctrl%c12_to_c13_ratio*sum_c12_c13/ &
-                 (1.0d0+s%ctrl%c12_to_c13_ratio)
-            s%xa(i_c13,j)= sum_c12_c13/(1.0d0+s%ctrl%c12_to_c13_ratio)
-            s%xa(i_o16,j)= s%ctrl%o16_to_o18_ratio*sum_o16_o18/ &
-                 (1.0d0+s%ctrl%o16_to_o18_ratio)
-            s%xa(i_o18,j)= sum_o16_o18/(1.0d0+s%ctrl%o16_to_o18_ratio)
-            s%xa(i_h2,j)=s%ctrl%initial_h2_fraction
-            s%xa(i_li6,j)=s%ctrl%initial_li6_fraction
-            s%xa(i_li7,j)=s%ctrl%initial_li7_fraction
-            s%xa(i_be9,j)=s%ctrl%initial_be9_fraction
+            s%xa(i_he3,j)=s%control%initial_he3_fraction
+            s%xa(i_c12,j)= s%control%c12_to_c13_ratio*sum_c12_c13/ &
+                 (1.0d0+s%control%c12_to_c13_ratio)
+            s%xa(i_c13,j)= sum_c12_c13/(1.0d0+s%control%c12_to_c13_ratio)
+            s%xa(i_o16,j)= s%control%o16_to_o18_ratio*sum_o16_o18/ &
+                 (1.0d0+s%control%o16_to_o18_ratio)
+            s%xa(i_o18,j)= sum_o16_o18/(1.0d0+s%control%o16_to_o18_ratio)
+            s%xa(i_h2,j)=s%control%initial_h2_fraction
+            s%xa(i_li6,j)=s%control%initial_li6_fraction
+            s%xa(i_li7,j)=s%control%initial_li7_fraction
+            s%xa(i_be9,j)=s%control%initial_be9_fraction
          end do
          write(*,593)(reference_composition(k),k=i_he3,i_be9), &
               (s%xa(k,1),k=i_he3,i_be9)
@@ -505,15 +505,15 @@ end subroutine set_isotope_ratios
 subroutine extend_core_toward_center
       use math_lib
 
-      if (s%ctrl%extend_core_inward .and. s%card_from_starting_model(run_index)) then
+      if (s%physics%extend_core_inward .and. s%card_from_starting_model(run_index)) then
 ! The innermost mass is to drop by the factor core_mass_reduction_factor
 ! (legacy FCORE): that takes N = int(log10(factor)/dlogm) + 1 steps
 ! (num_core_points_added, legacy MCORE). core_mass_reduction is then
 ! overwritten with the log10 shift N dlogm actually made.
           s%num_core_points_added = int(log10(s%core_mass_reduction)/ &
-               s%ctrl%chi_grid_scale(ichi_dm_max))+1
+               s%physics%chi_grid_scale(ichi_dm_max))+1
           s%core_mass_reduction = dble(s%num_core_points_added)* &
-               s%ctrl%chi_grid_scale(ichi_dm_max)
+               s%physics%chi_grid_scale(ichi_dm_max)
           num_shells_extended = s%nz + s%num_core_points_added
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
@@ -530,7 +530,7 @@ subroutine extend_core_toward_center
              ierr = 1
              return
           endif
-          core_shell_spacing = s%ctrl%chi_grid_scale(ichi_dm_max)
+          core_shell_spacing = s%physics%chi_grid_scale(ichi_dm_max)
 ! Move every old point up by N slots (logRho is not moved).
           do i=s%nz,1, -1
              s%log_mass(i+s%num_core_points_added) = s%log_mass(i)
@@ -628,7 +628,7 @@ subroutine rescale_and_refit_envelope
        call clamp_requested_envelope_mass
        if (s%log_fit_point_mass_fraction.eq.s%requested_log_fit_point_mass_fraction) exit envelope_rescale
        num_species = n_species_basic
-       if (s%ctrl%use_extended_composition) num_species = n_species_extended
+       if (s%physics%use_extended_composition) num_species = n_species_extended
        if (s%requested_log_fit_point_mass_fraction.lt.s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit
@@ -717,7 +717,7 @@ subroutine interpolate_new_fitting_point
           end do
           s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
           s%surface_metal_fraction = s%xa(i_metals,s%nz)
-          if (s%ctrl%rotation_active) s%omega(s%nz) = s%omega(i) + &
+          if (s%physics%rotation_active) s%omega(s%nz) = s%omega(i) + &
                interior_interp_fraction*(s%omega(i+1)-s%omega(i))
 end subroutine interpolate_new_fitting_point
 
@@ -786,7 +786,7 @@ subroutine integrate_envelope_to_new_fit
             old_last_shell = s%nz
 ! atm_get integrates with one fixed step for start, minimum and
 ! maximum: chi_grid_scale(ichi_dp_env_max) (legacy HPTTOL(8)).
-            env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
+            env_steps = fixed_envint_step(s%physics%chi_grid_scale(ichi_dp_env_max))
           save_boundary_flag = .false.
           print_flag = .true.
           saha_iterations = 0
@@ -809,8 +809,8 @@ subroutine integrate_envelope_to_new_fit
 ! envelope is integrated at the Teff of the unspotted surface
 ! (ambient_log10_teff, legacy ATEFFL):
 !   Teff_amb^4 = Teff^4/(f x^4 + 1 - f).
-          if (s%envelope_cz_bottom_index.eq.s%nz.and.s%ctrl%spot_filling_factor.ne. &
-               0.0.and.s%ctrl%spot_temp_contrast.ne.1.0) then
+          if (s%envelope_cz_bottom_index.eq.s%nz.and.s%physics%spot_filling_factor.ne. &
+               0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
                spot_adjusted_log_teff = ambient_log10_teff(s, s%log_Teff)
           else
              spot_adjusted_log_teff = s%log_Teff
@@ -882,7 +882,7 @@ subroutine append_envelope_as_shells
             end if
 ! The new shells rotate with the old last shell's omega, with the
 ! specific angular momentum of a thin shell, j = (2/3) omega r^2.
-            if (s%ctrl%rotation_active) then
+            if (s%physics%rotation_active) then
                do j = old_last_shell+1,s%nz
                   s%omega(j) = s%omega(old_last_shell)
                   s%j_rot(j) = cc23*s%omega(old_last_shell)* &
@@ -914,7 +914,7 @@ end subroutine build_shell_masses
 subroutine initialize_rotation_state
 ! di_domega of omega_from_j, which this caller does not use
       double precision :: qiw(json)
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
 ! Shape factors fp_rot and ft_rot, mean gravity and radius, and
 ! eta_squared, from omega.
        call rotation_shape_factors(s%logRho,s%logR,s%log_mass,s%nz,s%omega, &
@@ -959,7 +959,7 @@ subroutine update_surface_mixture
 ! The relative mass fractions w_i of the ten metals are the controls'
 ! mixture_weights_seed.
       do i=1, n_mix_species
-         species_mix_weights(i)=s%ctrl%mixture_weights_seed(i)
+         species_mix_weights(i)=s%physics%mixture_weights_seed(i)
       end do
 
 ! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction,
@@ -1029,7 +1029,7 @@ subroutine snapshot_step_start
       end do
       s%log_Teff_start = s%log_Teff
       s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
          do i = 1,s%nz
           s%omega_start(i) = s%omega(i)
          end do

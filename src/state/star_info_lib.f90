@@ -190,7 +190,7 @@ module star_info_lib
 ! Valid: after read_controls and prepare_run; a Monte-Carlo run rescales
 ! the solar luminosity and the first rate scales.
 
-! Lsun, a copy of ctrl%solar_luminosity_cgs (legacy clsun) [erg/s];
+! Lsun, a copy of physics%solar_luminosity_cgs (legacy clsun) [erg/s];
 ! run_setup, monte_carlo. A Monte-Carlo run scales it.
             double precision :: solar_luminosity_cgs
 ! log10 Lsun [log10 erg/s]; run_setup, monte_carlo
@@ -198,9 +198,9 @@ module star_info_lib
 ! ln(10)/Lsun, not a logarithm: times the enclosed mass it scales the
 ! luminosity-equation terms [s/erg]; run_setup, monte_carlo
             double precision :: ln10_over_lsun
-! Msun, a copy of ctrl%solar_mass_cgs [g]; run_setup
+! Msun, a copy of physics%solar_mass_cgs [g]; run_setup
             double precision :: solar_mass_cgs
-! Rsun, a copy of ctrl%solar_radius_cgs (legacy crsun) [cm]; run_setup
+! Rsun, a copy of physics%solar_radius_cgs (legacy crsun) [cm]; run_setup
             double precision :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
             double precision :: log10_solar_radius
@@ -228,8 +228,8 @@ module star_info_lib
 ! scale of the N15(p,alpha)C12 branch [-]; user_inputs
             double precision :: n15_pa_scale
 ! log T at which an envelope integration stores its state for the surface
-! boundary (stored_envelope_state): the mean of ctrl%rezone_env_logt0 and
-! ctrl%rezone_env_logt1 [log10 K]; derived_controls
+! boundary (stored_envelope_state): the mean of physics%rezone_env_logt0 and
+! physics%rezone_env_logt1 [log10 K]; derived_controls
             double precision :: envelope_store_log_temperature
 ! atm_choice as read from the deck [-]; controls_reader. The run may
 ! change atm_choice_in_use (see use_ttau_relation); this keeps the original.
@@ -238,15 +238,15 @@ module star_info_lib
 ! diffusion) [logical]; run_driver
             logical :: use_two_z_tables = .false.
 ! the first Monte-Carlo run of the process [-]; controls_sync,
-! monte_carlo. From ctrl%mc_run_start; setup_monte_carlo_runs makes it 1
+! monte_carlo. From physics%mc_run_start; setup_monte_carlo_runs makes it 1
 ! without Monte Carlo.
             integer :: first_mc_run
 ! the last Monte-Carlo run of the process [-]; controls_sync, monte_carlo.
-! From ctrl%mc_run_end; setup_monte_carlo_runs clamps it to max_mc_runs,
+! From physics%mc_run_end; setup_monte_carlo_runs clamps it to max_mc_runs,
 ! or makes it 1 without Monte Carlo.
             integer :: last_mc_run
 ! the metal settling multiplier the run uses [-]; controls_sync,
-! monte_carlo. From ctrl%settling_z_factor; each Monte-Carlo run sets it
+! monte_carlo. From physics%settling_z_factor; each Monte-Carlo run sets it
 ! to its sample's diffusion_factor (apply_monte_carlo_parameters).
             double precision :: settling_z_factor_in_use
 
@@ -266,76 +266,76 @@ module star_info_lib
 ! calibration has written them, before the card starts.
 
 ! the number of run cards [-]; controls_sync, calibration. From
-! ctrl%num_runs; the calibrations expand it to their cycles.
+! control%num_runs; the calibrations expand it to their cycles.
             integer :: num_cards
 ! each card's kind: evolve, rescale, or rescale and evolve (run_cards'
 ! card_evolve, card_rescale, card_rescale_and_evolve) [-]; controls_sync,
-! calibration. From ctrl%rescale_kind.
+! calibration. From control%rescale_kind.
             integer :: card_kind(max_runs)
 ! the card starts from the starting model (first_model_file), not from
 ! the previous card's model [logical]; controls_sync, calibration. From
-! ctrl%first_call_flag.
+! control%first_call_flag.
             logical :: card_from_starting_model(max_runs)
 ! each card's number of models; a rescale card relaxes its model this
-! many times [-]; controls_sync, calibration. From ctrl%num_models.
+! many times [-]; controls_sync, calibration. From control%num_models.
             integer :: card_num_models(max_runs)
 ! each card's starting X [-]; controls_sync, calibration. From
-! ctrl%initial_x_array; the solar calibration writes its guesses here.
+! control%initial_x_array; the solar calibration writes its guesses here.
             double precision :: card_initial_x(max_runs)
 ! each card's starting Z [-]; controls_sync, calibration. From
-! ctrl%initial_z_array.
+! control%initial_z_array.
             double precision :: card_initial_z(max_runs)
 ! each card's mixing-length parameter [-]; controls_sync, calibration.
-! From ctrl%mixing_length_array; the solar calibration writes its
+! From control%mixing_length_array; the solar calibration writes its
 ! guesses here.
             double precision :: card_mixing_length_alpha(max_runs)
 ! the card moves the fitting point to card_log_fit_point_mass_fraction
-! [logical]; controls_sync, calibration. From ctrl%has_senv0_array.
+! [logical]; controls_sync, calibration. From control%has_senv0_array.
             logical :: card_moves_fit_point(max_runs)
 ! each card's fitting-point mass, log10(m_fit/M), made negative when the
-! card starts [log10]; controls_sync, calibration. From ctrl%senv0_array.
+! card starts [log10]; controls_sync, calibration. From control%senv0_array.
             double precision :: card_log_fit_point_mass_fraction(max_runs)
 ! each rescale card's targets: the total mass, X, Z and the core mass,
 ! 0 to keep one [Msun, -, -, Msun]; controls_sync, calibration. From
-! ctrl%rescale_params (interpret_kind_cards); the solar calibration
+! control%rescale_params (interpret_kind_cards); the solar calibration
 ! writes its X and Z guesses here.
             double precision :: card_rescale_targets(4,max_runs)
-! the Z ramp's core Z (with ctrl%use_z_ramp: model_rescaling's
+! the Z ramp's core Z (with control%use_z_ramp: model_rescaling's
 ! ramp_interior_z) [-]; controls_sync, calibration. From
-! ctrl%rescale_core_z.
+! control%rescale_core_z.
             double precision :: card_z_ramp_core_z(max_runs)
 ! the mass fraction m/M inside which the Z ramp sets the core Z [-];
-! controls_sync, calibration. From ctrl%rescale_z_mix1.
+! controls_sync, calibration. From control%rescale_z_mix1.
             double precision :: card_z_ramp_inner_mass_fraction(max_runs)
 ! the mass fraction m/M at which the Z ramp reaches the surface Z [-];
-! controls_sync, calibration. From ctrl%rescale_z_mix2.
+! controls_sync, calibration. From control%rescale_z_mix2.
             double precision :: card_z_ramp_outer_mass_fraction(max_runs)
 ! each card's stop age, 0 for none [yr]; controls_sync, calibration,
-! monte_carlo. From ctrl%target_end_age; the calibrations set their
+! monte_carlo. From control%target_end_age; the calibrations set their
 ! cycles' ages.
             double precision :: card_max_age_yr(max_runs)
 ! the card's stops are armed: its age or a central-abundance stop
-! [logical]; controls_sync, calibration. From ctrl%end_age_stop_active
+! [logical]; controls_sync, calibration. From control%end_age_stop_active
 ! (interpret_kind_cards).
             logical :: card_stops_active(max_runs)
 ! each card's central deuterium stop, 0 for none [-]; controls_sync. From
-! ctrl%central_deuterium_stop; init_stop_conditions disarms (negates) a
+! control%central_deuterium_stop; init_stop_conditions disarms (negates) a
 ! stop the card's starting model has already passed (through
 ! stop_conditions' set_stop_value, whose case-statement writes this
 ! table's analysis does not see).
             double precision :: card_central_deuterium_stop(max_runs)
 ! each card's central hydrogen stop, 0 for none [-]; controls_sync. From
-! ctrl%central_hydrogen_stop; disarmed as card_central_deuterium_stop.
+! control%central_hydrogen_stop; disarmed as card_central_deuterium_stop.
             double precision :: card_central_hydrogen_stop(max_runs)
 ! each card's central helium stop, 0 for none [-]; controls_sync. From
-! ctrl%central_helium_stop; disarmed as card_central_deuterium_stop.
+! control%central_helium_stop; disarmed as card_central_deuterium_stop.
             double precision :: card_central_helium_stop(max_runs)
 ! each card's fixed timestep [yr]; controls_sync, calibration. From
-! ctrl%timestep_override; the solar calibration scales its cycles' by the
+! control%timestep_override; the solar calibration scales its cycles' by the
 ! Monte-Carlo age factor.
             double precision :: card_fixed_timestep_yr(max_runs)
 ! the card takes the fixed timestep card_fixed_timestep_yr [logical];
-! controls_sync, calibration. From ctrl%timestep_override_active
+! controls_sync, calibration. From control%timestep_override_active
 ! (interpret_kind_cards).
             logical :: card_fixed_timestep_active(max_runs)
 
@@ -355,57 +355,57 @@ module star_info_lib
             integer :: current_card
 ! the current card's envelope X: card_initial_x at the card start, or a
 ! rescale's X target [-]; run_driver, model_rescaling, controls_sync. From
-! ctrl%initial_envelope_x until the first card; in the history and
+! control%initial_envelope_x until the first card; in the history and
 ! terminal headers.
             double precision :: current_card_envelope_x
 ! the current card's envelope Z, as current_card_envelope_x [-];
 ! run_driver, model_rescaling, controls_sync. From
-! ctrl%initial_envelope_z until the first card.
+! control%initial_envelope_z until the first card.
             double precision :: current_card_envelope_z
 ! the current card moves the fitting point (card_moves_fit_point at the
 ! card start) [logical]; run_driver, controls_sync. From
-! ctrl%change_envelope_mass_flag until the first card.
+! control%change_envelope_mass_flag until the first card.
             logical :: fit_point_move_requested
 ! the fitting-point mass the current card asks for, log10(m_fit/M):
 ! card_log_fit_point_mass_fraction at the card start, made negative and at
 ! most -1e-12 by the starting model [log10]; run_driver, starting_model,
-! controls_sync. From ctrl%requested_envelope_mass until the first card.
+! controls_sync. From control%requested_envelope_mass until the first card.
             double precision :: requested_log_fit_point_mass_fraction
 ! the atmosphere (surface boundary condition) the run uses now, an
 ! atm_choice code [-]; surface_boundary, envelope_integration,
-! run_driver, controls_sync. From ctrl%atm_choice. The surface boundary
+! run_driver, controls_sync. From physics%atm_choice. The surface boundary
 ! switches to the gray T(tau) relation (0) while Teff is outside the
 ! Kurucz or Allard table, the envelope integration when a table lookup
 ! fails, and each solar-calibration cycle restores the value its
 ! Monte-Carlo run started with.
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
-! step_driver, controls_sync. From ctrl%use_structure_dt_limits;
+! step_driver, controls_sync. From physics%use_structure_dt_limits;
 ! compute_timestep switches them off, and each solar-calibration cycle
 ! restores the value its Monte-Carlo run started with.
             logical :: structure_dt_limits_active
 ! the mass change (accretion or the Reimers wind) runs [logical];
-! mass_change, controls_sync. From ctrl%use_mass_accretion; switched off
+! mass_change, controls_sync. From physics%use_mass_accretion; switched off
 ! for the rest of the run when the disk is exhausted.
             logical :: mass_change_active
 ! the core extension's mass factor: the factor by which the innermost
 ! mass is reduced, then the log10 mass shift N dlogm the extension made
 ! [-]; starting_model, controls_sync. From
-! ctrl%core_mass_reduction_factor. A second extension in one run (a later
+! physics%core_mass_reduction_factor. A second extension in one run (a later
 ! card read from file) starts from the shift, as found.
             double precision :: core_mass_reduction
 ! the number of points the core extension added [-]; starting_model,
-! controls_sync. From ctrl%num_core_shells_added; the extension
+! controls_sync. From physics%num_core_shells_added; the extension
 ! recomputes it from core_mass_reduction.
             integer :: num_core_points_added
 ! the star calibration's target Teff [K]; calibration, controls_sync.
-! From ctrl%target_teff; setup_star_calibration computes it from the
-! target luminosity and radius unless ctrl%specify_teff_flag.
+! From control%target_teff; setup_star_calibration computes it from the
+! target luminosity and radius unless control%specify_teff_flag.
             double precision :: calibration_target_teff
 ! the star calibration's target radius [Rsun]; calibration,
-! controls_sync. From ctrl%target_radius_rsun; setup_star_calibration
+! controls_sync. From control%target_radius_rsun; setup_star_calibration
 ! computes it from the target luminosity and Teff with
-! ctrl%specify_teff_flag.
+! control%specify_teff_flag.
             double precision :: calibration_target_radius_rsun
 
 ! mixing-length parameter of the current run card [-]; run_driver. From
@@ -429,10 +429,10 @@ module star_info_lib
 ! suspension; "SETTLING RESUMED" clears it.
             logical :: settling_suspended_reported = .false.
 ! helium settles in this run card [logical]; run_driver, composition_step,
-! mid_timestep_model. Armed from the control ctrl%diffuse_helium_active
+! mid_timestep_model. Armed from the control physics%diffuse_helium_active
 ! (never changed after the read) at the start of every card, and so of
 ! every Monte-Carlo run, by begin_kind_card; the settling routines switch
-! it off once the central X falls below ctrl%hydrogen_diffusion_floor.
+! it off once the central X falls below physics%hydrogen_diffusion_floor.
             logical :: settling_active = .false.
 ! surface X of the first run card: the reference X of the EOS mixture and
 ! of 1/mu_ion in compute_shell_physics [-]; starting_model. Set once
@@ -494,7 +494,7 @@ module star_info_lib
             integer :: nz
 ! counter of converged models in the run; the step ages the model only
 ! when it is >= 0 [-]; step_driver, run_driver, model_files. In .mod;
-! reset per card from ctrl%set_initial_model_number.
+! reset per card from control%set_initial_model_number.
             integer :: model_number
 ! age of the model [Gyr]; step_driver, model_files. In .mod.
             double precision :: age_gyr
@@ -548,7 +548,7 @@ module star_info_lib
 ! mass fractions; row = species slot i_* of composition_layout, row
 ! i_metals the total Z [-]; burn_step, composition_step, rezoning,
 ! starting_model, model_files. In .mod; rows 12-15 only with
-! ctrl%use_extended_composition.
+! physics%use_extended_composition.
             double precision :: xa(n_species_extended,json)
 ! surface X for the envelope integrations and the surface opacity tables;
 ! follows xa(i_h1,nz) [-]; rezoning, starting_model, model_rescaling.
@@ -598,7 +598,7 @@ module star_info_lib
 ! The rotation curve and the shape of the rotating star. The specific
 ! angular momentum j_rot is conserved; omega, the moments of inertia and
 ! the shape factors follow from it and the structure.
-! Valid: between steps. Meaningful only with ctrl%rotation_active;
+! Valid: between steps. Meaningful only with physics%rotation_active;
 ! without rotation the shape factors are 1.
 
 ! angular velocity of each shell [rad/s]; henyey_iteration, rezoning,
@@ -660,7 +660,7 @@ module star_info_lib
             integer :: envelope_cz_bottom_index
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
-! evolve_rotation. From find_convection_zones; with ctrl%adiabatic_overshoot_active the
+! evolve_rotation. From find_convection_zones; with physics%adiabatic_overshoot_active the
 ! radiative points envelope_overshoot_bottom_index to
 ! envelope_overshoot_top_index take the adiabatic gradient.
             integer :: envelope_overshoot_bottom_index
@@ -674,7 +674,7 @@ module star_info_lib
 ! the model burns hydrogen in a shell rather than in the core [logical];
 ! step_driver, run_driver
             logical :: has_h_shell
-! first point of the H-burning shell, where X > ctrl%timestep_factors(1) [-];
+! first point of the H-burning shell, where X > physics%timestep_factors(1) [-];
 ! step_driver, run_driver. Valid when has_h_shell.
             integer :: h_shell_bot_index
 ! first point where X exceeds half its surface value [-]; step_driver,
@@ -689,7 +689,7 @@ module star_info_lib
 ! Valid: during and between steps.
 
 ! the passes of the structure-rotation iteration per step [-];
-! step_driver, controls_sync. From ctrl%num_rotation_structure_iters;
+! step_driver, controls_sync. From physics%num_rotation_structure_iters;
 ! converge_with_rotation makes it 1 without rotation.
             integer :: num_rotation_structure_passes
 
@@ -714,7 +714,7 @@ module star_info_lib
             logical :: punch_pending_flag
 ! build a new envelope-fit triangle at the next solve [logical];
 ! step_driver, run_driver, mass_change. Set by a model read, the mass
-! change, the envelope rebuild or ctrl%new_triangle_init_flag; cleared by
+! change, the envelope rebuild or physics%new_triangle_init_flag; cleared by
 ! compute_surface_boundary.
             logical :: recompute_envelope_triangle
 ! the rezone moved the outer point: redo the triangle at level 2
@@ -728,7 +728,7 @@ module star_info_lib
 ! interpolates the old model onto the new mesh into the *_start arrays
 ! and then copies them into the live arrays, so after the rezone they
 ! hold the start-of-step model on the new mesh; without a rezone
-! (ctrl%helium_flash_active) rezone_or_snapshot copies the structure
+! (physics%helium_flash_active) rezone_or_snapshot copies the structure
 ! into the *_start arrays itself. Valid: from the start-of-step copy to
 ! the end of the step.
 
@@ -809,7 +809,7 @@ module star_info_lib
             double precision :: eps_plus_neu_grav_start(json)
 ! Li6 proton-capture rate rho X lambda at the start of the step; zero
 ! outward of log T = 6 [1/s]; burn_step, evolve_rotation. With
-! ctrl%use_extended_composition.
+! physics%use_extended_composition.
             double precision :: rate_li6_start(json)
 ! Li7 proton-capture rate at the start of the step [1/s]; burn_step,
 ! evolve_rotation
@@ -885,7 +885,7 @@ module star_info_lib
 ! first solid-body sub-step starts its Newton iteration from its mean.
             double precision :: omega_substep(json)
 ! Li6 proton-capture rate rho X lambda at the end of the step, on the
-! converged model [1/s]; burn_step. With ctrl%use_extended_composition.
+! converged model [1/s]; burn_step. With physics%use_extended_composition.
             double precision :: rate_li6(json)
 ! Li7 proton-capture rate at the end of the step [1/s]; burn_step
             double precision :: rate_li7(json)
@@ -899,7 +899,7 @@ module star_info_lib
             double precision :: envelope_overshoot_depth_end
 ! radius of the base of the surface mixed region found by the last call
 ! within the step [cm]; convection_geometry, step_driver. With
-! ctrl%use_extended_composition; zeroed at each step start to mean none
+! physics%use_extended_composition; zeroed at each step start to mean none
 ! yet.
             double precision :: cz_base_radius_last_call
 ! mass accreted during the step [g]; mass_change. Set only when the star
@@ -968,9 +968,9 @@ module star_info_lib
             integer :: newton_iterations = 0
 ! the Newton iteration's correction factor (the corrections are applied
 ! times it) [-]; step_driver, henyey_iteration, controls_sync. From
-! ctrl%solver_underrelax_factor (no input; 0 until the first step);
-! solve_structure starts it at |ctrl%solver_underrelax_start| -
-! ctrl%solver_underrelax_increment each step, and henyey_iterate raises
+! physics%solver_underrelax_factor (no input; 0 until the first step);
+! solve_structure starts it at |physics%solver_underrelax_start| -
+! physics%solver_underrelax_increment each step, and henyey_iterate raises
 ! it by the increment per iteration, up to 1, when the start is positive.
             double precision :: newton_correction_factor
 
@@ -1035,7 +1035,7 @@ module star_info_lib
 ! solar-neutrino fluxes at the Earth by slot i_nu_* (slots 9-10: the
 ! He3+He3 and He3+He4 rates in the same units) [10^10/(cm^2 s)];
 ! structure_equations, observables, neutrino_flux_output. Only with
-! ctrl%calc_neutrinos; also overwritten by the card-start neutrino table.
+! physics%calc_neutrinos; also overwritten by the card-start neutrino table.
             double precision :: neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)
 ! d eps_total/d ln rho, absolute (not logarithmic) [erg/(g s)];
 ! structure_equations. eps_nuc's, without the thermal neutrino loss, as
@@ -1152,10 +1152,10 @@ module star_info_lib
 ! observables
             double precision :: envelope_cz_opacity
 ! chlorine (37Cl) detector capture rate [SNU]; observables. 0 without
-! ctrl%calc_neutrinos.
+! physics%calc_neutrinos.
             double precision :: cl37_snu_rate
 ! gallium (71Ga) detector capture rate [SNU]; observables. 0 without
-! ctrl%calc_neutrinos.
+! physics%calc_neutrinos.
             double precision :: ga71_snu_rate
 
 ! ==== Private to one module ===========================================

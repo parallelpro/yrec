@@ -11,7 +11,7 @@
 ! species); the heavy elements in slots 5..11 and 13..15 are diffusion
 ! and burning tracers carried inside Z, not independent contributions
 ! to it. The basic set is slots i_h1..i_o18; the extended set
-! (ctrl%use_extended_composition) adds i_h2..i_be9. Composition arrays
+! (physics%use_extended_composition) adds i_h2..i_be9. Composition arrays
 ! are always dimensioned for the extended set.
 module composition_layout
       implicit none
@@ -26,7 +26,7 @@ module composition_layout
 ! The most mesh points a model may have (the size of every per-zone
 ! array; star_info_lib re-exports it).
       integer, parameter, public :: json = 5000
-! The 12-species surface mixture (ctrl%mixture_weights_seed,
+! The 12-species surface mixture (physics%mixture_weights_seed,
 ! envelope_number_fractions, read_starting_model's weights and atomic
 ! weights, read_laol_tables's table read): element per slot. H and
 ! He are computed from the envelope X/Z, the ten metals are the mixture.

@@ -46,9 +46,9 @@ contains
 ! hydrogen_fraction, metal_fraction and the two rotation factors are
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
-!   star reads: atm_choice_initial, ctrl%spot_filling_factor,
-!     ctrl%spot_temp_contrast, ctrl%tri_delta_logl,
-!     ctrl%tri_delta_teffl, nz, xa
+!   star reads: atm_choice_initial, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, physics%tri_delta_logl,
+!     physics%tri_delta_teffl, nz, xa
 !   star writes: atm_choice_in_use, use_ttau_relation
 subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
@@ -197,7 +197,7 @@ subroutine locate_point_in_triangle()
       integer :: n_reflections
       if (start_new_triangle) then
        call start_triangle(log10_teff, log_luminosity, &
-            s%ctrl%tri_delta_teffl, s%ctrl%tri_delta_logl, &
+            s%physics%tri_delta_teffl, s%physics%tri_delta_logl, &
             tri_teffl, tri_logl, tri_orientation)
        start_new_triangle = .false.
       else
@@ -238,7 +238,7 @@ subroutine integrate_vertex_envelopes()
 ! Spotted runs (G. Somers): when the outermost shell is convective and
 ! spots are on, the atmosphere starts from the Teff of the unspotted
 ! (ambient) surface.
-          if (convective_flag(zone_index).and.s%ctrl%spot_filling_factor.ne.0.0.and.s%ctrl%spot_temp_contrast.ne.1.0) then
+          if (convective_flag(zone_index).and.s%physics%spot_filling_factor.ne.0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
                adjusted_teffl = ambient_log10_teff(s, vertex_log10_teff)
           else
              adjusted_teffl = vertex_log10_teff

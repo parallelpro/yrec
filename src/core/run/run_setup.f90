@@ -80,10 +80,10 @@ end subroutine set_run_plan_envelope_z
 ! (settings_install's install_run_settings: the opacities, the equation
 ! of state and the tabulated surface boundary conditions).
 !
-! The table paths are controls (star%ctrl), so the caller must run
+! The table paths are controls (star%physics), so the caller must run
 ! read_controls first. Errors return through ierr.
-!   star reads: ctrl%G_cgs, ctrl%solar_luminosity_cgs,
-!     ctrl%solar_mass_cgs, ctrl%solar_radius_cgs
+!   star reads: physics%G_cgs, physics%solar_luminosity_cgs,
+!     physics%solar_mass_cgs, physics%solar_radius_cgs
 !   star writes: ln10_over_lsun, log10_solar_luminosity,
 !     log10_solar_radius, solar_luminosity_cgs, solar_mass_cgs,
 !     solar_radius_cgs
@@ -100,16 +100,16 @@ subroutine set_up_constants_and_tables(s, ierr)
 ! physical_constants; only log10 G depends on a control.)
 ! The solar units, from the controls (a Monte-Carlo run rescales Lsun).
 ! Solar luminosity: log10 Lsun, and ln10/Lsun (not a log; s/erg).
-      s%solar_luminosity_cgs = s%ctrl%solar_luminosity_cgs
+      s%solar_luminosity_cgs = s%physics%solar_luminosity_cgs
       s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
       s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
 ! Solar mass (a namelist control; default 1.9891d33 g).
-      s%solar_mass_cgs = s%ctrl%solar_mass_cgs
+      s%solar_mass_cgs = s%physics%solar_mass_cgs
 ! Solar radius.
-      s%solar_radius_cgs = s%ctrl%solar_radius_cgs
+      s%solar_radius_cgs = s%physics%solar_radius_cgs
       s%log10_solar_radius = log10(s%solar_radius_cgs)
 ! log10 G: the control G_cgs when positive, else the CODATA 1986 value.
-      cgl = log10_newton_g(s%ctrl%G_cgs)
+      cgl = log10_newton_g(s%physics%G_cgs)
 ! --- The per-run settings records and their tables ------------------
       call install_run_settings(s, ierr)
 end subroutine set_up_constants_and_tables

@@ -126,7 +126,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
 ! With rotation: guess omega and j of the new shells, find omega, the
 ! shape and the moments of inertia of every zone from j (omega_from_j),
 ! and sum the angular momentum and rotational energy.
-      if(s%ctrl%rotation_active)then
+      if(s%physics%rotation_active)then
          call guess_new_shell_rotation()
          call omega_from_j(log_density,specific_angular_momentum,log_radius,log_mass, &
               shell_mass,convective_flag,num_zones,eta_squared, &
@@ -146,7 +146,7 @@ contains
 ! The species count, the target envelope mass (clamped), the current
 ! number of zones and envelope mass, and the integration settings.
 subroutine prepare_envelope_rebuild()
-      if(s%ctrl%use_extended_composition)then
+      if(s%physics%use_extended_composition)then
          species_end_index = n_species_extended
       else
          species_end_index = n_species_basic
@@ -161,7 +161,7 @@ subroutine prepare_envelope_rebuild()
 ! The envelope integration takes a fixed step in log P,
 ! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
 ! only. No boundary vertex is saved, and saha_iterations starts at 0.
-      env_steps = fixed_envint_step(s%ctrl%chi_grid_scale(ichi_dp_env_max))
+      env_steps = fixed_envint_step(s%physics%chi_grid_scale(ichi_dp_env_max))
       surface_bc_flag = .false.
       print_flag = .true.
       saha_iterations = 0
@@ -195,8 +195,8 @@ subroutine integrate_new_envelope()
 ! Integrate down to the current fitting point from the surface L and
 ! Teff. A spotted run with a convective surface starts from the Teff of
 ! the unspotted surface (ambient_log10_teff, legacy ATEFFL).
-      if(convective_flag(num_zones).and.s%ctrl%spot_filling_factor.ne.0.0.and. &
-           s%ctrl%spot_temp_contrast.ne.1.0)then
+      if(convective_flag(num_zones).and.s%physics%spot_filling_factor.ne.0.0.and. &
+           s%physics%spot_temp_contrast.ne.1.0)then
          spot_adjusted_log_teff = ambient_log10_teff(s, log_teff)
       else
          spot_adjusted_log_teff = log_teff
@@ -272,14 +272,14 @@ end subroutine compute_new_shell_masses
 ! or omega ~ r^walpcz. Each shell's specific moment of inertia is
 ! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
-         if(s%ctrl%cz_rotation_law_exponent.le.-2.0D0)then
+         if(s%physics%cz_rotation_law_exponent.le.-2.0D0)then
 ! walpcz <= -2: constant specific angular momentum j.
             do zone_index = old_num_zones+1,num_zones
                specific_angular_momentum(zone_index) = specific_angular_momentum(old_num_zones)
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                s%omega(zone_index) = specific_angular_momentum(zone_index)/moment_of_inertia(zone_index)
             end do
-         else if(s%ctrl%cz_rotation_law_exponent.ge.0.0D0)then
+         else if(s%physics%cz_rotation_law_exponent.ge.0.0D0)then
 ! walpcz >= 0: solid-body rotation, omega constant.
             do zone_index = old_num_zones+1,num_zones
                s%omega(zone_index) = s%omega(old_num_zones)
@@ -289,9 +289,9 @@ subroutine guess_new_shell_rotation()
          else
 ! Otherwise omega ~ r^walpcz, the law enforce_rotation_profile
 ! (omega_profile) imposes: omega = omega_old (r/r_old)^walpcz.
-            omega_ref = s%omega(old_num_zones)/exp10((log_radius(old_num_zones)*s%ctrl%cz_rotation_law_exponent))
+            omega_ref = s%omega(old_num_zones)/exp10((log_radius(old_num_zones)*s%physics%cz_rotation_law_exponent))
             do zone_index = old_num_zones+1,num_zones
-               s%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*s%ctrl%cz_rotation_law_exponent))
+               s%omega(zone_index) = omega_ref*exp10((log_radius(zone_index)*s%physics%cz_rotation_law_exponent))
                moment_of_inertia(zone_index) = cc23*exp10((2.0D0*log_radius(zone_index)))
                specific_angular_momentum(zone_index) = s%omega(zone_index)*moment_of_inertia(zone_index)
             end do

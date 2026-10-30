@@ -98,7 +98,7 @@ contains
 ! the total flux of neutrino species j made in the star) and the
 ! luminosity channels.
 subroutine start_energy_bookkeeping()
-      if (s%ctrl%calc_neutrinos) then
+      if (s%physics%calc_neutrinos) then
          do j = 1,n_nu_fluxes
             s%neutrino_flux_total_e10_per_cm2_s(j) = 0.0d0
          end do
@@ -117,7 +117,7 @@ subroutine set_structure_settings()
       cfg%log_teff = s%log_Teff
       cfg%turnover_timescale = s%convective_turnover_timescale
       cfg%ln10_over_lsun = s%ln10_over_lsun
-      cfg%rotation_active = s%ctrl%rotation_active
+      cfg%rotation_active = s%physics%rotation_active
       cfg%log10_gravitational_constant = cgl
 end subroutine set_structure_settings
 
@@ -139,7 +139,7 @@ subroutine gather_shell_state()
        sh%ft = s%ft_rot(im)
        sh%log_temperature_delta = s%log_temperature_delta(im)
        sh%log_pressure_delta = s%log_pressure_delta(im)
-       if (s%mass_change_active.and.s%ctrl%mass_accretion_rate.gt.0.0d0) then
+       if (s%mass_change_active.and.s%physics%mass_accretion_rate.gt.0.0d0) then
           if (im.ge.envelope_zone_index) then
              sh%log_temperature_delta = s%log_temperature_delta(im)+ &
                   s%delta_log_temperature
@@ -171,7 +171,7 @@ end subroutine store_shell_structure
 ! nuclear_energy.f90), so times dm it is the shell's flux.
 subroutine add_shell_energy_budget()
        if (diag%burn%burning) then
-            if (s%ctrl%calc_neutrinos) then
+            if (s%physics%calc_neutrinos) then
                do j = 1,n_nu_fluxes
                   s%neutrino_flux_total_e10_per_cm2_s(j) = s%neutrino_flux_total_e10_per_cm2_s(j) + &
                        diag%burn%neutrino_flux(j)*s%dm(im)
@@ -282,7 +282,7 @@ subroutine store_zone_thermodynamics()
 ! their only reader: the copies of dln kappa/dln T, d eps/dln T and
 ! (eps - eps_nu - eps_grav)/eps for rotation_stability_setup. They come
 ! back with that transport.
-!         if (star%ctrl%rotation_active) then
+!         if (star%physics%rotation_active) then
 !            rot_scr%dlnkappa_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
 !            if (star%eps_total(im).gt.0.0d0) then
 !               total_energy_sum = star%eps_total(im)

@@ -45,10 +45,10 @@ contains
 ! h_shell_active: the base of the H-burning shell and whether there is
 ! one. total_angular_momentum, total_rotational_ke: re-totalled on the
 ! new mesh (rotating models). ierr /= 0 on failure.
-!   star reads: conv_vel, cp, ctrl%chi_grid_scale,
-!     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
-!     ctrl%rezone_env_logt0, ctrl%rezone_env_logt1,
-!     ctrl%rotation_active, ctrl%use_extended_composition,
+!   star reads: conv_vel, cp, physics%chi_grid_scale,
+!     physics%envelope_overshoot_active, physics%overshoot_alpha_envelope,
+!     physics%rezone_env_logt0, physics%rezone_env_logt1,
+!     physics%rotation_active, physics%use_extended_composition,
 !     disk_gate_age_gyr, dlnrho_dlnt, eps_channels, eps_total,
 !     fit_point_logP, fit_point_logR, grada, gradr, gradT,
 !     kinematic_viscosity, log_Teff, log_total_mass, mu, opacity_zone,
@@ -167,7 +167,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
       point_reset_flag = .false.
 ! The number of species carried: 11, or 15 with the extended composition.
       num_species_tracked = 11
-      if (s%ctrl%use_extended_composition) num_species_tracked = 15
+      if (s%physics%use_extended_composition) num_species_tracked = 15
       call check_envelope_temperature_range
       if (ierr /= 0) return
       call flag_fixed_points
@@ -193,9 +193,9 @@ contains
 subroutine check_envelope_temperature_range
 ! The outer point is cooler than tenv0: delete points down to the first
 ! one hotter than tenv0.
-      if (s%logT(s%nz).lt.s%ctrl%rezone_env_logt0) then
+      if (s%logT(s%nz).lt.s%physics%rezone_env_logt0) then
        do i = s%nz-1,1,-1
-          if (s%logT(i).gt.s%ctrl%rezone_env_logt0) then
+          if (s%logT(i).gt.s%physics%rezone_env_logt0) then
              write(run_log_unit,10) s%nz,i
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
@@ -219,7 +219,7 @@ subroutine check_envelope_temperature_range
 ! log P and log R by the stored state's offsets from the fitting point,
 ! with Delta log T = Delta log P/4, L and the composition copied, and
 ! log rho = log P - log T - 8 (a rough ideal-gas estimate).
-      else if (s%logT(s%nz).gt.s%ctrl%rezone_env_logt1.and. &
+      else if (s%logT(s%nz).gt.s%physics%rezone_env_logt1.and. &
            envelope_store_index.ne.0) then
        s%nz = s%nz + 1
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
@@ -273,17 +273,17 @@ subroutine flag_fixed_points
       endif
       do i = 2,s%nz
 ! A jump in X between neighbouring shells,
-       if (dabs(s%xa(i_h1,i)-s%xa(i_h1,i-1)).gt.s%ctrl%chi_grid_scale(ichi_flag_dx)) then
+       if (dabs(s%xa(i_h1,i)-s%xa(i_h1,i-1)).gt.s%physics%chi_grid_scale(ichi_flag_dx)) then
           call append_flag_point(i)
 ! else a jump in Z,
        else if (dabs(s%xa(i_metals,i)-s%xa(i_metals,i-1)).gt. &
-            s%ctrl%chi_grid_scale(ichi_flag_dz)) then
+            s%physics%chi_grid_scale(ichi_flag_dz)) then
           call append_flag_point(i)
 ! else (rotating models) a jump in log omega.
-       else if (s%ctrl%rotation_active) then
+       else if (s%physics%rotation_active) then
           log_omega_top = log10(s%omega(i))
           log_omega_bot = log10(s%omega(i-1))
-          if (dabs(log_omega_top-log_omega_bot).gt.s%ctrl%chi_grid_scale(ichi_flag_dw)) then
+          if (dabs(log_omega_top-log_omega_bot).gt.s%physics%chi_grid_scale(ichi_flag_dw)) then
              call append_flag_point(i)
           endif
        endif
@@ -310,19 +310,19 @@ subroutine flag_fixed_points
 ! overshoot; with it, the deepest point with
 ! log P - log P(czb) <= overshoot_alpha_envelope (alpha used here as a
 ! depth in log P).
-       if (.not.s%ctrl%envelope_overshoot_active) then
+       if (.not.s%physics%envelope_overshoot_active) then
           overshoot_base_zone = s%envelope_cz_bottom_index
        else
           do overshoot_base_zone = s%envelope_cz_bottom_index-1,1,-1
              if (s%logP(overshoot_base_zone)- &
-                  s%logP(s%envelope_cz_bottom_index).gt.s%ctrl%overshoot_alpha_envelope) exit
+                  s%logP(s%envelope_cz_bottom_index).gt.s%physics%overshoot_alpha_envelope) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
             if (overshoot_base_zone.gt.1) then
                call append_flag_point(overshoot_base_zone)
             endif
        endif
-       if (s%ctrl%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
+       if (s%physics%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
 ! The base of the finely zoned region: the deepest point with
@@ -333,7 +333,7 @@ subroutine flag_fixed_points
           else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (s%logP(fine_zone_base) - &
-                  s%logP(s%envelope_cz_bottom_index).gt.s%ctrl%chi_grid_scale(ichi_czbase_fine_width)) &
+                  s%logP(s%envelope_cz_bottom_index).gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) &
                   exit
           end do
             fine_zone_base = fine_zone_base + 1
@@ -443,10 +443,10 @@ subroutine seed_new_point_run
             luminosity_max = s%luminosity_lsun(i)
          endif
       end do
-      point_spacing_max(1) = s%ctrl%chi_grid_scale(ichi_dp_env_max)
-      point_spacing_max(2) = s%ctrl%chi_grid_scale(ichi_dl_max)*luminosity_max
-      point_spacing_max(3) = s%ctrl%chi_grid_scale(ichi_dx_max)
-      point_spacing_max(4) = s%ctrl%chi_grid_scale(ichi_dz_max)
+      point_spacing_max(1) = s%physics%chi_grid_scale(ichi_dp_env_max)
+      point_spacing_max(2) = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
+      point_spacing_max(3) = s%physics%chi_grid_scale(ichi_dx_max)
+      point_spacing_max(4) = s%physics%chi_grid_scale(ichi_dz_max)
 end subroutine seed_new_point_run
 
 ! ---------------------------------------------------------------
@@ -461,20 +461,20 @@ end subroutine seed_new_point_run
 ! tol_dp_env_max above (in the convection zone). A unit step in chi is
 ! the largest step allowed between points.
 subroutine accumulate_chi_spacing
-      mass_scale = s%ctrl%chi_grid_scale(ichi_dm_max)
+      mass_scale = s%physics%chi_grid_scale(ichi_dm_max)
       luminosity_scale = point_spacing_max(2)
       chi(1) = 1.0D0
       do j = 2, s%nz
          pressure_test = s%logP(j) - s%logP(s%envelope_cz_bottom_index)
-         if (abs(pressure_test).lt.s%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
+         if (abs(pressure_test).lt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! The finely zoned region around the convection-zone base.
-            dp_scale = s%ctrl%chi_grid_scale(ichi_dp_czbase_max)
-         else if (pressure_test.gt.s%ctrl%chi_grid_scale(ichi_czbase_fine_width)) then
+            dp_scale = s%physics%chi_grid_scale(ichi_dp_czbase_max)
+         else if (pressure_test.gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! Below it, in the radiative interior.
-            dp_scale = s%ctrl%chi_grid_scale(ichi_dp_core_max)
+            dp_scale = s%physics%chi_grid_scale(ichi_dp_core_max)
          else
 ! Above it, in the surface convection zone.
-            dp_scale = s%ctrl%chi_grid_scale(ichi_dp_env_max)
+            dp_scale = s%physics%chi_grid_scale(ichi_dp_env_max)
          endif
          if (s%luminosity_lsun(j).gt.s%luminosity_lsun(j-1)) then
             dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale + &
@@ -674,7 +674,7 @@ subroutine drop_crowded_points
       j = 1
       compact_log_mass(j) = new_log_mass(j)
       do k = 2,new_num_zones-1
-       if (new_log_mass(k) - compact_log_mass(j).gt.s%ctrl%chi_grid_scale(ichi_dm_min)) then
+       if (new_log_mass(k) - compact_log_mass(j).gt.s%physics%chi_grid_scale(ichi_dm_min)) then
           j = j + 1
           compact_log_mass(j) = new_log_mass(k)
        endif
@@ -758,7 +758,7 @@ subroutine interpolate_onto_new_grid
       end if
       call transfer_new_points
       call set_new_shell_masses
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
        call respin_on_new_grid
        if (ierr /= 0) return
        call retally_angular_momentum
@@ -805,7 +805,7 @@ subroutine regrid_composition_terms
 ! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
 ! here: when the mesh grew, this is the regridded deuterium at that
 ! index, below the new surface.)
-      if (s%ctrl%use_extended_composition .and. &
+      if (s%physics%use_extended_composition .and. &
            s%xa(i_h2,s%nz).ge.1.0D-14) then
          call regrid_in_place(s%deuterium_burning_rate_start)
       endif
@@ -841,7 +841,7 @@ end subroutine regrid_structure_variables
 ! *_start arrays (and fp_old, ft_old) that transfer_new_points adopts.
 subroutine regrid_rotation_variables
       type(rotation_profiles) :: regridded
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
          call regrid_rotation(s%log_mass(1:old_point_count), &
               rotation_profiles(omega=s%omega(1:old_point_count), &
                    specific_angular_momentum=s%j_rot(1:old_point_count), &
@@ -872,8 +872,8 @@ end subroutine regrid_rotation_variables
 ! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
 ! the new mesh, so the values were misplaced on every rotating rezone.)
 subroutine regrid_start_of_step_eps
-      if (s%ctrl%rotation_active .or. (s%ctrl%use_extended_composition .and. &
-           s%ctrl%envelope_overshoot_active)) then
+      if (s%physics%rotation_active .or. (s%physics%use_extended_composition .and. &
+           s%physics%envelope_overshoot_active)) then
          call regrid_profile(s%log_mass(1:old_point_count), &
               s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
               s%eps_total_start(1:new_point_count), ierr)
@@ -900,7 +900,7 @@ subroutine transfer_new_points
        s%luminosity_lsun(j) = s%luminosity_lsun_start(j)
        s%logRho(j) = s%logRho_start(j)
       end do
-      if (s%ctrl%rotation_active) then
+      if (s%physics%rotation_active) then
        do j = 1, new_num_zones
           s%j_rot(j) = s%j_rot_start(j)
           s%omega(j) = s%omega_start(j)
@@ -1013,8 +1013,8 @@ end subroutine retally_angular_momentum
 ! accurately (MHP 9/91); even without diffusion, the new physics locates
 ! the convection-zone edges accurately.
 subroutine rerun_physics_on_new_grid
-      if (s%ctrl%rotation_active .or. (s%ctrl%use_extended_composition .and. &
-           s%ctrl%envelope_overshoot_active)) then
+      if (s%physics%rotation_active .or. (s%physics%use_extended_composition .and. &
+           s%physics%envelope_overshoot_active)) then
        call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun, &
             s%logP,s%logR,s%log_mass,s%logT, &
             s%convective_flag,s%nz,s%log_Teff, jerr)

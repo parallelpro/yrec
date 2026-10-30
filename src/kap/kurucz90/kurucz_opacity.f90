@@ -34,7 +34,7 @@ contains
 ! interpolation coefficients used later by kurucz.f90.
 !
 ! 2026 wave 3 (R5): the two verbatim read loops (first table on
-! star%ctrl%kurucz_table_unit, second on kurucz_table2_unit) became
+! the controls' kurucz_table_unit, second on kurucz_table2_unit) became
 ! the internal read_kurucz_table below, called once per set; the
 ! order read 1, read 2, splines 1, splines 2 is the original's. The
 ! loop's working scalars stay host-associated so that whatever value

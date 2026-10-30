@@ -67,8 +67,8 @@ double precision function ambient_log10_teff(s, log_teff)
       use math_lib
       type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_teff
-      ambient_log10_teff = log_teff - 0.25*log10(s%ctrl%spot_filling_factor * &
-           pow(s%ctrl%spot_temp_contrast, 4.0) + 1.0 - s%ctrl%spot_filling_factor)
+      ambient_log10_teff = log_teff - 0.25*log10(s%physics%spot_filling_factor * &
+           pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
 end function ambient_log10_teff
 
 subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
@@ -138,22 +138,22 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
          cfg%atm_step_min = atm_steps%step_min
          cfg%atm_step_max = atm_steps%step_max
       else
-         cfg%atm_step_begin = s%ctrl%atm_step_begin
-         cfg%atm_step_min = s%ctrl%atm_step_min
-         cfg%atm_step_max = s%ctrl%atm_step_max
+         cfg%atm_step_begin = s%physics%atm_step_begin
+         cfg%atm_step_min = s%physics%atm_step_min
+         cfg%atm_step_max = s%physics%atm_step_max
       end if
       if (present(env_steps)) then
          cfg%env_step_begin = env_steps%step_begin
          cfg%env_step_min = env_steps%step_min
          cfg%env_step_max = env_steps%step_max
       else
-         cfg%env_step_begin = s%ctrl%env_step_begin
-         cfg%env_step_min = s%ctrl%env_step_min
-         cfg%env_step_max = s%ctrl%env_step_max
+         cfg%env_step_begin = s%physics%env_step_begin
+         cfg%env_step_min = s%physics%env_step_min
+         cfg%env_step_max = s%physics%env_step_max
       end if
-      cfg%atm_error_tol = s%ctrl%atm_error_tol
-      cfg%env_error_tol = s%ctrl%env_error_tol
-      cfg%atm_step_initial = s%ctrl%atm_step_initial
+      cfg%atm_error_tol = s%physics%atm_error_tol
+      cfg%env_error_tol = s%physics%env_error_tol
+      cfg%atm_step_initial = s%physics%atm_step_initial
 ! the HSRA T(tau) fit at tau = 2/3, for atm_choice = 2
       cfg%hsra_log_t_offset = hsra_t_tau_offset()
       cfg%log10_total_mass = s%log_total_mass
@@ -162,10 +162,10 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%envelope_store_log_temperature = s%envelope_store_log_temperature
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
       cfg%log10_gravitational_constant = cgl
-      cfg%calc_envelope = s%ctrl%calc_envelope_flag
-      cfg%tolerance_fraction = s%ctrl%tolerance_fraction
-      cfg%max_stage_index = s%ctrl%max_stage_index
-      cfg%extrap_order = s%ctrl%extrap_order
+      cfg%calc_envelope = s%physics%calc_envelope_flag
+      cfg%tolerance_fraction = s%physics%tolerance_fraction
+      cfg%max_stage_index = s%physics%max_stage_index
+      cfg%extrap_order = s%physics%extrap_order
 
       if (present(vertex_index)) then
          call run_kernel(vertex_index, stored_envelope_state, &

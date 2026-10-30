@@ -174,7 +174,7 @@ end subroutine rescale_interior_z
 ! than X, Y and Z, slot new_species_index, to new_species_value in
 ! every shell (main-sequence models).
 subroutine rescale_one_species
-         if(s%ctrl%rescale_species_active.and.s%ctrl%new_species_value.ge.0.0d0) then
+         if(s%physics%rescale_species_active.and.s%physics%new_species_value.ge.0.0d0) then
 ! new_species_value is a mass fraction or, with value_relative_to_h
 ! (legacy LREL), a log abundance relative to the surface X on a scale
 ! where X is 12, by mass:
@@ -183,16 +183,16 @@ subroutine rescale_one_species
 ! as given, so every rescale card converts it afresh. (The converted
 ! value used to overwrite it, and a second rescale converted it again,
 ! to about 1e-12 X.)
-            species_target = s%ctrl%new_species_value
-            if(s%ctrl%value_relative_to_h) species_target = &
-                 exp(ln10*(s%ctrl%new_species_value-12.0d0))*composition(1,num_zones)
+            species_target = s%physics%new_species_value
+            if(s%physics%value_relative_to_h) species_target = &
+                 exp(ln10*(s%physics%new_species_value-12.0d0))*composition(1,num_zones)
             if(species_target.lt.1.0d0) then
                do zone_idx = 1,num_zones
-                  composition(s%ctrl%new_species_index,zone_idx) = species_target
+                  composition(s%physics%new_species_index,zone_idx) = species_target
                end do
             else
 ! An abundance of 1 or more is refused; the species is not changed.
-               write(run_log_unit,1004)s%ctrl%new_species_index,run_index,species_target
+               write(run_log_unit,1004)s%physics%new_species_index,run_index,species_target
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
@@ -410,7 +410,7 @@ end subroutine set_helium_from_x_and_z
 ! (Z_old - Z_new)/Z_old, the fraction of Z removed: right only for a
 ! halved Z, zero for an unchanged one, negative for a raised one.)
 subroutine ramp_interior_z
-      if(s%ctrl%use_z_ramp.and.(s%card_z_ramp_core_z(run_index).gt.0d0).and.(s%card_z_ramp_inner_mass_fraction(run_index).gt.0d0) &
+      if(s%control%use_z_ramp.and.(s%card_z_ramp_core_z(run_index).gt.0d0).and.(s%card_z_ramp_inner_mass_fraction(run_index).gt.0d0) &
            .and.(s%card_z_ramp_outer_mass_fraction(run_index).gt.0d0))then
             z_ramp_slope = (s%surface_metal_fraction - s%card_z_ramp_core_z(run_index))/(s%card_z_ramp_outer_mass_fraction(run_index)-s%card_z_ramp_inner_mass_fraction(run_index))
             do zone_idx = 1,num_zones

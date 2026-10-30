@@ -428,8 +428,8 @@ subroutine fill_mod_model(star)
       star%log_L_lsun = -1.0d-310
       star%log_Teff = 3.7617d0
       star%mixing_length_alpha = 1.8518851851851851d0
-      star%ctrl%use_extended_composition = .true.
-      star%ctrl%rotation_active = .false.
+      star%physics%use_extended_composition = .true.
+      star%physics%rotation_active = .false.
       do k = 1, star%nz
          f = sin(dble(k))
          star%log_mass(k) = 30.0d0 + f

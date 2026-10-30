@@ -177,7 +177,7 @@ subroutine set_settings()
       cfg%log_teff = star%log_Teff
       cfg%turnover_timescale = star%convective_turnover_timescale
       cfg%ln10_over_lsun = star%ln10_over_lsun
-      cfg%rotation_active = star%ctrl%rotation_active
+      cfg%rotation_active = star%physics%rotation_active
 end subroutine set_settings
 
 ! ---------------------------------------------------------------

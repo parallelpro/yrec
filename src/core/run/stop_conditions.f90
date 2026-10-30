@@ -59,12 +59,12 @@ contains
 ! Configuration check shared by run_yrec (after the starting model is
 ! read) and evolve_step (after a diverged-model reload): a rotating
 ! run whose model carries no rotation rate is an error (ierr = 1).
-!   star reads: ctrl%rotation_active, omega
+!   star reads: physics%rotation_active, omega
 !   star writes: none
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      if ((s%omega(1) .eq. 0) .and. (s%ctrl%rotation_active)) then
+      if ((s%omega(1) .eq. 0) .and. (s%physics%rotation_active)) then
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                  ' Initialize rotation rates or set LROT to', &
                  ' FALSE.')
@@ -130,7 +130,7 @@ end function converged_model_is_nan
 ! previous-model state, so the calibration comparison starts at
 ! iteration 2).
 !   star reads: age_gyr, card_kind, card_max_age_yr,
-!     ctrl%calibrate_star_flag, current_card,
+!     control%calibrate_star_flag, current_card,
 !     just_passed_target_radius_flag, log_L_lsun, log_Teff,
 !     star_found_flag, termination_reason
 !   star writes: none
@@ -168,7 +168,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
       end if
 
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
-      if (s%ctrl%calibrate_star_flag .and. .not. s%star_found_flag) then
+      if (s%control%calibrate_star_flag .and. .not. s%star_found_flag) then
          if (mod(s%current_card,2).eq.0 .and. model_iteration.ne.1) then
             call check_star_calibration(s, s%log_L_lsun, s%log_Teff, &
                  s%age_gyr, s%current_card)
@@ -185,10 +185,10 @@ end subroutine check_stop_conditions
 ! before this, so log_g_surface and the scaling-relation nu_max_uhz are
 ! current). Prints one STOP line per hit to the terminal and the
 ! run log.
-!   star reads: ctrl%log_g_lower_limit, ctrl%log_g_upper_limit,
-!     ctrl%log_L_lower_limit, ctrl%log_L_upper_limit,
-!     ctrl%nu_max_lower_limit, ctrl%nu_max_upper_limit,
-!     ctrl%Teff_lower_limit, ctrl%Teff_upper_limit, current_card,
+!   star reads: control%log_g_lower_limit, control%log_g_upper_limit,
+!     control%log_L_lower_limit, control%log_L_upper_limit,
+!     control%nu_max_lower_limit, control%nu_max_upper_limit,
+!     control%Teff_lower_limit, control%Teff_upper_limit, current_card,
 !     log_g_surface, log_L_lsun, log_Teff, nu_max_uhz
 !   star writes: termination_reason
 logical function structure_limit_stop_triggered(s)
@@ -206,10 +206,10 @@ logical function structure_limit_stop_triggered(s)
       nk = s%current_card
       qval = [s%log_L_lsun, exp10(s%log_Teff), s%log_g_surface, &
               s%nu_max_uhz]
-      qup = [s%ctrl%log_L_upper_limit(nk), s%ctrl%Teff_upper_limit(nk), &
-             s%ctrl%log_g_upper_limit(nk), s%ctrl%nu_max_upper_limit(nk)]
-      qlo = [s%ctrl%log_L_lower_limit(nk), s%ctrl%Teff_lower_limit(nk), &
-             s%ctrl%log_g_lower_limit(nk), s%ctrl%nu_max_lower_limit(nk)]
+      qup = [s%control%log_L_upper_limit(nk), s%control%Teff_upper_limit(nk), &
+             s%control%log_g_upper_limit(nk), s%control%nu_max_upper_limit(nk)]
+      qlo = [s%control%log_L_lower_limit(nk), s%control%Teff_lower_limit(nk), &
+             s%control%log_g_lower_limit(nk), s%control%nu_max_lower_limit(nk)]
 
       structure_limit_stop_triggered = .false.
       do k = 1, nlim
