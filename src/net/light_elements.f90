@@ -3,7 +3,8 @@
 !----------------------------------------------------------------------
 ! The light elements, operator-split from the implicit network, and the
 ! trace-element integrator they share (2026-10: moved here from
-! core/burn_lib with the model state as arguments).
+! core/burn_lib, now core/step/burn_step.f90, with the model state as
+! arguments).
 !   deuterium_rate         the per-shell D(p,g) rate, with the
 !                          convective-overturn cap
 !   burn_deuterium_region  deuterium over a step (formerly dburn and
@@ -30,8 +31,9 @@ module light_elements
            min_deuterium_step, min_deuterium_substep
 
 ! The gas accreted at the surface over a step, as burn_deuterium_region
-! needs it; the caller fills it (core/burn_step's
-! surface_accretion_now) from the controls and wind/mdot.
+! needs it; the caller fills it (core/step/burn_step.f90's
+! surface_accretion_now) from the controls and the step's accreted mass
+! (star%accreted_mass, which core/step/mass_change.f90 sets).
       type, public :: surface_accretion
 ! accretion is on (job%use_mass_accretion): the accreted gas is blended
 ! into the outermost burned region
@@ -314,7 +316,8 @@ end subroutine burn_deuterium_region
 ! (Caughlan & Fowler 1988; unscreened), each times its rate scale from
 ! net_settings: Li6(p,He3)He4, Li7(p,a)He4, and for Be9 the sum of
 ! Be9(p,g)B10, Be9(p,d)2He4 and Be9(p,a)Li6. store_li_be_rates
-! (core/burn_step) multiplies by rho*X and stores them per shell.
+! (core/step/burn_step.f90) multiplies by rho*X and stores them per
+! shell.
 pure subroutine compute_li_be_rates(t9, li6_rate, li7_rate, be9_rate)
       use physical_constants, only: cc13, cc23
       use math_lib

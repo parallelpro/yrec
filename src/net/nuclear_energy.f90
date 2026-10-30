@@ -8,10 +8,12 @@
 !   - the energy of each chain (eps_by_chain, network's chain_* slots:
 !     pp I with d(p,g), the two Be7 branches, CNO, the alpha captures,
 !     triple alpha);
-!   - the thermal neutrino loss (included in eps) and the He3 energy
-!     diagnostics;
-!   - when net_settings%calc_neutrinos, the solar neutrino fluxes and the
-!     equilibrium Be7 abundance.
+!   - the thermal neutrino loss (included in eps);
+!   - when net_settings%calc_neutrinos, the solar neutrino fluxes (the
+!     He3 + He3 and He3 + He4 reaction counts among them) and the
+!     equilibrium Be7 abundance;
+!   - burning, .false. at or below the burning cutoff, where everything
+!     else is zero.
 ! It reads no model state; its configuration is net_settings. The energy
 ! of each network reaction comes from the reaction table (network's
 ! compute_reaction_energies); deuterium burning, outside the table, is
