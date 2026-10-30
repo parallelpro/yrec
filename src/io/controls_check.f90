@@ -1,8 +1,7 @@
 !----------------------------------------------------------------------
 ! controls_check
 !----------------------------------------------------------------------
-! The controls' validation, errors and warnings, and the one way a
-! controls message reaches the terminal and the run log:
+! The controls' validation, errors and warnings:
 !   check_controls              the errors: values and combinations the
 !                               run cannot use (ierr = 1); the controls
 !                               read calls it (read_input), before
@@ -12,21 +11,18 @@
 !   warn_inconsistent_controls  combinations that are silently inert or
 !                               cancel each other; run_yrec calls it
 !                               after prepare_run
-!   report_control              one line on the terminal and in the run
-!                               log (derive_controls' messages use it too)
-! An error goes to the terminal and the run log. A warning goes to the
-! terminal only, so that the run log stays byte-pinnable, and never
-! stops the run: an inert control is a probable mistake, not a certain
-! one. Each rule names the code it is checked against.
+! Their messages go through io_units (report_error, report_warning): on
+! the terminal and in the run log. A warning never stops the run: an
+! inert control is a probable mistake, not a certain one. Each rule
+! names the code it is checked against.
 module controls_check
-      use io_units, only: terminal_unit, run_log_unit
+      use io_units, only: report_error, report_warning
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
       use controls_buffer, only: max_runs
       implicit none
       private
-      public :: check_controls, warn_inert_controls, warn_inconsistent_controls, &
-           report_control
+      public :: check_controls, warn_inert_controls, warn_inconsistent_controls
 
 ! The rotation transport's iteration history holds 16 iterations
 ! (rotation/seculr/transport_checks' max_recorded_iterations;
@@ -42,18 +38,10 @@ module controls_check
 contains
 
 ! ---------------------------------------------------------------
-! line, trimmed, on the terminal and in the run log
-subroutine report_control(line)
-      character(len=*), intent(in) :: line
-      write(terminal_unit,'(a)') trim(line)
-      write(run_log_unit,'(a)') trim(line)
-end subroutine report_control
-
-! ---------------------------------------------------------------
-! a warning, on the terminal only
+! a warning about the controls
 subroutine warn(text)
       character(len=*), intent(in) :: text
-      write(terminal_unit,'(2a)') ' WARNING (controls): ', text
+      call report_warning(text)
 end subroutine warn
 
 !----------------------------------------------------------------------
@@ -82,27 +70,27 @@ subroutine check_controls(s, ierr)
 
       if (s%ctrl%use_semiconvection .and. (s%ctrl%core_overshoot_active .or. &
            s%ctrl%envelope_overshoot_active .or. s%ctrl%lovstm)) then
-         write(line,'(1x,a,3l2)') 'ERROR: SEMI-CONVECTION and overshoot are both on:' &
+         write(line,'(a,3l2)') 'SEMI-CONVECTION and overshoot are both on:' &
               //' use_semiconvection (LSEMIC) with core, envelope, intermediate overshoot' &
               //' (LOVSTC, LOVSTE, LOVSTM) =', s%ctrl%core_overshoot_active, &
               s%ctrl%envelope_overshoot_active, s%ctrl%lovstm
-         call report_control(line)
+         call report_error(line)
          ierr = 1
          return
       end if
       if (s%ctrl%tri_delta_teffl <= 0.0d0 .or. s%ctrl%tri_delta_logl <= 0.0d0) then
-         write(line,'(1x,a,1pe11.3,a,1pe11.3)') 'ERROR: the envelope triangle''s size must be' &
+         write(line,'(a,1pe11.3,a,1pe11.3)') 'the envelope triangle''s size must be' &
               //' positive: tri_delta_teffl (TRIDT) =', s%ctrl%tri_delta_teffl, &
               ', tri_delta_logl (TRIDL) =', s%ctrl%tri_delta_logl
-         call report_control(line)
+         call report_error(line)
          ierr = 1
          return
       end if
       if (s%ctrl%rotation_active .and. (s%ctrl%max_diffusion_iters < 1 .or. &
            s%ctrl%max_diffusion_iters > max_transport_iterations)) then
-         write(line,'(1x,a,i0)') 'ERROR: max_diffusion_iters (ITDIF2) must be 1 to 16, not ', &
+         write(line,'(a,i0)') 'max_diffusion_iters (ITDIF2) must be 1 to 16, not ', &
               s%ctrl%max_diffusion_iters
-         call report_control(line)
+         call report_error(line)
          ierr = 1
          return
       end if
@@ -110,18 +98,18 @@ subroutine check_controls(s, ierr)
            s%ctrl%max_stage_index > bsstep_max_stages .or. s%ctrl%extrap_order < 2 &
            .or. s%ctrl%extrap_order > bsstep_max_extrap_order &
            .or. s%ctrl%extrap_order > s%ctrl%max_stage_index) then
-         write(line,'(1x,a,1pe11.3,a,i0,a,i0)') 'ERROR: the Bulirsch-Stoer controls need' &
+         write(line,'(a,1pe11.3,a,i0,a,i0)') 'the Bulirsch-Stoer controls need' &
               //' tolerance_fraction (STOLR0) > 0, max_stage_index (IMAX) 1 to 11 and' &
               //' extrap_order (NUSE) 2 to 7 and at most IMAX, not', &
               s%ctrl%tolerance_fraction, ', ', s%ctrl%max_stage_index, ', ', s%ctrl%extrap_order
-         call report_control(line)
+         call report_error(line)
          ierr = 1
          return
       end if
       if (s%job%num_runs < 0 .or. s%job%num_runs > max_runs) then
-         write(line,'(1x,a,i0,a,i0)') 'ERROR: num_runs (NUMRUN) must be 0 to ', max_runs, &
+         write(line,'(a,i0,a,i0)') 'num_runs (NUMRUN) must be 0 to ', max_runs, &
               ', not ', s%job%num_runs
-         call report_control(line)
+         call report_error(line)
          ierr = 1
          return
       end if

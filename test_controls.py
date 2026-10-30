@@ -176,29 +176,28 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]
 
 
-def test_inert_controls_warn_on_the_terminal(tmp_path):
-    """A deck that sets a control nothing uses gets a warning on the
-    terminal (controls_check's warn_inert_controls), and the run log stays
-    as it was: a giant deck sets use_rotation_scaled_solar_wind = .TRUE.
-    (its wind is commented out), cm_base sets it .FALSE.; both set
+def test_warnings_reach_the_terminal_and_the_run_log(tmp_path):
+    """A deck that sets a control nothing uses gets a warning (controls_check's
+    warn_inert_controls, through io_units' report_warning) on the terminal
+    and in the run log: a giant deck sets use_rotation_scaled_solar_wind =
+    .TRUE. (its wind is commented out), cm_base sets it .FALSE.; both set
     surface_composition_file, which is accepted and ignored without a
     word."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     giant = next((REPO / "examples" / "giant_differential_rotation").glob("*RGp2diffrotI0.inlist"))
     base = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
-    out = {}
+    out, log = {}, {}
     for deck in (giant, base):
         env = dict(os.environ, YREC_OUTPUT=str(tmp_path / deck.stem))
         r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, env=env, capture_output=True)
         out[deck] = r.stdout.decode("latin-1")
-        log = "".join(f.read_text(errors="replace") for f in (tmp_path / deck.stem).glob("*")
-                      if f.is_file() and f.suffix in (".log", ".short"))
-        assert "WARNING (controls)" not in log
-    wind = "WARNING (controls): use_rotation_scaled_solar_wind"
-    assert wind in out[giant] and wind not in out[base]
-    assert not any("surface_composition_file" in o for o in out.values())
-
+        log[deck] = "".join(f.read_text(errors="replace") for f in (tmp_path / deck.stem).rglob("*")
+                            if f.is_file() and f.suffix in (".log", ".short"))
+    wind = " WARNING: use_rotation_scaled_solar_wind (LSOLWIND) is on"
+    assert wind in out[giant] and wind in log[giant]
+    assert wind not in out[base] and wind not in log[base]
+    assert not any("surface_composition_file" in o for o in list(out.values()) + list(log.values()))
 
 def test_card_one_starts_from_the_starting_model(tmp_path):
     """Card 1 has no previous card's model, so it always loads the starting

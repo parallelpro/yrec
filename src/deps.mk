@@ -409,7 +409,7 @@ io/controls_buffer.o: control_slots.mod
 io/controls_check.o: controls_buffer.mod io_units.mod legacy_controls.mod numerics_lib.mod star_info_lib.mod
 io/controls_reader.o: controls_check.mod controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod net_lib.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod user_inputs.mod yrec_version.mod
 io/controls_sync.o: controls_buffer.mod star_info_lib.mod
-io/derived_controls.o: controls_check.mod io_units.mod legacy_controls.mod star_info_lib.mod yrec_version.mod
+io/derived_controls.o: io_units.mod legacy_controls.mod star_info_lib.mod yrec_version.mod
 io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod star_info_lib.mod yrec_version.mod
 io/legacy_controls.o: controls_buffer.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod

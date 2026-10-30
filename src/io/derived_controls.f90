@@ -6,16 +6,15 @@
 ! envelope triangle for rotating runs, the starting model's mixture
 ! changes, and the switches that diffusion options imply; and it writes
 ! the run log's header. Its messages go to the terminal and the run log
-! through controls_check's report_control; the errors are
+! through io_units (report_warning, report_note); the errors are
 ! controls_check's. Everything here works on the canonical names, after
 ! adopt_canonical_names; the legacy names it reads (amix, aiso,
 ! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: run_log_unit
+      use io_units, only: run_log_unit, report_warning, report_note
       use legacy_controls
-      use controls_check, only: report_control
       use star_info_lib, only: star_info
       implicit none
       private
@@ -116,9 +115,9 @@ subroutine find_rescaled_species
       if (i > 12) then
          rescale_species_active = .false.
          write(line,20) anewcp
-      20    format(1x,'warning: change_species_name (ANEWCP) ',a3, &
+      20    format('change_species_name (ANEWCP) ',a3, &
            &    ' is not a species of the starting model; no species rescaled')
-         call report_control(line)
+         call report_warning(line)
       end if
 end subroutine find_rescaled_species
 
@@ -138,18 +137,18 @@ subroutine select_cno_mixture
                  .or. target_oxygen_cno_fraction < 0.0d0) then
                write(line,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
                     target_oxygen_cno_fraction
-      591          format(1x,'warning: negative CNO fraction (',3es12.4, &
+      591          format('negative CNO fraction (',3es12.4, &
            &              '); mixture not modified')
-               call report_control(line)
+               call report_warning(line)
             else
                sum_frac = target_carbon_cno_fraction + target_nitrogen_cno_fraction &
                     + target_oxygen_cno_fraction
                if (sum_frac >= 1.0d0) then
                   write(line,598) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
                        target_oxygen_cno_fraction
-      598             format(1x,'warning: the CNO fractions (',3es12.4, &
+      598             format('the CNO fractions (',3es12.4, &
            &                 ') sum to 1 or more; mixture not modified')
-                  call report_control(line)
+                  call report_warning(line)
                else
                   change_cno_mixture_active = .true.
                end if
@@ -167,17 +166,17 @@ subroutine select_cno_mixture
             end do
             if (.not. change_cno_mixture_active) then
                write(line,589) amix
-      589       format(1x,'warning: CNO mixture ',a8,' not recognized; mixture not altered')
-               call report_control(line)
+      589       format('CNO mixture ',a8,' not recognized; mixture not altered')
+               call report_warning(line)
             end if
          end if
       end if
       if (change_cno_mixture_active) then
          write(line,604) amix, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
               target_oxygen_cno_fraction
-      604    format(1x,'CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
+      604    format('CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
            &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
-         call report_control(line)
+         call report_note(line)
       end if
 end subroutine select_cno_mixture
 
@@ -202,9 +201,9 @@ subroutine select_isotope_mixture
                     o16_to_o18_ratio, initial_h2_fraction, initial_he3_fraction, &
                     initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                     initial_b10_fraction, initial_b11_fraction
-      596          format(1x,'warning: negative isotope ratio or light-element', &
+      596          format('negative isotope ratio or light-element', &
            &   ' mass fraction (',11es12.4,'); mixture not modified')
-               call report_control(line)
+               call report_warning(line)
             else
                sum_frac = initial_h2_fraction + initial_he3_fraction + initial_li6_fraction &
                     + initial_li7_fraction + initial_be9_fraction + initial_b10_fraction &
@@ -213,9 +212,9 @@ subroutine select_isotope_mixture
                   write(line,595) initial_h2_fraction, initial_he3_fraction, &
                        initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                        initial_b10_fraction, initial_b11_fraction
-      595             format(1x,'warning: light-element mass fractions sum above 1', &
+      595             format('light-element mass fractions sum above 1', &
            &     ' (',7es12.4,'); mixture not modified')
-                  call report_control(line)
+                  call report_warning(line)
                else
                   change_isotope_ratios_active = .true.
                end if
@@ -224,19 +223,19 @@ subroutine select_isotope_mixture
             change_isotope_ratios_active = .true.
          else
             write(line,597) aiso
-      597    format(1x,'warning: isotope mixture ',a8,' not recognized; mixture not altered')
-            call report_control(line)
+      597    format('isotope mixture ',a8,' not recognized; mixture not altered')
+            call report_warning(line)
          end if
       end if
       if (change_isotope_ratios_active) then
          write(line,605) aiso, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
               initial_he3_fraction, initial_li6_fraction, initial_li7_fraction, &
               initial_be9_fraction
-      605    format(1x,'isotope/light-element mixture ',a8,': C12/C13 =', &
+      605    format('isotope/light-element mixture ',a8,': C12/C13 =', &
            &    es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4, &
            &    '  Li6 =',es12.4,'  Li7 =',es12.4,'  Be9 =',es12.4, &
            &    '; applied to the starting model')
-         call report_control(line)
+         call report_note(line)
       end if
 end subroutine select_isotope_mixture
 
