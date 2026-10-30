@@ -138,8 +138,8 @@ end subroutine clear_velocities
 subroutine interpolate_to_interfaces()
 ! The first interface (2) uses zones 1-4.
       if (zone_min.lt.3) then
-         stab%kinematic_viscosity_interface(2)=log_lagrange4(sub_physics%visc, 1, 2)
-         stab%thermal_diffusivity_interface(2)=log_lagrange4(sub_physics%thdif, 1, 2)
+         stab%kinematic_viscosity_interface(2)=log_lagrange4(sub_physics%kinematic_viscosity, 1, 2)
+         stab%thermal_diffusivity_interface(2)=log_lagrange4(sub_physics%thermal_diffusivity, 1, 2)
          i0=3
       else
          i0=zone_min
@@ -147,17 +147,17 @@ subroutine interpolate_to_interfaces()
 ! The last interface (num_zones) uses the last four zones.
       if (zone_max.eq.num_zones) then
          stab%kinematic_viscosity_interface(num_zones)= &
-              log_lagrange4(sub_physics%visc, num_zones-3, num_zones)
+              log_lagrange4(sub_physics%kinematic_viscosity, num_zones-3, num_zones)
          stab%thermal_diffusivity_interface(num_zones)= &
-              log_lagrange4(sub_physics%thdif, num_zones-3, num_zones)
+              log_lagrange4(sub_physics%thermal_diffusivity, num_zones-3, num_zones)
          i1=num_zones-1
       else
          i1=zone_max
       end if
 ! The other interfaces.
       do i = i0,i1
-         stab%kinematic_viscosity_interface(i)=log_lagrange4(sub_physics%visc, i-2, i)
-         stab%thermal_diffusivity_interface(i)=log_lagrange4(sub_physics%thdif, i-2, i)
+         stab%kinematic_viscosity_interface(i)=log_lagrange4(sub_physics%kinematic_viscosity, i-2, i)
+         stab%thermal_diffusivity_interface(i)=log_lagrange4(sub_physics%thermal_diffusivity, i-2, i)
       end do
 ! mu and omega: the mean of the two neighbouring zones.
       do i = 2,num_zones

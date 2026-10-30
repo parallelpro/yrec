@@ -107,7 +107,7 @@ The 12-element **surface mixture** has its own slot constants `ix_na`=1, `ix_al`
 | `*_start` (structure: `logP_start`, ...; rotation: `omega_start`, `j_rot_start`, ...) | The start of the step: the previous converged model, written by `rezone` onto the new grid (or by `evolve_step`'s `rezone_or_snapshot` when rezoning is skipped). The rotation state's were `old_*` until 2026-10-29 (legacy `/OLDROT/`). |
 | `xa_start` | Composition at the start of the step, stored after mass loss (`core/step/step_driver.f90`). The rotation sub-steps overwrite it (trap 9). |
 | `*_iteration_start` (`xa_iteration_start`, `j_rot_iteration_start`) | Start-of-step copies kept across the structure⇄rotation iterations (`core/step/step_driver.f90`); `orig_*` until 2026-10-29, legacy `/ORIGSTART/`. |
-| `*_prev` | The previous model (`photosphere_logP_prev`, `convective_turnover_timescale_prev`); `cz_base_radius_prev` and `envelope_cz_base_zone_prev` are the previous call within the step. A non-CGS member carries its unit before the qualifier (`r_rsun_prev_model`). |
+| `*_prev` | The previous model (`photosphere_logP_prev`, `convective_turnover_timescale_prev`); a value of the previous call within the step is `<member>_last_call` (`cz_base_radius_last_call`, `envelope_cz_base_zone_last_call`). A non-CGS member carries its unit before the qualifier (`r_rsun_prev_model`). |
 | `rot_scr%*_mid` | Structure interpolated in time to the current rotation sub-step, at the fraction of the step elapsed when the sub-step ends (`rotation/mid_timestep_model.f90`; "mid" is the legacy midpoint model's name). |
 | `eq_*`, `*_eqgrid` | Values on the equally spaced χ grid of the rotation solver. |
 
@@ -232,7 +232,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
 | ε_nuc | erg g⁻¹ s⁻¹ | `star%eps_total` | `SESUM` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | Sum of every chain's rate (pp I incl. d(p,γ), pp II, pp III, CNO, 3α, and the α captures since 2026-10-29: `docs/bug_sweep.md` M1; the F77 SESUM left them out). Excludes ν losses. |
-| ε_chain/ε_nuc | fraction | `star%eps_channels(1:5,k)` (`i_eps_pp1`, `i_eps_pp2`, `i_eps_pp3`, `i_eps_cno`, `i_eps_he3`) | `SEG(1:5)` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | **Fractions** of `eps_total`, not erg g⁻¹ s⁻¹ (trap 4). Slot 5 holds the 3α share despite its `he3` name (trap 5). |
+| ε_chain/ε_nuc | fraction | `star%eps_channels(1:5,k)` (`i_eps_pp1`, `i_eps_pp2`, `i_eps_pp3`, `i_eps_cno`, `i_eps_3alpha`) | `SEG(1:5)` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | **Fractions** of `eps_total`, not erg g⁻¹ s⁻¹ (trap 4). Slot 5 holds the 3α share; its profile column keeps the name `eps_he3` (trap 5). |
 | ε_ν | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_neu,k)`; `burn%eps_neutrino_loss` | `SEG(6)`; `ENU` (`/NEWEPS/`) | core/structure/structure_equations.f90:345; net/nuclear_energy.f90 (`add_thermal_neutrino_loss`) | Thermal neutrino loss rate (stored negative). |
 | ε_extra | erg g⁻¹ s⁻¹ | `star%eps_extra(k)`, `diag%eps_extra`; channel `luminosity_breakdown_lsun(i_lum_extra)` | — | core/structure/energy_sources.f90, core/structure/shell_equations.f90 (form_extra_energy_terms) | The sum of the extra energy sources a program registers (`add_energy_source`); zero, and not evaluated, without any. Interior only. |
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%eps_grav(k)` | `SEG(7)`, `HHC` | core/structure/structure_equations.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `eps_grav` is a specific rate, not a luminosity (trap 7). |
@@ -246,7 +246,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | E_rot | erg (per point) | `star%kinetic_energy_rot` | `HKEROT` | core/structure/henyey_iteration.f90:320, rotation/* | ½ Ω j Δm of the point. |
 | E_rot at step start | erg | `star%kinetic_energy_rot_start` | `HKEROTO` | core/step/step_driver.f90:297 | Start-of-step copy (an `_old`, not `_start`, name). |
 | m_u | g | `amu_cgs` (parameter) | `C21` (as 10⁹ sidereal yr × m_u) | state/physical_constants.f90 | Atomic mass unit; turns a rate per s per g into the per-s-per-amu units of the composition rate vector and the deuterium rate. |
-| Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `burn%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total(10)`; `neutrino_flux_zone(10,k)` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); totals in core/structure/structure_equations.f90 | Solar-neutrino source rates: one shell's record, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
+| Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `burn%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total_e10_per_cm2_s(10)`; per zone, a local of `write_neutrino_flux_table` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); totals in core/structure/structure_equations.f90 | Solar-neutrino source rates: one shell's record, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/diagnostics/observables.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
 | X(⁷Be) | mass fraction | `burn%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); per zone core/diagnostics/neutrino_flux_output.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
 | r_D | per s | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/step/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
@@ -261,7 +261,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | — | mixed | `star%envelope_fit_coeffs(9)` | `CFENV` | core/structure/surface_boundary.f90:215-223 | Linear fits in (logP, logT) at the fitting point: (1–3) logR, (4–6) log L, (7–9) log T_eff. |
 | log₁₀ T_eff (vertices) | dex (K) | `star%triangle_log_teff(3)`; also `tri_teffl` | `TRIT` | core/structure/surface_boundary.f90 | log T_eff of the three envelope-triangle vertices. Not an interior temperature (trap 16). |
 | log₁₀ L (vertices) | dex (L☉) | `star%triangle_log_l_lsun(3)`; also `tri_logl` | `TRIL` | core/structure/surface_boundary.f90 | log L of the three vertices. |
-| log₁₀ P, T, r at fit point | dex | `star%fit_point_pressure(3)`, `fit_point_temperature(3)`, `fit_point_radius(3)`; also `vtx_logp`, `vtx_logt`, `vtx_logr` | `PS`, `TS`, `RS` | core/envelope/envelope_integration_kernel.f90 | Envelope solution at the fitting mass for each vertex. log₁₀ values despite the names (trap 16). |
+| log₁₀ P, T, r at fit point | dex | `star%fit_point_logP(3)`, `fit_point_logT(3)`, `fit_point_logR(3)`; also `vtx_logp`, `vtx_logt`, `vtx_logr` | `PS`, `TS`, `RS` | core/envelope/envelope_integration_kernel.f90 | Envelope solution at the fitting mass for each vertex. log₁₀ values (trap 16 until their 2026-10-29 renames). |
 | — | — | `star%triangle_orientation`; also `tri_orientation` | `FTRI` | core/structure/surface_boundary.f90 | Orientation (sign) of the envelope triangle; a real number, not a logical. |
 | — | dex | `star%stored_envelope_state(4)` | `ESTORE` | core/envelope/envelope_integration_kernel.f90:702-705 | (logP, logT, logR, log m/M) where the envelope integration first reaches T ≥ `envelope_store_log_temperature`. |
 | — | — | `star%stored_vertex_index`; also `stored_vertex_index` | `ISTORE` | core/envelope/envelope_integration_kernel.f90 | Vertex whose state is in `stored_envelope_state`. |
@@ -373,7 +373,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | Δν | μHz | `star%delta_nu_uhz` | — | core/diagnostics/observables.f90:327 | Asymptotic large separation from the sound-travel integral. |
 | ΔΠ₁ | s | `star%delta_Pg` | — | core/diagnostics/observables.f90:355 | Asymptotic l=1 g-mode period spacing. |
 | m_H-shell | M☉ | `star%h_shell_bot_mass_msun`, `h_shell_mid_mass_msun`, `h_shell_top_mass_msun` | — | core/diagnostics/observables.f90:442-447 | Masses at the H-shell boundaries. |
-| r_H-shell/R | fraction | `star%h_shell_bot_radius`, `h_shell_mid_radius`, `h_shell_top_radius` | — | core/diagnostics/observables.f90:448-456 | Radii of the H-shell boundaries as fractions of R. |
+| r_H-shell/R | fraction | `star%h_shell_bot_radius_fraction`, `h_shell_mid_radius_fraction`, `h_shell_top_radius_fraction` | — | core/diagnostics/observables.f90:448-456 | Radii of the H-shell boundaries as fractions of R. |
 
 ### 2.12 Pulse output
 
@@ -478,7 +478,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - The `star_info` comment says "[erg/g/s]" (`state/star_info_lib.f90:89`).
    - `compute_henyey_coefficients` stores each chain's `eps_by_chain/eps_total` in slots 1–5 (`store_zone_energy_channels`), and erg g⁻¹ s⁻¹ in slots 6 (ν) and 7 (grav).
    - The profile columns `eps_ppI`…`eps_he3` (`core/diagnostics/stitched_model.f90:483-487`) are therefore fractions of `eps_nuc`, while `eps_neu` and `eps_grav` are rates.
-5. **`i_eps_he3` (slot 5) and the profile column `eps_he3` hold the triple-α share.**
+5. **The slot `i_eps_3alpha` (slot 5; `i_eps_he3` until 2026-10-29) and the profile column `eps_he3` hold the triple-α share.**
    - Slot 5 is filled from `burn%eps_by_chain(chain_triple_alpha)` (`eps_channel_of_chain` in `core/structure/structure_equations.f90`).
    - The luminosity twin is correctly named `i_lum_3alpha`.
 6. **`old_shell_mass` is not a mass and is unused.**
@@ -515,7 +515,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - Unknown heating therefore leaks into the nuclear channels. This is the trap named in `TARGET_ARCHITECTURE.md` 4.5a.
 16. **The envelope-triangle arrays are named after the wrong quantity or omit "log".**
     - `triangle_log_teff` holds log **T_eff** of the vertices (`compute_surface_boundary`'s own name is `tri_teffl`).
-    - `fit_point_pressure/temperature/radius` hold **log₁₀** P, T, r (`vtx_logp/logt/logr`).
+    - `fit_point_logP/logT/logR` (`fit_point_pressure/temperature/radius` until 2026-10-29) hold **log₁₀** P, T, r (`vtx_logp/logt/logr`).
 17. **`stotal` duplicated `log_total_mass` (merged 2026-10-29).**
     - Both are log₁₀ M in g.
     - Mass loss updated the two separately, the envelope code read `stotal` and the structure code `log_total_mass`. Since a568e084 there is one member, `log_total_mass`.
@@ -559,7 +559,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 **Marked "unconfirmed" in the tables.** A reviewer who knows the answer should fill these in:
 
 - the slot order of the EOS's `ion_fraction(1:3)`;
-- the physical units of `neutrino_flux`, `neutrino_flux_total` and `neutrino_flux_zone` (the code comments say "10¹⁰ ergs per gm");
+- the physical units of `neutrino_flux` (the code comments say "10¹⁰ ergs per gm"; the totals, `neutrino_flux_total_e10_per_cm2_s`, are named for fluxes at the Earth in 10¹⁰ cm⁻² s⁻¹ since 2026-10-29);
 
 **Left out of the tables** because their meaning or units could not be settled from the code:
 

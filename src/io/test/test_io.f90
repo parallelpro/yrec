@@ -774,9 +774,9 @@ subroutine yrec7_check()
       call report("YREC7: omega from -log10(omega), zero at the sentinel", ok)
       ok = all(s%triangle_log_teff == f%env(1,:)) .and. &
            all(s%triangle_log_l_lsun == f%env(2,:)) .and. &
-           all(s%fit_point_pressure == f%env(3,:)) .and. &
-           all(s%fit_point_temperature == f%env(4,:)) .and. &
-           all(s%fit_point_radius == f%env(5,:)) .and. &
+           all(s%fit_point_logP == f%env(3,:)) .and. &
+           all(s%fit_point_logT == f%env(4,:)) .and. &
+           all(s%fit_point_logR == f%env(5,:)) .and. &
            all(s%envelope_fit_coeffs == reshape(f%env(6:8,:), [9])) .and. &
            h%triangle_orientation == -1.0d0
       call report("YREC7: the envelope records, the triangle reflected", ok)
@@ -949,9 +949,9 @@ subroutine model2_check()
       ok = all(s%luminosity_breakdown_lsun(1:7) == f%lums) .and. &
            all(s%triangle_log_teff == f%env(1,:)) .and. &
            all(s%triangle_log_l_lsun == f%env(2,:)) .and. &
-           all(s%fit_point_pressure == f%env(3,:)) .and. &
-           all(s%fit_point_temperature == f%env(4,:)) .and. &
-           all(s%fit_point_radius == f%env(5,:)) .and. &
+           all(s%fit_point_logP == f%env(3,:)) .and. &
+           all(s%fit_point_logT == f%env(4,:)) .and. &
+           all(s%fit_point_logR == f%env(5,:)) .and. &
            all(s%envelope_fit_coeffs == reshape(f%env(6:8,:), [9]))
       call report("MODEL2: the luminosities and the envelope records", ok)
       ok = all(s%log_mass(1:m2_nz) == f%col(1,:)) .and. all(s%logR(1:m2_nz) == f%col(2,:)) &

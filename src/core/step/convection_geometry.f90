@@ -85,12 +85,13 @@ end function first_zone_above
 ! true base lies higher, positive lower. It is intent(inout) because it
 ! is assigned only when the base is an interior zone
 ! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
-! cz_base_zone is kept in star%envelope_cz_base_zone_prev, the starting
+! cz_base_zone is kept in star%envelope_cz_base_zone_last_call, the starting
 ! zone of the next call within the step.
 !   star reads: ctrl%envelope_overshoot_active,
 !     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
 !     logR_start
-!   star writes: cz_base_radius_prev, envelope_cz_base_zone_prev
+!   star writes: cz_base_radius_last_call,
+!     envelope_cz_base_zone_last_call
 subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
      env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       use star_info_lib, only: json
@@ -126,18 +127,18 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else
-! The starting depth. cz_base_radius_prev = 0 (set by rezone_or_snapshot
+! The starting depth. cz_base_radius_last_call = 0 (set by rezone_or_snapshot
 ! at every step) marks the first call of the step: the starting base
 ! radius is then the midpoint of zones env_cz_zone_old-1 and
 ! env_cz_zone_old in the start-of-step model, and the mixed region
 ! reaches the overshoot depth alpha_ov H_P (envelope_overshoot_depth_start)
 ! below it. Later calls in the step (the rotation sub-steps) start from
 ! the previous call's end-of-step zone.
-            if(s%cz_base_radius_prev.eq.0.0d0)then
+            if(s%cz_base_radius_last_call.eq.0.0d0)then
                if (env_cz_zone_old.gt.1) then
-                  s%cz_base_radius_prev = 0.5d0*(exp(ln10*s%logR_start(env_cz_zone_old)) &
+                  s%cz_base_radius_last_call = 0.5d0*(exp(ln10*s%logR_start(env_cz_zone_old)) &
                            +exp(ln10*s%logR_start(env_cz_zone_old-1)))
-                  search_radius = s%cz_base_radius_prev - s%envelope_overshoot_depth_start
+                  search_radius = s%cz_base_radius_last_call - s%envelope_overshoot_depth_start
                   cz_base_zone_old = first_zone_above(s%logR_start, env_cz_zone_old-1, &
                        search_radius)
                else
@@ -147,7 +148,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
                   cz_base_zone_old = 1
                end if
             else
-               cz_base_zone_old = s%envelope_cz_base_zone_prev
+               cz_base_zone_old = s%envelope_cz_base_zone_last_call
             endif
 ! The ending depth, from the interpolated true base,
 !   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
@@ -156,7 +157,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
-            s%cz_base_radius_prev = cz_base_radius
+            s%cz_base_radius_last_call = cz_base_radius
             search_radius = cz_base_radius - s%envelope_overshoot_depth_end
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
@@ -176,7 +177,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
          cz_base_zone = env_cz_zone
          cz_base_zone_old = env_cz_zone_old
       endif
-      s%envelope_cz_base_zone_prev = cz_base_zone
+      s%envelope_cz_base_zone_last_call = cz_base_zone
       return
 end subroutine locate_surface_mixing_base
 

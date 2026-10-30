@@ -51,7 +51,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
      pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
      in_atmosphere, want_derivatives, conductive_opacity_flag, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     saha_state, atm_choice, atm_hras, composition, atm_point, pt, ierr)
+     saha_state, atm_choice, hsra_log_t_offset, composition, atm_point, pt, ierr)
 
       use eos_lib
       use kap_lib
@@ -79,8 +79,8 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
 ! star's here gave HSRA for that one integration, a 2026 regression,
 ! fixed 2026-10; the F77 envint.f switched the common KTTAU qatm read)
       integer, intent(in) :: atm_choice
-! atm_hras: the HSRA T(tau) relation's offset.
-      double precision, intent(in) :: atm_hras
+! hsra_log_t_offset: the HSRA T(tau) relation's offset.
+      double precision, intent(in) :: hsra_log_t_offset
 ! composition: the outer shell's composition, for the EOS's
 ! Debye-Hueckel correction.
       double precision, intent(in) :: composition(:)
@@ -104,7 +104,7 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       optical_depth = exp(ln10*atm_point%log10_tau)
 ! T(tau) from the T-tau relation.
       log10_temperature = ttau_log10_temperature(optical_depth, &
-           log10_teff, atm_choice, atm_hras)
+           log10_teff, atm_choice, hsra_log_t_offset)
       log10_pressure = y(1)
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &

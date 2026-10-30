@@ -99,8 +99,9 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
        hydrogen_fraction = s%surface_hydrogen_fraction
        metal_fraction = s%surface_metal_fraction
        log10_pressure_limit = s%logP(s%nz)
-       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l_lsun,s%envelope_fit_coeffs,s%fit_point_pressure,s%fit_point_temperature, &
-            s%fit_point_radius,tri_orientation,stored_vertex_index, &
+       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l_lsun, &
+            s%envelope_fit_coeffs,s%fit_point_logP,s%fit_point_logT, &
+            s%fit_point_logR,tri_orientation,stored_vertex_index, &
             s%stored_envelope_state, &
             start_new_triangle,reset_triangle,saha_state, &
             s%log_total_mass,s%log_L_lsun, &

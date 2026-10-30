@@ -481,7 +481,7 @@ end function ideal_gas_mu
 subroutine interior_value(s, icol, k, value, found)
       use math_lib
       use star_info_lib, only: i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, &
-           i_eps_he3, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
+           i_eps_3alpha, i_eps_neu, i_eps_pp1, i_eps_pp2, i_eps_pp3, i_h1, &
            i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, &
            i_o17, i_o18
       use star_info_lib, only: i_mech_eddington_sweet, i_mech_gsf, i_mech_shear, &
@@ -522,7 +522,7 @@ subroutine interior_value(s, icol, k, value, found)
       case (ip_eps_ppII);     value = s%eps_channels(i_eps_pp2,k)
       case (ip_eps_ppIII);    value = s%eps_channels(i_eps_pp3,k)
       case (ip_eps_cno);      value = s%eps_channels(i_eps_cno,k)
-      case (ip_eps_he3);      value = s%eps_channels(i_eps_he3,k)
+      case (ip_eps_he3);      value = s%eps_channels(i_eps_3alpha,k)
       case (ip_eps_nuc);      value = s%eps_total(k)
       case (ip_eps_neu);      value = s%eps_channels(i_eps_neu,k)
       case (ip_eps_grav);     value = s%eps_channels(i_eps_grav,k)

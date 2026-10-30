@@ -93,14 +93,14 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_state, &
 
 contains
 
-! ---------------------------------------------------------------
-! Zero the solar-neutrino fluxes (star%neutrino_flux_total(j), the total
-! flux of neutrino species j made in the star) and the luminosity
-! channels.
+! --------------------------------------------------------------- Zero
+! the solar-neutrino fluxes (star%neutrino_flux_total_e10_per_cm2_s(j),
+! the total flux of neutrino species j made in the star) and the
+! luminosity channels.
 subroutine start_energy_bookkeeping()
       if (s%ctrl%calc_neutrinos) then
          do j = 1,n_nu_fluxes
-            s%neutrino_flux_total(j) = 0.0d0
+            s%neutrino_flux_total_e10_per_cm2_s(j) = 0.0d0
          end do
       end if
       do j = 1,n_lum_channels
@@ -173,7 +173,7 @@ subroutine add_shell_energy_budget()
        if (diag%burn%burning) then
             if (s%ctrl%calc_neutrinos) then
                do j = 1,n_nu_fluxes
-                  s%neutrino_flux_total(j) = s%neutrino_flux_total(j) + &
+                  s%neutrino_flux_total_e10_per_cm2_s(j) = s%neutrino_flux_total_e10_per_cm2_s(j) + &
                        diag%burn%neutrino_flux(j)*s%dm(im)
                end do
             end if
@@ -383,7 +383,7 @@ pure integer function eps_channel_of_chain(chain)
       use net_lib, only: chain_pp1, chain_pp2, chain_pp3, chain_cno, &
            chain_triple_alpha
       use star_info_lib, only: i_eps_pp1, i_eps_pp2, i_eps_pp3, i_eps_cno, &
-           i_eps_he3
+           i_eps_3alpha
       integer, intent(in) :: chain
 
       select case (chain)
@@ -396,7 +396,7 @@ pure integer function eps_channel_of_chain(chain)
       case (chain_cno)
          eps_channel_of_chain = i_eps_cno
       case (chain_triple_alpha)
-         eps_channel_of_chain = i_eps_he3
+         eps_channel_of_chain = i_eps_3alpha
       case default
          eps_channel_of_chain = 0
       end select

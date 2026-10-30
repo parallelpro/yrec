@@ -84,7 +84,7 @@ subroutine rotation_stability_setup(stab, sub_physics, &
 ! actual and adiabatic gradients, d ln rho/d ln T, eps (erg/g/s), c_P.
       double precision :: pressure_interface(json), temperature_interface(json), &
            mass_interface(json), gradT_interface(json), grada_interface(json), &
-           qdt_interface(json), eps_total_interface(json)
+           dlnrho_dlnt_interface(json), eps_total_interface(json)
       double precision :: specific_heat_interface(json)
       integer :: zone_idx, interior_begin, interior_end
       double precision :: grav_const
@@ -261,7 +261,7 @@ subroutine interpolate_to_interface(first_point, interface_idx)
       stab%density_interface(interface_idx)=exp(ln10*interp4(log_density, first_point, interface_idx))
       gradT_interface(interface_idx)=interp4(sub_physics%gradr, first_point, interface_idx)
       grada_interface(interface_idx)=interp4(sub_physics%grada, first_point, interface_idx)
-      qdt_interface(interface_idx)=interp4(sub_physics%qdt, first_point, interface_idx)
+      dlnrho_dlnt_interface(interface_idx)=interp4(sub_physics%dlnrho_dlnt, first_point, interface_idx)
       mass_interface(interface_idx)=interp4(mass_unlogged, first_point, interface_idx)
       eps_total_interface(interface_idx)=interp4(sub_physics%eps_total, first_point, interface_idx)
       stab%luminosity_interface(interface_idx)=rotation_settings%solar_luminosity_cgs*(interp4(luminosity, first_point, &

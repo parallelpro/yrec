@@ -143,9 +143,9 @@ How to read the tables:
 | `envelope_fit_coeffs(9)` | coefficients c(1:9) of the envelope fit at the fitting point: log R, log L and log Teff each = c log P + c log T + c | - | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `henyey_iteration` | Rebuilt by `compute_surface_boundary` when the triangle changes; read from YREC7/MODEL2 files, not written to .mod |
 | `triangle_log_l_lsun(3)` | log10 L of the three vertices of the envelope-fit triangle | log10 Lsun | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `henyey_iteration` |  |
 | `triangle_log_teff(3)` | log10 Teff of the three vertices of the envelope-fit triangle | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `henyey_iteration` |  |
-| `fit_point_pressure(3)` | log10 P at the fitting point of each vertex's envelope integration | log10 dyn/cm^2 | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `rezoning`, `henyey_iteration` |  |
-| `fit_point_temperature(3)` | log10 T at the fitting point of each vertex | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `henyey_iteration` |  |
-| `fit_point_radius(3)` | log10 r at the fitting point of each vertex | log10 cm | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `rezoning`, `henyey_iteration` |  |
+| `fit_point_logP(3)` | log10 P at the fitting point of each vertex's envelope integration | log10 dyn/cm^2 | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `rezoning`, `henyey_iteration` |  |
+| `fit_point_logT(3)` | log10 T at the fitting point of each vertex | log10 K | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `henyey_iteration` |  |
+| `fit_point_logR(3)` | log10 r at the fitting point of each vertex | log10 cm | `henyey_iteration` (refresh_surface_bc); `model_files` (read_model2, read_yrec7) | `rezoning`, `henyey_iteration` |  |
 | `stored_vertex_index` | which triangle vertex stored `stored_envelope_state` (0: none) | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` |  |
 | `triangle_orientation` | orientation (+1 or -1) of the envelope-fit triangle | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` |  |
 
@@ -253,7 +253,7 @@ How to read the tables:
 | `rate_be9(json)` | Be9 proton-capture rate at the end of the step | 1/s | `burn_step` (store_li_be_rates) | `burn_step`, `evolve_rotation` |  |
 | `deuterium_burning_rate(json)` | deuterium burning rate of each shell above the nuclear cutoff | 1/s | `burn_step` (compute_burn_rates) | `burn_step`, `mid_timestep_model` | Zero while the surface D is below 1e-11 |
 | `envelope_overshoot_depth_end` | envelope-overshoot depth `alpha_ov` `H_P` at the end of the step | cm | `step_driver` (burn_light_elements); `evolve_rotation` (burn_light_elements_over_substep) | `convection_geometry`, `evolve_rotation` |  |
-| `cz_base_radius_prev` | radius of the base of the surface mixed region found by the last call within the step | cm | `convection_geometry` (locate_surface_mixing_base); `step_driver` (rezone_or_snapshot) | `convection_geometry` | With `ctrl%use_extended_composition`; zeroed at each step start to mean none yet |
+| `cz_base_radius_last_call` | radius of the base of the surface mixed region found by the last call within the step | cm | `convection_geometry` (locate_surface_mixing_base); `step_driver` (rezone_or_snapshot) | `convection_geometry` | With `ctrl%use_extended_composition`; zeroed at each step start to mean none yet |
 | `accreted_mass` | mass accreted during the step | g | `mass_change` (mix_in_accreted_composition) | `burn_step`, `mid_timestep_model` | Set only when the star accretes; its readers check that it does |
 | `delta_log_pressure` | shift of log P of the convection zone for the entropy of accreted matter | log10 | `mass_change` (adjust_cz_for_accreted_entropy) | `mass_change`, `structure_equations` | Zero at present: `change_mass` zeroes `envelope_specific_entropy` first |
 | `delta_log_temperature` | shift of log T for the same | log10 | `mass_change` (adjust_cz_for_accreted_entropy) | `mass_change`, `structure_equations` |  |
@@ -294,7 +294,7 @@ How to read the tables:
 | `grada(json)` | adiabatic gradient `grad_ad` | - | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `observables`, `stitched_model`, `rezoning`, `step_driver`, `evolve_rotation`, `mid_timestep_model` | As `opacity_zone` |
 | `conv_vel(json)` | convective velocity from mixing-length theory | cm/s | `shell_physics` (compute_shell_physics); `structure_equations` (store_zone_thermodynamics) | `stitched_model`, `rezoning`, `mid_timestep_model` | As `opacity_zone` |
 | `adiabatic_index_gamma1(json)` | first adiabatic exponent `Gamma_1` | - | `structure_equations` (store_zone_thermodynamics) | `stitched_model` |  |
-| `neutrino_flux_total(n_nu_fluxes)` | solar-neutrino fluxes at the Earth by slot `i_nu_*` (slots 9-10: the He3+He3 and He3+He4 rates in the same units) | 10^10/(cm^2 s) | `neutrino_flux_output` (write_neutrino_flux_table); `observables` (compute_snu_rates); `structure_equations` (add_shell_energy_budget, start_energy_bookkeeping) | `neutrino_flux_output`, `observables`, `monte_carlo`, `structure_equations`, `history_output` | Only with `ctrl%calc_neutrinos`; also overwritten by the card-start neutrino table |
+| `neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)` | solar-neutrino fluxes at the Earth by slot `i_nu_*` (slots 9-10: the He3+He3 and He3+He4 rates in the same units) | 10^10/(cm^2 s) | `neutrino_flux_output` (write_neutrino_flux_table); `observables` (compute_snu_rates); `structure_equations` (add_shell_energy_budget, start_energy_bookkeeping) | `neutrino_flux_output`, `observables`, `monte_carlo`, `structure_equations`, `history_output` | Only with `ctrl%calc_neutrinos`; also overwritten by the card-start neutrino table |
 | `pulse_deps_dlnrho(json)` | d eps/d ln rho, absolute (not logarithmic) | erg/(g s) | `structure_equations` (store_pulse_derivatives) | `stitched_model` | Zero below the burning cutoff |
 | `pulse_deps_dlnt(json)` | d eps/d ln T, absolute | erg/(g s) | `structure_equations` (store_pulse_derivatives) | `stitched_model` | Zero below the burning cutoff |
 | `pulse_dlnkap_dlnrho(json)` | d ln kappa/d ln rho | - | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
@@ -325,9 +325,9 @@ How to read the tables:
 | `h_shell_bot_mass_msun` | mass coordinate of the bottom of the H-burning shell | Msun | `observables` (compute_h_shell_boundaries) | `history_output` | 0 without a shell, as the five below |
 | `h_shell_mid_mass_msun` | mass coordinate of the middle of the H-burning shell | Msun | `observables` (compute_h_shell_boundaries) | `history_output` |  |
 | `h_shell_top_mass_msun` | mass coordinate of the top of the H-burning shell | Msun | `observables` (compute_h_shell_boundaries) | `history_output` |  |
-| `h_shell_bot_radius` | radius of the bottom of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
-| `h_shell_mid_radius` | radius of the middle of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
-| `h_shell_top_radius` | radius of the top of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
+| `h_shell_bot_radius_fraction` | radius of the bottom of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
+| `h_shell_mid_radius_fraction` | radius of the middle of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
+| `h_shell_top_radius_fraction` | radius of the top of the H-burning shell | r/R | `observables` (compute_h_shell_boundaries) | `history_output` |  |
 | `central_log10_temperature` | central temperature, extrapolated from the first point | log10 K | `observables` (compute_central_conditions) | `observables`, `monte_carlo`, `history_output` |  |
 | `central_log10_pressure` | central pressure | log10 dyn/cm^2 | `observables` (compute_central_conditions) | `observables`, `monte_carlo`, `history_output` |  |
 | `central_log10_density` | central density, from the EOS | log10 g/cm^3 | `observables` (compute_central_conditions) | `observables`, `monte_carlo`, `history_output` |  |
@@ -357,7 +357,7 @@ How to read the tables:
 | `log_l_lsun_at_target_radius_prev_run` | log(L/Lsun) at the target radius in the previous star-calibration run | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `log_l_lsun_prev_model` | log(L/Lsun) of the previous model, for the star calibration | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `r_rsun_prev_model` | R/Rsun of the previous model, for the star calibration | Rsun | `calibration` (check_star_calibration, setup_star_calibration) | `calibration` |  |
-| `envelope_cz_base_zone_prev` | zone of the base of the surface mixed region found by the last call within the step (`cz_base_radius_prev`), the starting zone of the next call | - | `convection_geometry` (locate_surface_mixing_base) | `convection_geometry` |  |
+| `envelope_cz_base_zone_last_call` | zone of the base of the surface mixed region found by the last call within the step (`cz_base_radius_last_call`), the starting zone of the next call | - | `convection_geometry` (locate_surface_mixing_base) | `convection_geometry` |  |
 | `central_saha_state` | the Saha state the central EOS call carries from one model to the next | - | `observables` (compute_central_conditions) | `observables` |  |
 | `max_correction_index(4)` | point of the largest correction of each variable, for the convergence log | - | `henyey_iteration` (find_largest_corrections) | `henyey_iteration` |  |
 | `surface_bc(6)` | outer boundary-condition rows from the envelope fit, in `henyey_solve`'s form | - | `henyey_iteration` (form_surface_bc_rows) | `henyey_iteration` |  |
@@ -395,7 +395,7 @@ Renamed in 2026-10 (the old name in parentheses), because each invited a wrong r
 
 Still to watch:
 
-- Earlier values: `<member>_start` is the start of the step, `<member>_prev` the previous model (`cz_base_radius_prev` and `envelope_cz_base_zone_prev`: the previous call within the step; `log_l_lsun_prev_check`, `log_r_rsun_prev_check`: the previous calibration check), `<member>_iteration_start` the start of the structure-rotation iteration.
+- Earlier values: `<member>_start` is the start of the step, `<member>_prev` the previous model (`log_l_lsun_prev_check`, `log_r_rsun_prev_check`: the previous calibration check; a value of the previous call within the step is `<member>_last_call`), `<member>_iteration_start` the start of the structure-rotation iteration.
 - `max_residual` holds residuals or corrections, depending on the stage of the Newton iteration.
 - `ln10_over_lsun` is ln(10)/L☉, not a logarithm.
 - `star_mass` is in M☉ without a unit suffix: MESA's name.

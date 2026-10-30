@@ -72,7 +72,7 @@ subroutine write_neutrino_flux_table(s)
       be7_mass_fraction = 0.0d0
       flux_zone = 0.0d0
       do j = 1,n_nu_fluxes
-         s%neutrino_flux_total(j) = 0.0d0
+         s%neutrino_flux_total_e10_per_cm2_s(j) = 0.0d0
       end do
 
 ! The production in each shell, from compute_zone_energy.
@@ -90,7 +90,7 @@ subroutine write_neutrino_flux_table(s)
 ! The shell's fluxes: the per-gram fluxes times the shell mass (g).
          do j = 1,n_nu_fluxes
             flux_zone(j,i) = burn%neutrino_flux(j)*shell_mass(i)
-            s%neutrino_flux_total(j) = s%neutrino_flux_total(j) &
+            s%neutrino_flux_total_e10_per_cm2_s(j) = s%neutrino_flux_total_e10_per_cm2_s(j) &
                  + flux_zone(j,i)
          end do
          write(run_log_unit,911)i,shell_mass(i), &
@@ -99,15 +99,15 @@ subroutine write_neutrino_flux_table(s)
       end do
 
 ! The total fluxes, in units of 10^10 cm^-2 s^-1.
-      write(run_log_unit,222)(s%neutrino_flux_total(i),i=1,n_nu_fluxes)
+      write(run_log_unit,222)(s%neutrino_flux_total_e10_per_cm2_s(i),i=1,n_nu_fluxes)
  222  format(1P10E10.3)
 
 ! Normalize each shell's flux to the total of its slot.
       do j = 1,n_nu_fluxes
-         if (s%neutrino_flux_total(j) .ne. 0.0d0) then
+         if (s%neutrino_flux_total_e10_per_cm2_s(j) .ne. 0.0d0) then
             do i = 1,s%nz
                flux_zone(j,i) = flux_zone(j,i) &
-                    /s%neutrino_flux_total(j)
+                    /s%neutrino_flux_total_e10_per_cm2_s(j)
             end do
          end if
       end do

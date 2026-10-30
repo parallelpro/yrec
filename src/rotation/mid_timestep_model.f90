@@ -183,10 +183,12 @@ subroutine interpolate_structure()
          sub_physics%gradr(j) = s%gradr_start(j) + &
               time_fraction*(s%gradr(j) - s%gradr_start(j))
          sub_physics%eps_total(j) = s%eps_total_start(j) + time_fraction*(s%eps_total(j) - s%eps_total_start(j))
-         sub_physics%visc(j) = s%kinematic_viscosity_start(j) + time_fraction*(s%kinematic_viscosity(j) - s%kinematic_viscosity_start(j))
-         sub_physics%thdif(j) = s%thermal_diffusivity_start(j) + time_fraction*(s%thermal_diffusivity(j) - s%thermal_diffusivity_start(j))
+         sub_physics%kinematic_viscosity(j) = s%kinematic_viscosity_start(j) + &
+              time_fraction*(s%kinematic_viscosity(j) - s%kinematic_viscosity_start(j))
+         sub_physics%thermal_diffusivity(j) = s%thermal_diffusivity_start(j) + &
+              time_fraction*(s%thermal_diffusivity(j) - s%thermal_diffusivity_start(j))
          sub_physics%cp(j) = s%cp_start(j) + time_fraction*(s%cp(j) - s%cp_start(j))
-         sub_physics%qdt(j) = s%dlnrho_dlnt_start(j) + time_fraction*(s%dlnrho_dlnt(j) - s%dlnrho_dlnt_start(j))
+         sub_physics%dlnrho_dlnt(j) = s%dlnrho_dlnt_start(j) + time_fraction*(s%dlnrho_dlnt(j) - s%dlnrho_dlnt_start(j))
          sub_physics%opacity(j) = s%opacity_zone_start(j) + time_fraction*(s%opacity_zone(j) - s%opacity_zone_start(j))
          sub_physics%mu(j) = sub_physics%mu(j) + step_fraction_ratio*(s%mu(j) - s%mu_start(j))
 ! The total energy generation, eps_total + eps_neu + eps_grav with the

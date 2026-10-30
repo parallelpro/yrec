@@ -5,7 +5,7 @@
 ! everything code outside atm/ may use, here and only here
 ! (check_boundaries enforces it).
 !     atm_init             install the settings (atm_settings_t, built
-!                          by the star layer's atmosphere_settings) and
+!                          by the star layer's atm_settings_from_star) and
 !                          read the tables they select
 !     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
 !                          Kurucz, Allard or Castelli/Kurucz table

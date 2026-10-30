@@ -17,19 +17,20 @@ contains
 
 ! ---------------------------------------------------------------
 ! rebuild_envelope (formerly getnewenv)
-! ---------------------------------------------------------------
-! Moves the fitting point outward, to target_envelope_mass (a
-! log(m/M), clamped to senv_thin_envelope), after the star has accreted
-! (change_mass's new_atmosphere_fit_needed). It integrates the atmosphere and envelope from the surface
-! (atm_get at the current L and Teff) down to the current fitting
-! point, shifts the envelope onto the last interior shell, and appends
-! the envelope points inside the new fitting mass as interior shells
-! (append_envelope_points). Then come the new shells' masses and, with
-! rotation, a first guess at their rotation, which omega_from_j makes
-! consistent, and the star's angular momentum and rotational energy.
-! Updates star%log_fit_point_mass_fraction and num_zones; called from evolve_step. ierr: the
-! integration failed, the zones would overflow json, or the mass
-! interpolation was degenerate.
+! --------------------------------------------------------------- Moves
+! the fitting point outward, to target_envelope_mass (a log(m/M),
+! clamped to max_log_fit_point_mass_fraction), after the star has
+! accreted (change_mass's new_atmosphere_fit_needed). It integrates the
+! atmosphere and envelope from the surface (atm_get at the current L and
+! Teff) down to the current fitting point, shifts the envelope onto the
+! last interior shell, and appends the envelope points inside the new
+! fitting mass as interior shells (append_envelope_points). Then come
+! the new shells' masses and, with rotation, a first guess at their
+! rotation, which omega_from_j makes consistent, and the star's angular
+! momentum and rotational energy. Updates
+! star%log_fit_point_mass_fraction and num_zones; called from
+! evolve_step. ierr: the integration failed, the zones would overflow
+! json, or the mass interpolation was degenerate.
 subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, &
@@ -40,11 +41,11 @@ subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
       use omega_profile, only: omega_from_j
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff
-      use envelope_integration_kernel, only: senv_thin_envelope
+      use envelope_integration_kernel, only: max_log_fit_point_mass_fraction
       use envelope_refit, only: append_envelope_points
       use star_info_lib, only: i_h1, i_metals, json, n_species_basic, &
            n_species_extended
-      use controls_buffer, only: ichi_dp_env_max
+      use control_slots, only: ichi_dp_env_max
       use physical_constants
       use math_lib
       implicit none
@@ -150,9 +151,10 @@ subroutine prepare_envelope_rebuild()
       else
          species_end_index = n_species_basic
       endif
-! Keep log_fit_point_mass_fraction at or below senv_thin_envelope: an
-! envelope of at least about 2.3e-12 of the star.
-      target_envelope_mass = min(target_envelope_mass,senv_thin_envelope)
+! Keep log_fit_point_mass_fraction at or below
+! max_log_fit_point_mass_fraction: an envelope of at least about 2.3e-12
+! of the star.
+      target_envelope_mass = min(target_envelope_mass,max_log_fit_point_mass_fraction)
 ! The zone count and the fitting mass before the rebuild.
       old_num_zones = num_zones
       envelope_mass_before = s%log_fit_point_mass_fraction

@@ -133,9 +133,9 @@ def parse_star_info(path):
 SNAPSHOT_CLASS = "Step snapshot"
 PRIVATE_CLASS = "Private to one module"
 SNAPSHOT_NAME_RE = re.compile(r"_(start|prev|iteration_start)$", re.I)
-# members named like earlier values that are not (a value of the previous
-# call within the step); the prepared renames make them *_last_call
-NAME_RULE_PENDING = {"cz_base_radius_prev", "envelope_cz_base_zone_prev"}
+# members named like earlier values that are not (none since the
+# 2026-10-29 renames; a name listed here is exempt from the rule)
+NAME_RULE_PENDING = set()
 
 
 def class_rule_errors(members, writers, readers):

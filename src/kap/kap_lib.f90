@@ -4,7 +4,7 @@
 ! The public interface of kap/, the opacities: everything code outside
 ! kap/ may use, here and only here (check_boundaries enforces it).
 !     kap_init        install the settings (kap_settings_t, built by the
-!                     star layer's opacity_settings) and load the tables
+!                     star layer's kap_settings_from_star) and load the tables
 !                     they select
 !     kap_get         the opacity of a zone and its log derivatives, in
 !                     a result array (i_kap, i_log10_kap,

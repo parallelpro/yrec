@@ -418,9 +418,9 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          sub_physics%gradT(i) = merge(0.4d0, 0.25d0 + 0.1d0*f, convective(i))
          sub_physics%gradr(i) = sub_physics%gradT(i)
          sub_physics%eps_total(i) = 20.0d0*exp(-(f/0.1d0)**2)
-         sub_physics%qdt(i) = 1.0d0
-         sub_physics%visc(i) = 10.0d0*(1.0d0 + 3.0d0*f)
-         sub_physics%thdif(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
+         sub_physics%dlnrho_dlnt(i) = 1.0d0
+         sub_physics%kinematic_viscosity(i) = 10.0d0*(1.0d0 + 3.0d0*f)
+         sub_physics%thermal_diffusivity(i) = 1.0d7*(1.0d0 + 100.0d0*f**3)
       end do
 ! shear bands: omega falls by a factor across a few zones
       select case (steep)

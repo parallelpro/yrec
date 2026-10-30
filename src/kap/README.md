@@ -37,10 +37,10 @@ For one zone (log ρ, log T, X, Z):
 
 ## 4. Configuration
 
-`kap_settings_t` (in `opacity_tables`) is everything kap reads: which tables, the tables' Z values, the ramp limits, the Z tolerance of the surface table and the LAOL89 extrapolation limit. The star layer fills it from the controls (`opacity_settings` in `setup/microphysics_settings.f90`) and passes it to `kap_init`, together with the table paths (`kap_table_paths_t`, from the controls: `kap_table_paths_from_star`). Every table file, the conductive one included, is opened by kap itself with `newunit`.
+`kap_settings_t` (in `opacity_tables`) is everything kap reads: which tables, the tables' Z values, the ramp limits, the Z tolerance of the surface table and the LAOL89 extrapolation limit. The star layer fills it from the controls (`kap_settings_from_star` in `setup/microphysics_settings.f90`) and passes it to `kap_init`, together with the table paths (`kap_table_paths_t`, from the controls: `kap_table_paths_from_star`). Every table file, the conductive one included, is opened by kap itself with `newunit`.
 
 ## 5. Tests and extending
 
 `test_kap` (`make tests` in `src/`, then `pytest test_kap.py` from the repository root) pins the OPAL95 interior on a (log T, log ρ) grid, the error paths, and every family: the production combination (Alexander 2006, OPAL95-format, pure Z, Potekhin) at and away from the surface table and on a helium core; OPAL92 and LAOL89 with two Z tables; Kurucz and Alexander 1994/95. A deliberate change to its output means regenerating `kap/test/expected_test_kap.out`.
 
-**Add a table family:** a module in its own directory with `read_*_tables`, `compute_*_opacity` and, if it caches a composition slice, `build_*_surface_table`; its tables in `opacity_table`; a `use_*` flag in `kap_settings_t` (and in `opacity_settings`); a branch in `load_opacity_tables`, `refresh_surface_tables` and `kap_eval`; and a `check_families` section in `test_kap`.
+**Add a table family:** a module in its own directory with `read_*_tables`, `compute_*_opacity` and, if it caches a composition slice, `build_*_surface_table`; its tables in `opacity_table`; a `use_*` flag in `kap_settings_t` (and in `kap_settings_from_star`); a branch in `load_opacity_tables`, `refresh_surface_tables` and `kap_eval`; and a `check_families` section in `test_kap`.

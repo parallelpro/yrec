@@ -268,7 +268,7 @@ module opacity_tables
 
 ! ---- the opacity settings (2026-10) ----
 ! Everything kap needs from the run's configuration, in one record,
-! installed by kap_init (from the star layer's opacity_settings,
+! installed by kap_init (from the star layer's kap_settings_from_star,
 ! setup/microphysics_settings.f90) or set_kap_settings; nothing else
 ! writes it.
       type, public :: kap_settings_t

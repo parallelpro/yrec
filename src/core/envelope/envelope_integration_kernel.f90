@@ -9,7 +9,7 @@
 !   2. otherwise the atmosphere: log P against log tau, with T from the
 !      T-tau relation, from tau near 0 down to the photosphere;
 !   3. the envelope: log(m/M), log T and log r against log P, from the
-!      surface down to the fitting mass, log(m/M) = senv.
+!      surface down to the fitting mass, log(m/M) = log_fit_point_mass_fraction.
 ! On the way it records each atmosphere point in atm_points and each
 ! envelope point in env_points (the records it is given are its product).
 ! The physics of each point comes from pt (point_physics), where
@@ -35,22 +35,25 @@ module envelope_integration_kernel
 ! sizes (begin, min, max, in log tau and in log P) and the error
 ! tolerances of the two integrations; the starting density of the
 ! atmosphere integration (atm_step_initial, legacy ATMD0, g/cm^3); the
-! HSRA offset atm_hras; the fitting mass senv = log10(m_fit/M); tenv,
-! the log T at which the envelope state is stored for the surface
-! boundary; log10 Lsun; log10 G (cgs); log10 of the total mass in g, the
-! origin of the envelope's mass coordinate log(m/M) (star%log_total_mass);
-! and calc_envelope
-! (false: the photosphere only); and the Bulirsch-Stoer controls: the
-! tolerance fraction (the atmosphere's step tolerance, and the envelope's
-! stop at tolerance_fraction |senv| of senv), the number of stages and
-! the extrapolation order (ctrl%tolerance_fraction, ctrl%max_stage_index,
+! HSRA offset hsra_log_t_offset; the fitting mass
+! log_fit_point_mass_fraction = log10(m_fit/M);
+! envelope_store_log_temperature, the log T at which the envelope state
+! is stored for the surface boundary; log10 Lsun; log10 G (cgs); log10
+! of the total mass in g, the origin of the envelope's mass coordinate
+! log(m/M) (star%log_total_mass); and calc_envelope (false: the
+! photosphere only); and the Bulirsch-Stoer controls: the tolerance
+! fraction (the atmosphere's step tolerance, and the envelope's stop at
+! tolerance_fraction |log_fit_point_mass_fraction| of
+! log_fit_point_mass_fraction), the number of stages and the
+! extrapolation order (ctrl%tolerance_fraction, ctrl%max_stage_index,
 ! ctrl%extrap_order).
       type, public :: envint_config
             integer :: atm_choice
             double precision :: atm_step_begin, atm_step_min, atm_step_max
             double precision :: env_step_begin, env_step_min, env_step_max
             double precision :: atm_error_tol, env_error_tol, atm_step_initial
-            double precision :: atm_hras, senv, tenv, log10_solar_luminosity
+            double precision :: hsra_log_t_offset, log_fit_point_mass_fraction
+            double precision :: envelope_store_log_temperature, log10_solar_luminosity
             double precision :: log10_gravitational_constant
             double precision :: log10_total_mass
 ! the outer shell's composition (star%xa layout), for the EOS's
@@ -61,12 +64,12 @@ module envelope_integration_kernel
             integer :: max_stage_index, extrap_order
       end type envint_config
 
-! The largest fitting mass senv = log10(m_fit/M) the code allows
-! (rebuild_envelope clamps senv to it): an envelope of at least
-! 1 - 10^senv = ln(10) 1e-12, about 2.3e-12 of the star.
-! integrate_envelope skips the envelope integration when senv lies
-! above it.
-      double precision, parameter, public :: senv_thin_envelope = -1.0d-12
+! The largest fitting mass log_fit_point_mass_fraction = log10(m_fit/M)
+! the code allows (rebuild_envelope clamps log_fit_point_mass_fraction
+! to it): an envelope of at least 1 - 10^log_fit_point_mass_fraction =
+! ln(10) 1e-12, about 2.3e-12 of the star. integrate_envelope skips the
+! envelope integration when log_fit_point_mass_fraction lies above it.
+      double precision, parameter, public :: max_log_fit_point_mass_fraction = -1.0d-12
 
 ! The status of an envelope integration that failed (bsstep: the
 ! solution diverged; the historical "solution diverged, stop", which
@@ -93,7 +96,7 @@ module envelope_integration_kernel
 ! gray after a failed Allard lookup), its HSRA offset, log10 of the
 ! total mass in g, and log10 G (cgs)
             integer :: atm_choice = 0
-            double precision :: atm_hras = 0.0d0, log10_total_mass = 0.0d0
+            double precision :: hsra_log_t_offset = 0.0d0, log10_total_mass = 0.0d0
             double precision :: log10_gravitational_constant = 0.0d0
             double precision :: surface_composition(n_species_extended) = 0.0d0
 ! the atmosphere integration's current point, which the atmosphere
@@ -120,7 +123,7 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
               self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_state, &
-              self%atm_choice, self%atm_hras, self%surface_composition, &
+              self%atm_choice, self%hsra_log_t_offset, self%surface_composition, &
               self%atm_point, self%pt, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
@@ -138,20 +141,20 @@ end subroutine equation_derivatives
 ! ---------------------------------------------------------------
 ! Integrates the atmosphere and the envelope from the surface down to
 ! the fitting point (the three parts of the module header), each by
-! Bulirsch-Stoer steps (bsstep), at most maxstp of them.
-! Inputs: the settings cfg; L in Lsun (luminosity_linear); the
-! rotational distortion factors f_P and f_T (1 without rotation);
-! log g; log M; the surface X and Z; log Teff and the surface log R;
-! log10_pressure_limit, a guess at the pressure of the fitting point
-! that the first envelope step to cross it stops at (when the boundary
-! is not being saved); and, with save_boundary_flag, the vertex of the
-! surface-boundary triangle being computed (vertex_index).
-! Outputs: atm_points; env_points, from the centre outward; the
-! photospheric log P (log10_photo_pressure, -1d99 unless the
-! atmosphere finished); switched_to_gray; with save_boundary_flag, the
-! vertex (vtx_logp, vtx_logr, vtx_logt) at the fitting mass and the
-! state where T first reaches tenv (stored_envelope_state: log P,
-! log T, log R, log(m/M); stored_vertex_index); ierr.
+! Bulirsch-Stoer steps (bsstep), at most maxstp of them. Inputs: the
+! settings cfg; L in Lsun (luminosity_linear); the rotational distortion
+! factors f_P and f_T (1 without rotation); log g; log M; the surface X
+! and Z; log Teff and the surface log R; log10_pressure_limit, a guess
+! at the pressure of the fitting point that the first envelope step to
+! cross it stops at (when the boundary is not being saved); and, with
+! save_boundary_flag, the vertex of the surface-boundary triangle being
+! computed (vertex_index). Outputs: atm_points; env_points, from the
+! centre outward; the photospheric log P (log10_photo_pressure, -1d99
+! unless the atmosphere finished); switched_to_gray; with
+! save_boundary_flag, the vertex (vtx_logp, vtx_logr, vtx_logt) at the
+! fitting mass and the state where T first reaches
+! envelope_store_log_temperature (stored_envelope_state: log P, log T,
+! log R, log(m/M); stored_vertex_index); ierr.
 subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      log10_photo_pressure, &
      luminosity_linear, pressure_rotation_factor, &
@@ -344,7 +347,7 @@ subroutine integrate_atmosphere
 ! the fit at its tau = 2/3 anchor).
       err_sum(1) = 0.0d0
       log10_temperature = ttau_start_log10_temperature(log10_teff, &
-           cfg%atm_choice, cfg%atm_hras)
+           cfg%atm_choice, cfg%hsra_log_t_offset)
 ! Very occasionally the starting optical depth lies past the
 ! photosphere (indep_var > x_limit); then the starting density is
 ! divided by 10 and the start found again.
@@ -559,7 +562,7 @@ subroutine take_atmosphere_step()
             temperature_rotation_factor,log10_gravity,in_atmosphere, &
             want_derivatives,conductive_opacity_flag,log10_radius, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_state, &
-            cfg%atm_choice, cfg%atm_hras, cfg%surface_composition, &
+            cfg%atm_choice, cfg%hsra_log_t_offset, cfg%surface_composition, &
             atm_point, pt, jerr)
        if (jerr /= 0) then
           ierr = jerr
@@ -639,16 +642,17 @@ subroutine store_atmosphere_gradients()
        prev_density = density_now
 end subroutine store_atmosphere_gradients
 
-! ---------------------------------------------------------------
-! The envelope: log(m/M), log T and log r against log P, from the
-! surface point down to the fitting mass senv, storing env_points, which
-! is then reversed to run from the centre outward. When senv lies above
-! senv_thin_envelope there is no envelope to integrate, and the vertex
-! is the surface point itself. ierr after maxstp steps.
+! --------------------------------------------------------------- The
+! envelope: log(m/M), log T and log r against log P, from the surface
+! point down to the fitting mass log_fit_point_mass_fraction, storing
+! env_points, which is then reversed to run from the centre outward.
+! When log_fit_point_mass_fraction lies above
+! max_log_fit_point_mass_fraction there is no envelope to integrate, and
+! the vertex is the surface point itself. ierr after maxstp steps.
 subroutine integrate_envelope
       use math_lib
 ! An envelope too thin to integrate: the vertex is the surface point.
-      if(cfg%senv.gt.senv_thin_envelope) then
+      if(cfg%log_fit_point_mass_fraction.gt.max_log_fit_point_mass_fraction) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_point%log10_pressure
           vtx_logr(vertex_index) = log10_radius
@@ -676,10 +680,11 @@ end subroutine integrate_envelope
 ! The envelope integration's starting values and numerical parameters,
 ! and the derivatives at the photosphere.
 subroutine start_envelope_integration()
-! Start at atm_point (the photosphere, or the table's surface point):
-! x = log P, y = (log(m/M) = 0, log T, log r). Three equations, the
+! Start at atm_point (the photosphere, or the table's surface point): x
+! = log P, y = (log(m/M) = 0, log T, log r). Three equations, the
 ! envelope's tolerance and steps, and done when log(m/M) is within
-! tolerance_fraction |senv| of senv.
+! tolerance_fraction |log_fit_point_mass_fraction| of
+! log_fit_point_mass_fraction.
       in_atmosphere = .false.
       do i = 1,3
        err_sum(i) = 0.0d0
@@ -696,7 +701,7 @@ subroutine start_envelope_integration()
       h_max = cfg%env_step_max
       h_min = cfg%env_step_min
       h_step = cfg%env_step_begin
-      step_tolerance = dabs(cfg%tolerance_fraction*cfg%senv)
+      step_tolerance = dabs(cfg%tolerance_fraction*cfg%log_fit_point_mass_fraction)
 ! Forget a stored envelope state that belongs to this vertex. The
 ! pressure limit applies only when the boundary is not being saved.
       if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
@@ -775,18 +780,19 @@ subroutine integrate_to_fitting_mass()
        else
           num_bad = num_bad + 1
        endif
-! Done when log(m/M) is within step_tolerance of senv: then interpolate
-! the vertex at senv.
-       mass_diff_remaining = cfg%senv - y(1)
+! Done when log(m/M) is within step_tolerance of
+! log_fit_point_mass_fraction: then interpolate the vertex at
+! log_fit_point_mass_fraction.
+       mass_diff_remaining = cfg%log_fit_point_mass_fraction - y(1)
        call store_envelope_point()
        if(dabs(mass_diff_remaining).le.step_tolerance)then
           call interpolate_envelope_vertex()
           exit
-! Otherwise, with save_boundary_flag, store the state where log T
-! first reaches tenv (log P, log T, log R, log(m/M)) for the surface
-! boundary.
+! Otherwise, with save_boundary_flag, store the state where log T first
+! reaches envelope_store_log_temperature (log P, log T, log R, log(m/M))
+! for the surface boundary.
        else if(.not.store_flag_set) then
-          if(y(2).ge.cfg%tenv .and. save_boundary_flag) then
+          if(y(2).ge.cfg%envelope_store_log_temperature .and. save_boundary_flag) then
              store_flag_set = .true.
              stored_vertex_index = vertex_index
              stored_envelope_state(1) = indep_var
@@ -821,11 +827,12 @@ subroutine limit_envelope_step()
           y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
        end do
        mass_next_step = y(1) + h_step*dydx(1)
-       if(cfg%senv - y(1).gt.0.0d0 .or. cfg%senv - mass_next_step.gt.0.0d0) then
+       if(cfg%log_fit_point_mass_fraction - y(1).gt.0.0d0 .or. cfg%log_fit_point_mass_fraction - mass_next_step.gt.0.0d0) then
 ! The integration has passed the fitting mass, or the next step would:
-! aim the step at it with the linear estimate
-! h = (senv - y(1)) / dydx(1), a step back when it has passed.
-          h_step = (cfg%senv - y(1))/dydx(1)
+! aim the step at it with the linear estimate h =
+! (log_fit_point_mass_fraction - y(1)) / dydx(1), a step back when it
+! has passed.
+          h_step = (cfg%log_fit_point_mass_fraction - y(1))/dydx(1)
        endif
 ! Keep |h_step| within the largest step.
        if(h_step.lt.0.0d0) then
@@ -949,29 +956,35 @@ subroutine store_envelope_point()
          endif
 end subroutine store_envelope_point
 
-! ---------------------------------------------------------------
-! The fitting-point vertex (log P, log R, log T), interpolated linearly
-! in log(m/M) to senv between the start and the end of the last step:
-!   v = v_end + w (v_start - v_end),  w = (senv - y(1)) / (y_start(1) - y(1)).
+! --------------------------------------------------------------- The
+! fitting-point vertex (log P, log R, log T), interpolated linearly in
+! log(m/M) to log_fit_point_mass_fraction between the start and the end
+! of the last step:
+!   v = v_end + w (v_start - v_end),  w = (log_fit_point_mass_fraction -
+!   y(1)) / (y_start(1) - y(1)).
 subroutine interpolate_envelope_vertex()
           if(save_boundary_flag) then
              interp_weight = mass_diff_remaining/(y_start(1)-y(1))
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag .and. solver_diagnostics())write(run_log_unit,230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index),cfg%senv
+             if(print_flag .and. solver_diagnostics())write(run_log_unit, &
+                  230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index), &
+                  cfg%log_fit_point_mass_fraction
           endif
  230     format(4X,3F16.12,8X,F16.12)
 end subroutine interpolate_envelope_vertex
 
 ! ---------------------------------------------------------------
 ! Reverse env_points from surface-inward to centre-outward, when the
-! envelope was integrated (senv below senv_thin_envelope).
+! envelope was integrated (log_fit_point_mass_fraction below
+! max_log_fit_point_mass_fraction).
 subroutine invert_envelope_points()
-! (.le., the complement of the skip test above: at senv exactly
-! senv_thin_envelope the envelope is integrated and must be reversed
-! too; the F77 envint.f tested .LT., fixed 2026-10)
-      if(cfg%senv.le.senv_thin_envelope)then
+! (.le., the complement of the skip test above: at
+! log_fit_point_mass_fraction exactly max_log_fit_point_mass_fraction
+! the envelope is integrated and must be reversed too; the F77 envint.f
+! tested .LT., fixed 2026-10)
+      if(cfg%log_fit_point_mass_fraction.le.max_log_fit_point_mass_fraction)then
          associate (n => env_points%num_env_points)
             env_points%env_log10_density(1:n) = env_points%env_log10_density(n:1:-1)
             env_points%env_log10_pressure(1:n) = env_points%env_log10_pressure(n:1:-1)
@@ -1016,7 +1029,7 @@ subroutine load_equations(atmosphere)
       equations%metal_fraction = metal_fraction
       equations%saha_state = saha_state
       equations%atm_choice = cfg%atm_choice
-      equations%atm_hras = cfg%atm_hras
+      equations%hsra_log_t_offset = cfg%hsra_log_t_offset
       equations%log10_total_mass = cfg%log10_total_mass
       equations%log10_gravitational_constant = cfg%log10_gravitational_constant
       equations%surface_composition = cfg%surface_composition

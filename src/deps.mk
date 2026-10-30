@@ -345,14 +345,14 @@ core/diagnostics/turnover_timescale.o: convection_geometry.mod io_units.mod math
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 core/envelope/envelope_integration.o: atm_lib.mod envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod
-core/envelope/envelope_rebuild.o: controls_buffer.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
+core/envelope/envelope_rebuild.o: control_slots.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
 core/model/model_rescaling.o: eos_lib.mod io_units.mod math_lib.mod physical_constants.mod shell_boundaries.mod star_info_lib.mod
 core/model/regridding.o: math_lib.mod numerics_lib.mod physical_constants.mod
-core/model/rezoning.o: am_regions.mod controls_buffer.mod io_units.mod kap_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_log.mod shell_physics.mod star_info_lib.mod
-core/model/shell_boundaries.o: controls_buffer.mod star_info_lib.mod
-core/model/starting_model.o: am_regions.mod controls_buffer.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
+core/model/rezoning.o: am_regions.mod control_slots.mod io_units.mod kap_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_log.mod shell_physics.mod star_info_lib.mod
+core/model/shell_boundaries.o: control_slots.mod star_info_lib.mod
+core/model/starting_model.o: am_regions.mod control_slots.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod io_units.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/run/calibration.o: controls_buffer.mod io_units.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/run/monte_carlo.o: io_units.mod math_lib.mod model_files.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod io_units.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
@@ -367,7 +367,7 @@ core/step/mass_change.o: atm_lib.mod eos_lib.mod mass_change_kernel.mod math_lib
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
 core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod viscosity.mod
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_geometry.mod convection_lib.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod io_units.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod yrec_output.mod
-core/step/timestep_control.o: burn_step.mod controls_buffer.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
+core/step/timestep_control.o: burn_step.mod control_slots.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/structure/energy_sources.o: composition_layout.mod
 core/structure/henyey_elimination.o: physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/henyey_iteration.o: energy_sources.mod henyey_elimination.mod io_units.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_log.mod star_info_lib.mod structure_equations.mod surface_boundary.mod

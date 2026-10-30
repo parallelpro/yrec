@@ -5,7 +5,7 @@
 ! outside eos/ may use, here and only here (check_boundaries enforces
 ! it).
 !     eos_init        install the settings (eos_settings_t, built by the
-!                     star layer's equation_of_state_settings) and load
+!                     star layer's eos_settings_from_star) and load
 !                     the tables they select
 !     eos_get         density, the thermodynamic quantities and their
 !                     derivatives at (log T, log P, X, Z), in an

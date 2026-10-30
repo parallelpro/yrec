@@ -392,13 +392,13 @@ subroutine compute_snu_rates(s)
       if (s%ctrl%calc_neutrinos) then
          do i = 1, 8
             s%cl37_snu_rate = s%cl37_snu_rate + &
-                 clsnuf_diag(i)*s%neutrino_flux_total(i)
+                 clsnuf_diag(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
             s%ga71_snu_rate = s%ga71_snu_rate + &
-                 gasnuf_diag(i)*s%neutrino_flux_total(i)
+                 gasnuf_diag(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
          end do
       else
          do i = 1, 10
-            s%neutrino_flux_total(i) = 0.0d0
+            s%neutrino_flux_total_e10_per_cm2_s(i) = 0.0d0
          end do
       end if
 end subroutine compute_snu_rates
@@ -453,22 +453,22 @@ subroutine compute_h_shell_boundaries(s)
               s%m(s%h_shell_mid_index)/s%solar_mass_cgs
          s%h_shell_top_mass_msun = &
               s%m(s%h_shell_top_index)/s%solar_mass_cgs
-         s%h_shell_bot_radius = exp(ln10*( &
+         s%h_shell_bot_radius_fraction = exp(ln10*( &
               s%logR(s%h_shell_bot_index) &
               - s%log_R_surface_rsun - s%log10_solar_radius))
-         s%h_shell_mid_radius = exp(ln10*( &
+         s%h_shell_mid_radius_fraction = exp(ln10*( &
               s%logR(s%h_shell_mid_index) &
               - s%log_R_surface_rsun - s%log10_solar_radius))
-         s%h_shell_top_radius = exp(ln10*( &
+         s%h_shell_top_radius_fraction = exp(ln10*( &
               s%logR(s%h_shell_top_index) &
               - s%log_R_surface_rsun - s%log10_solar_radius))
       else
          s%h_shell_bot_mass_msun = 0.0d0
          s%h_shell_mid_mass_msun = 0.0d0
          s%h_shell_top_mass_msun = 0.0d0
-         s%h_shell_bot_radius = 0.0d0
-         s%h_shell_mid_radius = 0.0d0
-         s%h_shell_top_radius = 0.0d0
+         s%h_shell_bot_radius_fraction = 0.0d0
+         s%h_shell_mid_radius_fraction = 0.0d0
+         s%h_shell_top_radius_fraction = 0.0d0
       end if
 end subroutine compute_h_shell_boundaries
 

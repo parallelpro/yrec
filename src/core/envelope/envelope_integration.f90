@@ -155,11 +155,11 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%env_error_tol = s%ctrl%env_error_tol
       cfg%atm_step_initial = s%ctrl%atm_step_initial
 ! the HSRA T(tau) fit at tau = 2/3, for atm_choice = 2
-      cfg%atm_hras = hsra_t_tau_offset()
+      cfg%hsra_log_t_offset = hsra_t_tau_offset()
       cfg%log10_total_mass = s%log_total_mass
       cfg%surface_composition = surface_composition
-      cfg%senv = s%log_fit_point_mass_fraction
-      cfg%tenv = s%envelope_store_log_temperature
+      cfg%log_fit_point_mass_fraction = s%log_fit_point_mass_fraction
+      cfg%envelope_store_log_temperature = s%envelope_store_log_temperature
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
       cfg%log10_gravitational_constant = cgl
       cfg%calc_envelope = s%ctrl%calc_envelope_flag

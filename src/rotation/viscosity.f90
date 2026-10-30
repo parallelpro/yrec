@@ -12,12 +12,12 @@ contains
 
 ! ---------------------------------------------------------------
 ! viscos: for every zone, convective ones included, the kinematic
-! viscosity visc = nu_rad + nu_ion and the radiative thermal
-! diffusivity thdif = K (both cm^2/s), for the rotational instability
-! and mixing coefficients, from the composition, log rho, log T, the
-! opacity (cm^2/g) and c_P (erg/g/K) of each zone.
+! viscosity kinematic_viscosity = nu_rad + nu_ion and the radiative
+! thermal diffusivity thermal_diffusivity = K (both cm^2/s), for the
+! rotational instability and mixing coefficients, from the composition,
+! log rho, log T, the opacity (cm^2/g) and c_P (erg/g/K) of each zone.
 subroutine viscos(composition, log_density, log_temperature, opacity, cp, &
-     num_zones, visc, thdif)
+     num_zones, kinematic_viscosity, thermal_diffusivity)
       use composition_layout, only: json, i_metals
       use physical_constants
       use math_lib
@@ -26,7 +26,7 @@ subroutine viscos(composition, log_density, log_temperature, opacity, cp, &
       double precision, intent(in) :: composition(15,json), log_density(json), &
            log_temperature(json), opacity(json), cp(json)
       integer, intent(in) :: num_zones
-      double precision, intent(inout) :: visc(json), thdif(json)
+      double precision, intent(inout) :: kinematic_viscosity(json), thermal_diffusivity(json)
 
       double precision :: amu
 ! Atomic weights and charges for composition rows 1..11 (i_h1..i_o18 of
@@ -117,10 +117,10 @@ subroutine viscos(composition, log_density, log_temperature, opacity, cp, &
          end do
 ! nu_ion = sum_i eta_i / rho.
          viscosity_molecular = viscosity_molecular/density_cgs
-         visc(shell_idx) = viscosity_radiative+viscosity_molecular
+         kinematic_viscosity(shell_idx) = viscosity_radiative+viscosity_molecular
 ! The radiative thermal diffusivity (conduction neglected):
 !   K = 16 sigma T^3 / (3 kappa rho^2 c_P).
-         thdif(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
+         thermal_diffusivity(shell_idx) = 1.6d1*cc13*sigma_sb_cgs_legacy*temperature_cgs* &
               temperature_sq/(opacity_local*density_cgs**2*cp(shell_idx))
       end do
 

@@ -355,8 +355,8 @@ subroutine read_yrec7(s, iread, header, ierr)
 ! the three envelope-triangle records
       do i = 1, 3
          read(iread,yrec7_envelope_format,iostat=ios,iomsg=msg) envelope_record_number, &
-              s%triangle_log_teff(i), s%triangle_log_l_lsun(i), s%fit_point_pressure(i), &
-              s%fit_point_temperature(i), s%fit_point_radius(i), &
+              s%triangle_log_teff(i), s%triangle_log_l_lsun(i), s%fit_point_logP(i), &
+              s%fit_point_logT(i), s%fit_point_logR(i), &
               (s%envelope_fit_coeffs(3*i-3+j), j = 1, 3)
          call check_model_read(ios, msg, iread, 'the envelope records', ierr)
          if (ierr /= 0) return
@@ -544,8 +544,8 @@ subroutine read_model2(s, iread, header, ierr)
 ! the three envelope-triangle records
       do i = 1, 3
          read(iread,model2_envelope_format,iostat=ios,iomsg=msg) envelope_record_number, &
-              s%triangle_log_teff(i), s%triangle_log_l_lsun(i), s%fit_point_pressure(i), &
-              s%fit_point_temperature(i), s%fit_point_radius(i), &
+              s%triangle_log_teff(i), s%triangle_log_l_lsun(i), s%fit_point_logP(i), &
+              s%fit_point_logT(i), s%fit_point_logR(i), &
               (s%envelope_fit_coeffs(3*i-3+j), j = 1, 3)
          call check_model_read(ios, msg, iread, 'the envelope records', ierr)
          if (ierr /= 0) return

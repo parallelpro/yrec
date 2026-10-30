@@ -60,7 +60,7 @@ contains
 !     job%target_end_age, log_L_lsun, log_Teff, log_total_mass,
 !     luminosity_breakdown_lsun, omega
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
-!     cz_base_radius_prev, disk_gate_age_gyr, dln_luminosity_dt,
+!     cz_base_radius_last_call, disk_gate_age_gyr, dln_luminosity_dt,
 !     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dm, dt,
 !     dt_saved, envelope_cz_bottom_index,
 !     envelope_cz_bottom_index_start, envelope_overshoot_bottom_index,
@@ -387,10 +387,10 @@ subroutine rezone_or_snapshot
 ! The start-of-step depth of the surface convection zone, for the Li/Be
 ! burn: its base zone, and the envelope overshoot depth alpha_ov H_P
 ! below it (envelope_overshoot_depth_start).
-! cz_base_radius_prev = 0 tells locate_surface_mixing_base that no base
+! cz_base_radius_last_call = 0 tells locate_surface_mixing_base that no base
 ! radius has been stored yet this step.
             if (s%ctrl%use_extended_composition) then
-               s%cz_base_radius_prev = 0.0D0
+               s%cz_base_radius_last_call = 0.0D0
                envelope_cz_zone_prev = s%envelope_cz_bottom_index
                s%envelope_overshoot_depth_start = envelope_overshoot_depth()
 ! The Li/Be burning rates of the start-of-step model.

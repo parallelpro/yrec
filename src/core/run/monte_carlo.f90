@@ -187,7 +187,8 @@ end subroutine write_run_summaries
 !     job%helium_fraction_param, job%luminosity_target,
 !     job%metal_to_h_ratio, job%mixing_length_array, job%rescale_params,
 !     job%s11_rate, job%s17_rate, job%s33_rate, job%s34_rate,
-!     log_L_lsun, luminosity_breakdown_lsun, neutrino_flux_total, nz, xa
+!     log_L_lsun, luminosity_breakdown_lsun,
+!     neutrino_flux_total_e10_per_cm2_s, nz, xa
 !   star writes: none
 subroutine write_monte_carlo_model(s, local_log_radius, &
      convergence_iterations, run_index, monte_carlo_run_number)
@@ -221,7 +222,7 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
 ! Record 3: the Cl37 and Ga71 capture rates (SNU) and the first eight
 ! neutrino fluxes, pp, pep, hep, Be7, B8, N13, O15 and F17 (see
 ! compute_solar_neutrino_fluxes).
-      write(mc_summary_unit,30) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total(j),j=1,8)
+      write(mc_summary_unit,30) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total_e10_per_cm2_s(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 ! Record 4: the central T/1e6 K, density (g cm^-3),
 ! P/1e17 dyn cm^-2, X and Z.

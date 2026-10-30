@@ -47,12 +47,12 @@ contains
 !   star writes: none
 subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_density, &
      luminosity, enclosed_mass, log_temperature, composition, &
-     convective_core_edge_zone, h_shell_midpoint_zone, &
+     convective_core_edge_zone, h_shell_mid_index, &
      luminosity_components, age_gyr, timestep_years, kind_card_index, &
-     log_pressure, log_radius, omega, max_domega_frac, h_shell_zone_begin, &
+     log_pressure, log_radius, omega, max_domega_frac, h_shell_bot_index, &
      log_teff, disable_structure_dt_limits)
       use star_info_lib, only: json
-      use controls_buffer, only: itime_max_dt_frac
+      use control_slots, only: itime_max_dt_frac
       use physical_constants
       implicit none
       type(star_info), intent(inout) :: s
@@ -66,7 +66,7 @@ subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_den
            enclosed_mass(json), log_temperature(json)
       double precision, intent(in) :: composition(15,json)
       integer, intent(in) :: convective_core_edge_zone, &
-           h_shell_midpoint_zone
+           h_shell_mid_index
       double precision, intent(in) :: luminosity_components(8)
       double precision, intent(in) :: age_gyr
       double precision, intent(out) :: timestep_years
@@ -74,7 +74,7 @@ subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_den
       double precision, intent(in) :: log_pressure(json), log_radius(json), &
            omega(json)
       double precision, intent(out) :: max_domega_frac
-      integer, intent(in) :: h_shell_zone_begin
+      integer, intent(in) :: h_shell_bot_index
       double precision, intent(in) :: log_teff
 ! disable_structure_dt_limits: set when this call switches the
 ! structure-based limits off; the driver then clears
@@ -174,7 +174,7 @@ subroutine limit_by_hydrogen_burning()
       if(hydrogen_luminosity.gt.1.0d-34) then
        call timestep_limit_hburn(s, log_density,composition,luminosity,enclosed_mass, &
             log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
-            h_shell_midpoint_zone,num_points,hydrogen_dt)
+            h_shell_mid_index,num_points,hydrogen_dt)
       else
        hydrogen_dt = dt_unlimited
       endif
@@ -188,7 +188,7 @@ subroutine limit_by_helium_burning()
       if(luminosity_components(5).gt.1.0d-34) then
        call timestep_limit_heburn(s, composition,log_density,luminosity, &
             enclosed_mass,log_temperature,convective_core_edge_zone, &
-            num_points,helium_dt,h_shell_zone_begin)
+            num_points,helium_dt,h_shell_bot_index)
       else
        helium_dt = dt_unlimited
       endif
@@ -264,7 +264,7 @@ subroutine timestep_limit_structure(s, previous_timestep, luminosity, log_pressu
      log_temperature, num_points, struct_dt)
 
       use star_info_lib, only: json
-      use controls_buffer, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
+      use control_slots, only: itime_dl, itime_dp, itime_dr, itime_dt, itime_max_dt_frac
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -359,7 +359,7 @@ subroutine timestep_limit_omega(s, previous_timestep, num_points, omega, rotatio
      max_domega_frac)
 
       use star_info_lib, only: json
-      use controls_buffer, only: itime_max_dt_frac
+      use control_slots, only: itime_max_dt_frac
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -429,12 +429,12 @@ end subroutine timestep_limit_omega
 !   star writes: none
 subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclosed_mass, &
      log_temperature, hydrogen_luminosity, &
-     convective_core_edge_zone, h_shell_midpoint_zone, num_points, &
+     convective_core_edge_zone, h_shell_mid_index, num_points, &
      hydrogen_dt)
       use star_info_lib, only: json, i_h1
       use net_lib, only: compute_network_rates, compute_abundance_rates, &
            num_rate_rows, n_network, network_species_slot, s_h1
-      use controls_buffer, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
+      use control_slots, only: itime_core_min, itime_dx_core_frac, itime_dx_core_tot, &
            itime_dx_shell, itime_dx_total
       use physical_constants
       implicit none
@@ -447,7 +447,7 @@ subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclose
       double precision, intent(in) :: log_temperature(json)
       double precision, intent(in) :: hydrogen_luminosity
       integer, intent(in) :: convective_core_edge_zone, &
-           h_shell_midpoint_zone, num_points
+           h_shell_mid_index, num_points
       double precision, intent(out) :: hydrogen_dt
 ! rate_vec, dxdt_per_a: the network's rate vector and dX_i/dt / A_i of
 ! the network species at the shell midpoint.
@@ -476,7 +476,7 @@ subroutine timestep_limit_hburn(s, log_density, composition, luminosity, enclose
       hydrogen_dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity
 ! and the depletion of X at the shell midpoint, with dX/dt from the
 ! network (A = 1 for hydrogen).
-      zone_end=h_shell_midpoint_zone
+      zone_end=h_shell_mid_index
       local_log_density = log_density(zone_end)
       local_log_temperature = log_temperature(zone_end)
       call compute_network_rates(local_log_density,local_log_temperature,composition(:,zone_end), &
@@ -512,10 +512,10 @@ end subroutine timestep_limit_hburn
 !   star writes: none
 subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
      enclosed_mass, log_temperature, convective_core_edge_zone, &
-     num_points, helium_dt, h_shell_zone_begin)
+     num_points, helium_dt, h_shell_bot_index)
       use net_lib, only: nuclear_energy_result, chain_triple_alpha
       use star_info_lib, only: json, i_he4, i_h2, i_metals
-      use controls_buffer, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
+      use control_slots, only: itime_core_min, itime_dy_core_frac, itime_dy_core_tot, &
            itime_dy_shell, itime_dy_total
       use burn_step, only: compute_zone_energy
       implicit none
@@ -528,7 +528,7 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
 ! helium_dt: the helium-burning timestep limit (s), assigned on every
 ! path.
       double precision, intent(out) :: helium_dt
-      integer, intent(in) :: h_shell_zone_begin
+      integer, intent(in) :: h_shell_bot_index
       double precision :: max_temp, local_log_density, local_log_temperature
       integer :: max_temp_zone, zone_idx, shell_zone
 ! zone_xa: the hottest zone's composition, with deuterium zeroed unless
@@ -587,7 +587,7 @@ subroutine timestep_limit_heburn(s, composition, log_density, luminosity, &
 ! call's timestep here, times m/L again, which gave about 0 s and, once
 ! the SAVE that kept it was gone, 0 and then NaN: the
 ! run_from_zahb_to_tahb failure.)
-            shell_zone = max(h_shell_zone_begin-1, 1)
+            shell_zone = max(h_shell_bot_index-1, 1)
             helium_dt = dt_unlimited
             if (luminosity(shell_zone) .gt. 0.0d0) then
                if (s%ctrl%atime(itime_dy_total) .gt. 0.0d0) helium_dt = min(helium_dt, &
@@ -619,7 +619,7 @@ subroutine timestep_limit_hr(s, previous_timestep, luminosity, log_teff, &
      num_points, envelope_dt)
 
       use star_info_lib, only: json
-      use controls_buffer, only: itime_max_dt_frac
+      use control_slots, only: itime_max_dt_frac
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s

@@ -12,7 +12,7 @@
 !   0  Eddington gray
 !   1  Krishna-Swamy (ApJ 145, 176, 1966; solar fit)
 !   2  Harvard-Smithsonian reference atmosphere (a polynomial fit;
-!      atm_hras is the run's HSRA offset, hsra_t_tau_offset())
+!      hsra_log_t_offset is the run's HSRA offset, hsra_t_tau_offset())
 !
 ! The starting guess for Krishna-Swamy uses the literal 0.550d0, not
 ! the relation at tau = 0 (1.39d0-0.815d0-0.025d0 need not equal 0.550d0
@@ -30,9 +30,9 @@ contains
 
 ! ---------------------------------------------------------------
 ! log10 T at optical depth tau for the chosen relation.
-pure function ttau_log10_temperature(tau, log10_teff, atm_choice, atm_hras) &
+pure function ttau_log10_temperature(tau, log10_teff, atm_choice, hsra_log_t_offset) &
      result(log10_t)
-      real(dp), intent(in) :: tau, log10_teff, atm_hras
+      real(dp), intent(in) :: tau, log10_teff, hsra_log_t_offset
       integer, intent(in) :: atm_choice
       real(dp) :: log10_t
 
@@ -42,16 +42,16 @@ pure function ttau_log10_temperature(tau, log10_teff, atm_choice, atm_hras) &
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + &
               1.39d0 - 0.815d0*exp(-2.54d0*tau) - 0.025d0*exp(-30.0d0*tau))
       else
-         log10_t = log10_teff + harvard_t_tau(tau) - atm_hras
+         log10_t = log10_teff + harvard_t_tau(tau) - hsra_log_t_offset
       end if
 end function ttau_log10_temperature
 
 ! ---------------------------------------------------------------
 ! Starting log10 T for the atmosphere integration (tau near zero;
 ! the HSRA fit is evaluated at tau = 2/3, its historical anchor).
-pure function ttau_start_log10_temperature(log10_teff, atm_choice, atm_hras) &
+pure function ttau_start_log10_temperature(log10_teff, atm_choice, hsra_log_t_offset) &
      result(log10_t)
-      real(dp), intent(in) :: log10_teff, atm_hras
+      real(dp), intent(in) :: log10_teff, hsra_log_t_offset
       integer, intent(in) :: atm_choice
       real(dp) :: log10_t
 
@@ -60,7 +60,7 @@ pure function ttau_start_log10_temperature(log10_teff, atm_choice, atm_hras) &
       else if (atm_choice == 1) then
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(0.550d0)
       else
-         log10_t = log10_teff + harvard_t_tau(cc23) - atm_hras
+         log10_t = log10_teff + harvard_t_tau(cc23) - hsra_log_t_offset
       end if
 end function ttau_start_log10_temperature
 

@@ -92,8 +92,8 @@ module rotation_scratch_lib
       type :: substep_physics_state
             double precision :: mu(json), cp(json), gradT(json)
             double precision :: grada(json), gradr(json)
-            double precision :: eps_total(json), opacity(json), qdt(json)
-            double precision :: thdif(json), conv_vel(json), visc(json)
+            double precision :: eps_total(json), opacity(json), dlnrho_dlnt(json)
+            double precision :: thermal_diffusivity(json), conv_vel(json), kinematic_viscosity(json)
             double precision :: eps_plus_neu_grav(json)
       end type substep_physics_state
 

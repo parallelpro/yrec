@@ -41,7 +41,7 @@ contains
 ! envelope_store_index: the envelope-triangle vertex whose integration
 ! stored its state where T reached envelope_store_log_temperature (0 for
 ! none), used when a point is added at the surface. point_reset_flag: set
-! when outer points were deleted or added. h_shell_zone_begin,
+! when outer points were deleted or added. h_shell_bot_index,
 ! h_shell_active: the base of the H-burning shell and whether there is
 ! one. total_angular_momentum, total_rotational_ke: re-totalled on the
 ! new mesh (rotating models). ierr /= 0 on failure.
@@ -49,10 +49,9 @@ contains
 !     ctrl%envelope_overshoot_active, ctrl%overshoot_alpha_envelope,
 !     ctrl%rotation_active, ctrl%tenv0, ctrl%tenv1,
 !     ctrl%use_extended_composition, disk_gate_age_gyr, dlnrho_dlnt,
-!     eps_channels, eps_total, fit_point_pressure, fit_point_radius,
-!     grada, gradr, gradT, kinematic_viscosity, log_Teff,
-!     log_total_mass, mu, opacity_zone, stored_envelope_state,
-!     thermal_diffusivity
+!     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
+!     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
+!     opacity_zone, stored_envelope_state, thermal_diffusivity
 !   star writes: am_transport_convective_flag, conv_vel_start,
 !     convective_flag, convective_flag_start, core_cz_top_index,
 !     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,
@@ -71,14 +70,14 @@ contains
 !     surface_luminosity_lsun_start, surface_metal_fraction,
 !     thermal_diffusivity_start, xa, xa_start
 subroutine rezone(s, envelope_store_index, point_reset_flag, &
-     h_shell_zone_begin, h_shell_active, total_angular_momentum, &
+     h_shell_bot_index, h_shell_active, total_angular_momentum, &
      total_rotational_ke, ierr)
       use am_regions, only: am_convective_regions
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
-      use controls_buffer, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
+      use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use kap_lib
@@ -96,7 +95,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
 
       integer, intent(in) :: envelope_store_index
       logical, intent(out) :: point_reset_flag
-      integer, intent(in) :: h_shell_zone_begin
+      integer, intent(in) :: h_shell_bot_index
       logical, intent(in) :: h_shell_active
       double precision, intent(inout) :: total_angular_momentum, &
            total_rotational_ke
@@ -225,12 +224,12 @@ subroutine check_envelope_temperature_range
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
        s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
        s%logP(s%nz) = s%logP(s%nz-1) + &
-            (s%stored_envelope_state(1) - s%fit_point_pressure(envelope_store_index))
+            (s%stored_envelope_state(1) - s%fit_point_logP(envelope_store_index))
        s%logT(s%nz) = s%logT(s%nz-1) + &
             (s%stored_envelope_state(1) - &
-            s%fit_point_pressure(envelope_store_index))*0.250D0
+            s%fit_point_logP(envelope_store_index))*0.250D0
        s%logR(s%nz) = s%logR(s%nz-1) + &
-            (s%stored_envelope_state(3) - s%fit_point_radius(envelope_store_index))
+            (s%stored_envelope_state(3) - s%fit_point_logR(envelope_store_index))
        s%luminosity_lsun(s%nz) = s%luminosity_lsun(s%nz-1)
        do i = 1,num_species_tracked
           s%xa(i,s%nz) = s%xa(i,s%nz-1)
@@ -268,8 +267,8 @@ subroutine flag_fixed_points
        call append_flag_point(s%envelope_cz_bottom_index)
       endif
 ! The point just below the H-burning shell.
-      if (h_shell_active.and.h_shell_zone_begin.gt.1) then
-       call append_flag_point(h_shell_zone_begin - 1)
+      if (h_shell_active.and.h_shell_bot_index.gt.1) then
+       call append_flag_point(h_shell_bot_index - 1)
       endif
       do i = 2,s%nz
 ! A jump in X between neighbouring shells,

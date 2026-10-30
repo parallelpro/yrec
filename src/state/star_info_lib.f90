@@ -78,7 +78,7 @@ module star_info_lib
 ! (rows 1-5, dimensionless), eps_nu and eps_grav (rows 6-7, erg/(g s)).
       integer, parameter, public :: &
            i_eps_pp1 = 1, i_eps_pp2 = 2, i_eps_pp3 = 3, &
-           i_eps_cno = 4, i_eps_he3 = 5, i_eps_neu = 6, &
+           i_eps_cno = 4, i_eps_3alpha = 5, i_eps_neu = 6, &
            i_eps_grav = 7
 
 ! luminosity_breakdown_lsun(n_lum_channels): integrated luminosity per
@@ -147,8 +147,9 @@ module star_info_lib
 ! changed by the run (see the type star_job).
 
 ! the namelist controls the run reads, by their canonical names [-];
-! controls_reader, controls_sync. Reset to the declared defaults before each read; members:
-! src/defaults/controls_registry.md, generated into controls_state_def.inc.
+! controls_reader, controls_sync. Reset to the declared defaults before
+! each read; members: src/defaults/controls_registry.md, generated into
+! controls_state_def.inc.
             type(controls_state) :: ctrl
 ! the run's job: the run-card arrays and latches (the controls the run
 ! changes), the Monte-Carlo samples and the run-card cursor nk [-];
@@ -391,13 +392,13 @@ module star_info_lib
             double precision :: triangle_log_teff(3)
 ! log10 P at the fitting point of each vertex's envelope integration
 ! [log10 dyn/cm^2]; henyey_iteration, model_files
-            double precision :: fit_point_pressure(3)
+            double precision :: fit_point_logP(3)
 ! log10 T at the fitting point of each vertex [log10 K];
 ! henyey_iteration, model_files
-            double precision :: fit_point_temperature(3)
+            double precision :: fit_point_logT(3)
 ! log10 r at the fitting point of each vertex [log10 cm];
 ! henyey_iteration, model_files
-            double precision :: fit_point_radius(3)
+            double precision :: fit_point_logR(3)
 ! which triangle vertex stored stored_envelope_state (0: none) [-];
 ! step_driver, run_driver
             integer :: stored_vertex_index
@@ -707,7 +708,7 @@ module star_info_lib
 ! within the step [cm]; convection_geometry, step_driver. With
 ! ctrl%use_extended_composition; zeroed at each step start to mean none
 ! yet.
-            double precision :: cz_base_radius_prev
+            double precision :: cz_base_radius_last_call
 ! mass accreted during the step [g]; mass_change. Set only when the star
 ! accretes; its readers check that it does.
             double precision :: accreted_mass
@@ -835,7 +836,7 @@ module star_info_lib
 ! He3+He3 and He3+He4 rates in the same units) [10^10/(cm^2 s)];
 ! structure_equations, observables, neutrino_flux_output. Only with
 ! ctrl%calc_neutrinos; also overwritten by the card-start neutrino table.
-            double precision :: neutrino_flux_total(n_nu_fluxes)
+            double precision :: neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)
 ! d eps/d ln rho, absolute (not logarithmic) [erg/(g s)];
 ! structure_equations. Zero below the burning cutoff.
             double precision :: pulse_deps_dlnrho(json)
@@ -913,11 +914,11 @@ module star_info_lib
 ! mass coordinate of the top of the H-burning shell [Msun]; observables
             double precision :: h_shell_top_mass_msun
 ! radius of the bottom of the H-burning shell [r/R]; observables
-            double precision :: h_shell_bot_radius
+            double precision :: h_shell_bot_radius_fraction
 ! radius of the middle of the H-burning shell [r/R]; observables
-            double precision :: h_shell_mid_radius
+            double precision :: h_shell_mid_radius_fraction
 ! radius of the top of the H-burning shell [r/R]; observables
-            double precision :: h_shell_top_radius
+            double precision :: h_shell_top_radius_fraction
 ! central temperature, extrapolated from the first point [log10 K];
 ! observables
             double precision :: central_log10_temperature
@@ -994,9 +995,9 @@ module star_info_lib
 ! calibration
             double precision :: r_rsun_prev_model
 ! zone of the base of the surface mixed region found by the last call
-! within the step (cz_base_radius_prev), the starting zone of the
+! within the step (cz_base_radius_last_call), the starting zone of the
 ! next call [-]; convection_geometry
-            integer :: envelope_cz_base_zone_prev
+            integer :: envelope_cz_base_zone_last_call
 ! the Saha state the central EOS call carries from one model to the next
 ! [-]; observables
             integer :: central_saha_state = 0
@@ -1054,7 +1055,7 @@ end module star_info_lib
 !   /oldrot/    omega_start, j_rot_start, mean_gravity_start (HG),
 !               mean_radius_start, eta_squared_start
 !   /origstart/ j_rot_iteration_start, xa_iteration_start
-!   /prevcz/    cz_base_radius_prev, envelope_cz_base_zone_prev
+!   /prevcz/    cz_base_radius_last_call, envelope_cz_base_zone_last_call
 !   /sound/     adiabatic_index_gamma1
 !   /theage/    age_gyr (DAGE)
 !   /varfc/     zahn_coupling (VFC)
@@ -1147,4 +1148,23 @@ end module star_info_lib
 ! luminosity_breakdown -> luminosity_breakdown_lsun,
 ! log_L -> log_L_lsun, triangle_log_l -> triangle_log_l_lsun
 ! and stotal, a copy of log_total_mass, merged into it.
+!
+! Renamed in the second 2026-10-29 review (old name first): the unit
+! suffixes and one meaning of _prev:
+! h_shell_bot_radius -> h_shell_bot_radius_fraction,
+! h_shell_mid_radius -> h_shell_mid_radius_fraction,
+! h_shell_top_radius -> h_shell_top_radius_fraction,
+! fit_point_pressure -> fit_point_logP,
+! fit_point_temperature -> fit_point_logT,
+! fit_point_radius -> fit_point_logR,
+! neutrino_flux_total -> neutrino_flux_total_e10_per_cm2_s,
+! neutrino_flux_zone -> neutrino_flux_zone_e10_per_cm2_s,
+! cz_base_radius_prev -> cz_base_radius_last_call,
+! envelope_cz_base_zone_prev -> envelope_cz_base_zone_last_call.
+! The envelope kernel's configuration took the members' names
+! (cfg%senv, tenv, atm_hras -> log_fit_point_mass_fraction,
+! envelope_store_log_temperature, hsra_log_t_offset), and so did
+! rotation's sub-step physics (visc, thdif, qdt -> kinematic_viscosity,
+! thermal_diffusivity, dlnrho_dlnt); i_eps_he3, the triple-alpha slot,
+! became i_eps_3alpha.
 !======================================================================
