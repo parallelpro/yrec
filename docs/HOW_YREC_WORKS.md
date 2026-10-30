@@ -103,8 +103,8 @@ Composition evolves by:
   accounting for the time-dependent depth of the surface convection zone
   (`burn_li_be` in `core/step/burn_step.f90`, rates from `compute_li_be_rates`, the CZ
   base from `core/step/convection_geometry.f90`; the CZ-depth history enters via the pressure-scale-height
-  bounds `star%envelope_overshoot_depth_start`/`_end` and the previous CZ-base
-  radius `star%cz_base_radius_prev`);
+  bounds `star%envelope_overshoot_depth_start`/`_end` and the CZ-base radius
+  the last call within the step found, `star%cz_base_radius_last_call`);
 - **microscopic diffusion** (optional) — gravitational settling and
   thermal diffusion of He and metals in the Bahcall & Loeb / Michaud
   formulation with Thoul, Bahcall & Loeb (1994) coefficients
@@ -544,10 +544,11 @@ interpolated in both directions with edge-validity bookkeeping
 | `solve_tridiagonal` (`tridiag_gs`, `ctridi`) | tridiagonal (Thomas) solver, in two public halves (`tridiagonal_forward_sweep`, `tridiagonal_back_substitution`) | gravitational settling, rotational composition diffusion |
 | `solve_angular_momentum_transport` (`tridia`; in `rotation/seculr/am_transport_coefficients.f90`) | numerics' two halves of the Thomas solve around the wind's term, with the angular-momentum bookkeeping | AM diffusion |
 | `cspline`/`splint`, `natural_spline` (`kspline`, `splinc`), `osplin`→`meval`/`choose`/`cases`/`spline` | cubic and shape-preserving quadratic splines | rezoning, table interpolation, turnover timescale |
-| `lir` | 4-point Lagrange / linear table interpolation (`lir1` was removed as dead code) | MHD EOS table lookups |
-| `hunt`, `locate`, `search`, `findex` | bisection / hunting searches (each with its own convention at the nodes, in its header) | all table families |
+| `interp`, `lagrange4`, `inter3`, `quint` (aliases `lagrange4_weights`, `lagrange3_weights`, `equidistant_quadratic`) | 4-point Lagrange weights and their weighted sum; 3-point weights; a quadratic through three equidistant points | the Alexander and OPAL 1995 opacity tables, SCV, the settling grids, rotation's stability coefficients; the Kurucz atmosphere tables; the MHD EOS |
+| `lir` (alias `interpolate_tabulated_functions`) | 4-point Lagrange table interpolation on `interp`'s weights, the first point beyond the target's weight replaced so that the four sum to one (`lir1` was removed as dead code) | MHD EOS table lookups |
+| `hunt`, `locate`, `search`, `findex` (alias `bracket_index`) | bisection / hunting searches (each with its own convention at the nodes, in its header); `findex` is `hunt` with YCK's codes outside the grid | all table families |
 | `average_over_equipotential` (`qgauss`; in `rotation/shape/shell_quadrature.f90`) | 10-point Gauss–Legendre quadrature | shape integrals |
-| `natural_spline` + `splint(..., dy=)`, `compute_spline_coefficients` | natural cubic spline with its derivative; the spline as a cubic per interval | OPAL 1992 and Kurucz 1990 opacity interpolation (`ysplin` and `intpol` are kept for now as wrappers of these) |
+| `natural_spline` + `splint(..., dy=)`, `compute_spline_coefficients` | natural cubic spline with its derivative; the spline as a cubic per interval | OPAL 1992 and Kurucz 1990 opacity interpolation |
 
 A numerics routine that can fail returns its status in `ierr`, as
 `numerics_status`'s named codes (0 ok; singular, coincident points, bad input, step underflow,
@@ -594,7 +595,9 @@ main (CLI, ~10 lines)                     pyyrec (ctypes) ── libyrec
        ├─ read_controls         (io/controls_reader.f90; read_input (parmin):
        │                         a legacy $CONTROL/$PHYSICS pair or a
        │                         single-file &control/&physics inlist)
-       ├─ star_setup            (eos_init/kap_init/atm_init table loads)
+       ├─ open_run_files, output_open (the run's files, after the read)
+       ├─ prepare_run           (the run plan's envelope Z; kap/eos/atm
+       │                         records and tables: install_run_settings)
        └─ run loop (kind cards) ── model loop ── evolve_step
                                                     │
      star layer (takes run_yrec's star as s): read_starting_model (starin),
@@ -620,7 +623,7 @@ members (`star%dt`, `star%model_diverged_flag`, …). Only the two input
 bundles are nested: `star%ctrl` (the controls, fixed after
 `read_controls`) and `star%job` (the controls the run changes: the
 run-card arrays the calibration rewrites, the stop thresholds, the
-latches; and the table paths and Monte-Carlo samples). Solver
+latches; and the Monte-Carlo samples and the card cursor `nk`). Solver
 scratch with a one-step lifetime is a record its driver allocates and
 passes down (rotation's `rot_scr`, `mid_scr`, `circ_scr`; element
 diffusion's `diff_scr`; the envelope integration's point values are the

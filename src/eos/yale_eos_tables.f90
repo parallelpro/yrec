@@ -39,8 +39,8 @@ module yale_eos_tables
 ! The Debye-Hueckel coefficient -sqrt(pi/(k m_u**3)) e**3/3 (cgs), and
 ! the charges of the 18 metals it weights (C, N, O, Ne, Na, Mg, Al, Si,
 ! P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni). The mass unit is the atomic
-! mass unit, 1/N_A g (the F77 code wrote 1/6.0222137e23, Avogadro's
-! digits transposed).
+! mass unit, 1/N_A g (the F77 code wrote 1/6.0222137e23, a mistyped
+! 6.0221367e23).
       real(dp), parameter :: debye_huckel_mass_unit = amu_cgs
       real(dp), parameter :: debye_huckel_coefficient = -sqrt(cpi/(boltzmann_constant_cgs* &
            debye_huckel_mass_unit*debye_huckel_mass_unit*debye_huckel_mass_unit))* &

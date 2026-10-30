@@ -362,9 +362,9 @@ them as it is rewritten.
    tell them apart: numerics' `numerics_status`), never reports a success
    it did not have, and does not stop the run. The caller that knows what
    the failure means writes the message, and a domain writes its
-   messages through one module (`net_messages`, `rotation_messages`; io's
-   `report_error`, the controls' `report_control`), to the terminal and
-   the run log. numerics/ and math/ hold no I/O statement at all
+   messages through one module (`net_messages`, `rotation_messages`,
+   `eos_messages`; io's `io_units`: `report_error`, `report_warning`,
+   `report_note`), to the terminal and the run log. numerics/ and math/ hold no I/O statement at all
    (`NO_IO_DIRS` in `tools/check_boundaries.py`).
 
 ## Verification tiers (2026): match the gate to the blast radius

@@ -17,12 +17,13 @@
 ! reads star%central_log10_*), and compute_surface_globals precedes the
 ! themes that read star%log_R_surface_rsun.
 !
-! One local of the legacy routine's blanket SAVE is real cross-call
-! state: the Saha-table state of the central eos call, which the star
-! carries (s%central_saha_state). The others are set before every use
-! and are plain locals. (Legacy wrtout's core-boundary radius, which read the
-! previous call's interpolation fraction through an FX/FX2 typo and was
-! never used, is not carried over.)
+! One local of the legacy routine's blanket SAVE outlived its call: the
+! central eos call's Saha iteration counter, which the star carries
+! (s%central_saha_state; eos_get adds to it and nothing reads it). The
+! others are set before every use and are plain locals. (Legacy wrtout's
+! core-boundary radius, which read the previous call's interpolation
+! fraction through an FX/FX2 typo and was never used, is not carried
+! over.)
 module observables
       use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: i_h1, i_metals, n_lum_channels, star_info

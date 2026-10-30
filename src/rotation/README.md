@@ -26,7 +26,7 @@ The star comes in as an argument: the drivers (`evolve_angular_momentum`; the su
 | `viscosity` | `viscos`: the microscopic viscosity and the thermal diffusivity. |
 | `magnetic_braking` | The wind torque on the surface convection zone, `brake_convection_zone`, and its solid-body form; `outer_point_wind_terms`, the wind's boundary terms for a transport region that reaches the surface; `derive_wind_law`, the law's constant, exponents and saturation from its controls (a pure function `rotation_settings_from_star` calls). Covers the Kawaler (1988) and Matt/PMM laws (K97, V13, or custom), with saturation, Rossby and field scaling. |
 | `rotation_messages` | `rotation_report` and `rotation_note`, rotation's two kinds of message (§3), and `rotation_numerics_report`, a numerics routine's failure as a one-line report (where, and `numerics_status_text` of its code). |
-| `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`cz_rotation_law_exponent` for `walpcz`, ...), and the wind law's coefficients from `derive_wind_law`. |
+| `rotation_configuration` | The settings record `rotation_settings` (`rotation_settings_t`): every control rotation reads, with readable names (`shape_tolerance` for the control `fpft_average_weight`, ...), and the wind law's coefficients from `derive_wind_law`. |
 | `rotation_scratch_lib` | The types of the working state, one record per stage: `sub_model` (the structure interpolated to the sub-step, its convection zones, composition snapshot and starting ω), `sub_physics` (the physics interpolated to it), `stab` (the structure at the interfaces and the stability coefficients), `chi_grid` (the transport region's equally spaced grid) and `circ_scr` (the mechanisms' previous velocities and the Zahn coupling factor). `evolve_angular_momentum` allocates them for the step and passes each routine the records it uses; the module declares no instance. Nothing in them outlives a step; what does (the last sub-step's omega, `star%omega_substep`) is on the star. |
 | **shape/** | |
 | `rotating_shape` | `rotation_shape_factors`: each shell's fp, ft, distortion, mean radius and mean gravity (Kippenhahn & Thomas / Endal & Sofia). |
@@ -69,7 +69,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 ## 3. Conventions
 
 - CGS, and log is log₁₀. ω is in rad/s, and `j_rot` is the specific angular momentum. Zones run from the center out.
-- Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, the control `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one; test it with `solid_body_everywhere()` (`rotation_configuration`).
+- Convection zones rotate as solid bodies unless an imposed law (`cz_rotation_law_exponent`, legacy `walpcz`) says otherwise. `force_solid_body_rotation` (or `solid_body_mode_flag = 1`) makes the whole star one; test it with `solid_body_everywhere()` (`rotation_configuration`).
 - Composition slots come from `composition_layout`: the transport mixes slots 1 to `last_mu_species` (X, Y, Z, He3, which set the μ gradient) at every iteration, the rest up to `num_tracked_species()` once.
 - Failures (a singular solve, a spline that cannot be evaluated, a step cut too often) return `ierr`; a numerics routine's code is passed up as it is, after a `rotation_numerics_report`. Messages go through `rotation_messages`: an error or a cut of the sub-step to the terminal and the run log (`rotation_report`), a per-sub-step note (the dynamical-shear interfaces, the transport's convergence) to the terminal, and to the run log too when solver diagnostics are on (`rotation_note`). Kernels print nothing.
 - Kept by decision (2026-10-12): the μ gradient enters the Eddington–Sweet inhibition twice (`inhibit_by_mu_gradient`), so it cuts U_ES by at most a half, as in the F77 code. `docs/HOW_YREC_WORKS.md` §4.6 explains it.
@@ -106,14 +106,14 @@ Each of these checks was confirmed to fail under a mutation of the code it cover
 
 The decks pin the full step: the rotating solar deck, the five rotating configuration-matrix decks, and the three testsuite rotating-mixing decks (differential and solid body). A deliberate change means regenerating `rotation/test/expected_test_rotation.out`.
 
-**Add a control:** add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
+**Add a control:** the control itself as `io/README.md` §5 ("Add a control") says; then add the field to `rotation_settings_t`, copy it from `star%ctrl` in `rotation_settings_from_star`, and read `rotation_settings%<field>`.
 
 **Add a transport mechanism** (a new instability or circulation that transports angular momentum and mixes as a diffusion):
 1. Declare it in `state/transport_mechanism_layout.f90`: the next slot (`i_mech_<name>`, `n_transport_mechanisms` + 1), its name, the slot it corrects (0 for none; an earlier one) and the names of its two controls. The coefficients sum the mechanisms in slot order, so the next slot leaves the present ones' sums unchanged bit for bit.
 2. Write its velocity as a kernel in `seculr/instability_velocities.f90`: arguments in, its velocity at interfaces `zone_min..zone_max` out, star-free. Give it a check in `test_rotation_kernels` that a mistake would break (a limit, a scaling, a stability criterion).
 3. Add its case to `compute_mechanism_velocity` (`seculr/transport_mechanisms.f90`): the call of its kernel with what it reads from `stab`, `sub_physics` and ω, into `mechanism_velocity(i_mech_<name>,:)`. Clearing, scaling, averaging between iterations, summing into U and the diffusion coefficients loop over the slots already; `test_rotation_kernels` checks that it writes no slot it has not declared.
 4. Add its two controls to the registry (`defaults/controls_registry.tsv`, then the generators) and copy them into `rotation_settings%velocity_scale(i_mech_<name>)` and `%mixing_scale(i_mech_<name>)` in `rotation_settings_from_star`; `test_rotation_kernels.py` checks both against the names the layout declares.
-5. For output, add a profile column that reads `s%mechanism_velocity(i_mech_<name>,k)` (`core/diagnostics/stitched_model.f90`, `io/profile_output.f90`).
+5. For output, add a profile column that reads `s%mechanism_velocity(i_mech_<name>,k)`: its index, row and region cases in `core/diagnostics/stitched_model.f90` and its line in `defaults/profile_columns.list` (`io/README.md` §5, "Add a profile column"; `io/profile_output.f90` only writes the columns).
 
 **Add any other kernel:** keep it star-free (arguments in, results out), add its file to `STAR_BLIND_FILES`, and give it a check in `test_rotation_kernels` that a mistake would break (a conservation law, a limit, a scaling).
 

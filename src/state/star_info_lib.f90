@@ -113,8 +113,9 @@ module star_info_lib
 ! (job_controls_def.inc, generated from the registry's home column: the
 ! read sets them, then the calibrations rewrite the next cycle's cards,
 ! the stop conditions disarm thresholds, the atmosphere switch changes
-! atm_choice, the solver ramps fcorr), the Monte-Carlo samples and the
-! run-card cursor. The table paths are controls (star%ctrl).
+! atm_choice, the solver ramps solver_underrelax_factor), the
+! Monte-Carlo samples and the run-card cursor. The table paths are
+! controls (star%ctrl).
       type, public :: star_job
 ! the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample
 ! file: the S-factor scales of p+p, 3He+3He, 3He+4He and 7Be+p, Z/X,
@@ -156,7 +157,7 @@ module star_info_lib
 ! controls_sync, run_driver, calibration, monte_carlo. Changed by the
 ! run: the calibrations rewrite the next cards, the stop conditions
 ! disarm thresholds, the atmosphere switch changes atm_choice, the
-! solver ramps fcorr.
+! solver ramps solver_underrelax_factor.
             type(star_job) :: job
 
 ! ==== Constants set at setup ===========================================
@@ -837,11 +838,12 @@ module star_info_lib
 ! structure_equations, observables, neutrino_flux_output. Only with
 ! ctrl%calc_neutrinos; also overwritten by the card-start neutrino table.
             double precision :: neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)
-! d eps/d ln rho, absolute (not logarithmic) [erg/(g s)];
-! structure_equations. Zero below the burning cutoff.
+! d eps_total/d ln rho, absolute (not logarithmic) [erg/(g s)];
+! structure_equations. eps_nuc's, without the thermal neutrino loss, as
+! eps_total; zero below the burning cutoff.
             double precision :: pulse_deps_dlnrho(json)
-! d eps/d ln T, absolute [erg/(g s)]; structure_equations. Zero below
-! the burning cutoff.
+! d eps_total/d ln T, absolute [erg/(g s)]; structure_equations. As
+! pulse_deps_dlnrho.
             double precision :: pulse_deps_dlnt(json)
 ! d ln kappa/d ln rho [-]; structure_equations
             double precision :: pulse_dlnkap_dlnrho(json)
@@ -961,7 +963,7 @@ module star_info_lib
 ! Values kept on the star for one module alone, which writes and reads
 ! them: the state it carries between its calls (the calibrations'
 ! previous checks, models and corrections, the central EOS call's Saha
-! state, the Newton solve's boundary rows and convergence log, the
+! iteration counter, the Newton solve's boundary rows and convergence log, the
 ! surface-mixing search's starting zone). tools/gen_star_docs.py places
 ! every member that one module alone uses here, and nothing else.
 ! Valid: only inside that module; each member says when.
@@ -998,8 +1000,8 @@ module star_info_lib
 ! within the step (cz_base_radius_last_call), the starting zone of the
 ! next call [-]; convection_geometry
             integer :: envelope_cz_base_zone_last_call
-! the Saha state the central EOS call carries from one model to the next
-! [-]; observables
+! the central EOS call's Saha iteration counter [-]; observables.
+! eos_get adds the Saha solver's iterations to it; nothing reads it.
             integer :: central_saha_state = 0
 ! point of the largest correction of each variable, for the convergence
 ! log [-]; henyey_iteration

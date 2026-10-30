@@ -44,7 +44,7 @@ Line numbers cited here are for the working tree of 2026-10-10. `src/` is being 
 | Time | `star%dt` in s, `timestep_yr` in yr, the age `age_gyr` in Gyr. `seconds_per_year` = 3.1558×10⁷ (a parameter of `state/physical_constants.f90`). |
 | Stored logs | All log₁₀. ln 10 is `ln10` (also `clndp`, legacy `CLN`); 1/ln 10 is `clni` (`CLNI`). |
 | Specific energy rates | erg g⁻¹ s⁻¹. Exception: `eps_channels(1:5,:)` holds fractions (trap 4). |
-| Solar units | Set once by `core/run/run_setup.f90` from the namelist values `clsun`/`crsun` and the control `solar_mass_cgs`. The luminosity values are rescaled per Monte-Carlo run. |
+| Solar units | Set once by `core/run/run_setup.f90` (`set_up_constants_and_tables`) from the controls `solar_luminosity_cgs`, `solar_radius_cgs` and `solar_mass_cgs` (legacy `clsun`, `crsun`). The luminosity values are rescaled per Monte-Carlo run. |
 
 ### 1.2 Grid and zone indexing
 
@@ -232,7 +232,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
 | ε_nuc | erg g⁻¹ s⁻¹ | `star%eps_total` | `SESUM` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | Sum of every chain's rate (pp I incl. d(p,γ), pp II, pp III, CNO, 3α, and the α captures since 2026-10-29: `docs/bug_sweep.md` M1; the F77 SESUM left them out). Excludes ν losses. |
-| ε_chain/ε_nuc | fraction | `star%eps_channels(1:5,k)` (`i_eps_pp1`, `i_eps_pp2`, `i_eps_pp3`, `i_eps_cno`, `i_eps_3alpha`) | `SEG(1:5)` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | **Fractions** of `eps_total`, not erg g⁻¹ s⁻¹ (trap 4). Slot 5 holds the 3α share; its profile column keeps the name `eps_he3` (trap 5). |
+| ε_chain/ε_nuc | fraction | `star%eps_channels(1:5,k)` (`i_eps_pp1`, `i_eps_pp2`, `i_eps_pp3`, `i_eps_cno`, `i_eps_3alpha`) | `SEG(1:5)` | core/structure/structure_equations.f90 (`store_zone_energy_channels`) | **Fractions** of `eps_total`, not erg g⁻¹ s⁻¹ (trap 4). Slot 5 holds the 3α share; its profile column keeps the name `eps_he3` (trap 5). The α captures have no slot, so where they burn slots 1–5 sum to less than 1 (`docs/bug_sweep.md` M80). |
 | ε_ν | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_neu,k)`; `burn%eps_neutrino_loss` | `SEG(6)`; `ENU` (`/NEWEPS/`) | core/structure/structure_equations.f90:345; net/nuclear_energy.f90 (`add_thermal_neutrino_loss`) | Thermal neutrino loss rate (stored negative). |
 | ε_extra | erg g⁻¹ s⁻¹ | `star%eps_extra(k)`, `diag%eps_extra`; channel `luminosity_breakdown_lsun(i_lum_extra)` | — | core/structure/energy_sources.f90, core/structure/shell_equations.f90 (form_extra_energy_terms) | The sum of the extra energy sources a program registers (`add_energy_source`); zero, and not evaluated, without any. Interior only. |
 | ε_grav | erg g⁻¹ s⁻¹ | `star%eps_channels(i_eps_grav,k)`, `star%eps_grav(k)` | `SEG(7)`, `HHC` | core/structure/structure_equations.f90:289-290 | −T ds/dt from `log_*_delta`. Uses 1/yr instead of 1/dt when X > 0.01 and dt < 1 yr (line 280-281). `eps_grav` is a specific rate, not a luminosity (trap 7). |
@@ -248,7 +248,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | m_u | g | `amu_cgs` (parameter) | `C21` (as 10⁹ sidereal yr × m_u) | state/physical_constants.f90 | Atomic mass unit; turns a rate per s per g into the per-s-per-amu units of the composition rate vector and the deuterium rate. |
 | Φ_ν | 10¹⁰ per g; totals 10¹⁰ (unconfirmed) | `burn%neutrino_flux(10)` (slots `i_nu_*`); `neutrino_flux_total_e10_per_cm2_s(10)`; per zone, a local of `write_neutrino_flux_table` | `FLUX`, `FLUXTOT` (`/FLUXES/`); `FLUXI0` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); totals in core/structure/structure_equations.f90 | Solar-neutrino source rates: one shell's record, Σ·Δm over zones, and per zone for the table. Slots 9–10 are the ³He+³He and ³He+⁴He rates, not neutrinos. |
 | — | SNU | `star%cl37_snu_rate`, `star%ga71_snu_rate` | `CLSNU`, `GASNU` | core/diagnostics/observables.f90 | ³⁷Cl and ⁷¹Ga capture rates from the flux totals. |
-| X(⁷Be) | mass fraction | `burn%be7_mass_fraction`, `star%be7_mass_fraction_zone` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); per zone core/diagnostics/neutrino_flux_output.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
+| X(⁷Be) | mass fraction | `burn%be7_mass_fraction`; per zone a local of `write_neutrino_flux_table` | `BE7MASSFRACTION`, `BE7M` | net/nuclear_energy.f90 (`compute_solar_neutrino_fluxes`); per zone core/diagnostics/neutrino_flux_output.f90 | Equilibrium ⁷Be abundance (one shell's record, and per zone; 0 where X ≤ 10⁻⁶). |
 | r_D | per s | `star%deuterium_burning_rate`, `deuterium_burning_rate_start` | `DRATE`, `DRATE0` (`/DEUTER/`) | core/step/burn_step.f90:1346 (`compute_burn_rates`, from `deuterium_rate`) | Deuterium burning rate, end and start of step. |
 | ΔM_acc | g | `star%accreted_mass` | `FMASSACC` | core/step/mass_change.f90:451; read by `burn_deuterium_region` | Mass accreted during the step; the accreted composition is blended into the burned surface region by mass. Named `accreted_mass_fraction` until 2026-10. |
 | r_Li6, r_Li7, r_Be9 | s⁻¹ (N_A⟨σv⟩·ρX_H, taking A_H = 1) | `star%rate_li6`, `rate_li7`, `rate_be9`; `*_start` | `RLI6`, `RLI7`, `RBE9`; `RLI60`, `RLI70`, `RBE90` | core/step/burn_step.f90 (`store_li_be_rates`) | Light-element burning rates at end and start of step; `burn_li_be` multiplies them by the step in seconds. |
@@ -267,8 +267,8 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | — | — | `star%stored_vertex_index`; also `stored_vertex_index` | `ISTORE` | core/envelope/envelope_integration_kernel.f90 | Vertex whose state is in `stored_envelope_state`. |
 | — | logical | `star%recompute_envelope_triangle`; also `start_new_triangle` | `LNEW` | core/step/step_driver.f90, core/structure/surface_boundary.f90 | Build a fresh triangle around (T_eff, L). |
 | — | logical | `star%reset_triangle` | `LRESET` | core/structure/surface_boundary.f90, core/model/rezoning.f90 | Redo all three envelopes and retriangulate if needed. |
-| log₁₀ T | dex (K) | `star%envelope_store_log_temperature` | `TENV` (`/CTLIM/`) | io/derived_controls.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state (the envelope kernel's copy is `cfg%tenv`). |
-| log₁₀ T(τ=2/3) | dex (K) | `star%hsra_log_t_offset` | `HRAS` (`/ATMOS/`) | core/run/run_setup.f90 (`hsra_t_tau_offset`) | HSRA T–τ fit at τ = 2/3, the offset for `atm_choice` = 2 (the envelope kernel's copy is `cfg%atm_hras`). |
+| log₁₀ T | dex (K) | `star%envelope_store_log_temperature` | `TENV` (`/CTLIM/`) | io/derived_controls.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state (the envelope kernel's copy is `cfg%envelope_store_log_temperature`). |
+| log₁₀ T(τ=2/3) | dex (K) | `cfg%hsra_log_t_offset` (the envelope kernel's configuration; no star member since 2026-10-29) | `HRAS` (`/ATMOS/`) | core/envelope/envelope_integration.f90 (atm's pure `hsra_t_tau_offset()`) | HSRA T–τ fit at τ = 2/3, the offset for `atm_choice` = 2. |
 | — | logical | `star%use_ttau_relation` | `LTTAU` | core/structure/surface_boundary.f90, core/envelope/envelope_integration.f90 | Runtime switch to a T–τ relation, e.g. the gray fallback outside table range. |
 | — | mixed | `env_points%env_log10_*`, `env_gradients(3,:)`, ... | `/ENVSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Envelope points (fitting point to photosphere). Gradient rows are (rad, **ad**, actual) (trap 19). |
 | — | mixed | `atm_points%atmo_log10_*`, `atmo_gradients(3,:)`, ... | `/ATMSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Atmosphere points. Gradient rows are (rad, **actual**, ad) (trap 19). |
@@ -309,7 +309,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | U | cm s⁻¹ | `diffusion_velocity` (`secular_transport` argument); also `total_circulation_velocity` | `HV` | rotation/seculr/circulation_velocities.f90 | Total circulation velocity at interfaces; transport regions are where U > 0. |
 | D_Ω | cm² s⁻¹ | `star%am_diffusion_coeff` (profile `D_omega`); local `am_diffusion_coeff` | `COD` | rotation/seculr/diffusion_velocity_scales.f90; copied at secular_transport.f90:295 | AM diffusion coefficient on the model grid; `star` keeps the last sub-step. |
 | D_mix | cm² s⁻¹ | `star%mixing_diffusion_coeff` (profile `D_mix_rot`); argument `mixing_diffusion_coeff`; also `diffusion_coeff` | `COD2` | as above | Rotational mixing coefficient for composition. |
-| f_c | — | `star%zahn_coupling` | `VFC` (`/VARFC/`) | rotation/seculr/zahn_coupling_factor.f90:112 | Zahn (1992) coupling factor min(1, ...), applied when `lvfc` is set. |
+| f_c | — | `circ_scr%zahn_coupling` (rotation's scratch) | `VFC` (`/VARFC/`) | rotation/seculr/circulation.f90 (`zahn_coupling_factor`) | Zahn (1992) coupling factor min(1, ...), applied when `velocity_form_correction` (legacy `lvfc`) is set. |
 | (dΩ/dln r)_max | rad s⁻¹ | local `dynamical_shear_omega_limit` (rotation_stability_setup, secular_transport); also `dlnomega_dlnr_max`. shell_physics's copy (`rot_scr%max_domega_dr`, and `max_domega_dr_old`) was never read and was removed in 2026-10 | `QWRMAX` (`/DWMAX/`); `QWRMX0` | rotation/seculr/stability_coefficients.f90 | Largest absolute dΩ/dln r stable against dynamical shear (Ri = ¼). Absolute and per ln r, despite `dr`/`dln` in the names (trap 3). |
 | dΩ/dln r | rad s⁻¹ | `dlnomega_dlnr` (local) | `QWLNR` | rotation/seculr/secular_transport.f90:163 | **Absolute** dΩ/dln r at interfaces (trap 3). |
 | r | cm | `radius_unlogged`; also `radius`, `radius_mid_prev` | `HRU` | rotation/seculr/stability_coefficients.f90 | Unlogged radius at zone centres. |
@@ -332,8 +332,8 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | — | zone index | `star%envelope_cz_bottom_index` | `JENV` | core/model/rezoning.f90:567, core/step/composition_step.f90 | Bottom zone of the surface convection zone (`nz` if none). |
 | — | zone index | `star%envelope_overshoot_bottom_index`, `star%envelope_overshoot_top_index` | `IOV1`, `IOV2` (`/DPMIX/`) | convection/convection_zones.f90 (returned by `find_convection_zones`) | The overshoot region below the envelope; a zone inside it is `in_overshoot_region` for the adiabatic-overshoot test of `compute_temperature_gradients`. (`IOVIM`, the zone index side channel, is gone.) |
 | α_ov H_P | cm | `star%envelope_overshoot_depth_start`, `envelope_overshoot_depth_end` | `PSCAL0`, `PSCAL1` (`/LIOV/`) | core/step/step_driver.f90:537-545, rotation/evolve_angular_momentum.f90:343-348 | Envelope **overshoot distance** below the CZ base, not H_P itself (trap 13). |
-| r_CZ,prev | cm | `star%cz_base_radius_prev` | `RBASE0` (`/PREVCZ/`) | core/step/burn_step.f90:318, 336 | CZ-base radius at the end of the previous step, for light-element burning. |
-| — | zone index | `star%envelope_cz_base_zone_prev`, `star%envelope_cz_bottom_index_start` | `JENVOS`, `JCZ` | core/step/burn_step.f90:355, core/step/step_driver.f90:280 | CZ-base zone of the previous step; CZ-base zone used by deuterium burning. |
+| r_CZ, last call | cm | `star%cz_base_radius_last_call` | `RBASE0` (`/PREVCZ/`) | core/step/convection_geometry.f90 (`locate_surface_mixing_base`) | Radius of the base of the surface mixed region found by the last call within the step (zeroed at each step start). |
+| — | zone index | `star%envelope_cz_base_zone_last_call`, `star%envelope_cz_bottom_index_start` | `JENVOS`, `JCZ` | core/step/convection_geometry.f90, core/step/step_driver.f90 | That call's zone, the next call's starting zone; CZ-base zone used by deuterium burning. |
 | τ_cz | s | `star%convective_turnover_timescale`, `..._old` | `TAUCZ`, `TAUCZ0` (`/OVRTRN/`) | core/diagnostics/turnover_timescale.f90 | Convective turnover time, H_P/v_conv (or CZ width/v_conv) at the CZ base. |
 
 ### 2.10 Timestep and driver state
@@ -347,7 +347,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | t | Gyr | `star%age_gyr` | `DAGE` (`/THEAGE/`) | core/step/step_driver.f90:262 | Stellar age. |
 | — | — | `star%model_number` | `MODEL` | core/step/step_driver.f90:162 | Model counter (not advanced on rescale-only cards). |
 | — | — | `star%job%nk` | `NK` (`/ZRAMP/`) | core/run/run_driver.f90 | Index of the current kind card (run). |
-| — | logical | `star%model_diverged_flag` | `LARGE` | core/structure/henyey_iteration.f90 (`corrections_too_large`) | Newton corrections exceeded `htoler(:,2)`. No timestep is cut: `reload_model_if_diverged` calls `read_starting_model`, which stops the run with ierr = 1 (`core/step/step_driver.f90:94-99`, `:200-206`). |
+| — | logical | `star%model_diverged_flag` | `LARGE` | core/structure/henyey_iteration.f90 (`corrections_too_large`) | Newton corrections exceeded `solver_tolerances(:,2)` (legacy `htoler`). No timestep is cut: `reload_model_if_diverged` calls `read_starting_model`, which stops the run with ierr = 1 (`core/step/step_driver.f90:94-99`, `:200-206`). |
 | — | zone index | `star%h_shell_bot_index`, `h_shell_mid_index`, `h_shell_top_index` | `JXBEG`, `JXMID`, `JXEND` | core/model/shell_boundaries.f90 | Bottom, middle and top zones of the H-burning shell. |
 | — | logical | `star%has_h_shell` | `LSHELL` | core/model/shell_boundaries.f90 | A hydrogen-burning shell exists. |
 | — | logical | `star%solar_calibration_converged`; `delta_x`, `delta_alpha`; `log_l_lsun_prev_check`, `log_r_rsun_prev_check` | `LSOL`; `DX`, `DA`; `BLP`, `RLP` (`/CALSUN/`) | core/run/calibration.f90 | Solar calibration in progress; the next X and α corrections; the previous run's surface log L and log R. |
@@ -382,14 +382,14 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
 |---|---|---|---|---|---|
 | (∂lnρ/∂lnT) at fixed P | — | `star%pulse_dlnrho_dlnt` | `PQDT` | core/structure/structure_equations.f90 | Logarithmic (correct); δ = −this. |
-| dε/dlnρ | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnrho` | `PQED` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_rho` as is (trap 1). |
-| dε/dlnT | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnt` | `PQET` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_T` as is (trap 1). |
+| dε/dlnρ | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnrho` | `PQED` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_rho` as is (trap 1). ε_nuc's, without the thermal neutrino loss (`burn%deps_nuc_dlnrho`, since 2026-10-29: `docs/bug_sweep.md` M77); the Henyey's `burn%deps_dlnrho` includes the loss. |
+| dε/dlnT | erg g⁻¹ s⁻¹ | `star%pulse_deps_dlnt` | `PQET` | core/structure/structure_equations.f90 | **Absolute**; written to `eps_eps_T` as is (trap 1). ε_nuc's, as dε/dlnρ (`burn%deps_nuc_dlnt`). |
 | κ_ρ, κ_T | — | `star%pulse_dlnkap_dlnrho`, `pulse_dlnkap_dlnt` | `PQOD`, `PQOT` | core/structure/structure_equations.f90 | Logarithmic (correct). |
 | c_P | erg g⁻¹ K⁻¹ | `star%pulse_specific_heat` | `PQCP` | core/structure/structure_equations.f90 | Specific heat. |
 | μ | — | `star%pulse_mean_molecular_weight` | `PRMU` | core/structure/structure_equations.f90:412 | R/(R/μ) from the EOS; the legacy slot held R/μ. |
 | 1/μ_e | — | `star%pulse_electron_mean_weight_inverse` | `PEMU` | core/structure/structure_equations.f90 | Inverse electron mean weight (already inverted). |
-| pulse columns 1–18 | cgs | `s%stitched%pulse(ipul_r ... ipul_omega, :)`: r, m, L (erg s⁻¹), P, T, ρ, ∇, N², Γ₁, ∇_ad, δ, κ, κ·κ_T, κ·κ_ρ, ε, ε·ε_T, ε·ε_ρ, Ω | — | core/diagnostics/stitched_model.f90:47-55 | GYRE schema-101 set. Columns 16–17 multiply `eps_total` by the already-absolute derivative (trap 1). |
-| pulse columns 19–34 | mixed | `ipul_cp`, `ipul_mu_e_inv`, `ipul_h1`, `ipul_z`, species at `ipul_species_base+k` (k=1..11: ³He, ¹²C, ¹³C, ¹⁴N, ¹⁶O, ²H, ⁴He, ⁷Li, ¹⁵N, ¹⁷O, ¹⁸O), `ipul_eps_grav` | — | core/diagnostics/stitched_model.f90:700-706 | FGONG extras. Column 35 is never filled. |
+| pulse columns 1–18 | cgs | `s%stitched%pulse(ipul_r ... ipul_omega, :)`: r, m, L (erg s⁻¹), P, T, ρ, ∇, N², Γ₁, ∇_ad, δ, κ, κ·κ_T, κ·κ_ρ, ε, ε·ε_T, ε·ε_ρ, Ω | — | core/diagnostics/stitched_model.f90:73-81 | GYRE schema-101 set. Columns 16–17 are `pulse_deps_*` as they are: the absolute dε/d ln T and dε/d ln ρ of column 15's ε, `eps_total` (trap 1). |
+| pulse columns 19–34 | mixed | `ipul_cp`, `ipul_mu_e_inv`, `ipul_h1`, `ipul_z`, species at `ipul_species_base+k` (k=1..11: ³He, ¹²C, ¹³C, ¹⁴N, ¹⁶O, ²H, ⁴He, ⁷Li, ¹⁵N, ¹⁷O, ¹⁸O), `ipul_eps_grav` | — | core/diagnostics/stitched_model.f90:745-753 | FGONG extras. Column 35 is never filled. |
 | q* point values (envelope integration) | mixed | `pt%qqdp`, `qqdt`, `qqod`, `qqot`, `qdel`, `qdela`, `qqcp`, `qrmu`, `qemu`, `qd`, `qdl`, `qo`, `qol`, `qp`, `qpl`, `qt`, `qtl`, `current_*` | same names (`/PULSE2/`), `current_*` → `/ENVPRT/` | core/envelope/envelope_integrands.f90, core/envelope/envelope_integrands.f90, core/structure/structure_equations.f90 | Physics of the last evaluated point for the envelope/atmosphere recorder. `qp`, `qt`, `qtl` mean different things per writer (trap 2). |
 
 ### 2.13 Physical constants and unit scales
@@ -414,7 +414,7 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 
 - **Inlist name:** the name in an inlist's `&physics` group, or in its `&control` group where marked (c).
 - **Legacy:** the F77 namelist name, read by the legacy reader (`io/controls_reader.f90`).
-- **Code field:** where the value lives at run time. `ctrl` means `star%ctrl%`, which never changes after the controls read. `job` means `star%job%`, which holds exactly the controls that code outside the read assigns (the run-card arrays the calibration rewrites, the stop thresholds, `atm_choice`, `fcorr`, the latches `use_structure_dt_limits` and `use_mass_accretion`), besides the table paths and the Monte-Carlo samples; the registry's `home` column says which, and `tools/check_boundaries.py` checks it.
+- **Code field:** where the value lives at run time. `ctrl` means `star%ctrl%`, which never changes after the controls read. `job` means `star%job%`, which holds exactly the controls that code outside the read assigns (the run-card arrays the calibration rewrites, the stop thresholds, `atm_choice`, `solver_underrelax_factor`, the latches `use_structure_dt_limits` and `use_mass_accretion`), besides the Monte-Carlo samples and the card cursor `nk`. `buffer` means a control only the read uses (the S-factor inputs, the `tol_*` and `time_*` inputs, the per-vintage OPAL EOS switches and paths): it stays in the read's buffer, `io/controls_buffer.f90`, and is not in the star. The registry's `home` column says which, and `tools/check_boundaries.py` checks it.
 - **Full list:** the ~380 controls are in `defaults/controls_registry.tsv` and the generated `defaults/*.defaults`.
 
 | Symbol | Units | Current name(s) | Legacy | Owner | Definition |
@@ -441,14 +441,14 @@ The per-zone `star%pulse_*` arrays are filled by `core/structure/structure_equat
 | — | — | `atm_choice`; code `job%atm_choice` | `KTTAU` | job | Surface BC: 0 Eddington gray, 1 Krishna-Swamy, 2 HSRA, 3–5 tabulated (Kurucz, Allard, Kurucz/Castelli). May be reset to 0 at run time. |
 | — | — | `env_error_tol`, `atm_error_tol`; code `ctrl%env_error_tol`, `ctrl%atm_error_tol` | `ENVERR`, `ATMERR` | ctrl | Error tolerances of the envelope and atmosphere integrations. |
 | Δlog T_eff, Δlog L | dex | `tri_delta_teffl`, `tri_delta_logl`; code `ctrl%tri_delta_teffl`, `ctrl%tri_delta_logl` | `TRIDT`, `TRIDL` | ctrl | Size of the envelope-fit triangle. |
-| — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code `ctrl%use_opal95_eos`, ... `ctrl%use_mhd_eos`; `use_scv_eos` lives in `eos/scv_eos_lib` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | ctrl | EOS table selection on top of the Yale/Saha base. |
+| — | logical | `use_opal95_eos`, `use_opal2001_eos`, `use_opal2006_eos`, `use_mhd_eos`, `use_scv_eos`; code: the three OPAL switches stay in the read's buffer and select one derived control, `ctrl%opal_eos_vintage` (`derive_controls`); `ctrl%use_mhd_eos`, `ctrl%use_scv_eos` | `LOPALE`, `LOPALE01`, `LOPALE06`, `LMHD`, `LSCV` | buffer / ctrl | EOS table selection on top of the Yale/Saha base. |
 | — | logical | `use_opal95_tables` (c), `use_alex06_tables` (c), `use_conductive_opacity`; code `ctrl%` same names | `LOPAL95`, `LALEX06`, `LCONDOPACP` | ctrl | Opacity table selection. |
 | — | logical | `use_extended_composition`; code `ctrl%use_extended_composition` | `LEXCOM` | ctrl | Evolve the 15-species layout (adds ²H, ⁶Li, ⁷Li, ⁹Be). |
 | log₁₀ T | dex (K) | `nuclear_logT_cutoffs(5)`; code `ctrl%nuclear_logT_cutoffs` | `TCUT` | ctrl | Temperatures below which burning groups are off; (1) gates `compute_zone_energy` in `compute_henyey_coefficients`. |
-| — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `fcorr`. |
-| — | — | `timestep_factors`; code `ctrl%timestep_factors(14)` (slots `itime_*` in `io/controls_buffer.f90:113-126`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
+| — | logical | `helium_flash_active`; code `ctrl%helium_flash_active` | `LKUTHE` | ctrl | He-flash mode: no rezoning, no luminosity renormalization, adaptive `solver_underrelax_factor` (legacy `fcorr`). |
+| — | — | `timestep_factors`; code `ctrl%timestep_factors(14)` (slots `itime_*` in `state/control_slots.f90`); `use_structure_dt_limits` → `job%use_structure_dt_limits` | `ATIME`; `LPTIME` | ctrl / job | Timestep limiters; (13) is the largest dt growth factor, and (8–11) apply only while `use_structure_dt_limits` is on (switched off at run time after log T_c > 7.1). Overwritten from `time_*` controls when `use_new_rate_variables` is set (trap 23). |
 | — | logical | `improved_first_guess_flag`; code `ctrl%improved_first_guess_flag` | `LNEWS` | ctrl | Extrapolate the next first guess from `*_entropy_term` rates. |
-| — | logical | `use_new_rate_variables`; code `ctrl%use_new_rate_variables` | `LNEWVARS` | ctrl | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `ctrl%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `atime`. Not a nuclear-rate switch (trap 23). |
+| — | logical | `use_new_rate_variables`; code `use_new_rate_variables` (the read's buffer) | `LNEWVARS` | buffer | Remaps `tol_*`, `flag_*` and `time_*` into the rezoning tolerances `ctrl%chi_grid_scale(12)` (legacy `HPTTOL`, slots `ichi_*`) and `ctrl%timestep_factors`. Not a nuclear-rate switch (trap 23). |
 | t_end | yr | `max_age` (c, per card); code `job%target_end_age(50)` | `ENDAGE` | job | Stop age per kind card. |
 | X₀, Z₀ | mass fraction | `initial_x_array`, `initial_z_array` (c); code `job%initial_x_array(50)`, `job%initial_z_array(50)` | `XENV0A`, `ZENV0A` | job | Initial X and Z per kind card. |
 | — | — | `run_kind` (c); code `job%rescale_kind(50)` | `KINDRN` | job | 1 evolve, 2 rescale (no aging), 3 rescale and evolve (pre-MS). |
@@ -475,9 +475,9 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - `secular_transport.f90:163` forms ¼ΔΩ·(Σ 1/Δln r), which has units of rad s⁻¹.
    - The local `dynamical_shear_omega_limit` and `dlnomega_dlnr_max` (legacy `QWRMAX`) are the limiting |dΩ/d ln r|, not dΩ/dr (`rotation/seculr/stability_coefficients.f90`).
 4. **`eps_channels(1:5,:)` are fractions, but slots 6 and 7 are rates.**
-   - The `star_info` comment says "[erg/g/s]" (`state/star_info_lib.f90:89`).
+   - The `star_info` comment gives both units ("[rows 1-5: -; rows 6-7: erg/(g s)]").
    - `compute_henyey_coefficients` stores each chain's `eps_by_chain/eps_total` in slots 1–5 (`store_zone_energy_channels`), and erg g⁻¹ s⁻¹ in slots 6 (ν) and 7 (grav).
-   - The profile columns `eps_ppI`…`eps_he3` (`core/diagnostics/stitched_model.f90:483-487`) are therefore fractions of `eps_nuc`, while `eps_neu` and `eps_grav` are rates.
+   - The profile columns `eps_ppI`…`eps_he3` (`core/diagnostics/stitched_model.f90:521-525`) are therefore fractions of `eps_nuc`, while `eps_neu` and `eps_grav` are rates. Since `eps_nuc` includes the α captures (M1) and they have no slot, the five add up to 1 minus the α captures' share where those burn (M80: 42% of the centre's ε at Y_c = 0.087 on the 1 Msun ZAHB deck).
 5. **The slot `i_eps_3alpha` (slot 5; `i_eps_he3` until 2026-10-29) and the profile column `eps_he3` hold the triple-α share.**
    - Slot 5 is filled from `burn%eps_by_chain(chain_triple_alpha)` (`eps_channel_of_chain` in `core/structure/structure_equations.f90`).
    - The luminosity twin is correctly named `i_lum_3alpha`.
@@ -497,8 +497,8 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
    - `xa_iteration_start` exists only to undo that overwriting between structure⇄rotation passes (`core/step/step_driver.f90`).
 10. **`max_residual(4)` holds three quantities within one Newton iteration.**
     - Zeroed at `core/structure/henyey_iteration.f90:155-158`.
-    - Max |residual| per equation, accumulated in `henyey_elimination.f90:90-99` and tested against `htoler(5,*)` (`henyey_iteration.f90:186-189`).
-    - Max |correction| after `henyey_solve`, where the L correction is the smaller of absolute and relative (`:216-241`). This is tested against `htoler(1:4,*)`.
+    - Max |residual| per equation, accumulated in `henyey_elimination.f90:90-99` and tested against `solver_tolerances(5,*)` (`henyey_iteration.f90:186-189`).
+    - Max |correction| after `henyey_solve`, where the L correction is the smaller of absolute and relative (`:216-241`). This is tested against `solver_tolerances(1:4,*)`.
     - The **signed** correction at the location of the maximum, for the log line (`:255-258`).
 11. **`elim_rhs` becomes the corrections.** `henyey_solve` overwrites the residuals in place with ΔlogP, ΔlogT, ΔlogR and ΔL (`core/structure/henyey_elimination.f90`), which `henyey_iteration.f90:294-304` then applies.
 12. **`*_entropy_term` arrays are rates of change, not entropy.**
@@ -538,7 +538,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
     - It is ln 10/L☉ in s erg⁻¹ (`set_up_constants_and_tables` in `core/run/run_setup.f90`; comment at `state/star_info_lib.f90:264-267`).
     - Multiplied by m, it gives `cccql` (`core/structure/structure_equations.f90:308`).
 23. **`use_new_rate_variables` (`LNEWVARS`) has nothing to do with reaction rates.**
-    - It overwrites the rezoning tolerances `chi_grid_scale` (legacy `HPTTOL`) and the timestep limiters `atime` from the `tol_*`, `flag_*` and `time_*` controls (`io/user_inputs.f90`, `map_zoning_tolerances` and `map_timestep_tolerances`).
+    - It overwrites the rezoning tolerances `chi_grid_scale` (legacy `HPTTOL`) and the timestep limiters `timestep_factors` (legacy `ATIME`) from the `tol_*`, `flag_*` and `time_*` controls (`io/user_inputs.f90`, `map_zoning_tolerances` and `map_timestep_tolerances`).
     - It also overwrites `diffusion_timestep_factor`, `max_domega_global` and `use_structure_dt_limits`.
     - Without it, `chi_grid_scale` is the deck's `hpttol` (inlist name `zoning_tolerances`); until 2026-10-29 it was left at zero (`docs/bug_sweep.md` M27). The registry's description, "use the new nuclear-rate variable set" until then, now says what the switch does.
 24. **`fpft_average_weight` (`acfpft`) is a convergence tolerance.**
