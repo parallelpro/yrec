@@ -80,7 +80,7 @@ end subroutine set_run_plan_envelope_z
 ! (settings_install's install_run_settings: the opacities, the equation
 ! of state and the tabulated surface boundary conditions).
 !
-! The table paths are controls (star%physics), so the caller must run
+! The table paths are controls (star%control), so the caller must run
 ! read_controls first. Errors return through ierr.
 !   star reads: physics%G_cgs, physics%solar_luminosity_cgs,
 !     physics%solar_mass_cgs, physics%solar_radius_cgs

@@ -2,14 +2,15 @@
 ! controls_buffer
 !----------------------------------------------------------------------
 ! The run controls under their canonical names: the buffer the input
-! decks are read into. read_controls seeds it from the pristine star%ctrl
-! defaults (seed_controls_buffer), the namelists read over it, and
+! decks are read into. read_controls seeds it from the pristine
+! star%control and star%physics defaults (seed_controls_buffer), the namelists read over it, and
 ! adopt_canonical_names and map_user_inputs fill the members the decks
 ! set under other names; store_controls_to_star then copies it into
-! star%ctrl, where the rest of the code reads its controls, and
+! star%control and star%physics, where the rest of the code reads its
+! controls, and
 ! arm_run_copies sets the run's working copies of the controls the run
 ! changes. The declarations below are the defaults:
-! tools/gen_controls_state.py generates star%ctrl's type and the copies
+! tools/gen_controls_state.py generates the two records' types and the copies
 ! (io/controls_sync.f90)
 ! from them, so regenerate after changing a member, and add the control
 ! to defaults/controls_registry.tsv, which maps it to its legacy and

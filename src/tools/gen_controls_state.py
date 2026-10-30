@@ -21,18 +21,16 @@ Emits:
       pre-read_input state exactly.
 
   io/controls_sync.f90      -- module controls_sync (part of the controls
-      read, so in io/) with
-      seed_controls_buffer  (buffer member = star%<group>%member, and each
-      member whose home is buffer -- an input-only or unused control,
-      which the star does not hold -- set to its declared default),
+      read, so in io/; the only code that assigns the two records,
+      tools/check_boundaries.py checks) with
+      seed_controls_buffer  (the two records reset to their declared
+      defaults; buffer member = star%<group>%member, and each member
+      whose home is buffer -- an input-only or unused control, which the
+      star does not hold -- set to its declared default),
       store_controls_to_star (the star's records from the buffer), one
       assignment per member, in declaration order, and arm_run_copies
       (each run copy, a star member star_info_lib declares, set from
       its control: star%<run_copy> = star%<group>%member).
-
-Until the code has moved to the two records (2026-10-30), the generator
-also writes state/controls_state_def.inc, the old record star%ctrl
-(every control the star holds), which the store fills and the seed reads.
 
 Regenerate (and commit the results) whenever controls_buffer's member
 list or the registry's home or run_copy column changes:
@@ -52,8 +50,6 @@ SLOTS = SRC / "state" / "control_slots.f90"
 # generated component list
 RECORDS = {"control": SRC / "state" / "control_group_def.inc",
            "physics": SRC / "state" / "physics_group_def.inc"}
-# the old record star%ctrl, written while the code moves to the two above
-OLD_RECORD = SRC / "state" / "controls_state_def.inc"
 SYNC = SRC / "io" / "controls_sync.f90"
 
 # Each member's home, the record of its group (star%control, star%physics)
@@ -203,8 +199,6 @@ def main():
               "The &control group's controls (star%control)")
     write_def(RECORDS["physics"], members, home, {"physics"},
               "The &physics group's controls (star%physics)")
-    write_def(OLD_RECORD, members, home, {"control", "physics"},
-              "Every control the star holds (star%ctrl, the old record)")
     with Out(SYNC) as f:
         f.write(
             "!----------------------------------------------------------------------\n"
@@ -215,13 +209,12 @@ def main():
             "! do not edit; regenerate instead.\n"
             "! The copies between controls_buffer, the buffer the decks are\n"
             "! read into, and the star. read_controls runs:\n"
-            "!   reset s%ctrl, s%control, s%physics (pristine defaults)\n"
-            "!   call seed_controls_buffer(s)   (buffer <- s%ctrl, and the\n"
-            "!                                   defaults of the members the\n"
-            "!                                   star does not hold)\n"
+            "!   call seed_controls_buffer(s)   (s%control, s%physics reset to\n"
+            "!                                   their defaults; buffer <- them,\n"
+            "!                                   and the defaults of the members\n"
+            "!                                   the star does not hold)\n"
             "!   call read_input(s, ierr)       (the deck read over the buffer)\n"
-            "!   call store_controls_to_star(s) (s%ctrl, s%control,\n"
-            "!                                   s%physics <- buffer)\n"
+            "!   call store_controls_to_star(s) (s%control, s%physics <- buffer)\n"
             "!   call arm_run_copies(s)         (each run copy <- its control)\n"
             "! All take the star as an argument s.\n"
             "module controls_sync\n"
@@ -236,7 +229,7 @@ def main():
             line += piece
         f.write(line.rstrip() + "\n")
         f.write(
-            "      use star_info_lib, only: star_info\n"
+            "      use star_info_lib, only: star_info, control_group_controls, physics_group_controls\n"
             "      implicit none\n"
             "      private\n"
             "      public :: seed_controls_buffer, store_controls_to_star, arm_run_copies\n"
@@ -244,13 +237,16 @@ def main():
             "contains\n"
             "\n"
             "subroutine seed_controls_buffer(s)\n"
-            "      type(star_info), intent(in) :: s\n"
+            "      type(star_info), intent(inout) :: s\n"
+            "! the declared defaults, whatever an earlier read left on s\n"
+            "      s%control = control_group_controls()\n"
+            "      s%physics = physics_group_controls()\n"
         )
         for _, name, _, init in members:
             if home[name] == "buffer":
                 f.write(f"      {name} = {init}\n")
             else:
-                f.write(f"      {name} = s%ctrl%{name}\n")
+                f.write(f"      {name} = s%{home[name]}%{name}\n")
         f.write(
             "end subroutine seed_controls_buffer\n"
             "\n"
@@ -259,7 +255,6 @@ def main():
         )
         for _, name, _, _ in members:
             if home[name] != "buffer":
-                f.write(f"      s%ctrl%{name} = {name}\n")
                 f.write(f"      s%{home[name]}%{name} = {name}\n")
         f.write(
             "end subroutine store_controls_to_star\n"
@@ -280,7 +275,7 @@ def main():
         )
     finish("gen_controls_state.py")
     print(f"{len(members)} members -> {', '.join(p.name for p in RECORDS.values())}, "
-          f"{OLD_RECORD.name}, {SYNC.name}; {len(copy)} run copies")
+          f"{SYNC.name}; {len(copy)} run copies")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,11 @@
 !----------------------------------------------------------------------
 ! controls_reader
 !----------------------------------------------------------------------
-! Reads a deck into star%ctrl. Each read starts from the pristine
-! defaults, star%ctrl = controls_state() (generated from controls_buffer's
-! declarations), seeded into the buffer (seed_controls_buffer); read_input
+! Reads a deck into star%control and star%physics, the records of the
+! inlist's two namelist groups. Each read starts from the pristine
+! defaults (control_group_controls() and physics_group_controls(),
+! generated from controls_buffer's declarations), seeded into the buffer
+! (seed_controls_buffer); read_input
 ! reads the deck over the buffer, the steps below turn it into the
 ! controls the run uses, store_controls_to_star copies the result back,
 ! and arm_run_copies sets the run's working copies of the controls it
@@ -21,8 +23,7 @@ module controls_reader
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
       use net_lib, only: cross_section_scales_from_sstandard
-      use star_info_lib, only: star_info, controls_state, control_group_controls, &
-           physics_group_controls, control_nml_override, physics_nml_override
+      use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
@@ -47,9 +48,6 @@ subroutine read_controls(s, ierr)
       ierr = 0
       call discard_pending_log
 ! the declared defaults, whatever an earlier read left on s
-      s%ctrl = controls_state()
-      s%control = control_group_controls()
-      s%physics = physics_group_controls()
       call seed_controls_buffer(s)
       call set_solver_diagnostics(report_solver_diagnostics)
 ! the deck, under the canonical names, and the readable inputs mapped

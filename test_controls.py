@@ -131,7 +131,7 @@ def test_zoning_tolerances_without_new_rate_variables():
     def dumped(dump, name):
         vals = {}
         for l in dump:
-            if l.startswith(f"ctrl%{name}("):
+            if l.startswith(f"physics%{name}("):
                 vals[int(l.split("(")[1].split(")")[0])] = float(l.split(" = ")[1])
         return [vals[i] for i in sorted(vals)]
 
@@ -150,7 +150,7 @@ def test_zoning_tolerances_without_new_rate_variables():
 
 
 def test_pristine_controls_are_the_defaults(tmp_path):
-    """controls_state(), the pristine star%ctrl, is what a deck
+    """The pristine star%control and star%physics are what a deck
     that sets nothing reads: each default is written once, as its
     controls_buffer initializer, and the legacy names take theirs from it
     (defaults/*.defaults document the same initializers). The exceptions are
@@ -158,7 +158,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     run kinds, the OPAL EOS table path)."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
-    derived = re.compile(r"^ctrl%(npenv|opal_eos_table_path|rescale_kind)(\(|$)")
+    derived = re.compile(r"^(physics%(npenv|opal_eos_table_path)|control%rescale_kind)(\(|$)")
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
@@ -171,7 +171,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
 
     pristine, empty = dump([]), dump([str(deck)])
     assert empty.get("ierr") == "0"
-    diff = [k for k in pristine if k.startswith("ctrl%")
+    diff = [k for k in pristine if k.startswith(("control%", "physics%"))
             and pristine[k] != empty.get(k) and not derived.match(k)]
     assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]
 
@@ -202,7 +202,7 @@ def test_warnings_reach_the_terminal_and_the_run_log(tmp_path):
 def test_card_one_starts_from_the_starting_model(tmp_path):
     """Card 1 has no previous card's model, so it always loads the starting
     model: a deck that sets first_call_flag(1) = .FALSE. (ten shipped decks
-    did) reads ctrl%first_call_flag(1) = T, and the run plan says so; card
+    did) reads control%first_call_flag(1) = T, and the run plan says so; card
     2's flag stays as the deck sets it."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
@@ -216,8 +216,8 @@ def test_card_one_starts_from_the_starting_model(tmp_path):
     out = result.stdout.decode("latin-1")
     dump = out.splitlines()
     assert "ierr = 0" in dump
-    assert "ctrl%first_call_flag(1) = T" in dump
-    assert "ctrl%first_call_flag(2) = F" in dump
+    assert "control%first_call_flag(1) = T" in dump
+    assert "control%first_call_flag(2) = F" in dump
     assert "card  1: rescale and evolve the starting model" in out, out[-500:]
 
 
@@ -255,7 +255,7 @@ def test_inlist_copy_goes_to_the_output_directory(tmp_path):
 def test_monte_carlo_paths_are_expanded(tmp_path):
     """The Monte Carlo files' paths are path controls like the others: a
     {YREC_OUTPUT} in monte_carlo_file1_path/file2_path reads as the
-    directory (ctrl%monte_carlo_file1_path once held the literal
+    directory (control%monte_carlo_file1_path once held the literal
     placeholder, as the expansion ran on the legacy names only)."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
@@ -339,6 +339,6 @@ def test_older_inlist_names_still_read(tmp_path):
         assert "ierr = 0" in dumps[name], name
     assert dumps["old"] == dumps["new"]
     assert dumps["both"] == dumps["new"]
-    assert "ctrl%cz_rotation_law_exponent = -1.50000000000000000E+000" in dumps["new"]
-    assert 'ctrl%kurucz_table_path = "kurucz1"' in dumps["new"]
-    assert 'ctrl%alex95_table_paths(3) = "alex3"' in dumps["new"]
+    assert "physics%cz_rotation_law_exponent = -1.50000000000000000E+000" in dumps["new"]
+    assert 'control%kurucz_table_path = "kurucz1"' in dumps["new"]
+    assert 'control%alex95_table_paths(3) = "alex3"' in dumps["new"]

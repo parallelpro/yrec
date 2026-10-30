@@ -2,10 +2,9 @@
 ! star_info_lib
 !----------------------------------------------------------------------
 ! The type of the stellar model, star_info (MESA's name), with the
-! records nested in it (the controls, control_group_controls and
-! physics_group_controls, and while the code moves to them the old
-! record controls_state; the Monte-Carlo samples, monte_carlo_samples)
-! and the capacities and slot constants its
+! records nested in it (the controls of the inlist's two namelist groups,
+! control_group_controls and physics_group_controls; the Monte-Carlo
+! samples, monte_carlo_samples) and the capacities and slot constants its
 ! members are sized and indexed by.
 ! The module declares no star: run_yrec (core/run/run_driver.f90) owns
 ! the run's star, and every star-layer procedure takes it as its
@@ -101,18 +100,6 @@ module star_info_lib
       public :: i_nu_pp, i_nu_pep, i_nu_hep, i_nu_be7, i_nu_b8, i_nu_n13, &
            i_nu_o15, i_nu_f17, i_nu_he3he3, i_nu_he3he4, n_nu_fluxes
 
-! The namelist controls the run reads, by their canonical names
-! (star%ctrl; the input-only and unused ones stay in the read's buffer,
-! registry home buffer). The component list is GENERATED from the read
-! buffer's declarations (io/controls_buffer.f90) and the registry's home
-! column by tools/gen_controls_state.py; regenerate on any change. read_controls resets star%ctrl (star%ctrl =
-! controls_state()) before every read and stores the buffer into it;
-! nothing changes it after the read. The controls are documented in
-! src/defaults/controls_registry.md.
-      type, public :: controls_state
-            include 'controls_state_def.inc'
-      end type controls_state
-
 ! The deck's controls in two records named for the inlist's namelist
 ! groups: star%control (the &control group: the run cards, the files, the
 ! output, the calibrations, the starting model's mixture) and
@@ -159,7 +146,8 @@ module star_info_lib
 
       type, public :: star_info
 ! ==== Controls =========================================================
-! The deck's controls (ctrl), read by read_controls at the start of every
+! The deck's controls, in the records of the inlist's two namelist groups
+! (control, physics), read by read_controls at the start of every
 ! run_yrec call. Their members are documented in
 ! src/defaults/controls_registry.md and the *.defaults files, not here.
 ! A control the run changes has a working copy, a star member of its
@@ -167,19 +155,14 @@ module star_info_lib
 ! arms from it; the control keeps the deck's value.
 ! Valid: from the controls read on; never changed after it.
 
-! the namelist controls the run reads, by their canonical names [-];
-! controls_reader, controls_sync. Reset to the declared defaults before
-! each read; members: src/defaults/controls_registry.md, generated into
-! controls_state_def.inc.
-            type(controls_state) :: ctrl
 ! the &control group's controls, by their canonical names [-];
-! controls_reader, controls_sync. Reset to the declared defaults before
-! each read; members: src/defaults/controls_registry.md, generated into
+! controls_sync. Reset to the declared defaults before each read;
+! members: src/defaults/controls_registry.md, generated into
 ! control_group_def.inc.
             type(control_group_controls) :: control
 ! the &physics group's controls, by their canonical names [-];
-! controls_reader, controls_sync. Reset to the declared defaults before
-! each read; members: src/defaults/controls_registry.md, generated into
+! controls_sync. Reset to the declared defaults before each read;
+! members: src/defaults/controls_registry.md, generated into
 ! physics_group_def.inc.
             type(physics_group_controls) :: physics
 

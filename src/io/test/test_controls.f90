@@ -2,8 +2,8 @@
 ! test_controls
 !----------------------------------------------------------------------
 ! Reads one deck through read_controls, exactly as a run does, and
-! prints every resulting control: each element of star%ctrl
-! (controls_dump.inc, generated from its declarations) and of the
+! prints every resulting control: each element of star%control and
+! star%physics (controls_dump.inc, generated from their declarations) and of the
 ! buffer-only members, the star fields read_controls sets directly and
 ! the unit numbers. Doubles
 ! print at full precision, so two dumps agree exactly when the controls
