@@ -1,6 +1,6 @@
 # YREC target architecture
 
-**Status:** draft for discussion in the YREC group, 2026-10-10.
+**Status:** draft for discussion in the YREC group, 2026-10-10. Updated 2026-10-31: the controls design (sections 4.2, 4.3 and 4.6, phases 0 and 3) now follows the owner's decision of 2026-10-30 and describes the code as built; the rest keeps the 2026-10-10 proposal, with status notes where work is done.
 **Applies to:** branch `yrec-modern`.
 **Companion documents:** `docs/HOW_YREC_WORKS.md` (physics and numerics, currently using legacy routine names), `docs/MODERNIZATION_CHANGES.md` (what the 2025–26 modernization changed), `docs/ROADMAP.md` (open work items).
 
@@ -8,7 +8,7 @@
 
 ## Summary
 
-The 2026 modernization changed how YREC is *written*: free-form source, no COMMON blocks, no gotos, readable names, MESA-style inlists and output, a regression net. It changed much less of how YREC is *organized*. The COMMON blocks became one global variable, `star`, that 145 of 229 source files import, with about 265 state fields and 399 controls. Physics is still evaluated inside the solver loops. Most conventions are still undocumented.
+The 2026 modernization changed how YREC is *written*: free-form source, no COMMON blocks, no gotos, readable names, single-file inlists (with YREC's own `&control` and `&physics` groups) and MESA-style output, a regression net. It changed much less of how YREC is *organized*. The COMMON blocks became one global variable, `star`, that 145 of 229 source files import, with about 265 state fields and 399 controls. Physics is still evaluated inside the solver loops. Most conventions are still undocumented.
 
 As a result, adding physics remains hard for anyone who does not already know the code (section 1). This document proposes a target organization that a newcomer can extend, and a path to reach it without stopping the code from producing science.
 
@@ -178,8 +178,9 @@ type :: star_t
    type(step_state_t)  :: step              ! dt, age, model number, aging flag, divergence
    type(diagnostics_t) :: diag              ! eps channels, luminosity breakdown, pulse columns,
                                             ! observables; written only after convergence
-   type(star_job)      :: job
-   type(controls_t)    :: ctrl              ! per-domain parts, section 4.6
+   type(control_group_controls) :: control  ! the deck's &control group, read-only after the read
+   type(physics_group_controls) :: physics  ! the deck's &physics group, read-only after the read
+                                            ! (section 4.6; values the run changes are state)
 end type
 ```
 
@@ -188,6 +189,7 @@ What this changes:
 - **Snapshots become one assignment.** `s%start = s%now` replaces the hand-copied `*_start`, `orig_*` and `old_*` families. The structure⇄rotation iteration keeps its own copy the same way.
 - **No fixed shell cap.** Arrays are allocatable, sized when a model is loaded or rezoned. This removes the `json = 5000` limit and the static storage that blocks running several stars, or threads, in one process.
 - **Flags become fields.** `s%step%aging` replaces the negative `dt`.
+- **Controls follow the inlist groups, and are read-only.** `s%control` and `s%physics` hold the deck's two namelist groups, as the registry assigns each control; a value the run changes during a run (the run plan the calibrations rewrite, the stops it disarms, the latches it switches) is not a control but state: a star member armed from its control at the end of the read. (Done 2026-10-30 on today's `star_info`; section 4.6.)
 - **Diagnostics are separate from state.** They live in `s%diag` and are filled by a pass after convergence, not during Newton iterations.
 - **The global goes away.** `star` stops being a module variable. `run_yrec` owns a `type(star_t)` and passes it down; the C API (`yrec_capi`) and `pyyrec` hold a handle to it. (Done 2026-10 for the present `star_info` type: `star_info_lib` declares no instance, `run_yrec` owns the run's star, and every routine takes it as an argument `s`; the C API still runs one star per call, and the arrays are still fixed-size.)
 
@@ -198,10 +200,10 @@ Each stage is a procedure whose arguments are the parts of the state it may touc
 | # | Stage (legacy) | Reads | Writes | After the stage |
 |---|---|---|---|---|
 | 1 | `begin_step` | `now`, `step` | `start`, `step%aging` | `start` equals `now` |
-| 2 | `mass_change` (massloss, mdot) | `now`, `ctrl%wind` | `now` grid and total mass, envelope target | mass budget closed |
-| 3 | `composition_step` (mix) | `now` structure, `start%xa`, `ctrl%mixing`, `ctrl%net` | `now%xa`, convective bounds | abundances sum to 1 |
+| 2 | `mass_change` (massloss, mdot) | `now`, the wind controls (`physics`) | `now` grid and total mass, envelope target | mass budget closed |
+| 3 | `composition_step` (mix) | `now` structure, `start%xa`, the convection, diffusion and net settings records | `now%xa`, convective bounds | abundances sum to 1 |
 | 4 | `rezone` (hpoint) | `now` | `now` (all per-zone arrays) | the only stage allowed to change `nz` |
-| 5 | `structure_solve` (crrect levels 1–3) | `now%xa`, `now` rotation (held fixed), `now%envelope`, `ctrl%solver` | `now` structure, `now%envelope` | residuals below tolerance |
+| 5 | `structure_solve` (crrect levels 1–3) | `now%xa`, `now` rotation (held fixed), `now%envelope`, the solver controls (`control`, `physics`) | `now` structure, `now%envelope` | residuals below tolerance |
 | 6 | `structure_rotation_iteration` (level 4, getw, fpft) | `now`, `start` | `now` rotation, `now%xa`, `now` structure | splitting converged |
 | 7 | `post_step` (findsh, liburn) | `now` | `now%xa` light elements, shell bounds | |
 | 8 | `diagnostics` (stitched model, observables) | `now`, `start` | `diag` only | |
@@ -342,10 +344,18 @@ end interface
 
 ### 4.6 Controls
 
-- **Each control gets a domain.** The registry (`defaults/controls_registry.tsv`) gains a `domain` column (`solver`, `mixing`, `net`, `eos`, `kap`, `atm`, `rotation`, `wind`, `output`, `job`).
-- **Each domain gets a generated controls type.** The generator writes a type per domain, and `s%ctrl` contains one of each.
-- **Libraries receive their own controls at startup.** Each one gets its type once, in `*_init`, and never imports `star`. Today eos, kap, atm and net read about 60 `star%ctrl` fields between them.
-- **Startup consistency checks** (`warn_inconsistent_controls`) gain one rule per new registry entry where it applies.
+The owner decided on 2026-10-30 that the code follows the inlist's own namelist groups, YREC's `&control` and `&physics`, not MESA's controls/star_job split. What follows is built (ROADMAP section 13, "The controls follow the inlist groups").
+
+- **One registry is the source of truth.** Each row of `defaults/controls_registry.tsv` gives a control's code name, its inlist name and any aliases, its type, its group (`control` or `physics`, the namelist group an inlist sets it in), its home and its use; the default is the declaration's initializer in `io/controls_buffer.f90`. The generators write the declarations of the two records, the copy from the read's buffer into them (`io/controls_sync.f90`), the translation from the legacy two-file decks, and the controls dump that `test_controls` pins for every shipped deck.
+- **The star holds the controls by group.** `s%control` (type `control_group_controls`) and `s%physics` (`physics_group_controls`) hold every control whose home is its group. Only the controls read writes them; afterwards they are read-only. A control used only during the read (an input that a derivation consumes) stays in the read's buffer, home `buffer`.
+- **A value the run changes is state, not a control.** The calibrations rewrite the run plan, `init_stop_conditions` disarms stops it has passed, the run switches latches (settling, mass change, the structure timestep limits). Each such value is a star member in its lifetime class, the run copy of its control (registry column `run_copy`), armed from the control by the generated `arm_run_copies` at the end of the read. The control keeps the deck's value. (`s%settling_active` was the first; the run plan is `s%card_*`, with `s%current_card` the card cursor.)
+- **Each physics domain gets a settings record, not the controls.** A domain (eos, kap, atm, net, convection, element diffusion, rotation) reads its own `<domain>_settings_t`, built from the controls by a pure copy in `setup/` (`<domain>_settings_from_star`, one name scheme) and installed from `setup/settings_install.f90`: per run, per Monte-Carlo run, per card, and the surface mixture once a model sets it. The domains import nothing from the star layer, and their table paths arrive the same way, in a paths record. This is where the "domain" of a control lives: in the builder that copies it, not in a registry column (the 2026-10-10 plan of one generated controls type per domain inside the controls was not built).
+- **Checked, not just documented.** `check_boundaries` fails when the old names `s%ctrl` or `s%job` reappear, when anything but `io/controls_sync.f90` assigns either record, when a control sits outside its group's record, when a physics domain reads either record, when a copy of a control into a star member is undeclared or set elsewhere than its comment says, or when a builder leaves a field of its settings record unset. `io/controls_check.f90` (`check_controls`) holds the read's errors and warnings.
+- **Still open** (the third evaluation, ROADMAP section 13):
+  - the read copies each value three times (inlist name, legacy name, code name); binding the namelist groups to the code names directly would make a control one declaration, one row and one generator run;
+  - `io/controls_buffer.f90` and `io/legacy_controls.f90` are public modules (about 700 variables), imported whole;
+  - some of the read's state outlives the read (the run files' paths);
+  - a few derived values still live outside the two records and the run copies.
 
 ### 4.7 Names and conventions
 
@@ -407,7 +417,7 @@ Each phase leaves the code working and producing science. Every phase also does 
 - **Glossary and conventions.** Write `docs/GLOSSARY.md` and put the Henyey conventions of section 4.4 into the code headers.
 - **Refresh `docs/HOW_YREC_WORKS.md`** to current names; ten of its file references point to files since renamed. Add a developer guide, "how to add X", for today's code.
 - **Build the tier P tests.**
-- **Add the `domain` column** to the controls registry.
+- **Add the `domain` column** to the controls registry. (Superseded, 2026-10-30: the controls follow the inlist groups, and each domain gets a settings record built in `setup/`; section 4.6.)
 - **Fix the four bugs in Appendix B,** each with a recorded reseed.
 
 ### Phase 1: network
@@ -436,7 +446,7 @@ Each phase leaves the code working and producing science. Every phase also does 
 ### Phase 3: microphysics
 
 - **Work:**
-  - domain controls types;
+  - per-domain settings (done: a settings record per domain, built in `setup/` and installed by `setup/settings_install.f90`; section 4.6);
   - `eos_result`;
   - opacity and EOS source lists with the generic blend drivers;
   - table loading moved into the sources;
