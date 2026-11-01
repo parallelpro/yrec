@@ -21,6 +21,13 @@ allocate's target, or star%<member> passed as an actual argument to a
 dummy declared intent(out) or intent(inout). A member that is both read
 and written is listed under writes only.
 
+Statements are read as the compiler reads them: continuation lines are
+joined, a line is split at each ';' outside strings (so `case (1);
+s%x = v` is an assignment), statement labels are dropped and string
+literals blanked. A procedure's first line may carry any prefixes and a
+type-spec: `pure real(dp) function`, `type(t) function`. An
+if-statement's condition is read, as are a target's subscripts.
+
 Procedures are told apart by module (and host): two modules may each
 have a wind_now, and a call resolves as the compiler does, scope by
 scope from the caller out to its module: a procedure the scope
@@ -32,8 +39,10 @@ The check is opt-in: only procedures that carry the two lines are
 checked, so contracts can be added driver by driver (docs/GUIDELINES.md,
 "the star object").
 
-usage: check_star_contracts.py          check; exit 1 on any mismatch
-       check_star_contracts.py --fix    rewrite the declared lists
+usage: check_star_contracts.py              check; exit 1 on any mismatch
+       check_star_contracts.py --fix        rewrite the declared lists
+       check_star_contracts.py --self-test  the scan on synthetic cases
+                                            (test_boundaries.py runs it)
 """
 import collections
 import pathlib
@@ -42,10 +51,15 @@ import sys
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
+# A procedure's first statement: any of the prefixes (recursive, pure,
+# elemental, impure, module) and a type-spec -- double precision, real(dp),
+# real*8, integer, logical, complex, character(...), type(...), class(...)
+# -- before subroutine or function.
+TYPE_SPEC = (r"(?:double\s+precision|integer|logical|complex|real|character|type|class)"
+             r"(?:\s*\*\s*\d+|\s*\([^()]*\))?")
 PROC_RE = re.compile(
-    r"^\s*(?:(?:recursive|pure|elemental|double precision|integer|logical|"
-    r"real(?:\*8)?|character(?:\*\d+)?)\s+)*(subroutine|function)\s+(\w+)"
-    r"\s*(?:\(([^)]*)\))?", re.I)
+    r"^\s*(?:(?:recursive|pure|elemental|impure|module|" + TYPE_SPEC + r")\s+)*"
+    r"(subroutine|function)\s+(\w+)\s*(?:\(([^)]*)\))?", re.I)
 END_RE = re.compile(r"^\s*end\s*(subroutine|function)\b", re.I)
 STAR_RE = re.compile(r"(?<![\w%])star%(control%\w+|physics%\w+|\w+)", re.I)
 ASSIGN_RE = re.compile(r"^\s*(?:if\s*\(.*\)\s*)?star%(control%\w+|physics%\w+|\w+)"
@@ -85,8 +99,52 @@ def strip_comment(line):
     return "".join(out).rstrip()
 
 
+# A statement label (a number before the statement), which the patterns
+# below would otherwise take for the start of the statement.
+LABEL_RE = re.compile(r"^\s*\d+\s+(?=\S)")
+
+
+def mask_strings(code):
+    """code with the characters inside string literals blanked, so that a
+    message mentioning s%x or a ';' inside a string is not code"""
+    out, q = [], None
+    for ch in code:
+        if q:
+            out.append(ch if ch == q else " ")
+            if ch == q:
+                q = None
+        else:
+            if ch in "'\"":
+                q = ch
+            out.append(ch)
+    return "".join(out)
+
+
+def split_statements(code):
+    """the statements of one line: split on ';' outside strings, each
+    without its statement label (`case (1);  s%x = v` is two statements,
+    `case (1)` and `s%x = v`)"""
+    parts, cur, q = [], "", None
+    for ch in code:
+        if q:
+            cur += ch
+            if ch == q:
+                q = None
+        elif ch in "'\"":
+            q = ch
+            cur += ch
+        elif ch == ";":
+            parts.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    parts.append(cur)
+    return [LABEL_RE.sub("", p).strip() for p in parts if p.strip()]
+
+
 def logical_lines(lines):
-    """(first physical line index, joined code) for each statement."""
+    """(first physical line index, code) for each statement: continuation
+    lines joined, then split into statements (split_statements)."""
     buf, start = "", None
     for i, raw in enumerate(lines):
         code = strip_comment(raw)
@@ -100,7 +158,8 @@ def logical_lines(lines):
         if s.endswith("&"):
             buf += s[:-1] + " "
             continue
-        yield start, buf + s
+        for stmt in split_statements(mask_strings(buf + s)):
+            yield start, stmt
         buf, start = "", None
 
 
@@ -255,9 +314,9 @@ def scan(files):
                 rhs = code[code.index("=", ma.end() - 1) + 1:]
                 for f in STAR_RE.findall(rhs):
                     p["reads"].add(note_spelling(f))
-                lhs = code[:ma.end() - 1]
-                # star refs inside the target's subscripts are reads
-                for f in STAR_RE.findall(lhs)[1:]:
+                # star refs in an if-statement's condition and inside the
+                # target's subscripts are reads
+                for f in STAR_RE.findall(code[:ma.start(1)] + " " + code[ma.end(1):ma.end() - 1]):
                     p["reads"].add(note_spelling(f))
                 continue
             mc = CALL_RE.search(code)
@@ -384,7 +443,74 @@ def render(label, names, prefix="!   ", width=72):
     return out
 
 
+# The self-test (--self-test, run by test_boundaries.py): the scan on a
+# synthetic module whose procedures write the forms the patterns must see.
+# Each case is (procedure, the reads and writes the scan must find).
+SELF_TEST_SOURCE = """\
+module star_tool_cases
+      use star_info_lib, only: star_info
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+contains
+subroutine case_labels(s, k, val)
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: k
+      real(dp), intent(in) :: val
+      select case (k)
+      case (1);      s%case_one = val
+      case default;  s%case_other = val
+      end select
+end subroutine case_labels
+subroutine statement_parts(s)
+      type(star_info), intent(inout) :: s
+      if (s%flag_in) s%part_a = 1; s%part_b = s%part_c
+   10 s%labelled = 2
+      write(*,*) 'a; s%not_code = 3'
+end subroutine statement_parts
+real(dp) function typed_real(s)
+      type(star_info), intent(in) :: s
+      typed_real = s%real_read
+end function typed_real
+pure type(probe_t) function typed_record(s) result(r)
+      type(star_info), intent(in) :: s
+      r%x = s%record_read
+end function typed_record
+elemental real(dp) function no_star(x)
+      real(dp), intent(in) :: x
+      no_star = x
+end function no_star
+end module star_tool_cases
+"""
+SELF_TEST_CASES = {
+    "case_labels": (set(), {"case_one", "case_other"}),
+    "statement_parts": ({"flag_in", "part_c"}, {"part_a", "part_b", "labelled"}),
+    "typed_real": ({"real_read"}, set()),
+    "typed_record": ({"record_read"}, set()),
+    "no_star": (set(), set()),
+}
+
+
+def self_test():
+    """ok/FAIL per case; returns the number of failures"""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        path = pathlib.Path(d) / "star_tool_cases.f90"
+        path.write_text(SELF_TEST_SOURCE)
+        procs = scan([path])
+    failures = 0
+    for name, (reads, writes) in SELF_TEST_CASES.items():
+        key = ("star_tool_cases", name)
+        got = footprint(procs, key) if key in procs else None
+        good = got == (reads, writes)
+        failures += not good
+        print(f"{'ok  ' if good else 'FAIL'} {name}: "
+              + (f"reads {sorted(got[0])}, writes {sorted(got[1])}" if got else "not found as a procedure")
+              + ("" if good else f" (want reads {sorted(reads)}, writes {sorted(writes)})"))
+    return failures
+
+
 def main():
+    if "--self-test" in sys.argv[1:]:
+        return 1 if self_test() else 0
     fix = "--fix" in sys.argv[1:]
     files = sorted(f for f in SRC.rglob("*.f90") if "/test/" not in f.as_posix())
     procs = scan(files)

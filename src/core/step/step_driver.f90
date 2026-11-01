@@ -56,8 +56,9 @@ contains
 !     physics%improved_first_guess_flag,
 !     physics%instability_transport_active, physics%max_iter_level1,
 !     physics%max_iter_level2, physics%max_iter_level3,
-!     physics%max_iter_level4, physics%overshoot_alpha_envelope,
-!     physics%rotation_active, physics%solver_underrelax_increment,
+!     physics%max_iter_level4, physics%new_triangle_init_flag,
+!     physics%overshoot_alpha_envelope, physics%rotation_active,
+!     physics%solver_underrelax_increment,
 !     physics%solver_underrelax_start, physics%use_extended_composition,
 !     physics%use_wind_torque
 !   star writes: age_gyr, convective_flag, core_cz_top_index,

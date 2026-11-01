@@ -29,8 +29,10 @@ member; the README lists every writer and reader, from the code:
   directory.
 
 The analysis reuses check_star_contracts.py's statement scan (joined
-continuation lines, the star argument s, the declared intents). Tests
-(*/test/) and retired code are not scanned.
+continuation lines, statements split at ';' outside strings, labels
+dropped, string literals blanked, any type-spec before `function`, the
+star argument s, the declared intents). Tests (*/test/) and retired code
+are not scanned.
 
 Fails, writing nothing, when a member has no comment in that form, names
 a writer that does not write it, or is never written or never read
@@ -43,9 +45,11 @@ class rule:
 - any other member that one module alone writes and reads is in the
   class "Private to one module", and that class holds nothing else.
 
-usage: gen_star_docs.py           rewrite state/README.md's generated parts
-       gen_star_docs.py --check   exit 1 if they are stale
-                                  (test_generated_files.py runs this)
+usage: gen_star_docs.py              rewrite state/README.md's generated parts
+       gen_star_docs.py --check      exit 1 if they are stale
+                                     (test_generated_files.py runs this)
+       gen_star_docs.py --self-test  the writer and reader analysis on
+                                     synthetic cases (test_boundaries.py)
 """
 import collections
 import pathlib
@@ -266,7 +270,8 @@ def classify(stmt, pat):
     if m:
         eq = stmt.index("=", m.end() - 1)
         read = {f.lower() for f in find.findall(stmt[eq + 1:])}
-        read |= {f.lower() for f in find.findall(stmt[:eq])[1:]}
+        # an if-statement's condition and the target's subscripts are reads
+        read |= {f.lower() for f in find.findall(stmt[:m.start(1)] + " " + stmt[m.end(1):eq])}
         return {m.group(1).lower()}, read
     mr = READ_STMT_RE.match(stmt)
     if mr:
@@ -475,7 +480,49 @@ def splice(text, tag, body):
     return text[:i + len(begin)] + "\n" + body + text[j:]
 
 
+# The self-test (--self-test, run by test_boundaries.py): the writer and
+# reader analysis on check_star_contracts' synthetic module, plus a call
+# that hands members to dummies the callee assigns after a case label or
+# only reads: (procedure, the members it must be found to write and read).
+SELF_TEST_SOURCE = csc.SELF_TEST_SOURCE.replace("end module star_tool_cases", """\
+subroutine assign_after_label(k, x, y)
+      integer, intent(in) :: k
+      real(dp), intent(inout) :: x, y
+      select case (k)
+      case (1);  x = 2*y
+      end select
+end subroutine assign_after_label
+subroutine pass_members(s)
+      type(star_info), intent(inout) :: s
+      call assign_after_label(1, s%passed_written, s%passed_read)
+end subroutine pass_members
+end module star_tool_cases""")
+SELF_TEST_CASES = dict(csc.SELF_TEST_CASES, pass_members=({"passed_read"}, {"passed_written"}))
+
+
+def self_test():
+    """ok/FAIL per case; returns the number of failures"""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        path = pathlib.Path(d) / "star_tool_cases.f90"
+        path.write_text(SELF_TEST_SOURCE)
+        procs, order = scan([path])
+        analyse(procs, order)
+    failures = 0
+    for name, (reads, writes) in SELF_TEST_CASES.items():
+        p = procs.get(("star_tool_cases", name))
+        got = (p["s_r"] - p["s_w"], p["s_w"]) if p else None
+        good = got == (reads, writes)
+        failures += not good
+        print(f"{'ok  ' if good else 'FAIL'} {name}: "
+              + (f"reads {sorted(got[0])}, writes {sorted(got[1])}" if got else "not found as a procedure")
+              + ("" if good else f" (want reads {sorted(reads)}, writes {sorted(writes)})"))
+    return failures
+
+
 def main():
+    if "--self-test" in sys.argv[1:]:
+        sys.exit(1 if self_test() else 0)
     classes, members, errors = parse_star_info(LIB)
     writers, readers, where = star_access()
     for e in members:

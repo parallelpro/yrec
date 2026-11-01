@@ -301,17 +301,18 @@ module star_info_lib
 ! [logical]; controls_sync, calibration. From control%end_age_stop_active
 ! (interpret_kind_cards).
             logical :: card_stops_active(max_runs)
-! each card's central deuterium stop, 0 for none [-]; controls_sync. From
-! control%central_deuterium_stop; init_stop_conditions disarms (negates) a
-! stop the card's starting model has already passed (through
-! stop_conditions' set_stop_value, whose case-statement writes this
-! table's analysis does not see).
+! each card's central deuterium stop, 0 for none [-]; controls_sync,
+! stop_conditions. From control%central_deuterium_stop;
+! init_stop_conditions disarms (negates) a stop the card's starting model
+! has already passed (set_stop_value).
             double precision :: card_central_deuterium_stop(max_runs)
-! each card's central hydrogen stop, 0 for none [-]; controls_sync. From
-! control%central_hydrogen_stop; disarmed as card_central_deuterium_stop.
+! each card's central hydrogen stop, 0 for none [-]; controls_sync,
+! stop_conditions. From control%central_hydrogen_stop; disarmed as
+! card_central_deuterium_stop.
             double precision :: card_central_hydrogen_stop(max_runs)
-! each card's central helium stop, 0 for none [-]; controls_sync. From
-! control%central_helium_stop; disarmed as card_central_deuterium_stop.
+! each card's central helium stop, 0 for none [-]; controls_sync,
+! stop_conditions. From control%central_helium_stop; disarmed as
+! card_central_deuterium_stop.
             double precision :: card_central_helium_stop(max_runs)
 ! each card's fixed timestep [yr]; controls_sync, calibration. From
 ! control%timestep_override; the solar calibration scales its cycles' by the

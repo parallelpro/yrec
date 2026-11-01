@@ -318,9 +318,9 @@ double precision function stop_value(s, k, nk)
       end select
 end function stop_value
 
-!   star reads: card_central_deuterium_stop, card_central_helium_stop,
+!   star reads: none
+!   star writes: card_central_deuterium_stop, card_central_helium_stop,
 !     card_central_hydrogen_stop
-!   star writes: none
 subroutine set_stop_value(s, k, nk, val)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk

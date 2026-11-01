@@ -27,3 +27,17 @@ def test_star_contracts():
         [sys.executable, str(script)], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_star_tools_self_test():
+    """The star tools' statement scan sees the forms a contract or a member
+    table depends on: an assignment after `case (k);`, a labelled
+    statement, an if-statement's condition, a ';' or `s%x` inside a string,
+    and `real(dp) function` / `type(t) function` headers
+    (check_star_contracts.py and gen_star_docs.py --self-test)."""
+    tools = pathlib.Path(__file__).parent / "src" / "tools"
+    for tool in ("check_star_contracts.py", "gen_star_docs.py"):
+        result = subprocess.run(
+            [sys.executable, str(tools / tool), "--self-test"], capture_output=True, text=True
+        )
+        assert result.returncode == 0, tool + "\n" + result.stdout + result.stderr
