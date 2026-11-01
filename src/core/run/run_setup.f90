@@ -50,14 +50,12 @@ end subroutine prepare_run
 ! The envelope Z of the run plan: each card with a positive rescale Z
 ! sets it (0, the default, keeps it), so the last such card's wins, as
 ! PARMIN's did; kap_init reads it, and the EOS mixture takes it with the
-! star's envelope mixture as it stands (the starting model sets both
-! again).
-!   star reads: card_rescale_targets, envelope_hydrogen_fraction,
-!     envelope_inverse_atomic_weight, envelope_number_fractions,
-!     num_cards
+! star's envelope mixture as it stands (settings_install's
+! install_surface_z_settings; the starting model sets both again).
+!   star reads: card_rescale_targets, num_cards
 !   star writes: envelope_metal_fraction
 subroutine set_run_plan_envelope_z(s)
-      use eos_lib, only: eos_set_mixture
+      use settings_install, only: install_surface_z_settings
       type(star_info), intent(inout) :: s
       integer :: n
 
@@ -65,9 +63,7 @@ subroutine set_run_plan_envelope_z(s)
          if (s%card_rescale_targets(3,n) > 0.0d0) &
               s%envelope_metal_fraction = s%card_rescale_targets(3,n)
       end do
-      call eos_set_mixture(s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
-           s%envelope_number_fractions)
+      call install_surface_z_settings(s)
 end subroutine set_run_plan_envelope_z
 
 ! ---------------------------------------------------------------

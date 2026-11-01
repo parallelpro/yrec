@@ -1,34 +1,48 @@
 !----------------------------------------------------------------------
 ! settings_install
 !----------------------------------------------------------------------
-! Where the star layer installs the physics domains' settings records:
+! Where the star layer installs the physics domains' configuration:
 ! every star-layer call of a domain's installer (set_<domain>_settings,
-! or <domain>_init for the domains that also load their tables) is here,
-! and tools/check_boundaries.py (INSTALL_FILES) keeps it so. Each
-! procedure builds the records with setup/'s builders
-! (<domain>_settings_from_star) and installs them, in a fixed order:
+! <domain>_init for the domains that also load their tables, and the
+! setters of the state that follows the surface mixture:
+! set_convection_envelope_metals, eos_set_mixture,
+! kap_update_surface_tables) is here, and tools/check_boundaries.py
+! (INSTALL_FILES) keeps it so. Each procedure builds the records with
+! setup/'s builders (<domain>_settings_from_star) or takes the star's
+! surface mixture, and installs them, in a fixed order, one procedure
+! (or, per surface mixture, three) per lifetime:
 !   install_run_settings              per run, after the controls read
 !                                     (run_setup's set_up_constants_and_tables):
 !                                     kap, eos and atm, with their tables
 !   install_monte_carlo_settings      per Monte-Carlo run, after
-!                                     apply_monte_carlo_parameters
-!                                     (run_yrec): net
+!                                     begin_monte_carlo_run (run_yrec): net
 !   install_card_settings             per run card, after the card's
 !                                     mixing length, before its model read
 !                                     (begin_kind_card): convection,
 !                                     rotation, element diffusion
-!   install_surface_mixture_settings  after the first card's model read
-!                                     (read_starting_model's
-!                                     update_surface_mixture): convection's
-!                                     envelope_metals_no_cno, known only then
+!   per surface mixture, whenever the star's surface mixture changes:
+!   install_surface_mixture_settings  the whole mixture, after the first
+!                                     card's model read
+!                                     (update_surface_mixture): convection's
+!                                     envelope_metals_no_cno, known only
+!                                     then, and the EOS mixture
+!   install_surface_z_settings        its Z (run_setup's run-plan Z, before
+!                                     kap_init; a Z rescale,
+!                                     rescale_interior_z): the EOS mixture
+!   install_surface_x_settings        its X (each card's model read; a
+!                                     rezone that moved the surface X,
+!                                     refresh_surface_opacity): kap's
+!                                     surface opacity tables
 ! A new domain's record is installed by adding its call to the procedure
 ! of its lifetime (setup/README.md, "Add a physics domain").
 module settings_install
       use star_info_lib, only: star_info
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
       public :: install_run_settings, install_monte_carlo_settings, &
-           install_card_settings, install_surface_mixture_settings
+           install_card_settings, install_surface_mixture_settings, &
+           install_surface_z_settings, install_surface_x_settings
 
 contains
 
@@ -96,10 +110,11 @@ subroutine install_card_settings(s)
 end subroutine install_card_settings
 
 !----------------------------------------------------------------------
-! install_surface_mixture_settings: convection's envelope_metals_no_cno,
-! the first card's surface Z without C, N and O, which the starting
-! model's surface mixture gives (install_card_settings installed the
-! value the star had before: 0 on the first card).
+! install_surface_mixture_settings: the surface mixture the first card's
+! model gives (update_surface_mixture): convection's
+! envelope_metals_no_cno, its surface Z without C, N and O
+! (install_card_settings installed the value the star had before: 0 on
+! the first card), and the EOS mixture (install_surface_z_settings).
 !   star reads: envelope_metals_no_cno
 !   star writes: none
 subroutine install_surface_mixture_settings(s)
@@ -107,6 +122,41 @@ subroutine install_surface_mixture_settings(s)
       type(star_info), intent(in) :: s
 
       call set_convection_envelope_metals(s%envelope_metals_no_cno)
+      call install_surface_z_settings(s)
 end subroutine install_surface_mixture_settings
+
+!----------------------------------------------------------------------
+! install_surface_z_settings: the EOS mixture (eos_set_mixture) for the
+! star's envelope X, Z, inverse mean atomic weight and number fractions:
+! with SCV on, the EOS builds its envelope table for that X and Z. Called
+! whenever the envelope Z changes: the run plan's Z (run_setup), a Z
+! rescale (rescale_interior_z), and with the whole mixture.
+!   star reads: envelope_hydrogen_fraction,
+!     envelope_inverse_atomic_weight, envelope_metal_fraction,
+!     envelope_number_fractions
+!   star writes: none
+subroutine install_surface_z_settings(s)
+      use eos_lib, only: eos_set_mixture
+      type(star_info), intent(in) :: s
+
+      call eos_set_mixture(s%envelope_hydrogen_fraction, &
+           s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
+           s%envelope_number_fractions)
+end subroutine install_surface_z_settings
+
+!----------------------------------------------------------------------
+! install_surface_x_settings: kap's surface opacity tables (the fixed-X
+! slices of the OPAL95, OPAL92 and ALEX94 tables) rebuilt for the
+! surface X hydrogen_fraction: each card's model read passes the first
+! card's envelope X (update_surface_mixture), a rezone the current
+! surface X once it has moved (refresh_surface_opacity). Table errors
+! return through ierr.
+subroutine install_surface_x_settings(hydrogen_fraction, ierr)
+      use kap_lib, only: kap_update_surface_tables
+      real(dp), intent(in) :: hydrogen_fraction
+      integer, intent(out) :: ierr
+
+      call kap_update_surface_tables(hydrogen_fraction, ierr=ierr)
+end subroutine install_surface_x_settings
 
 end module settings_install

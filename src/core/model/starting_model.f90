@@ -58,7 +58,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use convection_lib, only: compute_temperature_gradients
-      use settings_install, only: install_surface_mixture_settings
+      use settings_install, only: install_surface_mixture_settings, install_surface_x_settings
       use star_info_lib, only: i_be9, i_c12, i_c13, i_h1, i_h2, i_he3, i_he4, i_li6, i_li7, i_metals, i_n14, i_n15, i_o16, i_o17, i_o18, json, &
            n_species_basic, n_species_extended, n_mix_species, ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he, &
            max_convective_zones, max_radiative_zones
@@ -951,9 +951,11 @@ end subroutine initialize_rotation_state
 ! the surface X, Y, Z and He3, build from them and the controls' metal
 ! mixture the number fractions envelope_number_fractions of the 12
 ! mixture elements, Z without C, N and O (envelope_metals_no_cno) and
-! envelope_inverse_atomic_weight, and pass them to the EOS (which builds
-! its SCV envelope table from them when SCV is on). On every card,
-! regenerate the surface opacity tables for the current surface X.
+! envelope_inverse_atomic_weight, and install them (settings_install's
+! install_surface_mixture_settings: convection's metals and the EOS
+! mixture, from which the EOS builds its SCV envelope table when SCV is
+! on). On every card, regenerate the surface opacity tables for the
+! envelope X (install_surface_x_settings).
 subroutine update_surface_mixture
       if (run_index.le.1) then
 ! The relative mass fractions w_i of the ten metals are the controls'
@@ -979,7 +981,6 @@ subroutine update_surface_mixture
       s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
            species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
            species_mix_weights(ix_n))/mixture_weight_sum
-      call install_surface_mixture_settings(s)
 ! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
 ! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
 ! fraction too. Then w_i becomes X_i/A_i, and
@@ -1004,13 +1005,11 @@ subroutine update_surface_mixture
       do i = 1,n_mix_species
        s%envelope_number_fractions(i) = species_mix_weights(i)*mixture_scale_factor
       end do
-! Pass the new mixture to the EOS.
-      call eos_set_mixture(s%envelope_hydrogen_fraction, &
-           s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
-           s%envelope_number_fractions)
+! Install the new mixture: convection's metals and the EOS mixture.
+      call install_surface_mixture_settings(s)
       end if
 ! Regenerate the surface opacity tables for the surface X (DBG 11/95).
-      call kap_update_surface_tables(s%envelope_hydrogen_fraction, ierr=ierr)
+      call install_surface_x_settings(s%envelope_hydrogen_fraction, ierr)
       if (ierr /= 0) return
 
 end subroutine update_surface_mixture

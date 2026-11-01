@@ -293,18 +293,21 @@ def check_no_global_g(src_root):
 
 
 # The settings install (2026-10-29): every star-layer call of a domain's
-# installer (set_<domain>_settings, set_convection_envelope_metals, and
-# the kap_init, eos_init and atm_init of the domains that also load
-# tables) is in setup/settings_install.f90, one procedure per lifetime
-# (per run, per Monte-Carlo run, per card, after the first card's model
-# read), so that file is the list of what is installed when. A domain's
+# installer (set_<domain>_settings, the kap_init, eos_init and atm_init of
+# the domains that also load tables, and the setters of the state that
+# follows the surface mixture: set_convection_envelope_metals,
+# eos_set_mixture, kap_update_surface_tables) is in
+# setup/settings_install.f90, one procedure per lifetime (per run, per
+# Monte-Carlo run, per card, per surface mixture), so that file is the
+# list of what is installed when. A domain's
 # calls inside its own directory are its own business, and a set_*_settings
 # the star layer defines for itself (core's set_structure_settings, the
 # shell equations' record filled at every call) is not a domain's. The
 # test programs install records themselves.
 INSTALL_FILES = ["setup/settings_install.f90"]
 INSTALLER_CALL_RE = re.compile(
-    r"(?i)\bcall\s+(set_\w+_settings|set_convection_envelope_metals|kap_init|eos_init|atm_init)\s*\(")
+    r"(?i)\bcall\s+(set_\w+_settings|set_convection_envelope_metals|kap_init|eos_init|atm_init|"
+    r"eos_set_mixture|kap_update_surface_tables)\s*\(")
 
 def check_install_sites(src_root):
     layer = [f for f in sorted(src_root.rglob("*.f90"))

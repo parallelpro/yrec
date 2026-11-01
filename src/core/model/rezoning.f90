@@ -82,7 +82,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
       use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
-      use kap_lib
+      use settings_install, only: install_surface_x_settings
       use io_units
       use run_log, only: solver_diagnostics
       use physical_constants
@@ -1059,12 +1059,13 @@ end subroutine rerun_physics_on_new_grid
 
 ! ---------------------------------------------------------------
 ! Rebuild the surface opacity tables (for the new surface X and Z) when
-! the surface X has moved by more than 1e-8 since they were built.
+! the surface X has moved by more than 1e-8 since they were built
+! (settings_install's install_surface_x_settings).
 subroutine refresh_surface_opacity
       if (dabs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)).gt.1.0D-8) then
                s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
                s%surface_metal_fraction = s%xa(i_metals,s%nz)
-               call kap_update_surface_tables(s%surface_hydrogen_fraction, ierr=ierr)
+               call install_surface_x_settings(s%surface_hydrogen_fraction, ierr)
                if (ierr /= 0) return
 
       end if

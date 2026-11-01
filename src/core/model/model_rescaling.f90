@@ -42,7 +42,7 @@ subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
       use physical_constants
       use star_info_lib, only: json
       use io_units
-      use eos_lib, only: eos_set_mixture
+      use settings_install, only: install_surface_z_settings
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -153,11 +153,9 @@ subroutine rescale_interior_z
             s%current_card_envelope_z = s%card_rescale_targets(3,run_index)
 ! Unlike X, the envelope Z (star%envelope_metal_fraction, legacy ZENV)
 ! follows the new Z, since many routines read it (DBG 4/95), and the
-! EOS mixture with it.
+! EOS mixture with it (settings_install's install_surface_z_settings).
             s%envelope_metal_fraction = s%current_card_envelope_z
-            call eos_set_mixture(s%envelope_hydrogen_fraction, &
-                 s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
-                 s%envelope_number_fractions)
+            call install_surface_z_settings(s)
          else
 ! Requested Z above 1: Z is not changed.
             error_species_index = 3
