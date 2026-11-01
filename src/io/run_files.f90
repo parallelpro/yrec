@@ -3,8 +3,8 @@
 !----------------------------------------------------------------------
 ! The run's files: their fixed unit numbers, the {YREC_...}
 ! placeholders in the path controls expanded (expand_value), the output
-! directory created with a verbatim copy of the inlists (inlist_used),
-! and the files opened.
+! directory created, the run log opened first, a verbatim copy of the
+! inlists (inlist_used), and the other files opened.
 module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
@@ -25,21 +25,27 @@ module run_files
       implicit none
       private
       public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &
-           output_directory, directory_of, copy_inlists_used
+           output_directory, directory_of, copy_inlists_used, open_run_log_after_error
 
 ! The run's output directory, the run log's (open_run_files sets it at
 ! every read; output_directory returns it).
       character(len=256) :: output_dir = ' '
+! Whether this read has expanded the deck's paths (expand_paths), so
+! that the run log's path is the deck's (open_run_log_after_error);
+! each read starts without (assign_unit_numbers).
+      logical :: paths_expanded = .false.
 
 contains
 
 ! ---------------------------------------------------------------
 ! The fixed units written from everywhere: the terminal, the final
-! model and the run log (io_units).
+! model and the run log (io_units); the read calls this first, before
+! its paths are expanded.
 subroutine assign_unit_numbers
       terminal_unit = 6
       last_model_unit = 11
       run_log_unit = 20
+      paths_expanded = .false.
 end subroutine assign_unit_numbers
 
 ! ---------------------------------------------------------------
@@ -91,26 +97,28 @@ subroutine expand_paths
       do i = 1, size(alex95_table_paths)
          call expand_value(alex95_table_paths(i))
       end do
+      paths_expanded = .true.
 end subroutine expand_paths
 
 ! ---------------------------------------------------------------
-! The output directory (the run log's directory) created and the
-! inlists copied into it (inlist_used, or inlist_used_file when the
-! deck names one), then the run's files opened: the starting
-! model, the final model (the restart file, and the solver's recovery
-! source when a step diverges), the run log, and the Monte Carlo and
-! isochrone files when those are on: the files the controls read named,
-! which run_yrec opens after the read. (The history and profile files
+! The files the controls read named, which run_yrec opens after the
+! read, in this order: the output directory (the run log's) created and
+! the run log opened, so that it holds the read's lines (its header,
+! the run plan, its warnings) and any error that follows; the copy of
+! the inlists (inlist_used, or inlist_used_file when the deck names
+! one); the starting model; the final model (the restart file, and the
+! solver's recovery source when a step diverges); and the Monte Carlo
+! and isochrone files when those are on. (The history and profile files
 ! are the output's: yrec_output's output_open.)
 subroutine open_run_files(ierr)
       integer, intent(inout) :: ierr
       character(len=256) :: msg, inlist_copy
       integer :: ios
 
-      output_dir = directory_of(fshort)
+      call start_run_log(ierr)
+      if (ierr /= 0) return
       write(terminal_unit,*) "OUTPUT placed in :  ",trim(output_dir)
       write(terminal_unit,*) ''
-      call make_directory(output_dir)
       inlist_copy = inlist_used_file
       if (len_trim(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
       call copy_inlists_used([control_nml_file, physics_nml_file], trim(inlist_copy), ierr)
@@ -123,8 +131,6 @@ subroutine open_run_files(ierr)
       if (ierr /= 0) return
       open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the final model file', flast, ierr)
-      if (ierr /= 0) return
-      call open_run_log(fshort, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
          open(newunit=dynamics_unit, file=fdyn, form='FORMATTED', status='OLD', &
@@ -147,6 +153,31 @@ subroutine open_run_files(ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
+
+! ---------------------------------------------------------------
+! After a controls error (read_controls' ierr): the run log alone, so
+! that it holds the read's lines and the error, once the read has
+! expanded the deck's paths. A read that stopped before (the deck
+! missing or unreadable) has no run log of the deck's: its messages
+! stay on the terminal.
+subroutine open_run_log_after_error
+      integer :: ierr
+
+      if (.not. paths_expanded) return
+      ierr = 0
+      call start_run_log(ierr)
+end subroutine open_run_log_after_error
+
+! ---------------------------------------------------------------
+! The output directory, the run log's, created (with its parents), and
+! the run log opened.
+subroutine start_run_log(ierr)
+      integer, intent(inout) :: ierr
+
+      output_dir = directory_of(fshort)
+      call make_directory(output_dir)
+      call open_run_log(fshort, ierr)
+end subroutine start_run_log
 
 ! ---------------------------------------------------------------
 ! The files an earlier read opened (an in-process rerun), closed before

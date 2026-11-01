@@ -170,6 +170,10 @@ def test_old_group_names_refused(tmp_path):
         f"(got {result.returncode}); stdout tail: {result.stdout[-300:]}"
     )
     assert "upgrade_inlist.py deck.inlist" in result.stdout, result.stdout[-300:]
+    # stopped before the deck's paths were read: no run log anywhere (not
+    # even at the unexpanded default path)
+    assert not list((tmp_path / "output").iterdir())
+    assert not [p for p in tmp_path.iterdir() if "YREC" in p.name]
     fix = subprocess.run([sys.executable, str(CONVERTER), str(inlist)],
                          capture_output=True, text=True)
     assert fix.returncode == 0, fix.stderr
@@ -340,8 +344,9 @@ def test_num_runs_out_of_range(tmp_path, value):
 
 def test_unwritable_output_directory_exits_nonzero(tmp_path):
     """An output directory the run cannot write to (here one without
-    write permission) stops the run at its first file with exit 1 and a
-    message naming the directory, before any model is evolved."""
+    write permission) stops the run at its first file, the run log, with
+    exit 1 and a message naming the directory, before any model is
+    evolved."""
     if not YREC.exists():
         pytest.skip("src/yrec not built")
     if os.geteuid() == 0:
@@ -362,7 +367,7 @@ def test_unwritable_output_directory_exits_nonzero(tmp_path):
         f"an unwritable output directory must exit 1 (got {result.returncode}); "
         f"stdout tail: {result.stdout[-300:]}")
     # the operating system's reason: the open's failure is what is reported
-    assert "ERROR: cannot" in result.stdout and str(locked) in result.stdout, result.stdout[-300:]
+    assert f"ERROR: cannot open the run log {locked}" in result.stdout, result.stdout[-300:]
     assert "Permission denied" in result.stdout, result.stdout[-300:]
     assert "run finished" not in result.stdout, result.stdout[-300:]
     assert not list(locked.iterdir())
@@ -399,3 +404,79 @@ def test_read_only_history_file_exits_nonzero(tmp_path):
         f"stdout tail: {result.stdout[-300:]}")
     assert "ERROR: cannot write output/locked.data" in result.stdout, result.stdout[-300:]
     assert "Permission denied" in result.stdout, result.stdout[-300:]
+
+
+def test_missing_starting_model_leaves_a_run_log(tmp_path):
+    """A starting model that does not exist (as the sample_cases/LowM_HB
+    decks name, M84) stops the run with exit 1, and the run log holds
+    what the read wrote, its header and run plan, and the error: the run
+    log is opened before the starting model."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    nml1 = tmp_path / NML1
+    text, n = re.subn(r'FFIRST\s*=\s*"[^"]*"', f'FFIRST = "{tmp_path}/missing.first"',
+                      nml1.read_text())
+    assert n == 1
+    nml1.write_text(text)
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"a missing starting model must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}")
+    log = tmp_path / "output" / "Test_solar_noGS_norot.log"
+    assert log.exists(), "the run log must exist"
+    text = log.read_text()
+    assert "# YREC v" in text and " run plan" in text and " card  1:" in text, text
+    assert "ERROR: cannot open the starting model" in text and "missing.first" in text, text
+
+
+def test_controls_error_leaves_a_run_log(tmp_path):
+    """A controls error found after the deck's paths are read (here a
+    zero envelope-triangle size) stops the run with exit 1, and the run
+    log the deck names holds the error."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    nml2 = tmp_path / NML2
+    text, n = re.subn(r"(?im)^(\s*TRIDT\s*=\s*)[-+.0-9dDeE]+", r"\g<1>0.0", nml2.read_text())
+    assert n == 1
+    nml2.write_text(text)
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 1, (
+        f"TRIDT = 0 must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
+    log = tmp_path / "output" / "Test_solar_noGS_norot.log"
+    assert log.exists(), "the run log must exist (its directory made)"
+    assert "ERROR:" in log.read_text() and "envelope triangle's size must be positive" in log.read_text()
+
+
+def test_early_read_error_after_a_run_opens_no_run_log(tmp_path):
+    """In one process (test_reentry: deck A, then deck B), a second read
+    that stops before its deck's paths are read (B names its groups
+    &star_job and &controls) opens no run log: each read starts without
+    the previous read's expanded paths, so nothing is made at the
+    unexpanded default path ({YREC_OUTPUT}/run.log)."""
+    reentry = REPO / "src" / "test_reentry"
+    if not reentry.exists():
+        pytest.skip("src/test_reentry not built")
+    conv = subprocess.run(
+        [sys.executable, str(CONVERTER), str(CASE_DIR / NML1), str(CASE_DIR / NML2),
+         "-o", str(tmp_path / "a.inlist")], capture_output=True, text=True)
+    assert conv.returncode == 0, conv.stderr
+    deck, n = re.subn(r"(?im)^(\s*num_runs\s*=\s*)\d+", r"\g<1>1", (tmp_path / "a.inlist").read_text())
+    assert n == 1
+    (tmp_path / "a.inlist").write_text(deck)
+    old = re.sub(r"(?m)^&control\b", "&star_job", deck, count=1)
+    (tmp_path / "b.inlist").write_text(re.sub(r"(?m)^&physics\b", "&controls", old, count=1))
+    (tmp_path / "output").mkdir()
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(reentry), "a.inlist", "b.inlist"], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=600)
+    assert result.returncode == 1 and "SECOND run failed" in result.stdout, result.stdout[-300:]
+    assert not [p for p in tmp_path.rglob("*") if "YREC" in p.name]
