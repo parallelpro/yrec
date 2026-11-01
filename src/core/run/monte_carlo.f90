@@ -9,8 +9,9 @@
 !  * setup_monte_carlo_runs -- the run range, and each run's samples
 !    read from the sample file (once, from prepare_run);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
-!    per-run hook: the run's sampled values (apply_monte_carlo_parameters);
-!    a value the run changes per Monte-Carlo run is set here;
+!    per-run hook: every run copy of a control re-armed from its control,
+!    then the run's sampled values (apply_monte_carlo_parameters); a value
+!    the run changes per Monte-Carlo run is set here;
 !  * write_run_summaries -- the end-of-run bookkeeping, including the
 !    Monte-Carlo model summary (write_monte_carlo_model, legacy
 !    wrtmonte), which reads star% directly.
@@ -77,18 +78,32 @@ end subroutine set_monte_carlo_range
 ! ---------------------------------------------------------------
 ! The start of every Monte-Carlo run (and of the one run without Monte
 ! Carlo): the per-run hook, the first call of run_yrec's Monte-Carlo
-! loop. It applies the run's samples (apply_monte_carlo_parameters). A
-! value the run changes per Monte-Carlo run is a star member of the
-! Monte-Carlo runs class, set here from the run's sample (as
-! settling_z_factor_in_use); state/README.md, "Add a value the run
-! changes per Monte-Carlo run".
+! loop. Each Monte-Carlo run is the deck's run again with other samples,
+! so it starts from the deck's values: every run copy of a control is
+! re-armed from its control (controls_sync's arm_run_copies, as the
+! controls read armed them), whatever the run before changed -- the
+! stops init_stop_conditions disarmed, the solar calibration's
+! age-scaled fixed timesteps and laid-out cycles, the structure-timestep
+! and mass-change latches, the atmosphere the surface boundary switched
+! to, the core extension's factor. The run range, re-armed with them, is
+! derived again as setup_monte_carlo_runs derived it (the loop's bounds
+! were fixed when it began). Then the run's samples are applied
+! (apply_monte_carlo_parameters). On the first run the re-arm changes
+! nothing: no run copy but the range is written between the controls
+! read and the loop. A value the run changes per Monte-Carlo run is a
+! star member of the Monte-Carlo runs class, set here from the run's
+! sample (as settling_z_factor_in_use); state/README.md, "Add a value
+! the run changes per Monte-Carlo run".
 !   star reads: none
 !   star writes: none
 subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
      age_scale_factor)
+      use controls_sync, only: arm_run_copies
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number
       double precision, intent(out) :: age_scale_factor
+      call arm_run_copies(s)
+      call set_monte_carlo_range(s)
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)
 end subroutine begin_monte_carlo_run

@@ -291,8 +291,10 @@ it. A value the run changes is not a control: it is a star member of its
 lifetime class, named for what it holds, the control's run copy (the
 registry's `run_copy` column; the run plan's `card_*` arrays,
 `atm_choice_in_use`, `structure_dt_limits_active`, ...), which the read
-arms from the control while the control keeps the deck's value; a latch
-that every card re-arms is armed in `begin_kind_card` (`settling_active`).
+arms from the control, and `begin_monte_carlo_run` arms again at the
+start of every Monte-Carlo run, while the control keeps the deck's value;
+a latch that every card re-arms is armed in `begin_kind_card`
+(`settling_active`).
 `tools/check_boundaries.py` enforces all of it: the old record names
 (`ctrl`, `job`) stay gone; nothing but `controls_sync` assigns the two
 records; every control is in its group's record; the controls-free domains

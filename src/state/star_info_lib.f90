@@ -239,8 +239,10 @@ module star_info_lib
 ! from the sample file, one entry per run (mc_samples), and the values a
 ! run takes from its sample (settling_z_factor_in_use). Each run starts
 ! with monte_carlo's begin_monte_carlo_run, the per-run hook (the first
-! call in run_yrec's Monte-Carlo loop): a value the run changes per
-! Monte-Carlo run is set there, from the run's sample. The solar
+! call in run_yrec's Monte-Carlo loop): it re-arms every run copy of a
+! control from its control, so each run starts from the deck's values,
+! and then sets the values the run changes per Monte-Carlo run from the
+! run's sample. The solar
 ! luminosity and the first rate scales, which each run also sets from its
 ! sample, are constants of the class above.
 ! Valid: the range and the samples from prepare_run on; a run's values
@@ -270,8 +272,9 @@ module star_info_lib
 ! mass, its rescale targets and Z ramp, its stops and its fixed timestep.
 ! They are the run's working copies of their controls: the controls read
 ! arms them (controls_sync's arm_run_copies, after interpret_kind_cards
-! has derived the kinds, the rescale targets and the stop flags); the
-! calibrations rewrite them at every Monte-Carlo run
+! has derived the kinds, the rescale targets and the stop flags), and
+! begin_monte_carlo_run arms them again at the start of every
+! Monte-Carlo run; the calibrations then rewrite them
 ! (setup_solar_calibration and setup_star_calibration lay out their
 ! cycles) and after every cycle (the next cycle's guesses); and
 ! init_stop_conditions disarms the stops a card's starting model has
@@ -360,7 +363,9 @@ module star_info_lib
 ! the run switches, the core extension, the surface mixture of the first
 ! card, the solar and star calibration loops, the reason the run ended.
 ! The members armed from a control (each names it) are the run's working
-! copies of controls it changes; the controls keep the deck's values.
+! copies of controls it changes, armed by the controls read and again at
+! the start of every Monte-Carlo run (begin_monte_carlo_run); the
+! controls keep the deck's values.
 ! Valid: from the card (or run) that sets them.
 
 ! the current run card's index, the run plan's cursor [-]; run_driver.
