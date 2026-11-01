@@ -29,7 +29,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 
 | inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
 |---|---|---|---|---|---|---|---|---|---|
-| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(50) | `0` | live | Per run: the mixing-length parameter alpha (the solar calibration rewrites the later runs' entries) |
+| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(50) | `0` | live | Per card: the mixing-length parameter alpha |
 | `target_solar_age` | `calsolage` | `target_solar_age` | control | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
 | `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `''` | live | Per-run description strings echoed in output headers |
@@ -66,7 +66,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's summary |
 | `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's final model |
 | `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
-| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(50) | `.true.` | live | DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly. |
+| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(50) | `.true.` | live | Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model) |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
 | `use_z_ramp` | `lzramp` | `use_z_ramp` | control | - | run | logical | `.false.` | live | On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2 |
 | `specify_teff_flag` | `lteff` | `specify_teff_flag` | control | - | run | logical | `.false.` | live | Star calibration: match the target Teff (target_teff) instead of the target radius (target_radius_rsun) |
@@ -82,7 +82,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_opal95_tables` | `lopal95` | `use_opal95_tables` | control | - | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
 | `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | control | - | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
 | `use_alex95_tables` | `lalex95` | `use_alex95_tables` | control | - | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
-| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
+| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | read | integer | `0` | live | Envelope profile print count: read and used nowhere (the F77's one use, in SURFBC, was commented out); the read makes 0 or less into 9999, as PARMIN did |
 | `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
@@ -197,7 +197,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `wind_law_constant` | `fk` | `wind_law_constant` | physics | - | run | real | `1.0d0` | live | The constant factor of both wind laws (1 reproduces the solar angular momentum loss) |
 | `difad_velocity_scale` | `fw` | `difad_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
 | `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | physics | - | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
-| `coupling_factor` | `fo` | `coupling_factor` | buffer | - | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
+| `coupling_factor` | `fo` | `coupling_factor` | buffer | - | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the run log's header) |
 | `(legacy only)` | `fmu` | `mu_gradient_scale` | buffer | - | none | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
 | `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | physics | `core_mass_reduction` | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
@@ -212,7 +212,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `settling_z_factor` | `fgrz` | `settling_z_factor` | physics | `settling_z_factor_in_use` | run | real | `1.0d0` | live | Gravitational settling multiplier for metals (microdiff) |
 | `settling_tolerance` | `grtol` | `settling_tolerance` | physics | - | run | real | `1.0d-8` | live | Gravitational settling: solver tolerance |
 | `solver_tolerances` | `htoler` | `solver_tolerances` | physics | - | run | real(5,2) | `6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6` | live | The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test |
-| `zoning_tolerances` | `hpttol` | `chi_grid_scale` | physics | - | run | real(12) | `1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1` | live | The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in controls_buffer): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead |
+| `zoning_tolerances` | `hpttol` | `chi_grid_scale` | physics | - | run | real(12) | `1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1` | live | The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in state/control_slots.f90): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead |
 | `fpft_iter1` | `itfp1` | `fpft_iter1` | physics | - | run | integer | `5` | live | shape/fpft iteration bound 1 |
 | `fpft_iter2` | `itfp2` | `fpft_iter2` | physics | - | run | integer | `20` | live | shape/fpft iteration bound 2 |
 | `max_stage_index` | `imax` | `max_stage_index` | physics | - | run | integer | `11` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11 |
@@ -260,7 +260,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `num_core_shells_added` | `mcore` | `num_core_shells_added` | physics | `num_core_points_added` | run | integer | `0` | live | With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor) |
 | `max_iter_level1` | `niter1` | `max_iter_level1` | physics | - | run | integer | `2` | live | Henyey iteration limit, level 1 (fresh surface BC) |
 | `max_iter_level2` | `niter2` | `max_iter_level2` | physics | - | run | integer | `20` | live | Henyey iteration limit, level 2 |
-| `max_iter_level3` | `niter3` | `max_iter_level3` | physics | - | run | integer | `2` | live | Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0. |
+| `max_iter_level3` | `niter3` | `max_iter_level3` | physics | - | run | integer | `2` | live | Henyey iteration limit, level 3 |
 | `max_iter_level4` | `niter4` | `max_iter_level4` | physics | - | run | integer | `0` | live | Henyey iteration limit, level 4 (high precision) |
 | `extrap_order` | `nuse` | `extrap_order` | physics | - | run | integer | `7` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index |
 | `settling_num_iterations` | `niter_gs` | `settling_num_iterations` | physics | - | run | integer | `10` | live | Settling: the largest number of iterations of the abundance-change solver |
@@ -408,17 +408,17 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_new_rate_variables` | `lnewvars` | `use_new_rate_variables` | buffer | - | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
 | `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | physics | - | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
 | `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | physics | - | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
-| `star_history_name` | `-` | `star_history_name` | physics | - | run | string | `'history.data'` | live | MESA mode: history file name (written to the output directory) |
+| `star_history_name` | `-` | `star_history_name` | physics | - | run | string | `'history.data'` | live | The history file's name, in the output directory |
 | `terminal_interval` | `terminal_interval` | `terminal_interval` | physics | - | run | integer | `50` | live | Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints |
 | `nu_max_sun` | `nu_max_sun` | `nu_max_sun` | physics | - | run | real | `3090.0d0` | live | Solar nu_max [uHz] for the scaling relation (Huber et al. 2011) |
 | `delta_nu_sun` | `delta_nu_sun` | `delta_nu_sun` | physics | - | run | real | `135.1d0` | live | Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011) |
 | `Teff_sun` | `Teff_sun` | `teff_sun` | physics | - | run | real | `5772.0d0` | live | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
-| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | - | read | logical | `.false.` | live | Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping |
-| `profile_interval` | `-` | `profile_interval` | physics | - | run | integer | `50` | live | MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles |
-| `pulse_format` | `-` | `pulse_format` | physics | - | run | string | `'GYRE'` | live | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
-| `write_profile_flag` | `-` | `write_profile_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for profile{N}.data output (cadence from profile_interval) |
-| `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number) |
-| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run |
+| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | - | read | logical | `.false.` | live | Write the solver forensics to the run log (Henyey iteration trace, envelope and atmosphere integration statistics, triangle and rezoning bookkeeping); the read installs it as run_messages' gate, solver_diagnostics(), which the run asks |
+| `profile_interval` | `-` | `profile_interval` | physics | - | run | integer | `50` | live | Write profile{N}.data every N converged models (0 = off); the history's profile_number column maps models to profiles |
+| `pulse_format` | `-` | `pulse_format` | physics | - | run | string | `'GYRE'` | live | The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format} |
+| `write_profile_flag` | `-` | `write_profile_flag` | physics | - | run | logical | `.false.` | live | Write the profile{N}.data files (every profile_interval models) |
+| `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | run | logical | `.false.` | live | Write a pulsation file (pulse_format) with each profile |
+| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run |
 
 ## Members no deck sets
 
@@ -429,10 +429,10 @@ file names, from the command line). Each is in the group of its topic.
 |---|---|---|---|---|---|---|---|
 | `opal_eos_table_path` | physics | physics | - | run | path | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
 | `opal_eos_vintage` | physics | physics | - | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
-| `end_age_stop_active` | control | control | `card_stops_active` | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
-| `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
-| `rescale_params` | control | control | `card_rescale_targets` | run | real(4,50) | `0` | Per run: the rescaling targets M, X, Z and core mass (from rescale_mass, _x, _z and _core_mass; the calibration rewrites them) |
-| `rescale_kind` | control | control | `card_kind` | run | integer(50) | `0` | Per run: evolve, rescale or both (from run_kind) |
+| `end_age_stop_active` | control | control | `card_stops_active` | run | logical(50) | `0` | Per card: an evolving card has a stop armed (max_age or a central-abundance stop positive); derived by the run plan (interpret_kind_cards) |
+| `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(50) | `0` | Per card: an evolving card takes the fixed timestep timestep_override (positive); derived by the run plan |
+| `rescale_params` | control | control | `card_rescale_targets` | run | real(4,50) | `0` | Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass, rescale_x, rescale_z, rescale_core_mass); derived by the run plan |
+| `rescale_kind` | control | control | `card_kind` | run | integer(50) | `0` | Per card: evolve, rescale or both (run_kind for the cards the deck runs, 0 beyond); derived by the run plan |
 | `new_species_index` | physics | physics | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
 | `value_relative_to_h` | physics | physics | - | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
 | `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(11) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |

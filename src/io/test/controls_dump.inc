@@ -4,40 +4,100 @@
 ! of every star%control and star%physics member, then of every buffer-only
 ! member (itoa is test_controls').
 subroutine dump_controls(star, u)
-      use controls_buffer, only: surface_composition_file, &
-           stored_change_file, run_description, report_solver_diagnostics, &
-           use_new_nuclear_rates, li6_rate_value, li7_rate_value, &
-           be9_rate_value1, be9_rate_value2, be9_rate_value3, scale_li6_rate, &
-           scale_li7_rate, scale_be9_rate1, scale_be9_rate2, scale_be9_rate3, &
-           cross_section_ratios, envelope_print_points, run_kind, &
-           rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
-           envelope_generation_flag, change_species_name, &
-           new_species_value_mode, cno_mixture_name, isotope_mixture_name, &
-           mixture_change_mode, isotope_change_mode, n14_to_n15_ratio, &
-           o16_to_o17_ratio, target_metal_fraction, initial_b10_fraction, &
-           initial_b11_fraction, coupling_factor, enable_eddington_sweet, &
-           enable_mu_gradient, mu_gradient_scale, use_opal95_eos, &
-           use_opal2001_eos, use_opal2006_eos, opal95_z2, alex_z2, &
-           opal95_eos_table_path, opal2001_eos_table_path, &
-           opal2006_eos_table_path, pmm_norm_mdot, &
-           use_rotation_scaled_solar_wind, use_pmm_wind, pmm_omega_sat, &
-           flag_dx, flag_dw, flag_dz, time_core_min, time_dl, time_dp, &
+      use controls_buffer, only: run_kind, run_description, rescale_mass, &
+           rescale_x, rescale_z, rescale_core_mass, mixture_change_mode, &
+           cno_mixture_name, target_metal_fraction, isotope_change_mode, &
+           isotope_mixture_name, n14_to_n15_ratio, o16_to_o17_ratio, &
+           initial_b10_fraction, initial_b11_fraction, &
+           surface_composition_file, stored_change_file, &
+           envelope_print_points, opal95_z2, alex_z2, opal95_eos_table_path, &
+           opal2001_eos_table_path, opal2006_eos_table_path, &
+           report_solver_diagnostics, use_new_rate_variables, &
+           use_structure_time_limits, time_core_min, time_dl, time_dp, &
            time_dr, time_dt, time_dw_global, time_dw_mix, time_dx_core_frac, &
            time_dx_core_tot, time_dx_shell, time_dx_total, time_dy_core_frac, &
            time_dy_core_tot, time_dy_shell, time_dy_total, time_max_dt_frac, &
-           tol_czbase_fine_width, tol_dl_max, tol_dm_max, tol_dm_min, &
-           tol_dp_core_max, tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, &
-           tol_dz_max, use_structure_time_limits, use_new_rate_variables, &
+           flag_dx, flag_dw, flag_dz, tol_czbase_fine_width, tol_dl_max, &
+           tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
+           tol_dp_env_max, tol_dx_max, tol_dz_max, use_new_nuclear_rates, &
+           cross_section_ratios, scale_li6_rate, scale_li7_rate, &
+           scale_be9_rate1, scale_be9_rate2, scale_be9_rate3, li6_rate_value, &
+           li7_rate_value, be9_rate_value1, be9_rate_value2, be9_rate_value3, &
            s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, s0_p_n14, &
            s0_p_o16, s0_be7_electron, s0_be7_p, s0_n15_p_c12_branch, &
            s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
            s0p_p_c13, s0p_p_n14, s0p_p_o16, s0pp_p_c12, s0pp_p_c13, &
-           s0pp_p_o16, s0p_be7_p, s0pp_be7_p, s0_pep, s0_hep
+           s0pp_p_o16, s0p_be7_p, s0pp_be7_p, s0_pep, s0_hep, use_opal95_eos, &
+           use_opal2001_eos, use_opal2006_eos, envelope_generation_flag, &
+           coupling_factor, enable_eddington_sweet, enable_mu_gradient, &
+           mu_gradient_scale, pmm_norm_mdot, use_rotation_scaled_solar_wind, &
+           use_pmm_wind, pmm_omega_sat, change_species_name, &
+           new_species_value_mode
       type(star_info), intent(in) :: star
       integer, intent(in) :: u
       integer :: i1, i2
-      write(u,'(a," = ",a)') 'control%history_columns_file', '"'//trim(star%control%history_columns_file)//'"'
-      write(u,'(a," = ",a)') 'control%profile_columns_file', '"'//trim(star%control%profile_columns_file)//'"'
+      write(u,'(a," = ",i0)') 'control%num_runs', star%control%num_runs
+      do i1 = 1, 50
+      write(u,'(a," = ",i0)') 'control%num_models('//itoa(i1)//')', star%control%num_models(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",l1)') 'control%first_call_flag('//itoa(i1)//')', star%control%first_call_flag(i1)
+      end do
+      write(u,'(a," = ",i0)') 'control%set_initial_model_number', star%control%set_initial_model_number
+      do i1 = 1, 50
+      write(u,'(a," = ",i0)') 'control%rescale_kind('//itoa(i1)//')', star%control%rescale_kind(i1)
+      end do
+      do i2 = 1, 50
+      do i1 = 1, 4
+      write(u,'(a," = ",es25.17e3)') 'control%rescale_params('//itoa(i1)//','//itoa(i2)//')', star%control%rescale_params(i1,i2)
+      end do
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%initial_x_array('//itoa(i1)//')', star%control%initial_x_array(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%initial_z_array('//itoa(i1)//')', star%control%initial_z_array(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%mixing_length_array('//itoa(i1)//')', star%control%mixing_length_array(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%senv0_array('//itoa(i1)//')', star%control%senv0_array(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",l1)') 'control%has_senv0_array('//itoa(i1)//')', star%control%has_senv0_array(i1)
+      end do
+      write(u,'(a," = ",l1)') 'control%use_z_ramp', star%control%use_z_ramp
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%rescale_core_z('//itoa(i1)//')', star%control%rescale_core_z(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%rescale_z_mix1('//itoa(i1)//')', star%control%rescale_z_mix1(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%rescale_z_mix2('//itoa(i1)//')', star%control%rescale_z_mix2(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%target_end_age('//itoa(i1)//')', star%control%target_end_age(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%central_deuterium_stop('//itoa(i1)//')', star%control%central_deuterium_stop(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%central_hydrogen_stop('//itoa(i1)//')', star%control%central_hydrogen_stop(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%central_helium_stop('//itoa(i1)//')', star%control%central_helium_stop(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",l1)') 'control%end_age_stop_active('//itoa(i1)//')', star%control%end_age_stop_active(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'control%timestep_override('//itoa(i1)//')', star%control%timestep_override(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",l1)') 'control%timestep_override_active('//itoa(i1)//')', star%control%timestep_override_active(i1)
+      end do
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'control%log_L_upper_limit('//itoa(i1)//')', star%control%log_L_upper_limit(i1)
       end do
@@ -62,56 +122,23 @@ subroutine dump_controls(star, u)
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'control%nu_max_lower_limit('//itoa(i1)//')', star%control%nu_max_lower_limit(i1)
       end do
-      write(u,'(a," = ",a)') 'control%inlist_used_file', '"'//trim(star%control%inlist_used_file)//'"'
-      write(u,'(a," = ",a)') 'control%first_model_file', '"'//trim(star%control%first_model_file)//'"'
-      write(u,'(a," = ",a)') 'control%last_model_file', '"'//trim(star%control%last_model_file)//'"'
-      write(u,'(a," = ",a)') 'control%dynamics_file', '"'//trim(star%control%dynamics_file)//'"'
-      write(u,'(a," = ",a)') 'control%isochrone_file', '"'//trim(star%control%isochrone_file)//'"'
-      write(u,'(a," = ",i0)') 'control%set_initial_model_number', star%control%set_initial_model_number
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%target_end_age('//itoa(i1)//')', star%control%target_end_age(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%timestep_override('//itoa(i1)//')', star%control%timestep_override(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%central_deuterium_stop('//itoa(i1)//')', star%control%central_deuterium_stop(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%central_hydrogen_stop('//itoa(i1)//')', star%control%central_hydrogen_stop(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%central_helium_stop('//itoa(i1)//')', star%control%central_helium_stop(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",l1)') 'control%end_age_stop_active('//itoa(i1)//')', star%control%end_age_stop_active(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",l1)') 'control%timestep_override_active('//itoa(i1)//')', star%control%timestep_override_active(i1)
-      end do
-      write(u,'(a," = ",a)') 'control%monte_carlo_file1_path', '"'//trim(star%control%monte_carlo_file1_path)//'"'
-      write(u,'(a," = ",a)') 'control%monte_carlo_file2_path', '"'//trim(star%control%monte_carlo_file2_path)//'"'
-      write(u,'(a," = ",i0)') 'control%pulse_gyre_interval', star%control%pulse_gyre_interval
-      do i2 = 1, 50
-      do i1 = 1, 4
-      write(u,'(a," = ",es25.17e3)') 'control%rescale_params('//itoa(i1)//','//itoa(i2)//')', star%control%rescale_params(i1,i2)
-      end do
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",i0)') 'control%rescale_kind('//itoa(i1)//')', star%control%rescale_kind(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",i0)') 'control%num_models('//itoa(i1)//')', star%control%num_models(i1)
-      end do
-      write(u,'(a," = ",i0)') 'control%num_runs', star%control%num_runs
-      do i1 = 1, 50
-      write(u,'(a," = ",l1)') 'control%first_call_flag('//itoa(i1)//')', star%control%first_call_flag(i1)
-      end do
-      write(u,'(a," = ",l1)') 'control%change_cno_mixture_active', star%control%change_cno_mixture_active
-      write(u,'(a," = ",l1)') 'control%change_isotope_ratios_active', star%control%change_isotope_ratios_active
+      write(u,'(a," = ",l1)') 'control%calibrate_solar_model', star%control%calibrate_solar_model
+      write(u,'(a," = ",l1)') 'control%calibrate_solar_zx', star%control%calibrate_solar_zx
+      write(u,'(a," = ",es25.17e3)') 'control%target_solar_age', star%control%target_solar_age
+      write(u,'(a," = ",es25.17e3)') 'control%target_solar_zx', star%control%target_solar_zx
+      write(u,'(a," = ",es25.17e3)') 'control%luminosity_tolerance', star%control%luminosity_tolerance
+      write(u,'(a," = ",es25.17e3)') 'control%radius_tolerance', star%control%radius_tolerance
+      write(u,'(a," = ",es25.17e3)') 'control%zx_tolerance', star%control%zx_tolerance
+      write(u,'(a," = ",l1)') 'control%calibrate_star_flag', star%control%calibrate_star_flag
+      write(u,'(a," = ",l1)') 'control%specify_teff_flag', star%control%specify_teff_flag
+      write(u,'(a," = ",es25.17e3)') 'control%target_luminosity_lsun', star%control%target_luminosity_lsun
+      write(u,'(a," = ",es25.17e3)') 'control%target_star_luminosity_tolerance', star%control%target_star_luminosity_tolerance
+      write(u,'(a," = ",es25.17e3)') 'control%target_teff', star%control%target_teff
+      write(u,'(a," = ",es25.17e3)') 'control%target_radius_rsun', star%control%target_radius_rsun
       write(u,'(a," = ",es25.17e3)') 'control%target_carbon_cno_fraction', star%control%target_carbon_cno_fraction
       write(u,'(a," = ",es25.17e3)') 'control%target_nitrogen_cno_fraction', star%control%target_nitrogen_cno_fraction
       write(u,'(a," = ",es25.17e3)') 'control%target_oxygen_cno_fraction', star%control%target_oxygen_cno_fraction
+      write(u,'(a," = ",l1)') 'control%change_cno_mixture_active', star%control%change_cno_mixture_active
       write(u,'(a," = ",es25.17e3)') 'control%c12_to_c13_ratio', star%control%c12_to_c13_ratio
       write(u,'(a," = ",es25.17e3)') 'control%o16_to_o18_ratio', star%control%o16_to_o18_ratio
       write(u,'(a," = ",es25.17e3)') 'control%initial_h2_fraction', star%control%initial_h2_fraction
@@ -119,46 +146,26 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'control%initial_li6_fraction', star%control%initial_li6_fraction
       write(u,'(a," = ",es25.17e3)') 'control%initial_li7_fraction', star%control%initial_li7_fraction
       write(u,'(a," = ",es25.17e3)') 'control%initial_be9_fraction', star%control%initial_be9_fraction
-      write(u,'(a," = ",l1)') 'control%rewind_short_file', star%control%rewind_short_file
+      write(u,'(a," = ",l1)') 'control%change_isotope_ratios_active', star%control%change_isotope_ratios_active
+      write(u,'(a," = ",a)') 'control%inlist_used_file', '"'//trim(star%control%inlist_used_file)//'"'
+      write(u,'(a," = ",a)') 'control%first_model_file', '"'//trim(star%control%first_model_file)//'"'
+      write(u,'(a," = ",a)') 'control%last_model_file', '"'//trim(star%control%last_model_file)//'"'
+      write(u,'(a," = ",a)') 'control%dynamics_file', '"'//trim(star%control%dynamics_file)//'"'
+      write(u,'(a," = ",a)') 'control%monte_carlo_file1_path', '"'//trim(star%control%monte_carlo_file1_path)//'"'
+      write(u,'(a," = ",a)') 'control%monte_carlo_file2_path', '"'//trim(star%control%monte_carlo_file2_path)//'"'
       write(u,'(a," = ",l1)') 'control%isochrone_output_active', star%control%isochrone_output_active
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%initial_x_array('//itoa(i1)//')', star%control%initial_x_array(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%initial_z_array('//itoa(i1)//')', star%control%initial_z_array(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%mixing_length_array('//itoa(i1)//')', star%control%mixing_length_array(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%senv0_array('//itoa(i1)//')', star%control%senv0_array(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",l1)') 'control%has_senv0_array('//itoa(i1)//')', star%control%has_senv0_array(i1)
-      end do
-      write(u,'(a," = ",es25.17e3)') 'control%luminosity_tolerance', star%control%luminosity_tolerance
-      write(u,'(a," = ",es25.17e3)') 'control%radius_tolerance', star%control%radius_tolerance
-      write(u,'(a," = ",es25.17e3)') 'control%zx_tolerance', star%control%zx_tolerance
-      write(u,'(a," = ",es25.17e3)') 'control%target_solar_zx', star%control%target_solar_zx
-      write(u,'(a," = ",es25.17e3)') 'control%target_solar_age', star%control%target_solar_age
-      write(u,'(a," = ",l1)') 'control%calibrate_solar_model', star%control%calibrate_solar_model
-      write(u,'(a," = ",l1)') 'control%calibrate_solar_zx', star%control%calibrate_solar_zx
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%rescale_core_z('//itoa(i1)//')', star%control%rescale_core_z(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%rescale_z_mix1('//itoa(i1)//')', star%control%rescale_z_mix1(i1)
-      end do
-      do i1 = 1, 50
-      write(u,'(a," = ",es25.17e3)') 'control%rescale_z_mix2('//itoa(i1)//')', star%control%rescale_z_mix2(i1)
-      end do
-      write(u,'(a," = ",l1)') 'control%use_z_ramp', star%control%use_z_ramp
-      write(u,'(a," = ",es25.17e3)') 'control%target_luminosity_lsun', star%control%target_luminosity_lsun
-      write(u,'(a," = ",es25.17e3)') 'control%target_star_luminosity_tolerance', star%control%target_star_luminosity_tolerance
-      write(u,'(a," = ",es25.17e3)') 'control%target_teff', star%control%target_teff
-      write(u,'(a," = ",es25.17e3)') 'control%target_radius_rsun', star%control%target_radius_rsun
-      write(u,'(a," = ",l1)') 'control%specify_teff_flag', star%control%specify_teff_flag
-      write(u,'(a," = ",l1)') 'control%calibrate_star_flag', star%control%calibrate_star_flag
+      write(u,'(a," = ",a)') 'control%isochrone_file', '"'//trim(star%control%isochrone_file)//'"'
+      write(u,'(a," = ",l1)') 'control%rewind_short_file', star%control%rewind_short_file
+      write(u,'(a," = ",a)') 'control%history_columns_file', '"'//trim(star%control%history_columns_file)//'"'
+      write(u,'(a," = ",a)') 'control%profile_columns_file', '"'//trim(star%control%profile_columns_file)//'"'
+      write(u,'(a," = ",i0)') 'control%pulse_gyre_interval', star%control%pulse_gyre_interval
+      write(u,'(a," = ",l1)') 'control%use_laol89_tables', star%control%use_laol89_tables
+      write(u,'(a," = ",l1)') 'control%use_opal92_tables', star%control%use_opal92_tables
+      write(u,'(a," = ",l1)') 'control%use_opal95_tables', star%control%use_opal95_tables
+      write(u,'(a," = ",l1)') 'control%use_kurucz90_tables', star%control%use_kurucz90_tables
+      write(u,'(a," = ",l1)') 'control%use_alex95_tables', star%control%use_alex95_tables
+      write(u,'(a," = ",l1)') 'control%use_alex06_tables', star%control%use_alex06_tables
+      write(u,'(a," = ",l1)') 'control%use_pure_z_table', star%control%use_pure_z_table
       write(u,'(a," = ",es25.17e3)') 'control%laol_table_z1', star%control%laol_table_z1
       write(u,'(a," = ",es25.17e3)') 'control%laol_table_z2', star%control%laol_table_z2
       write(u,'(a," = ",es25.17e3)') 'control%opal_table_z1', star%control%opal_table_z1
@@ -167,13 +174,6 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'control%alex_table_z1', star%control%alex_table_z1
       write(u,'(a," = ",es25.17e3)') 'control%kurucz_table_z1', star%control%kurucz_table_z1
       write(u,'(a," = ",es25.17e3)') 'control%kurucz_table_z2', star%control%kurucz_table_z2
-      write(u,'(a," = ",l1)') 'control%use_alex06_tables', star%control%use_alex06_tables
-      write(u,'(a," = ",l1)') 'control%use_laol89_tables', star%control%use_laol89_tables
-      write(u,'(a," = ",l1)') 'control%use_opal92_tables', star%control%use_opal92_tables
-      write(u,'(a," = ",l1)') 'control%use_opal95_tables', star%control%use_opal95_tables
-      write(u,'(a," = ",l1)') 'control%use_kurucz90_tables', star%control%use_kurucz90_tables
-      write(u,'(a," = ",l1)') 'control%use_alex95_tables', star%control%use_alex95_tables
-      write(u,'(a," = ",l1)') 'control%use_pure_z_table', star%control%use_pure_z_table
       write(u,'(a," = ",a)') 'control%laol_table_path', '"'//trim(star%control%laol_table_path)//'"'
       write(u,'(a," = ",a)') 'control%laol_table2_path', '"'//trim(star%control%laol_table2_path)//'"'
       write(u,'(a," = ",a)') 'control%opal95_table_path', '"'//trim(star%control%opal95_table_path)//'"'
@@ -203,6 +203,13 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",a)') 'control%allard_table_path', '"'//trim(star%control%allard_table_path)//'"'
       write(u,'(a," = ",a)') 'physics%star_history_name', '"'//trim(star%physics%star_history_name)//'"'
       write(u,'(a," = ",i0)') 'physics%profile_interval', star%physics%profile_interval
+      write(u,'(a," = ",a)') 'physics%profile_data_prefix', '"'//trim(star%physics%profile_data_prefix)//'"'
+      write(u,'(a," = ",l1)') 'physics%write_profile_flag', star%physics%write_profile_flag
+      write(u,'(a," = ",l1)') 'physics%write_pulse_flag', star%physics%write_pulse_flag
+      write(u,'(a," = ",a)') 'physics%pulse_format', '"'//trim(star%physics%pulse_format)//'"'
+      write(u,'(a," = ",i0)') 'physics%terminal_interval', star%physics%terminal_interval
+      write(u,'(a," = ",a)') 'physics%log_output_file', '"'//trim(star%physics%log_output_file)//'"'
+      write(u,'(a," = ",l1)') 'physics%compute_neutrino_fluxes', star%physics%compute_neutrino_fluxes
       write(u,'(a," = ",es25.17e3)') 'physics%solar_mass_cgs', star%physics%solar_mass_cgs
       write(u,'(a," = ",es25.17e3)') 'physics%solar_luminosity_cgs', star%physics%solar_luminosity_cgs
       write(u,'(a," = ",es25.17e3)') 'physics%solar_radius_cgs', star%physics%solar_radius_cgs
@@ -210,61 +217,42 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'physics%nu_max_sun', star%physics%nu_max_sun
       write(u,'(a," = ",es25.17e3)') 'physics%delta_nu_sun', star%physics%delta_nu_sun
       write(u,'(a," = ",es25.17e3)') 'physics%Teff_sun', star%physics%Teff_sun
-      write(u,'(a," = ",a)') 'physics%profile_data_prefix', '"'//trim(star%physics%profile_data_prefix)//'"'
-      write(u,'(a," = ",a)') 'physics%log_output_file', '"'//trim(star%physics%log_output_file)//'"'
-      write(u,'(a," = ",a)') 'physics%pulse_format', '"'//trim(star%physics%pulse_format)//'"'
-      write(u,'(a," = ",l1)') 'physics%write_profile_flag', star%physics%write_profile_flag
-      write(u,'(a," = ",l1)') 'physics%write_pulse_flag', star%physics%write_pulse_flag
-      write(u,'(a," = ",i0)') 'physics%terminal_interval', star%physics%terminal_interval
-      write(u,'(a," = ",l1)') 'physics%compute_neutrino_fluxes', star%physics%compute_neutrino_fluxes
       do i1 = 1, 14
       write(u,'(a," = ",es25.17e3)') 'physics%timestep_factors('//itoa(i1)//')', star%physics%timestep_factors(i1)
       end do
+      write(u,'(a," = ",es25.17e3)') 'physics%max_domega_global', star%physics%max_domega_global
+      write(u,'(a," = ",l1)') 'physics%use_structure_dt_limits', star%physics%use_structure_dt_limits
+      write(u,'(a," = ",l1)') 'physics%use_envelope_triangle_dt', star%physics%use_envelope_triangle_dt
+      do i1 = 1, 12
+      write(u,'(a," = ",es25.17e3)') 'physics%chi_grid_scale('//itoa(i1)//')', star%physics%chi_grid_scale(i1)
+      end do
+      do i2 = 1, 2
+      do i1 = 1, 5
+      write(u,'(a," = ",es25.17e3)') 'physics%solver_tolerances('//itoa(i1)//','//itoa(i2)//')', star%physics%solver_tolerances(i1,i2)
+      end do
+      end do
+      write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_start', star%physics%solver_underrelax_start
+      write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_increment', star%physics%solver_underrelax_increment
+      write(u,'(a," = ",i0)') 'physics%max_iter_level1', star%physics%max_iter_level1
+      write(u,'(a," = ",i0)') 'physics%max_iter_level2', star%physics%max_iter_level2
+      write(u,'(a," = ",i0)') 'physics%max_iter_level3', star%physics%max_iter_level3
+      write(u,'(a," = ",i0)') 'physics%max_iter_level4', star%physics%max_iter_level4
+      write(u,'(a," = ",l1)') 'physics%improved_first_guess_flag', star%physics%improved_first_guess_flag
       do i1 = 1, 5
       write(u,'(a," = ",es25.17e3)') 'physics%nuclear_logT_cutoffs('//itoa(i1)//')', star%physics%nuclear_logT_cutoffs(i1)
       end do
       write(u,'(a," = ",es25.17e3)') 'physics%saha_log10t_cutoff', star%physics%saha_log10t_cutoff
+      write(u,'(a," = ",es25.17e3)') 'physics%gradient_logt_cutoff', star%physics%gradient_logt_cutoff
       write(u,'(a," = ",es25.17e3)') 'physics%rezone_env_logt0', star%physics%rezone_env_logt0
       write(u,'(a," = ",es25.17e3)') 'physics%rezone_env_logt1', star%physics%rezone_env_logt1
-      write(u,'(a," = ",es25.17e3)') 'physics%gradient_logt_cutoff', star%physics%gradient_logt_cutoff
       write(u,'(a," = ",es25.17e3)') 'physics%envelope_store_log_temperature', star%physics%envelope_store_log_temperature
       write(u,'(a," = ",es25.17e3)') 'physics%weak_screening_threshold', star%physics%weak_screening_threshold
-      write(u,'(a," = ",es25.17e3)') 'physics%envelope_logp_step', star%physics%envelope_logp_step
-      write(u,'(a," = ",l1)') 'physics%core_overshoot_active', star%physics%core_overshoot_active
-      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_core', star%physics%overshoot_alpha_core
-      write(u,'(a," = ",l1)') 'physics%envelope_overshoot_active', star%physics%envelope_overshoot_active
-      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_envelope', star%physics%overshoot_alpha_envelope
-      write(u,'(a," = ",l1)') 'physics%intermediate_overshoot_active', star%physics%intermediate_overshoot_active
-      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_min', star%physics%overshoot_alpha_min
-      write(u,'(a," = ",l1)') 'physics%adiabatic_overshoot_active', star%physics%adiabatic_overshoot_active
-      write(u,'(a," = ",l1)') 'physics%overshoot_max_extent_flag', star%physics%overshoot_max_extent_flag
-      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_beta_core', star%physics%overshoot_beta_core
-      write(u,'(a," = ",l1)') 'physics%use_semiconvection', star%physics%use_semiconvection
-      write(u,'(a," = ",es25.17e3)') 'physics%fpft_average_weight', star%physics%fpft_average_weight
-      write(u,'(a," = ",i0)') 'physics%fpft_iter1', star%physics%fpft_iter1
-      write(u,'(a," = ",i0)') 'physics%fpft_iter2', star%physics%fpft_iter2
-      write(u,'(a," = ",l1)') 'physics%rotation_active', star%physics%rotation_active
-      write(u,'(a," = ",es25.17e3)') 'physics%cz_rotation_law_exponent', star%physics%cz_rotation_law_exponent
-      write(u,'(a," = ",l1)') 'physics%instability_transport_active', star%physics%instability_transport_active
-      write(u,'(a," = ",l1)') 'physics%set_initial_omega', star%physics%set_initial_omega
-      write(u,'(a," = ",es25.17e3)') 'physics%initial_omega', star%physics%initial_omega
-      write(u,'(a," = ",es25.17e3)') 'physics%mass_accretion_rate', star%physics%mass_accretion_rate
-      write(u,'(a," = ",es25.17e3)') 'physics%accretion_cz_fraction', star%physics%accretion_cz_fraction
-      write(u,'(a," = ",es25.17e3)') 'physics%accretion_total_fraction', star%physics%accretion_total_fraction
-      do i1 = 1, 15
-      write(u,'(a," = ",es25.17e3)') 'physics%accreted_composition('//itoa(i1)//')', star%physics%accreted_composition(i1)
-      end do
-      write(u,'(a," = ",es25.17e3)') 'physics%reimers_scaling_factor', star%physics%reimers_scaling_factor
-      write(u,'(a," = ",l1)') 'physics%use_reimers_wind', star%physics%use_reimers_wind
-      write(u,'(a," = ",l1)') 'physics%use_mass_accretion', star%physics%use_mass_accretion
-      write(u,'(a," = ",i0)') 'physics%max_iter_level4', star%physics%max_iter_level4
-      write(u,'(a," = ",l1)') 'physics%improved_first_guess_flag', star%physics%improved_first_guess_flag
+      write(u,'(a," = ",l1)') 'physics%use_itoh_neutrino_loss', star%physics%use_itoh_neutrino_loss
       write(u,'(a," = ",l1)') 'physics%calc_neutrinos', star%physics%calc_neutrinos
-      write(u,'(a," = ",es25.17e3)') 'physics%li6_rate_scale', star%physics%li6_rate_scale
-      write(u,'(a," = ",es25.17e3)') 'physics%li7_rate_scale', star%physics%li7_rate_scale
-      write(u,'(a," = ",es25.17e3)') 'physics%be9_pg_rate_scale', star%physics%be9_pg_rate_scale
-      write(u,'(a," = ",es25.17e3)') 'physics%be9_pd_rate_scale', star%physics%be9_pd_rate_scale
-      write(u,'(a," = ",es25.17e3)') 'physics%be9_palpha_rate_scale', star%physics%be9_palpha_rate_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%min_abundance', star%physics%min_abundance
+      write(u,'(a," = ",es25.17e3)') 'physics%absolute_tolerance', star%physics%absolute_tolerance
+      write(u,'(a," = ",es25.17e3)') 'physics%relative_tolerance', star%physics%relative_tolerance
+      write(u,'(a," = ",i0)') 'physics%max_burn_iterations', star%physics%max_burn_iterations
       do i1 = 1, 11
       write(u,'(a," = ",es25.17e3)') 'physics%cross_section_scale('//itoa(i1)//')', star%physics%cross_section_scale(i1)
       end do
@@ -281,51 +269,37 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'physics%be7p_s_double_prime_scale', star%physics%be7p_s_double_prime_scale
       write(u,'(a," = ",es25.17e3)') 'physics%n15_pg_scale', star%physics%n15_pg_scale
       write(u,'(a," = ",es25.17e3)') 'physics%n15_pa_scale', star%physics%n15_pa_scale
-      write(u,'(a," = ",l1)') 'physics%use_itoh_neutrino_loss', star%physics%use_itoh_neutrino_loss
-      write(u,'(a," = ",l1)') 'physics%calc_envelope_flag', star%physics%calc_envelope_flag
-      write(u,'(a," = ",l1)') 'physics%use_extended_composition', star%physics%use_extended_composition
-      write(u,'(a," = ",es25.17e3)') 'physics%spot_filling_factor', star%physics%spot_filling_factor
-      write(u,'(a," = ",es25.17e3)') 'physics%spot_temp_contrast', star%physics%spot_temp_contrast
-      write(u,'(a," = ",l1)') 'physics%spot_depth_varies', star%physics%spot_depth_varies
-      write(u,'(a," = ",es25.17e3)') 'physics%disk_locking_age_gyr', star%physics%disk_locking_age_gyr
-      write(u,'(a," = ",es25.17e3)') 'physics%disk_omega_rad_s', star%physics%disk_omega_rad_s
-      write(u,'(a," = ",l1)') 'physics%disk_locking_active', star%physics%disk_locking_active
+      write(u,'(a," = ",es25.17e3)') 'physics%li6_rate_scale', star%physics%li6_rate_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%li7_rate_scale', star%physics%li7_rate_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%be9_pg_rate_scale', star%physics%be9_pg_rate_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%be9_pd_rate_scale', star%physics%be9_pd_rate_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%be9_palpha_rate_scale', star%physics%be9_palpha_rate_scale
+      write(u,'(a," = ",i0)') 'physics%opal_eos_vintage', star%physics%opal_eos_vintage
+      write(u,'(a," = ",a)') 'physics%opal_eos_table_path', '"'//trim(star%physics%opal_eos_table_path)//'"'
       write(u,'(a," = ",l1)') 'physics%use_mhd_eos', star%physics%use_mhd_eos
+      write(u,'(a," = ",l1)') 'physics%use_scv_eos', star%physics%use_scv_eos
+      write(u,'(a," = ",l1)') 'physics%use_debye_huckel_correction', star%physics%use_debye_huckel_correction
+      write(u,'(a," = ",es25.17e3)') 'physics%debye_huckel_eta_min', star%physics%debye_huckel_eta_min
+      write(u,'(a," = ",es25.17e3)') 'physics%debye_huckel_eta_max', star%physics%debye_huckel_eta_max
+      write(u,'(a," = ",l1)') 'physics%use_numerical_derivatives', star%physics%use_numerical_derivatives
       write(u,'(a," = ",es25.17e3)') 'physics%metal_fraction_match_tolerance', star%physics%metal_fraction_match_tolerance
-      write(u,'(a," = ",l1)') 'physics%monte_carlo_active', star%physics%monte_carlo_active
-      write(u,'(a," = ",i0)') 'physics%mc_run_start', star%physics%mc_run_start
-      write(u,'(a," = ",i0)') 'physics%mc_run_end', star%physics%mc_run_end
-      do i2 = 1, 2
-      do i1 = 1, 5
-      write(u,'(a," = ",es25.17e3)') 'physics%solver_tolerances('//itoa(i1)//','//itoa(i2)//')', star%physics%solver_tolerances(i1,i2)
-      end do
-      end do
-      write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_start', star%physics%solver_underrelax_start
-      write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_increment', star%physics%solver_underrelax_increment
-      do i1 = 1, 12
-      write(u,'(a," = ",es25.17e3)') 'physics%chi_grid_scale('//itoa(i1)//')', star%physics%chi_grid_scale(i1)
-      end do
-      write(u,'(a," = ",i0)') 'physics%max_iter_level1', star%physics%max_iter_level1
-      write(u,'(a," = ",i0)') 'physics%max_iter_level2', star%physics%max_iter_level2
-      write(u,'(a," = ",i0)') 'physics%max_iter_level3', star%physics%max_iter_level3
-      write(u,'(a," = ",es25.17e3)') 'physics%diffusion_timestep_factor', star%physics%diffusion_timestep_factor
-      write(u,'(a," = ",es25.17e3)') 'physics%convergence_tolerance', star%physics%convergence_tolerance
-      write(u,'(a," = ",i0)') 'physics%num_rotation_structure_iters', star%physics%num_rotation_structure_iters
-      write(u,'(a," = ",i0)') 'physics%max_diffusion_iters', star%physics%max_diffusion_iters
-      write(u,'(a," = ",es25.17e3)') 'physics%settling_tolerance', star%physics%settling_tolerance
-      write(u,'(a," = ",i0)') 'physics%coulomb_log_choice', star%physics%coulomb_log_choice
-      write(u,'(a," = ",i0)') 'physics%settling_num_iterations', star%physics%settling_num_iterations
-      write(u,'(a," = ",l1)') 'physics%diffuse_helium_active', star%physics%diffuse_helium_active
-      write(u,'(a," = ",es25.17e3)') 'physics%settling_timestep_fraction', star%physics%settling_timestep_fraction
-      write(u,'(a," = ",es25.17e3)') 'physics%hydrogen_diffusion_floor', star%physics%hydrogen_diffusion_floor
-      write(u,'(a," = ",es25.17e3)') 'physics%helium_diffusion_min', star%physics%helium_diffusion_min
-      write(u,'(a," = ",l1)') 'physics%use_thoul_fit', star%physics%use_thoul_fit
-      write(u,'(a," = ",es25.17e3)') 'physics%settling_y_factor', star%physics%settling_y_factor
-      write(u,'(a," = ",es25.17e3)') 'physics%settling_z_factor', star%physics%settling_z_factor
-      write(u,'(a," = ",l1)') 'physics%use_thoul_diffusion', star%physics%use_thoul_diffusion
-      write(u,'(a," = ",l1)') 'physics%use_diffusion_z', star%physics%use_diffusion_z
-      write(u,'(a," = ",l1)') 'physics%use_new_diffusion_routines', star%physics%use_new_diffusion_routines
-      write(u,'(a," = ",l1)') 'physics%diffuse_lithium', star%physics%diffuse_lithium
+      write(u,'(a," = ",es25.17e3)') 'physics%molecular_opacity_logt_min', star%physics%molecular_opacity_logt_min
+      write(u,'(a," = ",es25.17e3)') 'physics%molecular_opacity_logt_max', star%physics%molecular_opacity_logt_max
+      write(u,'(a," = ",es25.17e3)') 'physics%laol_extrapolation_tolerance', star%physics%laol_extrapolation_tolerance
+      write(u,'(a," = ",l1)') 'physics%use_conductive_opacity', star%physics%use_conductive_opacity
+      write(u,'(a," = ",es25.17e3)') 'physics%envelope_logp_step', star%physics%envelope_logp_step
+      write(u,'(a," = ",l1)') 'physics%core_overshoot_active', star%physics%core_overshoot_active
+      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_core', star%physics%overshoot_alpha_core
+      write(u,'(a," = ",l1)') 'physics%envelope_overshoot_active', star%physics%envelope_overshoot_active
+      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_envelope', star%physics%overshoot_alpha_envelope
+      write(u,'(a," = ",l1)') 'physics%intermediate_overshoot_active', star%physics%intermediate_overshoot_active
+      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_alpha_min', star%physics%overshoot_alpha_min
+      write(u,'(a," = ",l1)') 'physics%adiabatic_overshoot_active', star%physics%adiabatic_overshoot_active
+      write(u,'(a," = ",l1)') 'physics%overshoot_max_extent_flag', star%physics%overshoot_max_extent_flag
+      write(u,'(a," = ",es25.17e3)') 'physics%overshoot_beta_core', star%physics%overshoot_beta_core
+      write(u,'(a," = ",l1)') 'physics%use_semiconvection', star%physics%use_semiconvection
+      write(u,'(a," = ",i0)') 'physics%atm_choice', star%physics%atm_choice
+      write(u,'(a," = ",l1)') 'physics%calc_envelope_flag', star%physics%calc_envelope_flag
       write(u,'(a," = ",es25.17e3)') 'physics%atm_error_tol', star%physics%atm_error_tol
       write(u,'(a," = ",es25.17e3)') 'physics%atm_step_initial', star%physics%atm_step_initial
       write(u,'(a," = ",es25.17e3)') 'physics%atm_step_begin', star%physics%atm_step_begin
@@ -338,22 +312,34 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'physics%tolerance_fraction', star%physics%tolerance_fraction
       write(u,'(a," = ",i0)') 'physics%max_stage_index', star%physics%max_stage_index
       write(u,'(a," = ",i0)') 'physics%extrap_order', star%physics%extrap_order
-      write(u,'(a," = ",i0)') 'physics%atm_choice', star%physics%atm_choice
-      do i1 = 1, 12
-      write(u,'(a," = ",es25.17e3)') 'physics%mixture_weights_seed('//itoa(i1)//')', star%physics%mixture_weights_seed(i1)
-      end do
       write(u,'(a," = ",es25.17e3)') 'physics%tri_delta_teffl', star%physics%tri_delta_teffl
       write(u,'(a," = ",es25.17e3)') 'physics%tri_delta_logl', star%physics%tri_delta_logl
       write(u,'(a," = ",l1)') 'physics%new_triangle_init_flag', star%physics%new_triangle_init_flag
-      write(u,'(a," = ",es25.17e3)') 'physics%max_domega_global', star%physics%max_domega_global
-      write(u,'(a," = ",l1)') 'physics%use_structure_dt_limits', star%physics%use_structure_dt_limits
       write(u,'(a," = ",es25.17e3)') 'physics%atm_step_size', star%physics%atm_step_size
       write(u,'(a," = ",es25.17e3)') 'physics%envelope_step_size', star%physics%envelope_step_size
-      write(u,'(a," = ",l1)') 'physics%helium_flash_active', star%physics%helium_flash_active
-      write(u,'(a," = ",es25.17e3)') 'physics%new_species_value', star%physics%new_species_value
-      write(u,'(a," = ",i0)') 'physics%new_species_index', star%physics%new_species_index
-      write(u,'(a," = ",l1)') 'physics%rescale_species_active', star%physics%rescale_species_active
-      write(u,'(a," = ",l1)') 'physics%value_relative_to_h', star%physics%value_relative_to_h
+      write(u,'(a," = ",es25.17e3)') 'physics%allard_target_feh', star%physics%allard_target_feh
+      write(u,'(a," = ",es25.17e3)') 'physics%allard_target_alpha', star%physics%allard_target_alpha
+      write(u,'(a," = ",l1)') 'physics%allard_use_tau100', star%physics%allard_use_tau100
+      write(u,'(a," = ",es25.17e3)') 'physics%spot_filling_factor', star%physics%spot_filling_factor
+      write(u,'(a," = ",es25.17e3)') 'physics%spot_temp_contrast', star%physics%spot_temp_contrast
+      write(u,'(a," = ",l1)') 'physics%spot_depth_varies', star%physics%spot_depth_varies
+      write(u,'(a," = ",l1)') 'physics%rotation_active', star%physics%rotation_active
+      write(u,'(a," = ",l1)') 'physics%set_initial_omega', star%physics%set_initial_omega
+      write(u,'(a," = ",es25.17e3)') 'physics%initial_omega', star%physics%initial_omega
+      write(u,'(a," = ",es25.17e3)') 'physics%cz_rotation_law_exponent', star%physics%cz_rotation_law_exponent
+      write(u,'(a," = ",l1)') 'physics%instability_transport_active', star%physics%instability_transport_active
+      write(u,'(a," = ",es25.17e3)') 'physics%fpft_average_weight', star%physics%fpft_average_weight
+      write(u,'(a," = ",i0)') 'physics%fpft_iter1', star%physics%fpft_iter1
+      write(u,'(a," = ",i0)') 'physics%fpft_iter2', star%physics%fpft_iter2
+      write(u,'(a," = ",i0)') 'physics%num_rotation_structure_iters', star%physics%num_rotation_structure_iters
+      write(u,'(a," = ",i0)') 'physics%max_diffusion_iters', star%physics%max_diffusion_iters
+      write(u,'(a," = ",es25.17e3)') 'physics%diffusion_timestep_factor', star%physics%diffusion_timestep_factor
+      write(u,'(a," = ",es25.17e3)') 'physics%convergence_tolerance', star%physics%convergence_tolerance
+      write(u,'(a," = ",l1)') 'physics%velocity_form_correction', star%physics%velocity_form_correction
+      write(u,'(a," = ",l1)') 'physics%use_diffusion_advection_transport', star%physics%use_diffusion_advection_transport
+      write(u,'(a," = ",l1)') 'physics%no_am_transport_in_core', star%physics%no_am_transport_in_core
+      write(u,'(a," = ",l1)') 'physics%force_solid_body_rotation', star%physics%force_solid_body_rotation
+      write(u,'(a," = ",i0)') 'physics%solid_body_mode_flag', star%physics%solid_body_mode_flag
       write(u,'(a," = ",es25.17e3)') 'physics%difad_velocity_scale', star%physics%difad_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'physics%mixing_velocity_scale', star%physics%mixing_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'physics%es_velocity_scale', star%physics%es_velocity_scale
@@ -366,35 +352,15 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'physics%solberg_hoiland_velocity_scale', star%physics%solberg_hoiland_velocity_scale
       write(u,'(a," = ",es25.17e3)') 'physics%solberg_hoiland_mixing_scale', star%physics%solberg_hoiland_mixing_scale
       write(u,'(a," = ",i0)') 'physics%gsf_inhibition_mode', star%physics%gsf_inhibition_mode
-      write(u,'(a," = ",es25.17e3)') 'physics%min_abundance', star%physics%min_abundance
-      write(u,'(a," = ",es25.17e3)') 'physics%absolute_tolerance', star%physics%absolute_tolerance
-      write(u,'(a," = ",es25.17e3)') 'physics%relative_tolerance', star%physics%relative_tolerance
-      write(u,'(a," = ",i0)') 'physics%max_burn_iterations', star%physics%max_burn_iterations
-      write(u,'(a," = ",l1)') 'physics%extend_core_inward', star%physics%extend_core_inward
-      write(u,'(a," = ",i0)') 'physics%num_core_shells_added', star%physics%num_core_shells_added
-      write(u,'(a," = ",es25.17e3)') 'physics%core_mass_reduction_factor', star%physics%core_mass_reduction_factor
-      write(u,'(a," = ",l1)') 'physics%use_numerical_derivatives', star%physics%use_numerical_derivatives
-      write(u,'(a," = ",l1)') 'physics%use_scv_eos', star%physics%use_scv_eos
-      write(u,'(a," = ",l1)') 'physics%use_debye_huckel_correction', star%physics%use_debye_huckel_correction
-      write(u,'(a," = ",es25.17e3)') 'physics%debye_huckel_eta_min', star%physics%debye_huckel_eta_min
-      write(u,'(a," = ",es25.17e3)') 'physics%debye_huckel_eta_max', star%physics%debye_huckel_eta_max
-      write(u,'(a," = ",es25.17e3)') 'physics%molecular_opacity_logt_min', star%physics%molecular_opacity_logt_min
-      write(u,'(a," = ",es25.17e3)') 'physics%molecular_opacity_logt_max', star%physics%molecular_opacity_logt_max
-      write(u,'(a," = ",es25.17e3)') 'physics%laol_extrapolation_tolerance', star%physics%laol_extrapolation_tolerance
-      write(u,'(a," = ",a)') 'physics%opal_eos_table_path', '"'//trim(star%physics%opal_eos_table_path)//'"'
-      write(u,'(a," = ",i0)') 'physics%opal_eos_vintage', star%physics%opal_eos_vintage
-      write(u,'(a," = ",l1)') 'physics%use_conductive_opacity', star%physics%use_conductive_opacity
-      write(u,'(a," = ",l1)') 'physics%velocity_form_correction', star%physics%velocity_form_correction
-      write(u,'(a," = ",l1)') 'physics%use_diffusion_advection_transport', star%physics%use_diffusion_advection_transport
-      write(u,'(a," = ",l1)') 'physics%no_am_transport_in_core', star%physics%no_am_transport_in_core
-      write(u,'(a," = ",es25.17e3)') 'physics%allard_target_feh', star%physics%allard_target_feh
-      write(u,'(a," = ",es25.17e3)') 'physics%allard_target_alpha', star%physics%allard_target_alpha
-      write(u,'(a," = ",l1)') 'physics%allard_use_tau100', star%physics%allard_use_tau100
-      write(u,'(a," = ",l1)') 'physics%force_solid_body_rotation', star%physics%force_solid_body_rotation
-      write(u,'(a," = ",i0)') 'physics%solid_body_mode_flag', star%physics%solid_body_mode_flag
-      write(u,'(a," = ",es25.17e3)') 'physics%constant_mixing_coeff', star%physics%constant_mixing_coeff
-      write(u,'(a," = ",es25.17e3)') 'physics%constant_settling_reduction', star%physics%constant_settling_reduction
-      write(u,'(a," = ",l1)') 'physics%use_envelope_triangle_dt', star%physics%use_envelope_triangle_dt
+      write(u,'(a," = ",l1)') 'physics%use_constant_background_diffusion', star%physics%use_constant_background_diffusion
+      write(u,'(a," = ",es25.17e3)') 'physics%constant_background_diffusion_coeff', star%physics%constant_background_diffusion_coeff
+      write(u,'(a," = ",l1)') 'physics%use_wind_torque', star%physics%use_wind_torque
+      write(u,'(a," = ",a)') 'physics%wind_law_name', '"'//trim(star%physics%wind_law_name)//'"'
+      write(u,'(a," = ",es25.17e3)') 'physics%wind_law_index', star%physics%wind_law_index
+      write(u,'(a," = ",es25.17e3)') 'physics%wind_law_constant', star%physics%wind_law_constant
+      write(u,'(a," = ",es25.17e3)') 'physics%wind_saturation_omega', star%physics%wind_saturation_omega
+      write(u,'(a," = ",es25.17e3)') 'physics%solar_omega_sat', star%physics%solar_omega_sat
+      write(u,'(a," = ",l1)') 'physics%use_pmm_wind_law', star%physics%use_pmm_wind_law
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_exponent_a', star%physics%pmm_exponent_a
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_exponent_b', star%physics%pmm_exponent_b
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_exponent_c', star%physics%pmm_exponent_c
@@ -404,40 +370,56 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_solar_pressure', star%physics%pmm_solar_pressure
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_solar_omega', star%physics%pmm_solar_omega
       write(u,'(a," = ",es25.17e3)') 'physics%pmm_solar_turnover_timescale', star%physics%pmm_solar_turnover_timescale
-      write(u,'(a," = ",l1)') 'physics%use_pmm_wind_law', star%physics%use_pmm_wind_law
       write(u,'(a," = ",l1)') 'physics%scale_by_rossby_number', star%physics%scale_by_rossby_number
       write(u,'(a," = ",l1)') 'physics%scale_by_b_field', star%physics%scale_by_b_field
-      write(u,'(a," = ",a)') 'physics%wind_law_name', '"'//trim(star%physics%wind_law_name)//'"'
-      write(u,'(a," = ",es25.17e3)') 'physics%wind_law_index', star%physics%wind_law_index
-      write(u,'(a," = ",es25.17e3)') 'physics%wind_law_constant', star%physics%wind_law_constant
-      write(u,'(a," = ",es25.17e3)') 'physics%wind_saturation_omega', star%physics%wind_saturation_omega
-      write(u,'(a," = ",es25.17e3)') 'physics%solar_omega_sat', star%physics%solar_omega_sat
-      write(u,'(a," = ",l1)') 'physics%use_wind_torque', star%physics%use_wind_torque
-      write(u,'(a," = ",es25.17e3)') 'physics%constant_background_diffusion_coeff', star%physics%constant_background_diffusion_coeff
-      write(u,'(a," = ",l1)') 'physics%use_constant_background_diffusion', star%physics%use_constant_background_diffusion
-      write(u,'(a," = ",a)') 'buffer%surface_composition_file', '"'//trim(surface_composition_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%stored_change_file', '"'//trim(stored_change_file)//'"'
-      do i1 = 1, 2
-      write(u,'(a," = ",a)') 'buffer%run_description('//itoa(i1)//')', '"'//trim(run_description(i1))//'"'
+      write(u,'(a," = ",l1)') 'physics%disk_locking_active', star%physics%disk_locking_active
+      write(u,'(a," = ",es25.17e3)') 'physics%disk_locking_age_gyr', star%physics%disk_locking_age_gyr
+      write(u,'(a," = ",es25.17e3)') 'physics%disk_omega_rad_s', star%physics%disk_omega_rad_s
+      write(u,'(a," = ",l1)') 'physics%use_mass_accretion', star%physics%use_mass_accretion
+      write(u,'(a," = ",es25.17e3)') 'physics%mass_accretion_rate', star%physics%mass_accretion_rate
+      write(u,'(a," = ",es25.17e3)') 'physics%accretion_cz_fraction', star%physics%accretion_cz_fraction
+      write(u,'(a," = ",es25.17e3)') 'physics%accretion_total_fraction', star%physics%accretion_total_fraction
+      do i1 = 1, 15
+      write(u,'(a," = ",es25.17e3)') 'physics%accreted_composition('//itoa(i1)//')', star%physics%accreted_composition(i1)
       end do
-      write(u,'(a," = ",l1)') 'buffer%report_solver_diagnostics', report_solver_diagnostics
-      write(u,'(a," = ",l1)') 'buffer%use_new_nuclear_rates', use_new_nuclear_rates
-      write(u,'(a," = ",es25.17e3)') 'buffer%li6_rate_value', li6_rate_value
-      write(u,'(a," = ",es25.17e3)') 'buffer%li7_rate_value', li7_rate_value
-      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value1', be9_rate_value1
-      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value2', be9_rate_value2
-      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value3', be9_rate_value3
-      write(u,'(a," = ",l1)') 'buffer%scale_li6_rate', scale_li6_rate
-      write(u,'(a," = ",l1)') 'buffer%scale_li7_rate', scale_li7_rate
-      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate1', scale_be9_rate1
-      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate2', scale_be9_rate2
-      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate3', scale_be9_rate3
-      do i1 = 1, 17
-      write(u,'(a," = ",es25.17e3)') 'buffer%cross_section_ratios('//itoa(i1)//')', cross_section_ratios(i1)
+      write(u,'(a," = ",l1)') 'physics%use_reimers_wind', star%physics%use_reimers_wind
+      write(u,'(a," = ",es25.17e3)') 'physics%reimers_scaling_factor', star%physics%reimers_scaling_factor
+      write(u,'(a," = ",l1)') 'physics%diffuse_helium_active', star%physics%diffuse_helium_active
+      write(u,'(a," = ",l1)') 'physics%use_diffusion_z', star%physics%use_diffusion_z
+      write(u,'(a," = ",l1)') 'physics%diffuse_lithium', star%physics%diffuse_lithium
+      write(u,'(a," = ",l1)') 'physics%use_thoul_diffusion', star%physics%use_thoul_diffusion
+      write(u,'(a," = ",l1)') 'physics%use_thoul_fit', star%physics%use_thoul_fit
+      write(u,'(a," = ",l1)') 'physics%use_new_diffusion_routines', star%physics%use_new_diffusion_routines
+      write(u,'(a," = ",es25.17e3)') 'physics%settling_y_factor', star%physics%settling_y_factor
+      write(u,'(a," = ",es25.17e3)') 'physics%settling_z_factor', star%physics%settling_z_factor
+      write(u,'(a," = ",es25.17e3)') 'physics%settling_tolerance', star%physics%settling_tolerance
+      write(u,'(a," = ",i0)') 'physics%settling_num_iterations', star%physics%settling_num_iterations
+      write(u,'(a," = ",es25.17e3)') 'physics%settling_timestep_fraction', star%physics%settling_timestep_fraction
+      write(u,'(a," = ",i0)') 'physics%coulomb_log_choice', star%physics%coulomb_log_choice
+      write(u,'(a," = ",es25.17e3)') 'physics%hydrogen_diffusion_floor', star%physics%hydrogen_diffusion_floor
+      write(u,'(a," = ",es25.17e3)') 'physics%helium_diffusion_min', star%physics%helium_diffusion_min
+      write(u,'(a," = ",es25.17e3)') 'physics%constant_mixing_coeff', star%physics%constant_mixing_coeff
+      write(u,'(a," = ",es25.17e3)') 'physics%constant_settling_reduction', star%physics%constant_settling_reduction
+      write(u,'(a," = ",l1)') 'physics%use_extended_composition', star%physics%use_extended_composition
+      do i1 = 1, 12
+      write(u,'(a," = ",es25.17e3)') 'physics%mixture_weights_seed('//itoa(i1)//')', star%physics%mixture_weights_seed(i1)
       end do
-      write(u,'(a," = ",i0)') 'buffer%envelope_print_points', envelope_print_points
+      write(u,'(a," = ",l1)') 'physics%rescale_species_active', star%physics%rescale_species_active
+      write(u,'(a," = ",es25.17e3)') 'physics%new_species_value', star%physics%new_species_value
+      write(u,'(a," = ",i0)') 'physics%new_species_index', star%physics%new_species_index
+      write(u,'(a," = ",l1)') 'physics%value_relative_to_h', star%physics%value_relative_to_h
+      write(u,'(a," = ",l1)') 'physics%extend_core_inward', star%physics%extend_core_inward
+      write(u,'(a," = ",i0)') 'physics%num_core_shells_added', star%physics%num_core_shells_added
+      write(u,'(a," = ",es25.17e3)') 'physics%core_mass_reduction_factor', star%physics%core_mass_reduction_factor
+      write(u,'(a," = ",l1)') 'physics%helium_flash_active', star%physics%helium_flash_active
+      write(u,'(a," = ",l1)') 'physics%monte_carlo_active', star%physics%monte_carlo_active
+      write(u,'(a," = ",i0)') 'physics%mc_run_start', star%physics%mc_run_start
+      write(u,'(a," = ",i0)') 'physics%mc_run_end', star%physics%mc_run_end
       do i1 = 1, 50
       write(u,'(a," = ",i0)') 'buffer%run_kind('//itoa(i1)//')', run_kind(i1)
+      end do
+      do i1 = 1, 2
+      write(u,'(a," = ",a)') 'buffer%run_description('//itoa(i1)//')', '"'//trim(run_description(i1))//'"'
       end do
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'buffer%rescale_mass('//itoa(i1)//')', rescale_mass(i1)
@@ -451,37 +433,26 @@ subroutine dump_controls(star, u)
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'buffer%rescale_core_mass('//itoa(i1)//')', rescale_core_mass(i1)
       end do
-      write(u,'(a," = ",l1)') 'buffer%envelope_generation_flag', envelope_generation_flag
-      write(u,'(a," = ",a)') 'buffer%change_species_name', '"'//trim(change_species_name)//'"'
-      write(u,'(a," = ",a)') 'buffer%new_species_value_mode', '"'//trim(new_species_value_mode)//'"'
-      write(u,'(a," = ",a)') 'buffer%cno_mixture_name', '"'//trim(cno_mixture_name)//'"'
-      write(u,'(a," = ",a)') 'buffer%isotope_mixture_name', '"'//trim(isotope_mixture_name)//'"'
       write(u,'(a," = ",i0)') 'buffer%mixture_change_mode', mixture_change_mode
+      write(u,'(a," = ",a)') 'buffer%cno_mixture_name', '"'//trim(cno_mixture_name)//'"'
+      write(u,'(a," = ",es25.17e3)') 'buffer%target_metal_fraction', target_metal_fraction
       write(u,'(a," = ",i0)') 'buffer%isotope_change_mode', isotope_change_mode
+      write(u,'(a," = ",a)') 'buffer%isotope_mixture_name', '"'//trim(isotope_mixture_name)//'"'
       write(u,'(a," = ",es25.17e3)') 'buffer%n14_to_n15_ratio', n14_to_n15_ratio
       write(u,'(a," = ",es25.17e3)') 'buffer%o16_to_o17_ratio', o16_to_o17_ratio
-      write(u,'(a," = ",es25.17e3)') 'buffer%target_metal_fraction', target_metal_fraction
       write(u,'(a," = ",es25.17e3)') 'buffer%initial_b10_fraction', initial_b10_fraction
       write(u,'(a," = ",es25.17e3)') 'buffer%initial_b11_fraction', initial_b11_fraction
-      write(u,'(a," = ",es25.17e3)') 'buffer%coupling_factor', coupling_factor
-      write(u,'(a," = ",i0)') 'buffer%enable_eddington_sweet', enable_eddington_sweet
-      write(u,'(a," = ",i0)') 'buffer%enable_mu_gradient', enable_mu_gradient
-      write(u,'(a," = ",es25.17e3)') 'buffer%mu_gradient_scale', mu_gradient_scale
-      write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
-      write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
-      write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos
+      write(u,'(a," = ",a)') 'buffer%surface_composition_file', '"'//trim(surface_composition_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%stored_change_file', '"'//trim(stored_change_file)//'"'
+      write(u,'(a," = ",i0)') 'buffer%envelope_print_points', envelope_print_points
       write(u,'(a," = ",es25.17e3)') 'buffer%opal95_z2', opal95_z2
       write(u,'(a," = ",es25.17e3)') 'buffer%alex_z2', alex_z2
       write(u,'(a," = ",a)') 'buffer%opal95_eos_table_path', '"'//trim(opal95_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2001_eos_table_path', '"'//trim(opal2001_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2006_eos_table_path', '"'//trim(opal2006_eos_table_path)//'"'
-      write(u,'(a," = ",es25.17e3)') 'buffer%pmm_norm_mdot', pmm_norm_mdot
-      write(u,'(a," = ",l1)') 'buffer%use_rotation_scaled_solar_wind', use_rotation_scaled_solar_wind
-      write(u,'(a," = ",l1)') 'buffer%use_pmm_wind', use_pmm_wind
-      write(u,'(a," = ",es25.17e3)') 'buffer%pmm_omega_sat', pmm_omega_sat
-      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dx', flag_dx
-      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dw', flag_dw
-      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dz', flag_dz
+      write(u,'(a," = ",l1)') 'buffer%report_solver_diagnostics', report_solver_diagnostics
+      write(u,'(a," = ",l1)') 'buffer%use_new_rate_variables', use_new_rate_variables
+      write(u,'(a," = ",l1)') 'buffer%use_structure_time_limits', use_structure_time_limits
       write(u,'(a," = ",es25.17e3)') 'buffer%time_core_min', time_core_min
       write(u,'(a," = ",es25.17e3)') 'buffer%time_dl', time_dl
       write(u,'(a," = ",es25.17e3)') 'buffer%time_dp', time_dp
@@ -498,6 +469,9 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'buffer%time_dy_shell', time_dy_shell
       write(u,'(a," = ",es25.17e3)') 'buffer%time_dy_total', time_dy_total
       write(u,'(a," = ",es25.17e3)') 'buffer%time_max_dt_frac', time_max_dt_frac
+      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dx', flag_dx
+      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dw', flag_dw
+      write(u,'(a," = ",es25.17e3)') 'buffer%flag_dz', flag_dz
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_czbase_fine_width', tol_czbase_fine_width
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dl_max', tol_dl_max
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dm_max', tol_dm_max
@@ -507,8 +481,20 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dp_env_max', tol_dp_env_max
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dx_max', tol_dx_max
       write(u,'(a," = ",es25.17e3)') 'buffer%tol_dz_max', tol_dz_max
-      write(u,'(a," = ",l1)') 'buffer%use_structure_time_limits', use_structure_time_limits
-      write(u,'(a," = ",l1)') 'buffer%use_new_rate_variables', use_new_rate_variables
+      write(u,'(a," = ",l1)') 'buffer%use_new_nuclear_rates', use_new_nuclear_rates
+      do i1 = 1, 17
+      write(u,'(a," = ",es25.17e3)') 'buffer%cross_section_ratios('//itoa(i1)//')', cross_section_ratios(i1)
+      end do
+      write(u,'(a," = ",l1)') 'buffer%scale_li6_rate', scale_li6_rate
+      write(u,'(a," = ",l1)') 'buffer%scale_li7_rate', scale_li7_rate
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate1', scale_be9_rate1
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate2', scale_be9_rate2
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate3', scale_be9_rate3
+      write(u,'(a," = ",es25.17e3)') 'buffer%li6_rate_value', li6_rate_value
+      write(u,'(a," = ",es25.17e3)') 'buffer%li7_rate_value', li7_rate_value
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value1', be9_rate_value1
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value2', be9_rate_value2
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value3', be9_rate_value3
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_pp', s0_pp
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_he3he3', s0_he3he3
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_he3he4', s0_he3he4
@@ -534,4 +520,18 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",es25.17e3)') 'buffer%s0pp_be7_p', s0pp_be7_p
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_pep', s0_pep
       write(u,'(a," = ",es25.17e3)') 'buffer%s0_hep', s0_hep
+      write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
+      write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
+      write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos
+      write(u,'(a," = ",l1)') 'buffer%envelope_generation_flag', envelope_generation_flag
+      write(u,'(a," = ",es25.17e3)') 'buffer%coupling_factor', coupling_factor
+      write(u,'(a," = ",i0)') 'buffer%enable_eddington_sweet', enable_eddington_sweet
+      write(u,'(a," = ",i0)') 'buffer%enable_mu_gradient', enable_mu_gradient
+      write(u,'(a," = ",es25.17e3)') 'buffer%mu_gradient_scale', mu_gradient_scale
+      write(u,'(a," = ",es25.17e3)') 'buffer%pmm_norm_mdot', pmm_norm_mdot
+      write(u,'(a," = ",l1)') 'buffer%use_rotation_scaled_solar_wind', use_rotation_scaled_solar_wind
+      write(u,'(a," = ",l1)') 'buffer%use_pmm_wind', use_pmm_wind
+      write(u,'(a," = ",es25.17e3)') 'buffer%pmm_omega_sat', pmm_omega_sat
+      write(u,'(a," = ",a)') 'buffer%change_species_name', '"'//trim(change_species_name)//'"'
+      write(u,'(a," = ",a)') 'buffer%new_species_value_mode', '"'//trim(new_species_value_mode)//'"'
 end subroutine dump_controls

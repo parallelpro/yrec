@@ -132,6 +132,7 @@ def main():
     by_name = {m["name"]: m for m in members}
     for r in rows:
         r["code"] = r["canonical"].lower()
+        r["doc"] = by_name[r["code"]]["doc"] if r["code"] in by_name else ""
         r["inlist"] = r["proposed_name"]
         r["alias_list"] = [a for a in r["aliases"].split(",") if a]
     deck_rows = [r for r in rows if r["status"] != "derived"]

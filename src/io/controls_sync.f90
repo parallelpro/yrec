@@ -15,109 +15,42 @@
 !   call arm_run_copies(s)         (each run copy <- its control)
 ! All take the star as an argument s.
 module controls_sync
-      use controls_buffer, only: star_history_name, history_columns_file, &
-           profile_columns_file, profile_interval, log_L_upper_limit, &
-           log_L_lower_limit, Teff_upper_limit, Teff_lower_limit, &
-           log_g_upper_limit, log_g_lower_limit, nu_max_upper_limit, &
-           nu_max_lower_limit, solar_mass_cgs, solar_luminosity_cgs, &
-           solar_radius_cgs, G_cgs, nu_max_sun, delta_nu_sun, Teff_sun, &
-           profile_data_prefix, inlist_used_file, first_model_file, &
-           last_model_file, log_output_file, dynamics_file, isochrone_file, &
-           surface_composition_file, stored_change_file, control_nml_file, &
-           physics_nml_file, run_description, pulse_format, &
-           write_profile_flag, write_pulse_flag, terminal_interval, &
-           set_initial_model_number, report_solver_diagnostics, &
-           compute_neutrino_fluxes, timestep_factors, nuclear_logT_cutoffs, &
-           saha_log10t_cutoff, rezone_env_logt0, rezone_env_logt1, &
-           gradient_logt_cutoff, envelope_store_log_temperature, &
-           use_new_nuclear_rates, weak_screening_threshold, &
-           envelope_logp_step, core_overshoot_active, overshoot_alpha_core, &
-           envelope_overshoot_active, overshoot_alpha_envelope, &
-           intermediate_overshoot_active, overshoot_alpha_min, &
-           adiabatic_overshoot_active, overshoot_max_extent_flag, &
-           overshoot_beta_core, use_semiconvection, fpft_average_weight, &
-           fpft_iter1, fpft_iter2, rotation_active, &
-           cz_rotation_law_exponent, instability_transport_active, &
-           set_initial_omega, initial_omega, mass_accretion_rate, &
-           accretion_cz_fraction, accretion_total_fraction, &
-           accreted_composition, reimers_scaling_factor, use_reimers_wind, &
-           use_mass_accretion, max_iter_level4, improved_first_guess_flag, &
-           calc_neutrinos, li6_rate_scale, li7_rate_scale, &
-           be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale, &
-           li6_rate_value, li7_rate_value, be9_rate_value1, &
-           be9_rate_value2, be9_rate_value3, scale_li6_rate, &
-           scale_li7_rate, scale_be9_rate1, scale_be9_rate2, &
-           scale_be9_rate3, cross_section_ratios, cross_section_scale, &
-           extra_cross_section_scale, s_prime_scale, s_double_prime_scale, &
-           be7p_s_prime_scale, be7p_s_double_prime_scale, n15_pg_scale, &
-           n15_pa_scale, use_itoh_neutrino_loss, calc_envelope_flag, &
-           use_extended_composition, spot_filling_factor, &
-           spot_temp_contrast, spot_depth_varies, disk_locking_age_gyr, &
-           disk_omega_rad_s, disk_locking_active, target_end_age, &
-           timestep_override, central_deuterium_stop, &
-           central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
-           timestep_override_active, use_mhd_eos, &
-           metal_fraction_match_tolerance, envelope_print_points, &
-           monte_carlo_active, mc_run_start, mc_run_end, solver_tolerances, &
-           solver_underrelax_start, solver_underrelax_increment, &
-           chi_grid_scale, max_iter_level1, max_iter_level2, &
-           max_iter_level3, diffusion_timestep_factor, &
-           convergence_tolerance, num_rotation_structure_iters, &
-           max_diffusion_iters, settling_tolerance, coulomb_log_choice, &
-           settling_num_iterations, diffuse_helium_active, &
-           settling_timestep_fraction, hydrogen_diffusion_floor, &
-           helium_diffusion_min, use_thoul_fit, settling_y_factor, &
-           settling_z_factor, use_thoul_diffusion, use_diffusion_z, &
-           use_new_diffusion_routines, diffuse_lithium, atm_error_tol, &
-           atm_step_initial, atm_step_begin, atm_step_min, atm_step_max, &
-           env_error_tol, env_step_begin, env_step_min, env_step_max, &
-           tolerance_fraction, max_stage_index, extrap_order, atm_choice, &
-           mixture_weights_seed, monte_carlo_file1_path, &
-           monte_carlo_file2_path, pulse_gyre_interval, tri_delta_teffl, &
-           tri_delta_logl, new_triangle_init_flag, run_kind, rescale_mass, &
-           rescale_x, rescale_z, rescale_core_mass, rescale_params, &
-           rescale_kind, num_models, num_runs, first_call_flag, &
-           max_domega_global, use_structure_dt_limits, atm_step_size, &
-           envelope_step_size, envelope_generation_flag, &
-           helium_flash_active, change_species_name, &
-           new_species_value_mode, new_species_value, new_species_index, &
-           rescale_species_active, value_relative_to_h, cno_mixture_name, &
-           isotope_mixture_name, mixture_change_mode, isotope_change_mode, &
-           change_cno_mixture_active, change_isotope_ratios_active, &
-           target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-           target_oxygen_cno_fraction, c12_to_c13_ratio, n14_to_n15_ratio, &
-           o16_to_o17_ratio, o16_to_o18_ratio, target_metal_fraction, &
+      use controls_buffer, only: num_runs, run_kind, num_models, &
+           first_call_flag, set_initial_model_number, run_description, &
+           rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
+           rescale_kind, rescale_params, initial_x_array, initial_z_array, &
+           mixing_length_array, senv0_array, has_senv0_array, use_z_ramp, &
+           rescale_core_z, rescale_z_mix1, rescale_z_mix2, target_end_age, &
+           central_deuterium_stop, central_hydrogen_stop, &
+           central_helium_stop, end_age_stop_active, timestep_override, &
+           timestep_override_active, log_L_upper_limit, log_L_lower_limit, &
+           Teff_upper_limit, Teff_lower_limit, log_g_upper_limit, &
+           log_g_lower_limit, nu_max_upper_limit, nu_max_lower_limit, &
+           calibrate_solar_model, calibrate_solar_zx, target_solar_age, &
+           target_solar_zx, luminosity_tolerance, radius_tolerance, &
+           zx_tolerance, calibrate_star_flag, specify_teff_flag, &
+           target_luminosity_lsun, target_star_luminosity_tolerance, &
+           target_teff, target_radius_rsun, mixture_change_mode, &
+           cno_mixture_name, target_carbon_cno_fraction, &
+           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, &
+           target_metal_fraction, change_cno_mixture_active, &
+           isotope_change_mode, isotope_mixture_name, c12_to_c13_ratio, &
+           n14_to_n15_ratio, o16_to_o17_ratio, o16_to_o18_ratio, &
            initial_h2_fraction, initial_he3_fraction, initial_li6_fraction, &
            initial_li7_fraction, initial_be9_fraction, &
-           initial_b10_fraction, initial_b11_fraction, coupling_factor, &
-           difad_velocity_scale, mixing_velocity_scale, es_velocity_scale, &
-           gsf_velocity_scale, secular_shear_velocity_scale, &
-           critical_reynolds, enable_eddington_sweet, enable_mu_gradient, &
-           mu_gradient_scale, es_mixing_scale, secular_shear_mixing_scale, &
-           gsf_mixing_scale, solberg_hoiland_velocity_scale, &
-           solberg_hoiland_mixing_scale, gsf_inhibition_mode, &
-           min_abundance, absolute_tolerance, relative_tolerance, &
-           max_burn_iterations, extend_core_inward, num_core_shells_added, &
-           core_mass_reduction_factor, rewind_short_file, &
-           isochrone_output_active, initial_x_array, initial_z_array, &
-           mixing_length_array, senv0_array, has_senv0_array, &
-           luminosity_tolerance, radius_tolerance, zx_tolerance, &
-           target_solar_zx, target_solar_age, calibrate_solar_model, &
-           calibrate_solar_zx, rescale_core_z, rescale_z_mix1, &
-           rescale_z_mix2, use_z_ramp, target_luminosity_lsun, &
-           target_star_luminosity_tolerance, target_teff, &
-           target_radius_rsun, specify_teff_flag, calibrate_star_flag, &
-           use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
-           use_numerical_derivatives, use_scv_eos, &
-           use_debye_huckel_correction, debye_huckel_eta_min, &
-           debye_huckel_eta_max, laol_table_z1, laol_table_z2, &
-           opal_table_z1, opal_table_z2, opal95_single_table_z, &
-           alex_table_z1, opal95_z2, alex_z2, kurucz_table_z1, &
-           kurucz_table_z2, molecular_opacity_logt_min, &
-           molecular_opacity_logt_max, use_alex06_tables, &
-           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
-           use_kurucz90_tables, use_alex95_tables, &
-           laol_extrapolation_tolerance, use_pure_z_table, laol_table_path, &
+           initial_b10_fraction, initial_b11_fraction, &
+           change_isotope_ratios_active, control_nml_file, &
+           physics_nml_file, inlist_used_file, first_model_file, &
+           last_model_file, dynamics_file, monte_carlo_file1_path, &
+           monte_carlo_file2_path, isochrone_output_active, isochrone_file, &
+           rewind_short_file, surface_composition_file, stored_change_file, &
+           history_columns_file, profile_columns_file, pulse_gyre_interval, &
+           envelope_print_points, use_laol89_tables, use_opal92_tables, &
+           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           use_alex06_tables, use_pure_z_table, laol_table_z1, &
+           laol_table_z2, opal_table_z1, opal_table_z2, &
+           opal95_single_table_z, opal95_z2, alex_table_z1, alex_z2, &
+           kurucz_table_z1, kurucz_table_z2, laol_table_path, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
            opal92_table2_path, pure_z_table_path, alex06_table_path, &
            alex95_table_paths, kurucz_table_path, kurucz_table2_path, &
@@ -127,36 +60,101 @@ module controls_sync
            centre2_table_path, centre3_table_path, centre4_table_path, &
            centre5_table_path, opal95_eos_table_path, &
            opal2001_eos_table_path, opal2006_eos_table_path, &
-           opal_eos_table_path, opal_eos_vintage, atm_table_path, &
-           allard_table_path, use_conductive_opacity, &
-           velocity_form_correction, use_diffusion_advection_transport, &
-           no_am_transport_in_core, allard_target_feh, allard_target_alpha, &
-           allard_use_tau100, force_solid_body_rotation, &
-           solid_body_mode_flag, constant_mixing_coeff, &
-           constant_settling_reduction, use_envelope_triangle_dt, &
-           pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, pmm_exponent_d, &
-           pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
-           pmm_solar_pressure, pmm_solar_omega, &
-           pmm_solar_turnover_timescale, use_pmm_wind_law, &
-           use_rotation_scaled_solar_wind, use_pmm_wind, pmm_omega_sat, &
-           scale_by_rossby_number, scale_by_b_field, wind_law_name, &
-           wind_law_index, wind_law_constant, wind_saturation_omega, &
-           solar_omega_sat, use_wind_torque, &
-           constant_background_diffusion_coeff, &
-           use_constant_background_diffusion, flag_dx, flag_dw, flag_dz, &
-           time_core_min, time_dl, time_dp, time_dr, time_dt, &
-           time_dw_global, time_dw_mix, time_dx_core_frac, &
-           time_dx_core_tot, time_dx_shell, time_dx_total, &
-           time_dy_core_frac, time_dy_core_tot, time_dy_shell, &
-           time_dy_total, time_max_dt_frac, tol_czbase_fine_width, &
-           tol_dl_max, tol_dm_max, tol_dm_min, tol_dp_core_max, &
-           tol_dp_czbase_max, tol_dp_env_max, tol_dx_max, tol_dz_max, &
-           use_structure_time_limits, use_new_rate_variables, s0_pp, &
+           atm_table_path, allard_table_path, star_history_name, &
+           profile_interval, profile_data_prefix, write_profile_flag, &
+           write_pulse_flag, pulse_format, terminal_interval, &
+           log_output_file, report_solver_diagnostics, &
+           compute_neutrino_fluxes, solar_mass_cgs, solar_luminosity_cgs, &
+           solar_radius_cgs, G_cgs, nu_max_sun, delta_nu_sun, Teff_sun, &
+           timestep_factors, max_domega_global, use_structure_dt_limits, &
+           use_envelope_triangle_dt, use_new_rate_variables, &
+           use_structure_time_limits, time_core_min, time_dl, time_dp, &
+           time_dr, time_dt, time_dw_global, time_dw_mix, &
+           time_dx_core_frac, time_dx_core_tot, time_dx_shell, &
+           time_dx_total, time_dy_core_frac, time_dy_core_tot, &
+           time_dy_shell, time_dy_total, time_max_dt_frac, chi_grid_scale, &
+           flag_dx, flag_dw, flag_dz, tol_czbase_fine_width, tol_dl_max, &
+           tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
+           tol_dp_env_max, tol_dx_max, tol_dz_max, solver_tolerances, &
+           solver_underrelax_start, solver_underrelax_increment, &
+           max_iter_level1, max_iter_level2, max_iter_level3, &
+           max_iter_level4, improved_first_guess_flag, &
+           nuclear_logT_cutoffs, saha_log10t_cutoff, gradient_logt_cutoff, &
+           rezone_env_logt0, rezone_env_logt1, &
+           envelope_store_log_temperature, use_new_nuclear_rates, &
+           weak_screening_threshold, use_itoh_neutrino_loss, &
+           calc_neutrinos, min_abundance, absolute_tolerance, &
+           relative_tolerance, max_burn_iterations, cross_section_ratios, &
+           cross_section_scale, extra_cross_section_scale, s_prime_scale, &
+           s_double_prime_scale, be7p_s_prime_scale, &
+           be7p_s_double_prime_scale, n15_pg_scale, n15_pa_scale, &
+           li6_rate_scale, li7_rate_scale, be9_pg_rate_scale, &
+           be9_pd_rate_scale, be9_palpha_rate_scale, scale_li6_rate, &
+           scale_li7_rate, scale_be9_rate1, scale_be9_rate2, &
+           scale_be9_rate3, li6_rate_value, li7_rate_value, &
+           be9_rate_value1, be9_rate_value2, be9_rate_value3, s0_pp, &
            s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, s0_p_n14, s0_p_o16, &
            s0_be7_electron, s0_be7_p, s0_n15_p_c12_branch, &
            s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
            s0p_p_c13, s0p_p_n14, s0p_p_o16, s0pp_p_c12, s0pp_p_c13, &
-           s0pp_p_o16, s0p_be7_p, s0pp_be7_p, s0_pep, s0_hep
+           s0pp_p_o16, s0p_be7_p, s0pp_be7_p, s0_pep, s0_hep, &
+           use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
+           opal_eos_vintage, opal_eos_table_path, use_mhd_eos, use_scv_eos, &
+           use_debye_huckel_correction, debye_huckel_eta_min, &
+           debye_huckel_eta_max, use_numerical_derivatives, &
+           metal_fraction_match_tolerance, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max, laol_extrapolation_tolerance, &
+           use_conductive_opacity, envelope_logp_step, &
+           core_overshoot_active, overshoot_alpha_core, &
+           envelope_overshoot_active, overshoot_alpha_envelope, &
+           intermediate_overshoot_active, overshoot_alpha_min, &
+           adiabatic_overshoot_active, overshoot_max_extent_flag, &
+           overshoot_beta_core, use_semiconvection, atm_choice, &
+           calc_envelope_flag, atm_error_tol, atm_step_initial, &
+           atm_step_begin, atm_step_min, atm_step_max, env_error_tol, &
+           env_step_begin, env_step_min, env_step_max, tolerance_fraction, &
+           max_stage_index, extrap_order, tri_delta_teffl, tri_delta_logl, &
+           new_triangle_init_flag, atm_step_size, envelope_step_size, &
+           envelope_generation_flag, allard_target_feh, &
+           allard_target_alpha, allard_use_tau100, spot_filling_factor, &
+           spot_temp_contrast, spot_depth_varies, rotation_active, &
+           set_initial_omega, initial_omega, cz_rotation_law_exponent, &
+           instability_transport_active, fpft_average_weight, fpft_iter1, &
+           fpft_iter2, num_rotation_structure_iters, max_diffusion_iters, &
+           diffusion_timestep_factor, convergence_tolerance, &
+           velocity_form_correction, use_diffusion_advection_transport, &
+           no_am_transport_in_core, force_solid_body_rotation, &
+           solid_body_mode_flag, coupling_factor, difad_velocity_scale, &
+           mixing_velocity_scale, es_velocity_scale, gsf_velocity_scale, &
+           secular_shear_velocity_scale, critical_reynolds, &
+           enable_eddington_sweet, enable_mu_gradient, mu_gradient_scale, &
+           es_mixing_scale, secular_shear_mixing_scale, gsf_mixing_scale, &
+           solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
+           gsf_inhibition_mode, use_constant_background_diffusion, &
+           constant_background_diffusion_coeff, use_wind_torque, &
+           wind_law_name, wind_law_index, wind_law_constant, &
+           wind_saturation_omega, solar_omega_sat, use_pmm_wind_law, &
+           pmm_exponent_a, pmm_exponent_b, pmm_exponent_c, pmm_exponent_d, &
+           pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
+           pmm_solar_pressure, pmm_solar_omega, &
+           pmm_solar_turnover_timescale, scale_by_rossby_number, &
+           scale_by_b_field, use_rotation_scaled_solar_wind, use_pmm_wind, &
+           pmm_omega_sat, disk_locking_active, disk_locking_age_gyr, &
+           disk_omega_rad_s, use_mass_accretion, mass_accretion_rate, &
+           accretion_cz_fraction, accretion_total_fraction, &
+           accreted_composition, use_reimers_wind, reimers_scaling_factor, &
+           diffuse_helium_active, use_diffusion_z, diffuse_lithium, &
+           use_thoul_diffusion, use_thoul_fit, use_new_diffusion_routines, &
+           settling_y_factor, settling_z_factor, settling_tolerance, &
+           settling_num_iterations, settling_timestep_fraction, &
+           coulomb_log_choice, hydrogen_diffusion_floor, &
+           helium_diffusion_min, constant_mixing_coeff, &
+           constant_settling_reduction, use_extended_composition, &
+           mixture_weights_seed, rescale_species_active, &
+           change_species_name, new_species_value_mode, new_species_value, &
+           new_species_index, value_relative_to_h, extend_core_inward, &
+           num_core_shells_added, core_mass_reduction_factor, &
+           helium_flash_active, monte_carlo_active, mc_run_start, mc_run_end
       use star_info_lib, only: star_info, control_group_controls, physics_group_controls
       implicit none
       private
@@ -169,10 +167,34 @@ subroutine seed_controls_buffer(s)
 ! the declared defaults, whatever an earlier read left on s
       s%control = control_group_controls()
       s%physics = physics_group_controls()
-      star_history_name = s%physics%star_history_name
-      history_columns_file = s%control%history_columns_file
-      profile_columns_file = s%control%profile_columns_file
-      profile_interval = s%physics%profile_interval
+      num_runs = s%control%num_runs
+      run_kind = 1
+      num_models = s%control%num_models
+      first_call_flag = s%control%first_call_flag
+      set_initial_model_number = s%control%set_initial_model_number
+      run_description = repeat(achar(0), 256)
+      rescale_mass = 0.0d0
+      rescale_x = 0.0d0
+      rescale_z = 0.0d0
+      rescale_core_mass = 0.0d0
+      rescale_kind = s%control%rescale_kind
+      rescale_params = s%control%rescale_params
+      initial_x_array = s%control%initial_x_array
+      initial_z_array = s%control%initial_z_array
+      mixing_length_array = s%control%mixing_length_array
+      senv0_array = s%control%senv0_array
+      has_senv0_array = s%control%has_senv0_array
+      use_z_ramp = s%control%use_z_ramp
+      rescale_core_z = s%control%rescale_core_z
+      rescale_z_mix1 = s%control%rescale_z_mix1
+      rescale_z_mix2 = s%control%rescale_z_mix2
+      target_end_age = s%control%target_end_age
+      central_deuterium_stop = s%control%central_deuterium_stop
+      central_hydrogen_stop = s%control%central_hydrogen_stop
+      central_helium_stop = s%control%central_helium_stop
+      end_age_stop_active = s%control%end_age_stop_active
+      timestep_override = s%control%timestep_override
+      timestep_override_active = s%control%timestep_override_active
       log_L_upper_limit = s%control%log_L_upper_limit
       log_L_lower_limit = s%control%log_L_lower_limit
       Teff_upper_limit = s%control%Teff_upper_limit
@@ -181,197 +203,32 @@ subroutine seed_controls_buffer(s)
       log_g_lower_limit = s%control%log_g_lower_limit
       nu_max_upper_limit = s%control%nu_max_upper_limit
       nu_max_lower_limit = s%control%nu_max_lower_limit
-      solar_mass_cgs = s%physics%solar_mass_cgs
-      solar_luminosity_cgs = s%physics%solar_luminosity_cgs
-      solar_radius_cgs = s%physics%solar_radius_cgs
-      G_cgs = s%physics%G_cgs
-      nu_max_sun = s%physics%nu_max_sun
-      delta_nu_sun = s%physics%delta_nu_sun
-      Teff_sun = s%physics%Teff_sun
-      profile_data_prefix = s%physics%profile_data_prefix
-      inlist_used_file = s%control%inlist_used_file
-      first_model_file = s%control%first_model_file
-      last_model_file = s%control%last_model_file
-      log_output_file = s%physics%log_output_file
-      dynamics_file = s%control%dynamics_file
-      isochrone_file = s%control%isochrone_file
-      surface_composition_file = repeat(achar(0), 256)
-      stored_change_file = repeat(achar(0), 256)
-      control_nml_file = s%control%control_nml_file
-      physics_nml_file = s%control%physics_nml_file
-      run_description = repeat(achar(0), 256)
-      pulse_format = s%physics%pulse_format
-      write_profile_flag = s%physics%write_profile_flag
-      write_pulse_flag = s%physics%write_pulse_flag
-      terminal_interval = s%physics%terminal_interval
-      set_initial_model_number = s%control%set_initial_model_number
-      report_solver_diagnostics = .false.
-      compute_neutrino_fluxes = s%physics%compute_neutrino_fluxes
-      timestep_factors = s%physics%timestep_factors
-      nuclear_logT_cutoffs = s%physics%nuclear_logT_cutoffs
-      saha_log10t_cutoff = s%physics%saha_log10t_cutoff
-      rezone_env_logt0 = s%physics%rezone_env_logt0
-      rezone_env_logt1 = s%physics%rezone_env_logt1
-      gradient_logt_cutoff = s%physics%gradient_logt_cutoff
-      envelope_store_log_temperature = s%physics%envelope_store_log_temperature
-      use_new_nuclear_rates = .false.
-      weak_screening_threshold = s%physics%weak_screening_threshold
-      envelope_logp_step = s%physics%envelope_logp_step
-      core_overshoot_active = s%physics%core_overshoot_active
-      overshoot_alpha_core = s%physics%overshoot_alpha_core
-      envelope_overshoot_active = s%physics%envelope_overshoot_active
-      overshoot_alpha_envelope = s%physics%overshoot_alpha_envelope
-      intermediate_overshoot_active = s%physics%intermediate_overshoot_active
-      overshoot_alpha_min = s%physics%overshoot_alpha_min
-      adiabatic_overshoot_active = s%physics%adiabatic_overshoot_active
-      overshoot_max_extent_flag = s%physics%overshoot_max_extent_flag
-      overshoot_beta_core = s%physics%overshoot_beta_core
-      use_semiconvection = s%physics%use_semiconvection
-      fpft_average_weight = s%physics%fpft_average_weight
-      fpft_iter1 = s%physics%fpft_iter1
-      fpft_iter2 = s%physics%fpft_iter2
-      rotation_active = s%physics%rotation_active
-      cz_rotation_law_exponent = s%physics%cz_rotation_law_exponent
-      instability_transport_active = s%physics%instability_transport_active
-      set_initial_omega = s%physics%set_initial_omega
-      initial_omega = s%physics%initial_omega
-      mass_accretion_rate = s%physics%mass_accretion_rate
-      accretion_cz_fraction = s%physics%accretion_cz_fraction
-      accretion_total_fraction = s%physics%accretion_total_fraction
-      accreted_composition = s%physics%accreted_composition
-      reimers_scaling_factor = s%physics%reimers_scaling_factor
-      use_reimers_wind = s%physics%use_reimers_wind
-      use_mass_accretion = s%physics%use_mass_accretion
-      max_iter_level4 = s%physics%max_iter_level4
-      improved_first_guess_flag = s%physics%improved_first_guess_flag
-      calc_neutrinos = s%physics%calc_neutrinos
-      li6_rate_scale = s%physics%li6_rate_scale
-      li7_rate_scale = s%physics%li7_rate_scale
-      be9_pg_rate_scale = s%physics%be9_pg_rate_scale
-      be9_pd_rate_scale = s%physics%be9_pd_rate_scale
-      be9_palpha_rate_scale = s%physics%be9_palpha_rate_scale
-      li6_rate_value = 5.5d3
-      li7_rate_value = 5.2d1
-      be9_rate_value1 = 1.1d0
-      be9_rate_value2 = 1.5d4
-      be9_rate_value3 = 1.5d4
-      scale_li6_rate = .false.
-      scale_li7_rate = .false.
-      scale_be9_rate1 = .false.
-      scale_be9_rate2 = .false.
-      scale_be9_rate3 = .false.
-      cross_section_ratios = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
-      cross_section_scale = s%physics%cross_section_scale
-      extra_cross_section_scale = s%physics%extra_cross_section_scale
-      s_prime_scale = s%physics%s_prime_scale
-      s_double_prime_scale = s%physics%s_double_prime_scale
-      be7p_s_prime_scale = s%physics%be7p_s_prime_scale
-      be7p_s_double_prime_scale = s%physics%be7p_s_double_prime_scale
-      n15_pg_scale = s%physics%n15_pg_scale
-      n15_pa_scale = s%physics%n15_pa_scale
-      use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
-      calc_envelope_flag = s%physics%calc_envelope_flag
-      use_extended_composition = s%physics%use_extended_composition
-      spot_filling_factor = s%physics%spot_filling_factor
-      spot_temp_contrast = s%physics%spot_temp_contrast
-      spot_depth_varies = s%physics%spot_depth_varies
-      disk_locking_age_gyr = s%physics%disk_locking_age_gyr
-      disk_omega_rad_s = s%physics%disk_omega_rad_s
-      disk_locking_active = s%physics%disk_locking_active
-      target_end_age = s%control%target_end_age
-      timestep_override = s%control%timestep_override
-      central_deuterium_stop = s%control%central_deuterium_stop
-      central_hydrogen_stop = s%control%central_hydrogen_stop
-      central_helium_stop = s%control%central_helium_stop
-      end_age_stop_active = s%control%end_age_stop_active
-      timestep_override_active = s%control%timestep_override_active
-      use_mhd_eos = s%physics%use_mhd_eos
-      metal_fraction_match_tolerance = s%physics%metal_fraction_match_tolerance
-      envelope_print_points = 0
-      monte_carlo_active = s%physics%monte_carlo_active
-      mc_run_start = s%physics%mc_run_start
-      mc_run_end = s%physics%mc_run_end
-      solver_tolerances = s%physics%solver_tolerances
-      solver_underrelax_start = s%physics%solver_underrelax_start
-      solver_underrelax_increment = s%physics%solver_underrelax_increment
-      chi_grid_scale = s%physics%chi_grid_scale
-      max_iter_level1 = s%physics%max_iter_level1
-      max_iter_level2 = s%physics%max_iter_level2
-      max_iter_level3 = s%physics%max_iter_level3
-      diffusion_timestep_factor = s%physics%diffusion_timestep_factor
-      convergence_tolerance = s%physics%convergence_tolerance
-      num_rotation_structure_iters = s%physics%num_rotation_structure_iters
-      max_diffusion_iters = s%physics%max_diffusion_iters
-      settling_tolerance = s%physics%settling_tolerance
-      coulomb_log_choice = s%physics%coulomb_log_choice
-      settling_num_iterations = s%physics%settling_num_iterations
-      diffuse_helium_active = s%physics%diffuse_helium_active
-      settling_timestep_fraction = s%physics%settling_timestep_fraction
-      hydrogen_diffusion_floor = s%physics%hydrogen_diffusion_floor
-      helium_diffusion_min = s%physics%helium_diffusion_min
-      use_thoul_fit = s%physics%use_thoul_fit
-      settling_y_factor = s%physics%settling_y_factor
-      settling_z_factor = s%physics%settling_z_factor
-      use_thoul_diffusion = s%physics%use_thoul_diffusion
-      use_diffusion_z = s%physics%use_diffusion_z
-      use_new_diffusion_routines = s%physics%use_new_diffusion_routines
-      diffuse_lithium = s%physics%diffuse_lithium
-      atm_error_tol = s%physics%atm_error_tol
-      atm_step_initial = s%physics%atm_step_initial
-      atm_step_begin = s%physics%atm_step_begin
-      atm_step_min = s%physics%atm_step_min
-      atm_step_max = s%physics%atm_step_max
-      env_error_tol = s%physics%env_error_tol
-      env_step_begin = s%physics%env_step_begin
-      env_step_min = s%physics%env_step_min
-      env_step_max = s%physics%env_step_max
-      tolerance_fraction = s%physics%tolerance_fraction
-      max_stage_index = s%physics%max_stage_index
-      extrap_order = s%physics%extrap_order
-      atm_choice = s%physics%atm_choice
-      mixture_weights_seed = s%physics%mixture_weights_seed
-      monte_carlo_file1_path = s%control%monte_carlo_file1_path
-      monte_carlo_file2_path = s%control%monte_carlo_file2_path
-      pulse_gyre_interval = s%control%pulse_gyre_interval
-      tri_delta_teffl = s%physics%tri_delta_teffl
-      tri_delta_logl = s%physics%tri_delta_logl
-      new_triangle_init_flag = s%physics%new_triangle_init_flag
-      run_kind = 1
-      rescale_mass = 0.0d0
-      rescale_x = 0.0d0
-      rescale_z = 0.0d0
-      rescale_core_mass = 0.0d0
-      rescale_params = s%control%rescale_params
-      rescale_kind = s%control%rescale_kind
-      num_models = s%control%num_models
-      num_runs = s%control%num_runs
-      first_call_flag = s%control%first_call_flag
-      max_domega_global = s%physics%max_domega_global
-      use_structure_dt_limits = s%physics%use_structure_dt_limits
-      atm_step_size = s%physics%atm_step_size
-      envelope_step_size = s%physics%envelope_step_size
-      envelope_generation_flag = .false.
-      helium_flash_active = s%physics%helium_flash_active
-      change_species_name = '   '
-      new_species_value_mode = repeat(achar(0), 3)
-      new_species_value = s%physics%new_species_value
-      new_species_index = s%physics%new_species_index
-      rescale_species_active = s%physics%rescale_species_active
-      value_relative_to_h = s%physics%value_relative_to_h
-      cno_mixture_name = 'GS98'
-      isotope_mixture_name = 'L21'
+      calibrate_solar_model = s%control%calibrate_solar_model
+      calibrate_solar_zx = s%control%calibrate_solar_zx
+      target_solar_age = s%control%target_solar_age
+      target_solar_zx = s%control%target_solar_zx
+      luminosity_tolerance = s%control%luminosity_tolerance
+      radius_tolerance = s%control%radius_tolerance
+      zx_tolerance = s%control%zx_tolerance
+      calibrate_star_flag = s%control%calibrate_star_flag
+      specify_teff_flag = s%control%specify_teff_flag
+      target_luminosity_lsun = s%control%target_luminosity_lsun
+      target_star_luminosity_tolerance = s%control%target_star_luminosity_tolerance
+      target_teff = s%control%target_teff
+      target_radius_rsun = s%control%target_radius_rsun
       mixture_change_mode = 0
-      isotope_change_mode = 0
-      change_cno_mixture_active = s%control%change_cno_mixture_active
-      change_isotope_ratios_active = s%control%change_isotope_ratios_active
+      cno_mixture_name = 'GS98'
       target_carbon_cno_fraction = s%control%target_carbon_cno_fraction
       target_nitrogen_cno_fraction = s%control%target_nitrogen_cno_fraction
       target_oxygen_cno_fraction = s%control%target_oxygen_cno_fraction
+      target_metal_fraction = 0.02292d0
+      change_cno_mixture_active = s%control%change_cno_mixture_active
+      isotope_change_mode = 0
+      isotope_mixture_name = 'L21'
       c12_to_c13_ratio = s%control%c12_to_c13_ratio
       n14_to_n15_ratio = 411.9d0
       o16_to_o17_ratio = 471.4d0
       o16_to_o18_ratio = s%control%o16_to_o18_ratio
-      target_metal_fraction = 0.02292d0
       initial_h2_fraction = s%control%initial_h2_fraction
       initial_he3_fraction = s%control%initial_he3_fraction
       initial_li6_fraction = s%control%initial_li6_fraction
@@ -379,81 +236,41 @@ subroutine seed_controls_buffer(s)
       initial_be9_fraction = s%control%initial_be9_fraction
       initial_b10_fraction = 1.002d-9
       initial_b11_fraction = 4.405d-9
-      coupling_factor = 1.0d0
-      difad_velocity_scale = s%physics%difad_velocity_scale
-      mixing_velocity_scale = s%physics%mixing_velocity_scale
-      es_velocity_scale = s%physics%es_velocity_scale
-      gsf_velocity_scale = s%physics%gsf_velocity_scale
-      secular_shear_velocity_scale = s%physics%secular_shear_velocity_scale
-      critical_reynolds = s%physics%critical_reynolds
-      enable_eddington_sweet = 1
-      enable_mu_gradient = 1
-      mu_gradient_scale = 1.0d0
-      es_mixing_scale = s%physics%es_mixing_scale
-      secular_shear_mixing_scale = s%physics%secular_shear_mixing_scale
-      gsf_mixing_scale = s%physics%gsf_mixing_scale
-      solberg_hoiland_velocity_scale = s%physics%solberg_hoiland_velocity_scale
-      solberg_hoiland_mixing_scale = s%physics%solberg_hoiland_mixing_scale
-      gsf_inhibition_mode = s%physics%gsf_inhibition_mode
-      min_abundance = s%physics%min_abundance
-      absolute_tolerance = s%physics%absolute_tolerance
-      relative_tolerance = s%physics%relative_tolerance
-      max_burn_iterations = s%physics%max_burn_iterations
-      extend_core_inward = s%physics%extend_core_inward
-      num_core_shells_added = s%physics%num_core_shells_added
-      core_mass_reduction_factor = s%physics%core_mass_reduction_factor
-      rewind_short_file = s%control%rewind_short_file
+      change_isotope_ratios_active = s%control%change_isotope_ratios_active
+      control_nml_file = s%control%control_nml_file
+      physics_nml_file = s%control%physics_nml_file
+      inlist_used_file = s%control%inlist_used_file
+      first_model_file = s%control%first_model_file
+      last_model_file = s%control%last_model_file
+      dynamics_file = s%control%dynamics_file
+      monte_carlo_file1_path = s%control%monte_carlo_file1_path
+      monte_carlo_file2_path = s%control%monte_carlo_file2_path
       isochrone_output_active = s%control%isochrone_output_active
-      initial_x_array = s%control%initial_x_array
-      initial_z_array = s%control%initial_z_array
-      mixing_length_array = s%control%mixing_length_array
-      senv0_array = s%control%senv0_array
-      has_senv0_array = s%control%has_senv0_array
-      luminosity_tolerance = s%control%luminosity_tolerance
-      radius_tolerance = s%control%radius_tolerance
-      zx_tolerance = s%control%zx_tolerance
-      target_solar_zx = s%control%target_solar_zx
-      target_solar_age = s%control%target_solar_age
-      calibrate_solar_model = s%control%calibrate_solar_model
-      calibrate_solar_zx = s%control%calibrate_solar_zx
-      rescale_core_z = s%control%rescale_core_z
-      rescale_z_mix1 = s%control%rescale_z_mix1
-      rescale_z_mix2 = s%control%rescale_z_mix2
-      use_z_ramp = s%control%use_z_ramp
-      target_luminosity_lsun = s%control%target_luminosity_lsun
-      target_star_luminosity_tolerance = s%control%target_star_luminosity_tolerance
-      target_teff = s%control%target_teff
-      target_radius_rsun = s%control%target_radius_rsun
-      specify_teff_flag = s%control%specify_teff_flag
-      calibrate_star_flag = s%control%calibrate_star_flag
-      use_opal95_eos = .false.
-      use_opal2001_eos = .false.
-      use_opal2006_eos = .false.
-      use_numerical_derivatives = s%physics%use_numerical_derivatives
-      use_scv_eos = s%physics%use_scv_eos
-      use_debye_huckel_correction = s%physics%use_debye_huckel_correction
-      debye_huckel_eta_min = s%physics%debye_huckel_eta_min
-      debye_huckel_eta_max = s%physics%debye_huckel_eta_max
-      laol_table_z1 = s%control%laol_table_z1
-      laol_table_z2 = s%control%laol_table_z2
-      opal_table_z1 = s%control%opal_table_z1
-      opal_table_z2 = s%control%opal_table_z2
-      opal95_single_table_z = s%control%opal95_single_table_z
-      alex_table_z1 = s%control%alex_table_z1
-      opal95_z2 = 0
-      alex_z2 = 0
-      kurucz_table_z1 = s%control%kurucz_table_z1
-      kurucz_table_z2 = s%control%kurucz_table_z2
-      molecular_opacity_logt_min = s%physics%molecular_opacity_logt_min
-      molecular_opacity_logt_max = s%physics%molecular_opacity_logt_max
-      use_alex06_tables = s%control%use_alex06_tables
+      isochrone_file = s%control%isochrone_file
+      rewind_short_file = s%control%rewind_short_file
+      surface_composition_file = repeat(achar(0), 256)
+      stored_change_file = repeat(achar(0), 256)
+      history_columns_file = s%control%history_columns_file
+      profile_columns_file = s%control%profile_columns_file
+      pulse_gyre_interval = s%control%pulse_gyre_interval
+      envelope_print_points = 0
       use_laol89_tables = s%control%use_laol89_tables
       use_opal92_tables = s%control%use_opal92_tables
       use_opal95_tables = s%control%use_opal95_tables
       use_kurucz90_tables = s%control%use_kurucz90_tables
       use_alex95_tables = s%control%use_alex95_tables
-      laol_extrapolation_tolerance = s%physics%laol_extrapolation_tolerance
+      use_alex06_tables = s%control%use_alex06_tables
       use_pure_z_table = s%control%use_pure_z_table
+      laol_table_z1 = s%control%laol_table_z1
+      laol_table_z2 = s%control%laol_table_z2
+      opal_table_z1 = s%control%opal_table_z1
+      opal_table_z2 = s%control%opal_table_z2
+      opal95_single_table_z = s%control%opal95_single_table_z
+      opal95_z2 = 0
+      alex_table_z1 = s%control%alex_table_z1
+      alex_z2 = 0
+      kurucz_table_z1 = s%control%kurucz_table_z1
+      kurucz_table_z2 = s%control%kurucz_table_z2
       laol_table_path = s%control%laol_table_path
       laol_table2_path = s%control%laol_table2_path
       opal95_table_path = s%control%opal95_table_path
@@ -480,49 +297,31 @@ subroutine seed_controls_buffer(s)
       opal95_eos_table_path = repeat(achar(0), 256)
       opal2001_eos_table_path = repeat(achar(0), 256)
       opal2006_eos_table_path = repeat(achar(0), 256)
-      opal_eos_table_path = s%physics%opal_eos_table_path
-      opal_eos_vintage = s%physics%opal_eos_vintage
       atm_table_path = s%control%atm_table_path
       allard_table_path = s%control%allard_table_path
-      use_conductive_opacity = s%physics%use_conductive_opacity
-      velocity_form_correction = s%physics%velocity_form_correction
-      use_diffusion_advection_transport = s%physics%use_diffusion_advection_transport
-      no_am_transport_in_core = s%physics%no_am_transport_in_core
-      allard_target_feh = s%physics%allard_target_feh
-      allard_target_alpha = s%physics%allard_target_alpha
-      allard_use_tau100 = s%physics%allard_use_tau100
-      force_solid_body_rotation = s%physics%force_solid_body_rotation
-      solid_body_mode_flag = s%physics%solid_body_mode_flag
-      constant_mixing_coeff = s%physics%constant_mixing_coeff
-      constant_settling_reduction = s%physics%constant_settling_reduction
+      star_history_name = s%physics%star_history_name
+      profile_interval = s%physics%profile_interval
+      profile_data_prefix = s%physics%profile_data_prefix
+      write_profile_flag = s%physics%write_profile_flag
+      write_pulse_flag = s%physics%write_pulse_flag
+      pulse_format = s%physics%pulse_format
+      terminal_interval = s%physics%terminal_interval
+      log_output_file = s%physics%log_output_file
+      report_solver_diagnostics = .false.
+      compute_neutrino_fluxes = s%physics%compute_neutrino_fluxes
+      solar_mass_cgs = s%physics%solar_mass_cgs
+      solar_luminosity_cgs = s%physics%solar_luminosity_cgs
+      solar_radius_cgs = s%physics%solar_radius_cgs
+      G_cgs = s%physics%G_cgs
+      nu_max_sun = s%physics%nu_max_sun
+      delta_nu_sun = s%physics%delta_nu_sun
+      Teff_sun = s%physics%Teff_sun
+      timestep_factors = s%physics%timestep_factors
+      max_domega_global = s%physics%max_domega_global
+      use_structure_dt_limits = s%physics%use_structure_dt_limits
       use_envelope_triangle_dt = s%physics%use_envelope_triangle_dt
-      pmm_exponent_a = s%physics%pmm_exponent_a
-      pmm_exponent_b = s%physics%pmm_exponent_b
-      pmm_exponent_c = s%physics%pmm_exponent_c
-      pmm_exponent_d = s%physics%pmm_exponent_d
-      pmm_exponent_m = s%physics%pmm_exponent_m
-      pmm_norm_jdot = s%physics%pmm_norm_jdot
-      pmm_norm_mdot = 1.27d12
-      pmm_solar_pressure = s%physics%pmm_solar_pressure
-      pmm_solar_omega = s%physics%pmm_solar_omega
-      pmm_solar_turnover_timescale = s%physics%pmm_solar_turnover_timescale
-      use_pmm_wind_law = s%physics%use_pmm_wind_law
-      use_rotation_scaled_solar_wind = .false.
-      use_pmm_wind = .false.
-      pmm_omega_sat = 0
-      scale_by_rossby_number = s%physics%scale_by_rossby_number
-      scale_by_b_field = s%physics%scale_by_b_field
-      wind_law_name = s%physics%wind_law_name
-      wind_law_index = s%physics%wind_law_index
-      wind_law_constant = s%physics%wind_law_constant
-      wind_saturation_omega = s%physics%wind_saturation_omega
-      solar_omega_sat = s%physics%solar_omega_sat
-      use_wind_torque = s%physics%use_wind_torque
-      constant_background_diffusion_coeff = s%physics%constant_background_diffusion_coeff
-      use_constant_background_diffusion = s%physics%use_constant_background_diffusion
-      flag_dx = 0.05d0
-      flag_dw = 0.10d0
-      flag_dz = 0.05d0
+      use_new_rate_variables = .false.
+      use_structure_time_limits = .false.
       time_core_min = 1.0d-3
       time_dl = 2.0d-2
       time_dp = 4.0d-2
@@ -539,6 +338,10 @@ subroutine seed_controls_buffer(s)
       time_dy_shell = 0.1d0
       time_dy_total = 1.5d-3
       time_max_dt_frac = 1.5d0
+      chi_grid_scale = s%physics%chi_grid_scale
+      flag_dx = 0.05d0
+      flag_dw = 0.10d0
+      flag_dz = 0.05d0
       tol_czbase_fine_width = 0.0d0
       tol_dl_max = 0.02d0
       tol_dm_max = 0.08d0
@@ -548,8 +351,52 @@ subroutine seed_controls_buffer(s)
       tol_dp_env_max = 0.05d0
       tol_dx_max = 1.0d0
       tol_dz_max = 1.0d0
-      use_structure_time_limits = .false.
-      use_new_rate_variables = .false.
+      solver_tolerances = s%physics%solver_tolerances
+      solver_underrelax_start = s%physics%solver_underrelax_start
+      solver_underrelax_increment = s%physics%solver_underrelax_increment
+      max_iter_level1 = s%physics%max_iter_level1
+      max_iter_level2 = s%physics%max_iter_level2
+      max_iter_level3 = s%physics%max_iter_level3
+      max_iter_level4 = s%physics%max_iter_level4
+      improved_first_guess_flag = s%physics%improved_first_guess_flag
+      nuclear_logT_cutoffs = s%physics%nuclear_logT_cutoffs
+      saha_log10t_cutoff = s%physics%saha_log10t_cutoff
+      gradient_logt_cutoff = s%physics%gradient_logt_cutoff
+      rezone_env_logt0 = s%physics%rezone_env_logt0
+      rezone_env_logt1 = s%physics%rezone_env_logt1
+      envelope_store_log_temperature = s%physics%envelope_store_log_temperature
+      use_new_nuclear_rates = .false.
+      weak_screening_threshold = s%physics%weak_screening_threshold
+      use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
+      calc_neutrinos = s%physics%calc_neutrinos
+      min_abundance = s%physics%min_abundance
+      absolute_tolerance = s%physics%absolute_tolerance
+      relative_tolerance = s%physics%relative_tolerance
+      max_burn_iterations = s%physics%max_burn_iterations
+      cross_section_ratios = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
+      cross_section_scale = s%physics%cross_section_scale
+      extra_cross_section_scale = s%physics%extra_cross_section_scale
+      s_prime_scale = s%physics%s_prime_scale
+      s_double_prime_scale = s%physics%s_double_prime_scale
+      be7p_s_prime_scale = s%physics%be7p_s_prime_scale
+      be7p_s_double_prime_scale = s%physics%be7p_s_double_prime_scale
+      n15_pg_scale = s%physics%n15_pg_scale
+      n15_pa_scale = s%physics%n15_pa_scale
+      li6_rate_scale = s%physics%li6_rate_scale
+      li7_rate_scale = s%physics%li7_rate_scale
+      be9_pg_rate_scale = s%physics%be9_pg_rate_scale
+      be9_pd_rate_scale = s%physics%be9_pd_rate_scale
+      be9_palpha_rate_scale = s%physics%be9_palpha_rate_scale
+      scale_li6_rate = .false.
+      scale_li7_rate = .false.
+      scale_be9_rate1 = .false.
+      scale_be9_rate2 = .false.
+      scale_be9_rate3 = .false.
+      li6_rate_value = 5.5d3
+      li7_rate_value = 5.2d1
+      be9_rate_value1 = 1.1d0
+      be9_rate_value2 = 1.5d4
+      be9_rate_value3 = 1.5d4
       s0_pp = 4.01d-22
       s0_he3he3 = 5.21d3
       s0_he3he4 = 5.6d-1
@@ -575,14 +422,183 @@ subroutine seed_controls_buffer(s)
       s0pp_be7_p = -2.288d-7
       s0_pep = 3.5734d-6
       s0_hep = 8.6d-20
+      use_opal95_eos = .false.
+      use_opal2001_eos = .false.
+      use_opal2006_eos = .false.
+      opal_eos_vintage = s%physics%opal_eos_vintage
+      opal_eos_table_path = s%physics%opal_eos_table_path
+      use_mhd_eos = s%physics%use_mhd_eos
+      use_scv_eos = s%physics%use_scv_eos
+      use_debye_huckel_correction = s%physics%use_debye_huckel_correction
+      debye_huckel_eta_min = s%physics%debye_huckel_eta_min
+      debye_huckel_eta_max = s%physics%debye_huckel_eta_max
+      use_numerical_derivatives = s%physics%use_numerical_derivatives
+      metal_fraction_match_tolerance = s%physics%metal_fraction_match_tolerance
+      molecular_opacity_logt_min = s%physics%molecular_opacity_logt_min
+      molecular_opacity_logt_max = s%physics%molecular_opacity_logt_max
+      laol_extrapolation_tolerance = s%physics%laol_extrapolation_tolerance
+      use_conductive_opacity = s%physics%use_conductive_opacity
+      envelope_logp_step = s%physics%envelope_logp_step
+      core_overshoot_active = s%physics%core_overshoot_active
+      overshoot_alpha_core = s%physics%overshoot_alpha_core
+      envelope_overshoot_active = s%physics%envelope_overshoot_active
+      overshoot_alpha_envelope = s%physics%overshoot_alpha_envelope
+      intermediate_overshoot_active = s%physics%intermediate_overshoot_active
+      overshoot_alpha_min = s%physics%overshoot_alpha_min
+      adiabatic_overshoot_active = s%physics%adiabatic_overshoot_active
+      overshoot_max_extent_flag = s%physics%overshoot_max_extent_flag
+      overshoot_beta_core = s%physics%overshoot_beta_core
+      use_semiconvection = s%physics%use_semiconvection
+      atm_choice = s%physics%atm_choice
+      calc_envelope_flag = s%physics%calc_envelope_flag
+      atm_error_tol = s%physics%atm_error_tol
+      atm_step_initial = s%physics%atm_step_initial
+      atm_step_begin = s%physics%atm_step_begin
+      atm_step_min = s%physics%atm_step_min
+      atm_step_max = s%physics%atm_step_max
+      env_error_tol = s%physics%env_error_tol
+      env_step_begin = s%physics%env_step_begin
+      env_step_min = s%physics%env_step_min
+      env_step_max = s%physics%env_step_max
+      tolerance_fraction = s%physics%tolerance_fraction
+      max_stage_index = s%physics%max_stage_index
+      extrap_order = s%physics%extrap_order
+      tri_delta_teffl = s%physics%tri_delta_teffl
+      tri_delta_logl = s%physics%tri_delta_logl
+      new_triangle_init_flag = s%physics%new_triangle_init_flag
+      atm_step_size = s%physics%atm_step_size
+      envelope_step_size = s%physics%envelope_step_size
+      envelope_generation_flag = .false.
+      allard_target_feh = s%physics%allard_target_feh
+      allard_target_alpha = s%physics%allard_target_alpha
+      allard_use_tau100 = s%physics%allard_use_tau100
+      spot_filling_factor = s%physics%spot_filling_factor
+      spot_temp_contrast = s%physics%spot_temp_contrast
+      spot_depth_varies = s%physics%spot_depth_varies
+      rotation_active = s%physics%rotation_active
+      set_initial_omega = s%physics%set_initial_omega
+      initial_omega = s%physics%initial_omega
+      cz_rotation_law_exponent = s%physics%cz_rotation_law_exponent
+      instability_transport_active = s%physics%instability_transport_active
+      fpft_average_weight = s%physics%fpft_average_weight
+      fpft_iter1 = s%physics%fpft_iter1
+      fpft_iter2 = s%physics%fpft_iter2
+      num_rotation_structure_iters = s%physics%num_rotation_structure_iters
+      max_diffusion_iters = s%physics%max_diffusion_iters
+      diffusion_timestep_factor = s%physics%diffusion_timestep_factor
+      convergence_tolerance = s%physics%convergence_tolerance
+      velocity_form_correction = s%physics%velocity_form_correction
+      use_diffusion_advection_transport = s%physics%use_diffusion_advection_transport
+      no_am_transport_in_core = s%physics%no_am_transport_in_core
+      force_solid_body_rotation = s%physics%force_solid_body_rotation
+      solid_body_mode_flag = s%physics%solid_body_mode_flag
+      coupling_factor = 1.0d0
+      difad_velocity_scale = s%physics%difad_velocity_scale
+      mixing_velocity_scale = s%physics%mixing_velocity_scale
+      es_velocity_scale = s%physics%es_velocity_scale
+      gsf_velocity_scale = s%physics%gsf_velocity_scale
+      secular_shear_velocity_scale = s%physics%secular_shear_velocity_scale
+      critical_reynolds = s%physics%critical_reynolds
+      enable_eddington_sweet = 1
+      enable_mu_gradient = 1
+      mu_gradient_scale = 1.0d0
+      es_mixing_scale = s%physics%es_mixing_scale
+      secular_shear_mixing_scale = s%physics%secular_shear_mixing_scale
+      gsf_mixing_scale = s%physics%gsf_mixing_scale
+      solberg_hoiland_velocity_scale = s%physics%solberg_hoiland_velocity_scale
+      solberg_hoiland_mixing_scale = s%physics%solberg_hoiland_mixing_scale
+      gsf_inhibition_mode = s%physics%gsf_inhibition_mode
+      use_constant_background_diffusion = s%physics%use_constant_background_diffusion
+      constant_background_diffusion_coeff = s%physics%constant_background_diffusion_coeff
+      use_wind_torque = s%physics%use_wind_torque
+      wind_law_name = s%physics%wind_law_name
+      wind_law_index = s%physics%wind_law_index
+      wind_law_constant = s%physics%wind_law_constant
+      wind_saturation_omega = s%physics%wind_saturation_omega
+      solar_omega_sat = s%physics%solar_omega_sat
+      use_pmm_wind_law = s%physics%use_pmm_wind_law
+      pmm_exponent_a = s%physics%pmm_exponent_a
+      pmm_exponent_b = s%physics%pmm_exponent_b
+      pmm_exponent_c = s%physics%pmm_exponent_c
+      pmm_exponent_d = s%physics%pmm_exponent_d
+      pmm_exponent_m = s%physics%pmm_exponent_m
+      pmm_norm_jdot = s%physics%pmm_norm_jdot
+      pmm_norm_mdot = 1.27d12
+      pmm_solar_pressure = s%physics%pmm_solar_pressure
+      pmm_solar_omega = s%physics%pmm_solar_omega
+      pmm_solar_turnover_timescale = s%physics%pmm_solar_turnover_timescale
+      scale_by_rossby_number = s%physics%scale_by_rossby_number
+      scale_by_b_field = s%physics%scale_by_b_field
+      use_rotation_scaled_solar_wind = .false.
+      use_pmm_wind = .false.
+      pmm_omega_sat = 0
+      disk_locking_active = s%physics%disk_locking_active
+      disk_locking_age_gyr = s%physics%disk_locking_age_gyr
+      disk_omega_rad_s = s%physics%disk_omega_rad_s
+      use_mass_accretion = s%physics%use_mass_accretion
+      mass_accretion_rate = s%physics%mass_accretion_rate
+      accretion_cz_fraction = s%physics%accretion_cz_fraction
+      accretion_total_fraction = s%physics%accretion_total_fraction
+      accreted_composition = s%physics%accreted_composition
+      use_reimers_wind = s%physics%use_reimers_wind
+      reimers_scaling_factor = s%physics%reimers_scaling_factor
+      diffuse_helium_active = s%physics%diffuse_helium_active
+      use_diffusion_z = s%physics%use_diffusion_z
+      diffuse_lithium = s%physics%diffuse_lithium
+      use_thoul_diffusion = s%physics%use_thoul_diffusion
+      use_thoul_fit = s%physics%use_thoul_fit
+      use_new_diffusion_routines = s%physics%use_new_diffusion_routines
+      settling_y_factor = s%physics%settling_y_factor
+      settling_z_factor = s%physics%settling_z_factor
+      settling_tolerance = s%physics%settling_tolerance
+      settling_num_iterations = s%physics%settling_num_iterations
+      settling_timestep_fraction = s%physics%settling_timestep_fraction
+      coulomb_log_choice = s%physics%coulomb_log_choice
+      hydrogen_diffusion_floor = s%physics%hydrogen_diffusion_floor
+      helium_diffusion_min = s%physics%helium_diffusion_min
+      constant_mixing_coeff = s%physics%constant_mixing_coeff
+      constant_settling_reduction = s%physics%constant_settling_reduction
+      use_extended_composition = s%physics%use_extended_composition
+      mixture_weights_seed = s%physics%mixture_weights_seed
+      rescale_species_active = s%physics%rescale_species_active
+      change_species_name = '   '
+      new_species_value_mode = repeat(achar(0), 3)
+      new_species_value = s%physics%new_species_value
+      new_species_index = s%physics%new_species_index
+      value_relative_to_h = s%physics%value_relative_to_h
+      extend_core_inward = s%physics%extend_core_inward
+      num_core_shells_added = s%physics%num_core_shells_added
+      core_mass_reduction_factor = s%physics%core_mass_reduction_factor
+      helium_flash_active = s%physics%helium_flash_active
+      monte_carlo_active = s%physics%monte_carlo_active
+      mc_run_start = s%physics%mc_run_start
+      mc_run_end = s%physics%mc_run_end
 end subroutine seed_controls_buffer
 
 subroutine store_controls_to_star(s)
       type(star_info), intent(inout) :: s
-      s%physics%star_history_name = star_history_name
-      s%control%history_columns_file = history_columns_file
-      s%control%profile_columns_file = profile_columns_file
-      s%physics%profile_interval = profile_interval
+      s%control%num_runs = num_runs
+      s%control%num_models = num_models
+      s%control%first_call_flag = first_call_flag
+      s%control%set_initial_model_number = set_initial_model_number
+      s%control%rescale_kind = rescale_kind
+      s%control%rescale_params = rescale_params
+      s%control%initial_x_array = initial_x_array
+      s%control%initial_z_array = initial_z_array
+      s%control%mixing_length_array = mixing_length_array
+      s%control%senv0_array = senv0_array
+      s%control%has_senv0_array = has_senv0_array
+      s%control%use_z_ramp = use_z_ramp
+      s%control%rescale_core_z = rescale_core_z
+      s%control%rescale_z_mix1 = rescale_z_mix1
+      s%control%rescale_z_mix2 = rescale_z_mix2
+      s%control%target_end_age = target_end_age
+      s%control%central_deuterium_stop = central_deuterium_stop
+      s%control%central_hydrogen_stop = central_hydrogen_stop
+      s%control%central_helium_stop = central_helium_stop
+      s%control%end_age_stop_active = end_age_stop_active
+      s%control%timestep_override = timestep_override
+      s%control%timestep_override_active = timestep_override_active
       s%control%log_L_upper_limit = log_L_upper_limit
       s%control%log_L_lower_limit = log_L_lower_limit
       s%control%Teff_upper_limit = Teff_upper_limit
@@ -591,163 +607,23 @@ subroutine store_controls_to_star(s)
       s%control%log_g_lower_limit = log_g_lower_limit
       s%control%nu_max_upper_limit = nu_max_upper_limit
       s%control%nu_max_lower_limit = nu_max_lower_limit
-      s%physics%solar_mass_cgs = solar_mass_cgs
-      s%physics%solar_luminosity_cgs = solar_luminosity_cgs
-      s%physics%solar_radius_cgs = solar_radius_cgs
-      s%physics%G_cgs = G_cgs
-      s%physics%nu_max_sun = nu_max_sun
-      s%physics%delta_nu_sun = delta_nu_sun
-      s%physics%Teff_sun = Teff_sun
-      s%physics%profile_data_prefix = profile_data_prefix
-      s%control%inlist_used_file = inlist_used_file
-      s%control%first_model_file = first_model_file
-      s%control%last_model_file = last_model_file
-      s%physics%log_output_file = log_output_file
-      s%control%dynamics_file = dynamics_file
-      s%control%isochrone_file = isochrone_file
-      s%control%control_nml_file = control_nml_file
-      s%control%physics_nml_file = physics_nml_file
-      s%physics%pulse_format = pulse_format
-      s%physics%write_profile_flag = write_profile_flag
-      s%physics%write_pulse_flag = write_pulse_flag
-      s%physics%terminal_interval = terminal_interval
-      s%control%set_initial_model_number = set_initial_model_number
-      s%physics%compute_neutrino_fluxes = compute_neutrino_fluxes
-      s%physics%timestep_factors = timestep_factors
-      s%physics%nuclear_logT_cutoffs = nuclear_logT_cutoffs
-      s%physics%saha_log10t_cutoff = saha_log10t_cutoff
-      s%physics%rezone_env_logt0 = rezone_env_logt0
-      s%physics%rezone_env_logt1 = rezone_env_logt1
-      s%physics%gradient_logt_cutoff = gradient_logt_cutoff
-      s%physics%envelope_store_log_temperature = envelope_store_log_temperature
-      s%physics%weak_screening_threshold = weak_screening_threshold
-      s%physics%envelope_logp_step = envelope_logp_step
-      s%physics%core_overshoot_active = core_overshoot_active
-      s%physics%overshoot_alpha_core = overshoot_alpha_core
-      s%physics%envelope_overshoot_active = envelope_overshoot_active
-      s%physics%overshoot_alpha_envelope = overshoot_alpha_envelope
-      s%physics%intermediate_overshoot_active = intermediate_overshoot_active
-      s%physics%overshoot_alpha_min = overshoot_alpha_min
-      s%physics%adiabatic_overshoot_active = adiabatic_overshoot_active
-      s%physics%overshoot_max_extent_flag = overshoot_max_extent_flag
-      s%physics%overshoot_beta_core = overshoot_beta_core
-      s%physics%use_semiconvection = use_semiconvection
-      s%physics%fpft_average_weight = fpft_average_weight
-      s%physics%fpft_iter1 = fpft_iter1
-      s%physics%fpft_iter2 = fpft_iter2
-      s%physics%rotation_active = rotation_active
-      s%physics%cz_rotation_law_exponent = cz_rotation_law_exponent
-      s%physics%instability_transport_active = instability_transport_active
-      s%physics%set_initial_omega = set_initial_omega
-      s%physics%initial_omega = initial_omega
-      s%physics%mass_accretion_rate = mass_accretion_rate
-      s%physics%accretion_cz_fraction = accretion_cz_fraction
-      s%physics%accretion_total_fraction = accretion_total_fraction
-      s%physics%accreted_composition = accreted_composition
-      s%physics%reimers_scaling_factor = reimers_scaling_factor
-      s%physics%use_reimers_wind = use_reimers_wind
-      s%physics%use_mass_accretion = use_mass_accretion
-      s%physics%max_iter_level4 = max_iter_level4
-      s%physics%improved_first_guess_flag = improved_first_guess_flag
-      s%physics%calc_neutrinos = calc_neutrinos
-      s%physics%li6_rate_scale = li6_rate_scale
-      s%physics%li7_rate_scale = li7_rate_scale
-      s%physics%be9_pg_rate_scale = be9_pg_rate_scale
-      s%physics%be9_pd_rate_scale = be9_pd_rate_scale
-      s%physics%be9_palpha_rate_scale = be9_palpha_rate_scale
-      s%physics%cross_section_scale = cross_section_scale
-      s%physics%extra_cross_section_scale = extra_cross_section_scale
-      s%physics%s_prime_scale = s_prime_scale
-      s%physics%s_double_prime_scale = s_double_prime_scale
-      s%physics%be7p_s_prime_scale = be7p_s_prime_scale
-      s%physics%be7p_s_double_prime_scale = be7p_s_double_prime_scale
-      s%physics%n15_pg_scale = n15_pg_scale
-      s%physics%n15_pa_scale = n15_pa_scale
-      s%physics%use_itoh_neutrino_loss = use_itoh_neutrino_loss
-      s%physics%calc_envelope_flag = calc_envelope_flag
-      s%physics%use_extended_composition = use_extended_composition
-      s%physics%spot_filling_factor = spot_filling_factor
-      s%physics%spot_temp_contrast = spot_temp_contrast
-      s%physics%spot_depth_varies = spot_depth_varies
-      s%physics%disk_locking_age_gyr = disk_locking_age_gyr
-      s%physics%disk_omega_rad_s = disk_omega_rad_s
-      s%physics%disk_locking_active = disk_locking_active
-      s%control%target_end_age = target_end_age
-      s%control%timestep_override = timestep_override
-      s%control%central_deuterium_stop = central_deuterium_stop
-      s%control%central_hydrogen_stop = central_hydrogen_stop
-      s%control%central_helium_stop = central_helium_stop
-      s%control%end_age_stop_active = end_age_stop_active
-      s%control%timestep_override_active = timestep_override_active
-      s%physics%use_mhd_eos = use_mhd_eos
-      s%physics%metal_fraction_match_tolerance = metal_fraction_match_tolerance
-      s%physics%monte_carlo_active = monte_carlo_active
-      s%physics%mc_run_start = mc_run_start
-      s%physics%mc_run_end = mc_run_end
-      s%physics%solver_tolerances = solver_tolerances
-      s%physics%solver_underrelax_start = solver_underrelax_start
-      s%physics%solver_underrelax_increment = solver_underrelax_increment
-      s%physics%chi_grid_scale = chi_grid_scale
-      s%physics%max_iter_level1 = max_iter_level1
-      s%physics%max_iter_level2 = max_iter_level2
-      s%physics%max_iter_level3 = max_iter_level3
-      s%physics%diffusion_timestep_factor = diffusion_timestep_factor
-      s%physics%convergence_tolerance = convergence_tolerance
-      s%physics%num_rotation_structure_iters = num_rotation_structure_iters
-      s%physics%max_diffusion_iters = max_diffusion_iters
-      s%physics%settling_tolerance = settling_tolerance
-      s%physics%coulomb_log_choice = coulomb_log_choice
-      s%physics%settling_num_iterations = settling_num_iterations
-      s%physics%diffuse_helium_active = diffuse_helium_active
-      s%physics%settling_timestep_fraction = settling_timestep_fraction
-      s%physics%hydrogen_diffusion_floor = hydrogen_diffusion_floor
-      s%physics%helium_diffusion_min = helium_diffusion_min
-      s%physics%use_thoul_fit = use_thoul_fit
-      s%physics%settling_y_factor = settling_y_factor
-      s%physics%settling_z_factor = settling_z_factor
-      s%physics%use_thoul_diffusion = use_thoul_diffusion
-      s%physics%use_diffusion_z = use_diffusion_z
-      s%physics%use_new_diffusion_routines = use_new_diffusion_routines
-      s%physics%diffuse_lithium = diffuse_lithium
-      s%physics%atm_error_tol = atm_error_tol
-      s%physics%atm_step_initial = atm_step_initial
-      s%physics%atm_step_begin = atm_step_begin
-      s%physics%atm_step_min = atm_step_min
-      s%physics%atm_step_max = atm_step_max
-      s%physics%env_error_tol = env_error_tol
-      s%physics%env_step_begin = env_step_begin
-      s%physics%env_step_min = env_step_min
-      s%physics%env_step_max = env_step_max
-      s%physics%tolerance_fraction = tolerance_fraction
-      s%physics%max_stage_index = max_stage_index
-      s%physics%extrap_order = extrap_order
-      s%physics%atm_choice = atm_choice
-      s%physics%mixture_weights_seed = mixture_weights_seed
-      s%control%monte_carlo_file1_path = monte_carlo_file1_path
-      s%control%monte_carlo_file2_path = monte_carlo_file2_path
-      s%control%pulse_gyre_interval = pulse_gyre_interval
-      s%physics%tri_delta_teffl = tri_delta_teffl
-      s%physics%tri_delta_logl = tri_delta_logl
-      s%physics%new_triangle_init_flag = new_triangle_init_flag
-      s%control%rescale_params = rescale_params
-      s%control%rescale_kind = rescale_kind
-      s%control%num_models = num_models
-      s%control%num_runs = num_runs
-      s%control%first_call_flag = first_call_flag
-      s%physics%max_domega_global = max_domega_global
-      s%physics%use_structure_dt_limits = use_structure_dt_limits
-      s%physics%atm_step_size = atm_step_size
-      s%physics%envelope_step_size = envelope_step_size
-      s%physics%helium_flash_active = helium_flash_active
-      s%physics%new_species_value = new_species_value
-      s%physics%new_species_index = new_species_index
-      s%physics%rescale_species_active = rescale_species_active
-      s%physics%value_relative_to_h = value_relative_to_h
-      s%control%change_cno_mixture_active = change_cno_mixture_active
-      s%control%change_isotope_ratios_active = change_isotope_ratios_active
+      s%control%calibrate_solar_model = calibrate_solar_model
+      s%control%calibrate_solar_zx = calibrate_solar_zx
+      s%control%target_solar_age = target_solar_age
+      s%control%target_solar_zx = target_solar_zx
+      s%control%luminosity_tolerance = luminosity_tolerance
+      s%control%radius_tolerance = radius_tolerance
+      s%control%zx_tolerance = zx_tolerance
+      s%control%calibrate_star_flag = calibrate_star_flag
+      s%control%specify_teff_flag = specify_teff_flag
+      s%control%target_luminosity_lsun = target_luminosity_lsun
+      s%control%target_star_luminosity_tolerance = target_star_luminosity_tolerance
+      s%control%target_teff = target_teff
+      s%control%target_radius_rsun = target_radius_rsun
       s%control%target_carbon_cno_fraction = target_carbon_cno_fraction
       s%control%target_nitrogen_cno_fraction = target_nitrogen_cno_fraction
       s%control%target_oxygen_cno_fraction = target_oxygen_cno_fraction
+      s%control%change_cno_mixture_active = change_cno_mixture_active
       s%control%c12_to_c13_ratio = c12_to_c13_ratio
       s%control%o16_to_o18_ratio = o16_to_o18_ratio
       s%control%initial_h2_fraction = initial_h2_fraction
@@ -755,54 +631,28 @@ subroutine store_controls_to_star(s)
       s%control%initial_li6_fraction = initial_li6_fraction
       s%control%initial_li7_fraction = initial_li7_fraction
       s%control%initial_be9_fraction = initial_be9_fraction
-      s%physics%difad_velocity_scale = difad_velocity_scale
-      s%physics%mixing_velocity_scale = mixing_velocity_scale
-      s%physics%es_velocity_scale = es_velocity_scale
-      s%physics%gsf_velocity_scale = gsf_velocity_scale
-      s%physics%secular_shear_velocity_scale = secular_shear_velocity_scale
-      s%physics%critical_reynolds = critical_reynolds
-      s%physics%es_mixing_scale = es_mixing_scale
-      s%physics%secular_shear_mixing_scale = secular_shear_mixing_scale
-      s%physics%gsf_mixing_scale = gsf_mixing_scale
-      s%physics%solberg_hoiland_velocity_scale = solberg_hoiland_velocity_scale
-      s%physics%solberg_hoiland_mixing_scale = solberg_hoiland_mixing_scale
-      s%physics%gsf_inhibition_mode = gsf_inhibition_mode
-      s%physics%min_abundance = min_abundance
-      s%physics%absolute_tolerance = absolute_tolerance
-      s%physics%relative_tolerance = relative_tolerance
-      s%physics%max_burn_iterations = max_burn_iterations
-      s%physics%extend_core_inward = extend_core_inward
-      s%physics%num_core_shells_added = num_core_shells_added
-      s%physics%core_mass_reduction_factor = core_mass_reduction_factor
-      s%control%rewind_short_file = rewind_short_file
+      s%control%change_isotope_ratios_active = change_isotope_ratios_active
+      s%control%control_nml_file = control_nml_file
+      s%control%physics_nml_file = physics_nml_file
+      s%control%inlist_used_file = inlist_used_file
+      s%control%first_model_file = first_model_file
+      s%control%last_model_file = last_model_file
+      s%control%dynamics_file = dynamics_file
+      s%control%monte_carlo_file1_path = monte_carlo_file1_path
+      s%control%monte_carlo_file2_path = monte_carlo_file2_path
       s%control%isochrone_output_active = isochrone_output_active
-      s%control%initial_x_array = initial_x_array
-      s%control%initial_z_array = initial_z_array
-      s%control%mixing_length_array = mixing_length_array
-      s%control%senv0_array = senv0_array
-      s%control%has_senv0_array = has_senv0_array
-      s%control%luminosity_tolerance = luminosity_tolerance
-      s%control%radius_tolerance = radius_tolerance
-      s%control%zx_tolerance = zx_tolerance
-      s%control%target_solar_zx = target_solar_zx
-      s%control%target_solar_age = target_solar_age
-      s%control%calibrate_solar_model = calibrate_solar_model
-      s%control%calibrate_solar_zx = calibrate_solar_zx
-      s%control%rescale_core_z = rescale_core_z
-      s%control%rescale_z_mix1 = rescale_z_mix1
-      s%control%rescale_z_mix2 = rescale_z_mix2
-      s%control%use_z_ramp = use_z_ramp
-      s%control%target_luminosity_lsun = target_luminosity_lsun
-      s%control%target_star_luminosity_tolerance = target_star_luminosity_tolerance
-      s%control%target_teff = target_teff
-      s%control%target_radius_rsun = target_radius_rsun
-      s%control%specify_teff_flag = specify_teff_flag
-      s%control%calibrate_star_flag = calibrate_star_flag
-      s%physics%use_numerical_derivatives = use_numerical_derivatives
-      s%physics%use_scv_eos = use_scv_eos
-      s%physics%use_debye_huckel_correction = use_debye_huckel_correction
-      s%physics%debye_huckel_eta_min = debye_huckel_eta_min
-      s%physics%debye_huckel_eta_max = debye_huckel_eta_max
+      s%control%isochrone_file = isochrone_file
+      s%control%rewind_short_file = rewind_short_file
+      s%control%history_columns_file = history_columns_file
+      s%control%profile_columns_file = profile_columns_file
+      s%control%pulse_gyre_interval = pulse_gyre_interval
+      s%control%use_laol89_tables = use_laol89_tables
+      s%control%use_opal92_tables = use_opal92_tables
+      s%control%use_opal95_tables = use_opal95_tables
+      s%control%use_kurucz90_tables = use_kurucz90_tables
+      s%control%use_alex95_tables = use_alex95_tables
+      s%control%use_alex06_tables = use_alex06_tables
+      s%control%use_pure_z_table = use_pure_z_table
       s%control%laol_table_z1 = laol_table_z1
       s%control%laol_table_z2 = laol_table_z2
       s%control%opal_table_z1 = opal_table_z1
@@ -811,16 +661,6 @@ subroutine store_controls_to_star(s)
       s%control%alex_table_z1 = alex_table_z1
       s%control%kurucz_table_z1 = kurucz_table_z1
       s%control%kurucz_table_z2 = kurucz_table_z2
-      s%physics%molecular_opacity_logt_min = molecular_opacity_logt_min
-      s%physics%molecular_opacity_logt_max = molecular_opacity_logt_max
-      s%control%use_alex06_tables = use_alex06_tables
-      s%control%use_laol89_tables = use_laol89_tables
-      s%control%use_opal92_tables = use_opal92_tables
-      s%control%use_opal95_tables = use_opal95_tables
-      s%control%use_kurucz90_tables = use_kurucz90_tables
-      s%control%use_alex95_tables = use_alex95_tables
-      s%physics%laol_extrapolation_tolerance = laol_extrapolation_tolerance
-      s%control%use_pure_z_table = use_pure_z_table
       s%control%laol_table_path = laol_table_path
       s%control%laol_table2_path = laol_table2_path
       s%control%opal95_table_path = opal95_table_path
@@ -844,22 +684,150 @@ subroutine store_controls_to_star(s)
       s%control%centre3_table_path = centre3_table_path
       s%control%centre4_table_path = centre4_table_path
       s%control%centre5_table_path = centre5_table_path
-      s%physics%opal_eos_table_path = opal_eos_table_path
-      s%physics%opal_eos_vintage = opal_eos_vintage
       s%control%atm_table_path = atm_table_path
       s%control%allard_table_path = allard_table_path
+      s%physics%star_history_name = star_history_name
+      s%physics%profile_interval = profile_interval
+      s%physics%profile_data_prefix = profile_data_prefix
+      s%physics%write_profile_flag = write_profile_flag
+      s%physics%write_pulse_flag = write_pulse_flag
+      s%physics%pulse_format = pulse_format
+      s%physics%terminal_interval = terminal_interval
+      s%physics%log_output_file = log_output_file
+      s%physics%compute_neutrino_fluxes = compute_neutrino_fluxes
+      s%physics%solar_mass_cgs = solar_mass_cgs
+      s%physics%solar_luminosity_cgs = solar_luminosity_cgs
+      s%physics%solar_radius_cgs = solar_radius_cgs
+      s%physics%G_cgs = G_cgs
+      s%physics%nu_max_sun = nu_max_sun
+      s%physics%delta_nu_sun = delta_nu_sun
+      s%physics%Teff_sun = Teff_sun
+      s%physics%timestep_factors = timestep_factors
+      s%physics%max_domega_global = max_domega_global
+      s%physics%use_structure_dt_limits = use_structure_dt_limits
+      s%physics%use_envelope_triangle_dt = use_envelope_triangle_dt
+      s%physics%chi_grid_scale = chi_grid_scale
+      s%physics%solver_tolerances = solver_tolerances
+      s%physics%solver_underrelax_start = solver_underrelax_start
+      s%physics%solver_underrelax_increment = solver_underrelax_increment
+      s%physics%max_iter_level1 = max_iter_level1
+      s%physics%max_iter_level2 = max_iter_level2
+      s%physics%max_iter_level3 = max_iter_level3
+      s%physics%max_iter_level4 = max_iter_level4
+      s%physics%improved_first_guess_flag = improved_first_guess_flag
+      s%physics%nuclear_logT_cutoffs = nuclear_logT_cutoffs
+      s%physics%saha_log10t_cutoff = saha_log10t_cutoff
+      s%physics%gradient_logt_cutoff = gradient_logt_cutoff
+      s%physics%rezone_env_logt0 = rezone_env_logt0
+      s%physics%rezone_env_logt1 = rezone_env_logt1
+      s%physics%envelope_store_log_temperature = envelope_store_log_temperature
+      s%physics%weak_screening_threshold = weak_screening_threshold
+      s%physics%use_itoh_neutrino_loss = use_itoh_neutrino_loss
+      s%physics%calc_neutrinos = calc_neutrinos
+      s%physics%min_abundance = min_abundance
+      s%physics%absolute_tolerance = absolute_tolerance
+      s%physics%relative_tolerance = relative_tolerance
+      s%physics%max_burn_iterations = max_burn_iterations
+      s%physics%cross_section_scale = cross_section_scale
+      s%physics%extra_cross_section_scale = extra_cross_section_scale
+      s%physics%s_prime_scale = s_prime_scale
+      s%physics%s_double_prime_scale = s_double_prime_scale
+      s%physics%be7p_s_prime_scale = be7p_s_prime_scale
+      s%physics%be7p_s_double_prime_scale = be7p_s_double_prime_scale
+      s%physics%n15_pg_scale = n15_pg_scale
+      s%physics%n15_pa_scale = n15_pa_scale
+      s%physics%li6_rate_scale = li6_rate_scale
+      s%physics%li7_rate_scale = li7_rate_scale
+      s%physics%be9_pg_rate_scale = be9_pg_rate_scale
+      s%physics%be9_pd_rate_scale = be9_pd_rate_scale
+      s%physics%be9_palpha_rate_scale = be9_palpha_rate_scale
+      s%physics%opal_eos_vintage = opal_eos_vintage
+      s%physics%opal_eos_table_path = opal_eos_table_path
+      s%physics%use_mhd_eos = use_mhd_eos
+      s%physics%use_scv_eos = use_scv_eos
+      s%physics%use_debye_huckel_correction = use_debye_huckel_correction
+      s%physics%debye_huckel_eta_min = debye_huckel_eta_min
+      s%physics%debye_huckel_eta_max = debye_huckel_eta_max
+      s%physics%use_numerical_derivatives = use_numerical_derivatives
+      s%physics%metal_fraction_match_tolerance = metal_fraction_match_tolerance
+      s%physics%molecular_opacity_logt_min = molecular_opacity_logt_min
+      s%physics%molecular_opacity_logt_max = molecular_opacity_logt_max
+      s%physics%laol_extrapolation_tolerance = laol_extrapolation_tolerance
       s%physics%use_conductive_opacity = use_conductive_opacity
-      s%physics%velocity_form_correction = velocity_form_correction
-      s%physics%use_diffusion_advection_transport = use_diffusion_advection_transport
-      s%physics%no_am_transport_in_core = no_am_transport_in_core
+      s%physics%envelope_logp_step = envelope_logp_step
+      s%physics%core_overshoot_active = core_overshoot_active
+      s%physics%overshoot_alpha_core = overshoot_alpha_core
+      s%physics%envelope_overshoot_active = envelope_overshoot_active
+      s%physics%overshoot_alpha_envelope = overshoot_alpha_envelope
+      s%physics%intermediate_overshoot_active = intermediate_overshoot_active
+      s%physics%overshoot_alpha_min = overshoot_alpha_min
+      s%physics%adiabatic_overshoot_active = adiabatic_overshoot_active
+      s%physics%overshoot_max_extent_flag = overshoot_max_extent_flag
+      s%physics%overshoot_beta_core = overshoot_beta_core
+      s%physics%use_semiconvection = use_semiconvection
+      s%physics%atm_choice = atm_choice
+      s%physics%calc_envelope_flag = calc_envelope_flag
+      s%physics%atm_error_tol = atm_error_tol
+      s%physics%atm_step_initial = atm_step_initial
+      s%physics%atm_step_begin = atm_step_begin
+      s%physics%atm_step_min = atm_step_min
+      s%physics%atm_step_max = atm_step_max
+      s%physics%env_error_tol = env_error_tol
+      s%physics%env_step_begin = env_step_begin
+      s%physics%env_step_min = env_step_min
+      s%physics%env_step_max = env_step_max
+      s%physics%tolerance_fraction = tolerance_fraction
+      s%physics%max_stage_index = max_stage_index
+      s%physics%extrap_order = extrap_order
+      s%physics%tri_delta_teffl = tri_delta_teffl
+      s%physics%tri_delta_logl = tri_delta_logl
+      s%physics%new_triangle_init_flag = new_triangle_init_flag
+      s%physics%atm_step_size = atm_step_size
+      s%physics%envelope_step_size = envelope_step_size
       s%physics%allard_target_feh = allard_target_feh
       s%physics%allard_target_alpha = allard_target_alpha
       s%physics%allard_use_tau100 = allard_use_tau100
+      s%physics%spot_filling_factor = spot_filling_factor
+      s%physics%spot_temp_contrast = spot_temp_contrast
+      s%physics%spot_depth_varies = spot_depth_varies
+      s%physics%rotation_active = rotation_active
+      s%physics%set_initial_omega = set_initial_omega
+      s%physics%initial_omega = initial_omega
+      s%physics%cz_rotation_law_exponent = cz_rotation_law_exponent
+      s%physics%instability_transport_active = instability_transport_active
+      s%physics%fpft_average_weight = fpft_average_weight
+      s%physics%fpft_iter1 = fpft_iter1
+      s%physics%fpft_iter2 = fpft_iter2
+      s%physics%num_rotation_structure_iters = num_rotation_structure_iters
+      s%physics%max_diffusion_iters = max_diffusion_iters
+      s%physics%diffusion_timestep_factor = diffusion_timestep_factor
+      s%physics%convergence_tolerance = convergence_tolerance
+      s%physics%velocity_form_correction = velocity_form_correction
+      s%physics%use_diffusion_advection_transport = use_diffusion_advection_transport
+      s%physics%no_am_transport_in_core = no_am_transport_in_core
       s%physics%force_solid_body_rotation = force_solid_body_rotation
       s%physics%solid_body_mode_flag = solid_body_mode_flag
-      s%physics%constant_mixing_coeff = constant_mixing_coeff
-      s%physics%constant_settling_reduction = constant_settling_reduction
-      s%physics%use_envelope_triangle_dt = use_envelope_triangle_dt
+      s%physics%difad_velocity_scale = difad_velocity_scale
+      s%physics%mixing_velocity_scale = mixing_velocity_scale
+      s%physics%es_velocity_scale = es_velocity_scale
+      s%physics%gsf_velocity_scale = gsf_velocity_scale
+      s%physics%secular_shear_velocity_scale = secular_shear_velocity_scale
+      s%physics%critical_reynolds = critical_reynolds
+      s%physics%es_mixing_scale = es_mixing_scale
+      s%physics%secular_shear_mixing_scale = secular_shear_mixing_scale
+      s%physics%gsf_mixing_scale = gsf_mixing_scale
+      s%physics%solberg_hoiland_velocity_scale = solberg_hoiland_velocity_scale
+      s%physics%solberg_hoiland_mixing_scale = solberg_hoiland_mixing_scale
+      s%physics%gsf_inhibition_mode = gsf_inhibition_mode
+      s%physics%use_constant_background_diffusion = use_constant_background_diffusion
+      s%physics%constant_background_diffusion_coeff = constant_background_diffusion_coeff
+      s%physics%use_wind_torque = use_wind_torque
+      s%physics%wind_law_name = wind_law_name
+      s%physics%wind_law_index = wind_law_index
+      s%physics%wind_law_constant = wind_law_constant
+      s%physics%wind_saturation_omega = wind_saturation_omega
+      s%physics%solar_omega_sat = solar_omega_sat
+      s%physics%use_pmm_wind_law = use_pmm_wind_law
       s%physics%pmm_exponent_a = pmm_exponent_a
       s%physics%pmm_exponent_b = pmm_exponent_b
       s%physics%pmm_exponent_c = pmm_exponent_c
@@ -869,17 +837,47 @@ subroutine store_controls_to_star(s)
       s%physics%pmm_solar_pressure = pmm_solar_pressure
       s%physics%pmm_solar_omega = pmm_solar_omega
       s%physics%pmm_solar_turnover_timescale = pmm_solar_turnover_timescale
-      s%physics%use_pmm_wind_law = use_pmm_wind_law
       s%physics%scale_by_rossby_number = scale_by_rossby_number
       s%physics%scale_by_b_field = scale_by_b_field
-      s%physics%wind_law_name = wind_law_name
-      s%physics%wind_law_index = wind_law_index
-      s%physics%wind_law_constant = wind_law_constant
-      s%physics%wind_saturation_omega = wind_saturation_omega
-      s%physics%solar_omega_sat = solar_omega_sat
-      s%physics%use_wind_torque = use_wind_torque
-      s%physics%constant_background_diffusion_coeff = constant_background_diffusion_coeff
-      s%physics%use_constant_background_diffusion = use_constant_background_diffusion
+      s%physics%disk_locking_active = disk_locking_active
+      s%physics%disk_locking_age_gyr = disk_locking_age_gyr
+      s%physics%disk_omega_rad_s = disk_omega_rad_s
+      s%physics%use_mass_accretion = use_mass_accretion
+      s%physics%mass_accretion_rate = mass_accretion_rate
+      s%physics%accretion_cz_fraction = accretion_cz_fraction
+      s%physics%accretion_total_fraction = accretion_total_fraction
+      s%physics%accreted_composition = accreted_composition
+      s%physics%use_reimers_wind = use_reimers_wind
+      s%physics%reimers_scaling_factor = reimers_scaling_factor
+      s%physics%diffuse_helium_active = diffuse_helium_active
+      s%physics%use_diffusion_z = use_diffusion_z
+      s%physics%diffuse_lithium = diffuse_lithium
+      s%physics%use_thoul_diffusion = use_thoul_diffusion
+      s%physics%use_thoul_fit = use_thoul_fit
+      s%physics%use_new_diffusion_routines = use_new_diffusion_routines
+      s%physics%settling_y_factor = settling_y_factor
+      s%physics%settling_z_factor = settling_z_factor
+      s%physics%settling_tolerance = settling_tolerance
+      s%physics%settling_num_iterations = settling_num_iterations
+      s%physics%settling_timestep_fraction = settling_timestep_fraction
+      s%physics%coulomb_log_choice = coulomb_log_choice
+      s%physics%hydrogen_diffusion_floor = hydrogen_diffusion_floor
+      s%physics%helium_diffusion_min = helium_diffusion_min
+      s%physics%constant_mixing_coeff = constant_mixing_coeff
+      s%physics%constant_settling_reduction = constant_settling_reduction
+      s%physics%use_extended_composition = use_extended_composition
+      s%physics%mixture_weights_seed = mixture_weights_seed
+      s%physics%rescale_species_active = rescale_species_active
+      s%physics%new_species_value = new_species_value
+      s%physics%new_species_index = new_species_index
+      s%physics%value_relative_to_h = value_relative_to_h
+      s%physics%extend_core_inward = extend_core_inward
+      s%physics%num_core_shells_added = num_core_shells_added
+      s%physics%core_mass_reduction_factor = core_mass_reduction_factor
+      s%physics%helium_flash_active = helium_flash_active
+      s%physics%monte_carlo_active = monte_carlo_active
+      s%physics%mc_run_start = mc_run_start
+      s%physics%mc_run_end = mc_run_end
 end subroutine store_controls_to_star
 
 ! The run's working copies of the controls it changes (the registry's
@@ -887,29 +885,11 @@ end subroutine store_controls_to_star
 ! documents each copy and who changes it.
 subroutine arm_run_copies(s)
       type(star_info), intent(inout) :: s
-      s%mass_change_active = s%physics%use_mass_accretion
-      s%cross_section_scale_in_use = s%physics%cross_section_scale
-      s%extra_cross_section_scale_in_use = s%physics%extra_cross_section_scale
-      s%card_max_age_yr = s%control%target_end_age
-      s%card_fixed_timestep_yr = s%control%timestep_override
-      s%card_central_deuterium_stop = s%control%central_deuterium_stop
-      s%card_central_hydrogen_stop = s%control%central_hydrogen_stop
-      s%card_central_helium_stop = s%control%central_helium_stop
-      s%card_stops_active = s%control%end_age_stop_active
-      s%card_fixed_timestep_active = s%control%timestep_override_active
-      s%first_mc_run = s%physics%mc_run_start
-      s%last_mc_run = s%physics%mc_run_end
-      s%num_rotation_structure_passes = s%physics%num_rotation_structure_iters
-      s%settling_z_factor_in_use = s%physics%settling_z_factor
-      s%atm_choice_in_use = s%physics%atm_choice
-      s%card_rescale_targets = s%control%rescale_params
-      s%card_kind = s%control%rescale_kind
-      s%card_num_models = s%control%num_models
       s%num_cards = s%control%num_runs
+      s%card_num_models = s%control%num_models
       s%card_from_starting_model = s%control%first_call_flag
-      s%structure_dt_limits_active = s%physics%use_structure_dt_limits
-      s%num_core_points_added = s%physics%num_core_shells_added
-      s%core_mass_reduction = s%physics%core_mass_reduction_factor
+      s%card_kind = s%control%rescale_kind
+      s%card_rescale_targets = s%control%rescale_params
       s%card_initial_x = s%control%initial_x_array
       s%card_initial_z = s%control%initial_z_array
       s%card_mixing_length_alpha = s%control%mixing_length_array
@@ -918,8 +898,26 @@ subroutine arm_run_copies(s)
       s%card_z_ramp_core_z = s%control%rescale_core_z
       s%card_z_ramp_inner_mass_fraction = s%control%rescale_z_mix1
       s%card_z_ramp_outer_mass_fraction = s%control%rescale_z_mix2
+      s%card_max_age_yr = s%control%target_end_age
+      s%card_central_deuterium_stop = s%control%central_deuterium_stop
+      s%card_central_hydrogen_stop = s%control%central_hydrogen_stop
+      s%card_central_helium_stop = s%control%central_helium_stop
+      s%card_stops_active = s%control%end_age_stop_active
+      s%card_fixed_timestep_yr = s%control%timestep_override
+      s%card_fixed_timestep_active = s%control%timestep_override_active
       s%calibration_target_teff = s%control%target_teff
       s%calibration_target_radius_rsun = s%control%target_radius_rsun
+      s%structure_dt_limits_active = s%physics%use_structure_dt_limits
+      s%cross_section_scale_in_use = s%physics%cross_section_scale
+      s%extra_cross_section_scale_in_use = s%physics%extra_cross_section_scale
+      s%atm_choice_in_use = s%physics%atm_choice
+      s%num_rotation_structure_passes = s%physics%num_rotation_structure_iters
+      s%mass_change_active = s%physics%use_mass_accretion
+      s%settling_z_factor_in_use = s%physics%settling_z_factor
+      s%num_core_points_added = s%physics%num_core_shells_added
+      s%core_mass_reduction = s%physics%core_mass_reduction_factor
+      s%first_mc_run = s%physics%mc_run_start
+      s%last_mc_run = s%physics%mc_run_end
 end subroutine arm_run_copies
 
 end module controls_sync

@@ -159,7 +159,7 @@
       ! (legacy name: fc)
       mixing_velocity_scale = 1.0d0
 
-      ! Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header)
+      ! Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the run log's header)
       ! (legacy name: fo)
       coupling_factor = 1.0d0
 
@@ -213,7 +213,7 @@
       ! (legacy name: htoler)
       solver_tolerances = 6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6
 
-      ! The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in controls_buffer): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead
+      ! The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in state/control_slots.f90): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead
       ! (legacy name: hpttol)
       zoning_tolerances = 1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1
 
@@ -397,7 +397,7 @@
       ! (legacy name: niter2)
       max_iter_level2 = 20
 
-      ! Henyey iteration limit, level 3 DEFAULT IS 2 (read_controls inline init niter3 = 2), not implicit 0.
+      ! Henyey iteration limit, level 3
       ! (legacy name: niter3)
       max_iter_level3 = 2
 
@@ -954,7 +954,7 @@
       ! Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory
       profile_data_prefix = 'profile'
 
-      ! MESA mode: history file name (written to the output directory)
+      ! The history file's name, in the output directory
       star_history_name = 'history.data'
 
       ! Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints
@@ -969,22 +969,22 @@
       ! Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value)
       Teff_sun = 5772.0d0
 
-      ! Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping
+      ! Write the solver forensics to the run log (Henyey iteration trace, envelope and atmosphere integration statistics, triangle and rezoning bookkeeping); the read installs it as run_messages' gate, solver_diagnostics(), which the run asks
       report_solver_diagnostics = .false.
 
-      ! MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles
+      ! Write profile{N}.data every N converged models (0 = off); the history's profile_number column maps models to profiles
       profile_interval = 50
 
-      ! MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}
+      ! The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}
       pulse_format = 'GYRE'
 
-      ! MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)
+      ! Write the profile{N}.data files (every profile_interval models)
       write_profile_flag = .false.
 
-      ! MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)
+      ! Write a pulsation file (pulse_format) with each profile
       write_pulse_flag = .false.
 
-      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run
+      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run
       compute_neutrino_fluxes = .false.
 
 /

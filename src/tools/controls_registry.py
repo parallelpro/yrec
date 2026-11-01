@@ -3,7 +3,8 @@ control, read by the controls generators (gen_controls_state, gen_inlist,
 gen_controls_dump), tools/upgrade_inlist.py and tools/check_boundaries.py.
 
 Every control has a code name, a controls_buffer member that holds its one
-default as its initializer; both kinds of deck are read into it
+default as its initializer and its description as the comment directly
+above its declaration (buffer_members); both kinds of deck are read into it
 (tools/gen_inlist.py).
 
 Columns:
@@ -32,8 +33,6 @@ Columns:
                      from the controls (or, for the deck's file names, from
                      the command line)
   mesa_note      the MESA control it corresponds to, if any
-  doc            what the control holds (what the run does with its run
-                 copy is the copy's comment in state/star_info_lib.f90)
   canonical      the code name: the controls_buffer member the value lands
                  in, for every row
   home           control or physics, the group: the star's record of that
@@ -63,7 +62,7 @@ import re
 SRC = pathlib.Path(__file__).resolve().parent.parent
 REG = SRC / "defaults" / "controls_registry.tsv"
 
-COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note", "doc",
+COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note",
            "canonical", "home", "run_copy", "used", "aliases"]
 STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
@@ -75,7 +74,9 @@ USES = {"run", "read", "none"}
 # What gen_inlist and the checks print when a row is filled wrongly: the
 # cells of each kind of row.
 CELLS_GUIDE = """How to fill a registry row (tools/controls_registry.py describes the columns):
-  a new control, its inlist name its code name (the usual case):
+  a new control, its inlist name its code name (the usual case): its declaration
+      in controls_buffer, in its group's section, with its default as the
+      initializer and its description as the comment above it; then the row:
       group control or physics; legacy -; type as controls_buffer declares it;
       proposed_name and canonical both the code name (the controls_buffer member);
       status live; home the group (buffer if only the read uses it); used run
@@ -224,13 +225,58 @@ def _entities(text):
     return ents + [cur.strip()] if cur.strip() else ents
 
 
+def _descriptions(text):
+    """{member: the comment lines directly above its declaration, joined}
+    (a topic line, '! ----', or a section line, '! ====', ends a comment);
+    a declaration of several members, or a member without a comment, is
+    an error"""
+    docs, block, problems = {}, [], []
+    lines = text.splitlines()
+    in_module = False
+    for i, raw in enumerate(lines):
+        s = raw.strip()
+        if re.match(r"(?i)^implicit none", s):
+            in_module, block = True, []
+            continue
+        if not in_module:
+            continue
+        if "/*" in s:
+            problems.append(f"controls_buffer.f90:{i + 1}: '/*' (make compiles with -cpp, which "
+                            "reads it as the start of a C comment)")
+        if s.startswith("!") and not s.startswith(("! ----", "! ====")):
+            block.append(s[1:].strip())
+            continue
+        m = _DECL_RE.match(raw.split("!")[0])
+        if m and "parameter" not in (m.group(2) or "").lower():
+            stmt, k = raw.split("!")[0].rstrip(), i
+            while stmt.endswith("&"):
+                k += 1
+                stmt = stmt[:-1] + lines[k].split("!")[0].strip().lstrip("&")
+            names = [re.match(r"\s*(\w+)", e).group(1).lower()
+                     for e in _entities(_DECL_RE.match(stmt).group(3))]
+            if len(names) > 1:
+                problems.append(f"controls_buffer.f90:{i + 1}: declare one member per line ({', '.join(names)})")
+            elif not block:
+                problems.append(f"controls_buffer.f90:{i + 1}: {names[0]} has no description (the "
+                                "comment directly above its declaration)")
+            else:
+                docs[names[0]] = " ".join(block)
+        block = []
+    return docs, problems
+
+
 def buffer_members():
     """controls_buffer's members, in declaration order: dicts with
     name (lower case), decl (the type spec as written: real(dp),
     character(len=256), ...), dims (as written: '(max_runs)', or ''),
     init (the initializer as written, a named constant replaced by its
-    value; None without one) and type (the registry's spelling:
-    real(50), string, ...). Named constants are not members."""
+    value; None without one), type (the registry's spelling: real(50),
+    string, ...) and doc (the comment directly above the declaration).
+    Named constants are not members. Stops when a declaration declares
+    several members or a member has no description."""
+    docs, problems = _descriptions(BUFFER.read_text())
+    if problems:
+        raise SystemExit("\n".join(problems))
     members, params = [], {}
     for line in _joined(BUFFER.read_text()):
         m = _DECL_RE.match(line)
@@ -249,7 +295,7 @@ def buffer_members():
             if init is not None:
                 init = params.get(init.strip().lower(), init.strip())
             members.append(dict(name=name, decl=decl, dims=dims.replace(" ", ""), init=init,
-                                type=type_of(decl, dims)))
+                                type=type_of(decl, dims), doc=docs.get(name, "")))
     return members
 
 

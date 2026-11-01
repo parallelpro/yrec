@@ -5,7 +5,7 @@
 
 &control
 
-      ! Per run: the mixing-length parameter alpha (the solar calibration rewrites the later runs' entries)
+      ! Per card: the mixing-length parameter alpha
       ! (legacy name: cmixla)
       mixing_length_alpha = 0
 
@@ -153,7 +153,7 @@
       ! (legacy name: kindrn)
       run_kind = 1
 
-      ! DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.
+      ! Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model)
       ! (legacy name: lfirst)
       first_call_flag = .true.
 
@@ -216,7 +216,7 @@
       ! (legacy name: lalex95)
       use_alex95_tables = .false.
 
-      ! Envelope profile print count (values <= 0 become 9999 = off)
+      ! Envelope profile print count: read and used nowhere (the F77's one use, in SURFBC, was commented out); the read makes 0 or less into 9999, as PARMIN did
       ! (legacy name: npenv)
       envelope_print_points = 0
 

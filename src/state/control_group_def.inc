@@ -3,8 +3,28 @@
 ! do not edit; regenerate instead.
 ! The &control group's controls (star%control): one component per buffer member, declaration
 ! order, every one default-initialized (see the generator's header).
-            character(len=256) :: history_columns_file = ' '
-            character(len=256) :: profile_columns_file = ' '
+            integer :: num_runs = 1
+            integer :: num_models(max_runs) = 0
+            logical :: first_call_flag(max_runs) = .true.
+            integer :: set_initial_model_number = 1
+            integer :: rescale_kind(max_runs) = 0
+            double precision :: rescale_params(4,max_runs) = 0.0d0
+            double precision :: initial_x_array(max_runs) = 0
+            double precision :: initial_z_array(max_runs) = 0
+            double precision :: mixing_length_array(max_runs) = 0
+            double precision :: senv0_array(max_runs) = 1.26d-4
+            logical :: has_senv0_array(max_runs) = .false.
+            logical :: use_z_ramp = .false.
+            double precision :: rescale_core_z(max_runs) = -1.0d0
+            double precision :: rescale_z_mix1(max_runs) = -1.0d0
+            double precision :: rescale_z_mix2(max_runs) = -1.0d0
+            double precision :: target_end_age(max_runs) = 0.0d0
+            double precision :: central_deuterium_stop(max_runs) = 0.0d0
+            double precision :: central_hydrogen_stop(max_runs) = 0.0d0
+            double precision :: central_helium_stop(max_runs) = 0.0d0
+            logical :: end_age_stop_active(max_runs) = .false.
+            double precision :: timestep_override(max_runs) = 0.0d0
+            logical :: timestep_override_active(max_runs) = .false.
             double precision :: log_L_upper_limit(max_runs) = 1.0d99
             double precision :: log_L_lower_limit(max_runs) = -1.0d99
             double precision :: Teff_upper_limit(max_runs) = 1.0d99
@@ -13,34 +33,23 @@
             double precision :: log_g_lower_limit(max_runs) = -1.0d99
             double precision :: nu_max_upper_limit(max_runs) = 1.0d99
             double precision :: nu_max_lower_limit(max_runs) = -1.0d99
-            character(len=256) :: inlist_used_file = ' '
-            character(len=256) :: first_model_file = repeat(achar(0), 256)
-            character(len=256) :: last_model_file = '{YREC_OUTPUT}/final.mod'
-            character(len=256) :: dynamics_file = repeat(achar(0), 256)
-            character(len=256) :: isochrone_file = repeat(achar(0), 256)
-            character(len=256) :: control_nml_file = repeat(achar(0), 256)
-            character(len=256) :: physics_nml_file = repeat(achar(0), 256)
-            integer :: set_initial_model_number = 1
-            double precision :: target_end_age(max_runs) = 0.0d0
-            double precision :: timestep_override(max_runs) = 0.0d0
-            double precision :: central_deuterium_stop(max_runs) = 0.0d0
-            double precision :: central_hydrogen_stop(max_runs) = 0.0d0
-            double precision :: central_helium_stop(max_runs) = 0.0d0
-            logical :: end_age_stop_active(max_runs) = .false.
-            logical :: timestep_override_active(max_runs) = .false.
-            character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
-            character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
-            integer :: pulse_gyre_interval = 0
-            double precision :: rescale_params(4,max_runs) = 0.0d0
-            integer :: rescale_kind(max_runs) = 0
-            integer :: num_models(max_runs) = 0
-            integer :: num_runs = 1
-            logical :: first_call_flag(max_runs) = .true.
-            logical :: change_cno_mixture_active = .false.
-            logical :: change_isotope_ratios_active = .false.
+            logical :: calibrate_solar_model = .false.
+            logical :: calibrate_solar_zx = .false.
+            double precision :: target_solar_age = 4.57d9
+            double precision :: target_solar_zx = 0.02292d0
+            double precision :: luminosity_tolerance = 1.0d-5
+            double precision :: radius_tolerance = 1.0d-4
+            double precision :: zx_tolerance = 1.0d-3
+            logical :: calibrate_star_flag = .false.
+            logical :: specify_teff_flag = .false.
+            double precision :: target_luminosity_lsun = 0
+            double precision :: target_star_luminosity_tolerance = 0
+            double precision :: target_teff = 0
+            double precision :: target_radius_rsun = 0
             double precision :: target_carbon_cno_fraction = 0.172148d0
             double precision :: target_nitrogen_cno_fraction = 0.050426d0
             double precision :: target_oxygen_cno_fraction = 0.468195d0
+            logical :: change_cno_mixture_active = .false.
             double precision :: c12_to_c13_ratio = 88.27d0
             double precision :: o16_to_o18_ratio = 2693.0d0
             double precision :: initial_h2_fraction = 2.781d-5
@@ -48,30 +57,28 @@
             double precision :: initial_li6_fraction = 7.187d-10
             double precision :: initial_li7_fraction = 1.025d-8
             double precision :: initial_be9_fraction = 1.595d-10
-            logical :: rewind_short_file = .false.
+            logical :: change_isotope_ratios_active = .false.
+            character(len=256) :: control_nml_file = repeat(achar(0), 256)
+            character(len=256) :: physics_nml_file = repeat(achar(0), 256)
+            character(len=256) :: inlist_used_file = ' '
+            character(len=256) :: first_model_file = repeat(achar(0), 256)
+            character(len=256) :: last_model_file = '{YREC_OUTPUT}/final.mod'
+            character(len=256) :: dynamics_file = repeat(achar(0), 256)
+            character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
+            character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
             logical :: isochrone_output_active = .false.
-            double precision :: initial_x_array(max_runs) = 0
-            double precision :: initial_z_array(max_runs) = 0
-            double precision :: mixing_length_array(max_runs) = 0
-            double precision :: senv0_array(max_runs) = 1.26d-4
-            logical :: has_senv0_array(max_runs) = .false.
-            double precision :: luminosity_tolerance = 1.0d-5
-            double precision :: radius_tolerance = 1.0d-4
-            double precision :: zx_tolerance = 1.0d-3
-            double precision :: target_solar_zx = 0.02292d0
-            double precision :: target_solar_age = 4.57d9
-            logical :: calibrate_solar_model = .false.
-            logical :: calibrate_solar_zx = .false.
-            double precision :: rescale_core_z(max_runs) = -1.0d0
-            double precision :: rescale_z_mix1(max_runs) = -1.0d0
-            double precision :: rescale_z_mix2(max_runs) = -1.0d0
-            logical :: use_z_ramp = .false.
-            double precision :: target_luminosity_lsun = 0
-            double precision :: target_star_luminosity_tolerance = 0
-            double precision :: target_teff = 0
-            double precision :: target_radius_rsun = 0
-            logical :: specify_teff_flag = .false.
-            logical :: calibrate_star_flag = .false.
+            character(len=256) :: isochrone_file = repeat(achar(0), 256)
+            logical :: rewind_short_file = .false.
+            character(len=256) :: history_columns_file = ' '
+            character(len=256) :: profile_columns_file = ' '
+            integer :: pulse_gyre_interval = 0
+            logical :: use_laol89_tables = .false.
+            logical :: use_opal92_tables = .false.
+            logical :: use_opal95_tables = .false.
+            logical :: use_kurucz90_tables = .false.
+            logical :: use_alex95_tables = .false.
+            logical :: use_alex06_tables = .false.
+            logical :: use_pure_z_table = .false.
             double precision :: laol_table_z1 = 0
             double precision :: laol_table_z2 = 0
             double precision :: opal_table_z1 = 0
@@ -80,13 +87,6 @@
             double precision :: alex_table_z1 = 0
             double precision :: kurucz_table_z1 = 0
             double precision :: kurucz_table_z2 = 0
-            logical :: use_alex06_tables = .false.
-            logical :: use_laol89_tables = .false.
-            logical :: use_opal92_tables = .false.
-            logical :: use_opal95_tables = .false.
-            logical :: use_kurucz90_tables = .false.
-            logical :: use_alex95_tables = .false.
-            logical :: use_pure_z_table = .false.
             character(len=256) :: laol_table_path = repeat(achar(0), 256)
             character(len=256) :: laol_table2_path = repeat(achar(0), 256)
             character(len=256) :: opal95_table_path = repeat(achar(0), 256)
