@@ -3,9 +3,9 @@
 !----------------------------------------------------------------------
 ! Reads one deck through read_controls, exactly as a run does, and
 ! prints every resulting control: each element of star%control and
-! star%physics (controls_dump.inc, generated from their declarations) and of the
-! buffer-only members, the star fields read_controls sets directly and
-! the unit numbers. Doubles
+! star%physics, of the buffer-only members and of the run copies
+! (dump_controls, generated: controls_dump.inc), and the unit numbers.
+! Doubles
 ! print at full precision, so two dumps agree exactly when the controls
 ! are bit-identical.
 !   test_controls                  the pristine defaults (no deck read)
@@ -71,16 +71,6 @@ program test_controls
          write(u,'(a)') "# controls (pristine defaults)"
       end if
       call dump_controls(star, u)
-      do i1 = 1, size(star%cross_section_scale_in_use)
-         write(u,'(a," = ",es25.17e3)') 'star%cross_section_scale_in_use('//itoa(i1)//')', &
-              star%cross_section_scale_in_use(i1)
-      end do
-      do i1 = 1, size(star%extra_cross_section_scale_in_use)
-         write(u,'(a," = ",es25.17e3)') 'star%extra_cross_section_scale_in_use('//itoa(i1)//')', &
-              star%extra_cross_section_scale_in_use(i1)
-      end do
-      write(u,'(a," = ",es25.17e3)') 'star%envelope_hydrogen_fraction', star%envelope_hydrogen_fraction
-      write(u,'(a," = ",es25.17e3)') 'star%envelope_metal_fraction', star%envelope_metal_fraction
       write(u,'(a," = ",i0)') 'last_model_unit', last_model_unit
       write(u,'(a," = ",i0)') 'run_log_unit', run_log_unit
       write(u,'(a," = ",i0)') 'terminal_unit', terminal_unit
